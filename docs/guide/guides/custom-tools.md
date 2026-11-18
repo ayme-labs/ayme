@@ -42,6 +42,25 @@ createAyme({ customTools: [highlight] });
 - A Custom Tool whose name another tool already has leaves the session with no tools: `ayme.tools.list()` is empty, so nothing is published, and `ayme.tools.run` throws until the clash is fixed.
 - Custom Tools live as long as the session: they are removed when it stops.
 
+## Mark a destructive Custom Tool
+
+`destructive: true` marks a Custom Tool whose effect cannot be undone, such as deleting a record:
+
+```ts
+const deleteRow: CustomTool = {
+  name: "delete_row",
+  description: "Delete the record a row shows.",
+  filter: "tr[data-record]",
+  destructive: true,
+  async execute({ locator }) {
+    await locator.getByRole("button", { name: "Delete" }).click();
+    return null;
+  },
+};
+```
+
+The published tool says so in its annotations, `destructiveHint` over `ayme mcp` and `consequentialHint` over WebMCP, and Ayme still runs it like any other tool. `false` is the same as leaving it out. [Destructive actions](../reference/ayme.md#destructive-actions) has the details, which Page Object Actions share.
+
 ## A Locator filter
 
 A `filter` that a selector cannot express is a function that takes the session's Playwright `Page` and returns a `Locator` of the elements the Goal Loop may offer. Ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:

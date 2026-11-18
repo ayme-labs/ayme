@@ -23,6 +23,9 @@ export type ArgumentValue =
 export class RunCard extends PanelPart {
   @ayme.child
   readonly runButton: Locator;
+  /** The mark of a tool marked destructive, before Run, on a card with a head. */
+  @ayme.child
+  readonly destructiveMark: Locator;
   /** Why the tool is unavailable, under its name; absent while it's available. */
   @ayme.child
   readonly reason: Locator;
@@ -69,6 +72,7 @@ export class RunCard extends PanelPart {
   constructor(root: Locator) {
     super(root);
     this.runButton = root.getByRole("button", { name: "Run", exact: true });
+    this.destructiveMark = root.locator("[data-destructive-mark]");
     this.reason = root.getByRole("note", { name: "Why it is unavailable" });
     this.argumentsToggle = root.getByRole("button", {
       name: /^(Show|Hide) the arguments for /,

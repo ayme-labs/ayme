@@ -354,7 +354,7 @@ it("starts the Agent Connection while a session with agentConnection is started"
   expect(names(tools.list())).toEqual(names(runtime.tools.list()));
   // MCP describes each tool by its Agent Description: a bare action has
   // none, an action says what it shows afterwards, a described one says
-  // what its author wrote.
+  // what its author wrote. A destructive one carries its mark.
   class Opener {
     open() {}
     close() {}
@@ -376,6 +376,7 @@ it("starts the Agent Connection while a session with agentConnection is started"
         methodName: "save",
         toolName: "Opener.save",
         description: "Save the draft.",
+        destructive: true,
         parameters: [],
       },
     ],
@@ -388,8 +389,10 @@ it("starts the Agent Connection while a session with agentConnection is started"
     description: "Shows Dialog.",
   });
   expect(listed("Opener.close")).not.toHaveProperty("description");
+  expect(listed("Opener.close")).not.toHaveProperty("destructive");
   expect(listed("Opener.save")).toMatchObject({
     description: "Save the draft.",
+    destructive: true,
   });
   runtime.pom.unregister(Opener);
   const run = vi.spyOn(runtime.tools, "run").mockResolvedValue("ran");

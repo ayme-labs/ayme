@@ -112,6 +112,8 @@ export type ToolManifest = {
   toolName: string;
   /** The description its `@ayme.action` marker gives. */
   description?: string;
+  /** Present when its `@ayme.action` marker sets `destructive: true`. */
+  destructive?: true;
   parameters: readonly ToolParameter[];
   returnPoms?: readonly string[];
 };
@@ -132,6 +134,12 @@ export type PomDefinitionAction = {
   /** Its parameters as the action declares them, which its signature shows. */
   parameters: readonly ToolParameter[];
   returnPoms: readonly string[];
+  /**
+   * Present when its `@ayme.action` sets `destructive: true`. The definition
+   * text agents read leaves it out: agents get it from the tool's
+   * annotations.
+   */
+  destructive?: true;
 };
 
 export type PomDefinition = {
@@ -193,6 +201,8 @@ export type RegisteredPomTool = {
    * afterwards, by class name.
    */
   returnPoms?: readonly string[];
+  /** Present when its `@ayme.action` marks it `destructive: true`. */
+  destructive?: true;
   className: string;
   /** Whether its class declares a Page Object Root. */
   rooted: boolean;

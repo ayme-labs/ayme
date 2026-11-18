@@ -9,6 +9,8 @@ export type PublishedTool = {
   name: string;
   description: string;
   inputSchema: unknown;
+  /** Only on a tool marked destructive: `{ consequentialHint: true }`. */
+  annotations?: { consequentialHint?: boolean };
   execute(args: unknown): Promise<unknown>;
 };
 
@@ -66,7 +68,10 @@ export function publishedToolNames(page: Page) {
   );
 }
 
-/** One published tool's schema, or `null` while it is not published. */
+/**
+ * One published tool's name, description, schema and, when it has any, its
+ * annotations; `null` while it is not published.
+ */
 export function publishedToolSchema(page: Page, name: string) {
   return page.evaluate((name) => {
     const tool = (
@@ -77,6 +82,7 @@ export function publishedToolSchema(page: Page, name: string) {
           name: tool.name,
           description: tool.description,
           inputSchema: tool.inputSchema,
+          ...(tool.annotations ? { annotations: tool.annotations } : {}),
         }
       : null;
   }, name);

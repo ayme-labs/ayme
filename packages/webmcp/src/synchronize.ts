@@ -10,6 +10,8 @@ export type WebMcpTool = Readonly<{
   description: string;
   inputSchema: object;
   group: string;
+  /** Its author marked it destructive: a call cannot be undone. */
+  destructive?: boolean;
 }>;
 
 /** The session's tools, as publication reads and calls them. */
@@ -81,9 +83,9 @@ const changeRecordText = (error: Error) =>
 const publishable = (tool: WebMcpTool) =>
   tool.group !== "peek" && tool.name !== "screenshot";
 
-/** What makes a published tool stale: its description or schema changed. */
+/** What makes a published tool stale: its description, schema or mark changed. */
 const versionOf = (tool: WebMcpTool) =>
-  JSON.stringify([tool.description, tool.inputSchema]);
+  JSON.stringify([tool.description, tool.inputSchema, !!tool.destructive]);
 
 /**
  * Keep the driver's tool set in sync with the source's publishable tools. A
@@ -207,6 +209,12 @@ export async function synchronizeWebMcpTools(
                 name: prefix + name,
                 description: tool.description,
                 inputSchema: tool.inputSchema,
+                // WebMCP has no destructive hint; its consequential one
+                // covers actions that cannot be undone. An unmarked tool gets
+                // no annotations, which claim nothing about it.
+                ...(tool.destructive
+                  ? { annotations: { consequentialHint: true } }
+                  : {}),
                 execute: (input: unknown) =>
                   asToolResult(() => call(name, registration, input)),
               },
