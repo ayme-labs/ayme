@@ -729,7 +729,7 @@ assert.ok(transformed, 'Decorated POM must produce registration metadata');
 const registration = transformed.code.split('\\n').find(line => line.startsWith('registerCompiledPom(Pom, '));
 assert.ok(registration, 'Transformed POM must register its compiled manifest');
 const manifest = JSON.parse(registration.slice('registerCompiledPom(Pom, '.length, -2));
-assert.deepEqual(manifest.members, [{ memberName: 'input', kind: 'locator', access: 'field', collection: false }]);
+assert.deepEqual(manifest.members, [{ memberName: 'input', kind: 'locator', access: 'getter', collection: false }]);
 assert.deepEqual(manifest.tools, [{
   methodName: 'act',
   toolName: 'Pom.act',
