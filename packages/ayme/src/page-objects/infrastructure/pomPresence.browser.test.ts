@@ -219,7 +219,9 @@ describe("Page Object Presence by predicate", () => {
     document.body.innerHTML =
       '<aside id="drawer" style="width:200px;height:100px">Menu</aside>';
     class SideDrawer {
-      root = page.locator("#drawer");
+      get root() {
+        return page.locator("#drawer");
+      }
       isOpen = false;
       open() {}
     }
@@ -268,7 +270,9 @@ describe("Page Object Presence by predicate", () => {
     ayme({ root: rootOf })(Pin);
     class Panel {
       expanded = false;
-      frame = page.locator("#panel");
+      get frame() {
+        return page.locator("#panel");
+      }
       get pin() {
         reads += 1;
         return new Pin(this.frame.getByRole("button"));

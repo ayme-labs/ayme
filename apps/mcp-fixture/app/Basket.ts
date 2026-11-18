@@ -14,14 +14,16 @@ const canClear = async (self: Basket) =>
  */
 @ayme
 export class Basket {
-  @ayme.child
-  readonly heading: Locator;
-  @ayme.collection
-  readonly items: Locator;
+  constructor(private readonly page: Page) {}
 
-  constructor(private readonly page: Page) {
-    this.heading = page.getByRole("heading", { name: "Groceries" });
-    this.items = page.getByRole("listitem");
+  @ayme.child
+  get heading(): Locator {
+    return this.page.getByRole("heading", { name: "Groceries" });
+  }
+
+  @ayme.collection
+  get items(): Locator {
+    return this.page.getByRole("listitem");
   }
 
   @ayme.collection

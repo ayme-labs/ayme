@@ -31,7 +31,9 @@ describe("Change Record of the first action in Chromium", () => {
     const page = createPage();
 
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       announce() {
         document
           .querySelector("main")!

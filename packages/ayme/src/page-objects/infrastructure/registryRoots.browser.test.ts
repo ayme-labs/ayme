@@ -30,7 +30,9 @@ describe("registered Page Object roots", () => {
     `;
 
     class ExamplePage {
-      readonly ignored = page.locator("body");
+      get ignored() {
+        return page.locator("body");
+      }
       readonly zero = rooted(page.locator(".zero"), {});
       readonly one = rooted(page.locator(".one"), {});
       readonly many = rooted(page.locator(".many"), {});

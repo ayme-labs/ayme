@@ -58,9 +58,9 @@ vi.mock("./agentConnection", () => ({
 class SaveForm {
   static waiting = false;
   static proceed = () => {};
-  readonly saveButton;
-  constructor(page: Page) {
-    this.saveButton = page.getByRole("button", { name: "Save" });
+  constructor(private readonly page: Page) {}
+  get saveButton() {
+    return this.page.getByRole("button", { name: "Save" });
   }
   async save() {
     SaveForm.waiting = true;
@@ -72,7 +72,7 @@ class SaveForm {
 
 registerCompiledPom(SaveForm, {
   className: "SaveForm",
-  members: [{ memberName: "saveButton", kind: "locator", access: "field" }],
+  members: [{ memberName: "saveButton", kind: "locator", access: "getter" }],
   tools: [
     {
       methodName: "save",
