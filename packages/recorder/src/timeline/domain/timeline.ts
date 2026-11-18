@@ -371,9 +371,18 @@ export class Timeline {
     );
     // Stryker disable next-line ConditionalExpression: an entry once written stays; the check is for the type
     if (index < 0) return;
-    const end = placeIn(visit, interaction.after);
     const last = written.measured;
-    const sameAfter = last?.after === interaction.after;
+    // A read of the page it went on to, as when its typing submitted a
+    // form, has nothing of its own Visit: what it showed up to the last
+    // read of its page stays.
+    const after =
+      placeIn(visit, interaction.after) < 0 &&
+      last &&
+      placeIn(visit, last.after) >= 0
+        ? last.after
+        : interaction.after;
+    const end = placeIn(visit, after);
+    const sameAfter = last?.after === after;
     // Nothing new, as a fill's final write after its last update: the list
     // stays the one told.
     if (sameAfter && sameReport(last!.report, interaction.report)) return;
@@ -382,7 +391,7 @@ export class Timeline {
       ? last!.as
       : await this.measure(written, visit.snapshots[end]);
     written.measured = {
-      after: interaction.after,
+      after,
       as: measured,
       report: interaction.report,
     };
@@ -402,8 +411,8 @@ export class Timeline {
     const place = this.recorded.findIndex((one) => one.id === written.id);
     this.recorded[place] = {
       ...this.recorded[place]!,
-      after: interaction.after,
-      afterInVisit: end < 0 ? null : interaction.after,
+      after,
+      afterInVisit: end < 0 ? null : after,
     };
     this.tell();
   }

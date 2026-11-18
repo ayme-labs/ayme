@@ -1006,6 +1006,35 @@ describe("the timeline, for an input known from its report", () => {
       });
     });
 
+    it("keeps the rows a fill showed from the last read of its own page when its typing makes the page go elsewhere", async () => {
+      const timeline = await timelineOf([
+        ...earlier,
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+      ]);
+      const [, shown] = timeline.visits()[0]!.entries;
+      // The last key submits the form: the page goes elsewhere, and the
+      // fill's next read is of the page it went to.
+      for (const addition of [
+        {
+          kind: "visit",
+          page: pageId("page_1"),
+          url: "http://shop.test/next",
+          cause: "navigate",
+        } as TimelineAddition,
+        snapshot(snapshotId("snapshot_3"), 30, draftEmpty),
+        typed("milk!", snapshotId("snapshot_3")),
+      ])
+        await timeline.add(addition);
+
+      const [, fill] = timeline.visits()[0]!.entries;
+      expect(fill).toMatchObject({
+        interaction: { text: "milk!" },
+        changes: shown!.kind === "interaction" ? shown!.changes : null,
+      });
+      expect((fill as { changes: unknown }).changes).not.toBeNull();
+    });
+
     it("keeps a fill whose page went on to another Visit with what had changed by its first key, and no changes (rule 7)", async () => {
       const timeline = await timelineOf([
         ...earlier,
