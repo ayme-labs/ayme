@@ -100,8 +100,13 @@ type Written = {
   /** Its target and how it is named, as last measured. */
   target: FirstRef | undefined;
   named: NamedElement | null;
-  /** What it was last measured as, and up to which "after". */
-  measured?: { readonly after: SnapshotId | null; readonly as: Measured };
+  /** What it was last measured as, up to which "after", and the report it
+   * was last written with. */
+  measured?: {
+    readonly after: SnapshotId | null;
+    readonly as: Measured;
+    readonly report: InteractionReport;
+  };
 };
 
 /** What an Interaction's entry is measured as. */
@@ -183,6 +188,10 @@ function lookupOf(
   if (element.byText) return { by: "text", text: element.name };
   return { by: "role", role: element.role, name: element.name };
 }
+
+/** Whether two reports say the same: the one object, or the same text. */
+const sameReport = (one: InteractionReport, other: InteractionReport) =>
+  one === other || JSON.stringify(one) === JSON.stringify(other);
 
 /** The place of a snapshot among a Visit's; negative when it is not there. */
 const placeIn = (visit: Visit, snapshot: SnapshotId | null) =>
@@ -356,12 +365,20 @@ export class Timeline {
     // Stryker disable next-line ConditionalExpression: an entry once written stays; the check is for the type
     if (index < 0) return;
     const end = placeIn(visit, interaction.after);
+    const last = written.measured;
+    const sameAfter = last?.after === interaction.after;
+    // Nothing new, as a fill's final write after its last update: the list
+    // stays the one told.
+    if (sameAfter && sameReport(last!.report, interaction.report)) return;
     // A new text alone, as with each key, is not measured again.
-    const measured =
-      written.measured?.after === interaction.after
-        ? written.measured.as
-        : await this.measure(written, visit.snapshots[end]);
-    written.measured = { after: interaction.after, as: measured };
+    const measured = sameAfter
+      ? last!.as
+      : await this.measure(written, visit.snapshots[end]);
+    written.measured = {
+      after: interaction.after,
+      as: measured,
+      report: interaction.report,
+    };
     visit.entries[index] = this.entryOf(
       written,
       interaction,
@@ -665,6 +682,9 @@ export class Timeline {
     // Stryker disable next-line OptionalChaining: only an input with a picture is tied; the check is for the type
     const target = first.report.target;
     if (!pictured || !target) return;
+    // Every element the "before" lacks is tied already.
+    if ([...pictured.picture.fresh].every((ref) => pictured.tied.has(ref)))
+      return;
     const later = pictureBefore({
       previous: from.tree,
       between: await this.session.readChange(
@@ -834,7 +854,11 @@ export class Timeline {
       named: null,
     };
     const measured = await this.measure(written, visit.snapshots[end]);
-    written.measured = { after: interaction.after, as: measured };
+    written.measured = {
+      after: interaction.after,
+      as: measured,
+      report: interaction.report,
+    };
     visit.entries.push(this.entryOf(written, interaction, measured));
     // The entries never go back: an Interaction with no "after" here, or
     // one written late, leaves them where they stand.

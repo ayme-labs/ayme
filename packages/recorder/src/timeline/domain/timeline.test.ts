@@ -966,6 +966,18 @@ describe("the timeline, for an input known from its report", () => {
       );
     });
 
+    it("leaves the list as it was when a fill is added again with nothing new, as its final write after its last update", async () => {
+      const timeline = await timelineOf([
+        ...earlier,
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+      ]);
+      const before = timeline.visits();
+      await timeline.add(typed("milk", snapshotId("snapshot_2")));
+
+      expect(timeline.visits()).toBe(before);
+    });
+
     it("replaces only the text of a fill when Playwright revises it after it could change no more (rule 5)", async () => {
       const timeline = await timelineOf([
         ...earlier,

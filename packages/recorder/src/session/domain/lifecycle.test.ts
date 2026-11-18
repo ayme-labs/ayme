@@ -18,6 +18,7 @@ import {
   TRACE_STOP_LIMIT_MS,
   WRAP_UP_LIMIT_MS,
   type Happening,
+  type LifecycleState,
   type HeldInput,
   type HighlightTarget,
   type InputId,
@@ -234,31 +235,59 @@ const oneClick = [
 
 /**
  * The lists as they read before typing showed while it was typed: a fill is
- * written once, when it is final, under no key. What shows of it before then
- * is held by the rows of "the lifecycle, for a fill while it is typed".
+ * written once, when it is final, under no key. Final is when it has left
+ * the lifecycle's inputs: what is told of it before then only shows, and is
+ * held by the rows of "the lifecycle, for a fill while it is typed".
  */
-function writes(todo: readonly (readonly ToDo[])[]): ToDo[][] {
-  return todo.map((step) =>
+function writes({
+  todo,
+  showing,
+}: {
+  todo: readonly (readonly ToDo[])[];
+  showing: readonly ReadonlySet<string>[];
+}): ToDo[][] {
+  return todo.map((step, at) =>
     step.flatMap((item): ToDo[] => {
       if (item.kind !== "timeline" || item.add.kind !== "interaction")
         return [item];
-      const { key, open, ...add } = item.add;
+      const { key, ...add } = item.add;
       if (key === undefined) return [item];
-      return open ? [] : [{ ...item, add }];
+      return showing[at]!.has(key) ? [] : [{ ...item, add }];
     })
   );
 }
 
-/** Everything the lifecycle asked for along the way, and where it stands. */
+/** The fills that show and can still change, by the key the timeline knows
+ * each by: the lifecycle's inputs known from their report that it has told. */
+function showingIn(state: LifecycleState): ReadonlySet<string> {
+  const { inputs = [] } = state as {
+    inputs?: readonly {
+      id: string;
+      before: string | null;
+      held: { kind: string };
+      told: unknown;
+    }[];
+  };
+  return new Set(
+    inputs
+      .filter((input) => input.held.kind === "reported" && input.told !== null)
+      .map((input) => `${input.before}:${input.id}`)
+  );
+}
+
+/** Everything the lifecycle asked for along the way, which fills show after
+ * each step, and where it stands. */
 function run(happened: readonly Happening[]) {
   let state = initialState;
   const todo: ToDo[][] = [];
+  const showing: ReadonlySet<string>[] = [];
   for (const happening of happened) {
     const next = step(state, happening);
     state = next.state;
     todo.push([...next.todo]);
+    showing.push(showingIn(state));
   }
-  return { state: shown(state), todo };
+  return { state: shown(state), todo, showing };
 }
 
 describe("the lifecycle", () => {
@@ -1244,7 +1273,7 @@ describe("the lifecycle", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
+    expect(writes(result).slice(-todo.length)).toEqual(todo);
     // A row names the state it is about; what a wrap-up leads to has rows
     // of its own (ticket #1276).
     expect(result.state).toMatchObject(state);
@@ -1851,7 +1880,7 @@ describe("the lifecycle", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
+    expect(writes(result).slice(-todo.length)).toEqual(todo);
     // A row names the state it is about; what a wrap-up leads to has rows
     // of its own (ticket #1276).
     expect(result.state).toMatchObject(state);
@@ -2489,7 +2518,7 @@ describe("the lifecycle, for every kind of input", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
+    expect(writes(result).slice(-todo.length)).toEqual(todo);
     // A row names the state it is about; what a wrap-up leads to has rows
     // of its own (ticket #1276).
     expect(result.state).toMatchObject(state);
@@ -2598,7 +2627,7 @@ describe("the lifecycle, for discard and restore", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(writes(result.todo).at(-1)).toEqual(todo);
+    expect(writes(result).at(-1)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 
@@ -2658,15 +2687,16 @@ describe("the lifecycle, for a click made while the recorder wraps up", () => {
   const stopping = [opened, ...started, stop, gateOff, taken(snapshot1)];
 
   it("records a click the pages no longer held from Playwright's report alone, before the recorder is paused", () => {
-    const { todo, state } = run([
+    const ran = run([
       ...stopping,
       reportedClick(1),
       settled(reported1),
       taken(snapshot2),
       reportingOff,
     ]);
+    const { state } = ran;
 
-    expect(writes(todo).slice(-4)).toEqual([
+    expect(writes(ran).slice(-4)).toEqual([
       [waitForSettled(reported1)],
       [takeSnapshot(snapshot2)],
       [keep(snapshot2)],
@@ -2912,7 +2942,7 @@ describe("the lifecycle, for Assert visibility", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(writes(result.todo).at(-1)).toEqual(todo);
+    expect(writes(result).at(-1)).toEqual(todo);
     expect(result.state).toEqual(state);
   });
 
@@ -3198,7 +3228,7 @@ describe("the lifecycle, for the highlight", () => {
       todo: [replyKept(1, "notFound")],
     },
   ])("$name", ({ happened, todo }) => {
-    expect(writes(run(happened).todo).at(-1)).toEqual(todo);
+    expect(writes(run(happened)).at(-1)).toEqual(todo);
   });
 
   it("goes from Record to the trace started, to Playwright reporting, to the pages holding inputs, to Record answered, and shows recording only then", () => {
@@ -3703,7 +3733,7 @@ describe("the lifecycle, for what the review against the spec found", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
+    expect(writes(result).slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 });
@@ -4309,7 +4339,7 @@ describe("the lifecycle, with more than one page", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
+    expect(writes(result).slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 });
@@ -4343,7 +4373,7 @@ describe("the lifecycle, for Assert visibility that is left or resumed", () => {
       todo: [[pick, reply("applied")]],
     },
   ])("$name", ({ happened, todo }) => {
-    expect(writes(run(happened).todo).slice(-todo.length)).toEqual(todo);
+    expect(writes(run(happened)).slice(-todo.length)).toEqual(todo);
   });
 });
 
@@ -4645,7 +4675,7 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
+    expect(writes(result).slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 });
@@ -4795,7 +4825,7 @@ describe("the lifecycle, for the clicks one report covers", () => {
       todo: [written(clickOf(2), snapshot2, snapshot4, 22)],
     },
   ])("$name", ({ happened, todo }) => {
-    expect(writes(run(happened).todo).at(-1)).toEqual(todo);
+    expect(writes(run(happened)).at(-1)).toEqual(todo);
   });
 });
 
@@ -5565,7 +5595,7 @@ describe("the lifecycle, for rules no row reached", () => {
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
+    expect(writes(result).slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 });
@@ -5874,7 +5904,7 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
     },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
-    expect(writes(result.todo).slice(-todo.length)).toEqual(todo);
+    expect(writes(result).slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
   });
 });
@@ -5946,7 +5976,9 @@ describe("the lifecycle, for a fill while it is typed", () => {
     target: null,
     values: { options: ["Large"] },
   };
-  /** A fill as the timeline is told it, under its key, while it shows. */
+  /** A fill as the timeline is told it, under its key: the same while it
+   * shows and when it is final. Which it is, the lifecycle's inputs say
+   * (`showing`). */
   const shown = (
     report: InteractionReport,
     before: SnapshotId,
@@ -5957,7 +5989,6 @@ describe("the lifecycle, for a fill while it is typed", () => {
     add: {
       kind: "interaction",
       key: `${before}:${input}`,
-      open: true,
       interaction: {
         page: page1,
         report,
@@ -5969,17 +6000,7 @@ describe("the lifecycle, for a fill while it is typed", () => {
     },
   });
   /** A fill as the timeline is told it when it is final. */
-  const final = (
-    report: InteractionReport,
-    before: SnapshotId,
-    after: SnapshotId | null
-  ): ToDo => {
-    const told = shown(report, before, after);
-    if (told.kind !== "timeline" || told.add.kind !== "interaction")
-      throw new Error("Not a fill.");
-    // Final: not open any more.
-    return { ...told, add: { ...told.add, open: undefined } };
-  };
+  const final = shown;
   /** Only the text of a fill that is final. */
   const retext = (
     report: InteractionReport,
@@ -5998,12 +6019,15 @@ describe("the lifecycle, for a fill while it is typed", () => {
     happened: Happening[];
     todo: ToDo[][];
     state: Partial<RecorderPhase>;
+    /** The fills that show and can still change at the end, by key. */
+    showing?: string[];
   }>([
     {
       name: "a fill shows as soon as Playwright reports it, before the page is read: its text, and no changes yet (rules 1 and 3)",
       happened: [...clicked, reportedAs(fill("m"))],
       todo: [[waitForSettled(reported1), shown(fill("m"), snapshot2, null)]],
       state: { phase: "recording" },
+      showing: ["snapshot_2:reported_1"],
     },
     {
       name: "a fill waits to show for one read when the page was not read since Record (rule 3)",
@@ -6089,6 +6113,7 @@ describe("the lifecycle, for a fill while it is typed", () => {
         [keep(snapshot4), passOn(input2)],
       ],
       state: { phase: "recording" },
+      showing: [],
     },
     {
       name: "a revision after a newer report is dropped: it is not the fill's (rule 5)",
@@ -6197,9 +6222,10 @@ describe("the lifecycle, for a fill while it is typed", () => {
       todo: [[waitForSettled(reported1), shown(fill("abcd"), snapshot5, null)]],
       state: { phase: "recording" },
     },
-  ])("$name", ({ happened, todo, state }) => {
+  ])("$name", ({ happened, todo, state, showing }) => {
     const result = run(happened);
     expect(result.todo.slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
+    if (showing) expect([...result.showing.at(-1)!]).toEqual(showing);
   });
 });

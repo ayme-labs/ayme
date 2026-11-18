@@ -2036,7 +2036,6 @@ function showOrWrite(draft: Draft, input: Input, final: boolean) {
     add: {
       kind: "interaction",
       key: fillKey(input),
-      ...(final ? {} : { open: true as const }),
       interaction: {
         page: input.page,
         report,
