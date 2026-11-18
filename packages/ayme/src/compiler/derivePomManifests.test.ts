@@ -176,6 +176,14 @@ describe("derivePomManifests", () => {
       ).toEqual([["Submit the order.", true]]);
     });
 
+    it("reads options with a spread whose index signature cannot set the option", () => {
+      expect(
+        manifestFor("computedDestructive/otherIndexSpreadPom")?.tools.map(
+          ({ description, destructive }) => [description, destructive]
+        )
+      ).toEqual([["Submit the order.", undefined]]);
+    });
+
     it.each([
       [
         "variableDestructivePom",
@@ -203,6 +211,21 @@ describe("derivePomManifests", () => {
         "indexSpreadDestructivePom",
         "The description of Page Object Action IndexSpreadDestructivePom.submit may come from a spread or a computed key.",
         "...flags",
+      ],
+      [
+        "patternIndexSpreadDestructivePom",
+        "The destructive option of Page Object Action PatternIndexSpreadDestructivePom.submit may come from a spread or a computed key.",
+        "...flags",
+      ],
+      [
+        "anyOptionsDestructivePom",
+        "The destructive option of Page Object Action AnyOptionsDestructivePom.submit may come from options that are no object literal.",
+        "options)",
+      ],
+      [
+        "anySpreadDestructivePom",
+        "The destructive option of Page Object Action AnySpreadDestructivePom.submit may come from a spread or a computed key.",
+        "...options",
       ],
     ])(
       "fails the build for %s, whose destructive option the build cannot read, at that element",

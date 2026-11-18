@@ -1008,7 +1008,7 @@ function decoratorDestructive(
   if (
     options &&
     !ts.isObjectLiteralExpression(options) &&
-    mayHave(checker.getTypeAtLocation(options), "destructive")
+    mayHave(checker, checker.getTypeAtLocation(options), "destructive")
   )
     throw pomCompileErrorAt(
       options,
@@ -1069,12 +1069,18 @@ function decoratorOption<T>(
 }
 
 /**
- * Whether a value of `type` may have `key`: a branch of a union has it, or a
- * string index signature allows it.
+ * Whether a value of `type` may have `key`: it is `any` or `unknown`, a branch
+ * of a union has it, or an index signature accepts it.
  */
-function mayHave(type: ts.Type, key: string): boolean {
+function mayHave(checker: ts.TypeChecker, type: ts.Type, key: string): boolean {
+  if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return true;
+  const keyType = checker.getStringLiteralType(key);
   return (type.isUnion() ? type.types : [type]).some(
-    (branch) => branch.getProperty(key) || branch.getStringIndexType()
+    (branch) =>
+      branch.getProperty(key) !== undefined ||
+      checker
+        .getIndexInfosOfType(branch)
+        .some((index) => checker.isTypeAssignableTo(keyType, index.keyType))
   );
 }
 
@@ -1095,7 +1101,7 @@ function setsOption(
   key: string
 ): "yes" | "no" | "maybe" {
   if (ts.isSpreadAssignment(element))
-    return mayHave(checker.getTypeAtLocation(element.expression), key)
+    return mayHave(checker, checker.getTypeAtLocation(element.expression), key)
       ? "maybe"
       : "no";
   const name = element.name;
