@@ -157,7 +157,19 @@ async function openInspectorTab(
  * to, on a port of its own outside the range pages scan, so no other test's
  * page pairs with it.
  */
-export function testIn(placement: Placement, path: FixturePage = "/") {
+export function testIn(
+  placement: Placement,
+  path: FixturePage = "/",
+  {
+    motion = "reduced",
+  }: {
+    /**
+     * The config runs the panel with reduced motion, which only fades, so a
+     * box read after a change is where it ends; "full" turns that off.
+     */
+    motion?: "reduced" | "full";
+  } = {}
+) {
   return (
     base
       // Not `agent`: e2e reserves that name for its own agent.
@@ -173,6 +185,8 @@ export function testIn(placement: Placement, path: FixturePage = "/") {
       })
       .extend<{ opened: Awaited<ReturnType<typeof openFixture>> }>({
         opened: async ({ mcpServer, app, browser, screen }, use) => {
+          if (motion === "full")
+            await browser.emulateMedia({ reducedMotion: "no-preference" });
           await use(
             await openFixture({ app, browser, screen }, path, mcpServer)
           );
