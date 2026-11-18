@@ -28,13 +28,27 @@ const STAGE = {
   settled: "complete, not written yet",
 };
 
+// What you do, and what the path calls it, for each kind of click.
+const CLICK = {
+  click: { verb: "click", name: "click" },
+  rclick: { verb: "right-click", name: "right-click" },
+  mclick: { verb: "middle-click", name: "middle click" },
+};
+const clicked = (to, i) =>
+  `you ${CLICK[to.kind[i]].verb} (${CLICK[to.kind[i]].name} ${i})`;
+
 const list = (x) => (Array.isArray(x) ? x : Object.values(x ?? {}));
 const inList = (v, e) => list(v.lst).includes(e);
 
 const thing = (v, i, n) => {
   const k = v.kind[i];
   if (k === "none") return null;
-  const name = k === "type" ? `typing ${i}` : `click ${i}`;
+  // The read an entry's changes run to: its row's, which a read of another
+  // page leaves as it was; else the latest read it was given.
+  const upTo = (e) =>
+    list(v.newT?.rows).find((r) => r.k === "entry" && r.e === e)?.b ??
+    v.asnap[e];
+  const name = `${k === "type" ? "typing" : CLICK[k].name} ${i}`;
   const where = {
     held: "held back by the gate",
     page: "reached the page",
@@ -57,7 +71,7 @@ const thing = (v, i, n) => {
         assert: "assertion",
       }[v.ent[e]];
       if (list(v.tl).includes(e))
-        return `${what} entry written (before ${v.bsnap[e]}, after ${v.asnap[e] || "none"})`;
+        return `${what} entry written (before ${v.bsnap[e]}, after ${upTo(e) || "none"})`;
       if (inList(v, e))
         return `${what} entry: ${STAGE[v.stage[e]] ?? v.stage[e]}`;
       if (v.stage[e] === "keyDone") return "held key passed on";
@@ -71,7 +85,7 @@ const thing = (v, i, n) => {
   const window = v.fin?.[i]
     ? ""
     : v.shown?.[i]
-      ? `; in the window: text of ${v.txt[i]} key${v.txt[i] > 1 ? "s" : ""}, ${v.asnap[i] === 0 ? "no changes yet" : `changes up to read ${v.asnap[i]}`}`
+      ? `; in the window: text of ${v.txt[i]} key${v.txt[i] > 1 ? "s" : ""}, ${upTo(i) === 0 ? "no changes yet" : `changes up to read ${upTo(i)}`}`
       : "";
   return `${name}: ${where}${more}; ${report}${entries.length ? "; " + entries.join(", ") : ""}${window}`;
 };
@@ -89,7 +103,7 @@ export const state = (v) => {
   if (v.page === "closed") parts.push("page closed");
   else {
     const gate = v.pickPg
-      ? "gate leaves clicks to picking"
+      ? `gate leaves clicks to picking${v.unpick ? " (to be told to stop)" : ""}`
       : `gate ${v.gateOn ? "ON" : "off"}${v.holdPg ? ", holds what follows" : ""}`;
     parts.push(gate);
     if (v.doc > 1) parts.push("on the new page");
@@ -144,13 +158,17 @@ export const step = (action, from, to) => {
       return "you restore an entry";
     case "ClickPicked":
       return `you click (click ${changed(from, to, "at")}): Playwright's picker takes it`;
-    case "ClickHeld":
-      return `you click (click ${changed(from, to, "at")}): the gate holds it back`;
+    case "ClickAfterPicking":
+      return `you click (click ${changed(from, to, "at")}): the page still leaves it to picking, Playwright no longer picks`;
+    case "ClickHeld": {
+      const i = changed(from, to, "at");
+      return `${clicked(to, i)}: the gate holds it back`;
+    }
     case "ClickReaches": {
       const i = changed(from, to, "at");
       if (to.at[i] === "picked")
         return `you click (click ${i}): Playwright's picker takes it`;
-      return `you click (click ${i}): it reaches the page untouched${to.navFlying && !from.navFlying ? " and starts a navigation" : ""}`;
+      return `${clicked(to, i)}: it reaches the page untouched${to.navFlying && !from.navFlying ? " and starts a navigation" : ""}`;
     }
     case "TypeHeld":
       return `you type (typing ${changed(from, to, "at")}): the gate holds the key back`;
@@ -178,11 +196,13 @@ export const step = (action, from, to) => {
       return `Playwright's revised report of typing ${changed(from, to, "revFly")} reaches the recorder`;
     case "GateSwitchLands":
       return `the page switches its gate ${to.gateOn ? "on" : "off"}`;
+    case "GatesUnpick":
+      return "the page is told to stop leaving clicks to picking";
     case "ModeLands":
       return to.mode === "pick" && from.mode !== "pick"
         ? "Playwright starts picking"
         : from.mode === "pick" && to.mode !== "pick"
-          ? "Playwright stops picking"
+          ? `Playwright stops picking${to.unpick ? "; the window shows picking off" : ""}`
           : `Playwright's recorder is switched ${to.mode === "none" ? "off" : "on"}`;
     case "TraceLands":
       return {

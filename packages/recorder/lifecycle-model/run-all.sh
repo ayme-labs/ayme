@@ -25,13 +25,14 @@ one() { # config [view]
 one Chart-Lifecycle view-lifecycle.mjs
 one Chart-Gate view-gate.mjs
 one Chart-Fill view-fill.mjs
-for c in Rules Rules-Pages Rules-Rounds Rules-Ends Surfaces TimeLimit \
-         Rule7 Rule7-Strict Rules-WithoutB2 \
+for c in Rules Rules-Pages Rules-Rounds Rules-Ends Surfaces TimeLimit TimeLimit-Holds \
+         Rule7 Rule7-Strict Rule7-Navigation Rules-WithoutB2 \
          Limit-TypingThenTyping Limit-ClosedPageWaits \
          Path-AfterStop Path-StopClickCtrlC Path-HeldKeyAfterStop Path-PickOnNewPage \
          Path-PickOnNewPage-NextClick Path-TypingAfterContinue \
          Races Race-LateRevision Race-LateRevision-Stop Race-LateTypingReport Race-LastText \
-         Probes Probes-Clear Probes-Window Probes-Window-Navigation Probes-Continue Probes-LateRevision; do
+         Race-ClickLostAfterStop Race-ClickAfterPicking Clicks-Middle Clicks-Middle-Fill \
+         Probes Probes-Discard Probes-Clear Probes-Window Probes-Window-Navigation Probes-Continue Probes-LateRevision; do
   one "$c"
 done
 # Progress.cfg checks L1 and L2 with fairness. It is left out: TLC evaluates
