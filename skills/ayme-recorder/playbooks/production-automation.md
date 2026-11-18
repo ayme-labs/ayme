@@ -9,7 +9,8 @@ create a real contract. Only the user approves one.
 Keep real data out of version control: parameter files, recordings, run
 traces and the login state. Put them under `.ayme/` and check that git
 ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
-`.gitignore` when it fails.
+`.gitignore` when it fails. The `trace` commands extract a recording into
+`.playwright-cli/`: ignore it too.
 
 ## Steps
 
