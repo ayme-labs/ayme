@@ -1,4 +1,5 @@
 import type {
+  CommandResult,
   RecorderCommand,
   RecorderCommandType,
   RecordedVisit,
@@ -16,7 +17,7 @@ import {
   Undo2,
   type LucideIcon,
 } from "lucide-react";
-import { useId } from "react";
+import { useId, useState } from "react";
 
 import {
   entryCardOf,
@@ -25,7 +26,11 @@ import {
   type EntryIcon,
 } from "../domain/entryCard";
 
-type OnCommand = (command: RecorderCommand) => void;
+/** Asks the recorder something; the answer, when it is given, is the
+ * recorder's. */
+type OnCommand = (
+  command: RecorderCommand
+) => Promise<CommandResult | null> | void;
 
 const ICONS: Record<EntryIcon, LucideIcon> = {
   click: MousePointer2,
@@ -165,8 +170,10 @@ function EntryCard({
 }
 
 /** An element in a chip. Hovering it highlights its element on the page,
- * when it can, and a chip that can shows so by its border and a crosshair;
- * the target's selector shows on hover. */
+ * every element its lookup finds, when it can, and a chip that can shows so
+ * by its border and a crosshair: until a hover found nothing on the page as
+ * it is then, and again once one finds something. The target's selector
+ * shows on hover. */
 function ChipView({
   chip,
   leave,
@@ -178,15 +185,24 @@ function ChipView({
   onCommand: OnCommand;
   testId: string;
 }) {
+  const [found, setFound] = useState(true);
   if (!chip) return null;
   const { highlight } = chip;
+  const hover = () => {
+    if (!highlight) return;
+    void onCommand(highlight)?.then((result) => {
+      // "ignored": a later highlight replaced it, and tells instead.
+      if (result === "applied") setFound(true);
+      else if (result === "notFound") setFound(false);
+    });
+  };
   return (
     <span
       data-testid={testId}
       title={chip.hint}
-      onMouseEnter={() => highlight && onCommand(highlight)}
+      onMouseEnter={hover}
       onMouseLeave={() => leave && onCommand(leave)}
-      data-highlights={highlight !== null}
+      data-highlights={highlight !== null && found}
       className="rounded bg-muted px-1.5 py-0.5 text-[13px] font-semibold break-all group-data-[discarded=true]:opacity-60 data-[highlights=true]:cursor-crosshair data-[highlights=true]:border data-[highlights=true]:border-border"
     >
       {chip.text}

@@ -37,35 +37,36 @@ export type HighlightBox = {
 };
 
 /**
- * Draws the recorder's own outline, under the host element `name`, over a
- * box of its document's viewport, in place of the one drawn there before,
- * or takes it away when `box` is null. It is not part of the page: hidden
- * from the page's structure and from every input, and drawn in a closed
- * shadow root. The highlight and the outline while picking share it, so
- * they look the same.
+ * Draws the recorder's own outline, under host elements named `name`, over
+ * each box of its document's viewport, in place of those drawn there
+ * before, or takes them away when there is none. It is not part of the
+ * page: hidden from the page's structure and from every input, and drawn
+ * in a closed shadow root. The highlight and the outline while picking
+ * share it, so they look the same.
  */
-export function outline(name: string, box: HighlightBox | null): void {
-  document.querySelector(name)?.remove();
-  if (!box) return;
-  const host = document.createElement(name);
-  host.setAttribute("aria-hidden", "true");
-  host.style.cssText = [
-    "position: fixed",
-    `left: ${box.x}px`,
-    `top: ${box.y}px`,
-    `width: ${box.width}px`,
-    `height: ${box.height}px`,
-    "margin: 0",
-    "padding: 0",
-    "border: 0",
-    "pointer-events: none",
-    "z-index: 2147483647",
-    "display: block",
-  ].join(";");
-  const root = host.attachShadow({ mode: "closed" });
-  root.innerHTML =
-    "<div style='box-sizing: border-box; width: 100%; height: 100%; border: 2px solid #e5484d; border-radius: 3px; background: rgb(229 72 77 / 15%)'></div>";
-  document.documentElement.append(host);
+export function outline(name: string, boxes: readonly HighlightBox[]): void {
+  for (const drawn of document.querySelectorAll(name)) drawn.remove();
+  for (const box of boxes) {
+    const host = document.createElement(name);
+    host.setAttribute("aria-hidden", "true");
+    host.style.cssText = [
+      "position: fixed",
+      `left: ${box.x}px`,
+      `top: ${box.y}px`,
+      `width: ${box.width}px`,
+      `height: ${box.height}px`,
+      "margin: 0",
+      "padding: 0",
+      "border: 0",
+      "pointer-events: none",
+      "z-index: 2147483647",
+      "display: block",
+    ].join(";");
+    const root = host.attachShadow({ mode: "closed" });
+    root.innerHTML =
+      "<div style='box-sizing: border-box; width: 100%; height: 100%; border: 2px solid #e5484d; border-radius: 3px; background: rgb(229 72 77 / 15%)'></div>";
+    document.documentElement.append(host);
+  }
 }
 
 type Outline = { readonly outline: typeof outline };
@@ -75,8 +76,11 @@ export type Picking = Outline & {
 
 /** Draws the recorder's own highlight over a box of the top document, or
  * takes it away when `box` is null. */
-export function drawHighlight(box: HighlightBox | null, rules: Outline): void {
-  rules.outline("ayme-recorder-highlight", box);
+export function drawHighlight(
+  boxes: readonly HighlightBox[] | null,
+  rules: Outline
+): void {
+  rules.outline("ayme-recorder-highlight", boxes ?? []);
 }
 
 /**
@@ -96,17 +100,17 @@ export function followPicking(on: boolean, rules: Picking): void {
     const under = event.composedPath()[0];
     const shown =
       under instanceof Element && !rules.recordersOwn(under.localName);
-    rules.outline(name, shown ? under.getBoundingClientRect() : null);
+    rules.outline(name, shown ? [under.getBoundingClientRect()] : []);
   };
   // The mouse left the document: it goes nowhere in it.
   const left = (event: MouseEvent) => {
-    if (!event.relatedTarget) rules.outline(name, null);
+    if (!event.relatedTarget) rules.outline(name, []);
   };
   const stop = () => {
     window.removeEventListener("mousemove", follow, true);
     window.removeEventListener("mouseout", left, true);
     window.removeEventListener("click", stop, true);
-    rules.outline(name, null);
+    rules.outline(name, []);
     delete self.__aymeRecorderPicking;
   };
   // Only the window: a document that is just starting has no element yet.

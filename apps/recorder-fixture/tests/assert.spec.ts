@@ -32,6 +32,15 @@ const highlightOn = (page: Page) =>
     return { x, y, width, height };
   })()`);
 
+/** The box of every highlight the page draws, in the page's coordinates. */
+const highlightsOn = (page: Page) =>
+  page.evaluate(`[...document.querySelectorAll("ayme-recorder-highlight")].map(
+    (host) => {
+      const { x, y, width, height } = host.getBoundingClientRect();
+      return { x, y, width, height };
+    }
+  )`);
+
 /** The box of an element in the page's coordinates. */
 async function boxOf(element: Locator) {
   const { x, y, width, height } = (await element.boundingBox())!;
@@ -270,7 +279,7 @@ test.describe("the hover highlight", () => {
     await expect.poll(() => highlightOn(page)).toBeNull();
   });
 
-  test("highlights nothing for a step whose click left the page when the page it led to has several elements that match", async ({
+  test("highlights every element that matches for a step whose click left the page, when the page it led to has several", async ({
     startRecording,
     page: windowPage,
   }) => {
@@ -288,6 +297,10 @@ test.describe("the hover highlight", () => {
     const [click] = await catalog!.entries();
 
     await click!.target.hover();
+    const links = await new WishlistPage(page).wishlistLinks.all();
+    await expect
+      .poll(() => highlightsOn(page))
+      .toEqual([await boxOf(links[0]!), await boxOf(links[1]!)]);
     // The same highlight through the handle: it replaces the hover's, and
     // is answered once the page has been looked at.
     expect(
@@ -295,7 +308,6 @@ test.describe("the hover highlight", () => {
         type: "highlight",
         entry: "interaction_1" as EntryId,
       })
-    ).toBe("notFound");
-    expect(await highlightOn(page)).toBeNull();
+    ).toBe("applied");
   });
 });

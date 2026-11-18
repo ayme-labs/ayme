@@ -8,7 +8,7 @@ import { TimelineView, timelineOf, windowTitle } from "../timeline";
  * newest state the channel has told. It is dark as the person chose or as
  * the system is, followed live, and its title names the page that is open. */
 export function RecorderWindow({ channel }: { channel: RecorderChannel }) {
-  const { state, send } = useRecorder(channel);
+  const { state, send, ask } = useRecorder(channel);
   const { visits, commands } = timelineOf(state);
   const { preference, choose, dark } = useTheme();
   useEffect(() => {
@@ -29,7 +29,7 @@ export function RecorderWindow({ channel }: { channel: RecorderChannel }) {
         onCommand={send}
         theme={{ preference, onChange: choose }}
       />
-      <TimelineView visits={visits} commands={commands} onCommand={send} />
+      <TimelineView visits={visits} commands={commands} onCommand={ask} />
     </div>
   );
 }

@@ -73,10 +73,8 @@ export const ancestorRefs: (element: Element) => (string | null)[] = withRules(
 
 /** Draws the recorder's highlight in a page: `drawHighlight` with the
  * outline it shares with picking. */
-export const highlightIn: (box: HighlightBox | null) => void = withRules(
-  drawHighlight,
-  { outline }
-);
+export const highlightIn: (boxes: readonly HighlightBox[] | null) => void =
+  withRules(drawHighlight, { outline });
 
 /** Outlines the element under the mouse in a document while Playwright
  * picks, or no longer. */

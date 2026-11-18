@@ -876,7 +876,7 @@ async function openPage(
   /** A DevTools session of each page the highlight was drawn in: drawing
    * through it is no call of Playwright, and leaves nothing in the trace. */
   const drawers = new Map<Page, Promise<CDPSession>>();
-  const draw = (page: Page, box: HighlightBox | null) => {
+  const draw = (page: Page, boxes: readonly HighlightBox[] | null) => {
     let drawer = drawers.get(page);
     if (!drawer) {
       drawer = context.newCDPSession(page);
@@ -884,17 +884,16 @@ async function openPage(
     }
     return drawer.then((session) =>
       session.send("Runtime.evaluate", {
-        expression: `(${highlightIn.toString()})(${JSON.stringify(box)})`,
+        expression: `(${highlightIn.toString()})(${JSON.stringify(boxes)})`,
       })
     );
   };
 
   /**
-   * Draws the highlight on the element the page as it is now gives for a
-   * lookup, in place of the one drawn before, and tells whether it found it:
-   * exactly one element, with a box, never a guess among several. Finding
-   * it is Playwright's public locator, which the trace records; drawing is
-   * not.
+   * Draws the highlight on every element the page as it is now gives for a
+   * lookup, in place of what was drawn before, and tells whether it found
+   * one with a box. Finding them is Playwright's public locator, which the
+   * trace records; drawing is not.
    */
   async function highlight(
     request: Extract<BrowserRequest, { kind: "highlight" }>
@@ -908,24 +907,28 @@ async function openPage(
     );
     const { target } = request;
     if (!target) return;
-    const found = (box: HighlightBox | null) =>
+    const found = (boxes: readonly HighlightBox[]) =>
       tell({
         kind: "highlighted",
         highlight: request.highlight,
-        found: box !== null,
+        found: boxes.length > 0,
       });
     const open = pages.get(target.page);
-    if (!open || !latest()) return found(null);
-    const element = await theOne(open, target.find);
-    const box = element
-      ? await element
-          .boundingBox({ timeout: HIGHLIGHT_LOOKUP_MS })
-          .catch(() => null)
-      : null;
+    if (!open || !latest()) return found([]);
+    const elements = await matchesOf(open, target.find);
+    const boxes = (
+      await Promise.all(
+        elements.map((element) =>
+          element
+            .boundingBox({ timeout: HIGHLIGHT_LOOKUP_MS })
+            .catch(() => null)
+        )
+      )
+    ).filter((box): box is HighlightBox => box !== null);
     // A later highlight replaced it meanwhile: it is not drawn.
-    if (!box || !latest()) return found(null);
-    await draw(open, box);
-    found(box);
+    if (boxes.length === 0 || !latest()) return found([]);
+    await draw(open, boxes);
+    found(boxes);
   }
 
   /** Switching the mode of Playwright's recorder, one after the other, in
@@ -1159,15 +1162,13 @@ const TOOLBAR_REMOVE = "ayme-recorder-toolbar:remove";
 const PICKING_MODE = "assertingVisibility";
 
 /**
- * The one element of the page a lookup names, or null when none or several
- * do. A selector and a ref reach into frames by themselves; a role and name
- * and a text are looked for in every frame's document, and the matches of
- * all are added up.
+ * Every element of the page a lookup names: a step or a change row whose
+ * element has look-alikes lights each of them up. A ref names one element,
+ * and is taken only when it does. A selector and a ref reach into frames by
+ * themselves; a role and name and a text are looked for in every frame's
+ * document, and the matches of all are taken.
  */
-async function theOne(
-  page: Page,
-  find: ElementLookup
-): Promise<Locator | null> {
+async function matchesOf(page: Page, find: ElementLookup): Promise<Locator[]> {
   const frames =
     find.by === "selector" || find.by === "ref"
       ? [page.mainFrame()]
@@ -1176,8 +1177,11 @@ async function theOne(
   const counts = await Promise.all(
     candidates.map((candidate) => candidate.count().catch(() => 0))
   );
-  const total = counts.reduce((sum, count) => sum + count, 0);
-  return total === 1 ? candidates[counts.indexOf(1)]! : null;
+  // A ref names one element: it is trusted only when it does.
+  if (find.by === "ref") return counts[0] === 1 ? [candidates[0]!] : [];
+  return candidates.flatMap((candidate, at) =>
+    Array.from({ length: counts[at]! }, (_, index) => candidate.nth(index))
+  );
 }
 
 /** A frame's locator for an element a lookup asks for: a ref by the

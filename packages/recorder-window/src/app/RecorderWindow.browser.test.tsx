@@ -372,6 +372,36 @@ it("shows a chip that can highlight its element with a border and a crosshair, a
   expect(await look(row!.element)).toEqual({ cursor: "auto", border: "0px" });
 });
 
+it("shows a chip whose highlight finds no element on the page without a border or a crosshair, and with them again once one is found", async () => {
+  let result: CommandResult = "notFound";
+  const { channel, tell } = scriptedChannel(async () => result);
+  mount(channel);
+  const look = (chip: Entry["target"]) =>
+    chip.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { cursor: style.cursor, border: style.borderTopWidth };
+    });
+  tell({
+    phase: "recording",
+    visits: [login, inventory],
+    commands: ["stop", "highlight", "clearHighlight"],
+  });
+  await expect.poll(async () => (await visits()).length).toBe(2);
+  const [click] = await (await visits())[1]!.entries();
+
+  await click!.target.hover();
+  await expect
+    .poll(() => look(click!.target))
+    .toEqual({ cursor: "auto", border: "0px" });
+
+  result = "applied";
+  await (await visits())[0]!.heading.hover();
+  await click!.target.hover();
+  await expect
+    .poll(() => look(click!.target))
+    .toEqual({ cursor: "crosshair", border: "1px" });
+});
+
 it("offers Stop, Assert visibility, Clear and Finish while recording, and sends each", async () => {
   const { channel, sent, tell } = scriptedChannel();
   mount(channel);

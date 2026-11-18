@@ -1025,6 +1025,12 @@ const PLACES = `
 
 /** The highlight drawn on the page now, in the page's coordinates; null
  * when none is. */
+/** How many highlights the page draws. */
+const drawnCount = (page: Page) =>
+  page.evaluate(
+    () => document.querySelectorAll("ayme-recorder-highlight").length
+  );
+
 const drawn = (page: Page) =>
   page.evaluate(() => {
     const host = document.querySelector("ayme-recorder-highlight");
@@ -1085,20 +1091,22 @@ it("draws the highlight on the element a ref names, in the page, in a same-origi
   await expect.poll(() => drawn(browser.page)).toBeNull();
 });
 
-it("draws the highlight on the one element a selector, a role and name or a text names on the page as it is now, and nothing when more than one does", async () => {
+it("draws the highlight on every element a selector, a role and name or a text names on the page as it is now, and nothing when none does", async () => {
   const browser = await onStockPlaywright(
     `<h1>Orders</h1><button id="main">Main</button><p>Saved</p><button>Twin</button><button>Twin</button>`
   );
   const lookups = [
-    [{ by: "selector", selector: "#main" }, true],
-    [{ by: "role", role: "button", name: "Main" }, true],
-    [{ by: "role", role: "heading", name: "" }, true],
-    [{ by: "text", text: "Saved" }, true],
-    [{ by: "role", role: "button", name: "Twin" }, false],
-    [{ by: "role", role: "button", name: "" }, false],
+    [{ by: "selector", selector: "#main" }, 1],
+    [{ by: "role", role: "button", name: "Main" }, 1],
+    [{ by: "role", role: "heading", name: "" }, 1],
+    [{ by: "text", text: "Saved" }, 1],
+    // Look-alikes: each one lights up.
+    [{ by: "role", role: "button", name: "Twin" }, 2],
+    [{ by: "role", role: "button", name: "" }, 3],
+    [{ by: "text", text: "Nowhere" }, 0],
   ] as const;
 
-  for (const [index, [find, one]] of lookups.entries()) {
+  for (const [index, [find, count]] of lookups.entries()) {
     await browser.ask({
       kind: "highlight",
       highlight: index + 1,
@@ -1108,13 +1116,12 @@ it("draws the highlight on the one element a selector, a role and name or a text
       "highlighted",
       (told) => told.highlight === index + 1
     );
-    expect([find, found]).toEqual([find, one]);
-    if (one) await expect.poll(() => drawn(browser.page)).not.toBeNull();
-    else expect(await drawn(browser.page)).toBeNull();
+    expect([find, found]).toEqual([find, count > 0]);
+    await expect.poll(() => drawnCount(browser.page)).toBe(count);
   }
 });
 
-it("finds a change row's element by its role and name or its text in a same-origin frame too, adding up every frame's matches", async () => {
+it("finds a change row's element by its role and name or its text in a frame too, and draws every frame's matches", async () => {
   // A change row's element the page's latest snapshot no longer lists is
   // looked up by its role and name, or its text: here, inside a frame.
   const browser = await onStockPlaywright(
@@ -1128,7 +1135,7 @@ it("finds a change row's element by its role and name or its text in a same-orig
       inFrame.getByRole("button", { name: "In frame" }),
     ],
     [{ by: "text", text: "Frame text" }, inFrame.getByText("Frame text")],
-    // One in the page and one in the frame: two, so none.
+    // One in the page and one in the frame: both light up.
     [{ by: "role", role: "button", name: "Twin" }, null],
   ] as const;
 
@@ -1142,8 +1149,9 @@ it("finds a change row's element by its role and name or its text in a same-orig
       "highlighted",
       (told) => told.highlight === index + 1
     );
-    expect([find, found]).toEqual([find, element !== null]);
-    if (element) {
+    expect([find, found]).toEqual([find, true]);
+    if (!element) await expect.poll(() => drawnCount(browser.page)).toBe(2);
+    else {
       const box = (await element.boundingBox())!;
       await expect
         .poll(() => drawn(browser.page))
@@ -1153,7 +1161,7 @@ it("finds a change row's element by its role and name or its text in a same-orig
           width: expect.closeTo(box.width, 0),
           height: expect.closeTo(box.height, 0),
         });
-    } else expect(await drawn(browser.page)).toBeNull();
+    }
   }
 });
 
