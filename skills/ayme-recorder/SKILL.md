@@ -111,6 +111,9 @@ late result of an earlier step, such as data that finished loading. It can
 also come before the interaction that caused it. A change that no
 recorded action explains can also come from a hover. It can come from
 something the page does on its own in between, too, such as an async update.
+When it sets a value no interaction entered, such as an option picked in a
+list, the recorder may have missed that click: take the value from the
+change, and from the request it sent.
 
 ## Discarded entries
 
