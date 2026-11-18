@@ -106,7 +106,7 @@ and `ayme_inspect` are the same in every revision. Under 2026-07-28:
   `tools/list` or `tools/call`; a tab that pairs before then shows no name
   until it reconnects.
 
-The server stops when the agent closes its stdin.
+The server stops when the agent closes its stdin, or when writing to it fails.
 
 ## App Processes
 

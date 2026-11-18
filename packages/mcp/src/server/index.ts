@@ -147,11 +147,19 @@ export async function startMcpServer({
     },
   };
 
-  process.stdin.once("end", () => {
+  // The process stops once the agent is gone: when it closes stdin, or when
+  // writing to it fails. After a failed write the SDK stops reading stdin,
+  // so its end would never come.
+  let stopped = false;
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
     for (const stopBehaviour of stopBehaviours) stopBehaviour();
     channel.close();
     closeBuild();
-  });
+  };
+  process.stdin.once("end", stop);
+  process.stdout.once("error", stop);
   serveStdio(() =>
     createMcpToolServer({
       name: "ayme",
