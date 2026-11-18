@@ -254,7 +254,9 @@ differ only in a part
 that changes between runs, such as a timestamp, counter, token, a build
 stamp in the URL (`?r=1795017612`), a host that differs per visit or a
 JSON-RPC `id`, leave that
-part out of `match()`. When they differ in data, such as another record id,
+part out of `match()`. When a body carries much page state, such as ASP.NET's
+`__VIEWSTATE` and callback state, compare only the fields that identify the
+call. When they differ in data, such as another record id,
 the flow reads data the recording lacks: check the parameters. When the data
 an earlier response filled in differs, such as an address from a postcode
 lookup, that response landed at another time than in the recording: wait for
