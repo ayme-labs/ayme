@@ -209,7 +209,20 @@ Each `trace snapshot` call takes several seconds. List every ref you need from
 one snapshot and read them in a single call, as above. `cloneNode(false)`
 returns an element's own tag and attributes without its content; read
 `outerHTML` directly when you need what is inside. A ref absent from the
-snapshot comes back as `null`.
+snapshot comes back as `null`. On a site built with shadow DOM, such as
+Salesforce Lightning, `document.querySelector` does not look inside shadow
+roots and returns `null` for most refs: look through them too, with
+`find(document, selector)` in place of `document.querySelector(selector)`:
+
+```js
+const find = (root, selector) =>
+  root.querySelector(selector) ??
+  [...root.querySelectorAll("*")].reduce(
+    (hit, element) =>
+      hit ?? (element.shadowRoot && find(element.shadowRoot, selector)),
+    null
+  );
+```
 
 A `targetRef` can name a node inside the control the user acted on, such as
 the `<span>` inside a link. Add its parent's ref from the tree to the same
