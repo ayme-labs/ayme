@@ -62,7 +62,11 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
    fix the page objects' locators and waits, never the flow's steps. When
    passing would take other steps, stop and tell the user. Keep every wait
    that ends an action in its target state, as Page object design asks, even
-   when the test passes without it. Prove each other wait: take it out and run three times at recorded
+   when the test passes without it. An action that loads data ends when the
+   data is in, not when a control shows its new state: a sort ends when its
+   results arrive, not when the button reads "Sorted by date". The replay
+   keeps the recorded order of answers, so a race between two actions'
+   requests shows only live. Prove each other wait: take it out and run three times at recorded
    speed, then three times with `REPLAY_SPEED=1000`. A wait that matters
    fails or flakes without it at either speed: put it back. Remove one that
    passes both. Done when the test passes three runs in a row with every
