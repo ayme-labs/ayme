@@ -65,7 +65,7 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
    run make the real submission, no stops it. With the terminal prompt, the
    user starts the command in their own terminal, since its prompt reads from
    the terminal that started it. You never approve an irreversible step: a
-   live run the user does not watch uses a `confirm` that returns `false`.
+   live run the user does not watch uses `--no-submit`.
    When a run fails, read its trace in `.ayme/runs/` with `trace open`,
    `trace actions` and `trace snapshot`, fix the code, run the replay test
    again until it passes three times, and rehearse with new data.
@@ -114,23 +114,28 @@ export async function runContract(
 The entry script is what the user runs. It opens a headed browser, reads a
 parameters file, records a trace for diagnosis, calls the flow with the
 agreed `confirm` and prints the result. Start it the way the project runs
-TypeScript, such as `npx tsx run-contract.ts .ayme/params/<file>.json`:
+TypeScript, such as `npx tsx run-contract.ts .ayme/params/<file>.json`. With
+`--no-submit` it prints each summary and stops before every irreversible
+step: use it for any live run the user does not watch.
 
 ```ts
 import { readFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
 
 import { askInTerminal } from "./confirm.js";
-import { runContract } from "./contract.js";
+import { type Confirm, runContract } from "./contract.js";
 
 async function main() {
   const params = JSON.parse(readFileSync(process.argv[2]!, "utf8"));
+  const confirm: Confirm = process.argv.includes("--no-submit")
+    ? async ({ name, summary }) => (console.log(name, summary), false)
+    : askInTerminal;
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ storageState: ".ayme/auth.json" });
   await context.tracing.start({ screenshots: true, snapshots: true });
   try {
     const page = await context.newPage();
-    console.log(await runContract(page, params, { confirm: askInTerminal }));
+    console.log(await runContract(page, params, { confirm }));
   } finally {
     await context.tracing.stop({ path: `.ayme/runs/${Date.now()}/trace.zip` });
     await browser.close();
