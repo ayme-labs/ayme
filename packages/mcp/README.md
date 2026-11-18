@@ -31,7 +31,8 @@ works whether WebMCP publication is on or off.
 
 For your own end-to-end tests, `@ayme-dev/mcp/testing` starts this package's
 `ayme mcp` with an MCP client (`startAgent`, in another folder with a leading
-`{ cwd }`) and pairs a Playwright page through
+`{ cwd }`, and opening with MCP revision 2026-07-28 rather than 2025-11-25
+with a leading `{ revision: "2026-07-28" }`) and pairs a Playwright page through
 a connect link (`connectPage`); `Agent.call` returns the tool's own text and
 the change note apart. `freePort` picks a port outside the range a page scans,
 for `startAgent("--port", ...)` when no page should auto-pair with the server,
@@ -67,11 +68,12 @@ them through WebMCP.
 
 Page Object Tools appear and disappear as MCP tools while the page registers
 and unregisters its Page Objects and while their Page Objects come and go on
-the page, and the server sends `notifications/tools/list_changed` on every such
-change. Every tool of a Page Object on the page is listed, whether or not its
-action can run now; the MCP tool list changes only when tools appear or
-disappear, never when one becomes available or unavailable, so a cached list
-does not churn. Calling an unavailable tool is refused before anything runs,
+the page. The server sends `notifications/tools/list_changed` whenever the MCP
+tool list changes: when a tool of the page or of an App Process appears or
+disappears, or changes its description or parameters. Every tool of a Page
+Object on the page is listed, whether or not its action can run now; the list
+never changes when a tool merely becomes available or unavailable, so a
+cached list does not churn. Calling an unavailable tool is refused before anything runs,
 with an error result that carries its reason, such as `RuntimeStateError:
 Panel.remove is unavailable: No item is selected.`
 
@@ -88,6 +90,23 @@ item is selected).` For agents that never re-read the tool
 list, `ayme_list_tools` lists the page's current tools with their input
 schemas, whether each is available and, when it is not, why, and `ayme_call`
 runs any of them by name.
+
+## MCP revisions
+
+A revision is a dated version of the MCP specification. `ayme mcp` serves
+revision 2026-07-28 and the older revisions, 2025-11-25 and earlier, which
+open with an `initialize` handshake. The agent's first message picks the
+revision for the whole process. The tools, their results, the change note
+and `ayme_inspect` are the same in every revision. Under 2026-07-28:
+
+- **Tool list changes:** the agent hears `notifications/tools/list_changed`
+  only once it has subscribed to it with a `subscriptions/listen` request.
+- **The agent's name:** there is no `initialize`, so the server learns the
+  agent's name, which the Inspector shows, from the agent's first
+  `tools/list` or `tools/call`; a tab that pairs before then shows no name
+  until it reconnects.
+
+The server stops when the agent closes its stdin.
 
 ## App Processes
 

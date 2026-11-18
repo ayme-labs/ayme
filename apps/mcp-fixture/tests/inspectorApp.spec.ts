@@ -10,6 +10,7 @@ import {
 
 import {
   type Agent,
+  MCP_REVISIONS,
   connectPage,
   expect,
   startServingAgent,
@@ -123,197 +124,211 @@ function agentAppSaw(page: Page) {
   );
 }
 
-test("an Agent App shows the Inspector ayme_inspect points to, which runs a tool on the paired page, admitted by its token", async ({
-  context,
-  page,
-  browser,
-  baseURL,
-}, testInfo) => {
-  const { agent } = await startServingAgent(context, testInfo);
-  try {
-    await connectPage(agent, page, `${baseURL}/plain.html`);
-    await expect
-      .poll(() => agent.pageToolNames(), { message: agent.log })
-      .toContain(PLAIN_PAGE_TOOL);
+for (const revision of MCP_REVISIONS)
+  test.describe(`under MCP revision ${revision}`, () => {
+    test.use({ revision });
 
-    const { text: url, isError } = await agent.call("ayme_inspect");
-    expect(isError, url).toBe(false);
-    expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/inspector$/);
-    const app = await inspectorApp(agent);
-    const shown = await showInAgentApp(browser, baseURL!, app, [
-      "inline",
-      "fullscreen",
-    ]);
-    try {
-      await (await shown.inspector.tool(PLAIN_PAGE_TOOL)).run();
-
-      const run = shown.inspector.runs.latest(PLAIN_PAGE_TOOL);
-      await expect.poll(() => run.status()).toBe("Succeeded");
-      expect(await run.resultText()).toContain("does not run Ayme");
-      expect(agent.log).toContain(
-        "An Inspector window was admitted by its token (origin null)."
-      );
-      expect((await agentAppSaw(shown.page)).heights).toEqual([600]);
-
-      await shown.inspector.header.toggleFullscreen();
-
-      await expect
-        .poll(async () => (await agentAppSaw(shown.page)).displayModes)
-        .toEqual(["fullscreen"]);
-      await expect(
-        shown.inspector.header.fullscreenButton
-      ).toHaveAccessibleName("Exit fullscreen");
-    } finally {
-      await shown.close();
-    }
-  } finally {
-    await agent.close();
-  }
-});
-
-test("the Inspector in an Agent App that offers no fullscreen has no fullscreen control", async ({
-  context,
-  page,
-  browser,
-  baseURL,
-}, testInfo) => {
-  const { agent } = await startServingAgent(context, testInfo);
-  try {
-    await connectPage(agent, page, `${baseURL}/plain.html`);
-    const shown = await showInAgentApp(
+    test("an Agent App shows the Inspector ayme_inspect points to, which runs a tool on the paired page, admitted by its token", async ({
+      context,
+      page,
       browser,
-      baseURL!,
-      await inspectorApp(agent),
-      ["inline"]
-    );
-    try {
-      await shown.inspector.open();
-      // The page asks for its height once the Agent App has answered.
-      await expect
-        .poll(async () => (await agentAppSaw(shown.page)).heights)
-        .toEqual([600]);
+      baseURL,
+      revision,
+    }, testInfo) => {
+      const { agent } = await startServingAgent(context, testInfo, revision);
+      try {
+        await connectPage(agent, page, `${baseURL}/plain.html`);
+        await expect
+          .poll(() => agent.pageToolNames(), { message: agent.log })
+          .toContain(PLAIN_PAGE_TOOL);
 
-      await expect(shown.inspector.header.title).toBeVisible();
-      await expect(shown.inspector.header.fullscreenButton).toHaveCount(0);
-    } finally {
-      await shown.close();
-    }
-  } finally {
-    await agent.close();
-  }
-});
+        const { text: url, isError } = await agent.call("ayme_inspect");
+        expect(isError, url).toBe(false);
+        expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/inspector$/);
+        const app = await inspectorApp(agent);
+        const shown = await showInAgentApp(browser, baseURL!, app, [
+          "inline",
+          "fullscreen",
+        ]);
+        try {
+          await (await shown.inspector.tool(PLAIN_PAGE_TOOL)).run();
 
-test("the Inspector goes by the display mode an Agent App grants, when the Agent App announces no change after it", async ({
-  context,
-  page,
-  browser,
-  baseURL,
-}, testInfo) => {
-  const { agent } = await startServingAgent(context, testInfo);
-  try {
-    await connectPage(agent, page, `${baseURL}/plain.html`);
-    const shown = await showInAgentApp(
+          const run = shown.inspector.runs.latest(PLAIN_PAGE_TOOL);
+          await expect.poll(() => run.status()).toBe("Succeeded");
+          expect(await run.resultText()).toContain("does not run Ayme");
+          expect(agent.log).toContain(
+            "An Inspector window was admitted by its token (origin null)."
+          );
+          expect((await agentAppSaw(shown.page)).heights).toEqual([600]);
+
+          await shown.inspector.header.toggleFullscreen();
+
+          await expect
+            .poll(async () => (await agentAppSaw(shown.page)).displayModes)
+            .toEqual(["fullscreen"]);
+          await expect(
+            shown.inspector.header.fullscreenButton
+          ).toHaveAccessibleName("Exit fullscreen");
+        } finally {
+          await shown.close();
+        }
+      } finally {
+        await agent.close();
+      }
+    });
+
+    test("the Inspector in an Agent App that offers no fullscreen has no fullscreen control", async ({
+      context,
+      page,
       browser,
-      baseURL!,
-      await inspectorApp(agent),
-      ["inline", "fullscreen"],
-      { announces: false }
-    );
-    try {
-      await shown.inspector.open();
-      const { header } = shown.inspector;
+      baseURL,
+      revision,
+    }, testInfo) => {
+      const { agent } = await startServingAgent(context, testInfo, revision);
+      try {
+        await connectPage(agent, page, `${baseURL}/plain.html`);
+        const shown = await showInAgentApp(
+          browser,
+          baseURL!,
+          await inspectorApp(agent),
+          ["inline"]
+        );
+        try {
+          await shown.inspector.open();
+          // The page asks for its height once the Agent App has answered.
+          await expect
+            .poll(async () => (await agentAppSaw(shown.page)).heights)
+            .toEqual([600]);
 
-      await header.toggleFullscreen();
-      await expect(header.fullscreenButton).toHaveAccessibleName(
-        "Exit fullscreen"
-      );
-      await header.toggleFullscreen();
+          await expect(shown.inspector.header.title).toBeVisible();
+          await expect(shown.inspector.header.fullscreenButton).toHaveCount(0);
+        } finally {
+          await shown.close();
+        }
+      } finally {
+        await agent.close();
+      }
+    });
 
-      await expect(header.fullscreenButton).toHaveAccessibleName("Fullscreen");
-      expect((await agentAppSaw(shown.page)).displayModes).toEqual([
-        "fullscreen",
-        "inline",
-      ]);
-    } finally {
-      await shown.close();
-    }
-  } finally {
-    await agent.close();
-  }
-});
-
-test("the Inspector in an Agent App stops and says so once its server is gone", async ({
-  context,
-  page,
-  browser,
-  baseURL,
-}, testInfo) => {
-  const { agent } = await startServingAgent(context, testInfo);
-  try {
-    await connectPage(agent, page, `${baseURL}/plain.html`);
-    const shown = await showInAgentApp(
+    test("the Inspector goes by the display mode an Agent App grants, when the Agent App announces no change after it", async ({
+      context,
+      page,
       browser,
-      baseURL!,
-      await inspectorApp(agent),
-      ["inline"]
-    );
-    try {
-      await shown.inspector.open();
-      await expect(shown.inspector.header.title).toBeVisible();
+      baseURL,
+      revision,
+    }, testInfo) => {
+      const { agent } = await startServingAgent(context, testInfo, revision);
+      try {
+        await connectPage(agent, page, `${baseURL}/plain.html`);
+        const shown = await showInAgentApp(
+          browser,
+          baseURL!,
+          await inspectorApp(agent),
+          ["inline", "fullscreen"],
+          { announces: false }
+        );
+        try {
+          await shown.inspector.open();
+          const { header } = shown.inspector;
 
-      await agent.close();
+          await header.toggleFullscreen();
+          await expect(header.fullscreenButton).toHaveAccessibleName(
+            "Exit fullscreen"
+          );
+          await header.toggleFullscreen();
 
-      // It connects again a few times, a second apart, before it stops.
-      await expect(
-        shown.page
-          .frameLocator("#app")
-          .getByText("This Inspector lost its Ayme MCP server.")
-      ).toBeVisible({ timeout: 15_000 });
-      await expect(shown.inspector.header.title).toHaveCount(0);
-    } finally {
-      await shown.close();
-    }
-  } finally {
-    await agent.close();
-  }
-});
+          await expect(header.fullscreenButton).toHaveAccessibleName(
+            "Fullscreen"
+          );
+          expect((await agentAppSaw(shown.page)).displayModes).toEqual([
+            "fullscreen",
+            "inline",
+          ]);
+        } finally {
+          await shown.close();
+        }
+      } finally {
+        await agent.close();
+      }
+    });
 
-test("the Inspector's page is as tall as it asks to be shown, for an Agent App that sizes the frame by the page's own height", async ({
-  context,
-  page,
-  browser,
-  baseURL,
-}, testInfo) => {
-  const { agent } = await startServingAgent(context, testInfo);
-  try {
-    await connectPage(agent, page, `${baseURL}/plain.html`);
-    const shown = await showInAgentApp(
+    test("the Inspector in an Agent App stops and says so once its server is gone", async ({
+      context,
+      page,
       browser,
-      baseURL!,
-      await inspectorApp(agent),
-      ["inline"],
-      { resizes: false }
-    );
-    try {
-      await expect
-        .poll(async () => (await agentAppSaw(shown.page)).heights)
-        .toEqual([600]);
+      baseURL,
+      revision,
+    }, testInfo) => {
+      const { agent } = await startServingAgent(context, testInfo, revision);
+      try {
+        await connectPage(agent, page, `${baseURL}/plain.html`);
+        const shown = await showInAgentApp(
+          browser,
+          baseURL!,
+          await inspectorApp(agent),
+          ["inline"]
+        );
+        try {
+          await shown.inspector.open();
+          await expect(shown.inspector.header.title).toBeVisible();
 
-      // The height Cursor measures, in a frame left shorter than that.
-      const frame = shown.page.frames().find((f) => f.parentFrame() !== null)!;
-      const measured = await frame.evaluate(() =>
-        Math.max(
-          document.body.scrollHeight,
-          document.body.offsetHeight,
-          document.documentElement.scrollHeight,
-          document.documentElement.offsetHeight
-        )
-      );
-      expect(measured).toBe(600);
-    } finally {
-      await shown.close();
-    }
-  } finally {
-    await agent.close();
-  }
-});
+          await agent.close();
+
+          // It connects again a few times, a second apart, before it stops.
+          await expect(
+            shown.page
+              .frameLocator("#app")
+              .getByText("This Inspector lost its Ayme MCP server.")
+          ).toBeVisible({ timeout: 15_000 });
+          await expect(shown.inspector.header.title).toHaveCount(0);
+        } finally {
+          await shown.close();
+        }
+      } finally {
+        await agent.close();
+      }
+    });
+
+    test("the Inspector's page is as tall as it asks to be shown, for an Agent App that sizes the frame by the page's own height", async ({
+      context,
+      page,
+      browser,
+      baseURL,
+      revision,
+    }, testInfo) => {
+      const { agent } = await startServingAgent(context, testInfo, revision);
+      try {
+        await connectPage(agent, page, `${baseURL}/plain.html`);
+        const shown = await showInAgentApp(
+          browser,
+          baseURL!,
+          await inspectorApp(agent),
+          ["inline"],
+          { resizes: false }
+        );
+        try {
+          await expect
+            .poll(async () => (await agentAppSaw(shown.page)).heights)
+            .toEqual([600]);
+
+          // The height Cursor measures, in a frame left shorter than that.
+          const frame = shown.page
+            .frames()
+            .find((f) => f.parentFrame() !== null)!;
+          const measured = await frame.evaluate(() =>
+            Math.max(
+              document.body.scrollHeight,
+              document.body.offsetHeight,
+              document.documentElement.scrollHeight,
+              document.documentElement.offsetHeight
+            )
+          );
+          expect(measured).toBe(600);
+        } finally {
+          await shown.close();
+        }
+      } finally {
+        await agent.close();
+      }
+    });
+  });
