@@ -52,11 +52,13 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
 6. **Heal** against the replay test. Run it with
    `npx playwright test <file> --repeat-each 3 --retries 0 --workers 1` and
    fix the page objects' locators and waits, never the flow's steps. When
-   passing would take other steps, stop and tell the user. Prove each wait:
-   take it out and run three times at recorded speed, then three times with
-   `REPLAY_SPEED=1000`. A wait that matters fails or flakes without it at
-   either speed: put it back. Remove one that passes both. Done when the
-   test passes three runs in a row with every wait proven.
+   passing would take other steps, stop and tell the user. Keep the waits
+   Page object design asks for, such as an action finishing in its target
+   state. Prove each other wait: take it out and run three times at recorded
+   speed, then three times with `REPLAY_SPEED=1000`. A wait that matters
+   fails or flakes without it at either speed: put it back. Remove one that
+   passes both. Done when the test passes three runs in a row with every
+   wait proven.
 7. **Rehearse live** with fresh real data the user gives you for one run,
    written to `.ayme/params/<flow>.<date>.json`. Run the entry script headed,
    with the user watching. The user answers each confirm: yes lets the same
@@ -200,9 +202,10 @@ export const askInPage: Confirm = ({ name, summary, page }) =>
 
 Copy [`assets/replay.ts`](../assets/replay.ts) next to the replay test. Its
 header says what loads live and what the recording answers. Write the
-recorded parameter values to `.ayme/params/<flow>.recorded.json`. The test
+recorded parameter values, and the summary the recording's page showed before
+each irreversible step, to `.ayme/params/<flow>.recorded.json`. The test
 calls the same flow, never a copy of its steps, with a `confirm` that always
-approves:
+approves and keeps each summary, so the test checks what a person would:
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -216,11 +219,15 @@ test.use({ serviceWorkers: "block", storageState: ".ayme/auth.json" });
 test("contract flow replays", async ({ context }) => {
   await installReplay(context, ".ayme/recordings/rec_…/trace.zip");
   const page = await context.newPage();
-  const params = JSON.parse(
+  const { params, summaries } = JSON.parse(
     readFileSync(".ayme/params/contract.recorded.json", "utf8")
   );
-  const result = await runContract(page, params, { confirm: async () => true });
+  const seen: Record<string, Record<string, string>> = {};
+  const result = await runContract(page, params, {
+    confirm: async ({ name, summary }) => ((seen[name] = summary), true),
+  });
   expect(result).not.toHaveProperty("stoppedBefore");
+  expect(seen).toEqual(summaries);
 });
 ```
 
