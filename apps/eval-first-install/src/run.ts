@@ -29,7 +29,12 @@ import { parseArgs } from "node:util";
 
 import { checkOutcome, startFixture } from "./fixture.ts";
 import { DEFAULT_REF, pack, type Packed } from "./pack.ts";
-import { projectTemplateDir, recorder, resultsDir } from "./paths.ts";
+import {
+  approveMcpJson,
+  projectTemplateDir,
+  recorder,
+  resultsDir,
+} from "./paths.ts";
 import { setupPrompt, taskPrompt, TOOLS, type Tool } from "./prompts.ts";
 import { publish, startRegistry } from "./registry.ts";
 import { scoreRun, table } from "./score.ts";
@@ -162,6 +167,24 @@ function runClaude(
     "--output-format",
     "stream-json",
     "--verbose",
+    // Answers yes when Claude Code asks to edit .mcp.json, as the user
+    // would; see approve-mcp-json.mjs.
+    "--settings",
+    JSON.stringify({
+      hooks: {
+        PermissionRequest: [
+          {
+            matcher: "Write|Edit",
+            hooks: [
+              {
+                type: "command",
+                command: `node "${approveMcpJson}" "${join(out, "approvals.log")}"`,
+              },
+            ],
+          },
+        ],
+      },
+    }),
     "--permission-mode",
     "acceptEdits",
     "--allowedTools",
