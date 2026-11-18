@@ -903,7 +903,7 @@ describe("the timeline, for an input known from its report", () => {
       ]);
     });
 
-    it("replaces a fill added again under its key in place: its text follows, its changes run from the picture at its first key to its latest read, and the row above it stays (rules 1, 2, 4, 7)", async () => {
+    it("replaces a fill added again under its key in place: its text follows, its changes run from the picture at its first key to its latest read, and the row above it keeps its place (rules 1, 2, 4, 7)", async () => {
       const timeline = await timelineOf([...earlier, typed("m", null)]);
       const before = entriesOf(timeline);
       for (const addition of [
@@ -916,7 +916,9 @@ describe("the timeline, for an input known from its report", () => {
       expect(after.map((entry) => entry.id)).toEqual(
         before.map((entry) => entry.id)
       );
-      expect(after[0]).toEqual(before[0]);
+      // The row of what changed before it keeps its place and id; its words
+      // may follow what a later read tells.
+      expect(after[0]).toMatchObject({ kind: "change", id: before[0]!.id });
       expect(after[1]).toMatchObject({
         interaction: { text: "milk" },
         changes: [

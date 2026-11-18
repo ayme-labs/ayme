@@ -675,7 +675,8 @@ export class Timeline {
    * Ties each element of the picture that its "before" has not to the ref
    * the read `to` gives it, as the picture matched with both reads says.
    * The change of its own ahead of the input then names it as the later
-   * trees do: what it shows stays as it was.
+   * trees do. It keeps its place and id; its rows can change with what the
+   * later read tells, as a group that turns out to be named.
    */
   private async tie(written: Written, to: Kept) {
     const { from, pictured, first, visit } = written;
