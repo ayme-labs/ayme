@@ -20,6 +20,7 @@ import {
   errorResult,
   goneToolResult,
   mcpPageTool,
+  type McpListedTool,
   type ToolResult,
 } from "../domain/toolResult";
 
@@ -77,8 +78,8 @@ export function createMcpToolServer({
 
   for (const { app } of serverTools) if (app) registerAppPage(mcpServer, app);
 
-  server.setRequestHandler("tools/list", () => ({
-    tools: [
+  server.setRequestHandler("tools/list", () => {
+    const tools: McpListedTool[] = [
       ...serverTools.map(({ name, description, inputSchema, app }) => ({
         name,
         description,
@@ -89,8 +90,9 @@ export function createMcpToolServer({
         }),
       })),
       ...view.listRead(connection.tools).map(mcpPageTool),
-    ],
-  }));
+    ];
+    return { tools };
+  });
 
   const run = (name: string, input: Record<string, unknown>) => {
     const serverTool = serverTools.find((tool) => tool.name === name);

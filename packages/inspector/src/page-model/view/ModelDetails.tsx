@@ -22,7 +22,7 @@ import type {
 import type { OnHover, RenderRun } from "../../navigation";
 import { hoverHandlers } from "./hover";
 import { LiveMark } from "./LiveMark";
-import { chip, rowFocusRing, rowPress } from "../../shared";
+import { chip, DestructiveMark, rowFocusRing, rowPress } from "../../shared";
 
 /**
  * The page as a whole: its host, the page Page Objects on it, and the
@@ -528,21 +528,29 @@ function OffPageAction({ action }: { action: ObjectAction }) {
       aria-disabled
       className="grid grid-cols-1 gap-1 rounded-lg border border-dashed px-3 py-2.5 opacity-60"
     >
-      <div className="flex items-center gap-1.5">
-        <ZapIcon className="size-3.5 text-muted-foreground" aria-hidden />
-        <span
-          className="min-w-0 truncate font-mono text-xs font-semibold"
-          title={action.name}
-        >
-          {action.name}
+      {/* The badges wrap below the name together when the pane is narrow. */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="flex min-w-0 grow items-center gap-1.5">
+          <ZapIcon
+            className="size-3.5 flex-none text-muted-foreground"
+            aria-hidden
+          />
+          <span
+            className="min-w-0 truncate font-mono text-xs font-semibold"
+            title={action.name}
+          >
+            {action.name}
+          </span>
+          <span className="truncate font-mono text-xs text-muted-foreground">
+            {action.signature}
+          </span>
         </span>
-        <span className="truncate font-mono text-xs text-muted-foreground">
-          {action.signature}
+        <span className="ml-auto flex flex-none items-center gap-1.5">
+          {action.destructive && <DestructiveMark />}
+          <Badge variant="outline" className="text-muted-foreground">
+            Not on page
+          </Badge>
         </span>
-        <span className="flex-1" />
-        <Badge variant="outline" className="text-muted-foreground">
-          Not on page
-        </Badge>
       </div>
       {action.description && (
         <p className="text-xs leading-normal text-muted-foreground [overflow-wrap:anywhere]">

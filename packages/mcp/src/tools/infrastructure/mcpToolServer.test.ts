@@ -11,7 +11,7 @@ import { createMcpToolServer } from "./mcpToolServer";
 
 const tool = (
   name: string,
-  reading: Partial<Pick<PageTool, "available" | "reason">> = {}
+  reading: Partial<Pick<PageTool, "available" | "reason" | "destructive">> = {}
 ): PageTool => ({
   name,
   description: `${name}.`,
@@ -110,6 +110,61 @@ it("announces a changed tool list on presence only, and lists an unavailable too
 
   await agent.publish([]);
   expect(agent.listChanges()).toBe(2);
+});
+
+it("annotates a destructive page tool with destructiveHint in the tool list and ayme_list_tools, and no other tool", async () => {
+  const agent = await connectAgent();
+
+  await agent.publish([
+    tool("Order.submit", { destructive: true }),
+    tool("Order.edit"),
+    tool("Order.preview", { destructive: false }),
+  ]);
+
+  const listed = (await agent.client.listTools()).tools.filter(({ name }) =>
+    name.startsWith("Order.")
+  );
+  expect(listed).toEqual([
+    {
+      name: "Order.submit",
+      description: "Order.submit.",
+      inputSchema: { properties: {}, type: "object" },
+      annotations: { destructiveHint: true },
+    },
+    {
+      name: "Order.edit",
+      description: "Order.edit.",
+      inputSchema: { properties: {}, type: "object" },
+    },
+    {
+      name: "Order.preview",
+      description: "Order.preview.",
+      inputSchema: { properties: {}, type: "object" },
+    },
+  ]);
+  const [listing] = await agent.call("ayme_list_tools");
+  expect(
+    (JSON.parse(listing!) as { name: string; annotations?: unknown }[]).map(
+      ({ name, annotations }) => [name, annotations]
+    )
+  ).toEqual([
+    ["Order.submit", { destructiveHint: true }],
+    ["Order.edit", undefined],
+    ["Order.preview", undefined],
+  ]);
+});
+
+it("announces a changed tool list when a tool's destructive mark changes, and notes it on the next result", async () => {
+  const agent = await connectAgent();
+  await agent.publish([tool("Order.submit")]);
+  expect(agent.listChanges()).toBe(1);
+  await agent.client.listTools();
+
+  await agent.publish([tool("Order.submit", { destructive: true })]);
+
+  expect(agent.listChanges()).toBe(2);
+  const [, note] = await agent.call("ayme_noop");
+  expect(note).toContain("Changed: Order.submit (annotations).");
 });
 
 it("notes the tools that became available or unavailable, and ayme_list_tools carries each tool's availability and reason", async () => {

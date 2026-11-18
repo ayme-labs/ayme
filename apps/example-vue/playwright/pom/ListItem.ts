@@ -23,6 +23,7 @@ export class ListItem extends AppComponent {
 
   @ayme.action({
     description: "An archived item can't be renamed or restored.",
+    destructive: true,
   })
   async archive() {
     await this.archiveButton.click();

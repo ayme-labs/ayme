@@ -94,6 +94,12 @@ describe("actionFacts", () => {
     });
   });
 
+  it("keeps the author's destructive mark", () => {
+    expect(actionFacts(tool({ destructive: true }), "Page")).toStrictEqual({
+      destructive: true,
+    });
+  });
+
   it("says nothing for a bare action that returns nothing or itself", () => {
     expect(actionFacts(tool(), "Page")).toStrictEqual({});
     expect(actionFacts(tool({ description: " " }), "Page")).toStrictEqual({});

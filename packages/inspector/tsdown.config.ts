@@ -21,6 +21,8 @@ export default defineConfig([
   {
     ...shared,
     clean: true,
+    // Bundled third-party code keeps its license notices (see the file).
+    copy: ["THIRD_PARTY_NOTICES.txt"],
     dts: true,
     entry: {
       index: "src/index.ts",

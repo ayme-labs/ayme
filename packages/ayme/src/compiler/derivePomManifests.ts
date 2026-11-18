@@ -621,6 +621,7 @@ function classManifest(
         ...(description.authored === undefined
           ? {}
           : { description: description.authored }),
+        ...(description.destructive ? { destructive: true } : {}),
         parameters,
         ...(returnPomNames.length === 0 ? {} : { returnPoms: returnPomNames }),
       } satisfies ToolManifest);
@@ -984,14 +985,76 @@ function decoratorDescription(
   decorator: ts.Decorator,
   owner: string
 ) {
-  if (!ts.isCallExpression(decorator.expression)) return undefined;
-  const options = decorator.expression.arguments[0];
+  return decoratorOption(checker, decorator, {
+    key: "description",
+    named: `The description of ${owner}`,
+    value: constantString,
+    expected: "a constant string",
+  });
+}
+
+/**
+ * The `destructive` option of `@ayme.action`, if it sets one. It must be
+ * `true` or `false`; `owner` names the action in the error otherwise. Options
+ * that are no object literal fail the build when their type has the option,
+ * since a mark the build cannot read would be lost without a word.
+ */
+function decoratorDestructive(
+  checker: ts.TypeChecker,
+  decorator: ts.Decorator,
+  owner: string
+) {
+  const argument = ts.isCallExpression(decorator.expression)
+    ? decorator.expression.arguments[0]
+    : undefined;
+  const options = argument && unwrapped(argument);
+  if (
+    argument &&
+    options &&
+    !ts.isObjectLiteralExpression(options) &&
+    mayHold(checker, argument, "destructive")
+  )
+    throw pomCompileErrorAt(
+      options,
+      `The destructive option of ${owner} may come from options that are no object literal.`
+    );
+  return decoratorOption(checker, decorator, {
+    key: "destructive",
+    named: `The destructive option of ${owner}`,
+    value: constantBoolean,
+    expected: "true or false",
+  });
+}
+
+/**
+ * The option `key` of a decorator's options object, if it sets one, read by
+ * `value`; the build fails at the element that sets it when `value` cannot
+ * read it, or when it may come from a spread or a computed key.
+ */
+function decoratorOption<T>(
+  checker: ts.TypeChecker,
+  decorator: ts.Decorator,
+  {
+    key,
+    named,
+    value,
+    expected,
+  }: {
+    key: string;
+    /** The option in the errors, such as `The description of <owner>`. */
+    named: string;
+    value: (expression: ts.Expression) => T | undefined;
+    /** What `value` reads, in the error. */
+    expected: string;
+  }
+): T | undefined {
+  const options = optionsArgument(decorator);
   if (!options || !ts.isObjectLiteralExpression(options)) return undefined;
-  // The last element that sets `description` wins.
+  // The last element that sets the option wins.
   let last: ts.ObjectLiteralElementLike | undefined;
   let readable = false;
   for (const element of options.properties) {
-    const sets = setsDescription(checker, element);
+    const sets = setsOption(checker, element, key);
     if (sets === "no") continue;
     last = element;
     readable = sets === "yes";
@@ -1000,60 +1063,109 @@ function decoratorDescription(
   if (!readable)
     throw pomCompileErrorAt(
       last,
-      `The description of ${owner} may come from a spread or a computed key.`
+      `${named} may come from a spread or a computed key.`
     );
-  const description = ts.isPropertyAssignment(last)
-    ? constantString(last.initializer)
+  const read = ts.isPropertyAssignment(last)
+    ? value(last.initializer)
     : undefined;
-  if (description !== undefined) return description;
-  throw pomCompileErrorAt(
-    last,
-    `The description of ${owner} is not a constant string.`
+  if (read !== undefined) return read;
+  throw pomCompileErrorAt(last, `${named} is not ${expected}.`);
+}
+
+/**
+ * Whether a value of `type` may have `key`: it is `any` or `unknown`, a branch
+ * of a union has it, or an index signature accepts it.
+ */
+function mayHave(checker: ts.TypeChecker, type: ts.Type, key: string): boolean {
+  if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return true;
+  const keyType = checker.getStringLiteralType(key);
+  return (type.isUnion() ? type.types : [type]).some(
+    (branch) =>
+      branch.getProperty(key) !== undefined ||
+      checker
+        .getIndexInfosOfType(branch)
+        .some((index) => checker.isTypeAssignableTo(keyType, index.keyType))
   );
 }
 
 /**
- * Whether an options element sets `description`: "maybe" for a spread whose
- * type has one and a computed key whose value the type checker can't tell.
+ * Whether `expression` may have `key`, by its own type or by the type of what
+ * it wraps in parentheses or casts, since a cast can hide the option.
  */
-function setsDescription(
+function mayHold(
   checker: ts.TypeChecker,
-  element: ts.ObjectLiteralElementLike
+  expression: ts.Expression,
+  key: string
+): boolean {
+  if (mayHave(checker, checker.getTypeAtLocation(expression), key)) return true;
+  const inner = wrapped(expression);
+  return inner !== undefined && mayHold(checker, inner, key);
+}
+
+/** A decorator call's options argument, without its parentheses and casts. */
+function optionsArgument(decorator: ts.Decorator): ts.Expression | undefined {
+  if (!ts.isCallExpression(decorator.expression)) return undefined;
+  const options = decorator.expression.arguments[0];
+  return options && unwrapped(options);
+}
+
+/**
+ * Whether an options element sets `key`: "maybe" for a spread that may have
+ * it, and a computed key whose value the type checker can't tell.
+ */
+function setsOption(
+  checker: ts.TypeChecker,
+  element: ts.ObjectLiteralElementLike,
+  key: string
 ): "yes" | "no" | "maybe" {
   if (ts.isSpreadAssignment(element))
-    return checker
-      .getTypeAtLocation(element.expression)
-      .getProperty("description")
-      ? "maybe"
-      : "no";
+    return mayHold(checker, element.expression, key) ? "maybe" : "no";
   const name = element.name;
   if (!name) return "no";
   if (!ts.isComputedPropertyName(name))
     return (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) &&
-      name.text === "description"
+      name.text === key
       ? "yes"
       : "no";
-  const key = checker.getTypeAtLocation(name.expression);
-  if (key.isStringLiteral()) return key.value === "description" ? "yes" : "no";
-  return key.isNumberLiteral() || key.flags & ts.TypeFlags.ESSymbolLike
+  const computed = checker.getTypeAtLocation(name.expression);
+  if (computed.isStringLiteral()) return computed.value === key ? "yes" : "no";
+  return computed.isNumberLiteral() ||
+    computed.flags & ts.TypeFlags.ESSymbolLike
     ? "no"
     : "maybe";
+}
+
+/** `expression` without the parentheses, `as`, `satisfies` and `!` that leave its value as it is. */
+function unwrapped(expression: ts.Expression): ts.Expression {
+  const inner = wrapped(expression);
+  return inner ? unwrapped(inner) : expression;
+}
+
+/** What one layer of parentheses, `as`, `satisfies` or `!` wraps, if `expression` is one. */
+function wrapped(expression: ts.Expression): ts.Expression | undefined {
+  return ts.isParenthesizedExpression(expression) ||
+    ts.isAsExpression(expression) ||
+    ts.isSatisfiesExpression(expression) ||
+    ts.isNonNullExpression(expression) ||
+    ts.isTypeAssertionExpression(expression)
+    ? expression.expression
+    : undefined;
+}
+
+/** The value of `true` or `false`, if `expression` is one. */
+function constantBoolean(expression: ts.Expression): boolean | undefined {
+  const inner = unwrapped(expression);
+  if (inner.kind === ts.SyntaxKind.TrueKeyword) return true;
+  if (inner.kind === ts.SyntaxKind.FalseKeyword) return false;
+  return undefined;
 }
 
 /**
  * The value of a string literal, a template literal without substitutions, or
  * a `+` concatenation of those, if `expression` is one.
  */
-function constantString(expression: ts.Expression): string | undefined {
-  // Parentheses, `as`, `satisfies` and `!` leave the value as it is.
-  if (
-    ts.isParenthesizedExpression(expression) ||
-    ts.isAsExpression(expression) ||
-    ts.isSatisfiesExpression(expression) ||
-    ts.isNonNullExpression(expression) ||
-    ts.isTypeAssertionExpression(expression)
-  )
-    return constantString(expression.expression);
+function constantString(outer: ts.Expression): string | undefined {
+  const expression = unwrapped(outer);
   if (ts.isStringLiteralLike(expression)) return expression.text;
   if (
     ts.isBinaryExpression(expression) &&
@@ -1106,7 +1218,8 @@ function extendedClassDeclaration(
     : undefined;
 }
 
-type ToolDescription = { authored?: string };
+/** What an action's `@ayme.action` says of its tool. */
+type ToolDescription = { authored?: string; destructive?: true };
 
 function toolDescription(
   checker: ts.TypeChecker,
@@ -1120,12 +1233,15 @@ function toolDescription(
   const className = ts.isClassLike(declaration.parent)
     ? declaration.parent.name?.text
     : undefined;
-  const authored = decoratorDescription(
-    checker,
-    marker,
-    `Page Object Action ${className}.${methodName}`
-  );
-  return authored === undefined ? {} : { authored };
+  const owner = `Page Object Action ${className}.${methodName}`;
+  const authored = decoratorDescription(checker, marker, owner);
+  return {
+    ...(authored === undefined ? {} : { authored }),
+    // `false` says the same as leaving the option out.
+    ...(decoratorDestructive(checker, marker, owner)
+      ? { destructive: true }
+      : {}),
+  };
 }
 
 /**

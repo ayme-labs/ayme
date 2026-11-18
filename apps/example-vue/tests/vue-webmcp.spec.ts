@@ -170,6 +170,7 @@ async function recordedTools(page: Page) {
       description: tool.description,
       inputSchema: tool.inputSchema,
       name: tool.name,
+      ...(tool.annotations ? { annotations: tool.annotations } : {}),
     }))
   );
 }
@@ -493,6 +494,8 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     {
       name: "ListItem.archive",
       description: "An archived item can't be renamed or restored.",
+      // Marked destructive, so WebMCP says it is consequential.
+      annotations: { consequentialHint: true },
       inputSchema: {
         type: "object",
         properties: {

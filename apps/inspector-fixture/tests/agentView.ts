@@ -10,6 +10,8 @@ export type AgentTool = {
   name: string;
   description: string;
   inputSchema: unknown;
+  /** Only on a tool marked destructive. */
+  annotations?: { consequentialHint?: boolean };
 };
 
 /**

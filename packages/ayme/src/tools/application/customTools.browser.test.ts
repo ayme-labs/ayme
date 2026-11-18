@@ -95,6 +95,23 @@ describe("Custom Tools in Chromium", () => {
     });
   });
 
+  it("lists a Custom Tool registered with destructive: true as destructive, and no other", () => {
+    document.body.innerHTML = '<button id="save">Save changes</button>';
+    const ayme = start([
+      recordingCustomTool({ name: "delete_record", destructive: true })
+        .customTool,
+      recordingCustomTool({ name: "preview_record", destructive: false })
+        .customTool,
+      recordingCustomTool({ name: "highlight_element" }).customTool,
+    ]);
+
+    const listed = (name: string) =>
+      ayme.tools.list().find((tool) => tool.name === name);
+    expect(listed("delete_record")?.destructive).toBe(true);
+    expect(listed("preview_record")).not.toHaveProperty("destructive");
+    expect(listed("highlight_element")).not.toHaveProperty("destructive");
+  });
+
   it("rejects a Custom Tool whose name collides with another published tool", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool } = recordingCustomTool({ name: "click" });
