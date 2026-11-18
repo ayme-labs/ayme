@@ -179,7 +179,8 @@ headers and bodies. `trace snapshot` opens the snapshots of recorded
 interactions; `trace requests` lists the requests with their method, status
 and duration, but not when each started; `trace request <n>`, with `<n>` from
 that list, shows one request in full: its headers, and the paths of its body
-files under `.playwright-cli/trace/resources/` to read.
+files under `.playwright-cli/trace/resources/` to read. `trace close` deletes
+those files: copy a body you still need first.
 
 Read the trace when a tree does not settle what a step did, or to find a
 locator for an element. Each element carries its package ref as
