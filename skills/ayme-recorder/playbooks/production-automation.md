@@ -40,7 +40,7 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
    - for each, the values a person checks before it, such as customer, offer
      and price;
    - the parameters: the data a real run enters, and the value the recording
-     used for each;
+     used for each, as its requests carry it rather than as the user typed it;
    - the `confirm` the entry script uses, as [Confirm](#confirm) says;
    - on a site with a login, how a run gets one, as
      [Write the code](#write-the-code) says.
@@ -229,5 +229,8 @@ output is a request it paired with no recorded call. Compare the request with
 its recorded call from `trace request <n>`: when they differ only in a part
 that changes between runs, such as a timestamp, counter or token, leave that
 part out of `match()`. When they differ in data, such as another record id,
-the flow reads data the recording lacks: check the parameters. Telemetry
-calls are aborted on every run; list them for the user once.
+the flow reads data the recording lacks: check the parameters. When the data
+an earlier response filled in differs, such as an address from a postcode
+lookup, that response landed at another time than in the recording: wait for
+it in the page object; do not loosen `match()`. Telemetry calls are aborted
+on every run; list them for the user once.
