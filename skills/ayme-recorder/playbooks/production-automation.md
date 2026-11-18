@@ -153,7 +153,8 @@ On a site with a login, the user saves a login state once with
 the window it opens; the entry script and the replay test load it. You never
 handle the password. A login can expire within minutes: when the replay test
 or a live run suddenly meets the login form, ask the user to save a fresh one
-right before each such run. Without a login, drop `storageState`.
+right before each such run. Without a login, or when each visit opens a
+fresh session by itself, drop `storageState`.
 
 ### Confirm
 
