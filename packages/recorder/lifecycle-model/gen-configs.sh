@@ -1,0 +1,100 @@
+#!/bin/sh
+# Writes every .cfg from one table. Run it after changing the table.
+# Constants, in order:
+#   N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick
+#   LateRevisions LeaveOutB2 LateTypingReport
+# LeaveOutB2 leaves a known limit out, to check every other path of the same
+# rule; it is not a fix. LateRevisions and LateTypingReport allow two races. Deadlock is not checked: a state where nothing is left
+# to do is often a bound of the model (no more Record). X4 checks that a
+# wrap-up ends.
+cd "$(dirname "$0")"
+# The rules that hold at a person's speed. The rules that break are checked
+# in configs of their own (Limit-*, Race-*), one shortest path each, so that a
+# break does not cut the other rules' runs short (the statechart tool bounds
+# every run after the first break).
+HOLD="R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter R03a_StoppedClicksAreUntouched R03b_StoppedAddsNothing R03c_TracingRunsThroughPause R04_FinishSavesEverything R05_ClearLeavesNothing R06_ReviewOnlyWhilePaused R07_AssertionCarriesNoChanges R09_NeverHalfWritten R10_SavesOnce X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X6_TypingWrittenWhole X7_EntryHasItsOwnReport"
+FILLS="F1_ShowsOnceItHasItsPlace F2_StaysInPlace F3_NextActionMakesItFinal F4_StopAndFinishKeepLastText F5_ClearRemovesForGood F6_WindowIsWhatIsSaved"
+F3P="PROPERTIES F3_FinalKeepsItsChanges"
+RULES="$HOLD X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
+PROBES="P1_NeverSavesTwoEntries P2_NeverSavesADiscard P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten"
+WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow"
+mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check"
+  name=$1; head=$2; shift 2
+  laterev=${12}; lob2=${13}; latetype=${14}; what=${15}
+  {
+    printf '%s\n' "$head"
+    cat <<CFG
+CONSTANTS
+  N = $1
+  MaxDoc = $2
+  MaxGen = $3
+  MaxRounds = $4
+  MaxKeys = $5
+  MaxStops = $6
+  Closes = $7
+  Surfaces = $8
+  TimeLimit = $9
+  FinishTwice = ${10}
+  Quick = ${11}
+  LateRevisions = $laterev
+  LeaveOutB2 = $lob2
+  LateTypingReport = $latetype
+CHECK_DEADLOCK FALSE
+CFG
+    printf '%s\n' "$what"
+  } > "$name.cfg"
+}
+IN="INIT Init
+NEXT Next"
+T=TRUE; F=FALSE
+#  name             head  N Doc Gen Rnd Keys Stops Closes Surf Time Twice Quick LateRev B2 LateType
+mk Rules            "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS X5_StopWindowIsRecorded D1_TypingWaitsForSomethingNewer
+$F3P"
+mk Rules-Pages      "$IN" 2 2   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS X5_StopWindowIsRecorded
+$F3P"
+mk Rules-Rounds     "$IN" 2 1   1   2   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS X5_StopWindowIsRecorded
+$F3P"
+mk Rules-Ends       "$IN" 2 1   1   1   1    2     $T     $F   $F   $T    $T    $F      $F $F "INVARIANTS $HOLD $FILLS
+$F3P"
+mk Surfaces         "$IN" 1 1   1   2   1    0     $F     $T   $F   $F    $T    $F      $F $F "INVARIANTS R08_SurfacesAgree $HOLD $FILLS X5_StopWindowIsRecorded"
+mk TimeLimit        "$IN" 2 1   1   1   1    0     $F     $F   $T   $F    $T    $F      $F $F "INVARIANTS $RULES $FILLS
+$F3P"
+# Rules 7 and 12: rule 7 with its exception for the known limit B2; without
+# it; and with B2 left out.
+mk Rule7            "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
+mk Rule7-Strict     "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7s_MeasuredStrictly"
+mk Rules-WithoutB2  "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS F7s_MeasuredStrictly X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
+# Known limits: each its own path.
+mk Limit-TypingThenTyping "$IN" 2 1 1 1  0    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS N3_TypingThenTypingInTimeOrder N5_RecordingInTimeOrder N6_RecordingStartsInTime"
+mk Limit-ClosedPageWaits "$IN" 1 1 1 1   0    0     $T     $F   $F   $F    $T    $F      $F $F "INVARIANT X4_WrapUpNeverGetsStuck"
+# Paths the engine once broke: each must hold.
+mk Path-AfterStop   "$IN" 2 1   1   1   0    0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS N1_AfterStopInTimeOrder N1b_AfterStopBothInTimeOrder N2_AfterStopStartsInTime"
+mk Path-StopClickCtrlC "$IN" 2 1 1   1   0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT X5_StopWindowIsRecorded"
+mk Path-HeldKeyAfterStop "$IN" 2 1 1 1   0    1     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS N1_AfterStopInTimeOrder X5_StopWindowIsRecorded"
+mk Path-PickOnNewPage "$IN" 2 2  1   1   0    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT X4_WrapUpNeverGetsStuck"
+mk Path-PickOnNewPage-NextClick "$IN" 3 2 1 1 0 0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT X7_EntryHasItsOwnReport"
+mk Path-TypingAfterContinue "$IN" 1 1 1 2  1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X6_TypingWrittenWhole F4_StopAndFinishKeepLastText"
+# Races: actions within a few milliseconds.
+mk Races            "$IN" 1 1   1   2   0    1     $T     $F   $F   $F    $F    $F      $F $F "INVARIANTS $RULES"
+mk Race-LateRevision "$IN" 2 1  1   1   1    0     $F     $F   $F   $F    $T    $T      $F $F "INVARIANTS $HOLD $FILLS
+$F3P"
+mk Race-LateRevision-Stop "$IN" 2 1 1 1   1    0     $F     $F   $F   $F    $T    $T      $F $F "INVARIANT F7_MeasuredFromFirstKey"
+mk Race-LateTypingReport "$IN" 2 1 1 1   0    1     $F     $F   $F   $F    $T    $F      $T $T "INVARIANTS N1_AfterStopInTimeOrder X5_StopWindowIsRecorded"
+mk Race-LastText    "$IN" 1 1   1   1   1    1     $T     $F   $F   $F    $F    $F      $F $F "INVARIANT F4_StopAndFinishKeepLastText"
+# Progress with fairness: blocked, TLC checks it too slowly (see README).
+mk Progress         "SPECIFICATION LiveSpec" 1 1 1 1 0 0 $T $F $T $F $T $F $F $F "PROPERTIES L1_HeldClickIsPassedOn L2_WrapUpEnds"
+# Probes: each must break, which shows the model reaches that situation.
+mk Probes           "$IN" 2 2   1   1   1    0     $T     $F   $F   $F    $T    $F      $F $F "INVARIANTS $PROBES"
+mk Probes-Clear     "$IN" 1 1   1   2   0    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS P6_NeverClearsThenRecordsAgain P8_NeverEndsEmptyAfterRecording"
+mk Probes-Window    "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $WPROBES"
+mk Probes-Window-Navigation "$IN" 2 2 1 1 1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT P19_NeverNavigatesUnderALiveFill"
+mk Probes-Continue  "$IN" 1 1   1   2   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT P22_NeverStartsAFillFromARevision"
+mk Probes-LateRevision "$IN" 2 1 1   1   1    0     $F     $F   $F   $F    $T    $T      $F $F "INVARIANT P23_NeverSetsAFinalFillsText"
+# The three charts.
+mk Chart-Lifecycle  "INIT Init
+NEXT LifeNext" 0 1 1 2 0 1 $T $F $F $F $T $F $F $F "INVARIANTS $HOLD"
+mk Chart-Gate       "INIT StartedRecording
+NEXT GateNext" 1 2 1 1 0 0 $T $F $F $F $T $F $F $F "INVARIANTS R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter X2_SnapshotsInTimeOrder"
+mk Chart-Fill       "INIT StartedRecording
+NEXT FillNext" 2 1 1 1 1 0 $F $F $F $F $T $F $F $F "INVARIANTS F1_ShowsOnceItHasItsPlace F2_StaysInPlace F3_NextActionMakesItFinal F4_StopAndFinishKeepLastText"
+ls *.cfg
