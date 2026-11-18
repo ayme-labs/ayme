@@ -1,6 +1,6 @@
 ---
 name: ayme-recorder
-description: Record a user flow with the Ayme recorder while the user drives their app, then turn the Recording Package into Playwright page objects and a test.
+description: Record a user flow with the Ayme recorder while the user drives their app, then turn the Recording Package into Playwright page objects and a test, or a parameterised automation of the flow.
 ---
 
 # Ayme recorder
@@ -10,10 +10,19 @@ writes what it saw to a Recording Package: the page structure at each visit,
 what changed and every interaction. From the package you write page objects and
 a Playwright test that replays the flow.
 
-1. **Record.** Run `npx @ayme-dev/cli@latest codegen <url>`, with the URL where
+1. **Pick** the playbook from the user's request, and ask when it is unclear.
+   Pick before recording: production automation needs a cold recording.
+   - [Mirroring test](playbooks/mirroring-test.md): a test that replays the
+     flow against the user's app.
+   - [Production automation](playbooks/production-automation.md): a
+     parameterised automation of a flow on a third-party portal, such as
+     data entry that ends in a real submission.
+2. **Record.** Run `npx @ayme-dev/cli@latest codegen <url>`, with the URL where
    the user wants to start, somewhere it can keep running. A recorder window
    opens on that page; the user performs the flow and presses Finish. The
-   command then prints `Recording package: <path>`.
+   command then prints `Recording package: <path>`. For production
+   automation, first tell the user what its
+   [Record step](playbooks/production-automation.md#steps) asks of them.
 
    `@latest` runs the newest release. When `@ayme-dev/cli` is in the project's
    `package.json`, the project pins its version: run `npx ayme-recorder` in
@@ -24,12 +33,12 @@ a Playwright test that replays the flow.
    `npx ayme-recorder` runs a different version, or looks on npm for a package
    of that name, which is not this CLI.
 
-2. **Read** the package, as [Read the package](#read-the-package) describes.
+3. **Read** the package, as [Read the package](#read-the-package) describes.
    Leave every discarded entry out of the page objects and the test. A package
    with no kept entry has no flow to implement: tell the user whether it
    captured nothing or every entry is a stub, and stop.
-3. **Follow** the [mirroring test playbook](playbooks/mirroring-test.md) from
-   its first step to its end.
+4. **Follow** the playbook you picked, from its first step not yet done to
+   its end.
 
 A package with no kept entry is done when you have told the user and stopped.
 
