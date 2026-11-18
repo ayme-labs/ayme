@@ -189,6 +189,10 @@ function lookupOf(
   return { by: "role", role: element.role, name: element.name };
 }
 
+/** The reports of an input whose press can move the focus before the gate
+ * holds it. */
+const PRESSED = new Set(["click", "check", "uncheck"]);
+
 /** Whether two reports say the same: the one object, or the same text. */
 const sameReport = (one: InteractionReport, other: InteractionReport) =>
   one === other || JSON.stringify(one) === JSON.stringify(other);
@@ -242,6 +246,9 @@ export class Timeline {
   private told: readonly RecordedVisit[] = [];
   /** The entries added under a key, by their key. */
   private readonly byKey = new Map<string, Written>();
+  /** The read before a click whose press moved the focus, by its id: the
+   * page as it stood just before the press, the focus where it was. */
+  private readonly beforePress = new Map<SnapshotId, StructuralTree>();
   private readonly warned: RecorderWarning[] = [];
 
   /** What a person should know about how this recording was made. */
@@ -574,17 +581,80 @@ export class Timeline {
     });
   }
 
-  /** What changed on the page from one kept snapshot to a later one. */
-  private async change(from: Kept, to: Kept): Promise<StructuralTree> {
-    const change = await this.session.readChange(
+  /** What changed on the page from one kept snapshot to a later one. Each
+   * may stand as `fromTree` and `toTree` say instead, under its own refs. */
+  private async change(
+    from: Kept,
+    to: Kept,
+    fromTree = from.tree,
+    toTree = to.tree
+  ): Promise<StructuralTree> {
+    const change = await this.session.readIdentityLedger(
       from.observation.pageId,
-      from.observation,
-      to.observation
+      (ledger) =>
+        StructuralTree.reconcile(fromTree, toTree, {
+          sameIdentity: (beforeRef: AriaRef, afterRef: AriaRef) =>
+            ledger.sameIdentity(beforeRef, afterRef),
+        })
     );
     return this.underFirstRefs(
       change,
       new Map([...from.firstRefs, ...to.firstRefs])
     );
+  }
+
+  /**
+   * The read before a held click as the page stood just before its press:
+   * the press reaches the page before the gate holds the click, so the read
+   * shows the focus it moved. When the element the press focused is the
+   * one clicked, or one around it, the focus stands where the read before
+   * had it, so that the move is the click's own change. Null when the press
+   * moved no focus.
+   */
+  private beforeItsPress(
+    previous: Kept,
+    before: Kept,
+    report: InteractionReport
+  ): StructuralTree | null {
+    if (!PRESSED.has(report.type)) return null;
+    const target = locateTarget(before.tree, report);
+    const focused = (tree: StructuralTree) => {
+      let found: StructuralNode | undefined;
+      tree.walk((node) => {
+        if (node.state.active) found ??= node;
+      });
+      return found;
+    };
+    const now = focused(before.tree);
+    if (!target || !now) return null;
+    const pressedOn =
+      now.ref === target ||
+      before.tree.getAncestorsOf(target).some((node) => node.ref === now.ref);
+    if (!pressedOn) return null;
+    const firstOf = (kept: Kept, ref: AriaRef) =>
+      kept.firstRefs.get(snapshotRef(ref));
+    const was = focused(previous.tree);
+    const wasFirst = was && firstOf(previous, was.ref);
+    // It had the focus already: the press moved none.
+    if (wasFirst && wasFirst === firstOf(before, now.ref)) return null;
+    const rename = (node: StructuralNode): StructuralNode => {
+      const active =
+        node.ref === now.ref
+          ? false
+          : wasFirst !== undefined && firstOf(before, node.ref) === wasFirst
+            ? true
+            : node.state.active;
+      // A read writes no focus as none: so does this.
+      const state = { ...node.state };
+      delete state.active;
+      return node.copy({
+        state: active ? { ...state, active } : state,
+        children: node.children.map((child) =>
+          typeof child === "string" ? child : rename(child)
+        ),
+      });
+    };
+    return new StructuralTree(rename(before.tree.root), this.refs);
   }
 
   /**
@@ -742,11 +812,12 @@ export class Timeline {
     const { from, pictured, first } = written;
     if (!pictured) {
       const located = locateTarget(from.tree, first.report);
+      const pressed = this.beforePress.get(from.snapshot.id);
       return {
         // Every ref of a kept snapshot has its first ref.
         target: located && from.firstRefs.get(located),
         named: namedTarget(from.tree, located),
-        change: to ? await this.change(from, to) : null,
+        change: to ? await this.change(from, to, pressed ?? from.tree) : null,
       };
     }
     if (to) await this.tie(written, to);
@@ -881,7 +952,16 @@ export class Timeline {
     if (reached || !next) return false;
     // What changed while the recorder was paused is left out: the
     // snapshot where recording resumes is compared with nothing before it.
-    const change = next.resumes ? null : await this.change(through, next);
+    // A focus a click's press moved is the click's own change.
+    const click = visit.waiting.find(
+      (waiting) =>
+        waiting.before === next.snapshot.id && !waiting.beforeFromReport
+    );
+    const pressed = click && this.beforeItsPress(through, next, click.report);
+    if (pressed) this.beforePress.set(next.snapshot.id, pressed);
+    const change = next.resumes
+      ? null
+      : await this.change(through, next, through.tree, pressed ?? next.tree);
     // Nothing changed: there is nothing to tell.
     if (change && changedSomething(change))
       this.writeChange(visit, next.snapshot.at, change);

@@ -1034,6 +1034,93 @@ describe("the timeline, for an input known from its report", () => {
   });
 });
 
+describe("the timeline, for the focus a click's press moved", () => {
+  // The press of a click reaches the page before the gate holds the click,
+  // so the read taken just before the click already shows the clicked
+  // element focused.
+  const searching = [
+    `- generic [ref=e1]:`,
+    `  - textbox "Search" [active] [ref=e2]`,
+    `  - link "ayme" [ref=e3]`,
+    `  - paragraph [ref=e4]: Nothing loaded`,
+  ].join("\n");
+  const pressed = [
+    `- generic [ref=e1]:`,
+    `  - textbox "Search" [ref=e2]`,
+    `  - link "ayme" [active] [ref=e3]`,
+    `  - paragraph [ref=e4]: Banner loaded`,
+  ].join("\n");
+  const opened = [
+    `- generic [ref=e1]:`,
+    `  - textbox "Search" [ref=e2]`,
+    `  - link "ayme" [active] [ref=e3]`,
+    `  - paragraph [ref=e4]: Repository opened`,
+  ].join("\n");
+  const clickOn = (
+    tree: string,
+    selector = 'internal:role=link[name="ayme"s]'
+  ): TimelineAddition => ({
+    kind: "interaction",
+    interaction: {
+      page: pageId("page_1"),
+      report: {
+        type: "click",
+        selector,
+        target: { ref: pictureRef("e3"), tree },
+        values: { button: "left", clickCount: 1 },
+      },
+      before: snapshotId("snapshot_2"),
+      after: snapshotId("snapshot_3"),
+      at: 20,
+    },
+  });
+  const recorded = (target: string) => [
+    visit,
+    snapshot(snapshotId("snapshot_1"), 10, searching),
+    // An Interaction before, so that the read before the click is not the
+    // Visit's start.
+    {
+      kind: "interaction",
+      interaction: {
+        page: pageId("page_1"),
+        report: {
+          type: "click",
+          selector: 'internal:role=textbox[name="Search"s]',
+          target: { ref: pictureRef("e2"), tree: searching },
+          values: { button: "left", clickCount: 1 },
+        },
+        before: snapshotId("snapshot_1"),
+        after: snapshotId("snapshot_1"),
+        at: 10,
+      },
+    } as TimelineAddition,
+    snapshot(snapshotId("snapshot_2"), 20, pressed),
+    snapshot(snapshotId("snapshot_3"), 30, opened),
+    clickOn(target),
+  ];
+
+  it("shows the clicked element gaining focus, and the one before losing it, with the click's own changes; what else changed before it stays a row of its own", async () => {
+    const timeline = await timelineOf(recorded(pressed));
+    const entries = timeline.visits().flatMap((one) => one.entries);
+    const [, before, click] = entries;
+
+    expect(before).toMatchObject({
+      kind: "change",
+      changes: [
+        { kind: "changed", element: expect.stringContaining("paragraph") },
+      ],
+    });
+    expect(click).toMatchObject({
+      kind: "interaction",
+      changes: expect.arrayContaining([
+        expect.objectContaining({ element: 'textbox "Search"' }),
+        expect.objectContaining({ element: 'link "ayme"' }),
+      ]),
+    });
+    expect(entries).toHaveLength(3);
+  });
+});
+
 describe("the timeline, for a target the snapshot does not list", () => {
   const listed = [
     `- generic [ref=e5]:`,

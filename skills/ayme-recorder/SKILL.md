@@ -148,9 +148,10 @@ focus, as the key then goes to the page's body, which the tree does not list.
 
 A `kind: change` entry is a change the recorder could not tie to an
 interaction. Read it together with the steps around it. It is usually the
-late result of an earlier step, such as data that finished loading. Just
-before a click it is often the focus moving to the clicked element, as the
-mouse button goes down before the click. A change that no recorded action
+late result of an earlier step, such as data that finished loading. The
+focus a click's press moved to the clicked element, and away from the one
+before, is in that click's own change tree, not a change before it. A
+change that no recorded action
 explains can also come from a hover. It can come from something the page does
 on its own in between, too, such as an async update.
 

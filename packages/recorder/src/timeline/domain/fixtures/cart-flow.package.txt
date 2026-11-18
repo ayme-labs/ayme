@@ -27,12 +27,6 @@ visits:
         changeTree:
           - [ref=e1]:
             - <changed> [ref=e3] paragraph: "Items: 1"
-      - kind: change
-        timestamp: 2942.489
-        changeTree:
-          - [ref=e1]:
-            - <changed> [ref=e5] button "Add item"
-            - <changed> [ref=e6] button "Redraw" [active]
       - kind: interaction
         timestamp: 2944.489
         interaction:
@@ -43,12 +37,10 @@ visits:
           button: left
           modifiers: 0
           clickCount: 1
-      - kind: change
-        timestamp: 4556.149
         changeTree:
           - [ref=e1]:
-            - <changed> [ref=e5] button "Add item" [active]
-            - <changed> [ref=e6] button "Redraw"
+            - <changed> [ref=e5] button "Add item"
+            - <changed> [ref=e6] button "Redraw" [active]
       - kind: interaction
         timestamp: 4558.149
         interaction:
@@ -62,4 +54,6 @@ visits:
         changeTree:
           - [ref=e1]:
             - <changed> [ref=e3] paragraph: "Items: 2"
+            - <changed> [ref=e5] button "Add item" [active]
+            - <changed> [ref=e6] button "Redraw"
 traceActionPoints: []

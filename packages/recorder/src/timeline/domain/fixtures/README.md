@@ -9,7 +9,11 @@ test.
   recorder. The second click makes the page re-create the "Add item" button,
   which Playwright then names `e7` instead of `e5`.
 - `cart-flow.package.txt`: the Recording Package the throwaway prototype of
-  pull request #1268 wrote for that same run, byte for byte. Its writer was
-  checked against the released recorder's renderer. A "before" snapshot in
+  pull request #1268 wrote for that same run, byte for byte but for one
+  change made by hand: the focus each click's press moved, which the
+  prototype wrote as a change of its own just before the click, is in that
+  click's change tree, after its other rows (the owner decided on 18
+  November 2026 that it is part of the click). Its writer was checked
+  against the released recorder's renderer. A "before" snapshot in
   the JSON carries the moment the prototype wrote for it, when its click was
   held.

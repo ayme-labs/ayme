@@ -39,7 +39,9 @@ concern and reuse `fixtures.ts`.
   Playwright that records. Assertions read the Recording Package from disk.
   `tests/expected/` holds expected package text; `cart.package.txt` is what
   the throwaway prototype of pull request #1268 wrote for the same clicks,
-  with what differs from run to run replaced.
+  with what differs from run to run replaced, and the focus each click's
+  press moved written with that click, as decided on 18 November 2026,
+  rather than as a change of its own before it.
 
 - `attach.spec.ts` records a running browser: `runningBrowser` launches one
   with its page open before the recorder comes, and its connection is another

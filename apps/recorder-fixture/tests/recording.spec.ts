@@ -70,7 +70,8 @@ test.describe("recording", () => {
     const timestamps = [...text.matchAll(/timestamp: ([\d.]+)/g)].map(
       ([, timestamp]) => Number(timestamp)
     );
-    expect(timestamps).toHaveLength(5);
+    // The three clicks: the focus each one's press moved is its own.
+    expect(timestamps).toHaveLength(3);
     expect(timestamps).toEqual([...timestamps].sort((a, b) => a - b));
   });
 
