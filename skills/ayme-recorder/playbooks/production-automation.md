@@ -78,8 +78,10 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
    user starts the command in their own terminal, since its prompt reads from
    the terminal that started it. You never approve an irreversible step: a
    live run the user does not watch uses `--no-submit`.
-   When a run fails, read its trace in `.ayme/runs/` with `trace open`,
-   `trace actions` and `trace snapshot`, fix the code, run the replay test
+   When a run fails, read its trace in `.ayme/runs/` with the project's own
+   Playwright, `npx playwright trace open <trace.zip>`, then `trace actions`
+   and `trace snapshot`: the recorder's `trace` command bundles an older
+   Playwright and refuses newer traces. Fix the code, run the replay test
    again until it passes three times, and rehearse with new data.
 8. **Hand over**: the command for a real run, where the files are, and what
    the replay test does not cover, such as steps the recording does not
