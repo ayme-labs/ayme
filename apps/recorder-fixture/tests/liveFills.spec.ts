@@ -60,9 +60,10 @@ test.describe("typing, as it shows and as it is saved", () => {
 
     await person.type("abc");
     await expect(large.noteState).toHaveText("Saved");
-    // Its rows catch up once the page is read.
+    // Its rows catch up once the page is read: the fill is there, with
+    // changes under it.
     await expect
-      .poll(() => fillsIn(seen.lists).at(-1)?.entry.changes, {
+      .poll(() => fillsIn(seen.lists).at(-1)?.entry.changes ?? null, {
         timeout: 5_000,
       })
       .not.toBeNull();
@@ -75,6 +76,8 @@ test.describe("typing, as it shows and as it is saved", () => {
     // It showed before the page was read after it: its text, no changes.
     expect(typed[0]!.entry.changes).toBeNull();
     // Its text followed the keys, one prefix after another, to the last.
+    // The first key after Record can be held while the page is read, so
+    // the fill may first show more than one key.
     const texts = typed.map(({ entry }) => String(entry.interaction["text"]));
     expect(texts.every((text) => "abc".startsWith(text))).toBe(true);
     expect(texts.at(-1)).toBe("abc");

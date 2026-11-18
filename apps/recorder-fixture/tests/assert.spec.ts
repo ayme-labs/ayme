@@ -137,12 +137,10 @@ test.describe("Assert visibility", () => {
     // The window shows both as they happen, on the page they were made on.
     await expect(window.timeline.visitSections).toHaveCount(2);
     const [, arrived] = await window.timeline.visits();
-    const steps = arrived!.entryCards.and(
-      windowPage.locator('[data-kind="interaction"]')
-    );
-    await expect(steps).toHaveCount(2);
-    await expect(new Entry(steps.nth(0)).title).toHaveText("Assert");
-    await expect(new Entry(steps.nth(1)).title).toHaveText("Click");
+    await expect(arrived!.stepCards).toHaveCount(2);
+    const [asserted, clicked] = await arrived!.steps();
+    await expect(asserted!.title).toHaveText("Assert");
+    await expect(clicked!.title).toHaveText("Click");
 
     const finishing = Date.now();
     expect(await recorder.send({ type: "finish" })).toBe("applied");

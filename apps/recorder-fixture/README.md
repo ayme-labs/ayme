@@ -67,6 +67,13 @@ latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
   and clicks inside a frame, an open shadow root and on an element the page
   structure does not list.
 
+- `liveFills.spec.ts` checks typing as it shows in the window while it is
+  typed and as it is saved, on `app/large.html`, a page large enough that a
+  read of it takes a while: a fill shows before the page is read again,
+  follows every key, keeps its place, and the next action makes it final;
+  Stop keeps its text and Clear removes it. It also holds the paths of the
+  lifecycle model's bugs 6 and 7.
+
 - `targets.spec.ts` checks the element a step names on `app/nested.html`:
   a click, and a double click, on the text inside a link or a button names
   the link or the button, as Playwright's selector does, whether the page

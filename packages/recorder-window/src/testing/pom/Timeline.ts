@@ -102,16 +102,28 @@ export class Visit extends RecorderPart {
   readonly start: Locator;
   @ayme.collection
   readonly entryCards: Locator;
+  /** The entries of Interactions, the steps, without the changes no
+   * Interaction made. */
+  @ayme.collection
+  readonly stepCards: Locator;
 
   constructor(root: Locator) {
     super(root);
     this.heading = root.getByRole("heading", { level: 2 });
     this.start = root.getByTestId("visit-start");
     this.entryCards = root.getByRole("article");
+    this.stepCards = this.entryCards.and(
+      root.locator('[data-kind="interaction"]')
+    );
   }
 
   async entries(): Promise<Entry[]> {
     return (await this.entryCards.all()).map((card) => new Entry(card));
+  }
+
+  /** The steps, in the order shown. */
+  async steps(): Promise<Entry[]> {
+    return (await this.stepCards.all()).map((card) => new Entry(card));
   }
 }
 
