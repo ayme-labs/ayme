@@ -78,6 +78,10 @@ hand-over.
 
 ## Write the code
 
+In a project with no Playwright set up yet, install `@playwright/test`,
+`tsx`, `typescript` and `@types/node`, and set `"type": "module"` in
+`package.json` and `"types": ["node"]` in `tsconfig.json`.
+
 Write plain Playwright page objects by
 [Page object design](../references/page-object-design.md) and
 [Write page objects from the recording](../SKILL.md#write-page-objects-from-the-recording),
