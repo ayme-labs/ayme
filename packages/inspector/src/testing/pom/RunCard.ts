@@ -43,6 +43,12 @@ export class RunCard extends PanelPart {
     return this.root.getByRole("button", { name: "Run", exact: true });
   }
 
+  /** The mark of a tool marked destructive, before Run, on a card with a head. */
+  @ayme.child
+  get destructiveMark(): Locator {
+    return this.root.locator("[data-destructive-mark]");
+  }
+
   /** Why the tool is unavailable, under its name; absent while it's available. */
   @ayme.child
   get reason(): Locator {

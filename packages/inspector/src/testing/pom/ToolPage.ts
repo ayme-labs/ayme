@@ -25,6 +25,14 @@ export class ToolPage extends PanelPart {
     return this.root.getByRole("heading", { level: 2 });
   }
 
+  /** The mark beside its name of a tool marked destructive. */
+  @ayme.child
+  get destructiveMark(): Locator {
+    return this.root.locator(
+      ":scope > div:first-child > [data-destructive-mark]"
+    );
+  }
+
   /** Its description; a tool without one shows none. */
   @ayme.child
   get description(): Locator {

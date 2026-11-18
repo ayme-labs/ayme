@@ -92,4 +92,13 @@ export class ModelDetailView extends PanelPart {
   offPageAction(name: string): Locator {
     return this.section("Actions").getByRole("group", { name, exact: true });
   }
+
+  /** Whether an off-page action shows the destructive mark. */
+  async offPageActionMarkedDestructive(name: string): Promise<boolean> {
+    return (
+      (await this.offPageAction(name)
+        .locator("[data-destructive-mark]")
+        .count()) > 0
+    );
+  }
 }

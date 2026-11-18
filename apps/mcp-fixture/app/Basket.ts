@@ -9,7 +9,8 @@ const canClear = async (self: Basket) =>
  * A Page Object the page registers and unregisters on demand, so its Page
  * Object Tool comes and goes while a page stays connected. Its `clear`
  * action is available only while the basket has items, so an agent meets
- * an unavailable tool with a reason.
+ * an unavailable tool with a reason, and is marked destructive, so its MCP
+ * tool carries `destructiveHint`.
  */
 @ayme
 export class Basket {
@@ -39,6 +40,7 @@ export class Basket {
   @ayme.action({
     description: "Clear the basket. Needs an item in it.",
     available: canClear,
+    destructive: true,
   })
   async clear() {
     await this.items.evaluateAll((items) =>

@@ -40,6 +40,13 @@ export class ToolsLens extends PanelPart {
     });
   }
 
+  /** Whether a tool's row shows the destructive icon in place of the tool icon. */
+  async markedDestructive(name: string): Promise<boolean> {
+    return (
+      (await this.row(name).locator("[data-destructive-icon]").count()) > 0
+    );
+  }
+
   /** Whether a separator sets a tool's row apart from the rows above it. */
   async separatorBefore(name: string): Promise<boolean> {
     return (await this.row(name).locator("[data-peek-separator]").count()) > 0;

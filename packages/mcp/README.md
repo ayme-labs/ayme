@@ -69,19 +69,27 @@ Page Object Tools appear and disappear as MCP tools while the page registers
 and unregisters its Page Objects and while their Page Objects come and go on
 the page, and the server sends `notifications/tools/list_changed` on every such
 change. Every tool of a Page Object on the page is listed, whether or not its
-action can run now; the MCP tool list changes only when tools appear or
-disappear, never when one becomes available or unavailable, so a cached list
-does not churn. Calling an unavailable tool is refused before anything runs,
+action can run now; the MCP tool list changes when tools appear or disappear
+or when what it shows of one changes, such as its description or its
+annotations, never when one becomes available or unavailable, so a cached
+list does not churn. Calling an unavailable tool is refused before anything runs,
 with an error result that carries its reason, such as `RuntimeStateError:
 Panel.remove is unavailable: No item is selected.`
+
+A Page Object Tool or Custom Tool its author marked `destructive: true` is
+listed with `annotations: { destructiveHint: true }`, here and in
+`ayme_list_tools`. Every other page tool is listed without annotations, which
+MCP reads as possibly destructive. The server runs a marked tool like any
+other; what to do about the mark is the agent's or its harness's choice. See
+[Destructive actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#destructive-actions).
 
 When the page's tools changed since the agent's previous call, the result ends
 with a separate text item such as `The connected tools changed since your
 previous call. Appeared: Basket.readHeading. Became unavailable: Panel.remove
 (No item is selected). ayme_list_tools lists the current tools; ayme_call runs
 any of them.` It lists the tools that appeared or disappeared, the ones that
-kept their name but changed their parameters or description (`Changed:
-SurveyListPage.search (parameters, description).`), and the ones that became
+kept their name but changed their parameters, description or annotations
+(`Changed: SurveyListPage.search (parameters, description).`), and the ones that became
 available or unavailable, with the reason in parentheses when there is one; a
 tool that appears unavailable reads `Appeared: Panel.remove (unavailable: No
 item is selected).` For agents that never re-read the tool

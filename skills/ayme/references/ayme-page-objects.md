@@ -158,6 +158,20 @@ export class ProjectRow extends AppComponent {
 
 Like `present`, keep the predicate to reads.
 
+**`destructive`** marks an action whose effect cannot be undone. Mark an action that deletes, sends, submits, pays or creates something in the real world, such as removing a project, placing an order or signing a contract. Leave unmarked an action the user can take back, such as opening a dialog, filling a form or archiving into a tab they can restore from.
+
+```ts
+export class ProjectRow extends AppComponent {
+  @ayme.action({ available: canRemove, destructive: true })
+  async remove() {
+    await this.removeButton.click();
+    return this;
+  }
+}
+```
+
+An agent gets the mark as the tool's annotation, `destructiveHint` over `ayme mcp` and `consequentialHint` over WebMCP, so it or the harness driving it can stop before the call. Ayme still runs the tool like any other. Write `true` in the decorator itself: the build reads it from source, as it reads `description`. [Destructive actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#destructive-actions) has the details.
+
 ## `@ayme.child`
 
 `@ayme.child` declares one part of a model: a Locator that matches one element, or one Page Object. Only declared parts appear in the model's definition.

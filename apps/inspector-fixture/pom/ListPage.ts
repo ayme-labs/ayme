@@ -60,11 +60,14 @@ export class ListPage {
   }
 
   // Available only while the list has items (ADR-0035): on an empty list
-  // the tool is listed, and a call is refused with this reason.
+  // the tool is listed, and a call is refused with this reason. Marked
+  // destructive, so the Inspector marks it and WebMCP calls it
+  // consequential.
   @ayme.action({
     description: "Remove every item from the list.",
     available: async (self: ListPage) =>
       (await self.items.count()) > 0 || "Nothing to clear",
+    destructive: true,
   })
   async clear() {
     await this.clearButton.click();

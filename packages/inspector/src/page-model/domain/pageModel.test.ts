@@ -780,4 +780,56 @@ describe("the page model", () => {
       },
     ]);
   });
+
+  it("marks a destructive action on its object and on its model, and no other", () => {
+    // ArchiveDialog.confirm is marked; its manifest gives the object's
+    // actions, its definition the model's.
+    const [item, dialog] = manifest.components;
+    const marked: PomManifest = {
+      ...manifest,
+      components: [
+        item!,
+        {
+          ...dialog!,
+          tools: dialog!.tools.map((tool) => ({
+            ...tool,
+            destructive: true as const,
+          })),
+        },
+      ],
+    };
+    const markedDefinitions = definitions.map((definition) =>
+      definition.name === "ArchiveDialog"
+        ? {
+            ...definition,
+            actions: definition.actions.map((action) => ({
+              ...action,
+              destructive: true as const,
+            })),
+          }
+        : definition
+    );
+
+    const { objects, models } = buildPageModel(
+      [{ ...registration(), manifest: marked }],
+      live,
+      markedDefinitions,
+      actionSignature
+    );
+
+    const destructive = (
+      actions: readonly { toolName: string; destructive?: true }[]
+    ) => actions.map(({ toolName, destructive }) => [toolName, destructive]);
+    expect(
+      destructive(objectAt(objects, "TodoPage.archiveDialog").actions)
+    ).toEqual([["ArchiveDialog.confirm", true]]);
+    expect(destructive(objectAt(objects, "TodoPage").actions)).toEqual([
+      ["TodoPage.addItem", undefined],
+    ]);
+    expect(models.flatMap(({ actions }) => destructive(actions))).toEqual([
+      ["TodoPage.addItem", undefined],
+      ["TodoItem.archive", undefined],
+      ["ArchiveDialog.confirm", true],
+    ]);
+  });
 });

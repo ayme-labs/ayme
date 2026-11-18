@@ -80,6 +80,8 @@ export type ObjectAction = {
   signature: string;
   /** Its Page Object Tool. */
   toolName: string;
+  /** Its author marked it destructive: a call cannot be undone. */
+  destructive?: true;
   /**
    * Whether the tool is live: the panel can run it now because its Page
    * Object is on the page. Publication to WebMCP doesn't matter here.
@@ -163,6 +165,7 @@ export function buildPageModel(
         ...describe(toolName, action.description),
         signature: signature(action.parameters),
         toolName,
+        ...(action.destructive ? { destructive: true as const } : {}),
         live: liveToolNames.has(toolName),
       };
     }),
@@ -388,6 +391,7 @@ function actionsAt(
     ...context.describe(action.toolName, action.description),
     signature: context.signature(action.parameters),
     toolName: action.toolName,
+    ...(action.destructive ? { destructive: true as const } : {}),
     live: context.liveToolNames.has(action.toolName),
   }));
 }

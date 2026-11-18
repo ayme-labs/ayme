@@ -221,6 +221,33 @@ it("keeps a present action that is unavailable, with the reason the session give
   });
 });
 
+it("keeps the destructive mark of a Page Object action's registration and of another live tool, on the page and off it", () => {
+  const removeItem = {
+    ...addItem,
+    name: "ListPage.removeItem",
+    destructive: true as const,
+  };
+  const registered = [{ ...listPage, tools: [addItem, removeItem] }];
+  const deleteRecord = {
+    ...markElement,
+    name: "delete_record",
+    destructive: true as const,
+  };
+
+  const onPage = listRunnableTools(registered, [
+    { ...removeItem, available: true },
+    { ...deleteRecord, available: true },
+    { ...markElement, available: true },
+  ]);
+  const offPage = listRunnableTools(registered, []);
+
+  expect(onPage.get("ListPage.removeItem")?.destructive).toBe(true);
+  expect(offPage.get("ListPage.removeItem")?.destructive).toBe(true);
+  expect(onPage.get("delete_record")?.destructive).toBe(true);
+  expect(onPage.get("ListPage.addItem")).not.toHaveProperty("destructive");
+  expect(onPage.get("mark_element")).not.toHaveProperty("destructive");
+});
+
 it("runs every other live tool with its schema, and names its ref argument", () => {
   const tools = listRunnableTools(
     [listPage],
