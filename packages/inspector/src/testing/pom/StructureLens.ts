@@ -8,20 +8,25 @@ import { PanelPart } from "./PanelPart";
  * nodes, each tagged with the Page Object member it maps to.
  */
 export class StructureLens extends PanelPart {
-  @ayme.child
-  readonly tree: Locator;
-  /** Every row: nodes with a ref, and text. */
-  @ayme.collection
-  readonly rows: Locator;
-  /** Why the structure could not be captured. */
-  @ayme.child
-  readonly error: Locator;
-
   constructor(navigator: Locator) {
     super(navigator);
-    this.tree = navigator.getByRole("tree", { name: "Page structure" });
-    this.rows = this.tree.getByRole("treeitem");
-    this.error = navigator.getByRole("alert");
+  }
+
+  @ayme.child
+  get tree(): Locator {
+    return this.root.getByRole("tree", { name: "Page structure" });
+  }
+
+  /** Every row: nodes with a ref, and text. */
+  @ayme.collection
+  get rows(): Locator {
+    return this.tree.getByRole("treeitem");
+  }
+
+  /** Why the structure could not be captured. */
+  @ayme.child
+  get error(): Locator {
+    return this.root.getByRole("alert");
   }
 
   /** A node, by its ref. Hovering highlights it on the page. */

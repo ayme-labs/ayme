@@ -7,11 +7,11 @@ import type { Locator, Page } from "@playwright/test";
  */
 @ayme
 export class PlainPage {
-  @ayme.child
-  readonly note: Locator;
+  constructor(private readonly page: Page) {}
 
-  constructor(page: Page) {
-    this.note = page.getByText("does not run Ayme");
+  @ayme.child
+  get note(): Locator {
+    return this.page.getByText("does not run Ayme");
   }
 
   @ayme.action({ description: "Read the page's note." })

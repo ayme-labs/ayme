@@ -416,7 +416,9 @@ describe("Goal Loop goal in Chromium", () => {
   async function registerPom(goalLoop: GoalLoopDecisionFunction) {
     setupDom();
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       save() {
         (document.querySelector("#save") as HTMLButtonElement).click();
       }
@@ -434,7 +436,9 @@ describe("Goal Loop goal in Chromium", () => {
   async function registerPomWithParam(goalLoop: GoalLoopDecisionFunction) {
     setupDom();
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       fill(value: string) {
         (document.querySelector("#name") as HTMLInputElement).value = value;
       }
@@ -455,7 +459,9 @@ describe("Goal Loop goal in Chromium", () => {
   ) {
     setupDom();
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       fail() {
         throw thrown;
       }
@@ -794,7 +800,9 @@ describe("Goal Loop goal in Chromium", () => {
       setupDom();
       const calls: unknown[][] = [];
       class App {
-        root = page.locator("main");
+        get root() {
+          return page.locator("main");
+        }
         create(name: string, description?: string) {
           calls.push([name, description]);
         }
@@ -862,7 +870,9 @@ describe("Goal Loop goal in Chromium", () => {
       setupDom();
       const calls: unknown[][] = [];
       class App {
-        root = page.locator("main");
+        get root() {
+          return page.locator("main");
+        }
         rate(name: string, stars?: number) {
           calls.push([name, stars]);
         }
@@ -919,7 +929,9 @@ describe("Goal Loop goal in Chromium", () => {
       setupDom();
       const calls: unknown[][] = [];
       class App {
-        root = page.locator("main");
+        get root() {
+          return page.locator("main");
+        }
         order(quantity: number, price: number) {
           calls.push([quantity, price]);
         }
@@ -1144,7 +1156,9 @@ describe("Goal Loop goal in Chromium", () => {
       setupDom();
       const calls: unknown[] = [];
       class App {
-        root = page.locator("main");
+        get root() {
+          return page.locator("main");
+        }
         tag(labels?: string[]) {
           calls.push(labels);
         }
@@ -1201,7 +1215,9 @@ describe("Goal Loop goal in Chromium", () => {
       setupDom();
       const calls: unknown[] = [];
       class App {
-        root = page.locator("main");
+        get root() {
+          return page.locator("main");
+        }
         tag(labels: ("urgent" | "later")[]) {
           calls.push(labels);
         }
@@ -1369,7 +1385,9 @@ describe("Goal Loop goal in Chromium", () => {
   async function registerPageChangingPom(goalLoop: GoalLoopDecisionFunction) {
     setupDom();
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       add() {
         clickCount++;
         const row = document.createElement("div");
@@ -1657,7 +1675,9 @@ describe("Goal Loop goal in Chromium", () => {
   async function registerCombinedPom(goalLoop: GoalLoopDecisionFunction) {
     setupDom();
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       save() {
         (document.querySelector("#save") as HTMLButtonElement).click();
       }
@@ -1727,7 +1747,9 @@ describe("Goal Loop goal in Chromium", () => {
       document.querySelector("main")!.appendChild(banner);
     });
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       save() {
         (document.querySelector("#save") as HTMLButtonElement).click();
       }
@@ -1769,7 +1791,9 @@ describe("Goal Loop goal in Chromium", () => {
       </main>
     `;
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       save() {
         const banner = document.createElement("div");
         banner.setAttribute("role", "alert");
@@ -1822,7 +1846,9 @@ describe("Goal Loop goal in Chromium", () => {
   it("cuts a long Change Record in the history entry, and keeps it whole in the run result", async () => {
     document.body.innerHTML = `<main><h1>Import</h1><ul></ul></main>`;
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       fill() {
         const list = document.querySelector("ul")!;
         for (let i = 0; i < 40; i++) {
@@ -1861,7 +1887,9 @@ describe("Goal Loop goal in Chromium", () => {
   it("records what a failed step changed under changes, cut, and its error alone as the result", async () => {
     document.body.innerHTML = `<main><h1>Import</h1><ul></ul></main>`;
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       fill() {
         const list = document.querySelector("ul")!;
         for (let i = 0; i < 40; i++) {
@@ -2733,7 +2761,9 @@ describe("Goal Loop goal in Chromium", () => {
     setupDom();
     const calls: unknown[][] = [];
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       configure(mode: string, confirm: boolean) {
         calls.push([mode, confirm]);
       }
@@ -2798,7 +2828,9 @@ describe("Goal Loop goal in Chromium", () => {
     setupDom();
     const calls: unknown[][] = [];
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       sort(order?: string) {
         calls.push([order]);
       }
@@ -3645,7 +3677,9 @@ describe("Goal Loop goal in Chromium", () => {
   ) {
     setupDom();
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       pick(value?: unknown) {
         calls.push([value]);
       }

@@ -7,18 +7,6 @@ import { WhatTheModelSees } from "./WhatTheModelSees";
 
 /** A tool's page in the detail pane. */
 export class ToolPage extends PanelPart {
-  /** The tool's name. */
-  @ayme.child
-  readonly title: Locator;
-  /** Its description; a tool without one shows none. */
-  @ayme.child
-  readonly description: Locator;
-  /** What kind of tool it is, e.g. "Browser tool" or "Node Peek tool". */
-  @ayme.child
-  readonly kind: Locator;
-  /** A Page object tool's link to its Page Object Model. */
-  @ayme.child
-  readonly modelLink: Locator;
   @ayme.child
   readonly modelSees: WhatTheModelSees;
   /** The tool's run card. */
@@ -27,14 +15,32 @@ export class ToolPage extends PanelPart {
 
   constructor(detail: Locator) {
     super(detail.locator("article[data-tool-page]"));
-    this.title = this.root.getByRole("heading", { level: 2 });
-    this.description = this.root.locator(":scope > p");
-    this.kind = this.root.locator("[data-tool-kind]");
-    this.modelLink = this.root.getByRole("button", {
-      name: /page object model$/,
-    });
     this.modelSees = new WhatTheModelSees(this.root);
     this.card = new RunCard(this.root.getByRole("form"));
+  }
+
+  /** The tool's name. */
+  @ayme.child
+  get title(): Locator {
+    return this.root.getByRole("heading", { level: 2 });
+  }
+
+  /** Its description; a tool without one shows none. */
+  @ayme.child
+  get description(): Locator {
+    return this.root.locator(":scope > p");
+  }
+
+  /** What kind of tool it is, e.g. "Browser tool" or "Node Peek tool". */
+  @ayme.child
+  get kind(): Locator {
+    return this.root.locator("[data-tool-kind]");
+  }
+
+  /** A Page object tool's link to its Page Object Model. */
+  @ayme.child
+  get modelLink(): Locator {
+    return this.root.getByRole("button", { name: /page object model$/ });
   }
 
   /** Its description's text, or "" for a tool without one. */

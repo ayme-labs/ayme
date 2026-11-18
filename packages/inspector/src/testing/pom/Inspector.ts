@@ -20,15 +20,6 @@ import type { RunCard } from "./RunCard";
  */
 @ayme
 export class Inspector {
-  /**
-   * The Inspector's themed container inside its shadow root. Not `root`: a
-   * Page Object Root must be visible for its tools to be live, and this
-   * element has no size of its own.
-   */
-  readonly container: Locator;
-  /** The expanded panel. */
-  @ayme.child
-  readonly panel: Locator;
   @ayme.child
   readonly shell: PanelShell;
   @ayme.child
@@ -53,16 +44,9 @@ export class Inspector {
    *   open root it owns.
    */
   constructor(
-    page: Page,
-    container: Locator = page.locator(
-      `${INSPECTOR_SELECTOR_ENGINE}=[data-ayme-inspector-root]`
-    )
+    private readonly page: Page,
+    private readonly mountedIn?: Locator
   ) {
-    this.container = container;
-    this.panel = this.container.getByRole("complementary", {
-      name: "ayme",
-      exact: true,
-    });
     this.shell = new PanelShell(this.panel);
     this.header = new InspectorHeader(
       // The panel header, inside the frame that clips the panel's content.
@@ -80,6 +64,29 @@ export class Inspector {
     );
     this.runs = new RunsView(this.panel.getByRole("region", { name: "Runs" }));
     this.structure = new StructureLens(this.navigator.root);
+  }
+
+  /**
+   * The Inspector's themed container inside its shadow root. Not `root`: a
+   * Page Object Root must be visible for its tools to be live, and this
+   * element has no size of its own.
+   */
+  get container(): Locator {
+    return (
+      this.mountedIn ??
+      this.page.locator(
+        `${INSPECTOR_SELECTOR_ENGINE}=[data-ayme-inspector-root]`
+      )
+    );
+  }
+
+  /** The expanded panel. */
+  @ayme.child
+  get panel(): Locator {
+    return this.container.getByRole("complementary", {
+      name: "ayme",
+      exact: true,
+    });
   }
 
   /** Expands the panel if it is collapsed to the logo. */
