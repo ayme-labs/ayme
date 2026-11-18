@@ -220,7 +220,11 @@ for (const placement of placements) {
       await expect.poll(() => run.status()).toBe("Failed");
       // The panel shows the error an agent gets for the same call. Its call
       // log varies with timing, so the first line is compared.
-      expect(firstLine((await run.read())?.error)).toBe(firstLine(agentError));
+      // The error shows just after the status: wait for it, as Playwright's
+      // `textContent()` waits for the element.
+      await expect
+        .poll(async () => firstLine((await run.read())?.error))
+        .toBe(firstLine(agentError));
     });
 
     test("a Custom Tool runs from the panel and shows in Runs", async ({
@@ -394,6 +398,10 @@ plainTest(
     const run = inspector.runs.latest("ListPage.addItem");
     await expect.poll(async () => (await run.read())?.earlierPage).toBe(false);
     await expect.poll(() => run.status()).toBe("Failed");
-    expect(firstLine((await run.read())?.error)).toBe(firstLine(agentError));
+    // The error shows just after the status: wait for it, as Playwright's
+    // `textContent()` waits for the element.
+    await expect
+      .poll(async () => firstLine((await run.read())?.error))
+      .toBe(firstLine(agentError));
   }
 );
