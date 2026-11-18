@@ -214,7 +214,10 @@ call.
 
 A snapshot holds the refs of its own visit, written as the package
 writes them, such as `[__playwright_aria_ref__="f1e45"]`. A click that leaves
-the page has no `after` snapshot: its result is the next visit's baseline. An
+the page has no `after` snapshot: its result is the next visit's baseline.
+When a click changes the view without leaving the page, the elements it
+replaced are gone from its `after` snapshot: read a ref from the snapshot of
+an interaction that targets it, or of one before the change. An
 `s_*` ref is the recorder's own and is not in the trace: reach that element
 from its nearest ancestor with an `e` ref, such as
 `[__playwright_aria_ref__="e58"] img`.
