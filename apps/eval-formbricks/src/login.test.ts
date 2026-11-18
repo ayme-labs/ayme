@@ -55,6 +55,9 @@ describe("isUsageLimitText", () => {
       "This service is disabled for your org",
       "Fable 5 requires usage credits. Switch to another model, or manage usage credits at claude.ai/settings/usage?from=cc_cli_limit_message, to continue.",
       "Fable 5 requires usage credits. /model to switch models.",
+      "Sonnet 5.5 requires usage credits. Switch to another model, or manage usage credits at claude.ai/settings/usage, to continue.",
+      "Haiku 5.5 requires usage credits. /model to switch models.",
+      "You've hit your team's pooled group budget · an org owner or channel manager can raise it in the channel's Claude settings",
       "API Error: Usage credits required for 1M context · run /usage-credits to turn them on (they take effect in a new session), or /model sonnet to switch to standard context",
     ])
       expect(isUsageLimitText(text), text).toBe(true);
@@ -71,6 +74,8 @@ describe("isUsageLimitText", () => {
       "Done. You've hit your target.",
       "I told you: You've hit your weekly limit",
       "I told you: Fable 5 requires usage credits.",
+      "I told you: Haiku 5.5 requires usage credits.",
+      "Fast mode requires usage credits. Run /usage-credits to continue.",
       "I told you: Credit balance is too low",
       "Your organization has disabled Claude subscription access for Claude Code · Use an Anthropic API key instead, or ask your admin to enable access",
       "Your account is on hold and can't sign in to Claude Code. View details or appeal: https://claude.ai/appeal",
