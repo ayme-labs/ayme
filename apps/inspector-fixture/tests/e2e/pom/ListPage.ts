@@ -16,6 +16,14 @@ export class ListPage {
     return this.tab.on((screen) => screen.getByRole("button", "Add item"));
   }
 
+  // The Inspector's Runs view has a "Clear" button too, so the page's own is
+  // the one in main.
+  get clearButton(): On {
+    return this.tab.on((screen) =>
+      screen.getByRole("main").getByRole("button", "Clear")
+    );
+  }
+
   get urgentCheckbox(): On {
     return this.tab.on((screen) => screen.getByRole("checkbox", "Urgent"));
   }

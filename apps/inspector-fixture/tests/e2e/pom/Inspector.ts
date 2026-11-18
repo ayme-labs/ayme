@@ -63,6 +63,52 @@ async function panelTexts(tab: Tab, selector: string): Promise<string[]> {
   }, selector);
 }
 
+/**
+ * Drags `handle` by a distance in pixels with the mouse. The Playwright Page
+ * Objects dispatch pointer events on the handle; e2e's `swipe` moves the real
+ * mouse, which the panel's pointer handlers receive the same way.
+ */
+async function dragBy(handle: On, deltaX: number, deltaY: number, tab: Tab) {
+  const box = await (await handle.front()).boundingBox();
+  if (!box) throw new Error("The drag handle is not visible.");
+  const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await tab.screen.swipe({
+    from,
+    to: { x: from.x + deltaX, y: from.y + deltaY },
+  });
+}
+
+/** Computed styles host CSS would change if it leaked in, of one element inside the Inspector. */
+export type Look = Record<string, string>;
+
+/** The computed `look` of the first element `selector` matches inside the Inspector, read through its mount's test hook. */
+export async function panelLook(
+  tab: Tab,
+  selector: string,
+  properties: readonly string[]
+): Promise<Look | null> {
+  await tab.front();
+  return tab.browser.evaluate(
+    ({ selector, properties }: { selector: string; properties: string[] }) => {
+      const key = Symbol.for("@ayme-dev/inspector/shadow-root");
+      for (const host of document.querySelectorAll(
+        "[data-ayme-inspector-host]"
+      )) {
+        const match = (
+          host as unknown as Record<symbol, ShadowRoot | undefined>
+        )[key]?.querySelector(selector);
+        if (!match) continue;
+        const style = getComputedStyle(match);
+        return Object.fromEntries(
+          properties.map((name) => [name, style.getPropertyValue(name)])
+        );
+      }
+      return null;
+    },
+    { selector, properties: [...properties] }
+  );
+}
+
 /** The text of the first element `selector` matches, as `panelTexts` reads it. */
 async function panelText(tab: Tab, selector: string): Promise<string | null> {
   return (await panelTexts(tab, selector))[0] ?? null;
@@ -72,6 +118,16 @@ async function panelText(tab: Tab, selector: string): Promise<string | null> {
 export class StructureLens extends Part {
   private tree(root: Locator) {
     return root.getByRole("tree", "Page structure");
+  }
+
+  /** The tree's text, as the DOM has it. */
+  async treeText(): Promise<string> {
+    return (
+      (await panelText(
+        this.tab,
+        '[role="tree"][aria-label="Page structure"]'
+      )) ?? ""
+    );
   }
 
   /** The node tagged with a Page Object member, e.g. "ListPage.addItemButton". */
@@ -214,6 +270,16 @@ export class Navigator extends Part {
 
   get searchBox(): On {
     return this.on((root) => root.getByRole("searchbox"));
+  }
+
+  /** A search result, by its label. */
+  result(label: string): On {
+    return this.on((root) =>
+      root
+        .getByRole("list", "Search results")
+        .getByRole("button")
+        .filter({ hasText: label })
+    );
   }
 
   /** An item of the active lens's tree, by its text. */
@@ -780,6 +846,10 @@ export class RunsView extends Part {
     );
   }
 
+  get clearButton(): On {
+    return this.on((root) => root.getByRole("button", "Clear"));
+  }
+
   /** Shows the selection's runs, e.g. "This object". */
   async showSelection() {
     await this.on((root) =>
@@ -795,14 +865,162 @@ export class RunsView extends Part {
   }
 }
 
-/** The panel's header. */
+export type PanelEdge = "left" | "right" | "top" | "bottom";
+export type PanelCorner =
+  "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+/** The panel's frame: its box and its resize handles. */
+export class PanelShell extends Part {
+  resizeHandle(handle: PanelEdge | PanelCorner): On {
+    const kind = handle.includes("-") ? "corner" : "edge";
+    return this.on((root) =>
+      root.getByRole("separator", `Resize from the ${handle} ${kind}`)
+    );
+  }
+
+  /** Resizes the panel from one edge or corner by a distance in pixels. */
+  async resizeBy(
+    handle: PanelEdge | PanelCorner,
+    deltaX: number,
+    deltaY: number
+  ) {
+    await dragBy(this.resizeHandle(handle), deltaX, deltaY, this.tab);
+  }
+
+  async box() {
+    const box = await (await this.on((root) => root).front()).boundingBox();
+    if (!box) throw new Error("The panel is not visible.");
+    return box;
+  }
+}
+
+export type ThemeChoice = "System" | "Light" | "Dark";
+export type LayoutChoice =
+  "Floating" | "Dock left" | "Dock right" | "Dock to bottom";
+
+/** The theme switch: System, Light, Dark, in turn. */
+export class ThemeSwitch extends Part {
+  get button(): On {
+    return this.on((root) => root.getByRole("button", { name: /^Theme: / }));
+  }
+
+  async current(): Promise<ThemeChoice> {
+    const name = (await this.button.getAttribute("aria-label")) ?? "";
+    const current = /^Theme: (\w+)\./.exec(name)?.[1];
+    if (current !== "System" && current !== "Light" && current !== "Dark")
+      throw new Error(`The theme switch reads "${name}".`);
+    return current;
+  }
+}
+
+/** The layout menu: floating, or docked to a side. It opens in the Inspector's portal. */
+export class LayoutMenu extends Part {
+  get trigger(): On {
+    return this.on((root) => root.getByRole("button", { name: /^Layout: / }));
+  }
+
+  get menu(): On {
+    // Named after its trigger, e.g. "Layout: Floating". Playwright's
+    // `{ name: "Layout" }` matched that as a substring; e2e matches whole names.
+    return this.tab.on((screen) =>
+      screen.getByRole("menu", { name: /^Layout: / })
+    );
+  }
+
+  async current(): Promise<LayoutChoice> {
+    const name = (await this.trigger.getAttribute("aria-label")) ?? "";
+    return name.replace(/^Layout: /, "") as LayoutChoice;
+  }
+
+  option(choice: LayoutChoice): On {
+    return this.menu.within((menu) => menu.getByRole("menuitemradio", choice));
+  }
+
+  async choose(choice: LayoutChoice) {
+    await this.trigger.click();
+    await this.option(choice).click();
+  }
+}
+
+/** One row of the Connections popover: how one kind of agent reaches the page. */
+export class ConnectionRow {
+  constructor(
+    private readonly tab: Tab,
+    private readonly name: string
+  ) {}
+
+  /** The row, a region in the popover. */
+  get root(): On {
+    return this.tab.on((screen) =>
+      screen.getByRole("dialog", "Connections").getByRole("region", this.name)
+    );
+  }
+
+  /** Its state, e.g. "Published": the last text of its head, with no role of its own. */
+  get state(): On {
+    return this.tab.css(
+      `section[aria-label=${JSON.stringify(this.name)}] > div > span:last-child`
+    );
+  }
+}
+
+/** The Connections pill in the header, and the popover it opens. */
+export class Connections extends Part {
+  readonly agent = new ConnectionRow(this.tab, "Agent");
+  readonly webMCP = new ConnectionRow(this.tab, "WebMCP");
+
+  get pill(): On {
+    return this.on((root) =>
+      root.getByRole("button", { name: /^Connections: / })
+    );
+  }
+
+  async open() {
+    if ((await this.pill.getAttribute("aria-expanded")) !== "true")
+      await this.pill.click();
+  }
+}
+
+/** The panel's header: the title, Connections, the theme, layout and collapse. */
 export class InspectorHeader extends Part {
+  readonly connections = new Connections(this.tab, this.root);
+  readonly themeSwitch = new ThemeSwitch(this.tab, this.root);
+  readonly layoutMenu = new LayoutMenu(this.tab, this.root);
+
   get title(): On {
     return this.on((root) => root.getByRole("heading", "ayme"));
+  }
+
+  get collapseButton(): On {
+    return this.on((root) => root.getByRole("button", "Collapse inspector"));
+  }
+
+  async collapse() {
+    await this.collapseButton.click();
+  }
+
+  /** Drags the panel by its header. */
+  async dragBy(deltaX: number, deltaY: number) {
+    await dragBy(this.title, deltaX, deltaY, this.tab);
+  }
+}
+
+/** The collapsed Inspector: the ayme logo, which opens the panel. */
+export class CollapsedLogo {
+  constructor(private readonly tab: Tab) {}
+
+  get root(): On {
+    return this.tab.on((screen) => screen.getByRole("button", "Open ayme"));
+  }
+
+  async open() {
+    await this.root.click();
   }
 }
 
 export class Inspector {
+  readonly shell: PanelShell;
+  readonly logo: CollapsedLogo;
   readonly header: InspectorHeader;
   readonly navigator: Navigator;
   /** The Structure lens's tree, in the navigator. */
@@ -810,7 +1028,9 @@ export class Inspector {
   readonly detail: DetailPane;
   readonly runs: RunsView;
 
-  constructor(private readonly tab: Tab) {
+  constructor(readonly tab: Tab) {
+    this.shell = new PanelShell(tab, panelOf);
+    this.logo = new CollapsedLogo(tab);
     this.header = new InspectorHeader(tab, panelOf);
     this.navigator = new Navigator(tab, (screen) =>
       panelOf(screen).getByRole("navigation", "Navigator")
@@ -822,6 +1042,23 @@ export class Inspector {
     this.runs = new RunsView(tab, (screen) =>
       panelOf(screen).getByRole("region", "Runs")
     );
+  }
+
+  /** The expanded panel. */
+  get panel(): On {
+    return this.tab.on(panelOf);
+  }
+
+  /**
+   * The Inspector's themed container inside its shadow root, which holds
+   * the panel and its portal. It has no role or name.
+   */
+  get container(): On {
+    return this.tab.css("[data-ayme-inspector-root]");
+  }
+
+  async collapse() {
+    await this.header.collapse();
   }
 
   /** Expands the panel if it is collapsed to the logo. */
