@@ -73,7 +73,7 @@ type Harness = {
   readonly page: Page;
   /** A person at the recorded browser: raw input over that connection, so
    * that it is no call of the Playwright under test. */
-  click(target: Locator): Promise<void>;
+  click(target: Locator, button?: "left" | "right"): Promise<void>;
   /** Closes the layer's scope, as the end of a recorder does. */
   letGo(): Promise<void>;
 };
@@ -152,12 +152,17 @@ async function onStockPlaywright(html: string): Promise<Harness> {
     .find((candidate) => candidate.url() === url);
   if (!page) throw new Error(`No page at ${url} in the recorded browser.`);
   const session = await page.context().newCDPSession(page);
-  const mouse = (type: string, at: { x: number; y: number }, buttons: number) =>
+  const mouse = (
+    type: string,
+    at: { x: number; y: number },
+    buttons: number,
+    button: "left" | "right" = "left"
+  ) =>
     session.send("Input.dispatchMouseEvent", {
       type: type as "mouseMoved",
       x: at.x,
       y: at.y,
-      button: type === "mouseMoved" ? "none" : "left",
+      button: type === "mouseMoved" ? "none" : button,
       buttons,
       clickCount: 1,
       pointerType: "mouse",
@@ -177,12 +182,12 @@ async function onStockPlaywright(html: string): Promise<Harness> {
       return found()!;
     },
     page,
-    async click(target) {
+    async click(target, button = "left") {
       const box = (await target.boundingBox())!;
       const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
       await mouse("mouseMoved", at, 0);
-      await mouse("mousePressed", at, 1);
-      await mouse("mouseReleased", at, 0);
+      await mouse("mousePressed", at, button === "left" ? 1 : 2, button);
+      await mouse("mouseReleased", at, 0, button);
     },
     letGo: () => runtime.dispose(),
   };
@@ -492,6 +497,39 @@ it("tells of a held click whose document is gone, and never sends it to the next
   await browser.toldOf("inputGone", (gone) => gone.input === input);
   expect(browser.told.map(({ kind }) => kind)).not.toContain("inputPassedOn");
   expect(await browser.page.evaluate("window.clicks")).toBe(0);
+});
+
+it("holds a right-click by its context menu event until it is sent on: the page then gets it once, and Playwright reports a click of the right button", async () => {
+  const browser = await onStockPlaywright(`${BUTTONS}
+    <script>
+      window.events = [];
+      for (const type of ["contextmenu", "auxclick", "click"])
+        document.addEventListener(type, (event) => {
+          event.preventDefault();
+          window.events.push(type + " " + event.button);
+        });
+    </script>`);
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+
+  await browser.click(browser.page.locator("#second"), "right");
+  const { input } = await browser.toldOf("inputHeld");
+  // The release reaches the page as it comes; the context menu event waits.
+  expect(await browser.page.evaluate("window.events")).toEqual(["auxclick 2"]);
+  await browser.ask({ kind: "passOn", input });
+  await browser.toldOf("inputPassedOn", (told) => told.input === input);
+
+  expect(await browser.page.evaluate("window.events")).toEqual([
+    "auxclick 2",
+    "contextmenu 2",
+  ]);
+  const { report } = await browser.toldOf("interactionReported");
+  expect(report).toMatchObject({
+    type: "click",
+    selector: expect.stringContaining("Second"),
+    values: { button: "right" },
+  });
 });
 
 // Attaching.

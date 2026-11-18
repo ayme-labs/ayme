@@ -122,7 +122,10 @@ would show `<changed> [ref=e4] button "Cart, 2 items"` instead.
 An interaction names its target by `targetRef`, a node in the visit's baseline
 tree or one `<added>` earlier in the same visit, or a node a discarded change
 added; [Discarded entries](#discarded-entries) says how to read that one. Its
-other fields, such as a fill's `text`, are the values the user entered.
+other fields, such as a fill's `text`, are the values the user entered. A
+click's `button` says which mouse button it was: `left`, or `right` for a
+right-click, which the user made to open a menu; its `clickCount` is 2 for a
+double click.
 
 ```text
 interaction:
@@ -133,10 +136,12 @@ interaction:
   text: standard_user
 ```
 
-`targetRef` and `targetSelector` can name different elements. When the
-element the user acted on is not in the tree, such as an icon inside a
-button, `targetRef` is its nearest ancestor the tree lists, while
-`targetSelector` still names the element itself. An `assert*` interaction
+`targetRef` and `targetSelector` name the element the user acted on: for a
+click on the text or an icon inside a link or a button, the link or the
+button. They can name different elements when that element is not in the
+tree, such as a decoration with no role: `targetRef` is then its nearest
+ancestor the tree lists, while `targetSelector` still names the element
+itself. An `assert*` interaction
 names the element the user picked in the same way. `targetRef` is `null` with
 the selector present when a key was pressed while nothing on the page had
 focus, as the key then goes to the page's body, which the tree does not list.

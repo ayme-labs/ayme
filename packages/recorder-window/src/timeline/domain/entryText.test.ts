@@ -13,6 +13,13 @@ const interaction = (details: Record<string, unknown>) => ({
 describe("how an Interaction reads in the window", () => {
   it("names a click", () => {
     expect(interactionTitle(interaction({}))).toBe("Click");
+    expect(interactionTitle(interaction({ button: "left" }))).toBe("Click");
+  });
+
+  it("names a click of the right button a right-click", () => {
+    expect(interactionTitle(interaction({ button: "right" }))).toBe(
+      "Right-click"
+    );
   });
 
   it("names a key press with its key and typing with its text", () => {

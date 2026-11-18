@@ -45,6 +45,10 @@
       const code = document.getElementById("code");
       code.addEventListener("click", tell("Code opened"));
       code.addEventListener("dblclick", tell("Code opened twice"));
+      code.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        said.textContent = "Code menu";
+      });
     </script>
   </body>
 </html>

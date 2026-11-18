@@ -25,7 +25,7 @@ const targetsOf = (text: string) =>
     }));
 
 test.describe("the element a step acted on", () => {
-  test("a click inside a link or a button names the link or the button, as Playwright's selector does, whether the page structure lists the element clicked or not; so does a double click", async ({
+  test("a click inside a link or a button names the link or the button, as Playwright's selector does, whether the page structure lists the element clicked or not; so do a double click and a right-click", async ({
     startRecording,
   }) => {
     const recording = await startRecording("/nested.html");
@@ -47,6 +47,18 @@ test.describe("the element a step acted on", () => {
     await person.doubleClick(nested.codeText);
     await expect(nested.said).toHaveText("Code opened twice");
     await person.pause();
+    const at = await person.middleOf(nested.codeText);
+    const mouse = await page.context().newCDPSession(page);
+    for (const type of ["mousePressed", "mouseReleased"] as const)
+      await mouse.send("Input.dispatchMouseEvent", {
+        type,
+        ...at,
+        button: "right",
+        buttons: type === "mousePressed" ? 2 : 0,
+        clickCount: 1,
+      });
+    await expect(nested.said).toHaveText("Code menu");
+    await person.pause();
 
     expect(await recorder.send({ type: "finish" })).toBe("applied");
     const outcome = await recorder.done;
@@ -62,6 +74,7 @@ test.describe("the element a step acted on", () => {
       { type: "click", button: "left", targetRef: code },
       // The double click, reported once.
       { type: "click", button: "left", targetRef: code },
+      { type: "click", button: "right", targetRef: code },
     ]);
   });
 });

@@ -19,6 +19,8 @@ export type HeldByPage =
       readonly y: number;
       /** The click's count: 2 for the second click of a double click. */
       readonly detail: number;
+      /** The button, the left one when it is not said. */
+      readonly button?: "right";
       readonly modifiers: readonly Modifier[];
       /** The document it was held in. */
       readonly document: string;
@@ -133,15 +135,20 @@ export function recordersOwn(localName: string): boolean {
   return localName.startsWith("ayme-recorder-");
 }
 
-/** Whether the gate holds a click back: the left button's, with a count (a
- * click with none is a key's or a label's), on a target it does not leave
- * alone. */
+/** Whether the gate holds a click back, on a target it does not leave
+ * alone: the left button's click, with a count (a click with none is a
+ * key's or a label's), and the right button's context menu event, which
+ * Playwright records a right-click by. A context menu a key opened is the
+ * page's. */
 export function clickHeld(click: {
+  readonly type: string;
   readonly button: number;
   readonly detail: number;
   readonly target: ClickTarget;
 }): boolean {
-  return click.button === 0 && click.detail !== 0 && !leftAlone(click.target);
+  if (leftAlone(click.target)) return false;
+  if (click.type === "contextmenu") return click.button === 2;
+  return click.button === 0 && click.detail !== 0;
 }
 
 /** The modifier keys held with an input, in a fixed order. */
@@ -167,6 +174,12 @@ export type PassingOn = {
   readonly seen: readonly string[];
 };
 
+/** The event of a click sent on that reaches the page: the click, or the
+ * context menu event of a right-click. */
+export function arrivingEvent(button: "right" | undefined): string {
+  return button === "right" ? "contextmenu" : "click";
+}
+
 /**
  * Whether an event is of the click the gate sends on: at its place, within
  * a pixel, with its count, and of a type not seen of it yet. A pointer
@@ -185,15 +198,25 @@ export function replayed(
   if (!passing || passing.seen.includes(event.type)) return false;
   if (Math.abs(event.x - passing.x) >= 1) return false;
   if (Math.abs(event.y - passing.y) >= 1) return false;
-  return event.type.startsWith("pointer") || event.detail === passing.detail;
+  // A pointer event has no count, and browsers count a context menu
+  // event apart.
+  return (
+    event.type.startsWith("pointer") ||
+    event.type === "contextmenu" ||
+    event.detail === passing.detail
+  );
 }
 
 /** What becomes of an event of the click sent on. Its press and its release
  * already reached the page once, from the person: they are stopped, and
- * the press also cancelled; its click arrives. */
-export function replayedEffect(type: string): "swallow" | "stop" | "arrive" {
+ * the press also cancelled; the event that `arrives` reaches the page, its
+ * click or a right-click's context menu event. */
+export function replayedEffect(
+  type: string,
+  arrives = "click"
+): "swallow" | "stop" | "arrive" {
   if (type === "mousedown") return "swallow";
-  return type === "click" ? "arrive" : "stop";
+  return type === arrives ? "arrive" : "stop";
 }
 
 /**
@@ -265,7 +288,10 @@ export function mouseRoute(
   if (gate.replayed) return "passOn";
   if (!gate.on && !gate.holding) return "noteOnly";
   if (event.type === "dblclick") return "doubleClick";
-  return event.type === "click" ? "click" : "noteOnly";
+  // A right-click is held by its context menu event.
+  return event.type === "click" || event.type === "contextmenu"
+    ? "click"
+    : "noteOnly";
 }
 
 /** What the gate does with a key event: leaves it alone, takes its release,
@@ -387,6 +413,7 @@ export type GateRules = {
   readonly modifiersOf: typeof modifiersOf;
   readonly replayed: typeof replayed;
   readonly replayedEffect: typeof replayedEffect;
+  readonly arrivingEvent: typeof arrivingEvent;
   readonly gateStartsOn: typeof gateStartsOn;
   readonly mouseRoute: typeof mouseRoute;
   readonly keyRoute: typeof keyRoute;

@@ -147,23 +147,63 @@ describe("which click the gate holds back", () => {
   const button = { nodeName: "BUTTON", inputType: "" };
 
   it("holds the left button's click on an element", () => {
-    expect(clickHeld({ button: 0, detail: 1, target: button })).toBe(true);
-    expect(clickHeld({ button: 0, detail: 2, target: button })).toBe(true);
+    expect(
+      clickHeld({ type: "click", button: 0, detail: 1, target: button })
+    ).toBe(true);
+    expect(
+      clickHeld({ type: "click", button: 0, detail: 2, target: button })
+    ).toBe(true);
   });
 
   it("leaves other buttons, a click with no count, and targets Playwright leaves alone to the page", () => {
-    expect(clickHeld({ button: 2, detail: 1, target: button })).toBe(false);
-    expect(clickHeld({ button: 1, detail: 1, target: button })).toBe(false);
+    expect(
+      clickHeld({ type: "click", button: 2, detail: 1, target: button })
+    ).toBe(false);
+    expect(
+      clickHeld({ type: "click", button: 1, detail: 1, target: button })
+    ).toBe(false);
     // A key's or a label's click.
-    expect(clickHeld({ button: 0, detail: 0, target: button })).toBe(false);
+    expect(
+      clickHeld({ type: "click", button: 0, detail: 0, target: button })
+    ).toBe(false);
     expect(
       clickHeld({
+        type: "click",
         button: 0,
         detail: 1,
         target: { nodeName: "SELECT", inputType: "" },
       })
     ).toBe(false);
-    expect(clickHeld({ button: 0, detail: 1, target: null })).toBe(false);
+    expect(
+      clickHeld({ type: "click", button: 0, detail: 1, target: null })
+    ).toBe(false);
+  });
+});
+
+describe("which right-click the gate holds back", () => {
+  const button = { nodeName: "BUTTON", inputType: "" };
+
+  it("holds the right button's context menu event, which Playwright records a right-click by, whatever its count", () => {
+    expect(
+      clickHeld({ type: "contextmenu", button: 2, detail: 0, target: button })
+    ).toBe(true);
+    expect(
+      clickHeld({ type: "contextmenu", button: 2, detail: 1, target: button })
+    ).toBe(true);
+  });
+
+  it("leaves a context menu a key opened, and one on a target Playwright leaves alone, to the page", () => {
+    expect(
+      clickHeld({ type: "contextmenu", button: 0, detail: 0, target: button })
+    ).toBe(false);
+    expect(
+      clickHeld({
+        type: "contextmenu",
+        button: 2,
+        detail: 0,
+        target: { nodeName: "SELECT", inputType: "" },
+      })
+    ).toBe(false);
   });
 });
 
@@ -269,6 +309,19 @@ describe("which event is the click the gate sends on", () => {
     expect(replayedEffect("mouseup")).toBe("stop");
     expect(replayedEffect("pointerdown")).toBe("stop");
   });
+
+  it("lets only the context menu event of a right-click it sends on reach the page", () => {
+    expect(replayedEffect("mousedown", "contextmenu")).toBe("swallow");
+    expect(replayedEffect("contextmenu", "contextmenu")).toBe("arrive");
+    expect(replayedEffect("mouseup", "contextmenu")).toBe("stop");
+    expect(replayedEffect("auxclick", "contextmenu")).toBe("stop");
+  });
+
+  it("takes a context menu event, whose count browsers give apart, by its place", () => {
+    expect(
+      replayed({ type: "contextmenu", x: 100, y: 50, detail: 0 }, passing)
+    ).toBe(true);
+  });
 });
 
 describe("a page function sent with the rules it uses", () => {
@@ -346,6 +399,18 @@ describe("what the gate does with a mouse event", () => {
     expect(mouseRoute(trusted, { ...gate, on: false, holding: false })).toBe(
       "noteOnly"
     );
+  });
+
+  it("handles a right-click's context menu event as a click", () => {
+    expect(
+      mouseRoute({ ...trusted, type: "contextmenu", button: 2 }, gate)
+    ).toBe("click");
+    expect(
+      mouseRoute(
+        { ...trusted, type: "contextmenu", button: 2 },
+        { ...gate, on: false, holding: false }
+      )
+    ).toBe("noteOnly");
   });
 
   it("handles a click and a double click while it is on or still holds", () => {

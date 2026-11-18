@@ -22,7 +22,9 @@ export type Gate = {
    * to false, letting nothing through, when the input was held in another
    * document: that one is gone. */
   open(
-    input: { x: number; y: number; detail: number } | { code: string },
+    input:
+      | { x: number; y: number; detail: number; button?: "right" }
+      | { code: string },
     document: string
   ): Promise<boolean>;
   /** Closes the gate after an input that never arrived. */
@@ -89,7 +91,18 @@ export function gateIn(held: string, rules: GateRules): void {
   let seq = 0;
   let waiting = 0;
   let passingOn:
-    { x: number; y: number; detail: number; seen: string[] } | undefined;
+    | {
+        x: number;
+        y: number;
+        detail: number;
+        seen: string[];
+        arrives: string;
+        /** Its event reached the page; what follows of it is stopped until
+         * it is closed, as a right-click's release after its context menu
+         * event. */
+        done?: boolean;
+      }
+    | undefined;
   let passingKey: string | undefined;
   let swallowDoubleClick = false;
   /** Whether the person holds a mouse button down, and who waits for its
@@ -125,11 +138,17 @@ export function gateIn(held: string, rules: GateRules): void {
           setTimeout(resolve, 1_000);
         });
       released = undefined;
-      passingOn = { ...input, seen: [] };
+      passingOn = {
+        x: input.x,
+        y: input.y,
+        detail: input.detail,
+        seen: [],
+        arrives: rules.arrivingEvent(input.button),
+      };
       return true;
     },
     close: () => {
-      if (passingOn || passingKey) arrived();
+      if ((passingOn && !passingOn.done) || passingKey) arrived();
       passingOn = undefined;
       passingKey = undefined;
     },
@@ -162,11 +181,16 @@ export function gateIn(held: string, rules: GateRules): void {
   /** An event of the click sent on: only its click reaches the page. */
   const passOnEvent = (event: MouseEvent) => {
     passingOn!.seen.push(event.type);
-    const effect = rules.replayedEffect(event.type);
+    const effect = rules.replayedEffect(event.type, passingOn!.arrives);
     if (effect === "swallow") swallow(event);
     else if (effect === "stop") event.stopImmediatePropagation();
-    else {
+    else if (passingOn!.arrives === "click") {
       passingOn = undefined;
+      arrived();
+    } else {
+      // A right-click's context menu event can come on its press: its
+      // release is still to come, and is stopped too.
+      passingOn!.done = true;
       arrived();
     }
   };
@@ -184,29 +208,43 @@ export function gateIn(held: string, rules: GateRules): void {
     if (swallowDoubleClick) swallow(event);
     swallowDoubleClick = false;
   };
-  const onClick = (event: MouseEvent) => {
-    notePress(event);
+  /** What the click rules are told of a click's target. */
+  const clickTarget = (event: MouseEvent) => {
     const target = elementOf(event);
-    const click = {
-      button: event.button,
-      detail: event.detail,
-      target: target && {
+    return (
+      target && {
         nodeName: target.nodeName,
         inputType: target instanceof HTMLInputElement ? target.type : "",
-      },
-    };
-    if (!rules.clickHeld(click)) return;
-    hold(event);
-    swallowDoubleClick = event.detail >= 2;
+      }
+    );
+  };
+  /** Tells of a held click: a right-click, held by its context menu event,
+   * counts one. */
+  const tellClick = (event: MouseEvent) => {
+    const right = event.type === "contextmenu";
     tell({
       kind: "click",
       seq,
       x: event.clientX,
       y: event.clientY,
-      detail: event.detail,
+      detail: right ? 1 : event.detail,
+      ...(right ? { button: "right" as const } : {}),
       modifiers: rules.modifiersOf(event),
       document: thisDocument,
     });
+  };
+  const onClick = (event: MouseEvent) => {
+    notePress(event);
+    const click = {
+      type: event.type,
+      button: event.button,
+      detail: event.detail,
+      target: clickTarget(event),
+    };
+    if (!rules.clickHeld(click)) return;
+    hold(event);
+    swallowDoubleClick = event.type === "click" && event.detail >= 2;
+    tellClick(event);
   };
   const mouseRoutes: Record<MouseRoute, (event: MouseEvent) => void> = {
     ignore: () => {},
@@ -240,6 +278,8 @@ export function gateIn(held: string, rules: GateRules): void {
     "mouseup",
     "click",
     "dblclick",
+    "contextmenu",
+    "auxclick",
   ] as const)
     window.addEventListener(type, onMouse as EventListener, true);
 

@@ -31,6 +31,7 @@ import {
   recordedAsPress,
   replayed,
   replayedEffect,
+  arrivingEvent,
   typingKey,
   withRules,
 } from "../pageRules";
@@ -49,6 +50,7 @@ export const installGate: (held: string) => void = withRules(
     modifiersOf,
     replayed,
     replayedEffect,
+    arrivingEvent,
     gateStartsOn,
     mouseRoute,
     keyRoute,

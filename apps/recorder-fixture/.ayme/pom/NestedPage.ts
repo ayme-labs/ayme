@@ -20,7 +20,7 @@ export class NestedPage extends FixturePage {
   readonly repositoryText = this.repositoryLink.locator("span");
   @ayme.child({
     description:
-      'Says "Code opened", and "Code opened twice" on a double click.',
+      'Says "Code opened", "Code opened twice" on a double click, and "Code menu" on a right-click.',
   })
   readonly codeButton = this.page.getByRole("button", { name: "Code" });
   /** The element its label is in, which the page structure does not list. */

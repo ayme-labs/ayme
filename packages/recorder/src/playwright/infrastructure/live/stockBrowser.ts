@@ -1111,7 +1111,7 @@ const MOUSE_REPORTS = new Set(["click", "check", "uncheck"]);
 
 /** The events whose target a report of each kind names. */
 const CHAIN_TYPES: Readonly<Record<string, readonly string[]>> = {
-  click: ["click"],
+  click: ["click", "contextmenu"],
   check: ["click", "keydown"],
   uncheck: ["click", "keydown"],
   press: ["keydown"],
@@ -1236,7 +1236,12 @@ async function passOn(frame: Frame, input: HeldByPage): Promise<boolean> {
     .evaluate(openGate, {
       at:
         input.kind === "click"
-          ? { x: input.x, y: input.y, detail: Math.max(1, input.detail) }
+          ? {
+              x: input.x,
+              y: input.y,
+              detail: Math.max(1, input.detail),
+              ...(input.button ? { button: input.button } : {}),
+            }
           : { code: input.code },
       document: input.document,
     })
@@ -1256,8 +1261,9 @@ async function passOn(frame: Frame, input: HeldByPage): Promise<boolean> {
     const at = await placeInPage(frame, input);
     for (const modifier of input.modifiers) await page.keyboard.down(modifier);
     await page.mouse.move(at.x, at.y);
-    await page.mouse.down({ clickCount });
-    await page.mouse.up({ clickCount });
+    const button = input.button ?? "left";
+    await page.mouse.down({ clickCount, button });
+    await page.mouse.up({ clickCount, button });
     for (const modifier of input.modifiers) await page.keyboard.up(modifier);
   } finally {
     // The gate closed by itself if the click arrived. The click may also
