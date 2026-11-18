@@ -222,18 +222,32 @@ describe.each([
 });
 
 const aymeArmIds = armIds.filter((armId) => arms[armId].ayme !== undefined);
+
+/** Where each arm with Ayme starts: its channel's listing; Playwright MCP through WebMCP lists the page's tools only after a snapshot. */
+const startPointers: Record<string, string | undefined> = {
+  "playwright-mcp-with-ayme-webmcp": undefined,
+  "playwright-mcp-with-ayme-page-objects":
+    "the `ayme` MCP server's `page_objects` tool",
+  "playwright-cli-with-ayme-webmcp": "`playwright-cli webmcp-list`",
+  "playwright-cli-with-ayme-page-objects":
+    "the `ayme` MCP server's `page_objects` tool",
+  "agent-browser-with-ayme-webmcp": "`agent-browser webmcp list`",
+  "agent-browser-with-ayme-page-objects":
+    "the `ayme` MCP server's `page_objects` tool",
+};
 // The arms with Ayme through the `ayme` command (spike) are tested in aymeCli.test.ts.
 const aloneArmIds = armIds.filter(
   (armId) => arms[armId].ayme === undefined && !arms[armId].aymeCli
 );
 
 describe("the arms", () => {
-  it("are each browser automation alone, with Ayme through WebMCP, and with Ayme as its own MCP server, and the two with the ayme command", () => {
+  it("are each browser automation alone, with Ayme through WebMCP, with Ayme as its own MCP server, and with the ayme command", () => {
     expect(armIds.toSorted()).toEqual(
       [
         "playwright-mcp",
         "playwright-mcp-with-ayme-webmcp",
         "playwright-mcp-with-ayme-page-objects",
+        "playwright-mcp-with-ayme-cli",
         "playwright-cli",
         "playwright-cli-with-ayme-webmcp",
         "playwright-cli-with-ayme-page-objects",
@@ -257,20 +271,35 @@ describe.each(aymeArmIds)("the %s arm's interface line", (armId) => {
   const arm = arms[armId];
   const alone = arms[arm.browserAutomation];
 
-  it("is its browser automation's line and one sentence on where the Page Object Tools are", () => {
-    for (const start of [renameMission.start, signInMission.start])
+  it("is its browser automation's line, started from its channel's listing, and one sentence on where the Page Object Tools are", () => {
+    const pointer = startPointers[armId];
+    for (const start of [renameMission.start, signInMission.start]) {
+      const aloneLine = alone.interfaceLine(start);
+      const line =
+        pointer === undefined
+          ? aloneLine
+          : arm.browserAutomation === "playwright-mcp"
+            ? aloneLine.replace(/\.$/, `; start from ${pointer}.`)
+            : aloneLine.replace(
+                `start from \`${arm.browserAutomation} snapshot\`.`,
+                `start from ${pointer}.`
+              );
       expect(arm.interfaceLine(start)).toBe(
-        `${alone.interfaceLine(start)} ${aymeToolsSentence(arm.browserAutomation, arm.ayme!)}`
+        `${line} ${aymeToolsSentence(arm.browserAutomation, arm.ayme!)}`
       );
+    }
   });
 
-  it("carries no instruction on what to read after a Page Object Tool, which the skill reference gives", () => {
+  it("carries one start pointer and no instruction on what to read after a Page Object Tool, which the skill reference gives", () => {
     const sentence = aymeToolsSentence(arm.browserAutomation, arm.ayme!);
     expect(sentence).not.toMatch(
       /page_objects|snapshot|after|read|prefer|right away|next call/i
     );
-    expect(arm.interfaceLine(mission.start)).not.toContain("page_objects");
-    expect(arm.interfaceLine(mission.start)).not.toContain("skill");
+    const line = arm.interfaceLine(mission.start);
+    expect(line.match(/start from/g)?.length ?? 0).toBe(
+      armId === "playwright-mcp-with-ayme-webmcp" ? 0 : 1
+    );
+    expect(line).not.toContain("skill");
   });
 });
 

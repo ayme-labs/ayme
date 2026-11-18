@@ -8,7 +8,7 @@ import {
   arms,
   defaultArmIds,
   type ArmContext,
-  type CommandAutomation,
+  type BrowserAutomation,
 } from "./arms.ts";
 import { aymeMcpCliPath } from "./ayme.ts";
 import {
@@ -31,6 +31,11 @@ import {
   remoteDebuggingConfig,
   remoteDebuggingConfigPath,
 } from "./playwrightCli.ts";
+import {
+  playwrightMcpConfigPath,
+  playwrightMcpHttpArgs,
+  playwrightMcpHttpServer,
+} from "./playwrightMcp.ts";
 import type { Mission } from "./missions.ts";
 import { setupPrompt } from "./prompt.ts";
 
@@ -65,8 +70,9 @@ const skillText = readFileSync(
 );
 
 /** The instruction text's section on one browser automation. */
-function skillSection(browserAutomation: CommandAutomation) {
+function skillSection(browserAutomation: BrowserAutomation) {
   const heading = {
+    "playwright-mcp": "### Playwright MCP",
     "playwright-cli": "### Playwright CLI",
     "agent-browser": "### agent-browser",
   }[browserAutomation];
@@ -77,8 +83,9 @@ function skillSection(browserAutomation: CommandAutomation) {
 }
 
 describe("the arms with the ayme command", () => {
-  it("are Playwright CLI's and agent-browser's, and a suite runs them only when named", () => {
+  it("are one per browser automation, and a suite runs them only when named", () => {
     expect(cliArmIds).toEqual([
+      "playwright-mcp-with-ayme-cli",
       "playwright-cli-with-ayme-cli",
       "agent-browser-with-ayme-cli",
     ]);
@@ -99,7 +106,9 @@ describe.each(cliArmIds)("the %s arm", (armId) => {
   it("has its browser automation's interface line and one sentence on where the Page Object Tools are", () => {
     for (const start of [editorStart, signInStart])
       expect(arm.interfaceLine(start)).toBe(
-        `Use the \`${arm.browserAutomation}\` command for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}. ${aymeCliSentence}`
+        arm.browserAutomation === "playwright-mcp"
+          ? `Use the Playwright MCP browser tools (the \`playwright\` MCP server) for every browser interaction. ${aymeCliSentence}`
+          : `Use the \`${arm.browserAutomation}\` command for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}. ${aymeCliSentence}`
       );
     expect(aymeCliSentence).toContain("start from `ayme tools`");
     expect(aymeCliSentence).toContain("`ayme` command");
@@ -110,15 +119,24 @@ describe.each(cliArmIds)("the %s arm", (armId) => {
   });
 
   it("loads its browser automation's skill and the ayme-cli skill in the setup turn, and reads no file", () => {
+    const skills =
+      arm.skill === undefined
+        ? "the `ayme-cli` skill"
+        : `the \`${arm.skill}\` skill and the \`ayme-cli\` skill`;
     expect(setupPrompt(arm)).toBe(
-      `Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. Load the \`${arm.skill}\` skill and the \`ayme-cli\` skill now with the Skill tool. Don't read files and don't use the browser; just reply ready.\n`
+      `Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. Load ${skills} now with the Skill tool. Don't read files and don't use the browser; just reply ready.\n`
     );
   });
 
   it("adds the ayme command and its skill to its browser automation's permissions, and no MCP server", () => {
     expect(arm.ayme).toBeUndefined();
     expect(arm.mcpServers(armContext)).toEqual({});
-    expect(arm.tools).toEqual(alone.tools);
+    // Bash runs the command and the Skill tool loads its skill; Playwright MCP alone has neither.
+    expect(arm.tools).toEqual(
+      arm.browserAutomation === "playwright-mcp"
+        ? [...alone.tools, "Bash", "Skill"]
+        : alone.tools
+    );
     expect(arm.skill).toBe(alone.skill);
     expect(arm.allowedTools).toEqual([
       ...alone.allowedTools,
@@ -148,11 +166,15 @@ describe.each(cliArmIds)("the %s arm", (armId) => {
   });
 
   it("has a section of the instruction text on exposing CDP and setting the mark", () => {
-    const section = skillSection(arm.browserAutomation as CommandAutomation);
+    const section = skillSection(arm.browserAutomation);
     expect(section).toContain("**CDP:**");
     expect(section).toContain("**Mark:**");
     expect(section).toContain(`window.${markGlobal} = "<token>"`);
-    expect(section).toContain(`\`${arm.browserAutomation} `);
+    expect(section).toContain(
+      arm.browserAutomation === "playwright-mcp"
+        ? "`browser_evaluate`"
+        : `\`${arm.browserAutomation} `
+    );
   });
 });
 
@@ -204,6 +226,46 @@ describe("the instruction text of the ayme command", () => {
     expect(
       playwrightCliEnvironment(armContext, "/usr/bin").PLAYWRIGHT_MCP_CONFIG
     ).toBeUndefined();
+  });
+});
+
+describe("Playwright MCP as the harness runs it for the arm with the ayme command", () => {
+  it("launches its own browser on the prepared profile, reachable over CDP through the configuration file, and serves every client that browser over HTTP", () => {
+    expect(playwrightMcpConfigPath("/run")).toBe(
+      "/run/playwright-mcp.config.json"
+    );
+    const args = playwrightMcpHttpArgs(armContext, {
+      port: 9400,
+      configPath: "/run/playwright-mcp.config.json",
+    });
+    expect(args.slice(1)).toEqual([
+      "--browser",
+      "chrome",
+      "--headless",
+      "--user-data-dir",
+      "/run/browser-profile",
+      "--no-webmcp",
+      "--output-dir",
+      "/run/playwright-output",
+      "--config",
+      "/run/playwright-mcp.config.json",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "9400",
+      "--allowed-hosts",
+      "127.0.0.1:9400",
+      "--shared-browser-context",
+    ]);
+    // The init page would run again on the open tab when the agent connects.
+    expect(args).not.toContain("--init-page");
+    expect(skillSection("playwright-mcp")).toContain(
+      '`["--remote-debugging-port=<port>"]`'
+    );
+    expect(playwrightMcpHttpServer(9400)).toEqual({
+      type: "http",
+      url: "http://127.0.0.1:9400/mcp",
+    });
   });
 });
 

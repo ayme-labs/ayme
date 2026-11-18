@@ -70,6 +70,14 @@ otherwise waits for it.
   `http://127.0.0.1:<port>`.
 - **Mark:** `playwright-cli eval '() => (window.__aymeMark = "<token>")'`.
 
+### Playwright MCP
+
+- **CDP:** start Playwright MCP with a config file that sets
+  `browser.launchOptions.args` to `["--remote-debugging-port=<port>"]`:
+  `--config=<file>`. The endpoint is `http://127.0.0.1:<port>`.
+- **Mark:** call `browser_evaluate` with the function
+  `() => (window.__aymeMark = "<token>")`.
+
 ### agent-browser
 
 - **CDP:** `agent-browser get cdp-url` prints the endpoint.
