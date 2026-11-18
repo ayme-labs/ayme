@@ -7,8 +7,9 @@ Objects as a tree with the id (`po<n>`) each rooted Page Object Tool takes.
 [Page tools](page-tools.md) shows how to read the tree and a Page Object Tool's
 answer.
 
-Before you take a full snapshot, check your tool list. When a Page Object Tool
-does the next step, call it instead; take the snapshot only when none does.
+On each new screen, starting with the first one, check your tool list before
+you take a snapshot. When a Page Object Tool does the next step, call it; take a
+snapshot only when none does.
 
 Each section below names a start command. It goes after
 `npx -y @ayme-dev/mcp@<version>`, registered in your agent as
