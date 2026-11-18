@@ -49,7 +49,8 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
      and price;
    - the parameters: the data a real run enters, and the value the recording
      used for each, as its requests carry it rather than as the user typed it;
-   - the `confirm` the entry script uses, as [Confirm](#confirm) says;
+   - the `confirm` the entry script uses, as [Confirm](#confirm) says; a flow
+     with no irreversible step needs no `confirm` and no `--no-submit`;
    - on a site with a login, how a run gets one, as
      [Write the code](#write-the-code) says.
 
