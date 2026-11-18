@@ -90,9 +90,59 @@ export class StructureLens extends Part {
   }
 }
 
+export type ModelPaneName = "On this page" | "Page object models";
+
+/**
+ * The Model lens's tree in the navigator: the Page Objects on this page and
+ * the Page Object Models the page knows, in two collapsible panes.
+ */
+export class ModelLens extends Part {
+  /** The object tree, "On this page". */
+  get objectTree(): On {
+    return this.on((root) => root.getByRole("tree", "Page objects"));
+  }
+
+  /** The Page Object Model list, "Page object models". */
+  get modelList(): On {
+    return this.on((root) => root.getByRole("list", "Page object models"));
+  }
+
+  /** The button that collapses or expands a pane. */
+  paneToggle(name: ModelPaneName): On {
+    return this.on((root) =>
+      root
+        .getByRole("region", name)
+        .getByRole("button", { name: new RegExp(`^${name} · \\d+$`) })
+    );
+  }
+
+  async togglePane(name: ModelPaneName) {
+    await this.paneToggle(name).click();
+  }
+
+  /** An object in the tree, by its path, e.g. "ListPage.items[1]". */
+  object(path: string): On {
+    return this.on((root) =>
+      root.getByRole("tree", "Page objects").getByRole("treeitem", path)
+    );
+  }
+
+  /** The class names in the model list, in order. */
+  async modelNames(): Promise<string[]> {
+    const models = await (
+      await this.modelList.within((list) => list.getByRole("button")).front()
+    ).all();
+    const names = [];
+    for (const model of models)
+      names.push(await model.getAttribute("aria-label"));
+    return names.map((name) => name ?? "");
+  }
+}
+
 /** The navigator: search, the lens switcher and the active lens's tree. */
 export class Navigator extends Part {
   readonly structure = new StructureLens(this.tab, this.root);
+  readonly model = new ModelLens(this.tab, this.root);
 
   get searchBox(): On {
     return this.on((root) => root.getByRole("searchbox"));
@@ -380,8 +430,34 @@ export class ToolPage extends Part {
   }
 }
 
+/** The Model lens's detail: the page, a Page Object or a Page Object Model. */
+export class ModelDetailView extends Part {
+  get title(): On {
+    return this.on((root) => root.getByRole("heading", { level: 3 }));
+  }
+
+  /** One fact of a member's detail: "Owner", "Declared as", "On the page". */
+  fact(term: string): On {
+    return this.on((root) =>
+      root
+        .getByRole("group", term)
+        // The `<dd>`. e2e's role type leaves out `definition`, which its
+        // engine matches as Playwright does.
+        .getByRole("definition" as never)
+    );
+  }
+
+  /** A member, by name: it highlights while hovered, and selects on click. */
+  member(name: string): On {
+    return this.on((root) =>
+      root.getByRole("region", "Members").getByLabel(name)
+    );
+  }
+}
+
 /** The detail pane: the view of what's selected, with its run cards. */
 export class DetailPane extends Part {
+  readonly model = new ModelDetailView(this.tab, this.root);
   readonly node = new NodeView(this.tab, this.root);
   readonly toolPage = new ToolPage(this.tab, this.root);
 
@@ -439,7 +515,15 @@ export class RunsView extends Part {
   }
 }
 
+/** The panel's header. */
+export class InspectorHeader extends Part {
+  get title(): On {
+    return this.on((root) => root.getByRole("heading", "ayme"));
+  }
+}
+
 export class Inspector {
+  readonly header: InspectorHeader;
   readonly navigator: Navigator;
   /** The Structure lens's tree, in the navigator. */
   readonly structure: StructureLens;
@@ -447,6 +531,7 @@ export class Inspector {
   readonly runs: RunsView;
 
   constructor(private readonly tab: Tab) {
+    this.header = new InspectorHeader(tab, panelOf);
     this.navigator = new Navigator(tab, (screen) =>
       panelOf(screen).getByRole("navigation", "Navigator")
     );

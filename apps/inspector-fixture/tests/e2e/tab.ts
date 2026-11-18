@@ -24,6 +24,11 @@ export class Tab {
     return new On(this, query(this.screen));
   }
 
+  /** A Playwright selector on this tab, such as the fixture page's own CSS. */
+  locator(selector: string): On {
+    return new On(this, this.browser.locator(selector));
+  }
+
   /**
    * CSS that crosses the Inspector's closed shadow root, for the few parts
    * no role, name or label tells apart, such as a list's own items and not

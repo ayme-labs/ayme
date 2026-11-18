@@ -47,23 +47,11 @@ const rootAttribute = (browser: Browser, name: string) =>
   );
 
 /**
- * Opens a fixture page and fails with its own message, before any test
- * assertion, when the page's script broke or the runtime never published its
- * tools. In the external placement the page opens connected to `agent`, the
- * Ayme MCP server that serves the Inspector, and the Inspector is a second
- * tab with that window; the fixture page's tab stays in front.
+ * Waits until the fixture page in the active tab ran its script and the
+ * runtime published, failing with its own message, before any test
+ * assertion, when either never happens.
  */
-export async function openFixture(
-  { app, browser, screen }: Fixtures,
-  path: FixturePage,
-  agent?: Agent
-) {
-  await browser.addInitScript(openHighlightOverlay);
-  await recordPublishedTools(browser);
-  if (agent) await browser.goto(await connectLink(agent, app, path));
-  else await app.open(path);
-  const [pageTab] = browser.tabs();
-
+async function fixtureReady(browser: Browser, path: FixturePage) {
   await expect
     .poll(() => rootAttribute(browser, "data-fixture"), {
       timeout: 10_000,
@@ -84,6 +72,33 @@ export async function openFixture(
       message: `The Ayme runtime did not reach "${runtimeState}".`,
     })
     .toBe(runtimeState);
+}
+
+/** Reloads the fixture page and waits for it as `openFixture` does. */
+export async function reloadFixture(page: Tab, path: FixturePage) {
+  await page.front();
+  await page.browser.reload();
+  await fixtureReady(page.browser, path);
+}
+
+/**
+ * Opens a fixture page and fails with its own message, before any test
+ * assertion, when the page's script broke or the runtime never published its
+ * tools. In the external placement the page opens connected to `agent`, the
+ * Ayme MCP server that serves the Inspector, and the Inspector is a second
+ * tab with that window; the fixture page's tab stays in front.
+ */
+export async function openFixture(
+  { app, browser, screen }: Fixtures,
+  path: FixturePage,
+  agent?: Agent
+) {
+  await browser.addInitScript(openHighlightOverlay);
+  await recordPublishedTools(browser);
+  if (agent) await browser.goto(await connectLink(agent, app, path));
+  else await app.open(path);
+  const [pageTab] = browser.tabs();
+  await fixtureReady(browser, path);
 
   const page = new Tab(screen, browser, pageTab!);
   return {
