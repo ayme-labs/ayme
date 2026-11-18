@@ -1004,11 +1004,15 @@ function decoratorDestructive(
   decorator: ts.Decorator,
   owner: string
 ) {
-  const options = optionsArgument(decorator);
+  const argument = ts.isCallExpression(decorator.expression)
+    ? decorator.expression.arguments[0]
+    : undefined;
+  const options = argument && unwrapped(argument);
   if (
+    argument &&
     options &&
     !ts.isObjectLiteralExpression(options) &&
-    mayHave(checker, checker.getTypeAtLocation(options), "destructive")
+    mayHold(checker, argument, "destructive")
   )
     throw pomCompileErrorAt(
       options,
@@ -1084,6 +1088,20 @@ function mayHave(checker: ts.TypeChecker, type: ts.Type, key: string): boolean {
   );
 }
 
+/**
+ * Whether `expression` may have `key`, by its own type or by the type of what
+ * it wraps in parentheses or casts, since a cast can hide the option.
+ */
+function mayHold(
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+  key: string
+): boolean {
+  if (mayHave(checker, checker.getTypeAtLocation(expression), key)) return true;
+  const inner = wrapped(expression);
+  return inner !== undefined && mayHold(checker, inner, key);
+}
+
 /** A decorator call's options argument, without its parentheses and casts. */
 function optionsArgument(decorator: ts.Decorator): ts.Expression | undefined {
   if (!ts.isCallExpression(decorator.expression)) return undefined;
@@ -1101,9 +1119,7 @@ function setsOption(
   key: string
 ): "yes" | "no" | "maybe" {
   if (ts.isSpreadAssignment(element))
-    return mayHave(checker, checker.getTypeAtLocation(element.expression), key)
-      ? "maybe"
-      : "no";
+    return mayHold(checker, element.expression, key) ? "maybe" : "no";
   const name = element.name;
   if (!name) return "no";
   if (!ts.isComputedPropertyName(name))
@@ -1121,13 +1137,19 @@ function setsOption(
 
 /** `expression` without the parentheses, `as`, `satisfies` and `!` that leave its value as it is. */
 function unwrapped(expression: ts.Expression): ts.Expression {
+  const inner = wrapped(expression);
+  return inner ? unwrapped(inner) : expression;
+}
+
+/** What one layer of parentheses, `as`, `satisfies` or `!` wraps, if `expression` is one. */
+function wrapped(expression: ts.Expression): ts.Expression | undefined {
   return ts.isParenthesizedExpression(expression) ||
     ts.isAsExpression(expression) ||
     ts.isSatisfiesExpression(expression) ||
     ts.isNonNullExpression(expression) ||
     ts.isTypeAssertionExpression(expression)
-    ? unwrapped(expression.expression)
-    : expression;
+    ? expression.expression
+    : undefined;
 }
 
 /** The value of `true` or `false`, if `expression` is one. */

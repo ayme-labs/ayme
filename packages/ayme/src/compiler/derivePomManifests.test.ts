@@ -227,6 +227,16 @@ describe("derivePomManifests", () => {
         "The destructive option of Page Object Action AnySpreadDestructivePom.submit may come from a spread or a computed key.",
         "...options",
       ],
+      [
+        "castOptionsDestructivePom",
+        "The destructive option of Page Object Action CastOptionsDestructivePom.submit may come from options that are no object literal.",
+        "flags() as any",
+      ],
+      [
+        "castSpreadDestructivePom",
+        "The destructive option of Page Object Action CastSpreadDestructivePom.submit may come from a spread or a computed key.",
+        "...(options as {})",
+      ],
     ])(
       "fails the build for %s, whose destructive option the build cannot read, at that element",
       (fixture, text, element) => {
