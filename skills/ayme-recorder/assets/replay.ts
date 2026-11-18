@@ -45,6 +45,16 @@ function match(live: Call, recorded: Call): boolean {
   );
 }
 
+/**
+ * The body to answer a live request with. Write it for the site when the
+ * answer must carry something from the live request, such as the request ids
+ * Salesforce Aura pairs answers with: the page ignores an answer whose ids it
+ * did not send, and waits forever.
+ */
+function answer(live: Call, recorded: Call, body: Buffer): Buffer {
+  return body;
+}
+
 const LIVE_TYPES = new Set([
   "document",
   "script",
@@ -82,7 +92,7 @@ export async function installReplay(context: BrowserContext, traceZip: string) {
     await route.fulfill({
       status: redirect ? 303 : call.status,
       headers: call.headers,
-      body: call.responseBody,
+      body: answer(live, call, call.responseBody),
     });
   });
 }

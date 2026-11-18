@@ -266,3 +266,9 @@ several dependent calls, wait for each value they settle, and read the
 summary after the last; the first aborted call after a step points at the
 missing wait. Telemetry calls are aborted
 on every run; list them for the user once.
+
+When the page waits forever with no `replay: aborted` line, its calls were
+answered but it ignored the answers: the site pairs each answer with
+something its request sent, such as Salesforce Aura's action ids. Write
+`answer()` in the copy to put the live request's values into the recorded
+answer.
