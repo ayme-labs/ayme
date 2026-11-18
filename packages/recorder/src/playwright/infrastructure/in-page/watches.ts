@@ -152,7 +152,8 @@ declare global {
 /**
  * Installs the activity watch in a document, switched off. Switched on, it
  * calls the binding named `changed` whenever the document's elements change,
- * open shadow roots included. It only says that something happened: what a
+ * open shadow roots included, and whenever a field's value does, as with
+ * each key typed. It only says that something happened: what a
  * Settled Page is, core decides, in the adapter's process.
  */
 export function installActivityWatch(changed: string): void {
@@ -163,7 +164,12 @@ export function installActivityWatch(changed: string): void {
   window.__aymeRecorderActivity = {
     watch(on) {
       observer.disconnect();
+      // Typing changes a field's value and none of the page's elements:
+      // each key is activity all the same, so that the quiet a Settled Page
+      // needs starts again after it.
+      window.removeEventListener("input", tell, true);
       if (!on) return;
+      window.addEventListener("input", tell, true);
       const observe = (root: Document | ShadowRoot) => {
         observer.observe(root, {
           subtree: true,

@@ -1644,6 +1644,33 @@ it("tells that the page is a Settled Page only once it has stopped changing, for
   );
 });
 
+it("counts every key typed into a field as the page's activity: it is a Settled Page only once typing has been quiet", async () => {
+  // Typing changes a field's value and nothing of the page's structure.
+  const browser = await onStockPlaywright(`<input id="field" />`);
+  const field = browser.page.locator("#field");
+  await field.focus();
+
+  await browser.ask({
+    kind: "waitForSettled",
+    page: "page_1",
+    input: "input_1",
+  });
+  // A key every 150 ms, under the quiet a Settled Page needs, for about a
+  // second, well within the deadline.
+  for (const key of "abcdef") {
+    await browser.page.keyboard.type(key);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  // No moment between two keys was quiet long enough.
+  const settledWhileTyping = browser.told.some(
+    ({ kind }) => kind === "pageSettled"
+  );
+
+  await browser.toldOf("pageSettled");
+  expect(await field.inputValue()).toBe("abcdef");
+  expect(settledWhileTyping).toBe(false);
+});
+
 it("holds every key while a held input waits, and lets keys reach the page again once asked to, unless the page held an input after the last one named", async () => {
   const browser = await onStockPlaywright(
     `<label>Item <input id="item" /></label>`
