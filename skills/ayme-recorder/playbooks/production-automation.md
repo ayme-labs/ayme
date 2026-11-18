@@ -30,8 +30,11 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
    Classify each call as a read or a permanent change from the evidence: the
    method, the URL or action name, the request body, the response, and what
    changed on the page right after it. The method alone does not decide it:
-   reads can be POSTs, and GETs can change state. Done when every call the
-   flow makes is classified.
+   reads can be POSTs, and GETs can change state. For each permanent change,
+   read its response and check that it succeeded: when the package ends at
+   that click, its outcome is only in the trace. A recording whose permanent
+   change failed, such as one the server rejected, is recorded again. Done
+   when every call the flow makes is classified.
 3. **Align** with the user before you write code. Settle:
    - the steps of the flow;
    - the page objects;
