@@ -1,5 +1,7 @@
 // The `./playwright` entry in Node, over real Playwright Chromium and against
 // the built package: Ayme over a Page a Node host was handed (ADR-0049).
+import { createServer, type RequestListener, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -385,6 +387,116 @@ describe("Ayme over a Playwright Page", () => {
 
     expect(result.loading).toBe("http://app.test/two");
     expect(JSON.stringify(result)).not.toContain("Second document");
+  });
+
+  describe("the agent's tools, as the ayme command calls them", () => {
+    const servers: Server[] = [];
+    afterAll(async () => {
+      for (const server of servers.splice(0)) {
+        server.closeAllConnections();
+        await new Promise((resolve) => server.close(resolve));
+      }
+    });
+
+    /** A local HTTP server that answers with `handle`; resolves with its origin. */
+    async function serving(handle: RequestListener): Promise<string> {
+      const server = createServer(handle);
+      servers.push(server);
+      await new Promise<void>((resolve) =>
+        server.listen(0, "127.0.0.1", resolve)
+      );
+      return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    }
+
+    /**
+     * A sign-in form whose submit posts and is redirected to `/home`, which
+     * answers after `homeDelayMs`, with a session over it.
+     */
+    async function signInPage(homeDelayMs: number) {
+      const origin = await serving((request, response) => {
+        if (request.url === "/login") {
+          response.writeHead(303, { location: "/home" }).end();
+          return;
+        }
+        const body =
+          request.url === "/home"
+            ? '<!doctype html><title>Home</title><section id="home"><h1>Home</h1><button>Out</button></section>'
+            : '<!doctype html><title>Sign in</title><form id="sign-in" method="post" action="/login"><input name="email" value="a@b.test"><button>Log in</button></form>';
+        setTimeout(
+          () =>
+            response.writeHead(200, { "content-type": "text/html" }).end(body),
+          request.url === "/home" ? homeDelayMs : 0
+        );
+      });
+      const page = await browser.newPage();
+      await page.goto(`${origin}/`);
+      const ayme = await startedOn(page, {
+        pageObjects: [
+          pageObjectRootedAt("SignIn", "#sign-in"),
+          pageObjectRootedAt("Home", "#home"),
+        ],
+      });
+      const tree = String(await ayme.agentTools.run("page_objects", {}));
+      const id = /SignIn (po\d+)/.exec(tree)?.[1];
+      return { origin, ayme, input: id ? { id } : {} };
+    }
+
+    it("answers a call whose form submit loads another document once that document has settled, with its URL and the Page Objects that changed", async () => {
+      const { origin, ayme, input } = await signInPage(300);
+
+      const answer = (await ayme.agentTools.run("SignIn.press", input)) as {
+        settled: boolean;
+        url?: string;
+        loading?: true;
+        changes?: string;
+      };
+
+      expect(answer).toMatchObject({ settled: true, url: `${origin}/home` });
+      expect(answer.loading).toBeUndefined();
+      expect(answer.changes).toMatch(/- SignIn.*\(removed\)/);
+      expect(answer.changes).toContain("+ Home");
+    });
+
+    it("still answers that the page is loading when the new document does not come before the deadline", async () => {
+      const { ayme, input } = await signInPage(4000);
+
+      const answer = (await ayme.agentTools.run("SignIn.press", input)) as {
+        settled: boolean;
+        loading?: true;
+      };
+
+      expect(answer).toMatchObject({ settled: false, loading: true });
+    });
+
+    it("reads the Page Objects of a document that is still loading once it has loaded", async () => {
+      let release = () => {};
+      const origin = await serving((request, response) => {
+        response.writeHead(200, { "content-type": "text/html" });
+        if (request.url !== "/slow") {
+          response.end("<!doctype html><title>First</title><p>First</p>");
+          return;
+        }
+        // The new document commits on its first bytes; its Page Object comes last.
+        response.write(
+          `<!doctype html><title>Slow</title><p>Loading${" ".repeat(2048)}</p>`
+        );
+        release = () =>
+          response.end(
+            '<section id="home"><h1>Home</h1><button>Out</button></section>'
+          );
+      });
+      const page = await browser.newPage();
+      await page.goto(`${origin}/`);
+      const ayme = await startedOn(page, {
+        pageObjects: [pageObjectRootedAt("Home", "#home")],
+      });
+      await page.goto(`${origin}/slow`, { waitUntil: "commit" });
+
+      const reading = ayme.agentTools.run("page_objects", {});
+      setTimeout(() => release(), 500);
+
+      expect(String(await reading)).toContain("Home");
+    });
   });
 
   it("takes a screenshot with its size", async () => {

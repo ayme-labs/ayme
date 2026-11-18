@@ -32,6 +32,24 @@ export type PageObjectToolTurn = {
   readPageObjectTree(): Promise<PageObjectTreeRead>;
   /** The page's URL now. */
   url(): string;
+  /**
+   * Spike: where the session outlives a full load, as a Node host's does, a
+   * watch for loads from now on. The browser runtime's session ends with its
+   * document and offers none.
+   */
+  watchLoads?(): LoadWatch;
+};
+
+/** Spike: the loads of the page from the start of a watch. */
+export type LoadWatch = {
+  /**
+   * Resolves once a document a full load brought has settled, saying
+   * whether it went quiet before the Settled Page deadline; with
+   * `undefined` when none came before the deadline.
+   */
+  loaded(): Promise<{ settled: boolean } | undefined>;
+  /** Ends the watch. */
+  stop(): void;
 };
 
 /** A Page Object Tool's answer to an agent. */
@@ -85,10 +103,21 @@ export function pageObjectToolSource(
       return session.inTurn(async (page) => {
         const before = await page.readPageObjectTree().catch(() => undefined);
         const url = page.url();
-        const result = await page.run(name, input).catch((error: unknown) => {
-          throw withoutChangeRecord(error);
-        });
-        return answerOf(page, result as ActionResult, before, url);
+        const loads = page.watchLoads?.();
+        try {
+          const result = await page.run(name, input).catch((error: unknown) => {
+            throw withoutChangeRecord(error);
+          });
+          return await answerOf(
+            page,
+            result as ActionResult,
+            before,
+            url,
+            loads
+          );
+        } finally {
+          loads?.stop();
+        }
       });
     },
   };
@@ -109,19 +138,26 @@ async function answerOf(
   session: PageObjectToolTurn,
   { settled, result, loading }: ActionResult,
   before: PageObjectTreeRead | undefined,
-  url: string
+  url: string,
+  loads: LoadWatch | undefined
 ): Promise<PageObjectToolAnswer> {
   const answer: PageObjectToolAnswer = {
     settled,
     ...(result === undefined ? {} : { result }),
   };
-  // A full load ends this document: its tree is not read again.
-  if (loading !== undefined)
-    return {
-      ...answer,
-      ...(loading === url ? {} : { url: loading }),
-      loading: true,
-    };
+  if (loading !== undefined) {
+    // A session that outlives the load answers from the new document once
+    // it has settled, as from any other page the action led to.
+    const loaded = await loads?.loaded();
+    // A full load ends this document: its tree is not read again.
+    if (!loaded)
+      return {
+        ...answer,
+        ...(loading === url ? {} : { url: loading }),
+        loading: true,
+      };
+    answer.settled = loaded.settled;
+  }
   const now = session.url();
   if (now !== url) answer.url = now;
   const after = await session.readPageObjectTree().catch(() => undefined);
