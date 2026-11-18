@@ -252,5 +252,8 @@ part out of `match()`. When they differ in data, such as another record id,
 the flow reads data the recording lacks: check the parameters. When the data
 an earlier response filled in differs, such as an address from a postcode
 lookup, that response landed at another time than in the recording: wait for
-it in the page object; do not loosen `match()`. Telemetry calls are aborted
+it in the page object; do not loosen `match()`. When an action sets off
+several dependent calls, wait for each value they settle, and read the
+summary after the last; the first aborted call after a step points at the
+missing wait. Telemetry calls are aborted
 on every run; list them for the user once.
