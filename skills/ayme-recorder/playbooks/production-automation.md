@@ -60,11 +60,7 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
 5. **Write the replay test**, as [The replay test](#the-replay-test) says.
 6. **Heal** against the replay test. Run it with
    `npx playwright test <file> --repeat-each 3 --retries 0 --workers 1` and
-   fix the page objects' locators and waits, never the flow's steps. To see
-   why a run fails, start it in the background with `--debug=cli` added and
-   work on the paused page as the Playwright CLI's skill says
-   (`npx playwright cli --help` names it): attach, then read its snapshot,
-   requests and console. Stop the run when you are done. When
+   fix the page objects' locators and waits, never the flow's steps. When
    passing would take other steps, stop and tell the user. Keep every wait
    that ends an action in its target state, as Page object design asks, even
    when the test passes without it. An action that loads data ends when the
