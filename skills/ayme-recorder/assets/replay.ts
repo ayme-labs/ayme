@@ -154,8 +154,11 @@ const onlyIn = (a: Set<string>, b: Set<string>) =>
 
 function loadCalls(traceZip: string): RecordedCall[] {
   const zip = readZip(traceZip);
-  const resource = (sha1: string | undefined) =>
-    sha1 === undefined ? undefined : zip.get(`resources/${sha1}`)?.();
+  // Older traces name a body file by `_sha1`, newer ones by its `_file` path.
+  const resource = (ref: { _sha1?: string; _file?: string } | undefined) => {
+    const file = ref?._file ?? (ref?._sha1 && `resources/${ref._sha1}`);
+    return file ? zip.get(file)?.() : undefined;
+  };
   const calls: RecordedCall[] = [];
   for (const [name, read] of zip) {
     if (!name.endsWith(".network")) continue;
@@ -173,13 +176,13 @@ function loadCalls(traceZip: string): RecordedCall[] {
         method: request.method,
         url: request.url,
         body:
-          resource(request.postData?._sha1)?.toString("utf8") ??
+          resource(request.postData)?.toString("utf8") ??
           request.postData?.text ??
           null,
         status: response.status,
         headers,
         responseBody:
-          resource(content._sha1) ??
+          resource(content) ??
           Buffer.from(
             content.text ?? "",
             content.encoding === "base64" ? "base64" : "utf8"
