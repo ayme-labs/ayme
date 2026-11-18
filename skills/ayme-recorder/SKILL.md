@@ -162,7 +162,10 @@ the outcome.
 Target selectors, and `/locator:` lines in older packages, are candidates.
 Check each by [Locator strategy](references/page-object-design.md#locator-strategy)
 and keep one that meets it. Look in the trace for an element that has no
-candidate, or whose candidate does not meet the strategy.
+candidate, or whose candidate does not meet the strategy. When the candidates
+use a test-id attribute other than `data-testid`, such as `data-test`, set
+`testIdAttribute` under `use` in the Playwright config; a script run outside
+the test runner calls `selectors.setTestIdAttribute()` instead.
 
 ## Use the trace
 
