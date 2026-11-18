@@ -205,15 +205,20 @@ test.describe("the recorder's controls", () => {
     // it to settle, and "Paused" shows only then. On a quiet page it shows
     // a few milliseconds after Stop, too soon for a person to click.
     await person.click(ticking.startButton);
+    const started = Date.now();
     expect(await recorder.send({ type: "stop" })).toBe("applied");
-    await person.pause();
+    await new Promise((resolve) => setTimeout(resolve, 300));
     await person.click(ticking.stopButton);
+    const after = Date.now() - started;
     const phase = seen.phase;
     // Ctrl+C in the terminal, at once.
     recorder.end();
     await expect(ticking.state).toHaveText("Stopped");
-    // The timing this needs: "Paused" did not show yet when the click
-    // reached the page, so the click is still recorded.
+    // The timing this needs: the click came while the first click's page
+    // was still given time to settle, which ends two seconds in on a page
+    // that never goes quiet, so the pages still held clicks back; and
+    // "Paused" did not show yet.
+    expect(after).toBeLessThan(2_000);
     expect(phase).toBe("wrappingUp");
 
     expect(await changesBy(recording, "Start ticking")).toHaveLength(1);
