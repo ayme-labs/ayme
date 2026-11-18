@@ -60,7 +60,11 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
 5. **Write the replay test**, as [The replay test](#the-replay-test) says.
 6. **Heal** against the replay test. Run it with
    `npx playwright test <file> --repeat-each 3 --retries 0 --workers 1` and
-   fix the page objects' locators and waits, never the flow's steps. When
+   fix the page objects' locators and waits, never the flow's steps. To see
+   why a run fails, start it in the background with `--debug=cli` added and
+   work on the paused page as the Playwright CLI's skill says
+   (`npx playwright cli --help` names it): attach, then read its snapshot,
+   requests and console. Stop the run when you are done. When
    passing would take other steps, stop and tell the user. Keep every wait
    that ends an action in its target state, as Page object design asks, even
    when the test passes without it. An action that loads data ends when the
@@ -70,8 +74,13 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
    requests shows only live. Prove each other wait: take it out and run three times at recorded
    speed, then three times with `REPLAY_SPEED=1000`. A wait that matters
    fails or flakes without it at either speed: put it back. Remove one that
-   passes both. Done when the test passes three runs in a row with every
-   wait proven.
+   passes both. Then run it once with `--trace on`, open that run's trace
+   with `npx playwright trace open <trace.zip>`, and list its calls with
+   `npx playwright trace requests`: every request other than GET or HEAD
+   must show `fulfilled` or `aborted` in the route column. One that shows
+   `continued`, or nothing, reached the live site: stop and tell the user.
+   Done when the test passes three runs in a row with every wait proven and
+   the trace shows no such request.
 7. **Rehearse live** with fresh real data the user gives you for one run,
    written to `.ayme/params/<flow>.<date>.json`. Run the entry script headed,
    with the user watching. The user answers each confirm: yes lets the same
