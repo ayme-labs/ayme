@@ -117,6 +117,11 @@ function recordPageErrors(key: string) {
 export const exampleTest = base.extend<{ ignoreAutoPairScan: void }>({
   ignoreAutoPairScan: async ({ browser }, use) => {
     await browser.addInitScript(ignoreAutoPairScanInPage);
+    // The resource timing that `loadedScripts` reads keeps 250 entries by
+    // default, fewer than a dev server can load.
+    await browser.addInitScript(() =>
+      performance.setResourceTimingBufferSize(10_000)
+    );
     await use();
   },
 });
