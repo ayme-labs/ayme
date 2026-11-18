@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --config app/vite.config.ts",
     "lint": "eslint . --max-warnings 0",
-    "test:e2e": "playwright test --reporter=list",
+    "test:e2e": "pnpm run test:playwright && pnpm run test:e2e:e2e",
+    "test:playwright": "playwright test --reporter=list",
+    "test:e2e:e2e": "e2e run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

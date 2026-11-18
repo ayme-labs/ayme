@@ -5,6 +5,8 @@ export default {
   tests: "tests/**/*.e2e.ts",
   // As the Playwright config: no retries, in CI too.
   retries: 0,
+  // Playwright's default; e2e's is 120 s.
+  timeout: 30_000,
   reporters: ["list"],
   trace: "retain-on-failure",
   targets: [

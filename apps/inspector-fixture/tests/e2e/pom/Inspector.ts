@@ -52,9 +52,10 @@ async function panelTexts(tab: Tab, selector: string): Promise<string[]> {
     const key = Symbol.for("@ayme-dev/inspector/shadow-root");
     return [...document.querySelectorAll("[data-ayme-inspector-host]")].flatMap(
       (host) => {
-        const root = (
-          host as unknown as Record<symbol, ShadowRoot | undefined>
-        )[key];
+        // The dogfood page mounts the Inspector in an open root.
+        const root =
+          (host as unknown as Record<symbol, ShadowRoot | undefined>)[key] ??
+          host.shadowRoot;
         return [...(root?.querySelectorAll(selector) ?? [])].map(
           (match) => match.textContent ?? ""
         );
@@ -116,8 +117,12 @@ async function panelText(tab: Tab, selector: string): Promise<string | null> {
 
 /** The Structure lens's tree, in the navigator. */
 export class StructureLens extends Part {
-  private tree(root: Locator) {
+  private treeOf(root: Locator) {
     return root.getByRole("tree", "Page structure");
+  }
+
+  get tree(): On {
+    return this.on((root) => this.treeOf(root));
   }
 
   /** The tree's text, as the DOM has it. */
@@ -138,14 +143,14 @@ export class StructureLens extends Part {
       `[data-member-tag][title=${JSON.stringify(member)}]`
     );
     return this.on((root) =>
-      this.tree(root).getByRole("treeitem").filter({ has: tag })
+      this.treeOf(root).getByRole("treeitem").filter({ has: tag })
     );
   }
 
   /** A node by its role and name, e.g. ("checkbox", "Urgent"). */
   nodeNamed(role: string, name: string): On {
     return this.on((root) =>
-      this.tree(root).getByRole("treeitem", {
+      this.treeOf(root).getByRole("treeitem", {
         name: new RegExp(`^e\\d+ ${role} ${JSON.stringify(name)}`),
       })
     );
@@ -287,6 +292,18 @@ export class Navigator extends Part {
     return this.on((root) => root.getByRole("button", text));
   }
 
+  lens(name: LensName): On {
+    return this.on((root) =>
+      root.getByRole("group", "Lens").getByRole("button", name)
+    );
+  }
+
+  get searchResults(): On {
+    return this.on((root) =>
+      root.getByRole("list", "Search results").getByRole("button")
+    );
+  }
+
   async showLens(name: LensName) {
     await this.on((root) =>
       root.getByRole("group", "Lens").getByRole("button", name)
@@ -351,6 +368,13 @@ export class WhatTheModelSees extends Part {
 
 /** A value for one argument, as a person would enter it. */
 export type ArgumentValue = string | number | boolean;
+
+/** `fill_form`'s form: one row per field to fill. */
+export class FillForm extends Part {
+  control(name: string): On {
+    return this.on((list) => list.getByRole("listitem").getByLabel(name));
+  }
+}
 
 /**
  * A run card's ref field: it chooses a ref from a searchable tree of the
@@ -480,6 +504,14 @@ export class RunCard extends Part {
   /** The control of one argument, by its path, e.g. "text". */
   field(path: string): On {
     return this.on((root) => root.getByLabel(path));
+  }
+
+  /** `fill_form`'s form. */
+  get fillForm(): FillForm {
+    return new FillForm(
+      this.tab,
+      this.inside((card) => card.getByRole("list", "Form fields"))
+    );
   }
 
   /** A ref argument's field, by its path, e.g. "ref". */
