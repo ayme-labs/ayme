@@ -1529,7 +1529,9 @@ export function inPageContract(lane: InPageLane) {
         )
       );
       class SettingsPage {
-        readonly root = page.locator("#settings");
+        get root() {
+          return page.locator("#settings");
+        }
         open() {}
       }
       ayme({ root: (self: SettingsPage) => self.root })(SettingsPage);

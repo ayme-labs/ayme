@@ -7,34 +7,47 @@ import type { Locator } from "@playwright/test";
  */
 @ayme
 export class RefField {
+  constructor(
+    private readonly card: Locator,
+    private readonly path: string
+  ) {}
+
   /** Shows the ref chosen, e.g. `e6 button "Add item"`, and opens the tree. */
   @ayme.child
-  readonly chooser: Locator;
+  get chooser(): Locator {
+    return this.card.getByRole("button", { name: this.path, exact: true });
+  }
+
   /** The crosshair: picks a ref by pointing at the page. */
   @ayme.child
-  readonly pickButton: Locator;
-  /** While picking: what to click on the page. */
-  @ayme.child
-  readonly pickHint: Locator;
-  @ayme.child
-  readonly search: Locator;
-  @ayme.child
-  readonly tree: Locator;
-  /** The tree's nodes, each read as its ref, role and name. */
-  @ayme.collection
-  readonly nodes: Locator;
-
-  constructor(card: Locator, path: string) {
-    this.chooser = card.getByRole("button", { name: path, exact: true });
-    this.pickButton = card.getByRole("button", {
+  get pickButton(): Locator {
+    return this.card.getByRole("button", {
       name: "Pick an element on the page",
     });
-    this.pickHint = card.getByText(/Esc cancels\.$/);
-    this.search = card.getByRole("textbox", {
+  }
+
+  /** While picking: what to click on the page. */
+  @ayme.child
+  get pickHint(): Locator {
+    return this.card.getByText(/Esc cancels\.$/);
+  }
+
+  @ayme.child
+  get search(): Locator {
+    return this.card.getByRole("textbox", {
       name: "Search the page structure",
     });
-    this.tree = card.getByRole("tree", { name: "Page structure" });
-    this.nodes = this.tree.getByRole("treeitem");
+  }
+
+  @ayme.child
+  get tree(): Locator {
+    return this.card.getByRole("tree", { name: "Page structure" });
+  }
+
+  /** The tree's nodes, each read as its ref, role and name. */
+  @ayme.collection
+  get nodes(): Locator {
+    return this.tree.getByRole("treeitem");
   }
 
   /** The ref chosen, as the field shows it, e.g. `e6 button "Add item"`. */

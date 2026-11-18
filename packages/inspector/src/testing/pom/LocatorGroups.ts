@@ -9,12 +9,13 @@ import { RefField } from "./RefField";
  * each with a container and its targets, by group number from 1.
  */
 export class LocatorGroups extends PanelPart {
-  @ayme.child
-  readonly addGroupButton: Locator;
-
-  constructor(card: Locator) {
+  constructor(private readonly card: Locator) {
     super(card.getByRole("list", { name: "Locator groups" }));
-    this.addGroupButton = card.getByRole("button", { name: "Add group" });
+  }
+
+  @ayme.child
+  get addGroupButton(): Locator {
+    return this.card.getByRole("button", { name: "Add group" });
   }
 
   group(number: number): Locator {

@@ -47,8 +47,12 @@ describe("registered Page Object targets", () => {
       });
     };
     class ListPage {
-      readonly root = page.locator("main");
-      readonly newItemInput = page.locator(".new");
+      get root() {
+        return page.locator("main");
+      }
+      get newItemInput() {
+        return page.locator(".new");
+      }
       readonly header = rooted(page.locator("header"), {
         title: page.locator("h1"),
       });
@@ -143,8 +147,12 @@ describe("registered Page Object targets", () => {
       <section><p class="root">Intro</p></section>
     `;
     class Editor {
-      readonly container = page.locator("section");
-      readonly root = page.locator(".root");
+      get container() {
+        return page.locator("section");
+      }
+      get root() {
+        return page.locator(".root");
+      }
     }
     ayme({ root: (self: Editor) => self.container })(Editor);
     registerCompiledPom(Editor, {
@@ -179,7 +187,9 @@ describe("registered Page Object targets", () => {
       <ul><li class="item"><button>Milk</button></li></ul>
     `;
     class ListPage {
-      readonly addItemButton = page.getByRole("button", { name: "Milk" });
+      get addItemButton() {
+        return page.getByRole("button", { name: "Milk" });
+      }
       readonly items = [rooted(page.locator(".item").nth(0), {})];
     }
     registerCompiledPom(ListPage, {
@@ -223,7 +233,9 @@ describe("registered Page Object targets", () => {
     document.body.innerHTML = '<ul><li class="item">Milk</li></ul>';
     let rootReads = 0;
     class ListPage {
-      readonly items = page.locator(".item");
+      get items() {
+        return page.locator(".item");
+      }
     }
     ayme({
       root: () => {
@@ -259,7 +271,9 @@ describe("registered Page Object targets", () => {
   it("lists what a member's locator holds now, after a change no observation follows", async () => {
     document.body.innerHTML = '<input type="checkbox" class="done" />';
     class Todo {
-      readonly checked = page.locator(".done:checked");
+      get checked() {
+        return page.locator(".done:checked");
+      }
     }
     registerCompiledPom(Todo, {
       className: "Todo",
@@ -279,8 +293,12 @@ describe("registered Page Object targets", () => {
   it("leaves out a member whose locator cannot be resolved, and lists the rest", async () => {
     document.body.innerHTML = '<input class="name" />';
     class Form {
-      readonly broken = page.locator("[");
-      readonly name = page.locator(".name");
+      get broken() {
+        return page.locator("[");
+      }
+      get name() {
+        return page.locator(".name");
+      }
     }
     registerCompiledPom(Form, {
       className: "Form",
@@ -304,7 +322,9 @@ describe("registered Page Object targets", () => {
       <input type="checkbox" id="b" />
     `;
     class Todos {
-      readonly checked = page.locator("input:checked");
+      get checked() {
+        return page.locator("input:checked");
+      }
     }
     ayme({ root: () => page.locator("#a") })(Todos);
     registerCompiledPom(Todos, {

@@ -53,7 +53,9 @@ export abstract class AppComponent {
 }
 
 export class NewProjectDialog extends AppComponent {
-  readonly createButton = this.root.getByRole("button", { name: "Create" });
+  get createButton() {
+    return this.root.getByRole("button", { name: "Create" });
+  }
 }
 ```
 
@@ -94,7 +96,9 @@ The method's parameters are the tool's inputs. Plain data works: strings, number
 ```ts
 export class ProjectRow extends AppComponent {
   @ayme.child
-  readonly archiveButton = this.root.getByRole("button", { name: "Archive" });
+  get archiveButton() {
+    return this.root.getByRole("button", { name: "Archive" });
+  }
 
   @ayme.action({
     description:
@@ -138,7 +142,9 @@ const canRemove = async (self: ProjectRow) =>
 
 export class ProjectRow extends AppComponent {
   @ayme.child
-  readonly removeButton = this.root.getByRole("button", { name: "Remove" });
+  get removeButton() {
+    return this.root.getByRole("button", { name: "Remove" });
+  }
 
   @ayme.action({ available: canRemove })
   async remove() {
@@ -174,21 +180,25 @@ Declare what an agent reads or acts on, such as the inputs, buttons and lists th
 
 A child Page Object needs the declaration too. Ayme reaches a component only through the members its models declare. Without `@ayme.collection` on `projects` below, no `ProjectRow` is reached, and `ProjectRow.remove` never becomes a tool. Nothing warns you. The [Inspector](inspector.md)'s Model view shows what a model holds.
 
+Declare a locator as a getter, and a child page object built from `this.page` or `this.root` the same way. Playwright 1.65 follows TypeScript's `useDefineForClassFields` (on for an ES2022 or later target, and when no target is set), so a field initializer runs before the constructor assigns its parameter properties. `readonly submit = this.page.getByRole(...)` then reads `page` before it exists. A getter runs when the locator is read.
+
 ```ts
 export class ProjectsPage extends AppPage {
   readonly path = "/projects";
 
   @ayme.child
-  readonly newProjectButton = this.page.getByRole("button", {
-    name: "New project",
-  });
+  get newProjectButton() {
+    return this.page.getByRole("button", { name: "New project" });
+  }
 
-  readonly rows = this.page.getByRole("listitem"); // not declared: projects() reads it
+  get rows() {
+    return this.page.getByRole("listitem"); // not declared: projects() reads it
+  }
 
   @ayme.child
-  readonly newProjectDialog = new NewProjectDialog(
-    this.page.getByRole("dialog")
-  );
+  get newProjectDialog() {
+    return new NewProjectDialog(this.page.getByRole("dialog"));
+  }
 
   @ayme.action
   async openNewProjectDialog(): Promise<NewProjectDialog> {
@@ -213,7 +223,9 @@ What to declare is as for [`@ayme.child`](#aymechild).
 
 ```ts
 @ayme.collection({ description: "Filters applied to the list." })
-readonly filterChips = this.page.getByTestId("filter-chip");
+get filterChips() {
+  return this.page.getByTestId("filter-chip");
+}
 
 @ayme.collection
 async projects(): Promise<ProjectRow[]> {

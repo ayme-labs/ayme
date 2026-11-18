@@ -13,20 +13,25 @@ const editorRoot = (self: FillForm) => self.card;
  */
 @ayme({ root: editorRoot })
 export class FillForm extends PanelPart {
-  /** The rows of the list of fields, in fill order. */
-  @ayme.collection
-  readonly rows: Locator;
-  /** How many rows are changed, e.g. "2 changed". */
-  @ayme.child
-  readonly changedCount: Locator;
-  @ayme.child
-  readonly undoAllButton: Locator;
-
   constructor(readonly card: Locator) {
     super(card.getByRole("list", { name: "Form fields" }));
-    this.rows = this.root.getByRole("listitem");
-    this.changedCount = card.getByRole("status", { name: "Changed fields" });
-    this.undoAllButton = card.getByRole("button", { name: "Undo all" });
+  }
+
+  /** The rows of the list of fields, in fill order. */
+  @ayme.collection
+  get rows(): Locator {
+    return this.root.getByRole("listitem");
+  }
+
+  /** How many rows are changed, e.g. "2 changed". */
+  @ayme.child
+  get changedCount(): Locator {
+    return this.card.getByRole("status", { name: "Changed fields" });
+  }
+
+  @ayme.child
+  get undoAllButton(): Locator {
+    return this.card.getByRole("button", { name: "Undo all" });
   }
 
   /** A field's row, by its name. */

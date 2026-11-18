@@ -94,7 +94,9 @@ describe("Action Availability", () => {
     async (_label, predicate, expected) => {
       document.body.innerHTML = '<section id="panel">Panel</section>';
       class Panel {
-        root = page.locator("#panel");
+        get root() {
+          return page.locator("#panel");
+        }
         remove() {}
       }
       ayme({ root: rootOf })(Panel);
@@ -139,12 +141,16 @@ describe("Action Availability", () => {
     document.body.innerHTML =
       '<section id="toolbar">Toolbar</section><section id="panel">Panel</section>';
     class Toolbar {
-      root = page.locator("#toolbar");
+      get root() {
+        return page.locator("#toolbar");
+      }
       reset() {}
     }
     ayme({ root: rootOf })(Toolbar);
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       removed = 0;
       remove() {
         this.removed += 1;
@@ -196,7 +202,9 @@ describe("Action Availability", () => {
     document.body.innerHTML =
       '<section id="shell">Shell <div id="panel">Panel</div></section>';
     class Shell {
-      root = page.locator("#shell");
+      get root() {
+        return page.locator("#shell");
+      }
       panel = rooted(page.locator("#panel"), { close() {} });
       archive() {}
     }
@@ -238,8 +246,12 @@ describe("Action Availability", () => {
       '<section id="panel">Panel <button id="remove" hidden>Remove</button></section>';
     const seen: object[] = [];
     class Panel {
-      root = page.locator("#panel");
-      removeButton = page.locator("#remove");
+      get root() {
+        return page.locator("#panel");
+      }
+      get removeButton() {
+        return page.locator("#remove");
+      }
       remove() {}
       duplicate() {}
     }
@@ -287,7 +299,9 @@ describe("Action Availability", () => {
       '<nav id="toolbar">Toolbar</nav><ul><li id="draft" data-state="draft">Draft</li><li id="sent" data-state="sent">Sent</li></ul>';
     // Another Page Object, registered first, owns none of the items.
     class Toolbar {
-      root = page.locator("#toolbar");
+      get root() {
+        return page.locator("#toolbar");
+      }
       reset() {}
     }
     ayme({ root: rootOf })(Toolbar);
@@ -719,7 +733,9 @@ describe("Action Availability", () => {
       '<section id="panel" aria-label="Panel" style="height:40px"><button>Act</button></section>';
     document.body.style.pointerEvents = "none";
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       act() {}
     }
     ayme({ root: rootOf })(Panel);
@@ -744,7 +760,9 @@ describe("Action Availability", () => {
       <div role="banner" aria-label="Top" style="position:absolute;left:0;top:0;width:300px;height:20px"></div>
       <div role="dialog" aria-label="Middle" style="position:absolute;left:0;top:20px;width:300px;height:80px"></div>`;
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       act() {}
     }
     ayme({ root: rootOf })(Panel);
@@ -768,7 +786,9 @@ describe("Action Availability", () => {
   it("withdraws the tools of a Page Object that is not on the page, whatever its predicates say", async () => {
     document.body.innerHTML = '<section id="panel" hidden>Panel</section>';
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       remove() {}
     }
     ayme({ root: rootOf })(Panel);
@@ -801,7 +821,9 @@ describe("Action Availability", () => {
     document.body.innerHTML = '<section id="panel">Panel</section>';
     let verdict: boolean | string = true;
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       removed = 0;
       remove() {
         this.removed += 1;
@@ -842,7 +864,9 @@ describe("Action Availability", () => {
   it("makes an action whose predicate throws unavailable, with the error as its reason", async () => {
     document.body.innerHTML = '<section id="panel">Panel</section>';
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       remove() {}
     }
     ayme({ root: rootOf })(Panel);
@@ -1004,7 +1028,9 @@ describe("Action Availability", () => {
       '<div style="height:3000px"></div><section id="panel" aria-label="Panel" style="height:40px"><button>Act</button></section>';
     const acted = vi.fn();
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       act() {
         acted();
       }
@@ -1041,7 +1067,9 @@ describe("Action Availability", () => {
       `<style>:host([data-ayme-hit-test-through]) * { pointer-events: none !important }</style>
        <div style="position: fixed; inset: 0; pointer-events: auto; background: white"></div>`;
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       act() {}
     }
     ayme({ root: rootOf })(Panel);
@@ -1080,7 +1108,9 @@ describe("Action Availability", () => {
       <div role="dialog" aria-label="Saving" style="position:fixed;left:0;right:0;top:30%;height:40%"></div>`;
     const acted = vi.fn();
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       act() {
         acted();
       }

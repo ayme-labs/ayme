@@ -11,26 +11,31 @@ export type ModelPaneName = "On this page" | "Page object models";
  * the Page Object Models the page knows, in two collapsible panes.
  */
 export class ModelLens extends PanelPart {
-  /** The object tree, "On this page". */
-  @ayme.child
-  readonly objectTree: Locator;
-  /** The Page Object Model list, "Page object models". */
-  @ayme.child
-  readonly modelList: Locator;
-  @ayme.collection
-  readonly models: Locator;
-  /** The divider between the two panes. */
-  @ayme.child
-  readonly divider: Locator;
-
   constructor(root: Locator) {
     super(root);
-    this.objectTree = root.getByRole("tree", { name: "Page objects" });
-    this.modelList = root.getByRole("list", { name: "Page object models" });
-    this.models = this.modelList.getByRole("button");
-    this.divider = root.getByRole("separator", {
-      name: "Resize the two lists",
-    });
+  }
+
+  /** The object tree, "On this page". */
+  @ayme.child
+  get objectTree(): Locator {
+    return this.root.getByRole("tree", { name: "Page objects" });
+  }
+
+  /** The Page Object Model list, "Page object models". */
+  @ayme.child
+  get modelList(): Locator {
+    return this.root.getByRole("list", { name: "Page object models" });
+  }
+
+  @ayme.collection
+  get models(): Locator {
+    return this.modelList.getByRole("button");
+  }
+
+  /** The divider between the two panes. */
+  @ayme.child
+  get divider(): Locator {
+    return this.root.getByRole("separator", { name: "Resize the two lists" });
   }
 
   pane(name: ModelPaneName): Locator {

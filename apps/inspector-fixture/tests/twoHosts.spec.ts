@@ -37,15 +37,15 @@ ayme({ root: (self: ListItem) => self.root })(ListItem);
  * is compiled by the plugin, so this one is registered with the same manifest.
  */
 class ListPage {
-  readonly newItemInput;
-  readonly addItemButton;
-  readonly items;
-  constructor(page: Page) {
-    this.newItemInput = page.getByRole("textbox", { name: "New item" });
-    this.addItemButton = page.getByRole("button", { name: "Add item" });
-    this.items = page
-      .getByRole("list", { name: "Items" })
-      .getByRole("listitem");
+  constructor(private readonly page: Page) {}
+  get newItemInput() {
+    return this.page.getByRole("textbox", { name: "New item" });
+  }
+  get addItemButton() {
+    return this.page.getByRole("button", { name: "Add item" });
+  }
+  get items() {
+    return this.page.getByRole("list", { name: "Items" }).getByRole("listitem");
   }
   async entries() {
     return (await this.items.all()).map((item) => new ListItem(item));
@@ -59,12 +59,12 @@ ayme(ListPage);
 registerCompiledPom(ListPage, {
   className: "ListPage",
   members: [
-    { memberName: "newItemInput", kind: "locator", access: "field" },
-    { memberName: "addItemButton", kind: "locator", access: "field" },
+    { memberName: "newItemInput", kind: "locator", access: "getter" },
+    { memberName: "addItemButton", kind: "locator", access: "getter" },
     {
       memberName: "items",
       kind: "locator",
-      access: "field",
+      access: "getter",
       collection: true,
     },
     {

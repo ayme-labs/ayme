@@ -13,11 +13,11 @@ export type LayoutChoice =
 /** The System / Light / Dark switch. Each press moves to the next theme. */
 @ayme
 export class ThemeSwitch {
-  @ayme.child
-  readonly button: Locator;
+  constructor(private readonly root: Locator) {}
 
-  constructor(root: Locator) {
-    this.button = root.getByRole("button", { name: /^Theme: / });
+  @ayme.child
+  get button(): Locator {
+    return this.root.getByRole("button", { name: /^Theme: / });
   }
 
   /** The theme it's set to. */
@@ -42,18 +42,23 @@ export class ThemeSwitch {
 /** The layout menu. It opens in the Inspector's portal. */
 @ayme
 export class LayoutMenu {
-  @ayme.child
-  readonly trigger: Locator;
-  @ayme.child
-  readonly menu: Locator;
-
   /**
    * @param root the header.
    * @param portalRoot an element holding the Inspector's portal.
    */
-  constructor(root: Locator, portalRoot: Locator) {
-    this.trigger = root.getByRole("button", { name: /^Layout: / });
-    this.menu = portalRoot.getByRole("menu", { name: "Layout" });
+  constructor(
+    private readonly root: Locator,
+    private readonly portalRoot: Locator
+  ) {}
+
+  @ayme.child
+  get trigger(): Locator {
+    return this.root.getByRole("button", { name: /^Layout: / });
+  }
+
+  @ayme.child
+  get menu(): Locator {
+    return this.portalRoot.getByRole("menu", { name: "Layout" });
   }
 
   /** The layout the panel is in. */
@@ -80,18 +85,11 @@ export class LayoutMenu {
  */
 export class InspectorHeader extends PanelPart {
   @ayme.child
-  readonly title: Locator;
-  @ayme.child
   readonly connections: Connections;
   @ayme.child
   readonly themeSwitch: ThemeSwitch;
   @ayme.child
   readonly layoutMenu: LayoutMenu;
-  @ayme.child
-  readonly collapseButton: Locator;
-  /** Fullscreen, or back from it: only in an Agent App that offers it. */
-  @ayme.child
-  readonly fullscreenButton: Locator;
 
   /**
    * @param root the header.
@@ -100,14 +98,25 @@ export class InspectorHeader extends PanelPart {
    */
   constructor(root: Locator, portalRoot: Locator) {
     super(root);
-    this.title = root.getByRole("heading", { name: "ayme", exact: true });
     this.connections = new Connections(root, portalRoot);
     this.themeSwitch = new ThemeSwitch(root);
     this.layoutMenu = new LayoutMenu(root, portalRoot);
-    this.collapseButton = root.getByRole("button", {
-      name: "Collapse inspector",
-    });
-    this.fullscreenButton = root.getByRole("button", {
+  }
+
+  @ayme.child
+  get title(): Locator {
+    return this.root.getByRole("heading", { name: "ayme", exact: true });
+  }
+
+  @ayme.child
+  get collapseButton(): Locator {
+    return this.root.getByRole("button", { name: "Collapse inspector" });
+  }
+
+  /** Fullscreen, or back from it: only in an Agent App that offers it. */
+  @ayme.child
+  get fullscreenButton(): Locator {
+    return this.root.getByRole("button", {
       name: /^(Exit fullscreen|Fullscreen)$/,
     });
   }

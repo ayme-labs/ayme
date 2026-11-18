@@ -584,14 +584,11 @@ import { usePageObject } from '@ayme-dev/vue';
 import { usePageObject as useSveltePageObject } from '@ayme-dev/svelte';
 @ayme
 class Pom {
+  constructor(private readonly page: Page) {}
   @ayme.child
-  readonly input: Locator;
+  get input(): Locator { return this.page.getByRole('textbox', { name: 'Name' }); }
   // Not declared, so no Page Object Child.
-  readonly helper: Locator;
-  constructor(page: Page) {
-    this.input = page.getByRole('textbox', { name: 'Name' });
-    this.helper = page.getByRole('status');
-  }
+  get helper(): Locator { return this.page.getByRole('status'); }
   @ayme.action({ description: 'Fill and submit the input.' })
   async act(value: string) {
     await this.input.fill(value, { timeout: 10 });
@@ -606,14 +603,11 @@ class ItemPom {
 }
 @ayme
 class ChildrenPom {
+  constructor(readonly page: Page) {}
   @ayme.child
-  readonly heading: Locator;
+  get heading(): Locator { return this.page.getByRole('heading'); }
   @ayme.collection
-  readonly rows: Locator;
-  constructor(readonly page: Page) {
-    this.heading = page.getByRole('heading');
-    this.rows = page.getByRole('row');
-  }
+  get rows(): Locator { return this.page.getByRole('row'); }
   @ayme.child({ description: 'The first item.' })
   get first(): ItemPom { return new ItemPom(this.page.getByRole('listitem').first()); }
   @ayme.collection({ description: 'Every cell.' })
@@ -735,7 +729,7 @@ assert.ok(transformed, 'Decorated POM must produce registration metadata');
 const registration = transformed.code.split('\\n').find(line => line.startsWith('registerCompiledPom(Pom, '));
 assert.ok(registration, 'Transformed POM must register its compiled manifest');
 const manifest = JSON.parse(registration.slice('registerCompiledPom(Pom, '.length, -2));
-assert.deepEqual(manifest.members, [{ memberName: 'input', kind: 'locator', access: 'field', collection: false }]);
+assert.deepEqual(manifest.members, [{ memberName: 'input', kind: 'locator', access: 'getter', collection: false }]);
 assert.deepEqual(manifest.tools, [{
   methodName: 'act',
   toolName: 'Pom.act',
@@ -976,8 +970,8 @@ import type { Locator, Page } from '@playwright/test';
 import { ayme } from '@ayme-dev/ayme';
 @ayme
 export class Pom {
-  readonly button: Locator;
-  constructor(page: Page) { this.button = page.getByRole('button', { name: 'Count' }); }
+  constructor(private readonly page: Page) {}
+  get button(): Locator { return this.page.getByRole('button', { name: 'Count' }); }
   @ayme.action({ description: 'Count once.' })
   async count() { await this.button.click(); }
 }

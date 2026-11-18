@@ -8,25 +8,34 @@ import { PanelPart } from "./PanelPart";
  * per value, with its label, its value and its type. Rows count from 1.
  */
 export class ValueRows extends PanelPart {
-  /** The schema's description of the map, shown above the rows. */
-  @ayme.child
-  readonly description: Locator;
-  @ayme.child
-  readonly addButton: Locator;
-  /** How many values are set, against the most the map takes, e.g. "2 / 254". */
-  @ayme.child
-  readonly count: Locator;
   private readonly path: string;
 
-  constructor(card: Locator, path: string) {
+  constructor(
+    private readonly card: Locator,
+    path: string
+  ) {
     super(card.getByRole("group", { name: path, exact: true }));
     this.path = path;
-    this.description = card.getByRole("note", { name: `${path} description` });
-    this.addButton = card.getByRole("button", {
-      name: `Add to ${path}`,
+  }
+
+  /** The schema's description of the map, shown above the rows. */
+  @ayme.child
+  get description(): Locator {
+    return this.card.getByRole("note", { name: `${this.path} description` });
+  }
+
+  @ayme.child
+  get addButton(): Locator {
+    return this.card.getByRole("button", {
+      name: `Add to ${this.path}`,
       exact: true,
     });
-    this.count = card.getByRole("status", { name: `${path} count` });
+  }
+
+  /** How many values are set, against the most the map takes, e.g. "2 / 254". */
+  @ayme.child
+  get count(): Locator {
+    return this.card.getByRole("status", { name: `${this.path} count` });
   }
 
   label(row: number): Locator {
