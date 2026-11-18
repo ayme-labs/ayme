@@ -16,8 +16,9 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
 1. **Record** cold. The skill's Record step sends you here before it starts
    the recorder. Tell the user: once the recorder window shows the start
    page, log in if needed, then clear what the site keeps for itself but keep
-   the login. In DevTools, open Application → Storage, untick Cookies and
-   press "Clear site data". Then reload the start page and do the flow.
+   the login. In DevTools, open Application → Storage, untick Cookies, and
+   Local storage too when the site keeps its login there, and press "Clear
+   site data". Then reload the start page and do the flow.
    Otherwise the site answers from its own caches, and the recording lacks
    those calls. When the user does the flow to the end, irreversible steps
    included, the replay test covers them too.
