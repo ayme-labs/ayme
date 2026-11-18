@@ -7,6 +7,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 export const tokenVariable = "CLAUDE_CODE_OAUTH_TOKEN";
+/** The second login, used for a run when the first is at its usage limit. */
+export const fallbackTokenVariable = "CLAUDE_CODE_OAUTH_TOKEN_FALLBACK";
 export const envFileName = ".env.local";
 
 /** `KEY=value` lines; `#` comments, an `export ` prefix and matching quotes are allowed. */
@@ -57,4 +59,14 @@ export function readOauthToken(
   parent: NodeJS.ProcessEnv = process.env
 ): string | undefined {
   return readEnvVariable(tokenVariable, directory, parent);
+}
+
+/**
+ * Whether a value has the shape of the token `claude setup-token` prints:
+ * `sk-ant-oat<nn>-` and URL-safe characters. A mistyped or truncated value is
+ * caught before it is used, and a value too short to be a token never reaches
+ * the scrubber that replaces token text in the agent's output.
+ */
+export function isOauthTokenShape(value: string): boolean {
+  return /^sk-ant-oat\d{2}-[A-Za-z0-9_-]{20,}$/.test(value);
 }

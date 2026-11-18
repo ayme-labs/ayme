@@ -1,4 +1,5 @@
 import type { Turn } from "./claude.ts";
+import type { LoginName } from "./login.ts";
 import {
   summarizeTranscript,
   totalTokens,
@@ -11,6 +12,8 @@ import type { Verdict } from "./verdict.ts";
 /** What a run leaves behind, before it is turned into a result. */
 export type RunArtifacts = {
   runId: string;
+  /** Which login served the run; never the token. */
+  login: LoginName;
   arm: string;
   missionId: string;
   /** The model as requested; the model as used comes from the transcript. */
@@ -49,6 +52,8 @@ export type RunArtifacts = {
 
 export type NormalizedResult = {
   runId: string;
+  /** Which login served the run; results stored before the fallback existed have none. */
+  login?: LoginName;
   arm: string;
   mission: string;
   /** The verdict's outcome, from the database alone. */
@@ -150,6 +155,7 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     null;
   return {
     runId: artifacts.runId,
+    login: artifacts.login,
     arm: artifacts.arm,
     mission: artifacts.missionId,
     pass: artifacts.verdict.pass,

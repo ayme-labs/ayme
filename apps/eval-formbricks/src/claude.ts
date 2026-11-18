@@ -12,6 +12,7 @@
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createWriteStream } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 
 import type { Arm } from "./arms.ts";
@@ -43,6 +44,8 @@ export type ClaudeInvocation = {
   setupTimeoutMs?: number;
   transcriptPath: string;
   stderrPath: string;
+  /** Every token value to scrub from the agent's output before it is kept: the one in `environment` and any other login's. */
+  secrets?: string[];
 } & (
   | {
       /** The second message: the task. */
@@ -69,6 +72,8 @@ export type ClaudeRun = {
   setup: Turn;
   /** Why the setup turn did not complete; the task is sent only after a completed setup turn. */
   setupFailure: string | null;
+  /** A turn's `result` event said the login hit its usage limit. */
+  usageLimited: boolean;
   /** The measured turn; `null` when the task was never sent. */
   task: Turn | null;
   /** When the agent was started. */
@@ -166,8 +171,46 @@ export function claudeEnvironment(
   return environment;
 }
 
+/**
+ * One character of a secret as it may be printed: itself, or its JSON escape
+ * (`\u0073`, in either case of hex digit), the only escape JSON has for the
+ * letters, digits and dashes of a token.
+ */
+function printedCharacter(character: string) {
+  const hex = character
+    .charCodeAt(0)
+    .toString(16)
+    .padStart(4, "0")
+    .replace(/[a-f]/g, (digit) => `[${digit}${digit.toUpperCase()}]`);
+  return `(?:${character.replace(/[\\^$.*+?()[\]{}|/-]/g, "\\$&")}|\\\\u${hex})`;
+}
+
+/**
+ * Builds the function that replaces every secret in a text, whether it is written out
+ * or spelled with JSON escapes (`\u0073k-ant-...`), in a string, a key or
+ * anywhere else in the text, so it holds for a stream-json line as for the
+ * whole of stderr, indented JSON over several lines included. What is not a
+ * secret stays byte for byte. The patterns are built once, here, not per line.
+ */
+export function secretRedactor(secrets: string[]): (text: string) => string {
+  const patterns = secrets
+    .filter((secret) => secret !== "")
+    .map(
+      (secret) =>
+        new RegExp(secret.split("").map(printedCharacter).join(""), "g")
+    );
+  return (text) =>
+    patterns.reduce(
+      (redacted, pattern) => redacted.replace(pattern, "[redacted]"),
+      text
+    );
+}
+
 export function claudeVersion(): string | null {
-  const result = spawnSync("claude", ["--version"], { encoding: "utf8" });
+  const result = spawnSync("claude", ["--version"], {
+    encoding: "utf8",
+    env: withoutClaudeVariables(process.env),
+  });
   if (result.status !== 0) return null;
   return result.stdout.trim().replace(/\s*\(Claude Code\)\s*$/, "") || null;
 }
@@ -230,7 +273,6 @@ export async function runClaude(
   invocation: ClaudeInvocation
 ): Promise<ClaudeRun> {
   const transcript = createWriteStream(invocation.transcriptPath);
-  const stderr = createWriteStream(invocation.stderrPath);
   const startedAt = new Date();
   const child = spawn("claude", claudeArguments(invocation), {
     cwd: invocation.cwd,
@@ -238,20 +280,35 @@ export async function runClaude(
     detached: true,
     stdio: ["pipe", "pipe", "pipe"],
   });
-  child.stderr.pipe(stderr);
-  // A message sent to an agent that has already exited must not take the harness down.
-  child.stdin.on("error", (error) =>
-    stderr.write(`harness: writing to the agent failed: ${error.message}\n`)
+  // Neither stream keeps a token: the output is public once the results folder is uploaded.
+  const redact = secretRedactor(invocation.secrets ?? []);
+  // Stderr is free text, so it is scrubbed as a whole, once it is complete: a token in JSON printed
+  // over several lines is no secret on any one line. Stdout is stream-json, scrubbed line by line.
+  let stderr = "";
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", (chunk: string) => (stderr += chunk));
+  const stderrClosed = new Promise<void>((resolve) =>
+    child.stderr.once("close", resolve)
   );
+  // A message sent to an agent that has already exited must not take the harness down.
+  child.stdin.on("error", (error) => {
+    stderr += `harness: writing to the agent failed: ${error.message}\n`;
+  });
 
   const lines: string[] = [];
+  let usageLimited = false;
   let onResult: ((event: { isError: boolean }) => void) | null = null;
   const reader = createInterface({ input: child.stdout });
-  reader.on("line", (line) => {
+  reader.on("line", (rawLine) => {
+    // The event is read as the agent wrote it; only what is stored is scrubbed.
+    const result = resultEvent(rawLine);
+    const line = redact(rawLine);
     lines.push(line);
     transcript.write(`${line}\n`);
-    const result = resultEvent(line);
-    if (result !== null) onResult?.(result);
+    if (result !== null) {
+      usageLimited ||= result.usageLimit;
+      onResult?.(result);
+    }
   });
   // Registered before the child can close: readline closes with stdout, ahead of the child's own close.
   const readerClosed = new Promise<void>((resolve) =>
@@ -339,8 +396,11 @@ export async function runClaude(
     // Claude Code exits once its input ends; one that lingers is stopped so the run can end.
     linger = setTimeout(stopChild, exitGraceMs);
     const { exitCode, signal } = await closed;
-    await readerClosed;
-    await Promise.all([closeStream(transcript), closeStream(stderr)]);
+    await Promise.all([readerClosed, stderrClosed]);
+    await Promise.all([
+      closeStream(transcript),
+      writeFile(invocation.stderrPath, redact(stderr)),
+    ]);
     // An interrupted run is not a result: nothing is stored and a suite stops.
     if (interruptedBy)
       throw new Error(`The run was interrupted by ${interruptedBy}.`);
@@ -349,6 +409,7 @@ export async function runClaude(
       signal,
       setup,
       setupFailure,
+      usageLimited,
       task,
       startedAt: startedAt.toISOString(),
       finishedAt: new Date().toISOString(),

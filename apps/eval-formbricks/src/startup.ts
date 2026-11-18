@@ -25,14 +25,19 @@ import {
   setupTimeoutMs,
   type ClaudeRun,
 } from "./claude.ts";
-import { readOauthToken } from "./environment.ts";
+import {
+  usageLimitError,
+  withFallbackLogin,
+  type Login,
+  type LoginName,
+} from "./login.ts";
 import { evalRoot, labRoot, repoRoot, runsRoot } from "./paths.ts";
 import {
   checkPreconditions,
   claudeTokenPrecondition,
 } from "./preconditions.ts";
 import { readyLine } from "./prompt.ts";
-import { defaultModel, gitOutput, log, writeJson } from "./run.ts";
+import { defaultModel, gitOutput, log, tearDown, writeJson } from "./run.ts";
 import {
   defaultScenarioId,
   startupScenarios,
@@ -60,6 +65,8 @@ export type StartupOptions = {
 
 export type StartupResult = {
   runId: string;
+  /** Which login served the run; never the token. */
+  login: LoginName;
   scenario: string;
   /** No condition failed. */
   pass: boolean;
@@ -155,29 +162,48 @@ function judge(scenario: StartupScenario, run: ClaudeRun, skillDir: string) {
 /**
  * Runs the scenario once and stores it under `results/runs/<run id>/`.
  * Throws when the run cannot complete; a failed verdict, a timed-out setup
- * turn included, is a result, not an error.
+ * turn included, is a result, not an error. A run whose first login hits its
+ * usage limit is done again from the start on the fallback login.
  */
 export async function runStartup(
   options: StartupOptions
+): Promise<{ runDir: string; result: StartupResult }> {
+  return withFallbackLogin(
+    evalRoot,
+    (login) => runStartupOn(options, login),
+    log
+  );
+}
+
+async function runStartupOn(
+  options: StartupOptions,
+  login: Login
 ): Promise<{ runDir: string; result: StartupResult }> {
   const { scenario, model, timeoutMs } = options;
   const runId = `${new Date().toISOString().replace(/[:.]/g, "-")}-startup-${scenario.id}-${randomBytes(3).toString("hex")}`;
   const runDir = path.join(runsRoot, runId);
   // A fresh, empty Claude Code configuration for this run alone, deleted after it.
   const claudeConfigDir = path.join(runDir, "claude-config");
-  const oauthToken = readOauthToken(evalRoot);
   const environment =
-    oauthToken === undefined
+    login.token === undefined
       ? undefined
-      : claudeEnvironment({ configDir: claudeConfigDir, oauthToken });
+      : claudeEnvironment({
+          configDir: claudeConfigDir,
+          oauthToken: login.token,
+        });
 
   log("Checking preconditions.");
   await checkPreconditions([
-    claudeTokenPrecondition({ environment, envDirectory: evalRoot }),
+    claudeTokenPrecondition({
+      environment,
+      envDirectory: evalRoot,
+      variable: login.variable,
+    }),
   ]);
   if (environment === undefined) throw new Error("unreachable: no environment");
   log(`Run ${runId}: ${runDir}`);
 
+  let errorInFlight = false;
   try {
     const skillDir = aymeSkillDirectory(claudeConfigDir);
     await cp(aymeSkillSource, skillDir, { recursive: true });
@@ -209,7 +235,10 @@ export async function runStartup(
       setupTimeoutMs: timeoutMs,
       transcriptPath: path.join(runDir, "transcript.jsonl"),
       stderrPath: path.join(runDir, "stderr.log"),
+      secrets: login.secrets,
     });
+    const limited = usageLimitError(run, login, runDir);
+    if (limited !== null) throw limited;
     // An error says nothing about routing: as for a mission, the run could not complete and the transcript stays.
     if (run.setupFailure !== null && !run.setup.timedOut)
       throw new Error(
@@ -218,6 +247,7 @@ export async function runStartup(
     const { filesRead, failed, turn } = judge(scenario, run, skillDir);
     const result: StartupResult = {
       runId,
+      login: login.name,
       scenario: scenario.id,
       pass: failed.length === 0,
       failed,
@@ -239,8 +269,15 @@ export async function runStartup(
     };
     await writeJson(path.join(runDir, "result.json"), result);
     return { runDir, result };
+  } catch (error) {
+    errorInFlight = true;
+    throw error;
   } finally {
-    await rm(claudeConfigDir, { recursive: true, force: true });
+    await tearDown(
+      "delete the Claude Code configuration folder",
+      () => rm(claudeConfigDir, { recursive: true, force: true }),
+      errorInFlight
+    );
   }
 }
 

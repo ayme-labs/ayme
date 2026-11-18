@@ -94,12 +94,57 @@ function parseEvents(lines: string[]) {
   return { events, unparsedLines };
 }
 
-/** Whether one transcript line is a `result` event, and whether it reports an error; read while the agent runs. */
-export function resultEvent(line: string): { isError: boolean } | null {
+/**
+ * The texts Claude Code 2.1.281 gives for a login that cannot take another request, read from its
+ * published binary (not run): "You've hit your <session|weekly|Opus|Sonnet|usage|monthly spend|...>
+ * limit", "You've hit your team's shared budget", "You've reached your Fable limit", "You're out
+ * of usage credits" and "You're out of extra usage", "Your org is out of usage", and what it says
+ * instead when the seat cannot buy more usage ("Your seat type doesn't include usage ...", "Your
+ * usage allocation has been disabled by your admin", "Your group's usage limit is set to $0"),
+ * and "This service is disabled for your org", which it gives on a quota rejection when the
+ * organisation has disabled overage. When the account lacks credits for the model or the context it
+ * was asked for, it refuses with "Fable 5 requires usage credits. Switch to another model ..." and
+ * "API Error: Usage credits required for 1M context · run ...". Only the weekly limit has been seen
+ * in a real transcript. Its other refusals are not about paying and do not match: an organisation that has disabled
+ * subscription access, an account on hold, a model or auto mode the plan does not include, and every authentication error.
+ * Anchored at the start: the CLI writes these itself, so a model's text that quotes one does not
+ * count. Overload and server throttling ("Opus is experiencing high load", "Server is temporarily
+ * limiting requests (not your usage limit)") are not the login's own limit and do not match.
+ */
+const usageLimitTexts = [
+  /^You've hit your [^\n]*\b(?:limit|budget)\b/,
+  /^You've reached your [^\n]*\blimit\b/,
+  /^You're out of (?:extra usage|usage credits)\b/,
+  /^Credit balance is too low\b/,
+  /^Your org is out of usage\b/,
+  /^Your seat type doesn't include (?:extra )?usage\b/,
+  /^Your usage allocation has been disabled by your admin/,
+  /^Your group's usage limit is set to \$0/,
+  /^This service is disabled for your org\b/,
+  // Claude Code's own pattern for the model that needs credits, which only Fable does.
+  /^Fable(?: [^\u00B7\n]{1,40})? requires usage credits\./,
+  /^API Error: Usage credits required for 1M context\b/,
+];
+
+export function isUsageLimitText(text: string) {
+  return usageLimitTexts.some((pattern) => pattern.test(text));
+}
+
+/** Whether one transcript line is a `result` event, whether it reports an error, and whether that error is a usage limit; read while the agent runs. */
+export function resultEvent(
+  line: string
+): { isError: boolean; usageLimit: boolean } | null {
   try {
     const event: unknown = JSON.parse(line);
     if (!isRecord(event) || event.type !== "result") return null;
-    return { isError: event.is_error === true };
+    const isError = event.is_error === true;
+    return {
+      isError,
+      usageLimit:
+        isError &&
+        typeof event.result === "string" &&
+        isUsageLimitText(event.result),
+    };
   } catch {
     return null;
   }

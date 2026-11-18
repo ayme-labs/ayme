@@ -7,6 +7,7 @@
 import { createRequire } from "node:module";
 import path from "node:path";
 
+import { withoutClaudeVariables } from "./claude.ts";
 import { signInPath, type Mission } from "./missions.ts";
 
 type Locator = {
@@ -59,6 +60,8 @@ type Chromium = {
       args?: string[];
       bypassCSP?: boolean;
       permissions?: string[];
+      /** The browser's environment; Playwright's default is the whole of this process's. */
+      env?: NodeJS.ProcessEnv;
     }
   ): Promise<BrowserContext>;
 };
@@ -146,7 +149,12 @@ async function signInAndOpenEditor(
   const { mission, baseUrl, profileDir, channel, log } = options;
   const context = await playwright().chromium.launchPersistentContext(
     profileDir,
-    { channel, headless: true, viewport }
+    {
+      channel,
+      headless: true,
+      viewport,
+      env: withoutClaudeVariables(process.env),
+    }
   );
   try {
     const page = context.pages()[0] ?? (await context.newPage());
@@ -199,7 +207,12 @@ async function openSignInPage(
   const { mission, profileDir, channel } = options;
   const context = await playwright().chromium.launchPersistentContext(
     profileDir,
-    { channel, headless: true, viewport }
+    {
+      channel,
+      headless: true,
+      viewport,
+      env: withoutClaudeVariables(process.env),
+    }
   );
   try {
     const page = context.pages()[0] ?? (await context.newPage());

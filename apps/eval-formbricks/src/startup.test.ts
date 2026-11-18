@@ -44,7 +44,10 @@ describe("runStartup", () => {
         path.delimiter
       )
     );
-    vi.stubEnv("CLAUDE_CODE_OAUTH_TOKEN", "token-for-the-test");
+    vi.stubEnv(
+      "CLAUDE_CODE_OAUTH_TOKEN",
+      "sk-ant-oat01-dummyTokenForTheTest0123456789"
+    );
     vi.stubEnv("FAKE_CLAUDE_TRANSCRIPT", path.join(fixturesDir, fixture));
     const { runDir } = await runStartup({
       scenario: options.scenario ?? scenario,
@@ -316,7 +319,10 @@ describe("runStartup", () => {
 
   it("names Claude Code as the missing precondition, and nothing else", async () => {
     vi.stubEnv("PATH", path.dirname(process.execPath));
-    vi.stubEnv("CLAUDE_CODE_OAUTH_TOKEN", "token-for-the-test");
+    vi.stubEnv(
+      "CLAUDE_CODE_OAUTH_TOKEN",
+      "sk-ant-oat01-dummyTokenForTheTest0123456789"
+    );
     await expect(
       runStartup({ scenario, model: "sonnet", timeoutMs: 10_000 })
     ).rejects.toThrow(
