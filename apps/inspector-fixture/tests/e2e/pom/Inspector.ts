@@ -399,6 +399,18 @@ export class RunCard extends Part {
     );
   }
 
+  get jsonSwitch(): On {
+    return this.on((root) =>
+      root.getByRole("group", "Arguments editor").getByRole("button", "JSON")
+    );
+  }
+
+  get formSwitch(): On {
+    return this.on((root) =>
+      root.getByRole("group", "Arguments editor").getByRole("button", "Form")
+    );
+  }
+
   /** The control of one argument, by its path, e.g. "text". */
   field(path: string): On {
     return this.on((root) => root.getByLabel(path));
@@ -430,6 +442,10 @@ export class RunCard extends Part {
     await this.openArguments();
     for (const [path, value] of Object.entries(args)) {
       const field = this.field(path);
+      if ((await field.getAttribute("aria-haspopup")) === "tree") {
+        await this.refField(path).choose(String(value));
+        continue;
+      }
       if (typeof value === "boolean") {
         if (value) await field.check();
         else await (await field.front()).uncheck();
@@ -563,44 +579,219 @@ export class DetailPane extends Part {
   }
 }
 
-/** One run in the Runs timeline. */
+/** One Interaction of a run: a call it made on the page. */
+export type RunInteraction = {
+  operation: string;
+  /** The member it acted on, or else its locator. */
+  target: string;
+  value?: string;
+};
+
+/** What a run's card shows, read at once and as the DOM has it. */
+export type RunSnapshot = {
+  status: string | null;
+  caller: { icon: string } | { text: string } | null;
+  /** The toggle's text: what the run ran, on what. */
+  toggle: string;
+  /** Whether the toggle marks its target gone from the page. */
+  targetGone: boolean;
+  /** Its arguments, as JSON; null when it had none. */
+  arguments: string | null;
+  interactions: RunInteraction[];
+  error: string | null;
+  /** Its result, while shown. */
+  result: string | null;
+  /** Whether it ran before the page last loaded. */
+  earlierPage: boolean;
+  /** The tools of the runs it started, in order. */
+  childTools: string[];
+};
+
+/** Which match of a run's CSS path is the run. */
+type Pick = "first" | "last";
+
+/**
+ * Reads one run's card through the Inspector mount's test hook (see
+ * `panelTexts`): the Playwright Page Objects read these parts with
+ * `evaluate` and DOM text, which e2e's locators do not give.
+ */
+async function readRun(
+  tab: Tab,
+  selector: string,
+  pick: Pick
+): Promise<RunSnapshot | null> {
+  await tab.front();
+  // As a JSON string: e2e's evaluate types its result as JSON, and a
+  // snapshot's optional parts don't fit that type.
+  const json = await tab.browser.evaluate(
+    ({ selector, pick }: { selector: string; pick: Pick }) => {
+      const key = Symbol.for("@ayme-dev/inspector/shadow-root");
+      const runs = [
+        ...document.querySelectorAll("[data-ayme-inspector-host]"),
+      ].flatMap((host) => [
+        ...((host as unknown as Record<symbol, ShadowRoot | undefined>)[
+          key
+        ]?.querySelectorAll(selector) ?? []),
+      ]);
+      const run = pick === "first" ? runs[0] : runs.at(-1);
+      // An ancestor comes first in document order: the run's own card.
+      const card = run?.querySelector("[data-run-card]");
+      if (!run || !card) return "null";
+      const text = (element: Element | null | undefined) =>
+        element ? (element.textContent ?? "") : null;
+      const toggle = card.querySelector("button[aria-expanded]");
+      const callerMark = card.querySelector('[title^="Run by "]');
+      const childRuns = run.querySelector('[aria-label="Child runs"]');
+      return JSON.stringify({
+        status:
+          run
+            .querySelector(
+              '[role="img"][aria-label="Running"], [role="img"][aria-label="Succeeded"], [role="img"][aria-label="Failed"]'
+            )
+            ?.getAttribute("aria-label") ?? null,
+        caller: callerMark
+          ? callerMark.getAttribute("role") === "img"
+            ? { icon: callerMark.getAttribute("aria-label") ?? "" }
+            : { text: callerMark.textContent ?? "" }
+          : null,
+        toggle: text(toggle) ?? "",
+        targetGone:
+          toggle
+            ?.querySelector('[title^="Not available to highlight:"]')
+            ?.getAttribute("data-gone") === "true",
+        arguments: text(card.querySelector('[aria-label="Arguments"]')),
+        interactions: [
+          ...card.querySelectorAll('[aria-label="Interactions"] > li'),
+        ].map((item) => {
+          const [operation = "", value] = [
+            ...item.querySelectorAll(":scope > span"),
+          ].map((span) => span.textContent ?? "");
+          return {
+            operation,
+            target: item.querySelector("button")?.textContent ?? "",
+            ...(value === undefined ? {} : { value }),
+          };
+        }),
+        error: text(card.querySelector('[aria-label="Error"]')),
+        result: text(card.querySelector('figure[aria-label="Result"]')),
+        earlierPage: [...card.querySelectorAll("*")].some(
+          (element) => element.textContent === "Earlier page"
+        ),
+        childTools: [...(childRuns?.querySelectorAll(":scope > li") ?? [])].map(
+          (item) => item.getAttribute("aria-label") ?? ""
+        ),
+      });
+    },
+    { selector, pick }
+  );
+  return JSON.parse(json) as RunSnapshot | null;
+}
+
+/**
+ * One run in the Runs timeline, top-level or nested under the run that
+ * started it, by its CSS path in the panel: the parts that tell runs apart
+ * (a list's own items, a run's own card) have no role or name.
+ */
 export class RunEntry {
-  constructor(private readonly root: On) {}
+  constructor(
+    private readonly tab: Tab,
+    private readonly selector: string,
+    private readonly pick: Pick
+  ) {}
+
+  private get root(): On {
+    return this.tab
+      .css(this.selector)
+      .within((runs) => (this.pick === "first" ? runs.first() : runs.last()));
+  }
+
+  /** What its card shows now, or null while it is not in the timeline. */
+  read(): Promise<RunSnapshot | null> {
+    return readRun(this.tab, this.selector, this.pick);
+  }
 
   /** Running, Succeeded or Failed. */
   async status() {
-    return this.root
-      .within((run) =>
-        run.getByRole("img", { name: /^(Running|Succeeded|Failed)$/ }).first()
-      )
-      .getAttribute("aria-label");
+    return (await this.read())?.status ?? null;
   }
 
-  /**
-   * Who started it: the icon of one of Ayme's own Callers, by its label,
-   * e.g. "Run by you from the Inspector".
-   */
-  async caller(): Promise<{ icon: string }> {
-    const icon = this.root.within((run) =>
-      run.getByRole("img", { name: /^Run by / }).first()
+  /** Who started it: a built-in Caller's icon label, or another Caller's name. */
+  async caller() {
+    return (await this.read())?.caller ?? null;
+  }
+
+  /** Its own Interactions, in order. */
+  async interactionList(): Promise<RunInteraction[]> {
+    return (await this.read())?.interactions ?? [];
+  }
+
+  /** Its child runs' tools, in the order it started them. */
+  async childTools(): Promise<string[]> {
+    return (await this.read())?.childTools ?? [];
+  }
+
+  /** What an Interaction acted on; hovering it highlights that element. */
+  interactionTarget(index: number): On {
+    return this.root.within((run) =>
+      run
+        .getByRole("list", "Interactions")
+        .first()
+        .getByRole("listitem")
+        .nth(index)
+        .getByRole("button")
     );
-    return { icon: (await icon.getAttribute("aria-label")) ?? "" };
+  }
+
+  /** Shows or hides its result, on a successful run that returned one. */
+  get resultToggle(): On {
+    return this.root.within((run) => run.getByRole("button", "Result").first());
+  }
+
+  /** Its result as Runs shows it, opened first if it isn't. */
+  async resultText() {
+    if ((await this.resultToggle.getAttribute("aria-expanded")) === "false")
+      await this.resultToggle.click();
+    return (await this.read())?.result ?? null;
+  }
+
+  /** The newest child run of one tool. */
+  child(toolName: string): RunEntry {
+    return new RunEntry(
+      this.tab,
+      `${this.selector} [aria-label="Child runs"] > li[aria-label=${JSON.stringify(toolName)}]`,
+      "last"
+    );
   }
 }
 
 /** Runs: the timeline of the page's Runs, by any Caller, newest first. */
 export class RunsView extends Part {
+  /** The runs shown, newest first. */
+  get runs(): On {
+    return this.tab.css('[aria-label="Runs timeline"] > li');
+  }
+
   /** The newest top-level run of one tool. */
   latest(toolName: string): RunEntry {
-    // Top-level: the timeline's own items, not the child runs nested in
-    // them, which no role or name tells apart.
     return new RunEntry(
-      this.tab
-        .css(
-          `[aria-label="Runs timeline"] > li[aria-label=${JSON.stringify(toolName)}]`
-        )
-        .within((runs) => runs.first())
+      this.tab,
+      `[aria-label="Runs timeline"] > li[aria-label=${JSON.stringify(toolName)}]`,
+      "first"
     );
+  }
+
+  /** Shows the selection's runs, e.g. "This object". */
+  async showSelection() {
+    await this.on((root) =>
+      root.getByRole("group", "Runs scope").getByRole("button").first()
+    ).click();
+  }
+
+  /** Shows every run. */
+  async showAll() {
+    await this.on((root) =>
+      root.getByRole("group", "Runs scope").getByRole("button", "All")
+    ).click();
   }
 }
 

@@ -20,6 +20,22 @@ export class ListPage {
     return this.tab.on((screen) => screen.getByRole("checkbox", "Urgent"));
   }
 
+  async addItem(text: string) {
+    await this.newItemInput.fill(text);
+    await this.addItemButton.click();
+  }
+
+  /** Takes the Add item button off the page, so a tool that presses it fails. */
+  async removeAddItemButton() {
+    await this.tab.front();
+    await this.tab.browser.evaluate(() => {
+      [...document.querySelectorAll("main button")]
+        .find((button) => button.textContent?.trim() === "Add item")
+        ?.remove();
+      return null;
+    });
+  }
+
   get items(): On {
     return this.tab.on((screen) =>
       screen.getByRole("list", "Items").getByRole("listitem")

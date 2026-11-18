@@ -78,6 +78,10 @@ export class On {
     await (await this.front()).fill(value);
   }
 
+  async selectOption(label: string) {
+    await (await this.front()).selectOption(label);
+  }
+
   async check() {
     await (await this.front()).check();
   }
