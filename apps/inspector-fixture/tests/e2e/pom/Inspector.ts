@@ -161,6 +161,103 @@ export class WhatTheModelSees extends Part {
 export type ArgumentValue = string | number | boolean;
 
 /**
+ * A run card's ref field: it chooses a ref from a searchable tree of the
+ * page's structure, or by pointing at the page. A card has one ref field.
+ */
+export class RefField extends Part {
+  constructor(
+    tab: Tab,
+    card: Root,
+    private readonly path: string
+  ) {
+    super(tab, card);
+  }
+
+  /** Shows the ref chosen, e.g. `e6 button "Add item"`, and opens the tree. */
+  get chooser(): On {
+    return this.on((card) => card.getByRole("button", this.path));
+  }
+
+  /** The crosshair: picks a ref by pointing at the page. */
+  get pickButton(): On {
+    return this.on((card) =>
+      card.getByRole("button", "Pick an element on the page")
+    );
+  }
+
+  get search(): On {
+    return this.on((card) =>
+      card.getByRole("textbox", "Search the page structure")
+    );
+  }
+
+  /** The tree's nodes, each read as its ref, role and name. */
+  get nodes(): On {
+    return this.on((card) =>
+      card.getByRole("tree", "Page structure").getByRole("treeitem")
+    );
+  }
+
+  /** The ref chosen, as the field shows it, e.g. `e6 button "Add item"`. */
+  async value(): Promise<string | undefined> {
+    const text = await this.chooser.textContent();
+    return text === "Choose an element" ? undefined : (text ?? undefined);
+  }
+
+  /** A node of the tree, by its ref, e.g. "e6". */
+  node(ref: string): On {
+    return this.nodes.within((nodes) =>
+      nodes.filter({ hasText: new RegExp(`^${ref}(?!\\d)`) })
+    );
+  }
+
+  /** A node of the tree, by its role and name, e.g. button "Add item". */
+  nodeNamed(role: string, name: string): On {
+    const escape = (text: string) =>
+      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // e2e reads rendered text, which may space the ref, role and name apart.
+    const text = `^e\\d+ ?${escape(role)} ?${escape(JSON.stringify(name))}$`;
+    return this.nodes.within((nodes) =>
+      nodes.filter({ hasText: new RegExp(text) })
+    );
+  }
+
+  /** Opens the tree, when it's closed. */
+  async open() {
+    if ((await this.chooser.getAttribute("aria-expanded")) !== "true")
+      await this.chooser.click();
+  }
+
+  /** Searches the tree. */
+  async find(query: string) {
+    await this.open();
+    await this.search.fill(query);
+  }
+
+  /** Chooses a ref from the tree. */
+  async choose(ref: string) {
+    await this.find(ref);
+    await this.node(ref).click();
+  }
+
+  /**
+   * Starts picking on the page; the next click on the page picks. Picking
+   * reads the panel's look at the page, so it waits for the structure first.
+   */
+  async pickOnPage() {
+    if ((await this.pickButton.getAttribute("aria-pressed")) === "true") return;
+    await this.open();
+    await (await this.nodes.within((nodes) => nodes.first()).front()).waitFor();
+    await this.pickButton.click();
+  }
+
+  /** Whether it's picking on the page. */
+  async isPicking() {
+    return (await this.pickButton.getAttribute("aria-pressed")) === "true";
+  }
+}
+
+/**
  * The run card: runs one tool. Run is always there; when the tool needs
  * input, the first press opens the typed form.
  */
@@ -179,6 +276,11 @@ export class RunCard extends Part {
   /** The control of one argument, by its path, e.g. "text". */
   field(path: string): On {
     return this.on((root) => root.getByLabel(path));
+  }
+
+  /** A ref argument's field, by its path, e.g. "ref". */
+  refField(path = "ref"): RefField {
+    return new RefField(this.tab, this.root, path);
   }
 
   /** The items a rooted action can run on. */

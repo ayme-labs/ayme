@@ -169,14 +169,14 @@ export function testIn(placement: Placement, path: FixturePage = "/") {
 }
 
 /**
- * How the page outlines `element` now: "dashed" hovered, "solid" selected,
- * else "none". Reads the highlight Playwright draws over the element's box;
- * the page's own elements carry no mark for it.
+ * The highlight Playwright draws over `element` now: its outline style
+ * ("dashed" for what is hovered, "solid" for the selection) and colour, or
+ * none. The page's own elements carry no mark for it.
  */
-export function outline(element: On, browser: Browser) {
+export function highlightOf(element: On, browser: Browser) {
   return async () => {
     const box = await (await element.front()).boundingBox();
-    if (!box) return "none";
+    if (!box) return { style: "none", color: "" };
     return browser.evaluate((rect) => {
       const boxes = [...document.querySelectorAll("x-pw-glass")].flatMap(
         (glass) => [
@@ -194,7 +194,15 @@ export function outline(element: On, browser: Browser) {
           near(at.height, rect.height)
         );
       });
-      return hit ? hit.style.outlineStyle : "none";
+      return hit
+        ? { style: hit.style.outlineStyle, color: hit.style.outlineColor }
+        : { style: "none", color: "" };
     }, box);
   };
+}
+
+/** How the page outlines `element`: "dashed" hovered, "solid" selected, else "none". */
+export function outline(element: On, browser: Browser) {
+  const read = highlightOf(element, browser);
+  return async () => (await read()).style;
 }
