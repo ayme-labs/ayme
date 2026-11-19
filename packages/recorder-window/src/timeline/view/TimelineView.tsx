@@ -172,8 +172,9 @@ function EntryCard({
 /** An element in a chip. Hovering it highlights its element on the page,
  * every element its lookup finds, when it can, and a chip that can shows so
  * by its border and a crosshair: until a hover found nothing on the page as
- * it is then, and again once one finds something. The target's selector
- * shows on hover. */
+ * it is then, and again once one finds something. The border is always
+ * there, unseen while it cannot, so that the chip keeps its size. The
+ * target's selector shows on hover. */
 function ChipView({
   chip,
   leave,
@@ -203,7 +204,7 @@ function ChipView({
       onMouseEnter={hover}
       onMouseLeave={() => leave && onCommand(leave)}
       data-highlights={highlight !== null && found}
-      className="rounded bg-muted px-1.5 py-0.5 text-[13px] font-semibold break-all group-data-[discarded=true]:opacity-60 data-[highlights=true]:cursor-crosshair data-[highlights=true]:border data-[highlights=true]:border-border"
+      className="rounded border border-transparent bg-muted px-1.5 py-0.5 text-[13px] font-semibold break-all group-data-[discarded=true]:opacity-60 data-[highlights=true]:cursor-crosshair data-[highlights=true]:border-border"
     >
       {chip.text}
     </span>
