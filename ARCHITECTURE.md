@@ -164,7 +164,7 @@ in-browser agents and the app's own code call on the running page.
     - → `ayme_connect`, `ayme_list_tools`, `ayme_call`, `ayme_inspect` and the page's
       tools, over stdio; an Agent App that shows MCP Apps also reads the Inspector's page
       that `ayme_inspect` points to
-    - ← connect links, tool lists and `tools/list_changed` notifications, tool results and
+    - ← connect links, the external Inspector's URL, tool lists and `tools/list_changed` notifications, tool results and
       change notes; the Inspector's page with its script inside, its socket's address and
       the token that admits it
   - Evidence: verified: [packages/mcp/src/server/index.ts](packages/mcp/src/server/index.ts), [packages/mcp/src/server/serverTools.ts](packages/mcp/src/server/serverTools.ts),

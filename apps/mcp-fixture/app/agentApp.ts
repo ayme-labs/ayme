@@ -6,9 +6,11 @@ import {
 /**
  * A stand-in for an Agent App that shows MCP Apps, as the e2e tests use it:
  * it shows the page at `?frame=` (which the test serves) in the sandboxed
- * frame of `agent-app.html`, through the ext-apps SDK's own host side.
- * `?modes=` lists the display modes it offers, `inline` by default.
- * It sizes the frame as the page asks, grants any display mode it offers,
+ * frame of `agent-app.html`, in the agent's turn of a generic chat, through
+ * the ext-apps SDK's own host side. `?modes=` lists the display modes it
+ * offers, `inline` by default, and `?result=` is the tool's result the chat
+ * shows above the frame. It sizes the frame as the page asks, grants any
+ * display mode it offers, covering its window with the frame in fullscreen,
  * and keeps what the page asked for in `window.agentAppSaw`. With
  * `?announce=0` it grants a display mode in its answer only, and sends no
  * context change after it, which the MCP Apps specification allows. With
@@ -22,11 +24,12 @@ const resizes = query.get("resize") !== "0";
 const offered = (query.get("modes") ?? "inline").split(",") as (
   "inline" | "fullscreen" | "pip"
 )[];
+document.querySelector("#result")!.textContent = query.get("result") ?? "";
 const context = {
   theme: "light" as const,
   displayMode: "inline" as const,
   availableDisplayModes: offered,
-  containerDimensions: { width: 960, maxHeight: 2000 },
+  containerDimensions: { width: frame.clientWidth, maxHeight: 2000 },
   platform: "desktop" as const,
 };
 const saw: { heights: number[]; displayModes: string[] } = {
@@ -49,6 +52,7 @@ bridge.onsizechange = ({ height }) => {
 bridge.onrequestdisplaymode = async ({ mode }) => {
   saw.displayModes.push(mode);
   const granted = offered.includes(mode) ? mode : "inline";
+  document.body.classList.toggle("fullscreen", granted === "fullscreen");
   if (announces) bridge.setHostContext({ ...context, displayMode: granted });
   return { mode: granted };
 };

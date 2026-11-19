@@ -7,30 +7,41 @@ import type { Locator } from "@playwright/test";
  */
 @ayme
 export class KeyField {
+  constructor(
+    private readonly card: Locator,
+    private readonly path: string
+  ) {}
+
   /** Shows the key, e.g. `ControlOrMeta+C`. */
   @ayme.child
-  readonly input: Locator;
+  get input(): Locator {
+    return this.card.getByRole("combobox", { name: this.path, exact: true });
+  }
+
   /** Shows the mode and switches it. */
   @ayme.child
-  readonly modeButton: Locator;
-  /** What to press while recording, or what's wrong with the key. */
-  @ayme.child
-  readonly help: Locator;
-  /** Replaces the key with the one it names, e.g. "Use Shift+Tab". */
-  @ayme.child
-  readonly fixButton: Locator;
-  /** While searching: the key names that match. */
-  @ayme.collection
-  readonly options: Locator;
-
-  constructor(card: Locator, path: string) {
-    this.input = card.getByRole("combobox", { name: path, exact: true });
-    this.modeButton = card.getByRole("button", {
+  get modeButton(): Locator {
+    return this.card.getByRole("button", {
       name: /^(Search key names|Record a key press) instead$/,
     });
-    this.help = card.getByRole("status", { name: `${path} help` });
-    this.fixButton = card.getByRole("button", { name: /^Use / });
-    this.options = card
+  }
+
+  /** What to press while recording, or what's wrong with the key. */
+  @ayme.child
+  get help(): Locator {
+    return this.card.getByRole("status", { name: `${this.path} help` });
+  }
+
+  /** Replaces the key with the one it names, e.g. "Use Shift+Tab". */
+  @ayme.child
+  get fixButton(): Locator {
+    return this.card.getByRole("button", { name: /^Use / });
+  }
+
+  /** While searching: the key names that match. */
+  @ayme.collection
+  get options(): Locator {
+    return this.card
       .getByRole("listbox", { name: "Key names" })
       .getByRole("option");
   }

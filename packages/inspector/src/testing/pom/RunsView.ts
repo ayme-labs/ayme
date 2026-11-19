@@ -17,62 +17,76 @@ export type RunInteraction = {
  * never taken for its parent's.
  */
 export class RunEntry extends PanelPart {
-  /** Its card: what it ran, with what, and how it went. */
-  @ayme.child
-  readonly card: Locator;
-  /** Expands or collapses the run. */
-  @ayme.child
-  readonly toggle: Locator;
-  /** The mark that it ran before the page last loaded. */
-  @ayme.child
-  readonly earlierPage: Locator;
-  /** Its arguments, absent when it had none. */
-  @ayme.child
-  readonly arguments: Locator;
-  /** Shows or hides its result, on a successful run that returned one. */
-  @ayme.child
-  readonly resultToggle: Locator;
-  /** Its result, as JSON, while shown. */
-  @ayme.child
-  readonly result: Locator;
-  /** Copies its result. */
-  @ayme.child
-  readonly copyResultButton: Locator;
-  /** The image it returned, such as a screenshot, with what it shows. */
-  @ayme.child
-  readonly image: Locator;
-  @ayme.child
-  readonly error: Locator;
-  /** The Interactions it performed itself, in order. */
-  @ayme.collection
-  readonly interactions: Locator;
-  /** The runs it started, nested under it, in the order it started them. */
-  @ayme.collection
-  readonly childRuns: Locator;
-
   constructor(root: Locator) {
     super(root);
+  }
+
+  /** Its card: what it ran, with what, and how it went. */
+  @ayme.child
+  get card(): Locator {
     // An ancestor comes first in document order: its own card.
-    this.card = root.locator("[data-run-card]").first();
-    const card = this.card;
-    this.toggle = card.locator("button[aria-expanded]").first();
-    this.earlierPage = card.getByText(/^Earlier page$/);
-    this.arguments = card.getByRole("figure", { name: "Arguments" });
-    this.resultToggle = card.getByRole("button", {
-      name: "Result",
-      exact: true,
-    });
-    this.result = card.getByRole("figure", { name: "Result" });
-    this.copyResultButton = card.getByRole("button", {
-      name: "Copy",
-      exact: true,
-    });
-    this.image = card.getByRole("figure", { name: "Image" });
-    this.error = card.getByRole("note", { name: "Error" });
-    this.interactions = card
+    return this.root.locator("[data-run-card]").first();
+  }
+
+  /** Expands or collapses the run. */
+  @ayme.child
+  get toggle(): Locator {
+    return this.card.locator("button[aria-expanded]").first();
+  }
+
+  /** The mark that it ran before the page last loaded. */
+  @ayme.child
+  get earlierPage(): Locator {
+    return this.card.getByText(/^Earlier page$/);
+  }
+
+  /** Its arguments, absent when it had none. */
+  @ayme.child
+  get arguments(): Locator {
+    return this.card.getByRole("figure", { name: "Arguments" });
+  }
+
+  /** Shows or hides its result, on a successful run that returned one. */
+  @ayme.child
+  get resultToggle(): Locator {
+    return this.card.getByRole("button", { name: "Result", exact: true });
+  }
+
+  /** Its result, as JSON, while shown. */
+  @ayme.child
+  get result(): Locator {
+    return this.card.getByRole("figure", { name: "Result" });
+  }
+
+  /** Copies its result. */
+  @ayme.child
+  get copyResultButton(): Locator {
+    return this.card.getByRole("button", { name: "Copy", exact: true });
+  }
+
+  /** The image it returned, such as a screenshot, with what it shows. */
+  @ayme.child
+  get image(): Locator {
+    return this.card.getByRole("figure", { name: "Image" });
+  }
+
+  @ayme.child
+  get error(): Locator {
+    return this.card.getByRole("note", { name: "Error" });
+  }
+
+  /** The Interactions it performed itself, in order. */
+  @ayme.collection
+  get interactions(): Locator {
+    return this.card
       .getByRole("list", { name: "Interactions" })
       .getByRole("listitem");
-    this.childRuns = root
+  }
+
+  /** The runs it started, nested under it, in the order it started them. */
+  @ayme.collection
+  get childRuns(): Locator {
+    return this.root
       .getByRole("list", { name: "Child runs" })
       .first()
       .locator(":scope > li");
@@ -164,41 +178,53 @@ export class RunEntry extends PanelPart {
 
 /** Runs: the timeline of the page's Runs, by any Caller, newest first. */
 export class RunsView extends PanelPart {
-  /** Collapses Runs to its header, or expands it. It reads "Runs · 2". */
-  @ayme.child
-  readonly header: Locator;
-  @ayme.child
-  readonly scope: Locator;
-  /** Shows the selection's runs, e.g. "This object". */
-  @ayme.child
-  readonly selectionScope: Locator;
-  /** Shows every run. */
-  @ayme.child
-  readonly allScope: Locator;
-  @ayme.child
-  readonly clearButton: Locator;
-  @ayme.child
-  readonly timeline: Locator;
-  /** The runs shown, newest first. */
-  @ayme.collection
-  readonly runs: Locator;
-  @ayme.child
-  readonly empty: Locator;
-
   constructor(root: Locator) {
     super(root);
-    this.header = root.getByRole("button", { name: /^Runs · \d+$/ });
-    this.scope = root.getByRole("group", { name: "Runs scope" });
-    this.selectionScope = this.scope.getByRole("button").first();
-    this.allScope = this.scope.getByRole("button", {
-      name: "All",
-      exact: true,
-    });
-    this.clearButton = root.getByRole("button", { name: "Clear", exact: true });
-    this.timeline = root.getByRole("list", { name: "Runs timeline" });
+  }
+
+  /** Collapses Runs to its header, or expands it. It reads "Runs · 2". */
+  @ayme.child
+  get header(): Locator {
+    return this.root.getByRole("button", { name: /^Runs · \d+$/ });
+  }
+
+  @ayme.child
+  get scope(): Locator {
+    return this.root.getByRole("group", { name: "Runs scope" });
+  }
+
+  /** Shows the selection's runs, e.g. "This object". */
+  @ayme.child
+  get selectionScope(): Locator {
+    return this.scope.getByRole("button").first();
+  }
+
+  /** Shows every run. */
+  @ayme.child
+  get allScope(): Locator {
+    return this.scope.getByRole("button", { name: "All", exact: true });
+  }
+
+  @ayme.child
+  get clearButton(): Locator {
+    return this.root.getByRole("button", { name: "Clear", exact: true });
+  }
+
+  @ayme.child
+  get timeline(): Locator {
+    return this.root.getByRole("list", { name: "Runs timeline" });
+  }
+
+  /** The runs shown, newest first. */
+  @ayme.collection
+  get runs(): Locator {
     // The top-level runs: a child run is nested in its parent's item.
-    this.runs = this.timeline.locator(":scope > li");
-    this.empty = root.getByText(/^No runs/);
+    return this.timeline.locator(":scope > li");
+  }
+
+  @ayme.child
+  get empty(): Locator {
+    return this.root.getByText(/^No runs/);
   }
 
   /** The newest run of one tool. */

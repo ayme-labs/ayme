@@ -49,7 +49,11 @@ const onPage = (self: AppPage) =>
 @ayme({ present: onPage })
 export abstract class AppPage {
   abstract readonly path: string;
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 }
 
 export class ProjectsPage extends AppPage {
@@ -80,7 +84,11 @@ type RouteParams<Path extends string> =
 @ayme({ present: onPage })
 export abstract class AppPage<Path extends string = string> {
   abstract readonly path: Path;
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   params(): RouteParams<Path> | undefined {
     const match = new URLPattern({ pathname: this.path }).exec(this.page.url());
@@ -104,19 +112,25 @@ An app with a typed router calls the router's matcher from the predicate instead
 - Every tool of the class takes that element's Structural Ref as `ref`.
 - Availability is measured at that element.
 
-Each action is published once per class, however many instances the page shows. Take a component base class, `AppComponent`, whose `root` is the element a component is built on. `ProjectRow` extends it, and `ProjectsPage` holds one `ProjectRow` per list item:
+Each action is published once per class, however many instances the page shows. Take a component base class, `AppComponent`, whose `root` is the element a component is built on. `ProjectRow` extends it, and `ProjectsPage` holds one `ProjectRow` per list item. A locator is a getter.
 
 ```ts
 const rootOf = (self: AppComponent) => self.root;
 
 @ayme({ root: rootOf })
 export abstract class AppComponent {
-  constructor(readonly root: Locator) {}
+  readonly root: Locator;
+
+  constructor(root: Locator) {
+    this.root = root;
+  }
 }
 
 export class ProjectRow extends AppComponent {
   @ayme.child
-  readonly removeButton = this.root.getByRole("button", { name: "Remove" });
+  get removeButton() {
+    return this.root.getByRole("button", { name: "Remove" });
+  }
 
   @ayme.action
   async remove() {
@@ -132,10 +146,14 @@ export class ProjectRow extends AppComponent {
 
 export class ProjectsPage extends AppPage {
   readonly path = "/projects";
-  readonly rows = this.page.getByRole("listitem");
+  get rows() {
+    return this.page.getByRole("listitem");
+  }
 
   @ayme.child
-  readonly searchbox = this.page.getByRole("searchbox");
+  get searchbox() {
+    return this.page.getByRole("searchbox");
+  }
 
   @ayme.collection
   async projects(): Promise<ProjectRow[]> {
@@ -236,7 +254,9 @@ const canRemove = async (self: ProjectRow) =>
 
 export class ProjectRow extends AppComponent {
   @ayme.child
-  readonly removeButton = this.root.getByRole("button", { name: "Remove" });
+  get removeButton() {
+    return this.root.getByRole("button", { name: "Remove" });
+  }
 
   @ayme.action({ available: canRemove })
   async remove() {
@@ -278,21 +298,23 @@ An agent reads an action's description, then the Page Objects the action returns
 
 ```ts
 export class NewProjectDialog extends AppComponent {
-  readonly createButton = this.root.getByRole("button", { name: "Create" });
+  get createButton() {
+    return this.root.getByRole("button", { name: "Create" });
+  }
 }
 
 export class ProjectsPage extends AppPage {
   readonly path = "/projects";
 
   @ayme.child
-  readonly newProjectButton = this.page.getByRole("button", {
-    name: "New project",
-  });
+  get newProjectButton() {
+    return this.page.getByRole("button", { name: "New project" });
+  }
 
   @ayme.child
-  readonly newProjectDialog = new NewProjectDialog(
-    this.page.getByRole("dialog")
-  );
+  get newProjectDialog() {
+    return new NewProjectDialog(this.page.getByRole("dialog"));
+  }
 
   @ayme.action({ description: "Opens the form for a new project." })
   async openNewProjectDialog(): Promise<NewProjectDialog> {
