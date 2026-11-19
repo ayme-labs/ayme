@@ -26,11 +26,19 @@ once, so every page and component extends one.
 
 ```ts
 export abstract class AppPage {
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 }
 
 export abstract class AppComponent {
-  constructor(readonly root: Locator) {}
+  readonly root: Locator;
+
+  constructor(root: Locator) {
+    this.root = root;
+  }
 }
 ```
 
@@ -47,7 +55,11 @@ This throws, because `page` is still unset when `submit` is created:
 ```ts
 class LoginPage {
   readonly submit = this.page.getByRole("button", { name: "Submit" });
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 }
 ```
 
@@ -55,7 +67,11 @@ A getter runs when the locator is read, after `page` or `root` is assigned:
 
 ```ts
 class LoginPage {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   get submit() {
     return this.page.getByRole("button", { name: "Submit" });

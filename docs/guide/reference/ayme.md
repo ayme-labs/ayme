@@ -49,7 +49,11 @@ const onPage = (self: AppPage) =>
 @ayme({ present: onPage })
 export abstract class AppPage {
   abstract readonly path: string;
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 }
 
 export class ProjectsPage extends AppPage {
@@ -80,7 +84,11 @@ type RouteParams<Path extends string> =
 @ayme({ present: onPage })
 export abstract class AppPage<Path extends string = string> {
   abstract readonly path: Path;
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   params(): RouteParams<Path> | undefined {
     const match = new URLPattern({ pathname: this.path }).exec(this.page.url());
@@ -111,7 +119,11 @@ const rootOf = (self: AppComponent) => self.root;
 
 @ayme({ root: rootOf })
 export abstract class AppComponent {
-  constructor(readonly root: Locator) {}
+  readonly root: Locator;
+
+  constructor(root: Locator) {
+    this.root = root;
+  }
 }
 
 export class ProjectRow extends AppComponent {
