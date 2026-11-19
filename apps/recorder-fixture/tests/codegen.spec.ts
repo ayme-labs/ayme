@@ -60,24 +60,30 @@ test.describe("codegen <url>", () => {
       expect(await contextOf(windowUrl!)).not.toBe(
         await contextOf(fixturePages.url())
       );
-      const pageAt = (url: string) =>
-        browser
-          .contexts()
-          .flatMap((context) => context.pages())
-          .find((page) => page.url() === url)!;
+      // Playwright learns of a page and its address a moment after the
+      // browser lists it.
+      const pageAt = async (url: string) => {
+        const find = () =>
+          browser
+            .contexts()
+            .flatMap((context) => context.pages())
+            .find((page) => page.url() === url);
+        await expect.poll(() => find() !== undefined).toBe(true);
+        return find()!;
+      };
       expect(
-        await pageAt(windowUrl!).evaluate(
-          () => "__aymeRecorderHeld" in globalThis
-        )
+        await (
+          await pageAt(windowUrl!)
+        ).evaluate(() => "__aymeRecorderHeld" in globalThis)
       ).toBe(false);
       expect(
-        await pageAt(fixturePages.url()).evaluate(
-          () => "__aymeRecorderHeld" in globalThis
-        )
+        await (
+          await pageAt(fixturePages.url())
+        ).evaluate(() => "__aymeRecorderHeld" in globalThis)
       ).toBe(true);
       // It is the recorder's window, live.
       await expect(
-        new RecorderWindow(pageAt(windowUrl!)).controls.recordButton
+        new RecorderWindow(await pageAt(windowUrl!)).controls.recordButton
       ).toBeEnabled();
 
       run.interrupt();
