@@ -404,3 +404,82 @@ test("ignores the experimental mark in a private package", () => {
     []
   );
 });
+
+const PARAMETER_PROPERTY =
+  "constructor parameter property, which erasableSyntaxOnly rejects; declare the field on the class and assign it in the constructor";
+
+test("fails on a constructor parameter property in a TypeScript example", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "docs/guide/start/page.md": `# A page\n\nWhat this page is for, in one sentence.\n\n\`\`\`ts\nclass AppPage {\n  constructor(readonly page: Page) {}\n}\n\`\`\`\n`,
+      })
+    ),
+    [`docs/guide/start/page.md:7: ${PARAMETER_PROPERTY}`]
+  );
+});
+
+test("reports each constructor parameter modifier on its own line", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "docs/guide/start/page.md": `# A page\n\nWhat this page is for, in one sentence.\n\n\`\`\`ts\nclass AppPage {\n  constructor(\n    private readonly page: Page,\n  ) {}\n}\n\`\`\`\n\n\`\`\`tsx title="widget"\nclass Widget {\n  constructor(protected page: Page, public readonly name: string) {}\n}\n\`\`\`\n\n\`\`\`typescript\nclass Sub {\n  constructor(override page: Page) {}\n}\n\`\`\`\n\n~~~ts\nclass Tilde {\n  constructor(@Inject(TOKEN) private page: Page) {}\n}\n~~~\n`,
+      })
+    ),
+    [
+      `docs/guide/start/page.md:8: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:15: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:15: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:21: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:27: ${PARAMETER_PROPERTY}`,
+    ]
+  );
+});
+
+test("passes a TypeScript example that declares the field and assigns it", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "docs/guide/start/page.md": `# A page\n\nWhat this page is for, in one sentence.\n\n\`\`\`ts\nclass AppPage {\n  readonly page: Page;\n  constructor(page: Page) {\n    this.page = page;\n  }\n}\nclass Row {\n  constructor(page: Readonly<Page>, options: { readonly id: string }) {}\n}\nconst sample = "constructor(readonly page: Page)";\n// constructor(readonly page: Page)\n\`\`\`\n\n\`constructor(readonly page: Page)\` in a span.\n\n\`\`\`text\nconstructor(private readonly page: Page) {}\n\`\`\`\n`,
+        "packages/lib/README.md": `# lib\n\n\`\`\`ts\nclass ProjectsPage {\n  private readonly page: Page;\n  constructor(page: Page) {\n    this.page = page;\n  }\n}\n\`\`\`\n\n## Usage\n`,
+        "skills/ayme/references/model.md":
+          '```ts\nclass LoginPage {\n  private readonly page: Page;\n  constructor(page: Page) {\n    this.page = page;\n  }\n  get submit() {\n    return this.page.getByRole("button");\n  }\n}\n```\n',
+      })
+    ),
+    []
+  );
+});
+
+test("fails on a constructor parameter property in a published README and the ayme skill", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/README.md": `# lib\n\n\`\`\`ts\nclass Page {\n  constructor(public page: Page) {}\n}\n\`\`\`\n\n## Usage\n`,
+        "skills/ayme/references/model.md":
+          "```ts\nclass LoginPage {\n  constructor(private readonly page: Page) {}\n}\n```\n",
+      })
+    ),
+    [
+      `packages/lib/README.md:5: ${PARAMETER_PROPERTY}`,
+      `skills/ayme/references/model.md:3: ${PARAMETER_PROPERTY}`,
+    ]
+  );
+});
+
+test("ignores a constructor parameter property outside the checked docs", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "README.md":
+          "# Readme\n\n```ts\nconstructor(readonly page: Page) {}\n```\n",
+        "packages/internal/README.md":
+          "# internal\n\n```ts\nconstructor(readonly page: Page) {}\n```\n",
+        "skills/ayme-recorder/references/model.md":
+          "```ts\nconstructor(readonly page: Page) {}\n```\n",
+        "docs/notes.md":
+          "# Notes\n\n```ts\nconstructor(readonly page: Page) {}\n```\n",
+      })
+    ),
+    []
+  );
+});
