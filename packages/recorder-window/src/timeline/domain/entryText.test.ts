@@ -16,6 +16,12 @@ describe("how an Interaction reads in the window", () => {
     expect(interactionTitle(interaction({ button: "left" }))).toBe("Click");
   });
 
+  it("names a click of the middle button a middle click", () => {
+    expect(interactionTitle(interaction({ button: "middle" }))).toBe(
+      "Middle-click"
+    );
+  });
+
   it("names a click of the right button a right-click", () => {
     expect(interactionTitle(interaction({ button: "right" }))).toBe(
       "Right-click"

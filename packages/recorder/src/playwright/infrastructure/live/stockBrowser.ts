@@ -384,7 +384,11 @@ async function openPage(
         page: pageId,
         held:
           input.kind === "click"
-            ? { kind: "click", count: Math.max(1, input.detail) }
+            ? {
+                kind: "click",
+                count: Math.max(1, input.detail),
+                ...(input.button ? { button: input.button } : {}),
+              }
             : input.typing
               ? { kind: "typing" }
               : { kind: "press", nothingFocused: input.nothingFocused },
@@ -1111,7 +1115,7 @@ const MOUSE_REPORTS = new Set(["click", "check", "uncheck"]);
 
 /** The events whose target a report of each kind names. */
 const CHAIN_TYPES: Readonly<Record<string, readonly string[]>> = {
-  click: ["click", "contextmenu"],
+  click: ["click", "contextmenu", "auxclick"],
   check: ["click", "keydown"],
   uncheck: ["click", "keydown"],
   press: ["keydown"],

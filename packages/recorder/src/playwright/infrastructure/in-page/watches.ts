@@ -115,7 +115,7 @@ export function targetWatchIn(tell: string, rules: TargetRules): void {
   // Playwright's recorder listens on the document as the event goes down;
   // a listener on the root element runs right after it.
   const install = () => {
-    for (const type of ["click", "contextmenu", "keydown", "input"])
+    for (const type of ["click", "contextmenu", "auxclick", "keydown", "input"])
       document.documentElement.addEventListener(type, read, true);
   };
   if (document.documentElement) install();

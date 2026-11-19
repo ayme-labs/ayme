@@ -75,7 +75,7 @@ type Harness = {
   readonly page: Page;
   /** A person at the recorded browser: raw input over that connection, so
    * that it is no call of the Playwright under test. */
-  click(target: Locator, button?: "left" | "right"): Promise<void>;
+  click(target: Locator, button?: "left" | "right" | "middle"): Promise<void>;
   /** Closes the layer's scope, as the end of a recorder does. */
   letGo(): Promise<void>;
 };
@@ -158,7 +158,7 @@ async function onStockPlaywright(html: string): Promise<Harness> {
     type: string,
     at: { x: number; y: number },
     buttons: number,
-    button: "left" | "right" = "left"
+    button: "left" | "right" | "middle" = "left"
   ) =>
     session.send("Input.dispatchMouseEvent", {
       type: type as "mouseMoved",
@@ -188,7 +188,8 @@ async function onStockPlaywright(html: string): Promise<Harness> {
       const box = (await target.boundingBox())!;
       const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
       await mouse("mouseMoved", at, 0);
-      await mouse("mousePressed", at, button === "left" ? 1 : 2, button);
+      const pressed = { left: 1, right: 2, middle: 4 }[button];
+      await mouse("mousePressed", at, pressed, button);
       await mouse("mouseReleased", at, 0, button);
     },
     letGo: () => runtime.dispose(),
@@ -531,6 +532,36 @@ it("holds a right-click by its context menu event until it is sent on: the page 
     type: "click",
     selector: expect.stringContaining("Second"),
     values: { button: "right" },
+  });
+});
+
+it("holds a middle click by its auxclick until it is sent on: the page then gets it once, and Playwright reports a click of the middle button", async () => {
+  const browser = await onStockPlaywright(`${BUTTONS}
+    <script>
+      window.events = [];
+      for (const type of ["auxclick", "click"])
+        document.addEventListener(type, (event) => {
+          event.preventDefault();
+          window.events.push(type + " " + event.button);
+        });
+    </script>`);
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+
+  await browser.click(browser.page.locator("#second"), "middle");
+  const { input, held } = await browser.toldOf("inputHeld");
+  expect(held).toEqual({ kind: "click", count: 1, button: "middle" });
+  expect(await browser.page.evaluate("window.events")).toEqual([]);
+  await browser.ask({ kind: "passOn", input });
+  await browser.toldOf("inputPassedOn", (told) => told.input === input);
+
+  expect(await browser.page.evaluate("window.events")).toEqual(["auxclick 1"]);
+  const { report } = await browser.toldOf("interactionReported");
+  expect(report).toMatchObject({
+    type: "click",
+    selector: expect.stringContaining("Second"),
+    values: { button: "middle" },
   });
 });
 

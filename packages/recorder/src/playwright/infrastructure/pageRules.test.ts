@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   actedOnIndex,
   ancestorChain,
+  arrivingEvent,
   clickHeld,
+  heldButton,
   gateStartsOn,
   keyHeld,
   keyRoute,
@@ -204,6 +206,48 @@ describe("which right-click the gate holds back", () => {
         target: { nodeName: "SELECT", inputType: "" },
       })
     ).toBe(false);
+  });
+});
+
+describe("which middle click the gate holds back", () => {
+  const button = { nodeName: "BUTTON", inputType: "" };
+
+  it("holds the middle button's auxclick, which Playwright records a middle click by", () => {
+    expect(
+      clickHeld({ type: "auxclick", button: 1, detail: 1, target: button })
+    ).toBe(true);
+  });
+
+  it("leaves a right-click's auxclick, which Playwright does not record, and a target it leaves alone, to the page", () => {
+    expect(
+      clickHeld({ type: "auxclick", button: 2, detail: 1, target: button })
+    ).toBe(false);
+    expect(
+      clickHeld({
+        type: "auxclick",
+        button: 1,
+        detail: 1,
+        target: { nodeName: "SELECT", inputType: "" },
+      })
+    ).toBe(false);
+  });
+
+  it("names the button of a held click by the event it is held by", () => {
+    expect(heldButton("auxclick")).toBe("middle");
+    expect(heldButton("contextmenu")).toBe("right");
+    expect(heldButton("click")).toBeUndefined();
+  });
+
+  it("sends a middle click on so that its auxclick reaches the page", () => {
+    expect(arrivingEvent("middle")).toBe("auxclick");
+    expect(arrivingEvent("right")).toBe("contextmenu");
+    expect(arrivingEvent(undefined)).toBe("click");
+    expect(
+      mouseRoute(
+        { trusted: true, type: "auxclick", button: 1 },
+        { picking: false, replayed: false, on: true, holding: true }
+      )
+    ).toBe("click");
   });
 });
 

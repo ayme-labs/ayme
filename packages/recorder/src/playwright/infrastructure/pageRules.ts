@@ -20,7 +20,7 @@ export type HeldByPage =
       /** The click's count: 2 for the second click of a double click. */
       readonly detail: number;
       /** The button, the left one when it is not said. */
-      readonly button?: "right";
+      readonly button?: "right" | "middle";
       readonly modifiers: readonly Modifier[];
       /** The document it was held in. */
       readonly document: string;
@@ -148,6 +148,7 @@ export function clickHeld(click: {
 }): boolean {
   if (leftAlone(click.target)) return false;
   if (click.type === "contextmenu") return click.button === 2;
+  if (click.type === "auxclick") return click.button === 1;
   return click.button === 0 && click.detail !== 0;
 }
 
@@ -174,9 +175,18 @@ export type PassingOn = {
   readonly seen: readonly string[];
 };
 
+/** The button of a click the gate holds, by the event it is held by: the
+ * right one by its context menu event, the middle one by its auxclick, the
+ * left one, not said, by its click. */
+export function heldButton(type: string): "right" | "middle" | undefined {
+  if (type === "contextmenu") return "right";
+  return type === "auxclick" ? "middle" : undefined;
+}
+
 /** The event of a click sent on that reaches the page: the click, or the
  * context menu event of a right-click. */
-export function arrivingEvent(button: "right" | undefined): string {
+export function arrivingEvent(button: "right" | "middle" | undefined): string {
+  if (button === "middle") return "auxclick";
   return button === "right" ? "contextmenu" : "click";
 }
 
@@ -289,8 +299,9 @@ export function mouseRoute(
   if (gate.replayed) return "passOn";
   if (!gate.on && !gate.holding) return "noteOnly";
   if (event.type === "dblclick") return "doubleClick";
-  // A right-click is held by its context menu event.
-  return event.type === "click" || event.type === "contextmenu"
+  // A right-click is held by its context menu event, a middle click by its
+  // auxclick.
+  return ["click", "contextmenu", "auxclick"].includes(event.type)
     ? "click"
     : "noteOnly";
 }
@@ -415,6 +426,7 @@ export type GateRules = {
   readonly replayed: typeof replayed;
   readonly replayedEffect: typeof replayedEffect;
   readonly arrivingEvent: typeof arrivingEvent;
+  readonly heldButton: typeof heldButton;
   readonly gateStartsOn: typeof gateStartsOn;
   readonly mouseRoute: typeof mouseRoute;
   readonly keyRoute: typeof keyRoute;

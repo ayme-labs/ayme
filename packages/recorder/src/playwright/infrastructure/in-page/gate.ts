@@ -23,7 +23,7 @@ export type Gate = {
    * document: that one is gone. */
   open(
     input:
-      | { x: number; y: number; detail: number; button?: "right" }
+      | { x: number; y: number; detail: number; button?: "right" | "middle" }
       | { code: string },
     document: string
   ): Promise<boolean>;
@@ -225,14 +225,14 @@ export function gateIn(held: string, rules: GateRules): void {
   /** Tells of a held click: a right-click, held by its context menu event,
    * counts one. */
   const tellClick = (event: MouseEvent) => {
-    const right = event.type === "contextmenu";
+    const button = rules.heldButton(event.type);
     tell({
       kind: "click",
       seq,
       x: event.clientX,
       y: event.clientY,
-      detail: right ? 1 : event.detail,
-      ...(right ? { button: "right" as const } : {}),
+      detail: button ? 1 : event.detail,
+      ...(button ? { button } : {}),
       modifiers: rules.modifiersOf(event),
       document: thisDocument,
     });

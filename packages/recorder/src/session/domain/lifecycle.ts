@@ -129,8 +129,13 @@ export type HighlightTarget = {
 /** What a page held back. */
 export type HeldInput =
   /** A click of the mouse; `count` is 2 for the second click of a double
-   * click. */
-  | { readonly kind: "click"; readonly count: number }
+   * click. `button` is the right or the middle one; the left when it is
+   * not said. */
+  | {
+      readonly kind: "click";
+      readonly count: number;
+      readonly button?: "right" | "middle";
+    }
   /** A key press that Playwright records as a press, not as typing.
    * `nothingFocused`: it went to the page itself, as no element had focus. */
   | { readonly kind: "press"; readonly nothingFocused?: boolean }
@@ -1581,6 +1586,11 @@ function interactionReported(
   if (REPORTED_ONLY.has(report.type)) knownFromReport(draft, page, report);
 }
 
+/** The mouse button of a held click, as Playwright's report names it: a
+ * check's and an uncheck's report names none, as they are the left one's. */
+const buttonOf = (input: Input) =>
+  input.held.kind === "click" ? (input.held.button ?? "left") : undefined;
+
 /** The report of an input of a kind the gate holds. */
 function reportOfHeld(
   state: Active,
@@ -1591,13 +1601,16 @@ function reportOfHeld(
 ) {
   // Reports come in the order of the inputs: this one belongs to the oldest
   // input of its page and its kind that has none, if that input is on its
-  // way.
+  // way. A click's is a click of its button: a middle click's report is
+  // never a left click's.
   const input = draft.inputs.find(
     (held) =>
       held.page === page &&
       held.held.kind === kind &&
       held.report === null &&
-      held.joins === null
+      held.joins === null &&
+      (kind !== "click" ||
+        buttonOf(held) === (reported.values["button"] ?? "left"))
   );
   if (!input) {
     // A click or a key made while the recorder wraps up, once the pages no

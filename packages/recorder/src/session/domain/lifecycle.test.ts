@@ -6238,3 +6238,73 @@ describe("the lifecycle, for a fill while it is typed", () => {
     if (showing) expect([...result.showing.at(-1)!]).toEqual(showing);
   });
 });
+
+// Middle clicks are held and recorded as clicks are; a report is the held
+// click's only when it is of the same button.
+describe("the lifecycle, for a middle click", () => {
+  const middleHeld = (input: InputId): Happening => ({
+    kind: "inputHeld",
+    input,
+    page: page1,
+    held: { kind: "click", count: 1, button: "middle" },
+  });
+  const report = (button: string): Happening => ({
+    kind: "interactionReported",
+    page: page1,
+    report: { ...click, values: { button, clickCount: 1 } },
+  });
+  /** The Interactions written, each with the button of its report. */
+  const writtenButtons = (todo: readonly (readonly ToDo[])[]) =>
+    todo.flat().flatMap((item) =>
+      item.kind === "timeline" && item.add.kind === "interaction"
+        ? [
+            {
+              button: item.add.interaction.report.values["button"],
+              before: item.add.interaction.before,
+              after: item.add.interaction.after,
+            },
+          ]
+        : []
+    );
+
+  it("records a middle click held behind a click, in order, each with its own report (M2)", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      middleHeld(input2),
+      taken(snapshot2),
+      passedOn(input2),
+      report("left"),
+      report("middle"),
+      settled(input2),
+      taken(snapshot3),
+    ]);
+
+    expect(writtenButtons(todo)).toEqual([
+      { button: "left", before: snapshot1, after: snapshot2 },
+      { button: "middle", before: snapshot2, after: snapshot3 },
+    ]);
+  });
+
+  it("never gives a middle click's report to a held click of another button that still waits for its own (M1)", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      // A middle click no page held, as on an element the gate leaves alone.
+      report("middle"),
+      report("left"),
+      settled(input1),
+      taken(snapshot2),
+    ]);
+
+    expect(writtenButtons(todo)).toEqual([
+      { button: "left", before: snapshot1, after: snapshot2 },
+    ]);
+  });
+});

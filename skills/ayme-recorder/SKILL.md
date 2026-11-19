@@ -123,8 +123,9 @@ An interaction names its target by `targetRef`, a node in the visit's baseline
 tree or one `<added>` earlier in the same visit, or a node a discarded change
 added; [Discarded entries](#discarded-entries) says how to read that one. Its
 other fields, such as a fill's `text`, are the values the user entered. A
-click's `button` says which mouse button it was: `left`, or `right` for a
-right-click, which the user made to open a menu; its `clickCount` is 2 for a
+click's `button` says which mouse button it was: `left`; `right` for a
+right-click, which the user made to open a menu; or `middle` for a middle
+click, as on a link to open it in a new tab. Its `clickCount` is 2 for a
 double click.
 
 ```text

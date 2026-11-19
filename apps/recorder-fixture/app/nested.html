@@ -49,6 +49,9 @@
         event.preventDefault();
         said.textContent = "Code menu";
       });
+      code.addEventListener("auxclick", (event) => {
+        if (event.button === 1) said.textContent = "Code in the background";
+      });
     </script>
   </body>
 </html>
