@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "browserVersion": "156.0.8078.4",
+    "nodeVersion": "v24.21.0",
+    "head": "a55e9d15fed89156c80765bc72e729c47ce4fbc4",
+    "mode": "red-capable"
+  },
+  "rows": [
+    {
+      "path": "browser",
+      "workMs": 0,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793178154827.4,
+      "marks": {
+        "started": 215.5,
+        "clickEntered": 330.79999999981374,
+        "effect": 330.90000000037253,
+        "workStarted": 330.90000000037253,
+        "workReturned": 330.90000000037253,
+        "handlerReturned": 330.90000000037253,
+        "returned": 583.5
+      },
+      "result": {
+        "page_changed": true,
+        "settled": true,
+        "changes": "- e1 <changed>:\n  - e2 <changed> button \"Apply\" [active]\n  - e3 <changed> paragraph: Applied 1"
+      }
+    },
+    {
+      "path": "browser",
+      "workMs": 1400,
+      "clicks": 1,
+      "effect": "Applied 1",
+      "timeOrigin": 1793178155446.3,
+      "marks": {
+        "started": 102.59999999962747,
+        "clickEntered": 223.09999999962747,
+        "effect": 223.09999999962747,
+        "workStarted": 223.09999999962747,
+        "workReturned": 1623.0999999996275,
+        "handlerReturned": 1623.0999999996275,
+        "returned": 1876.9000000003725
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "TimeoutError: locator.click: Timeout 1000ms exceeded.\nCall log:\n  - waiting for locator('ayme-ref=e2')\n    - locator resolved to <button id=\"apply\">Apply</button>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action\n\nchanges:\n- e1 <changed>:\n  - e2 <changed> button \"Apply\" [active]\n  - e3 <changed> paragraph: Applied 1"
+          }
+        ],
+        "isError": true
+      }
+    }
+  ]
+}
