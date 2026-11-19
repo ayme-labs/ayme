@@ -137,9 +137,10 @@ export function recordersOwn(localName: string): boolean {
 
 /** Whether the gate holds a click back, on a target it does not leave
  * alone: the left button's click, with a count (a click with none is a
- * key's or a label's), and the right button's context menu event, which
- * Playwright records a right-click by. A context menu a key opened is the
- * page's. */
+ * key's or a label's), the right button's context menu event, which
+ * Playwright records a right-click by, and the middle button's auxclick,
+ * which Playwright records a middle click by. A context menu a key opened
+ * is the page's. */
 export function clickHeld(click: {
   readonly type: string;
   readonly button: number;
