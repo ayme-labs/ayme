@@ -41,7 +41,7 @@ each function named in a comment beside the operator that models it (search
   `wrapUp`, `goOnWrappingUp`, `giveUp`, `wrappedUp`, `endFromOutside`,
   `clearPaused`, `traceGone` and `saved`, through `proceed`, `startNext`,
   `inputHeld`, `inputPassedOn`, `pageSettled`, `snapshotTaken`,
-  `giveSnapshot`, `interactionReported`, `reportOfHeld`, `knownFromReport`,
+  `giveSnapshot`, `interactionReported`, `reportOfHeld` (with `buttonOf`), `knownFromReport`,
   `carryOnReported`, `startReported`, `endReported`, `shareWithOpen`,
   `interactionRevised`, `writeDown`, `showOrWrite`, `behindUnshown`,
   `behindUnwritten`, `mayBeRevised`, `letThrough`, `withoutPage`, `asserted`,
@@ -56,21 +56,22 @@ each function named in a comment beside the operator that models it (search
 - `playwright/infrastructure/in-page/gate.ts` (`gateIn`, `startGate`, and the
   gate's `set`, `open`, `arrived`, its picking start and `endPicking`),
   `drawing.ts` (`startPicking`), and `pageRules.ts` (`mouseRoute`,
-  `keyRoute`, `keyHeld`, `clickHeld`, `arrivingEvent`): which buttons the
-  gate holds, and which clicks picking leaves to Playwright.
+  `keyRoute`, `keyHeld`, `clickHeld`, `heldButton`, `arrivingEvent`): which
+  buttons the gate holds, and which clicks picking leaves to Playwright.
 - `timeline/domain/timeline.ts` (`add`, `replace`, `retext`, `produce`,
-  `writeInteraction`, `measure`, `changedBefore`, `tell`, `package`) and
+  `writeInteraction`, `pressedAfter`, `beforeItsPress`, `measure`,
+  `changedBefore`, `tell`, `package`) and
   `recorded.ts` (`TimelineAddition`).
 - `session/application/recorderSession.ts` (`publishEntries`, the time
   limit), `server/infrastructure/toolbarBridge.ts`,
   `server/infrastructure/windowChannelRouter.ts`.
 
-**Sync commit: `04cda064`** (`feat/recorder-rebuild`). To see what changed in
+**Sync commit: `ec270dbf`** (`feat/recorder-rebuild`). To see what changed in
 covered code since, from any folder of the repository (the procedure below
 runs in the model's):
 
 ```sh
-git log --oneline 04cda064..HEAD -- ':(top)packages/recorder/src'
+git log --oneline ec270dbf..HEAD -- ':(top)packages/recorder/src'
 ```
 
 A change touches the model when it adds, removes or reorders a step of the
