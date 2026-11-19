@@ -62,8 +62,9 @@ final "Confirm" can create a real contract. Only the user approves one.
    the trace shows no such request.
 6. **Rehearse live** with fresh real data the user gives you for one run,
    written to `.ayme/params/<flow>.<date>.json`. Run the entry script headed,
-   with the user watching. The user answers each confirm: yes lets the same
-   run make the real submission, no stops it. With the terminal prompt, the
+   with the user watching. The user answers each confirm, or with the
+   highlight clicks the outlined control: that lets the same run make the
+   real submission, and anything else stops it. With the terminal prompt, the
    user starts the command in their own terminal, since its prompt reads from
    the terminal that started it. You never approve an irreversible step: a
    live run the user does not watch uses `--no-submit`.
@@ -105,19 +106,23 @@ Write plain Playwright page objects by
 [Page object design](../references/page-object-design.md) and
 [Write page objects from the recording](../SKILL.md#write-page-objects-from-the-recording),
 with no Ayme decorators. Each irreversible step is its own page object
-action.
+action, and the wait for its result can also be called on its own.
 
 The flow is one function, `run<Flow>(page, params, { confirm })`. Before each
 irreversible step it reads the agreed values back from the page through the
-page objects and asks `confirm`. When that returns `false`, the flow stops
-before the step and returns where it stopped:
+page objects and asks `confirm`, which answers one of three ways. `"stop"`:
+the flow stops before the step and returns where it stopped. `"submit"`: the
+flow does the step. `"submitted"`: the user did the step in the page, so the
+flow only waits for its result:
 
 ```ts
 export type Confirm = (step: {
   name: string;
   summary: Record<string, string>;
   page: Page;
-}) => Promise<boolean>;
+  target: Locator; // the control that makes the step final
+  done: (timeout?: number) => Promise<unknown>; // waits for the step's result
+}) => Promise<"submit" | "submitted" | "stop">;
 
 export async function runContract(
   page: Page,
@@ -127,9 +132,18 @@ export async function runContract(
   const form = await new ContractPage(page).open();
   const review = await form.fill(params);
   const summary = await review.summary(); // { customer, offer, price }
-  if (!(await confirm({ name: "Confirm contract", summary, page })))
-    return { stoppedBefore: "Confirm contract" };
-  const done = await review.confirm(); // irreversible
+  const answer = await confirm({
+    name: "Confirm contract",
+    summary,
+    page,
+    target: review.confirmButton,
+    done: (timeout) => review.confirmed(timeout),
+  });
+  if (answer === "stop") return { stoppedBefore: "Confirm contract" };
+  const done =
+    answer === "submit"
+      ? await review.confirm() // irreversible: clicks, then waits
+      : await review.confirmed();
   return { contractNumber: await done.contractNumber() };
 }
 ```
@@ -151,7 +165,7 @@ import { type Confirm, runContract } from "./contract.js";
 async function main() {
   const params = JSON.parse(readFileSync(process.argv[2]!, "utf8"));
   const confirm: Confirm = process.argv.includes("--no-submit")
-    ? async ({ name, summary }) => (console.log(name, summary), false)
+    ? async ({ name, summary }) => (console.log(name, summary), "stop")
     : askInTerminal;
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ storageState: ".ayme/auth.json" });
@@ -190,38 +204,30 @@ export const askInTerminal: Confirm = async ({ name, summary }) => {
   });
   const answer = await terminal.question(`Submit ${name}? [y/N] `);
   terminal.close();
-  return answer.trim().toLowerCase() === "y";
+  return answer.trim().toLowerCase() === "y" ? "submit" : "stop";
 };
 ```
 
-An overlay in the page, with Submit and Cancel:
+A highlight in the page: it outlines the control and waits, and the user's
+own click is the approval, so the automation never clicks it. Without a click
+before the timeout, the flow stops:
 
 ```ts
-export const askInPage: Confirm = ({ name, summary, page }) =>
-  page.evaluate(
-    ({ name, summary }) =>
-      new Promise<boolean>((resolve) => {
-        const box = document.createElement("div");
-        box.style.cssText =
-          "position:fixed;top:16px;right:16px;z-index:2147483647;padding:12px;background:#fff;color:#000;border:2px solid #000;white-space:pre-line";
-        box.textContent = [
-          `Submit ${name}?`,
-          ...Object.entries(summary).map(([key, value]) => `${key}: ${value}`),
-          "",
-        ].join("\n");
-        for (const [label, answer] of [
-          ["Submit", true],
-          ["Cancel", false],
-        ] as const) {
-          const button = document.createElement("button");
-          button.textContent = label;
-          button.onclick = () => (box.remove(), resolve(answer));
-          box.append(button);
-        }
-        document.body.append(box);
-      }),
-    { name, summary }
-  );
+export const highlightAndWait =
+  (timeout = 10 * 60_000): Confirm =>
+  async ({ name, summary, page, target, done }) => {
+    console.log(`Click the outlined control to submit ${name}:`, summary);
+    await target.highlight();
+    try {
+      await done(timeout);
+      return "submitted";
+    } catch (error) {
+      if ((error as Error).name !== "TimeoutError") throw error;
+      return "stop";
+    } finally {
+      await page.hideHighlight();
+    }
+  };
 ```
 
 ## The replay test
@@ -251,7 +257,7 @@ test("contract flow replays", async ({ context }) => {
   );
   const seen: Record<string, Record<string, string>> = {};
   const result = await runContract(page, params, {
-    confirm: async ({ name, summary }) => ((seen[name] = summary), true),
+    confirm: async ({ name, summary }) => ((seen[name] = summary), "submit"),
   });
   expect(result).not.toHaveProperty("stoppedBefore");
   expect(seen).toEqual(summaries);
