@@ -33,12 +33,21 @@ type PomCompilerEntry = {
 
 /**
  * One reason a module did not compile, as the compiler states it: the file at
- * fault and the 1-based line and column in it as written, where it knows them.
+ * fault and the 1-based line and column in it as written, with that line's
+ * text, where it knows them.
  */
 type PomDiagnostic =
   | { text: string; file?: undefined }
   | { text: string; file: string; line?: undefined }
-  | { text: string; file: string; line: number; column: number };
+  | {
+      text: string;
+      file: string;
+      line: number;
+      /** Counted in UTF-16 code units of `lineText`. */
+      column: number;
+      /** The line as written, without its line break. */
+      lineText: string;
+    };
 
 const COMPILER = "@ayme-dev/ayme/compiler";
 const RUNTIME = "@ayme-dev/ayme";
@@ -208,45 +217,19 @@ function buildError(
     return { text, location: { file: compiled } };
   if (diagnostic.line === undefined)
     return { text, location: { file: diagnostic.file } };
-  const { file, line, column } = diagnostic;
-  const lineText = sourceLine(file, line);
+  const { file, line, column, lineText } = diagnostic;
   return {
     text,
     location: {
       file,
       line,
-      column: esbuildColumn(lineText, column),
+      // TypeScript counts the column from 1 in UTF-16 code units; esbuild
+      // counts it from 0 in UTF-8 bytes.
+      column: Buffer.byteLength(lineText.slice(0, column - 1)),
       // esbuild draws its code frame from this line, which it has not loaded.
-      ...(lineText !== undefined && { lineText }),
+      lineText,
     },
   };
-}
-
-/**
- * `column` of `lineText`, counted from 1 in UTF-16 code units as TypeScript
- * counts it, as esbuild counts it: from 0, in UTF-8 bytes. Without the line,
- * the count of code units stands in.
- */
-function esbuildColumn(lineText: string | undefined, column: number) {
-  return lineText === undefined
-    ? column - 1
-    : Buffer.byteLength(lineText.slice(0, column - 1));
-}
-
-/**
- * Line `line` of `file`, counted from 1, if the file can be read and has it.
- * It is the line TypeScript counted: split at its line breaks, without the
- * byte order mark a file may start with.
- */
-function sourceLine(file: string, line: number): string | undefined {
-  try {
-    return readFileSync(file, "utf8")
-      .replace(/^\uFEFF/, "")
-      .split(/\r\n|[\n\r\u2028\u2029]/)[line - 1];
-  } catch {
-    // An unreadable file has no line to measure.
-  }
-  return undefined;
 }
 
 /**
