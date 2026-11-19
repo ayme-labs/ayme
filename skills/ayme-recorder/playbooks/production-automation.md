@@ -281,6 +281,5 @@ or token, leave that part out of `match()`. When they differ in data, such as
 another record id, the flow reads data the recording lacks: check the
 parameters. When they differ in data an earlier response filled in, that
 response landed at another moment than in the recording: wait for it in the
-page object; do not loosen `match()`. The first aborted call after a step
-points at the missing wait. Telemetry calls are aborted on every run; list
-them for the user once.
+page object; do not loosen `match()`. Telemetry calls are aborted on every
+run; list them for the user once.

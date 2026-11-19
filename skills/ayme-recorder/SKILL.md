@@ -7,8 +7,7 @@ description: Record a user flow with the Ayme recorder while the user drives the
 
 The Ayme recorder listens while the user drives their app in a browser, and
 writes what it saw to a Recording Package: the page structure at each visit,
-what changed and every interaction. From the package you write page objects and
-a Playwright test that replays the flow.
+what changed and every interaction.
 
 Read `.ayme/CONVENTIONS.md` first, when it exists: what the user settled for
 running Ayme in this repository. It overrides this skill's defaults.
@@ -38,8 +37,6 @@ running Ayme in this repository. It overrides this skill's defaults.
    - [Production automation](playbooks/production-automation.md): a
      parameterised automation that does the flow with new data, such as data
      entry that ends in a real submission.
-
-A package with no kept entry is done when you have told the user and stopped.
 
 ## Read the package
 
@@ -202,8 +199,7 @@ Each `trace snapshot` call takes several seconds. List every ref you need from
 one snapshot and read them in a single call, as above. `cloneNode(false)`
 returns an element's own tag and attributes without its content; read
 `outerHTML` directly when you need what is inside. A ref absent from the
-snapshot comes back as `null`, and so does one inside a shadow root, where
-`document.querySelector` does not look.
+snapshot comes back as `null`.
 
 A `targetRef` can name a node inside the control the user acted on, such as
 the `<span>` inside a link. Add its parent's ref from the tree to the same
