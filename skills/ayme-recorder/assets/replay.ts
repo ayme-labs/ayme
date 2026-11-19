@@ -157,8 +157,15 @@ function loadCalls(traceZip: string): RecordedCall[] {
       const { request, response, time, _monotonicTime } = event.snapshot;
       if (!(response?.status > 0)) continue; // never answered
       const headers: Record<string, string> = {};
-      for (const { name: header, value } of response.headers ?? [])
-        if (!DROPPED_HEADERS.has(header.toLowerCase())) headers[header] = value;
+      for (const { name: raw, value } of response.headers ?? []) {
+        const header = raw.toLowerCase();
+        if (DROPPED_HEADERS.has(header)) continue;
+        // A response can set several cookies: Playwright splits them at "\n".
+        headers[header] =
+          header === "set-cookie" && headers[header]
+            ? `${headers[header]}\n${value}`
+            : value;
+      }
       const content = response.content ?? {};
       calls.push({
         method: request.method,

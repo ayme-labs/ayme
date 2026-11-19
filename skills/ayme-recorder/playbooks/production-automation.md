@@ -121,7 +121,7 @@ export type Confirm = (step: {
   summary: Record<string, string>;
   page: Page;
   target: Locator; // the control that makes the step final
-  done: (timeout?: number) => Promise<unknown>; // waits for the step's result
+  done: () => Promise<unknown>; // waits for the step's result
 }) => Promise<"submit" | "submitted" | "stop">;
 
 export async function runContract(
@@ -137,7 +137,7 @@ export async function runContract(
     summary,
     page,
     target: review.confirmButton,
-    done: (timeout) => review.confirmed(timeout),
+    done: () => review.confirmed(),
   });
   if (answer === "stop") return { stoppedBefore: "Confirm contract" };
   const done =
@@ -209,8 +209,9 @@ export const askInTerminal: Confirm = async ({ name, summary }) => {
 ```
 
 A highlight in the page: it outlines the control and waits, and the user's
-own click is the approval, so the automation never clicks it. Without a click
-before the timeout, the flow stops:
+own click on it is the approval, so the automation never clicks it. Without a
+click before the timeout, the flow stops. After a click, a result that does
+not show is an error, never a stop:
 
 ```ts
 export const highlightAndWait =
@@ -218,15 +219,21 @@ export const highlightAndWait =
   async ({ name, summary, page, target, done }) => {
     console.log(`Click the outlined control to submit ${name}:`, summary);
     await target.highlight();
-    try {
-      await done(timeout);
-      return "submitted";
-    } catch (error) {
-      if ((error as Error).name !== "TimeoutError") throw error;
-      return "stop";
-    } finally {
-      await page.hideHighlight();
-    }
+    const clicked = await Promise.race([
+      target.evaluate(
+        (control) =>
+          new Promise<true>((resolve) =>
+            control.addEventListener("click", () => resolve(true), {
+              once: true,
+            })
+          )
+      ),
+      new Promise<false>((resolve) => setTimeout(resolve, timeout, false)),
+    ]);
+    await page.hideHighlight();
+    if (!clicked) return "stop";
+    await done();
+    return "submitted";
   };
 ```
 
