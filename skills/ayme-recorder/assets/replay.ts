@@ -140,10 +140,32 @@ const onlyIn = (a: Set<string>, b: Set<string>) =>
     .slice(0, 10)
     .map((field) => (field.length > 120 ? `${field.slice(0, 120)}…` : field));
 
+interface BodyRef {
+  _sha1?: string;
+  _file?: string;
+  text?: string;
+  encoding?: string;
+}
+
+/** The fields of a trace's network events that replay reads. */
+interface TraceEvent {
+  type: string;
+  snapshot: {
+    request: { method: string; url: string; postData?: BodyRef };
+    response?: {
+      status: number;
+      headers?: { name: string; value: string }[];
+      content?: BodyRef;
+    };
+    time?: number;
+    _monotonicTime?: number;
+  };
+}
+
 function loadCalls(traceZip: string): RecordedCall[] {
   const zip = readZip(traceZip);
   // Older traces name a body file by `_sha1`, newer ones by its `_file` path.
-  const resource = (ref: { _sha1?: string; _file?: string } | undefined) => {
+  const resource = (ref: BodyRef | undefined) => {
     const file = ref?._file ?? (ref?._sha1 && `resources/${ref._sha1}`);
     return file ? zip.get(file)?.() : undefined;
   };
@@ -152,10 +174,10 @@ function loadCalls(traceZip: string): RecordedCall[] {
     if (!name.endsWith(".network")) continue;
     for (const line of read().toString("utf8").split("\n")) {
       if (!line.trim()) continue;
-      const event = JSON.parse(line);
+      const event = JSON.parse(line) as TraceEvent;
       if (event.type !== "resource-snapshot") continue;
       const { request, response, time, _monotonicTime } = event.snapshot;
-      if (!(response?.status > 0)) continue; // never answered
+      if (!response || !(response.status > 0)) continue; // never answered
       const headers: Record<string, string> = {};
       for (const { name: raw, value } of response.headers ?? []) {
         const header = raw.toLowerCase();

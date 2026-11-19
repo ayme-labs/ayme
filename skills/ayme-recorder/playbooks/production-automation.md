@@ -51,8 +51,8 @@ final "Confirm" can create a real contract. Only the user approves one.
    asks, even when the test passes without it. Prove each other wait: take it
    out and run three times at recorded speed, then three times with answers
    near-instant: `REPLAY_SPEED=1000` has `replay.ts` answer a thousand times
-   faster than recorded. A wait that matters fails or flakes without it at
-   either speed: put it back. Remove one that passes both. Then run it once
+   faster than recorded. Put the wait back if either set of runs fails or
+   flakes without it, and remove it if both pass. Then run it once
    with `--trace on`, open that run's trace with
    `npx playwright trace open <trace.zip>`, and list its calls with
    `npx playwright trace requests`: every request other than GET or HEAD
@@ -61,14 +61,14 @@ final "Confirm" can create a real contract. Only the user approves one.
    Done when the test passes three runs in a row with every wait proven and
    the trace shows no such request.
 6. **Rehearse live** with fresh real data the user gives you for one run,
-   written to `.ayme/params/<flow>.<date>.json`. Run the entry script headed,
-   with the user watching. The user answers each confirm, or with the
+   written where step 2 settled. Run the entry script headed, with the user
+   watching. The user answers each confirm, or with the
    highlight clicks the outlined control: that lets the same run make the
    real submission, and anything else stops it. With the terminal prompt, the
    user starts the command in their own terminal, since its prompt reads from
    the terminal that started it. You never approve an irreversible step: a
    live run the user does not watch uses `--no-submit`.
-   When a run fails, read its trace in `.ayme/runs/` with the project's own
+   When a run fails, read its trace with the project's own
    Playwright: `npx playwright trace open <trace.zip>`, then `trace actions`
    and `trace snapshot`. Fix the code, run the replay test again until it
    passes three times, and rehearse with new data.
@@ -121,7 +121,6 @@ export type Confirm = (step: {
   summary: Record<string, string>;
   page: Page;
   target: Locator; // the control that makes the step final
-  done: () => Promise<unknown>; // waits for the step's result
 }) => Promise<"submit" | "submitted" | "stop">;
 
 export async function runContract(
@@ -137,7 +136,6 @@ export async function runContract(
     summary,
     page,
     target: review.confirmButton,
-    done: () => review.confirmed(),
   });
   if (answer === "stop") return { stoppedBefore: "Confirm contract" };
   const done =
@@ -152,7 +150,7 @@ The entry script is what the user runs. It opens a headed browser, reads a
 parameters file, records a trace for diagnosis, calls the flow with the
 agreed `confirm` and prints the result. Start it the way the project runs
 TypeScript, such as `npx tsx run-contract.ts .ayme/params/<file>.json`. With
-`--no-submit` it prints each summary and stops before every irreversible
+`--no-submit` it prints the summary and stops before the first irreversible
 step: use it for any live run the user does not watch.
 
 ```ts
@@ -210,15 +208,16 @@ export const askInTerminal: Confirm = async ({ name, summary }) => {
 
 A highlight in the page: it outlines the control and waits, and the user's
 own click on it is the approval, so the automation never clicks it. Without a
-click before the timeout, the flow stops. After a click, a result that does
-not show is an error, never a stop:
+click before the timeout, the flow stops. After a click the flow waits for
+the result, so a result that does not show is an error, never a stop:
 
 ```ts
 export const highlightAndWait =
   (timeout = 10 * 60_000): Confirm =>
-  async ({ name, summary, page, target, done }) => {
+  async ({ name, summary, page, target }) => {
     console.log(`Click the outlined control to submit ${name}:`, summary);
     await target.highlight();
+    let timer: NodeJS.Timeout | undefined;
     const clicked = await Promise.race([
       target.evaluate(
         (control) =>
@@ -228,12 +227,13 @@ export const highlightAndWait =
             })
           )
       ),
-      new Promise<false>((resolve) => setTimeout(resolve, timeout, false)),
+      new Promise<false>((resolve) => {
+        timer = setTimeout(resolve, timeout, false);
+      }),
     ]);
+    clearTimeout(timer);
     await page.hideHighlight();
-    if (!clicked) return "stop";
-    await done();
-    return "submitted";
+    return clicked ? "submitted" : "stop";
   };
 ```
 
@@ -242,7 +242,8 @@ export const highlightAndWait =
 Copy [`assets/replay.ts`](../assets/replay.ts) next to the replay test. Its
 header says what loads live and what the recording answers. Write the
 recorded parameter values, and the summary the recording's page showed before
-each irreversible step, read from that step's trace snapshot, to
+each irreversible step, read from the snapshot of the interaction before
+it, to
 `.ayme/params/<flow>.recorded.json` as `{ params, summaries }`. The test
 calls the same flow, never a copy of its steps, with a `confirm` that always
 approves and keeps each summary, so the test checks what a person would:
