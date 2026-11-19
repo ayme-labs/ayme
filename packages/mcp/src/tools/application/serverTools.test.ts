@@ -21,6 +21,8 @@ const context = () => ({
   inspector: {
     url: "http://127.0.0.1:9351/inspector",
     installed: async () => true,
+    appPage: async () => "<!doctype html>",
+    socketOrigin: "ws://127.0.0.1:9351",
   },
 });
 
@@ -163,10 +165,7 @@ it("ayme_inspect returns the URL of the Inspector the server serves", async () =
 it("ayme_inspect says to install @ayme-dev/inspector when it is missing", async () => {
   const missing = {
     ...context(),
-    inspector: {
-      url: "http://127.0.0.1:9351/inspector",
-      installed: async () => false,
-    },
+    inspector: { ...context().inspector, installed: async () => false },
   };
 
   expect(await inspectTool(missing).call({})).toEqual(

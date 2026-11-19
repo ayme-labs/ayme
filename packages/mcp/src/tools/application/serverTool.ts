@@ -18,6 +18,10 @@ export type ServerToolContext = {
     url: string;
     /** Whether the optional `@ayme-dev/inspector` package that holds it is installed. */
     installed(): Promise<boolean>;
+    /** The page an Agent App shows in its chat, which connects to `socketOrigin`. */
+    appPage(): Promise<string>;
+    /** The origin of the socket the Agent App's page connects to. */
+    socketOrigin: string;
   };
   /**
    * The init script that loads the Page Objects this server serves, when it
@@ -44,6 +48,20 @@ export type ServerTool = {
   /** The server checks a call's input against it before `call` runs. */
   inputSchema: JsonSchema & { type: "object" };
   call(input: Record<string, unknown>): Promise<ToolResult>;
+  /** The page an Agent App that shows MCP Apps shows for the tool, if any. */
+  app?: AppPage;
+};
+
+/** A page an Agent App shows in its chat, as an MCP App. */
+export type AppPage = {
+  /** Its `ui://` address. */
+  uri: string;
+  /** Its name in the server's resources. */
+  name: string;
+  /** The origins it connects to, which the Agent App lets it reach. */
+  connectDomains: string[];
+  /** Its HTML document, read each time the Agent App reads the page. */
+  html(): Promise<string>;
 };
 
 /** Builds a server tool from what it may use. */

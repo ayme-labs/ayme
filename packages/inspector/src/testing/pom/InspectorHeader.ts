@@ -80,7 +80,8 @@ export class LayoutMenu {
 
 /**
  * The panel's header: the title, the Connections pill, the theme switch,
- * the layout menu and collapse. The panel drags by it.
+ * the layout menu, collapse, and fullscreen where an Agent App offers it.
+ * The panel drags by it.
  */
 export class InspectorHeader extends PanelPart {
   @ayme.child
@@ -112,9 +113,25 @@ export class InspectorHeader extends PanelPart {
     return this.root.getByRole("button", { name: "Collapse inspector" });
   }
 
+  /** Fullscreen, or back from it: only in an Agent App that offers it. */
+  @ayme.child
+  get fullscreenButton(): Locator {
+    return this.root.getByRole("button", {
+      name: /^(Exit fullscreen|Fullscreen)$/,
+    });
+  }
+
   @ayme.action
   async collapse() {
     await this.collapseButton.click();
+  }
+
+  @ayme.action({
+    description:
+      "Asks the Agent App for fullscreen, or back from it. Only in an Agent App that offers fullscreen.",
+  })
+  async toggleFullscreen() {
+    await this.fullscreenButton.click();
   }
 
   /** Drags the panel by its header. */
