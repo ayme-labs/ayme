@@ -176,6 +176,7 @@ describe("createPomCompiler", () => {
         file: fileName,
         line: 16,
         column: 28,
+        lineText: "    return new ResultsPage(;",
       },
     ]);
   });

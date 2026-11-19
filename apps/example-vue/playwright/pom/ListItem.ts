@@ -4,25 +4,31 @@ import { AppComponent } from "./AppComponent";
 import type { ArchiveDialog } from "./ArchiveDialog";
 
 export class ListItem extends AppComponent {
-  @ayme.child
-  readonly archiveButton: Locator;
-  @ayme.child
-  readonly nameButton: Locator;
-  @ayme.child
-  readonly nameInput: Locator;
-
   constructor(
     root: Locator,
     private readonly archiveDialog: ArchiveDialog
   ) {
     super(root);
-    this.archiveButton = root.locator('[data-action="archive"]');
-    this.nameButton = root.locator('[data-action="rename"]');
-    this.nameInput = root.getByRole("textbox", { name: "Item name" });
+  }
+
+  @ayme.child
+  get archiveButton(): Locator {
+    return this.root.locator('[data-action="archive"]');
+  }
+
+  @ayme.child
+  get nameButton(): Locator {
+    return this.root.locator('[data-action="rename"]');
+  }
+
+  @ayme.child
+  get nameInput(): Locator {
+    return this.root.getByRole("textbox", { name: "Item name" });
   }
 
   @ayme.action({
     description: "An archived item can't be renamed or restored.",
+    destructive: true,
   })
   async archive() {
     await this.archiveButton.click();

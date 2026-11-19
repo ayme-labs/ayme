@@ -30,15 +30,18 @@ const FORM = `
 
 /** A Page Object whose tools fill the item field and press its buttons. */
 class ListPage {
-  readonly root;
-  readonly item;
-  readonly addButton;
-  readonly saveButton;
-  constructor(readonly page: Page) {
-    this.root = page.locator("main");
-    this.item = page.locator("#item");
-    this.addButton = page.locator("#add");
-    this.saveButton = page.locator("#save");
+  constructor(readonly page: Page) {}
+  get root() {
+    return this.page.locator("main");
+  }
+  get item() {
+    return this.page.locator("#item");
+  }
+  get addButton() {
+    return this.page.locator("#add");
+  }
+  get saveButton() {
+    return this.page.locator("#save");
   }
   async add(value: string) {
     await this.item.fill(value);
@@ -64,7 +67,7 @@ registerCompiledPom(ListPage, {
   members: ["root", "item", "addButton", "saveButton"].map((memberName) => ({
     memberName,
     kind: "locator",
-    access: "field",
+    access: "getter",
   })) as PomManifest["members"],
   tools: [
     tool("add", "ListPage.add", [

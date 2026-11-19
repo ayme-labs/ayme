@@ -21,41 +21,6 @@ export type ArgumentValue =
  * input, the first press opens the typed form.
  */
 export class RunCard extends PanelPart {
-  @ayme.child
-  readonly runButton: Locator;
-  /** Why the tool is unavailable, under its name; absent while it's available. */
-  @ayme.child
-  readonly reason: Locator;
-  /** Shows or hides the form, on a card with a head. */
-  @ayme.child
-  readonly argumentsToggle: Locator;
-  @ayme.child
-  readonly formSwitch: Locator;
-  @ayme.child
-  readonly jsonSwitch: Locator;
-  @ayme.child
-  readonly jsonEditor: Locator;
-  /** Why the JSON editor's text isn't JSON, or isn't an object. */
-  @ayme.child
-  readonly jsonError: Locator;
-  /**
-   * How the JSON editor's arguments break the tool's schema, one entry per
-   * violation, e.g. "values.zip: must be a string or a number".
-   */
-  @ayme.collection
-  readonly schemaErrors: Locator;
-  /** Pretty-prints the JSON editor's text. */
-  @ayme.child
-  readonly formatButton: Locator;
-  /** The items a rooted action can run on. */
-  @ayme.collection
-  readonly items: Locator;
-  /** The last run's status, its duration, and its error. */
-  @ayme.child
-  readonly lastResult: Locator;
-  /** Shows the last successful run in Runs. */
-  @ayme.child
-  readonly lastSuccessLink: Locator;
   /** `fill_form`'s form. */
   @ayme.child
   readonly fillForm: FillForm;
@@ -68,33 +33,98 @@ export class RunCard extends PanelPart {
 
   constructor(root: Locator) {
     super(root);
-    this.runButton = root.getByRole("button", { name: "Run", exact: true });
-    this.reason = root.getByRole("note", { name: "Why it is unavailable" });
-    this.argumentsToggle = root.getByRole("button", {
-      name: /^(Show|Hide) the arguments for /,
-    });
-    const editor = root.getByRole("group", { name: "Arguments editor" });
-    this.formSwitch = editor.getByRole("button", { name: "Form" });
-    this.jsonSwitch = editor.getByRole("button", { name: "JSON" });
-    this.jsonEditor = root.getByRole("textbox", { name: "Arguments JSON" });
-    this.jsonError = root.getByRole("alert").and(root.locator("span"));
-    this.schemaErrors = root
-      .getByRole("alert", { name: "Schema errors" })
-      .getByRole("listitem");
-    this.formatButton = root.getByRole("button", {
-      name: "Format",
-      exact: true,
-    });
-    this.items = root
-      .getByRole("radiogroup", { name: "Instance" })
-      .getByRole("radio");
-    this.lastResult = root.getByRole("status", { name: "Last result" });
-    this.lastSuccessLink = this.lastResult.getByRole("button", {
-      name: /^(Show in runs|Last success)/,
-    });
     this.fillForm = new FillForm(root);
     this.locatorGroups = new LocatorGroups(root);
     this.values = this.valueRows("values");
+  }
+
+  @ayme.child
+  get runButton(): Locator {
+    return this.root.getByRole("button", { name: "Run", exact: true });
+  }
+
+  /** The mark of a tool marked destructive, before Run, on a card with a head. */
+  @ayme.child
+  get destructiveMark(): Locator {
+    return this.root.locator("[data-destructive-mark]");
+  }
+
+  /** Why the tool is unavailable, under its name; absent while it's available. */
+  @ayme.child
+  get reason(): Locator {
+    return this.root.getByRole("note", { name: "Why it is unavailable" });
+  }
+
+  /** Shows or hides the form, on a card with a head. */
+  @ayme.child
+  get argumentsToggle(): Locator {
+    return this.root.getByRole("button", {
+      name: /^(Show|Hide) the arguments for /,
+    });
+  }
+
+  private get argumentsEditor(): Locator {
+    return this.root.getByRole("group", { name: "Arguments editor" });
+  }
+
+  @ayme.child
+  get formSwitch(): Locator {
+    return this.argumentsEditor.getByRole("button", { name: "Form" });
+  }
+
+  @ayme.child
+  get jsonSwitch(): Locator {
+    return this.argumentsEditor.getByRole("button", { name: "JSON" });
+  }
+
+  @ayme.child
+  get jsonEditor(): Locator {
+    return this.root.getByRole("textbox", { name: "Arguments JSON" });
+  }
+
+  /** Why the JSON editor's text isn't JSON, or isn't an object. */
+  @ayme.child
+  get jsonError(): Locator {
+    return this.root.getByRole("alert").and(this.root.locator("span"));
+  }
+
+  /**
+   * How the JSON editor's arguments break the tool's schema, one entry per
+   * violation, e.g. "values.zip: must be a string or a number".
+   */
+  @ayme.collection
+  get schemaErrors(): Locator {
+    return this.root
+      .getByRole("alert", { name: "Schema errors" })
+      .getByRole("listitem");
+  }
+
+  /** Pretty-prints the JSON editor's text. */
+  @ayme.child
+  get formatButton(): Locator {
+    return this.root.getByRole("button", { name: "Format", exact: true });
+  }
+
+  /** The items a rooted action can run on. */
+  @ayme.collection
+  get items(): Locator {
+    return this.root
+      .getByRole("radiogroup", { name: "Instance" })
+      .getByRole("radio");
+  }
+
+  /** The last run's status, its duration, and its error. */
+  @ayme.child
+  get lastResult(): Locator {
+    return this.root.getByRole("status", { name: "Last result" });
+  }
+
+  /** Shows the last successful run in Runs. */
+  @ayme.child
+  get lastSuccessLink(): Locator {
+    return this.lastResult.getByRole("button", {
+      name: /^(Show in runs|Last success)/,
+    });
   }
 
   /**

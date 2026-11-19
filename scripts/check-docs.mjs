@@ -30,8 +30,14 @@
  *   installed as its own folder, so it ships its own copies. A guide page's
  *   copy has its relative links rewritten to `github.com/ayme-labs/ayme/blob/main/`
  *   links. `pnpm skills:sync` writes the copies.
+ * - a TypeScript code block in `docs/guide/`, a published package README or
+ *   `skills/ayme/` uses a constructor parameter property (`public`, `private`,
+ *   `protected`, `readonly` or `override` on a constructor parameter). Vite's
+ *   templates set `erasableSyntaxOnly`, which rejects that syntax. Declare the
+ *   field on the class and assign it in the constructor.
  *
- * Code spans and fenced code blocks are ignored. Uses only `node:` modules.
+ * Links inside code spans and fenced code blocks are ignored. Uses only
+ * `node:` modules.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -310,6 +316,364 @@ function pageShape(lines) {
   return undefined;
 }
 
+const TYPESCRIPT_FENCE = /^(ts|tsx|typescript|mts|cts)$/;
+const PARAMETER_MODIFIERS = new Set([
+  "public",
+  "private",
+  "protected",
+  "readonly",
+  "override",
+]);
+
+/** Whether `file` is a guide page, a published README or the ayme skill. */
+function rejectsParameterProperties(file, published) {
+  return (
+    file.startsWith(`${GUIDE_DIR}/`) ||
+    file.startsWith("skills/ayme/") ||
+    published.has(file)
+  );
+}
+
+/**
+ * TypeScript fenced blocks in `text`. `line` is the 1-based line of the
+ * block body's first line.
+ */
+function typescriptBlocks(text) {
+  const blocks = [];
+  const fence =
+    /^ {0,3}((`)\2{2,}|(~)\3{2,})([^\n]*)\n([\s\S]*?)(?:^ {0,3}\1(?:\2|\3)*[ \t]*$|(?![\s\S]))/gm;
+  for (const match of text.matchAll(fence)) {
+    const lang = match[4].trim().split(/[\s{]/)[0]?.toLowerCase() ?? "";
+    if (!TYPESCRIPT_FENCE.test(lang)) continue;
+    const body = match[5];
+    const bodyStart = text.indexOf("\n", match.index) + 1;
+    blocks.push({ body, line: lineOf(text, bodyStart) });
+  }
+  return blocks;
+}
+
+/** Indexes in `body` of constructor parameters that declare a property. */
+function parameterProperties(body) {
+  const found = [];
+  let i = 0;
+  while (i < body.length) {
+    const skipped = skipTrivia(body, i);
+    if (skipped > i) {
+      i = skipped;
+      continue;
+    }
+    if (!isWord(body, i, "constructor")) {
+      i++;
+      continue;
+    }
+    i += "constructor".length;
+    let cursor = skipSpaceAndComments(body, i);
+    if (body[cursor] === "<") cursor = skipAngles(body, cursor);
+    cursor = skipSpaceAndComments(body, cursor);
+    if (body[cursor] !== "(") continue;
+    const params = constructorParameters(body, cursor + 1);
+    for (const param of params.list) {
+      const at = parameterPropertyAt(param.text);
+      if (at !== -1) found.push(param.index + at);
+    }
+    i = params.end;
+  }
+  return found;
+}
+
+/** `constructor`'s parameter list, starting just after the opening `(`. */
+function constructorParameters(body, i) {
+  const list = [];
+  let start = i;
+  let paren = 1;
+  let brace = 0;
+  let bracket = 0;
+  let angle = 0;
+  // `<` counts in a type, and in a default right after a name (`Map<`). A
+  // spaced `1 < 2` in a default is a comparison, and the comma after it still
+  // separates parameters.
+  let inType = false;
+  // A colon after the default (`ok ? 1 : 2`) is a ternary, not a type.
+  let inDefault = false;
+  const atParameter = () =>
+    paren === 1 && brace === 0 && bracket === 0 && angle === 0;
+  while (i < body.length) {
+    const skipped = skipTrivia(body, i);
+    if (skipped > i) {
+      i = skipped;
+      continue;
+    }
+    const char = body[i];
+    if (char === "(") paren++;
+    else if (char === ")") {
+      paren--;
+      if (paren === 0) {
+        list.push({ text: body.slice(start, i), index: start });
+        return { list, end: i + 1 };
+      }
+    } else if (char === "{") brace++;
+    else if (char === "}") brace--;
+    else if (char === "[") bracket++;
+    else if (char === "]") bracket--;
+    else if (char === ":" && !inDefault && atParameter()) inType = true;
+    else if (char === "=" && body[i + 1] !== ">" && atParameter()) {
+      inType = false;
+      inDefault = true;
+    } else if (char === "<" && (inType || /[\w$]/.test(body[i - 1] ?? "")))
+      angle++;
+    // The `>` of an arrow (`() => void`) does not close the generic.
+    else if (char === ">" && body[i - 1] !== "=")
+      angle = Math.max(0, angle - 1);
+    else if (char === "," && atParameter()) {
+      list.push({ text: body.slice(start, i), index: start });
+      start = i + 1;
+      inType = false;
+      inDefault = false;
+    }
+    i++;
+  }
+  return { list, end: i };
+}
+
+/** Index of the parameter's property modifier, or -1 when it has none. */
+function parameterPropertyAt(param) {
+  let i = 0;
+  while (i < param.length) {
+    if (/\s/.test(param[i])) {
+      i++;
+      continue;
+    }
+    if (param.startsWith("//", i)) {
+      const newline = param.indexOf("\n", i);
+      i = newline === -1 ? param.length : newline + 1;
+      continue;
+    }
+    if (param.startsWith("/*", i)) {
+      const end = param.indexOf("*/", i + 2);
+      i = end === -1 ? param.length : end + 2;
+      continue;
+    }
+    if (param[i] === "@") {
+      i = skipDecorator(param, i);
+      continue;
+    }
+    break;
+  }
+  let found = -1;
+  while (i < param.length) {
+    const word = /^[A-Za-z_$][\w$]*/.exec(param.slice(i));
+    // `readonly: boolean` names the parameter. A modifier is followed by the
+    // binding: another modifier, a name, or `...`.
+    if (!word || !PARAMETER_MODIFIERS.has(word[0])) break;
+    const after = skipSpaceAndComments(param, i + word[0].length);
+    if (!modifierContinues(param, after)) break;
+    if (found === -1) found = i;
+    if (param.startsWith("...", after)) break;
+    i = after;
+  }
+  return found;
+}
+
+/** Whether the token after a modifier word makes that word a modifier. */
+function modifierContinues(text, i) {
+  if (text.startsWith("...", i)) return true;
+  return /^[A-Za-z_$][\w$]*/.test(text.slice(i));
+}
+
+function skipDecorator(text, i) {
+  i++;
+  while (i < text.length && /[\w$.]/.test(text[i])) i++;
+  i = skipSpaceAndComments(text, i);
+  if (text[i] === "<") i = skipAngles(text, i);
+  i = skipSpaceAndComments(text, i);
+  if (text[i] === "(") {
+    let depth = 0;
+    while (i < text.length) {
+      const skipped = skipTrivia(text, i);
+      if (skipped > i) {
+        i = skipped;
+        continue;
+      }
+      if (text[i] === "(") depth++;
+      else if (text[i] === ")") {
+        depth--;
+        i++;
+        if (depth === 0) break;
+        continue;
+      }
+      i++;
+    }
+  }
+  return i;
+}
+
+function skipAngles(text, i) {
+  let depth = 0;
+  while (i < text.length) {
+    const skipped = skipTrivia(text, i);
+    if (skipped > i) {
+      i = skipped;
+      continue;
+    }
+    if (text[i] === "<") depth++;
+    // The `>` of an arrow (`() => void`) does not close the generic.
+    else if (text[i] === ">" && text[i - 1] !== "=") {
+      depth--;
+      i++;
+      if (depth === 0) return i;
+      continue;
+    }
+    i++;
+  }
+  return i;
+}
+
+function skipSpaceAndComments(text, i) {
+  while (i < text.length) {
+    const skipped = skipTrivia(text, i);
+    if (skipped > i) {
+      i = skipped;
+      continue;
+    }
+    if (/\s/.test(text[i])) {
+      i++;
+      continue;
+    }
+    break;
+  }
+  return i;
+}
+
+/** The index after a comment, string or template that starts at `i`, else `i`. */
+function skipTrivia(text, i) {
+  if (text.startsWith("//", i)) {
+    const newline = text.indexOf("\n", i);
+    return newline === -1 ? text.length : newline + 1;
+  }
+  if (text.startsWith("/*", i)) {
+    const end = text.indexOf("*/", i + 2);
+    return end === -1 ? text.length : end + 2;
+  }
+  const quote = text[i];
+  if (quote === "'" || quote === '"') return skipQuoted(text, i, quote);
+  if (quote === "`") return skipTemplate(text, i);
+  // A `/` after an operator starts a regular expression (`/[)]/`). After a
+  // value, including `)`, `]` and `}`, it is division (`a / b`).
+  if (
+    quote === "/" &&
+    text[i + 1] !== "/" &&
+    text[i + 1] !== "*" &&
+    regexLikely(text, i)
+  )
+    return skipRegex(text, i);
+  return i;
+}
+
+const REGEX_PREFIX = new Set([
+  "await",
+  "delete",
+  "return",
+  "throw",
+  "typeof",
+  "void",
+  "yield",
+]);
+
+/** Whether a `/` at `i` opens a regular expression rather than dividing. */
+function regexLikely(text, i) {
+  let j = i - 1;
+  while (j >= 0) {
+    if (/\s/.test(text[j])) {
+      j--;
+      continue;
+    }
+    if (text[j] === "/" && text[j - 1] === "*") {
+      const start = text.lastIndexOf("/*", j - 1);
+      j = start === -1 ? -1 : start - 1;
+      continue;
+    }
+    break;
+  }
+  if (j < 0) return true;
+  const char = text[j];
+  if ((char === "+" || char === "-") && text[j - 1] === char) return false;
+  if (!/[\w$)\]}]/.test(char)) return true;
+  const word = /[A-Za-z_$][\w$]*$/.exec(text.slice(0, j + 1));
+  return word !== null && REGEX_PREFIX.has(word[0]);
+}
+
+function skipRegex(text, i) {
+  i++;
+  let inClass = false;
+  while (i < text.length) {
+    if (text[i] === "\\") {
+      i += 2;
+      continue;
+    }
+    if (text[i] === "\n") return i;
+    if (text[i] === "[" && !inClass) inClass = true;
+    else if (text[i] === "]" && inClass) inClass = false;
+    else if (text[i] === "/" && !inClass) {
+      i++;
+      while (i < text.length && /[a-z]/i.test(text[i])) i++;
+      return i;
+    }
+    i++;
+  }
+  return i;
+}
+
+function skipQuoted(text, i, quote) {
+  i++;
+  while (i < text.length) {
+    if (text[i] === "\\") {
+      i += 2;
+      continue;
+    }
+    if (text[i] === quote) return i + 1;
+    if (text[i] === "\n") return i;
+    i++;
+  }
+  return i;
+}
+
+function skipTemplate(text, i) {
+  i++;
+  while (i < text.length) {
+    if (text[i] === "\\") {
+      i += 2;
+      continue;
+    }
+    if (text[i] === "`") return i + 1;
+    if (text[i] === "$" && text[i + 1] === "{") {
+      i += 2;
+      let depth = 1;
+      while (i < text.length && depth > 0) {
+        const skipped = skipTrivia(text, i);
+        if (skipped > i) {
+          i = skipped;
+          continue;
+        }
+        if (text[i] === "{") depth++;
+        else if (text[i] === "}") depth--;
+        i++;
+      }
+      continue;
+    }
+    i++;
+  }
+  return i;
+}
+
+function isWord(text, i, word) {
+  if (!text.startsWith(word, i)) return false;
+  const ident = /[\w$]/;
+  return !(
+    (i > 0 && ident.test(text[i - 1])) ||
+    ident.test(text[i + word.length] ?? "")
+  );
+}
+
 /** Every docs problem under `root`, as `file:line: message` strings. */
 export function checkDocs(root) {
   const problems = [];
@@ -338,8 +702,19 @@ export function checkDocs(root) {
   };
 
   for (const file of checked) {
-    const text = prose(fs.readFileSync(path.join(root, file), "utf8"));
+    const raw = fs.readFileSync(path.join(root, file), "utf8");
+    const text = prose(raw);
     const isPublished = published.has(file);
+    if (rejectsParameterProperties(file, published)) {
+      for (const block of typescriptBlocks(raw)) {
+        for (const at of parameterProperties(block.body))
+          report(
+            file,
+            block.line + lineOf(block.body, at) - 1,
+            "constructor parameter property, which erasableSyntaxOnly rejects; declare the field on the class and assign it in the constructor"
+          );
+      }
+    }
     for (const { target, line } of links(text)) {
       const linked = linkedPath(root, file, target);
       if (linked !== undefined && !fs.existsSync(linked))

@@ -1,2 +1,6 @@
 export { mountInspector, type InspectorOptions } from "./mountInspector";
-export { mountExternalInspector } from "./mountExternalInspector";
+export {
+  mountExternalInspector,
+  showServerLost,
+} from "./mountExternalInspector";
+export { connectAgentApp } from "./agentApp";

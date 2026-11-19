@@ -53,17 +53,18 @@ export class AgentToolView {
    */
   listRead(tools: readonly PageTool[]): readonly PageTool[] {
     const listed = this.listed(tools);
-    // The list shows each tool's description and input schema but neither
-    // availability nor hidden tools, so the agent keeps what it last heard
-    // of those, and takes a tool new to it as available.
+    // The list shows each tool's description, input schema and annotations
+    // but neither availability nor hidden tools, so the agent keeps what it
+    // last heard of those, and takes a tool new to it as available.
     this.#seen = {
-      tools: listed.map(({ name, description, inputSchema }) => ({
+      tools: listed.map(({ name, description, inputSchema, destructive }) => ({
         ...(this.#seen.tools.find((tool) => tool.name === name) ?? {
           available: true,
         }),
         name,
         description,
         inputSchema,
+        destructive,
       })),
       hidden: this.#seen.hidden,
     };

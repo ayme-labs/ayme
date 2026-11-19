@@ -13,25 +13,32 @@ export type ModelDetailSection =
  * page-wide tools.
  */
 export class ModelDetailView extends PanelPart {
-  @ayme.child
-  readonly title: Locator;
-  /** The link from a Page Object or a child Page Object member to its model. */
-  @ayme.child
-  readonly modelLink: Locator;
-  /** A member's link to the Page Object or model it belongs to. */
-  @ayme.child
-  readonly ownerLink: Locator;
-  /** A member's description, as its child declaration gives it. */
-  readonly description: Locator;
-
   constructor(root: Locator) {
     super(root);
-    this.title = root.getByRole("heading", { level: 3 });
-    this.modelLink = root.getByRole("button", {
+  }
+
+  @ayme.child
+  get title(): Locator {
+    return this.root.getByRole("heading", { level: 3 });
+  }
+
+  /** The link from a Page Object or a child Page Object member to its model. */
+  @ayme.child
+  get modelLink(): Locator {
+    return this.root.getByRole("button", {
       name: /^Open the \S+ page object model$/,
     });
-    this.ownerLink = root.getByRole("button", { name: /^Open its owner / });
-    this.description = root.locator("[data-description]");
+  }
+
+  /** A member's link to the Page Object or model it belongs to. */
+  @ayme.child
+  get ownerLink(): Locator {
+    return this.root.getByRole("button", { name: /^Open its owner / });
+  }
+
+  /** A member's description, as its child declaration gives it. */
+  get description(): Locator {
+    return this.root.locator("[data-description]");
   }
 
   /**
@@ -84,5 +91,14 @@ export class ModelDetailView extends PanelPart {
   /** An action shown, dimmed, because its Page Object isn't on the page. */
   offPageAction(name: string): Locator {
     return this.section("Actions").getByRole("group", { name, exact: true });
+  }
+
+  /** Whether an off-page action shows the destructive mark. */
+  async offPageActionMarkedDestructive(name: string): Promise<boolean> {
+    return (
+      (await this.offPageAction(name)
+        .locator("[data-destructive-mark]")
+        .count()) > 0
+    );
   }
 }

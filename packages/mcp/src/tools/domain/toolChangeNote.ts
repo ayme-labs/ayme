@@ -27,21 +27,25 @@ const asAppeared = (tool: SeenTool) =>
     ? tool.name
     : `${tool.name} (unavailable${tool.reason === undefined ? "" : `: ${tool.reason}`})`;
 
-/** A changed tool's name, with which of its parameters and description changed. */
+/**
+ * A changed tool's name, with which of its parameters, description and
+ * annotations (its destructive mark; `false` is no mark) changed.
+ */
 const asChanged = (tool: SeenTool, before: SeenTool) => {
   const parts = [
     isDeepStrictEqual(tool.inputSchema, before.inputSchema)
       ? undefined
       : "parameters",
     tool.description === before.description ? undefined : "description",
+    !tool.destructive === !before.destructive ? undefined : "annotations",
   ].filter((part) => part !== undefined);
   return parts.length === 0 ? undefined : `${tool.name} (${parts.join(", ")})`;
 };
 
 /**
  * The note on a tool result that tells the agent which tools of the page
- * and App Processes appeared, disappeared, changed their parameters or
- * description, became available or unavailable
+ * and App Processes appeared, disappeared, changed their parameters,
+ * description or annotations, became available or unavailable
  * (with the reason) or were newly hidden since its previous call, so an
  * agent that never re-reads the MCP tool list still notices. No note when
  * nothing of that changed.

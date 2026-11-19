@@ -32,7 +32,11 @@ const onPage = (self: AppPage) =>
 @ayme({ present: onPage })
 export abstract class AppPage {
   abstract readonly path: string;
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 }
 
 export class ProjectsPage extends AppPage {
@@ -49,11 +53,17 @@ const rootOf = (self: AppComponent) => self.root;
 
 @ayme({ root: rootOf })
 export abstract class AppComponent {
-  constructor(readonly root: Locator) {}
+  readonly root: Locator;
+
+  constructor(root: Locator) {
+    this.root = root;
+  }
 }
 
 export class NewProjectDialog extends AppComponent {
-  readonly createButton = this.root.getByRole("button", { name: "Create" });
+  get createButton() {
+    return this.root.getByRole("button", { name: "Create" });
+  }
 }
 ```
 
@@ -94,7 +104,9 @@ The method's parameters are the tool's inputs. Plain data works: strings, number
 ```ts
 export class ProjectRow extends AppComponent {
   @ayme.child
-  readonly archiveButton = this.root.getByRole("button", { name: "Archive" });
+  get archiveButton() {
+    return this.root.getByRole("button", { name: "Archive" });
+  }
 
   @ayme.action({
     description:
@@ -138,7 +150,9 @@ const canRemove = async (self: ProjectRow) =>
 
 export class ProjectRow extends AppComponent {
   @ayme.child
-  readonly removeButton = this.root.getByRole("button", { name: "Remove" });
+  get removeButton() {
+    return this.root.getByRole("button", { name: "Remove" });
+  }
 
   @ayme.action({ available: canRemove })
   async remove() {
@@ -152,6 +166,20 @@ export class ProjectRow extends AppComponent {
 
 Like `present`, keep the predicate to reads.
 
+**`destructive`** marks an action whose effect cannot be undone. Mark an action that deletes, sends, submits, pays or creates something in the real world, such as removing a project, placing an order or signing a contract. Leave unmarked an action the user can take back, such as opening a dialog, filling a form or archiving into a tab they can restore from.
+
+```ts
+export class ProjectRow extends AppComponent {
+  @ayme.action({ available: canRemove, destructive: true })
+  async remove() {
+    await this.removeButton.click();
+    return this;
+  }
+}
+```
+
+An agent gets the mark as the tool's annotation, `destructiveHint` over `ayme mcp` and `consequentialHint` over WebMCP, so it or the harness driving it can stop before the call. Ayme still runs the tool like any other. Write `true` in the decorator itself: the build reads it from source, as it reads `description`. [Destructive actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#destructive-actions) has the details.
+
 ## `@ayme.child`
 
 `@ayme.child` declares one part of a model: a Locator that matches one element, or one Page Object. Only declared parts appear in the model's definition.
@@ -160,21 +188,25 @@ Declare what an agent reads or acts on, such as the inputs, buttons and lists th
 
 A child Page Object needs the declaration too. Ayme reaches a component only through the members its models declare. Without `@ayme.collection` on `projects` below, no `ProjectRow` is reached, and `ProjectRow.remove` never becomes a tool. Nothing warns you. The [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md)'s Model view shows what a model holds.
 
+Declare a locator as a getter, and a child page object built from `this.page` or `this.root` the same way. A getter reads `this.page` when the locator is used, after the constructor has set it.
+
 ```ts
 export class ProjectsPage extends AppPage {
   readonly path = "/projects";
 
   @ayme.child
-  readonly newProjectButton = this.page.getByRole("button", {
-    name: "New project",
-  });
+  get newProjectButton() {
+    return this.page.getByRole("button", { name: "New project" });
+  }
 
-  readonly rows = this.page.getByRole("listitem"); // not declared: projects() reads it
+  get rows() {
+    return this.page.getByRole("listitem"); // not declared: projects() reads it
+  }
 
   @ayme.child
-  readonly newProjectDialog = new NewProjectDialog(
-    this.page.getByRole("dialog")
-  );
+  get newProjectDialog() {
+    return new NewProjectDialog(this.page.getByRole("dialog"));
+  }
 
   @ayme.action
   async openNewProjectDialog(): Promise<NewProjectDialog> {
@@ -199,7 +231,9 @@ What to declare is as for [`@ayme.child`](#aymechild).
 
 ```ts
 @ayme.collection({ description: "Filters applied to the list." })
-readonly filterChips = this.page.getByTestId("filter-chip");
+get filterChips() {
+  return this.page.getByTestId("filter-chip");
+}
 
 @ayme.collection
 async projects(): Promise<ProjectRow[]> {

@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  StdioServerTransport,
+  serveStdio,
+} from "@modelcontextprotocol/server/stdio";
 
 import { version } from "../../package.json";
 import { AgentConnection, createPageChannelServer } from "../connection";
@@ -8,6 +11,8 @@ import {
   InspectorRelay,
   externalInspectorServer,
   inspectCommand,
+  inspectorAppHtml,
+  inspectorSocketUrl,
   inspectorUrl,
   readExternalBuild,
 } from "../inspector";
@@ -40,8 +45,16 @@ const log = (message: string) =>
 /**
  * Runs the Ayme MCP server: MCP over stdio for the agent, and a WebSocket
  * server on the loopback interface for the page, on `port` if given, else on
- * the first free port of the server's range. Stops when the agent closes
- * stdio.
+ * the first free port of the server's range. Stops once its connection to
+ * the agent closes.
+ *
+ * MCP is served by the SDK's `serveStdio`, which answers revision
+ * 2026-07-28 and the older revisions that open with `initialize`: the
+ * agent's first message picks one, and it builds a server object for it.
+ * An agent that asks `server/discover` and then opens with `initialize`
+ * gets a second one, after the first closes. All of them share what this
+ * function builds once: the Agent Connection, the page channel and its
+ * port, the tokens, the Page Objects build and the agent's name.
  *
  * With a Page Objects entry, `pageObjects` or else `.ayme/page-objects.ts`
  * in the working folder, it also builds the entry in watch mode, serves its
@@ -56,8 +69,11 @@ export async function startMcpServer({
   const entry = findPageObjectsEntry({ folder, named: pageObjects });
   const connection = new AgentConnection();
   const token = randomUUID();
-  // The MCP server starts after the page's: a page may say hello before it.
-  let agentName = (): string | undefined => undefined;
+  // Admits the Inspector's page an Agent App shows, whose origin is the
+  // Agent App's: a token of its own, which pairs no page.
+  const inspectorToken = randomUUID();
+  // The last name the agent gave; a page that says hello before it gets none.
+  let agentName: string | undefined;
   // The external Inspector and the Page Objects entry's build are served
   // by this server, the Inspector relayed over its page channel: no other
   // server and no other port.
@@ -68,11 +84,13 @@ export async function startMcpServer({
     connection,
     token,
     imageFolder: screenshotFolder,
-    agent: () => agentName(),
+    agent: () => agentName,
     extensions: [
       externalInspectorServer({
         relay: new InspectorRelay(connection),
         readBuild: readExternalBuild,
+        token: inspectorToken,
+        log,
       }),
       ...(build ? [servedPageObjectsServer(build)] : []),
     ],
@@ -111,38 +129,65 @@ export async function startMcpServer({
   const stopBehaviours = connectionBehaviours.map((behaviour) =>
     behaviour({ connection, log })
   );
-  const mcp = createMcpToolServer({
-    name: "ayme",
-    version,
-    serverTools,
-    context: {
-      connection,
-      pairing,
-      saveImage: saveToScreenshotFolder,
-      initScript,
-      failedPageObjects: async () =>
-        entry === undefined || build === undefined
-          ? undefined
-          : failedPageObjects(entry, build),
-      inspector: {
-        url: inspectorUrl(SERVER_HOST, port),
-        installed: async () => (await readExternalBuild()) !== undefined,
-      },
+  const context = {
+    connection,
+    pairing,
+    saveImage: saveToScreenshotFolder,
+    initScript,
+    failedPageObjects: async () =>
+      entry === undefined || build === undefined
+        ? undefined
+        : failedPageObjects(entry, build),
+    inspector: {
+      url: inspectorUrl(SERVER_HOST, port),
+      installed: async () => (await readExternalBuild()) !== undefined,
+      appPage: async () =>
+        inspectorAppHtml(
+          await readExternalBuild(),
+          inspectorSocketUrl(SERVER_HOST, port, inspectorToken)
+        ),
+      socketOrigin: pairing.address,
     },
-  });
-  agentName = () => mcp.getClientVersion()?.name;
+  };
 
+  // The process stops once the connection to the agent closes: when the
+  // agent closes stdin, when writing to it fails, or when it sends a message
+  // too large to read. The SDK closes the connection in each case, and then
+  // reads stdin no more, so its end may never come.
+  let stopped = false;
   const stop = () => {
+    if (stopped) return;
+    stopped = true;
     for (const stopBehaviour of stopBehaviours) stopBehaviour();
     channel.close();
     closeBuild();
   };
-  mcp.onclose = stop;
-  process.stdin.once("end", () => void mcp.close());
-  await mcp.connect(new StdioServerTransport());
+  serveStdio(
+    () =>
+      createMcpToolServer({
+        name: "ayme",
+        version,
+        serverTools,
+        context,
+        agentNamed: (name) => (agentName = name),
+      }),
+    { transport: new AgentConnectionTransport(stop) }
+  );
   log(`Listening for pages on ${pairing.address}.`);
 }
 export { readCommand } from "./readCommand";
+
+/** The stdio connection to the agent, which runs `onClosed` once it closes. */
+class AgentConnectionTransport extends StdioServerTransport {
+  constructor(private readonly onClosed: () => void) {
+    super();
+  }
+
+  override async close() {
+    await super.close();
+    this.onClosed();
+  }
+}
 
 /**
  * Prints the URL of the external Inspector of the running Ayme MCP server

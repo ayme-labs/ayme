@@ -11,12 +11,17 @@ import { externalInspectorServer } from "./externalInspectorServer";
 let stop: (() => void) | undefined;
 afterEach(() => stop?.());
 
+const TOKEN = "inspector-token";
+
 async function start(build: string | undefined = "export const build = 1;") {
   const connection = new AgentConnection();
   const relay = new InspectorRelay(connection);
+  const logged: string[] = [];
   const extension = externalInspectorServer({
     relay,
     readBuild: async () => build,
+    token: TOKEN,
+    log: (line) => logged.push(line),
   });
   const { server, close } = createPageChannelServer({
     connection,
@@ -27,7 +32,7 @@ async function start(build: string | undefined = "export const build = 1;") {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   stop = close;
   const { port } = server.address() as AddressInfo;
-  return { connection, base: `127.0.0.1:${port}`, port };
+  return { connection, base: `127.0.0.1:${port}`, port, logged };
 }
 
 describe("the external Inspector's page", () => {
@@ -83,12 +88,17 @@ describe("the external Inspector's page", () => {
 });
 
 describe("the external Inspector's socket", () => {
-  const open = (base: string, origin: string | undefined) =>
+  const open = (
+    base: string,
+    origin: string | undefined,
+    query = "",
+    host?: string
+  ) =>
     new Promise<WebSocket>((resolve, reject) => {
-      const socket = new WebSocket(
-        `ws://${base}/inspector/ws`,
-        origin === undefined ? {} : { origin }
-      );
+      const socket = new WebSocket(`ws://${base}/inspector/ws${query}`, {
+        ...(origin === undefined ? {} : { origin }),
+        ...(host === undefined ? {} : { headers: { host } }),
+      });
       socket.once("open", () => resolve(socket));
       socket.once("error", reject);
       socket.once("unexpected-response", () => reject(new Error("refused")));
@@ -116,6 +126,61 @@ describe("the external Inspector's socket", () => {
 
     await expect(open(base, "http://localhost:3000")).rejects.toThrow();
     await expect(open(base, "https://example.com")).rejects.toThrow();
+  });
+
+  // The origins three Agent Apps' in-chat frames were measured to send.
+  const agentAppOrigins = [
+    "null",
+    "vscode-webview://1a2b3c4d",
+    "https://0123abcd.claudemcpcontent.com",
+  ];
+
+  it("admits a window that brings the token, from any origin, and logs it", async () => {
+    const { base, logged } = await start();
+
+    for (const origin of agentAppOrigins) {
+      const socket = await open(base, origin, `?token=${TOKEN}`);
+      socket.send(JSON.stringify({ id: 1, method: "getState" }));
+      expect(await next(socket)).toMatchObject({ id: 1 });
+      socket.close();
+    }
+
+    expect(logged).toEqual(
+      agentAppOrigins.map(
+        (origin) =>
+          `An Inspector window was admitted by its token (origin ${origin}).`
+      )
+    );
+  });
+
+  it("refuses a window from another origin whose token is wrong or missing", async () => {
+    const { base, logged } = await start();
+
+    for (const origin of agentAppOrigins) {
+      await expect(open(base, origin, "?token=wrong")).rejects.toThrow();
+      await expect(open(base, origin, "?token=")).rejects.toThrow();
+      await expect(open(base, origin)).rejects.toThrow();
+    }
+    expect(logged).toEqual([]);
+  });
+
+  it("refuses a window that brings the token under another host name, which a rebinding page would use", async () => {
+    const { base, port, logged } = await start();
+    const host = `evil.example:${port}`;
+
+    await expect(
+      open(base, `http://${host}`, `?token=${TOKEN}`, host)
+    ).rejects.toThrow();
+    expect(logged).toEqual([]);
+  });
+
+  it("admits the page it served, and a local process, without a token or a log line", async () => {
+    const { base, logged } = await start();
+
+    (await open(base, `http://${base}`)).close();
+    (await open(base, undefined)).close();
+
+    expect(logged).toEqual([]);
   });
 
   it("ignores a frame that is no request, and goes on", async () => {

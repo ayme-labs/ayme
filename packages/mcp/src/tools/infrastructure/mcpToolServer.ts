@@ -2,14 +2,20 @@ import {
   toolInputViolations,
   violationSentences,
 } from "@ayme-dev/core/tool-input";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+  RESOURCE_MIME_TYPE,
+  registerAppResource,
+} from "@modelcontextprotocol/ext-apps/server";
+import {
+  CLIENT_INFO_META_KEY,
+  McpServer,
+  type Implementation,
+  type ServerContext,
+} from "@modelcontextprotocol/server";
 
 import { callPageTool } from "../application/callPageTool";
 import type {
+  AppPage,
   ServerTool,
   ServerToolContext,
   ServerToolFactory,
@@ -19,39 +25,56 @@ import {
   errorResult,
   goneToolResult,
   mcpPageTool,
+  type McpListedTool,
   type ToolResult,
 } from "../domain/toolResult";
 
 /**
- * The MCP server an agent talks to: the server's own tools, then the tools
- * of the paired page and App Processes under the names they give them (see
+ * One server object an agent talks to, built each time `serveStdio` asks
+ * for one: the server's own tools, then the tools of the paired page and
+ * App Processes under the names they give them (see
  * `AgentConnection` for which of two same-named tools the agent sees), as
  * the server's `AgentToolView` lists them. While nothing is paired, any
  * other name answers that no page is connected, since it may be a page tool
- * the agent listed before. One server serves one agent, so that view says
- * when the agent hears `notifications/tools/list_changed`, and every tool
- * result carries its tool change note, if any, as a text item after the
- * tool's own. A server tool's input is checked against its input schema
+ * the agent listed before. One server object serves one agent, so that
+ * view says when the agent hears `notifications/tools/list_changed` (under
+ * 2026-07-28, the SDK passes it on only to a subscription that asked for
+ * it), and every tool result carries its tool change note, if any, as a
+ * text item after the tool's own, in every revision. The object listens to
+ * the connection until it closes, which leaves the connection to the next
+ * one. A server tool's input is checked against its input schema
  * before the tool runs, with arguments left out taken as `{}`; a page
- * tool's input is the page's to check.
+ * tool's input is the page's to check. A server tool's page for Agent Apps
+ * (`app`) is a resource of the server, linked from the tool's listing, the
+ * MCP Apps way.
+ *
+ * `agentNamed` hears the agent's name: under the older revisions from the
+ * `initialize` handshake, under 2026-07-28 from each `tools/list` and
+ * `tools/call` request's `_meta`, the only place it is given there.
  */
 export function createMcpToolServer({
   name,
   version,
   serverTools: serverToolFactories,
   context,
+  agentNamed,
 }: {
   name: string;
   version: string;
   serverTools: readonly ServerToolFactory[];
   /** What the server tools may use, besides what the agent was shown. */
   context: Omit<ServerToolContext, "wasOffered">;
-}): Server {
+  /** Hears the agent's name each time a request or the handshake gives it. */
+  agentNamed: (name: string) => void;
+}): McpServer {
   const { connection, saveImage, failedPageObjects } = context;
-  const server = new Server(
+  // The SDK's high-level server registers the MCP App pages as resources;
+  // the tools stay on this server's own handlers.
+  const mcpServer = new McpServer(
     { name, version },
     { capabilities: { tools: { listChanged: true } } }
   );
+  const server = mcpServer.server;
   // Asked only once a tool runs, by when `view` exists.
   const wasOffered = (name: string): boolean => view.wasOffered(name);
   const serverTools: readonly ServerTool[] = serverToolFactories.map((tool) =>
@@ -62,23 +85,43 @@ export function createMcpToolServer({
     connection.tools
   );
 
-  // The connection lives as long as the server, so this never unsubscribes.
-  connection.subscribe(() => {
+  server.onclose = connection.subscribe(() => {
     if (!view.toolsChanged(connection.tools)) return;
     // Only while an agent is connected; the notification can't reach it otherwise.
     if (server.transport) void server.sendToolListChanged().catch(() => {});
   });
 
-  server.setRequestHandler(ListToolsRequestSchema, () => ({
-    tools: [
-      ...serverTools.map(({ name, description, inputSchema }) => ({
+  for (const { app } of serverTools) if (app) registerAppPage(mcpServer, app);
+
+  // Under the older revisions the name comes with `initialize`; under
+  // 2026-07-28 with each request's `_meta`, which the SDK lifts out into
+  // the envelope, as `getClientVersion()` stays empty there over stdio.
+  const nameAgent = (ctx?: ServerContext) => {
+    // The SDK's published types leave the envelope's keys out.
+    const envelope = ctx?.mcpReq.envelope as
+      { [CLIENT_INFO_META_KEY]?: Implementation } | undefined;
+    const client =
+      envelope?.[CLIENT_INFO_META_KEY] ?? server.getClientVersion();
+    if (client?.name) agentNamed(client.name);
+  };
+  server.oninitialized = () => nameAgent();
+
+  server.setRequestHandler("tools/list", (_request, ctx) => {
+    nameAgent(ctx);
+    const tools: McpListedTool[] = [
+      ...serverTools.map(({ name, description, inputSchema, app }) => ({
         name,
         description,
         inputSchema,
+        ...(app && {
+          // The flat key is the one Agent Apps read before `ui` was nested.
+          _meta: { ui: { resourceUri: app.uri }, "ui/resourceUri": app.uri },
+        }),
       })),
       ...view.listRead(connection.tools).map(mcpPageTool),
-    ],
-  }));
+    ];
+    return { tools };
+  });
 
   const run = (name: string, input: Record<string, unknown>) => {
     const serverTool = serverTools.find((tool) => tool.name === name);
@@ -102,8 +145,9 @@ export function createMcpToolServer({
   };
 
   server.setRequestHandler(
-    CallToolRequestSchema,
-    async (request): Promise<ToolResult> => {
+    "tools/call",
+    async (request, ctx): Promise<ToolResult> => {
+      nameAgent(ctx);
       const { name, arguments: input = {} } = request.params;
       const result = await run(name, input);
       // Taken once the result is ready.
@@ -119,5 +163,26 @@ export function createMcpToolServer({
     }
   );
 
-  return server;
+  return mcpServer;
+}
+
+/** Registers `app` as an MCP App resource of `mcpServer`. */
+function registerAppPage(mcpServer: McpServer, app: AppPage) {
+  const ui = { csp: { connectDomains: app.connectDomains } };
+  registerAppResource(
+    mcpServer,
+    app.name,
+    app.uri,
+    { _meta: { ui } },
+    async () => ({
+      contents: [
+        {
+          uri: app.uri,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await app.html(),
+          _meta: { ui },
+        },
+      ],
+    })
+  );
 }

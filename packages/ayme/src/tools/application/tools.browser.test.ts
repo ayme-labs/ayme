@@ -218,13 +218,15 @@ registerCompiledPom(ResponsesPage, {
 
 /** A page whose children are declared, two of them with a description. */
 class RunsTable {
-  readonly heading;
-  readonly rows;
   readonly toolbar = new RunsToolbar();
 
-  constructor(page: Page) {
-    this.heading = page.locator("h1");
-    this.rows = page.locator("tr");
+  constructor(private readonly page: Page) {}
+
+  get heading() {
+    return this.page.locator("h1");
+  }
+  get rows() {
+    return this.page.locator("tr");
   }
 
   refresh() {}
@@ -239,13 +241,13 @@ registerCompiledPom(RunsTable, {
     {
       memberName: "heading",
       kind: "locator",
-      access: "field",
+      access: "getter",
       collection: false,
     },
     {
       memberName: "rows",
       kind: "locator",
-      access: "field",
+      access: "getter",
       collection: true,
       description: "One row per run.",
     },

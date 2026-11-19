@@ -370,7 +370,13 @@ export class SavePage {
       {
         text: `Unsupported Page Object Tool input type for SavePage.save(at): Date. Compiled with ${path.join(root, "tsconfig.json")}.`,
         // esbuild counts columns from 0: this is the parameter's name.
-        location: { file: "SavePage.ts", line: 6, column: 13 },
+        location: {
+          file: "SavePage.ts",
+          line: 6,
+          column: 13,
+          // esbuild never loads the module, so it draws this line in its code frame.
+          lineText: "  async save(at: Date) {",
+        },
       },
     ]);
   } finally {
@@ -407,6 +413,7 @@ ${declaration}
           column: Buffer.byteLength(
             declaration.slice(0, declaration.indexOf("at:"))
           ),
+          lineText: declaration,
         },
       },
     ]);
@@ -415,13 +422,11 @@ ${declaration}
   }
 });
 
-it("reports a diagnostic without a position at its file, one without a file at the module it compiled, one in a file it cannot read at its column, and counts lines as TypeScript does", async () => {
+it("reports a diagnostic without a position at its file, one without a file at the module it compiled, and one with a position at its line, which it does not read again", async () => {
   const root = await workspace({
     "tsconfig.json": tsconfig,
     "main.ts": 'import { Page } from "./Page";\nconsole.log(Page);\n',
     "Page.ts": pomSource("Page"),
-    // Lines: "// a", "b", "c", "d", then "const café = ;".
-    "Lines.ts": "// a\r\nb\rc\u2028d\u2029const café = ;\n",
   });
   // esbuild names a file by its path from the real working directory.
   const real = await realpath(root);
@@ -429,16 +434,12 @@ it("reports a diagnostic without a position at its file, one without a file at t
     { text: "no position", file: path.join(real, "tsconfig.json") },
     { text: "no file" },
     {
-      text: "unreadable",
+      text: "located",
+      // No such file: the diagnostic carries its line.
       file: path.join(real, "Gone.ts"),
-      line: 2,
-      column: 5,
-    },
-    {
-      text: "after line breaks",
-      file: path.join(real, "Lines.ts"),
       line: 5,
       column: 14,
+      lineText: "const café = ;",
     },
   ]);
   try {
@@ -452,17 +453,18 @@ it("reports a diagnostic without a position at its file, one without a file at t
       )
     ).toMatchObject([
       {
-        text: "after line breaks",
+        text: "located",
         // "const café = " is 13 code units and 14 bytes.
-        location: { file: "Lines.ts", line: 5, column: 14 },
+        location: {
+          file: "Gone.ts",
+          line: 5,
+          column: 14,
+          lineText: "const café = ;",
+        },
       },
       // The entry is the first module compiled, so the first to fail.
       { text: "no file", location: { file: "main.ts" } },
       { text: "no position", location: { file: "tsconfig.json", line: 0 } },
-      {
-        text: "unreadable",
-        location: { file: "Gone.ts", line: 2, column: 4 },
-      },
     ]);
   } finally {
     compileFailure.error = undefined;

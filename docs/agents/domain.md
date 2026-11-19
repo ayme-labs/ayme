@@ -18,7 +18,7 @@ This is a single-context repository:
 /
 ├── GLOSSARY.md
 ├── docs/adr/
-└── src/
+└── packages/
 ```
 
 ## Use the glossary's vocabulary

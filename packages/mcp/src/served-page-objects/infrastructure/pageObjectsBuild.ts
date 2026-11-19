@@ -33,17 +33,28 @@ type PomCompilerEntry = {
 
 /**
  * One reason a module did not compile, as the compiler states it: the file at
- * fault and the 1-based line and column in it as written, where it knows them.
+ * fault and the 1-based line and column in it as written, with that line's
+ * text, where it knows them.
  */
 type PomDiagnostic =
   | { text: string; file?: undefined }
   | { text: string; file: string; line?: undefined }
-  | { text: string; file: string; line: number; column: number };
+  | {
+      text: string;
+      file: string;
+      line: number;
+      /** Counted in UTF-16 code units of `lineText`. */
+      column: number;
+      /** The line as written, without its line break. */
+      lineText: string;
+    };
 
 const COMPILER = "@ayme-dev/ayme/compiler";
 const RUNTIME = "@ayme-dev/ayme";
 /** The runtime entry's id, which no file on disk has. */
 const RUNTIME_ENTRY = "ayme-served-runtime";
+/** The plugin that compiles Page Object Models, which esbuild names on its errors. */
+const MODELS_PLUGIN = "ayme-served-page-object-models";
 
 /** The Page Objects entry's build, which rebuilds as its files change. */
 export type PageObjectsBuild = {
@@ -122,9 +133,8 @@ export function pageObjectModels(
   PomCompileError: PomCompilerEntry["PomCompileError"]
 ): esbuild.Plugin {
   const compiled = new Set<string>();
-  const name = "ayme-served-page-object-models";
   return {
-    name,
+    name: MODELS_PLUGIN,
     setup(build) {
       // A rebuild compiles afresh, so an edited dependency reaches the manifest.
       build.onStart(() => {
@@ -136,7 +146,7 @@ export function pageObjectModels(
           const location = error.location;
           if (
             // The compiler's own errors are at positions in the source.
-            error.pluginName !== name &&
+            error.pluginName !== MODELS_PLUGIN &&
             location &&
             compiled.has(
               resolve(
@@ -207,36 +217,19 @@ function buildError(
     return { text, location: { file: compiled } };
   if (diagnostic.line === undefined)
     return { text, location: { file: diagnostic.file } };
-  const { file, line, column } = diagnostic;
+  const { file, line, column, lineText } = diagnostic;
   return {
     text,
-    location: { file, line, column: esbuildColumn(file, line, column) },
+    location: {
+      file,
+      line,
+      // TypeScript counts the column from 1 in UTF-16 code units; esbuild
+      // counts it from 0 in UTF-8 bytes.
+      column: Buffer.byteLength(lineText.slice(0, column - 1)),
+      // esbuild draws its code frame from this line, which it has not loaded.
+      lineText,
+    },
   };
-}
-
-/**
- * `column` of `line` in `file`, counted from 1 in UTF-16 code units as
- * TypeScript counts it, as esbuild counts it: from 0, in UTF-8 bytes. Without
- * that line, the count of code units stands in.
- */
-function esbuildColumn(file: string, line: number, column: number) {
-  const lineText = sourceLine(file, line);
-  return lineText === undefined
-    ? column - 1
-    : Buffer.byteLength(lineText.slice(0, column - 1));
-}
-
-/** Line `line` of `file`, counted from 1, if the file can be read and has it. */
-function sourceLine(file: string, line: number): string | undefined {
-  try {
-    // TypeScript's line breaks, so the line is the one it counted.
-    return readFileSync(file, "utf8").split(/\r\n|[\n\r\u2028\u2029]/)[
-      line - 1
-    ];
-  } catch {
-    // An unreadable file has no line to measure.
-  }
-  return undefined;
 }
 
 /**
@@ -280,14 +273,25 @@ export function buildOutcomes({
           failure = new PageObjectsBuildError({
             entry,
             lastGood: good !== undefined,
-            errors: errors.map(({ text, location }) => ({
-              text,
-              location: location && {
-                file: resolve(folder, location.file),
-                line: location.line,
-                column: location.column,
-              },
-            })),
+            errors: withoutRepeats(errors, folder).map(
+              ({ text, location, pluginName }) => {
+                if (!location) return { text, location };
+                const file = resolve(folder, location.file);
+                return {
+                  text,
+                  location: {
+                    file,
+                    line: location.line,
+                    column:
+                      // A plugin's error has the column the plugin gave it.
+                      pluginName || location.line !== 1
+                        ? location.column
+                        : location.column - byteOrderMarkLength(file),
+                    lineText: location.lineText,
+                  },
+                };
+              }
+            ),
           });
           log(failure.message);
         }
@@ -308,6 +312,53 @@ export function buildOutcomes({
     },
   };
 }
+
+/**
+ * `errors` without esbuild's own errors at a line of a JSON file where the
+ * compiler reports one. esbuild reads the tsconfig a compile reads, for its
+ * `paths`, so a mistake in it would be listed by both. Only a tsconfig is
+ * JSON that both read: in any other file, two errors on a line are two
+ * mistakes. esbuild names a symlinked tsconfig by its target, so files are
+ * compared by their real paths, in `folder`.
+ */
+function withoutRepeats(errors: readonly esbuild.Message[], folder: string) {
+  const jsonLine = ({ location }: esbuild.Message) =>
+    location?.file.endsWith(".json")
+      ? `${realPath(resolve(folder, location.file))}:${location.line}`
+      : undefined;
+  const compilerLines = new Set(
+    errors.filter((error) => error.pluginName === MODELS_PLUGIN).map(jsonLine)
+  );
+  return errors.filter((error) => {
+    if (error.pluginName) return true;
+    const line = jsonLine(error);
+    return line === undefined || !compilerLines.has(line);
+  });
+}
+
+/** The real path of `file`, or `file` itself when it cannot be resolved. */
+function realPath(file: string) {
+  try {
+    return realpathSync(file);
+  } catch {
+    return file;
+  }
+}
+
+/**
+ * The bytes of the byte order mark `file` starts with, or 0. esbuild counts
+ * them in a column on the file's first line and leaves the mark out of the
+ * line's text; TypeScript and editors count neither.
+ */
+function byteOrderMarkLength(file: string): number {
+  try {
+    return readFileSync(file).subarray(0, 3).equals(BYTE_ORDER_MARK) ? 3 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+const BYTE_ORDER_MARK = Buffer.from([0xef, 0xbb, 0xbf]);
 
 /**
  * Why `build` serves nothing while no build of `entry` has succeeded: the
