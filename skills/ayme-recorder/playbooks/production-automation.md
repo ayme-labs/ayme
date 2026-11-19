@@ -5,12 +5,6 @@ the user does on a website, and a replay test that lets you fix its waits and
 locators without touching the real backend. Some steps are irreversible: a
 final "Confirm" can create a real contract. Only the user approves one.
 
-Keep real data out of version control: parameter files, recordings, run
-traces and the login state. Put them under `.ayme/` and check that git
-ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
-`.gitignore` when it fails. The `trace` commands extract a recording into
-`.playwright-cli/`: ignore it too.
-
 ## Steps
 
 1. **Analyze** the package and its trace, as
@@ -35,7 +29,9 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
      used for each;
    - the `confirm` the entry script uses, as [Confirm](#confirm) says;
    - on a site with a login, how a run gets one, as
-     [Write the code](#write-the-code) says.
+     [Write the code](#write-the-code) says;
+   - where the parameter files, run traces and login state go: they hold
+     real data.
 
    Done when the user has confirmed each.
 
