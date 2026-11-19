@@ -47,8 +47,8 @@ CONSTANTS
   SlowHeldMessage,\* the page's message that it holds a click may reach the
               \* engine after the person's next action, as Stop (race R10)
   Buttons     \* what the person clicks with: a subset of {"left", "right",
-              \* "middle", "middleOnCheckbox"}; the last is a middle click on
-              \* a checkbox, which Playwright reports as a check with no button
+              \* "middle", "leftOnCheckbox", "middleOnCheckbox"}; Playwright
+              \* reports a click on a checkbox as a check, which names no button
 
 Inputs == 1..N
 \* The engine's entries. Entry i is input i's: a held click, or the input
@@ -607,20 +607,26 @@ KnownFromReport(s, e, i, pc) ==
 \* L reportOfHeld, for the click report of input i
 \* A click's kind, by what it is made with (PR clickHeld, heldButton): a
 \* right-click is held by its context menu event, a middle click by its
-\* auxclick. Playwright reports a middle click on a checkbox as a check, which
-\* names no button.
+\* auxclick. Playwright reports a left or a middle click on a checkbox as a
+\* check, which names no button.
 ClickKind(b) == CASE b = "left" -> "click" [] b = "right" -> "rclick"
-                  [] b = "middle" -> "mclick" [] OTHER -> "mbox"
-ClickKinds == {"click", "rclick", "mclick", "mbox"}
+                  [] b = "middle" -> "mclick" [] b = "leftOnCheckbox" -> "lbox"
+                  [] OTHER -> "mbox"
+ClickKinds == {"click", "rclick", "mclick", "lbox", "mbox"}
 HeldButton(j) == CASE kind[j] = "rclick" -> "right" [] kind[j] \in {"mclick", "mbox"} -> "middle"
                    [] OTHER -> "left"
-ReportButton(j) == IF kind[j] = "mbox" THEN "left" ELSE HeldButton(j)
+ReportIsCheck(j) == kind[j] \in {"lbox", "mbox"}
+\* L reportsClickOf: a click's report is a held click's of its button; a
+\* check's, a left or a middle click's, never a right click's.
+ReportsClickOf(f, i) ==
+  IF ReportIsCheck(i) THEN HeldButton(f) # "right" ELSE HeldButton(f) = HeldButton(i)
 
-\* A click's report is a held click's only when it is of the same button
-\* (L reportOfHeld, buttonOf); a report with no button is a left click's.
+\* A click's report is a held click's only when it can be (L reportOfHeld,
+\* reportsClickOf). A middle click is saved with a check's report as the middle
+\* click it was (L asHeld): the model has no report text.
 ReportOfHeld(s, i) ==
   LET t == First(s, {f \in Elems(s.lst) : s.ent[f] = "click" /\ ~s.rep[f]
-                                         /\ HeldButton(In(f)) = ReportButton(i)}) IN
+                                         /\ ReportsClickOf(In(f), i)}) IN
   IF t = 0 THEN
      IF s.phase = "wrap" /\ s.pages THEN KnownFromReport(s, i, i, evStamp[i]) ELSE s
   ELSE IF s.stage[t] \in {"waiting", "takingBefore"} THEN s
@@ -1613,25 +1619,28 @@ F2_StaysInPlace ==
 
 \* 3. The person's next action makes it final: a complete fill shown while
 \*    something newer is known on its page is written for good in the same
-\*    step. After that only its text can change, by a revision that comes
-\*    late; the reads its rows run between do not (F3_FinalKeepsItsChanges, a
-\*    property). The wording of a row may still change when a later read
-\*    tells more, which the model does not see.
+\*    step. After that the reads its rows run between do not change, and its
+\*    rows change only in two ways (F3_FinalKeepsItsChanges, a property): a
+\*    key Playwright reports only after the next action still sets its text,
+\*    and the focus a click's press moved can still go from its rows to that
+\*    click's, once the click is written (TL pressedAfter).
 F3_NextActionMakesItFinal ==
   \A e \in Elems(lst) :
     (shown[e] /\ \E f \in Elems(lst) : Pos(Eng, f) > Pos(Eng, e) /\ ent[f] # "key")
       => stage[e] # "settled"
 NoText(r) == [r EXCEPT !.t = 0, !.f = FALSE]
+\* The held click that starts at read x is written in this step.
+ClickWrittenAt(x) == \E c \in Ids : ent[c] = "click" /\ bsnap[c] = x /\ c \notin tl /\ c \in tl'
 F3_FinalKeepsItsChanges ==
   [][\A e \in Ids : (fin[e] /\ fin'[e] /\ gen' = gen) =>
-        /\ NoText(EntryRowOf(newT', e)) = NoText(EntryRowOf(newT, e))
-        /\ EntryRowOf(newT', e).t >= EntryRowOf(newT, e).t]_vars
-\* 3, read strictly: once final, nothing of a fill's rows changes but its
-\* text, the focus rows of the next click's press included (config
-\* Fold-AfterStep).
-F3f_FinalRowsChangeOnlyInText ==
-  [][\A e \in Ids : (IsFillEntry(e) /\ fin[e] /\ fin'[e] /\ gen' = gen) =>
-        [EntryRowOf(newT', e) EXCEPT !.t = 0] = [EntryRowOf(newT, e) EXCEPT !.t = 0]]_vars
+        LET r == EntryRowOf(newT, e)
+            r2 == EntryRowOf(newT', e)
+        IN /\ NoText(r2) = NoText(r)
+           \* its text, by a revision that comes late
+           /\ r2.t >= r.t
+           \* the focus the next click's press moved, which goes to that click
+           \* when it is written
+           /\ r2.f = r.f \/ (r.f /\ ~r2.f /\ ClickWrittenAt(r.b))]_vars
 
 \* 4. Stop and Finish keep its last text: every key typed while recording.
 F4_StopAndFinishKeepLastText ==

@@ -9,7 +9,7 @@
 # SlowPickEnd and SlowHeldMessage allow five races. Buttons is what the person
 # clicks with: left and right unless a config says otherwise; a middle click
 # acts as a right-click, apart from its button, and has configs of its own,
-# as has a middle click on a checkbox. Deadlock is not
+# as have clicks on a checkbox, which Playwright reports as a check. Deadlock is not
 # checked: a state where nothing is left to do is often a bound of the model
 # (no more Record). X4 checks that a wrap-up ends.
 cd "$(dirname "$0")"
@@ -24,6 +24,7 @@ ALLB='{"left", "right", "middle"}'
 LR='{"left", "right"}'
 LEFT='{"left"}'
 BOX='{"left", "middleOnCheckbox"}'
+MIX='{"left", "right", "middle", "leftOnCheckbox", "middleOnCheckbox"}'
 RULES="$HOLD X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 PROBES="P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten"
 WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow"
@@ -80,9 +81,10 @@ $F3P"
 # it; and with B2 left out.
 mk Rule7            "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
 mk Rule7-Strict     "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7s_MeasuredStrictly"
-# Rule 3 read strictly: the focus rows of the next click's press move to it
-# once it is written (TL pressedAfter).
-mk Fold-AfterStep   "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "PROPERTIES F3f_FinalRowsChangeOnlyInText"
+# Rule 3 where the next click's press moved the focus: its focus rows go
+# from the fill to the click once it is written (TL pressedAfter).
+mk Fold-AfterStep   "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS F3_NextActionMakesItFinal F6_WindowIsWhatIsSaved
+$F3P"
 mk Rule7-Navigation "$IN" 2 2   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
 mk Rules-WithoutB2  "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS F7s_MeasuredStrictly X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 # Known limits: each its own path.
@@ -110,7 +112,9 @@ mk Clicks-Middle    "$IN" 2 1   1   1   0    1     $F     $F   $F   $F    $T    
 mk Clicks-Middle-Fill "$IN" 2 1 1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS F7_MeasuredFromFirstKey $FILLS
 $F3P" $F $F "$ALLB"
 # A middle click on a checkbox: Playwright reports a check, with no button.
-mk Clicks-MiddleOnCheckbox "$IN" 2 1 1 1  0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X3_NothingYouDidIsDropped X4_WrapUpNeverGetsStuck X7_EntryHasItsOwnReport" $F $F "$BOX"
+mk Clicks-MiddleOnCheckbox "$IN" 2 1 1 1  0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X3_NothingYouDidIsDropped X4_WrapUpNeverGetsStuck X7_EntryHasItsOwnReport X5_StopWindowIsRecorded R04_FinishSavesEverything" $F $F "$BOX"
+# Left, right and middle clicks, on checkboxes and not, mixed; B2 left out.
+mk Clicks-Mixed     "$IN" 2 1   1   1   0    1     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS $RULES" $F $F "$MIX"
 # Progress with fairness: blocked, TLC checks it too slowly (see README).
 mk Progress         "SPECIFICATION LiveSpec" 1 1 1 1 0 0 $T $F $T $F $T $F $F $F "PROPERTIES L1_HeldClickIsPassedOn L2_WrapUpEnds"
 # Probes: each must break, which shows the model reaches that situation.

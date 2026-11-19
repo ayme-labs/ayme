@@ -32,7 +32,7 @@ for c in Rules Rules-Pages Rules-Rounds Rules-Ends Surfaces TimeLimit TimeLimit-
          Path-PickOnNewPage-NextClick Path-TypingAfterContinue \
          Races Race-LateRevision Race-LateRevision-Stop Race-LateTypingReport Race-LastText \
          Race-ClickLostAfterStop Race-ClickAfterPicking Race-HeldMessageAfterStop \
-         Clicks-Middle Clicks-Middle-Fill Clicks-MiddleOnCheckbox \
+         Clicks-Middle Clicks-Middle-Fill Clicks-MiddleOnCheckbox Clicks-Mixed \
          Probes Probes-Discard Probes-Clear Probes-Window Probes-Window-Navigation Probes-Continue Probes-LateRevision; do
   one "$c"
 done

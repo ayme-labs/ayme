@@ -33,6 +33,7 @@ const CLICK = {
   click: { verb: "click", name: "click" },
   rclick: { verb: "right-click", name: "right-click" },
   mclick: { verb: "middle-click", name: "middle click" },
+  lbox: { verb: "click a checkbox", name: "click" },
   mbox: { verb: "middle-click a checkbox", name: "middle click" },
 };
 const clicked = (to, i) =>
