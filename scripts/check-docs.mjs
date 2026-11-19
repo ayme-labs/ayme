@@ -389,6 +389,11 @@ function constructorParameters(body, i) {
   let brace = 0;
   let bracket = 0;
   let angle = 0;
+  // `<` counts only in a type. In a default, `1 < 2` is a comparison, and the
+  // comma after it still separates parameters.
+  let inType = false;
+  const atParameter = () =>
+    paren === 1 && brace === 0 && bracket === 0 && angle === 0;
   while (i < body.length) {
     const skipped = skipTrivia(body, i);
     if (skipped > i) {
@@ -407,17 +412,15 @@ function constructorParameters(body, i) {
     else if (char === "}") brace--;
     else if (char === "[") bracket++;
     else if (char === "]") bracket--;
-    else if (char === "<") angle++;
-    else if (char === ">") angle = Math.max(0, angle - 1);
-    else if (
-      char === "," &&
-      paren === 1 &&
-      brace === 0 &&
-      bracket === 0 &&
-      angle === 0
-    ) {
+    else if (char === ":" && atParameter()) inType = true;
+    else if (char === "=" && body[i + 1] !== ">" && atParameter())
+      inType = false;
+    else if (char === "<" && inType) angle++;
+    else if (char === ">" && inType) angle = Math.max(0, angle - 1);
+    else if (char === "," && atParameter()) {
       list.push({ text: body.slice(start, i), index: start });
       start = i + 1;
+      inType = false;
     }
     i++;
   }
@@ -448,8 +451,25 @@ function parameterPropertyAt(param) {
     }
     break;
   }
-  const word = /^[A-Za-z_$][\w$]*/.exec(param.slice(i));
-  return word && PARAMETER_MODIFIERS.has(word[0]) ? i : -1;
+  let found = -1;
+  while (i < param.length) {
+    const word = /^[A-Za-z_$][\w$]*/.exec(param.slice(i));
+    // `readonly: boolean` names the parameter. A modifier is followed by the
+    // binding: another modifier, a name, or `...`.
+    if (!word || !PARAMETER_MODIFIERS.has(word[0])) break;
+    const after = skipSpaceAndComments(param, i + word[0].length);
+    if (!modifierContinues(param, after)) break;
+    if (found === -1) found = i;
+    if (param.startsWith("...", after)) break;
+    i = after;
+  }
+  return found;
+}
+
+/** Whether the token after a modifier word makes that word a modifier. */
+function modifierContinues(text, i) {
+  if (text.startsWith("...", i)) return true;
+  return /^[A-Za-z_$][\w$]*/.test(text.slice(i));
 }
 
 function skipDecorator(text, i) {
@@ -528,6 +548,69 @@ function skipTrivia(text, i) {
   const quote = text[i];
   if (quote === "'" || quote === '"') return skipQuoted(text, i, quote);
   if (quote === "`") return skipTemplate(text, i);
+  // A `/` after an operator starts a regular expression (`/[)]/`). After a
+  // value it is division (`a / b`).
+  if (
+    quote === "/" &&
+    text[i + 1] !== "/" &&
+    text[i + 1] !== "*" &&
+    regexLikely(text, i)
+  )
+    return skipRegex(text, i);
+  return i;
+}
+
+const REGEX_PREFIX = new Set([
+  "await",
+  "delete",
+  "return",
+  "throw",
+  "typeof",
+  "void",
+  "yield",
+]);
+
+/** Whether a `/` at `i` opens a regular expression rather than dividing. */
+function regexLikely(text, i) {
+  let j = i - 1;
+  while (j >= 0) {
+    if (/\s/.test(text[j])) {
+      j--;
+      continue;
+    }
+    if (text[j] === "/" && text[j - 1] === "*") {
+      const start = text.lastIndexOf("/*", j - 1);
+      j = start === -1 ? -1 : start - 1;
+      continue;
+    }
+    break;
+  }
+  if (j < 0) return true;
+  const char = text[j];
+  if ((char === "+" || char === "-") && text[j - 1] === char) return false;
+  if (!/[\w$)\]]/.test(char)) return true;
+  const word = /[A-Za-z_$][\w$]*$/.exec(text.slice(0, j + 1));
+  return word !== null && REGEX_PREFIX.has(word[0]);
+}
+
+function skipRegex(text, i) {
+  i++;
+  let inClass = false;
+  while (i < text.length) {
+    if (text[i] === "\\") {
+      i += 2;
+      continue;
+    }
+    if (text[i] === "\n") return i;
+    if (text[i] === "[" && !inClass) inClass = true;
+    else if (text[i] === "]" && inClass) inClass = false;
+    else if (text[i] === "/" && !inClass) {
+      i++;
+      while (i < text.length && /[a-z]/i.test(text[i])) i++;
+      return i;
+    }
+    i++;
+  }
   return i;
 }
 

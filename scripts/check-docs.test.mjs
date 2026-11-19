@@ -466,6 +466,23 @@ test("fails on a constructor parameter property in a published README and the ay
   );
 });
 
+test("separates parameter properties from defaults and parameter names", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "docs/guide/start/page.md": `# A page\n\nWhat this page is for, in one sentence.\n\n\`\`\`ts\nclass App {\n  constructor(enabled = 1 < 2, private page: Page) {}\n  constructor(pattern = /[)]/, private root: Locator) {}\n  constructor(n = a / b, protected name: string) {}\n  constructor(page: Foo<Bar<Baz, Qux>>, override id: string) {}\n  constructor(cb: () => Foo<Bar, Baz>, readonly value: string) {}\n  constructor(readonly: boolean, override: string, readonly = true) {}\n}\n\`\`\`\n`,
+      })
+    ),
+    [
+      `docs/guide/start/page.md:7: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:8: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:9: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:10: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:11: ${PARAMETER_PROPERTY}`,
+    ]
+  );
+});
+
 test("ignores a constructor parameter property outside the checked docs", () => {
   assert.deepEqual(
     checkDocs(
