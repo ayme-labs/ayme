@@ -15,8 +15,15 @@ describe("transpilePomModule", () => {
         file: fileName,
         line: 1,
         column: 9,
+        lineText: "const { = 1 } = {};",
       },
-      { text: "':' expected.", file: fileName, line: 1, column: 13 },
+      {
+        text: "':' expected.",
+        file: fileName,
+        line: 1,
+        column: 13,
+        lineText: "const { = 1 } = {};",
+      },
     ]);
   });
 });

@@ -6,7 +6,7 @@ import { PomCompileError, typeScriptDiagnostic } from "./pomCompileError";
 describe("PomCompileError", () => {
   it("is named for its class and states each diagnostic on a line of its message", () => {
     const error = new PomCompileError([
-      { text: "a", file: "/p/a.ts", line: 2, column: 3 },
+      { text: "a", file: "/p/a.ts", line: 2, column: 3, lineText: "b = a;" },
       { text: "b", file: "/p/b.ts" },
       { text: "c" },
     ]);
@@ -34,12 +34,44 @@ describe("typeScriptDiagnostic", () => {
     }
   );
 
-  it("locates a diagnostic at its file's line and column, counted from 1", () => {
+  it("locates a diagnostic at its file's line and column, counted from 1, with the line's text", () => {
     expect(typeScriptDiagnostic(diagnostic({ file, start: 23 }))).toEqual({
       text: "Broken.",
       file: "/p/page.ts",
       line: 2,
       column: 11,
+      lineText: "const b = ;",
+    });
+  });
+
+  /** The diagnostic at the first `;` of `text`, a file's source. */
+  const atSemicolon = (text: string) =>
+    typeScriptDiagnostic(
+      diagnostic({
+        file: ts.createSourceFile("/p/page.ts", text, {
+          languageVersion: ts.ScriptTarget.ES2022,
+        }),
+        start: text.indexOf(";"),
+      })
+    );
+
+  it("counts lines as TypeScript does, at each kind of line break, and leaves the break out of the line's text", () => {
+    // Lines: "// a", "b", "c", "d", then "const café = ;". U+0085 breaks no line.
+    expect(
+      atSemicolon("// a\r\nb\rc\u2028d\u2029const café = ;\r\n")
+    ).toMatchObject({ line: 5, column: 14, lineText: "const café = ;" });
+    expect(atSemicolon("a\u0085const b = ;")).toMatchObject({
+      line: 1,
+      column: 13,
+      lineText: "a\u0085const b = ;",
+    });
+  });
+
+  it("leaves a byte order mark out of the first line's column and text, as editors do", () => {
+    expect(atSemicolon("\uFEFFconst value = ;\n")).toMatchObject({
+      line: 1,
+      column: 15,
+      lineText: "const value = ;",
     });
   });
 

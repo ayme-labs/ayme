@@ -200,6 +200,7 @@ describe("a subclass in a module without the decorator", () => {
           // The option's value: `"unknown"`.
           line: 2,
           column: 44,
+          lineText: '  "compilerOptions": { "moduleResolution": "unknown" }',
         },
       ]);
     });
@@ -214,6 +215,7 @@ describe("a subclass in a module without the decorator", () => {
           file: join(root!, "tsconfig.json"),
           line: 2,
           column: 22,
+          lineText: '  "compilerOptions": }',
         },
       ]);
     });

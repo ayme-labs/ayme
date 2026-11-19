@@ -3,7 +3,8 @@ import ts from "typescript";
 /**
  * One reason a module did not compile: its text and, where the compiler knows
  * them, the file at fault and the 1-based line and column in that file as
- * written. A position in code the compiler generated is left out.
+ * written, with the text of that line. A position in code the compiler
+ * generated is left out.
  */
 export type PomDiagnostic =
   | { readonly text: string; readonly file?: undefined }
@@ -12,7 +13,10 @@ export type PomDiagnostic =
       readonly text: string;
       readonly file: string;
       readonly line: number;
+      /** Counted in UTF-16 code units of `lineText`, as TypeScript and editors count. */
       readonly column: number;
+      /** The line as written, without its line break or a byte order mark. */
+      readonly lineText: string;
     };
 
 /**
@@ -58,7 +62,20 @@ function position(
 ): PomDiagnostic {
   // TypeScript counts the line and the column from 0.
   const { line, character } = source.getLineAndCharacterOfPosition(start);
-  return { text, file: source.fileName, line: line + 1, column: character + 1 };
+  const starts = source.getLineStarts();
+  const lineText = source.text
+    .slice(starts[line], starts[line + 1])
+    .replace(/(?:\r\n|[\n\r\u2028\u2029])$/, "");
+  // TypeScript drops a byte order mark from a file it reads, but counts one in
+  // a source it is given, as the compiler's transpile is given the module.
+  const mark = lineText.startsWith("\uFEFF") && line === 0 ? 1 : 0;
+  return {
+    text,
+    file: source.fileName,
+    line: line + 1,
+    column: Math.max(character - mark, 0) + 1,
+    lineText: lineText.slice(mark),
+  };
 }
 
 function diagnosticLine(diagnostic: PomDiagnostic): string {

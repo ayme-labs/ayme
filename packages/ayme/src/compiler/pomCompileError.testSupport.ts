@@ -19,12 +19,13 @@ export function diagnosticsOf(
 
 /**
  * Where `text` first starts in `fileName`, as the file stands, with the line
- * and the column counted from 1: a header a tool adds to the file, such as
- * Stryker's `// @ts-nocheck`, moves it too.
+ * and the column counted from 1, and that line's text: a header a tool adds
+ * to the file, such as Stryker's `// @ts-nocheck`, moves it too.
  */
 export function positionOf(fileName: string, text: string) {
   const lines = fs.readFileSync(fileName, "utf8").split("\n");
   const line = lines.findIndex((candidate) => candidate.includes(text));
   if (line === -1) throw new Error(`${fileName} does not hold ${text}.`);
-  return { line: line + 1, column: lines[line]!.indexOf(text) + 1 };
+  const lineText = lines[line]!;
+  return { line: line + 1, column: lineText.indexOf(text) + 1, lineText };
 }
