@@ -32,7 +32,11 @@ const onPage = (self: AppPage) =>
 @ayme({ present: onPage })
 export abstract class AppPage {
   abstract readonly path: string;
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 }
 
 export class ProjectsPage extends AppPage {
@@ -49,7 +53,11 @@ const rootOf = (self: AppComponent) => self.root;
 
 @ayme({ root: rootOf })
 export abstract class AppComponent {
-  constructor(readonly root: Locator) {}
+  readonly root: Locator;
+
+  constructor(root: Locator) {
+    this.root = root;
+  }
 }
 
 export class NewProjectDialog extends AppComponent {
@@ -180,7 +188,7 @@ Declare what an agent reads or acts on, such as the inputs, buttons and lists th
 
 A child Page Object needs the declaration too. Ayme reaches a component only through the members its models declare. Without `@ayme.collection` on `projects` below, no `ProjectRow` is reached, and `ProjectRow.remove` never becomes a tool. Nothing warns you. The [Inspector](inspector.md)'s Model view shows what a model holds.
 
-Declare a locator as a getter, and a child page object built from `this.page` or `this.root` the same way. Playwright 1.65 follows TypeScript's `useDefineForClassFields` (on for an ES2022 or later target, and when no target is set), so a field initializer runs before the constructor assigns its parameter properties. `readonly submit = this.page.getByRole(...)` then reads `page` before it exists. A getter runs when the locator is read.
+Declare a locator as a getter, and a child page object built from `this.page` or `this.root` the same way. A getter reads `this.page` when the locator is used, after the constructor has set it.
 
 ```ts
 export class ProjectsPage extends AppPage {
