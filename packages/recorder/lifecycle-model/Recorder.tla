@@ -46,6 +46,14 @@ CONSTANTS
               \* after Playwright and the window left picking (race R9)
   SlowHeldMessage,\* the page's message that it holds a click may reach the
               \* engine after the person's next action, as Stop (race R10)
+  StartBlank, \* codegen --start-recording: the page opens blank (the first
+              \* document), Record is the first step, and the page goes to its
+              \* address once the pages hold inputs back (SB opening)
+  ActOnBlank, \* with StartBlank: the person may click the blank page, or pick
+              \* an element of it, before it has gone to its address
+  ContinueOnBlank,\* with StartBlank: Continue may be pressed while the page is
+              \* still blank; not a fix: off, it leaves a path out, to check
+              \* every other one
   Buttons     \* what the person clicks with: a subset of {"left", "right",
               \* "middle", "leftOnCheckbox", "middleOnCheckbox"}; Playwright
               \* reports a click on a checkbox as a check, which names no button
@@ -211,6 +219,11 @@ InsertAt(sq, k, e) == SubSeq(sq, 1, k - 1) \o <<e>> \o SubSeq(sq, k, Len(sq))
 NoTL == [rows |-> <<>>, thr |-> [d \in 1..MaxDoc |-> 0], st |-> [d \in 1..MaxDoc |-> FALSE],
          pf |-> {}]
 DocAt(t) == IF t >= 1 /\ t <= Len(docOf) THEN docOf[t] ELSE doc
+\* The blank page a recording started on has no Visit (L atRecord,
+\* "blankAtRecord"): the timeline keeps no read of it, and drops an
+\* Interaction that starts there (TL add "interaction": no Visit holds its
+\* "before").
+NoVisit(d) == StartBlank /\ d = 1
 Row(k, e, d, a, b, t) == [k |-> k, e |-> e, d |-> d, a |-> a, b |-> b, t |-> t, p |-> 0, f |-> FALSE]
 EntryRow(T, e, d, a, b, t) == [Row("entry", e, d, a, b, t) EXCEPT !.f = b \in T.pf]
 \* A held click's "before" is read: it shows the focus the press moved.
@@ -242,6 +255,7 @@ Produce(T, ks, d, upTo) ==
 \* TL add "interaction", writeInteraction, measure, changedBefore. A Visit starts at its
 \* first Interaction's "before".
 AddEntry(T, ks, e, isRep, b, a, pc, t) ==
+  IF NoVisit(DocAt(b)) THEN T ELSE
   LET d == DocAt(b)
       T1 == IF T.st[d] THEN T ELSE [T EXCEPT !.st[d] = TRUE, !.thr[d] = b]
       T2 == Produce(T1, ks, d, b)
@@ -411,7 +425,8 @@ BehindUnshown(s, e) ==
   \E f \in Elems(s.lst) : Pos(s, f) < Pos(s, e) /\ s.ent[f] # "key"
                          /\ ~(s.ent[f] = "rep" /\ s.shown[f])
 AddLive(T, ks, e, b, pc, a, t) ==
-  IF a # 0 THEN AddEntry(T, ks, e, TRUE, b, a, pc, t)
+  IF NoVisit(DocAt(b)) THEN T
+  ELSE IF a # 0 THEN AddEntry(T, ks, e, TRUE, b, a, pc, t)
   ELSE
   LET d == DocAt(b)
       T1 == IF T.st[d] THEN T ELSE [T EXCEPT !.st[d] = TRUE, !.thr[d] = b]
@@ -559,12 +574,17 @@ TraceGone(s) ==
 
 \* L writePackage and the worker's "save": the package is
 \* written under a temporary name and renamed, then "saved" is told.
+\* What the timeline holds of what was written: all of it, but for what
+\* starts on a page with no Visit. With nothing, there is no package (TL
+\* package: no Interaction).
+TLDrops(s, e) == s.bsnap[e] # 0 /\ NoVisit(DocAt(s.bsnap[e]))
+TLHas(s) == {e \in s.tl : ~TLDrops(s, e)}
 WritePackage(s) ==
   IF ~(s.phase = "saving" /\ s.stopping) THEN s
   ELSE [s EXCEPT !.stopping = FALSE, !.savedTold = TRUE,
-                 !.pkg = IF s.tl = {} THEN "empty" ELSE "complete",
-                 !.saves = IF s.tl = {} THEN @ ELSE @ + 1,
-                 !.pkgHas = s.tl, !.pkgDis = s.dis,
+                 !.pkg = IF TLHas(s) = {} THEN "empty" ELSE "complete",
+                 !.saves = IF TLHas(s) = {} THEN @ ELSE @ + 1,
+                 !.pkgHas = TLHas(s), !.pkgDis = s.dis,
                  !.pkgNew = EndFrom(s.newT, s.keptSn, 1).rows]
 
 \* L endFromOutside
@@ -835,8 +855,12 @@ Flushed(k) ==
   ev[k] = "flying" /\ kind[k] = "click"
   /\ \/ \E j \in Inputs : ord[j] > ord[k] /\ ev[j] \in {"flying", "in", "lost"}
      \/ \E j \in Inputs : revOrd[j] > ord[k]
+\* With StartBlank, the recorder is handed out once Record is answered: Record
+\* is the first step (startRecorder), and nobody acts before it.
+RecordFirst == StartBlank /\ rounds = 0
 PersonMayAct ==
-  IF ~Quick THEN TRUE
+  IF RecordFirst THEN FALSE
+  ELSE IF ~Quick THEN TRUE
   ELSE /\ gateQ = <<>>
        \* switching Playwright off waits for a click report it still holds;
        \* with none, it is quick (SB everyReportDelivered)
@@ -859,6 +883,13 @@ PersonMayAct ==
 Alive == phase \notin {"saved", "empty"}
 IsNext(i) == at[i] = "notyet" /\ \A j \in Inputs : j < i => at[j] # "notyet"
 HeldHere(j) == at[j] \in {"held", "holding"} /\ made[j].doc = doc
+\* The page is still the blank one it opened as: nothing to type into, and
+\* nothing that leads elsewhere.
+BlankHere == StartBlank /\ doc = 1
+\* A click on the blank page, or picking an element of it (ActOnBlank).
+MayClickHere == ActOnBlank \/ ~BlankHere
+\* The page still goes to its address once the pages hold inputs back.
+Opening == BlankHere /\ page = "open" /\ ~navFlying
 WaitingPg == Cardinality({j \in Inputs : HeldHere(j)})
 NavOptions == IF doc < MaxDoc /\ ~navFlying THEN BOOLEAN ELSE {FALSE}
 MadeNow == [phase |-> phase, view |-> View, gen |-> gen, doc |-> doc, round |-> rounds]
@@ -908,13 +939,14 @@ Init ==
 \* "ignored" and changes nothing, so it is not a step here.
 
 YouPressRecord ==
-  /\ PersonMayAct /\ Pressable("record") /\ phase = "off" /\ page = "open" /\ rounds < MaxRounds
+  /\ (PersonMayAct \/ RecordFirst) /\ Pressable("record") /\ phase = "off" /\ page = "open" /\ rounds < MaxRounds
   /\ Commit(Record(Eng)) /\ rounds' = rounds + 1
   /\ UNCHANGED <<pageVars, personVars, surfVars, stops, finishAgain, asserts>>
   /\ Publish
 
 YouPressContinue ==
   /\ PersonMayAct /\ Pressable("continue") /\ phase = "paused" /\ rounds < MaxRounds
+  /\ (ContinueOnBlank \/ ~BlankHere)
   /\ Commit(Resume(Eng)) /\ rounds' = rounds + 1
   /\ UNCHANGED <<pageVars, personVars, surfVars, stops, finishAgain, asserts>>
   /\ Publish
@@ -999,7 +1031,7 @@ YouRestore(e) ==
 \* (PR mouseRoute: while picking, the gate leaves only the left button's
 \* click to Playwright, and stops leaving clicks to it after that click.)
 ClickPicked(i) ==
-  /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ pickPg /\ mode = "pick"
+  /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ pickPg /\ mode = "pick" /\ MayClickHere
   /\ "left" \in Buttons
   /\ kind' = [kind EXCEPT ![i] = "click"]
   /\ made' = [made EXCEPT ![i] = MadeNow]
@@ -1021,7 +1053,7 @@ ClickPicked(i) ==
 \* to picking, and the click reaches the page untouched. Playwright, recording
 \* again, reports it. Race R9.
 ClickAfterPicking(i) ==
-  /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ pickPg /\ mode # "pick"
+  /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ pickPg /\ mode # "pick" /\ MayClickHere
   /\ "left" \in Buttons
   /\ kind' = [kind EXCEPT ![i] = "click"]
   /\ made' = [made EXCEPT ![i] = MadeNow]
@@ -1050,11 +1082,11 @@ GatesUnpick ==
 \* clickHeld), and each is sent on with its button (SB passOn); the lifecycle
 \* takes it as a click of that button.
 ClickHeld(i) ==
-  /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ (gateOn \/ holdPg)
+  /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ (gateOn \/ holdPg) /\ MayClickHere
   /\ \E b \in Buttons :
        /\ kind' = [kind EXCEPT ![i] = ClickKind(b)]
        \* (only a left click leads elsewhere in the model)
-       /\ \E n \in IF b = "left" THEN NavOptions ELSE {FALSE} : navs' = [navs EXCEPT ![i] = n]
+       /\ \E n \in IF b = "left" /\ ~BlankHere THEN NavOptions ELSE {FALSE} : navs' = [navs EXCEPT ![i] = n]
   /\ made' = [made EXCEPT ![i] = MadeNow]
   /\ evStamp' = [evStamp EXCEPT ![i] = clock]
   /\ touched' = [touched EXCEPT ![i] = TRUE]
@@ -1088,7 +1120,7 @@ HeldMessageArrives(i) ==
 \* Nothing holds it: it reaches the page as it is (Playwright picks it if it
 \* is in its picking mode).
 ClickReaches(i) ==
-  /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ ~gateOn /\ ~holdPg
+  /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ ~gateOn /\ ~holdPg /\ MayClickHere
   /\ \E b \in Buttons : kind' = [kind EXCEPT ![i] = ClickKind(b)]
   /\ made' = [made EXCEPT ![i] = MadeNow]
   /\ evStamp' = [evStamp EXCEPT ![i] = clock]
@@ -1101,7 +1133,7 @@ ClickReaches(i) ==
   /\ ord' = [ord EXCEPT ![i] = seen] /\ seen' = seen + 1
   /\ overtook' = (overtook \/ \E j \in Inputs : HeldHere(j))
   \* (only a left click leads elsewhere in the model)
-  /\ \E n \in IF kind'[i] = "click" THEN NavOptions ELSE {FALSE} : navFlying' = (navFlying \/ n)
+  /\ \E n \in IF kind'[i] = "click" /\ ~BlankHere THEN NavOptions ELSE {FALSE} : navFlying' = (navFlying \/ n)
   /\ UNCHANGED << page, doc, gateOn, gateStart, pickPg, unpick, tracing, clock, docOf,
                  keys, revFly, revOrd, revMade, revAt, touched, heldEver, navs, wrong,
                  surfVars, miscVars>>
@@ -1116,7 +1148,7 @@ TypingOpen ==
   \/ \E j \in Inputs : kind[j] = "type" /\ (at[j] = "held" \/ ev[j] = "flying")
 TypeHeld(i) ==
   /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ mode # "pick"
-  /\ holdPg
+  /\ holdPg /\ ~BlankHere
   \* (a key's message after a click's still on its way is not modelled)
   /\ \A k \in Inputs : at[k] # "holding"
   /\ LeaveOutB2 => ~TypingOpen
@@ -1134,7 +1166,7 @@ TypeHeld(i) ==
 
 TypeReaches(i) ==
   /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ mode # "pick"
-  /\ ~holdPg
+  /\ ~holdPg /\ ~BlankHere
   /\ LeaveOutB2 => ~TypingOpen
   /\ kind' = [kind EXCEPT ![i] = "type"]
   /\ made' = [made EXCEPT ![i] = MadeNow]
@@ -1267,7 +1299,10 @@ GateSwitchLands ==
      IN /\ gateStart' = IF page = "open" THEN want ELSE gateStart
         /\ gateOn' = IF page = "open" THEN want ELSE gateOn
         /\ Commit(OnInputsHeld([Eng EXCEPT !.gateQ = Tail(@), !.holdPg = pg], want))
-  /\ UNCHANGED <<page, doc, navFlying, pickPg, unpick, mode, tracing, clock, docOf,
+        \* SB holdInputs: once the pages hold inputs back, the page opened
+        \* blank goes to its address (SB opening)
+        /\ navFlying' = (navFlying \/ (want /\ Opening))
+  /\ UNCHANGED <<page, doc, pickPg, unpick, mode, tracing, clock, docOf,
                  seen, personVars, surfVars, miscVars>>
   /\ Publish
 
@@ -1448,7 +1483,7 @@ OnItsOwn ==
 \* The rules (spec #1267, "Rules the recorder must keep"; old numbers kept)
 
 EntOf(i) == {i, N + i}
-Recorded(i) == \E e \in EntOf(i) : e \in tl \/ e \in pkgHas \/ InL(Eng, e)
+Recorded(i) == \E e \in EntOf(i) : e \in TLHas(Eng) \/ e \in pkgHas \/ InL(Eng, e)
 Bef(e) == IF ent[e] = "rep" THEN evStamp[In(e)] ELSE bsnap[e]
 BefDoc(e) == IF ent[e] = "rep" THEN made[In(e)].doc ELSE DocAt(bsnap[e])
 Shown(i) == made[i].view \in ShownRec

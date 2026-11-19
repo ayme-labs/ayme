@@ -26,6 +26,8 @@ one Chart-Lifecycle view-lifecycle.mjs
 one Chart-Gate view-gate.mjs
 one Chart-Fill view-fill.mjs
 for c in Rules Rules-Pages Rules-Rounds Rules-Ends Surfaces TimeLimit TimeLimit-Holds \
+         Rules-StartRecording Path-StartRecording-Stop Path-StartRecording-BlankPage \
+         Path-StartRecording-Continue \
          Rule7 Rule7-Strict Rule7-Navigation Fold-AfterStep Rules-WithoutB2 \
          Limit-TypingThenTyping Limit-ClosedPageWaits \
          Path-AfterStop Path-StopClickCtrlC Path-HeldKeyAfterStop Path-PickOnNewPage \

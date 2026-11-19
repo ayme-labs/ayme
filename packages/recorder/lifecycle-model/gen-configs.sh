@@ -3,7 +3,7 @@
 # Constants, in order:
 #   N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick
 #   LateRevisions LeaveOutB2 LateTypingReport, then after what to check, when
-#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage
+#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank
 # LeaveOutB2 leaves a known limit out, to check every other path of the same
 # rule; it is not a fix. LateRevisions, LateTypingReport, SlowFlush,
 # SlowPickEnd and SlowHeldMessage allow five races. Buttons is what the person
@@ -28,10 +28,10 @@ MIX='{"left", "right", "middle", "leftOnCheckbox", "middleOnCheckbox"}'
 RULES="$HOLD X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 PROBES="P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten"
 WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow"
-mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage]
+mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank]
   name=$1; head=$2; shift 2
   laterev=${12}; lob2=${13}; latetype=${14}; what=${15}
-  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}
+  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}
   {
     printf '%s\n' "$head"
     cat <<CFG
@@ -53,6 +53,9 @@ CONSTANTS
   SlowFlush = $slowflush
   SlowPickEnd = $slowpick
   SlowHeldMessage = $slowheld
+  StartBlank = $startblank
+  ActOnBlank = $actonblank
+  ContinueOnBlank = $continueonblank
   Buttons = $buttons
 CHECK_DEADLOCK FALSE
 CFG
@@ -85,6 +88,16 @@ mk Rule7-Strict     "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    
 # from the fill to the click once it is written (TL pressedAfter).
 mk Fold-AfterStep   "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS F3_NextActionMakesItFinal F6_WindowIsWhatIsSaved
 $F3P"
+# codegen --start-recording: the page opens blank, Record is the first step,
+# and the page goes to its address once the pages hold inputs back. The
+# person acts on the page once it is at its address, and presses Continue
+# once it is there; acting on the blank page, and Continue while it is still
+# blank, have configs of their own.
+mk Rules-StartRecording "$IN" 2 2 1  2   1    1     $T     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS
+$F3P" $F $F "$LR" $F $T
+mk Path-StartRecording-Stop "$IN" 2 2 1 1 1   1     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded N1_AfterStopInTimeOrder X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput F7_MeasuredFromFirstKey" $F $F "$LR" $F $T
+mk Path-StartRecording-BlankPage "$IN" 2 2 1 1 1 1   $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X3_NothingYouDidIsDropped R04_FinishSavesEverything F1_ShowsOnceItHasItsPlace" $F $F "$LR" $F $T $T
+mk Path-StartRecording-Continue "$IN" 2 2 1 2 1 0    $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS F1_ShowsOnceItHasItsPlace X3_NothingYouDidIsDropped R04_FinishSavesEverything" $F $F "$LR" $F $T $F $T
 mk Rule7-Navigation "$IN" 2 2   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
 mk Rules-WithoutB2  "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS F7s_MeasuredStrictly X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 # Known limits: each its own path.

@@ -201,7 +201,7 @@ export const step = (action, from, to) => {
     case "RevisionArrives":
       return `Playwright's revised report of typing ${changed(from, to, "revFly")} reaches the recorder`;
     case "GateSwitchLands":
-      return `the page switches its gate ${to.gateOn ? "on" : "off"}`;
+      return `the page switches its gate ${to.gateOn ? "on" : "off"}${!from.navFlying && to.navFlying ? "; the blank page starts going to its address" : ""}`;
     case "HeldMessageArrives":
       return `the page's message that it holds ${changed(from, to, "at")} reaches the recorder`;
     case "GatesUnpick":
