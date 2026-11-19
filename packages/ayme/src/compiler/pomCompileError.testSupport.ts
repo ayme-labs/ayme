@@ -23,7 +23,9 @@ export function diagnosticsOf(
  * to the file, such as Stryker's `// @ts-nocheck`, moves it too.
  */
 export function positionOf(fileName: string, text: string) {
-  const lines = fs.readFileSync(fileName, "utf8").split("\n");
+  const lines = fs
+    .readFileSync(fileName, "utf8")
+    .split(/\r\n|[\n\r\u2028\u2029]/);
   const line = lines.findIndex((candidate) => candidate.includes(text));
   if (line === -1) throw new Error(`${fileName} does not hold ${text}.`);
   const lineText = lines[line]!;
