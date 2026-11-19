@@ -10,6 +10,9 @@ writes what it saw to a Recording Package: the page structure at each visit,
 what changed and every interaction. From the package you write page objects and
 a Playwright test that replays the flow.
 
+Read `.ayme/CONVENTIONS.md` first, when it exists: what the user settled for
+running Ayme in this repository. It overrides this skill's defaults.
+
 1. **Record.** Run `npx @ayme-dev/cli@latest codegen <url>`, with the URL where
    the user wants to start, somewhere it can keep running. A recorder window
    opens on that page; the user performs the flow and presses Finish. The

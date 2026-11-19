@@ -18,7 +18,8 @@ final "Confirm" can create a real contract. Only the user approves one.
    the page shows a step's result: read that result, and whether each
    permanent change succeeded, from the responses. Done when every call the
    flow makes is classified.
-2. **Align** with the user before you write code. Settle:
+2. **Align** with the user before you write code. Take what
+   `.ayme/CONVENTIONS.md` already settles, and settle the rest:
    - the steps of the flow;
    - the page objects;
    - the irreversible steps: propose those the permanent changes from step 1
@@ -33,7 +34,11 @@ final "Confirm" can create a real contract. Only the user approves one.
    - where the parameter files, run traces and login state go: they hold
      real data.
 
-   Done when the user has confirmed each.
+   Done when the user has confirmed each. Write to `.ayme/CONVENTIONS.md`
+   only what holds for every flow in the repository, and never real data.
+   What holds for one site or one flow goes next to its code: in the code
+   where code can say it, otherwise in a notes file beside it. The
+   conventions file says where such notes live.
 
 3. **Write** the code, as [Write the code](#write-the-code) says.
 4. **Write the replay test**, as [The replay test](#the-replay-test) says.
@@ -68,7 +73,9 @@ final "Confirm" can create a real contract. Only the user approves one.
    passes three times, and rehearse with new data.
 7. **Hand over**: the command for a real run, where the files are, and what
    the replay test does not cover, such as steps the recording does not
-   reach or calls it aborted on every run.
+   reach or calls it aborted on every run. Write down what you learned
+   about the site that the next flow would have to find again, where step 2
+   says.
 
 Done when a live rehearsal has run without failing and the user has the
 hand-over.
@@ -85,7 +92,8 @@ confirm.ts                         the agreed confirm
 run-contract.ts                    the entry script
 tests/contract.replay.spec.ts      the replay test
 tests/replay.ts                    copy of assets/replay.ts, with match() for the site
-.ayme/                             real data
+.ayme/
+  CONVENTIONS.md                   what holds for every flow in the repository
   recordings/rec_…/                the recording, written by the recorder
   params/contract.recorded.json    what the recording entered and showed
   params/contract.<date>.json      the data of one live run
