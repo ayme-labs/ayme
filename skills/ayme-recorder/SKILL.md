@@ -17,6 +17,10 @@ running Ayme in this repository. It overrides this skill's defaults.
    opens on that page; the user performs the flow and presses Finish. The
    command then prints `Recording package: <path>`.
 
+   When the user asked for an automation of a flow with new data, add
+   `--start-recording`: the recorder then opens already recording, so the
+   package holds the first page load, which the replay test needs.
+
    `@latest` runs the newest release. When `@ayme-dev/cli` is in the project's
    `package.json`, the project pins its version: run `npx ayme-recorder` in
    place of `npx @ayme-dev/cli@latest`, here and for every `trace` command.

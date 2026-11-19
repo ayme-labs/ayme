@@ -34,11 +34,12 @@ final "Confirm" can create a real contract. Only the user approves one.
    - where the parameter files, run traces and login state go: they hold
      real data.
 
-   Done when the user has confirmed each. Write to `.ayme/CONVENTIONS.md`
-   only what holds for every flow in the repository, and never real data.
-   What holds for one site or one flow goes next to its code: in the code
-   where code can say it, otherwise in a notes file beside it. The
-   conventions file says where such notes live.
+   Done when the user has confirmed each, and you have written what they
+   settled for every flow in the repository to `.ayme/CONVENTIONS.md`,
+   creating it when it is missing: never real data. What holds for one site
+   or one flow goes next to its code: in the code where code can say it,
+   otherwise in a notes file beside it. The conventions file says where such
+   notes live.
 
 3. **Write** the code, as [Write the code](#write-the-code) says.
 4. **Write the replay test**, as [The replay test](#the-replay-test) says.
