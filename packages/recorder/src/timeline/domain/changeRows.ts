@@ -5,8 +5,9 @@ import type {
 
 import type { ChangeRow, PropertyChange } from "../../contract";
 import {
+  labelNear,
+  labelOf,
   namedInside,
-  namedNear,
   ownName,
   wordsOf,
   type NamedElement,
@@ -37,8 +38,9 @@ export type FoundRow = {
 
 /**
  * The topmost elements a Change Tree marks as added, removed or changed
- * themselves, in the order of the page, each named by its role and name
- * (`elementNames.ts`). One with no role and no name that appeared or was
+ * themselves, in the order of the page, each named by its label
+ * (`elementNames.ts`), counted against the page after the change, or before
+ * it for a removed one. One with no role and no name that appeared or was
  * removed is named by the named elements that went with it, a row each;
  * otherwise, as one that changed, by its nearest named ancestor. A changed
  * element says how each of its own properties stood before and after: the
@@ -54,8 +56,12 @@ export function foundRows(change: StructuralTree): FoundRow[] {
     }
     const { kind } = node.status!;
     if (kind === "added" || kind === "removed") {
+      const view = kind === "added" ? "after" : "before";
       const inside = ownName(node) ? [] : namedInside(node);
-      const named = inside.length > 0 ? inside : [namedNear(change, node)];
+      const named =
+        inside.length > 0
+          ? inside.map((one) => labelOf(change, one, view))
+          : [labelNear(change, node, view)];
       for (const element of named)
         rows.push({ row: { kind, element: wordsOf(element) }, element });
       return;
@@ -63,7 +69,7 @@ export function foundRows(change: StructuralTree): FoundRow[] {
     // Core records how every node it marks as changed stood before; a tree
     // without that record names no property.
     const before = change.getBeforeNode(node.ref) ?? node;
-    const element = namedNear(change, node);
+    const element = labelNear(change, node);
     rows.push({
       row: {
         kind: "changed",

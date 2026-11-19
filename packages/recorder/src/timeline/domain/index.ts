@@ -10,6 +10,7 @@ export type {
   TracePosition,
   VisitCause,
 } from "./recorded";
+export { labelOf } from "./elementNames";
 export {
   pictureRef,
   snapshotRef,

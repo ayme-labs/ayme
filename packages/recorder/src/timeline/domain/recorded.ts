@@ -65,14 +65,12 @@ export type InteractionReport = {
 
 /**
  * How the page as it is now is asked for an element: by a selector of
- * Playwright's, by the ref the page's latest snapshot gives it, by its role
- * and its name (any name when it is empty), or by its text.
+ * Playwright's, as one recorded for a step or one of a label, or by the ref
+ * the page's latest snapshot gives it.
  */
 export type ElementLookup =
   | { readonly by: "selector"; readonly selector: string }
-  | { readonly by: "ref"; readonly ref: SnapshotRef }
-  | { readonly by: "role"; readonly role: string; readonly name: string }
-  | { readonly by: "text"; readonly text: string };
+  | { readonly by: "ref"; readonly ref: SnapshotRef };
 
 /** One Interaction with the snapshots around it. */
 export type RecordedInteraction = {

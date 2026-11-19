@@ -6,6 +6,11 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import {
+  isSyntheticRef,
+  StructuralTree,
+  SyntheticAriaRefFactory,
+} from "@ayme-dev/core/structural-observation";
 import { Effect, ManagedRuntime, Queue } from "effect";
 import {
   chromium,
@@ -21,7 +26,12 @@ import type {
   BrowserSignal,
   Written,
 } from "../../../session/domain";
-import { Timeline } from "../../../timeline/domain";
+import {
+  labelOf,
+  snapshotRef,
+  Timeline,
+  type ElementLookup,
+} from "../../../timeline/domain";
 import {
   loadProjectPlaywright,
   projectPlaywrightCli,
@@ -1215,6 +1225,15 @@ const drawnCount = (page: Page) =>
     () => document.querySelectorAll("ayme-recorder-highlight").length
   );
 
+/** Every highlight the page draws, in the page's coordinates. */
+const drawnBoxes = (page: Page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll("ayme-recorder-highlight")].map((host) => {
+      const { x, y, width, height } = host.getBoundingClientRect();
+      return { x, y, width, height };
+    })
+  );
+
 const drawn = (page: Page) =>
   page.evaluate(() => {
     const host = document.querySelector("ayme-recorder-highlight");
@@ -1275,78 +1294,100 @@ it("draws the highlight on the element a ref names, in the page, in a same-origi
   await expect.poll(() => drawn(browser.page)).toBeNull();
 });
 
-it("draws the highlight on every element a selector, a role and name or a text names on the page as it is now, and nothing when none does", async () => {
+it("draws the highlight on every element a selector names on the page as it is now, and nothing when none does", async () => {
   const browser = await onStockPlaywright(
-    `<h1>Orders</h1><button id="main">Main</button><p>Saved</p><button>Twin</button><button>Twin</button>`
+    `<h1>Orders</h1><button id="main">Main</button><button>Twin</button><button>Twin</button>`
   );
   const lookups = [
-    [{ by: "selector", selector: "#main" }, 1],
-    [{ by: "role", role: "button", name: "Main" }, 1],
-    [{ by: "role", role: "heading", name: "" }, 1],
-    [{ by: "text", text: "Saved" }, 1],
+    ["#main", 1],
     // Look-alikes: each one lights up.
-    [{ by: "role", role: "button", name: "Twin" }, 2],
-    [{ by: "role", role: "button", name: "" }, 3],
-    [{ by: "text", text: "Nowhere" }, 0],
+    ['internal:role=button[name="Twin"s]', 2],
+    ["#nowhere", 0],
   ] as const;
 
-  for (const [index, [find, count]] of lookups.entries()) {
+  for (const [index, [selector, count]] of lookups.entries()) {
     await browser.ask({
       kind: "highlight",
       highlight: index + 1,
-      target: { page: "page_1", find },
+      target: { page: "page_1", find: { by: "selector", selector } },
     });
     const { found } = await browser.toldOf(
       "highlighted",
       (told) => told.highlight === index + 1
     );
-    expect([find, found]).toEqual([find, count > 0]);
+    expect([selector, found]).toEqual([selector, count > 0]);
     await expect.poll(() => drawnCount(browser.page)).toBe(count);
   }
 });
 
-it("finds a change row's element by its role and name or its text in a frame too, and draws every frame's matches", async () => {
-  // A change row's element the page's latest snapshot no longer lists is
-  // looked up by its role and name, or its text: here, inside a frame.
-  const browser = await onStockPlaywright(
-    `<button>Twin</button><iframe srcdoc="<button>In frame</button><p>Frame text</p><button>Twin</button>"></iframe>`
-  );
-  await browser.page.frameLocator("iframe").getByText("Frame text").waitFor();
-  const inFrame = browser.page.frameLocator("iframe");
-  const lookups = [
-    [
-      { by: "role", role: "button", name: "In frame" },
-      inFrame.getByRole("button", { name: "In frame" }),
-    ],
-    [{ by: "text", text: "Frame text" }, inFrame.getByText("Frame text")],
-    // One in the page and one in the frame: both light up.
-    [{ by: "role", role: "button", name: "Twin" }, null],
-  ] as const;
+/** A to-do list with look-alikes, text with no role, an icon a style
+ * draws, and a frame. */
+const LABELLED = `
+  <style>.destroy::after { content: "×"; }</style>
+  <h1>todos</h1>
+  <ul>
+    <li><input type="checkbox" aria-label="Toggle Todo"><label>buy milk</label><button class="destroy"></button></li>
+    <li><input type="checkbox" aria-label="Toggle Todo"><label>feed the cat</label><button class="destroy"></button></li>
+    <li><input type="checkbox" aria-label="Toggle Todo"><label>buy milk</label><button class="destroy"></button></li>
+  </ul>
+  <span><strong>3</strong> items left</span>
+  <p>Saved</p>
+  <button>Twin</button>
+  <iframe srcdoc="<button>Pay</button><button>Twin</button>"></iframe>`;
 
-  for (const [index, [find, element]] of lookups.entries()) {
+it("finds by the selector of each element's label, built from the page's own snapshot, that element alone, in a frame too", async () => {
+  const browser = await onStockPlaywright(LABELLED);
+  const page = browser.page;
+  await page.frameLocator("iframe").getByText("Pay").waitFor();
+  await browser.ask({ kind: "takeSnapshot", snapshot: "s1", page: "page_1" });
+  const { snapshot } = await browser.toldOf("snapshotTaken");
+  const tree = StructuralTree.fromAriaSnapshotYaml(
+    snapshot.tree,
+    new SyntheticAriaRefFactory()
+  );
+
+  let highlight = 0;
+  /** What the highlight of a lookup draws: each box. */
+  const drawnFor = async (find: ElementLookup) => {
+    highlight += 1;
     await browser.ask({
       kind: "highlight",
-      highlight: index + 1,
+      highlight,
       target: { page: "page_1", find },
     });
     const { found } = await browser.toldOf(
       "highlighted",
-      (told) => told.highlight === index + 1
+      (told) => told.highlight === highlight
     );
-    expect([find, found]).toEqual([find, true]);
-    if (!element) await expect.poll(() => drawnCount(browser.page)).toBe(2);
-    else {
-      const box = (await element.boundingBox())!;
-      await expect
-        .poll(() => drawn(browser.page))
-        .toEqual({
-          x: expect.closeTo(box.x, 0),
-          y: expect.closeTo(box.y, 0),
-          width: expect.closeTo(box.width, 0),
-          height: expect.closeTo(box.height, 0),
-        });
-    }
+    return found ? await drawnBoxes(page) : [];
+  };
+  const labels: string[] = [];
+  const missed: unknown[] = [];
+  for (const node of tree.getAllNodes()) {
+    const named = labelOf(tree, node);
+    if (!named || isSyntheticRef(node.ref)) continue;
+    labels.push(named.label);
+    const own = await drawnFor({ by: "ref", ref: snapshotRef(node.ref) });
+    const found = await drawnFor({ by: "selector", selector: named.selector });
+    if (own.length !== 1 || JSON.stringify(found) !== JSON.stringify(own))
+      missed.push({ label: named.label, selector: named.selector, own, found });
   }
+
+  expect(missed).toEqual([]);
+  expect(labels).toEqual(
+    expect.arrayContaining([
+      'heading "todos"',
+      'listitem "buy milk" (1st of 2)',
+      'listitem "feed the cat"',
+      'listitem "feed the cat" › checkbox "Toggle Todo"',
+      'checkbox "Toggle Todo" (3rd of 3)',
+      '"items left"',
+      'paragraph "Saved"',
+      'button "Twin" (1st of 2)',
+      'button "Pay"',
+      'button "Twin" (2nd of 2)',
+    ])
+  );
 });
 
 it("draws nothing for a highlight that a clear replaced while the element was still looked up", async () => {

@@ -355,7 +355,7 @@ describe("where an entry's target is now, for the highlight", () => {
     expect(timeline.liveTarget(entryId("interaction_1"))).toBeNull();
   });
 
-  it("finds the element of a row by its role and name when the page gave it no ref: only the browser's refs name an element of the page", async () => {
+  it("finds the element of a row by the selector of its label when the page gave it no ref: only the browser's refs name an element of the page", async () => {
     // The snapshots list the option without a ref.
     const choice = page(`- combobox "Size" [ref=e2]:`, `  - option "Large"`);
     const chosen = page(
@@ -376,7 +376,10 @@ describe("where an entry's target is now, for the highlight", () => {
     ]);
 
     expect(timeline.liveTarget(entryId("interaction_1"), 0)).toMatchObject({
-      find: { by: "role", role: "option", name: "Large" },
+      find: {
+        by: "selector",
+        selector: 'internal:role=option[name="Large"s]',
+      },
     });
   });
 });

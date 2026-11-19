@@ -136,6 +136,13 @@ describe("an element chip", () => {
     );
     expect(chipText("navigation")).toBe("navigation");
   });
+
+  it("puts each quoted part of a label in curly quotes: the text inside, an ancestor, a place", () => {
+    expect(
+      chipText('listitem "buy milk" › checkbox "Toggle Todo" (2nd of 3)')
+    ).toBe("listitem “buy milk” › checkbox “Toggle Todo” (2nd of 3)");
+    expect(chipText('"1 items left"')).toBe("“1 items left”");
+  });
 });
 
 describe("the title of a change no Interaction made", () => {

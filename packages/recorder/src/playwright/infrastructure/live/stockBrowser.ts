@@ -1169,41 +1169,16 @@ const PICKING_MODE = "assertingVisibility";
  * Every element of the page a lookup names: a step or a change row whose
  * element has look-alikes lights each of them up. A ref names one element,
  * and is taken only when it does. A selector and a ref reach into frames by
- * themselves; a role and name and a text are looked for in every frame's
- * document, and the matches of all are taken.
+ * themselves.
  */
 async function matchesOf(page: Page, find: ElementLookup): Promise<Locator[]> {
-  const frames =
-    find.by === "selector" || find.by === "ref"
-      ? [page.mainFrame()]
-      : page.frames();
-  const candidates = frames.map((frame) => locatorOf(frame, find));
-  const counts = await Promise.all(
-    candidates.map((candidate) => candidate.count().catch(() => 0))
-  );
+  const candidate = page
+    .mainFrame()
+    .locator(find.by === "ref" ? `aria-ref=${find.ref}` : find.selector);
+  const count = await candidate.count().catch(() => 0);
   // A ref names one element: it is trusted only when it does.
-  if (find.by === "ref") return counts[0] === 1 ? [candidates[0]!] : [];
-  return candidates.flatMap((candidate, at) =>
-    Array.from({ length: counts[at]! }, (_, index) => candidate.nth(index))
-  );
-}
-
-/** A frame's locator for an element a lookup asks for: a ref by the
- * adapter's own latest snapshot, a role and name by their exact words. */
-function locatorOf(frame: Frame, find: ElementLookup): Locator {
-  switch (find.by) {
-    case "selector":
-      return frame.locator(find.selector);
-    case "ref":
-      return frame.locator(`aria-ref=${find.ref}`);
-    case "role":
-      return frame.getByRole(
-        find.role as Parameters<Frame["getByRole"]>[0],
-        find.name ? { name: find.name, exact: true } : {}
-      );
-    case "text":
-      return frame.getByText(find.text, { exact: true });
-  }
+  if (find.by === "ref") return count === 1 ? [candidate] : [];
+  return Array.from({ length: count }, (_, index) => candidate.nth(index));
 }
 
 /**

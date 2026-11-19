@@ -18,7 +18,7 @@ import type {
   TimelineEntry,
 } from "../../contract";
 import { foundRows, type FoundRow } from "./changeRows";
-import { namedNear, wordsOf, type NamedElement } from "./elementNames";
+import { labelNear, wordsOf, type NamedElement } from "./elementNames";
 import {
   interactionDetails,
   leadsToChange,
@@ -151,7 +151,7 @@ type Entry = KeptEntry & { readonly rows: readonly (NamedElement | null)[] };
 /** A target in its tree, named; null when the tree does not know it. */
 const namedTarget = (tree: StructuralTree, ref: AriaRef | undefined) => {
   const node = ref && tree.getNode(ref);
-  return node ? namedNear(tree, node) : null;
+  return node ? labelNear(tree, node) : null;
 };
 
 /** The rows of a Change Tree as an entry tells them, and their elements. */
@@ -172,7 +172,7 @@ const selectorOf = (entry: TimelineEntry): ElementLookup | null => {
 
 /** How the page is asked for the element a row names: by the ref the
  * Visit's latest snapshot gives it, or else, and always once the page has
- * left the Visit, by its role and name or its text. */
+ * left the Visit, by the selector of its label. */
 function lookupOf(
   visit: Visit,
   element: NamedElement | null | undefined,
@@ -186,8 +186,7 @@ function lookupOf(
         ([, first]) => first === element.ref
       )?.[0];
   if (now && !isSyntheticRef(now)) return { by: "ref", ref: now };
-  if (element.byText) return { by: "text", text: element.name };
-  return { by: "role", role: element.role, name: element.name };
+  return { by: "selector", selector: element.selector };
 }
 
 /** The reports of an input whose press can move the focus before the gate
@@ -476,12 +475,13 @@ export class Timeline {
    * Where an element of an entry is now, for the highlight: with no `row`,
    * its target, by the selector Playwright recorded; with `row`, the element
    * that row of its changes names, by the ref the page's latest snapshot
-   * gives it, or, when that snapshot no longer lists it, by its role and
-   * name. Only a ref the browser gave can name an element of the page: core
-   * makes up refs for the nodes the browser gave none. An entry of a Visit
-   * its page has left is looked for on the page as it is now: its target by
-   * its selector all the same, a row's element by its role and name, as no
-   * ref of that Visit names an element of the page's new document. Null for
+   * gives it, or, when that snapshot no longer lists it, by the selector
+   * of its label. Only a ref the browser gave can name an element of the
+   * page: core makes up refs for the nodes the browser gave none. An entry
+   * of a Visit its page has left is looked for on the page as it is now:
+   * its target by its selector all the same, a row's element by the
+   * selector of its label, as no ref of that Visit names an element of the
+   * page's new document. Null for
    * a target with no selector, and a row the entry does not have or whose
    * element is named by nothing.
    */

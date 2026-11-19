@@ -246,6 +246,53 @@ describe("the change rows of a Change Tree", () => {
     ]);
   });
 
+  it("name each element so its label fits it alone on its page, as on a to-do list: with the text inside it, inside an ancestor, or by the text inside it alone", () => {
+    const todos = (left: string, ...items: string[]) =>
+      page(
+        `- list [ref=e3]:`,
+        ...items.flatMap((item, at) => [
+          `  - listitem [ref=e${10 + 2 * at}]:`,
+          `    - checkbox "Toggle Todo"${item.startsWith("✓") ? " [checked]" : ""} [ref=e${11 + 2 * at}]`,
+          `    - text: ${item.replace("✓", "")}`,
+        ]),
+        `- generic [ref=e4]:`,
+        `  - strong [ref=e5]: "${items.length}"`,
+        `  - text: ${left}`
+      );
+
+    // A to-do added: the item, and the count, by its longest text.
+    expect(
+      changeRows(
+        changeFrom(
+          todos("item left", "buy milk"),
+          todos("items left", "buy milk", "feed the cat")
+        )
+      ).map((row) => row.element)
+    ).toEqual(['listitem "feed the cat"', '"items left"']);
+    // One checked: its checkbox, inside its item.
+    expect(
+      changeRows(
+        changeFrom(
+          todos("items left", "buy milk", "feed the cat"),
+          todos("items left", "buy milk", "✓feed the cat")
+        )
+      ).map((row) => row.element)
+    ).toEqual(['listitem "feed the cat" › checkbox "Toggle Todo"']);
+    // One removed: named as the page before had it.
+    expect(
+      changeRows(
+        changeFrom(
+          todos("items left", "buy milk", "feed the cat"),
+          todos("item left", "buy milk")
+        )
+      )
+    ).toEqual(
+      expect.arrayContaining([
+        { kind: "removed", element: 'listitem "feed the cat"' },
+      ])
+    );
+  });
+
   it("name an element with no role and no name that appeared or was removed by the named elements that went with it, each in a row of its own", () => {
     const rows = changeRows(
       changeFrom(

@@ -1746,7 +1746,8 @@ describe("the timeline, for an assertion", () => {
 
 // Where an entry's element is now, for the hover highlight: its target by
 // its recorded selector, the element of a row of its changes by its ref while
-// the page's latest snapshot lists it, and by its role and name after.
+// the page's latest snapshot lists it, and by the selector of its label
+// after.
 describe("the timeline, for the highlight", () => {
   const recreated = [
     `- generic [ref=e1]:`,
@@ -1805,7 +1806,7 @@ describe("the timeline, for the highlight", () => {
     });
   });
 
-  it("finds an element the latest snapshot no longer lists by its role and name, or by its text when that is its name", async () => {
+  it("finds an element the latest snapshot no longer lists by the selector of its label", async () => {
     const offer = [
       savedPage,
       `  - button "Remove" [ref=e4]`,
@@ -1830,15 +1831,21 @@ describe("the timeline, for the highlight", () => {
 
     expect(timeline.liveTarget(interaction1, 0)).toEqual({
       page: page1,
-      find: { by: "text", text: "Saved" },
+      find: {
+        by: "selector",
+        selector: 'internal:role=paragraph >> internal:has-text="Saved"i',
+      },
     });
     expect(timeline.liveTarget(interaction1, 1)).toEqual({
       page: page1,
-      find: { by: "role", role: "button", name: "Remove" },
+      find: {
+        by: "selector",
+        selector: 'internal:role=button[name="Remove"s]',
+      },
     });
     expect(timeline.liveTarget(interaction1, 2)).toEqual({
       page: page1,
-      find: { by: "role", role: "list", name: "" },
+      find: { by: "selector", selector: "internal:role=list" },
     });
   });
 
@@ -1873,7 +1880,7 @@ describe("the timeline, for the highlight", () => {
     expect(timeline.liveTarget(entryId("change_1"), 0)).toBeNull();
   });
 
-  it("finds an entry of a Visit its page has left on the page as it is now: its target by its selector, a row's element by its role and name or its text, never by a ref of the Visit left", async () => {
+  it("finds an entry of a Visit its page has left on the page as it is now: its target by its selector, a row's element by the selector of its label, never by a ref of the Visit left", async () => {
     const offer = [savedPage, `  - button "Remove" [ref=e4]`].join("\n");
     const timeline = await timelineOf([
       visit,
@@ -1903,16 +1910,22 @@ describe("the timeline, for the highlight", () => {
     });
     expect(timeline.liveTarget(interaction1, 0)).toEqual({
       page: page1,
-      find: { by: "text", text: "Saved" },
+      find: {
+        by: "selector",
+        selector: 'internal:role=paragraph >> internal:has-text="Saved"i',
+      },
     });
     expect(timeline.liveTarget(interaction1, 1)).toEqual({
       page: page1,
-      find: { by: "role", role: "button", name: "Remove" },
+      find: {
+        by: "selector",
+        selector: 'internal:role=button[name="Remove"s]',
+      },
     });
     expect(timeline.liveTarget(interaction1, 2)).toBeNull();
   });
 
-  it("finds a row's element by its role and name, never by a ref, once its page went elsewhere while the recorder was paused, and by its ref after a change of only the query or the hash", async () => {
+  it("finds a row's element by the selector of its label, never by a ref, once its page went elsewhere while the recorder was paused, and by its ref after a change of only the query or the hash", async () => {
     const offer = [savedPage, `  - button "Remove" [ref=e4]`].join("\n");
     const recorded = await timelineOf([
       visit,
@@ -1942,7 +1955,10 @@ describe("the timeline, for the highlight", () => {
 
     expect(recorded.liveTarget(interaction1, 1)).toEqual({
       page: page1,
-      find: { by: "role", role: "button", name: "Remove" },
+      find: {
+        by: "selector",
+        selector: 'internal:role=button[name="Remove"s]',
+      },
     });
     expect(hashOnly.liveTarget(interaction1, 1)).toEqual({
       page: page1,
