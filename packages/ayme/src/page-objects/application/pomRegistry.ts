@@ -56,6 +56,7 @@ import {
   type PageObjectRoot,
 } from "./pageObjectIds";
 import { readPageObjectTree as readTree } from "./pageObjectTree";
+import { keepReturnedObject } from "./returnedPageObjects";
 import type { PageObjectTreeRead } from "../domain/pageObjectTreeText";
 import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
 import type { RunContext } from "../../runs/application";
@@ -897,9 +898,19 @@ async function performPageObjectAction(
     );
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
-  return pageStateSession.runAction(cursor, { tool: tool.toolName, args }, () =>
-    method.apply(instance, parameters)
+  let returned: Promise<unknown> | undefined;
+  const answer = await pageStateSession.runAction(
+    cursor,
+    { tool: tool.toolName, args },
+    () => {
+      const value: unknown = method.apply(instance, parameters);
+      // Never rejects: what the action throws is the Run's to report.
+      returned = Promise.resolve(value).catch(() => undefined);
+      return value;
+    }
   );
+  if (returned) keepReturnedObject(answer, returned, instance);
+  return answer;
 }
 
 function isCallable(value: unknown): value is (...args: unknown[]) => unknown {

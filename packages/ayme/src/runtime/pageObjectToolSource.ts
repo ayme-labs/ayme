@@ -10,6 +10,8 @@ import {
 import type { ActionFailure, ActionResult } from "../page-state/domain";
 import { pageObjectsTool } from "../tools/application";
 import type { JsonValue, ToolInfo } from "../shared";
+import { SETTLED_PAGE_DEADLINE_MS } from "@ayme-dev/core/structural-observation";
+import { askPresence, returnedObjectOf } from "../page-objects/application";
 
 /** What the source reads of the session, its calls made by one Caller. */
 export type PageObjectToolSession = {
@@ -33,23 +35,13 @@ export type PageObjectToolTurn = {
   /** The page's URL now. */
   url(): string;
   /**
-   * Spike: where the session outlives a full load, as a Node host's does, a
-   * watch for loads from now on. The browser runtime's session ends with its
-   * document and offers none.
+   * Spike: where the session outlives a full load, as a Node host's does,
+   * lets the page settle now, through a load in progress, by the Settled
+   * Page deadline: whether it went quiet, or undefined when no document
+   * settled by then. The browser runtime's session ends with its document
+   * and offers none.
    */
-  watchLoads?(): LoadWatch;
-};
-
-/** Spike: the loads of the page from the start of a watch. */
-export type LoadWatch = {
-  /**
-   * Resolves once a document a full load brought has settled, saying
-   * whether it went quiet before the Settled Page deadline; with
-   * `undefined` when none came before the deadline.
-   */
-  loaded(): Promise<{ settled: boolean } | undefined>;
-  /** Ends the watch. */
-  stop(): void;
+  settle?(): Promise<{ settled: boolean } | undefined>;
 };
 
 /** A Page Object Tool's answer to an agent. */
@@ -103,21 +95,21 @@ export function pageObjectToolSource(
       return session.inTurn(async (page) => {
         const before = await page.readPageObjectTree().catch(() => undefined);
         const url = page.url();
-        const loads = page.watchLoads?.();
-        try {
-          const result = await page.run(name, input).catch((error: unknown) => {
-            throw withoutChangeRecord(error);
-          });
-          return await answerOf(
-            page,
-            result as ActionResult,
-            before,
-            url,
-            loads
-          );
-        } finally {
-          loads?.stop();
-        }
+        const result = (await page.run(name, input).catch((error: unknown) => {
+          throw withoutChangeRecord(error);
+        })) as ActionResult;
+        // Spike: a session that outlives a load answers from the page the
+        // action led to once the Page Object it returned is present there.
+        // Settled again only when the page changed since it last settled:
+        // the action started a load, or the Page Object came after.
+        const returned = page.settle && returnedObjectOf(result);
+        const presence = returned && (await presenceBy(returned));
+        const settledThere =
+          presence === "came" ||
+          (presence === "present" && result.loading !== undefined)
+            ? await page.settle!()
+            : undefined;
+        return answerOf(page, result, before, url, settledThere);
       });
     },
   };
@@ -134,30 +126,70 @@ function withoutChangeRecord(error: unknown): unknown {
   return error;
 }
 
+/**
+ * Spike: whether the Page Object an action returned, `returned`, is
+ * present by the Settled Page deadline: at the first ask, or after it came.
+ * The deadline runs once while the action returns, which an action that
+ * started a load may still be about to do, and again while the presence
+ * predicate is asked. Only a declared or inherited presence predicate is
+ * waited for: a Page Object without one, or a value that is none, is not.
+ */
+async function presenceBy(
+  returned: Promise<object | undefined>
+): Promise<"present" | "came" | undefined> {
+  const pageObject = await within(returned, SETTLED_PAGE_DEADLINE_MS);
+  if (!pageObject) return undefined;
+  const deadline = Date.now() + SETTLED_PAGE_DEADLINE_MS;
+  for (let first = true; ; first = false) {
+    const { present } = await askPresence(pageObject);
+    if (present === undefined) return undefined;
+    if (present) return first ? "present" : "came";
+    if (Date.now() >= deadline) return undefined;
+    await new Promise((resolve) => setTimeout(resolve, PRESENCE_POLL_MS));
+  }
+}
+
+/** Spike: how often the returned Page Object's presence is asked again. */
+const PRESENCE_POLL_MS = 50;
+
+/** What `promise` resolves to within `ms`, else undefined. */
+async function within<T>(
+  promise: Promise<T>,
+  ms: number
+): Promise<T | undefined> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<undefined>((resolve) => {
+        timer = setTimeout(() => resolve(undefined), ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function answerOf(
   session: PageObjectToolTurn,
   { settled, result, loading }: ActionResult,
   before: PageObjectTreeRead | undefined,
   url: string,
-  loads: LoadWatch | undefined
+  settledThere: { settled: boolean } | undefined
 ): Promise<PageObjectToolAnswer> {
   const answer: PageObjectToolAnswer = {
     settled,
     ...(result === undefined ? {} : { result }),
   };
-  if (loading !== undefined) {
-    // A session that outlives the load answers from the new document once
-    // it has settled, as from any other page the action led to.
-    const loaded = await loads?.loaded();
-    // A full load ends this document: its tree is not read again.
-    if (!loaded)
-      return {
-        ...answer,
-        ...(loading === url ? {} : { url: loading }),
-        loading: true,
-      };
-    answer.settled = loaded.settled;
-  }
+  // A full load ends this document: its tree is not read again, unless the
+  // page the action led to has settled since.
+  if (loading !== undefined && !settledThere)
+    return {
+      ...answer,
+      ...(loading === url ? {} : { url: loading }),
+      loading: true,
+    };
+  if (settledThere) answer.settled = settledThere.settled;
   const now = session.url();
   if (now !== url) answer.url = now;
   const after = await session.readPageObjectTree().catch(() => undefined);

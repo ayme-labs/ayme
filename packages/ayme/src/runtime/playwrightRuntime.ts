@@ -34,7 +34,6 @@ import {
   type SessionTarget,
 } from "./session";
 import type { ToolSources } from "./publishedTools";
-import type { LoadWatch } from "./pageObjectToolSource";
 import { checkedFilters } from "./checkedFilters";
 
 export type { Ayme } from "./session";
@@ -165,7 +164,7 @@ function playwrightTarget(
     peeks: () => undefined,
     toolSources: sources,
     claim: () => ({ dispose: registry().claim() }),
-    watchLoads: () => watchLoads(page),
+    settle: () => settleThroughLoads(page),
     prepare: () => prepared(),
     latestRefOf: (locator: Locator) =>
       latestRefOfLocator(page, inPage(page), locator),
@@ -198,46 +197,27 @@ async function readThroughLoads<T>(
 }
 
 /**
- * Spike: the full loads of `page` from now on. A document a load brings
- * by the Settled Page deadline is waited for to settle, as after an action,
- * with the module's own deadline; a load it starts in turn is waited for
- * the same way.
+ * Spike: lets `page` settle now, as after an action, with the module's own
+ * deadline, once a document that is loading has loaded: whether it went
+ * quiet; undefined when no document settled by the Settled Page deadline,
+ * or a load destroyed each one it waited in.
  */
-function watchLoads(page: Page): LoadWatch {
-  let loads = 0;
-  let wake = () => {};
-  const onLoad = () => {
-    loads += 1;
-    wake();
-  };
-  page.on("domcontentloaded", onLoad);
-  /** Whether a document loaded after the first `seen` by `deadline`. */
-  const loadedAfter = (seen: number, deadline: number) =>
-    new Promise<boolean>((resolve) => {
-      if (loads > seen) return resolve(true);
-      const timer = setTimeout(
-        () => resolve(false),
-        Math.max(0, deadline - Date.now())
-      );
-      wake = () => {
-        clearTimeout(timer);
-        resolve(true);
-      };
-    });
-  return {
-    async loaded() {
-      const deadline = Date.now() + SETTLED_PAGE_DEADLINE_MS;
-      for (let seen = 0; await loadedAfter(seen, deadline);) {
-        seen = loads;
-        const outcome = await inPage(page)
-          .begin()
-          .then((action) => action.perform(() => undefined))
-          .catch(() => undefined);
-        if (outcome && outcome.kind !== "loading")
-          return { settled: outcome.stable };
-      }
-      return undefined;
-    },
-    stop: () => page.off("domcontentloaded", onLoad),
-  };
+async function settleThroughLoads(
+  page: Page
+): Promise<{ settled: boolean } | undefined> {
+  const deadline = Date.now() + SETTLED_PAGE_DEADLINE_MS;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const left = deadline - Date.now();
+    if (left <= 0) return undefined;
+    await page
+      .waitForLoadState("domcontentloaded", { timeout: left })
+      .catch(() => {});
+    const outcome = await inPage(page)
+      .begin()
+      .then((action) => action.perform(() => undefined))
+      .catch(() => undefined);
+    if (outcome && outcome.kind !== "loading")
+      return { settled: outcome.stable };
+  }
+  return undefined;
 }

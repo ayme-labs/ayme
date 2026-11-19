@@ -73,7 +73,7 @@ import {
 } from "../runs/application";
 import { instrumentedPage } from "../runs/infrastructure";
 import type { loadWebMcpPublication } from "./webMcp";
-import { pageObjectToolSource, type LoadWatch } from "./pageObjectToolSource";
+import { pageObjectToolSource } from "./pageObjectToolSource";
 import {
   callers,
   checkedToolInput,
@@ -518,10 +518,11 @@ export type SessionTarget = {
    */
   feedback?(demo: boolean, signal: AbortSignal): void;
   /**
-   * Spike: a watch for full loads of the page, which a Node host's session
-   * outlives; the browser runtime's ends with its document and has none.
+   * Spike: lets the page settle now, through a load in progress, which a
+   * Node host's session outlives; the browser runtime's ends with its
+   * document and has none.
    */
-  watchLoads?(): LoadWatch;
+  settle?(): Promise<{ settled: boolean } | undefined>;
   /**
    * What only the browser runtime has: the optional WebMCP, Inspector and
    * Agent Connection packages' loaders.
@@ -651,7 +652,7 @@ export function createAymeOn(
               recordTopLevelRun(name, input, by, probeAfterAction),
             readPageObjectTree: readPageObjectTreeNow,
             url: () => target.rawPage().url(),
-            ...(target.watchLoads && { watchLoads: target.watchLoads }),
+            ...(target.settle && { settle: target.settle }),
           })
         ),
     });

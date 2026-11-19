@@ -9,3 +9,5 @@ export type {
   RegisteredPom,
 } from "./pomRegistry";
 export type { PageDriver } from "./pageDriver";
+export { askPresence } from "./pomPredicates";
+export { returnedObjectOf } from "./returnedPageObjects";

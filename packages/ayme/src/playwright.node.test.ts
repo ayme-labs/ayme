@@ -409,47 +409,131 @@ describe("Ayme over a Playwright Page", () => {
     }
 
     /**
-     * A sign-in form whose submit posts and is redirected to `/home`, which
-     * answers after `homeDelayMs`, with a session over it.
+     * SignIn, rooted at `#sign-in`, whose `logIn` presses its button and
+     * returns a Home, or itself when `refused`; and Home, rooted at `#home`
+     * and present while the browser is on `/home`.
      */
-    async function signInPage(homeDelayMs: number) {
+    function signInPageObjects(refused = false) {
+      class Home {
+        readonly root: ReturnType<Page["locator"]>;
+        readonly button: ReturnType<Page["locator"]>;
+        constructor(readonly page: Page) {
+          this.root = page.locator("#home");
+          this.button = this.root.getByRole("button");
+        }
+        async press() {
+          await this.button.click();
+        }
+      }
+      built.ayme({
+        root: (self: Home) => self.root,
+        present: (self: Home) => new URL(self.page.url()).pathname === "/home",
+      })(Home);
+      built.registerCompiledPom(Home, {
+        className: "Home",
+        members: [
+          { memberName: "root", kind: "locator", access: "field" },
+          { memberName: "button", kind: "locator", access: "field" },
+        ],
+        tools: [
+          {
+            methodName: "press",
+            toolName: "Home.press",
+            description: "Press the button",
+            parameters: [],
+          },
+        ],
+        components: [],
+      });
+      class SignIn {
+        readonly root: ReturnType<Page["locator"]>;
+        readonly button: ReturnType<Page["locator"]>;
+        constructor(readonly page: Page) {
+          this.root = page.locator("#sign-in");
+          this.button = this.root.getByRole("button");
+        }
+        async logIn(): Promise<Home | this> {
+          await this.button.click();
+          return refused ? this : new Home(this.page);
+        }
+      }
+      built.ayme({ root: (self: SignIn) => self.root })(SignIn);
+      built.registerCompiledPom(SignIn, {
+        className: "SignIn",
+        members: [
+          { memberName: "root", kind: "locator", access: "field" },
+          { memberName: "button", kind: "locator", access: "field" },
+        ],
+        tools: [
+          {
+            methodName: "logIn",
+            toolName: "SignIn.logIn",
+            description: "Log in",
+            parameters: [],
+          },
+        ],
+        components: [],
+      });
+      return [SignIn, Home];
+    }
+
+    const homeSection =
+      '<section id="home"><h1>Home</h1><button>Out</button></section>';
+    const home = `<!doctype html><title>Home</title>${homeSection}`;
+
+    /**
+     * A sign-in form whose submit posts and is redirected to `/landing`,
+     * a nearly empty page whose script sends the browser on to `/home`
+     * after `onAfterMs`, or never without it, as Formbricks does after a
+     * sign-in; with a session over it and SignIn's `logIn` input.
+     */
+    async function signInPage(onAfterMs: number | undefined, refused = false) {
       const origin = await serving((request, response) => {
         if (request.url === "/login") {
-          response.writeHead(303, { location: "/home" }).end();
+          response.writeHead(303, { location: "/landing" }).end();
           return;
         }
         const body =
           request.url === "/home"
-            ? '<!doctype html><title>Home</title><section id="home"><h1>Home</h1><button>Out</button></section>'
-            : '<!doctype html><title>Sign in</title><form id="sign-in" method="post" action="/login"><input name="email" value="a@b.test"><button>Log in</button></form>';
-        setTimeout(
-          () =>
-            response.writeHead(200, { "content-type": "text/html" }).end(body),
-          request.url === "/home" ? homeDelayMs : 0
-        );
+            ? home
+            : request.url === "/landing"
+              ? `<!doctype html><title>Landing</title>${
+                  onAfterMs === undefined
+                    ? ""
+                    : `<script>setTimeout(() => location.assign("/home"), ${onAfterMs})</script>`
+                }`
+              : '<!doctype html><title>Sign in</title><form id="sign-in" method="post" action="/login"><input name="email" value="a@b.test"><button>Log in</button></form>';
+        response.writeHead(200, { "content-type": "text/html" }).end(body);
       });
       const page = await browser.newPage();
       await page.goto(`${origin}/`);
+      return { origin, ...(await signInSession(page, refused)) };
+    }
+
+    /** A session over `page` with SignIn and Home, and SignIn's `logIn` input. */
+    async function signInSession(page: Page, refused = false) {
       const ayme = await startedOn(page, {
-        pageObjects: [
-          pageObjectRootedAt("SignIn", "#sign-in"),
-          pageObjectRootedAt("Home", "#home"),
-        ],
+        pageObjects: signInPageObjects(refused),
       });
       const tree = String(await ayme.agentTools.run("page_objects", {}));
       const id = /SignIn (po\d+)/.exec(tree)?.[1];
-      return { origin, ayme, input: id ? { id } : {} };
+      return { ayme, input: id ? { id } : {} };
     }
 
-    it("answers a call whose form submit loads another document once that document has settled, with its URL and the Page Objects that changed", async () => {
-      const { origin, ayme, input } = await signInPage(300);
+    type Answer = {
+      settled: boolean;
+      url?: string;
+      loading?: true;
+      changes?: string;
+    };
 
-      const answer = (await ayme.agentTools.run("SignIn.press", input)) as {
-        settled: boolean;
-        url?: string;
-        loading?: true;
-        changes?: string;
-      };
+    it("answers a call whose action returns another Page Object once that Page Object is present, past the page the load first brought", async () => {
+      const { origin, ayme, input } = await signInPage(600);
+
+      const answer = (await ayme.agentTools.run(
+        "SignIn.logIn",
+        input
+      )) as Answer;
 
       expect(answer).toMatchObject({ settled: true, url: `${origin}/home` });
       expect(answer.loading).toBeUndefined();
@@ -457,16 +541,55 @@ describe("Ayme over a Playwright Page", () => {
       expect(answer.changes).toContain("+ Home");
     });
 
-    it("still answers that the page is loading when the new document does not come before the deadline", async () => {
-      const { ayme, input } = await signInPage(4000);
+    it("waits for the returned Page Object in the same document too, after the page went quiet", async () => {
+      // The button shows Home 0.6 s after a click, at /home, in this document.
+      const origin = await serving((_request, response) =>
+        response.writeHead(200, { "content-type": "text/html" }).end(
+          `<!doctype html><title>Sign in</title><form id="sign-in"><button type="button">Log in</button></form>
+          <script>
+            document.querySelector("button").addEventListener("click", () =>
+              setTimeout(() => {
+                history.pushState({}, "", "/home");
+                document.body.innerHTML = ${JSON.stringify(homeSection)};
+              }, 600)
+            );
+          </script>`
+        )
+      );
+      const page = await browser.newPage();
+      await page.goto(`${origin}/`);
+      const { ayme, input } = await signInSession(page);
 
-      const answer = (await ayme.agentTools.run("SignIn.press", input)) as {
-        settled: boolean;
-        loading?: true;
-      };
+      const answer = (await ayme.agentTools.run(
+        "SignIn.logIn",
+        input
+      )) as Answer;
+
+      expect(answer).toMatchObject({ settled: true, url: `${origin}/home` });
+      expect(answer.changes).toContain("+ Home");
+    });
+
+    it("answers that the page is loading, without waiting, when the action returns the Page Object it ran on", async () => {
+      const { ayme, input } = await signInPage(600, true);
+
+      const answer = (await ayme.agentTools.run(
+        "SignIn.logIn",
+        input
+      )) as Answer;
 
       expect(answer).toMatchObject({ settled: false, loading: true });
     });
+
+    it("still answers that the page is loading when the returned Page Object is not present by the deadline", async () => {
+      const { ayme, input } = await signInPage(undefined);
+
+      const answer = (await ayme.agentTools.run(
+        "SignIn.logIn",
+        input
+      )) as Answer;
+
+      expect(answer).toMatchObject({ settled: false, loading: true });
+    }, 10_000);
 
     it("reads the Page Objects of a document that is still loading once it has loaded", async () => {
       let release = () => {};
