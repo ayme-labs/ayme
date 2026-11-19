@@ -120,6 +120,7 @@ it("names a Page Object Model's syntax error where it is in the source", () => {
           file: resourcePath,
           line: 26,
           column: 2,
+          lineText: "}}",
         },
       ],
     })
