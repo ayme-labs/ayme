@@ -26,4 +26,22 @@ describe("transpilePomModule", () => {
       },
     ]);
   });
+
+  it("leaves a byte order mark out of a syntax error's line and column, as TypeScript does reading the file", () => {
+    const fileName = "/work/.ayme/pom/PlainPage.ts";
+
+    expect(
+      diagnosticsOf(() =>
+        transpilePomModule("\uFEFFconst value = ;\n", fileName)
+      )
+    ).toEqual([
+      {
+        text: "Expression expected.",
+        file: fileName,
+        line: 1,
+        column: 15,
+        lineText: "const value = ;",
+      },
+    ]);
+  });
 });

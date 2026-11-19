@@ -15,7 +15,7 @@ export type PomDiagnostic =
       readonly line: number;
       /** Counted in UTF-16 code units of `lineText`, as TypeScript and editors count. */
       readonly column: number;
-      /** The line as written, without its line break or a byte order mark. */
+      /** The line as written, without its line break. */
       readonly lineText: string;
     };
 
@@ -66,15 +66,12 @@ function position(
   const lineText = source.text
     .slice(starts[line], starts[line + 1])
     .replace(/(?:\r\n|[\n\r\u2028\u2029])$/, "");
-  // TypeScript drops a byte order mark from a file it reads, but counts one in
-  // a source it is given, as the compiler's transpile is given the module.
-  const mark = lineText.startsWith("\uFEFF") && line === 0 ? 1 : 0;
   return {
     text,
     file: source.fileName,
     line: line + 1,
-    column: Math.max(character - mark, 0) + 1,
-    lineText: lineText.slice(mark),
+    column: character + 1,
+    lineText,
   };
 }
 

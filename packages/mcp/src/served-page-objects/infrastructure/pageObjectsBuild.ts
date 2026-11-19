@@ -45,7 +45,7 @@ type PomDiagnostic =
       line: number;
       /** Counted in UTF-16 code units of `lineText`. */
       column: number;
-      /** The line as written, without its line break or a byte order mark. */
+      /** The line as written, without its line break. */
       lineText: string;
     };
 

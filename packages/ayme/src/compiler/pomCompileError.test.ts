@@ -55,10 +55,22 @@ describe("typeScriptDiagnostic", () => {
       })
     );
 
-  it("counts lines as TypeScript does, at each kind of line break, and leaves the break out of the line's text", () => {
+  it.each([
+    ["LF", "\n"],
+    ["CRLF", "\r\n"],
+    ["CR", "\r"],
+    ["LINE SEPARATOR", "\u2028"],
+    ["PARAGRAPH SEPARATOR", "\u2029"],
+  ])("leaves a line's %s break out of its text", (_name, lineBreak) => {
+    expect(
+      atSemicolon(`// a${lineBreak}const café = ;${lineBreak}b`)
+    ).toMatchObject({ line: 2, column: 14, lineText: "const café = ;" });
+  });
+
+  it("counts lines as TypeScript does, across each kind of line break", () => {
     // Lines: "// a", "b", "c", "d", then "const café = ;". U+0085 breaks no line.
     expect(
-      atSemicolon("// a\r\nb\rc\u2028d\u2029const café = ;\r\n")
+      atSemicolon("// a\r\nb\rc\u2028d\u2029const café = ;\n")
     ).toMatchObject({ line: 5, column: 14, lineText: "const café = ;" });
     expect(atSemicolon("a\u0085const b = ;")).toMatchObject({
       line: 1,
@@ -67,11 +79,13 @@ describe("typeScriptDiagnostic", () => {
     });
   });
 
-  it("leaves a byte order mark out of the first line's column and text, as editors do", () => {
+  it("counts a U+FEFF left in a file's text as TypeScript does, as a character", () => {
+    // TypeScript drops a file's byte order mark as it reads it; one that
+    // remains is text, which an editor counts too.
     expect(atSemicolon("\uFEFFconst value = ;\n")).toMatchObject({
       line: 1,
-      column: 15,
-      lineText: "const value = ;",
+      column: 16,
+      lineText: "\uFEFFconst value = ;",
     });
   });
 

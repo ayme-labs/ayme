@@ -22,21 +22,16 @@ import {
 
 const entry = "/project/.ayme/page-objects.ts";
 
+/** The diagnostics of a compile error, as `ayme mcp` reads them. */
+type PomDiagnostics = Parameters<typeof pageObjectModels>[1] extends new (
+  ...args: never[]
+) => { diagnostics: infer Diagnostics }
+  ? Diagnostics
+  : never;
+
 /** The compiler entry's error class, as `ayme mcp` reads it. */
 class PomCompileError extends Error {
-  constructor(
-    readonly diagnostics: readonly (
-      | { text: string; file?: undefined }
-      | { text: string; file: string; line?: undefined }
-      | {
-          text: string;
-          file: string;
-          line: number;
-          column: number;
-          lineText: string;
-        }
-    )[]
-  ) {
+  constructor(readonly diagnostics: PomDiagnostics) {
     super(diagnostics.map(({ text }) => text).join("\n"));
   }
 }
