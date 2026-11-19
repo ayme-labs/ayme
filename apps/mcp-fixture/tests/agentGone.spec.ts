@@ -38,3 +38,32 @@ test("the server stops once writing to the agent fails", async () => {
     server.kill();
   }
 });
+
+// A message larger than the SDK reads closes the connection to the agent,
+// with stdin still open and stdout still writable. The server must stop then
+// too.
+test("the server stops once the agent sends a message too large to read", async () => {
+  const server = spawn(
+    process.execPath,
+    [aymeCommand, "mcp", "--port", String(await freePort())],
+    { stdio: ["pipe", "pipe", "pipe"] }
+  );
+  let log = "";
+  server.stderr.on("data", (chunk: Buffer) => (log += String(chunk)));
+  server.stdout.resume();
+  const exited = new Promise<number | null>((resolve) =>
+    server.once("exit", (code) => resolve(code))
+  );
+  // The server may stop before the whole message is written.
+  server.stdin.on("error", () => {});
+  try {
+    // More than the SDK's 10 MB limit for one message, with no line end.
+    server.stdin.write("x".repeat(11 * 1024 * 1024));
+    const stillRunning = new Promise<"still running">((resolve) =>
+      setTimeout(() => resolve("still running"), 10_000)
+    );
+    expect(await Promise.race([exited, stillRunning]), `Log:\n${log}`).toBe(0);
+  } finally {
+    server.kill();
+  }
+});

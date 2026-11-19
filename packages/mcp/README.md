@@ -110,11 +110,13 @@ and `ayme_inspect` are the same in every revision. Under 2026-07-28:
 - **Tool list changes:** the agent hears `notifications/tools/list_changed`
   only once it has subscribed to it with a `subscriptions/listen` request.
 - **The agent's name:** there is no `initialize`, so the server learns the
-  agent's name, which the Inspector shows, from the agent's first
-  `tools/list` or `tools/call`; a tab that pairs before then shows no name
-  until it reconnects.
+  agent's name, which the Inspector shows, from each `tools/list` and
+  `tools/call`, keeping the latest; a tab that pairs before the first of them
+  shows no name until it reconnects.
 
-The server stops when the agent closes its stdin, or when writing to it fails.
+The server stops once its connection to the agent closes: when the agent
+closes its stdin, when writing to it fails, or when the agent sends a message
+too large to read.
 
 ## App Processes
 

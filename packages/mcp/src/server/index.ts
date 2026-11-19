@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-import { serveStdio } from "@modelcontextprotocol/server/stdio";
+import {
+  StdioServerTransport,
+  serveStdio,
+} from "@modelcontextprotocol/server/stdio";
 
 import { version } from "../../package.json";
 import { AgentConnection, createPageChannelServer } from "../connection";
@@ -42,8 +45,8 @@ const log = (message: string) =>
 /**
  * Runs the Ayme MCP server: MCP over stdio for the agent, and a WebSocket
  * server on the loopback interface for the page, on `port` if given, else on
- * the first free port of the server's range. Stops when the agent closes
- * stdin.
+ * the first free port of the server's range. Stops once its connection to
+ * the agent closes.
  *
  * MCP is served by the SDK's `serveStdio`, which answers revision
  * 2026-07-28 and the older revisions that open with `initialize`: the
@@ -147,9 +150,10 @@ export async function startMcpServer({
     },
   };
 
-  // The process stops once the agent is gone: when it closes stdin, or when
-  // writing to it fails. After a failed write the SDK stops reading stdin,
-  // so its end would never come.
+  // The process stops once the connection to the agent closes: when the
+  // agent closes stdin, when writing to it fails, or when it sends a message
+  // too large to read. The SDK closes the connection in each case, and then
+  // reads stdin no more, so its end may never come.
   let stopped = false;
   const stop = () => {
     if (stopped) return;
@@ -158,20 +162,32 @@ export async function startMcpServer({
     channel.close();
     closeBuild();
   };
-  process.stdin.once("end", stop);
-  process.stdout.once("error", stop);
-  serveStdio(() =>
-    createMcpToolServer({
-      name: "ayme",
-      version,
-      serverTools,
-      context,
-      agentNamed: (name) => (agentName = name),
-    })
+  serveStdio(
+    () =>
+      createMcpToolServer({
+        name: "ayme",
+        version,
+        serverTools,
+        context,
+        agentNamed: (name) => (agentName = name),
+      }),
+    { transport: new AgentConnectionTransport(stop) }
   );
   log(`Listening for pages on ${pairing.address}.`);
 }
 export { readCommand } from "./readCommand";
+
+/** The stdio connection to the agent, which runs `onClosed` once it closes. */
+class AgentConnectionTransport extends StdioServerTransport {
+  constructor(private readonly onClosed: () => void) {
+    super();
+  }
+
+  override async close() {
+    await super.close();
+    this.onClosed();
+  }
+}
 
 /**
  * Prints the URL of the external Inspector of the running Ayme MCP server
