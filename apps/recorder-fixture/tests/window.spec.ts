@@ -221,19 +221,18 @@ test.describe("the recorder window", () => {
     await expect(window.page).toHaveTitle(title);
   });
 
-  test("shows the design system's icon for the scheme the system is in", async ({
+  test("shows the design system's purple mark as its icon, in either scheme", async ({
     recording: { window },
   }) => {
-    for (const scheme of ["light", "dark"] as const) {
-      const href = await window.page
-        .locator(`link[rel="icon"][media="(prefers-color-scheme: ${scheme})"]`)
-        .getAttribute("href");
-      const served = await window.page.request.get(
-        new URL(href!, window.page.url()).href
-      );
-      expect(served.status()).toBe(200);
-      expect(served.headers()["content-type"]).toBe("image/svg+xml");
-    }
+    const icons = window.page.locator('link[rel="icon"]');
+    await expect(icons).toHaveCount(1);
+    expect(await icons.getAttribute("media")).toBeNull();
+    const served = await window.page.request.get(
+      new URL((await icons.getAttribute("href"))!, window.page.url()).href
+    );
+    expect(served.status()).toBe(200);
+    expect(served.headers()["content-type"]).toBe("image/svg+xml");
+    expect(await served.text()).toContain('fill="#6936f1"');
   });
 
   test("recovers the current recording when it is reloaded, and can still finish it", async ({

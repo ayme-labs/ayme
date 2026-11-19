@@ -5,12 +5,11 @@ import { defineConfig } from "tsdown";
 import { bundledPackages } from "./bundledPackages.config.ts";
 import { toolbarCss, windowCss } from "./windowCss.config.ts";
 
-/** The design system's favicon for a colour scheme: the window's page links
- * one per scheme. */
-const favicon = (scheme: "light" | "dark") =>
-  createRequire(import.meta.url).resolve(
-    `@ayme-dev/design-system/logo/favicon-${scheme}.svg`
-  );
+/** The design system's purple mark: the window's favicon, in either colour
+ * scheme. */
+const mark = createRequire(import.meta.url).resolve(
+  "@ayme-dev/design-system/logo/mark-small.svg"
+);
 
 // Omit build-machine source paths, not copyright or license comments.
 const inputOptions = { experimental: { attachDebugInfo: "none" as const } };
@@ -57,8 +56,7 @@ export default defineConfig([
     deps: { alwaysBundle: [/.*/] },
     copy: [
       { from: "src/app/index.html", to: "dist/window" },
-      { from: favicon("light"), to: "dist/window" },
-      { from: favicon("dark"), to: "dist/window" },
+      { from: mark, to: "dist/window" },
     ],
     minify: true,
   },
