@@ -1,19 +1,25 @@
 ---
 name: ayme-recorder
-description: Record a user flow with the Ayme recorder while the user drives their app, then turn the Recording Package into Playwright page objects and a test.
+description: Record a user flow with the Ayme recorder while the user drives their app, then turn the Recording Package into Playwright page objects and a test, or a parameterised automation of the flow.
 ---
 
 # Ayme recorder
 
 The Ayme recorder listens while the user drives their app in a browser, and
 writes what it saw to a Recording Package: the page structure at each visit,
-what changed and every interaction. From the package you write page objects and
-a Playwright test that replays the flow.
+what changed and every interaction.
+
+Read `.ayme/CONVENTIONS.md` first, when it exists: what the user settled for
+running Ayme in this repository. It overrides this skill's defaults.
 
 1. **Record.** Run `npx @ayme-dev/cli@latest codegen <url>`, with the URL where
    the user wants to start, somewhere it can keep running. A recorder window
    opens on that page; the user performs the flow and presses Finish. The
    command then prints `Recording package: <path>`.
+
+   When the user asked for an automation of a flow with new data, add
+   `--start-recording`: the recorder then opens already recording, so the
+   package holds the first page load, which the replay test needs.
 
    `@latest` runs the newest release. When `@ayme-dev/cli` is in the project's
    `package.json`, the project pins its version: run `npx ayme-recorder` in
@@ -28,21 +34,13 @@ a Playwright test that replays the flow.
    Leave every discarded entry out of the page objects and the test. A package
    with no kept entry has no flow to implement: tell the user whether it
    captured nothing or every entry is a stub, and stop.
-3. **Propose** the page objects and the test to the user before you write any
-   file, following
-   [Write page objects from the recording](#write-page-objects-from-the-recording)
-   and [Write the test](#write-the-test). Settle it with them.
-4. **Write** what you agreed, following
-   [Page object design](references/page-object-design.md). Where it conflicts
-   with the project's existing POM and test conventions, raise the conflict
-   with the user.
-5. **Run** the test until it passes. Fix locators and timing, but not the
-   flow. When passing would take different steps or different checks, stop
-   and tell the user. That happens, for example, when the app no longer
-   behaves as recorded.
-
-Done when the test passes against the app and replays the flow you agreed.
-A package with no kept entry is done when you have told the user and stopped.
+3. **Follow** the playbook the user's request calls for, and ask when it is
+   unclear:
+   - [Mirroring test](playbooks/mirroring-test.md): a test that replays the
+     flow against the user's app.
+   - [Production automation](playbooks/production-automation.md): a
+     parameterised automation that does the flow with new data, such as data
+     entry that ends in a real submission.
 
 ## Read the package
 
@@ -142,8 +140,8 @@ action: use a snapshot already in the trace, or the next visit's baseline.
 
 ## Write page objects from the recording
 
-Draft the test from the timeline first, then the smallest set of page objects
-that can express it. When a step or a check cannot be expressed, change the
+Draft the playbook's test from the timeline first, then the smallest set of
+page objects that can express it. When a step or a check cannot be expressed, change the
 page objects, never the check. Design them by
 [Page object design](references/page-object-design.md); the package shows its
 evidence:
@@ -166,56 +164,19 @@ Check each by [Locator strategy](references/page-object-design.md#locator-strate
 and keep one that meets it. Look in the trace for an element that has no
 candidate, or whose candidate does not meet the strategy.
 
-## Write the test
-
-One test replays the flow in recorded order, with no steps the user did not
-take and no branching. Every step goes through a page object action or one
-of its named locators. Every check goes through a page object locator or
-method. When an action returns one of several page objects, assert the one
-the recorded flow reached, rather than branching on it. For example,
-`dialog.create()` in
-[Page object design](references/page-object-design.md#return-where-the-user-continues)
-returns a `ProjectPage` or the dialog. After
-`const created = await dialog.create()`, write
-`assert(created instanceof ProjectPage)`, with `assert` from `node:assert`.
-
-Turn the timeline into assertions:
-
-- Assert what a step caused beyond the element it acted on: something appears,
-  disappears or is replaced, a count changes, a page opens.
-- Assert a value or choice the user entered or interacted with when it shows up somewhere else or
-  later, such as an added item in the cart.
-- Leave out the acted element's own change, such as a filled value, focus or a
-  checked box, what the page already showed, and changes unrelated to the
-  flow, such as animations or clocks.
-- An `assert*` interaction, such as `assertVisible`, marks a point where the
-  user checked something: from its target and the changes around it, work out
-  what they meant to check, and assert that.
-- Each assertion checks one fact. An `<added>` node can take the place of a
-  `<removed>` node with the same role. Check in the trace whether they are
-  the same element, as [Use the trace](#use-the-trace) shows. When they are,
-  the element re-rendered, and that is one fact: its new content. For the
-  cart button above, held as `cartLink` by a `Header` component `header`:
-
-  ```ts
-  await expect(header.cartLink).toHaveAccessibleName("Cart, 2 items");
-  ```
-
-  When the trace does not show they are the same, treat them as two
-  elements.
-
-  When a different element takes the old one's place, such as a confirmation
-  that replaces a form, that is two facts: the old one is gone, and the new
-  one is visible.
-
-- Steps that only change their own element, such as filling the fields of one form, need no
-  assertions in between; assert after the step that submits it.
-
 ## Use the trace
 
-The trace holds a DOM snapshot after each recorded interaction, with the real
-elements and their attributes. Read it when a tree does not settle what a step
-did, or to find a locator for an element. Each element carries its package ref as
+The trace holds DOM snapshots of the page, with the real elements and their
+attributes, taken every 50–100 ms while the user worked, not only at
+interactions. It also holds the network log: every request, with its timing,
+headers and bodies. `trace snapshot` opens the snapshots of recorded
+interactions; `trace requests` lists the requests with their method, status
+and duration, but not when each started; `trace request <n>`, with `<n>` from
+that list, shows one request in full: its headers, and the paths of its body
+files to read.
+
+Read the trace when a tree does not settle what a step did, or to find a
+locator for an element. Each element carries its package ref as
 `__playwright_aria_ref__`, so you can look up a node from the timeline:
 
 ```sh
