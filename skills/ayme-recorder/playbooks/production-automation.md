@@ -1,10 +1,9 @@
 # Playbook: production automation
 
 The result is a deterministic, parameterised Playwright automation of a flow
-the user does on a third-party web portal, often a production system they do
-not own, and a replay test that lets you fix its waits and locators without
-touching the real backend. Some steps are irreversible: a final "Confirm" can
-create a real contract. Only the user approves one.
+the user does on a website, and a replay test that lets you fix its waits and
+locators without touching the real backend. Some steps are irreversible: a
+final "Confirm" can create a real contract. Only the user approves one.
 
 Keep real data out of version control: parameter files, recordings, run
 traces and the login state. Put them under `.ayme/` and check that git
@@ -14,70 +13,53 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
 
 ## Steps
 
-1. **Record** cold. The skill's Record step sends you here before it starts
-   the recorder. Tell the user: once the recorder window shows the start
-   page, log in if needed, then clear what the site keeps for itself but keep
-   the login. In DevTools, open Application → Storage, untick Cookies, and
-   Local storage too when the site keeps its login there, and press "Clear
-   site data". A kept cookie can also hide a consent banner that a live run
-   will meet: when the site has one, delete its consent cookie under
-   Application → Cookies as well, and answer the banner in the recording.
-   Then reload the start page and do the flow.
-   Otherwise the site answers from its own caches, and the recording lacks
-   those calls. When the user does the flow to the end, irreversible steps
-   included, the replay test covers them too.
-2. **Analyze** the package and its trace, as
+1. **Analyze** the package and its trace, as
    [Read the package](../SKILL.md#read-the-package) and
    [Use the trace](../SKILL.md#use-the-trace) say. List the calls with
    `trace requests` and read each one in full with `trace request <n>`.
    Classify each call as a read or a permanent change from the evidence: the
    method, the URL or action name, the request body, the response, and what
    changed on the page right after it. The method alone does not decide it:
-   reads can be POSTs, and GETs can change state. For each permanent change,
-   read its response and check that it succeeded: when the package ends at
-   that click, its outcome is only in the trace. The same holds for the last
-   step's result, such as search results the package shows only as loading:
-   read it from the step's response. A recording whose permanent
-   change failed, such as one the server rejected, is recorded again. Done
-   when every call the flow makes is classified.
-3. **Align** with the user before you write code. Settle:
+   reads can be POSTs, and GETs can change state. The package can end before
+   the page shows a step's result: read that result, and whether each
+   permanent change succeeded, from the responses. Done when every call the
+   flow makes is classified.
+2. **Align** with the user before you write code. Settle:
    - the steps of the flow;
    - the page objects;
-   - the irreversible steps: propose those the permanent changes from step 2
+   - the irreversible steps: propose those the permanent changes from step 1
      point to, and take the list the user confirms; there can be several;
    - for each, the values a person checks before it, such as customer, offer
      and price;
    - the parameters: the data a real run enters, and the value the recording
-     used for each, as its requests carry it rather than as the user typed it;
-   - the `confirm` the entry script uses, as [Confirm](#confirm) says; a flow
-     with no irreversible step needs no `confirm` and no `--no-submit`;
+     used for each;
+   - the `confirm` the entry script uses, as [Confirm](#confirm) says;
    - on a site with a login, how a run gets one, as
      [Write the code](#write-the-code) says.
 
    Done when the user has confirmed each.
 
-4. **Write** the code, as [Write the code](#write-the-code) says.
-5. **Write the replay test**, as [The replay test](#the-replay-test) says.
-6. **Heal** against the replay test. Run it with
+3. **Write** the code, as [Write the code](#write-the-code) says.
+4. **Write the replay test**, as [The replay test](#the-replay-test) says.
+5. **Heal** against the replay test. Run it with
    `npx playwright test <file> --repeat-each 3 --retries 0 --workers 1` and
    fix the page objects' locators and waits, never the flow's steps. When
    passing would take other steps, stop and tell the user. Keep every wait
-   that ends an action in its target state, as Page object design asks, even
-   when the test passes without it. An action that loads data ends when the
-   data is in, not when a control shows its new state: a sort ends when its
-   results arrive, not when the button reads "Sorted by date". The replay
-   keeps the recorded order of answers, so a race between two actions'
-   requests shows only live. Prove each other wait: take it out and run three times at recorded
-   speed, then three times with `REPLAY_SPEED=1000`. A wait that matters
-   fails or flakes without it at either speed: put it back. Remove one that
-   passes both. Then run it once with `--trace on`, open that run's trace
-   with `npx playwright trace open <trace.zip>`, and list its calls with
+   that ends an action in its target state, as
+   [Page object design](../references/page-object-design.md#finish-in-the-target-state)
+   asks, even when the test passes without it. Prove each other wait: take it
+   out and run three times at recorded speed, then three times with answers
+   near-instant: `REPLAY_SPEED=1000` has `replay.ts` answer a thousand times
+   faster than recorded. A wait that matters fails or flakes without it at
+   either speed: put it back. Remove one that passes both. Then run it once
+   with `--trace on`, open that run's trace with
+   `npx playwright trace open <trace.zip>`, and list its calls with
    `npx playwright trace requests`: every request other than GET or HEAD
    must show `fulfilled` or `aborted` in the route column. One that shows
    `continued`, or nothing, reached the live site: stop and tell the user.
    Done when the test passes three runs in a row with every wait proven and
    the trace shows no such request.
-7. **Rehearse live** with fresh real data the user gives you for one run,
+6. **Rehearse live** with fresh real data the user gives you for one run,
    written to `.ayme/params/<flow>.<date>.json`. Run the entry script headed,
    with the user watching. The user answers each confirm: yes lets the same
    run make the real submission, no stops it. With the terminal prompt, the
@@ -85,11 +67,10 @@ ignores it: `git check-ignore -q .ayme/x` must succeed; add `.ayme/` to
    the terminal that started it. You never approve an irreversible step: a
    live run the user does not watch uses `--no-submit`.
    When a run fails, read its trace in `.ayme/runs/` with the project's own
-   Playwright, `npx playwright trace open <trace.zip>`, then `trace actions`
-   and `trace snapshot`: the recorder's `trace` command bundles an older
-   Playwright and refuses newer traces. Fix the code, run the replay test
-   again until it passes three times, and rehearse with new data.
-8. **Hand over**: the command for a real run, where the files are, and what
+   Playwright: `npx playwright trace open <trace.zip>`, then `trace actions`
+   and `trace snapshot`. Fix the code, run the replay test again until it
+   passes three times, and rehearse with new data.
+7. **Hand over**: the command for a real run, where the files are, and what
    the replay test does not cover, such as steps the recording does not
    reach or calls it aborted on every run.
 
@@ -98,9 +79,23 @@ hand-over.
 
 ## Write the code
 
-In a project with no Playwright set up yet, install `@playwright/test`,
-`tsx`, `typescript` and `@types/node`, and set `"type": "module"` in
-`package.json` and `"types": ["node"]` in `tsconfig.json`.
+A reference layout, for a flow named `contract`. Follow the project's own
+layout where it has one:
+
+```text
+pages/                             page objects
+contract.ts                        runContract(page, params, { confirm })
+confirm.ts                         the agreed confirm
+run-contract.ts                    the entry script
+tests/contract.replay.spec.ts      the replay test
+tests/replay.ts                    copy of assets/replay.ts, with match() for the site
+.ayme/                             real data
+  recordings/rec_…/                the recording, written by the recorder
+  params/contract.recorded.json    what the recording entered and showed
+  params/contract.<date>.json      the data of one live run
+  auth.json                        the saved login
+  runs/<time>/trace.zip            the trace of each live run
+```
 
 Write plain Playwright page objects by
 [Page object design](../references/page-object-design.md) and
@@ -168,13 +163,10 @@ async function main() {
 void main();
 ```
 
-On a site with a login, the user saves a login state once with
-`npx playwright codegen --save-storage=.ayme/auth.json <url>`, logging in in
-the window it opens; the entry script and the replay test load it. You never
-handle the password. A login can expire within minutes: when the replay test
-or a live run suddenly meets the login form, ask the user to save a fresh one
-right before each such run. Without a login, or when each visit opens a
-fresh session by itself, drop `storageState`.
+On a site with a login, one way to get one: the user saves a login state
+with `npx playwright codegen --save-storage=.ayme/auth.json <url>`, logging
+in in the window it opens; the entry script and the replay test load it. You
+never handle the password.
 
 ### Confirm
 
@@ -234,9 +226,7 @@ Copy [`assets/replay.ts`](../assets/replay.ts) next to the replay test. Its
 header says what loads live and what the recording answers. Write the
 recorded parameter values, and the summary the recording's page showed before
 each irreversible step, read from that step's trace snapshot, to
-`.ayme/params/<flow>.recorded.json`. Read a typed or picked value with `eval`
-from the input's `value` property: its `value` attribute can be stale. Have `summary()` normalise whitespace:
-pages often use non-breaking spaces, as in `$ 210.00`. The test
+`.ayme/params/<flow>.recorded.json` as `{ params, summaries }`. The test
 calls the same flow, never a copy of its steps, with a `confirm` that always
 approves and keeps each summary, so the test checks what a person would:
 
@@ -268,24 +258,11 @@ Write `match()` in the copy for the site. Each `replay: aborted` line in the
 output is a request it paired with no recorded call, followed by the closest
 recorded call with the same method and path and the fields where the two
 differ; read a recorded call in full with `trace request <n>`. When they
-differ only in a part
-that changes between runs, such as a timestamp, counter, token, a build
-stamp in the URL (`?r=1795017612`), a host that differs per visit or a
-JSON-RPC `id`, leave that
-part out of `match()`. When a body carries much page state, such as ASP.NET's
-`__VIEWSTATE` and callback state, compare only the fields that identify the
-call. When they differ in data, such as another record id,
-the flow reads data the recording lacks: check the parameters. When the data
-an earlier response filled in differs, such as an address from a postcode
-lookup, that response landed at another time than in the recording: wait for
-it in the page object; do not loosen `match()`. When an action sets off
-several dependent calls, wait for each value they settle, and read the
-summary after the last; the first aborted call after a step points at the
-missing wait. Telemetry calls are aborted
-on every run; list them for the user once.
-
-When the page waits forever with no `replay: aborted` line, its calls were
-answered but it ignored the answers: the site pairs each answer with
-something its request sent, such as Salesforce Aura's action ids. Write
-`answer()` in the copy to put the live request's values into the recorded
-answer.
+differ only in a part that changes between runs, such as a timestamp, counter
+or token, leave that part out of `match()`. When they differ in data, such as
+another record id, the flow reads data the recording lacks: check the
+parameters. When they differ in data an earlier response filled in, that
+response landed at another moment than in the recording: wait for it in the
+page object; do not loosen `match()`. The first aborted call after a step
+points at the missing wait. Telemetry calls are aborted on every run; list
+them for the user once.

@@ -10,19 +10,10 @@ writes what it saw to a Recording Package: the page structure at each visit,
 what changed and every interaction. From the package you write page objects and
 a Playwright test that replays the flow.
 
-1. **Pick** the playbook from the user's request, and ask when it is unclear.
-   Pick before recording: production automation needs a cold recording.
-   - [Mirroring test](playbooks/mirroring-test.md): a test that replays the
-     flow against the user's app.
-   - [Production automation](playbooks/production-automation.md): a
-     parameterised automation of a flow on a third-party portal, such as
-     data entry that ends in a real submission.
-2. **Record.** Run `npx @ayme-dev/cli@latest codegen <url>`, with the URL where
+1. **Record.** Run `npx @ayme-dev/cli@latest codegen <url>`, with the URL where
    the user wants to start, somewhere it can keep running. A recorder window
    opens on that page; the user performs the flow and presses Finish. The
-   command then prints `Recording package: <path>`. For production
-   automation, first tell the user what its
-   [Record step](playbooks/production-automation.md#steps) asks of them.
+   command then prints `Recording package: <path>`.
 
    `@latest` runs the newest release. When `@ayme-dev/cli` is in the project's
    `package.json`, the project pins its version: run `npx ayme-recorder` in
@@ -33,12 +24,17 @@ a Playwright test that replays the flow.
    `npx ayme-recorder` runs a different version, or looks on npm for a package
    of that name, which is not this CLI.
 
-3. **Read** the package, as [Read the package](#read-the-package) describes.
+2. **Read** the package, as [Read the package](#read-the-package) describes.
    Leave every discarded entry out of the page objects and the test. A package
    with no kept entry has no flow to implement: tell the user whether it
    captured nothing or every entry is a stub, and stop.
-4. **Follow** the playbook you picked, from its first step not yet done to
-   its end.
+3. **Follow** the playbook the user's request calls for, and ask when it is
+   unclear:
+   - [Mirroring test](playbooks/mirroring-test.md): a test that replays the
+     flow against the user's app.
+   - [Production automation](playbooks/production-automation.md): a
+     parameterised automation that does the flow with new data, such as data
+     entry that ends in a real submission.
 
 A package with no kept entry is done when you have told the user and stopped.
 
@@ -111,9 +107,6 @@ late result of an earlier step, such as data that finished loading. It can
 also come before the interaction that caused it. A change that no
 recorded action explains can also come from a hover. It can come from
 something the page does on its own in between, too, such as an async update.
-When it sets a value no interaction entered, such as an option picked in a
-list, the recorder may have missed that click: take the value from the
-change, and from the request it sent.
 
 ## Discarded entries
 
@@ -165,10 +158,7 @@ the outcome.
 Target selectors, and `/locator:` lines in older packages, are candidates.
 Check each by [Locator strategy](references/page-object-design.md#locator-strategy)
 and keep one that meets it. Look in the trace for an element that has no
-candidate, or whose candidate does not meet the strategy. When the candidates
-use a test-id attribute other than `data-testid`, such as `data-test`, set
-`testIdAttribute` under `use` in the Playwright config; a script run outside
-the test runner calls `selectors.setTestIdAttribute()` instead.
+candidate, or whose candidate does not meet the strategy.
 
 ## Use the trace
 
@@ -179,8 +169,7 @@ headers and bodies. `trace snapshot` opens the snapshots of recorded
 interactions; `trace requests` lists the requests with their method, status
 and duration, but not when each started; `trace request <n>`, with `<n>` from
 that list, shows one request in full: its headers, and the paths of its body
-files under `.playwright-cli/trace/resources/` to read. `trace close` deletes
-those files: copy a body you still need first.
+files to read.
 
 Read the trace when a tree does not settle what a step did, or to find a
 locator for an element. Each element carries its package ref as
@@ -210,20 +199,8 @@ Each `trace snapshot` call takes several seconds. List every ref you need from
 one snapshot and read them in a single call, as above. `cloneNode(false)`
 returns an element's own tag and attributes without its content; read
 `outerHTML` directly when you need what is inside. A ref absent from the
-snapshot comes back as `null`. On a site built with shadow DOM, such as
-Salesforce Lightning, `document.querySelector` does not look inside shadow
-roots and returns `null` for most refs: look through them too, with
-`find(document, selector)` in place of `document.querySelector(selector)`:
-
-```js
-const find = (root, selector) =>
-  root.querySelector(selector) ??
-  [...root.querySelectorAll("*")].reduce(
-    (hit, element) =>
-      hit ?? (element.shadowRoot && find(element.shadowRoot, selector)),
-    null
-  );
-```
+snapshot comes back as `null`, and so does one inside a shadow root, where
+`document.querySelector` does not look.
 
 A `targetRef` can name a node inside the control the user acted on, such as
 the `<span>` inside a link. Add its parent's ref from the tree to the same
@@ -231,10 +208,7 @@ call.
 
 A snapshot holds the refs of its own visit, written as the package
 writes them, such as `[__playwright_aria_ref__="f1e45"]`. A click that leaves
-the page has no `after` snapshot: its result is the next visit's baseline.
-When a click changes the view without leaving the page, the elements it
-replaced are gone from its `after` snapshot: read a ref from the snapshot of
-an interaction that targets it, or of one before the change. An
+the page has no `after` snapshot: its result is the next visit's baseline. An
 `s_*` ref is the recorder's own and is not in the trace: reach that element
 from its nearest ancestor with an `e` ref, such as
 `[__playwright_aria_ref__="e58"] img`.

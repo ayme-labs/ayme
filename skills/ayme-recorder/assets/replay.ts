@@ -1,6 +1,5 @@
 /**
- * Replays a recording's network calls in a replay test. Copied from the
- * ayme-recorder skill's production automation playbook.
+ * Replays a recording's network calls in a replay test.
  *
  * Pages, scripts, styles, images and fonts requested with GET or HEAD load
  * live. Every other request is answered from the recording when `match()`
@@ -45,16 +44,6 @@ function match(live: Call, recorded: Call): boolean {
   );
 }
 
-/**
- * The body to answer a live request with. Write it for the site when the
- * answer must carry something from the live request, such as the request ids
- * Salesforce Aura pairs answers with: the page ignores an answer whose ids it
- * did not send, and waits forever.
- */
-function answer(live: Call, recorded: Call, body: Buffer): Buffer {
-  return body;
-}
-
 const LIVE_TYPES = new Set([
   "document",
   "script",
@@ -92,13 +81,12 @@ export async function installReplay(context: BrowserContext, traceZip: string) {
     await route.fulfill({
       status: redirect ? 303 : call.status,
       headers: call.headers,
-      body: answer(live, call, call.responseBody),
+      body: call.responseBody,
     });
   });
 }
 
-// Prints only the fields that differ: whole bodies, such as ASP.NET view state,
-// would flood the output.
+// Prints only the fields that differ: whole bodies would flood the output.
 function logAborted(live: Call, recorded: Call[]) {
   console.log(`replay: aborted ${live.method} ${live.url}`);
   const path = new URL(live.url).pathname;
