@@ -231,9 +231,11 @@ folder, so run every command of one lookup from there.
 
 The trace also holds the network log: every request, with its timing,
 headers and bodies. `trace requests` lists the requests with their method,
-status and duration, but not when each started; `trace request <n>`, with
-`<n>` from that list, shows one request in full: its headers, and the paths
-of its body files to read.
+status and duration, and from Playwright 1.63 when each started, counted
+from the start of the trace; `trace request <n>`, with `<n>` from that list,
+shows one request in full: its headers, and the paths of its body files to
+read. The list names a request by the last part of its path; `trace request`
+shows its full URL.
 
 `traceActionPoints` says where each interaction is in the trace. Its
 `beforeSnapshotId` and `afterSnapshotId` are position numbers, the numbers the
