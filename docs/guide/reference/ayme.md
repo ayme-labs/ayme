@@ -112,7 +112,7 @@ An app with a typed router calls the router's matcher from the predicate instead
 - Every tool of the class takes that element's Structural Ref as `ref`.
 - Availability is measured at that element.
 
-Each action is published once per class, however many instances the page shows. Take a component base class, `AppComponent`, whose `root` is the element a component is built on. `ProjectRow` extends it, and `ProjectsPage` holds one `ProjectRow` per list item. A locator is a getter: Playwright 1.65 runs a class field initializer before the constructor assigns its parameter properties (`useDefineForClassFields`, on for an ES2022 or later target and when no target is set), so a field that reads `this.root` or `this.page` throws.
+Each action is published once per class, however many instances the page shows. Take a component base class, `AppComponent`, whose `root` is the element a component is built on. `ProjectRow` extends it, and `ProjectsPage` holds one `ProjectRow` per list item. A locator is a getter: Playwright 1.65 runs a class field initializer before the constructor body runs (`useDefineForClassFields`, on for an ES2022 or later target and when no target is set), so a field that reads `this.root` or `this.page` throws.
 
 ```ts
 const rootOf = (self: AppComponent) => self.root;

@@ -49,7 +49,7 @@ building it from `this.page` or `this.root`.
 
 Playwright 1.65 follows TypeScript's `useDefineForClassFields`, which is on
 for an ES2022 or later target and when no target is set. A class field
-initializer then runs before the constructor assigns its parameter properties.
+initializer then runs before the constructor body.
 This throws, because `page` is still unset when `submit` is created:
 
 ```ts
