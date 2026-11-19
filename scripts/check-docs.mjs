@@ -392,6 +392,8 @@ function constructorParameters(body, i) {
   // `<` counts only in a type. In a default, `1 < 2` is a comparison, and the
   // comma after it still separates parameters.
   let inType = false;
+  // A colon after the default (`ok ? 1 : 2`) is a ternary, not a type.
+  let inDefault = false;
   const atParameter = () =>
     paren === 1 && brace === 0 && bracket === 0 && angle === 0;
   while (i < body.length) {
@@ -412,15 +414,17 @@ function constructorParameters(body, i) {
     else if (char === "}") brace--;
     else if (char === "[") bracket++;
     else if (char === "]") bracket--;
-    else if (char === ":" && atParameter()) inType = true;
-    else if (char === "=" && body[i + 1] !== ">" && atParameter())
+    else if (char === ":" && !inDefault && atParameter()) inType = true;
+    else if (char === "=" && body[i + 1] !== ">" && atParameter()) {
       inType = false;
-    else if (char === "<" && inType) angle++;
+      inDefault = true;
+    } else if (char === "<" && inType) angle++;
     else if (char === ">" && inType) angle = Math.max(0, angle - 1);
     else if (char === "," && atParameter()) {
       list.push({ text: body.slice(start, i), index: start });
       start = i + 1;
       inType = false;
+      inDefault = false;
     }
     i++;
   }
@@ -508,7 +512,8 @@ function skipAngles(text, i) {
       continue;
     }
     if (text[i] === "<") depth++;
-    else if (text[i] === ">") {
+    // The `>` of an arrow (`() => void`) does not close the generic.
+    else if (text[i] === ">" && text[i - 1] !== "=") {
       depth--;
       i++;
       if (depth === 0) return i;
@@ -549,7 +554,7 @@ function skipTrivia(text, i) {
   if (quote === "'" || quote === '"') return skipQuoted(text, i, quote);
   if (quote === "`") return skipTemplate(text, i);
   // A `/` after an operator starts a regular expression (`/[)]/`). After a
-  // value it is division (`a / b`).
+  // value, including `)`, `]` and `}`, it is division (`a / b`).
   if (
     quote === "/" &&
     text[i + 1] !== "/" &&
@@ -588,7 +593,7 @@ function regexLikely(text, i) {
   if (j < 0) return true;
   const char = text[j];
   if ((char === "+" || char === "-") && text[j - 1] === char) return false;
-  if (!/[\w$)\]]/.test(char)) return true;
+  if (!/[\w$)\]}]/.test(char)) return true;
   const word = /[A-Za-z_$][\w$]*$/.exec(text.slice(0, j + 1));
   return word !== null && REGEX_PREFIX.has(word[0]);
 }

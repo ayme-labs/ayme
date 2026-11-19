@@ -470,7 +470,7 @@ test("separates parameter properties from defaults and parameter names", () => {
   assert.deepEqual(
     checkDocs(
       fixture({
-        "docs/guide/start/page.md": `# A page\n\nWhat this page is for, in one sentence.\n\n\`\`\`ts\nclass App {\n  constructor(enabled = 1 < 2, private page: Page) {}\n  constructor(pattern = /[)]/, private root: Locator) {}\n  constructor(n = a / b, protected name: string) {}\n  constructor(page: Foo<Bar<Baz, Qux>>, override id: string) {}\n  constructor(cb: () => Foo<Bar, Baz>, readonly value: string) {}\n  constructor(readonly: boolean, override: string, readonly = true) {}\n}\n\`\`\`\n`,
+        "docs/guide/start/page.md": `# A page\n\nWhat this page is for, in one sentence.\n\n\`\`\`ts\nclass App {\n  constructor(enabled = 1 < 2, private page: Page) {}\n  constructor(pattern = /[)]/, private root: Locator) {}\n  constructor(n = a / b, protected name: string) {}\n  constructor(page: Foo<Bar<Baz, Qux>>, override id: string) {}\n  constructor(cb: () => Foo<Bar, Baz>, readonly value: string) {}\n  constructor(n = ok ? 1 : x < y, private page: Page) {}\n  constructor(n = {} / 2, private page: Page) {}\n  constructor<T extends () => void>(readonly value: T) {}\n  constructor(readonly: boolean, override: string, readonly = true) {}\n}\n\`\`\`\n`,
       })
     ),
     [
@@ -479,6 +479,9 @@ test("separates parameter properties from defaults and parameter names", () => {
       `docs/guide/start/page.md:9: ${PARAMETER_PROPERTY}`,
       `docs/guide/start/page.md:10: ${PARAMETER_PROPERTY}`,
       `docs/guide/start/page.md:11: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:12: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:13: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:14: ${PARAMETER_PROPERTY}`,
     ]
   );
 });
