@@ -84,4 +84,49 @@ test.describe("the element a step acted on", () => {
       { type: "click", button: "middle", targetRef: code },
     ]);
   });
+
+  test("a middle click on a checkbox is saved as a middle click on it, not as the check Playwright reports, and Stop does not wait for it; a left click on it is saved as its check", async ({
+    startRecording,
+  }) => {
+    const recording = await startRecording("/nested.html");
+    const { recorder, page, person } = recording;
+    const nested = new NestedPage(page);
+    let phase = "";
+    recorder.subscribe(({ state }) => (phase = state.phase));
+    expect(await recorder.send({ type: "record" })).toBe("applied");
+
+    const at = await person.middleOf(nested.doneBox);
+    const mouse = await page.context().newCDPSession(page);
+    for (const type of ["mousePressed", "mouseReleased"] as const)
+      await mouse.send("Input.dispatchMouseEvent", {
+        type,
+        ...at,
+        button: "middle",
+        buttons: type === "mousePressed" ? 4 : 0,
+        clickCount: 1,
+      });
+    await expect(nested.said).toHaveText("Done in the background");
+    await person.pause();
+    // Stop right after: the wrap-up has the middle click's report, and so
+    // ends at once, not at its 5-second limit.
+    expect(await recorder.send({ type: "stop" })).toBe("applied");
+    await expect.poll(() => phase, { timeout: 2_000 }).toBe("paused");
+    await expect(nested.doneBox).not.toBeChecked();
+
+    expect(await recorder.send({ type: "continue" })).toBe("applied");
+    await person.click(nested.doneBox);
+    await expect(nested.said).toHaveText("Done checked");
+    await person.pause();
+
+    expect(await recorder.send({ type: "finish" })).toBe("applied");
+    const outcome = await recorder.done;
+    if (outcome.kind !== "saved") throw new Error("Nothing was saved.");
+    const text = await readFile(join(outcome.folder, "package.yaml"), "utf8");
+    const done = refIn(text, /checkbox "Done"/);
+    expect(done).toBeDefined();
+    expect(targetsOf(text)).toEqual([
+      { type: "click", button: "middle", targetRef: done },
+      { type: "check", button: undefined, targetRef: done },
+    ]);
+  });
 });

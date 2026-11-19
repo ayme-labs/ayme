@@ -30,6 +30,9 @@
     <div>
       <button id="code"><span>&lt;&gt;</span> <span>Code</span></button>
     </div>
+    <!-- A middle click on a checkbox checks nothing, though Playwright
+         reports it as a check or an uncheck. -->
+    <label><input type="checkbox" id="done" /> Done</label>
     <p id="said">Nothing yet</p>
     <script>
       const said = document.getElementById("said");
@@ -51,6 +54,13 @@
       });
       code.addEventListener("auxclick", (event) => {
         if (event.button === 1) said.textContent = "Code in the background";
+      });
+      const done = document.getElementById("done");
+      done.addEventListener("change", () =>
+        tell(done.checked ? "Done checked" : "Done unchecked")()
+      );
+      done.addEventListener("auxclick", (event) => {
+        if (event.button === 1) said.textContent = "Done in the background";
       });
     </script>
   </body>

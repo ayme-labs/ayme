@@ -6307,4 +6307,132 @@ describe("the lifecycle, for a middle click", () => {
       { button: "left", before: snapshot1, after: snapshot2 },
     ]);
   });
+
+  // Playwright reports a middle click on a checkbox or a radio as the
+  // check or uncheck it did not make, with no button.
+  const toggled = (type: "check" | "uncheck"): Happening => ({
+    kind: "interactionReported",
+    page: page1,
+    report: {
+      type,
+      selector: "internal:role=checkbox",
+      target: null,
+      values: {},
+    },
+  });
+  const steps = (todo: readonly (readonly ToDo[])[]) =>
+    todo.flat().flatMap((item) =>
+      item.kind === "timeline" && item.add.kind === "interaction"
+        ? [
+            {
+              type: item.add.interaction.report.type,
+              button: item.add.interaction.report.values["button"],
+            },
+          ]
+        : []
+    );
+
+  it("records a middle click on a checkbox as a middle click, from the uncheck Playwright reports for it, and Stop waits for nothing more", () => {
+    const { todo, state } = run([
+      opened,
+      ...started,
+      middleHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      toggled("uncheck"),
+      settled(input1),
+      taken(snapshot2),
+      stop,
+      gateOff,
+      taken(snapshot3),
+      reportingOff,
+    ]);
+
+    expect(steps(todo)).toEqual([{ type: "click", button: "middle" }]);
+    expect(state).toEqual({ phase: "paused" });
+  });
+
+  it("holds up no later click behind a middle click on a checkbox", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      middleHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      toggled("check"),
+      clickHeld(input2),
+      taken(snapshot2),
+      passedOn(input2),
+      report("left"),
+      settled(input2),
+      taken(snapshot3),
+    ]);
+
+    expect(steps(todo)).toEqual([
+      { type: "click", button: "middle" },
+      { type: "click", button: "left" },
+    ]);
+  });
+
+  it("never gives the check a middle click on a checkbox is reported by to a later click", () => {
+    // The page is read quickly after the middle click; Playwright's report
+    // of it comes once the next click is on its way.
+    const { todo } = run([
+      opened,
+      ...started,
+      middleHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      clickHeld(input2),
+      taken(snapshot2),
+      passedOn(input2),
+      toggled("check"),
+      report("left"),
+      settled(input2),
+      taken(snapshot3),
+    ]);
+
+    expect(steps(todo)).toEqual([
+      { type: "click", button: "middle" },
+      { type: "click", button: "left" },
+    ]);
+  });
+
+  it("never gives a check to a right click", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      {
+        kind: "inputHeld",
+        input: input1,
+        page: page1,
+        held: { kind: "click", count: 1, button: "right" },
+      },
+      taken(snapshot1),
+      passedOn(input1),
+      toggled("check"),
+      report("right"),
+      settled(input1),
+      taken(snapshot2),
+      middleHeld(input2),
+    ]);
+
+    expect(steps(todo)).toEqual([{ type: "click", button: "right" }]);
+  });
+
+  it("still records a left click on a checkbox as the check Playwright reports", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      toggled("check"),
+      settled(input1),
+      taken(snapshot2),
+      middleHeld(input2),
+    ]);
+
+    expect(steps(todo)).toEqual([{ type: "check", button: undefined }]);
+  });
 });

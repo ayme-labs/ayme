@@ -565,6 +565,49 @@ it("holds a middle click by its auxclick until it is sent on: the page then gets
   });
 });
 
+it("holds a middle click on a checkbox and on a radio, and sends it on without checking either: Playwright reports it as a check or an uncheck that names no button", async () => {
+  const browser = await onStockPlaywright(`
+    <label><input type="checkbox" id="box"> Box</label>
+    <label><input type="radio" id="dot" name="dot"> Dot</label>
+    <script>
+      window.events = [];
+      for (const type of ["auxclick", "click"])
+        document.addEventListener(type, (event) =>
+          window.events.push(type + " " + event.button + " " + event.target.id));
+    </script>`);
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+
+  const sentOn = new Set<unknown>();
+  for (const [id, name] of [
+    ["box", "checkbox"],
+    ["dot", "radio"],
+  ] as const) {
+    await browser.click(browser.page.locator(`#${id}`), "middle");
+    const { input, held } = await browser.toldOf(
+      "inputHeld",
+      (told) => !sentOn.has(told.input)
+    );
+    expect(held).toEqual({ kind: "click", count: 1, button: "middle" });
+    sentOn.add(input);
+    await browser.ask({ kind: "passOn", input });
+    await browser.toldOf("inputPassedOn", (told) => told.input === input);
+
+    const { report } = await browser.toldOf(
+      "interactionReported",
+      (told) => told.report.selector?.includes(name) === true
+    );
+    expect(report.type).toBe("uncheck");
+    expect(report.values["button"]).toBeUndefined();
+    expect(await browser.page.locator(`#${id}`).isChecked()).toBe(false);
+  }
+  expect(await browser.page.evaluate("window.events")).toEqual([
+    "auxclick 1 box",
+    "auxclick 1 dot",
+  ]);
+});
+
 // Attaching.
 
 it.runIf(attaching)(

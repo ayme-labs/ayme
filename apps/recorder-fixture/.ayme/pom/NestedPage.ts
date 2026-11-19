@@ -2,7 +2,8 @@ import { ayme } from "@ayme-dev/ayme";
 
 import { FixturePage } from "./FixturePage";
 
-/** Links and a button whose text is in elements of their own. */
+/** Links and a button whose text is in elements of their own, and a
+ * checkbox. */
 export class NestedPage extends FixturePage {
   readonly path = "/nested.html";
 
@@ -26,6 +27,11 @@ export class NestedPage extends FixturePage {
   /** The element its label is in, which the page structure does not list. */
   @ayme.child
   readonly codeText = this.codeButton.getByText("Code");
+  @ayme.child({
+    description:
+      'Says "Done checked" or "Done unchecked", and "Done in the background" on a middle click, which leaves it as it is.',
+  })
+  readonly doneBox = this.page.getByRole("checkbox", { name: "Done" });
   @ayme.child({ description: "What the last input did." })
   readonly said = this.page.locator("#said");
 }

@@ -1586,10 +1586,29 @@ function interactionReported(
   if (REPORTED_ONLY.has(report.type)) knownFromReport(draft, page, report);
 }
 
-/** The mouse button of a held click, as Playwright's report names it: a
- * check's and an uncheck's report names none, as they are the left one's. */
+/** The mouse button of a held click, as Playwright's report names it. */
 const buttonOf = (input: Input) =>
   input.held.kind === "click" ? (input.held.button ?? "left") : undefined;
+
+/** Whether a report can be a held click's. A click's report names its
+ * button. A check's and an uncheck's names none: Playwright reports a left
+ * click and a middle click on a checkbox or a radio that way. */
+const reportsClickOf = (input: Input, reported: InteractionReport) =>
+  reported.type === "click"
+    ? buttonOf(input) === (reported.values["button"] ?? "left")
+    : buttonOf(input) !== "right";
+
+/** The report a held click is saved with. A middle click toggles no
+ * checkbox: what Playwright reports of it as a check or an uncheck is saved
+ * as the middle click it was. */
+const asHeld = (input: Input, reported: InteractionReport) =>
+  buttonOf(input) === "middle" && reported.type !== "click"
+    ? {
+        ...reported,
+        type: "click",
+        values: { ...reported.values, button: "middle", clickCount: 1 },
+      }
+    : reported;
 
 /** The report of an input of a kind the gate holds. */
 function reportOfHeld(
@@ -1602,15 +1621,14 @@ function reportOfHeld(
   // Reports come in the order of the inputs: this one belongs to the oldest
   // input of its page and its kind that has none, if that input is on its
   // way. A click's is a click of its button: a middle click's report is
-  // never a left click's.
+  // never a left click's, and a check is no right click's.
   const input = draft.inputs.find(
     (held) =>
       held.page === page &&
       held.held.kind === kind &&
       held.report === null &&
       held.joins === null &&
-      (kind !== "click" ||
-        buttonOf(held) === (reported.values["button"] ?? "left"))
+      (kind !== "click" || reportsClickOf(held, reported))
   );
   if (!input) {
     // A click or a key made while the recorder wraps up, once the pages no
@@ -1632,7 +1650,7 @@ function reportOfHeld(
   const press = input.held.kind === "press" ? input.held : null;
   const report = press?.nothingFocused
     ? { ...reported, target: null }
-    : reported;
+    : asHeld(input, reported);
   change(draft, input.id, { report });
   coverFollowingClicks(draft, input, report);
   giveUpEarlier(
