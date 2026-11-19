@@ -90,6 +90,8 @@ async function clickAddItem(
   browser.report({
     type: "click",
     selector: 'internal:role=button[name="Add item"i]',
+    // As the stock adapter puts on every report: Playwright's own words.
+    locator: "getByRole('button', { name: 'Add item' })",
     target: { ref: "e2", tree: idle },
     values: { button: "left", modifiers: 0, clickCount: 1 },
   });
@@ -117,7 +119,7 @@ test.describe("the recorder window", () => {
     await expect(window.controls.status).toHaveText("");
   });
 
-  test("shows each entry live, its target by role and name, with only the roots of what changed", async ({
+  test("shows each entry live, its target by role and name and its selector in Playwright's words on hover, with only the roots of what changed", async ({
     recording: { browser, window },
   }) => {
     browser.showPage(idle);
@@ -128,9 +130,10 @@ test.describe("the recorder window", () => {
     const [entry] = await entriesOf(await firstVisit(window), 1);
     await expect(entry!.title).toHaveText("Click");
     await expect(entry!.target).toHaveText("button “Add item”");
+    // Its selector on hover, in Playwright's own words.
     await expect(entry!.target).toHaveAttribute(
       "title",
-      'internal:role=button[name="Add item"i]'
+      "getByRole('button', { name: 'Add item' })"
     );
     // The list appeared: its items are inside it, and not rows of their own.
     await expect

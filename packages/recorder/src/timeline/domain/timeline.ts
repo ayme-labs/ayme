@@ -909,6 +909,9 @@ export class Timeline {
           target ?? null
         ),
         ...targetWords(named, interaction.report),
+        ...(interaction.report.locator
+          ? { targetLocator: interaction.report.locator }
+          : {}),
         changes: told && told.changes,
         ...(discarded ? { discarded } : {}),
       },

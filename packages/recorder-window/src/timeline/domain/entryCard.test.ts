@@ -102,6 +102,22 @@ describe("an entry's card", () => {
     });
   });
 
+  it("shows Playwright's own words for the target's selector on hover, never the raw selector, when the engine has them", () => {
+    const worded = {
+      ...click,
+      interaction: {
+        ...click.interaction,
+        targetSelector: 'internal:role=button[name="Add to cart"i]',
+      },
+      targetLocator: "getByRole('button', { name: 'Add to cart' })",
+    } as TimelineEntry;
+    expect(entryCardOf(worded, recording).target).toEqual({
+      text: "button “Add to cart”",
+      hint: "getByRole('button', { name: 'Add to cart' })",
+      highlight: { type: "highlight", entry: entryId("interaction_1") },
+    });
+  });
+
   it("shows the selector of a target the page's structure does not name", () => {
     const unnamed = { ...click } as Extract<
       TimelineEntry,

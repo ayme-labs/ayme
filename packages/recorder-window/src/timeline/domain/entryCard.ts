@@ -49,16 +49,18 @@ const ICONS: Partial<Record<string, EntryIcon>> = {
 };
 
 /** The target's chip: its element in the page structure's words, with its
- * selector on hover; the selector when the structure does not name it. */
+ * selector on hover, in Playwright's own words when the engine has them;
+ * the selector when the structure does not name it. */
 function targetOf(
   entry: Extract<TimelineEntry, { kind: "interaction" }>,
   highlight: RecorderCommand | null
 ): Chip | null {
   const { targetSelector: selector, targetRef } = entry.interaction;
+  const hint = entry.targetLocator ?? selector;
   if (entry.targetElement)
     return {
       text: chipText(entry.targetElement),
-      ...(selector ? { hint: selector } : {}),
+      ...(hint ? { hint } : {}),
       highlight,
     };
   if (selector) return { text: selector, highlight };

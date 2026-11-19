@@ -100,6 +100,12 @@ export type TimelineEntry = (
        * them, or Playwright's own locator, as `getByText('Saved')`. Absent
        * for a target with neither. */
       readonly targetElement?: string;
+      /** Playwright's own words for the target's selector, as its locator
+       * generator writes them, such as
+       * `getByRole('button', { name: 'Save' })`, for whoever shows the
+       * selector: the Recording Package keeps the selector only. Absent
+       * when Playwright gave none. */
+      readonly targetLocator?: string;
       /** What it changed; null when it changed nothing, or when the page was
        * gone before that could be seen. */
       readonly changes: readonly ChangeRow[] | null;

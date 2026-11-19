@@ -1727,6 +1727,22 @@ describe("the timeline, for an assertion", () => {
     expect(await timeline.package(header)).not.toContain("getByRole");
   });
 
+  it("gives every entry Playwright's own words for its selector, for whoever shows it, and the package does not have them", async () => {
+    const timeline = new Timeline();
+    for (const addition of [
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, savedPage),
+      assertion(snapshotId("snapshot_1"), 10, "e3"),
+    ])
+      await timeline.add(addition);
+
+    expect(timeline.visits()[0]!.entries[0]).toMatchObject({
+      targetElement: 'paragraph "Saved"',
+      targetLocator: "getByRole('paragraph').filter({ hasText: 'Saved' })",
+    });
+    expect(await timeline.package(header)).not.toContain("getByRole");
+  });
+
   it("names an assertion with no ref whose selector is a role and a name as a label reads", async () => {
     const timeline = new Timeline();
     for (const addition of [
