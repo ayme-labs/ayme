@@ -41,7 +41,8 @@ each function named in a comment beside the operator that models it (search
   `wrapUp`, `goOnWrappingUp`, `giveUp`, `wrappedUp`, `endFromOutside`,
   `clearPaused`, `traceGone` and `saved`, through `proceed`, `startNext`,
   `inputHeld`, `inputPassedOn`, `pageSettled`, `snapshotTaken`,
-  `giveSnapshot`, `interactionReported`, `reportOfHeld` (with `buttonOf`), `knownFromReport`,
+  `giveSnapshot`, `interactionReported`, `reportOfHeld` (with `buttonOf`,
+  `reportsClickOf`, `asHeld`), `knownFromReport`,
   `carryOnReported`, `startReported`, `endReported`, `shareWithOpen`,
   `interactionRevised`, `writeDown`, `showOrWrite`, `behindUnshown`,
   `behindUnwritten`, `mayBeRevised`, `letThrough`, `withoutPage`, `asserted`,
@@ -66,12 +67,12 @@ each function named in a comment beside the operator that models it (search
   limit), `server/infrastructure/toolbarBridge.ts`,
   `server/infrastructure/windowChannelRouter.ts`.
 
-**Sync commit: `ec270dbf`** (`feat/recorder-rebuild`). To see what changed in
+**Sync commit: `8756bc15`** (`feat/recorder-rebuild`). To see what changed in
 covered code since, from any folder of the repository (the procedure below
 runs in the model's):
 
 ```sh
-git log --oneline ec270dbf..HEAD -- ':(top)packages/recorder/src'
+git log --oneline 8756bc15..HEAD -- ':(top)packages/recorder/src'
 ```
 
 A change touches the model when it adds, removes or reorders a step of the
