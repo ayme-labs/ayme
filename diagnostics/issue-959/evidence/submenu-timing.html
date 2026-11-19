@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        margin: 0;
+        color: var(--foreground);
+        font-family: var(--font-sans);
+      }
+      h3 {
+        font-size: 16px;
+        font-weight: 500;
+        margin: 0 0 16px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 112px minmax(0, 1fr) 52px;
+        align-items: center;
+        gap: 10px;
+        margin: 10px 0;
+        font-size: 12px;
+      }
+      .track {
+        height: 14px;
+        background: var(--muted);
+      }
+      .bar {
+        height: 100%;
+        background: var(--chart-1);
+      }
+      .click .bar {
+        background: var(--chart-2);
+      }
+      .value {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .axis {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--muted-foreground);
+        margin: 12px 62px 0 122px;
+      }
+      .note {
+        font-size: 12px;
+        color: var(--muted-foreground);
+        margin: 12px 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <figure
+      style="margin: 0"
+      aria-label="Median submenu action duration for five fresh runs per driver and opening mode, seven survey rows, Radix 2.1.16. All 30 selections passed."
+    >
+      <h3>Submenu action time · median milliseconds</h3>
+      <div class="row">
+        <span>Host · hover</span>
+        <div class="track"><div class="bar" style="width: 45.5%"></div></div>
+        <span class="value">273</span>
+      </div>
+      <div class="row click">
+        <span>Host · click</span>
+        <div class="track"><div class="bar" style="width: 13%"></div></div>
+        <span class="value">78</span>
+      </div>
+      <div class="row">
+        <span>Lite · hover</span>
+        <div class="track"><div class="bar" style="width: 45.33%"></div></div>
+        <span class="value">272</span>
+      </div>
+      <div class="row click">
+        <span>Lite · click</span>
+        <div class="track"><div class="bar" style="width: 24.83%"></div></div>
+        <span class="value">149</span>
+      </div>
+      <div class="row">
+        <span>Ayme · hover</span>
+        <div class="track"><div class="bar" style="width: 86.67%"></div></div>
+        <span class="value">520</span>
+      </div>
+      <div class="row click">
+        <span>Ayme · click</span>
+        <div class="track"><div class="bar" style="width: 65.5%"></div></div>
+        <span class="value">393</span>
+      </div>
+      <div class="axis" aria-hidden="true">
+        <span>0</span><span>200</span><span>400</span><span>600 ms</span>
+      </div>
+      <figcaption class="note">
+        Radix 2.1.16 · 7 rows · 5 runs per case · 30/30 selections completed
+      </figcaption>
+    </figure>
+  </body>
+</html>

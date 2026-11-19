@@ -1,0 +1,258 @@
+{
+  "collectedAt": "2026-10-28T09:01:19.197Z",
+  "head": "d75498f21726055407dfea69b26bfd8cf697bb94",
+  "remote": "a55e9d15fed89156c80765bc72e729c47ce4fbc4",
+  "comparison": {
+    "ahead": 2,
+    "behind": 0,
+    "commits": [
+      {
+        "sha": "f5ce4a057fa1ffdcdddf4f23b9b0cfec0a93ba15",
+        "subject": "feat: list each tool's Agent Description beside its author's (#1060)"
+      },
+      {
+        "sha": "a55e9d15fed89156c80765bc72e729c47ce4fbc4",
+        "subject": "fix(ayme): show and keep Page Object Root Marks in the Goal Loop's page (#1062)"
+      }
+    ],
+    "files": [
+      "GLOSSARY.md",
+      "apps/example-vue/README.md",
+      "apps/example-vue/tests/vue-webmcp.spec.ts",
+      "docs/guide/guides/in-app-assistant.md",
+      "docs/guide/guides/page-object-models.md",
+      "docs/guide/guides/page-state.md",
+      "docs/guide/reference/ayme.md",
+      "packages/ayme/AGENTS.md",
+      "packages/ayme/src/goal-loop/application/goalLoop.browser.test.ts",
+      "packages/ayme/src/goal-loop/application/handoverChanges.browser.test.ts",
+      "packages/ayme/src/goal-loop/application/stepDecision.arguments.test.ts",
+      "packages/ayme/src/goal-loop/application/stepDecision.ts",
+      "packages/ayme/src/goal-loop/application/toolOptions.ts",
+      "packages/ayme/src/goal-loop/domain/goalLoopQuestions.ts",
+      "packages/ayme/src/goal-loop/test-utils/stepDecision.testSupport.ts",
+      "packages/ayme/src/internal.ts",
+      "packages/ayme/src/page-objects/application/pomRegistry.ts",
+      "packages/ayme/src/page-objects/domain/actionTool.test.ts",
+      "packages/ayme/src/page-objects/domain/actionTool.ts",
+      "packages/ayme/src/page-objects/domain/decorators.ts",
+      "packages/ayme/src/page-objects/domain/index.ts",
+      "packages/ayme/src/page-objects/domain/pomTools.ts",
+      "packages/ayme/src/page-objects/infrastructure/collectionBehindLayer.browser.test.ts",
+      "packages/ayme/src/page-objects/infrastructure/collectionRef.browser.test.ts",
+      "packages/ayme/src/page-objects/infrastructure/pomAvailability.browser.test.ts",
+      "packages/ayme/src/page-objects/infrastructure/pomRoot.browser.test.ts",
+      "packages/ayme/src/page-objects/infrastructure/registeredPomDefinitions.test.ts",
+      "packages/ayme/src/page-objects/infrastructure/registryRoots.test.ts",
+      "packages/ayme/src/page-state/application/changesBefore.browser.test.ts",
+      "packages/ayme/src/page-state/application/pageStateSession.test.ts",
+      "packages/ayme/src/page-state/application/pageStateSession.ts",
+      "packages/ayme/src/page-state/domain/actionResult.ts",
+      "packages/ayme/src/page-state/domain/changeRecord.test.ts",
+      "packages/ayme/src/page-state/domain/changeRecord.ts",
+      "packages/ayme/src/page-state/domain/changeRecordPomRootMarks.browser.test.ts",
+      "packages/ayme/src/page-state/domain/index.ts",
+      "packages/ayme/src/page-state/domain/interactionHistory.ts",
+      "packages/ayme/src/page-state/domain/pomRootMarks.ts",
+      "packages/ayme/src/page-state/domain/pomRootPlacement.ts",
+      "packages/ayme/src/page-state/domain/structuralPageState.ts",
+      "packages/ayme/src/page-state/infrastructure/pageCapture.ts",
+      "packages/ayme/src/page-state/infrastructure/pageState.test.ts",
+      "packages/ayme/src/runtime/agentCalls.test.ts",
+      "packages/ayme/src/runtime/appProcess.test.ts",
+      "packages/ayme/src/runtime/publishedTools.ts",
+      "packages/ayme/src/runtime/runtime.test.ts",
+      "packages/ayme/src/runtime/runtime.ts",
+      "packages/ayme/src/shared/contracts.ts",
+      "packages/ayme/src/tools/application/customTools.browser.test.ts",
+      "packages/ayme/src/tools/application/elementTools.test.ts",
+      "packages/ayme/src/tools/application/peek.browser.test.ts",
+      "packages/ayme/src/tools/application/tools.browser.test.ts",
+      "packages/ayme/src/tools/infrastructure/generateLocator.browser.test.ts",
+      "packages/inspector/src/app/InspectorApp.browser.test.tsx",
+      "packages/inspector/src/app/InspectorHighlights.browser.test.tsx",
+      "packages/inspector/src/app/LiveStructure.browser.test.tsx",
+      "packages/inspector/src/app/MemberMapping.browser.test.tsx",
+      "packages/inspector/src/app/NodeTools.browser.test.tsx",
+      "packages/inspector/src/app/RunItems.browser.test.tsx",
+      "packages/inspector/src/app/RunLog.browser.test.tsx",
+      "packages/inspector/src/app/modelLiveActions.browser.test.tsx",
+      "packages/inspector/src/app/useInspectorRuntime.ts",
+      "packages/inspector/src/page-model/domain/pageModel.test.ts",
+      "packages/inspector/src/page-model/domain/pageModel.ts",
+      "packages/inspector/src/shared/index.ts",
+      "packages/inspector/src/shared/infrastructure/describedTools.test.ts",
+      "packages/inspector/src/shared/infrastructure/describedTools.ts",
+      "packages/inspector/src/shared/infrastructure/usePageLook.ts",
+      "packages/inspector/src/structure/domain/structure.test.ts",
+      "packages/inspector/src/structure/test-utils/projected.ts",
+      "packages/inspector/src/tools/domain/refTree.test.ts",
+      "packages/inspector/src/tools/domain/runnableTools.test.ts",
+      "packages/inspector/src/tools/domain/runnableTools.ts",
+      "packages/inspector/src/tools/domain/toolGroups.test.ts",
+      "packages/inspector/src/tools/domain/toolGroups.ts",
+      "packages/inspector/src/tools/infrastructure/liveTools.test.tsx",
+      "packages/inspector/src/tools/infrastructure/liveTools.ts",
+      "packages/inspector/src/tools/presentation/RefField.browser.test.tsx",
+      "packages/inspector/src/tools/presentation/toolsLens.browser.test.tsx",
+      "packages/inspector/src/tools/presentation/toolsLens.tsx",
+      "skills/ayme/references/page-tools.md",
+      "skills/ayme/references/runtime-integration.md"
+    ],
+    "executionRelatedPatches": [
+      {
+        "filename": "packages/ayme/src/page-objects/application/pomRegistry.ts",
+        "patch": "@@ -81,7 +81,7 @@ export type RegisteredPom = {\n };\n \n export type RegisteredPomRoot = {\n-  label: string;\n+  mark: string;\n   element: Element;\n };\n \n@@ -384,27 +384,27 @@ export function createPomRegistry(driver: PageDriver) {\n     return (await getRegisteredPomStructure()).roots;\n   }\n \n-  // Capture labels and exclusions from the same completed observation. A\n-  // present Page Object's root is labelled; a root that is not on the page\n+  // Capture marks and exclusions from the same completed observation. A\n+  // present Page Object's root is marked; a root that is not on the page\n   // is left out of the capture, while one whose Page Object a predicate\n-  // withdrew is unlabelled rendered content.\n+  // withdrew is unmarked rendered content.\n   async function getRegisteredPomStructure() {\n     await probeRegisteredPomMembers();\n     const observations = [...registeredPoms].flatMap((registration) =>\n       (registration.instances ?? []).flatMap(({ className, root, present }) =>\n-        root ? [{ root, present, label: className }] : []\n+        root ? [{ root, present, mark: className }] : []\n       )\n     );\n-    const roots = observations.flatMap(({ root, present, label }) =>\n-      present && isRootPresent(root) ? [{ label, element: root.element }] : []\n+    const roots = observations.flatMap(({ root, present, mark }) =>\n+      present && isRootPresent(root) ? [{ mark, element: root.element }] : []\n     );\n-    const labelled = new Set(roots.map((root) => root.element));\n+    const marked = new Set(roots.map((root) => root.element));\n     const absentElements = [\n       ...new Set(\n         observations.flatMap(({ root }) =>\n           !root.present &&\n           root.element?.isConnected &&\n-          !labelled.has(root.element)\n+          !marked.has(root.element)\n             ? [root.element]\n             : []\n         )\n@@ -486,7 +486,7 @@ export function createPomRegistry(driver: PageDriver) {\n \n   /**\n    * Package-internal: the present instances each rooted tool acts on, by\n-   * tool name, labelled as the page state labels them, each with whether\n+   * tool name, marked as the page state marks them, each with whether\n    * the tool would run on it now and why not. Root-less tools have no items.\n    */\n   function listRootedToolInstances(): Map<string, RootedToolInstance[]> {"
+      },
+      {
+        "filename": "packages/ayme/src/page-objects/domain/actionTool.ts",
+        "patch": "@@ -45,75 +45,64 @@ export function inputSchemaFor(\n \n /**\n  * What a Page Object Tool tells about its action beyond its name and schema:\n- * the description its author wrote, and the other Page Objects it may\n- * return, which the page shows afterwards. A blank description, or\n- * returning its own class, tells nothing, so it is left out.\n+ * the description its author wrote, the other Page Objects it may return,\n+ * which the page shows afterwards, and its Agent Description, the text an\n+ * agent reads from the two. A blank description, or returning its own class,\n+ * tells nothing, so it is left out.\n  */\n export function actionFacts(\n   action: ToolManifest,\n   ownClassName: string\n-): { description?: string; returnPoms?: readonly string[] } {\n+): {\n+  authorDescription?: string;\n+  agentDescription?: string;\n+  returnPoms?: readonly string[];\n+} {\n   const returnPoms =\n     action.returnPoms?.filter((name) => name !== ownClassName) ?? [];\n+  // A blank description says nothing, and WebMCP refuses an empty one.\n+  const authorDescription = action.description?.trim()\n+    ? action.description\n+    : undefined;\n+  const agentDescription = describeAction(authorDescription, returnPoms);\n   return {\n-    // A blank description says nothing, and WebMCP refuses an empty one.\n-    ...(action.description?.trim() ? { description: action.description } : {}),\n+    ...(authorDescription === undefined ? {} : { authorDescription }),\n+    ...(agentDescription === undefined ? {} : { agentDescription }),\n     ...(returnPoms.length ? { returnPoms } : {}),\n   };\n }\n \n-/** A tool as `describeTool` reads it. */\n-type DescribedTool = {\n-  name: string;\n-  description?: string;\n-  returnPoms?: readonly string[];\n-};\n-\n-/** Who reads a tool's description. */\n-export type DescriptionReader =\n-  \"ayme-mcp\" | \"webmcp\" | \"goal-loop\" | \"inspector\";\n-\n /**\n- * Whether a reader needs a description of every tool. WebMCP refuses a tool\n- * without one, and the Goal Loop's model chooses an operation by it. Ayme\n- * MCP allows none, and the Inspector shows what Ayme MCP gives agents.\n+ * The author's description, then the Page Objects the page shows\n+ * afterwards, by class: `Shows A or B.` alone, `Then shows A or B.` after\n+ * the author's text. None when the action says nothing beyond its name and\n+ * schema.\n  */\n-const descriptionRequired = {\n-  \"ayme-mcp\": false,\n-  webmcp: true,\n-  \"goal-loop\": true,\n-  inspector: false,\n-} as const satisfies Record<DescriptionReader, boolean>;\n+function describeAction(\n+  authorDescription: string | undefined,\n+  returnPoms: readonly string[]\n+): string | undefined {\n+  if (!returnPoms.length) return authorDescription;\n+  const shown = returnPoms.join(\" or \");\n+  return authorDescription === undefined\n+    ? `Shows ${shown}.`\n+    : `${authorDescription} Then shows ${shown}.`;\n+}\n \n /**\n- * A tool's description as `reader` reads it: its own, then the Page Objects\n- * the page shows afterwards, by class. When the tool says nothing beyond its\n- * name and schema, a reader that requires a description gets `Run addItem.`\n- * and the others get none. A Browser or Custom Tool's description is its own.\n+ * A tool's description for a reader that needs one of every tool: its Agent\n+ * Description, or `Run addItem.` when it has none. WebMCP refuses a tool\n+ * without a description, and the Goal Loop's model chooses an operation by\n+ * it.\n  */\n-export function describeTool(\n-  tool: DescribedTool,\n-  reader: \"webmcp\" | \"goal-loop\"\n-): string;\n-export function describeTool(\n-  tool: DescribedTool,\n-  reader: \"ayme-mcp\" | \"inspector\"\n-): string | undefined;\n-export function describeTool(\n-  tool: DescribedTool,\n-  reader: DescriptionReader\n-): string | undefined;\n-export function describeTool(\n-  tool: DescribedTool,\n-  reader: DescriptionReader\n-): string | undefined {\n-  const parts = tool.description === undefined ? [] : [tool.description];\n-  if (tool.returnPoms?.length)\n-    parts.push(`Then shows ${tool.returnPoms.join(\" or \")}.`);\n-  if (parts.length) return parts.join(\" \");\n-  if (descriptionRequired[reader])\n-    return `Run ${tool.name.slice(tool.name.lastIndexOf(\".\") + 1)}.`;\n-  return undefined;\n+export function requiredDescription(tool: {\n+  name: string;\n+  agentDescription?: string;\n+}): string {\n+  return (\n+    tool.agentDescription ??\n+    `Run ${tool.name.slice(tool.name.lastIndexOf(\".\") + 1)}.`\n+  );\n }\n \n /** The method's arguments: a rest parameter's list is its remaining ones. */"
+      },
+      {
+        "filename": "packages/ayme/src/page-state/application/pageStateSession.ts",
+        "patch": "@@ -19,7 +19,7 @@ import type {\n } from \"../domain/interactionHistory\";\n import {\n   renderPageState,\n-  sameLabels,\n+  sameRootMarks,\n   type PageCapture,\n   type PageState,\n   type AymeNode,\n@@ -273,17 +273,21 @@ export class PageStateSession {\n       capture.tree\n     );\n     // A Page Object registered or unregistered without the DOM changing\n-    // still makes a before: a removed root is labelled by it.\n+    // still makes a before: a removed root is marked by it.\n     if (\n       !sinceLatest.hasAnyChanges() &&\n-      sameLabels(this.history.pomLabels(latest), capture.pomLabels, sinceLatest)\n+      sameRootMarks(\n+        this.history.pomRootMarks(latest),\n+        capture.pomRootMarks,\n+        sinceLatest\n+      )\n     )\n       return undefined;\n     const before = this.history.observeBefore(\n       actionId,\n       capture.tree,\n       this.history.now(),\n-      capture.pomLabels\n+      capture.pomRootMarks\n     );\n     this.rememberElements(capture);\n     return before;\n@@ -309,7 +313,7 @@ export class PageStateSession {\n       actionId,\n       capture.tree,\n       this.history.now(),\n-      capture.pomLabels\n+      capture.pomRootMarks\n     );\n     this.rememberElements(capture);\n     return after;\n@@ -333,7 +337,7 @@ export class PageStateSession {\n       actionId,\n       capture.tree,\n       this.history.now(),\n-      capture.pomLabels\n+      capture.pomRootMarks\n     );\n     this.rememberElements(capture);\n     return after;\n@@ -351,7 +355,7 @@ export class PageStateSession {\n       actionId,\n       tree,\n       this.history.now(),\n-      this.history.pomLabels(latest.observation)\n+      this.history.pomRootMarks(latest.observation)\n     );\n     this.rememberElements(latest);\n     return after;\n@@ -381,7 +385,7 @@ export class PageStateSession {\n     const observation = this.history.observe(\n       capture.tree,\n       this.history.now(),\n-      capture.pomLabels\n+      capture.pomRootMarks\n     );\n     cursor?.move(observation);\n     this.rememberElements(capture);"
+      },
+      {
+        "filename": "packages/ayme/src/page-state/infrastructure/pageCapture.ts",
+        "patch": "@@ -1,6 +1,6 @@\n // The Page State Session's capture of a document: Playwright Lite's ARIA\n // snapshot, with ignored subtrees and absent Page Object Roots left out and\n-// the present roots placed and labelled.\n+// the present roots placed and marked.\n \n import { captureAriaSnapshot } from \"@ayme-dev/playwright-lite/internal\";\n import {\n@@ -20,11 +20,11 @@ import {\n import type { PageCapture } from \"../domain/structuralPageState\";\n \n /**\n- * The Page Object Roots a capture places: present roots are labelled, and\n+ * The Page Object Roots a capture places: present roots are marked, and\n  * absent ones are left out of it.\n  */\n export type PageObjectStructure = {\n-  roots: readonly { label: string; element: Element }[];\n+  roots: readonly { mark: string; element: Element }[];\n   absentElements: readonly Element[];\n };\n \n@@ -108,9 +108,9 @@ export async function capturePage(\n   const coalesced = coalesceByElement(registrations);\n   const referenced: {\n     candidate: ReferencedCapturedRoot;\n-    labels: string[];\n+    marks: string[];\n   }[] = [];\n-  const omitted: { element: Element; labels: string[] }[] = [];\n+  const omitted: { element: Element; marks: string[] }[] = [];\n \n   for (const entry of coalesced) {\n     const rawRef = capture.refsByElement.get(entry.element);\n@@ -120,7 +120,7 @@ export async function capturePage(\n           kind: \"referenced\",\n           ref: AriaRefSchema.parse(rawRef),\n         },\n-        labels: entry.labels,\n+        marks: entry.marks,\n       });\n     } else {\n       omitted.push(entry);\n@@ -136,12 +136,12 @@ export async function capturePage(\n     refFactory\n   );\n   let currentTree = refPlacement.tree;\n-  const labelsByRef = new Map<AriaRef, string[]>();\n+  const marksByRef = new Map<AriaRef, string[]>();\n   const elementsBySyntheticRef = new Map<AriaRef, Element>();\n \n   for (const [index, ref] of refPlacement.refs.entries()) {\n     if (ref === null) continue;\n-    labelsByRef.set(ref, referenced[index]!.labels);\n+    marksByRef.set(ref, referenced[index]!.marks);\n   }\n \n   for (const entry of omitted) {\n@@ -160,7 +160,7 @@ export async function capturePage(\n     currentTree = placement.tree;\n     const ref = placement.refs[0] ?? null;\n     if (ref !== null) {\n-      labelsByRef.set(ref, entry.labels);\n+      marksByRef.set(ref, entry.marks);\n       elementsBySyntheticRef.set(ref, entry.element);\n     }\n   }\n@@ -175,12 +175,12 @@ export async function capturePage(\n   return {\n     tree: currentTree,\n     elementsByRef,\n-    pomLabels: labelsByRef,\n+    pomRootMarks: marksByRef,\n   };\n }\n \n function sortOuterToInner(\n-  entries: { element: Element; labels: string[] }[]\n+  entries: { element: Element; marks: string[] }[]\n ): void {\n   const decorated = entries.map((entry, index) => ({\n     entry,"
+      },
+      {
+        "filename": "packages/ayme/src/runtime/runtime.ts",
+        "patch": "@@ -11,7 +11,7 @@ import {\n   registerPageObject,\n   subscribeToRegisteredPoms,\n } from \"../page-objects/infrastructure\";\n-import { describeTool } from \"../page-objects/domain\";\n+import { requiredDescription } from \"../page-objects/domain\";\n import {\n   addPeek,\n   configureCustomTools,\n@@ -422,13 +422,18 @@ export function subscribeToStartedAyme(\n \n const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);\n \n+/** A tool as Ayme MCP lists it. */\n+type AymeMcpTool = ToolInfo & { description?: string };\n+\n /**\n- * A tool as Ayme MCP lists it: with the description agents read, and none\n- * when the tool says nothing beyond its name and schema, which MCP allows.\n+ * A tool as Ayme MCP lists it: its Agent Description as its description,\n+ * and none when the tool says nothing beyond its name and schema, which MCP\n+ * allows.\n  */\n-function forAymeMcp(tool: ToolInfo): ToolInfo {\n-  const description = describeTool(tool, \"ayme-mcp\");\n-  return description === undefined ? tool : { ...tool, description };\n+function forAymeMcp(tool: ToolInfo): AymeMcpTool {\n+  return tool.agentDescription === undefined\n+    ? tool\n+    : { ...tool, description: tool.agentDescription };\n }\n \n /**\n@@ -510,7 +515,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {\n     list: () =>\n       ayme.tools.list().map((tool) => ({\n         ...tool,\n-        description: describeTool(tool, \"webmcp\"),\n+        description: requiredDescription(tool),\n       })),\n     subscribe: (listener: () => void) => ayme.tools.subscribe(listener),\n     run: (name: string, input: unknown) =>\n@@ -735,7 +740,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {\n    */\n   const aymeMcpTools = {\n     list: () => ayme.tools.list().map(forAymeMcp),\n-    subscribe: (listener: (tools: readonly ToolInfo[]) => void) =>\n+    subscribe: (listener: (tools: readonly AymeMcpTool[]) => void) =>\n       ayme.tools.subscribe((tools) => listener(tools.map(forAymeMcp))),\n     run: (name: string, input: unknown) =>\n       ayme.tools.run(name, input as never, { by: callers.aymeMcp }),\n@@ -914,7 +919,18 @@ export function createAyme(options: AymeOptions = {}): Ayme {\n         loadProcessConnection().then(\n           ({ startAgentConnection }) =>\n             () =>\n-              startAgentConnection(ayme, where)\n+              // Its tools listed as Ayme MCP lists the page's; its calls run\n+              // through the session as before.\n+              startAgentConnection(\n+                {\n+                  tools: {\n+                    ...ayme.tools,\n+                    list: aymeMcpTools.list,\n+                    subscribe: aymeMcpTools.subscribe,\n+                  },\n+                },\n+                where\n+              )\n         )\n       );\n     }"
+      }
+    ]
+  },
+  "issues": [
+    {
+      "body": "Seen in the Formbricks discovery lab (run 4, `ayme mcp` 0.1.0-alpha.0, worktree `a805c3a`), survey list page, row options menu (\"Open options\"), which has a Radix `DropdownMenuSub` \"Change status\" with `menuitemradio` items (`data-testid=\"survey-status-option-<status>\"`).\n\n## What happens\n\nA Page Object action, run through `ayme mcp`:\n\n```ts\nawait this.statusSubmenu.hover({ timeout: 30_000 });               // or .click(): both open the submenu\nawait this.page.getByTestId(\"survey-status-option-completed\").click({ timeout: 30_000 });\n```\n\n- With `hover`: the MCP call ran past 60 s (client timeout); the survey's status did not change, the submenu was closed afterwards (`data-state=\"closed\"` on the trigger).\n- With `click` on the trigger, then `click` on the item (300 s client timeout): `TimeoutError: locator.click: Timeout 30000ms exceeded. No elements found for locator page.locator(\"internal:testid=[data-testid=\\\"survey-status-option-completed\\\"s]\")`, and the call log says `locator resolved to <div tabindex=\"-1\" role=\"menuitemradio\" … data-testid=\"survey-status-option-completed\" …>` first. So the submenu opened, the item was found, and it was gone before the click reached it.\n- The built-in `hover` tool on the same trigger answered after 56.6 s and did open the submenu.\n- The same two steps through the host's Playwright (the rig's own Chromium page, same tab): `hover` 138 ms, `click` 738 ms, status changed.\n- Workaround that works: open the submenu with a click, then `option.dispatchEvent(\"click\")` (no pointer movement): the status changes, the call answers in 16 s.\n\n## Why it matters\n\nRadix closes a submenu when the pointer leaves its trigger in a direction other than the submenu, or after a grace period. An action that moves to the item the way a user does should land; here it never does, so any submenu (status, \"Change question type\", \"Add question below\", \"Move question to block\") cannot be driven with plain `click`, and the failure reads as \"No elements found\" though the element was there a moment before.\n\nOn this page every click took ~40 s (row options trigger 42 s, built-in `click` on a filter button 37 s), so this may be downstream of the slow clicks tracked elsewhere (#957, #846); the submenu closing is the visible consequence. Evidence: `dogfood/formbricks-discovery/run-4/calls.jsonl` (marker `LIST status+archive`), `status-submenu-timeout.png`.",
+      "closedAt": null,
+      "comments": [
+        {
+          "id": "IC_kwDOUFvAnc8AAAABexPYtg",
+          "author": {
+            "login": "enekesabel"
+          },
+          "authorAssociation": "MEMBER",
+          "body": "> *This was generated by AI during triage.*\n\n**Triage (unattended, policy: vacation plan 3d): `bug`, `ready-for-human`.** Kept the filer's labels; already a sub-issue of the layer-over-the-page tracking issue (#759).\n\n**Verified (partly):** the reporter's own measurements put every click on that page at ~40 s while the modal menu is open, which matches \"Opening a menu over a list takes ~6 s per collection item\" (#962, now briefed for an agent). A submenu that waits ~40 s between hover and click closes on Radix's grace timer, so this is most likely a consequence of #962, not a separate pointer-movement bug. Not re-run here.\n\n**Why ready-for-human / next step:** recommend parking this until #962 is fixed, then re-running the run-4 submenu step. If the submenu still closes when clicks are fast, it becomes a real pointer-path bug in playwright-lite (how the pointer travels from trigger to item) and gets its own brief.\n\n**Abel decides:** only whether to park it behind #962 as recommended.\n\n---\n_Generated by [Claude Code](https://claude.ai/code)_",
+          "createdAt": "2026-10-23T07:31:36Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/ayme-labs/ayme/issues/959#issuecomment-6359865526",
+          "viewerDidAuthor": true
+        }
+      ],
+      "number": 959,
+      "state": "OPEN",
+      "title": "A Page Object action that opens a Radix submenu and clicks its item fails: the submenu closes before the click lands",
+      "url": "https://github.com/ayme-labs/ayme/issues/959"
+    },
+    {
+      "body": "Seen in live page object discovery run 6 on Formbricks (ayme `a805c3a`, `@ayme-dev/mcp` 0.1.0-alpha.0, `ayme mcp` through the dogfood rig, headless Chromium). Page-tool time, not a slow page: the same click from Playwright in the rig takes 0.2 s.\n\n## Setup\n\nFormbricks survey list. Each row is a collection item `SurveyRow` (CSS root `div.relative.block:has([data-testid=survey-dropdown-trigger])`) with two actions that have availability predicates. Both predicates read `this.container.getByRole(\"link\").getAttribute(\"href\")`. Clicking a row's \"Open options\" opens a Radix dropdown menu, which marks the rest of the page `aria-hidden` and `pointer-events: none`.\n\n## Measurements (same element: row 0's \"Open options\")\n\n| Rows rendered | Page Object `surveys.openOptions` | Built-in `click` (ref) | `press_key Escape` (menu closes) | Plain Playwright `click()` from the rig |\n|---|---|---|---|---|\n| 1 (list filtered) | 6.5 s | – | 2.5 s | 0.22 s |\n| 7 | 42.9 s | 42.7 s / 42.8 s | 14.8 s | 0.24 s |\n| 12 | 73.1 s | 73.0 s | 24.9 s | 0.20 s |\n| 15 (after Load more) | 91.4 s | – | 31.2 s | – |\n\nThat's ~6.1 s per row to open, ~2.1 s per row to close. On the same page, at 7 rows:\n\n- `snapshot` 0.14 s, `ayme_list_tools` 2 ms.\n- A Page Object action that only reads the heading's text (`probeRead`, added for the test): 0.5–0.75 s.\n- A built-in `hover` on the trigger: 0.75 s.\n- The 93 s `TemplateGalleryPage.useTemplate(name)` on a 52-card gallery (cards are collection items too) may be the same pattern; run 5 saw 10 s with 26 cards.\n\nSo the cost comes only with the modal layer, it grows linearly with the number of collection items, and built-in tools pay it too.\n\n**Changing only the predicates' locator** to CSS (`this.container.locator(\"a\").first()`) brought `openOptions` at 7 rows from 42.9 s down to **1.0 s** (Escape 0.8 s).\n\n**Counting predicate calls** (a `console.debug` in the predicate, 1 row): before the click, 4 observations × 2 predicates at 0 ms each. After the menu opened, **6 calls of 1001–1002 ms each, one after another** (3 observations × 2 predicates), which is the 6 s for that row. The Escape call shows the same in reverse.\n\nWhile the menu is open, `ayme_list_tools` lists every row tool as `unavailable: a click would not reach it`. So the predicates' answers (or their timeouts) aren't used at all.\n\nServer stderr and the browser console showed nothing during these calls besides page connect/disconnect and Formbricks's own warnings.\n\n## Likely cause (read after measuring)\n\n- `pomTree.ts` `observeInstance` asks `askPredicates(instance, tools)` whenever the instance is present (`if (observed.present) …`), even when its root is present but a click would not reach it. `availabilityOf` (pomInstance.ts) then puts the unreachable root first and never reads the answers.\n- `askPredicates` awaits each predicate in turn, across instances too, with no time budget. Behind a modal layer, a predicate that reads a role locator finds nothing (#961), so every locator read waits for the full 1 s action timeout.\n- The post-action settle observes several times (3 here), so a call costs items × predicates × observations × 1 s.\n\n## Why it matters\n\nAny list with a row menu becomes unusable: 1–1.5 min per menu open at 12–15 rows. An agent's MCP client times out (the SDK default is 60 s; run 4 hit `MCP error -32001: Request timed out`), and the agent cannot tell that the page itself is fast. The Page Object author did nothing unusual: the skill recommends role locators, and the predicates are trivial.\n\n## Expected\n\nOpening a menu costs about what it costs without Ayme, and doesn't grow by seconds per collection item. For example, a predicate isn't asked while its instance's root is unreachable (its answer wouldn't be used), or predicate reads don't wait out the action timeout during observation.\n\nRelated: #961 (same trigger, wrong reason), #846 (slow calls on very large pages, a different cause: element count), #957.",
+      "closedAt": "2026-10-24T19:21:48Z",
+      "comments": [
+        {
+          "id": "IC_kwDOUFvAnc8AAAABexPC7A",
+          "author": {
+            "login": "enekesabel"
+          },
+          "authorAssociation": "MEMBER",
+          "body": "> *This was generated by AI during triage.*\n\n**Triage (unattended, policy: vacation plan 3d): `bug`, `ready-for-agent`.** Kept the filer's labels; attached as a sub-issue of the layer-over-the-page tracking issue (#759), since the cost only appears while a modal layer is open.\n\n**Verified by code path** (main `a805c3a`): `observeInstance` in `packages/ayme/src/pomTree.ts:383-387` calls `askPredicates` whenever the instance is present, including when its root is present but unreachable; `askPredicates` (`packages/ayme/src/pomInstance.ts:170-190`) awaits each predicate in turn with no budget. Behind a modal layer a role-locator read waits out the 1 s action timeout, so a call costs items × predicates × observations × 1 s, and the answers are then discarded because the unreachable root decides availability. The reporter's predicate-call counts match this.\n\n## Agent Brief\n\n**Category:** bug\n**Summary:** Don't ask an instance's availability predicates when its root is unreachable; their answers aren't used and each can cost a full action timeout.\n\n**Current behavior:** with a Radix modal menu open over a 12-row list, opening the menu takes 73 s (0.2 s in plain Playwright), growing ~6 s per collection item; built-in tools pay it too because they share the post-action observation.\n\n**Desired behavior:** during observation, an instance whose Page Object Root is present but a click would not reach it is reported unavailable with the runtime's reason (\"a click would not reach it\") without running its predicates. Opening the same menu costs about what it does without ayme and doesn't grow with the number of items. Listed availability and reasons must stay exactly as today (they already come from the unreachable root).\n\n**Key interfaces:**\n- `observeInstance` in the Page Object tree observation\n- `askPredicates` / `availabilityOf` in the Page Object instance module\n\n**Acceptance criteria:**\n- [ ] Browser test: with a modal layer covering a collection, no predicate of a covered item runs during observation (count calls).\n- [ ] Items whose root is reachable still get their predicates asked and their reasons shown.\n- [ ] Existing availability tests pass unchanged.\n\n**Out of scope:**\n- Root-less page Page Objects behind a layer and the false app reason they show (\"Behind a modal layer, an availability predicate that reads a role locator gets absent…\", #961, and #730). That needs a decision; this fix only covers instances with a root.\n- Running predicates in parallel or with a time budget (possible follow-up if root-less cases stay slow).\n\n---\n_Generated by [Claude Code](https://claude.ai/code)_",
+          "createdAt": "2026-10-23T07:31:15Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/ayme-labs/ayme/issues/962#issuecomment-6359859948",
+          "viewerDidAuthor": true
+        }
+      ],
+      "number": 962,
+      "state": "CLOSED",
+      "title": "Opening a menu over a list takes ~6 s per collection item: availability predicates are asked serially, each waiting out the 1 s action timeout, though the root is unreachable",
+      "url": "https://github.com/ayme-labs/ayme/issues/962"
+    }
+  ],
+  "fix": {
+    "body": "<!-- claude-projects-attribution: {\"github_login\":\"enekesabel\"} -->\n_Requested by **Abel** · [project thread](https://claude.ai/code/project/chan_01L8Mmq41SgWv7mFAFtaWAJc?thread=cmsg_01L8Mmq41SgWv7mFAFtaWAJcHdqSbrgz3os161Tth8bwJ6)_\n\nCloses #962 (opening a menu over a list costs ~6 s per collection item).\n\n## Summary\n\nA Page Object Root a click would not reach already decides Action Availability before any predicate (ADR-0035), so its predicates' answers were never used. Behind a modal layer each role-locator read in them waited out the 1 s action timeout, per item × predicate × observation.\n\n```diff\n observeInstance\n   askPresence\n   observeRoot\n   observed.present = root.present\n-  if present\n+  if present and root (if any) is reachable\n     askPredicates\n```\n\nListed availability and reasons are unchanged: a covered item still shows \"a click would not reach it; eN is in the way\". Root-less Page Objects behind a layer (#961) are untouched, as the brief scopes.\n\n## Evidence\n\nNew browser test in `actionAvailability.browser.test.ts`: two rows, a fixed dialog covering the second, a predicate that records which row it was asked about.\n\n```text\nexpect(asked).toContain(\"open\")\nexpect(asked).not.toContain(\"covered\")\nrows[0] → unavailable, \"open is read-only\"   (predicate reason still shown)\nrows[1] → unavailable, \"a click would not reach it; eN is in the way\"\n```\n\n- **Before:** `AssertionError: expected [ Array(4) ] to not include 'covered'`\n- **After:** passes; `actionAvailability.browser.test.ts` 26/26, ayme browser suite 530/530, unit 505/505.\n\n## Merge Danger\n\n**Door:** two-way\n\n**Blast Radius:** observation\n\nAn instance whose root is unreachable now has an empty `predicates` map. Nothing reads it in that state; `sameInstance` compares it, so a root going from covered to reachable still counts as a change and notifies.\n\n---\n_Generated by [Claude Code](https://claude.ai/code/session_01UAKmaaMUE7f6eep7cfMKtf)_",
+    "comments": [
+      {
+        "id": "IC_kwDOUFvAnc8AAAABeyA9LQ",
+        "author": {
+          "login": "coderabbitai"
+        },
+        "authorAssociation": "CONTRIBUTOR",
+        "body": "<!-- coderabbit-ai-generated:v1 -->\n\n<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: rate limited by coderabbit.ai -->\n\n> [!WARNING]\n> ## Review limit reached\n> \n> You've used all free OSS reviews for now. Wait for the free limit to reset to keep reviewing this public repository.\n> \n> **Next included review available in 57 minutes.**\n> \n> [Check out review usage here](https://app.coderabbit.ai/dashboard/review-capacity?orgId=e63af094-ea30-4e46-89d7-8ce34b6b238b).\n> \n> <details>\n> <summary><strong>View limit details</strong></summary>\n> <dl>\n> <dd>\n> \n> **Limit details:** You’ve used the included review currently available.\n> \n> [Learn how review limits work](https://docs.coderabbit.ai/management/rate-limits).\n> \n> **Review configuration:**\n> \n> <details>\n> <summary><strong>⚙️ Run configuration</strong></summary>\n> <dl>\n> <dd>\n> \n> - **Source mode**: Auto\n> - **Repository**: Unavailable\n> - **Branch**: Unavailable\n> - **File**: No configuration file from this repository applied\n> - **Commit**: Unavailable\n> - **Layers**: defaults\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `f672fb46-1fdc-4515-a52f-0cc079f80a0b`\n> \n> </dd>\n> </dl>\n> </details>\n> \n> <details>\n> <summary><strong>📥 Commits</strong></summary>\n> <dl>\n> <dd>\n> \n> Reviewing files that changed from the base of the PR and between ba834c94b3d22539b56366985aac3c2317724adf and c5e2ba05ab14a203e4ad2762cb3902ecbd21235a.\n> \n> </dd>\n> </dl>\n> </details>\n> \n> <details>\n> <summary><strong>📒 Files selected for processing: 3</strong></summary>\n> <dl>\n> <dd>\n> \n> * `packages/ayme/src/page-objects/actionAvailability.browser.test.ts`\n> * `packages/ayme/src/page-objects/pomInstance.ts`\n> * `packages/ayme/src/page-objects/pomTree.ts`\n> \n> </dd>\n> </dl>\n> </details>\n> \n> </dd>\n> </dl>\n> </details>\n\n<!-- end of auto-generated comment: rate limited by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autofix</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=ayme-labs/ayme&utm_content=987)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary><strong>❤️ Share</strong></summary>\n<dl>\n<dd>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</dd>\n</dl>\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+        "createdAt": "2026-10-23T08:21:39Z",
+        "includesCreatedEdit": true,
+        "isMinimized": false,
+        "minimizedReason": "",
+        "reactionGroups": [],
+        "url": "https://github.com/ayme-labs/ayme/pull/987#issuecomment-6360677677",
+        "viewerDidAuthor": false
+      }
+    ],
+    "mergeCommit": {
+      "oid": "b3a7061a41c4f0a2215c0324a39d24fac5545841"
+    },
+    "mergedAt": "2026-10-24T19:21:46Z",
+    "number": 987,
+    "title": "fix(ayme): skip availability predicates of a root a click would not reach",
+    "url": "https://github.com/ayme-labs/ayme/pull/987"
+  },
+  "formbricks": {
+    "reportPin": "211ad704de30aabf96c059cc1cf00391d5b63a27",
+    "currentPin": "bf06fa583733c61334ede3e13b311fb9d89644af",
+    "comparison": {
+      "ahead_by": 2,
+      "files": ["apps/web/next.config.mjs", "pnpm-lock.yaml"]
+    },
+    "component": "apps/web/modules/survey/list/components/survey-dropdown-menu.tsx",
+    "wrapper": "apps/web/modules/ui/components/dropdown-menu/index.tsx"
+  },
+  "lite": {
+    "reportPin": "b8e667f2f4b54896ad3059964fbde993fbacc9eb",
+    "currentPin": "2b8849cfb31714353d94e6a33095ac3aa5b898bb",
+    "comparison": {
+      "files": [
+        ".github/workflows/ci.yml",
+        ".gitignore",
+        ".release-please-manifest.json",
+        "AGENTS.md",
+        "CHANGELOG.md",
+        "README.md",
+        "THIRD_PARTY_NOTICES.txt",
+        "build/generated/injectedScriptSource.ts",
+        "build/generated/protocolSerializerSource.ts",
+        "build/generated/utilityScriptSource.ts",
+        "build/playwrightInjectedPlugin.ts",
+        "docs/agents/domain.md",
+        "docs/fork/SYNC.md",
+        "docs/readme-template.hbs",
+        "package.json",
+        "pnpm-lock.yaml",
+        "scripts/generate-injected.mjs",
+        "scripts/generate-readme.test.mjs",
+        "scripts/packed-consumer.mjs",
+        "src/inputTask.test.ts",
+        "src/inputTask.ts",
+        "src/internal.test.ts",
+        "src/internal.ts",
+        "src/page.ts",
+        "src/pointerHitTarget.ts",
+        "src/virtual-modules.d.ts",
+        "tests/consumer.ts",
+        "tests/contract/screenshot.test.ts",
+        "tests/upstream/adapter-bridge.ts",
+        "tests/upstream/pageTest.ts",
+        "tsconfig.json",
+        "tsdown.config.ts"
+      ],
+      "pagePatch": [
+        "@@ -1,4 +1,10 @@\n import { inputShadowRoot, learnClosedRoots } from \"./closedShadowRoots\";\n+import {\n+  deepestHitAt,\n+  hitElementAt,\n+  hitReaches,\n+  type PointerHitTarget,\n+} from \"./pointerHitTarget\";\n import { Evaluation } from \"./evaluation\";\n import type { EvaluationFunction, EvaluationOptions } from \"./evaluation\";\n import {\n@@ -5142,6 +5148,37 @@ export class PageImpl {\n     return point;\n   }\n \n+  /**\n+   * Fork-only, for `pointerHitTarget` in `./internal`: the point a click on\n+   * `element` would use and what it would hit there right now, with the same\n+   * point and hit test `ensureReceivesEvents` runs before a click, but without\n+   * scrolling, waiting or retrying. `undefined` where `pointerPoint` would\n+   * throw: not connected, not rendered, or outside the viewport.\n+   */\n+  pointerHitTarget(element: Element): PointerHitTarget | undefined {\n+    let point: ActionPoint;\n+    try {\n+      point = this.pointerPoint(element);\n+    } catch {\n+      return undefined;\n+    }\n+    const target = (\n+      this.injected as typeof this.injected & QueryCapableInjectedScript\n+    ).retarget(element, \"button-link\");\n+    if (!target) return undefined;\n+    const hit = hitElementAt(point, target, this.window);\n+    if (hitReaches(hit, target)) return { point };\n+    // Pinned expectHitTarget describes the document element for an empty hit.\n+    return {\n+      point,\n+      hit: deepestHitAt(\n+        hit ?? this.document.documentElement,\n+        point,\n+        this.window\n+      ),\n+    };\n+  }\n+\n   private pointerPoint(element: Element, position?: ActionPoint): ActionPoint {\n     if (!element.isConnected) throw new Error(\"Element is not connected\");\n     let rects = Array.from(element.getClientRects());\n@@ -5901,6 +5938,19 @@ class BrowserKeyboard {\n   }\n }\n \n+/**\n+ * Fork-only: whether `keyboard.press` accepts `key`, checked against the same\n+ * shortcut split and key layout the press uses, without pressing anything.\n+ */\n+export function isPressableKey(key: string): boolean {\n+  try {\n+    const target = splitKeyboardShortcut(key).at(-1)!;\n+    return keyboardLayout.has(resolveKeyboardKey(target));\n+  } catch {\n+    return false;\n+  }\n+}\n+\n function splitKeyboardShortcut(key: string): string[] {\n   const tokens: string[] = [];\n   let building = \"\";"
+      ],
+      "status": "diverged"
+    }
+  }
+}
