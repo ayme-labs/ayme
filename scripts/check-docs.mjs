@@ -389,8 +389,9 @@ function constructorParameters(body, i) {
   let brace = 0;
   let bracket = 0;
   let angle = 0;
-  // `<` counts only in a type. In a default, `1 < 2` is a comparison, and the
-  // comma after it still separates parameters.
+  // `<` counts in a type, and in a default right after a name (`Map<`). A
+  // spaced `1 < 2` in a default is a comparison, and the comma after it still
+  // separates parameters.
   let inType = false;
   // A colon after the default (`ok ? 1 : 2`) is a ternary, not a type.
   let inDefault = false;
@@ -418,8 +419,11 @@ function constructorParameters(body, i) {
     else if (char === "=" && body[i + 1] !== ">" && atParameter()) {
       inType = false;
       inDefault = true;
-    } else if (char === "<" && inType) angle++;
-    else if (char === ">" && inType) angle = Math.max(0, angle - 1);
+    } else if (char === "<" && (inType || /[\w$]/.test(body[i - 1] ?? "")))
+      angle++;
+    // The `>` of an arrow (`() => void`) does not close the generic.
+    else if (char === ">" && body[i - 1] !== "=")
+      angle = Math.max(0, angle - 1);
     else if (char === "," && atParameter()) {
       list.push({ text: body.slice(start, i), index: start });
       start = i + 1;
