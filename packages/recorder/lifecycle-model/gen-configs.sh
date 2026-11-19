@@ -3,12 +3,13 @@
 # Constants, in order:
 #   N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick
 #   LateRevisions LeaveOutB2 LateTypingReport, then after what to check, when
-#   not the defaults: SlowFlush SlowPickEnd Buttons
+#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage
 # LeaveOutB2 leaves a known limit out, to check every other path of the same
-# rule; it is not a fix. LateRevisions, LateTypingReport, SlowFlush and
-# SlowPickEnd allow four races. Buttons is the mouse buttons the person
-# clicks with: left and right unless a config says otherwise; middle clicks,
-# which the recorder does not record, have configs of their own. Deadlock is not
+# rule; it is not a fix. LateRevisions, LateTypingReport, SlowFlush,
+# SlowPickEnd and SlowHeldMessage allow five races. Buttons is what the person
+# clicks with: left and right unless a config says otherwise; a middle click
+# acts as a right-click, apart from its button, and has configs of its own,
+# as has a middle click on a checkbox. Deadlock is not
 # checked: a state where nothing is left to do is often a bound of the model
 # (no more Record). X4 checks that a wrap-up ends.
 cd "$(dirname "$0")"
@@ -22,13 +23,14 @@ F3P="PROPERTIES F3_FinalKeepsItsChanges"
 ALLB='{"left", "right", "middle"}'
 LR='{"left", "right"}'
 LEFT='{"left"}'
+BOX='{"left", "middleOnCheckbox"}'
 RULES="$HOLD X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 PROBES="P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten"
 WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow"
-mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons]
+mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage]
   name=$1; head=$2; shift 2
   laterev=${12}; lob2=${13}; latetype=${14}; what=${15}
-  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}
+  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}
   {
     printf '%s\n' "$head"
     cat <<CFG
@@ -49,6 +51,7 @@ CONSTANTS
   LateTypingReport = $latetype
   SlowFlush = $slowflush
   SlowPickEnd = $slowpick
+  SlowHeldMessage = $slowheld
   Buttons = $buttons
 CHECK_DEADLOCK FALSE
 CFG
@@ -77,6 +80,9 @@ $F3P"
 # it; and with B2 left out.
 mk Rule7            "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
 mk Rule7-Strict     "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7s_MeasuredStrictly"
+# Rule 3 read strictly: the focus rows of the next click's press move to it
+# once it is written (TL pressedAfter).
+mk Fold-AfterStep   "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "PROPERTIES F3f_FinalRowsChangeOnlyInText"
 mk Rule7-Navigation "$IN" 2 2   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
 mk Rules-WithoutB2  "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS F7s_MeasuredStrictly X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 # Known limits: each its own path.
@@ -98,9 +104,13 @@ mk Race-LateTypingReport "$IN" 2 1 1 1   0    1     $F     $F   $F   $F    $T   
 mk Race-LastText    "$IN" 1 1   1   1   1    1     $T     $F   $F   $F    $F    $F      $F $F "INVARIANT F4_StopAndFinishKeepLastText"
 mk Race-ClickLostAfterStop "$IN" 2 1 1 1  0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT X5_StopWindowIsRecorded" $T $F "$LEFT"
 mk Race-ClickAfterPicking "$IN" 1 1 1 1   0    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT X3_NothingYouDidIsDropped" $F $T "$LEFT"
-# Middle clicks: not recorded (not decided yet).
-mk Clicks-Middle    "$IN" 2 1   1   1   0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X9_MiddleClicksNotRecorded X7_EntryHasItsOwnReport X1m_MiddleClickKeepsOrder" $F $F "$ALLB"
-mk Clicks-Middle-Fill "$IN" 2 1 1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey" $F $F "$ALLB"
+mk Race-HeldMessageAfterStop "$IN" 2 1 1 1 0  0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS N1_AfterStopInTimeOrder X2_SnapshotsInTimeOrder X5_StopWindowIsRecorded X3_NothingYouDidIsDropped X1_NothingOvertakesAHeldClick" $F $F "$LEFT" $T
+# Middle clicks: held and matched by their button, as right-clicks.
+mk Clicks-Middle    "$IN" 2 1   1   1   0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X7_EntryHasItsOwnReport X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X5_StopWindowIsRecorded R04_FinishSavesEverything" $F $F "$ALLB"
+mk Clicks-Middle-Fill "$IN" 2 1 1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS F7_MeasuredFromFirstKey $FILLS
+$F3P" $F $F "$ALLB"
+# A middle click on a checkbox: Playwright reports a check, with no button.
+mk Clicks-MiddleOnCheckbox "$IN" 2 1 1 1  0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X3_NothingYouDidIsDropped X4_WrapUpNeverGetsStuck X7_EntryHasItsOwnReport" $F $F "$BOX"
 # Progress with fairness: blocked, TLC checks it too slowly (see README).
 mk Progress         "SPECIFICATION LiveSpec" 1 1 1 1 0 0 $T $F $T $F $T $F $F $F "PROPERTIES L1_HeldClickIsPassedOn L2_WrapUpEnds"
 # Probes: each must break, which shows the model reaches that situation.

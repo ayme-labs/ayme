@@ -33,6 +33,7 @@ const CLICK = {
   click: { verb: "click", name: "click" },
   rclick: { verb: "right-click", name: "right-click" },
   mclick: { verb: "middle-click", name: "middle click" },
+  mbox: { verb: "middle-click a checkbox", name: "middle click" },
 };
 const clicked = (to, i) =>
   `you ${CLICK[to.kind[i]].verb} (${CLICK[to.kind[i]].name} ${i})`;
@@ -45,12 +46,16 @@ const thing = (v, i, n) => {
   if (k === "none") return null;
   // The read an entry's changes run to: its row's, which a read of another
   // page leaves as it was; else the latest read it was given.
-  const upTo = (e) =>
-    list(v.newT?.rows).find((r) => r.k === "entry" && r.e === e)?.b ??
-    v.asnap[e];
+  const row = (e) =>
+    list(v.newT?.rows).find((r) => r.k === "entry" && r.e === e);
+  const upTo = (e) => row(e)?.b ?? v.asnap[e];
+  // Its rows show the focus the next click's press moved (TL pressedAfter
+  // moves them to that click once it is written).
+  const focus = (e) => (row(e)?.f ? ", with the press's focus move" : "");
   const name = `${k === "type" ? "typing" : CLICK[k].name} ${i}`;
   const where = {
     held: "held back by the gate",
+    holding: "held back by the gate, the recorder not told yet",
     page: "reached the page",
     picked: "taken by Playwright's picker",
     gone: "never delivered (its document is gone)",
@@ -71,7 +76,7 @@ const thing = (v, i, n) => {
         assert: "assertion",
       }[v.ent[e]];
       if (list(v.tl).includes(e))
-        return `${what} entry written (before ${v.bsnap[e]}, after ${upTo(e) || "none"})`;
+        return `${what} entry written (before ${v.bsnap[e]}, after ${upTo(e) || "none"}${focus(e)})`;
       if (inList(v, e))
         return `${what} entry: ${STAGE[v.stage[e]] ?? v.stage[e]}`;
       if (v.stage[e] === "keyDone") return "held key passed on";
@@ -85,7 +90,7 @@ const thing = (v, i, n) => {
   const window = v.fin?.[i]
     ? ""
     : v.shown?.[i]
-      ? `; in the window: text of ${v.txt[i]} key${v.txt[i] > 1 ? "s" : ""}, ${upTo(i) === 0 ? "no changes yet" : `changes up to read ${upTo(i)}`}`
+      ? `; in the window: text of ${v.txt[i]} key${v.txt[i] > 1 ? "s" : ""}, ${upTo(i) === 0 ? "no changes yet" : `changes up to read ${upTo(i)}${focus(i)}`}`
       : "";
   return `${name}: ${where}${more}; ${report}${entries.length ? "; " + entries.join(", ") : ""}${window}`;
 };
@@ -162,7 +167,7 @@ export const step = (action, from, to) => {
       return `you click (click ${changed(from, to, "at")}): the page still leaves it to picking, Playwright no longer picks`;
     case "ClickHeld": {
       const i = changed(from, to, "at");
-      return `${clicked(to, i)}: the gate holds it back`;
+      return `${clicked(to, i)}: the gate holds it back${to.at[i] === "holding" ? ", its message to the recorder on its way" : ""}`;
     }
     case "ClickReaches": {
       const i = changed(from, to, "at");
@@ -196,6 +201,8 @@ export const step = (action, from, to) => {
       return `Playwright's revised report of typing ${changed(from, to, "revFly")} reaches the recorder`;
     case "GateSwitchLands":
       return `the page switches its gate ${to.gateOn ? "on" : "off"}`;
+    case "HeldMessageArrives":
+      return `the page's message that it holds ${changed(from, to, "at")} reaches the recorder`;
     case "GatesUnpick":
       return "the page is told to stop leaving clicks to picking";
     case "ModeLands":

@@ -44,8 +44,11 @@ CONSTANTS
               \* still be on its way at the person's next action (race R8)
   SlowPickEnd,\* the page may still leave clicks to Playwright for a moment
               \* after Playwright and the window left picking (race R9)
-  Buttons     \* the mouse buttons the person clicks with: a subset of
-              \* {"left", "right", "middle"}
+  SlowHeldMessage,\* the page's message that it holds a click may reach the
+              \* engine after the person's next action, as Stop (race R10)
+  Buttons     \* what the person clicks with: a subset of {"left", "right",
+              \* "middle", "middleOnCheckbox"}; the last is a middle click on
+              \* a checkbox, which Playwright reports as a check with no button
 
 Inputs == 1..N
 \* The engine's entries. Entry i is input i's: a held click, or the input
@@ -199,9 +202,32 @@ InsertAt(sq, k, e) == SubSeq(sq, 1, k - 1) \o <<e>> \o SubSeq(sq, k, Len(sq))
 \* were read; t is a fill's text, as the number of keys it has. A Visit is a
 \* document of the page. The package is the rows with the steps after the
 \* last entry of each Visit (TL package).
-NoTL == [rows |-> <<>>, thr |-> [d \in 1..MaxDoc |-> 0], st |-> [d \in 1..MaxDoc |-> FALSE]]
+\* An entry's row has f when it ends at a read that shows the focus a held
+\* click's press moved: the read taken as that click's "before" (pf, the
+\* reads that do). The model has no wording; f stands for those focus rows.
+\* When the click is written, that read stands with the focus where the read
+\* before it had it, and the entry before is measured to it again (TL
+\* pressedAfter, since ec270dbf): its row loses f.
+NoTL == [rows |-> <<>>, thr |-> [d \in 1..MaxDoc |-> 0], st |-> [d \in 1..MaxDoc |-> FALSE],
+         pf |-> {}]
 DocAt(t) == IF t >= 1 /\ t <= Len(docOf) THEN docOf[t] ELSE doc
-Row(k, e, d, a, b, t) == [k |-> k, e |-> e, d |-> d, a |-> a, b |-> b, t |-> t, p |-> 0]
+Row(k, e, d, a, b, t) == [k |-> k, e |-> e, d |-> d, a |-> a, b |-> b, t |-> t, p |-> 0, f |-> FALSE]
+EntryRow(T, e, d, a, b, t) == [Row("entry", e, d, a, b, t) EXCEPT !.f = b \in T.pf]
+\* A held click's "before" is read: it shows the focus the press moved.
+Press(T, x) ==
+  LET R == T.rows IN
+  [T EXCEPT !.pf = @ \cup {x},
+            !.rows = [k \in DOMAIN R |-> IF R[k].k = "entry" /\ R[k].b = x
+                                         THEN [R[k] EXCEPT !.f = TRUE] ELSE R[k]]]
+\* TL pressedAfter: the click e is written; the entry before it ends at its
+\* "before" x, which now stands with the focus as the read before it had it.
+\* With no read of its Visit before x, nothing changes.
+Unpress(T, x, e, ks) ==
+  IF x \notin T.pf \/ ~\E k \in ks : k < x /\ DocAt(k) = DocAt(x) THEN T
+  ELSE LET R == T.rows IN
+       [T EXCEPT !.pf = @ \ {x},
+                 !.rows = [k \in DOMAIN R |-> IF R[k].k = "entry" /\ R[k].e # e /\ R[k].b = x
+                                              THEN [R[k] EXCEPT !.f = FALSE] ELSE R[k]]]
 NextKept(ks, d, x) ==
   LET S == {k \in ks : DocAt(k) = d /\ k > x} IN
   IF S = {} THEN 0 ELSE CHOOSE k \in S : \A j \in S : k <= j
@@ -222,8 +248,8 @@ AddEntry(T, ks, e, isRep, b, a, pc, t) ==
       in == a # 0 /\ DocAt(a) = d
       T3 == IF isRep /\ in
             THEN [T2 EXCEPT !.rows = Append(Append(@, Row("before", e, d, b, pc, 0)),
-                                            Row("entry", e, d, pc, a, t))]
-            ELSE [T2 EXCEPT !.rows = Append(@, Row("entry", e, d, b, IF in THEN a ELSE 0, t))]
+                                            EntryRow(T2, e, d, pc, a, t))]
+            ELSE [T2 EXCEPT !.rows = Append(@, EntryRow(T2, e, d, b, IF in THEN a ELSE 0, t))]
       \* where the entries stood before this one: a revision recomputes from it
       T4 == [T3 EXCEPT !.rows[Len(T3.rows)].p = T2.thr[d]]
   IN IF in /\ a > T4.thr[d] THEN [T4 EXCEPT !.thr[d] = a] ELSE T4
@@ -243,7 +269,7 @@ Revise(T, e, a, t) ==
   LET r == T.rows[k]
       d == r.d
       b == IF a # 0 /\ DocAt(a) = d THEN a ELSE r.b
-      T1 == [T EXCEPT !.rows[k] = [r EXCEPT !.b = b, !.t = t]]
+      T1 == [T EXCEPT !.rows[k] = [r EXCEPT !.b = b, !.t = t, !.f = b \in T.pf]]
   IN [T1 EXCEPT !.thr[d] = IF b # 0 /\ b > r.p THEN b ELSE r.p]
 \* A "text" addition (TL retext): only the text of the entry under the key.
 ReviseText(T, e, t) ==
@@ -302,7 +328,8 @@ GiveSnap(s, o, t) ==
                  [s EXCEPT !.stage[e] = "settled", !.bsnap[e] = t, !.asnap[e] = t]
             [] s.ent[e] = "rep" -> [s EXCEPT !.stage[e] = "settling", !.bsnap[e] = t]
             [] OTHER -> [s EXCEPT !.stage[e] = "passingOn", !.bsnap[e] = t,
-                                  !.passReq[In(e)] = TRUE]
+                                  !.passReq[In(e)] = TRUE,
+                                  !.newT = IF s.ent[e] = "click" THEN Press(@, t) ELSE @]
 
 RECURSIVE GiveAll(_, _, _)
 GiveAll(s, os, t) ==
@@ -408,7 +435,9 @@ WriteFinal(s, e) ==
            ELSE AddEntry(s.newT, s.keptSn, e, IsRep(s, e), s.bsnap[e], s.asnap[e], s.pic[e], Txt(s, e))
       s1 == Drop(s, e, "written")
       newer == \E f \in Elems(s1.lst) : s1.rep[f]
-  IN [s1 EXCEPT !.tl = @ \cup {e}, !.newT = W,
+      \* a held click is written: the entry before it is measured again
+      W2 == IF s.ent[e] = "click" THEN Unpress(W, s.bsnap[e], e, s.keptSn) ELSE W
+  IN [s1 EXCEPT !.tl = @ \cup {e}, !.newT = W2,
                 !.fin[e] = TRUE, !.shown[e] = FALSE,
                 !.pos[e] = IF s.shown[e] THEN @ ELSE EntryIx(W, e),
                 !.pgLastFill = IF IsRep(s, e) THEN (IF newer THEN 0 ELSE e) ELSE @]
@@ -576,8 +605,22 @@ KnownFromReport(s, e, i, pc) ==
                 !.shown[e] = FALSE, !.fin[e] = FALSE, !.pos[e] = 0, !.pic[e] = pc]
 
 \* L reportOfHeld, for the click report of input i
+\* A click's kind, by what it is made with (PR clickHeld, heldButton): a
+\* right-click is held by its context menu event, a middle click by its
+\* auxclick. Playwright reports a middle click on a checkbox as a check, which
+\* names no button.
+ClickKind(b) == CASE b = "left" -> "click" [] b = "right" -> "rclick"
+                  [] b = "middle" -> "mclick" [] OTHER -> "mbox"
+ClickKinds == {"click", "rclick", "mclick", "mbox"}
+HeldButton(j) == CASE kind[j] = "rclick" -> "right" [] kind[j] \in {"mclick", "mbox"} -> "middle"
+                   [] OTHER -> "left"
+ReportButton(j) == IF kind[j] = "mbox" THEN "left" ELSE HeldButton(j)
+
+\* A click's report is a held click's only when it is of the same button
+\* (L reportOfHeld, buttonOf); a report with no button is a left click's.
 ReportOfHeld(s, i) ==
-  LET t == First(s, {f \in Elems(s.lst) : s.ent[f] = "click" /\ ~s.rep[f]}) IN
+  LET t == First(s, {f \in Elems(s.lst) : s.ent[f] = "click" /\ ~s.rep[f]
+                                         /\ HeldButton(In(f)) = ReportButton(i)}) IN
   IF t = 0 THEN
      IF s.phase = "wrap" /\ s.pages THEN KnownFromReport(s, i, i, evStamp[i]) ELSE s
   ELSE IF s.stage[t] \in {"waiting", "takingBefore"} THEN s
@@ -800,6 +843,8 @@ PersonMayAct ==
        /\ (SlowFlush \/ \A k \in Inputs : ~Flushed(k))
        \* the page stops leaving clicks to picking right after Playwright does
        /\ (SlowPickEnd \/ ~unpick)
+       \* the page's message that it holds a click is heard first
+       /\ (SlowHeldMessage \/ \A k \in Inputs : at[k] # "holding")
        \* the wrap-up's last snapshot, asked once nothing is under way and the
        \* pages hold no more, is read before the person's next action ("Paused"
        \* shows about 15 ms after Stop on a quiet page)
@@ -807,7 +852,7 @@ PersonMayAct ==
 
 Alive == phase \notin {"saved", "empty"}
 IsNext(i) == at[i] = "notyet" /\ \A j \in Inputs : j < i => at[j] # "notyet"
-HeldHere(j) == at[j] = "held" /\ made[j].doc = doc
+HeldHere(j) == at[j] \in {"held", "holding"} /\ made[j].doc = doc
 WaitingPg == Cardinality({j \in Inputs : HeldHere(j)})
 NavOptions == IF doc < MaxDoc /\ ~navFlying THEN BOOLEAN ELSE {FALSE}
 MadeNow == [phase |-> phase, view |-> View, gen |-> gen, doc |-> doc, round |-> rounds]
@@ -995,34 +1040,50 @@ GatesUnpick ==
   /\ Publish
 
 \* The gate holds the click back and tells the engine (G hold). A right-click
-\* is held by its context menu event (PR clickHeld) and sent on with the right
-\* button (SB passOn); the lifecycle takes it as a click.
+\* is held by its context menu event and a middle click by its auxclick (PR
+\* clickHeld), and each is sent on with its button (SB passOn); the lifecycle
+\* takes it as a click of that button.
 ClickHeld(i) ==
   /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ (gateOn \/ holdPg)
-  /\ \E b \in Buttons \ {"middle"} :
-       /\ kind' = [kind EXCEPT ![i] = IF b = "left" THEN "click" ELSE "rclick"]
+  /\ \E b \in Buttons :
+       /\ kind' = [kind EXCEPT ![i] = ClickKind(b)]
        \* (only a left click leads elsewhere in the model)
        /\ \E n \in IF b = "left" THEN NavOptions ELSE {FALSE} : navs' = [navs EXCEPT ![i] = n]
   /\ made' = [made EXCEPT ![i] = MadeNow]
   /\ evStamp' = [evStamp EXCEPT ![i] = clock]
-  /\ at' = [at EXCEPT ![i] = "held"]
   /\ touched' = [touched EXCEPT ![i] = TRUE]
   /\ heldEver' = [heldEver EXCEPT ![i] = TRUE]
-  /\ Commit(OnInputHeld([Eng EXCEPT !.holdPg = TRUE], i, "click"))
+  \* The engine hears it in the same step, or, with SlowHeldMessage, later
+  \* (HeldMessageArrives): the page holds it meanwhile. The page's messages
+  \* keep their order.
+  /\ \/ /\ \A k \in Inputs : at[k] # "holding"
+        /\ at' = [at EXCEPT ![i] = "held"]
+        /\ Commit(OnInputHeld([Eng EXCEPT !.holdPg = TRUE], i, "click"))
+     \/ /\ SlowHeldMessage
+        /\ at' = [at EXCEPT ![i] = "holding"]
+        /\ Commit([Eng EXCEPT !.holdPg = TRUE])
   /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
                  tracing, clock, docOf, seen, hits, ev, ord, keys, revFly, revOrd,
                  revMade, revAt, wrong, overtook, surfVars, miscVars>>
   /\ Publish
 
+\* The page's message that it holds a click reaches the engine (race R10:
+\* after the person's next action).
+HeldMessageArrives(i) ==
+  /\ Alive /\ at[i] = "holding" /\ \A k \in Inputs : k < i => at[k] # "holding"
+  /\ at' = [at EXCEPT ![i] = "held"]
+  /\ Commit(OnInputHeld(Eng, i, "click"))
+  /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
+                 tracing, clock, docOf, seen, kind, hits, ev, ord, evStamp, made, keys,
+                 revFly, revOrd, revMade, revAt, touched, heldEver, navs, wrong, overtook,
+                 surfVars, miscVars>>
+  /\ Publish
+
 \* Nothing holds it: it reaches the page as it is (Playwright picks it if it
-\* is in its picking mode). A middle click is never held (PR clickHeld), and
-\* Playwright reports it as a click.
+\* is in its picking mode).
 ClickReaches(i) ==
-  /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg
-  /\ \E b \in Buttons :
-       /\ (b = "middle" \/ (~gateOn /\ ~holdPg))
-       /\ kind' = [kind EXCEPT ![i] = CASE b = "left" -> "click" [] b = "right" -> "rclick"
-                                          [] OTHER -> "mclick"]
+  /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ ~gateOn /\ ~holdPg
+  /\ \E b \in Buttons : kind' = [kind EXCEPT ![i] = ClickKind(b)]
   /\ made' = [made EXCEPT ![i] = MadeNow]
   /\ evStamp' = [evStamp EXCEPT ![i] = clock]
   /\ LET picked == mode = "pick" /\ kind'[i] = "click" IN
@@ -1032,8 +1093,7 @@ ClickReaches(i) ==
      /\ mode' = IF picked THEN "rec" ELSE mode
      /\ Commit(IF picked THEN OnPicking(Eng, FALSE) ELSE Eng)
   /\ ord' = [ord EXCEPT ![i] = seen] /\ seen' = seen + 1
-  \* (a middle click that overtakes a held click is checked on its own, X1m)
-  /\ overtook' = (overtook \/ (kind'[i] # "mclick" /\ \E j \in Inputs : HeldHere(j)))
+  /\ overtook' = (overtook \/ \E j \in Inputs : HeldHere(j))
   \* (only a left click leads elsewhere in the model)
   /\ \E n \in IF kind'[i] = "click" THEN NavOptions ELSE {FALSE} : navFlying' = (navFlying \/ n)
   /\ UNCHANGED << page, doc, gateOn, gateStart, pickPg, unpick, tracing, clock, docOf,
@@ -1051,6 +1111,8 @@ TypingOpen ==
 TypeHeld(i) ==
   /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ mode # "pick"
   /\ holdPg
+  \* (a key's message after a click's still on its way is not modelled)
+  /\ \A k \in Inputs : at[k] # "holding"
   /\ LeaveOutB2 => ~TypingOpen
   /\ kind' = [kind EXCEPT ![i] = "type"]
   /\ made' = [made EXCEPT ![i] = MadeNow]
@@ -1174,7 +1236,7 @@ ReportArrives(i) ==
   /\ Commit(IF ~During(Eng) THEN Eng
             ELSE LET s == [Eng EXCEPT !.pgReported = TRUE, !.pgLastFill = 0] IN
                  Proceed((CASE at[i] = "picked" -> Asserted(s, AssertId(i), i)
-                            [] kind[i] \in {"click", "rclick", "mclick"} -> ReportOfHeld(s, i)
+                            [] kind[i] \in ClickKinds -> ReportOfHeld(s, i)
                             [] OTHER -> KnownFromReport(s, i, i, evStamp[i])), FALSE))
   /\ UNCHANGED <<pageVars, kind, at, hits, ord, evStamp, made, keys, revFly, revOrd,
                  revMade, revAt, touched, heldEver, navs, wrong, overtook, surfVars, miscVars>>
@@ -1299,7 +1361,7 @@ NavCommits ==
 PageCloses ==
   /\ PersonMayAct /\ Closes /\ Alive /\ page = "open"
   /\ page' = "closed" /\ navFlying' = FALSE /\ gateOn' = FALSE /\ pickPg' = FALSE /\ unpick' = FALSE
-  /\ at' = [j \in Inputs |-> IF at[j] = "held" THEN "gone" ELSE at[j]]
+  /\ at' = [j \in Inputs |-> IF at[j] \in {"held", "holding"} THEN "gone" ELSE at[j]]
   /\ \E cut \in 0..seen :
        /\ ev' = [k \in Inputs |-> IF ev[k] = "flying" /\ ord[k] >= cut THEN "lost" ELSE ev[k]]
        /\ revFly' = [k \in Inputs |-> revFly[k] /\ revOrd[k] < cut]
@@ -1355,7 +1417,7 @@ EngineNext ==
   \/ \E e \in Ids : YouDiscard(e) \/ YouRestore(e)
   \/ \E i \in Inputs : ClickPicked(i) \/ ClickHeld(i) \/ ClickReaches(i) \/ ClickAfterPicking(i)
   \/ \E i \in Inputs : TypeHeld(i) \/ TypeReaches(i) \/ TypeMore(i)
-  \/ GatesUnpick
+  \/ GatesUnpick \/ \E i \in Inputs : HeldMessageArrives(i)
   \/ \E i \in Inputs : PassGone(i) \/ PassOn(i)
   \/ SnapshotTaken \/ SnapshotFails
   \/ \E e \in Ids : PageSettles(e)
@@ -1374,6 +1436,7 @@ OnItsOwn ==
   \/ \E e \in Ids : PageSettles(e)
   \/ \E i \in Inputs : ReportArrives(i) \/ RevisionArrives(i)
   \/ GateSwitchLands \/ ModeLands \/ TraceLands \/ SavedArrives \/ GatesUnpick
+  \/ \E i \in Inputs : HeldMessageArrives(i)
 
 -----------------------------------------------------------------------------
 \* The rules (spec #1267, "Rules the recorder must keep"; old numbers kept)
@@ -1417,7 +1480,6 @@ R04_FinishSavesEverything ==
   pkg # "none" =>
     \A i \in Inputs :
       (/\ Shown(i) /\ made[i].gen = gen /\ at[i] \in {"page", "picked"} /\ ev[i] # "lost"
-       /\ kind[i] # "mclick"
        /\ \A e \in EntOf(i) : stage[e] # "cut")
         => \E e \in EntOf(i) : e \in pkgHas
 
@@ -1456,12 +1518,6 @@ R10_SavesOnce == saves <= 1
 
 \* 11. Input reaches the page in the order the person gave it.
 X1_NothingOvertakesAHeldClick == ~overtook
-\* 11, for a middle click, which the gate never holds: a click held before it
-\* reaches the page first.
-X1m_MiddleClickKeepsOrder ==
-  \A i, j \in Inputs :
-    (j < i /\ kind[i] = "mclick" /\ heldEver[j] /\ at[i] = "page"
-     /\ at[j] \in {"page", "picked"}) => ord[j] < ord[i]
 
 \* 12. Each "after" is no later than the next "before".
 X2_SnapshotsInTimeOrder ==
@@ -1475,13 +1531,8 @@ X8_StartsNoLaterThanTheInput ==
 
 \* 13a. Nothing done while recording is thrown away.
 X3_NothingYouDidIsDropped ==
-  \A i \in Inputs : (ev[i] = "in" /\ Shown(i) /\ made[i].gen = gen /\ page = "open"
-                     /\ kind[i] # "mclick")
+  \A i \in Inputs : (ev[i] = "in" /\ Shown(i) /\ made[i].gen = gen /\ page = "open")
                       => Recorded(i)
-
-\* A middle click is not recorded (not decided yet: the recorder drops it).
-X9_MiddleClicksNotRecorded ==
-  \A e \in tl \cup pkgHas : repOf[e] = 0 \/ kind[repOf[e]] # "mclick"
 
 \* Wrapping up and saving never wait for something that cannot come: some
 \* step that needs nobody can still happen. MayGoOn is ENABLED OnItsOwn
@@ -1491,6 +1542,7 @@ MayGoOn ==
   Alive /\
   \/ \E i \in Inputs : passReq[i] \/ ev[i] = "flying" \/ revFly[i]
   \/ pend # <<>> \/ gateQ # <<>> \/ modeQ # <<>> \/ traceQ # <<>> \/ unpick
+  \/ \E i \in Inputs : at[i] = "holding"
   \/ savedTold /\ phase = "saving"
   \/ During(Eng) /\ \E e \in Elems(lst) : stage[e] = "settling"
 X4_WrapUpNeverGetsStuck ==
@@ -1500,7 +1552,7 @@ X4_WrapUpNeverGetsStuck ==
 \* and before that is still recorded (spec, "What makes them hold").
 X5_StopWindowIsRecorded ==
   \A i \in Inputs : (ev[i] = "in" /\ made[i].view = "wrapPause" /\ made[i].gen = gen
-                     /\ page = "open" /\ kind[i] # "mclick") => Recorded(i)
+                     /\ page = "open") => Recorded(i)
 
 \* Typing is written with every key typed while recording.
 X6_TypingWrittenWhole ==
@@ -1569,11 +1621,17 @@ F3_NextActionMakesItFinal ==
   \A e \in Elems(lst) :
     (shown[e] /\ \E f \in Elems(lst) : Pos(Eng, f) > Pos(Eng, e) /\ ent[f] # "key")
       => stage[e] # "settled"
-NoText(r) == [r EXCEPT !.t = 0]
+NoText(r) == [r EXCEPT !.t = 0, !.f = FALSE]
 F3_FinalKeepsItsChanges ==
   [][\A e \in Ids : (fin[e] /\ fin'[e] /\ gen' = gen) =>
         /\ NoText(EntryRowOf(newT', e)) = NoText(EntryRowOf(newT, e))
         /\ EntryRowOf(newT', e).t >= EntryRowOf(newT, e).t]_vars
+\* 3, read strictly: once final, nothing of a fill's rows changes but its
+\* text, the focus rows of the next click's press included (config
+\* Fold-AfterStep).
+F3f_FinalRowsChangeOnlyInText ==
+  [][\A e \in Ids : (IsFillEntry(e) /\ fin[e] /\ fin'[e] /\ gen' = gen) =>
+        [EntryRowOf(newT', e) EXCEPT !.t = 0] = [EntryRowOf(newT, e) EXCEPT !.t = 0]]_vars
 
 \* 4. Stop and Finish keep its last text: every key typed while recording.
 F4_StopAndFinishKeepLastText ==
@@ -1609,13 +1667,17 @@ F6_WindowIsWhatIsSaved ==
 \*    when the recorder learns of it, and that later fill starts there.
 \*    While a fill is live its text may be ahead of its rows: they end at a
 \*    read after its first key, and at a read after its last key once final.
-\*    Open (config Rule7-Navigation): when the page goes elsewhere after its
-\*    last key before it is read again, the fill keeps its rows up to the last
-\*    read of its own page (TL replace, since 75af99e4), which can come before
-\*    its last key. The rule is not yet worded for that case.
+\*    When its typing takes the page elsewhere before it is read again, its
+\*    changes go up to the last read of its own page (TL replace; config
+\*    Rule7-Navigation).
 SharedStart(e) ==
   \E f \in Ids : In(f) < In(e) /\ IsFillEntry(f) /\ asnap[f] # 0 /\ asnap[f] = bsnap[e]
 StartsAt(j, x) == \E f \in {j, N + j} : IsFillEntry(f) /\ bsnap[f] = x
+LastReadOf(d) == LET K == {k \in keptSn : DocAt(k) = d} IN
+                 IF K = {} THEN 0 ELSE CHOOSE k \in K : \A j \in K : j <= k
+\* its latest read is of the page it went on to: it ends at the last read of
+\* its own page
+WentElsewhere(r) == asnap[r.e] # 0 /\ DocAt(asnap[r.e]) # r.d /\ r.b = LastReadOf(r.d)
 F7_MeasuredFromFirstKey ==
   \A k \in 1..Len(WRows) :
     LET r == WRows[k] IN
@@ -1625,7 +1687,8 @@ F7_MeasuredFromFirstKey ==
            => (r.a = pic[r.e] /\ (WRows[k - 1].a <= pic[r.e] \/ SharedStart(r.e)))
       \* to after its last key, once final (a key whose revision came after
       \* the next action sets only the text); while live, after its first
-      /\ (r.b # 0 /\ fin[r.e]) => r.b > (IF stage[r.e] = "textSet" THEN pic[r.e] ELSE LastKeyAt(r))
+      /\ (r.b # 0 /\ fin[r.e]) => (r.b > (IF stage[r.e] = "textSet" THEN pic[r.e] ELSE LastKeyAt(r))
+                                  \/ WentElsewhere(r))
       /\ (r.b # 0 /\ ~fin[r.e]) => r.b > pic[r.e]
       \* and not past the next action that reached the page
       /\ r.b # 0 => \A j \in Inputs : (j > In(r.e) /\ at[j] = "page" /\ made[j].doc = r.d)
@@ -1641,7 +1704,8 @@ F7s_MeasuredStrictly ==
     (r.k = "entry" /\ IsFillEntry(r.e)) =>
       /\ (k > 1 /\ WRows[k - 1].k = "before" /\ WRows[k - 1].e = r.e)
            => (r.a = pic[r.e] /\ WRows[k - 1].a <= pic[r.e])
-      /\ (r.b # 0 /\ fin[r.e]) => r.b > (IF stage[r.e] = "textSet" THEN pic[r.e] ELSE LastKeyAt(r))
+      /\ (r.b # 0 /\ fin[r.e]) => (r.b > (IF stage[r.e] = "textSet" THEN pic[r.e] ELSE LastKeyAt(r))
+                                  \/ WentElsewhere(r))
       /\ (r.b # 0 /\ ~fin[r.e]) => r.b > pic[r.e]
       /\ r.b # 0 => \A j \in Inputs : (j > In(r.e) /\ at[j] = "page" /\ made[j].doc = r.d)
                                        => r.b <= evStamp[j]
