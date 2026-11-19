@@ -83,6 +83,11 @@ test("after server/discover and then initialize, the server serves the older rev
   } finally {
     // The process stops when the agent closes stdin.
     server.stdin.end();
-    expect(await exited).toBe(0);
+    const stillRunning = new Promise<"still running">((resolve) =>
+      setTimeout(() => resolve("still running"), 10_000)
+    );
+    const stopped = await Promise.race([exited, stillRunning]);
+    server.kill();
+    expect(stopped, `Log:\n${log}`).toBe(0);
   }
 });
