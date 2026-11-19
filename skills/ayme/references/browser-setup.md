@@ -28,6 +28,9 @@ by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
   the user to open, or to paste into the tab they already have open.
 - When the page's tools are missing from your tool list after the page
   pairs, list them with `ayme_list_tools` and run them with `ayme_call`.
+- When a tool answers that no page is connected right after you opened the
+  link from `ayme_connect`, the page is still pairing: call it again after a
+  second or two.
 - When a tool answers that no page is connected right after your MCP server
   restarted, and a tab was paired before, wait a few seconds: the tab pairs
   again by itself, and the page's tools come back with a tool list change.
@@ -73,8 +76,9 @@ by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
 
 ## A page that doesn't ship Ayme
 
-Experimental. With Playwright MCP or Playwright CLI, `ayme mcp` can serve the
-project's Page Objects to a page that doesn't ship Ayme. Set it up as
+Experimental. With Playwright MCP, Playwright CLI or agent-browser, `ayme mcp`
+can serve the project's Page Objects to a page that doesn't ship Ayme. Set it
+up as
 [Page Objects on a page without Ayme](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-objects-without-ayme.md)
 describes. When it fails:
 
