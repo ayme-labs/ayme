@@ -29,8 +29,10 @@ final "Confirm" can create a real contract. Only the user approves one.
    - the parameters: the data a real run enters, and the value the recording
      used for each;
    - the `confirm` the entry script uses, as [Confirm](#confirm) says;
-   - on a site with a login, how a run gets one, as
-     [Write the code](#write-the-code) says;
+   - on a site with a login, where a run gets its credentials: a saved login
+     state, environment variables or the team's secret store. They never go
+     into code, a parameter file or `.ayme/CONVENTIONS.md`. Tell the user
+     that the recording holds any password it captured;
    - where the parameter files, run traces and login state go: they hold
      real data.
 
@@ -182,8 +184,7 @@ void main();
 
 On a site with a login, one way to get one: the user saves a login state
 with `npx playwright codegen --save-storage=.ayme/auth.json <url>`, logging
-in in the window it opens; the entry script and the replay test load it. You
-never handle the password.
+in in the window it opens; the entry script and the replay test load it.
 
 ### Confirm
 
@@ -244,8 +245,8 @@ Copy [`assets/replay.ts`](../assets/replay.ts) next to the replay test. Its
 header says what loads live and what the recording answers. Write the
 recorded parameter values, and the summary the recording's page showed before
 each irreversible step, read from the snapshot of the interaction before
-it, to
-`.ayme/params/<flow>.recorded.json` as `{ params, summaries }`. The test
+it, to `.ayme/params/<flow>.recorded.json` as `{ params, summaries }`, with
+a placeholder in place of any password the recording captured. The test
 calls the same flow, never a copy of its steps, with a `confirm` that always
 approves and keeps each summary, so the test checks what a person would:
 
@@ -278,7 +279,8 @@ output is a request it paired with no recorded call, followed by the closest
 recorded call with the same method and path and the fields where the two
 differ; read a recorded call in full with `trace request <n>`. When they
 differ only in a part that changes between runs, such as a timestamp, counter
-or token, leave that part out of `match()`. When they differ in data, such as
+or token, or in a password the recorded file replaced, leave that part out
+of `match()`. When they differ in data, such as
 another record id, the flow reads data the recording lacks: check the
 parameters. When they differ in data an earlier response filled in, that
 response landed at another moment than in the recording: wait for it in the
