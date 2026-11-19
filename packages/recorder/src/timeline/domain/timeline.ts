@@ -250,6 +250,11 @@ export class Timeline {
   /** The read before a click whose press moved the focus, by its id: the
    * page as it stood just before the press, the focus where it was. */
   private readonly beforePress = new Map<SnapshotId, StructuralTree>();
+  /** The Interaction whose "after" each read is, as last written. */
+  private readonly endingAt = new Map<
+    SnapshotId,
+    { readonly written: Written; readonly interaction: RecordedInteraction }
+  >();
   private readonly warned: RecorderWarning[] = [];
 
   /** What a person should know about how this recording was made. */
@@ -403,6 +408,7 @@ export class Timeline {
       as: measured,
       report: interaction.report,
     };
+    if (after) this.endingAt.set(after, { written, interaction });
     visit.entries[index] = this.entryOf(
       written,
       interaction,
@@ -824,7 +830,8 @@ export class Timeline {
    */
   private async measure(
     written: Written,
-    to: Kept | undefined
+    to: Kept | undefined,
+    toTree = to && (this.beforePress.get(to.snapshot.id) ?? to.tree)
   ): Promise<Measured> {
     const { from, pictured, first } = written;
     if (!pictured) {
@@ -834,7 +841,9 @@ export class Timeline {
         // Every ref of a kept snapshot has its first ref.
         target: located && from.firstRefs.get(located),
         named: namedTarget(from.tree, located),
-        change: to ? await this.change(from, to, pressed ?? from.tree) : null,
+        change: to
+          ? await this.change(from, to, pressed ?? from.tree, toTree)
+          : null,
       };
     }
     if (to) await this.tie(written, to);
@@ -854,7 +863,7 @@ export class Timeline {
     const after = await this.session.readIdentityLedger(
       from.observation.pageId,
       (ledger) =>
-        StructuralTree.reconcile(tree, to.tree, {
+        StructuralTree.reconcile(tree, toTree ?? to.tree, {
           sameIdentity: (beforeRef: AriaRef, afterRef: AriaRef) =>
             ledger.sameIdentity(beforeRef, afterRef),
         })
@@ -928,6 +937,8 @@ export class Timeline {
   ): Promise<void> {
     const from = visit.snapshots[placeIn(visit, interaction.before)]!;
     const end = placeIn(visit, interaction.after);
+    if (!interaction.beforeFromReport)
+      await this.pressedAfter(visit, from, interaction);
     const { pictured, changedBefore } = interaction.beforeFromReport
       ? await this.pictured(visit, interaction, from, visit.snapshots[end])
       : { pictured: null, changedBefore: null };
@@ -953,6 +964,45 @@ export class Timeline {
     // one written late, leaves them where they stand.
     visit.through = Math.max(visit.through, end);
     if (interaction.key !== undefined) this.byKey.set(interaction.key, written);
+    if (interaction.after)
+      this.endingAt.set(interaction.after, { written, interaction });
+  }
+
+  /**
+   * A held click that starts where the Interaction before it ends, as a
+   * click right after typing: the read between them shows the focus its
+   * press moved. That read stands with the focus where the read before it
+   * had it, and the Interaction before is measured to it again: the move is
+   * the click's, and the Interaction before keeps what it did itself.
+   */
+  private async pressedAfter(
+    visit: Visit,
+    from: Kept,
+    click: RecordedInteraction
+  ) {
+    const id = from.snapshot.id;
+    // A step of its own before it took the read as it stood already.
+    if (this.beforePress.has(id) || from.resumes) return;
+    const previous = visit.snapshots[placeIn(visit, id) - 1];
+    const pressed =
+      previous && this.beforeItsPress(previous, from, click.report);
+    if (!pressed) return;
+    this.beforePress.set(id, pressed);
+    const ended = this.endingAt.get(id);
+    if (!ended || ended.written.visit !== visit) return;
+    const { written, interaction } = ended;
+    const index = visit.entries.findIndex(
+      ({ entry }) => entry.id === written.id
+    );
+    if (index < 0) return;
+    const measured = await this.measure(written, from);
+    written.measured = { after: id, as: measured, report: interaction.report };
+    visit.entries[index] = this.entryOf(
+      written,
+      interaction,
+      measured,
+      visit.entries[index]!.entry.discarded
+    );
   }
 
   /**

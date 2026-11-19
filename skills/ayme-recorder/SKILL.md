@@ -151,9 +151,10 @@ A `kind: change` entry is a change the recorder could not tie to an
 interaction. Read it together with the steps around it. It is usually the
 late result of an earlier step, such as data that finished loading. The
 focus a click's press moved to the clicked element, and away from the one
-before, is in that click's own change tree, not a change before it. A
-change that no recorded action
-explains can also come from a hover. It can come from something the page does
+before, is in that click's own change tree, not a change before it, nor in
+the change tree of the step just before it, such as the typing before a
+click. A change that no recorded action explains can also come from a
+hover. It can come from something the page does
 on its own in between, too, such as an async update.
 
 A recording can have pauses: the user pressed Stop, did something, and pressed

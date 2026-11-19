@@ -1128,6 +1128,77 @@ describe("the timeline, for the focus a click's press moved", () => {
     clickOn(target),
   ];
 
+  it("shows the focus a click's press moved with the click, also when the click directly follows a step that ends where it starts, as typing does: the typing keeps its own changes", async () => {
+    const typed = [
+      `- generic [ref=e1]:`,
+      `  - textbox "Search" [ref=e2]: ayme`,
+      `  - link "ayme" [active] [ref=e3]`,
+      `  - paragraph [ref=e4]: Nothing loaded`,
+    ].join("\n");
+    const clicked = [
+      `- generic [ref=e1]:`,
+      `  - textbox "Search" [ref=e2]: ayme`,
+      `  - link "ayme" [active] [ref=e3]`,
+      `  - paragraph [ref=e4]: Repository opened`,
+    ].join("\n");
+    const timeline = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, searching),
+      // The typing ends where the click starts: one read is both.
+      snapshot(snapshotId("snapshot_2"), 20, typed),
+      {
+        kind: "interaction",
+        interaction: {
+          page: pageId("page_1"),
+          report: {
+            type: "fill",
+            selector: 'internal:role=textbox[name="Search"s]',
+            target: { ref: pictureRef("e2"), tree: searching },
+            values: { text: "ayme" },
+          },
+          before: snapshotId("snapshot_1"),
+          after: snapshotId("snapshot_2"),
+          at: 15,
+          beforeFromReport: true,
+        },
+      },
+      snapshot(snapshotId("snapshot_3"), 30, clicked),
+      {
+        kind: "interaction",
+        interaction: {
+          page: pageId("page_1"),
+          report: {
+            type: "click",
+            selector: 'internal:role=link[name="ayme"s]',
+            target: { ref: pictureRef("e3"), tree: typed },
+            values: { button: "left", clickCount: 1 },
+          },
+          before: snapshotId("snapshot_2"),
+          after: snapshotId("snapshot_3"),
+          at: 20,
+        },
+      },
+    ]);
+    const [fill, click] = timeline.visits().flatMap((one) => one.entries);
+
+    expect(fill).toMatchObject({
+      interaction: { type: "fill" },
+      changes: [
+        {
+          element: 'textbox "Search"',
+          changed: [expect.objectContaining({ property: "text" })],
+        },
+      ],
+    });
+    expect(click).toMatchObject({
+      interaction: { type: "click" },
+      changes: expect.arrayContaining([
+        expect.objectContaining({ element: 'textbox "Search"' }),
+        expect.objectContaining({ element: 'link "ayme"' }),
+      ]),
+    });
+  });
+
   it("shows the clicked element gaining focus, and the one before losing it, with the click's own changes; what else changed before it stays a row of its own", async () => {
     const timeline = await timelineOf(recorded(pressed));
     const entries = timeline.visits().flatMap((one) => one.entries);
