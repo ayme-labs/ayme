@@ -11,7 +11,11 @@ export type Plan =
   | {
       kind: "codegen";
       target:
-        | { url: string; headless: boolean | undefined }
+        | {
+            url: string;
+            headless: boolean | undefined;
+            startRecording?: true;
+          }
         | { cdpEndpoint: string };
     }
   | { kind: "install"; args: string[] }
@@ -42,7 +46,11 @@ export function planOf(command: Command): Plan {
     case "codegen":
       return {
         kind: "codegen",
-        target: { url: command.url, headless: command.headless },
+        target: {
+          url: command.url,
+          headless: command.headless,
+          ...(command.startRecording ? { startRecording: true as const } : {}),
+        },
       };
     case "install":
       return { kind: "install", args: command.args };

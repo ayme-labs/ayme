@@ -97,6 +97,29 @@ describe("what the stock adapter is asked for", () => {
     });
   });
 
+  it("opens the page blank to start recording, when asked", () => {
+    expect(
+      stockOptionsOf(
+        {
+          projectDir: "/p",
+          browser: {
+            launch: { url: "http://shop.test/", startRecording: true },
+          },
+        },
+        undefined,
+        undefined
+      )
+    ).toEqual({
+      projectDir: "/p",
+      url: "http://shop.test/",
+      headless: false,
+      debugPort: undefined,
+      startRecording: true,
+      windowUrl: undefined,
+      toolbar: undefined,
+    });
+  });
+
   it("launches without a window, on a debug port, when asked", () => {
     expect(
       stockOptionsOf(

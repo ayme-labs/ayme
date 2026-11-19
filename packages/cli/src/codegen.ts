@@ -11,33 +11,49 @@ import {
 
 /**
  * How `codegen <url>` launches the browser. `--headless` and `--headed` say
- * whether it has a window. The two environment variables are for the tests:
+ * whether it has a window; `--start-recording` opens it already recording. The two environment variables are for the tests:
  * they run where there is no screen, and act in the recorded browser over a
  * connection of their own. The command line wins over them.
  */
 export function launchOptions(
   url: string,
   env: NodeJS.ProcessEnv,
-  headless?: boolean
+  headless?: boolean,
+  startRecording?: true
 ): Extract<RecorderOptions["browser"], { launch: unknown }>["launch"] {
   const debugPort = env.AYME_RECORDER_DEBUG_PORT;
   return {
     url,
     headless: headless ?? env.AYME_RECORDER_HEADLESS === "1",
     ...(debugPort ? { debugPort: Number(debugPort) } : {}),
+    ...(startRecording ? { startRecording } : {}),
   };
 }
+
+/** What `codegen` is given: a URL to open, or a running browser. */
+type Target =
+  | {
+      readonly url: string;
+      readonly headless?: boolean | undefined;
+      readonly startRecording?: true;
+    }
+  | { readonly cdpEndpoint: string };
 
 /** The browser a target asks for: one launched on a URL, or the running one
  * at an address. */
 export function browserOf(
-  target:
-    | { readonly url: string; readonly headless?: boolean | undefined }
-    | { readonly cdpEndpoint: string },
+  target: Target,
   env: NodeJS.ProcessEnv
 ): RecorderOptions["browser"] {
   return "url" in target
-    ? { launch: launchOptions(target.url, env, target.headless) }
+    ? {
+        launch: launchOptions(
+          target.url,
+          env,
+          target.headless,
+          target.startRecording
+        ),
+      }
     : { attach: { cdpEndpoint: target.cdpEndpoint } };
 }
 
@@ -152,11 +168,7 @@ async function start(
  * exit code. What it prints and which code it gives are decided above; this
  * is the wiring to the terminal's signals and streams.
  */
-export async function codegen(
-  target:
-    | { readonly url: string; readonly headless?: boolean | undefined }
-    | { readonly cdpEndpoint: string }
-): Promise<number> {
+export async function codegen(target: Target): Promise<number> {
   const browser = browserOf(target, process.env);
   const recorder = await start(browser);
   if (!recorder) return 1;

@@ -38,6 +38,7 @@ The terminal prints the address of the recorder window, such as `Recorder UI: ht
 
 - `--headed`: open Chromium with a visible window. This is the default.
 - `--headless`: open Chromium without a window. Open the printed window address in a browser to control the recording.
+- `--start-recording`: open the recorder already recording, so that the recording and its trace hold the first page load, its network requests included. The page opens blank, the recorder starts recording, and only then does the page go to `<url>`. **Stop**, **Continue recording**, **Clear** and **Finish** work as they do after pressing **Record**; after **Clear**, the next recording starts from the page as it is then.
 
 To end, press **Finish**, close the browser, or press Ctrl+C in the terminal. Closing the browser or pressing Ctrl+C while recording or paused saves what was recorded so far, as Finish does; before you press Record there is nothing to save. Pressing Ctrl+C a second time does not cut the save short.
 
@@ -56,7 +57,7 @@ npx @ayme-dev/cli codegen --cdp-endpoint http://127.0.0.1:9222
 - Input given by another automation client in that browser is recorded like a person's.
 - When the recorder ends, it takes its toolbar off the page and leaves the browser open. Close the page or press Ctrl+C to end; either saves what was recorded, as Finish does.
 - The recorder window does not open by itself: open the printed address in any browser.
-- `--headless` and `--headed` do not apply here, and you cannot give a URL as well.
+- `--headless`, `--headed` and `--start-recording` do not apply here, and you cannot give a URL as well.
 
 ### `trace`
 

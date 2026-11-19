@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 
-export const USAGE = `Usage: ayme-recorder codegen <url> [--headless | --headed]
+export const USAGE = `Usage: ayme-recorder codegen <url> [--headless | --headed] [--start-recording]
        ayme-recorder codegen --cdp-endpoint <address>
        ayme-recorder trace <target>
        ayme-recorder install [browser]
@@ -9,6 +9,9 @@ export const USAGE = `Usage: ayme-recorder codegen <url> [--headless | --headed]
                  the project this runs in.
   --headless     Open Chromium without a visible window.
   --headed       Open Chromium with a window. This is the default.
+  --start-recording
+                 Open the recorder already recording, so that the recording
+                 and its trace hold the first page load.
   --cdp-endpoint <address>
                  Record the page of a Chromium that is already running, at
                  the address of its DevTools protocol on this machine, such
@@ -31,7 +34,12 @@ export const USAGE = `Usage: ayme-recorder codegen <url> [--headless | --headed]
  * with a message.
  */
 export type Command =
-  | { kind: "codegen"; url: string; headless?: boolean }
+  | {
+      kind: "codegen";
+      url: string;
+      headless?: boolean;
+      startRecording?: true;
+    }
   | { kind: "trace"; args: string[] }
   | { kind: "install"; args: string[] }
   | { kind: "help"; text: string }
@@ -57,6 +65,7 @@ type Flags = {
   help?: boolean;
   headless?: boolean;
   headed?: boolean;
+  "start-recording"?: boolean;
   "cdp-endpoint"?: string;
 };
 
@@ -77,6 +86,7 @@ function readCodegen(args: string[]): Command {
         help: { type: "boolean", short: "h" },
         headless: { type: "boolean" },
         headed: { type: "boolean" },
+        "start-recording": { type: "boolean" },
         "cdp-endpoint": { type: "string" },
       },
     }));
@@ -93,10 +103,10 @@ function flagConflict(values: Flags): Command | undefined {
     return fail("Give either --headless or --headed, not both.");
   if (
     values["cdp-endpoint"] !== undefined &&
-    (values.headless || values.headed)
+    (values.headless || values.headed || values["start-recording"])
   )
     return fail(
-      "--headless and --headed apply when the recorder opens the browser, not with --cdp-endpoint."
+      "--headless, --headed and --start-recording apply when the recorder opens the browser, not with --cdp-endpoint."
     );
   return undefined;
 }
@@ -116,7 +126,12 @@ function codegenCommand(positionals: string[], values: Flags): Command {
   }
   if (url === undefined || more.length > 0)
     return { kind: "error", text: USAGE };
-  return values.headless || values.headed
-    ? { kind: "codegen", url, headless: values.headless === true }
-    : { kind: "codegen", url };
+  return {
+    kind: "codegen",
+    url,
+    ...(values.headless || values.headed
+      ? { headless: values.headless === true }
+      : {}),
+    ...(values["start-recording"] ? { startRecording: true as const } : {}),
+  };
 }

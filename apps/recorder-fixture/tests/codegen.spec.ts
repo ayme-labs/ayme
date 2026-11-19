@@ -1,4 +1,4 @@
-import { mkdtemp, realpath, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -6,6 +6,7 @@ import { RecorderWindow } from "@ayme-dev/recorder-window/testing";
 import { chromium } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
+import { stockTraceTool } from "./stockTrace";
 
 /** The window's address, once the command has printed it. */
 const windowUrlOf = (stdout: string) =>
@@ -155,6 +156,70 @@ test.describe("codegen <url>", () => {
     expect(run.stdout()).toContain(
       "Recording was empty; no recording package was created."
     );
+  });
+
+  test("--start-recording opens already recording: the package and its trace hold the first page load, and Finish saves them", async ({
+    fixturePages,
+    runRecorder,
+  }, testInfo) => {
+    test.setTimeout(60_000);
+    // A project of the test's own, inside this app: its Playwright is the
+    // app's, and its recordings are the test's.
+    const project = testInfo.outputPath("project");
+    await mkdir(project, { recursive: true });
+    const url = fixturePages.url("/cart.html");
+    const run = await runRecorder(["codegen", url, "--start-recording"], {
+      cwd: project,
+    });
+    await run.waitForStdout("Recorder UI: ");
+    const browser = await chromium.connectOverCDP(run.debugEndpoint);
+    try {
+      const pageAt = async (at: string) => {
+        const find = () =>
+          browser
+            .contexts()
+            .flatMap((context) => context.pages())
+            .find((page) => page.url() === at);
+        await expect.poll(() => find() !== undefined).toBe(true);
+        return find()!;
+      };
+      const window = new RecorderWindow(
+        await pageAt(windowUrlOf(run.stdout())!)
+      );
+      // Recording, with nothing pressed.
+      await expect(window.controls.stopButton).toBeEnabled();
+      await expect(window.controls.recordButton).toHaveCount(0);
+
+      const page = await pageAt(url);
+      await page.getByRole("button", { name: "Add item" }).click();
+      await expect(page.getByText("Items: 1")).toBeVisible();
+      await window.controls.finishButton.click();
+      expect(await run.exit).toEqual({ code: 0, signal: null });
+    } finally {
+      await browser.close();
+    }
+
+    const saved = /^Recording package: (.*)$/m.exec(run.stdout())?.[1];
+    expect(saved).toBeDefined();
+    const text = await readFile(saved!, "utf8");
+    // The first Visit is the first page load.
+    expect(text).toMatch(
+      new RegExp(
+        `visits:\\n  - visitId: \\w+\\n    url: ${url.replaceAll(".", "\\.")}\\n    cause: initial\\n`
+      )
+    );
+    expect(text).toContain("kind: interaction");
+    // The trace holds that load's request, which the tool names by its
+    // file.
+    const stock = await stockTraceTool();
+    try {
+      await stock.open(join(saved!, "..", "trace.zip"));
+      expect(await stock.command("requests")).toMatch(
+        /GET\s+200\s+cart\.html\s/
+      );
+    } finally {
+      await stock.close();
+    }
   });
 
   test("fails with a reason, not a stack trace, in a project with no Playwright installed", async ({

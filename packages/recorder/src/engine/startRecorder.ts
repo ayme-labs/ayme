@@ -19,6 +19,11 @@ export type RecorderOptions = {
           readonly url: string;
           /** Without a visible window. Off unless set. */
           readonly headless?: boolean;
+          /** Open already recording: the page opens blank, Record is
+           * applied, and only then does the page go to `url`, so that the
+           * recording and its trace hold the first page load. Off unless
+           * set. */
+          readonly startRecording?: boolean;
           /** Also opens the browser's DevTools protocol on this local port,
            * so that a test can act in the recorded browser over a
            * connection of its own. */
@@ -75,14 +80,29 @@ export function stockOptionsOf(
       cdpEndpoint: options.browser.attach.cdpEndpoint,
       toolbar: shown,
     };
-  const { url, headless = false, debugPort } = options.browser.launch;
-  return { projectDir, url, headless, debugPort, windowUrl, toolbar: shown };
+  const {
+    url,
+    headless = false,
+    debugPort,
+    startRecording,
+  } = options.browser.launch;
+  return {
+    projectDir,
+    url,
+    headless,
+    debugPort,
+    ...(startRecording ? { startRecording } : {}),
+    windowUrl,
+    toolbar: shown,
+  };
 }
 
 /**
  * Starts a recorder. Only starting can fail: it rejects with a
  * `RecorderStartError` that carries a reason. Everything after is told
- * through the handle.
+ * through the handle. One asked to start recording is handed out once
+ * Record is answered, as if it had been pressed on the blank page: the page
+ * goes to its URL then.
  */
 export async function startRecorder(
   options: RecorderOptions
@@ -91,8 +111,11 @@ export async function startRecorder(
   const window = options.window
     ? await serveWindow(options.window.folder)
     : undefined;
-  return startRecorderOn(
+  const recorder = await startRecorderOn(
     stockBrowser(stockOptionsOf(options, window?.url, toolbar)),
     { projectDir: options.projectDir, window, toolbar: toolbar?.bridge }
   );
+  if ("launch" in options.browser && options.browser.launch.startRecording)
+    await recorder.send({ type: "record" });
+  return recorder;
 }

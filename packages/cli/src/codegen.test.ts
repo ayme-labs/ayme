@@ -149,6 +149,16 @@ describe("which browser a target asks for", () => {
     ).toEqual({
       launch: { url: "http://localhost:3000", headless: true, debugPort: 9333 },
     });
+    // Opened already recording.
+    expect(
+      browserOf({ url: "http://localhost:3000", startRecording: true }, {})
+    ).toEqual({
+      launch: {
+        url: "http://localhost:3000",
+        headless: false,
+        startRecording: true,
+      },
+    });
   });
 
   it("attaches to the running browser at an address", () => {

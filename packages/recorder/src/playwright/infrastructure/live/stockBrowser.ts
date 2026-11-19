@@ -91,6 +91,10 @@ type Launch = {
   readonly url: string;
   readonly headless: boolean;
   readonly debugPort: number | undefined;
+  /** The page opens blank, and goes to `url` once Record holds inputs
+   * back: the engine applies Record first, so that the recording and its
+   * trace hold the first page load. */
+  readonly startRecording?: boolean;
   /** The recorder window's address, opened as a second window of the
    * launched browser; none when no window is served. */
   readonly windowUrl?: string;
@@ -167,7 +171,12 @@ export const stockBrowser = (
         try: () =>
           openPage(
             browser,
-            attach ? { attached: true } : { url: (options as Launch).url },
+            attach
+              ? { attached: true }
+              : {
+                  url: (options as Launch).url,
+                  afterRecord: (options as Launch).startRecording === true,
+                },
             options.projectDir,
             (signal) => Queue.offerUnsafe(signals, signal),
             options.toolbar
@@ -319,7 +328,9 @@ async function recorderModeOf(
  */
 async function openPage(
   browser: Browser,
-  start: { readonly url: string } | { readonly attached: true },
+  start:
+    | { readonly url: string; readonly afterRecord: boolean }
+    | { readonly attached: true },
   projectDir: string,
   tell: (signal: BrowserSignal) => void,
   toolbar: Toolbar | undefined
@@ -609,11 +620,15 @@ async function openPage(
 
   const everyFrame = () => [...pages.values()].flatMap((open) => open.frames());
 
+  /** The page that goes to the start's URL once Record holds inputs back,
+   * and the URL; none once it went. */
+  let opening: { page: Page; url: string } | undefined;
   if ("url" in start) {
     const page = await context.newPage();
+    if (start.afterRecord) opening = { page, url: start.url };
     // A page that does not load is no reason to stop: the browser shows the
     // error, and the person can go elsewhere or close it.
-    await page.goto(start.url).catch(() => {});
+    else await page.goto(start.url).catch(() => {});
   } else {
     // Scripts for new documents never run in one that is loaded already:
     // the attached page's documents get them now, the same way.
@@ -738,6 +753,13 @@ async function openPage(
       everyFrame().map((frame) => frame.evaluate(setGate, on).catch(() => {}))
     );
     tell({ kind: "inputsHeld", on });
+    // Record is applied: the page opened to start recording goes to its
+    // URL now, inside the recording and its trace.
+    if (on && opening) {
+      const { page, url } = opening;
+      opening = undefined;
+      void page.goto(url).catch(() => {});
+    }
   }
 
   async function takeSnapshot(request: Asked<"takeSnapshot">) {

@@ -83,6 +83,8 @@ type Harness = {
   ): Promise<Extract<BrowserSignal, { kind: K }>>;
   /** The recorded page, over the test's own connection to the browser. */
   readonly page: Page;
+  /** The address of the served page. */
+  readonly url: string;
   /** A person at the recorded browser: raw input over that connection, so
    * that it is no call of the Playwright under test. */
   click(target: Locator, button?: "left" | "right" | "middle"): Promise<void>;
@@ -103,8 +105,13 @@ const freePort = () =>
     });
   });
 
-/** Serves one page of HTML, and opens the recorded browser on it. */
-async function onStockPlaywright(html: string): Promise<Harness> {
+/** Serves one page of HTML, and opens the recorded browser on it, or, to
+ * start recording, on a blank page that goes there once Record holds
+ * inputs back. */
+async function onStockPlaywright(
+  html: string,
+  { startRecording = false } = {}
+): Promise<Harness> {
   const server = createServer((_, response) => {
     response.setHeader("content-type", "text/html; charset=utf-8");
     response.end(`<!doctype html><html><body>${html}</body></html>`);
@@ -137,7 +144,13 @@ async function onStockPlaywright(html: string): Promise<Harness> {
           projectDir,
           cdpEndpoint: `http://127.0.0.1:${debugPort}`,
         })
-      : stockBrowser({ projectDir, url, headless: true, debugPort })
+      : stockBrowser({
+          projectDir,
+          url,
+          headless: true,
+          debugPort,
+          ...(startRecording ? { startRecording } : {}),
+        })
   );
   ends.push(() => runtime.dispose());
   const browser = await runtime.runPromise(RecordedBrowser);
@@ -159,9 +172,10 @@ async function onStockPlaywright(html: string): Promise<Harness> {
     ends.push(() => connection.close());
     contexts = connection.contexts();
   }
+  const opensAt = startRecording ? "about:blank" : url;
   const page = contexts
     .flatMap((context) => context.pages())
-    .find((candidate) => candidate.url() === url);
+    .find((candidate) => candidate.url() === opensAt);
   if (!page) throw new Error(`No page at ${url} in the recorded browser.`);
   const session = await page.context().newCDPSession(page);
   const mouse = (
@@ -184,6 +198,7 @@ async function onStockPlaywright(html: string): Promise<Harness> {
     ask: (request) =>
       runtime.runPromise(browser.ask(request as BrowserRequest)),
     told,
+    url,
     toldOf: async (kind, matches = () => true) => {
       const found = () =>
         told.find(
@@ -384,6 +399,24 @@ async function stockToolEvaluates(
   }
 }
 
+/** The requests the stock trace tool lists for a trace file. */
+async function stockToolRequests(file: string) {
+  const cli = projectPlaywrightCli(projectDir)!;
+  const cwd = await mkdtemp(join(tmpdir(), "ayme-recorder-compat-"));
+  const tool = (...args: string[]) =>
+    promisify(execFile)(process.execPath, [cli, "trace", ...args], {
+      cwd,
+      maxBuffer: 1 << 26,
+    }).then(({ stdout }) => stdout);
+  try {
+    await tool("open", file);
+    return await tool("requests");
+  } finally {
+    await tool("close").catch(() => {});
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
+
 it("traces the recording, marks each snapshot, and numbers each mark as the stock trace tool does", async () => {
   const browser = await onStockPlaywright(BUTTONS);
   await browser.ask({ kind: "startTrace" });
@@ -438,6 +471,46 @@ it("traces the recording, marks each snapshot, and numbers each mark as the stoc
   ).toBe("Two");
   await rm(dirname(trace.file), { recursive: true, force: true });
 });
+
+it.runIf(!attaching)(
+  "opens a blank page to start recording, and goes to the URL only once Record holds inputs back, so that the trace holds the first page load",
+  async () => {
+    const browser = await onStockPlaywright(BUTTONS, { startRecording: true });
+    await browser.ask({ kind: "startTrace" });
+    await browser.toldOf("traceStarted");
+    await browser.ask({ kind: "reportInteractions", on: true });
+    await browser.toldOf("reportingInteractions");
+    expect(browser.page.url()).toBe("about:blank");
+
+    await browser.ask({ kind: "holdInputs", on: true });
+    await browser.toldOf("inputsHeld");
+    await expect.poll(() => browser.page.url()).toBe(browser.url);
+    await browser.page.locator("#first").waitFor();
+    await browser.page.evaluate("window.stayed = true");
+    // Holding again, as after Stop and Continue, goes nowhere.
+    await browser.ask({ kind: "holdInputs", on: false });
+    await browser.toldOf("inputsHeld", ({ on }) => !on);
+    await browser.ask({ kind: "holdInputs", on: true });
+    await expect
+      .poll(
+        () =>
+          browser.told.filter(
+            (signal) => signal.kind === "inputsHeld" && signal.on
+          ).length
+      )
+      .toBe(2);
+    expect(await browser.page.evaluate("window.stayed")).toBe(true);
+
+    await browser.ask({ kind: "stopTrace", keep: true });
+    const { trace } = await browser.toldOf("traceStopped");
+    // The page's own load, as the tool lists it: by its host and path.
+    const { host } = new URL(browser.url);
+    expect(await stockToolRequests(trace.file)).toMatch(
+      new RegExp(`GET\\s+200\\s+${host.replaceAll(".", "\\.")}\\s`)
+    );
+    await rm(dirname(trace.file), { recursive: true, force: true });
+  }
+);
 
 it("tells of a trace that is kept, and of none that is thrown away, and starts a new one after it", async () => {
   const browser = await onStockPlaywright(BUTTONS);

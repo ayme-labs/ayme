@@ -81,6 +81,28 @@ describe("readCommand", () => {
     }
   );
 
+  it.each([
+    { flags: ["--start-recording"], expected: {} },
+    {
+      flags: ["--headless", "--start-recording"],
+      expected: { headless: true },
+    },
+  ])(
+    "opens the recorder already recording for `codegen <url> $flags`",
+    ({ flags, expected }) => {
+      expect(readCommand(["codegen", "http://localhost", ...flags])).toEqual({
+        kind: "codegen",
+        url: "http://localhost",
+        ...expected,
+        startRecording: true,
+      });
+    }
+  );
+
+  it("lists --start-recording in its usage text", () => {
+    expect(USAGE).toContain("--start-recording");
+  });
+
   it("fails when it is told to be both headless and headed", () => {
     expect(
       readCommand(["codegen", "http://localhost", "--headless", "--headed"])
@@ -90,19 +112,22 @@ describe("readCommand", () => {
     });
   });
 
-  it("fails when a running browser is given a window setting: it is not launched here", () => {
-    expect(
-      readCommand([
-        "codegen",
-        "--cdp-endpoint",
-        "http://127.0.0.1:9222",
-        "--headless",
-      ])
-    ).toEqual({
-      kind: "error",
-      text: `--headless and --headed apply when the recorder opens the browser, not with --cdp-endpoint.\n\n${USAGE}`,
-    });
-  });
+  it.each([["--headless"], ["--headed"], ["--start-recording"]])(
+    "fails when a running browser is given %s: it applies only to a browser launched here",
+    (flag) => {
+      expect(
+        readCommand([
+          "codegen",
+          "--cdp-endpoint",
+          "http://127.0.0.1:9222",
+          flag,
+        ])
+      ).toEqual({
+        kind: "error",
+        text: `--headless, --headed and --start-recording apply when the recorder opens the browser, not with --cdp-endpoint.\n\n${USAGE}`,
+      });
+    }
+  );
 
   it.each([["--help"], ["-h"], ["codegen", "--help"]])(
     "prints the usage text for %j",

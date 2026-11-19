@@ -35,6 +35,16 @@ describe("what the command line does for a command", () => {
       kind: "codegen",
       target: { url: "http://localhost", headless: true },
     });
+    expect(
+      planOf({ kind: "codegen", url: "http://localhost", startRecording: true })
+    ).toEqual({
+      kind: "codegen",
+      target: {
+        url: "http://localhost",
+        headless: undefined,
+        startRecording: true,
+      },
+    });
   });
 
   it("records a running browser at its address", () => {
