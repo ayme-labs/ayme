@@ -59,6 +59,10 @@ export type InteractionReport = {
    * was found.
    */
   readonly snapshotTarget?: SnapshotRef;
+  /** Playwright's own words for the selector, as its locator generator
+   * writes them, as `getByText('Saved')`: for whoever shows a step whose
+   * element is not known. */
+  readonly locator?: string;
   /** Everything else Playwright said: the button, the modifiers and so on. */
   readonly values: Readonly<Record<string, unknown>>;
 };

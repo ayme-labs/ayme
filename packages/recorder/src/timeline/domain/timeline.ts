@@ -18,7 +18,12 @@ import type {
   TimelineEntry,
 } from "../../contract";
 import { foundRows, type FoundRow } from "./changeRows";
-import { labelNear, wordsOf, type NamedElement } from "./elementNames";
+import {
+  labelNear,
+  selectorWords,
+  wordsOf,
+  type NamedElement,
+} from "./elementNames";
 import {
   interactionDetails,
   leadsToChange,
@@ -153,6 +158,17 @@ const namedTarget = (tree: StructuralTree, ref: AriaRef | undefined) => {
   const node = ref && tree.getNode(ref);
   return node ? labelNear(tree, node) : null;
 };
+
+/** An entry's target in words: its label, or else its selector's words. */
+function targetWords(
+  named: NamedElement | null,
+  report: InteractionReport
+): { targetElement?: string } {
+  const words = named
+    ? wordsOf(named)
+    : selectorWords(report.selector, report.locator);
+  return words ? { targetElement: words } : {};
+}
 
 /** The rows of a Change Tree as an entry tells them, and their elements. */
 const rowsOf = (change: StructuralTree) => {
@@ -892,7 +908,7 @@ export class Timeline {
           interaction.report,
           target ?? null
         ),
-        ...(named ? { targetElement: wordsOf(named) } : {}),
+        ...targetWords(named, interaction.report),
         changes: told && told.changes,
         ...(discarded ? { discarded } : {}),
       },

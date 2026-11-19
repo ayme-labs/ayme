@@ -1621,16 +1621,19 @@ describe("the timeline, for an assertion", () => {
   const assertion = (
     snapshot: SnapshotId,
     at: number,
-    picked?: string
+    picked?: string,
+    selector = 'internal:role=paragraph >> internal:has-text="Saved"i',
+    locator = "getByRole('paragraph').filter({ hasText: 'Saved' })"
   ): TimelineAddition => ({
     kind: "interaction",
     interaction: {
       page: pageId("page_1"),
       report: {
         type: "assertVisible",
-        selector: 'internal:role=paragraph >> internal:has-text="Saved"i',
+        selector,
         target: null,
         ...(picked ? { snapshotTarget: snapshotRefOf(picked) } : {}),
+        locator,
         values: {},
       },
       before: snapshot,
@@ -1707,7 +1710,7 @@ describe("the timeline, for an assertion", () => {
     );
   });
 
-  it("names no element for an assertion whose picked element the snapshot does not list", async () => {
+  it("names an assertion whose picked element the snapshot does not list by its selector, in Playwright's own words, and the package keeps the selector only", async () => {
     const timeline = new Timeline();
     for (const addition of [
       visit,
@@ -1717,8 +1720,35 @@ describe("the timeline, for an assertion", () => {
       await timeline.add(addition);
 
     const [entry] = timeline.visits()[0]!.entries;
-    expect(entry).toMatchObject({ interaction: { targetRef: null } });
-    expect(entry).not.toHaveProperty("targetElement");
+    expect(entry).toMatchObject({
+      interaction: { targetRef: null },
+      targetElement: "getByRole('paragraph').filter({ hasText: 'Saved' })",
+    });
+    expect(await timeline.package(header)).not.toContain("getByRole");
+  });
+
+  it("names an assertion with no ref whose selector is a role and a name as a label reads", async () => {
+    const timeline = new Timeline();
+    for (const addition of [
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, savedPage),
+      assertion(
+        snapshotId("snapshot_1"),
+        10,
+        undefined,
+        'internal:role=link[name="chore: release main"i]',
+        "getByRole('link', { name: 'chore: release main' })"
+      ),
+    ])
+      await timeline.add(addition);
+
+    expect(timeline.visits()[0]!.entries[0]).toMatchObject({
+      interaction: {
+        targetRef: null,
+        targetSelector: 'internal:role=link[name="chore: release main"i]',
+      },
+      targetElement: 'link "chore: release main"',
+    });
   });
 
   it("starts a Visit whose first entry is an assertion with the page as it stood at the assertion", async () => {

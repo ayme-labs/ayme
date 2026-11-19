@@ -945,6 +945,50 @@ it("gives the element a person picks for an assertion the ref the adapter's own 
   }
 });
 
+it("gives the element a person picks for an assertion its own ref, when a card the hover opened has another element its selector matches by then", async () => {
+  // As on github.com: hovering a pull request's link opens a card whose
+  // link holds the same title, and more.
+  const browser = await onStockPlaywright(`
+    <a href="#" id="pr">chore: release main</a>
+    <div id="card"></div>
+    <script>
+      // Playwright's picking takes "mouseenter"; "mouseover" reaches
+      // the page, as GitHub's cards open by it.
+      document.getElementById("pr").addEventListener("mouseover", () =>
+        setTimeout(() => {
+          document.getElementById("card").innerHTML =
+            '<a href="#"><h4>chore: release main</h4> #1168</a>';
+        }, 50)
+      );
+    </script>`);
+  await reporting(browser);
+  await browser.ask({ kind: "takeSnapshot", snapshot: "s1", page: "page_1" });
+  const { snapshot } = await browser.toldOf("snapshotTaken");
+  const ref = /link "chore: release main" \[ref=(\w+)\]/.exec(
+    snapshot.tree
+  )?.[1];
+  expect(ref).toMatch(/^e\d+$/);
+  await browser.ask({ kind: "pick", on: true });
+  await browser.toldOf("picking", ({ on }) => on);
+
+  // Hovered, the card opens; then picked.
+  const pr = browser.page.locator("#pr");
+  const box = (await pr.boundingBox())!;
+  await browser.page.mouse.move(box.x + 5, box.y + box.height / 2);
+  await browser.page.locator("#card a").waitFor();
+  await browser.click(pr);
+
+  const { report } = await browser.toldOf("interactionReported");
+  expect(report.type).toBe("assertVisible");
+  // Its selector matches the card's link too by now.
+  expect(await browser.page.locator(report.selector!).count()).toBe(2);
+  expect(report.snapshotTarget).toBe(ref);
+  // Playwright's own words for the selector, for a step with no element.
+  expect(report.locator).toBe(
+    "getByRole('link', { name: 'chore: release main' })"
+  );
+});
+
 it("leaves the gate holding clicks again once picking is over", async () => {
   const browser = await onStockPlaywright(CLICKABLE);
   await reporting(browser);

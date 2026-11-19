@@ -93,9 +93,21 @@ export function drawHighlight(
  */
 export function followPicking(on: boolean, rules: Picking): void {
   const name = "ayme-recorder-picking";
-  const self = window as unknown as { __aymeRecorderPicking?: () => void };
+  const self = window as unknown as {
+    __aymeRecorderPicking?: () => void;
+    __aymeRecorderPicked?: Element;
+  };
   self.__aymeRecorderPicking?.();
   if (!on) return;
+  delete self.__aymeRecorderPicked;
+  // The element under the mouse at the picking click, kept for the
+  // adapter: the one Playwright's selector names is it or one around it,
+  // whatever else the selector matches by the time it is read.
+  const keep = (event: MouseEvent) => {
+    const under = event.composedPath()[0];
+    if (under instanceof Element && !rules.recordersOwn(under.localName))
+      self.__aymeRecorderPicked = under;
+  };
   const follow = (event: MouseEvent) => {
     const under = event.composedPath()[0];
     const shown =
@@ -107,6 +119,7 @@ export function followPicking(on: boolean, rules: Picking): void {
     if (!event.relatedTarget) rules.outline(name, []);
   };
   const stop = () => {
+    window.removeEventListener("click", keep, true);
     window.removeEventListener("mousemove", follow, true);
     window.removeEventListener("mouseout", left, true);
     window.removeEventListener("click", stop, true);
@@ -115,6 +128,8 @@ export function followPicking(on: boolean, rules: Picking): void {
   };
   // Only the window: a document that is just starting has no element yet.
   self.__aymeRecorderPicking = stop;
+  // Before Playwright's recorder, which takes the click on the document.
+  window.addEventListener("click", keep, true);
   window.addEventListener("mousemove", follow, true);
   window.addEventListener("mouseout", left, true);
   window.addEventListener("click", stop, true);

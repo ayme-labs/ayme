@@ -93,10 +93,12 @@ export type TimelineEntry = (
       /** Milliseconds on the recorded browser's monotonic clock. */
       readonly timestamp: number;
       readonly interaction: InteractionDetails;
-      /** The target in the words of the page's structure, its role and its
-       * name, such as `textbox "Username"`, for whoever shows the entry: the
-       * Recording Package does not have it. Absent when the target is not
-       * known in the page's structure. */
+      /** The target in the words of the page's structure, its label, such
+       * as `textbox "Username"`, for whoever shows the entry: the Recording
+       * Package does not have it. When the page's structure does not know
+       * the target, its selector's words: a role and name as a label reads
+       * them, or Playwright's own locator, as `getByText('Saved')`. Absent
+       * for a target with neither. */
       readonly targetElement?: string;
       /** What it changed; null when it changed nothing, or when the page was
        * gone before that could be seen. */

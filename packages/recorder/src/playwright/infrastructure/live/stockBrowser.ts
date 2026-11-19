@@ -44,6 +44,7 @@ import {
   markCall,
   noLongerRecording,
   openGate,
+  pickedAmong,
   pickWithGate,
   removeOwnElements,
   setGate,
@@ -424,7 +425,7 @@ async function openPage(
     page: Page,
     action: PlaywrightAction
   ): { report: InteractionReport; fromSelector: boolean } => {
-    const report = reportOf(action);
+    const report = withLocator(reportOf(action), page);
     const tree = action.ariaSnapshot;
     if (!tree) return { report, fromSelector: false };
     const types = CHAIN_TYPES[action.name] ?? [];
@@ -463,7 +464,11 @@ async function openPage(
    * For an assertion, which Playwright reports by a selector alone: the ref
    * the adapter's own snapshots give the picked element, or its nearest
    * ancestor they list, read off a public snapshot of each in turn. Its
-   * snapshot names it as it names a click's target.
+   * snapshot names it as it names a click's target. The picked element is
+   * the one the page kept at the picking click, among those the selector
+   * matches: by now the selector can match more, as a card the hover
+   * opened. Without one kept, the selector names it only when it matches
+   * one element alone.
    */
   const withPickedRef = async (
     report: InteractionReport,
@@ -472,7 +477,11 @@ async function openPage(
     const { selector } = report;
     if (report.type !== "assertVisible" || selector === null) return report;
     // Calls Playwright traces: never inside a snapshot's mark.
-    const read = markers.then(() => pickedRef(page.locator(selector)));
+    const read = markers.then(async () => {
+      const matches = page.locator(selector);
+      const at = await matches.evaluateAll(pickedAmong).catch(() => -1);
+      return pickedRef(at === -1 ? matches : matches.nth(at));
+    });
     markers = read.catch(() => {});
     const ref = await read;
     return ref
@@ -1141,6 +1150,17 @@ async function placeInPage(frame: Frame, at: { x: number; y: number }) {
     point = { x: point.x + offset.x, y: point.y + offset.y };
   }
   return point;
+}
+
+/** A report with Playwright's own words for its selector: its locator
+ * generator's, which reads no page. */
+function withLocator(report: InteractionReport, page: Page): InteractionReport {
+  if (report.selector === null) return report;
+  try {
+    return { ...report, locator: page.locator(report.selector).toString() };
+  } catch {
+    return report;
+  }
 }
 
 /** A report of Playwright's recorder, in the engine's words. */

@@ -5,7 +5,12 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import { describe, expect, it } from "vitest";
 
-import { labelNear, labelOf, type PageView } from "./elementNames";
+import {
+  labelNear,
+  labelOf,
+  selectorWords,
+  type PageView,
+} from "./elementNames";
 
 const read = (yaml: string, refs = new SyntheticAriaRefFactory()) =>
   StructuralTree.fromAriaSnapshotYaml(yaml, refs);
@@ -250,5 +255,37 @@ describe("the label near an element", () => {
     );
 
     expect(labelNear(tree, tree.getNode("e2" as AriaRef)!)).toBeNull();
+  });
+});
+
+describe("the words of a selector, for a step whose element is not known", () => {
+  it("reads a role and its name as a label does", () => {
+    expect(
+      selectorWords('internal:role=link[name="chore: release main"i]', "x")
+    ).toBe('link "chore: release main"');
+    expect(
+      selectorWords('internal:role=button[name="Say \\"hi\\""s]', "x")
+    ).toBe('button "Say \\"hi\\""');
+    expect(selectorWords("internal:role=heading", "x")).toBe("heading");
+  });
+
+  it("is Playwright's own words for any other selector, and none without them", () => {
+    expect(selectorWords('internal:text="Saved"i', "getByText('Saved')")).toBe(
+      "getByText('Saved')"
+    );
+    expect(
+      selectorWords(
+        "internal:role=heading[level=2]",
+        "getByRole('heading', { level: 2 })"
+      )
+    ).toBe("getByRole('heading', { level: 2 })");
+    expect(
+      selectorWords(
+        'internal:role=listitem >> internal:role=link[name="Go"i]',
+        "getByRole('listitem').getByRole('link', { name: 'Go' })"
+      )
+    ).toBe("getByRole('listitem').getByRole('link', { name: 'Go' })");
+    expect(selectorWords("#main", undefined)).toBeUndefined();
+    expect(selectorWords(null, undefined)).toBeUndefined();
   });
 });

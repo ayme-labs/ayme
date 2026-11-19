@@ -443,16 +443,22 @@ describe("an entry's target in words, for whoever shows the entry", () => {
     });
   });
 
-  it("is not there for a target the page's structure does not know", async () => {
+  it("is its selector's words for a target the page's structure does not know, and not there without a selector", async () => {
     const timeline = await timelineOf([
       visit,
       snapshot(snapshotId("snapshot_1"), 10, idle),
       snapshot(snapshotId("snapshot_2"), 20, saved),
       click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), null),
+      snapshot(snapshotId("snapshot_3"), 30, saved),
+      click(snapshotId("snapshot_2"), snapshotId("snapshot_3"), null, null),
     ]);
 
-    const [entry] = timeline.visits()[0]!.entries;
-    expect(entry).toMatchObject({ interaction: { targetRef: null } });
-    expect(entry).not.toHaveProperty("targetElement");
+    const [first, second] = timeline.visits()[0]!.entries;
+    expect(first).toMatchObject({
+      interaction: { targetRef: null },
+      targetElement: 'button "Save"',
+    });
+    expect(second).toMatchObject({ interaction: { targetRef: null } });
+    expect(second).not.toHaveProperty("targetElement");
   });
 });

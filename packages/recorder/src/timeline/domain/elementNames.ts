@@ -86,6 +86,24 @@ export function labelNear(
   return labels.of(named ?? node);
 }
 
+/**
+ * A step's element in words when no snapshot names it, from its selector: a
+ * role and its name, all the selector is, as a label reads them; any other
+ * selector in Playwright's own words for it, `locator`. None without them.
+ */
+export function selectorWords(
+  selector: string | null,
+  locator: string | undefined
+): string | undefined {
+  if (!selector) return undefined;
+  const role =
+    /^internal:role=([a-z]+)(?:\[name=("(?:[^"\\]|\\.)*")[is]\])?$/.exec(
+      selector
+    );
+  if (role) return role[2] ? `${role[1]} ${role[2]}` : role[1];
+  return locator;
+}
+
 /** An element in words: its label; "element" for none. */
 export const wordsOf = (named: NamedElement | null): string =>
   named ? named.label : "element";

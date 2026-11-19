@@ -29,6 +29,20 @@ export function pickWithGate(on: boolean): void {
   window.__aymeRecorderGate?.pick(on);
 }
 
+/** Which of the elements a selector matches is the one picked at the
+ * picking click: the nearest around the element under the mouse then,
+ * through open shadow roots, itself included; -1 for none. */
+export function pickedAmong(elements: Element[]): number {
+  const self = window as unknown as { __aymeRecorderPicked?: Element };
+  const above = (at: Element) =>
+    at.parentElement ?? ((at.getRootNode() as ShadowRoot).host || null);
+  const around: Element[] = [];
+  for (let at = self.__aymeRecorderPicked ?? null; at; at = above(at))
+    around.push(at);
+  const picked = around.find((at) => elements.includes(at));
+  return picked ? elements.indexOf(picked) : -1;
+}
+
 /** Opens the document's gate for a held input on its way; false when the
  * document has no gate, or it was held in another document. */
 export function openGate(input: {
