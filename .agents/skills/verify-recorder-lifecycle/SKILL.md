@@ -47,13 +47,14 @@ each function named in a comment beside the operator that models it (search
   `interactionRevised`, `writeDown`, `showOrWrite`, `behindUnshown`,
   `behindUnwritten`, `mayBeRevised`, `letThrough`, `withoutPage`, `asserted`,
   `assertVisibility`, `leaveAssertVisibility`, `pickNow`, `pickingChanged`,
-  `pageNavigated`, to `shown` and `offered`.
+  `pageNavigated`, `atRecord`, `causeOf`, to `shown` and `offered`.
 - `playwright/infrastructure/live/stockBrowser.ts`: `passOnHeld`, `passOn`,
   `holdInputs`, `letInputsThrough`, `reportInteractions`,
   `everyReportDelivered`, `pick` (Playwright's mode first, then the gates),
-  `inModeOrder`, `takeSnapshot`, `settle`, `letGo`, and the order of reports
-  (`inReportOrder`, `reportFrom`, `withAncestors`, `withPickedRef`,
-  `actionAdded`, `actionUpdated`).
+  `inModeOrder`, `takeSnapshot`, `settle`, `letGo`, the page opened blank to
+  start recording (`opening`, which goes to its address in `holdInputs`), and
+  the order of reports (`inReportOrder`, `reportFrom`, `withAncestors`,
+  `withPickedRef`, `actionAdded`, `actionUpdated`).
 - `playwright/infrastructure/in-page/gate.ts` (`gateIn`, `startGate`, and the
   gate's `set`, `open`, `arrived`, its picking start and `endPicking`),
   `drawing.ts` (`startPicking`), and `pageRules.ts` (`mouseRoute`,
@@ -64,15 +65,16 @@ each function named in a comment beside the operator that models it (search
   `changedBefore`, `tell`, `package`) and
   `recorded.ts` (`TimelineAddition`).
 - `session/application/recorderSession.ts` (`publishEntries`, the time
-  limit), `server/infrastructure/toolbarBridge.ts`,
+  limit), `engine/startRecorder.ts` (Record sent first, for
+  `--start-recording`), `server/infrastructure/toolbarBridge.ts`,
   `server/infrastructure/windowChannelRouter.ts`.
 
-**Sync commit: `8756bc15`** (`feat/recorder-rebuild`). To see what changed in
+**Sync commit: `7e7b2006`** (`feat/recorder-rebuild`). To see what changed in
 covered code since, from any folder of the repository (the procedure below
 runs in the model's):
 
 ```sh
-git log --oneline 8756bc15..HEAD -- ':(top)packages/recorder/src'
+git log --oneline 7e7b2006..HEAD -- ':(top)packages/recorder/src'
 ```
 
 A change touches the model when it adds, removes or reorders a step of the
