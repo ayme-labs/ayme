@@ -159,8 +159,8 @@ in-browser agents and the app's own code call on the running page.
   - Evidence: verified: [packages/inspector/src/panel/](packages/inspector/src/panel/), [docs/guide/guides/inspector.md](docs/guide/guides/inspector.md)
 - **Coding agents → Ayme MCP server**
   - Flows:
-    - → `ayme_connect`, `ayme_list_tools`, `ayme_call` and the page's tools, over stdio
-    - ← connect links, tool lists and `tools/list_changed` notifications, tool results and
+    - → `ayme_connect`, `ayme_list_tools`, `ayme_call`, `ayme_inspect` and the page's tools, over stdio
+    - ← connect links, the external Inspector's URL, tool lists and `tools/list_changed` notifications, tool results and
       change notes
   - Evidence: verified: [packages/mcp/src/server/index.ts](packages/mcp/src/server/index.ts), [packages/mcp/src/server/serverTools.ts](packages/mcp/src/server/serverTools.ts)
 - **In-browser agents → WebMCP driver**
