@@ -26,11 +26,19 @@ once, so every page and component extends one.
 
 ```ts
 export abstract class AppPage {
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 }
 
 export abstract class AppComponent {
-  constructor(readonly root: Locator) {}
+  readonly root: Locator;
+
+  constructor(root: Locator) {
+    this.root = root;
+  }
 }
 ```
 
@@ -39,23 +47,15 @@ export abstract class AppComponent {
 Define every locator as a getter. Define a child page object the same way when
 building it from `this.page` or `this.root`.
 
-Playwright 1.65 follows TypeScript's `useDefineForClassFields`, which is on
-for an ES2022 or later target and when no target is set. A class field
-initializer then runs before the constructor assigns its parameter properties.
-This throws, because `page` is still unset when `submit` is created:
-
-```ts
-class LoginPage {
-  readonly submit = this.page.getByRole("button", { name: "Submit" });
-  constructor(private readonly page: Page) {}
-}
-```
-
 A getter runs when the locator is read, after `page` or `root` is assigned:
 
 ```ts
 class LoginPage {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   get submit() {
     return this.page.getByRole("button", { name: "Submit" });

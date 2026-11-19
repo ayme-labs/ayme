@@ -22,15 +22,16 @@ import {
 
 const entry = "/project/.ayme/page-objects.ts";
 
+/** The diagnostics of a compile error, as `ayme mcp` reads them. */
+type PomDiagnostics = Parameters<typeof pageObjectModels>[1] extends new (
+  ...args: never[]
+) => { diagnostics: infer Diagnostics }
+  ? Diagnostics
+  : never;
+
 /** The compiler entry's error class, as `ayme mcp` reads it. */
 class PomCompileError extends Error {
-  constructor(
-    readonly diagnostics: readonly (
-      | { text: string; file?: undefined }
-      | { text: string; file: string; line?: undefined }
-      | { text: string; file: string; line: number; column: number }
-    )[]
-  ) {
+  constructor(readonly diagnostics: PomDiagnostics) {
     super(diagnostics.map(({ text }) => text).join("\n"));
   }
 }
@@ -177,6 +178,7 @@ it("reports each diagnostic of a compile error where the compiler locates it", a
             file: "/project/Child.ts",
             line: 8,
             column: 14,
+            lineText: "  async pick(callback: () => void) {",
           },
           { text: "no position", file: "/project/tsconfig.json" },
           { text: "no file" },
@@ -190,7 +192,13 @@ it("reports each diagnostic of a compile error where the compiler locates it", a
     errors: [
       {
         text: "unsupported",
-        location: { file: "/project/Child.ts", line: 8, column: 13 },
+        location: {
+          file: "/project/Child.ts",
+          line: 8,
+          column: 13,
+          // esbuild draws its code frame from this line, which it has not loaded.
+          lineText: "  async pick(callback: () => void) {",
+        },
       },
       { text: "no position", location: { file: "/project/tsconfig.json" } },
       { text: "no file", location: { file } },
@@ -206,7 +214,13 @@ it("gives esbuild a diagnostic's column in UTF-8 bytes, as esbuild counts it", a
       compile: () => {
         // TypeScript counts the column in UTF-16 code units, from 1.
         throw new PomCompileError([
-          { text: "Expression expected.", file, line: 1, column: 14 },
+          {
+            text: "Expression expected.",
+            file,
+            line: 1,
+            column: 14,
+            lineText: "const café = ;",
+          },
         ]);
       },
       invalidate: () => {},
@@ -229,33 +243,6 @@ it("gives esbuild a diagnostic's column in UTF-8 bytes, as esbuild counts it", a
   expect(
     buildErrorLine(result.errors[0] as Parameters<typeof buildErrorLine>[0])
   ).toBe(`${file}:1:14: Expression expected.`);
-});
-
-it("leaves a file's byte order mark out of a diagnostic's line and column, as TypeScript does", async () => {
-  const file = await pomFile("\uFEFFconst value = ;\n");
-  const { onLoad } = setUp(
-    models({
-      compile: () => {
-        // TypeScript drops the mark as it reads the file, and counts without it.
-        throw new PomCompileError([
-          { text: "Expression expected.", file, line: 1, column: 15 },
-        ]);
-      },
-      invalidate: () => {},
-    })
-  );
-
-  const result = (await onLoad({ path: file })) as {
-    errors: esbuild.PartialMessage[];
-  };
-  expect(result).toMatchObject({
-    errors: [
-      { location: { file, line: 1, column: 14, lineText: "const value = ;" } },
-    ],
-  });
-  expect(
-    buildErrorLine(result.errors[0] as Parameters<typeof buildErrorLine>[0])
-  ).toBe(`${file}:1:15: Expression expected.`);
 });
 
 it("reports esbuild's own error on the first line of a file with a byte order mark at the column an editor counts", async () => {
@@ -338,25 +325,6 @@ it("reports esbuild's own error after non-ASCII text at the column an editor cou
   } finally {
     await rm(folder, { recursive: true, force: true });
   }
-});
-
-it("counts a diagnostic's line as TypeScript does, across each kind of line break", async () => {
-  // Lines: "// a", "b", "c", "d", then "const café = ;".
-  const file = await pomFile("// a\r\nb\rc\u2028d\u2029const café = ;\n");
-  const { onLoad } = setUp(
-    models({
-      compile: () => {
-        throw new PomCompileError([
-          { text: "Expression expected.", file, line: 5, column: 14 },
-        ]);
-      },
-      invalidate: () => {},
-    })
-  );
-
-  expect(await onLoad({ path: file })).toMatchObject({
-    errors: [{ location: { file, line: 5, column: 14 } }],
-  });
 });
 
 it("leaves to esbuild a module the compiler does not compile, and one in node_modules", async () => {
@@ -532,7 +500,13 @@ it.each(["Page.ts", "Child.ts"])(
                 if (path === child)
                   return { code: "\n\nexport {};", dependencies: [] };
                 throw new PomCompileError([
-                  { text, file, line: 8, column: 14 },
+                  {
+                    text,
+                    file,
+                    line: 8,
+                    column: 14,
+                    lineText: "  async pick(callback: () => void) {",
+                  },
                 ]);
               },
               invalidate: () => {},
@@ -625,6 +599,7 @@ it("reports a tsconfig JSON error once, though the compiler and esbuild each rea
                   file: tsconfig,
                   line: 3,
                   column: 24,
+                  lineText: '    "target": "es2022",,',
                 },
               ]);
             },
@@ -682,6 +657,7 @@ it("reports a tsconfig JSON error once when the tsconfig is a symlink, which esb
                   file: tsconfig,
                   line: 3,
                   column: 24,
+                  lineText: '    "target": "es2022",,',
                 },
               ]);
             },
@@ -734,6 +710,7 @@ it("keeps esbuild's own error on the line of a compiler error when the file is n
                   file: other,
                   line: 1,
                   column: 1,
+                  lineText: 'import "./missing";',
                 },
               ]);
             },

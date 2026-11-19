@@ -49,7 +49,11 @@ const onPage = (self: AppPage) =>
 @ayme({ present: onPage })
 export abstract class AppPage {
   abstract readonly path: string;
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 }
 
 export class ProjectsPage extends AppPage {
@@ -80,7 +84,11 @@ type RouteParams<Path extends string> =
 @ayme({ present: onPage })
 export abstract class AppPage<Path extends string = string> {
   abstract readonly path: Path;
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   params(): RouteParams<Path> | undefined {
     const match = new URLPattern({ pathname: this.path }).exec(this.page.url());
@@ -104,14 +112,18 @@ An app with a typed router calls the router's matcher from the predicate instead
 - Every tool of the class takes that element's Structural Ref as `ref`.
 - Availability is measured at that element.
 
-Each action is published once per class, however many instances the page shows. Take a component base class, `AppComponent`, whose `root` is the element a component is built on. `ProjectRow` extends it, and `ProjectsPage` holds one `ProjectRow` per list item. A locator is a getter: Playwright 1.65 runs a class field initializer before the constructor assigns its parameter properties (`useDefineForClassFields`, on for an ES2022 or later target and when no target is set), so a field that reads `this.root` or `this.page` throws.
+Each action is published once per class, however many instances the page shows. Take a component base class, `AppComponent`, whose `root` is the element a component is built on. `ProjectRow` extends it, and `ProjectsPage` holds one `ProjectRow` per list item. A locator is a getter.
 
 ```ts
 const rootOf = (self: AppComponent) => self.root;
 
 @ayme({ root: rootOf })
 export abstract class AppComponent {
-  constructor(readonly root: Locator) {}
+  readonly root: Locator;
+
+  constructor(root: Locator) {
+    this.root = root;
+  }
 }
 
 export class ProjectRow extends AppComponent {
