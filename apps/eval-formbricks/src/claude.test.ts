@@ -373,4 +373,10 @@ describe("secretRedactor", () => {
   it("replaces every secret it is given", () => {
     expect(secretRedactor(["a", "b"])("a b")).toBe("[redacted] [redacted]");
   });
+
+  it("replaces a secret that begins with another one whole", () => {
+    expect(secretRedactor(["abc", "abcdef"])("abcdef abc")).toBe(
+      "[redacted] [redacted]"
+    );
+  });
 });

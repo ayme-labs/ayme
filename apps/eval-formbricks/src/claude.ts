@@ -191,10 +191,13 @@ function printedCharacter(character: string) {
  * anywhere else in the text, so it holds for a stream-json line as for the
  * whole of stderr, indented JSON over several lines included. What is not a
  * secret stays byte for byte. The patterns are built once, here, not per line.
+ * The longest secret is replaced first, so one that begins with another is
+ * replaced whole and leaves no tail behind.
  */
 export function secretRedactor(secrets: string[]): (text: string) => string {
   const patterns = secrets
     .filter((secret) => secret !== "")
+    .sort((one, other) => other.length - one.length)
     .map(
       (secret) =>
         new RegExp(secret.split("").map(printedCharacter).join(""), "g")
