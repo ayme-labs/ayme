@@ -694,10 +694,11 @@ function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
   // Stryker disable next-line StringLiteral: every mark but "opened" and "blankAtRecord" starts a Visit by navigation
   const since = at.since ?? "moved";
   const next = moved({ ...at, since });
-  // While paused, the timeline is told at once of a page that had a Visit:
-  // an element of the Visit it left is looked for there by its role and
-  // name, not by a ref.
-  if (state.phase !== "paused" || page.since !== undefined) return stay(next);
+  // While paused, the timeline is told at once of each address a page that
+  // had a Visit goes to, the second as much as the first: it says whether
+  // the page left its Visit, and an element of a Visit left is looked for
+  // by its label, never by a ref of the document it left.
+  if (state.phase !== "paused" || !hadVisit(page)) return stay(next);
   return {
     state: next,
     todo: [{ kind: "timeline", add: { kind: "elsewhere", page: id, url } }],
@@ -707,6 +708,11 @@ function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
 /** The gates, with the page's latest read forgotten. */
 const unread = (gates: readonly PageGate[], page: PageId): PageGate[] =>
   gates.map((gate) => (gate.page === page ? { ...gate, latest: null } : gate));
+
+/** Whether a page had a Visit: one that opened while paused, or was blank
+ * at Record, has none until it is recorded at an address. */
+const hadVisit = (page: Page) =>
+  page.since !== "opened" && page.since !== "blankAtRecord";
 
 /** A page closed. The last one closing is an end from outside. */
 function pageClosed(

@@ -1262,6 +1262,33 @@ describe("the lifecycle", () => {
       state: { phase: "paused" },
     },
     {
+      name: "a page that goes elsewhere twice while paused, first by its hash alone, has the timeline told each time: the second leaves its Visit",
+      happened: [
+        ...stopped,
+        navigated(`${url}#reviews`),
+        navigated("http://shop.test/cart"),
+      ],
+      todo: [
+        [
+          {
+            kind: "timeline",
+            add: { kind: "elsewhere", page: page1, url: `${url}#reviews` },
+          },
+        ],
+        [
+          {
+            kind: "timeline",
+            add: {
+              kind: "elsewhere",
+              page: page1,
+              url: "http://shop.test/cart",
+            },
+          },
+        ],
+      ],
+      state: { phase: "paused" },
+    },
+    {
       name: "a page opened while paused starts a Visit of its own at Continue",
       happened: [
         ...stopped,
