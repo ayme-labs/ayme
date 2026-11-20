@@ -6,12 +6,11 @@
  * what it needs checked and set up outside the measured window.
  *
  * Each browser automation, Playwright MCP, Playwright CLI and agent-browser,
- * has three arms: the browser automation alone, on Formbricks as it is; with
- * Ayme through WebMCP, which the browser automation itself reads from the
- * page; and with Ayme as its own MCP server, `ayme`, beside it. Both arms
- * with Ayme serve the lab app's Page Objects with the run's `ayme mcp`,
- * started as the `ayme` skill's reference on browser automation tools says,
- * and load that skill and that reference in the setup turn. The interface
+ * has two arms: the browser automation alone, on Formbricks as it is; and
+ * with Ayme as its own MCP server, `ayme`, beside it. The arm with Ayme
+ * serves the lab app's Page Objects with the run's `ayme mcp`, started as
+ * the `ayme` skill's reference on browser automation tools says, and loads
+ * that skill and that reference in the setup turn. The interface
  * line states which tools the agent has, and no instruction of Ayme's: those
  * come from the reference. The arms alone get nothing of Ayme.
  */
@@ -25,7 +24,6 @@ import {
   aymePreconditions,
   aymeServerName,
   aymeSkillName,
-  type AymeChannel,
 } from "./ayme.ts";
 import type { Mission } from "./missions.ts";
 import {
@@ -43,10 +41,7 @@ import type { Precondition } from "./preconditions.ts";
 export type BrowserAutomation =
   "playwright-mcp" | "playwright-cli" | "agent-browser";
 
-export type ArmId =
-  | BrowserAutomation
-  | `${BrowserAutomation}-with-ayme-page-objects`
-  | `${BrowserAutomation}-with-ayme-webmcp`;
+export type ArmId = BrowserAutomation | `${BrowserAutomation}-with-ayme`;
 
 export type McpServer = { command: string; args: string[] };
 
@@ -86,8 +81,8 @@ export type ArmSetup = {
 export type Arm = {
   id: ArmId;
   browserAutomation: BrowserAutomation;
-  /** How Ayme's Page Object Tools reach the agent; none for an arm without Ayme. */
-  ayme?: AymeChannel;
+  /** Whether the arm adds Ayme's Page Object Tools to its browser automation. */
+  withAyme: boolean;
   /** The one prompt line that differs between arms; it may say where the browser is. */
   interfaceLine: (start: Mission["start"]) => string;
   /** The browser automation's own skill, which the setup turn names and loads; none for an arm without one. */
@@ -147,31 +142,20 @@ const aloneLines: Record<
  * Page Object Tools are, as a fact. Nothing on when to call them or what to
  * read after one: that is the skill reference's.
  */
-export function aymeToolsSentence(
-  browserAutomation: BrowserAutomation,
-  channel: AymeChannel
-): string {
-  if (channel === "mcp")
-    return `The \`${aymeServerName}\` MCP server lists the Page Object Tools of the screen the browser is on.`;
-  const lists = {
-    "playwright-mcp": "which Playwright MCP lists as WebMCP tools",
-    "playwright-cli": "which `playwright-cli webmcp-list` lists",
-    "agent-browser": "which `agent-browser webmcp list` lists",
-  }[browserAutomation];
-  return `The page's own tools, ${lists}, include the Page Object Tools of the screen the browser is on.`;
-}
+export const aymeToolsSentence = `The \`${aymeServerName}\` MCP server lists the Page Object Tools of the screen the browser is on.`;
 
 /** What each browser automation runs on and is set up with; an arm with Ayme adds to it. */
 const browserAutomations: Record<
   BrowserAutomation,
-  Pick<Arm, "skill" | "tools" | "allowedTools" | "browserInterface"> & {
-    disallowedTools: (channel: AymeChannel | null) => string[];
-  }
+  Pick<
+    Arm,
+    "skill" | "tools" | "allowedTools" | "disallowedTools" | "browserInterface"
+  >
 > = {
   "playwright-mcp": {
     tools: baseTools,
     allowedTools: ["mcp__playwright"],
-    disallowedTools: () => [],
+    disallowedTools: [],
     browserInterface: () => ({
       name: "@playwright/mcp",
       version: playwrightMcpVersion(),
@@ -182,7 +166,7 @@ const browserAutomations: Record<
     // The skill is loaded through the Skill tool, in the setup turn; Bash is only the CLI.
     tools: [...baseTools, "Bash", "Skill"],
     allowedTools: ["Bash(playwright-cli:*)", "Skill(playwright-cli)"],
-    disallowedTools: () => [
+    disallowedTools: [
       // The skill pre-approves `npx playwright`, which would run the lab app's own Playwright, or download one.
       "Bash(npx:*)",
       // Downloads a browser.
@@ -200,7 +184,7 @@ const browserAutomations: Record<
     skill: "agent-browser",
     tools: [...baseTools, "Bash", "Skill"],
     allowedTools: ["Bash(agent-browser:*)", "Skill(agent-browser)"],
-    disallowedTools: (channel) => [
+    disallowedTools: [
       // The skill's guide pre-approves `npx agent-browser`, which could fetch another version.
       "Bash(npx:*)",
       // Downloads a browser, or a newer agent-browser.
@@ -210,8 +194,6 @@ const browserAutomations: Record<
       ...bashCommand("agent-browser doctor --fix"),
       // Closes every session, not only the run's.
       ...bashCommand("agent-browser close --all"),
-      // The page's tools reach the agent through WebMCP only in the arm that uses that channel.
-      ...(channel === "webmcp" ? [] : bashCommand("agent-browser webmcp")),
     ],
     browserInterface: () => ({
       name: "agent-browser",
@@ -231,11 +213,12 @@ function armAlone(browserAutomation: BrowserAutomation): Arm {
   return {
     id: browserAutomation,
     browserAutomation,
+    withAyme: false,
     interfaceLine: aloneLines[browserAutomation],
     ...(base.skill === undefined ? {} : { skill: base.skill }),
     tools: base.tools,
     allowedTools: base.allowedTools,
-    disallowedTools: base.disallowedTools(null),
+    disallowedTools: base.disallowedTools,
     mcpServers: (context): Record<string, McpServer> =>
       browserAutomation === "playwright-mcp"
         ? { playwright: playwrightMcpServer(context) }
@@ -246,15 +229,11 @@ function armAlone(browserAutomation: BrowserAutomation): Arm {
 }
 
 /**
- * The arm of a browser automation with Ayme through `channel`: the arm
- * alone, its browser attached over CDP to the page the run's `ayme mcp`
- * serves, plus the `ayme` skill and, for the `mcp` channel, the `ayme`
- * server with its permission.
+ * The arm of a browser automation with Ayme: the arm alone, its browser
+ * attached over CDP to the page the run's `ayme mcp` serves, plus the `ayme`
+ * skill and the `ayme` server with its permission.
  */
-function armWithAyme(
-  browserAutomation: BrowserAutomation,
-  channel: AymeChannel
-): Arm {
+function armWithAyme(browserAutomation: BrowserAutomation): Arm {
   const base = browserAutomations[browserAutomation];
   const setup = {
     "playwright-mcp": setUpPlaywrightMcpWithAyme,
@@ -262,38 +241,36 @@ function armWithAyme(
     "agent-browser": setUpAgentBrowserWithAyme,
   }[browserAutomation];
   return {
-    id: `${browserAutomation}-with-ayme-${channel === "mcp" ? "page-objects" : "webmcp"}` as ArmId,
+    id: `${browserAutomation}-with-ayme`,
     browserAutomation,
-    ayme: channel,
+    withAyme: true,
     interfaceLine: (start) =>
-      `${aloneLines[browserAutomation](start)} ${aymeToolsSentence(browserAutomation, channel)}`,
+      `${aloneLines[browserAutomation](start)} ${aymeToolsSentence}`,
     ...(base.skill === undefined ? {} : { skill: base.skill }),
     tools: base.tools.includes("Skill") ? base.tools : [...base.tools, "Skill"],
     allowedTools: [
       ...base.allowedTools,
       `Skill(${aymeSkillName})`,
-      ...(channel === "mcp" ? [`mcp__${aymeServerName}`] : []),
+      `mcp__${aymeServerName}`,
     ],
-    disallowedTools: base.disallowedTools(channel),
+    disallowedTools: base.disallowedTools,
     // The browser automation's own server, where it has one, is the setup's: it names the port chosen then.
-    mcpServers: (context): Record<string, McpServer> =>
-      channel === "mcp" ? { [aymeServerName]: aymeMcpServer(context) } : {},
-    preconditions: aymePreconditions[channel],
-    setup: (context) => setup(context, channel),
+    mcpServers: (context): Record<string, McpServer> => ({
+      [aymeServerName]: aymeMcpServer(context),
+    }),
+    preconditions: aymePreconditions,
+    setup,
     browserInterface: base.browserInterface,
   };
 }
 
 export const arms: Record<ArmId, Arm> = {
   "playwright-mcp": armAlone("playwright-mcp"),
-  "playwright-mcp-with-ayme-webmcp": armWithAyme("playwright-mcp", "webmcp"),
-  "playwright-mcp-with-ayme-page-objects": armWithAyme("playwright-mcp", "mcp"),
+  "playwright-mcp-with-ayme": armWithAyme("playwright-mcp"),
   "playwright-cli": armAlone("playwright-cli"),
-  "playwright-cli-with-ayme-webmcp": armWithAyme("playwright-cli", "webmcp"),
-  "playwright-cli-with-ayme-page-objects": armWithAyme("playwright-cli", "mcp"),
+  "playwright-cli-with-ayme": armWithAyme("playwright-cli"),
   "agent-browser": armAlone("agent-browser"),
-  "agent-browser-with-ayme-webmcp": armWithAyme("agent-browser", "webmcp"),
-  "agent-browser-with-ayme-page-objects": armWithAyme("agent-browser", "mcp"),
+  "agent-browser-with-ayme": armWithAyme("agent-browser"),
 };
 
 export const armIds = Object.keys(arms) as ArmId[];

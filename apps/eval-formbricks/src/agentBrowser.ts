@@ -4,11 +4,10 @@
  * Code configuration folder, and a session attached over CDP to the browser
  * the harness launched on the mission's start page. agent-browser never
  * launches or downloads a browser of its own, and the measured agent
- * installs nothing. The arm alone gets Formbricks as it is, its WebMCP
- * support off. The arms with Ayme get the lab app's Page Objects served
- * into their page by the run's `ayme mcp`: through WebMCP, with
- * agent-browser's WebMCP support on, or through the `ayme` server, with it
- * off.
+ * installs nothing. Its WebMCP support is off. The arm alone gets
+ * Formbricks as it is. The arm with Ayme gets the lab app's Page Objects
+ * served into its page by the run's `ayme mcp`, and that server as its
+ * `ayme` MCP server.
  */
 import { execFile } from "node:child_process";
 import { chmod, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -18,12 +17,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import type { ArmContext, ArmSetup } from "./arms.ts";
-import {
-  installAymeSkill,
-  launchStartPage,
-  setUpAymePage,
-  type AymeChannel,
-} from "./ayme.ts";
+import { installAymeSkill, launchStartPage, setUpAymePage } from "./ayme.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import { freeLoopbackPort } from "./playwrightMcp.ts";
 
@@ -90,13 +84,12 @@ export function sessionName(runId: string) {
  * agent share it. Every session attaches over CDP to the browser on
  * `cdpPort` instead of launching one. Its sockets live in the run's own
  * short folder. Screenshots go to the run's output folder. The version check
- * is off. Its WebMCP support stays off unless `webmcp`: with it, `webmcp
- * list` and `webmcp invoke` reach the tools the page publishes.
+ * is off, and so is its WebMCP support.
  */
 export function agentBrowserEnvironment(
   context: Pick<ArmContext, "runId" | "runDir" | "outputDir">,
   parentPath: string,
-  options: { cdpPort: number; socketDir: string; webmcp: boolean }
+  options: { cdpPort: number; socketDir: string }
 ): Record<string, string> {
   return {
     PATH: `${shimDirectory(context.runDir)}${path.delimiter}${parentPath}`,
@@ -105,21 +98,9 @@ export function agentBrowserEnvironment(
     AGENT_BROWSER_SOCKET_DIR: options.socketDir,
     AGENT_BROWSER_SCREENSHOT_DIR: context.outputDir,
     AGENT_BROWSER_NO_VERSION_CHECK: "1",
-    ...(options.webmcp ? {} : { AGENT_BROWSER_NO_WEBMCP: "1" }),
+    AGENT_BROWSER_NO_WEBMCP: "1",
   };
 }
-
-/**
- * The Chrome features agent-browser's WebMCP support needs besides WebMCP:
- * it discovers the page's tools through Chrome's experimental DevTools
- * `WebMCP` domain, which only these expose, and adds them to a browser it
- * launches itself. The arm through WebMCP passes them to the harness's
- * browser, so the attached browser matches one agent-browser launches.
- */
-export const agentBrowserWebMcpFeatures = [
-  "WebMCPTesting",
-  "DevToolsWebMCPSupport",
-];
 
 async function runCli(
   context: ArmContext,
@@ -178,8 +159,8 @@ async function setUpPlainPage(
  * The setup of every agent-browser arm: the start page on a Chrome the
  * harness launches with a remote-debugging port, then the run's session
  * attached to it. Without Ayme the page is Formbricks as it is; with it, the
- * page paired with the run's `ayme mcp`, started as the skill reference says
- * for the channel, and the `ayme` skill beside agent-browser's. The session
+ * page paired with the run's `ayme mcp`, started as the skill reference says,
+ * and the `ayme` skill beside agent-browser's. The session
  * starts with `get url`, which attaches and adopts the open tab without
  * navigating it, and must report the start page. After the run every session
  * in the run's socket folder is closed, which detaches, and then the browser
@@ -187,30 +168,24 @@ async function setUpPlainPage(
  */
 async function setUpAgentBrowser(
   context: ArmContext,
-  channel: AymeChannel | null
+  withAyme: boolean
 ): Promise<ArmSetup> {
-  const webmcp = channel === "webmcp";
   const port = await freeLoopbackPort();
   const skillDir = await installCliAndSkill(context);
-  const aymeSkillDir =
-    channel === null ? null : await installAymeSkill(context.configDir);
+  const aymeSkillDir = withAyme
+    ? await installAymeSkill(context.configDir)
+    : null;
   const socketDir = await mkdtemp(path.join(os.tmpdir(), "ab-"));
   const environment = agentBrowserEnvironment(context, process.env.PATH ?? "", {
     cdpPort: port,
     socketDir,
-    webmcp,
   });
   const browserArgs = [`--remote-debugging-port=${port}`];
   let page: Awaited<ReturnType<typeof setUpPlainPage>>;
   try {
-    page =
-      channel === null
-        ? await setUpPlainPage(context, browserArgs)
-        : await setUpAymePage(context, {
-            channel,
-            browserArgs,
-            browserFeatures: webmcp ? agentBrowserWebMcpFeatures : [],
-          });
+    page = withAyme
+      ? await setUpAymePage(context, { browserArgs })
+      : await setUpPlainPage(context, browserArgs);
   } catch (error) {
     await rm(socketDir, { recursive: true, force: true });
     throw error;
@@ -228,7 +203,7 @@ async function setUpAgentBrowser(
   };
   try {
     context.log(
-      `Attaching the agent-browser session "${environment.AGENT_BROWSER_SESSION}" over CDP on port ${port}, its WebMCP support ${webmcp ? "on" : "off"}.`
+      `Attaching the agent-browser session "${environment.AGENT_BROWSER_SESSION}" over CDP on port ${port}.`
     );
     const pageUrl = (await runCli(context, environment, ["get", "url"])).trim();
     if (
@@ -249,24 +224,17 @@ async function setUpAgentBrowser(
       skillDir,
       ...(aymeSkillDir === null ? [] : [aymeSkillDir]),
     ],
-    evidence: {
-      ...page.evidence,
-      remoteDebuggingPort: port,
-      agentBrowserWebMcp: webmcp,
-    },
+    evidence: { ...page.evidence, remoteDebuggingPort: port },
     dispose,
   };
 }
 
-/** The arm alone: agent-browser on the harness's browser, on Formbricks as it is, its WebMCP support off. */
+/** The arm alone: agent-browser on the harness's browser, on Formbricks as it is. */
 export function setUpAgentBrowserAlone(context: ArmContext) {
-  return setUpAgentBrowser(context, null);
+  return setUpAgentBrowser(context, false);
 }
 
-/** An arm with Ayme, through the given channel. */
-export function setUpAgentBrowserWithAyme(
-  context: ArmContext,
-  channel: AymeChannel
-) {
-  return setUpAgentBrowser(context, channel);
+/** The arm with Ayme. */
+export function setUpAgentBrowserWithAyme(context: ArmContext) {
+  return setUpAgentBrowser(context, true);
 }

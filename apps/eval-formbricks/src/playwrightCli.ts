@@ -15,7 +15,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import type { ArmContext, ArmSetup } from "./arms.ts";
-import { installAymeSkill, setUpAymePage, type AymeChannel } from "./ayme.ts";
+import { installAymeSkill, setUpAymePage } from "./ayme.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import { cdpEndpoint, freeLoopbackPort } from "./playwrightMcp.ts";
 
@@ -58,15 +58,13 @@ export function shimScript() {
  * harness prepared, even if the agent restarts the browser; with a CDP
  * endpoint instead, the daemon attaches to the browser already running
  * there, and the browser and profile switches, which describe a launch that
- * never happens, are left out. The page's WebMCP tools stay off unless
- * `webmcp`: with it, the CLI counts the tools the page publishes in its page
- * status, lists them at the top of each snapshot and offers `webmcp-list`
- * and `webmcp-call`.
+ * never happens, are left out. The tools a page registers through WebMCP
+ * stay off, so the agent gets the CLI's own commands only.
  */
 export function playwrightCliEnvironment(
   context: Pick<ArmContext, "runId" | "runDir" | "profileDir" | "outputDir">,
   parentPath: string = process.env.PATH ?? "",
-  options: { cdpEndpoint?: string; webmcp?: boolean } = {}
+  options: { cdpEndpoint?: string } = {}
 ): Record<string, string> {
   return {
     // No update check on the network, no download.
@@ -81,7 +79,7 @@ export function playwrightCliEnvironment(
         }
       : { PLAYWRIGHT_MCP_CDP_ENDPOINT: options.cdpEndpoint }),
     PLAYWRIGHT_MCP_OUTPUT_DIR: context.outputDir,
-    PLAYWRIGHT_MCP_WEBMCP: options.webmcp ? "true" : "false",
+    PLAYWRIGHT_MCP_WEBMCP: "false",
   };
 }
 
@@ -178,27 +176,23 @@ export async function setUpPlaywrightCli(
 }
 
 /**
- * The setup of the CLI arms with Ayme: the page paired with the run's `ayme
- * mcp`, started as the skill reference says for the channel, on a browser
- * listening on a remote-debugging port; the CLI and its skill as for the
- * arm alone, and the `ayme` skill beside it; then the session attached to
- * that browser, its WebMCP collection on for the `webmcp` channel alone.
+ * The setup of the CLI arm with Ayme: the page paired with the run's `ayme
+ * mcp`, started as the skill reference says, on a browser listening on a
+ * remote-debugging port; the CLI and its skill as for the arm alone, and the
+ * `ayme` skill beside it; then the session attached to that browser.
  * `attach` leaves the tab as it is, where `open` would load it again.
  */
 export async function setUpPlaywrightCliWithAyme(
-  context: ArmContext,
-  channel: AymeChannel
+  context: ArmContext
 ): Promise<ArmSetup> {
   const port = await freeLoopbackPort();
   const endpoint = cdpEndpoint(port);
   const environment = playwrightCliEnvironment(context, undefined, {
     cdpEndpoint: endpoint,
-    webmcp: channel === "webmcp",
   });
   const skillDir = await installCliAndSkill(context);
   const aymeSkillDir = await installAymeSkill(context.configDir);
   const page = await setUpAymePage(context, {
-    channel,
     browserArgs: [`--remote-debugging-port=${port}`],
   });
   let session: { dispose: () => Promise<void> } | undefined;

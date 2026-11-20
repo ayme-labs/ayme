@@ -14,7 +14,6 @@ import {
   aymeMcpArgs,
   aymeSkillSource,
   aymeStartArgs,
-  browserLaunchArgs,
   initScriptProblem,
   isPageObjectToolName,
   proxyScript,
@@ -56,7 +55,7 @@ describe("the agent's MCP server entry", () => {
 
   it("keeps the socket path short enough for macOS and apart per run", () => {
     const socket = agentSocketPath(
-      "2026-10-05T10-00-00-000Z-playwright-mcp-with-ayme-webmcp-abc123"
+      "2026-10-05T10-00-00-000Z-playwright-mcp-with-ayme-abc123"
     );
     expect(socket.startsWith(os.tmpdir())).toBe(true);
     expect(socket.endsWith("ayme-eval-abc123.sock")).toBe(true);
@@ -70,24 +69,9 @@ describe("the agent's MCP server entry", () => {
 });
 
 describe("the ayme mcp command", () => {
-  it("is `mcp` for the ayme server and `mcp --webmcp` for WebMCP, on the run's port", () => {
-    expect(aymeStartArgs("mcp")).toEqual(["mcp"]);
-    expect(aymeStartArgs("webmcp")).toEqual(["mcp", "--webmcp"]);
-    expect(aymeMcpArgs("webmcp", 9350)).toEqual([
-      "mcp",
-      "--webmcp",
-      "--port",
-      "9350",
-    ]);
-  });
-});
-
-describe("the harness's browser", () => {
-  it("gets WebMCP and the arm's features in one --enable-features switch", () => {
-    expect(
-      browserLaunchArgs(["--remote-debugging-port=9222"], ["A", "B"])
-    ).toEqual(["--remote-debugging-port=9222", "--enable-features=WebMCP,A,B"]);
-    expect(browserLaunchArgs()).toEqual(["--enable-features=WebMCP"]);
+  it("is `mcp`, on the run's port", () => {
+    expect(aymeStartArgs).toEqual(["mcp"]);
+    expect(aymeMcpArgs(9350)).toEqual(["mcp", "--port", "9350"]);
   });
 });
 
@@ -107,7 +91,7 @@ describe("the Page Object Tools among a page's tools", () => {
   });
 });
 
-describe("the tools a channel must not list", () => {
+describe("the tools ayme mcp must not list", () => {
   const listed = [
     "SignInPage.logIn",
     "page_objects",
@@ -120,46 +104,20 @@ describe("the tools a channel must not list", () => {
     "click",
   ];
 
-  it("are, through the ayme server, all but Page Object Tools, page_objects and its own tools", () => {
-    expect(unexpectedToolNames(listed, "mcp")).toEqual([
-      "snapshot",
-      "goal",
-      "click",
-    ]);
-  });
-
-  it("are, through WebMCP, all but Page Object Tools and page_objects", () => {
-    expect(unexpectedToolNames(listed, "webmcp")).toEqual([
-      "ayme_connect",
-      "ayme_inspect",
-      "ayme_list_tools",
-      "ayme_call",
-      "snapshot",
-      "goal",
-      "click",
-    ]);
+  it("are all but Page Object Tools, page_objects and its own tools", () => {
+    expect(unexpectedToolNames(listed)).toEqual(["snapshot", "goal", "click"]);
   });
 });
 
 describe("the init script the run's server writes", () => {
-  const script = (port: number, webmcp: boolean) =>
-    `const base = "http://127.0.0.1:${port}/"; start({ webMCP: { enabled: ${webmcp} } });`;
+  const script = (port: number) => `const base = "http://127.0.0.1:${port}/";`;
 
-  it("passes when it names the run's port and publishes through WebMCP exactly for that channel", () => {
-    expect(
-      initScriptProblem(script(9350, true), { port: 9350, channel: "webmcp" })
-    ).toBeNull();
-    expect(
-      initScriptProblem(script(9350, false), { port: 9350, channel: "mcp" })
-    ).toBeNull();
+  it("passes when it names the run's port", () => {
+    expect(initScriptProblem(script(9350), 9350)).toBeNull();
   });
 
-  it.each([
-    ["another port", script(9351, true), "webmcp"],
-    ["WebMCP off for the webmcp channel", script(9350, false), "webmcp"],
-    ["WebMCP on for the mcp channel", script(9350, true), "mcp"],
-  ] as const)("fails with %s", (_, text, channel) => {
-    expect(initScriptProblem(text, { port: 9350, channel })).not.toBeNull();
+  it("fails when it names another port", () => {
+    expect(initScriptProblem(script(9351), 9350)).not.toBeNull();
   });
 });
 

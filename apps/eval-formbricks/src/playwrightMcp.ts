@@ -12,7 +12,7 @@ import net from "node:net";
 import path from "node:path";
 
 import type { ArmContext, ArmSetup, McpServer } from "./arms.ts";
-import { installAymeSkill, setUpAymePage, type AymeChannel } from "./ayme.ts";
+import { installAymeSkill, setUpAymePage } from "./ayme.ts";
 import { playwrightMcpRoot } from "./browser.ts";
 
 const require = createRequire(import.meta.url);
@@ -31,13 +31,13 @@ export function playwrightMcpVersion(): string {
  * running there and adopts its open pages, the start page first; the
  * browser, profile and headless switches describe a launch that never
  * happens, so they are left out, and so is the init script, which the
- * harness's own Playwright added to the browser's context. The page's WebMCP
- * tools stay off unless `webmcp`: on, Playwright MCP collects the tools the
- * page registered with each snapshot and lists each as `webmcp_<name>`.
+ * harness's own Playwright added to the browser's context. The tools a page
+ * registers through WebMCP stay off, so the agent gets Playwright MCP's own
+ * tools only.
  */
 export function playwrightMcpServer(
   context: Pick<ArmContext, "profileDir" | "outputDir" | "initPagePath">,
-  options: { cdpEndpoint?: string; webmcp?: boolean } = {}
+  options: { cdpEndpoint?: string } = {}
 ): McpServer {
   const browser =
     options.cdpEndpoint === undefined
@@ -55,7 +55,7 @@ export function playwrightMcpServer(
     args: [
       path.join(playwrightMcpRoot, "cli.js"),
       ...browser,
-      ...(options.webmcp ? [] : ["--no-webmcp"]),
+      "--no-webmcp",
       "--output-dir",
       context.outputDir,
       "--init-page",
@@ -82,20 +82,17 @@ export function cdpEndpoint(port: number) {
 }
 
 /**
- * The setup of the Playwright MCP arms with Ayme: the page paired with the
- * run's `ayme mcp`, started as the skill reference says for the channel, on
- * a browser with a remote-debugging port; the `ayme` skill in the run's
- * configuration folder; then Playwright MCP's entry, attached to that
- * browser with its WebMCP collection on for the `webmcp` channel alone.
+ * The setup of the Playwright MCP arm with Ayme: the page paired with the
+ * run's `ayme mcp`, started as the skill reference says, on a browser with a
+ * remote-debugging port; the `ayme` skill in the run's configuration folder;
+ * then Playwright MCP's entry, attached to that browser.
  */
 export async function setUpPlaywrightMcpWithAyme(
-  context: ArmContext,
-  channel: AymeChannel
+  context: ArmContext
 ): Promise<ArmSetup> {
   const skillDir = await installAymeSkill(context.configDir);
   const port = await freeLoopbackPort();
   const { evidence, dispose } = await setUpAymePage(context, {
-    channel,
     browserArgs: [`--remote-debugging-port=${port}`],
   });
   return {
@@ -105,7 +102,6 @@ export async function setUpPlaywrightMcpWithAyme(
     mcpServers: {
       playwright: playwrightMcpServer(context, {
         cdpEndpoint: cdpEndpoint(port),
-        webmcp: channel === "webmcp",
       }),
     },
     dispose,

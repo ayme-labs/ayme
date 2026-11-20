@@ -43,11 +43,10 @@ export function aymeReadyLine({ skill }: Pick<Arm, "skill">) {
  * and loading it in the measured turn instead. An arm with Ayme reads the
  * skill reference here too.
  */
-export function setupPrompt(arm: Pick<Arm, "skill" | "ayme">) {
-  const ready =
-    arm.ayme === undefined
-      ? readyLine({ skill: arm.skill })
-      : aymeReadyLine(arm);
+export function setupPrompt(arm: Pick<Arm, "skill" | "withAyme">) {
+  const ready = arm.withAyme
+    ? aymeReadyLine(arm)
+    : readyLine({ skill: arm.skill });
   return `Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. ${ready}
 `;
 }
