@@ -44,7 +44,11 @@
     },
     "test:e2e": {
       "dependsOn": ["build", "^build"],
-      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH", "AYME_E2E_PORT_*"],
+      "passThroughEnv": [
+        "PLAYWRIGHT_BROWSERS_PATH",
+        "AYME_E2E_PORT_*",
+        "E2E_TELEMETRY_DISABLED"
+      ],
       "cache": false
     },
     "test:goals": {
