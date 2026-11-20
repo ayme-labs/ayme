@@ -24,9 +24,13 @@ running Ayme in this repository. It overrides this skill's defaults.
 
    When the user asked for an automation of a flow with new data, add
    `--start-recording`: the recorder then opens already recording, so the
-   package holds the first page load, which the replay test needs. It
-   applies only when the recorder opens the browser, not with
-   `--cdp-endpoint`.
+   package holds the first page load, which the replay test needs. Tell the
+   user not to press Clear or Stop during this recording: Clear throws the
+   first page load away, and requests made while paused stay in the trace,
+   where the replay can take them for the flow's own. To start over, the
+   user presses Finish, and you run the command again. Use the browser the
+   recorder opens: `--start-recording` does not apply with
+   `--cdp-endpoint`, so a recording there never holds its first page load.
 
    `@latest` runs the newest release. When `@ayme-dev/cli` is in the project's
    `package.json`, the project pins its version: run `npx ayme-recorder` in
