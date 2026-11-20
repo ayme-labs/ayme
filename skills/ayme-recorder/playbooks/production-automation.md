@@ -17,7 +17,8 @@ final "Confirm" can create a real contract. Only the user approves one.
    reads can be POSTs, and GETs can change state. The package can end before
    the page shows a step's result: read that result, and whether each
    permanent change succeeded, from the responses. Done when every call the
-   flow makes is classified.
+   flow makes is classified, and you have kept the permanent changes, each
+   with its method and URL, for the audit in step 5.
 2. **Align** with the user before you write code. Take what
    `.ayme/CONVENTIONS.md` already settles, and settle the rest:
    - the steps of the flow;
@@ -58,11 +59,13 @@ final "Confirm" can create a real contract. Only the user approves one.
    flakes without it, and remove it if both pass. Then run it once
    with `--trace on`, open that run's trace with
    `npx playwright trace open <trace.zip>`, and list its calls with
-   `npx playwright trace requests`: every request other than GET or HEAD
-   must show `fulfilled` or `aborted` in the route column. One that shows
+   `npx playwright trace requests`: every call step 1 classified as a
+   permanent change, whatever its method, must show `fulfilled` or `aborted`
+   in the route column; the method alone does not tell, since a GET can
+   change state. One that shows
    `continued`, or nothing, reached the live site: stop and tell the user.
    Done when the test passes three runs in a row with every wait proven and
-   the trace shows no such request.
+   the trace shows no such call.
 6. **Rehearse live** with fresh real data the user gives you for one run,
    written where step 2 settled. Run the entry script headed, with the user
    watching. The user answers each confirm, or with the
