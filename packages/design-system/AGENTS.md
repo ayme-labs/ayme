@@ -1,7 +1,7 @@
 # Design system
 
-Ayme's design system: the palette, the semantic tokens, the logos and the React
-components that every Ayme surface shares. It is a private, source-only package:
+ayme's design system: the palette, the semantic tokens, the logos and the React
+components that every ayme surface shares. It is a private, source-only package:
 consumers compile it, and nothing is published to npm. ayde and ayme-private
 consume it from a git subtree of this repository at `vendor/ayme`, and never edit
 it there. A change lands here first.
@@ -22,7 +22,7 @@ shadcn/ui; their upstream MIT notice is in
 | `components/*`         | shadcn components: `badge`, `button`, `card`, `marker`, `popover`, `resizable`, `separator`                                |
 | `lib/utils`            | `cn()`                                                                                                                     |
 | `lib/portal-container` | `PortalContainerProvider`: where popovers and other portalled content mount                                                |
-| `logo`                 | The Ayme mark as path data, for drawing it inline                                                                          |
+| `logo`                 | The ayme mark as path data, for drawing it inline                                                                          |
 | `logo/*`               | The mark, the small mark, the wordmark, favicons and app icons                                                             |
 | `shadow-tailwind`      | A Vite plugin that compiles a Tailwind entry for a shadow root and serves it as a string module                            |
 

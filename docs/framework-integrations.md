@@ -8,7 +8,7 @@ This page holds only the behaviour contract and the list of files a new framewor
 
 An integration is a thin adapter over the public runtime session from `@ayme-dev/ayme`. It maps the session's lifetime onto the framework's: an owner creates and starts the session at the application root, and consumers read its status and register Page Objects for as long as they live. Framework-independent behaviour belongs in core, not in the adapter.
 
-API names follow [ADR-0017](adr/0017-keep-framework-integration-apis-closely-aligned.md): the same names in every framework (`AymeProvider`, `useAyme`, `usePageObject`, and the `{ ayme, webMCP }` value), with framework-native names where the framework requires them, as Angular's `provideAyme`, `injectAyme` and `injectPageObject`. One runtime owner per document and its lifetime come from [ADR-0030](adr/0030-application-setup-owns-the-runtime-and-decides-publication.md); application code driving Ayme through the runtime object from [ADR-0031](adr/0031-application-code-drives-ayme-through-the-runtime-object-setup-returns.md); the package split from [ADR-0029](adr/0029-use-a-shared-ayme-package-with-separate-framework-and-build-integrations.md).
+API names follow [ADR-0017](adr/0017-keep-framework-integration-apis-closely-aligned.md): the same names in every framework (`AymeProvider`, `useAyme`, `usePageObject`, and the `{ ayme, webMCP }` value), with framework-native names where the framework requires them, as Angular's `provideAyme`, `injectAyme` and `injectPageObject`. One runtime owner per document and its lifetime come from [ADR-0030](adr/0030-application-setup-owns-the-runtime-and-decides-publication.md); application code driving ayme through the runtime object from [ADR-0031](adr/0031-application-code-drives-ayme-through-the-runtime-object-setup-returns.md); the package split from [ADR-0029](adr/0029-use-a-shared-ayme-package-with-separate-framework-and-build-integrations.md).
 
 ## Package checklist
 
@@ -17,7 +17,7 @@ API names follow [ADR-0017](adr/0017-keep-framework-integration-apis-closely-ali
 - An integration does not declare the `@playwright/test` peer. `@ayme-dev/ayme` and `@ayme-dev/webmcp` declare it as optional.
 - The owner takes the runtime options type as is, instead of re-declaring each option.
 - The integration uses the public runtime session. It imports `@ayme-dev/ayme/internal` only for what the public API does not export yet, such as the Page Object constructor type.
-- An absent entry, `src/absent.ts`, published as `@ayme-dev/<framework>/absent` through an exports map entry and a tsdown entry, with a browser test of its own (`src/absent.browser.test.ts`). It is what a Build without Ayme resolves the package to: the index's names and types over the runtime's absent entry, so a component tree renders as with the real package. Its behaviour is the inert contract the runtime's absent entry defines, so the rows of the behaviour contract do not apply to it.
+- An absent entry, `src/absent.ts`, published as `@ayme-dev/<framework>/absent` through an exports map entry and a tsdown entry, with a browser test of its own (`src/absent.browser.test.ts`). It is what a Build without ayme resolves the package to: the index's names and types over the runtime's absent entry, so a component tree renders as with the real package. Its behaviour is the inert contract the runtime's absent entry defines, so the rows of the behaviour contract do not apply to it.
 - Every row of the behaviour contract holds, or is n/a where the row allows it.
 
 ## Behaviour contract
@@ -62,10 +62,10 @@ Its Page Object Models live in the app's own source, because the build plugin co
 - the server-rendered HTML and the initial publication status, across repeated requests;
 - the exact published tool schemas;
 - that an undecorated subclass of a Page Object Model is published;
-- Ayme's own tool list;
+- ayme's own tool list;
 - that hydration warnings and console errors fail the test;
 - that a `click` that starts a full page load answers with the loading URL before the new page loads;
-- that `navigate` to another page answers with the loading URL before that page loads, and that page publishes Ayme's own tools;
+- that `navigate` to another page answers with the loading URL before that page loads, and that page publishes ayme's own tools;
 - that `navigate_back` to the previous document and `reload` answer with the loading URL before the page loads;
 - that client navigation removes and restores a page's tools, where the app navigates;
 - that editing an imported type rebuilds the published tools on the dev server.

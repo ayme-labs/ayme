@@ -25,7 +25,7 @@ Passes are out of the runs stored for the arm. Each cell is the median, then the
 - @ayme-dev/mcp 0.1.0 (ayme-no-page-objects-goal-loop-off)
 - @ayme-dev/mcp 0.1.0 (ayme-no-page-objects-goal-loop-on)
 - Browser: 155.0.8059.39
-- Ayme commit: 1f300f8f0a2188b07027532217c34c9e9b944492
+- ayme commit: 1f300f8f0a2188b07027532217c34c9e9b944492
 - Formbricks commit: 211ad704de30aabf96c059cc1cf00391d5b63a27
 
 ## Notes

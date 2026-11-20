@@ -1,21 +1,21 @@
 # Architecture
 
 The system's boundary, the actors and external systems around it, the containers inside
-it, how they communicate, and how each environment realizes them. Ayme is a library
+it, how they communicate, and how each environment realizes them. ayme is a library
 product: its runtime units run inside the host app's own page, bundler and Node processes,
 and inside the coding agent's MCP client. The host app is therefore an external system, and
-each Ayme container names the host process it runs in as its deployment node. Every claim
+each ayme container names the host process it runs in as its deployment node. Every claim
 carries its evidence, the file it was verified from or the signal it was inferred from,
 linked relative to the repository root.
 
 ## Context
 
-Ayme turns the Page Object Models of an app's Playwright tests into tools that coding agents,
+ayme turns the Page Object Models of an app's Playwright tests into tools that coding agents,
 in-browser agents and the app's own code call on the running page.
 
 ### Actors
 
-- **App developers**: the team integrating Ayme into their app
+- **App developers**: the team integrating ayme into their app
   - Goal: expose their Page Object Actions as tools, inspect what agents see, and read app
     state through Peeks while developing
   - Evidence: verified: [docs/guide/start/install.md](docs/guide/start/install.md), [packages/inspector/README.md](packages/inspector/README.md)
@@ -31,14 +31,14 @@ in-browser agents and the app's own code call on the running page.
   "Show me how" button
   - Goal: run Page Object Actions and read the page state from inside the app
   - Evidence: verified: [docs/guide/guides/in-app-assistant.md](docs/guide/guides/in-app-assistant.md)
-- **Playground visitors**: developers evaluating Ayme before integrating it
+- **Playground visitors**: developers evaluating ayme before integrating it
   - Goal: try the Inspector and the page's tools on a hosted demo
   - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md), [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue)
 
 ### External systems
 
 - **Host application**
-  - Provides: the page Ayme observes and acts on, the Page Object Models it compiles, the
+  - Provides: the page ayme observes and acts on, the Page Object Models it compiles, the
     bundler that runs the build plugin, the backend that mounts the Decision Endpoint, and
     the Node processes that pair as App Processes
   - Evidence: verified: [docs/guide/reference/ayme.md](docs/guide/reference/ayme.md), [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md)
@@ -61,7 +61,7 @@ in-browser agents and the app's own code call on the running page.
 
 ### Browser runtime
 
-- Responsibility: the Ayme session in the host app's page: the Page Object registry,
+- Responsibility: the ayme session in the host app's page: the Page Object registry,
   Structural Page State and interaction history, the Browser, Custom, Page Object and Peek
   tools, the Goal Loop, and the optional modules it loads on demand: WebMCP publication,
   the Inspector panel and the page side of the Agent Connection. It captures the page and
@@ -82,7 +82,7 @@ in-browser agents and the app's own code call on the running page.
 
 - Responsibility: compiles the marked Page Object Models and derives each action's input
   schema and each `Locator` member into POM metadata placed in the browser bundle; through
-  its `include` option, off by default, also decides whether a build carries Ayme at all
+  its `include` option, off by default, also decides whether a build carries ayme at all
 - Technology: Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and
   Turbopack entries, over the Page Object compiler in `@ayme-dev/ayme`'s Node-only
   `compiler` entry, which runs the project's own TypeScript compiler
@@ -91,7 +91,7 @@ in-browser agents and the app's own code call on the running page.
   [packages/ayme/src/compiler/derivePomManifests.ts](packages/ayme/src/compiler/derivePomManifests.ts),
   [docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md](docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md)
 
-### Ayme MCP server
+### ayme MCP server
 
 - Responsibility: one server per coding agent: speaks MCP over stdio to the agent, pairs
   with one page and with the app's App Processes over a loopback WebSocket, and exposes
@@ -100,7 +100,7 @@ in-browser agents and the app's own code call on the running page.
   between its windows and the paired page. Experimentally, when the project has a Page
   Objects entry, it also builds and serves that entry with the project's runtime, and
   writes the init script the browser automation loads. The init script starts no runtime
-  on a page whose app has already started Ayme. Known gap: an app that starts Ayme late
+  on a page whose app has already started ayme. Known gap: an app that starts ayme late
   still gets a second runtime
   ([issue #1238](https://github.com/ayme-labs/ayme/issues/1238))
 - Technology: Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio with the
@@ -116,7 +116,7 @@ in-browser agents and the app's own code call on the running page.
 
 ### App Process runtime
 
-- Responsibility: the Ayme session inside a Node process of the host app (its dev server or
+- Responsibility: the ayme session inside a Node process of the host app (its dev server or
   backend): pairs with the agent's MCP server beside the page and offers the process's
   Peek Tools, `peek.node.<name>`
 - Technology: `createAyme` from `@ayme-dev/ayme` in Node, loading `@ayme-dev/mcp/process`
@@ -125,7 +125,7 @@ in-browser agents and the app's own code call on the running page.
 
 ### Node host runtime
 
-- Responsibility: the Ayme session in a Node process that drives a browser `Page` it is
+- Responsibility: the ayme session in a Node process that drives a browser `Page` it is
   handed, such as a Playwright script or test: it runs the session code the browser runtime
   shares over that Page, through the In-page Module installed in the document, and carries
   no browser runtime of its own
@@ -138,7 +138,7 @@ in-browser agents and the app's own code call on the running page.
 
 - Responsibility: the one route in the host app's backend that gates each Goal Loop decision
   request, adds the provider key and Jev model, forwards it to the provider and relays the
-  answer; Ayme ships the handler, the app mounts and gates it
+  answer; ayme ships the handler, the app mounts and gates it
 - Technology: Fetch-API request handler from `@ayme-dev/ayme/server`
 - Evidence: verified: [packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts](packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts), [docs/guide/reference/decision-endpoint.md](docs/guide/reference/decision-endpoint.md),
   [docs/adr/0022-build-decision-requests-in-the-browser.md](docs/adr/0022-build-decision-requests-in-the-browser.md)
@@ -159,7 +159,7 @@ in-browser agents and the app's own code call on the running page.
     - → tool runs and lens navigation in the Inspector panel
     - ← Page Objects, Structural Page State, tools and run results
   - Evidence: verified: [packages/inspector/src/panel/](packages/inspector/src/panel/), [docs/guide/guides/inspector.md](docs/guide/guides/inspector.md)
-- **Coding agents → Ayme MCP server**
+- **Coding agents → ayme MCP server**
   - Flows:
     - → `ayme_connect`, `ayme_list_tools`, `ayme_call`, `ayme_inspect` and the page's
       tools, over stdio; an Agent App that shows MCP Apps also reads the Inspector's page
@@ -173,7 +173,7 @@ in-browser agents and the app's own code call on the running page.
   - Flows:
     - → calls to the published tools
     - ← tool results
-  - Evidence: inferred: the driver is the browser's or a polyfill's; Ayme only registers
+  - Evidence: inferred: the driver is the browser's or a polyfill's; ayme only registers
     tools with it ([packages/webmcp/src/publication.ts](packages/webmcp/src/publication.ts))
 - **Host app code → Browser runtime**
   - Flows:
@@ -182,7 +182,7 @@ in-browser agents and the app's own code call on the running page.
       Custom Tool and Peek registrations
     - ← tool definitions, results and Change Records
   - Evidence: verified: [docs/guide/guides/in-app-assistant.md](docs/guide/guides/in-app-assistant.md), [packages/ayme/src/runtime/runtime.ts](packages/ayme/src/runtime/runtime.ts)
-- **App developers → Ayme MCP server**
+- **App developers → ayme MCP server**
   - Flows:
     - → opening the external Inspector at `/inspector`, then its window's requests over a
       WebSocket at `/inspector/ws`; from the Inspector an Agent App shows in its chat, the
@@ -206,7 +206,7 @@ in-browser agents and the app's own code call on the running page.
     - → `execute` of a published tool
     - ← the tool's result or error
   - Evidence: verified: [packages/webmcp/src/publication.ts](packages/webmcp/src/publication.ts)
-- **Browser runtime → Ayme MCP server**
+- **Browser runtime → ayme MCP server**
   - Flows:
     - → the tab's pairing (link token or loopback auto-pair), tool list and its changes,
       tool results, navigation and reload notices
@@ -244,7 +244,7 @@ in-browser agents and the app's own code call on the running page.
       and clicks, fills and key presses through Playwright
     - ← the page structure captured into Structural Page State, and action results
   - Evidence: verified: [packages/ayme/src/playwright.ts](packages/ayme/src/playwright.ts), [packages/ayme/src/in-page/host/](packages/ayme/src/in-page/host/)
-- **App Process runtime → Ayme MCP server**
+- **App Process runtime → ayme MCP server**
   - Flows:
     - → pairing without a token, the process's Peek Tools and their changes, read results
     - ← Peek Tool calls, the names of its tools the agent does not see, the server's token
@@ -257,8 +257,8 @@ in-browser agents and the app's own code call on the running page.
 
 ## Environments
 
-The host app environments are a developer using Ayme in their own app and that app
-serving its users. The Ayme environments are Ayme's own: developing it, checking it and
+The host app environments are a developer using ayme in their own app and that app
+serving its users. The ayme environments are ayme's own: developing it, checking it and
 hosting its playground.
 
 ### Host app
@@ -271,14 +271,14 @@ hosting its playground.
   - **Browser runtime**: the app's development build, with `inspector` and
     `agentConnection` on under the framework's development flag; or, with served Page
     Objects, the runtime the init script starts in a page the browser automation opened,
-    whose app need not ship Ayme
+    whose app need not ship ayme
     - Deployment node: the host app's page in the developer's browser
     - Evidence: verified: [docs/guide/guides/connect-an-agent.md](docs/guide/guides/connect-an-agent.md)
   - **Build plugin**: runs inside the dev server's bundler on every transform, when its
     configuration has `include: true`
     - Deployment node: the host app's dev server process
     - Evidence: verified: [packages/unplugin-ayme/src/vite.ts](packages/unplugin-ayme/src/vite.ts), [docs/guide/reference/build-plugin.md](docs/guide/reference/build-plugin.md)
-  - **Ayme MCP server**: `npx -y @ayme-dev/mcp@<version> mcp`, one child process per agent
+  - **ayme MCP server**: `npx -y @ayme-dev/mcp@<version> mcp`, one child process per agent
     - Deployment node: the coding agent's process on the developer's machine
     - Evidence: verified: [docs/guide/guides/connect-an-agent.md](docs/guide/guides/connect-an-agent.md), [packages/mcp/src/cli.ts](packages/mcp/src/cli.ts)
   - **App Process runtime**: `createAyme({ agentConnection })` started once in the dev
@@ -293,7 +293,7 @@ hosting its playground.
     Goal Loop needs no backend while the app is developed
     - Deployment node: the host app's dev server process
     - Evidence: verified: [docs/guide/guides/goals-with-jev.md](docs/guide/guides/goals-with-jev.md)
-  - **Playground**: does not run here; it is Ayme's own app
+  - **Playground**: does not run here; it is ayme's own app
     - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
 - External systems:
   - **Host application**: the developer's own app, served by its dev server
@@ -308,12 +308,12 @@ hosting its playground.
 
 #### production
 
-- Purpose: the host app serving its users, with Ayme's agent surface limited to what the
+- Purpose: the host app serving its users, with ayme's agent surface limited to what the
   app's setup publishes
 - Evidence: verified: [docs/adr/0030-application-setup-owns-the-runtime-and-decides-publication.md](docs/adr/0030-application-setup-owns-the-runtime-and-decides-publication.md)
 - Containers:
   - **Browser runtime**: the production bundle, only when it was built with
-    `include: true`, otherwise it is a build without Ayme and none of it runs; WebMCP
+    `include: true`, otherwise it is a build without ayme and none of it runs; WebMCP
     publication as the app's setup decides, the Inspector and Agent Connection off, Peeks
     inert
     - Deployment node: the host app's page in its users' browsers
@@ -321,7 +321,7 @@ hosting its playground.
       [docs/guide/guides/connect-an-agent.md](docs/guide/guides/connect-an-agent.md), [docs/guide/reference/build-plugin.md](docs/guide/reference/build-plugin.md)
   - **Build plugin**: ran once at build time; nothing of it runs in production
     - Evidence: verified: [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md)
-  - **Ayme MCP server**: does not run here; coding agents are a development tool
+  - **ayme MCP server**: does not run here; coding agents are a development tool
     - Evidence: verified: [docs/guide/guides/connect-an-agent.md](docs/guide/guides/connect-an-agent.md)
   - **App Process runtime**: does not pair here; the docs gate `agentConnection` behind the
     development flag
@@ -346,7 +346,7 @@ hosting its playground.
     does not run here
     - Evidence: verified: [docs/guide/guides/connect-an-agent.md](docs/guide/guides/connect-an-agent.md)
 
-### Ayme
+### ayme
 
 #### development
 
@@ -363,7 +363,7 @@ hosting its playground.
     `dist`, inside each example's dev server
     - Deployment node: each example's dev server process
     - Evidence: verified: [packages/unplugin-ayme/package.json](packages/unplugin-ayme/package.json), [apps/example-vue/vite.config.ts](apps/example-vue/vite.config.ts)
-  - **Ayme MCP server**: the workspace build, `node packages/mcp/dist/cli.mjs mcp`, registered
+  - **ayme MCP server**: the workspace build, `node packages/mcp/dist/cli.mjs mcp`, registered
     with the contributor's coding agent
     - Deployment node: the coding agent's process on the contributor's machine
     - Evidence: verified: [.agents/skills/inspector-dogfood/SKILL.md](.agents/skills/inspector-dogfood/SKILL.md), [packages/mcp/src/cli.ts](packages/mcp/src/cli.ts)
@@ -409,7 +409,7 @@ hosting its playground.
   - **Build plugin**: runs in each example's build and dev server under test
     - Deployment node: a Playwright container on a GitHub Actions runner
     - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
-  - **Ayme MCP server**: started over stdio by the test's MCP client
+  - **ayme MCP server**: started over stdio by the test's MCP client
     - Deployment node: a Playwright container on a GitHub Actions runner
     - Evidence: verified: [packages/mcp/src/testing/](packages/mcp/src/testing/), [apps/mcp-fixture/](apps/mcp-fixture/)
   - **App Process runtime**: the example dev servers paired in the certification tests
@@ -424,7 +424,7 @@ hosting its playground.
     - Deployment node: a Playwright container on a GitHub Actions runner
     - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
   - **Playground**: built on pull requests that change it, not deployed; its build also
-    builds it without Ayme and checks that output carries none of Ayme
+    builds it without ayme and checks that output carries none of ayme
     - Deployment node: a GitHub Actions runner
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml), [apps/example-vue/package.json](apps/example-vue/package.json),
       [apps/example-vue/scripts/verify-browser-output.mjs](apps/example-vue/scripts/verify-browser-output.mjs)
@@ -453,7 +453,7 @@ hosting its playground.
     - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue), [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
   - **Build plugin**: ran in the Pages build; nothing of it runs on the site
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
-  - **Ayme MCP server**: does not run here; the hosted builds leave out the Agent
+  - **ayme MCP server**: does not run here; the hosted builds leave out the Agent
     Connection
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml), [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue)
   - **App Process runtime**: does not run here; the site is static

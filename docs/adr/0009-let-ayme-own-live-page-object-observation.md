@@ -2,7 +2,7 @@
 status: accepted
 ---
 
-# Let Ayme own live Page Object observation
+# Let ayme own live Page Object observation
 
 The root-availability criterion below is superseded by [ADR-0019](0019-determine-live-page-object-availability-from-root-reachability.md). The sentence below that Page Object activation is not inferred from URLs is superseded by [ADR-0042](0042-page-objects-declare-their-own-root-and-presence.md). Observation ownership and lifecycle remain accepted. The original rationale is retained below.
 

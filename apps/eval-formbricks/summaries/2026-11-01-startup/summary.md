@@ -30,4 +30,4 @@ Passes are out of the runs stored for the scenario. Each cell is the median, the
 - Date: 2026-11-01
 - Claude Code: 2.1.312
 - Model: claude-sonnet-5-5 (requested sonnet, effort medium)
-- Ayme commit: d243bdf267bfcb57c31d0bd36f15169f56ef6a65
+- ayme commit: d243bdf267bfcb57c31d0bd36f15169f56ef6a65

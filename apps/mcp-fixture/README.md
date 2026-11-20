@@ -11,12 +11,12 @@ tests/       the shared fixtures (fixtures.ts), one spec per concern, and
              appProcess.ts, a stand-in App Process
 ```
 
-The page starts the Ayme runtime with `agentConnection: true` and two Custom
+The page starts the ayme runtime with `agentConnection: true` and two Custom
 Tools: `read_text` (`read_other` on `/other`, so a navigation changes the
 tools) and `hold`, which never answers, to keep a call in flight. Its Show
 basket and Hide basket buttons register and unregister the `Basket` Page
 Object, so a Page Object Tool comes and goes on demand. `plain.html` is a
-document of the same origin without Ayme. WebMCP publication is off unless the
+document of the same origin without ayme. WebMCP publication is off unless the
 URL has `?webmcp`, so the tests show the Agent Connection works without it.
 `?peek=<name>` adds a Peek of that name, which reads `{ "value": "page" }`. `?inspector` mounts the Inspector, whose
 spec drives it through `@ayme-dev/inspector/testing`. `?strict-csp` serves any
@@ -38,7 +38,7 @@ the runtime and the Page Objects the server serves. The other
 one opens `plain.html?strict-csp`, with and without `bypassCSP`, and one reads
 the requests the page makes to the server to show what loads on first use.
 
-`appProcess.ts` stands in for an App Process: a Node script that starts Ayme
+`appProcess.ts` stands in for an App Process: a Node script that starts ayme
 with `createAyme({ agentConnection })` and adds one Peek with `ayme.peek`. The
 `startStandInAppProcess` fixture runs it and ends it with the test. Each one
 looks for a server on its test's port only, or pairs by link, so it never

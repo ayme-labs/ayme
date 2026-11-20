@@ -31,11 +31,11 @@ Publication mirrors the active Generated WebMCP Tool set maintained by the core 
 
 Tracing, highlighting, relay loading, and other diagnostics remain example concerns.
 
-Disabling publication does not remove Ayme or Page Object code from browser output. Complete removal of that code from production builds remains a separate decision and must be resolved before production adoption is recommended.
+Disabling publication does not remove ayme or Page Object code from browser output. Complete removal of that code from production builds remains a separate decision and must be resolved before production adoption is recommended.
 
 ## Consequences
 
-Applications gain one explicit place to start and stop Ayme.
+Applications gain one explicit place to start and stop ayme.
 
 Nested components retain independent Page Object lifetimes without shared reference counting.
 
