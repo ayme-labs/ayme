@@ -416,7 +416,7 @@ Add `demo: true` to either object for [demo mode](../guides/inspector.md#demo-mo
 
 ## ayme.tools
 
-`ayme.tools` (`AymeTools`) reaches every tool by its unprefixed name, whether or not WebMCP publishes it. WebMCP publishes only `page_objects` and the Page Object Tools.
+`ayme.tools` (`AymeTools`) reaches every tool by its unprefixed name, whether or not WebMCP publishes it.
 
 Presence decides whether a Page Object Tool is listed. It is listed while any instance of its class is on the page. Availability decides whether a listed tool would run. An unavailable tool stays listed with `available: false`. Each consumer treats it like this:
 
@@ -611,7 +611,7 @@ Ayme tells classes apart by name. Say `ProjectsPage` is registered, and its `acc
 - There is one instance per (`name`, `id`). A later call with the same `id` updates that instance's `read`. Without an `id` there is one instance per name, and a later call replaces the earlier one, so a module that runs again replaces its Peek.
 - The tool goes when its last instance is removed. An instance removed and added again in one go, such as by React StrictMode's remount, keeps it.
 
-Peek Tools are in `ayme.tools` and reach coding agents through the Agent Connection and the Inspector. WebMCP never publishes them, nor any other tool but the Page Object Tools and `page_objects`, and the Goal Loop never offers them. A call answers at once, without waiting for a Settled Page. `ayme.peek` does nothing unless the session has `agentConnection` on, or `inspector` in the browser.
+Peek Tools are in `ayme.tools` and reach coding agents through the Agent Connection and the Inspector. WebMCP never publishes them, and the Goal Loop never offers them. A call answers at once, without waiting for a Settled Page. `ayme.peek` does nothing unless the session has `agentConnection` on, or `inspector` in the browser.
 
 ### What a Peek exposes
 

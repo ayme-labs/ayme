@@ -19,7 +19,7 @@ A `RuntimeStateError` that callers branch on also has a `code` (`RuntimeStateErr
 
 ## How an agent sees a failure
 
-A published tool never throws, because WebMCP drops the reason of a rejected call: native Chrome reports only a generic `UnknownError`. Every tool Ayme publishes resolves a failure as an MCP tool-failure result instead:
+A published tool never throws, because WebMCP drops the reason of a rejected call: native Chrome reports only a generic `UnknownError`. Every tool Ayme publishes, `snapshot` and `goal` included, resolves a failure as an MCP tool-failure result instead:
 
 ```json
 {

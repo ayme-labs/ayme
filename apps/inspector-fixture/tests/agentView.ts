@@ -22,8 +22,7 @@ export function panelDescription(tool: AgentTool): string {
 /**
  * What an agent gets from the page: its tools and `snapshot` from the page's
  * `ayme mcp --browser-tools` server, and Page Object Tools over its WebMCP,
- * as the recording WebMCP driver received them. WebMCP publishes only the
- * Page Object Tools and `page_objects`. The e2e tests take their expected
+ * as the recording WebMCP driver received them. The e2e tests take their expected
  * values from here, never from the panel.
  */
 export class AgentView {

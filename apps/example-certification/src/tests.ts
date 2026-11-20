@@ -121,8 +121,25 @@ const allCounterTools = [
   "SubCounterPage.setMode",
 ];
 
-/** Ayme's own tool WebMCP publishes: every page that runs Ayme has it. */
-const aymeTools = ["page_objects"];
+/** Ayme's own tools, in publication order: every page that runs Ayme has them. */
+const aymeTools = [
+  "snapshot",
+  "page_objects",
+  "click",
+  "hover",
+  "type",
+  "fill",
+  "check",
+  "uncheck",
+  "select_option",
+  "fill_form",
+  "press_key",
+  "generate_locator",
+  "navigate",
+  "navigate_back",
+  "navigate_forward",
+  "reload",
+];
 
 /**
  * Opens the counter page with the recording driver and waits for publication.
@@ -179,7 +196,7 @@ const withoutHash = (url: string) => {
 
 /**
  * Pairs the counter page with an `ayme mcp --browser-tools` server, as a
- * coding agent's client does: WebMCP publishes no Browser Tool.
+ * coding agent's client does.
  */
 async function pairAgent(page: Page, baseURL: string | undefined) {
   const agent = await startAgent(
@@ -288,8 +305,8 @@ export function counterTests({
   CounterPage: new (page: Page) => { increment(): Promise<void> };
   /**
    * Whether the run's app turns the Agent Connection on for the counter page;
-   * the tests that call Browser Tools pair a coding agent with it, since
-   * WebMCP publishes none. Read inside each test.
+   * the tests that call Browser Tools pair a coding agent with it. Read
+   * inside each test.
    */
   agentConnection: () => boolean;
   /** Whether this page mounts the Inspector. The tests wait for it to mount. */

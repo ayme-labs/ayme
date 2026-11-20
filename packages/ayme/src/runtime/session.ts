@@ -233,6 +233,7 @@ export type AymeOptions = {
   pageObjects?: readonly PageObjectConstructor[];
   /** @experimental */
   goalLoop?: GoalLoopDecisionFunction;
+  /** @experimental */
   webMCP?: AymeWebMcpOptions;
   /**
    * Turns the Inspector on while the session is started in the browser. Off
@@ -641,13 +642,12 @@ export function createAymeOn(
   /**
    * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
    * calls as `webmcp` Runs, a Page Object Tool's answered as the agent
-   * channels answer it. It lists the Page Object Tools and `page_objects`
-   * only, so that is all WebMCP publishes.
+   * channels answer it. The package decides which of them it publishes.
    */
   const webMcpPageObjectTools = pageObjectToolsFor(callers.webmcp);
   const webMcpTools = {
     list: () =>
-      webMcpPageObjectTools.list().map((tool) => ({
+      ayme.tools.list().map((tool) => ({
         ...tool,
         description: requiredDescription(tool),
       })),

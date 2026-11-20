@@ -14,8 +14,8 @@ export type Handover = {
 
 /**
  * The `ayme mcp --browser-tools` servers the goal specs started, by the page
- * each one is paired with. WebMCP publishes no `goal`, so a spec pursues a
- * goal through its server, as a coding agent does.
+ * each one is paired with. A spec pursues a goal through its server, as a
+ * coding agent does.
  */
 const agents = new Map<Page, Awaited<ReturnType<typeof startAgent>>>();
 test.afterEach(async () => {

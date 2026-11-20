@@ -106,7 +106,7 @@ export function startAyme({
         ? { placement: "external", demo }
         : mount === "session" && (demo ? { demo } : true),
       // `?agent` is the e2e tests' link to an `ayme mcp` server for an inline
-      // page: they reach the tools WebMCP does not publish through it.
+      // page.
       agentConnection:
         dogfood || new URLSearchParams(location.search).has("agent"),
       // The Structure lens and the search results render the page state; in

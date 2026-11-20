@@ -3,8 +3,10 @@ import path from "node:path";
 import { expect, selectors, type Page } from "@playwright/test";
 import { connectPage, freePort, startAgent } from "@ayme-dev/mcp/testing";
 import { exampleTest as test } from "@ayme-dev/example-certification/tests";
+import { server } from "@ayme-dev/example-certification/config";
 
 import { ListPage } from "../playwright/pom/ListPage";
+import { readDecisionProvider } from "../scripts/appEnvironment";
 import { createPomCompiler } from "@ayme-dev/ayme/compiler";
 import {
   Inspector,
@@ -17,9 +19,8 @@ import {
 
 /**
  * The coding agents' servers (`ayme mcp --browser-tools`) the tests started,
- * by the page each one is paired with. WebMCP publishes no Browser Tool and no
- * `snapshot`, so a test that reads the page state or clicks reaches them
- * through its server, as a coding agent does.
+ * by the page each one is paired with. A test that reads the page state or
+ * clicks reaches them through its server, as a coding agent does.
  */
 const agents = new Map<Page, Awaited<ReturnType<typeof startAgent>>>();
 test.afterEach(async () => {
@@ -121,12 +122,37 @@ function normalizeAppSubtree(pageState: string): string {
     .replace(/\bpo\d+\b/g, renumbered("po"));
 }
 
-// WebMCP publishes the Page Object Tools and page_objects only.
+// The dev server mounts a Decision Endpoint when it has a model key, and then
+// the app runs with the Goal Loop on and publishes `goal` alongside the Page
+// Object tools; without a key, and in the production build, it publishes no
+// `goal`.
+const publishesGoal = server === "dev" && readDecisionProvider() !== undefined;
+const goalToolNames = publishesGoal ? ["goal"] : [];
+const browserToolNames = [
+  "click",
+  "hover",
+  "type",
+  "fill",
+  "check",
+  "uncheck",
+  "select_option",
+  "fill_form",
+  "press_key",
+  "generate_locator",
+  "navigate",
+  "navigate_back",
+  "navigate_forward",
+  "reload",
+];
+
 const initialToolNames = [
+  "snapshot",
   "page_objects",
+  ...browserToolNames,
   "ListPage.addItem",
   "ListItem.archive",
   "ListItem.rename",
+  ...goalToolNames,
 ];
 
 // The Inspector renders into a closed shadow root; its page objects reach it
@@ -422,7 +448,13 @@ test("publishes collection tools only while a component root is live", async ({
   });
   await expect
     .poll(async () => await recordedToolNames(page))
-    .toEqual(["page_objects", "ListPage.addItem"]);
+    .toEqual([
+      "snapshot",
+      "page_objects",
+      ...browserToolNames,
+      "ListPage.addItem",
+      ...goalToolNames,
+    ]);
 
   await executePublishedTool(page, "ListPage.addItem", {
     text: "Restore live component tools",
@@ -442,9 +474,30 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
 
-  const tools = await recordedTools(page);
+  // The ayme package pins the Browser Tools' schemas; here they are only named.
+  const tools = (await recordedTools(page)).filter(
+    ({ name }) => !browserToolNames.includes(name)
+  );
 
   expect(tools).toEqual([
+    {
+      name: "snapshot",
+      description:
+        "Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description, then lists the POM's declared children and its actions. A bare member is a Locator and member: ChildPom a child POM; [] marks a collection, so member[] is a collection of Locators and member: ChildPom[] a collection of child POMs. A // comment after a member is its authored description, as is one above an action. action(args): this | OtherPom is an action with possible next POMs, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          names: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Page Object class names whose definitions to include in pomDefinitions. Omitted or empty: every known one. The structure is always the whole page.",
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+    },
     {
       name: "page_objects",
       description:
@@ -516,6 +569,39 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
         additionalProperties: false,
       },
     },
+    ...(publishesGoal
+      ? [
+          {
+            name: "goal",
+            description:
+              "Drive the page toward a goal in steps. In each step a fast model chooses at most one operation to run. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.",
+            inputSchema: {
+              type: "object",
+              properties: {
+                goal: { type: "string" },
+                maxSteps: {
+                  type: "integer",
+                  minimum: 1,
+                  description:
+                    "The most steps the loop may take before it hands back with step_budget. Each step runs at most one operation on the page and may ask the model more than once to choose it.",
+                },
+                values: {
+                  type: "object",
+                  description:
+                    "Passed to the Goal Loop with the goal. Where the page has nothing to pick, such as text to type or a URL to open, the loop picks one of these by its label. It never makes up a value.",
+                  additionalProperties: {
+                    anyOf: [{ type: "string" }, { type: "number" }],
+                  },
+                  minProperties: 1,
+                  maxProperties: 254,
+                },
+              },
+              required: ["goal", "maxSteps"],
+              additionalProperties: false,
+            },
+          },
+        ]
+      : []),
   ]);
 
   await page.getByLabel("New item").fill("Write release notes");
@@ -605,7 +691,13 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
   ).toBeVisible();
   await expect
     .poll(async () => await recordedToolNames(page))
-    .toEqual(["page_objects", "ListPage.addItem"]);
+    .toEqual([
+      "snapshot",
+      "page_objects",
+      ...browserToolNames,
+      "ListPage.addItem",
+      ...goalToolNames,
+    ]);
   await page.getByRole("button", { name: "Confirm archive" }).click();
   await expect(page.locator("[data-archived-label]")).toHaveCount(3);
   await expect
