@@ -46,9 +46,10 @@ describe("the hover highlight", () => {
     await expect(
       recorder.send({ type: "highlight", entry: entryId("interaction_1") })
     ).resolves.toBe("applied");
+    // On the page it is still on, exactly its element, by its ref.
     expect(browser.highlighted).toEqual({
       page: pageId("page_1"),
-      find: { by: "selector", selector: 'internal:role=button[name="Save"i]' },
+      find: { by: "ref", ref: "e2" },
     });
 
     await expect(recorder.send({ type: "clearHighlight" })).resolves.toBe(

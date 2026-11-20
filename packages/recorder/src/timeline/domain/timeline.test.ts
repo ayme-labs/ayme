@@ -1848,10 +1848,26 @@ describe("the timeline, for the highlight", () => {
   const page1 = pageId("page_1");
   const interaction1 = entryId("interaction_1");
 
-  it("finds an Interaction's target by its recorded selector, whatever the latest snapshot lists", async () => {
+  it("finds an Interaction's target on the page it is still on by the ref the page's latest snapshot gives it, as a row's element, the page having re-created it", async () => {
     const timeline = await timelineOf([
       ...clicked,
       snapshot(snapshotId("snapshot_3"), 30, recreated),
+    ]);
+
+    expect(timeline.liveTarget(interaction1)).toEqual({
+      page: page1,
+      find: { by: "ref", ref: "e8" },
+    });
+  });
+
+  it("finds an Interaction's target the latest snapshot no longer lists by its recorded selector", async () => {
+    const timeline = await timelineOf([
+      ...clicked,
+      snapshot(
+        snapshotId("snapshot_3"),
+        30,
+        [`- generic [ref=e1]:`, `  - paragraph [ref=e3]: Saved`].join("\n")
+      ),
     ]);
 
     expect(timeline.liveTarget(interaction1)).toEqual({

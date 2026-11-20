@@ -180,12 +180,37 @@ const rowsOf = (change: StructuralTree) => {
   };
 };
 
-/** How the page is asked for an entry's target: by its recorded selector. */
-const selectorOf = (entry: TimelineEntry): ElementLookup | null => {
-  const selector =
-    entry.kind === "interaction" ? entry.interaction.targetSelector : undefined;
-  return selector ? { by: "selector", selector } : null;
-};
+/** The ref the Visit's latest snapshot gives an element known by its first
+ * ref: none once the page has left the Visit, whose refs name nothing in
+ * the document it has now, and none core made up, which name no element of
+ * the page. */
+function refNow(
+  visit: Visit,
+  first: string | null | undefined,
+  left: boolean
+): ElementLookup | null {
+  if (left || !first) return null;
+  const now = [...visit.snapshots.at(-1)!.firstRefs].find(
+    ([, kept]) => kept === first
+  )?.[0];
+  return now && !isSyntheticRef(now) ? { by: "ref", ref: now } : null;
+}
+
+/** How the page is asked for an entry's target: by the ref the Visit's
+ * latest snapshot gives it while the page is still on the Visit, or else
+ * by its recorded selector. */
+function targetLookupOf(
+  visit: Visit,
+  entry: TimelineEntry,
+  left: boolean
+): ElementLookup | null {
+  if (entry.kind !== "interaction") return null;
+  const { targetRef, targetSelector } = entry.interaction;
+  return (
+    refNow(visit, targetRef, left) ??
+    (targetSelector ? { by: "selector", selector: targetSelector } : null)
+  );
+}
 
 /** How the page is asked for the element a row names: by the ref the
  * Visit's latest snapshot gives it, or else, and always once the page has
@@ -196,14 +221,12 @@ function lookupOf(
   left: boolean
 ): ElementLookup | null {
   if (!element) return null;
-  // A Visit its page has left has no ref in the document the page has now.
-  const now = left
-    ? undefined
-    : [...visit.snapshots.at(-1)!.firstRefs].find(
-        ([, first]) => first === element.ref
-      )?.[0];
-  if (now && !isSyntheticRef(now)) return { by: "ref", ref: now };
-  return { by: "selector", selector: element.selector };
+  return (
+    refNow(visit, element.ref, left) ?? {
+      by: "selector",
+      selector: element.selector,
+    }
+  );
 }
 
 /** The reports of an input whose press can move the focus before the gate
@@ -490,17 +513,16 @@ export class Timeline {
 
   /**
    * Where an element of an entry is now, for the highlight: with no `row`,
-   * its target, by the selector Playwright recorded; with `row`, the element
-   * that row of its changes names, by the ref the page's latest snapshot
-   * gives it, or, when that snapshot no longer lists it, by the selector
-   * of its label. Only a ref the browser gave can name an element of the
-   * page: core makes up refs for the nodes the browser gave none. An entry
-   * of a Visit its page has left is looked for on the page as it is now:
-   * its target by its selector all the same, a row's element by the
-   * selector of its label, as no ref of that Visit names an element of the
-   * page's new document. Null for
-   * a target with no selector, and a row the entry does not have or whose
-   * element is named by nothing.
+   * its target, with `row` the element that row of its changes names; each
+   * by the ref the page's latest snapshot gives it, so that exactly that
+   * element lights up. When that snapshot no longer lists it, a target is
+   * found by the selector Playwright recorded, a row's element by the
+   * selector of its label: every element either matches lights up. Only a
+   * ref the browser gave can name an element of the page: core makes up
+   * refs for the nodes the browser gave none. An entry of a Visit its page
+   * has left is found by those selectors, as no ref of that Visit names an
+   * element of the page's new document. Null for a target with neither,
+   * and a row the entry does not have or whose element is named by nothing.
    */
   liveTarget(
     entry: EntryId,
@@ -512,7 +534,7 @@ export class Timeline {
       const left = this.current.get(visit.page) !== visit;
       const find =
         row === undefined
-          ? selectorOf(found.entry)
+          ? targetLookupOf(visit, found.entry, left)
           : lookupOf(visit, found.rows[row], left);
       return find && { page: visit.page, find };
     }
