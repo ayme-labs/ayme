@@ -7,7 +7,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import * as esbuild from "esbuild";
 import { expect, it, vi } from "vitest";
@@ -18,6 +18,7 @@ import {
   failedPageObjects,
   pageObjectModels,
   type PageObjectsBuild,
+  watchPageObjects,
 } from "./pageObjectsBuild";
 
 const entry = "/project/.ayme/page-objects.ts";
@@ -851,5 +852,167 @@ it("invalidates and forgets compiled files on rebuild, retaining the last good b
   } finally {
     await context.dispose();
     await rm(folder, { recursive: true, force: true });
+  }
+});
+
+/**
+ * A project folder, with a `package.json` and `files`, its Page Objects
+ * entry, and an installed `@ayme-dev/ayme` of `version`, whose compiler
+ * compiles nothing and records that it loaded, and whose runtime exports
+ * `runtime`. A release from before the compiler entry has no `./compiler`.
+ */
+async function projectWithAyme(
+  version: string | undefined,
+  {
+    files = [],
+    compiler = true,
+    distManifest,
+  }: {
+    files?: readonly string[];
+    compiler?: boolean;
+    /** A `package.json` in the package's `dist`, such as a bundler writes. */
+    distManifest?: object;
+  } = {}
+) {
+  const project = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-version-"))
+  );
+  const ayme = join(project, "node_modules", "@ayme-dev", "ayme");
+  await mkdir(join(ayme, "dist"), { recursive: true });
+  await writeFile(
+    join(ayme, "package.json"),
+    JSON.stringify({
+      name: "@ayme-dev/ayme",
+      version,
+      type: "module",
+      exports: {
+        ".": "./dist/index.js",
+        ...(compiler ? { "./compiler": "./dist/compiler.js" } : {}),
+      },
+    })
+  );
+  await writeFile(
+    join(ayme, "dist", "index.js"),
+    'export const runtime = "ayme";'
+  );
+  await writeFile(
+    join(ayme, "dist", "compiler.js"),
+    `globalThis.aymeCompilerLoaded = true;
+export class PomCompileError extends Error {}
+export const createPomCompiler = () => ({ compile: () => null, invalidate() {} });`
+  );
+  if (distManifest !== undefined)
+    await writeFile(
+      join(ayme, "dist", "package.json"),
+      JSON.stringify(distManifest)
+    );
+  await writeFile(join(project, "package.json"), "{}");
+  for (const file of files) await writeFile(join(project, file), "");
+  const entry = join(project, ".ayme", "page-objects.ts");
+  await mkdir(dirname(entry));
+  await writeFile(entry, "export default [];");
+  return { project, entry };
+}
+
+declare global {
+  var aymeCompilerLoaded: boolean | undefined;
+}
+
+it("stops before it loads the compiler when the project's @ayme-dev/ayme is another version, naming both and the install command", async () => {
+  const { project, entry } = await projectWithAyme("0.1.3", {
+    files: ["pnpm-lock.yaml"],
+  });
+  globalThis.aymeCompilerLoaded = undefined;
+  const started = watchPageObjects(entry, () => {}, "0.1.5");
+  try {
+    await expect(started).rejects.toThrow(
+      `Building the Page Objects entry ${entry} stopped: this project has @ayme-dev/ayme 0.1.3; ayme mcp 0.1.5 needs the same version. Run \`pnpm add -D @ayme-dev/ayme@0.1.5\` in ${project}.`
+    );
+    expect(globalThis.aymeCompilerLoaded).toBeUndefined();
+  } finally {
+    await started.then(
+      (build) => build.close(),
+      () => {}
+    );
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+it("names the versions, not a missing compiler, for a release from before the compiler entry, at a pnpm workspace's root", async () => {
+  const { project, entry } = await projectWithAyme("0.1.3", {
+    files: ["pnpm-lock.yaml", "pnpm-workspace.yaml"],
+    compiler: false,
+  });
+  const started = watchPageObjects(entry, () => {}, "0.1.5");
+  try {
+    await expect(started).rejects.toThrow(
+      `this project has @ayme-dev/ayme 0.1.3; ayme mcp 0.1.5 needs the same version. Run \`pnpm add -D -w @ayme-dev/ayme@0.1.5\` in ${project}.`
+    );
+  } finally {
+    await started.then(
+      (build) => build.close(),
+      () => {}
+    );
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+/** Why `watchPageObjects` does not start for `project`, with ayme mcp 0.1.5. */
+async function mismatch({
+  project,
+  entry,
+}: Awaited<ReturnType<typeof projectWithAyme>>) {
+  const started = watchPageObjects(entry, () => {}, "0.1.5");
+  try {
+    await started;
+    return undefined;
+  } catch (error) {
+    return (error as Error).message;
+  } finally {
+    await started.then(
+      (build) => build.close(),
+      () => {}
+    );
+    await rm(project, { recursive: true, force: true });
+  }
+}
+
+it("names npm's command when no lockfile is above the project", async () => {
+  const project = await projectWithAyme("0.1.3");
+  expect(await mismatch(project)).toContain(
+    ` Run \`npm install -D @ayme-dev/ayme@0.1.5\` in ${project.project}.`
+  );
+});
+
+it("reads the version from the package's own package.json, not another one inside it", async () => {
+  for (const distManifest of [
+    { name: "bundled", version: "9.9.9" },
+    { name: "@ayme-dev/ayme" },
+  ])
+    expect(
+      await mismatch(await projectWithAyme("0.1.3", { distManifest }))
+    ).toContain("this project has @ayme-dev/ayme 0.1.3;");
+});
+
+it("stops when no package.json states the version of @ayme-dev/ayme", async () => {
+  expect(await mismatch(await projectWithAyme(undefined))).toContain(
+    "this project has @ayme-dev/ayme of a version it does not state;"
+  );
+});
+
+it("builds with the project's @ayme-dev/ayme when it is ayme mcp's version", async () => {
+  const { project, entry } = await projectWithAyme("0.1.5");
+  const log = vi.fn();
+  const build = await watchPageObjects(entry, log, "0.1.5");
+  try {
+    const modules = await build.modules();
+    expect([...modules.keys()]).toEqual(
+      expect.arrayContaining(["entry.js", "runtime.js"])
+    );
+    expect([...modules.values()].join("\n")).toContain('"ayme"');
+    expect(log).toHaveBeenCalledWith(`Built the Page Objects entry ${entry}.`);
+  } finally {
+    await build.close();
+    await rm(project, { recursive: true, force: true });
   }
 });
