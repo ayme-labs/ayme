@@ -56,8 +56,9 @@ export type PageObjectToolSource = {
   subscribe(listener: () => void): () => void;
   /**
    * Runs the tool `name`. A Page Object Tool answers a
-   * `PageObjectToolAnswer`, and its refusal or failure is the error alone,
-   * without the Change Record the session left on it. Any other tool
+   * `PageObjectToolAnswer`, and its refusal or failure is the error,
+   * without the Change Record the session left on it but with `changes`,
+   * how the Page Object Tree changed, when it changed. Any other tool
    * answers as the session does.
    */
   run(name: string, input: unknown): Promise<unknown>;
@@ -85,13 +86,35 @@ export function pageObjectToolSource(
       return session.inTurn(async (page) => {
         const before = await page.readPageObjectTree().catch(() => undefined);
         const url = page.url();
-        const result = await page.run(name, input).catch((error: unknown) => {
-          throw withoutChangeRecord(error);
-        });
+        const result = await page
+          .run(name, input)
+          .catch(async (error: unknown) => {
+            throw withTreeChanges(
+              withoutChangeRecord(error),
+              before,
+              await page.readPageObjectTree().catch(() => undefined)
+            );
+          });
         return answerOf(page, result as ActionResult, before, url);
       });
     },
   };
+}
+
+/**
+ * A failed action's error with how the Page Object Tree changed while it
+ * ran, when it changed, as a successful call's answer carries it: an agent
+ * sees what a half-run action did.
+ */
+function withTreeChanges(
+  error: unknown,
+  before: PageObjectTreeRead | undefined,
+  after: PageObjectTreeRead | undefined
+): unknown {
+  const changes = before && after && renderPageObjectTreeChanges(before, after);
+  if (changes && error instanceof Error)
+    (error as Partial<ActionFailure>).changes = changes;
+  return error;
 }
 
 /**

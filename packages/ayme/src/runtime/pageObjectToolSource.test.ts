@@ -213,7 +213,32 @@ describe("a Page Object Tool's answer to an agent", () => {
     expect({ ...(error as object) }).toEqual({});
   });
 
-  it("fails with what failed alone, without the Change Record the session left on it", async () => {
+  it("fails with what failed and how the Page Object Tree changed while it ran", async () => {
+    const failure = Object.assign(new Error("Timeout 5000ms exceeded."), {
+      page_changed: true,
+      changes: "- dialog",
+    });
+    const { stub } = session({
+      trees: [list("Milk"), list("Milk", "Eggs")],
+      answer: () => Promise.reject(failure),
+    });
+
+    const error = await pageObjectToolSource(stub)
+      .run("ListPage.add", {})
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBe(failure);
+    expect({ ...(error as object) }).toEqual({
+      changes: [
+        "ListPage",
+        "  items:",
+        "    + Item po2",
+        "        name: text: Eggs",
+      ].join("\n"),
+    });
+  });
+
+  it("fails with what failed alone when the Page Object Tree did not change, without the Change Record the session left on it", async () => {
     const failure = Object.assign(new Error("Timeout 5000ms exceeded."), {
       page_changed: true,
       changes_before: "- paragraph: toast",

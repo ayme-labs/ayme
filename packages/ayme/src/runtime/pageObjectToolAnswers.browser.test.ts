@@ -229,7 +229,7 @@ describe("a Page Object Tool's answer through both agent channels", () => {
     ]);
   });
 
-  it("refuses with the reason alone, and fails with what failed alone, in both channels", async () => {
+  it("refuses with the reason alone, and fails with what failed and how the Page Object Tree changed while it ran, in both channels", async () => {
     const { ayme, webMcp, aymeMcp } = await shoppingList("Milk", "Eggs");
     const milk = await idOf(ayme, "Milk");
     await ayme.tools.run("Item.archive", { id: milk });
@@ -246,10 +246,24 @@ describe("a Page Object Tool's answer through both agent channels", () => {
       expect(gone).toMatch(new RegExp(`${milk}`));
       expect(gone).not.toMatch(/changes|snapshot|page_objects|\n/);
 
-      const failed = await failureOf(
-        channel.run("ShoppingListPage.rename", {})
-      );
-      expect(failed).toBe("The list cannot be renamed.");
+      document.querySelector("h1")!.textContent = "Groceries";
+      const failure: unknown = await channel
+        .run("ShoppingListPage.rename", {})
+        .then(
+          () => {
+            throw new Error("Expected the call to fail.");
+          },
+          (error: unknown) => error
+        );
+      expect(errorText(failure)).toBe("The list cannot be renamed.");
+      expect({ ...(failure as object) }).toEqual({
+        changes: [
+          "ShoppingListPage",
+          "  title:",
+          '    - heading "Groceries" [level=1] (removed)',
+          '    + - heading "Errands" [level=1]',
+        ].join("\n"),
+      });
     }
   });
 

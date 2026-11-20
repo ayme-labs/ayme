@@ -88,8 +88,9 @@ inconclusive, read `page_objects`, or the page with your browser automation.
   own, such as `No item is selected`. A Page Object Tool stays listed while
   it is unavailable: `ayme_list_tools` shows whether each tool is available
   and why not.
-- A failed call answers with what failed alone. Read the page before you
-  call it again.
+- A failed call answers with what failed, followed by `changes:` when the
+  Page Object tree changed while it ran. It shows how far the action got
+  before you call it again.
 - When a tool answers that it is gone, what offered it is no longer there,
   such as a Page Object that is no longer present, a page that navigated or
   an App Process that stopped. Use one of the current tools instead.
