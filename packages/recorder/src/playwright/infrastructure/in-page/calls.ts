@@ -75,6 +75,17 @@ export function frameContentOffset(node: Element): { x: number; y: number } {
   };
 }
 
+/** The boxes of elements in their document's viewport; an element that
+ * takes no room, as one hidden, has none. */
+export function boxesIn(
+  elements: Element[]
+): { x: number; y: number; width: number; height: number }[] {
+  return elements
+    .map((element) => element.getBoundingClientRect())
+    .filter((box) => box.width > 0 && box.height > 0)
+    .map(({ x, y, width, height }) => ({ x, y, width, height }));
+}
+
 /** Switches the gate and the activity watch off, for a browser the adapter
  * lets go of. */
 export function stopGateAndWatch(): void {

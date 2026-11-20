@@ -399,8 +399,14 @@ async function stockToolEvaluates(
   }
 }
 
+/** The actions the stock trace tool lists for a trace file. */
+const stockToolActions = (file: string) => stockToolList(file, "actions");
+
 /** The requests the stock trace tool lists for a trace file. */
-async function stockToolRequests(file: string) {
+const stockToolRequests = (file: string) => stockToolList(file, "requests");
+
+/** What the stock trace tool lists for a trace file. */
+async function stockToolList(file: string, list: "actions" | "requests") {
   const cli = projectPlaywrightCli(projectDir)!;
   const cwd = await mkdtemp(join(tmpdir(), "ayme-recorder-compat-"));
   const tool = (...args: string[]) =>
@@ -410,7 +416,7 @@ async function stockToolRequests(file: string) {
     }).then(({ stdout }) => stdout);
   try {
     await tool("open", file);
-    return await tool("requests");
+    return await tool(list);
   } finally {
     await tool("close").catch(() => {});
     await rm(cwd, { recursive: true, force: true });
@@ -1435,6 +1441,62 @@ it("draws the highlight on every element a selector names on the page as it is n
     expect([selector, found]).toEqual([selector, count > 0]);
     await expect.poll(() => drawnCount(browser.page)).toBe(count);
   }
+});
+
+it("draws the highlight on every element a selector names in each frame its frame part matches", async () => {
+  const browser = await onStockPlaywright(
+    `<iframe srcdoc="<button>Pay</button>"></iframe><iframe srcdoc="<button>Pay</button><button>Pay</button>"></iframe>`
+  );
+  for (const frame of [0, 1])
+    await browser.page
+      .frameLocator(`iframe >> nth=${frame}`)
+      .getByText("Pay")
+      .first()
+      .waitFor();
+
+  await browser.ask({
+    kind: "highlight",
+    highlight: 1,
+    target: {
+      page: "page_1",
+      find: {
+        by: "selector",
+        selector:
+          'iframe >> internal:control=enter-frame >> internal:role=button[name="Pay"s]',
+      },
+    },
+  });
+
+  const { found } = await browser.toldOf("highlighted");
+  expect(found).toBe(true);
+  await expect.poll(() => drawnCount(browser.page)).toBe(3);
+});
+
+it("reads the boxes of every element a selector names in one call per frame, not one per element", async () => {
+  const browser = await onStockPlaywright(
+    Array.from({ length: 20 }, (_, at) => `<button>Twin ${at}</button>`).join(
+      ""
+    )
+  );
+  await browser.ask({ kind: "startTrace" });
+  await browser.toldOf("traceStarted");
+
+  await browser.ask({
+    kind: "highlight",
+    highlight: 1,
+    target: {
+      page: "page_1",
+      find: { by: "selector", selector: "internal:role=button" },
+    },
+  });
+  await browser.toldOf("highlighted");
+  await browser.ask({ kind: "stopTrace", keep: true });
+  const { trace } = await browser.toldOf("traceStopped");
+
+  const actions = await stockToolActions(trace.file);
+  expect(actions.match(/Bounding box/g)?.length ?? 0).toBeLessThan(2);
+  await expect.poll(() => drawnCount(browser.page)).toBe(20);
+  await rm(dirname(trace.file), { recursive: true, force: true });
 });
 
 /** A to-do list with look-alikes, text with no role, an icon a style

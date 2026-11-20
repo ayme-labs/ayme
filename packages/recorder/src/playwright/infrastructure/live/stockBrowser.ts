@@ -45,6 +45,7 @@ import {
   noLongerRecording,
   openGate,
   pickedAmong,
+  boxesIn,
   pickWithGate,
   removeOwnElements,
   setGate,
@@ -928,16 +929,7 @@ async function openPage(
       });
     const open = pages.get(target.page);
     if (!open || !latest()) return found([]);
-    const elements = await matchesOf(open, target.find);
-    const boxes = (
-      await Promise.all(
-        elements.map((element) =>
-          element
-            .boundingBox({ timeout: HIGHLIGHT_LOOKUP_MS })
-            .catch(() => null)
-        )
-      )
-    ).filter((box): box is HighlightBox => box !== null);
+    const boxes = await boxesOf(open, target.find);
     // A later highlight replaced it meanwhile: it is not drawn.
     if (boxes.length === 0 || !latest()) return found([]);
     await draw(open, boxes);
@@ -1148,19 +1140,69 @@ const TOOLBAR_REMOVE = "ayme-recorder-toolbar:remove";
 const PICKING_MODE = "assertingVisibility";
 
 /**
- * Every element of the page a lookup names: a step or a change row whose
- * element has look-alikes lights each of them up. A ref names one element,
- * and is taken only when it does. A selector and a ref reach into frames by
- * themselves.
+ * The boxes, in the page's coordinates, of every element of the page a
+ * lookup names: a step or a change row whose element has look-alikes
+ * lights each of them up. A ref names one element, and is taken only when
+ * it does. A selector's matches are read in one call in each frame they
+ * are in: its part before each frame it enters may match more than one
+ * frame, and every match in each lights up.
  */
-async function matchesOf(page: Page, find: ElementLookup): Promise<Locator[]> {
-  const candidate = page
-    .mainFrame()
-    .locator(find.by === "ref" ? `aria-ref=${find.ref}` : find.selector);
-  const count = await candidate.count().catch(() => 0);
-  // A ref names one element: it is trusted only when it does.
-  if (find.by === "ref") return count === 1 ? [candidate] : [];
-  return Array.from({ length: count }, (_, index) => candidate.nth(index));
+async function boxesOf(
+  page: Page,
+  find: ElementLookup
+): Promise<HighlightBox[]> {
+  if (find.by === "ref") {
+    const element = page.mainFrame().locator(`aria-ref=${find.ref}`);
+    if ((await element.count().catch(() => 0)) !== 1) return [];
+    const box = await element
+      .boundingBox({ timeout: HIGHLIGHT_LOOKUP_MS })
+      .catch(() => null);
+    return box ? [box] : [];
+  }
+  const parts = find.selector.split(ENTER_FRAME);
+  const last = parts.pop()!;
+  let frames = [page.mainFrame()];
+  for (const part of parts) frames = await framesIn(frames, part);
+  const found = await Promise.all(
+    frames.map(async (frame) => {
+      const boxes = await frame
+        .locator(last)
+        .evaluateAll(boxesIn)
+        .catch(() => []);
+      if (boxes.length === 0) return [];
+      const at = await placeInPage(frame, { x: 0, y: 0 });
+      return boxes.map((box) => ({ ...box, x: box.x + at.x, y: box.y + at.y }));
+    })
+  );
+  return found.flat();
+}
+
+/** How a selector enters the frame the part before it names. */
+const ENTER_FRAME = " >> internal:control=enter-frame >> ";
+
+/** The frames of the frame elements a selector names in each of `frames`. */
+async function framesIn(
+  frames: readonly Frame[],
+  selector: string
+): Promise<Frame[]> {
+  const inner = await Promise.all(
+    frames.map(async (frame) => {
+      const elements = await frame
+        .locator(selector)
+        .elementHandles()
+        .catch(() => []);
+      const contents = await Promise.all(
+        elements.map((element) =>
+          element
+            .contentFrame()
+            .catch(() => null)
+            .finally(() => void element.dispose())
+        )
+      );
+      return contents.filter((content): content is Frame => content !== null);
+    })
+  );
+  return inner.flat();
 }
 
 /**
