@@ -118,16 +118,23 @@ describe("an entry's card", () => {
     });
   });
 
-  it("shows the selector of a target the page's structure does not name", () => {
+  it("names a target the engine gives no words for 'element', never by its raw selector, which shows on hover alone", () => {
     const unnamed = { ...click } as Extract<
       TimelineEntry,
       { kind: "interaction" }
     >;
     Reflect.deleteProperty(unnamed, "targetElement");
     expect(entryCardOf(unnamed, recording).target).toEqual({
-      text: '[data-test="add-to-cart"]',
+      text: "element",
+      hint: '[data-test="add-to-cart"]',
       highlight: { type: "highlight", entry: entryId("interaction_1") },
     });
+  });
+
+  it("shows the raw selector on hover when Playwright gave no words for it", () => {
+    expect(entryCardOf(click, recording).target?.hint).toBe(
+      '[data-test="add-to-cart"]'
+    );
   });
 
   it("shows the target's ref when it has no selector either, and no target with neither", () => {

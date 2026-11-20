@@ -335,7 +335,7 @@ describe("the words of a selector, for a step whose element is not known", () =>
     expect(selectorWords("internal:role=heading", "x")).toBe("heading");
   });
 
-  it("is Playwright's own words for any other selector, and none without them", () => {
+  it("is Playwright's own words for any other selector, 'element' without them, and none without a selector", () => {
     expect(selectorWords('internal:text="Saved"i', "getByText('Saved')")).toBe(
       "getByText('Saved')"
     );
@@ -351,7 +351,9 @@ describe("the words of a selector, for a step whose element is not known", () =>
         "getByRole('listitem').getByRole('link', { name: 'Go' })"
       )
     ).toBe("getByRole('listitem').getByRole('link', { name: 'Go' })");
-    expect(selectorWords("#main", undefined)).toBeUndefined();
+    // Decision D: a selector with no words of Playwright's is no element's
+    // name, never its raw text.
+    expect(selectorWords("#main", undefined)).toBe("element");
     expect(selectorWords(null, undefined)).toBeUndefined();
   });
 });

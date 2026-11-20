@@ -48,9 +48,9 @@ const ICONS: Partial<Record<string, EntryIcon>> = {
   assertVisible: "assertVisible",
 };
 
-/** The target's chip: its element in the page structure's words, with its
- * selector on hover, in Playwright's own words when the engine has them;
- * the selector when the structure does not name it. */
+/** The target's chip: its element in the page structure's words, or
+ * "element" when the engine gives none, never a raw selector; with its
+ * selector on hover, in Playwright's own words when the engine has them. */
 function targetOf(
   entry: Extract<TimelineEntry, { kind: "interaction" }>,
   highlight: RecorderCommand | null
@@ -63,7 +63,7 @@ function targetOf(
       ...(hint ? { hint } : {}),
       highlight,
     };
-  if (selector) return { text: selector, highlight };
+  if (selector) return { text: "element", hint: hint ?? selector, highlight };
   return targetRef ? { text: `[ref=${targetRef}]`, highlight } : null;
 }
 

@@ -250,9 +250,12 @@ it("shows each Visit with its entries: their targets by role and name, and what 
   expect(await change!.title.textContent()).toBe("Element removed");
   expect(await change!.target.count()).toBe(0);
   expect(await assertion!.title.textContent()).toBe("Assert");
-  // A target the page's structure does not name shows its selector.
-  expect(await assertion!.target.textContent()).toBe('[data-test="title"]');
-  expect(await assertion!.target.getAttribute("title")).toBeNull();
+  // A target the engine gives no words for reads "element", never its raw
+  // selector, which shows on hover as the last fallback.
+  expect(await assertion!.target.textContent()).toBe("element");
+  expect(await assertion!.target.getAttribute("title")).toBe(
+    '[data-test="title"]'
+  );
   expect(await recorderWindow.timeline.empty.count()).toBe(0);
 });
 

@@ -91,7 +91,8 @@ export function labelNear(
 /**
  * A step's element in words when no snapshot names it, from its selector: a
  * role and its name, all the selector is, as a label reads them; any other
- * selector in Playwright's own words for it, `locator`. None without them.
+ * selector in Playwright's own words for it, `locator`; with none of
+ * those, "element", never the raw selector. None without a selector.
  */
 export function selectorWords(
   selector: string | null,
@@ -103,7 +104,7 @@ export function selectorWords(
       selector
     );
   if (role) return role[2] ? `${role[1]} ${role[2]}` : role[1];
-  return locator;
+  return locator ?? "element";
 }
 
 /** An element in words: its label; "element" for none. */
