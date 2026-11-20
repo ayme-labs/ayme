@@ -1387,7 +1387,13 @@ NavCommits ==
   \* While paused, the timeline is told the page went elsewhere (L
   \* pageNavigated, "elsewhere"): it adds no entry, and the next Visit starts
   \* with the new document, as here.
-  /\ Commit(IF Active(Eng) THEN Proceed([Eng EXCEPT !.holdPg = gateStart], FALSE)
+  \* A page that leaves the blank page while recording forgets its latest
+  \* read (L pageNavigated, unread): a key typed at its address first waits
+  \* for a read of it. (L snapshotTaken also leaves out a read of the blank
+  \* page heard after it left; here a read and its answer are one step.)
+  /\ Commit(IF Active(Eng)
+            THEN Proceed([Eng EXCEPT !.holdPg = gateStart,
+                                     !.pgLatest = IF BlankHere THEN 0 ELSE @], FALSE)
             ELSE [Eng EXCEPT !.holdPg = gateStart])
   /\ tb' = IF Surfaces THEN "loading" ELSE tb
   /\ tbAns' = "none"
@@ -1574,6 +1580,21 @@ X8_StartsNoLaterThanTheInput ==
 X3_NothingYouDidIsDropped ==
   \A i \in Inputs : (ev[i] = "in" /\ Shown(i) /\ made[i].gen = gen /\ page = "open")
                       => Recorded(i)
+\* 13a and 4 for what is done on a page with a Visit: a click on the blank
+\* page a recording started on, or an element picked there, is not recorded,
+\* as the blank page has nothing to record (known limit; config
+\* Limit-BlankPageInput).
+X3v_NothingDroppedOffTheBlankPage ==
+  \A i \in Inputs : (ev[i] = "in" /\ Shown(i) /\ made[i].gen = gen /\ page = "open"
+                     /\ ~NoVisit(made[i].doc))
+                      => Recorded(i)
+R04v_FinishSavesAllOffTheBlankPage ==
+  pkg # "none" =>
+    \A i \in Inputs :
+      (/\ Shown(i) /\ made[i].gen = gen /\ at[i] \in {"page", "picked"} /\ ev[i] # "lost"
+       /\ \A e \in EntOf(i) : stage[e] # "cut"
+       /\ ~NoVisit(made[i].doc))
+        => \E e \in EntOf(i) : e \in pkgHas
 
 \* Wrapping up and saving never wait for something that cannot come: some
 \* step that needs nobody can still happen. MayGoOn is ENABLED OnItsOwn
@@ -1637,6 +1658,19 @@ F1_ShowsOnceItHasItsPlace ==
   /\ TextFollows
   \* (a read of a page it went on to keeps its last read of its own page)
   /\ \A e \in Ids : shown[e] =>
+       LET r == EntryRowOf(newT, e) IN
+       IF asnap[e] # 0 /\ DocAt(asnap[e]) = r.d THEN r.b = asnap[e]
+       ELSE r.b = 0 \/ (DocAt(r.b) = r.d /\ r.b < asnap[e])
+\* 1 for what is done on a page with a Visit: an input made on the blank page
+\* a recording started on is not recorded (known limit, X3v). A fill typed
+\* once the page is at its address is checked, whatever read it starts from.
+MadeOnBlank(e) == NoVisit(made[In(e)].doc)
+F1v_ShowsOffTheBlankPage ==
+  /\ page = "open" => \A e \in Elems(lst) :
+       (~MadeOnBlank(e) /\ IsFillEntry(e) /\ rep[e] /\ bsnap[e] # 0 /\ ~BehindUnshown(Eng, e))
+         => shown[e]
+  /\ \A e \in Ids : (shown[e] /\ ~MadeOnBlank(e)) => EntryRowOf(newT, e).t = txt[e]
+  /\ \A e \in Ids : (shown[e] /\ ~MadeOnBlank(e)) =>
        LET r == EntryRowOf(newT, e) IN
        IF asnap[e] # 0 /\ DocAt(asnap[e]) = r.d THEN r.b = asnap[e]
        ELSE r.b = 0 \/ (DocAt(r.b) = r.d /\ r.b < asnap[e])
@@ -1711,17 +1745,18 @@ F6_WindowIsWhatIsSaved ==
 \*    when the recorder learns of it, and that later fill starts there.
 \*    While a fill is live its text may be ahead of its rows: they end at a
 \*    read after its first key, and at a read after its last key once final.
-\*    When its typing takes the page elsewhere before it is read again, its
-\*    changes go up to the last read of its own page (TL replace; config
-\*    Rule7-Navigation).
+\*    When its typing makes the page navigate, or the page closes, before it
+\*    is read again, its changes go up to the last read of its own page (TL
+\*    replace; configs Rule7-Navigation, Rules-Ends, Rules-StartRecording).
 SharedStart(e) ==
   \E f \in Ids : In(f) < In(e) /\ IsFillEntry(f) /\ asnap[f] # 0 /\ asnap[f] = bsnap[e]
 StartsAt(j, x) == \E f \in {j, N + j} : IsFillEntry(f) /\ bsnap[f] = x
 LastReadOf(d) == LET K == {k \in keptSn : DocAt(k) = d} IN
                  IF K = {} THEN 0 ELSE CHOOSE k \in K : \A j \in K : j <= k
-\* its latest read is of the page it went on to: it ends at the last read of
-\* its own page
-WentElsewhere(r) == asnap[r.e] # 0 /\ DocAt(asnap[r.e]) # r.d /\ r.b = LastReadOf(r.d)
+\* its latest read is of the page it went on to, or the page closed: it ends
+\* at the last read of its own page
+WentElsewhere(r) == /\ (asnap[r.e] # 0 /\ DocAt(asnap[r.e]) # r.d) \/ page = "closed"
+                    /\ r.b = LastReadOf(r.d)
 F7_MeasuredFromFirstKey ==
   \A k \in 1..Len(WRows) :
     LET r == WRows[k] IN
