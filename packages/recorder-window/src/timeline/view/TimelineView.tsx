@@ -28,9 +28,7 @@ import {
 
 /** Asks the recorder something; the answer, when it is given, is the
  * recorder's. */
-type OnCommand = (
-  command: RecorderCommand
-) => Promise<CommandResult | null> | void;
+type OnCommand = (command: RecorderCommand) => Promise<CommandResult | null>;
 
 const ICONS: Record<EntryIcon, LucideIcon> = {
   click: MousePointer2,
@@ -191,7 +189,7 @@ function ChipView({
   const { highlight } = chip;
   const hover = () => {
     if (!highlight) return;
-    void onCommand(highlight)?.then((result) => {
+    void onCommand(highlight).then((result) => {
       // "ignored": a later highlight replaced it, and tells instead.
       if (result === "applied") setFound(true);
       else if (result === "notFound") setFound(false);

@@ -1,9 +1,15 @@
+import {
+  StructuralTree,
+  SyntheticAriaRefFactory,
+  type AriaRef,
+} from "@ayme-dev/core/structural-observation";
 import { describe, expect, it } from "vitest";
 
 import type { TimelineAddition } from "./recorded";
 import { changeTreesOf, header } from "./test-utils/timelineBuilders";
 import { Timeline } from "./timeline";
 import { pictureRef } from "./refs";
+import { pictureBefore } from "./reportPicture";
 import { pageId, snapshotId } from "../../test-utils/ids";
 
 // How the report's own picture of the page is matched to the snapshots
@@ -741,5 +747,46 @@ describe("the report's picture, matched to the snapshots around an input", () =>
       targetRef: null,
       warnings: ["reportShape"],
     });
+  });
+});
+
+describe("the report's picture, matched with the earlier snapshot alone", () => {
+  // As for an input that shows before the page is read again: no later
+  // snapshot tells what both have.
+  const match = (previous: string, seen: string) =>
+    pictureBefore({
+      previous: StructuralTree.fromAriaSnapshotYaml(
+        previous,
+        new SyntheticAriaRefFactory()
+      ),
+      picture: seen,
+      selector: "internal:role=textbox",
+      target: pictureRef("e21"),
+      targetAsBefore: true,
+      refs: new SyntheticAriaRefFactory(),
+    });
+
+  it("is read when it misses an element inside the top level: that element is taken as gone by the moment of the input", () => {
+    const read = match(
+      page(`- textbox "Item" [ref=e2]`, `- status [ref=e3]: Saving`),
+      picture(`- textbox "Item" [ref=e21]: m`)
+    );
+
+    expect(read?.target).toBe("e2");
+    expect(read?.tree.getNode("e3" as AriaRef)).toBeNull();
+  });
+
+  it("is not read when it misses a top-level element of the earlier snapshot: it is of another document", () => {
+    expect(
+      match(
+        [
+          `- generic [ref=e1]:`,
+          `  - textbox "Item" [ref=e2]`,
+          `- dialog "Cookies" [ref=e3]:`,
+          `  - button "Accept" [ref=e4]`,
+        ].join("\n"),
+        picture(`- textbox "Item" [ref=e21]: m`)
+      )
+    ).toBeNull();
   });
 });

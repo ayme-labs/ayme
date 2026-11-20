@@ -423,6 +423,29 @@ it("shows a chip whose highlight finds no element on the page without a border o
     .toEqual({ cursor: "crosshair", shown: true, size });
 });
 
+it("leaves a chip as the last answer left it when a hover is answered 'ignored', as one a later highlight replaced", async () => {
+  let result: CommandResult = "notFound";
+  const { channel, tell } = scriptedChannel(async () => result);
+  mount(channel);
+  tell({
+    phase: "recording",
+    visits: [login, inventory],
+    commands: ["stop", "highlight", "clearHighlight"],
+  });
+  await expect.poll(async () => (await visits()).length).toBe(2);
+  const [click] = await (await visits())[1]!.entries();
+  const highlights = () => click!.target.getAttribute("data-highlights");
+  await click!.target.hover();
+  await expect.poll(highlights).toBe("false");
+
+  result = "ignored";
+  await (await visits())[0]!.heading.hover();
+  await click!.target.hover();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  expect(await highlights()).toBe("false");
+});
+
 it("gives a chip no keyboard focus, and no background of its own when hovered", async () => {
   const { channel, tell } = scriptedChannel();
   mount(channel);

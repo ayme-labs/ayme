@@ -636,6 +636,11 @@ describe("the element an input acted on, as Playwright's selector names it", () 
     expect(
       actedOnIndex([{ field: true, interactive: true, visible: true }, link])
     ).toBe(0);
+    // Editable content is a field and no control: the link around it is
+    // not what typing into it acts on.
+    expect(
+      actedOnIndex([{ field: true, interactive: false, visible: true }, link])
+    ).toBe(0);
   });
 
   it("is none for no element", () => {
