@@ -46,7 +46,8 @@ works whether WebMCP publication is on or off.
 
 For your own end-to-end tests, `@ayme-dev/mcp/testing` starts this package's
 `ayme mcp` with an MCP client (`startAgent`, in another folder with a leading
-`{ cwd }`) and pairs a Playwright page through
+`{ cwd }`, and opening with MCP revision 2026-07-28 rather than 2025-11-25
+with a leading `{ revision: "2026-07-28" }`) and pairs a Playwright page through
 a connect link (`connectPage`); `Agent.call` returns the tool's own text and
 the change note apart. `freePort` picks a port outside the range a page scans,
 for `startAgent("--port", ...)` when no page should auto-pair with the server,
@@ -83,27 +84,55 @@ them through WebMCP.
 
 Page Object Tools appear and disappear as MCP tools while the page registers
 and unregisters its Page Objects and while their Page Objects come and go on
-the page, and the server sends `notifications/tools/list_changed` on every such
-change. Every tool of a Page Object on the page is listed, whether or not its
-action can run now; the MCP tool list changes only when tools appear or
-disappear, never when one becomes available or unavailable, so a cached list
-does not churn. Calling an unavailable tool is refused before anything runs,
+the page. The server sends `notifications/tools/list_changed` whenever the MCP
+tool list changes: when a tool of the page or of an App Process appears or
+disappears, or when what the list shows of one changes, such as its
+description, parameters or annotations. Every tool of a Page Object on the
+page is listed, whether or not its action can run now; the list never changes
+when a tool merely becomes available or unavailable, so a cached list does not
+churn. Calling an unavailable tool is refused before anything runs,
 with an error result that carries its reason, such as `RuntimeStateError:
 Panel.remove is unavailable: No item is selected.`
+
+A Page Object Tool or Custom Tool its author marked `destructive: true` is
+listed with `annotations: { destructiveHint: true }`, here and in
+`ayme_list_tools`. Every other page tool is listed without annotations, which
+MCP reads as possibly destructive. The server runs a marked tool like any
+other; what to do about the mark is the agent's or its harness's choice. See
+[Destructive actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#destructive-actions).
 
 When the page's tools changed since the agent's previous call, the result of
 any tool but a Page Object Tool ends with a separate text item such as `The connected tools changed since your
 previous call. Appeared: Basket.readHeading. Became unavailable: Panel.remove
 (No item is selected). ayme_list_tools lists the current tools; ayme_call runs
 any of them.` It lists the tools that appeared or disappeared, the ones that
-kept their name but changed their parameters or description (`Changed:
-SurveyListPage.search (parameters, description).`), and the ones that became
+kept their name but changed their parameters, description or annotations
+(`Changed: SurveyListPage.search (parameters, description).`), and the ones that became
 available or unavailable, with the reason in parentheses when there is one; a
 tool that appears unavailable reads `Appeared: Panel.remove (unavailable: No
 item is selected).` For agents that never re-read the tool
 list, `ayme_list_tools` lists the page's current tools with their input
 schemas, whether each is available and, when it is not, why, and `ayme_call`
 runs any of them by name.
+
+## MCP revisions
+
+A revision is a dated version of the MCP specification. `ayme mcp` serves
+revision 2026-07-28 and the older revisions, 2025-11-25 and earlier, which
+open with an `initialize` handshake. The agent's first message picks the
+revision for the whole process. The tools, their results, the change note
+and `ayme_inspect` are the same in every revision. Under 2026-07-28:
+
+- **Tool list changes:** the agent hears `notifications/tools/list_changed`
+  only once it has subscribed to it with a `subscriptions/listen` request.
+- **The agent's name:** there is no `initialize`, so the server learns the
+  agent's name, which the Inspector shows, from each `tools/list` and
+  `tools/call`, keeping the latest; a tab that pairs before the first of them
+  shows no name until it reconnects.
+
+The server stops once its connection to the agent closes: when the agent
+closes its stdin, when writing to it fails, or when the agent sends a message
+too large to read.
 
 ## App Processes
 
@@ -161,6 +190,10 @@ already holds. The server tool `ayme_inspect` returns the URL, and
 prints a URL for each server that runs). Open it in a browser window beside
 the app, and give the app `inspector: { placement: "external" }` so its tab
 serves the contract. Without `@ayme-dev/inspector`, both say to install it.
+`ayme_inspect` also carries the Inspector as an MCP App, so an Agent App that
+shows MCP Apps, such as Cursor, Claude Desktop or T3 Code, shows it in the
+chat. That page connects to the same WebSocket, admitted by a token the
+server gives it, and the server logs each window it admits that way.
 
 ## Ports
 

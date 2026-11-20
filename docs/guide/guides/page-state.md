@@ -39,7 +39,6 @@ A ref comes from one capture. Within one document, Ayme tries to keep refs stabl
 | `no snapshot of the current document issued it`          | No capture in this document printed the ref, such as one written by hand.                                    |
 | `it is no longer on the page`                            | The node the ref named was removed.                                                                          |
 | `it cannot be matched unambiguously to the current page` | Ayme cannot tell which current node the ref continues as. It does not mean the ref matches several elements. |
-| `it has no element on the page now`                      | The ref names a node of the latest capture that has no live element.                                         |
 
 Refs restart with each document, so a ref from before a full load can resolve to a different node that the new document numbered the same, and the call succeeds on that node; only a ref the new document never issued fails, with the first reason.
 

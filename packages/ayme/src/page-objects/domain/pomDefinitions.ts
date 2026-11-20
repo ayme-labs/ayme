@@ -100,6 +100,7 @@ function definitionFor(node: DefinitionNode): PomDefinition {
     inputSchema: inputSchemaFor(tool.parameters),
     parameters: tool.parameters,
     returnPoms: tool.returnPoms ?? [],
+    ...(tool.destructive ? { destructive: true as const } : {}),
   }));
   return {
     name: node.name,

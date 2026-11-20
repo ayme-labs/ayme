@@ -142,3 +142,37 @@ it("publishes every tool of the page with its availability, reason and group, ag
     [expected("snapshot", true), expected("Dialog.confirm", true)],
   ]);
 });
+
+it("publishes the page's tools with each one's destructive mark, and no mark on the others", () => {
+  const published: PageTool[][] = [];
+  const channel = {
+    publishTools: vi.fn(async (tools: PageTool[]) => {
+      published.push(tools);
+    }),
+  } as unknown as PageChannel;
+  const page = (name: string, destructive?: boolean): PageTool => ({
+    name,
+    inputSchema: {},
+    available: true,
+    ...(destructive === undefined ? {} : { destructive }),
+  });
+  const tools = {
+    list: () => [
+      page("Order.submit", true),
+      page("Order.preview", false),
+      page("Order.edit"),
+    ],
+    subscribe: () => () => {},
+  } as unknown as PageTools;
+
+  publishPageTools({ tools, channel });
+
+  expect(
+    published[0]?.map(({ name, destructive }) => [name, destructive])
+  ).toEqual([
+    ["Order.submit", true],
+    ["Order.preview", undefined],
+    ["Order.edit", undefined],
+  ]);
+  expect(published[0]?.[1]).not.toHaveProperty("destructive");
+});

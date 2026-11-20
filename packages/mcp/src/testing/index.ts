@@ -5,9 +5,8 @@
 import { createServer, type AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
+import { Client } from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import type { BrowserContext, Page } from "@playwright/test";
 
 /**
@@ -66,6 +65,26 @@ export async function ignoreAutoPairScan(
   );
 }
 
+/**
+ * The revisions of the MCP specification an agent may open with:
+ * 2025-11-25, the newest that opens with an `initialize` handshake, and
+ * 2026-07-28, whose requests each carry the revision and the client's name.
+ */
+export const MCP_REVISIONS = ["2025-11-25", "2026-07-28"] as const;
+export type McpRevision = (typeof MCP_REVISIONS)[number];
+
+/** Where and how `startAgent` starts its server and opens the conversation. */
+export type AgentOptions = {
+  /** The folder to start `ayme mcp` in; this process's own by default. */
+  cwd?: string;
+  /**
+   * The revision the agent opens with; 2025-11-25 by default. Under
+   * 2026-07-28 it also subscribes to tool list changes once open, as an
+   * agent must there to hear them.
+   */
+  revision?: McpRevision;
+};
+
 /** A coding agent's view of its Ayme MCP server: an MCP client over stdio. */
 export class Agent {
   constructor(
@@ -112,10 +131,11 @@ export class Agent {
 /**
  * Starts the `ayme mcp` command, with `options` such as `--port`, as a child
  * process and connects to it. A leading `{ cwd }` starts it in that folder
- * instead of this process's own.
+ * instead of this process's own, and a leading `{ revision }` opens with
+ * that revision of the MCP specification (see `AgentOptions`).
  */
 export async function startAgent(
-  ...args: [{ cwd: string }, ...string[]] | string[]
+  ...args: [AgentOptions, ...string[]] | string[]
 ): Promise<
   Agent & {
     close(): Promise<void>;
@@ -124,10 +144,9 @@ export async function startAgent(
   }
 > {
   const [first, ...rest] = args;
-  const { cwd, options } =
-    typeof first === "object"
-      ? { cwd: first.cwd, options: rest as string[] }
-      : { cwd: undefined, options: args as string[] };
+  const { cwd, revision = "2025-11-25" } =
+    typeof first === "object" ? first : {};
+  const options = (typeof first === "object" ? rest : args) as string[];
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [aymeCommand, "mcp", ...options],
@@ -136,13 +155,20 @@ export async function startAgent(
   });
   let stderr = "";
   transport.stderr?.on("data", (chunk: Buffer) => (stderr += String(chunk)));
-  const client = new Client({ name: "ayme-e2e", version: "0.0.0" });
+  const client = new Client(
+    { name: "ayme-e2e", version: "0.0.0" },
+    revision === "2026-07-28"
+      ? { versionNegotiation: { mode: { pin: revision } } }
+      : undefined
+  );
   let toolListChanges = 0;
   client.setNotificationHandler(
-    ToolListChangedNotificationSchema,
+    "notifications/tools/list_changed",
     () => void toolListChanges++
   );
   await client.connect(transport);
+  if (revision === "2026-07-28")
+    await client.listen({ toolsListChanged: true });
   return Object.assign(new Agent(client, () => stderr), {
     close: () => client.close(),
     toolListChanges: () => toolListChanges,

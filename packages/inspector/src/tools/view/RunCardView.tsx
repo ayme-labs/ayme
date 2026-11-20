@@ -15,6 +15,7 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
 import {
+  DestructiveMark,
   focusRing,
   pressable,
   QualifiedName,
@@ -161,6 +162,7 @@ export function RunCardView({
                 {name}
               </span>
             )}
+            {tool.destructive && <DestructiveMark />}
             {runButton}
           </div>
           {/* Its own line: types make a signature too long to share one. */}

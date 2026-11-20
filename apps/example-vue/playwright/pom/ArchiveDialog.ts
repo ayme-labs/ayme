@@ -3,14 +3,13 @@ import type { Locator } from "@playwright/test";
 import { AppComponent } from "./AppComponent";
 
 export class ArchiveDialog extends AppComponent {
-  @ayme.child
-  readonly confirmArchiveButton: Locator;
-
   constructor(root: Locator) {
     super(root);
-    this.confirmArchiveButton = root.getByRole("button", {
-      name: "Confirm archive",
-    });
+  }
+
+  @ayme.child
+  get confirmArchiveButton(): Locator {
+    return this.root.getByRole("button", { name: "Confirm archive" });
   }
 
   async confirm() {

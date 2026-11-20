@@ -30,13 +30,15 @@ const LIST = `
 `;
 
 class ListPage {
-  readonly root;
-  readonly item;
-  readonly addButton;
-  constructor(readonly page: Page) {
-    this.root = page.locator("main");
-    this.item = page.locator("#item");
-    this.addButton = page.locator("#add");
+  constructor(readonly page: Page) {}
+  get root() {
+    return this.page.locator("main");
+  }
+  get item() {
+    return this.page.locator("#item");
+  }
+  get addButton() {
+    return this.page.locator("#add");
   }
   async addItem(text: string) {
     await this.item.fill(text);
@@ -57,7 +59,7 @@ registerCompiledPom(ListPage, {
   members: ["root", "item", "addButton"].map((memberName) => ({
     memberName,
     kind: "locator",
-    access: "field",
+    access: "getter",
   })) as PomManifest["members"],
   tools: [addItem],
   components: [],

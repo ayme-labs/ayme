@@ -39,6 +39,8 @@ export type RunnableTool = {
   available: boolean;
   /** Why it is unavailable: the runtime's finding, or the action's own word. */
   reason?: string;
+  /** Its author marked it destructive: a call cannot be undone. */
+  destructive?: true;
   /**
    * The argument that takes a Structural Ref, for a tool that acts on one
    * element: a Custom Tool's `ref` or a Browser Tool's `target`. A Page
@@ -64,6 +66,7 @@ export type ToolSummary = {
   group?: PublishedToolGroup;
   available: boolean;
   reason?: string;
+  destructive?: true;
 };
 
 /**
@@ -96,6 +99,7 @@ export function listRunnableTools(
         present: true,
         available: tool.available,
         reason: tool.reason,
+        ...(tool.destructive ? { destructive: true as const } : {}),
         ...(refField ? { refField } : {}),
         ...(tool.group === "browser" &&
         tool.inputSchema.properties?.key?.type === "string"
@@ -153,6 +157,7 @@ function pageObjectTool(
     name: tool.name,
     action: tool.methodName,
     description: tool.agentDescription,
+    ...(tool.destructive ? { destructive: true as const } : {}),
     ...availability,
   };
   if (!tool.rooted)

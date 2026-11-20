@@ -19,6 +19,8 @@ export const PageToolSchema = z.object({
   name: z.string().check(z.minLength(1)),
   description: z.optional(z.string()),
   inputSchema: z.record(z.string(), z.unknown()),
+  /** Its author marked it destructive: a call cannot be undone. */
+  destructive: z.optional(z.boolean()),
   available: z.boolean(),
   reason: z.optional(z.string()),
   group: z.optional(z.string()),
@@ -175,9 +177,11 @@ export const PageWelcomeSchema = z.object({
    */
   imageFolder: z.optional(z.string().check(z.minLength(1))),
   /**
-   * The name the agent's MCP client gave the server when it started it,
-   * such as `claude-code`, for the Inspector to say which agent is
-   * connected. None while the client has not introduced itself.
+   * The name the agent's MCP client gives the server, such as
+   * `claude-code`, for the Inspector to say which agent is connected: in
+   * the `initialize` handshake under the older MCP revisions, and in each
+   * request under 2026-07-28. None while the client has not introduced
+   * itself.
    */
   agent: z.optional(z.string().check(z.minLength(1))),
 });

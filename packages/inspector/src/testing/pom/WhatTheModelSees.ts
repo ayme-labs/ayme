@@ -9,21 +9,6 @@ import { PanelPart } from "./PanelPart";
  * collapsed.
  */
 export class WhatTheModelSees extends PanelPart {
-  @ayme.child
-  readonly toggle: Locator;
-  /** The Page Object definitions, as snapshot renders them. */
-  @ayme.child
-  readonly definitions: Locator;
-  /**
-   * A structure node's own lines of the page state, e.g.
-   * `- e3 checkbox "Done" [checked]`, without its children.
-   */
-  @ayme.child
-  readonly pageState: Locator;
-  /** How many children the node has, e.g. "3 children". */
-  @ayme.child
-  readonly childCount: Locator;
-
   constructor(scope: Locator) {
     super(
       scope.getByRole("region", {
@@ -31,14 +16,32 @@ export class WhatTheModelSees extends PanelPart {
         exact: true,
       })
     );
-    this.toggle = this.root.getByRole("button", {
-      name: /^What the model sees/,
-    });
-    this.definitions = this.root.getByLabel("Page object definitions", {
-      exact: true,
-    });
-    this.pageState = this.root.getByLabel("Page state", { exact: true });
-    this.childCount = this.root.getByText(/^\d+ child(ren)?$/);
+  }
+
+  @ayme.child
+  get toggle(): Locator {
+    return this.root.getByRole("button", { name: /^What the model sees/ });
+  }
+
+  /** The Page Object definitions, as snapshot renders them. */
+  @ayme.child
+  get definitions(): Locator {
+    return this.root.getByLabel("Page object definitions", { exact: true });
+  }
+
+  /**
+   * A structure node's own lines of the page state, e.g.
+   * `- e3 checkbox "Done" [checked]`, without its children.
+   */
+  @ayme.child
+  get pageState(): Locator {
+    return this.root.getByLabel("Page state", { exact: true });
+  }
+
+  /** How many children the node has, e.g. "3 children". */
+  @ayme.child
+  get childCount(): Locator {
+    return this.root.getByText(/^\d+ child(ren)?$/);
   }
 
   @ayme.action

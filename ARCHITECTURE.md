@@ -95,16 +95,18 @@ in-browser agents and the app's own code call on the running page.
 
 - Responsibility: one server per coding agent: speaks MCP over stdio to the agent, pairs
   with one page and with the app's App Processes over a loopback WebSocket, and exposes
-  their tools as MCP tools beside its own. It serves the external Inspector and relays
+  their tools as MCP tools beside its own. It serves the external Inspector, to a browser
+  window and, as an MCP App, to an Agent App that shows it in its chat, and relays
   between its windows and the paired page. Experimentally, when the project has a Page
   Objects entry, it also builds and serves that entry with the project's runtime, and
   writes the init script the browser automation loads. The init script starts no runtime
   on a page whose app has already started Ayme. Known gap: an app that starts Ayme late
   still gets a second runtime
   ([issue #1238](https://github.com/ayme-labs/ayme/issues/1238))
-- Technology: Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio, tRPC over
-  WebSocket on `127.0.0.1`, ports 9350 to 9365; esbuild and `@ayme-dev/ayme/compiler` for
-  served Page Objects
+- Technology: Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio with the
+  MCP Apps extension (`@modelcontextprotocol/ext-apps`), tRPC over WebSocket on
+  `127.0.0.1`, ports 9350 to 9365; esbuild and `@ayme-dev/ayme/compiler` for served Page
+  Objects
 - Evidence: verified: [packages/mcp/src/server/index.ts](packages/mcp/src/server/index.ts),
   [packages/mcp/src/pairing/domain/pairing.ts](packages/mcp/src/pairing/domain/pairing.ts), [packages/mcp/src/inspector/application/inspectorRelay.ts](packages/mcp/src/inspector/application/inspectorRelay.ts),
   [packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts](packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts), [docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md](docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md),
@@ -159,10 +161,14 @@ in-browser agents and the app's own code call on the running page.
   - Evidence: verified: [packages/inspector/src/panel/](packages/inspector/src/panel/), [docs/guide/guides/inspector.md](docs/guide/guides/inspector.md)
 - **Coding agents → Ayme MCP server**
   - Flows:
-    - → `ayme_connect`, `ayme_list_tools`, `ayme_call` and the page's tools, over stdio
-    - ← connect links, tool lists and `tools/list_changed` notifications, tool results and
-      change notes
-  - Evidence: verified: [packages/mcp/src/server/index.ts](packages/mcp/src/server/index.ts), [packages/mcp/src/server/serverTools.ts](packages/mcp/src/server/serverTools.ts)
+    - → `ayme_connect`, `ayme_list_tools`, `ayme_call`, `ayme_inspect` and the page's
+      tools, over stdio; an Agent App that shows MCP Apps also reads the Inspector's page
+      that `ayme_inspect` points to
+    - ← connect links, the external Inspector's URL, tool lists and `tools/list_changed` notifications, tool results and
+      change notes; the Inspector's page with its script inside, its socket's address and
+      the token that admits it
+  - Evidence: verified: [packages/mcp/src/server/index.ts](packages/mcp/src/server/index.ts), [packages/mcp/src/server/serverTools.ts](packages/mcp/src/server/serverTools.ts),
+    [packages/mcp/src/tools/infrastructure/mcpToolServer.ts](packages/mcp/src/tools/infrastructure/mcpToolServer.ts)
 - **In-browser agents → WebMCP driver**
   - Flows:
     - → calls to the published tools
@@ -179,7 +185,9 @@ in-browser agents and the app's own code call on the running page.
 - **App developers → Ayme MCP server**
   - Flows:
     - → opening the external Inspector at `/inspector`, then its window's requests over a
-      WebSocket at `/inspector/ws`
+      WebSocket at `/inspector/ws`; from the Inspector an Agent App shows in its chat, the
+      same requests over the same WebSocket, admitted by its token from the Agent App's
+      origin
     - ← the Inspector page and script, and the answers and events relayed from the paired page
   - Evidence: verified: [packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts](packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts), [packages/mcp/src/inspector/application/inspectorRelay.ts](packages/mcp/src/inspector/application/inspectorRelay.ts),
     [packages/inspector/README.md](packages/inspector/README.md)

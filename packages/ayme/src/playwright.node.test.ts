@@ -37,11 +37,12 @@ async function pageShowing(body: string): Promise<Page> {
 /** A Page Object rooted at `selector`, with one action that clicks its button. */
 function pageObjectRootedAt(className: string, selector: string) {
   class Model {
-    readonly root: ReturnType<Page["locator"]>;
-    readonly button: ReturnType<Page["locator"]>;
-    constructor(page: Page) {
-      this.root = page.locator(selector);
-      this.button = this.root.getByRole("button");
+    constructor(private readonly page: Page) {}
+    get root(): ReturnType<Page["locator"]> {
+      return this.page.locator(selector);
+    }
+    get button(): ReturnType<Page["locator"]> {
+      return this.root.getByRole("button");
     }
     async press() {
       await this.button.click();
@@ -52,8 +53,8 @@ function pageObjectRootedAt(className: string, selector: string) {
   built.registerCompiledPom(Model, {
     className,
     members: [
-      { memberName: "root", kind: "locator", access: "field" },
-      { memberName: "button", kind: "locator", access: "field" },
+      { memberName: "root", kind: "locator", access: "getter" },
+      { memberName: "button", kind: "locator", access: "getter" },
     ],
     tools: [
       {

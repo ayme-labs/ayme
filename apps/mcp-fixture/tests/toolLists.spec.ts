@@ -131,7 +131,12 @@ test("with --webmcp, a page that loads the served Page Objects also publishes th
   baseURL,
 }, testInfo) => {
   await recordPublishedTools(context);
-  const { agent } = await startServingAgent(context, testInfo, "--webmcp");
+  const { agent } = await startServingAgent(
+    context,
+    testInfo,
+    undefined,
+    "--webmcp"
+  );
   try {
     await connectPage(agent, page, `${baseURL}/plain.html`);
 

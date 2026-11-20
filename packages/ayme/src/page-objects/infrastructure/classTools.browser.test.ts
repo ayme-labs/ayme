@@ -17,7 +17,9 @@ it.each([false, true])(
       open() {}
     }
     class TreeItem {
-      element = page.locator("section");
+      get element() {
+        return page.locator("section");
+      }
       toolbar = new Toolbar();
       next = collection ? [] : undefined;
     }

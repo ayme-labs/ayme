@@ -473,7 +473,9 @@ describe("calling a Peek Tool", () => {
 
   /** A Page Object on `main`, which is not on the page yet. */
   class Editor {
-    root = page.locator("main");
+    get root() {
+      return page.locator("main");
+    }
     save() {}
   }
   model({ root: rootOf })(Editor);
@@ -486,7 +488,9 @@ describe("calling a Peek Tool", () => {
 
   /** A Page Object whose action adds `main`. */
   class Toolbar {
-    root = page.locator("#toolbar");
+    get root() {
+      return page.locator("#toolbar");
+    }
     reveal() {
       addMain();
     }

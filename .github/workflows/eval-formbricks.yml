@@ -41,7 +41,7 @@ permissions:
 
 env:
   # The Claude Code the agent runs, recorded in every result.
-  CLAUDE_CODE_VERSION: 2.1.281
+  CLAUDE_CODE_VERSION: 2.1.326
 
 jobs:
   eval:

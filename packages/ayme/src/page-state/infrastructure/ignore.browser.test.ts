@@ -94,7 +94,9 @@ describe("the ignore filter in page state capture", () => {
       <button id="main">Main action</button>
     `;
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       act() {}
     }
     model({ root: rootOf })(Panel);
@@ -120,7 +122,9 @@ describe("the ignore filter in page state capture", () => {
       </div>
     `;
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       act() {}
     }
     model({ root: rootOf })(Panel);

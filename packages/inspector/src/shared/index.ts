@@ -14,6 +14,7 @@ export { useTabState } from "./infrastructure/tabStorage";
 export { usePointerDrag } from "./presentation/pointerDrag";
 export { useCopy } from "./presentation/useCopy";
 export { AymeMark } from "./view/AymeMark";
+export { DestructiveIcon, DestructiveMark } from "./view/DestructiveMark";
 export { Empty } from "./view/common";
 export {
   chip,

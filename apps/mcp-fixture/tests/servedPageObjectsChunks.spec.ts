@@ -11,6 +11,7 @@ test("a served page fetches the screenshot renderer only when screenshot is firs
   const { agent, server } = await startServingAgent(
     context,
     testInfo,
+    undefined,
     "--browser-tools"
   );
   try {

@@ -34,11 +34,14 @@ useAyme({ inspector: { placement: "external" } });
 
 `ayme mcp` serves the Inspector on the server it already runs, with no other server or port. Ask the agent for `ayme_inspect`, or run `ayme inspect` in a terminal; both give the same URL, such as `http://127.0.0.1:9350/inspector`. Open it in a browser window beside the app. It shows the same lenses for the page connected to that server, follows the page across reloads, and works while `ayme mcp` runs. Highlighting and picking work across the two windows. A tool's ref field lets you pick an element by pointing at the page. The highlight and the pick happen in the app's tab.
 
+An Agent App that shows MCP Apps, such as Cursor, Claude Desktop or T3 Code, shows the same Inspector in the chat when the agent calls `ayme_inspect`; other agents get the URL. It opens about 600 pixels high, and its header has a fullscreen button where the Agent App offers fullscreen. A run from it acts on the page paired with that agent's `ayme mcp`.
+
 - Install `@ayme-dev/inspector` where `ayme` runs, as in the first section. Without it, `ayme inspect` and `ayme_inspect` say to install it.
 - With several servers running, `ayme inspect` prints a URL for each; `ayme inspect --port <port>` looks on one port only.
 - The page keeps no Inspector code for it; the window loads the Inspector from the server.
 - The window shows the page's host as "page", since it does not know the page's address.
 - A window with no page to show says so: pair a page with that `ayme mcp`, and start the page's session with `placement: "external"`. A page on the default inline placement serves nothing to it.
+- The Inspector in a chat works while the `ayme mcp` that served it runs. After that server restarts, it no longer reaches the page until the agent calls `ayme_inspect` again.
 
 ## Demo mode
 
@@ -56,7 +59,7 @@ The navigator has three lenses:
 
 - **Model**: the Page Objects on the page and the Page Object Models it knows, with their declared [Page Object Children](ayme-page-objects.md#aymechild), each with its description and its state on the page, such as `3 matches`.
 - **Structure**: the Structural Page State an agent receives, each node tagged with the member it maps to; an element of a Locator collection by its index, such as `filterChips[1]`.
-- **Tools**: every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. Peek tools lists the page's own [Peeks](../reference/ayme.md#aymepeek) under Browser. While the tab is paired with a coding agent's Ayme MCP server, it also lists the Peeks of the App Processes paired beside it, under Node. The panel runs those through that server.
+- **Tools**: every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. A tool marked [destructive](../reference/ayme.md#destructive-actions) shows a warning icon in the list and a Destructive mark beside its name, and so does its action in the Model lens; Run runs it like any other. Peek tools lists the page's own [Peeks](../reference/ayme.md#aymepeek) under Browser. While the tab is paired with a coding agent's Ayme MCP server, it also lists the Peeks of the App Processes paired beside it, under Node. The panel runs those through that server.
 
 Selecting anything opens its detail. A tool's page and a structure node's detail also show what the model sees of them: the definitions, page state and schemas an agent gets.
 

@@ -15,6 +15,7 @@ vi.mock("./pomProgram", async (importOriginal) => {
   return { ...actual, createPomProgram };
 });
 
+import { diagnosticsOf } from "./pomCompileError.testSupport";
 import {
   absentEntryFor,
   createPomTransform,
@@ -186,11 +187,71 @@ describe("a subclass in a module without the decorator", () => {
       expect(writeProject()()).toBeNull();
     });
 
-    it("reports a malformed tsconfig instead of skipping the subclass", () => {
+    it("reports an invalid tsconfig option instead of skipping the subclass, where TypeScript locates it", () => {
       const transform = writeProject(
-        JSON.stringify({ compilerOptions: { moduleResolution: "unknown" } })
+        '{\n  "compilerOptions": { "moduleResolution": "unknown" }\n}\n'
       );
-      expect(transform).toThrow("Could not read TypeScript project");
+      expect(diagnosticsOf(transform)).toEqual([
+        {
+          text: expect.stringMatching(
+            /^Could not read TypeScript project configuration: .*moduleResolution/
+          ),
+          file: join(root!, "tsconfig.json"),
+          // The option's value: `"unknown"`.
+          line: 2,
+          column: 44,
+          lineText: '  "compilerOptions": { "moduleResolution": "unknown" }',
+        },
+      ]);
+    });
+
+    it("reports a tsconfig that is not JSON where TypeScript locates the fault", () => {
+      const transform = writeProject('{\n  "compilerOptions": }\n');
+      expect(diagnosticsOf(transform)).toEqual([
+        {
+          text: expect.stringMatching(
+            /^Could not read TypeScript project configuration: /
+          ),
+          file: join(root!, "tsconfig.json"),
+          line: 2,
+          column: 22,
+          lineText: '  "compilerOptions": }',
+        },
+      ]);
+    });
+
+    it("reports a tsconfig it cannot read at that tsconfig", () => {
+      writeProject();
+      const tsconfigPath = join(root!, "missing.json");
+      const subclass = join(root!, "sub.ts");
+      expect(
+        diagnosticsOf(() =>
+          createPomTransform({ tsconfigPath })(
+            readFileSync(subclass, "utf8"),
+            subclass
+          )
+        )
+      ).toEqual([
+        {
+          text: expect.stringMatching(
+            /^Could not read TypeScript project configuration: /
+          ),
+          file: tsconfigPath,
+        },
+      ]);
+    });
+
+    it("reports a Page Object Model outside every tsconfig at its file", () => {
+      writeProject();
+      const pom = join(root!, "page.ts");
+      const source =
+        'import { ayme } from "@ayme-dev/ayme";\n\n@ayme\nexport class Page {}\n';
+      writeFileSync(pom, source);
+      expect(
+        diagnosticsOf(() => createPomTransform({ include: true })(source, pom))
+      ).toEqual([
+        { text: "Could not find a tsconfig.json for this module.", file: pom },
+      ]);
     });
   });
 });

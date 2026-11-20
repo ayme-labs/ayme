@@ -15,12 +15,12 @@ A build without Ayme resolves `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` to 
 
 ## Decorators
 
-| Decorator                                                    | Marks                                                                                                                                                                                                                                                                          |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@ayme` or `@ayme({ description, root, present })`           | A class as a Page Object Model. Its subclasses are Page Object Models too. A subclass inherits `description`, `root` and `present` and may declare its own. `root` is the model's root predicate and `present` its presence predicate; see below.                              |
-| `@ayme.action` or `@ayme.action({ description, available })` | A method as a Page Object Action, published as a Page Object Tool. `available` is the action's availability predicate, and [Action descriptions](#action-descriptions) says what agents read. [Page Object Models](../guides/ayme-page-objects.md#aymeaction) covers the rest. |
-| `@ayme.child` or `@ayme.child({ description })`              | A field or getter as a Page Object Child: a Locator expected to match one element, or one Page Object.                                                                                                                                                                         |
-| `@ayme.collection` or `@ayme.collection({ description })`    | A field or getter holding a Locator, or a method without parameters returning Page Objects, as a Child Collection.                                                                                                                                                             |
+| Decorator                                                                 | Marks                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@ayme` or `@ayme({ description, root, present })`                        | A class as a Page Object Model. Its subclasses are Page Object Models too. A subclass inherits `description`, `root` and `present` and may declare its own. `root` is the model's root predicate and `present` its presence predicate; see below.                                                                                                                                          |
+| `@ayme.action` or `@ayme.action({ description, available, destructive })` | A method as a Page Object Action, published as a Page Object Tool. `available` is the action's availability predicate, [Action descriptions](#action-descriptions) says what agents read, and `destructive: true` marks an action that cannot be undone; see [Destructive actions](#destructive-actions). [Page Object Models](../guides/ayme-page-objects.md#aymeaction) covers the rest. |
+| `@ayme.child` or `@ayme.child({ description })`                           | A field or getter as a Page Object Child: a Locator expected to match one element, or one Page Object.                                                                                                                                                                                                                                                                                     |
+| `@ayme.collection` or `@ayme.collection({ description })`                 | A field or getter holding a Locator, or a method without parameters returning Page Objects, as a Child Collection.                                                                                                                                                                                                                                                                         |
 
 [Page Object Models](../guides/ayme-page-objects.md) covers marking a model and its actions, tool names and inputs, Page Object Children and inheritance.
 
@@ -49,7 +49,11 @@ const onPage = (self: AppPage) =>
 @ayme({ present: onPage })
 export abstract class AppPage {
   abstract readonly path: string;
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 }
 
 export class ProjectsPage extends AppPage {
@@ -57,7 +61,7 @@ export class ProjectsPage extends AppPage {
 }
 ```
 
-Without `present`, a model is present while its [root](#page-object-root) is on the page. With both, the root must be on the page and the predicate must return `true`. A root-less child with `present` is judged by its predicate alone.
+Without `present`, a model is present while its [root](#page-object-root) is on the page. With both, the root must be on the page and the predicate must return `true`. A root-less child with `present` is judged by its predicate alone. When a model's `present` returns `false`, none of its members are listed.
 
 A predicate that reads the URL follows client-side routing and the browser's Back and Forward.
 
@@ -80,7 +84,11 @@ type RouteParams<Path extends string> =
 @ayme({ present: onPage })
 export abstract class AppPage<Path extends string = string> {
   abstract readonly path: Path;
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   params(): RouteParams<Path> | undefined {
     const match = new URLPattern({ pathname: this.path }).exec(this.page.url());
@@ -104,19 +112,25 @@ An app with a typed router calls the router's matcher from the predicate instead
 - The Page Object gets a [Page Object id](../guides/page-state.md#page-object-ids), and every tool of the class takes it as `id`.
 - Availability is measured at that element.
 
-Each action is published once per class, however many instances the page shows. Take a component base class, `AppComponent`, whose `root` is the element a component is built on. `ProjectRow` extends it, and `ProjectsPage` holds one `ProjectRow` per list item:
+Each action is published once per class, however many instances the page shows. Take a component base class, `AppComponent`, whose `root` is the element a component is built on. `ProjectRow` extends it, and `ProjectsPage` holds one `ProjectRow` per list item. A locator is a getter.
 
 ```ts
 const rootOf = (self: AppComponent) => self.root;
 
 @ayme({ root: rootOf })
 export abstract class AppComponent {
-  constructor(readonly root: Locator) {}
+  readonly root: Locator;
+
+  constructor(root: Locator) {
+    this.root = root;
+  }
 }
 
 export class ProjectRow extends AppComponent {
   @ayme.child
-  readonly removeButton = this.root.getByRole("button", { name: "Remove" });
+  get removeButton() {
+    return this.root.getByRole("button", { name: "Remove" });
+  }
 
   @ayme.action
   async remove() {
@@ -132,10 +146,14 @@ export class ProjectRow extends AppComponent {
 
 export class ProjectsPage extends AppPage {
   readonly path = "/projects";
-  readonly rows = this.page.getByRole("listitem");
+  get rows() {
+    return this.page.getByRole("listitem");
+  }
 
   @ayme.child
-  readonly searchbox = this.page.getByRole("searchbox");
+  get searchbox() {
+    return this.page.getByRole("searchbox");
+  }
 
   @ayme.collection
   async projects(): Promise<ProjectRow[]> {
@@ -235,7 +253,9 @@ Give `remove` on `ProjectRow` from [Page Object root](#page-object-root) a predi
 ```ts
 export class ProjectRow extends AppComponent {
   @ayme.child
-  readonly removeButton = this.root.getByRole("button", { name: "Remove" });
+  get removeButton() {
+    return this.root.getByRole("button", { name: "Remove" });
+  }
 
   @ayme.action({
     available: async (self: ProjectRow) =>
@@ -298,21 +318,23 @@ An agent reads an action's description, then the Page Objects the action returns
 
 ```ts
 export class NewProjectDialog extends AppComponent {
-  readonly createButton = this.root.getByRole("button", { name: "Create" });
+  get createButton() {
+    return this.root.getByRole("button", { name: "Create" });
+  }
 }
 
 export class ProjectsPage extends AppPage {
   readonly path = "/projects";
 
   @ayme.child
-  readonly newProjectButton = this.page.getByRole("button", {
-    name: "New project",
-  });
+  get newProjectButton() {
+    return this.page.getByRole("button", { name: "New project" });
+  }
 
   @ayme.child
-  readonly newProjectDialog = new NewProjectDialog(
-    this.page.getByRole("dialog")
-  );
+  get newProjectDialog() {
+    return new NewProjectDialog(this.page.getByRole("dialog"));
+  }
 
   @ayme.action({ description: "Opens the form for a new project." })
   async openNewProjectDialog(): Promise<NewProjectDialog> {
@@ -330,6 +352,32 @@ export class ProjectsPage extends AppPage {
 An action that may return one of several Page Objects names them all, joined by `or`. An action that returns its own class, as `ProjectRow.remove` does, names none. This text is the tool's `agentDescription` in [`ayme.tools.list()`](#toolinfo).
 
 An action that has no description and returns no other Page Object has no description at all. WebMCP needs one, so it publishes `Run <method>.`, such as `Run remove.` for `ProjectRow.remove`.
+
+### Destructive actions
+
+`destructive: true` marks an action whose effect cannot be undone, such as deleting a record or submitting an order:
+
+```ts
+export class ProjectRow extends AppComponent {
+  @ayme.action({ destructive: true })
+  async remove() {
+    await this.removeButton.click();
+  }
+}
+```
+
+The mark reaches agents only as the tool's standard annotation. Ayme still lists and runs the tool like any other: it never asks for confirmation, refuses a call or hides the tool. What to do about the mark is up to whoever calls the tool.
+
+| Where the tool is published                 | What a marked tool carries                                                                                                                                 |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`ayme mcp`](../guides/connect-an-agent.md) | `annotations: { destructiveHint: true }`, in the tool list and in `ayme_list_tools`                                                                        |
+| [WebMCP](../guides/publish-tools.md)        | `annotations: { consequentialHint: true }`. WebMCP has no destructive hint; its consequential one is for actions that are significant or cannot be undone. |
+| [`ayme.tools.list()`](#toolinfo)            | `destructive: true`                                                                                                                                        |
+| The [Inspector](../guides/inspector.md)     | A warning icon in the Tools list and a Destructive mark beside the tool's name                                                                             |
+
+A tool without the mark carries no annotations at all, so Ayme never says a tool is safe. MCP takes a tool without annotations as possibly destructive.
+
+The build reads `destructive` from source, as it reads `description`, so it must be written as `true` or `false`. `false` is the same as leaving it out. A value from a variable, a spread, options held in a variable, or a computed key the build cannot resolve fails the build; see [Build plugin errors](./build-plugin.md#errors). A subclass inherits the mark with the action. A [Custom Tool](../guides/custom-tools.md#mark-a-destructive-custom-tool) takes the same option.
 
 ## createAyme
 
@@ -439,6 +487,7 @@ A child Run runs inside its parent's turn, so it doesn't wait behind other Runs.
 | `reason`            | The Availability Reason, when the tool is unavailable and has one. See [Availability Reasons](#availability-reasons).                                                                                                                                          |
 | `className`         | Page Object Tools only: the declaring class.                                                                                                                                                                                                                   |
 | `returnPoms`        | Page Object Tools only: the other Page Objects the action may return. Absent when there are none.                                                                                                                                                              |
+| `destructive`       | `true` on a Page Object Tool or Custom Tool marked destructive. Absent otherwise. See [Destructive actions](#destructive-actions).                                                                                                                             |
 
 When no row shows a Remove button, the `ProjectRow.remove` entry from [Action availability](#action-availability) has `available: false, reason: "Only admins can remove projects"`.
 

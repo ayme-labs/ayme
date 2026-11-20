@@ -72,7 +72,9 @@ describe("Page Object Root by option", () => {
       '<main id="shell"><button id="child">Open</button></main>';
     const opened: string[] = [];
     class Child {
-      root = page.locator("#child");
+      get root() {
+        return page.locator("#child");
+      }
       open() {
         opened.push("child");
       }
@@ -81,7 +83,9 @@ describe("Page Object Root by option", () => {
     const childManifest = pageManifest("Child", [locator("root")]);
     registerCompiledPom(Child, childManifest);
     class Shell {
-      root = page.locator("#shell");
+      get root() {
+        return page.locator("#shell");
+      }
       child = new Child();
       open() {
         opened.push("shell");
@@ -245,7 +249,9 @@ describe("Page Object Root by option", () => {
     shadow.innerHTML =
       '<section aria-label="Panel"><button>Open</button></section>';
     class ShadowPanel {
-      root = page.getByRole("region", { name: "Panel" });
+      get root() {
+        return page.getByRole("region", { name: "Panel" });
+      }
       open() {
         shadow.querySelector("button")!.textContent = "Opened";
       }
@@ -331,7 +337,9 @@ describe("Page Object Root by option", () => {
       '<section id="panel" aria-label="Old">Old</section><section id="other" aria-label="New">New</section>';
     const open = vi.fn();
     class MovingPanel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       open = open;
     }
     ayme({ root: (self: MovingPanel) => self.root })(MovingPanel);
@@ -358,8 +366,12 @@ describe("Page Object Root by option", () => {
     document.body.innerHTML =
       '<aside id="drawer" style="width:200px;height:100px">Menu <button>Close</button></aside>';
     class SideDrawer {
-      container = page.locator("#drawer");
-      closeButton = page.getByRole("button", { name: "Close" });
+      get container() {
+        return page.locator("#drawer");
+      }
+      get closeButton() {
+        return page.getByRole("button", { name: "Close" });
+      }
       open() {}
     }
     ayme({ root: (self: SideDrawer) => self.container })(SideDrawer);
@@ -527,7 +539,9 @@ describe("Page Object Root by option", () => {
     document.body.innerHTML =
       '<aside id="drawer" style="width:200px;height:100px">Menu</aside>';
     class SideDrawer {
-      container = page.locator("#drawer");
+      get container() {
+        return page.locator("#drawer");
+      }
       opened = 0;
       open() {
         this.opened += 1;
@@ -577,8 +591,12 @@ describe("Page Object Root by option", () => {
     document.body.innerHTML =
       '<main id="page">Page</main><aside id="drawer">Menu</aside>';
     class SideDrawer {
-      root = page.locator("#page");
-      container = page.locator("#drawer");
+      get root() {
+        return page.locator("#page");
+      }
+      get container() {
+        return page.locator("#drawer");
+      }
       open() {}
     }
     ayme({ root: (self: SideDrawer) => self.container })(SideDrawer);
@@ -602,7 +620,9 @@ describe("Page Object Root by option", () => {
       '<aside id="drawer" style="width:200px;height:100px">Menu</aside>' +
       '<div id="overlay" style="position:fixed;inset:0;z-index:10"></div>';
     class SideDrawer {
-      root = page.locator("#drawer");
+      get root() {
+        return page.locator("#drawer");
+      }
       open() {}
     }
     registerCompiledPom(
@@ -636,7 +656,9 @@ describe("Page Object Root by option", () => {
     panelMembers: PomManifest["members"] = []
   ) => {
     class Shell {
-      container = page.locator("#shell");
+      get container() {
+        return page.locator("#shell");
+      }
       panel = new Panel();
     }
     ayme({ root: (self: Shell) => self.container })(Shell);
@@ -670,7 +692,9 @@ describe("Page Object Root by option", () => {
       '<div id="overlay" style="position:fixed;inset:0;z-index:10"></div>';
     class Panel {
       closed = false;
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       close() {
         this.closed = true;
       }
@@ -718,7 +742,9 @@ describe("Page Object Root by option", () => {
   it("refuses a root-less collection item at registration, also with a member named root", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     class Item {
-      root = page.locator("li");
+      get root() {
+        return page.locator("li");
+      }
       open() {}
     }
     class Outbox {
@@ -1030,7 +1056,9 @@ describe("Page Object Root by option", () => {
     document.body.innerHTML =
       '<nav id="drawer"><button>Close</button><button>Close</button></nav>';
     class Drawer {
-      close = page.getByRole("button", { name: "Close" });
+      get close() {
+        return page.getByRole("button", { name: "Close" });
+      }
       open() {}
     }
     registerCompiledPom(
@@ -1089,7 +1117,9 @@ describe("Page Object Root by option", () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     document.body.innerHTML = "<button>Close</button>".repeat(buttons);
     class Drawer {
-      close = page.getByRole("button", { name: "Close" });
+      get close() {
+        return page.getByRole("button", { name: "Close" });
+      }
       open() {}
     }
     registerCompiledPom(
@@ -1113,7 +1143,9 @@ describe("Page Object Root by option", () => {
     document.body.innerHTML =
       '<section id="shell"><a href="#">Help</a><a href="#">Help</a></section>';
     class Panel {
-      link = page.getByRole("link", { name: "Help" });
+      get link() {
+        return page.getByRole("link", { name: "Help" });
+      }
       close() {}
     }
     session.pom.register(
@@ -1133,7 +1165,9 @@ describe("Page Object Root by option", () => {
       open() {}
     }
     class Row {
-      container = page.locator("li");
+      get container() {
+        return page.locator("li");
+      }
       toolbar = new Toolbar();
       open() {}
     }
@@ -1188,12 +1222,12 @@ describe("Page Object Root by option", () => {
     `;
     const expanded: string[] = [];
     class TreeItem {
-      readonly container: Locator;
       constructor(
         readonly id: string,
         readonly children: TreeItem[] = []
-      ) {
-        this.container = page.locator(`#${id}`);
+      ) {}
+      get container(): Locator {
+        return page.locator(`#${this.id}`);
       }
       expand() {
         expanded.push(this.id);

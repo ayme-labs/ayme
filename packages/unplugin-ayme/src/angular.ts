@@ -1,9 +1,13 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { Plugin } from "esbuild";
+import type { PartialMessage, Plugin } from "esbuild";
 
-import { createPomCompiler } from "@ayme-dev/ayme/compiler";
+import {
+  createPomCompiler,
+  PomCompileError,
+  type PomDiagnostic,
+} from "@ayme-dev/ayme/compiler";
 
 export type AymeAngularOptions = {
   /**
@@ -124,7 +128,17 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
           return;
         let pom = compiled.get(resolved.path);
         if (!pom) compiled.set(resolved.path, (pom = compile(resolved.path)));
-        if (!(await pom)) return;
+        try {
+          if (!(await pom)) return;
+        } catch (error) {
+          // Thrown, it would point at the compiler's own code.
+          if (!(error instanceof PomCompileError)) throw error;
+          return {
+            errors: error.diagnostics.map((diagnostic) =>
+              buildError(diagnostic, resolved.path)
+            ),
+          };
+        }
         return { path: resolved.path + suffix, namespace };
       });
 
@@ -144,6 +158,34 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
           watchFiles: [fileName, ...pom.watchFiles],
         };
       });
+    },
+  };
+}
+
+/**
+ * `diagnostic` as an esbuild error. Without a file it is at `compiled`, the
+ * module whose compile failed.
+ */
+function buildError(
+  diagnostic: PomDiagnostic,
+  compiled: string
+): PartialMessage {
+  const { text } = diagnostic;
+  if (diagnostic.file === undefined)
+    return { text, location: { file: compiled } };
+  if (diagnostic.line === undefined)
+    return { text, location: { file: diagnostic.file } };
+  const { file, line, column, lineText } = diagnostic;
+  return {
+    text,
+    location: {
+      file,
+      line,
+      // TypeScript counts the column from 1 in UTF-16 code units; esbuild
+      // counts it from 0 in UTF-8 bytes.
+      column: Buffer.byteLength(lineText.slice(0, column - 1)),
+      // esbuild draws its code frame from this line, which it has not loaded.
+      lineText,
     },
   };
 }

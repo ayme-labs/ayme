@@ -3,6 +3,7 @@ import {
   connectPage,
   freePort,
   ignoreAutoPairScan,
+  type McpRevision,
   startAgent,
 } from "@ayme-dev/mcp/testing";
 import { spawn } from "node:child_process";
@@ -21,6 +22,7 @@ import {
 export { expect };
 export {
   Agent,
+  MCP_REVISIONS,
   SERVER_TOOLS,
   aymeCommand,
   connectPage,
@@ -72,6 +74,11 @@ export const test = base.extend<{
    */
   browserTools: boolean;
   /**
+   * The MCP revision the `agent` fixture opens with: 2025-11-25 unless a
+   * spec sets it.
+   */
+  revision: McpRevision;
+  /**
    * Asks the agent's server for a connect link to `path` on the fixture app,
    * opens it in the page and waits until the page's tools are MCP tools.
    * Returns the link.
@@ -109,11 +116,17 @@ export const test = base.extend<{
   },
   inScanRange: [false, { option: true }],
   browserTools: [true, { option: true }],
-  agent: async ({ inScanRange, browserTools }, use) => {
+  revision: ["2025-11-25", { option: true }],
+  agent: async ({ inScanRange, browserTools, revision }, use) => {
     const options = browserTools ? ["--browser-tools"] : [];
     const agent = await (inScanRange
-      ? startAgent(...options)
-      : startAgent("--port", String(await freePort()), ...options));
+      ? startAgent({ revision }, ...options)
+      : startAgent(
+          { revision },
+          "--port",
+          String(await freePort()),
+          ...options
+        ));
     try {
       await use(agent);
     } finally {
@@ -153,11 +166,12 @@ export async function serverAddress(agent: Agent) {
  * Objects, and runs the init script it writes in every page of `context`.
  * `options` are more options of `ayme mcp`, such as `--webmcp`. Returns the
  * agent and the origin of its server, where a page fetches the served code
- * from.
+ * from. The agent opens with `revision`, 2025-11-25 by default.
  */
 export async function startServingAgent(
   context: BrowserContext,
   testInfo: TestInfo,
+  revision?: McpRevision,
   ...options: string[]
 ) {
   // Beside the fixture's own packages, as a project's `.ayme` sits beside its
@@ -170,7 +184,7 @@ export async function startServingAgent(
   );
   const port = await freePort();
   const agent = await startAgent(
-    { cwd: project },
+    { cwd: project, revision },
     "--port",
     String(port),
     ...options

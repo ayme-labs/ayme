@@ -26,13 +26,45 @@ once, so every page and component extends one.
 
 ```ts
 export abstract class AppPage {
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 }
 
 export abstract class AppComponent {
-  constructor(readonly root: Locator) {}
+  readonly root: Locator;
+
+  constructor(root: Locator) {
+    this.root = root;
+  }
 }
 ```
+
+## Define locators as getters
+
+Define every locator as a getter. Define a child page object the same way when
+building it from `this.page` or `this.root`.
+
+A getter runs when the locator is read, after `page` or `root` is assigned:
+
+```ts
+class LoginPage {
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
+
+  get submit() {
+    return this.page.getByRole("button", { name: "Submit" });
+  }
+}
+```
+
+The constructor assigns `page` or `root`. A getter is the only place a locator
+is defined.
 
 ## Root a component at what its actions touch
 
@@ -46,9 +78,13 @@ it renders, and make it a child of the component it belongs to:
 
 ```ts
 export class Combobox extends AppComponent {
-  readonly input = this.root.getByRole("combobox");
+  get input() {
+    return this.root.getByRole("combobox");
+  }
   // Rendered at the end of the document, so located from the page.
-  readonly options = new ComboboxOptions(this.root.page().getByRole("listbox"));
+  get options() {
+    return new ComboboxOptions(this.root.page().getByRole("listbox"));
+  }
 
   async select(option: string) {
     await this.input.click();
@@ -69,28 +105,38 @@ The flow's page objects, which the sections below add actions to:
 
 ```ts
 export class ProjectsPage extends AppPage {
-  readonly newProjectButton = this.page.getByRole("button", {
-    name: "New project",
-  });
+  get newProjectButton() {
+    return this.page.getByRole("button", { name: "New project" });
+  }
   // Rendered at the end of the document, so located from the page.
-  readonly newProjectDialog = new NewProjectDialog(
-    this.page.getByRole("dialog")
-  );
+  get newProjectDialog() {
+    return new NewProjectDialog(this.page.getByRole("dialog"));
+  }
 }
 
 export class NewProjectDialog extends AppComponent {
-  readonly nameInput = this.root.getByLabel("Name");
-  readonly nameError = this.root.getByTestId("name-error");
+  get nameInput() {
+    return this.root.getByLabel("Name");
+  }
+  get nameError() {
+    return this.root.getByTestId("name-error");
+  }
   // The owner picker, the Combobox from above.
-  readonly owner = new Combobox(this.root.getByTestId("owner"));
-  readonly createButton = this.root.getByRole("button", { name: "Create" });
+  get owner() {
+    return new Combobox(this.root.getByTestId("owner"));
+  }
+  get createButton() {
+    return this.root.getByRole("button", { name: "Create" });
+  }
 }
 
 // The page a created project opens on.
 export class ProjectPage extends AppPage {
   // Not getByRole("heading", { level: 1 }): the Projects page's heading
   // matches that too, and it stays on the page behind the dialog.
-  readonly heading = this.page.getByTestId("project-heading");
+  get heading() {
+    return this.page.getByTestId("project-heading");
+  }
 }
 ```
 
@@ -103,7 +149,9 @@ element. Each call then returns the items the page shows at that moment:
 
 ```ts
 // On ProjectsPage:
-readonly rows = this.page.getByRole("listitem");
+get rows() {
+  return this.page.getByRole("listitem");
+}
 
 async projects(): Promise<ProjectRow[]> {
   return (await this.rows.all()).map((row) => new ProjectRow(row));
@@ -111,13 +159,21 @@ async projects(): Promise<ProjectRow[]> {
 
 // ✅ A component: each row has parts to read and an action of its own.
 export class ProjectRow extends AppComponent {
-  readonly name = this.root.getByTestId("project-name");
-  readonly owner = this.root.getByTestId("project-owner");
-  readonly archiveButton = this.root.getByRole("button", { name: "Archive" });
+  get name() {
+    return this.root.getByTestId("project-name");
+  }
+  get owner() {
+    return this.root.getByTestId("project-owner");
+  }
+  get archiveButton() {
+    return this.root.getByRole("button", { name: "Archive" });
+  }
 
   // ❌ Not components: each tag is plain text, with nothing to read inside it
   // and nothing to do.
-  readonly tags = this.root.getByTestId("project-tag");
+  get tags() {
+    return this.root.getByTestId("project-tag");
+  }
 
   async archive() {
     await this.archiveButton.click();
@@ -211,10 +267,18 @@ it after that value. A method that wraps one locator call, such as
 
 ```ts
 export class ProjectEditor extends AppComponent {
-  readonly errorBanner = this.root.getByRole("alert");
-  readonly spinner = this.root.getByRole("progressbar");
-  readonly savedBadge = this.root.getByText("Saved");
-  readonly taskCount = this.root.getByTestId("task-count"); // "12 tasks"
+  get errorBanner() {
+    return this.root.getByRole("alert");
+  }
+  get spinner() {
+    return this.root.getByRole("progressbar");
+  }
+  get savedBadge() {
+    return this.root.getByText("Saved");
+  }
+  get taskCount() {
+    return this.root.getByTestId("task-count"); // "12 tasks"
+  }
 
   // Several locators decide one value.
   async saveState() {
@@ -256,7 +320,9 @@ it knows where the flow continues:
 
 ```ts
 export class Modal extends AppComponent {
-  readonly closeButton = this.root.getByRole("button", { name: "Close" });
+  get closeButton() {
+    return this.root.getByRole("button", { name: "Close" });
+  }
 
   async close() {
     await this.closeButton.click();
@@ -267,7 +333,9 @@ export class Modal extends AppComponent {
 
 // On NewProjectDialog: it holds a generic Modal and adds the app's meaning.
 // It knows the projects page is behind it.
-readonly modal = new Modal(this.root);
+get modal() {
+  return new Modal(this.root);
+}
 
 async cancel() {
   await this.modal.close();

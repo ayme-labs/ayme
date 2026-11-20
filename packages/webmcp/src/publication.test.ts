@@ -33,7 +33,7 @@ const schema = { type: "object", properties: {} };
 const tool = (
   name: string,
   description = `${name}.`,
-  reading: Partial<Pick<WebMcpTool, "group">> = {}
+  reading: Partial<Pick<WebMcpTool, "group" | "destructive">> = {}
 ): WebMcpTool => ({
   name,
   description,
@@ -163,6 +163,39 @@ describe("startWebMcpPublication", () => {
     await flush();
     expect(driver.registerTool).toHaveBeenCalledTimes(2);
     expect(driver.names()).toEqual(["Todo.add"]);
+  });
+
+  it("annotates a destructive tool as consequential and leaves the others without annotations", async () => {
+    const { source } = toolSource([
+      tool("Order.submit", undefined, { destructive: true }),
+      tool("Order.edit"),
+      tool("Order.preview", undefined, { destructive: false }),
+    ]);
+
+    await publish(source).retry();
+
+    const registered = driver.registerTool.mock.calls.map(([tool]) => tool);
+    expect(
+      registered.map(({ name, annotations }) => [name, annotations])
+    ).toEqual([
+      ["Order.submit", { consequentialHint: true }],
+      ["Order.edit", undefined],
+      ["Order.preview", undefined],
+    ]);
+    expect(registered[1]).not.toHaveProperty("annotations");
+  });
+
+  it("registers a tool again when its destructive mark changes", async () => {
+    const tools = toolSource([tool("Order.submit")]);
+    await publish(tools.source).retry();
+
+    tools.set([tool("Order.submit", undefined, { destructive: true })]);
+    await flush();
+
+    expect(driver.registerTool).toHaveBeenCalledTimes(2);
+    expect(driver.registerTool.mock.calls[1]?.[0].annotations).toEqual({
+      consequentialHint: true,
+    });
   });
 
   it.each([

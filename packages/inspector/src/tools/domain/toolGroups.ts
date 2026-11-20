@@ -12,6 +12,8 @@ export type LiveTool = {
   group: ToolGroup;
   /** For a Page object tool: the Page Object Model whose action it is. */
   className?: string;
+  /** Its author marked it destructive: a call cannot be undone. */
+  destructive?: true;
   /**
    * For a Peek tool: where its Peek lives. `node` is an App Process's, a
    * Node process of the app paired beside the page, which the panel runs

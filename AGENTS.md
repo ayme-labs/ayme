@@ -11,7 +11,7 @@ Write each rule once, next to the config or code that enforces it. Other docs, t
 - `packages/mcp/`: read [its AGENTS.md](packages/mcp/AGENTS.md) before adding or moving a source file.
 - `skills/`: skills shipped to consumers for integrating Ayme into their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
 - `apps/example-vue/`: the hosted playground where visitors try Ayme before integrating it. A visitor installs only Ayme's MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
-- `docs/testing.md`: the test lanes and where test-only code lives. Read it before adding tests or test helpers.
+- `docs/testing.md`: the test lanes and where test-only code lives. Read it before adding tests or test helpers, and read its [Local runs and CI](docs/testing.md#local-runs-and-ci) section before running anything beyond one package's tests.
 - Before a pull request goes ready, follow the [change-analysis guidance](docs/testing.md#change-analysis).
 - `docs/framework-integrations.md`: what a framework integration ships, its behaviour contract and the files a new framework touches. Read it before adding or changing a framework integration.
 - `docs/releasing.md`: how the published packages are versioned and released.
@@ -72,7 +72,7 @@ Playwright Lite matches Playwright's behaviour; the fork holds only what ayme ne
 
 1. To pick up upstream changes, first produce a new tag by following `docs/fork/SYNC.md` in the fork. Read it from the latest `ayme-*` [tag](https://github.com/ayme-labs/playwright-lite/tags); the fork's `main` mirrors upstream and does not contain it.
 2. Replace the old SHA with the new tag's SHA everywhere and reinstall: `git grep -l <old-sha> -- ':!pnpm-lock.yaml' | xargs perl -pi -e 's/<old-sha>/<new-sha>/g' && pnpm install`. This covers the three `package.json` files, `allowBuilds` in `pnpm-workspace.yaml`, the ledger link in `docs/guide/reference/playwright-in-the-browser.md`, and `packages/ayme/THIRD_PARTY_NOTICES.txt`. `git grep <old-sha>` must then find nothing. pnpm rewrites the lockfile unformatted, so run `pnpm exec prettier --write pnpm-lock.yaml`; the lockfile diff should be a few lines. Then run `pnpm --filter @ayme-dev/ayme sync:injected`, which copies the new tag's generated InjectedScript into `packages/ayme/build/generated/` for the in-page module's build, review it, and update the size and hash in `packages/ayme/build/pinnedAriaSnapshot.ts`.
-3. Run `pnpm check`. Review the upstream changelog for behaviour changes that affect POMs.
+3. Open the pull request; CI checks the affected packages. Review the upstream changelog for behaviour changes that affect POMs.
 
 ## Development environment
 

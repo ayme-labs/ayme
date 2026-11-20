@@ -43,6 +43,12 @@ export type PublishedToolInfo = Readonly<{
    */
   returnPoms?: readonly string[];
   inputSchema: JsonSchema;
+  /**
+   * Present on a Page Object Tool whose `@ayme.action`, or a Custom Tool
+   * whose registration, sets `destructive: true`: its author says a call
+   * cannot be undone. A tool without it may still be destructive.
+   */
+  destructive?: true;
   group: PublishedToolGroup;
   /** The declaring class of a Page Object Tool. */
   className?: string;

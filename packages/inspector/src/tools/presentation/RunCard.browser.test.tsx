@@ -107,6 +107,35 @@ function renderCard(props: Partial<RunCardProps> & Pick<RunCardProps, "tool">) {
   return { card, onRun, onShowRun };
 }
 
+describe("the destructive mark", () => {
+  it("shows before Run on the head of a destructive tool's card, and on no other", async () => {
+    const { card } = renderCard({ tool: { ...clearList, destructive: true } });
+
+    await expect
+      .poll(() => card.destructiveMark.textContent())
+      .toBe("Destructive");
+    const left = async (locator: typeof card.runButton) =>
+      (await locator.boundingBox())?.x ?? Number.NaN;
+    expect(await left(card.destructiveMark)).toBeLessThan(
+      await left(card.runButton)
+    );
+
+    const other = renderCard({ tool: addItem }).card;
+    await expect.poll(() => other.root.count()).toBe(1);
+    expect(await other.destructiveMark.count()).toBe(0);
+  });
+
+  it("still lets Run run the tool", async () => {
+    const { card, onRun } = renderCard({
+      tool: { ...clearList, destructive: true },
+    });
+
+    await card.runButton.click();
+
+    expect(onRun).toHaveBeenCalledExactlyOnceWith({});
+  });
+});
+
 describe("Run", () => {
   it("runs at once when the tool takes nothing", async () => {
     const { card, onRun } = renderCard({ tool: clearList });

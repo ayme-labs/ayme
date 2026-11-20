@@ -34,9 +34,15 @@ describe("registered Locator children's targets in Chromium", () => {
       </main>
     `;
     class RunsTable {
-      readonly heading = page.locator("h1");
-      readonly rows = page.locator("tr");
-      readonly hint = page.locator(".hint");
+      get heading() {
+        return page.locator("h1");
+      }
+      get rows() {
+        return page.locator("tr");
+      }
+      get hint() {
+        return page.locator(".hint");
+      }
     }
     registerCompiledPom(RunsTable, {
       className: "RunsTable",
@@ -97,8 +103,12 @@ describe("registered Locator children's targets in Chromium", () => {
       <ul><li>first</li><li>second</li></ul>
     `;
     class RunsTable {
-      readonly rows = page.locator("tr");
-      readonly items = page.locator("li");
+      get rows() {
+        return page.locator("tr");
+      }
+      get items() {
+        return page.locator("li");
+      }
     }
     registerCompiledPom(RunsTable, {
       className: "RunsTable",

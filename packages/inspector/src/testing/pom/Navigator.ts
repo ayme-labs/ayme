@@ -12,14 +12,6 @@ export type LensName = "Model" | "Structure" | "Tools";
  * tree. Each lens's own page object works inside {@link Navigator.root}.
  */
 export class Navigator extends PanelPart {
-  @ayme.child
-  readonly searchBox: Locator;
-  @ayme.child
-  readonly legend: Locator;
-  @ayme.collection
-  readonly searchResults: Locator;
-  @ayme.child
-  readonly noResults: Locator;
   /** The Model lens's tree. */
   @ayme.child
   readonly model: ModelLens;
@@ -29,14 +21,30 @@ export class Navigator extends PanelPart {
 
   constructor(root: Locator) {
     super(root);
-    this.searchBox = root.getByRole("searchbox");
-    this.legend = root.getByRole("group", { name: "Legend" });
-    this.searchResults = root
-      .getByRole("list", { name: "Search results" })
-      .getByRole("button");
-    this.noResults = root.getByText("Nothing matches.");
     this.model = new ModelLens(root);
     this.tools = new ToolsLens(root);
+  }
+
+  @ayme.child
+  get searchBox(): Locator {
+    return this.root.getByRole("searchbox");
+  }
+
+  @ayme.child
+  get legend(): Locator {
+    return this.root.getByRole("group", { name: "Legend" });
+  }
+
+  @ayme.collection
+  get searchResults(): Locator {
+    return this.root
+      .getByRole("list", { name: "Search results" })
+      .getByRole("button");
+  }
+
+  @ayme.child
+  get noResults(): Locator {
+    return this.root.getByText("Nothing matches.");
   }
 
   lens(name: LensName): Locator {

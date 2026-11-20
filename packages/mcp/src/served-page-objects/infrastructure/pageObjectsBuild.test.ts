@@ -12,7 +12,7 @@ import { join } from "node:path";
 import * as esbuild from "esbuild";
 import { expect, it, vi } from "vitest";
 
-import { PageObjectsBuildError } from "../domain/buildFailure";
+import { PageObjectsBuildError, buildErrorLine } from "../domain/buildFailure";
 import {
   buildOutcomes,
   failedPageObjects,
@@ -21,6 +21,23 @@ import {
 } from "./pageObjectsBuild";
 
 const entry = "/project/.ayme/page-objects.ts";
+
+/** The diagnostics of a compile error, as `ayme mcp` reads them. */
+type PomDiagnostics = Parameters<typeof pageObjectModels>[1] extends new (
+  ...args: never[]
+) => { diagnostics: infer Diagnostics }
+  ? Diagnostics
+  : never;
+
+/** The compiler entry's error class, as `ayme mcp` reads it. */
+class PomCompileError extends Error {
+  constructor(readonly diagnostics: PomDiagnostics) {
+    super(diagnostics.map(({ text }) => text).join("\n"));
+  }
+}
+
+const models = (compiler: Parameters<typeof pageObjectModels>[0]) =>
+  pageObjectModels(compiler, PomCompileError);
 
 const buildWith = (modules: PageObjectsBuild["modules"]) =>
   Promise.resolve<PageObjectsBuild>({
@@ -50,7 +67,7 @@ it("gives the first error of a build of the entry that has never succeeded", asy
 
   expect(await failedPageObjects(entry, failing)).toEqual({
     entry,
-    error: "/project/.ayme/pom/PlainPage.ts:22:0: Unexpected end of file",
+    error: "/project/.ayme/pom/PlainPage.ts:22:1: Unexpected end of file",
     watching: true,
   });
 });
@@ -113,7 +130,7 @@ it("loads a Page Object Model as the compiler compiles it, watching its dependen
     code: "compiled",
     dependencies: ["/dep.ts"],
   }));
-  const { onLoad } = setUp(pageObjectModels({ compile, invalidate: () => {} }));
+  const { onLoad } = setUp(models({ compile, invalidate: () => {} }));
 
   expect(await onLoad({ path: file })).toEqual({
     contents: "compiled",
@@ -126,10 +143,10 @@ it("loads a Page Object Model as the compiler compiles it, watching its dependen
   });
 });
 
-it("reports a compiler error against the file it compiled, and keeps watching it and what the compile read", async () => {
+it("reports any other error of the compile against the file it compiled, and keeps watching it and what the compile read", async () => {
   const file = await pomFile("class Page {}");
   const { onLoad } = setUp(
-    pageObjectModels({
+    models({
       compile: (_file, _source, { onDependencies }) => {
         onDependencies?.(["/project/tsconfig.json"]);
         throw new Error("Could not read TypeScript project configuration");
@@ -149,9 +166,170 @@ it("reports a compiler error against the file it compiled, and keeps watching it
   });
 });
 
+it("reports each diagnostic of a compile error where the compiler locates it", async () => {
+  const file = await pomFile("class Page {}");
+  const { onLoad } = setUp(
+    models({
+      compile: (_file, _source, { onDependencies }) => {
+        onDependencies?.(["/project/tsconfig.json"]);
+        throw new PomCompileError([
+          {
+            text: "unsupported",
+            file: "/project/Child.ts",
+            line: 8,
+            column: 14,
+            lineText: "  async pick(callback: () => void) {",
+          },
+          { text: "no position", file: "/project/tsconfig.json" },
+          { text: "no file" },
+        ]);
+      },
+      invalidate: () => {},
+    })
+  );
+
+  expect(await onLoad({ path: file })).toEqual({
+    errors: [
+      {
+        text: "unsupported",
+        location: {
+          file: "/project/Child.ts",
+          line: 8,
+          column: 13,
+          // esbuild draws its code frame from this line, which it has not loaded.
+          lineText: "  async pick(callback: () => void) {",
+        },
+      },
+      { text: "no position", location: { file: "/project/tsconfig.json" } },
+      { text: "no file", location: { file } },
+    ],
+    watchFiles: [file, "/project/tsconfig.json"],
+  });
+});
+
+it("gives esbuild a diagnostic's column in UTF-8 bytes, as esbuild counts it", async () => {
+  const file = await pomFile("const café = ;\n");
+  const { onLoad } = setUp(
+    models({
+      compile: () => {
+        // TypeScript counts the column in UTF-16 code units, from 1.
+        throw new PomCompileError([
+          {
+            text: "Expression expected.",
+            file,
+            line: 1,
+            column: 14,
+            lineText: "const café = ;",
+          },
+        ]);
+      },
+      invalidate: () => {},
+    })
+  );
+
+  const result = (await onLoad({ path: file })) as {
+    errors: esbuild.PartialMessage[];
+  };
+  expect(result).toMatchObject({
+    errors: [
+      {
+        text: "Expression expected.",
+        // "const café = " is 13 code units and 14 bytes.
+        location: { file, line: 1, column: 14, lineText: "const café = ;" },
+      },
+    ],
+  });
+  // The reported line counts the column as TypeScript and editors do.
+  expect(
+    buildErrorLine(result.errors[0] as Parameters<typeof buildErrorLine>[0])
+  ).toBe(`${file}:1:14: Expression expected.`);
+});
+
+it("reports esbuild's own error on the first line of a file with a byte order mark at the column an editor counts", async () => {
+  const folder = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-pom-esbuild-bom-"))
+  );
+  await writeFile(join(folder, "entry.ts"), "\uFEFFconst value = ;\n");
+  const outcomes = buildOutcomes({
+    entry: join(folder, "entry.ts"),
+    folder,
+    outdir: join(folder, "out"),
+    log: vi.fn(),
+  });
+  try {
+    const failure = await esbuild
+      .build({
+        absWorkingDir: folder,
+        entryPoints: ["entry.ts"],
+        bundle: true,
+        write: false,
+        logLevel: "silent",
+        plugins: [outcomes.plugin],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    // esbuild counts the mark's three bytes in the column and leaves it out of the line.
+    expect(failure.errors).toMatchObject([
+      { location: { line: 1, column: 17, lineText: "const value = ;" } },
+    ]);
+    const error = (await outcomes
+      .modules()
+      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    expect(buildErrorLine(error.errors[0]!)).toBe(
+      `${join(folder, "entry.ts")}:1:15: ${failure.errors[0]!.text}`
+    );
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+});
+
+it("reports esbuild's own error after non-ASCII text at the column an editor counts", async () => {
+  const folder = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-pom-esbuild-"))
+  );
+  const line = 'export const note = "café ☕ 😀" +;';
+  await writeFile(join(folder, "entry.ts"), `${line}\n`);
+  const log = vi.fn();
+  const outcomes = buildOutcomes({
+    entry: join(folder, "entry.ts"),
+    folder,
+    outdir: join(folder, "out"),
+    log,
+  });
+  try {
+    const failure = await esbuild
+      .build({
+        absWorkingDir: folder,
+        entryPoints: ["entry.ts"],
+        bundle: true,
+        write: false,
+        logLevel: "silent",
+        plugins: [outcomes.plugin],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    // esbuild's own error counts its column in UTF-8 bytes, and carries its line.
+    expect(failure.errors).toMatchObject([
+      {
+        location: {
+          line: 1,
+          column: Buffer.byteLength(line.slice(0, line.indexOf(";"))),
+          lineText: line,
+        },
+      },
+    ]);
+    const error = (await outcomes
+      .modules()
+      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    expect(buildErrorLine(error.errors[0]!)).toBe(
+      `${join(folder, "entry.ts")}:1:${line.indexOf(";") + 1}: ${failure.errors[0]!.text}`
+    );
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+});
+
 it("leaves to esbuild a module the compiler does not compile, and one in node_modules", async () => {
   const compile = vi.fn(() => null);
-  const { onLoad } = setUp(pageObjectModels({ compile, invalidate: () => {} }));
+  const { onLoad } = setUp(models({ compile, invalidate: () => {} }));
 
   expect(await onLoad({ path: await pomFile("export {}") })).toBeUndefined();
   expect(
@@ -233,7 +411,7 @@ it("keeps the last good build after a later build fails, and says so in the log"
 it("watches only the file it compiled when the compile throws before it reads anything", async () => {
   const file = await pomFile("class Page {}");
   const { onLoad } = setUp(
-    pageObjectModels({
+    models({
       compile: () => {
         throw new Error("The service was stopped");
       },
@@ -263,7 +441,7 @@ it("omits generated positions for an unresolved import after statements and non-
         write: false,
         logLevel: "silent",
         plugins: [
-          pageObjectModels({
+          models({
             compile: () => ({
               code: '\n\nimport { nope } from "./does-not-exist"; nope();',
               dependencies: [],
@@ -284,21 +462,22 @@ it("omits generated positions for an unresolved import after statements and non-
   }
 });
 
-it.each(["Page.ts", "Child.ts", "transpile"])(
-  "reports only the original error line for %s through esbuild",
+it.each(["Page.ts", "Child.ts"])(
+  "reports a compile error in %s through esbuild once, at its own position, even in a module it compiled",
   async (kind) => {
     const root = await realpath(
       await mkdtemp(join(tmpdir(), "ayme-pom-error-"))
     );
     const entry = join(root, "entry.ts");
     const page = join(root, "Page.ts");
-    const file = join(root, kind === "Child.ts" ? "Child.ts" : "Page.ts");
-    const diagnostic =
-      kind === "transpile"
-        ? `${file}:19:34: ')' expected.`
-        : `${file}:8:14: Unsupported Page Object Tool input type for Page.pick(callback): () => void.`;
-    await writeFile(entry, 'import "./Page";');
+    const child = join(root, "Child.ts");
+    const file = kind === "Child.ts" ? child : page;
+    const text =
+      "Unsupported Page Object Tool input type for Child.pick(callback): () => void.";
+    // The entry imports the Child first, so it compiles before the Page fails.
+    await writeFile(entry, 'import "./Child"; import "./Page";');
     await writeFile(page, "class Page {}");
+    await writeFile(child, "class Child {}");
     const log = vi.fn();
     const outcomes = buildOutcomes({
       entry,
@@ -315,14 +494,20 @@ it.each(["Page.ts", "Child.ts", "transpile"])(
           write: false,
           logLevel: "silent",
           plugins: [
-            pageObjectModels({
+            models({
               compile: (path) => {
-                if (path !== page) return null;
-                throw new Error(
-                  kind === "transpile"
-                    ? `Could not transpile Ayme POM ${file}:\n${diagnostic}`
-                    : diagnostic
-                );
+                if (path === entry) return null;
+                if (path === child)
+                  return { code: "\n\nexport {};", dependencies: [] };
+                throw new PomCompileError([
+                  {
+                    text,
+                    file,
+                    line: 8,
+                    column: 14,
+                    lineText: "  async pick(callback: () => void) {",
+                  },
+                ]);
               },
               invalidate: () => {},
             }),
@@ -330,38 +515,18 @@ it.each(["Page.ts", "Child.ts", "transpile"])(
           ],
         })
         .catch(() => {});
+      const line = `${file}:8:14: ${text}`;
       expect(
         await failedPageObjects(entry, buildWith(outcomes.modules))
-      ).toEqual({
-        entry,
-        error: diagnostic,
-        watching: true,
-      });
+      ).toEqual({ entry, error: line, watching: true });
       expect(log).toHaveBeenCalledWith(
-        `The Page Objects entry ${entry} did not build. No build of it has succeeded, so none is served.\n  ${diagnostic}`
+        `The Page Objects entry ${entry} did not build. No build of it has succeeded, so none is served.\n  ${line}`
       );
     } finally {
       await rm(root, { recursive: true, force: true });
     }
   }
 );
-
-it("keeps a compiler error's original child file and parameter position", async () => {
-  const file = await pomFile("class Page {}");
-  const text =
-    "/project/Child.ts:8:14: Unsupported Page Object Tool input type for Child.pick(callback): () => void.";
-  const { onLoad } = setUp(
-    pageObjectModels({
-      compile: () => {
-        throw new Error(text);
-      },
-      invalidate: () => {},
-    })
-  );
-  expect(await onLoad({ path: file })).toMatchObject({
-    errors: [{ text, location: null }],
-  });
-});
 
 it("omits generated positions when the working directory is a symlink", async () => {
   const root = await mkdtemp(join(tmpdir(), "ayme-pom-link-"));
@@ -379,7 +544,7 @@ it("omits generated positions when the working directory is a symlink", async ()
         write: false,
         logLevel: "silent",
         plugins: [
-          pageObjectModels({
+          models({
             compile: () => ({
               code: '\n\nimport "./missing";',
               dependencies: [],
@@ -400,41 +565,178 @@ it("omits generated positions when the working directory is a symlink", async ()
   }
 });
 
-it.each([
-  ["/project/Child.ts:108:214: unsupported", true],
-  ["C:\\project\\Child.ts:1:2: unsupported", true],
-  [":1:2: no file", false],
-  ["/project/Child.ts::2: no line", false],
-  ["/project/Child.ts:1:: no column", false],
-  ["/project/Child.ts:x:2: nonnumeric line", false],
-  ["/project/Child.ts:1:y: nonnumeric column", false],
-  ["/project/Child.ts:1:2:no separator space", false],
-  ["wrapper\n/project/Child.ts:1:2: nested diagnostic", false],
-])(
-  "keeps a file prefix only for an unlocated compiler error: %s",
-  async (text, located) => {
-    const file = await pomFile("class Page {}");
-    try {
-      const { onLoad } = setUp(
-        pageObjectModels({
-          compile: () => {
-            throw new Error(text);
-          },
-          invalidate: () => {},
-        })
-      );
-      expect(await onLoad({ path: file })).toMatchObject({
-        errors: [{ text, location: located ? null : { file } }],
-      });
-    } finally {
-      await rm(join(file, ".."), { recursive: true, force: true });
-    }
+it("reports a tsconfig JSON error once, though the compiler and esbuild each read that tsconfig", async () => {
+  const folder = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-pom-tsconfig-"))
+  );
+  const tsconfig = join(folder, "tsconfig.json");
+  await writeFile(
+    tsconfig,
+    '{\n  "compilerOptions": {\n    "target": "es2022",,\n  }\n}\n'
+  );
+  await writeFile(join(folder, "entry.ts"), "class Page {}\n");
+  const log = vi.fn();
+  const outcomes = buildOutcomes({
+    entry: join(folder, "entry.ts"),
+    folder,
+    outdir: join(folder, "out"),
+    log,
+  });
+  try {
+    const failure = await esbuild
+      .build({
+        absWorkingDir: folder,
+        entryPoints: ["entry.ts"],
+        bundle: true,
+        write: false,
+        logLevel: "silent",
+        plugins: [
+          models({
+            compile: () => {
+              throw new PomCompileError([
+                {
+                  text: "Could not read TypeScript project configuration: Property assignment expected.",
+                  file: tsconfig,
+                  line: 3,
+                  column: 24,
+                  lineText: '    "target": "es2022",,',
+                },
+              ]);
+            },
+            invalidate: () => {},
+          }),
+          outcomes.plugin,
+        ],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    // esbuild reads the tsconfig for `paths` and reports the mistake too.
+    expect(failure.errors).toHaveLength(2);
+    const error = (await outcomes
+      .modules()
+      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    expect(error.errors.map(buildErrorLine)).toEqual([
+      `${tsconfig}:3:24: Could not read TypeScript project configuration: Property assignment expected.`,
+    ]);
+  } finally {
+    await rm(folder, { recursive: true, force: true });
   }
-);
+});
+
+it("reports a tsconfig JSON error once when the tsconfig is a symlink, which esbuild names by its target", async () => {
+  const folder = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-pom-tsconfig-link-"))
+  );
+  const tsconfig = join(folder, "tsconfig.json");
+  await mkdir(join(folder, "configs"));
+  await writeFile(
+    join(folder, "configs", "base.json"),
+    '{\n  "compilerOptions": {\n    "target": "es2022",,\n  }\n}\n'
+  );
+  await symlink(join("configs", "base.json"), tsconfig);
+  await writeFile(join(folder, "entry.ts"), "class Page {}\n");
+  const outcomes = buildOutcomes({
+    entry: join(folder, "entry.ts"),
+    folder,
+    outdir: join(folder, "out"),
+    log: vi.fn(),
+  });
+  try {
+    const failure = await esbuild
+      .build({
+        absWorkingDir: folder,
+        entryPoints: ["entry.ts"],
+        bundle: true,
+        write: false,
+        logLevel: "silent",
+        plugins: [
+          models({
+            compile: () => {
+              throw new PomCompileError([
+                {
+                  text: "Could not read TypeScript project configuration: Property assignment expected.",
+                  file: tsconfig,
+                  line: 3,
+                  column: 24,
+                  lineText: '    "target": "es2022",,',
+                },
+              ]);
+            },
+            invalidate: () => {},
+          }),
+          outcomes.plugin,
+        ],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    expect(failure.errors).toHaveLength(2);
+    const error = (await outcomes
+      .modules()
+      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    expect(error.errors.map(buildErrorLine)).toEqual([
+      `${tsconfig}:3:24: Could not read TypeScript project configuration: Property assignment expected.`,
+    ]);
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+});
+
+it("keeps esbuild's own error on the line of a compiler error when the file is not a tsconfig", async () => {
+  const folder = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-pom-same-line-"))
+  );
+  const other = join(folder, "other.js");
+  await writeFile(other, 'import "./missing";\n');
+  await writeFile(join(folder, "entry.ts"), "class Page {}\n");
+  const outcomes = buildOutcomes({
+    entry: join(folder, "entry.ts"),
+    folder,
+    outdir: join(folder, "out"),
+    log: vi.fn(),
+  });
+  try {
+    await esbuild
+      .build({
+        absWorkingDir: folder,
+        entryPoints: ["entry.ts", "other.js"],
+        bundle: true,
+        write: false,
+        outdir: join(folder, "out"),
+        logLevel: "silent",
+        plugins: [
+          models({
+            compile: () => {
+              throw new PomCompileError([
+                {
+                  text: 'Page Object "Page" reaches two different classes named "Row".',
+                  file: other,
+                  line: 1,
+                  column: 1,
+                  lineText: 'import "./missing";',
+                },
+              ]);
+            },
+            invalidate: () => {},
+          }),
+          outcomes.plugin,
+        ],
+      })
+      .catch((error: esbuild.BuildFailure) => error);
+    const error = (await outcomes
+      .modules()
+      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    expect(error.errors.map(buildErrorLine).sort()).toEqual(
+      [
+        `${other}:1:1: Page Object "Page" reaches two different classes named "Row".`,
+        `${other}:1:8: Could not resolve "./missing"`,
+      ].sort()
+    );
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+});
 
 it("leaves an esbuild error without a location alone", () => {
   const { onEnd } = setUp(
-    pageObjectModels({ compile: () => null, invalidate: () => {} })
+    models({ compile: () => null, invalidate: () => {} })
   );
   const errors = [
     { text: "The service was stopped", location: null },
@@ -465,7 +767,7 @@ it.each(["entry", "helper"])(
           write: false,
           logLevel: "silent",
           plugins: [
-            pageObjectModels({
+            models({
               compile: (file) =>
                 file.endsWith("Page.ts")
                   ? { code: "console.log('compiled');", dependencies: [] }
@@ -511,7 +813,7 @@ it("invalidates and forgets compiled files on rebuild, retaining the last good b
     logLevel: "silent",
     format: "esm",
     plugins: [
-      pageObjectModels({
+      models({
         compile: (_file, source) =>
           source.startsWith("// pom")
             ? { code: `\n\n${source}`, dependencies: [] }

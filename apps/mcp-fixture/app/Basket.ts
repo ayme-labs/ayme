@@ -9,18 +9,21 @@ const canClear = async (self: Basket) =>
  * A Page Object the page registers and unregisters on demand, so its Page
  * Object Tool comes and goes while a page stays connected. Its `clear`
  * action is available only while the basket has items, so an agent meets
- * an unavailable tool with a reason.
+ * an unavailable tool with a reason, and is marked destructive, so its MCP
+ * tool carries `destructiveHint`.
  */
 @ayme
 export class Basket {
-  @ayme.child
-  readonly heading: Locator;
-  @ayme.collection
-  readonly items: Locator;
+  constructor(private readonly page: Page) {}
 
-  constructor(private readonly page: Page) {
-    this.heading = page.getByRole("heading", { name: "Groceries" });
-    this.items = page.getByRole("listitem");
+  @ayme.child
+  get heading(): Locator {
+    return this.page.getByRole("heading", { name: "Groceries" });
+  }
+
+  @ayme.collection
+  get items(): Locator {
+    return this.page.getByRole("listitem");
   }
 
   @ayme.collection
@@ -37,6 +40,7 @@ export class Basket {
   @ayme.action({
     description: "Clear the basket. Needs an item in it.",
     available: canClear,
+    destructive: true,
   })
   async clear() {
     await this.items.evaluateAll((items) =>

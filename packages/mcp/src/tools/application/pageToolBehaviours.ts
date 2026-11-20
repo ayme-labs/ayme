@@ -11,10 +11,19 @@ export const publishPageTools: ClientBehaviour = ({ tools, channel }) => {
     void channel
       .publishTools(
         list.map(
-          ({ name, description, inputSchema, available, reason, group }) => ({
+          ({
             name,
             description,
             inputSchema,
+            destructive,
+            available,
+            reason,
+            group,
+          }) => ({
+            name,
+            description,
+            inputSchema,
+            ...(destructive ? { destructive: true } : {}),
             available,
             reason,
             group,
