@@ -745,18 +745,16 @@ async function openPage(
     const open = pages.get(request.page);
     if (!open) return;
     const at = now();
+    // The document read is the one the page is at as the read starts: one
+    // it goes on to while the read is marked is not the one read, and a
+    // read that a navigation overtook is not taken for the new document's.
+    const url = open.url();
     const tree = await open.ariaSnapshot({ mode: "ai" });
     // Before the snapshot is told: its input is passed on after that.
     await mark(open, request.snapshot);
     tell({
       kind: "snapshotTaken",
-      snapshot: {
-        id: request.snapshot,
-        page: request.page,
-        url: open.url(),
-        at,
-        tree,
-      },
+      snapshot: { id: request.snapshot, page: request.page, url, at, tree },
     });
   }
 

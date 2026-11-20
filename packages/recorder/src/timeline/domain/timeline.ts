@@ -229,6 +229,9 @@ function lookupOf(
   );
 }
 
+/** The address of a page with nothing loaded yet. */
+const BLANK = "about:blank";
+
 /** The reports of an input whose press can move the focus before the gate
  * holds it. */
 const PRESSED = new Set(["click", "check", "uncheck"]);
@@ -346,6 +349,9 @@ export class Timeline {
       }
       case "snapshot": {
         this.readAt.set(addition.snapshot.id, addition.snapshot.at);
+        // A read of the blank page, which no Visit is of, is none of the
+        // Visit of the address the page went to.
+        if (addition.snapshot.url === BLANK) return;
         const visit = this.current.get(addition.snapshot.page);
         if (visit)
           visit.snapshots.push({

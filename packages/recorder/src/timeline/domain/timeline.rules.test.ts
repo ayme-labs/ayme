@@ -384,6 +384,24 @@ describe("where an entry's target is now, for the highlight", () => {
   });
 });
 
+describe("a read of the blank page", () => {
+  it("is never stored in the Visit of the address the page went to: an input that started from it is not recorded there", async () => {
+    // Read while the page was still blank, told once its Visit started.
+    const blankRead = snapshot(snapshotId("snapshot_1"), 10, "");
+    const timeline = await timelineOf([
+      visit,
+      {
+        ...blankRead,
+        snapshot: { ...blankRead.snapshot, url: "about:blank" },
+      },
+      snapshot(snapshotId("snapshot_2"), 20, saved),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), null),
+    ]);
+
+    expect(timeline.visits()[0]!.entries).toEqual([]);
+  });
+});
+
 describe("a change row's element in words, for whoever shows the entry", () => {
   it("names a removed element by its place on the page before the change, not where the change tree puts it", async () => {
     // The second of two look-alikes goes; the other moves after a third.
