@@ -11,7 +11,7 @@ A Page Object Tool answered an agent with the full action result: both parts of 
 
 ## Decision
 
-The two agent channels, WebMCP publication and `ayme mcp`, present a Page Object Tool's result as a short answer: whether the page settled, what the action returned, the URL when the action changed it, `loading` while a new document loads, and how the Page Object Tree changed.
+The two agent channels, WebMCP publication and `ayme mcp`, present a Page Object Tool's result as a short answer: whether the page settled, what the action returned, the URL when the action changed it, and how the Page Object Tree changed. A page whose new document is still loading has not settled; the answer has no field of its own for it.
 
 - The change is told in the tree `page_objects` returns: a Page Object that appeared is shown in full, with its children and its id; one that went away is marked removed; a value that changed reads old → new. It is not a structural diff of the page.
 - A refused call answers with its Availability Reason alone. A failed one answers with what failed and, when the Page Object Tree changed while it ran, `changes` in the same tree, so the agent sees how far a half-run action got. Neither carries advice, a Change Record or a pointer to a next tool.

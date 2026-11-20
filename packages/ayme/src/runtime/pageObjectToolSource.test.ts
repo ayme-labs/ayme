@@ -162,7 +162,7 @@ describe("a Page Object Tool's answer to an agent", () => {
     });
   });
 
-  it("says the document is loading, with the URL it loads, and reads no tree of the old document", async () => {
+  it("answers that the page has not settled while a new document loads, with the URL it loads, and reads no tree of the old document", async () => {
     const { stub, readPageObjectTree } = session({
       answer: async () => ({
         settled: false,
@@ -177,7 +177,6 @@ describe("a Page Object Tool's answer to an agent", () => {
     expect(answer).toEqual({
       settled: false,
       url: "http://app/item/1",
-      loading: true,
     });
     expect(readPageObjectTree).toHaveBeenCalledOnce();
   });

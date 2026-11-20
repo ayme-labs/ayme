@@ -193,15 +193,14 @@ An agent that calls a Page Object Tool through WebMCP or through the Ayme MCP se
 
 ```ts
 {
-  settled: boolean;   // whether the page settled after the action
+  settled: boolean;   // whether the page settled after the action; false while a new document loads
   result?: unknown;   // what the action returned, when it returned something
   url?: string;       // the page's URL, when the action changed it
-  loading?: true;     // the action started loading a new document
   changes?: string;   // how the Page Objects on the page changed
 }
 ```
 
-`changes` is in the notation of `page_objects`, not a Change Record: a Page Object that went away is marked `(removed)`, one that appeared is shown in full after `+`, with its declared children and its id, and a declared child whose value changed reads `old → new`. It is absent when the Page Objects did not change. When the action starts loading a new document, `url` is the URL it loads and `changes` is absent.
+`changes` is in the notation of `page_objects`, not a Change Record: a Page Object that went away is marked `(removed)`, one that appeared is shown in full after `+`, with its declared children and its id, and a declared child whose value changed reads `old → new`. It is absent when the Page Objects did not change. When the action starts loading a new document, `settled` is `false`, `url` is the URL it loads and `changes` is absent.
 
 ```ts
 {

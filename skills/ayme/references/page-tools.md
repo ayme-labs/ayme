@@ -67,11 +67,10 @@ the page, read `page_objects` for the ids there are now.
 A Page Object Tool answers in a few fields:
 
 - `settled`: whether the page settled after the action. `false` means it was
-  still changing when the call answered.
+  still changing when the call answered, or a new document is still loading:
+  wait with your browser automation before you read the page.
 - `result`: what the action returned, when it returned something.
 - `url`: the new URL, when the action changed it.
-- `loading`: the new document is still loading; wait for it with your browser
-  automation before reading the page.
 - `changes`: how the Page Object tree changed, in the tree `page_objects`
   shows. A Page Object that appeared is shown in full, with its children and
   its id; one that went away is marked removed; a value that changed reads

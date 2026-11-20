@@ -36,14 +36,15 @@ export type PageObjectToolTurn = {
 
 /** A Page Object Tool's answer to an agent. */
 export type PageObjectToolAnswer = {
-  /** Whether the page settled after the action. */
+  /**
+   * Whether the page settled after the action. `false` while a new document
+   * the action started loads, too.
+   */
   settled: boolean;
   /** What the Page Object Action returned, when it returned something. */
   result?: JsonValue;
   /** The URL, when the action changed it. */
   url?: string;
-  /** The document is still loading. */
-  loading?: true;
   /** The Page Objects that appeared or went away, and the values that changed, as a tree. */
   changes?: string;
 };
@@ -138,12 +139,13 @@ async function answerOf(
     settled,
     ...(result === undefined ? {} : { result }),
   };
-  // A full load ends this document: its tree is not read again.
+  // A full load ends this document: its tree is not read again, and the
+  // page has not settled until the new one has loaded.
   if (loading !== undefined)
     return {
       ...answer,
+      settled: false,
       ...(loading === url ? {} : { url: loading }),
-      loading: true,
     };
   const now = session.url();
   if (now !== url) answer.url = now;
