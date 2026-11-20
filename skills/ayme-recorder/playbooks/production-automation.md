@@ -41,8 +41,9 @@ final "Confirm" can create a real contract. Only the user approves one.
      real data.
 
    Done when the user has confirmed each, and you have written what they
-   settled for every flow in the repository to `.ayme/CONVENTIONS.md`,
-   creating it when it is missing: never real data. What holds for one site
+   settled for every flow in the repository to the `Recorder` section of
+   `.ayme/CONVENTIONS.md`, creating the file or the section when it is
+   missing: never real data. What holds for one site
    or one flow goes next to its code: in the code where code can say it,
    otherwise in a notes file beside it. The conventions file says where such
    notes live.

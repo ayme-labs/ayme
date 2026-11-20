@@ -5,6 +5,13 @@ description: Set up Ayme in a consumer project, expose existing Page Object Acti
 
 # Ayme
 
+Read `.ayme/CONVENTIONS.md` first, when it exists: what the user settled for
+how ayme and its skills work in this repository. Read its opening part, which
+holds for every skill, and its `ayme` section, and follow a line that points
+to another file. It overrides this skill's defaults. When the user settles
+something for every later run, write it under `ayme`, creating the file when
+it is missing: never credentials or real data.
+
 For package installation, application integration, or exposing an existing POM,
 read [Onboarding](references/onboarding.md).
 
