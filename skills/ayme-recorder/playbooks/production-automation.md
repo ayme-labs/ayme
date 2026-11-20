@@ -33,6 +33,9 @@ final "Confirm" can create a real contract. Only the user approves one.
      state, environment variables or the team's secret store. They never go
      into code, a parameter file or `.ayme/CONVENTIONS.md`. Tell the user
      that the recording holds any password it captured;
+   - the replay test logs the values of request fields that differ from the
+     recording: ask whether any fields should be masked in that log, and if so
+     mask them in the project's copy of `replay.ts`;
    - where the parameter files, run traces and login state go: they hold
      real data.
 
