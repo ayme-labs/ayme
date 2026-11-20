@@ -18,10 +18,6 @@ by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
     names the start command for each.
   - `mcp --browser-tools` when Ayme is your only browser automation: it also
     lists `snapshot`, the Browser Tools, the app's Custom Tools and `goal`.
-  - `mcp --webmcp` with [served Page Objects](#a-page-that-doesnt-ship-ayme)
-    whose page should also publish them through WebMCP, such as for
-    Playwright CLI, with `@ayme-dev/webmcp` installed beside
-    `@ayme-dev/ayme`. It refuses to start without Page Objects to serve.
 - The server's tools reach you only after your client restarts. When you
   cannot register the server or restart yourself, give the user the
   registration for your client and ask them to restart you.
