@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/ayme-labs/ayme/compare/webmcp-v0.2.0...webmcp-v0.3.0) (2026-11-20)
+
+
+### Features
+
+* mark irreversible actions destructive for agents ([#1321](https://github.com/ayme-labs/ayme/issues/1321)) ([6a6b7d3](https://github.com/ayme-labs/ayme/commit/6a6b7d3971cceb1d8481a313765b8d62101a4bbe))
+
 ## [0.2.0](https://github.com/ayme-labs/ayme/compare/webmcp-v0.1.1...webmcp-v0.2.0) (2026-11-04)
 
 

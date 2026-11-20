@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0](https://github.com/ayme-labs/ayme/compare/inspector-v0.2.0...inspector-v0.3.0) (2026-11-20)
+
+
+### Features
+
+* ayme_inspect shows the Inspector inside agent apps that support MCP Apps ([#1314](https://github.com/ayme-labs/ayme/issues/1314)) ([8b27ddd](https://github.com/ayme-labs/ayme/commit/8b27ddd02278151db53ec666239f61f82a024c12))
+* **ayme:** move the Page Object compiler behind a Node-only compiler entry ([#1222](https://github.com/ayme-labs/ayme/issues/1222)) ([9cacd7b](https://github.com/ayme-labs/ayme/commit/9cacd7bfe7fcd408ee6a4ed53e1c00f29234b894))
+* **ayme:** one in-page module per document ([#1169](https://github.com/ayme-labs/ayme/issues/1169)) ([3b742de](https://github.com/ayme-labs/ayme/commit/3b742dec64148b2e47d067a9f9d2396671c9ee0b))
+* mark irreversible actions destructive for agents ([#1321](https://github.com/ayme-labs/ayme/issues/1321)) ([6a6b7d3](https://github.com/ayme-labs/ayme/commit/6a6b7d3971cceb1d8481a313765b8d62101a4bbe))
+
 ## [0.2.0](https://github.com/ayme-labs/ayme/compare/inspector-v0.1.1...inspector-v0.2.0) (2026-11-04)
 
 
