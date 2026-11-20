@@ -68,7 +68,6 @@ function session({
   );
   const stub: PageObjectToolSession = {
     list: () => TOOLS,
-    subscribe: () => () => {},
     run,
     inTurn: (turn) =>
       turn({
@@ -104,7 +103,6 @@ function countingPage() {
   };
   const stub: PageObjectToolSession = {
     list: () => TOOLS,
-    subscribe: () => () => {},
     run: () => takeTurn(add),
     inTurn: (turn) =>
       takeTurn(() =>
@@ -126,15 +124,6 @@ const FULL_RECORD = {
 };
 
 describe("a Page Object Tool's answer to an agent", () => {
-  it("lists the Page Object Tools and page_objects, and no other tool", () => {
-    const { stub } = session({ answer: async () => FULL_RECORD });
-    expect(
-      pageObjectToolSource(stub)
-        .list()
-        .map(({ name }) => name)
-    ).toEqual(["page_objects", "Item.archive", "ListPage.add"]);
-  });
-
   it("is whether the page settled and what the action returned, without the Change Record", async () => {
     const { stub, run } = session({
       answer: async () => ({ ...FULL_RECORD, result: { count: 2 } }),

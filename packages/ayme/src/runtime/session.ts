@@ -611,11 +611,6 @@ export function createAymeOn(
     for (const listener of toolListeners) listener(tools);
   };
   /**
-   * The Page Object Tools and their answers as the agent channels take them,
-   * their calls made by `by`: the one source WebMCP publication and the
-   * Ayme MCP server share.
-   */
-  /**
    * The Page Object Tree now, its element children read from one capture
    * of the page that records nothing and moves no cursor.
    */
@@ -623,10 +618,13 @@ export function createAymeOn(
     target
       .registry()
       .readPageObjectTree(() => target.pageState().session.look());
+  /**
+   * How the agent channels run the session's tools, their calls made by
+   * `by`: the one source WebMCP publication and the Ayme MCP server share.
+   */
   const pageObjectToolsFor = (by: Caller) =>
     pageObjectToolSource({
       list: () => ayme.tools.list(),
-      subscribe: (listener) => ayme.tools.subscribe(listener),
       run: (name, input) => ayme.tools.run(name, input as never, { by }),
       inTurn: (turn) =>
         takeTurn(() =>

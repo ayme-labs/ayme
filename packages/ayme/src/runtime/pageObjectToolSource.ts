@@ -1,20 +1,18 @@
-// The Page Object Tools as the two agent channels, WebMCP publication and
-// `ayme mcp`, take them and their answers: both build their source with
-// `pageObjectToolSource`, each over its own Caller, so a tool and its answer
-// cannot differ between them. `ayme.tools.run` keeps answering the full
-// record, which application code, the Inspector and the Goal Loop read.
+// How the two agent channels, WebMCP publication and `ayme mcp`, run a tool:
+// both build their source with `pageObjectToolSource`, each over its own
+// Caller, so a Page Object Tool's answer cannot differ between them.
+// `ayme.tools.run` keeps answering the full record, which application code,
+// the Inspector and the Goal Loop read.
 import {
   renderPageObjectTreeChanges,
   type PageObjectTreeRead,
 } from "../page-objects/domain";
 import type { ActionFailure, ActionResult } from "../page-state/domain";
-import { pageObjectsTool } from "../tools/application";
 import type { JsonValue, ToolInfo } from "../shared";
 
 /** What the source reads of the session, its calls made by one Caller. */
 export type PageObjectToolSession = {
   list(): readonly ToolInfo[];
-  subscribe(listener: () => void): () => void;
   /** Runs the tool `name` in a turn of its own on the page's queue. */
   run(name: string, input: unknown): Promise<unknown>;
   /**
@@ -49,12 +47,8 @@ export type PageObjectToolAnswer = {
   changes?: string;
 };
 
-/** The source of Page Object Tools both agent channels read. */
+/** How both agent channels run a tool. */
 export type PageObjectToolSource = {
-  /** The Page Object Tools offered now, and `page_objects`. */
-  list(): readonly ToolInfo[];
-  /** Calls `listener` after the session's tools may have changed. */
-  subscribe(listener: () => void): () => void;
   /**
    * Runs the tool `name`. A Page Object Tool answers a
    * `PageObjectToolAnswer`, and its refusal or failure is the error,
@@ -67,18 +61,11 @@ export type PageObjectToolSource = {
 
 const isPageObjectTool = ({ group }: ToolInfo) => group === "pageObject";
 
-/** The Page Object Tools of `session` and their answers, for an agent channel. */
+/** The tools of `session` as an agent channel runs them. */
 export function pageObjectToolSource(
   session: PageObjectToolSession
 ): PageObjectToolSource {
   return {
-    list: () =>
-      session
-        .list()
-        .filter(
-          (tool) => isPageObjectTool(tool) || tool.name === pageObjectsTool.name
-        ),
-    subscribe: (listener) => session.subscribe(listener),
     async run(name, input) {
       const tool = session.list().find((listed) => listed.name === name);
       if (!tool || !isPageObjectTool(tool)) return session.run(name, input);

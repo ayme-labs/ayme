@@ -167,18 +167,19 @@ describe("a Page Object Tool's answer through both agent channels", () => {
     return id;
   }
 
-  it("hands WebMCP publication the Page Object Tools and page_objects, and no other tool", async () => {
+  it("hands WebMCP publication every tool of the session, page_objects and the Page Object Tools among them", async () => {
     const { ayme, webMcp } = await shoppingList("Milk");
 
-    expect(ayme.tools.list().some(({ group }) => group === "browser")).toBe(
-      true
+    const names = webMcp.list().map(({ name }) => name);
+    expect(names).toEqual(ayme.tools.list().map(({ name }) => name));
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "snapshot",
+        "page_objects",
+        "ShoppingListPage.add",
+        "Item.archive",
+      ])
     );
-    expect(webMcp.list().map(({ name }) => name)).toEqual([
-      "page_objects",
-      "ShoppingListPage.add",
-      "ShoppingListPage.rename",
-      "Item.archive",
-    ]);
   });
 
   it("is the same short answer through WebMCP and through ayme mcp: settled, the result, and the Page Object that appeared in full with its id", async () => {
