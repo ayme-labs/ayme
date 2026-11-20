@@ -375,9 +375,10 @@ async create() {
 An action returns once its own outcome shows on its own root and children:
 its dialog closed, its error message appeared, its button stopped spinning.
 `openSettings()` clicks only when its panel isn't already open, and returns
-once the panel is. An action that leaves the page returns after its last
-interaction; waiting for the navigation and the next page belongs to whoever
-drives the browser, such as a test's next assertion.
+once the panel is. An action that leaves the page returns once its own part
+of the page is gone, or after its last interaction when nothing of its own
+shows that; waiting for the next page belongs to whoever drives the browser,
+such as a test's next assertion.
 
 ```ts
 // On SignInPage:
@@ -389,15 +390,16 @@ async logIn(email: string, password: string) {
   return new ProjectsPage(this.page);
 }
 
-// ✅ Waits for its own error message, the one outcome this page shows.
+// ✅ Waits for whichever of its own outcomes shows: its form goes away, or its
+// error appears. With neither, both waits time out and the action fails.
 async logIn(email: string, password: string): Promise<ProjectsPage | this> {
   await this.fillCredentials(email, password);
   await this.logInButton.click();
-  const refused = await this.errorMessage.waitFor({ timeout: 1_000 }).then(
-    () => true,
-    () => false
-  );
-  return refused ? this : new ProjectsPage(this.page);
+  const left = await Promise.any([
+    this.form.waitFor({ state: "hidden" }).then(() => true),
+    this.errorMessage.waitFor().then(() => false),
+  ]);
+  return left ? new ProjectsPage(this.page) : this;
 }
 ```
 
