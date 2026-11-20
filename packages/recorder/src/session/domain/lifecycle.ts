@@ -10,6 +10,7 @@ import type {
 import type {
   ElementLookup,
   InteractionReport,
+  RecordedInteraction,
   PageId,
   PageSnapshot,
   RecordingTrace,
@@ -1405,9 +1406,27 @@ function snapshotTaken(
   const resuming = gate?.resuming === snapshot.id;
   // A snapshot nobody waits for is of a page or an input that is gone.
   if (owners.length === 0 && !isFinal && !resuming) return state;
+  keepRead(state, draft, snapshot, gate?.resumes === true);
+  for (const owner of owners) giveSnapshot(draft, owner, snapshot);
+  if (!wrapping || !finals) return state;
+  // The wrap-up waits for it no more.
+  return {
+    ...wrapping,
+    finals: finals.filter((final) => final.snapshot !== snapshot.id),
+  };
+}
+
+/** Keeps a read that something waited for: the timeline is told it, as
+ * where recording resumes when it is, and it is its page's latest. */
+function keepRead(
+  state: Active,
+  draft: Draft,
+  snapshot: PageSnapshot,
+  resumes: boolean
+) {
   draft.todo.push({
     kind: "timeline",
-    add: gate?.resumes
+    add: resumes
       ? { kind: "snapshot", snapshot, resumes: true }
       : { kind: "snapshot", snapshot },
   });
@@ -1418,15 +1437,8 @@ function snapshotTaken(
     state.pages.some((page) => page.id === snapshot.page && page.url !== BLANK);
   changeGate(draft, snapshot.page, {
     ...(stale ? {} : { latest: { id: snapshot.id, at: snapshot.at } }),
-    ...(gate?.resumes ? { resumes: false } : {}),
+    ...(resumes ? { resumes: false } : {}),
   });
-  for (const owner of owners) giveSnapshot(draft, owner, snapshot);
-  if (!wrapping || !finals) return state;
-  // The wrap-up waits for it no more.
-  return {
-    ...wrapping,
-    finals: finals.filter((final) => final.snapshot !== snapshot.id),
-  };
 }
 
 /** Gives a snapshot to an input that waited for it: as its "after", or as
@@ -2010,30 +2022,11 @@ function goOnWrappingUp(
   // given before then is recorded as while recording.
   const gateOffAsked = state.gateOffAsked || settled;
   if (!state.gateOffAsked && settled) draft.todo.push(holdNoMore);
-  let finals = state.finals;
-  if (
-    state.gateOff &&
-    finals === null &&
-    // A snapshot is marked in the trace, which a Finish pressed at once may
-    // not have started yet.
-    !state.traceStarting &&
-    settled
-  )
-    // What changed after the last Interaction is picked up once, here.
-    finals = state.pages.map((page) => ({
-      page: page.id,
-      snapshot: askSnapshot(draft, page.id),
-    }));
+  const finals = finalReads(state, draft, settled);
   // The last snapshots may be in just now, as when no page is left.
   writeDown(draft, finals?.length === 0 && nothingNewer);
   const next = { ...state, ...settle(draft), gateOffAsked, finals };
-  if (
-    finals?.length !== 0 ||
-    draft.inputs.some((input) => !awaitsTheLast(input)) ||
-    state.switchingOff ||
-    state.discardingTrace
-  )
-    return { state: next, todo: draft.todo };
+  if (stillWrappingUp(next, draft)) return { state: next, todo: draft.todo };
   // A recorder that ends is let go with its browser. One that lives on has
   // Playwright's recorder switched off first: it is not recording any more.
   if (nothingNewer) return wrappedUp(next, draft.todo);
@@ -2045,6 +2038,37 @@ function goOnWrappingUp(
     ],
   };
 }
+
+/** The last reads of a wrap-up: asked once, of every page, when the pages
+ * hold nothing back and no input is under way, to pick up what changed
+ * after the last Interaction. */
+function finalReads(
+  state: Extract<LifecycleState, { phase: "wrappingUp" }>,
+  draft: Draft,
+  settled: boolean
+) {
+  // A snapshot is marked in the trace, which a Finish pressed at once may
+  // not have started yet.
+  const ready =
+    state.gateOff && state.finals === null && !state.traceStarting && settled;
+  if (!ready) return state.finals;
+  return state.pages.map((page) => ({
+    page: page.id,
+    snapshot: askSnapshot(draft, page.id),
+  }));
+}
+
+/** Whether a wrap-up still waits: for its last reads, for an input that is
+ * not done, for Playwright's recorder to be off, or for the trace to be
+ * thrown away. */
+const stillWrappingUp = (
+  state: Extract<LifecycleState, { phase: "wrappingUp" }>,
+  draft: Draft
+) =>
+  state.finals?.length !== 0 ||
+  draft.inputs.some((input) => !awaitsTheLast(input)) ||
+  state.switchingOff ||
+  state.discardingTrace;
 
 /** Has the pages hold no input back any more. */
 const holdNoMore: ToDo = {
@@ -2090,23 +2114,25 @@ function writeDown(draft: Draft, last: boolean) {
     if (!complete) continue;
     draft.todo.push({
       kind: "timeline",
-      add: {
-        kind: "interaction",
-        interaction: {
-          page: input.page,
-          report: input.report,
-          before: input.before,
-          // The clicks its report covers end where the last of them does.
-          after: covered.at(-1)?.after ?? input.after,
-          at: input.passedOnAt ?? 0,
-          ...(input.targetRead ? { targetRead: input.targetRead } : {}),
-        },
-      },
+      add: { kind: "interaction", interaction: written(input, covered) },
     });
     draft.inputs = draft.inputs.filter(
       (held) => held.id !== input.id && held.joins !== input.id
     );
   }
+}
+
+/** An input the pages held, as the timeline is told it. */
+function written(input: Input, covered: readonly Input[]): RecordedInteraction {
+  return {
+    page: input.page,
+    report: input.report!,
+    before: input.before!,
+    // The clicks its report covers end where the last of them does.
+    after: covered.at(-1)?.after ?? input.after,
+    at: input.passedOnAt ?? 0,
+    ...(input.targetRead ? { targetRead: input.targetRead } : {}),
+  };
 }
 
 /** The name the timeline knows a fill by while it shows. */

@@ -323,85 +323,12 @@ export class Timeline {
 
   async add(addition: TimelineAddition): Promise<void> {
     switch (addition.kind) {
-      case "visit": {
-        const registered = this.session.recordNavigation({
-          pageId: PageIdSchema.parse(addition.page),
-          url: addition.url,
-          cause: addition.cause,
-        });
-        if (registered.kind !== "visit-started") return;
-        const visit: Visit = {
-          id: registered.visit.id,
-          page: addition.page,
-          url: addition.url,
-          cause: addition.cause,
-          snapshots: [],
-          waiting: [],
-          entries: [],
-          through: 0,
-          start: null,
-          firstRefs: new Map(),
-        };
-        this.all.push(visit);
-        this.current.set(addition.page, visit);
-        this.tell();
-        return;
-      }
-      case "snapshot": {
-        this.readAt.set(addition.snapshot.id, addition.snapshot.at);
-        // A read of the blank page, which no Visit is of, is none of the
-        // Visit of the address the page went to.
-        if (addition.snapshot.url === BLANK) return;
-        const visit = this.current.get(addition.snapshot.page);
-        if (visit)
-          visit.snapshots.push({
-            ...(await this.keep(visit, addition.snapshot)),
-            resumes: addition.resumes === true,
-          });
-        return;
-      }
-      case "interaction": {
-        const { interaction, key } = addition;
-        const added = key === undefined ? undefined : this.byKey.get(key);
-        if (added) return this.replace(added, interaction);
-        // The Visit it started in: one that leaves the page has its "after"
-        // in the next Visit.
-        const visit = this.all.find((started) =>
-          started.snapshots.some(
-            (kept) => kept.snapshot.id === interaction.before
-          )
-        );
-        if (!visit) return;
-        if (visit.start === null) {
-          visit.start = visit.snapshots.findIndex(
-            (kept) => kept.snapshot.id === interaction.before
-          );
-          visit.through = visit.start;
-        }
-        const recorded: Waiting = {
-          ...interaction,
-          id: `interaction_${++this.interactions}` as EntryId,
-          ...(key === undefined ? {} : { key }),
-        };
-        visit.waiting.push(recorded);
-        this.recorded.push({
-          ...recorded,
-          afterInVisit: visit.snapshots.some(
-            (kept) => kept.snapshot.id === interaction.after
-          )
-            ? interaction.after
-            : null,
-        });
-        // Everything up to it is settled now: what changed before it, and
-        // what it changed.
-        await this.produce(
-          visit,
-          visit.snapshots.findIndex(
-            (kept) => kept.snapshot.id === interaction.before
-          )
-        );
-        return;
-      }
+      case "visit":
+        return this.startVisit(addition);
+      case "snapshot":
+        return this.keepRead(addition);
+      case "interaction":
+        return this.addInteraction(addition);
       case "elsewhere": {
         const left = this.current.get(addition.page);
         // Continue starts its Visit there, as the address says.
@@ -418,6 +345,83 @@ export class Timeline {
       case "restore":
         return this.decide(addition.entry, addition.kind === "discard");
     }
+  }
+
+  /** A Visit starts, when core takes it for one. */
+  private startVisit(addition: Extract<TimelineAddition, { kind: "visit" }>) {
+    const registered = this.session.recordNavigation({
+      pageId: PageIdSchema.parse(addition.page),
+      url: addition.url,
+      cause: addition.cause,
+    });
+    if (registered.kind !== "visit-started") return;
+    const visit: Visit = {
+      id: registered.visit.id,
+      page: addition.page,
+      url: addition.url,
+      cause: addition.cause,
+      snapshots: [],
+      waiting: [],
+      entries: [],
+      through: 0,
+      start: null,
+      firstRefs: new Map(),
+    };
+    this.all.push(visit);
+    this.current.set(addition.page, visit);
+    this.tell();
+  }
+
+  /** A read of a page, kept in the Visit the page is in. */
+  private async keepRead(
+    addition: Extract<TimelineAddition, { kind: "snapshot" }>
+  ) {
+    this.readAt.set(addition.snapshot.id, addition.snapshot.at);
+    // A read of the blank page, which no Visit is of, is none of the Visit
+    // of the address the page went to.
+    if (addition.snapshot.url === BLANK) return;
+    const visit = this.current.get(addition.snapshot.page);
+    if (visit)
+      visit.snapshots.push({
+        ...(await this.keep(visit, addition.snapshot)),
+        resumes: addition.resumes === true,
+      });
+  }
+
+  /** An Interaction: a new one waits in the Visit it started in, and
+   * everything up to it is produced; one added under a key already is
+   * replaced. */
+  private async addInteraction(
+    addition: Extract<TimelineAddition, { kind: "interaction" }>
+  ) {
+    const { interaction, key } = addition;
+    const added = key === undefined ? undefined : this.byKey.get(key);
+    if (added) return this.replace(added, interaction);
+    // The Visit it started in: one that leaves the page has its "after" in
+    // the next Visit.
+    const visit = this.all.find((started) =>
+      started.snapshots.some((kept) => kept.snapshot.id === interaction.before)
+    );
+    if (!visit) return;
+    const start = placeIn(visit, interaction.before);
+    if (visit.start === null) {
+      visit.start = start;
+      visit.through = start;
+    }
+    const recorded: Waiting = {
+      ...interaction,
+      id: `interaction_${++this.interactions}` as EntryId,
+      ...(key === undefined ? {} : { key }),
+    };
+    visit.waiting.push(recorded);
+    this.recorded.push({
+      ...recorded,
+      afterInVisit:
+        placeIn(visit, interaction.after) >= 0 ? interaction.after : null,
+    });
+    // Everything up to it is settled now: what changed before it, and what
+    // it changed.
+    await this.produce(visit, start);
   }
 
   /** An entry added under a key, measured again up to its new "after", with
@@ -886,25 +890,8 @@ export class Timeline {
     to: Kept | undefined,
     toTree = to && (this.beforePress.get(to.snapshot.id) ?? to.tree)
   ): Promise<Measured> {
-    const { from, pictured, first } = written;
-    if (!pictured) {
-      // The read its target is found in: its own, for an assertion placed
-      // at an earlier one.
-      const read =
-        written.visit.snapshots.find(
-          (kept) => kept.snapshot.id === first.targetRead
-        ) ?? from;
-      const located = locateTarget(read.tree, first.report);
-      const pressed = this.beforePress.get(from.snapshot.id);
-      return {
-        // Every ref of a kept snapshot has its first ref.
-        target: located && read.firstRefs.get(located),
-        named: namedTarget(read.tree, located),
-        change: to
-          ? await this.change(from, to, pressed ?? from.tree, toTree)
-          : null,
-      };
-    }
+    const { from, pictured } = written;
+    if (!pictured) return this.measureHeld(written, to, toTree);
     if (to) await this.tie(written, to);
     const tree = this.tiedTree(pictured);
     const firstRefs = new Map([...from.firstRefs, ...(to?.firstRefs ?? [])]);
@@ -922,6 +909,32 @@ export class Timeline {
     return {
       ...measured,
       change: await this.reconciled(from, tree, toTree ?? to.tree, firstRefs),
+    };
+  }
+
+  /** An Interaction the gate held, or one with no picture, from its
+   * "before" to its "after". */
+  private async measureHeld(
+    written: Written,
+    to: Kept | undefined,
+    toTree: StructuralTree | undefined
+  ): Promise<Measured> {
+    const { from, first } = written;
+    // The read its target is found in: its own, for an assertion placed at
+    // an earlier one.
+    const read =
+      written.visit.snapshots.find(
+        (kept) => kept.snapshot.id === first.targetRead
+      ) ?? from;
+    const located = locateTarget(read.tree, first.report);
+    const pressed = this.beforePress.get(from.snapshot.id);
+    return {
+      // Every ref of a kept snapshot has its first ref.
+      target: located && read.firstRefs.get(located),
+      named: namedTarget(read.tree, located),
+      change: to
+        ? await this.change(from, to, pressed ?? from.tree, toTree)
+        : null,
     };
   }
 
