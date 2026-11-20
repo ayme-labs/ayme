@@ -683,6 +683,9 @@ function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
       {
         ...state,
         pages: state.pages.map((open) => (open === page ? visited(at) : open)),
+        // A read of the blank page it left is no start for what is done
+        // at its address: a key typed there first waits for a read of it.
+        ...(page.url === BLANK ? { gates: unread(state.gates, id) } : {}),
       },
       [visitOf(at.id, at.url, causeOf(at))]
     );
@@ -700,6 +703,10 @@ function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
     todo: [{ kind: "timeline", add: { kind: "elsewhere", page: id, url } }],
   };
 }
+
+/** The gates, with the page's latest read forgotten. */
+const unread = (gates: readonly PageGate[], page: PageId): PageGate[] =>
+  gates.map((gate) => (gate.page === page ? { ...gate, latest: null } : gate));
 
 /** A page closed. The last one closing is an end from outside. */
 function pageClosed(
@@ -1395,8 +1402,13 @@ function snapshotTaken(
       ? { kind: "snapshot", snapshot, resumes: true }
       : { kind: "snapshot", snapshot },
   });
+  // A read of the blank page that comes once the page is at an address is
+  // no read of the page as it is.
+  const stale =
+    snapshot.url === BLANK &&
+    state.pages.some((page) => page.id === snapshot.page && page.url !== BLANK);
   changeGate(draft, snapshot.page, {
-    latest: { id: snapshot.id, at: snapshot.at },
+    ...(stale ? {} : { latest: { id: snapshot.id, at: snapshot.at } }),
     ...(gate?.resumes ? { resumes: false } : {}),
   });
   for (const owner of owners) giveSnapshot(draft, owner, snapshot);

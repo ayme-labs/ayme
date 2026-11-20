@@ -2680,6 +2680,102 @@ describe("the lifecycle, for a page that is blank at Record", () => {
     expect(todo.at(-1)).toEqual([startVisit]);
     expect(state).toEqual({ phase: "notRecording" });
   });
+
+  // As `codegen <url> --start-recording` opens it: blank at Record, and at
+  // its address only once Record holds inputs back.
+  const readBlank = (id: SnapshotId): Happening => ({
+    kind: "snapshotTaken",
+    snapshot: { ...snapshot(id), url: "about:blank", tree: "" },
+  });
+  const loaded: Happening = { kind: "pageNavigated", page: page1, url };
+  const keyHeld = (input: InputId): Happening => ({
+    kind: "inputHeld",
+    input,
+    page: page1,
+    held: { kind: "typing" },
+  });
+  const fill: InteractionReport = {
+    type: "fill",
+    selector: "internal:role=textbox",
+    target: { ref: pictureRef("e2"), tree: `- textbox "Name" [ref=e2]` },
+    values: { text: "a" },
+  };
+  /** The "before" each fill is told to the timeline with. */
+  const fillStarts = (todo: readonly (readonly ToDo[])[]) =>
+    todo
+      .flat()
+      .flatMap((item) =>
+        item.kind === "timeline" &&
+        item.add.kind === "interaction" &&
+        item.add.interaction.report.type === "fill"
+          ? [item.add.interaction.before]
+          : []
+      );
+  /** Once the page is loaded: a key, the read it waits for, and the fill
+   * Playwright reports for it. */
+  const typedOnceLoaded = (input: InputId, read: SnapshotId): Happening[] => [
+    loaded,
+    keyHeld(input),
+    taken(read),
+    passedOn(input, 30),
+    { kind: "interactionReported", page: page1, report: fill },
+  ];
+
+  it("reads the loaded page for the first key typed once it is at its address, when it was read for a click while it was blank", () => {
+    const { todo } = run([
+      blank,
+      ...started,
+      clickHeld(input1),
+      readBlank(snapshot1),
+      passedOn(input1),
+      settled(input1),
+      readBlank(snapshot2),
+      ...typedOnceLoaded(input2, snapshot3),
+    ]);
+
+    // The key waits for the read of the loaded page.
+    expect(todo.at(-4)).toEqual([takeSnapshot(snapshot3)]);
+    expect(fillStarts(todo)).toEqual([snapshot3]);
+  });
+
+  it("reads the loaded page for the first key typed once it is at its address, when Stop and Continue read it while it was blank", () => {
+    const { todo } = run([
+      blank,
+      ...started,
+      stop,
+      gateOff,
+      readBlank(snapshot1),
+      reportingOff,
+      resume,
+      reporting,
+      holding,
+      readBlank(snapshot2),
+      ...typedOnceLoaded(input1, snapshot3),
+    ]);
+
+    expect(todo.at(-4)).toEqual([takeSnapshot(snapshot3)]);
+    expect(fillStarts(todo)).toEqual([snapshot3]);
+  });
+
+  it("takes no read of the blank page that comes after the page went to its address as the page's read", () => {
+    const { todo } = run([
+      blank,
+      ...started,
+      stop,
+      gateOff,
+      readBlank(snapshot1),
+      reportingOff,
+      resume,
+      reporting,
+      holding,
+      // The read asked at Continue comes once the page is at its address.
+      loaded,
+      readBlank(snapshot2),
+      keyHeld(input1),
+    ]);
+
+    expect(todo.at(-1)).toEqual([takeSnapshot(snapshot3)]);
+  });
 });
 
 describe("the lifecycle, for a click made while the recorder wraps up", () => {
