@@ -2840,6 +2840,31 @@ describe("the lifecycle, for a page that is blank at Record", () => {
     );
   });
 
+  it("takes no read of the blank page that comes after the page went to its address as the page's read, while another page is open too", () => {
+    const { todo } = run([
+      blank,
+      other,
+      ...started,
+      stop,
+      gateOff,
+      readBlank(snapshot1),
+      readOther(snapshot2),
+      reportingOff,
+      resume,
+      reporting,
+      holding,
+      loaded,
+      readBlank(snapshot3),
+      keyHeld(input1),
+    ]);
+
+    expect(todo.at(-1)).toContainEqual(
+      expect.objectContaining({
+        ask: expect.objectContaining({ kind: "takeSnapshot", page: page1 }),
+      })
+    );
+  });
+
   it("takes a read of a page that is still blank as its read, while another page is at its address", () => {
     const { todo } = run([
       blank,
@@ -4852,6 +4877,35 @@ describe("the lifecycle, with more than one page", () => {
         add: { kind: "text", key: expect.any(String), report: fillOn1("mi") },
       },
     ]);
+  });
+
+  it("takes typing more into a field after Continue as a fill of its own on one of two open pages", () => {
+    const { todo } = run([
+      opened,
+      opened2,
+      ...started,
+      { kind: "interactionReported", page: page1, report: typed("ab") },
+      takenOf(snapshot1, page1),
+      settledOn(page1, reported1),
+      takenOf(snapshot2, page1),
+      stop,
+      gateOff,
+      takenOf(snapshot3, page1),
+      takenOf(snapshot4, page2),
+      reportingOff,
+      resume,
+      reporting,
+      holding,
+      takenOf(snapshot5, page1),
+      { kind: "interactionRevised", page: page1, report: typed("abcd") },
+    ]);
+
+    expect(todo.at(-1)).toContainEqual(
+      expect.objectContaining({
+        kind: "timeline",
+        add: expect.objectContaining({ kind: "interaction" }),
+      })
+    );
   });
 
   it("takes no revision Playwright reports for a page that closed", () => {
