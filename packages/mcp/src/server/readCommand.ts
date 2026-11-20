@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 
-export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>] [--webmcp]
+export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>]
                 [--browser-tools]
        ayme inspect [--port <port>]
 
@@ -15,9 +15,6 @@ export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>] [-
                  export lists Page Object classes, to pages that load
                  .ayme/init-script.js, which the server writes. Without it,
                  the server serves .ayme/page-objects.ts if there is one.
-  --webmcp       Pages that load .ayme/init-script.js also publish the
-                 tools of the Page Objects the server serves through
-                 WebMCP. Needs Page Objects to serve.
   --browser-tools
                  Also list Ayme's own Browser Tools, snapshot, goal and
                  Custom Tools, for an agent with no other browser
@@ -36,7 +33,6 @@ export type Command =
       kind: "start";
       port?: number;
       pageObjects?: string;
-      webMCP?: true;
       browserTools?: true;
     }
   | { kind: "inspect"; port?: number }
@@ -49,7 +45,6 @@ export function readCommand(args: string[]): Command {
   let values: {
     port?: string;
     "page-objects"?: string;
-    webmcp?: boolean;
     "browser-tools"?: boolean;
     help?: boolean;
   };
@@ -60,7 +55,6 @@ export function readCommand(args: string[]): Command {
       options: {
         port: { type: "string" },
         "page-objects": { type: "string" },
-        webmcp: { type: "boolean" },
         "browser-tools": { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
@@ -82,7 +76,6 @@ export function readCommand(args: string[]): Command {
   const pageObjects = values["page-objects"];
   const onlyMcp = [
     ...(pageObjects === undefined ? [] : ["--page-objects"]),
-    ...(values.webmcp ? ["--webmcp"] : []),
     ...(values["browser-tools"] ? ["--browser-tools"] : []),
   ];
   if (onlyMcp.length > 0 && kind !== "start")
@@ -97,7 +90,6 @@ export function readCommand(args: string[]): Command {
     };
   const options = {
     ...(pageObjects === undefined ? {} : { pageObjects }),
-    ...(values.webmcp ? { webMCP: true as const } : {}),
     ...(values["browser-tools"] ? { browserTools: true as const } : {}),
   };
   if (values.port === undefined) return { kind, ...options };

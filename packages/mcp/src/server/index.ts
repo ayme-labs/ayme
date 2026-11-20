@@ -25,7 +25,6 @@ import {
   type Pairing,
 } from "../pairing";
 import {
-  ENTRY_FILE,
   failedPageObjects,
   findPageObjectsEntry,
   servedPageObjectsServer,
@@ -61,8 +60,6 @@ const log = (message: string) =>
  * in the working folder, it also builds the entry in watch mode, serves its
  * last good build on the same server, and writes `.ayme/init-script.js`,
  * which loads it into a page that doesn't ship Ayme. Experimental (ADR-0037).
- * With `webMCP`, the runtime that init script starts also publishes its
- * tools through WebMCP; without Page Objects to serve, `webMCP` is refused.
  *
  * Without `browserTools`, it lists none of Ayme's own browser driving of
  * the paired page, whether the page ships Ayme or loads the served Page
@@ -71,20 +68,14 @@ const log = (message: string) =>
 export async function startMcpServer({
   port: pinnedPort,
   pageObjects,
-  webMCP = false,
   browserTools = false,
 }: {
   port?: number;
   pageObjects?: string;
-  webMCP?: boolean;
   browserTools?: boolean;
 } = {}): Promise<void> {
   const folder = process.cwd();
   const entry = findPageObjectsEntry({ folder, named: pageObjects });
-  if (webMCP && entry === undefined)
-    throw new Error(
-      `--webmcp needs Page Objects to serve, and there are none: no --page-objects option, and no ${ENTRY_FILE} in ${folder}.`
-    );
   const connection = new AgentConnection({ browserTools });
   const token = randomUUID();
   // Admits the Inspector's page an Agent App shows, whose origin is the
@@ -133,12 +124,10 @@ export async function startMcpServer({
   const pairing: Pairing = { address: `ws://${SERVER_HOST}:${port}`, token };
   let initScript: string | undefined;
   if (entry !== undefined)
-    await writeInitScript({ folder, port, webMCP }).then(
+    await writeInitScript({ folder, port }).then(
       (written) => {
         initScript = written;
-        log(
-          `Serving ${entry} to pages that load ${written}${webMCP ? ", which also publish its tools through WebMCP" : ""}.`
-        );
+        log(`Serving ${entry} to pages that load ${written}.`);
       },
       (error: unknown) =>
         log(

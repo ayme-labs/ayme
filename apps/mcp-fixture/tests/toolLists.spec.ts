@@ -1,15 +1,10 @@
-import { spawnSync } from "node:child_process";
-import { mkdir } from "node:fs/promises";
-
 import {
-  executePublishedTool,
   publishedToolNames,
   recordPublishedTools,
 } from "@ayme-dev/webmcp/testing";
 
 import {
   SERVER_TOOLS,
-  aymeCommand,
   connectPage,
   expect,
   serverAddress,
@@ -123,62 +118,4 @@ test("with --browser-tools, the agent also sees Ayme's Browser Tools, snapshot a
   expect(text).toContain("Groceries");
   const clicked = await agent.call("click", { target: ref });
   expect(clicked.isError, clicked.text).toBe(false);
-});
-
-test("with --webmcp, a page that loads the served Page Objects also publishes their tools through WebMCP", async ({
-  context,
-  page,
-  baseURL,
-}, testInfo) => {
-  await recordPublishedTools(context);
-  const { agent } = await startServingAgent(
-    context,
-    testInfo,
-    undefined,
-    "--webmcp"
-  );
-  try {
-    await connectPage(agent, page, `${baseURL}/plain.html`);
-
-    await expect
-      .poll(() => publishedToolNames(page))
-      .toContain("PlainPage.readNote");
-    expect(
-      JSON.stringify(await executePublishedTool(page, "PlainPage.readNote"))
-    ).toContain("does not run Ayme");
-    await listed(agent, "PlainPage.readNote");
-  } finally {
-    await agent.close();
-  }
-});
-
-// Playwright reads a fixture's dependencies from its first parameter.
-// eslint-disable-next-line no-empty-pattern
-test("--webmcp without Page Objects to serve is refused with what is missing", async ({}, testInfo) => {
-  const project = testInfo.outputPath("empty-project");
-  await mkdir(project, { recursive: true });
-
-  const run = spawnSync(process.execPath, [aymeCommand, "mcp", "--webmcp"], {
-    cwd: project,
-    input: "",
-    encoding: "utf8",
-    timeout: 15_000,
-  });
-
-  expect(run.status).toBe(1);
-  expect(run.stderr).toContain(
-    "--webmcp needs Page Objects to serve, and there are none: no --page-objects option, and no .ayme/page-objects.ts in"
-  );
-});
-
-test("--only-page-object-tools is an unknown option", async () => {
-  const run = spawnSync(
-    process.execPath,
-    [aymeCommand, "mcp", "--only-page-object-tools"],
-    { input: "", encoding: "utf8", timeout: 15_000 }
-  );
-
-  expect(run.status).toBe(1);
-  expect(run.stderr).toContain("--only-page-object-tools");
-  expect(run.stderr).toContain("Usage: ayme mcp");
 });

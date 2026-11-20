@@ -22,15 +22,9 @@ installed instead: `npx -y @ayme-dev/mcp@<version> mcp`.
 By default, the server adds your Page Objects to the browser automation your
 agent already uses, such as Playwright MCP: it lists their Page Object Tools
 and `page_objects`, and your agent keeps driving the browser with its own
-tools. Two options change that:
-
-- `--browser-tools`: for an agent with no other browser automation. The server
-  also lists Ayme's own Browser Tools, `snapshot`, `goal` and the app's Custom
-  Tools, so the agent can drive the browser with Ayme alone.
-- `--webmcp`: for a page that doesn't ship Ayme and loads the server's
-  `.ayme/init-script.js` instead. That page also publishes the Page Object
-  Tools through WebMCP, for browser automation that calls a page's WebMCP
-  tools.
+tools. For an agent with no other browser automation, `--browser-tools` makes
+the server also list Ayme's own Browser Tools, `snapshot`, `goal` and the app's
+Custom Tools, so the agent can drive the browser with Ayme alone.
 
 `ayme mcp --help` lists every option.
 

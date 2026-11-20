@@ -18,11 +18,9 @@ type Pending = {
 function runInitScript({
   loading = false,
   slot,
-  webMCP,
 }: {
   loading?: boolean;
   slot?: { contract?: object };
-  webMCP?: boolean;
 } = {}) {
   const options: Record<string, unknown>[] = [];
   const imports: Pending[] = [];
@@ -56,10 +54,7 @@ function runInitScript({
     [Symbol.for("ayme.inspectorContract")]: slot,
   };
   window.top = window;
-  const script = initScript(
-    4720,
-    webMCP === undefined ? undefined : { webMCP }
-  ).replaceAll("import(", "importModule(");
+  const script = initScript(4720).replaceAll("import(", "importModule(");
   new Function(
     "window",
     "location",
@@ -110,8 +105,8 @@ const entry = (...names: (string | { name: string; fails: true })[]) => ({
   default: names.map((name) => (typeof name === "string" ? { name } : name)),
 });
 
-async function started(webMCP?: boolean) {
-  const page = runInitScript({ webMCP });
+async function started() {
+  const page = runInitScript();
   page.stamp("e1");
   await page.answer(/runtime\.js\?build=r1$/, { createAyme: page.createAyme });
   await page.answer(/entry\.js\?build=e1$/, entry("A"));
@@ -131,17 +126,6 @@ it("starts the runtime with its Agent Connection and WebMCP publication off", as
     expect.objectContaining({ agentConnection: true }),
   ]);
   expect(page.options[0]).not.toHaveProperty("webMCP");
-});
-
-it("starts the runtime with WebMCP publication on with webMCP", async () => {
-  const page = await started(true);
-
-  expect(page.options).toEqual([
-    expect.objectContaining({
-      agentConnection: true,
-      webMCP: { enabled: true },
-    }),
-  ]);
 });
 
 it("swaps in the newest rebuild, not one that finishes loading after it", async () => {

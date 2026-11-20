@@ -164,7 +164,7 @@ export async function serverAddress(agent: Agent) {
  * Starts `ayme mcp` in a project of its own under the test's output folder,
  * whose `.ayme` is a copy of `outside/.ayme`, so it serves that entry's Page
  * Objects, and runs the init script it writes in every page of `context`.
- * `options` are more options of `ayme mcp`, such as `--webmcp`. Returns the
+ * `options` are more options of `ayme mcp`, such as `--browser-tools`. Returns the
  * agent and the origin of its server, where a page fetches the served code
  * from. The agent opens with `revision`, 2025-11-25 by default.
  */
