@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Ticking</title>
+  </head>
+  <body>
+    <h1>Ticking</h1>
+    <!-- Its click changes the page every 100 ms until "Stop ticking" is
+         clicked: the page is not quiet until then, or until the recorder's
+         deadline for a Settled Page passes. -->
+    <button id="start">Start ticking</button>
+    <button id="stop">Stop ticking</button>
+    <p id="ticks">Ticks: 0</p>
+    <p id="state">Not stopped</p>
+    <script>
+      let ticks = 0;
+      let timer;
+      document.getElementById("start").addEventListener("click", () => {
+        timer = setInterval(() => {
+          ticks += 1;
+          document.getElementById("ticks").textContent = `Ticks: ${ticks}`;
+        }, 100);
+      });
+      document.getElementById("stop").addEventListener("click", () => {
+        clearInterval(timer);
+        document.getElementById("state").textContent = "Stopped";
+      });
+    </script>
+  </body>
+</html>

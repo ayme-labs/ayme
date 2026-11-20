@@ -41,21 +41,21 @@ Turn the timeline into assertions:
   checked box, what the page already showed, and changes unrelated to the
   flow, such as animations or clocks.
 - An `assert*` interaction, such as `assertVisible`, marks a point where the
-  user checked something: from its target and the changes around it, work out
-  what they meant to check, and assert that.
+  user checked something: from its `targetSelector` and the changes around
+  it, work out what they meant to check, and assert that.
 - Each assertion checks one fact. An `<added>` node can take the place of a
-  `<removed>` node with the same role. Check in the trace whether they are
-  the same element, as [Use the trace](../SKILL.md#use-the-trace) shows. When
-  they are, the element re-rendered, and that is one fact: its new content.
-  For the cart button in
-  [Read the package](../SKILL.md#read-the-package), held as `cartLink` by a
-  `Header` component `header`:
+  `<removed>` node with the same role, as the cart button in
+  [Read the package](../SKILL.md#read-the-package) does. Check in the trace
+  whether the new element is the old control drawn again, as
+  [Use the trace](../SKILL.md#use-the-trace) shows. When it is, the element
+  re-rendered, and that is one fact: its new content. For that cart button,
+  held as `cartLink` by a `Header` component `header`:
 
   ```ts
   await expect(header.cartLink).toHaveAccessibleName("Cart, 2 items");
   ```
 
-  When the trace does not show they are the same, treat them as two
+  When the trace does not show it is the same control, treat them as two
   elements.
 
   When a different element takes the old one's place, such as a confirmation

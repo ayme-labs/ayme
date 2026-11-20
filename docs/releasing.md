@@ -62,3 +62,20 @@ If the fix changes repository code, merge it and release the next version instea
 ## Adding a package
 
 A new package that is not private joins the release in [`release-please-config.json`](../release-please-config.json), under `packages` and in the linked group's `components`, and in [`.release-please-manifest.json`](../.release-please-manifest.json) at the current version. [`scripts/release-config.test.mjs`](../scripts/release-config.test.mjs) fails until it does. Its first version needs the [first publish](#first-publish) steps.
+
+## A package that is built but held back
+
+A package can be built, packed and checked before it is released. `@ayme-dev/cli`, the Recorder's command line, is one: `"private": true` in its `package.json`, and absent from `release-please-config.json` and `.release-please-manifest.json`, so Release Please neither tags nor publishes it. The packed-consumer check still packs it, installs it in a clean project and records a flow with it, and keeps its tarball out of `AYME_PACKED_DIR`, so the release never publishes it. [`scripts/release-config.test.mjs`](../scripts/release-config.test.mjs) keeps it that way: it fails if the package stops being private or turns up in the release configuration without leaving its `HELD_BACK` list.
+
+To release it, change each of these in one pull request:
+
+1. `packages/cli/package.json`: delete `"private": true`. Set `version` to the version its first release starts from; the maintainer chooses it (join the linked group at its current version, keep its own version track, or force a first version with `release-as`).
+2. `release-please-config.json`: add `"packages/cli": { "component": "cli" }` under `packages`, and `"cli"` to the linked group's `components` in alphabetical order. If the package keeps its own version track, leave it out of the group, and change `scripts/publish-packages.mjs` and the `version` output of `release.yml`, which assume one version for every tarball.
+3. `.release-please-manifest.json`: add `"packages/cli"` at the `version` from step 1.
+4. `scripts/release-config.test.mjs`: remove `"packages/cli"` from `HELD_BACK`.
+5. `packages/cli/README.md`: the docs check starts to apply to it, since it is the package's page on npm.
+6. `ARCHITECTURE.md` and `ARCHITECTURE.html`: where they call the CLI private, say it is published, in the same pull request.
+
+`packages/ayme/src/packedConsumer.test.ts` needs no change: it lists `cli` in `PACKED_PACKAGES` and treats a private package in that list as held back, so the CLI's tarball then goes into `AYME_PACKED_DIR` with the rest.
+
+`@ayme-dev/cli` is already on npm, so the [first publish](#first-publish) bootstrap does not apply, but its package settings on npmjs.com still need a trusted publisher for `release.yml`, added before the release runs. The publish script skips a version the registry already has, so a first version that npm holds is skipped without an error.

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Help</title>
+  </head>
+  <body>
+    <h1>Help</h1>
+    <button id="thanks">Thanks</button>
+    <p id="thanked">Not thanked</p>
+    <script>
+      let thanks = 0;
+      document.getElementById("thanks").addEventListener("click", () => {
+        thanks += 1;
+        document.getElementById("thanked").textContent = `Thanked ${thanks}`;
+      });
+    </script>
+  </body>
+</html>

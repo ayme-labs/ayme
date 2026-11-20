@@ -89,8 +89,17 @@ _Avoid_: tool call, invocation
 Whoever starts a top-level Run from outside: an agent through WebMCP or the Ayme MCP server, the Inspector, or the app's own code. A Caller names itself. A Run started inside another Run has a parent instead.
 
 **Interaction**:
-One input a Run gives the page: a click, fill, key press, hover or selection on one element. A Run's Interactions are the ones it performed itself; its child Runs have their own.
+One input given to the page: a click, fill, key press, hover or selection on one element. A Run gives it, or a person does while being recorded. A Run's Interactions are the ones it performed itself; its child Runs have their own.
 _Avoid_: step, page operation, action (on its own)
+
+**Recorder**:
+The tool that listens while a person drives a page in a browser, and writes what it saw to a Recording Package.
+
+**Recording Package**:
+What the Recorder writes for one recording: the page structure at the start of each Visit, the Interactions in order, a Change Tree for what each one changed, and the Playwright trace of the whole session.
+
+**Change Tree**:
+The page structure after a change, with every node that was added, removed or changed marked. The Recorder writes one for what an Interaction changed, and one for a change it could not tie to an Interaction.
 
 **Goal Loop**:
 Drives the page toward a natural-language goal in steps. In each step a System One model (a fast model that picks among given options, currently Jev), not the calling agent's LLM, chooses at most one operation to run. The calling agent starts it and receives a Handover.
