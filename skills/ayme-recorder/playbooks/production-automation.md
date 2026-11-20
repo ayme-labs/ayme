@@ -244,8 +244,9 @@ export const highlightAndWait =
 
 ## The replay test
 
-Copy [`assets/replay.ts`](../assets/replay.ts) next to the replay test. Its
-header says what loads live and what the recording answers. Write the
+Copy [`assets/replay.ts`](../assets/replay.ts) next to the replay test, unless
+the project already has a copy: keep that one, with its `match()` and any
+masking. Its header says what loads live and what the recording answers. Write the
 recorded parameter values, and the summary the recording's page showed before
 each irreversible step, read from the snapshot of the interaction before
 it, to `.ayme/params/<flow>.recorded.json` as `{ params, summaries }`, with
