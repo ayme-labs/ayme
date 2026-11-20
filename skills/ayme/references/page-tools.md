@@ -5,7 +5,8 @@
 Use a Page Object Tool whenever one does the step, reading its schema: one
 call can do what several clicks and keystrokes would. Each is named after its
 class and action, such as `ProjectRow.remove`, across all instances of the
-class. Drive the rest of the page with your browser automation; when that is
+class. Your tool list may show the dot in a tool's name as an underscore, such
+as `ProjectRow_remove`. It's the same tool. Drive the rest of the page with your browser automation; when that is
 Playwright CLI, Playwright MCP or agent-browser, read
 [Browser automation tools](browser-automation-tools.md).
 

@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AgentConnection, RECONNECT_WAIT_MS } from "./agentConnection";
+import {
+  AgentConnection,
+  PAIR_WAIT_MS,
+  RECONNECT_WAIT_MS,
+} from "./agentConnection";
 
 const hello = (tab: string, url = "http://127.0.0.1:5173/") => ({ tab, url });
 const errorOf = async (outcome: Promise<unknown>) =>
@@ -281,6 +285,65 @@ const tool = (name: string) => ({
   description: "",
   inputSchema: {},
   available: true,
+});
+
+describe("AgentConnection after ayme_connect handed out a link", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("holds a call for the page until the page the link opens reports its tools, then sends it there", async () => {
+    const connection = new AgentConnection();
+    connection.linked();
+    const call = connection.call("Panel.remove", {});
+    const followed = connection.untilLinkFollowed();
+    let done = false;
+    void followed.then(() => (done = true));
+    await tick();
+    expect(done).toBe(false);
+
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("Panel.remove")]);
+    await followed;
+    await tick();
+    page.answer({ callId: "1", ok: true, result: { settled: true } });
+
+    expect(await call).toEqual({
+      callId: "1",
+      ok: true,
+      result: { settled: true },
+    });
+  });
+
+  it("finds no page for the call when none pairs within the wait", async () => {
+    vi.useFakeTimers();
+    const connection = new AgentConnection();
+    connection.linked();
+    const call = connection.call("Panel.remove", {});
+    const followed = connection.untilLinkFollowed();
+
+    vi.advanceTimersByTime(PAIR_WAIT_MS - 1);
+    await Promise.resolve();
+    vi.advanceTimersByTime(1);
+
+    await followed;
+    expect(await call).toBeUndefined();
+    expect(connection.paired).toBe(false);
+  });
+
+  it("holds nothing when a page is paired already", async () => {
+    const connection = new AgentConnection();
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("Panel.remove")]);
+    connection.linked();
+
+    await connection.untilLinkFollowed();
+    const call = connection.call("Panel.remove", {});
+    await tick();
+    page.answer({ callId: "1", ok: true, result: 1 });
+
+    expect(await call).toEqual({ callId: "1", ok: true, result: 1 });
+  });
 });
 
 describe("AgentConnection with App Processes", () => {

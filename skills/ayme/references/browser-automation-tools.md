@@ -15,7 +15,7 @@ Before you take a full snapshot, check your tool list. When a Page Object Tool
 does the next step, call it instead; take the snapshot only when none does.
 
 Each section below names a start command. It goes after
-`npx -y @ayme-dev/mcp@<version>`, registered in your agent as
+`npx --no -p @ayme-dev/mcp ayme`, registered in your agent as
 [Browser setup](browser-setup.md) describes. On a page that doesn't ship Ayme,
 the server serves the project's Page Objects through the init script your
 browser automation loads; see

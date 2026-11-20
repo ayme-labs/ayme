@@ -2,13 +2,15 @@
 
 Set up the connection as [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md)
 describes: `agentConnection` on behind the app's dev flag, and Ayme's MCP
-server registered in your agent, pinned to the project's `@ayme-dev/mcp`
-version. Diagnose with the "The agent cannot reach the page" section of
+server registered in your agent as the copy of `@ayme-dev/mcp` the project
+installed, started in the project's folder. Diagnose with the "The agent cannot reach the page" section of
 [Troubleshooting](https://github.com/ayme-labs/ayme/blob/main/docs/guide/troubleshooting.md).
 For using the page's tools once it is connected, such as naming a Page Object
 by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
 
-- Start command, after `npx -y @ayme-dev/mcp@<version>`:
+- Start command, after `npx --no -p @ayme-dev/mcp ayme`, or after
+  `npx -y @ayme-dev/mcp@<version>`, pinned to the project's version, when your
+  agent starts its servers in another folder:
   - `mcp` beside another browser automation, such as Playwright MCP,
     Playwright CLI or agent-browser: it lists the Page Object Tools,
     `page_objects`, Peek Tools and its own tools, and none of Ayme's own
@@ -28,9 +30,10 @@ by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
   the user to open, or to paste into the tab they already have open.
 - When the page's tools are missing from your tool list after the page
   pairs, list them with `ayme_list_tools` and run them with `ayme_call`.
-- When a tool answers that no page is connected right after you opened the
-  link from `ayme_connect`, the page is still pairing: call it again after a
-  second or two.
+- Right after `ayme_connect`, a call of a page tool or `ayme_list_tools`
+  waits up to 10 seconds for the page its link opens to pair. When it still
+  answers that no page is connected, the link was not opened, or the page
+  has no Ayme: see [A page that doesn't ship Ayme](#a-page-that-doesnt-ship-ayme).
 - When a tool answers that no page is connected right after your MCP server
   restarted, and a tab was paired before, wait a few seconds: the tab pairs
   again by itself, and the page's tools come back with a tool list change.

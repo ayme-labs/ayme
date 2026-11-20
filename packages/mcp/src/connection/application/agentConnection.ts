@@ -16,7 +16,7 @@ import {
   type PageExit,
 } from "../domain/unansweredCall";
 
-export { RECONNECT_WAIT_MS } from "../domain/tabLifecycle";
+export { PAIR_WAIT_MS, RECONNECT_WAIT_MS } from "../domain/tabLifecycle";
 
 /** What happened on the Agent Connection. */
 export type ConnectionEvent =
@@ -296,7 +296,9 @@ export class AgentConnection {
    */
   get busyWith(): string | undefined {
     const lifecycle = this.#lifecycle;
-    return lifecycle.name === "unpaired" ? undefined : lifecycle.tab;
+    return lifecycle.name === "unpaired" || lifecycle.name === "linked"
+      ? undefined
+      : lifecycle.tab;
   }
 
   /**
@@ -395,6 +397,29 @@ export class AgentConnection {
     this.#apply(tabLifecycle.disconnected(this.#lifecycle, Date.now()));
   }
 
+  /**
+   * `ayme_connect` handed out a link: while no page is paired, a call for
+   * the page waits up to `PAIR_WAIT_MS` for the page the link opens.
+   */
+  linked() {
+    this.#apply(tabLifecycle.linked(this.#lifecycle, Date.now()));
+  }
+
+  /**
+   * Resolves once no link handed out while no page was paired is waiting
+   * for its page: at once, or when a page pairs or `PAIR_WAIT_MS` ends.
+   */
+  untilLinkFollowed(): Promise<void> {
+    if (this.#lifecycle.name !== "linked") return Promise.resolve();
+    return new Promise((resolve) => {
+      const release = () => {
+        this.#held.delete(release);
+        resolve();
+      };
+      this.#held.add(release);
+    });
+  }
+
   /** The paired page said it started loading the document `to`. */
   navigating(session: PageSession, to: PageNavigating) {
     if (this.#page !== session) return;
@@ -412,7 +437,8 @@ export class AgentConnection {
    * reconnect in time, another tab paired in its place or the server
    * stopped. A page that said it was navigating but stays, as when its
    * navigation was cancelled, gets the call after `RECONNECT_WAIT_MS`, and
-   * later calls at once.
+   * later calls at once. While no page is paired after `linked`, a call for
+   * the page waits for one to pair, up to `PAIR_WAIT_MS`.
    */
   call(name: string, input: unknown): Promise<ToolCallOutcome | undefined> {
     const callId = String(this.#nextCallId++);

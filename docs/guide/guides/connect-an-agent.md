@@ -46,12 +46,12 @@ With Vite, a development build you serve without a dev server, such as static fi
 
 ## Register the server in your agent
 
-Pin the server to the version of `@ayme-dev/mcp` your app installed, so it matches the page client in your app. `npm ls @ayme-dev/mcp` prints that version. Use it in place of `<version>` below.
+Register the copy of `@ayme-dev/mcp` your app installed. It always matches the page client in your app, and nothing is downloaded again. The command is `npx` with the arguments `--no -p @ayme-dev/mcp ayme mcp`, and the agent has to start it in the app's folder, as an agent you run from that folder does. `--no` stops `npx` from downloading anything, so started from any other folder, the server fails to start instead of running another version.
 
 Claude Code:
 
 ```sh
-claude mcp add ayme -- npx -y @ayme-dev/mcp@<version> mcp
+claude mcp add ayme -- npx --no -p @ayme-dev/mcp ayme mcp
 ```
 
 Add `--scope project` before `ayme` to share the server with your team through the project's `.mcp.json`.
@@ -59,18 +59,18 @@ Add `--scope project` before `ayme` to share the server with your team through t
 Codex:
 
 ```sh
-codex mcp add ayme -- npx -y @ayme-dev/mcp@<version> mcp
+codex mcp add ayme -- npx --no -p @ayme-dev/mcp ayme mcp
 ```
 
-Or add it to `~/.codex/config.toml`, or to `.codex/config.toml` in a trusted project:
+Or add it to `.codex/config.toml` in a trusted project:
 
 ```toml
 [mcp_servers.ayme]
 command = "npx"
-args = ["-y", "@ayme-dev/mcp@<version>", "mcp"]
+args = ["--no", "-p", "@ayme-dev/mcp", "ayme", "mcp"]
 ```
 
-Cursor, in `.cursor/mcp.json` for the project or `~/.cursor/mcp.json` for every project:
+Cursor, in the project's `.cursor/mcp.json`:
 
 ```json
 {
@@ -78,13 +78,15 @@ Cursor, in `.cursor/mcp.json` for the project or `~/.cursor/mcp.json` for every 
     "ayme": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@ayme-dev/mcp@<version>", "mcp"]
+      "args": ["--no", "-p", "@ayme-dev/mcp", "ayme", "mcp"]
     }
   }
 }
 ```
 
-Any other MCP client takes the same command, `npx`, with the arguments `-y @ayme-dev/mcp@<version> mcp`. Restart the agent after registering, so it starts the server and lists `ayme_connect`.
+Any other MCP client takes the same command, `npx`, with the arguments `--no -p @ayme-dev/mcp ayme mcp`. Restart the agent after registering, so it starts the server and lists `ayme_connect`.
+
+If your agent starts its servers in another folder, as one registered for every project may, pin the server to the version your app installed instead, so it still matches the page client. `npm ls @ayme-dev/mcp` prints that version. The command is `npx` with the arguments `-y @ayme-dev/mcp@<version> mcp`, such as `claude mcp add ayme -- npx -y @ayme-dev/mcp@<version> mcp`. `npx` downloads that version the first time.
 
 ### Options
 
@@ -100,12 +102,10 @@ Options go after `mcp`, in the command or the client's `args` list:
 For an agent with no other browser automation, such as Playwright MCP, Claude Code:
 
 ```sh
-claude mcp add ayme -- npx -y @ayme-dev/mcp@<version> mcp --browser-tools
+claude mcp add ayme -- npx --no -p @ayme-dev/mcp ayme mcp --browser-tools
 ```
 
 `ayme mcp --help` prints the options and what each adds.
-
-If your client starts its servers in the app's folder, it can run the copy of `@ayme-dev/mcp` your app installed. That copy always matches the page client. Use the command `npx` with the arguments `--no -p @ayme-dev/mcp ayme mcp`. `--no` stops `npx` from downloading anything. So, started from any other folder, the server fails to start instead of running another version.
 
 ## Connect a tab
 
@@ -132,7 +132,7 @@ Page Object Tools appear and disappear as Page Objects come and go, Peek Tools a
 
 `ayme_inspect` returns the URL of the [Inspector in a window of its own](inspector.md#in-a-window-of-its-own), which the same server serves, and `ayme inspect` prints it from a terminal. An Agent App that shows MCP Apps shows that Inspector in the chat. Both need the optional `@ayme-dev/inspector` package, and say to install it when it is missing.
 
-Some agents read the tool list once, when they start, so they never see the page's tools, which arrive later. For them, `ayme_list_tools` lists the page's current tools with their input schemas, whether each is available and why not, and `ayme_call` runs any of them by name, with the tool's name as `tool` and its input as `input`. A failed tool call answers with an error result. Input that does not match a tool's input schema, the schema of `ayme_connect`, `ayme_list_tools`, `ayme_call` or `ayme_inspect` included, is refused before the tool runs, with a sentence for each problem: `ToolInputError: Input property name is not supported. Input property tool is required.` While neither a tab nor an App Process is paired, every page tool and fallback tool answers that no page is connected.
+Some agents read the tool list once, when they start, so they never see the page's tools, which arrive later. For them, `ayme_list_tools` lists the page's current tools with their input schemas, whether each is available and why not, and `ayme_call` runs any of them by name, with the tool's name as `tool` and its input as `input`. A failed tool call answers with an error result. Input that does not match a tool's input schema, the schema of `ayme_connect`, `ayme_list_tools`, `ayme_call` or `ayme_inspect` included, is refused before the tool runs, with a sentence for each problem: `ToolInputError: Input property name is not supported. Input property tool is required.` While neither a tab nor an App Process is paired, every page tool and fallback tool answers that no page is connected. Right after `ayme_connect`, though, a call of a page tool or `ayme_list_tools` waits up to 10 seconds for the page its link opens to pair, since the agent opens the link only once it has the answer.
 
 ## Reloads, navigation and closed tabs
 

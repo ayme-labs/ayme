@@ -44,7 +44,7 @@ When your agent drives the browser with Playwright MCP, Playwright CLI or agent-
 
    When the agent calls your Page Objects' tools through WebMCP, as below, skip this step: open the page with your browser tool.
 
-To have the page also publish your Page Objects' tools through WebMCP, for a browser tool that calls a page's WebMCP tools such as Playwright CLI, install `@ayme-dev/webmcp` beside `@ayme-dev/ayme` and add `--webmcp` after `mcp` in the registration, such as `npx -y @ayme-dev/mcp@<version> mcp --webmcp`. It is off by default, and `ayme mcp` refuses to start with it when there are no Page Objects to serve.
+To have the page also publish your Page Objects' tools through WebMCP, for a browser tool that calls a page's WebMCP tools such as Playwright CLI, install `@ayme-dev/webmcp` beside `@ayme-dev/ayme` and add `--webmcp` after `mcp` in the registration, such as `npx --no -p @ayme-dev/mcp ayme mcp --webmcp`. It is off by default, and `ayme mcp` refuses to start with it when there are no Page Objects to serve.
 
 The page publishes through WebMCP only in a Chrome that supplies `document.modelContext`, and a Chrome your browser tool launches does not by default. Add the feature to its launch arguments: for Playwright MCP and Playwright CLI, `"launchOptions": { "args": ["--enable-features=WebMCP"] }` under `browser` in the config file; for agent-browser, `--args "--enable-features=WebMCP,WebMCPTesting,DevToolsWebMCPSupport"`. Without it, the browser tool reports that the page registers no WebMCP tools. With Playwright CLI, `webmcp-list` is also empty until the first `playwright-cli snapshot`.
 

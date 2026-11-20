@@ -187,8 +187,10 @@ export async function connectPage(
   url: string,
   { timeout = 15_000 }: { timeout?: number } = {}
 ): Promise<string> {
-  const { text: link, isError } = await agent.call("ayme_connect", { url });
-  if (isError) throw new Error(`ayme_connect failed: ${link}`);
+  const { text, isError } = await agent.call("ayme_connect", { url });
+  if (isError) throw new Error(`ayme_connect failed: ${text}`);
+  // The link is the answer's first line; a note may follow it.
+  const link = text.split("\n")[0]!;
   await page.goto(link);
   const deadline = Date.now() + timeout;
   while (!(await agent.pageToolNames()).includes("page_objects")) {

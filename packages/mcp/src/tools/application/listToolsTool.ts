@@ -19,6 +19,7 @@ export const listToolsTool: ServerToolFactory = ({
     "Lists the current tools of the connected page and of the app's own processes (App Processes), with their name, description and input schema, whether each can run now (available) and, when it cannot, why (reason). Run any of them with ayme_call. Use it when these tools are missing from your tool list.",
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   async call() {
+    await connection.untilLinkFollowed();
     if (!connection.connected)
       return notConnectedResult(
         connection.versionGap,

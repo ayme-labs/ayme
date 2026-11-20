@@ -8,11 +8,16 @@ it, and their tools become MCP tools the agent can call.
 ## Setup
 
 Register the server in your coding agent like any other stdio MCP server, with
-the command `ayme mcp` from this package, pinned to the version you install:
+the command `ayme mcp` from the copy of this package your app installed, so it
+matches the page client and nothing is downloaded again. The agent has to start
+it in the app's folder:
 
 ```sh
-npx -y @ayme-dev/mcp@<version> mcp
+npx --no -p @ayme-dev/mcp ayme mcp
 ```
+
+If your agent starts its servers in another folder, pin the version your app
+installed instead: `npx -y @ayme-dev/mcp@<version> mcp`.
 
 By default, the server adds your Page Objects to the browser automation your
 agent already uses, such as Playwright MCP: it lists their Page Object Tools
