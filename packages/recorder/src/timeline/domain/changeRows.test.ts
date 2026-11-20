@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ChangeRow } from "../../contract";
 import { foundRows } from "./changeRows";
+import { withPageBefore } from "./elementNames";
 
 /** The rows of a Change Tree, as whoever shows a recorder is told them. */
 const changeRows = (change: StructuralTree): ChangeRow[] =>
@@ -15,9 +16,14 @@ const changeRows = (change: StructuralTree): ChangeRow[] =>
  * snapshot writes each. */
 function changeFrom(before: string, after: string): StructuralTree {
   const refs = new SyntheticAriaRefFactory();
-  return StructuralTree.reconcile(
-    StructuralTree.fromAriaSnapshotYaml(before, refs),
-    StructuralTree.fromAriaSnapshotYaml(after, refs)
+  const page = StructuralTree.fromAriaSnapshotYaml(before, refs);
+  // As the timeline keeps it: with the page before beside it.
+  return withPageBefore(
+    StructuralTree.reconcile(
+      page,
+      StructuralTree.fromAriaSnapshotYaml(after, refs)
+    ),
+    page
   );
 }
 const page = (...elements: string[]) =>

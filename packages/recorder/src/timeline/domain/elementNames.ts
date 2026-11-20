@@ -47,7 +47,7 @@ export function ownName(node: StructuralNode): OwnName | null {
   const { role } = node;
   if (node.name) return { role, name: node.name, byText: false };
   const onlyText = node.children.every((child) => typeof child === "string");
-  const text = onlyText ? node.children.join(" ") : "";
+  const text = onlyText ? normal(node.children.join(" ")) : "";
   if (text) return { role, name: text, byText: true };
   return NO_ROLE.has(role) ? null : { role, name: "", byText: false };
 }
@@ -69,7 +69,7 @@ export function labelOf(
   view: PageView = "after"
 ): NamedElement | null {
   const place = placeOf(tree, node, view);
-  return labelsOf(place.tree, place.view).of(place.node);
+  return labelsOf(place.tree).of(place.node);
 }
 
 /** An element by its label when it has a role or a name, or else its
@@ -81,7 +81,7 @@ export function labelNear(
   view: PageView = "after"
 ): NamedElement | null {
   const place = placeOf(tree, node, view);
-  const labels = labelsOf(place.tree, place.view);
+  const labels = labelsOf(place.tree);
   const named = [place.node, ...place.tree.getAncestorsOf(place.node.ref)].find(
     (one) => labels.own(one) !== null
   );
@@ -111,9 +111,9 @@ export function selectorWords(
 export const wordsOf = (named: NamedElement | null): string =>
   named ? named.label : "element";
 
-/** The labels of each tree, per page, built once: every row and step of a
- * read asks the one index. */
-const built = new WeakMap<StructuralTree, Map<PageView, PageLabels>>();
+/** The labels of each tree, built once: every row and step of a read asks
+ * the one index. */
+const built = new WeakMap<StructuralTree, PageLabels>();
 
 /** The page before each Change Tree, under the Change Tree's refs: a removed
  * element is counted against it, in its own order. */
@@ -129,24 +129,19 @@ export function withPageBefore(
   return change;
 }
 
-function labelsOf(tree: StructuralTree, view: PageView): PageLabels {
-  const before = view === "before" ? pagesBefore.get(tree) : undefined;
-  if (before) return labelsOf(before, "after");
-  let views = built.get(tree);
-  if (!views) built.set(tree, (views = new Map()));
-  let labels = views.get(view);
-  if (!labels) views.set(view, (labels = new PageLabels(tree, view)));
+function labelsOf(tree: StructuralTree): PageLabels {
+  let labels = built.get(tree);
+  // Stryker disable next-line ConditionalExpression: a cache; building it again gives the same labels
+  if (!labels) built.set(tree, (labels = new PageLabels(tree)));
   return labels;
 }
 
-/** The tree an element of a Change Tree is labelled in, and the element
- * there: the page before the change for a removed one, when it is known. */
+/** The page an element of a Change Tree is labelled on, and the element
+ * there: the page before the change, for one counted against it. */
 function placeOf(tree: StructuralTree, node: StructuralNode, view: PageView) {
-  const before = view === "before" ? pagesBefore.get(tree) : undefined;
-  const there = before?.getNode(node.ref);
-  return before && there
-    ? { tree: before, node: there, view: "after" as const }
-    : { tree, node, view };
+  const page = view === "before" ? pagesBefore.get(tree) : undefined;
+  const there = page?.getNode(node.ref);
+  return page && there ? { tree: page, node: there } : { tree, node };
 }
 
 /** One way to name an element: its words, Playwright's selector for them,
@@ -217,21 +212,20 @@ class PageLabels {
   private readonly matched = new Map<string, Matches>();
   private readonly labels = new Map<AriaRef, NamedElement | null>();
 
-  constructor(
-    private readonly tree: StructuralTree,
-    private readonly view: PageView
-  ) {
+  /** The labels of a page: a read, or a Change Tree with the page after
+   * the change, the elements it removed left out. */
+  constructor(private readonly tree: StructuralTree) {
     // Returns the longest text piece inside the element, and its whole
     // text.
     const visit = (
       node: StructuralNode,
       frame: StructuralNode | null
     ): { longest: string; full: string } => {
-      if (!this.shows(node)) return { longest: "", full: "" };
+      if (node.status?.kind === "removed") return { longest: "", full: "" };
       this.order.set(node.ref, this.order.size);
       this.all.push(node);
       this.frameByRef.set(node.ref, frame);
-      add(this.byRole, this.value(node).role, node);
+      add(this.byRole, node.role, node);
       const inside = node.role === "iframe" ? node : frame;
       let longest = "";
       const pieces: string[] = [];
@@ -241,41 +235,28 @@ class PageLabels {
             ? { longest: normal(child), full: normal(child) }
             : visit(child, inside);
         if (piece.longest.length > longest.length) longest = piece.longest;
-        if (piece.full) pieces.push(piece.full);
+        pieces.push(piece.full);
       }
-      // On the page before, an element that changed stands as it was, with
-      // all that was inside it.
-      const before =
-        this.view === "before" ? this.tree.getBeforeNode(node.ref) : null;
-      if (before) longest = longestIn(before);
-      const full = before ? fullTextOf(before) : fullText(node, pieces);
+      // A frame's document is its own: none of its text is the frame
+      // element's, or its ancestors', as Playwright reads an element's text.
+      if (node.role === "iframe") {
+        longest = "";
+        pieces.length = 0;
+      }
+      const full = fullText(node, pieces);
       this.ends.set(node.ref, this.order.size);
       this.texts.set(node.ref, shortened(longest));
-      this.ownTexts.set(node.ref, shortened(longestIn(before ?? node, false)));
+      this.ownTexts.set(node.ref, shortened(longestOwn(node)));
       this.fullTexts.set(node.ref, full);
       add(this.byFullText, full, node);
       this.lowerTexts.set(node.ref, full.toLowerCase());
-      // A frame's document is its own: its text is no text of the frame's.
-      return { longest, full: node.role === "iframe" ? "" : full };
+      return { longest, full };
     };
     for (const root of tree.getRootNodes()) visit(root, null);
   }
 
-  /** Whether the element is on this page. */
-  private shows(node: StructuralNode) {
-    return node.status?.kind !== (this.view === "after" ? "removed" : "added");
-  }
-
-  /** The element as this page has it: a Change Tree keeps how each changed
-   * element stood before. */
-  private value(node: StructuralNode) {
-    return this.view === "before"
-      ? (this.tree.getBeforeNode(node.ref) ?? node)
-      : node;
-  }
-
   own(node: StructuralNode): OwnName | null {
-    return ownName(this.value(node));
+    return ownName(node);
   }
 
   /** The text inside an element: its longest text piece, which is one
@@ -326,7 +307,7 @@ class PageLabels {
     if (node.role === "iframe")
       return [
         {
-          words: own ? words(own) : "iframe",
+          words: words(own!),
           selector: "iframe",
           matches: this.matchesOf(
             "iframe",
@@ -365,10 +346,11 @@ class PageLabels {
 
   /** An element's form by its own role and name, and what it matches as
    * Playwright does: a name exactly, a role alone any element of the role,
-   * and a text of its own exactly. */
+   * and a text of its own exactly. The element is among what it matches,
+   * so each list it is looked up in has it. */
   private ownForm(own: OwnName, frame: StructuralNode | null): Form {
     const { role, name } = own;
-    const ofRole = this.byRole.get(role) ?? [];
+    const ofRole = this.byRole.get(role)!;
     const quoted = JSON.stringify(name);
     const every = () => true;
     if (!own.byText) {
@@ -376,12 +358,7 @@ class PageLabels {
         ? `internal:role=${role}[name="${escaped(name)}"s]`
         : `internal:role=${role}`;
       const candidates = name
-        ? (this.indexed(
-            this.byName,
-            role,
-            ofRole,
-            (one) => this.value(one).name
-          ).get(name) ?? [])
+        ? this.indexed(this.byName, role, ofRole, (one) => one.name).get(name)!
         : ofRole;
       return {
         words: words(own),
@@ -397,17 +374,16 @@ class PageLabels {
         matches: this.matchesOf(
           selector,
           frame,
-          this.byFullText.get(name) ?? [],
+          this.byFullText.get(name)!,
           every,
           true
         ),
       };
     }
     const selector = `internal:role=${role} >> internal:has-text=${quoted}s`;
-    const candidates =
-      this.indexed(this.byRoleText, role, ofRole, (one) =>
-        this.fullTexts.get(one.ref)!
-      ).get(name) ?? [];
+    const candidates = this.indexed(this.byRoleText, role, ofRole, (one) =>
+      this.fullTexts.get(one.ref)!
+    ).get(name)!;
     return {
       words: words(own),
       selector,
@@ -473,9 +449,7 @@ class PageLabels {
     const last = forms.at(-1);
     if (!last) return null;
     // A selector reaches into a frame only by entering it.
-    const ancestors = this.tree.getAncestorsOf(node.ref);
     const frame = this.frameOf(node);
-    const frameAt = frame ? ancestors.indexOf(frame) : -1;
     const framed = (words: string, selector: string): NamedElement => ({
       ref: node.ref,
       label: words,
@@ -486,9 +460,9 @@ class PageLabels {
     const alone = forms.find((form) => form.matches.nodes.length === 1);
     if (alone) return framed(alone.words, alone.selector);
     // Inside the nearest ancestor with a role or a name that fits it alone,
-    // when the element is the only one its selector matches in it.
-    const within = frameAt === -1 ? ancestors : ancestors.slice(0, frameAt);
-    for (const ancestor of within) {
+    // when the element is the only one its selector matches in it. Its
+    // frame holds all it matches, and so ends the search.
+    for (const ancestor of this.tree.getAncestorsOf(node.ref)) {
       if (!this.own(ancestor)) continue;
       const theirs = this.alone(ancestor);
       if (!theirs) continue;
@@ -525,15 +499,13 @@ const words = (own: OwnName) =>
 /** A text piece with its spaces as a page's text reads them. */
 const normal = (piece: string) => piece.replace(/\s+/g, " ").trim();
 
-/** The longest text piece inside an element, all of it, or only directly
- * inside it. */
-function longestIn(node: StructuralNode, deep = true): string {
+/** The longest text piece directly inside an element; the first of the
+ * longest. */
+function longestOwn(node: StructuralNode): string {
   let text = "";
-  for (const child of node.children) {
-    const piece =
-      typeof child === "string" ? normal(child) : deep ? longestIn(child) : "";
-    if (piece.length > text.length) text = piece;
-  }
+  for (const child of node.children)
+    if (typeof child === "string" && normal(child).length > text.length)
+      text = normal(child);
   return text;
 }
 
@@ -541,20 +513,8 @@ function longestIn(node: StructuralNode, deep = true): string {
  * and the name of an element whose name is its text, with spaces as a
  * page's text reads them. */
 function fullText(node: StructuralNode, pieces: readonly string[]): string {
-  if (pieces.length === 0 && node.name && NAMED_BY_CONTENT.has(node.role))
-    return node.name;
-  return normal(pieces.join(" "));
-}
-
-/** The whole text of an element as it stood, all of it. */
-function fullTextOf(node: StructuralNode): string {
-  const pieces = node.children.map((child) =>
-    typeof child === "string" ? normal(child) : fullTextOf(child)
-  );
-  return fullText(
-    node,
-    pieces.filter((piece) => piece)
-  );
+  const text = normal(pieces.join(" "));
+  return !text && NAMED_BY_CONTENT.has(node.role) ? node.name : text;
 }
 
 const quotedWords = (text: string) => `"${escaped(text)}"`;
@@ -568,10 +528,12 @@ function shortened(text: string): string {
   if (text.length <= TEXT_LENGTH) return text;
   const cut = text.slice(0, TEXT_LENGTH + 1);
   const space = cut.lastIndexOf(" ");
-  return `${(space > 0 ? cut.slice(0, space) : cut.slice(0, TEXT_LENGTH)).trimEnd()}…`;
+  // A text as a page reads it starts with no space.
+  return `${space === -1 ? cut.slice(0, TEXT_LENGTH) : cut.slice(0, space)}…`;
 }
 
-function ordinal(place: number): string {
+/** A place in words: 1st, 2nd, 3rd, 4th, 11th, 21st and so on. */
+export function ordinal(place: number): string {
   const tens = place % 100;
   const suffix =
     tens >= 11 && tens <= 13
