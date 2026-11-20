@@ -86,3 +86,14 @@ it("tells pnpm to add to a workspace's root when the project is that root", () =
     })
   ).toContain(" Run `pnpm add -D -w @ayme-dev/ayme@0.1.5` in /project.");
 });
+
+it("adds no -w for another package manager at a pnpm workspace's root", () => {
+  expect(
+    aymeVersionMismatch({
+      entry,
+      project: "0.1.3",
+      mcp: "0.1.5",
+      install: install("npm", true),
+    })
+  ).toContain(" Run `npm install -D @ayme-dev/ayme@0.1.5` in /project.");
+});

@@ -6,7 +6,7 @@ export type ProjectInstall = {
   packageManager: PackageManager;
   /** The folder of the project's `package.json`, where the command runs. */
   folder: string;
-  /** Whether `folder` is a pnpm workspace's root, where pnpm needs `-w`. */
+  /** Whether `folder` is a pnpm workspace's root, where pnpm adds a dependency only with `-w`. */
   workspaceRoot: boolean;
 };
 
@@ -40,6 +40,6 @@ export function aymeVersionMismatch({
     project === undefined
       ? "@ayme-dev/ayme of a version it does not state"
       : `@ayme-dev/ayme ${project}`;
-  const add = `${ADD_DEV_DEPENDENCY[install.packageManager]}${install.workspaceRoot ? " -w" : ""}`;
+  const add = `${ADD_DEV_DEPENDENCY[install.packageManager]}${install.packageManager === "pnpm" && install.workspaceRoot ? " -w" : ""}`;
   return `Building the Page Objects entry ${entry} stopped: this project has ${has}; ayme mcp ${mcp} needs the same version. Run \`${add} @ayme-dev/ayme@${mcp}\` in ${install.folder}.`;
 }

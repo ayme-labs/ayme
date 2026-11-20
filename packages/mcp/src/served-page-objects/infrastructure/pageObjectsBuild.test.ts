@@ -862,11 +862,17 @@ it("invalidates and forgets compiled files on rebuild, retaining the last good b
  * `runtime`. A release from before the compiler entry has no `./compiler`.
  */
 async function projectWithAyme(
-  version: string,
+  version: string | undefined,
   {
     files = [],
     compiler = true,
-  }: { files?: readonly string[]; compiler?: boolean } = {}
+    distManifest,
+  }: {
+    files?: readonly string[];
+    compiler?: boolean;
+    /** A `package.json` in the package's `dist`, such as a bundler writes. */
+    distManifest?: object;
+  } = {}
 ) {
   const project = await realpath(
     await mkdtemp(join(tmpdir(), "ayme-version-"))
@@ -895,6 +901,11 @@ async function projectWithAyme(
 export class PomCompileError extends Error {}
 export const createPomCompiler = () => ({ compile: () => null, invalidate() {} });`
   );
+  if (distManifest !== undefined)
+    await writeFile(
+      join(ayme, "dist", "package.json"),
+      JSON.stringify(distManifest)
+    );
   await writeFile(join(project, "package.json"), "{}");
   for (const file of files) await writeFile(join(project, file), "");
   const entry = join(project, ".ayme", "page-objects.ts");
@@ -944,6 +955,49 @@ it("names the versions, not a missing compiler, for a release from before the co
     );
     await rm(project, { recursive: true, force: true });
   }
+});
+
+/** Why `watchPageObjects` does not start for `project`, with ayme mcp 0.1.5. */
+async function mismatch({
+  project,
+  entry,
+}: Awaited<ReturnType<typeof projectWithAyme>>) {
+  const started = watchPageObjects(entry, () => {}, "0.1.5");
+  try {
+    await started;
+    return undefined;
+  } catch (error) {
+    return (error as Error).message;
+  } finally {
+    await started.then(
+      (build) => build.close(),
+      () => {}
+    );
+    await rm(project, { recursive: true, force: true });
+  }
+}
+
+it("names npm's command when no lockfile is above the project", async () => {
+  const project = await projectWithAyme("0.1.3");
+  expect(await mismatch(project)).toContain(
+    ` Run \`npm install -D @ayme-dev/ayme@0.1.5\` in ${project.project}.`
+  );
+});
+
+it("reads the version from the package's own package.json, not another one inside it", async () => {
+  for (const distManifest of [
+    { name: "bundled", version: "9.9.9" },
+    { name: "@ayme-dev/ayme" },
+  ])
+    expect(
+      await mismatch(await projectWithAyme("0.1.3", { distManifest }))
+    ).toContain("this project has @ayme-dev/ayme 0.1.3;");
+});
+
+it("stops when no package.json states the version of @ayme-dev/ayme", async () => {
+  expect(await mismatch(await projectWithAyme(undefined))).toContain(
+    "this project has @ayme-dev/ayme of a version it does not state;"
+  );
 });
 
 it("builds with the project's @ayme-dev/ayme when it is ayme mcp's version", async () => {

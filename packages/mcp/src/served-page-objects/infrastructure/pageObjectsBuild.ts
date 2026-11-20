@@ -469,8 +469,7 @@ const LOCKFILES: readonly (readonly [string, PackageManager])[] = [
  * Where and how to install a package for the project `folder` is in: the
  * nearest folder above it with a `package.json` (`folder` itself if none),
  * the package manager of the lockfile nearest above that (npm if none), and
- * whether that folder is a pnpm workspace's root, where pnpm adds a
- * dependency only when told so.
+ * whether that folder is a pnpm workspace's root.
  */
 function projectInstall(folder: string): ProjectInstall {
   const project = nearestAbove(folder, (current) =>
@@ -488,9 +487,7 @@ function projectInstall(folder: string): ProjectInstall {
   return {
     packageManager,
     folder: projectFolder,
-    workspaceRoot:
-      packageManager === "pnpm" &&
-      existsSync(join(projectFolder, "pnpm-workspace.yaml")),
+    workspaceRoot: existsSync(join(projectFolder, "pnpm-workspace.yaml")),
   };
 }
 
