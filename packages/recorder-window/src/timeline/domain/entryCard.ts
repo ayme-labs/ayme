@@ -63,7 +63,8 @@ function targetOf(
       ...(hint ? { hint } : {}),
       highlight,
     };
-  if (selector) return { text: "element", hint: hint ?? selector, highlight };
+  // With no words for it, it has no wording of Playwright's either.
+  if (selector) return { text: "element", hint: selector, highlight };
   return targetRef ? { text: `[ref=${targetRef}]`, highlight } : null;
 }
 

@@ -48,4 +48,37 @@ describe("the element a report's input acted on", () => {
       fromSelector: true,
     });
   });
+
+  it("names only the ancestors the picture lists, nearest first", () => {
+    expect(
+      reportTarget(click("e9"), [note("e9", "e9", "e8", "e2", "e1")])
+    ).toEqual({
+      target: {
+        ref: null,
+        tree,
+        ancestors: [pictureRef("e2"), pictureRef("e1")],
+      },
+      fromSelector: true,
+    });
+  });
+
+  it("takes only a note of an event a report of its kind is of: a key's note is no click's", () => {
+    const key: InputNote = { type: "keydown", chain: ["e3"], under: "e2" };
+
+    expect(reportTarget(click("e2"), [key])).toEqual({ fromSelector: true });
+  });
+
+  it("takes no click's note for a report of a kind no note is of", () => {
+    expect(
+      reportTarget({ name: "navigate", ref: "e2", ariaSnapshot: tree }, [
+        note("e2", "e3"),
+      ])
+    ).toEqual({ fromSelector: false });
+  });
+
+  it("keeps the report's own target when the report has no picture", () => {
+    expect(
+      reportTarget({ name: "click", ref: "e2" }, [note("e2", "e2")])
+    ).toEqual({ fromSelector: false });
+  });
 });
