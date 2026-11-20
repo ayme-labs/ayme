@@ -58,6 +58,19 @@ test("passes skills that ship identical copies of the shared references", () => 
   );
 });
 
+test("passes product-surfaces without a copy of the shared references", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "skills/shared/guide.md": "# Guide\n",
+        "skills/product-surfaces/SKILL.md":
+          "---\nname: product-surfaces\n---\n",
+      })
+    ),
+    []
+  );
+});
+
 test("fails a skill whose copy of a shared reference is missing or differs", () => {
   const problems = checkDocs(
     fixture({
