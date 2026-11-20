@@ -3073,6 +3073,101 @@ describe("the lifecycle, for Assert visibility", () => {
     ]);
   });
 
+  // Rule 7: a fill is measured from the page before its first key. Once a
+  // page lets inputs through, a key is not held: typing straight after a
+  // pick can be reported before the assertion's own read is taken.
+  const filled: Happening = {
+    kind: "interactionReported",
+    page: page1,
+    report: {
+      type: "fill",
+      selector: "internal:role=textbox",
+      target: { ref: pictureRef("e2"), tree: `- textbox "Name" [ref=e2]` },
+      values: { text: "a" },
+    },
+  };
+  /** Each Interaction told to the timeline: its type, "before" and "after". */
+  const told = (todo: readonly (readonly ToDo[])[]) =>
+    todo.flat().flatMap((item) =>
+      item.kind === "timeline" && item.add.kind === "interaction"
+        ? [
+            {
+              type: item.add.interaction.report.type,
+              before: item.add.interaction.before,
+              after: item.add.interaction.after,
+            },
+          ]
+        : []
+    );
+  const pickedThenTyped = [
+    assertVisibility,
+    picking(true),
+    picking(false),
+    assertionReported,
+    filled,
+  ];
+
+  it("starts typing reported before an assertion's read is taken from the page's read before it, after Stop and Continue, and the assertion is at that read too (rule 7)", () => {
+    const { todo } = run([
+      ...stopped,
+      resume,
+      reporting,
+      holding,
+      taken(snapshot2),
+      ...pickedThenTyped,
+      taken(snapshot3),
+    ]);
+
+    expect(told(todo)).toEqual([
+      { type: "assertVisible", before: snapshot2, after: snapshot2 },
+      { type: "fill", before: snapshot2, after: null },
+    ]);
+  });
+
+  it("starts typing reported before an assertion's read is taken from the page's read before it, after a click let the page through (rule 7)", () => {
+    const { todo } = run([
+      ...recording,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      settled(input1),
+      taken(snapshot2),
+      reported,
+      ...pickedThenTyped,
+      taken(snapshot3),
+    ]);
+
+    expect(told(todo)).toEqual([
+      { type: "click", before: snapshot1, after: snapshot2 },
+      { type: "assertVisible", before: snapshot2, after: snapshot2 },
+      { type: "fill", before: snapshot2, after: null },
+    ]);
+  });
+
+  it("keeps an assertion's own read when it is in before typing is reported, and the typing starts from it", () => {
+    const { todo } = run([
+      ...recording,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      settled(input1),
+      taken(snapshot2),
+      reported,
+      assertVisibility,
+      picking(true),
+      picking(false),
+      assertionReported,
+      taken(snapshot3),
+      filled,
+    ]);
+
+    expect(told(todo)).toEqual([
+      { type: "click", before: snapshot1, after: snapshot2 },
+      { type: "assertVisible", before: snapshot3, after: snapshot3 },
+      { type: "fill", before: snapshot3, after: null },
+    ]);
+  });
+
   it("offers Assert visibility while recording, and Leave Assert visibility while picking or waiting to", () => {
     const after = (happened: readonly Happening[]) => {
       let state = initialState;
@@ -3525,7 +3620,9 @@ describe("the lifecycle, for what the review against the spec found", () => {
       state: { phase: "recording" },
     },
     {
-      name: "an input that is not held back, reported while an assertion's snapshot is being taken, starts at that snapshot (rule 12)",
+      // The assertion's read is taken after the input: starting there would
+      // leave out what the input did itself (rule 7).
+      name: "an input that is not held back, reported while an assertion's snapshot is being taken, starts at the page's read before it, where the assertion is written too, in time order (rules 7 and 12)",
       happened: [
         opened,
         ...started,
@@ -3542,9 +3639,7 @@ describe("the lifecycle, for what the review against the spec found", () => {
       ],
       todo: [
         [takeSnapshot(snapshot3)],
-        [],
         [
-          keep(snapshot3),
           waitForSettled(reported2),
           {
             kind: "timeline",
@@ -3553,20 +3648,22 @@ describe("the lifecycle, for what the review against the spec found", () => {
               interaction: {
                 page: page1,
                 report: visible,
-                before: snapshot3,
-                after: snapshot3,
+                before: snapshot2,
+                after: snapshot2,
                 at: 10,
               },
             },
           },
         ],
+        // The read taken for the assertion belongs to nothing by now.
+        [],
         [takeSnapshot(snapshot4)],
         [keep(snapshot4)],
         [...wrapUp, reply("applied")],
         [takeSnapshot(snapshot5)],
         [
           keep(snapshot5),
-          fromReport(choose("eggs"), snapshot3, snapshot4),
+          fromReport(choose("eggs"), snapshot2, snapshot4),
           stopTrace,
         ],
       ],

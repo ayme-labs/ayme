@@ -1702,9 +1702,35 @@ function startReported(draft: Draft, index: number): boolean {
     .filter((before) => before.page === input.page);
   // The inputs of its page ahead of it that have no "after" yet. A key the
   // page held gives none: it is the typing's.
-  const ahead = earlier.filter(
+  let ahead = earlier.filter(
     (before) => before.stage !== "settled" && before.held.kind !== "typing"
   );
+  // An assertion whose one read is still being taken when this is reported
+  // would have it start after its first key: the page let it through. The
+  // assertion is written at the page as it was last read, and this starts
+  // there too.
+  const latest = gateOf(draft, input.page)?.latest;
+  const reading = ahead.filter(
+    (before) =>
+      before.held.kind === "asserted" && before.stage === "takingBefore"
+  );
+  if (
+    latest &&
+    reading.length > 0 &&
+    ahead.every(
+      (before) => before.held.kind === "reported" || reading.includes(before)
+    )
+  ) {
+    for (const assertion of reading)
+      change(draft, assertion.id, {
+        stage: "settled",
+        before: latest.id,
+        after: latest.id,
+        passedOnAt: latest.at,
+        asked: null,
+      });
+    ahead = ahead.filter((before) => !reading.includes(before));
+  }
   // It starts from the "after" of an input the pages held, and from an
   // assertion's one snapshot: it waits for that. A held input that is
   // still on its way hands it its snapshot when it arrives.
@@ -1719,7 +1745,6 @@ function startReported(draft: Draft, index: number): boolean {
     shareWithOpen(draft, open, input);
     return false;
   }
-  const latest = gateOf(draft, input.page)?.latest;
   if (!latest) {
     change(draft, input.id, {
       // Stryker disable next-line StringLiteral: no rule reads this stage of an input no page held; it is only no longer "waiting", as with any other name
