@@ -11,7 +11,7 @@ Write each rule once, next to the config or code that enforces it. Other docs, t
 - `packages/mcp/`: read [its AGENTS.md](packages/mcp/AGENTS.md) before adding or moving a source file.
 - `packages/recorder/`: read [its AGENTS.md](packages/recorder/AGENTS.md) before adding or moving a source file.
 - `packages/recorder-window/`: read [its AGENTS.md](packages/recorder-window/AGENTS.md) before adding or moving a source file.
-- `skills/`: skills shipped to consumers for integrating Ayme into their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
+- `skills/`: skills shipped to consumers for use in their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
 - `apps/example-vue/`: the hosted playground where visitors try Ayme before integrating it. A visitor installs only Ayme's MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
 - `docs/testing.md`: the test lanes and where test-only code lives. Read it before adding tests or test helpers, and read its [Local runs and CI](docs/testing.md#local-runs-and-ci) section before running anything beyond one package's tests.
 - Before a pull request goes ready, follow the [change-analysis guidance](docs/testing.md#change-analysis).

@@ -10,7 +10,9 @@ writes what it saw to a Recording Package: the page structure at each visit,
 what changed and every interaction.
 
 Read `.ayme/CONVENTIONS.md` first, when it exists: what the user settled for
-running Ayme in this repository. It overrides this skill's defaults.
+how ayme and its skills work in this repository. Read its opening part, which
+holds for every skill, and its `Recorder` section, and follow a line that
+points to another file. It overrides this skill's defaults.
 
 1. **Record.** In the project's folder, run
    `npx @ayme-dev/cli@latest codegen <url>`, with the URL where the user wants

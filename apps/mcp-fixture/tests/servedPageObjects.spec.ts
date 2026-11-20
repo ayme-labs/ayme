@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { cp, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { createServer, type AddressInfo } from "node:net";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -362,6 +363,50 @@ test("while the entry has never built, ayme_connect and the no-page answers say 
     await expect
       .poll(() => agent.pageToolNames(), { message: agent.log })
       .toContain(PLAIN_PAGE_TOOL);
+  } finally {
+    await agent.close();
+  }
+});
+
+// Playwright reads a test's fixtures from this pattern.
+// eslint-disable-next-line no-empty-pattern
+test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets told once, in the answer and the log, which version to install", async ({}, testInfo) => {
+  const project = testInfo.outputPath("project");
+  await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
+  // A release of @ayme-dev/ayme from before its compiler entry, installed
+  // in the project, which resolves before the fixture's own. The
+  // repository's pnpm lockfile is the one nearest above the project.
+  const older = join(project, "node_modules", "@ayme-dev", "ayme");
+  await mkdir(older, { recursive: true });
+  await writeFile(
+    join(older, "package.json"),
+    JSON.stringify({
+      name: "@ayme-dev/ayme",
+      version: "0.0.1",
+      type: "module",
+      exports: { ".": "./index.js" },
+    })
+  );
+  await writeFile(join(older, "index.js"), "");
+  await writeFile(join(project, "package.json"), "{}");
+  const { version } = createRequire(import.meta.url)(
+    "@ayme-dev/mcp/package.json"
+  ) as { version: string };
+  const mismatch = `this project has @ayme-dev/ayme 0.0.1; ayme mcp ${version} needs the same version. Run \`pnpm add -D @ayme-dev/ayme@${version}\` in ${project}.`;
+  const agent = await startAgent(
+    { cwd: project },
+    "--port",
+    String(await freePort())
+  );
+  try {
+    const { text, isError } = await agent.call("ayme_list_tools");
+    expect(isError).toBe(true);
+    expect(text.split(mismatch)).toHaveLength(2);
+    expect(text).toContain(
+      "The server is not watching for changes: the build could not start"
+    );
+    await expect.poll(() => agent.log).toContain(mismatch);
+    expect(agent.log.split(mismatch)).toHaveLength(2);
   } finally {
     await agent.close();
   }

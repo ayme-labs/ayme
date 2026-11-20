@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -6,6 +6,11 @@ import { pathToFileURL } from "node:url";
 
 import * as esbuild from "esbuild";
 
+import {
+  aymeVersionMismatch,
+  type PackageManager,
+  type ProjectInstall,
+} from "../domain/aymeVersion";
 import { PageObjectsBuildError, buildErrorLine } from "../domain/buildFailure";
 import { ENTRY_MODULE, RUNTIME_MODULE } from "../domain/servedPageObjects";
 
@@ -78,7 +83,9 @@ export type PageObjectsBuild = {
  * in chunks of its own, which a page fetches on first use. Every import,
  * the runtime's and the compiler's included, resolves from the entry's
  * folder, as in a build of the project itself, so the page runs, and its
- * Page Objects are compiled by, the project's own `@ayme-dev/ayme`.
+ * Page Objects are compiled by, the project's own `@ayme-dev/ayme`. It
+ * starts only when that is version `version`, `ayme mcp`'s own: it rejects
+ * with why otherwise, before it loads the compiler.
  *
  * It builds again whenever a file the build read changes, in watch mode,
  * and logs each outcome. A build that fails is logged with each error's
@@ -86,9 +93,19 @@ export type PageObjectsBuild = {
  */
 export async function watchPageObjects(
   entry: string,
-  log: (message: string) => void
+  log: (message: string) => void,
+  version: string
 ): Promise<PageObjectsBuild> {
   const folder = dirname(entry);
+  // Read through the main entry, which every release exports, so that a
+  // release without the compiler entry gets the same answer.
+  const mismatch = aymeVersionMismatch({
+    entry,
+    project: packageVersion(resolveFrom(folder, RUNTIME, entry), RUNTIME),
+    mcp: version,
+    install: projectInstall(folder),
+  });
+  if (mismatch !== undefined) throw new Error(mismatch);
   const { createPomCompiler, PomCompileError } =
     await importFile<PomCompilerEntry>(resolveFrom(folder, COMPILER, entry));
   // Nothing is written there: the outputs stay in memory.
@@ -418,6 +435,70 @@ function resolveFrom(folder: string, specifier: string, entry: string) {
     throw new Error(
       `Building the Page Objects entry ${entry} needs ${specifier}, which does not resolve from ${folder}.`
     );
+  }
+}
+
+/**
+ * The version of the package `name` that `file` belongs to, read from the
+ * nearest `package.json` above it with that name, or `undefined` if none.
+ */
+function packageVersion(file: string, name: string): string | undefined {
+  for (let folder = dirname(file); ; folder = dirname(folder)) {
+    try {
+      const manifest = JSON.parse(
+        readFileSync(join(folder, "package.json"), "utf8")
+      ) as { name?: unknown; version?: unknown };
+      if (manifest.name === name && typeof manifest.version === "string")
+        return manifest.version;
+    } catch {
+      // No package.json here, or not one that parses: look further up.
+    }
+    if (dirname(folder) === folder) return undefined;
+  }
+}
+
+const LOCKFILES: readonly (readonly [string, PackageManager])[] = [
+  ["pnpm-lock.yaml", "pnpm"],
+  ["yarn.lock", "yarn"],
+  ["bun.lock", "bun"],
+  ["bun.lockb", "bun"],
+  ["package-lock.json", "npm"],
+];
+
+/**
+ * Where and how to install a package for the project `folder` is in: the
+ * nearest folder above it with a `package.json` (`folder` itself if none),
+ * the package manager of the lockfile nearest above that (npm if none), and
+ * whether that folder is a pnpm workspace's root.
+ */
+function projectInstall(folder: string): ProjectInstall {
+  const project = nearestAbove(folder, (current) =>
+    existsSync(join(current, "package.json"))
+  );
+  const projectFolder = project ?? folder;
+  const lockfileIn = (current: string) =>
+    LOCKFILES.find(([lockfile]) => existsSync(join(current, lockfile)))?.[1];
+  const lockfileFolder = nearestAbove(
+    projectFolder,
+    (current) => lockfileIn(current) !== undefined
+  );
+  const packageManager =
+    lockfileFolder === undefined ? "npm" : lockfileIn(lockfileFolder)!;
+  return {
+    packageManager,
+    folder: projectFolder,
+    workspaceRoot: existsSync(join(projectFolder, "pnpm-workspace.yaml")),
+  };
+}
+
+/** The nearest folder from `folder` up for which `found` holds, if any. */
+function nearestAbove(
+  folder: string,
+  found: (folder: string) => boolean
+): string | undefined {
+  for (let current = folder; ; current = dirname(current)) {
+    if (found(current)) return current;
+    if (dirname(current) === current) return undefined;
   }
 }
 

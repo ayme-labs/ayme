@@ -17,7 +17,8 @@ final "Confirm" can create a real contract. Only the user approves one.
    reads can be POSTs, and GETs can change state. The package can end before
    the page shows a step's result: read that result, and whether each
    permanent change succeeded, from the responses. Done when every call the
-   flow makes is classified.
+   flow makes is classified, and you have kept the permanent changes, each
+   with its method and URL, for the audit in step 5.
 2. **Align** with the user before you write code. Take what
    `.ayme/CONVENTIONS.md` already settles, and settle the rest:
    - the steps of the flow;
@@ -33,12 +34,16 @@ final "Confirm" can create a real contract. Only the user approves one.
      state, environment variables or the team's secret store. They never go
      into code, a parameter file or `.ayme/CONVENTIONS.md`. Tell the user
      that the recording holds any password it captured;
+   - the replay test logs the values of request fields that differ from the
+     recording: ask whether any fields should be masked in that log, and if so
+     mask them in the project's copy of `replay.ts`;
    - where the parameter files, run traces and login state go: they hold
      real data.
 
    Done when the user has confirmed each, and you have written what they
-   settled for every flow in the repository to `.ayme/CONVENTIONS.md`,
-   creating it when it is missing: never real data. What holds for one site
+   settled for every flow in the repository to the `Recorder` section of
+   `.ayme/CONVENTIONS.md`, creating the file or the section when it is
+   missing: never real data. What holds for one site
    or one flow goes next to its code: in the code where code can say it,
    otherwise in a notes file beside it. The conventions file says where such
    notes live.
@@ -58,11 +63,13 @@ final "Confirm" can create a real contract. Only the user approves one.
    flakes without it, and remove it if both pass. Then run it once
    with `--trace on`, open that run's trace with
    `npx playwright trace open <trace.zip>`, and list its calls with
-   `npx playwright trace requests`: every request other than GET or HEAD
-   must show `fulfilled` or `aborted` in the route column. One that shows
+   `npx playwright trace requests`: every call step 1 classified as a
+   permanent change, whatever its method, must show `fulfilled` or `aborted`
+   in the route column; the method alone does not tell, since a GET can
+   change state. One that shows
    `continued`, or nothing, reached the live site: stop and tell the user.
    Done when the test passes three runs in a row with every wait proven and
-   the trace shows no such request.
+   the trace shows no such call.
 6. **Rehearse live** with fresh real data the user gives you for one run,
    written where step 2 settled. Run the entry script headed, with the user
    watching. The user answers each confirm, or with the
@@ -241,8 +248,9 @@ export const highlightAndWait =
 
 ## The replay test
 
-Copy [`assets/replay.ts`](../assets/replay.ts) next to the replay test. Its
-header says what loads live and what the recording answers. Write the
+Copy [`assets/replay.ts`](../assets/replay.ts) next to the replay test, unless
+the project already has a copy: keep that one, with its `match()` and any
+masking. Its header says what loads live and what the recording answers. Write the
 recorded parameter values, and the summary the recording's page showed before
 each irreversible step, read from the snapshot of the interaction before
 it, to `.ayme/params/<flow>.recorded.json` as `{ params, summaries }`, with
