@@ -84,6 +84,7 @@ import {
   type Playwright,
 } from "../projectPlaywright";
 import { snapshotPositions } from "../traceTool";
+import { namedIn, reportTarget } from "../reportTarget";
 
 /** Chromium launched by the project's own Playwright on a URL. */
 type Launch = {
@@ -423,44 +424,21 @@ async function openPage(
    * A report, with the element the input acted on, as Playwright's selector
    * names it: a link or a button rather than the element inside it that
    * was under the pointer, whose ref is the one Playwright's report gives.
-   * The page's note of the input says which element that is: the note whose
-   * element under the pointer is the one Playwright's ref names, so that it
-   * is this input's own. Without that note, a mouse input is read through
-   * the selector (`fromSelector`, for `withAncestors`), with Playwright's
-   * ref standing if it cannot be; a field and a focused element are what
-   * typing and keys act on, so their ref is Playwright's. A report whose
-   * picture does not list the element under the pointer is read through the
-   * selector too, with the page's latest note standing.
+   * The page's note of the input says which element that is
+   * (`reportTarget`).
    */
   const reportFrom = (
     page: Page,
     action: PlaywrightAction
   ): { report: InteractionReport; fromSelector: boolean } => {
     const report = withLocator(reportOf(action), page);
-    const tree = action.ariaSnapshot;
-    if (!tree) return { report, fromSelector: false };
-    const types = CHAIN_TYPES[action.name] ?? [];
-    const told = (chains.get(page) ?? []).filter((chain) =>
-      types.includes(chain.type)
+    const { target, fromSelector } = reportTarget(
+      action,
+      chains.get(page) ?? []
     );
-    if (action.ref && listedIn(tree, action.ref)) {
-      const own = told.findLast((chain) => chain.under === action.ref);
-      if (own)
-        return {
-          report: { ...report, target: namedIn(tree, own.chain) },
-          fromSelector: false,
-        };
-      return { report, fromSelector: MOUSE_REPORTS.has(action.name) };
-    }
-    const latest = told.at(-1);
     return {
-      report: {
-        ...report,
-        target: latest
-          ? namedIn(tree, latest.chain)
-          : { ref: null, tree, ancestors: [] },
-      },
-      fromSelector: true,
+      report: target === undefined ? report : { ...report, target },
+      fromSelector,
     };
   };
   /**
@@ -1115,44 +1093,6 @@ function firstFileOf(report: InteractionReport): string | undefined {
     ? text.slice(FAKE_PATH.length)
     : undefined;
 }
-
-/** Whether a report's picture lists a ref. */
-const listedIn = (tree: string, ref: string | null): ref is string =>
-  ref !== null && tree.includes(`[ref=${ref}]`);
-
-/**
- * The target of a report, from the refs of the element the input acted on
- * and its ancestors, nearest first: the element itself when the picture
- * lists it, and otherwise the ancestors the picture lists. A ref the
- * picture does not list, as one an element kept from another read, says
- * nothing of it.
- */
-function namedIn(
-  tree: string,
-  refs: readonly (string | null)[]
-): NonNullable<InteractionReport["target"]> {
-  const [acted = null, ...above] = refs;
-  if (listedIn(tree, acted)) return { ref: pictureRef(acted), tree };
-  return {
-    ref: null,
-    tree,
-    ancestors: above.filter((ref) => listedIn(tree, ref)).map(pictureRef),
-  };
-}
-
-/** The reports of an input of the mouse: the element under the pointer can
- * be inside the one it acted on. */
-const MOUSE_REPORTS = new Set(["click", "check", "uncheck"]);
-
-/** The events whose target a report of each kind names. */
-const CHAIN_TYPES: Readonly<Record<string, readonly string[]>> = {
-  click: ["click", "contextmenu", "auxclick"],
-  check: ["click", "keydown"],
-  uncheck: ["click", "keydown"],
-  press: ["keydown"],
-  fill: ["input"],
-  select: ["input"],
-};
 
 /**
  * A point of a frame's viewport, as a point of the page's: moved by the
