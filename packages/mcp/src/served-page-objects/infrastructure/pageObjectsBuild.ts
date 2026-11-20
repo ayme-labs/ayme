@@ -9,6 +9,7 @@ import * as esbuild from "esbuild";
 import {
   aymeVersionMismatch,
   type PackageManager,
+  type ProjectInstall,
 } from "../domain/aymeVersion";
 import { PageObjectsBuildError, buildErrorLine } from "../domain/buildFailure";
 import { ENTRY_MODULE, RUNTIME_MODULE } from "../domain/servedPageObjects";
@@ -96,16 +97,17 @@ export async function watchPageObjects(
   version: string
 ): Promise<PageObjectsBuild> {
   const folder = dirname(entry);
-  const compiler = resolveFrom(folder, COMPILER, entry);
+  // Read through the main entry, which every release exports, so that a
+  // release without the compiler entry gets the same answer.
   const mismatch = aymeVersionMismatch({
     entry,
-    project: packageVersion(compiler, RUNTIME),
+    project: packageVersion(resolveFrom(folder, RUNTIME, entry), RUNTIME),
     mcp: version,
-    packageManager: packageManager(folder),
+    install: projectInstall(folder),
   });
   if (mismatch !== undefined) throw new Error(mismatch);
   const { createPomCompiler, PomCompileError } =
-    await importFile<PomCompilerEntry>(compiler);
+    await importFile<PomCompilerEntry>(resolveFrom(folder, COMPILER, entry));
   // Nothing is written there: the outputs stay in memory.
   const outdir = join(folder, "ayme-served");
   const outcomes = buildOutcomes({ entry, folder, outdir, log });
@@ -464,14 +466,42 @@ const LOCKFILES: readonly (readonly [string, PackageManager])[] = [
 ];
 
 /**
- * The package manager of the project `folder` is in, by the lockfile
- * nearest above it; npm when there is none.
+ * Where and how to install a package for the project `folder` is in: the
+ * nearest folder above it with a `package.json` (`folder` itself if none),
+ * the package manager of the lockfile nearest above that (npm if none), and
+ * whether that folder is a pnpm workspace's root, where pnpm adds a
+ * dependency only when told so.
  */
-function packageManager(folder: string): PackageManager {
+function projectInstall(folder: string): ProjectInstall {
+  const project = nearestAbove(folder, (current) =>
+    existsSync(join(current, "package.json"))
+  );
+  const projectFolder = project ?? folder;
+  const lockfileIn = (current: string) =>
+    LOCKFILES.find(([lockfile]) => existsSync(join(current, lockfile)))?.[1];
+  const lockfileFolder = nearestAbove(
+    projectFolder,
+    (current) => lockfileIn(current) !== undefined
+  );
+  const packageManager =
+    lockfileFolder === undefined ? "npm" : lockfileIn(lockfileFolder)!;
+  return {
+    packageManager,
+    folder: projectFolder,
+    workspaceRoot:
+      packageManager === "pnpm" &&
+      existsSync(join(projectFolder, "pnpm-workspace.yaml")),
+  };
+}
+
+/** The nearest folder from `folder` up for which `found` holds, if any. */
+function nearestAbove(
+  folder: string,
+  found: (folder: string) => boolean
+): string | undefined {
   for (let current = folder; ; current = dirname(current)) {
-    for (const [lockfile, manager] of LOCKFILES)
-      if (existsSync(join(current, lockfile))) return manager;
-    if (dirname(current) === current) return "npm";
+    if (found(current)) return current;
+    if (dirname(current) === current) return undefined;
   }
 }
 

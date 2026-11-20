@@ -856,34 +856,47 @@ it("invalidates and forgets compiled files on rebuild, retaining the last good b
 });
 
 /**
- * A project folder with its Page Objects entry and an installed
- * `@ayme-dev/ayme` of `version`, whose compiler compiles nothing and records
- * that it loaded, and whose runtime exports `runtime`.
+ * A project folder, with a `package.json` and `files`, its Page Objects
+ * entry, and an installed `@ayme-dev/ayme` of `version`, whose compiler
+ * compiles nothing and records that it loaded, and whose runtime exports
+ * `runtime`. A release from before the compiler entry has no `./compiler`.
  */
-async function projectWithAyme(version: string, lockfile?: string) {
+async function projectWithAyme(
+  version: string,
+  {
+    files = [],
+    compiler = true,
+  }: { files?: readonly string[]; compiler?: boolean } = {}
+) {
   const project = await realpath(
     await mkdtemp(join(tmpdir(), "ayme-version-"))
   );
   const ayme = join(project, "node_modules", "@ayme-dev", "ayme");
-  await mkdir(ayme, { recursive: true });
+  await mkdir(join(ayme, "dist"), { recursive: true });
   await writeFile(
     join(ayme, "package.json"),
     JSON.stringify({
       name: "@ayme-dev/ayme",
       version,
       type: "module",
-      exports: { ".": "./index.js", "./compiler": "./dist/compiler.js" },
+      exports: {
+        ".": "./dist/index.js",
+        ...(compiler ? { "./compiler": "./dist/compiler.js" } : {}),
+      },
     })
   );
-  await writeFile(join(ayme, "index.js"), 'export const runtime = "ayme";');
-  await mkdir(join(ayme, "dist"));
+  await writeFile(
+    join(ayme, "dist", "index.js"),
+    'export const runtime = "ayme";'
+  );
   await writeFile(
     join(ayme, "dist", "compiler.js"),
     `globalThis.aymeCompilerLoaded = true;
 export class PomCompileError extends Error {}
 export const createPomCompiler = () => ({ compile: () => null, invalidate() {} });`
   );
-  if (lockfile !== undefined) await writeFile(join(project, lockfile), "");
+  await writeFile(join(project, "package.json"), "{}");
+  for (const file of files) await writeFile(join(project, file), "");
   const entry = join(project, ".ayme", "page-objects.ts");
   await mkdir(dirname(entry));
   await writeFile(entry, "export default [];");
@@ -895,14 +908,40 @@ declare global {
 }
 
 it("stops before it loads the compiler when the project's @ayme-dev/ayme is another version, naming both and the install command", async () => {
-  const { project, entry } = await projectWithAyme("0.1.3", "pnpm-lock.yaml");
+  const { project, entry } = await projectWithAyme("0.1.3", {
+    files: ["pnpm-lock.yaml"],
+  });
   globalThis.aymeCompilerLoaded = undefined;
+  const started = watchPageObjects(entry, () => {}, "0.1.5");
   try {
-    await expect(watchPageObjects(entry, () => {}, "0.1.5")).rejects.toThrow(
-      `Building the Page Objects entry ${entry} stopped: this project has @ayme-dev/ayme 0.1.3; ayme mcp 0.1.5 needs the same version. Run \`pnpm add -D @ayme-dev/ayme@0.1.5\`.`
+    await expect(started).rejects.toThrow(
+      `Building the Page Objects entry ${entry} stopped: this project has @ayme-dev/ayme 0.1.3; ayme mcp 0.1.5 needs the same version. Run \`pnpm add -D @ayme-dev/ayme@0.1.5\` in ${project}.`
     );
     expect(globalThis.aymeCompilerLoaded).toBeUndefined();
   } finally {
+    await started.then(
+      (build) => build.close(),
+      () => {}
+    );
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+it("names the versions, not a missing compiler, for a release from before the compiler entry, at a pnpm workspace's root", async () => {
+  const { project, entry } = await projectWithAyme("0.1.3", {
+    files: ["pnpm-lock.yaml", "pnpm-workspace.yaml"],
+    compiler: false,
+  });
+  const started = watchPageObjects(entry, () => {}, "0.1.5");
+  try {
+    await expect(started).rejects.toThrow(
+      `this project has @ayme-dev/ayme 0.1.3; ayme mcp 0.1.5 needs the same version. Run \`pnpm add -D -w @ayme-dev/ayme@0.1.5\` in ${project}.`
+    );
+  } finally {
+    await started.then(
+      (build) => build.close(),
+      () => {}
+    );
     await rm(project, { recursive: true, force: true });
   }
 });

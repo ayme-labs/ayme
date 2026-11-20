@@ -373,9 +373,9 @@ test("while the entry has never built, ayme_connect and the no-page answers say 
 test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets told once, in the answer and the log, which version to install", async ({}, testInfo) => {
   const project = testInfo.outputPath("project");
   await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
-  // An older @ayme-dev/ayme installed in the project, which its compiler
-  // resolves to before the fixture's own. The repository's pnpm lockfile is
-  // the one nearest above the project.
+  // A release of @ayme-dev/ayme from before its compiler entry, installed
+  // in the project, which resolves before the fixture's own. The
+  // repository's pnpm lockfile is the one nearest above the project.
   const older = join(project, "node_modules", "@ayme-dev", "ayme");
   await mkdir(older, { recursive: true });
   await writeFile(
@@ -384,14 +384,15 @@ test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets tol
       name: "@ayme-dev/ayme",
       version: "0.0.1",
       type: "module",
-      exports: { "./compiler": "./compiler.js" },
+      exports: { ".": "./index.js" },
     })
   );
-  await writeFile(join(older, "compiler.js"), "");
+  await writeFile(join(older, "index.js"), "");
+  await writeFile(join(project, "package.json"), "{}");
   const { version } = createRequire(import.meta.url)(
     "@ayme-dev/mcp/package.json"
   ) as { version: string };
-  const mismatch = `this project has @ayme-dev/ayme 0.0.1; ayme mcp ${version} needs the same version. Run \`pnpm add -D @ayme-dev/ayme@${version}\`.`;
+  const mismatch = `this project has @ayme-dev/ayme 0.0.1; ayme mcp ${version} needs the same version. Run \`pnpm add -D @ayme-dev/ayme@${version}\` in ${project}.`;
   const agent = await startAgent(
     { cwd: project },
     "--port",

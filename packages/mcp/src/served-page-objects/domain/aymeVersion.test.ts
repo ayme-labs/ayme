@@ -4,13 +4,18 @@ import { aymeVersionMismatch } from "./aymeVersion";
 
 const entry = "/project/.ayme/page-objects.ts";
 
+const install = (
+  packageManager: "npm" | "pnpm" | "yarn" | "bun",
+  workspaceRoot = false
+) => ({ packageManager, folder: "/project", workspaceRoot });
+
 it("has nothing to say when the project's @ayme-dev/ayme is ayme mcp's version", () => {
   expect(
     aymeVersionMismatch({
       entry,
       project: "0.1.5",
       mcp: "0.1.5",
-      packageManager: "pnpm",
+      install: install("pnpm"),
     })
   ).toBeUndefined();
 });
@@ -21,10 +26,10 @@ it("names both versions and the command that installs ayme mcp's", () => {
       entry,
       project: "0.1.3",
       mcp: "0.1.5",
-      packageManager: "pnpm",
+      install: install("pnpm"),
     })
   ).toBe(
-    `Building the Page Objects entry ${entry} stopped: this project has @ayme-dev/ayme 0.1.3; ayme mcp 0.1.5 needs the same version. Run \`pnpm add -D @ayme-dev/ayme@0.1.5\`.`
+    `Building the Page Objects entry ${entry} stopped: this project has @ayme-dev/ayme 0.1.3; ayme mcp 0.1.5 needs the same version. Run \`pnpm add -D @ayme-dev/ayme@0.1.5\` in /project.`
   );
 });
 
@@ -34,7 +39,7 @@ it("pairs only the exact version, a prerelease of it included", () => {
       entry,
       project: "0.1.5-beta.1",
       mcp: "0.1.5",
-      packageManager: "npm",
+      install: install("npm"),
     })
   ).toContain("this project has @ayme-dev/ayme 0.1.5-beta.1;");
 });
@@ -45,7 +50,7 @@ it("stops when the project's version could not be read", () => {
       entry,
       project: undefined,
       mcp: "0.1.5",
-      packageManager: "npm",
+      install: install("npm"),
     })
   ).toContain(
     "this project has @ayme-dev/ayme of a version it does not state; ayme mcp 0.1.5 needs the same version."
@@ -64,7 +69,20 @@ for (const [packageManager, command] of [
         entry,
         project: "0.1.3",
         mcp: "0.1.5",
-        packageManager,
+        install: install(packageManager),
       })
-    ).toMatch(new RegExp(` Run \`${command} @ayme-dev/ayme@0\\.1\\.5\`\\.$`));
+    ).toMatch(
+      new RegExp(` Run \`${command} @ayme-dev/ayme@0\\.1\\.5\` in /project\\.$`)
+    );
   });
+
+it("tells pnpm to add to a workspace's root when the project is that root", () => {
+  expect(
+    aymeVersionMismatch({
+      entry,
+      project: "0.1.3",
+      mcp: "0.1.5",
+      install: install("pnpm", true),
+    })
+  ).toContain(" Run `pnpm add -D -w @ayme-dev/ayme@0.1.5` in /project.");
+});
