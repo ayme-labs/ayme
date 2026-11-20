@@ -93,6 +93,13 @@ export type RecordedInteraction = {
    * stood at the moment of the input.
    */
   readonly beforeFromReport?: boolean;
+  /**
+   * The read its target is found in, when that is not its "before": an
+   * assertion placed at the page's read before typing that followed it,
+   * whose own read came after the typing began. The element it picked can
+   * be one only its own read has.
+   */
+  readonly targetRead?: SnapshotId;
 };
 
 /** One thing added to the timeline, in the order it happened. */

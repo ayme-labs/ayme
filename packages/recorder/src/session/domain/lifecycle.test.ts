@@ -3122,6 +3122,9 @@ describe("the lifecycle, for Assert visibility", () => {
               type: item.add.interaction.report.type,
               before: item.add.interaction.before,
               after: item.add.interaction.after,
+              ...(item.add.interaction.targetRead
+                ? { targetRead: item.add.interaction.targetRead }
+                : {}),
             },
           ]
         : []
@@ -3134,7 +3137,7 @@ describe("the lifecycle, for Assert visibility", () => {
     filled,
   ];
 
-  it("starts typing reported before an assertion's read is taken from the page's read before it, after Stop and Continue, and the assertion is at that read too (rule 7)", () => {
+  it("starts typing reported before an assertion's read is taken from the page's read before it, after Stop and Continue; the assertion is placed there and finds its element in its own read (rule 7)", () => {
     const { todo } = run([
       ...stopped,
       resume,
@@ -3146,12 +3149,17 @@ describe("the lifecycle, for Assert visibility", () => {
     ]);
 
     expect(told(todo)).toEqual([
-      { type: "assertVisible", before: snapshot2, after: snapshot2 },
+      {
+        type: "assertVisible",
+        before: snapshot2,
+        after: snapshot2,
+        targetRead: snapshot3,
+      },
       { type: "fill", before: snapshot2, after: null },
     ]);
   });
 
-  it("starts typing reported before an assertion's read is taken from the page's read before it, after a click let the page through (rule 7)", () => {
+  it("starts typing reported before an assertion's read is taken from the page's read before it, after a click let the page through; the assertion finds its element in its own read (rule 7)", () => {
     const { todo } = run([
       ...recording,
       clickHeld(input1),
@@ -3166,7 +3174,12 @@ describe("the lifecycle, for Assert visibility", () => {
 
     expect(told(todo)).toEqual([
       { type: "click", before: snapshot1, after: snapshot2 },
-      { type: "assertVisible", before: snapshot2, after: snapshot2 },
+      {
+        type: "assertVisible",
+        before: snapshot2,
+        after: snapshot2,
+        targetRead: snapshot3,
+      },
       { type: "fill", before: snapshot2, after: null },
     ]);
   });
@@ -3666,7 +3679,12 @@ describe("the lifecycle, for what the review against the spec found", () => {
       ],
       todo: [
         [takeSnapshot(snapshot3)],
+        // The choice starts at the read before it; its wait for a Settled
+        // Page comes once nothing ahead of it is under way.
+        [],
+        // The read taken for the assertion is where it finds its element.
         [
+          keep(snapshot3),
           waitForSettled(reported2),
           {
             kind: "timeline",
@@ -3678,12 +3696,11 @@ describe("the lifecycle, for what the review against the spec found", () => {
                 before: snapshot2,
                 after: snapshot2,
                 at: 10,
+                targetRead: snapshot3,
               },
             },
           },
         ],
-        // The read taken for the assertion belongs to nothing by now.
-        [],
         [takeSnapshot(snapshot4)],
         [keep(snapshot4)],
         [...wrapUp, reply("applied")],

@@ -381,6 +381,9 @@ type Input = {
   readonly after: SnapshotId | null;
   readonly passedOnAt: number | null;
   readonly report: InteractionReport | null;
+  /** For an assertion placed at an earlier read: the read its element is
+   * found in (`targetRead`). */
+  readonly targetRead?: SnapshotId;
   /** An input known from its report whose page could not be read when it
    * was reported, and had no snapshot yet: its "after" is its "before" too,
    * and Playwright's picture of the page is not set against it. */
@@ -1447,14 +1450,22 @@ function giveSnapshot(draft: Draft, owner: Input, snapshot: PageSnapshot) {
         ...startAt(owner, snapshot.id, snapshot.at),
       });
   } else if (owner.held.kind === "asserted") {
-    // One snapshot, as the page stood when the element was picked.
-    change(draft, owner.id, {
-      stage: "settled",
-      before: snapshot.id,
-      after: snapshot.id,
-      passedOnAt: snapshot.at,
-      asked: null,
-    });
+    // One snapshot, as the page stood when the element was picked; for one
+    // placed at an earlier read, as typing after it came first, the read
+    // its element is found in.
+    change(
+      draft,
+      owner.id,
+      owner.before
+        ? { stage: "settled", targetRead: snapshot.id, asked: null }
+        : {
+            stage: "settled",
+            before: snapshot.id,
+            after: snapshot.id,
+            passedOnAt: snapshot.at,
+            asked: null,
+          }
+    );
   } else if (owner.held.kind === "reported") {
     // It has a snapshot to start from: now the page is given time.
     change(draft, owner.id, {
@@ -1713,8 +1724,9 @@ function startReported(draft: Draft, index: number): boolean {
   );
   // An assertion whose one read is still being taken when this is reported
   // would have it start after its first key: the page let it through. The
-  // assertion is written at the page as it was last read, and this starts
-  // there too.
+  // assertion is placed at the page as it was last read, and this starts
+  // there too; the assertion still finds the element it picked in its own
+  // read, when that comes (`targetRead`).
   const latest = gateOf(draft, input.page)?.latest;
   const reading = ahead.filter(
     (before) =>
@@ -1729,11 +1741,9 @@ function startReported(draft: Draft, index: number): boolean {
   ) {
     for (const assertion of reading)
       change(draft, assertion.id, {
-        stage: "settled",
         before: latest.id,
         after: latest.id,
         passedOnAt: latest.at,
-        asked: null,
       });
     ahead = ahead.filter((before) => !reading.includes(before));
   }
@@ -2089,6 +2099,7 @@ function writeDown(draft: Draft, last: boolean) {
           // The clicks its report covers end where the last of them does.
           after: covered.at(-1)?.after ?? input.after,
           at: input.passedOnAt ?? 0,
+          ...(input.targetRead ? { targetRead: input.targetRead } : {}),
         },
       },
     });

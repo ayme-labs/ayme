@@ -860,12 +860,18 @@ export class Timeline {
   ): Promise<Measured> {
     const { from, pictured, first } = written;
     if (!pictured) {
-      const located = locateTarget(from.tree, first.report);
+      // The read its target is found in: its own, for an assertion placed
+      // at an earlier one.
+      const read =
+        written.visit.snapshots.find(
+          (kept) => kept.snapshot.id === first.targetRead
+        ) ?? from;
+      const located = locateTarget(read.tree, first.report);
       const pressed = this.beforePress.get(from.snapshot.id);
       return {
         // Every ref of a kept snapshot has its first ref.
-        target: located && from.firstRefs.get(located),
-        named: namedTarget(from.tree, located),
+        target: located && read.firstRefs.get(located),
+        named: namedTarget(read.tree, located),
         change: to
           ? await this.change(from, to, pressed ?? from.tree, toTree)
           : null,

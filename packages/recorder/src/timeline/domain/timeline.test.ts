@@ -1710,6 +1710,34 @@ describe("the timeline, for an assertion", () => {
     );
   });
 
+  it("names the element picked for an assertion from its own read when it is placed at an earlier one, as when typing followed it: the element appeared in between", async () => {
+    const withNew = [savedPage, `  - button "New" [ref=e9]`].join("\n");
+    const timeline = new Timeline();
+    for (const addition of [
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, savedPage),
+      snapshot(snapshotId("snapshot_2"), 20, withNew),
+      {
+        ...assertion(snapshotId("snapshot_1"), 10, "e9"),
+        interaction: {
+          ...(
+            assertion(snapshotId("snapshot_1"), 10, "e9") as Extract<
+              TimelineAddition,
+              { kind: "interaction" }
+            >
+          ).interaction,
+          targetRead: snapshotId("snapshot_2"),
+        },
+      } as TimelineAddition,
+    ])
+      await timeline.add(addition);
+
+    expect(timeline.visits()[0]!.entries.at(-1)).toMatchObject({
+      interaction: { type: "assertVisible", targetRef: "e9" },
+      targetElement: 'button "New"',
+    });
+  });
+
   it("names an assertion whose picked element the snapshot does not list by its selector, in Playwright's own words, and the package keeps the selector only", async () => {
     const timeline = new Timeline();
     for (const addition of [
