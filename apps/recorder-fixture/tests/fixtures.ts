@@ -131,7 +131,9 @@ export type Recording = {
   readonly windowUrl: string | null;
 };
 
-function personAt(session: CDPSession): Person {
+/** A person at a page, giving it real input over a DevTools session of
+ * the test's own. */
+export function personAt(session: CDPSession): Person {
   const mouse = (type: string, at: Point, more: Record<string, unknown> = {}) =>
     session.send("Input.dispatchMouseEvent", {
       type: type as "mouseMoved",

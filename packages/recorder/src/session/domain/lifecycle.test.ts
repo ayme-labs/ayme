@@ -3529,6 +3529,58 @@ describe("the lifecycle, for the highlight", () => {
   });
 });
 
+// A choice in a dropdown and an upload show as a step as soon as
+// Playwright reports them, as typing does; unlike typing, nothing revises
+// them: what follows changes their rows, never their value.
+describe("the lifecycle, for a choice or an upload", () => {
+  const reports: InteractionReport[] = [
+    {
+      type: "select",
+      selector: "internal:role=combobox",
+      target: null,
+      values: { options: ["eggs"] },
+    },
+    {
+      type: "setInputFiles",
+      selector: "internal:role=button",
+      target: null,
+      values: { files: ["photo.png"] },
+    },
+  ];
+
+  it.each(reports)(
+    "shows a $type at once, and every time it is told again it has the value it showed",
+    (report) => {
+      const { todo } = run([
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        { kind: "interactionReported", page: page1, report },
+        { kind: "pageSettled", page: page1, input: "reported_1" as InputId },
+        taken(snapshot3),
+        stop,
+      ]);
+      const told = todo
+        .flat()
+        .flatMap((item) =>
+          item.kind === "timeline" &&
+          item.add.kind === "interaction" &&
+          item.add.interaction.report.type === report.type
+            ? [item.add]
+            : []
+        );
+
+      // Shown before its "after", then told again with its rows.
+      expect(told.map((add) => add.interaction.after)).toEqual([
+        null,
+        snapshot3,
+      ]);
+      for (const add of told) expect(add.interaction.report).toEqual(report);
+    }
+  );
+});
+
 // The review of the whole recorder against the spec: one row or test for
 // each fault it found in the lifecycle, named by the rule it keeps.
 describe("the lifecycle, for what the review against the spec found", () => {

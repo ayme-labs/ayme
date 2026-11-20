@@ -6,7 +6,7 @@ import {
   RecorderWindow,
 } from "@ayme-dev/recorder-window/testing";
 import type { EntryId } from "@ayme-dev/recorder/contract";
-import { selectors, type Locator, type Page } from "@playwright/test";
+import { selectors, type Locator } from "@playwright/test";
 
 import { ArrivalPage } from "../.ayme/pom/ArrivalPage";
 import { BasketPage } from "../.ayme/pom/BasketPage";
@@ -20,26 +20,6 @@ import { expect, test } from "./fixtures";
 // Ticket #1278: Assert visibility and the hover highlight, in pages a real
 // recorder records, through the toolbar's and the window's page objects,
 // with a person's input.
-
-/** Where the recorder's highlight is drawn on the recorded page; null when
- * it draws none. Read in one step, which never waits: the highlight can be
- * cleared at any moment, and a locator's box would wait for it to come back. */
-const highlightOn = (page: Page) =>
-  page.evaluate(`(() => {
-    const host = document.querySelector("ayme-recorder-highlight");
-    if (!host) return null;
-    const { x, y, width, height } = host.getBoundingClientRect();
-    return { x, y, width, height };
-  })()`);
-
-/** The box of every highlight the page draws, in the page's coordinates. */
-const highlightsOn = (page: Page) =>
-  page.evaluate(`[...document.querySelectorAll("ayme-recorder-highlight")].map(
-    (host) => {
-      const { x, y, width, height } = host.getBoundingClientRect();
-      return { x, y, width, height };
-    }
-  )`);
 
 /** The box of an element in the page's coordinates. */
 async function boxOf(element: Locator) {
@@ -211,9 +191,9 @@ test.describe("the hover highlight", () => {
     for (const [index, element] of elements.entries()) {
       const entry = new Entry(clicks.nth(index));
       await entry.target.hover();
-      await expect.poll(() => highlightOn(page)).toEqual(await boxOf(element));
+      await expect.poll(() => inputs.highlight()).toEqual(await boxOf(element));
       await entry.title.hover();
-      await expect.poll(() => highlightOn(page)).toBeNull();
+      await expect.poll(() => inputs.highlight()).toBeNull();
     }
   });
 
@@ -246,10 +226,10 @@ test.describe("the hover highlight", () => {
 
     await row!.element.hover();
     await expect
-      .poll(() => highlightOn(page))
+      .poll(() => cart.highlight())
       .toEqual(await boxOf(cart.itemCount));
     await click!.title.hover();
-    await expect.poll(() => highlightOn(page)).toBeNull();
+    await expect.poll(() => cart.highlight()).toBeNull();
   });
 
   test("highlights the element of a step whose click left the page on the page it led to, which has exactly one element that matches", async ({
@@ -273,10 +253,10 @@ test.describe("the hover highlight", () => {
 
     await click!.target.hover();
     await expect
-      .poll(() => highlightOn(page))
+      .poll(() => basket.highlight())
       .toEqual(await boxOf(basket.basketLink));
     await click!.title.hover();
-    await expect.poll(() => highlightOn(page)).toBeNull();
+    await expect.poll(() => basket.highlight()).toBeNull();
   });
 
   test("highlights every element that matches for a step whose click left the page, when the page it led to has several", async ({
@@ -297,9 +277,10 @@ test.describe("the hover highlight", () => {
     const [click] = await catalog!.entries();
 
     await click!.target.hover();
-    const links = await new WishlistPage(page).wishlistLinks.all();
+    const wishlist = new WishlistPage(page);
+    const links = await wishlist.wishlistLinks.all();
     await expect
-      .poll(() => highlightsOn(page))
+      .poll(() => wishlist.highlights())
       .toEqual([await boxOf(links[0]!), await boxOf(links[1]!)]);
     // The same highlight through the handle: it replaces the hover's, and
     // is answered once the page has been looked at.

@@ -1068,6 +1068,41 @@ it("gives the element a person picks for an assertion its own ref, when a card t
   );
 });
 
+it("records no element for a pick whose selector matches several elements when no picked element was kept: never the first of them", async () => {
+  const browser = await onStockPlaywright(`
+    <a href="#" id="pr">chore: release main</a>
+    <div id="card"></div>
+    <script>
+      document.getElementById("pr").addEventListener("mouseover", () => {
+        setTimeout(() => {
+          document.getElementById("card").innerHTML =
+            '<a href="#">chore: release main #1</a><a href="#">chore: release main #2</a>';
+        }, 50);
+        // Added once picking is on, so it runs right after the recorder's
+        // own listener: the element kept at the picking click is gone.
+        window.addEventListener(
+          "click",
+          () => delete window.__aymeRecorderPicked,
+          { capture: true, once: true }
+        );
+      });
+    </script>`);
+  await reporting(browser);
+  await browser.ask({ kind: "pick", on: true });
+  await browser.toldOf("picking", ({ on }) => on);
+  const pr = browser.page.locator("#pr");
+  const box = (await pr.boundingBox())!;
+  await browser.page.mouse.move(box.x + 5, box.y + box.height / 2);
+  await browser.page.locator("#card a").first().waitFor();
+
+  await browser.click(pr);
+
+  const { report } = await browser.toldOf("interactionReported");
+  expect(report.type).toBe("assertVisible");
+  expect(await browser.page.locator(report.selector!).count()).toBe(3);
+  expect(report.snapshotTarget).toBeUndefined();
+});
+
 it("leaves the gate holding clicks again once picking is over", async () => {
   const browser = await onStockPlaywright(CLICKABLE);
   await reporting(browser);

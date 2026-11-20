@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { RecorderWindow } from "@ayme-dev/recorder-window/testing";
 import { chromium } from "@playwright/test";
 
-import { expect, test } from "./fixtures";
+import { CartPage } from "../.ayme/pom/CartPage";
+import { expect, personAt, test } from "./fixtures";
 import { stockTraceTool } from "./stockTrace";
 
 /** The window's address, once the command has printed it. */
@@ -191,8 +192,10 @@ test.describe("codegen <url>", () => {
       await expect(window.controls.recordButton).toHaveCount(0);
 
       const page = await pageAt(url);
-      await page.getByRole("button", { name: "Add item" }).click();
-      await expect(page.getByText("Items: 1")).toBeVisible();
+      const cart = new CartPage(page);
+      const person = personAt(await page.context().newCDPSession(page));
+      await person.click(cart.addItemButton);
+      await expect(cart.itemCount).toHaveText("Items: 1");
       await window.controls.finishButton.click();
       expect(await run.exit).toEqual({ code: 0, signal: null });
     } finally {

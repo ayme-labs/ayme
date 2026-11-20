@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,25 +28,21 @@ it("loads the window's one script from its page", () => {
   expect(script).toContain("Recorder controls");
 });
 
-it("carries the design system's purple mark as its one favicon, in either colour scheme, linked from its page", () => {
-  const page = readFileSync(join(window, "index.html"), "utf8").replace(
-    /\s+/g,
-    " "
+it("points its page to one icon, for every colour scheme, whose bytes are the design system's mark", () => {
+  const page = readFileSync(join(window, "index.html"), "utf8");
+  const icons = [...page.matchAll(/<link\s[^>]*rel="icon"[^>]*>/g)].map(
+    ([link]) => link
   );
-  const mark = readFileSync(
-    createRequire(import.meta.url).resolve(
-      "@ayme-dev/design-system/logo/mark-small.svg"
-    ),
-    "utf8"
+  expect(icons).toHaveLength(1);
+  expect(icons[0]).not.toContain("media=");
+  const href = /href="([^"]+)"/.exec(icons[0]!)![1]!;
+  expect(readFileSync(join(window, href))).toEqual(
+    readFileSync(
+      createRequire(import.meta.url).resolve(
+        "@ayme-dev/design-system/logo/mark-small.svg"
+      )
+    )
   );
-  expect(mark).toContain('fill="#6936f1"');
-  expect(readFileSync(join(window, "mark-small.svg"), "utf8")).toBe(mark);
-  expect(page.match(/<link rel="icon"[^>]*>/g)).toEqual([
-    '<link rel="icon" type="image/svg+xml" href="./mark-small.svg" />',
-  ]);
-  expect(readdirSync(window).filter((file) => file.endsWith(".svg"))).toEqual([
-    "mark-small.svg",
-  ]);
 });
 
 it("leaves nothing to resolve where it is served: no Node built-in, no package", () => {

@@ -423,6 +423,63 @@ it("shows a chip whose highlight finds no element on the page without a border o
     .toEqual({ cursor: "crosshair", shown: true, size });
 });
 
+it("gives a chip no keyboard focus, and no background of its own when hovered", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  tell({
+    phase: "recording",
+    visits: [login, inventory],
+    commands: ["stop", "highlight", "clearHighlight"],
+  });
+  await expect.poll(async () => (await visits()).length).toBe(2);
+  const [click] = await (await visits())[1]!.entries();
+  const background = () =>
+    click!.target.evaluate(
+      (element) => getComputedStyle(element).backgroundColor
+    );
+  const resting = await background();
+
+  expect(await click!.target.evaluate((element) => element.tabIndex)).toBe(-1);
+  await click!.target.hover();
+  expect(await background()).toBe(resting);
+});
+
+it("shows a fill still being typed as any other step: nothing marks it", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  const fillEntry = login.entries[0] as Extract<
+    RecordedVisit["entries"][number],
+    { kind: "interaction" }
+  >;
+  const typing = {
+    ...login,
+    entries: [
+      {
+        ...fillEntry,
+        interaction: { ...fillEntry.interaction, text: "secret" },
+        // Shown before the page is read again: no changes yet.
+        changes: null,
+      },
+    ],
+  } as RecordedVisit;
+  tell({ phase: "recording", visits: [typing], commands: ["stop"] });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [fill] = await (await visits())[0]!.entries();
+
+  expect(await fill!.title.textContent()).toBe("Fill 'secret'");
+  expect(await fill!.target.textContent()).toBe("textbox “Password”");
+  expect(
+    await fill!.title.evaluate((title) => {
+      const card = title.closest("[data-entry-id], li, article") ?? title;
+      return [...card.querySelectorAll("*")].flatMap((node) =>
+        [...node.attributes]
+          .map((attribute) => attribute.name)
+          .filter((name) => /busy|live|typing|pending/.test(name))
+      );
+    })
+  ).toEqual([]);
+});
+
 it("offers Stop, Assert visibility, Clear and Finish while recording, and sends each", async () => {
   const { channel, sent, tell } = scriptedChannel();
   mount(channel);
