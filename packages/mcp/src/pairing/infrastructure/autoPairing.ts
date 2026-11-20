@@ -7,7 +7,7 @@ import { scanServers } from "./serverScan";
 /**
  * Pairs a page on `localhost` or `127.0.0.1` by itself when the tab has no
  * connect link and no stored pairing: it probes every port of the server's
- * range and pairs only when exactly one Ayme MCP server answers. It pairs
+ * range and pairs only when exactly one ayme MCP server answers. It pairs
  * without a token; the server then hands the page its token, which the
  * tab keeps like a connect link's. Until the tab pairs, it scans again
  * each time the tab gains focus or becomes visible, one scan at a time, so

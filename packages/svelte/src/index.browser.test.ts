@@ -66,7 +66,7 @@ registerCompiledPom(Model, {
     },
   ],
 });
-// Never passed through the Ayme compiler, so it has no metadata.
+// Never passed through the ayme compiler, so it has no metadata.
 class UncompiledModel {
   constructor(readonly page: Page) {}
 }

@@ -123,7 +123,7 @@ type PomChild = {
 
 /**
  * The role of a Page Object member: a Page Object Child, a Page Object Action,
- * a public method that is neither, or nothing Ayme reads. Markers decide:
+ * a public method that is neither, or nothing ayme reads. Markers decide:
  * `@ayme.child` and `@ayme.collection` declare a child, `@ayme.action` an
  * action, and an unmarked member is neither, whatever its type.
  */

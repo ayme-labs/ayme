@@ -50,7 +50,7 @@ export type ServerExtension = {
  * connection on the path `/<token>`, or without a token from a page on
  * localhost or a local process (see `admit`), and each accepted connection
  * attaches to `connection` once it says hello: as the page, or as an App
- * Process beside it. A page whose Ayme speaks another pairing contract than
+ * Process beside it. A page whose ayme speaks another pairing contract than
  * `ayme`, this package's unless given, is refused (see `versionGap`). A `/probe` connection is closed at once and never
  * attaches. `extensions` let something else answer the HTTP requests and
  * WebSocket upgrades one of them claims, in order, such as the external
@@ -76,7 +76,7 @@ export function createPageChannelServer({
    */
   agent: () => string | undefined;
   extensions?: readonly ServerExtension[];
-  /** The server's Ayme, which a page's must work with. */
+  /** The server's ayme, which a page's must work with. */
   ayme?: Required<AymeVersion>;
 }): { server: Server; close(): void } {
   const server = createServer((request, response) => {
@@ -163,7 +163,7 @@ export function createPageChannelServer({
  * Process, and the server is never too busy for it. One that connected
  * without a token gets `handOver`, the server's token, in reply to its
  * hello, and every one gets `imageFolder` and the agent's name. A page
- * whose Ayme can't work with the server's `ayme` is closed with
+ * whose ayme can't work with the server's `ayme` is closed with
  * `VERSION_GAP_CLOSE_CODE` and the gap as the reason, and `connection`
  * records the gap for the agent.
  */

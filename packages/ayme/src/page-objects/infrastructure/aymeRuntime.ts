@@ -15,7 +15,7 @@ export function createAymeRuntime(page?: object) {
     release();
     throw error;
   }
-  // The page's locators for Structural Refs resolve through Ayme's engine.
+  // The page's locators for Structural Refs resolve through ayme's engine.
   registerRefSelectorEngine();
 
   return { page: runtimePage, dispose: release };

@@ -6,7 +6,7 @@ import { expect, it, vi } from "vitest";
 import { ayme } from "./vite";
 
 // Integration: every Vite build, and a dev server at start, prints one line
-// through Vite's logger saying whether Ayme is in it.
+// through Vite's logger saying whether ayme is in it.
 
 const entry = fileURLToPath(
   new URL("./fixtures/twoPagesPom.ts", import.meta.url)

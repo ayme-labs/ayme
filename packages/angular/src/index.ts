@@ -40,7 +40,7 @@ export type AymeSetup = {
 const aymeSetup = new InjectionToken<AymeSetup>("Ayme setup");
 
 /**
- * Starts Ayme with the environment injector that receives these providers,
+ * Starts ayme with the environment injector that receives these providers,
  * before the root component is created, and stops it when that injector is
  * destroyed. Put it in the application config, not in route providers: the
  * router does not destroy a route's environment injector on navigation.
@@ -79,7 +79,7 @@ export function provideAyme(options: AymeOptions = {}): EnvironmentProviders {
   ]);
 }
 
-/** Reads the Ayme setup of the nearest `provideAyme`. Call in an injection context. */
+/** Reads the ayme setup of the nearest `provideAyme`. Call in an injection context. */
 export function injectAyme(): AymeSetup {
   assertInInjectionContext(injectAyme);
   const setup = inject(aymeSetup, { optional: true });

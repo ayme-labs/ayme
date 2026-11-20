@@ -39,7 +39,7 @@ export const PREDICATES: readonly Predicate[] = [
   "select",
 ];
 
-/** One capture of one document: Ayme's dual capture, for one host. */
+/** One capture of one document: ayme's dual capture, for one host. */
 export type Capture = {
   document: DocumentToken;
   url: string;

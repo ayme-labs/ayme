@@ -317,7 +317,7 @@ describe("a build without Ayme", () => {
     );
     return [readFileSync(fixturePath, "utf8"), fixturePath] as const;
   };
-  // Without `include: true`, every build is a build without Ayme.
+  // Without `include: true`, every build is a build without ayme.
   const transform = createPomTransform();
 
   it("compiles each Page Object Model to a stand-in of its name, keeping the rest of the module", () => {

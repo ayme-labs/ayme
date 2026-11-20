@@ -2,7 +2,7 @@ import { AgentView, panelDescription } from "./agentView";
 import { expect, openFixture, test } from "./fixtures";
 
 // E2E: the panel shows exactly what an agent gets over WebMCP, but for a bare
-// action's description, which it shows as Ayme MCP does. The expected values
+// action's description, which it shows as ayme MCP does. The expected values
 // come from the page's WebMCP tool list and snapshot, never from the panel.
 
 // Live, but never published to WebMCP: its result is an image.

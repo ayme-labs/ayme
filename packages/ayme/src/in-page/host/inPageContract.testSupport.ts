@@ -600,7 +600,7 @@ export function inPageContract(lane: InPageLane) {
     await setBody(page, "<button>First</button><button>Second</button>");
     const host = lane.createHost(page);
     const before = await host.inPage(page).capture();
-    // Playwright's own snapshot sees an element Ayme has not, first.
+    // Playwright's own snapshot sees an element ayme has not, first.
     await page.evaluate(
       `document.body.insertAdjacentHTML("afterbegin", "<button>Early</button>")`
     );

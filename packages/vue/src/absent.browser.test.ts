@@ -1,4 +1,4 @@
-// The entry a build without Ayme resolves `@ayme-dev/vue` to: the names of
+// The entry a build without ayme resolves `@ayme-dev/vue` to: the names of
 // the index, backed by the runtime's absent entry, so a component tree
 // renders as it does with the real package.
 import { createApp, defineComponent, h, nextTick, type App } from "vue";

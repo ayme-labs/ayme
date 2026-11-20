@@ -1,5 +1,5 @@
 // A Nitro server plugin, run once when the server starts. In development,
-// the server process pairs with the agent's Ayme MCP server as an App
+// the server process pairs with the agent's ayme MCP server as an App
 // Process, beside the tab, and offers its Peek `renders`, how often it
 // rendered a page, as `peek.node.renders`.
 export default defineNitroPlugin((nitroApp) => {

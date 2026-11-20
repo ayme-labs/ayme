@@ -4,7 +4,7 @@ import { executePublishedTool } from "@ayme-dev/webmcp/testing";
 import { expect, openFixture, outline, test } from "./fixtures";
 
 // E2E: the Model lens on a fixture page whose Page Object has child Page
-// Objects, a collection, and a child that is not on the page, with the Ayme
+// Objects, a collection, and a child that is not on the page, with the ayme
 // runtime and a recording WebMCP driver.
 
 test.use({ fixturePath: "/models.html" });

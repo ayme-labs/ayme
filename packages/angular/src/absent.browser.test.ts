@@ -1,4 +1,4 @@
-// The entry a build without Ayme resolves `@ayme-dev/angular` to: the names
+// The entry a build without ayme resolves `@ayme-dev/angular` to: the names
 // of the index, backed by the runtime's absent entry, so an application
 // renders as it does with the real package.
 import "zone.js";

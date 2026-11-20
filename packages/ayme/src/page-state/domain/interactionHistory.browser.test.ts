@@ -434,7 +434,7 @@ describe("Interaction history in Chromium", () => {
       tool: "App.noop",
     });
 
-    // A capture Ayme makes for itself: it finds the ref and moves no cursor.
+    // A capture ayme makes for itself: it finds the ref and moves no cursor.
     const [markRef] = await refsOfSelectors("#mark");
     const result = await act("click", { target: markRef });
 

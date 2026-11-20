@@ -1,7 +1,7 @@
 /**
- * What a Build without Ayme resolves `@ayme-dev/ayme` and
+ * What a Build without ayme resolves `@ayme-dev/ayme` and
  * `@ayme-dev/ayme/internal` to: unless the build plugin's configuration
- * includes Ayme, its adapters resolve both entries here, so the runtime, the
+ * includes ayme, its adapters resolve both entries here, so the runtime, the
  * Inspector, WebMCP and the Agent Connection stay out of the output. Setup
  * calls create an inert session, and each Page Object Model the plugin
  * compiles becomes a stand-in from `absentPageObject`. The exports mirror
@@ -46,12 +46,12 @@ const PUBLICATION_STATUS: AymeWebMcpPublicationStatus = Object.freeze({
 const noop = () => {};
 const unsubscribed = () => noop;
 
-/** Throws: a build without Ayme drives no page. */
+/** Throws: a build without ayme drives no page. */
 export function createPage(): never {
   throw removed("The browser page");
 }
 
-/** A decision function that rejects: a build without Ayme runs no Goal Loop. */
+/** A decision function that rejects: a build without ayme runs no Goal Loop. */
 export function decisionEndpoint(): () => Promise<never> {
   return () => Promise.reject(removed("The Decision Endpoint"));
 }
@@ -100,7 +100,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   return session;
 }
 
-/** No session ever starts in a build without Ayme. */
+/** No session ever starts in a build without ayme. */
 export function getStartedAyme(): Ayme | undefined {
   return undefined;
 }
@@ -111,7 +111,7 @@ export function markRenderSession(ayme: Ayme): void {
 
 /**
  * The base of the stand-in the build plugin compiles a Page Object Model to
- * in a build without Ayme: a class of the same name, whose actions reject
+ * in a build without ayme: a class of the same name, whose actions reject
  * and whose other properties and methods, Page Object Children included,
  * throw, each naming what is missing. The class has no other member.
  */

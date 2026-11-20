@@ -11,7 +11,7 @@ import type { AgentConnection } from "./agentConnection";
 
 /**
  * The page's or App Process's tools, as its client reaches them: the
- * `tools` member of the runtime object Ayme's setup returns. Each says
+ * `tools` member of the runtime object ayme's setup returns. Each says
  * whether a call can run it now, and why not when it cannot.
  */
 export type PageTools = {

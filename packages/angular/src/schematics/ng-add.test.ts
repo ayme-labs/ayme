@@ -66,7 +66,7 @@ const architect = (tree: UnitTestTree) =>
   tree.readJson("angular.json") as AngularJson;
 
 // The entry under the build target's options, without `include`, so that
-// `ng build` is a Build without Ayme.
+// `ng build` is a Build without ayme.
 const buildEntry = {
   path: "./ayme.plugin.mjs",
   options: { tsconfigPath: "projects/app/tsconfig.app.json" },
@@ -347,7 +347,7 @@ it("carries the base options' other plugins into a development configuration wit
     buildEntry,
   ]);
   // The development array replaces the base one, so it repeats the other
-  // plugin, with Ayme's entry in the base entry's place.
+  // plugin, with ayme's entry in the base entry's place.
   expect(after.configurations!["development"]!["plugins"]).toEqual([
     { path: "./other.plugin.mjs" },
     developmentEntry,

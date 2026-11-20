@@ -504,7 +504,7 @@ function RunTime({ run }: { run: ChildRun }) {
   );
 }
 
-// Ayme's own Callers, keyed on the names `callers` exports.
+// ayme's own Callers, keyed on the names `callers` exports.
 const callerIcons = {
   inspector: { Icon: UserIcon, label: "Run by you from the Inspector" },
   app: { Icon: AppWindowIcon, label: "Run by the app" },
@@ -515,7 +515,7 @@ const callerIcons = {
   },
 } satisfies Record<BuiltInCaller, { Icon: typeof UserIcon; label: string }>;
 
-/** Who started a run: an icon for Ayme's own Callers, the name for another. */
+/** Who started a run: an icon for ayme's own Callers, the name for another. */
 function CallerMark({ by }: { by: Caller }) {
   const builtIn = Object.hasOwn(callerIcons, by)
     ? callerIcons[by as BuiltInCaller]

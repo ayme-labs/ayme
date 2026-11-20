@@ -5,7 +5,7 @@ import { AgentView } from "./agentView";
 import { expect, INSPECTOR, openFixture, outline, test } from "./fixtures";
 
 // E2E: running tools from the panel, on the fixture page with the real
-// ListPage Page Object, the Ayme runtime and a recording WebMCP driver.
+// ListPage Page Object, the ayme runtime and a recording WebMCP driver.
 
 test("a non-POM target keeps its accessible name after clicking removes it and after reload", async ({
   page,

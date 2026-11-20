@@ -97,7 +97,7 @@ export type FixturePage =
 export type Placement = "inline" | "external";
 
 /**
- * The external placement's end of the run: the Ayme MCP server the page
+ * The external placement's end of the run: the ayme MCP server the page
  * connects to, and the window it serves the Inspector in.
  */
 export type ExternalInspector = { agent: Agent; context: BrowserContext };
@@ -228,7 +228,7 @@ export const test = base.extend<
   ],
   fixturePath: ["/", { option: true }],
   placement: ["inline", { option: true }],
-  // The external placement's server: the Ayme MCP server the fixture page
+  // The external placement's server: the ayme MCP server the fixture page
   // connects to and that serves the Inspector. On a port of its own, outside
   // the range pages scan, so no other test's page pairs with it.
   agent: async ({ placement }, use) => {

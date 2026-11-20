@@ -310,7 +310,7 @@ const refusals: [path: string, code: string, message: string][] = [
     'export const title = () => document.title;\nexport { cursors } from "../../page-state/infrastructure/pageState";',
     "Import another slice through its front door",
   ],
-  // Ayme by its package name, which would pass every rule above.
+  // ayme by its package name, which would pass every rule above.
   [
     "src/goal-loop/domain/misplaced.ts",
     'export { listRegisteredPoms } from "@ayme-dev/ayme/internal";',
@@ -357,7 +357,7 @@ const refusals: [path: string, code: string, message: string][] = [
     'export type Session = import("@ayme-dev/ayme/testing").GoalLoopRunResult;',
     "Ayme's source never imports Ayme by its package name",
   ],
-  // Ayme's own build output, which would pass every rule above too.
+  // ayme's own build output, which would pass every rule above too.
   [
     "src/goal-loop/domain/misplaced.ts",
     'export { listRegisteredPoms } from "../../../dist/internal.mjs";',

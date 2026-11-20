@@ -76,7 +76,7 @@ it("keeps the compiler's Programs for the length of a build", async () => {
   oneBuild();
 }, 30_000);
 
-// Integration on the built packages: a build without Ayme, which every build
+// Integration on the built packages: a build without ayme, which every build
 // is unless it says `include: true`, ships none of the runtime and none of a
 // Page Object Model's implementation, and the app's setup still runs.
 it("ships neither the runtime nor the Page Object Models in a build without Ayme, and still runs the app's setup", async () => {
@@ -125,7 +125,7 @@ it("ships neither the runtime nor the Page Object Models in a build without Ayme
   }
 }, 30_000);
 
-// Integration on the built packages: the source map of a build without Ayme
+// Integration on the built packages: the source map of a build without ayme
 // carries the stand-in, not the Page Object Model it replaced. Rollup keeps
 // a module's loaded code as the leaf of its source-map chain, so a stand-in
 // made by a transform hook shipped the model in `sourcesContent` on Vite 7;
@@ -176,7 +176,7 @@ it("maps a build without Ayme to the stand-in, not to the Page Object Model", as
 }, 30_000);
 
 // Integration on the built packages: a framework package leaves a build
-// without Ayme with the runtime, so none of its hook code ships. React is the
+// without ayme with the runtime, so none of its hook code ships. React is the
 // integration the plugin's tests can bundle with the fewest dependencies.
 it("ships none of a framework package's hook code in a build without Ayme", async () => {
   const root = fileURLToPath(

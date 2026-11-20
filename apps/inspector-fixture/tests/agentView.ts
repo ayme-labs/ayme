@@ -15,9 +15,9 @@ export type AgentTool = {
 };
 
 /**
- * A tool's description as the panel shows it: what Ayme MCP gives agents.
+ * A tool's description as the panel shows it: what ayme MCP gives agents.
  * WebMCP requires a description, so it gives a bare action `Run <action>.`,
- * which Ayme MCP and the panel leave out.
+ * which ayme MCP and the panel leave out.
  */
 export function panelDescription(tool: AgentTool): string {
   return tool.description === `Run ${tool.name.split(".").at(-1)}.`

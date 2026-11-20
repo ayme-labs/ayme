@@ -1,4 +1,4 @@
-// The Ayme mark as data, for drawing it inline without a separate asset
+// The ayme mark as data, for drawing it inline without a separate asset
 // request. `logo/mark.svg` is the same mark as a file; logo.test.ts keeps the
 // two in step. Trademark of Ayme Labs: see TRADEMARKS.md.
 export const AYME_LOGO_VIEWBOX = "0 0 165.84 136";

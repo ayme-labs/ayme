@@ -17,8 +17,8 @@ fi
 git -C "${REPO_ROOT}" submodule update --init --checkout --filter=blob:none -- "${SUBMODULE_PATH}"
 verify_checkout
 
-# Pack the Ayme packages from this checkout as they would be published, and unpack them
-# where the Ayme overlay's package.json and pnpm overrides point. The overlay ignores the folder.
+# Pack the ayme packages from this checkout as they would be published, and unpack them
+# where the ayme overlay's package.json and pnpm overrides point. The overlay ignores the folder.
 readonly AYME_PACKAGES=(ayme react unplugin-ayme mcp webmcp)
 readonly PACKED_DIR="${FORMBRICKS_DIR}/.ayme-lab/packages"
 readonly TARBALL_DIR="${FORMBRICKS_DIR}/.ayme-lab/tarballs"
@@ -45,7 +45,7 @@ rm -rf "${FORMBRICKS_DIR}/node_modules/@ayme-dev" "${FORMBRICKS_DIR}/apps/web/no
 rm -f "${FORMBRICKS_DIR}/node_modules/.pnpm-workspace-state-v1.json"
 
 # Not frozen: a frozen install does not compare the packed manifests with the lockfile.
-# When the Ayme packages' dependencies change, this rewrites the overlay's lockfile and
+# When the ayme packages' dependencies change, this rewrites the overlay's lockfile and
 # the check below fails.
 formbricks_pnpm install --recursive --no-frozen-lockfile
 if is_dirty; then

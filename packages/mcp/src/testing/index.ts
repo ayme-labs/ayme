@@ -28,7 +28,7 @@ export const aymeCommand = fileURLToPath(new URL("./cli.mjs", import.meta.url));
 
 /**
  * A free port of the loopback interface, which the system picks outside the
- * Ayme MCP server's range of 9350 to 9365, the range a page's auto-pair scan
+ * ayme MCP server's range of 9350 to 9365, the range a page's auto-pair scan
  * probes. `startAgent("--port", String(await freePort()))` starts a server
  * that no page pairs with by itself.
  */
@@ -42,7 +42,7 @@ export function freePort(): Promise<number> {
 }
 
 /**
- * Answers the auto-pair scan of every page in `context` as if no Ayme MCP
+ * Answers the auto-pair scan of every page in `context` as if no ayme MCP
  * server ran, except on the ports in `reachable`, which a test may add to
  * later. A localhost page under test then never pairs by itself with a
  * server another test or suite runs on this machine. The scan probes
@@ -85,7 +85,7 @@ export type AgentOptions = {
   revision?: McpRevision;
 };
 
-/** A coding agent's view of its Ayme MCP server: an MCP client over stdio. */
+/** A coding agent's view of its ayme MCP server: an MCP client over stdio. */
 export class Agent {
   constructor(
     readonly client: Client,

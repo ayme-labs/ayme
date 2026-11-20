@@ -66,7 +66,7 @@ const rendersThePage = `[${INSPECTOR_PAGE_RENDERING_ATTRIBUTE}]`;
 
 /**
  * Mounts the Inspector, then starts the runtime with a Page Object (the
- * ListPage by default), the way the Ayme integrations do. `mount: "after"`
+ * ListPage by default), the way the ayme integrations do. `mount: "after"`
  * mounts the Inspector once the runtime started with its Page Object, and
  * `mount: "session"` leaves it to the session's `inspector` option. `demo`
  * mounts it in demo mode. `dogfood` mounts it for dogfooding, turns the

@@ -19,7 +19,7 @@ import type {
 // state events that carry a revision.
 
 /**
- * Where a tool comes from: a Page Object (Page Object Tool), Ayme's
+ * Where a tool comes from: a Page Object (Page Object Tool), ayme's
  * Browser Tools, the app's Custom Tools, the app's Peeks (Peek Tools), or the
  * agent's own tools (`snapshot`, `goal`).
  */
@@ -68,7 +68,7 @@ export type ToolInfo = PublishedToolInfo &
 
 /**
  * Whether the session's page is connected to a coding agent through the
- * agent's Ayme MCP server, for the Inspector: `off` without the
+ * agent's ayme MCP server, for the Inspector: `off` without the
  * `agentConnection` option, else as the page client reports it.
  * `not-connected` says why once the tab knows, `no-client` when the page
  * client failed to load; `connected` names the agent when its MCP client

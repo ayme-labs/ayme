@@ -22,7 +22,7 @@ export type { AgentImageRun, InspectorPort } from "../connection";
 export type { NotConnectedReason } from "../pairing";
 
 /**
- * The part of Ayme's runtime object the page client uses, and where it
+ * The part of ayme's runtime object the page client uses, and where it
  * records an agent's call whose result is an image, for the Inspector.
  */
 export type AgentConnectionRuntime = {
@@ -53,7 +53,7 @@ export type AppProcessTools = {
 };
 
 /**
- * Whether the tab is connected to an agent's Ayme MCP server: `connected`
+ * Whether the tab is connected to an agent's ayme MCP server: `connected`
  * once the server welcomed it, with the name the agent's MCP client gave
  * the server, if any; else `not-connected`, with why, once the tab knows.
  */
@@ -80,7 +80,7 @@ const RECONNECTING_MS = 10_000;
 
 /**
  * Starts the page's side of the Agent Connection for the runtime object
- * Ayme's setup returns. Ayme calls it for the `agentConnection` option.
+ * ayme's setup returns. ayme calls it for the `agentConnection` option.
  * Each pairing the page learns, such as from a connect link or the tab's
  * stored pairing, opens a channel to that server in place of the previous
  * one. When the channel loses its server, the tab says it is reconnecting,
@@ -90,7 +90,7 @@ const RECONNECTING_MS = 10_000;
  * another tab paired in this tab's place, the tab forgets its pairing; when
  * it does not know the pairing, the tab forgets it and looks for a server
  * again. When a busy server refuses its pairing without a token, it looks
- * again from its next focus. When the server says the page's Ayme and its
+ * again from its next focus. When the server says the page's ayme and its
  * own can't work together, the tab reports it on the console, forgets its
  * pairing and does not look again. Returns what ends the connection, the tools of
  * the App Processes paired with the server, which the server sends the

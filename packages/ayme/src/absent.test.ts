@@ -11,7 +11,7 @@ import {
 } from "./absent";
 import * as absent from "./absent";
 
-// The entry a build without Ayme resolves `@ayme-dev/ayme` to: inert, and
+// The entry a build without ayme resolves `@ayme-dev/ayme` to: inert, and
 // every use of what the build left out fails naming it.
 
 const removed = expect.objectContaining({

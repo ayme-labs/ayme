@@ -9,7 +9,7 @@ export type RegisteredPomClass = {
 };
 
 /**
- * Ayme tells Page Object classes apart by name: tools are named after their
+ * ayme tells Page Object classes apart by name: tools are named after their
  * class, and definitions and Page Object Children are looked up by it. So no
  * two different classes the registered Page Objects reach, at any depth, may
  * share a name. Children carry no class at runtime, only their compiled

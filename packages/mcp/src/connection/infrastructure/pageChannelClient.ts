@@ -24,7 +24,7 @@ import type { PageChannelRouter } from "./pageChannelRouter";
  * its tools again. When the server says another tab paired in its place,
  * or that it does not know the pairing, the channel closes for good and
  * `onDisconnected` or `onUnknownPairing` runs. When the server says the
- * page's Ayme and its own can't work together, the channel closes for good
+ * page's ayme and its own can't work together, the channel closes for good
  * and `onVersionGap` gets the server's reason, which names both versions. On any other close the
  * channel reconnects by itself, and `onLost` runs, unless `onClose` is
  * given: then it closes for good and `onClose` runs, as for an App

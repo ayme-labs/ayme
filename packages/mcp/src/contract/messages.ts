@@ -1,7 +1,7 @@
 import * as z from "zod/mini";
 
 /**
- * The messages between the Ayme MCP server and the page client. Both sides
+ * The messages between the ayme MCP server and the page client. Both sides
  * validate what they receive against these schemas.
  */
 

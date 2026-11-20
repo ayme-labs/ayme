@@ -73,7 +73,7 @@ it("sends the tab's calls to its new channel after the old one closed during a c
   const running = connection.call("click", {});
   await expect.poll(() => finish).toBeDefined();
 
-  // As when the page's Ayme setup is disposed and started again while a
+  // As when the page's ayme setup is disposed and started again while a
   // tool runs, in the same document.
   first.close();
   openPage(url, async () => "from the new channel", [

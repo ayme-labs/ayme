@@ -111,7 +111,7 @@ function selectorRegex(regex) {
   return `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
 }
 
-// Ayme's package name and its own build output reach the entries past every
+// ayme's package name and its own build output reach the entries past every
 // rule here, so no file under src/, tests included, imports either.
 const ownPackage = [
   {
@@ -280,7 +280,7 @@ const inPageImport = {
 export default [
   ...config,
   // The compiler's fixtures are Page Object Models as a project writes them,
-  // importing Ayme by its package name. The compiler's tests read them.
+  // importing ayme by its package name. The compiler's tests read them.
   { ignores: ["src/compiler/**/fixtures/**"] },
   ...horizontalBoundaries({
     packageRoot,

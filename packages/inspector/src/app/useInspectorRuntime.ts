@@ -148,10 +148,10 @@ export function useInspectorRuntime({
      * described as agents read it;
      * `tools.appProcess`, the tools of
      * the App Processes paired beside the page, run through the agent's
-     * Ayme MCP server;
+     * ayme MCP server;
      * `tools.publication`, the WebMCP publication status (a failure
      * carries its error in `message`); and `tools.agentConnection`,
-     * whether the page is connected to a coding agent's Ayme MCP server.
+     * whether the page is connected to a coding agent's ayme MCP server.
      */
     tools,
     /**

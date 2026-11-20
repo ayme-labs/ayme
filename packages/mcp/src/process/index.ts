@@ -11,7 +11,7 @@ import { processBehaviours } from "./processBehaviours";
 /** How long an unpaired App Process waits before it scans again. */
 export const SCAN_INTERVAL_MS = 3_000;
 
-/** The part of Ayme's runtime object an App Process uses. */
+/** The part of ayme's runtime object an App Process uses. */
 export type AgentConnectionRuntime = { readonly tools: PageTools };
 
 export type AppProcessOptions = {
@@ -30,8 +30,8 @@ export type AppProcessOptions = {
 
 /**
  * Starts an App Process's side of the Agent Connection, in a Node process
- * of the app such as its dev server, for the runtime object Ayme's setup
- * returns: it pairs with the coding agent's Ayme MCP server beside the
+ * of the app such as its dev server, for the runtime object ayme's setup
+ * returns: it pairs with the coding agent's ayme MCP server beside the
  * page, offers `ayme.tools` there and runs the agent's calls to them.
  *
  * It looks for the server the way a tab's auto-pairing does, and pairs

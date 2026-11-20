@@ -94,7 +94,7 @@ function followScroll() {
   <div class="min-h-svh">
     <!--
       The right grid column is empty on purpose: it reserves the space the
-      floating Ayme inspector occupies so the app never sits underneath it.
+      floating ayme inspector occupies so the app never sits underneath it.
     -->
     <div
       class="mx-auto grid max-w-[90rem] items-start gap-6 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,1fr)_34.5rem]"

@@ -114,7 +114,7 @@ export class RunEntry extends PanelPart {
   }
 
   /**
-   * Who started it: the icon of one of Ayme's own Callers, by its label,
+   * Who started it: the icon of one of ayme's own Callers, by its label,
    * e.g. "Run by you from the Inspector", or another Caller's name as text.
    */
   @ayme.action({

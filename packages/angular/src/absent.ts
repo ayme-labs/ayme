@@ -1,5 +1,5 @@
 /**
- * What a build without Ayme resolves `@ayme-dev/angular` to: the names of
+ * What a build without ayme resolves `@ayme-dev/angular` to: the names of
  * the index with their types, over the runtime's absent entry, so an
  * application renders as with the real package. `provideAyme` provides an
  * inert session and the inject functions return its values; nothing here

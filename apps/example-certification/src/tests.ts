@@ -26,7 +26,7 @@ import { agentPort, counterPath, render, server } from "./config";
 
 /**
  * Whether a console error is Chromium reporting a refused probe of the Agent
- * Connection's auto-pair scan: with no Ayme MCP server running, a localhost
+ * Connection's auto-pair scan: with no ayme MCP server running, a localhost
  * page probes `ws://127.0.0.1:<port>/probe` on each port from 9350 to 9365,
  * and Chromium logs every refused connection, whatever the page does. An
  * example's own page-error checks use it too.
@@ -40,7 +40,7 @@ export function isRefusedAutoPairProbe(text: string) {
 }
 
 /**
- * Playwright's `test`, whose pages never pair by themselves with an Ayme MCP
+ * Playwright's `test`, whose pages never pair by themselves with an ayme MCP
  * server that runs on this machine, such as another suite's: it answers
  * their auto-pair scan as if none ran (`ignoreAutoPairScan`). Every example
  * spec uses it, or `test`, which builds on it.
@@ -108,7 +108,7 @@ const allCounterTools = [
   "SubCounterPage.setMode",
 ];
 
-/** Ayme's own tools, in publication order: every page that runs Ayme has them. */
+/** ayme's own tools, in publication order: every page that runs ayme has them. */
 const aymeTools = [
   "snapshot",
   "click",

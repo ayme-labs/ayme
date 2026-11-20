@@ -31,7 +31,7 @@ const isAymePluginEntry = (plugin: unknown) => {
   return typeof path === "string" && path.replace(/^\.\//, "") === pluginFile;
 };
 // The build target's own entry has no `include`, so `ng build` is a Build
-// without Ayme; the development configuration's entry, which `ng serve` uses,
+// without ayme; the development configuration's entry, which `ng serve` uses,
 // sets it. A configuration's array replaces the option's, so the development
 // entry repeats `tsconfigPath`, and a development array written from scratch
 // starts as a copy of the option's, so the other plugins there stay in
@@ -74,9 +74,9 @@ const replaceable = (builder: string | undefined) =>
   (builder in replaced || Object.values(customEsbuild).includes(builder));
 
 /**
- * `ng add @ayme-dev/angular`: installs Ayme's runtime and build integration
+ * `ng add @ayme-dev/angular`: installs ayme's runtime and build integration
  * and the Playwright types Page Object Models use, switches the build and
- * serve targets to custom-esbuild with Ayme's plugin, kept in the development
+ * serve targets to custom-esbuild with ayme's plugin, kept in the development
  * configuration only, and adds `provideAyme()` to the application config.
  * What it cannot change safely, it leaves alone and lists as manual steps.
  */
@@ -102,7 +102,7 @@ export function ngAdd(options: NgAddOptions): Rule {
     const manual: string[] = [];
     const rules: Rule[] = [
       // The Angular CLI installs this package before the schematic runs and
-      // saves it with a caret; pin it like the other Ayme packages.
+      // saves it with a caret; pin it like the other ayme packages.
       addDependency("@ayme-dev/angular", version),
       addDependency("@ayme-dev/ayme", version),
       addDependency("@ayme-dev/unplugin-ayme", version, {
@@ -138,7 +138,7 @@ export function ngAdd(options: NgAddOptions): Rule {
         `ng add could not add provideAyme() to "${projectName}": it adds it only to a standalone application whose build target uses Angular's standard builder (yours: ${build?.builder ?? "none"}). Add provideAyme() from @ayme-dev/angular to your application config's providers, or to your root NgModule's.`
       );
 
-    // An existing plugin file is kept only when it already re-exports Ayme's
+    // An existing plugin file is kept only when it already re-exports ayme's
     // plugin; ng add never overwrites one.
     const pluginConflict =
       tree.exists(pluginFile) &&

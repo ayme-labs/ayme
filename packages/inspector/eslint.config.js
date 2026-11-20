@@ -126,8 +126,8 @@ export default [
   frontDoors(undefined, ["src/*.{ts,tsx}"], { tests: false }),
   frontDoors(undefined, ["src/*.test.{ts,tsx}"], { tests: true }),
   {
-    // The Inspector reads Ayme only through its inspector entry (ADR-0049).
-    // Its own Page Object Models (src/testing/) use Ayme's public API, and
+    // The Inspector reads ayme only through its inspector entry (ADR-0049).
+    // Its own Page Object Models (src/testing/) use ayme's public API, and
     // tests and test-utils may also use ./testing.
     files: [sourceFiles],
     ignores: ["src/testing/**", "src/**/test-utils/**", ...testFiles],

@@ -12,7 +12,7 @@ type LoaderContext = {
   addDependency?: (fileName: string) => void;
 };
 
-// The loader runs per module, so the line saying whether Ayme is in the
+// The loader runs per module, so the line saying whether ayme is in the
 // build is printed once per process.
 let announced = false;
 

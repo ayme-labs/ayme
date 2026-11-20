@@ -1,5 +1,5 @@
 /**
- * Everything the Ayme arms set up before the measured window: the Ayme MCP
+ * Everything the ayme arms set up before the measured window: the ayme MCP
  * server the agent talks to, `ayme mcp` from `@ayme-dev/mcp`, paired with a
  * headless browser holding the mission's start page, with the Goal Loop and
  * page objects switches set for the arm. The pairing follows the tab through the screens
@@ -52,7 +52,7 @@ export function aymeMcpVersion(): string {
 /** The MCP server's name in the agent's configuration; its tools are `mcp__ayme__<tool>`. */
 export const aymeServerName = "ayme";
 
-/** The skill the Ayme arms load: the one this repository ships to consumers, so the eval measures that. */
+/** The skill the ayme arms load: the one this repository ships to consumers, so the eval measures that. */
 export const aymeSkillName = "ayme";
 export const aymeSkillSource = path.join(repoRoot, "skills", aymeSkillName);
 
@@ -89,7 +89,7 @@ export const serverPorts = { first: 9350, last: 9365 };
 
 /**
  * A Page Object Tool each start screen publishes: proof that the paired page
- * is that screen with Ayme's tools. Without page objects the proof is
+ * is that screen with ayme's tools. Without page objects the proof is
  * `snapshot` and the start page's URL.
  */
 export const startScreenTool: Record<StartScreen, string> = {
@@ -168,7 +168,7 @@ async function portsInUse(): Promise<number[]> {
 
 /**
  * The server command must be built, and the range a page scans must be free:
- * a tab pairs by itself only when exactly one Ayme MCP server listens there,
+ * a tab pairs by itself only when exactly one ayme MCP server listens there,
  * so another coding agent's `ayme mcp` would keep the page from pairing.
  */
 export const aymeMcpPreconditions: Precondition[] = [
@@ -226,7 +226,7 @@ function publishedToolNames(page: Page): Promise<string[]> {
   });
 }
 
-/** Page Object Tools are named `<page object>.<action>`; Ayme's own tools carry no dot. */
+/** Page Object Tools are named `<page object>.<action>`; ayme's own tools carry no dot. */
 export function pageObjectToolNames(names: string[]): string[] {
   return names.filter((name) => name.includes("."));
 }
@@ -423,7 +423,7 @@ class HarnessedServer {
 }
 
 /**
- * Starts the Ayme MCP server, opens the mission's start page with the Goal
+ * Starts the ayme MCP server, opens the mission's start page with the Goal
  * Loop and page objects switches set for the arm, waits until the page has
  * paired with the server and published the screen's tools, and hands the
  * server to the agent.

@@ -14,7 +14,7 @@ import type { RunCard } from "./RunCard";
 /**
  * The Inspector, as a person sees it on the page. It is built from one page
  * object per part of the panel and runs on Playwright and on playwright-lite.
- * Tests drive the panel through it. An app never registers it with the Ayme
+ * Tests drive the panel through it. An app never registers it with the ayme
  * runtime, so its actions never become tools; only a page mounted with
  * `dogfood` does, so agents drive the panel the way tests do.
  */

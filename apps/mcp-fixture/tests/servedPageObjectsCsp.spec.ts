@@ -1,6 +1,6 @@
 import { expect, startServingAgent, test } from "./fixtures";
 
-// `plain.html`, a page without Ayme, sent with a Content Security Policy that
+// `plain.html`, a page without ayme, sent with a Content Security Policy that
 // allows scripts and connections only to the page's own origin. The served
 // runtime and the socket to `ayme mcp` are on another origin.
 const STRICT_PAGE = "/plain.html?strict-csp";

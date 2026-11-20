@@ -5,7 +5,7 @@
 
 import { version as mcpVersion } from "@ayme-dev/mcp/package.json";
 
-// Ayme's MCP server, pinned to the installed version of `@ayme-dev/mcp`.
+// ayme's MCP server, pinned to the installed version of `@ayme-dev/mcp`.
 export const mcpPackage = `@ayme-dev/mcp@${mcpVersion}`;
 
 // Self-routing: the visitor pastes it before and after restarting the agent.

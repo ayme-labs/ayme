@@ -1,5 +1,5 @@
 // The `./playwright` entry in Node, over real Playwright Chromium and against
-// the built package: Ayme over a Page a Node host was handed (ADR-0049).
+// the built package: ayme over a Page a Node host was handed (ADR-0049).
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 

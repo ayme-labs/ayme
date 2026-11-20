@@ -119,7 +119,7 @@ export const goalFirstSentence =
   "Hand the goal to the `goal` tool first; use the other tools only if it can't finish.";
 
 /**
- * An Ayme arm: the page's own tools through Ayme's MCP server, paired with
+ * An ayme arm: the page's own tools through ayme's MCP server, paired with
  * the page before the agent starts, and nothing else. The arms differ in
  * the lab app's two switches, which the setup sets before the page loads:
  * the Goal Loop, which adds the goal-first sentence to the prompt's
@@ -176,7 +176,7 @@ export const arms: Record<ArmId, Arm> = {
           "--browser",
           "chrome",
           "--headless",
-          // The lab app publishes Ayme's tools through WebMCP; this arm gets Playwright MCP's own tools only.
+          // The lab app publishes ayme's tools through WebMCP; this arm gets Playwright MCP's own tools only.
           "--no-webmcp",
           "--user-data-dir",
           profileDir,
