@@ -64,7 +64,7 @@ url: https://…                  # where the recording started
 tracePath: .ayme/recordings/rec_…/trace.zip   # relative to where codegen ran
 visits:                         # one per page, from a load or a navigation to another path
   - visitId, url, cause
-    baselineTree:               # the page just before the first interaction
+    baselineTree:               # the page just before the first interaction; with none, the last read
     timelineEntries:            # in order
       - kind: interaction       # or `change`
         timestamp               # see Timestamps below
@@ -75,14 +75,16 @@ traceActionPoints:              # where the trace holds each interaction
   - interactionId, pageId, beforeSnapshotId, afterSnapshotId, startedAt, endedAt
 ```
 
-Timestamps are milliseconds on the recorder's own clock, counted from when it
-started; compare them only with each other. An interaction's `timestamp`, and
+Timestamps are milliseconds on the monotonic clock of the recorder's Node
+process, counted from when that process started; compare them only with each
+other. An interaction's `timestamp`, and
 its trace point's `startedAt`, is when its input reached the page; for typing,
 a select or an upload, which the recorder does not hold back, it is when the
 recorder read the page just before it. A `kind: change` entry's `timestamp` is
 when the recorder read the page that showed the change. A trace point's
-`endedAt` is when the interaction's "after" was read; with no "after", it
-equals `startedAt`.
+`endedAt` is when the interaction's "after" was read. A step that left the
+page has an `endedAt` but no `afterSnapshotId`: its "after" is the next
+visit's. With no "after" at all, `endedAt` equals `startedAt`.
 
 A package made by the 0.1 recorder differs in a few places; see
 [Packages from the 0.1 recorder](#packages-from-the-01-recorder).
@@ -158,7 +160,8 @@ late result of an earlier step, such as data that finished loading. The
 focus a click's press moved to the clicked element, and away from the one
 before, is in that click's own change tree, not a change before it, nor in
 the change tree of the step just before it, such as the typing before a
-click. A change that no recorded action explains can also come from a
+click. A page's first click can lack it, when another element, such as a
+field the page focused by itself, had the focus. A change that no recorded action explains can also come from a
 hover. It can come from something the page does
 on its own in between, too, such as an async update.
 
