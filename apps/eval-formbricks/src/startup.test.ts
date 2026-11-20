@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -315,13 +316,20 @@ describe("runStartup", () => {
   });
 
   it("names Claude Code as the missing precondition, and nothing else", async () => {
-    vi.stubEnv("PATH", path.dirname(process.execPath));
+    // Node alone on PATH: its own folder may hold an installed `claude` too.
+    const nodeOnly = await mkdtemp(path.join(os.tmpdir(), "node-only-"));
+    await symlink(process.execPath, path.join(nodeOnly, "node"));
+    vi.stubEnv("PATH", nodeOnly);
     vi.stubEnv("CLAUDE_CODE_OAUTH_TOKEN", "token-for-the-test");
-    await expect(
-      runStartup({ scenario, model: "sonnet", timeoutMs: 10_000 })
-    ).rejects.toThrow(
-      "Cannot start the run:\n- Claude Code token: Claude Code is not installed: `claude --version` failed."
-    );
+    try {
+      await expect(
+        runStartup({ scenario, model: "sonnet", timeoutMs: 10_000 })
+      ).rejects.toThrow(
+        "Cannot start the run:\n- Claude Code token: Claude Code is not installed: `claude --version` failed."
+      );
+    } finally {
+      await rm(nodeOnly, { recursive: true, force: true });
+    }
   });
 });
 
