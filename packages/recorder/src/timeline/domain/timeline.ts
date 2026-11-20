@@ -21,6 +21,7 @@ import { foundRows, type FoundRow } from "./changeRows";
 import {
   labelNear,
   selectorWords,
+  withPageBefore,
   wordsOf,
   type NamedElement,
 } from "./elementNames";
@@ -622,11 +623,28 @@ export class Timeline {
 
   /** What changed on the page from one kept snapshot to a later one. Each
    * may stand as `fromTree` and `toTree` say instead, under its own refs. */
-  private async change(
+  private change(
     from: Kept,
     to: Kept,
     fromTree = from.tree,
     toTree = to.tree
+  ): Promise<StructuralTree> {
+    return this.reconciled(
+      from,
+      fromTree,
+      toTree,
+      new Map([...from.firstRefs, ...to.firstRefs])
+    );
+  }
+
+  /** What changed on `from`'s page from one tree to another, under the
+   * elements' first refs, with the page before it kept beside it: a removed
+   * element is named by its place there. */
+  private async reconciled(
+    from: Kept,
+    fromTree: StructuralTree,
+    toTree: StructuralTree,
+    firstRefs: ReadonlyMap<SnapshotRef, FirstRef>
   ): Promise<StructuralTree> {
     const change = await this.session.readIdentityLedger(
       from.observation.pageId,
@@ -636,9 +654,9 @@ export class Timeline {
             ledger.sameIdentity(beforeRef, afterRef),
         })
     );
-    return this.underFirstRefs(
-      change,
-      new Map([...from.firstRefs, ...to.firstRefs])
+    return withPageBefore(
+      this.underFirstRefs(change, firstRefs),
+      this.underFirstRefs(fromTree, firstRefs)
     );
   }
 
@@ -754,16 +772,7 @@ export class Timeline {
     pictured: Pictured,
     firstRefs: ReadonlyMap<SnapshotRef, FirstRef>
   ): Promise<StructuralTree> {
-    const tree = this.tiedTree(pictured);
-    const before = await this.session.readIdentityLedger(
-      from.observation.pageId,
-      (ledger) =>
-        StructuralTree.reconcile(from.tree, tree, {
-          sameIdentity: (beforeRef: AriaRef, afterRef: AriaRef) =>
-            ledger.sameIdentity(beforeRef, afterRef),
-        })
-    );
-    return this.underFirstRefs(before, firstRefs);
+    return this.reconciled(from, from.tree, this.tiedTree(pictured), firstRefs);
   }
 
   /** The picture's tree, each element tied to a later read under that
@@ -876,15 +885,10 @@ export class Timeline {
       named: namedTarget(tree, targetRef),
     };
     if (!to) return { ...measured, change: null };
-    const after = await this.session.readIdentityLedger(
-      from.observation.pageId,
-      (ledger) =>
-        StructuralTree.reconcile(tree, toTree ?? to.tree, {
-          sameIdentity: (beforeRef: AriaRef, afterRef: AriaRef) =>
-            ledger.sameIdentity(beforeRef, afterRef),
-        })
-    );
-    return { ...measured, change: this.underFirstRefs(after, firstRefs) };
+    return {
+      ...measured,
+      change: await this.reconciled(from, tree, toTree ?? to.tree, firstRefs),
+    };
   }
 
   /** An Interaction's entry as measured. */

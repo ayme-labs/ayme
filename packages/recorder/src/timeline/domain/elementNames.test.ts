@@ -110,7 +110,7 @@ describe("the label of an element", () => {
 
     expect(label(tree, "e2")).toEqual({
       label: 'paragraph "Saved"',
-      selector: 'internal:role=paragraph >> internal:has-text="Saved"i',
+      selector: 'internal:role=paragraph >> internal:has-text="Saved"s',
     });
     expect(label(tree, "e3")).toEqual({
       label: '"Draft"',
@@ -160,12 +160,12 @@ describe("the label of an element", () => {
       selector:
         'iframe >> internal:control=enter-frame >> internal:role=button[name="Pay"s]',
     });
-    // An ancestor outside its frame cannot hold it in a selector. Its place
-    // is the page's; the selector counts in the frame's document.
+    // Its selector matches in the frame's document only: there it is the
+    // one "Twin".
     expect(label(tree, "f1e2")).toEqual({
-      label: 'button "Twin" (2nd of 2)',
+      label: 'button "Twin"',
       selector:
-        'iframe >> internal:control=enter-frame >> internal:role=button[name="Twin"s] >> nth=0',
+        'iframe >> internal:control=enter-frame >> internal:role=button[name="Twin"s]',
     });
   });
 
@@ -221,6 +221,72 @@ describe("the label of an element", () => {
 
     expect(label(change, "e4", "before")?.label).toBe('"item left"');
     expect(label(change, "e4", "after")?.label).toBe('"items left"');
+  });
+});
+
+// A label fits exactly the element it names as its own selector matches,
+// by Playwright's rules: a role's name and a text exact where the selector
+// says so, the text inside as part of a text in any case, a role alone any
+// element of that role; and its place counts what that selector matches.
+describe("the label of an element, as its selector matches", () => {
+  it("names an element with nothing but text inside it by that text exactly, so it fits no element whose text only holds it", () => {
+    const tree = read(
+      [
+        `- generic [ref=e1]:`,
+        `  - paragraph [ref=e2]: Saved`,
+        `  - paragraph [ref=e3]: Not saved`,
+      ].join("\n")
+    );
+
+    expect(label(tree, "e2")).toEqual({
+      label: 'paragraph "Saved"',
+      selector: 'internal:role=paragraph >> internal:has-text="Saved"s',
+    });
+  });
+
+  it("counts every element whose text holds the text inside, in any case, and gives the place among those", () => {
+    const tree = read(todos("Buy milk today", "buy milk", "buy milk"));
+
+    expect(label(tree, "e10")?.label).toBe('listitem "Buy milk today"');
+    expect(label(tree, "e14")).toEqual({
+      label: 'listitem "buy milk" (3rd of 3)',
+      selector:
+        'internal:role=listitem >> internal:has-text="buy milk"i >> nth=2',
+    });
+  });
+
+  it("counts every element of a role for a role alone, named or not", () => {
+    const tree = read(
+      [
+        `- generic [ref=e1]:`,
+        `  - list [ref=e2]:`,
+        `    - listitem [ref=e3]:`,
+        `      - checkbox "Done" [ref=e4]`,
+        `    - listitem "Shipping" [ref=e5]`,
+      ].join("\n")
+    );
+
+    expect(label(tree, "e3")).toEqual({
+      label: "listitem (1st of 2)",
+      selector: "internal:role=listitem >> nth=0",
+    });
+  });
+
+  it("counts an element with no role by its text as Playwright's text lookup does: the innermost element whose text it is", () => {
+    const tree = read(
+      [
+        `- generic [ref=e1]:`,
+        `  - generic [ref=e2]:`,
+        `    - generic [ref=e3]: Draft`,
+        `  - paragraph [ref=e4]: Draft saved`,
+      ].join("\n")
+    );
+
+    // The wrapper's text is its child's: the lookup finds the child alone.
+    expect(label(tree, "e3")).toEqual({
+      label: '"Draft"',
+      selector: 'internal:text="Draft"s',
+    });
   });
 });
 

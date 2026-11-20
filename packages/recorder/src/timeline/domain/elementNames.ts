@@ -68,7 +68,8 @@ export function labelOf(
   node: StructuralNode,
   view: PageView = "after"
 ): NamedElement | null {
-  return labelsOf(tree, view).of(node);
+  const place = placeOf(tree, node, view);
+  return labelsOf(place.tree, place.view).of(place.node);
 }
 
 /** An element by its label when it has a role or a name, or else its
@@ -79,11 +80,12 @@ export function labelNear(
   node: StructuralNode,
   view: PageView = "after"
 ): NamedElement | null {
-  const labels = labelsOf(tree, view);
-  const named = [node, ...tree.getAncestorsOf(node.ref)].find(
+  const place = placeOf(tree, node, view);
+  const labels = labelsOf(place.tree, place.view);
+  const named = [place.node, ...place.tree.getAncestorsOf(place.node.ref)].find(
     (one) => labels.own(one) !== null
   );
-  return labels.of(named ?? node);
+  return labels.of(named ?? place.node);
 }
 
 /**
@@ -112,7 +114,23 @@ export const wordsOf = (named: NamedElement | null): string =>
  * read asks the one index. */
 const built = new WeakMap<StructuralTree, Map<PageView, PageLabels>>();
 
+/** The page before each Change Tree, under the Change Tree's refs: a removed
+ * element is counted against it, in its own order. */
+const pagesBefore = new WeakMap<StructuralTree, StructuralTree>();
+
+/** Has the labels of a Change Tree's removed elements counted against the
+ * page as it was before the change, `before`, under the tree's refs. */
+export function withPageBefore(
+  change: StructuralTree,
+  before: StructuralTree
+): StructuralTree {
+  pagesBefore.set(change, before);
+  return change;
+}
+
 function labelsOf(tree: StructuralTree, view: PageView): PageLabels {
+  const before = view === "before" ? pagesBefore.get(tree) : undefined;
+  if (before) return labelsOf(before, "after");
   let views = built.get(tree);
   if (!views) built.set(tree, (views = new Map()));
   let labels = views.get(view);
@@ -120,66 +138,124 @@ function labelsOf(tree: StructuralTree, view: PageView): PageLabels {
   return labels;
 }
 
-/** One way to name an element, with the elements of the page it fits. */
+/** The tree an element of a Change Tree is labelled in, and the element
+ * there: the page before the change for a removed one, when it is known. */
+function placeOf(tree: StructuralTree, node: StructuralNode, view: PageView) {
+  const before = view === "before" ? pagesBefore.get(tree) : undefined;
+  const there = before?.getNode(node.ref);
+  return before && there
+    ? { tree: before, node: there, view: "after" as const }
+    : { tree, node, view };
+}
+
+/** One way to name an element: its words, Playwright's selector for them,
+ * and the elements of its document that selector matches, in order. */
 type Form = {
   readonly words: string;
   readonly selector: string;
-  readonly alike: readonly StructuralNode[];
+  readonly matches: Matches;
 };
 
-/** The labels of one page: an index of the elements by the words of their
- * own role and name, and, asked for, by those and the text inside them. */
+/** What one selector matches in one document, in order, with each one's
+ * place among them. */
+type Matches = {
+  readonly nodes: readonly StructuralNode[];
+  readonly place: ReadonlyMap<AriaRef, number>;
+};
+
+/** Roles whose name Playwright takes from the text inside: an element of
+ * one with no text of its own in the snapshot holds its name as text. */
+const NAMED_BY_CONTENT = new Set([
+  "button",
+  "cell",
+  "columnheader",
+  "gridcell",
+  "heading",
+  "link",
+  "menuitem",
+  "option",
+  "row",
+  "rowheader",
+  "tab",
+  "tooltip",
+  "treeitem",
+]);
+
+/** The labels of one page: the elements by their role and in order, the
+ * text of each as Playwright reads an element's text, and what each
+ * selector a label is made of matches, worked out once. */
 class PageLabels {
   /** Each element's place in the page, in order. */
   private readonly order = new Map<AriaRef, number>();
+  /** The elements of the page, in order. */
+  private readonly all: StructuralNode[] = [];
   /** The place just after each element's last descendant: the elements
    * inside one are those placed after it and before that. */
   private readonly ends = new Map<AriaRef, number>();
-  /** The elements by the words of their own role and name; "" for those
-   * with neither. */
-  private readonly byWords = new Map<string, StructuralNode[]>();
-  /** The elements of a group of `byWords` by the text inside them. */
-  private readonly byText = new Map<string, Map<string, StructuralNode[]>>();
+  /** The elements of each role, in order. */
+  private readonly byRole = new Map<string, StructuralNode[]>();
   /** The text inside each element, and directly inside it (`textIn`). */
   private readonly texts = new Map<AriaRef, string>();
   private readonly ownTexts = new Map<AriaRef, string>();
+  /** Each element's whole text, as Playwright reads it, and in lower
+   * case. */
+  private readonly fullTexts = new Map<AriaRef, string>();
+  private readonly lowerTexts = new Map<AriaRef, string>();
   /** The frame each element is in; null for the page's own document. */
   private readonly frameByRef = new Map<AriaRef, StructuralNode | null>();
-  /** The frames of the page, in order. */
-  private readonly frames: StructuralNode[] = [];
+  /** The elements by their whole text, in order. */
+  private readonly byFullText = new Map<string, StructuralNode[]>();
+  /** The elements of each role by their name, and by their whole text,
+   * made when first asked. */
+  private readonly byName = new Map<string, Map<string, StructuralNode[]>>();
+  private readonly byRoleText = new Map<
+    string,
+    Map<string, StructuralNode[]>
+  >();
+  /** What each selector matches, by its document and its words. */
+  private readonly matched = new Map<string, Matches>();
   private readonly labels = new Map<AriaRef, NamedElement | null>();
 
   constructor(
     private readonly tree: StructuralTree,
     private readonly view: PageView
   ) {
-    // Returns the longest text piece inside the element.
+    // Returns the longest text piece inside the element, and its whole
+    // text.
     const visit = (
       node: StructuralNode,
       frame: StructuralNode | null
-    ): string => {
-      if (!this.shows(node)) return "";
+    ): { longest: string; full: string } => {
+      if (!this.shows(node)) return { longest: "", full: "" };
       this.order.set(node.ref, this.order.size);
+      this.all.push(node);
       this.frameByRef.set(node.ref, frame);
-      const own = this.own(node);
-      add(this.byWords, own ? words(own) : "", node);
-      if (node.role === "iframe") this.frames.push(node);
+      add(this.byRole, this.value(node).role, node);
       const inside = node.role === "iframe" ? node : frame;
-      let text = "";
+      let longest = "";
+      const pieces: string[] = [];
       for (const child of node.children) {
         const piece =
-          typeof child === "string" ? normal(child) : visit(child, inside);
-        if (piece.length > text.length) text = piece;
+          typeof child === "string"
+            ? { longest: normal(child), full: normal(child) }
+            : visit(child, inside);
+        if (piece.longest.length > longest.length) longest = piece.longest;
+        if (piece.full) pieces.push(piece.full);
       }
       // On the page before, an element that changed stands as it was, with
       // all that was inside it.
       const before =
         this.view === "before" ? this.tree.getBeforeNode(node.ref) : null;
-      if (before) text = longestIn(before);
+      if (before) longest = longestIn(before);
+      const full = before ? fullTextOf(before) : fullText(node, pieces);
       this.ends.set(node.ref, this.order.size);
-      this.texts.set(node.ref, shortened(text));
+      this.texts.set(node.ref, shortened(longest));
       this.ownTexts.set(node.ref, shortened(longestIn(before ?? node, false)));
-      return text;
+      this.fullTexts.set(node.ref, full);
+      add(this.byFullText, full, node);
+      this.lowerTexts.set(node.ref, full.toLowerCase());
+      // A frame's document is its own: its text is no text of the frame's.
+      return { longest, full: node.role === "iframe" ? "" : full };
     };
     for (const root of tree.getRootNodes()) visit(root, null);
   }
@@ -210,64 +286,148 @@ class PageLabels {
     return (this.own(node) ? this.texts : this.ownTexts).get(node.ref)!;
   }
 
-  /** The elements of the group `group` of `byWords` whose text inside is
-   * `text`. */
-  private withText(group: string, text: string): StructuralNode[] {
-    let texts = this.byText.get(group);
-    if (!texts) {
-      this.byText.set(group, (texts = new Map()));
-      for (const node of this.byWords.get(group)!)
-        add(texts, this.textIn(node), node);
-    }
-    return texts.get(text) ?? [];
+  /** What a selector matches in the document `frame`, worked out once: the
+   * elements of `candidates` that `fits`, and with `innermost`, only those
+   * none of whose descendants fits too, as Playwright's text lookup. */
+  private matchesOf(
+    selector: string,
+    frame: StructuralNode | null,
+    candidates: readonly StructuralNode[],
+    fits: (node: StructuralNode) => boolean,
+    innermost = false
+  ): Matches {
+    const key = `${frame?.ref ?? ""}\u0000${selector}`;
+    const known = this.matched.get(key);
+    if (known) return known;
+    let nodes = candidates.filter(
+      (node) => this.frameOf(node) === frame && fits(node)
+    );
+    if (innermost)
+      nodes = nodes.filter((node, at) => {
+        const next = nodes[at + 1];
+        return !next || this.order.get(next.ref)! >= this.ends.get(node.ref)!;
+      });
+    const matches = {
+      nodes,
+      place: new Map(nodes.map((node, at) => [node.ref, at])),
+    };
+    this.matched.set(key, matches);
+    return matches;
   }
 
   /** The ways to name an element, plainest first: its role and name, and
    * those with the text inside it. */
   private forms(node: StructuralNode): Form[] {
     const own = this.own(node);
+    const frame = this.frameOf(node);
     // A frame has no role Playwright's selectors know, and its document's
     // text is not its own: it is one of the frames of its document.
-    if (node.role === "iframe") {
-      const document = this.frameOf(node);
+    if (node.role === "iframe")
       return [
         {
           words: own ? words(own) : "iframe",
           selector: "iframe",
-          alike: this.frames.filter((one) => this.frameOf(one) === document),
+          matches: this.matchesOf(
+            "iframe",
+            frame,
+            this.byRole.get("iframe")!,
+            () => true
+          ),
         },
       ];
-    }
     const forms: Form[] = [];
-    const group = own ? words(own) : "";
-    if (own)
-      forms.push({
-        words: group,
-        selector: selectorOf(own),
-        alike: this.byWords.get(group)!,
-      });
+    const first = own && this.ownForm(own, frame);
+    if (first) forms.push(first);
     const text = this.textIn(node);
     if (!text || text === own?.name) return forms;
-    const quoted = `"${escaped(text.replace(/…$/, ""))}"`;
-    const label = own ? `${group} ${quotedWords(text)}` : quotedWords(text);
-    forms.push({
-      words: label,
-      selector: own
-        ? `${selectorOf(own)} >> internal:has-text=${quoted}i`
-        : `internal:text=${quoted}i`,
-      // Shown alike: an element whose own name reads the same counts too.
-      alike: this.inOrder([
-        ...this.withText(group, text),
-        ...(this.byWords.get(label) ?? []),
-      ]),
-    });
+    const kept = text.replace(/…$/, "");
+    const lower = kept.toLowerCase();
+    const holds = (one: StructuralNode) =>
+      this.lowerTexts.get(one.ref)!.includes(lower);
+    if (first) {
+      const selector = `${first.selector} >> internal:has-text=${JSON.stringify(kept)}i`;
+      forms.push({
+        words: `${first.words} ${quotedWords(text)}`,
+        selector,
+        matches: this.matchesOf(selector, frame, first.matches.nodes, holds),
+      });
+    } else {
+      const selector = `internal:text=${JSON.stringify(kept)}i`;
+      forms.push({
+        words: quotedWords(text),
+        selector,
+        matches: this.matchesOf(selector, frame, this.all, holds, true),
+      });
+    }
     return forms;
   }
 
-  private inOrder(nodes: StructuralNode[]) {
-    return nodes.sort(
-      (one, other) => this.order.get(one.ref)! - this.order.get(other.ref)!
-    );
+  /** An element's form by its own role and name, and what it matches as
+   * Playwright does: a name exactly, a role alone any element of the role,
+   * and a text of its own exactly. */
+  private ownForm(own: OwnName, frame: StructuralNode | null): Form {
+    const { role, name } = own;
+    const ofRole = this.byRole.get(role) ?? [];
+    const quoted = JSON.stringify(name);
+    const every = () => true;
+    if (!own.byText) {
+      const selector = name
+        ? `internal:role=${role}[name="${escaped(name)}"s]`
+        : `internal:role=${role}`;
+      const candidates = name
+        ? (this.indexed(
+            this.byName,
+            role,
+            ofRole,
+            (one) => this.value(one).name
+          ).get(name) ?? [])
+        : ofRole;
+      return {
+        words: words(own),
+        selector,
+        matches: this.matchesOf(selector, frame, candidates, every),
+      };
+    }
+    if (NO_ROLE.has(role)) {
+      const selector = `internal:text=${quoted}s`;
+      return {
+        words: words(own),
+        selector,
+        matches: this.matchesOf(
+          selector,
+          frame,
+          this.byFullText.get(name) ?? [],
+          every,
+          true
+        ),
+      };
+    }
+    const selector = `internal:role=${role} >> internal:has-text=${quoted}s`;
+    const candidates =
+      this.indexed(this.byRoleText, role, ofRole, (one) =>
+        this.fullTexts.get(one.ref)!
+      ).get(name) ?? [];
+    return {
+      words: words(own),
+      selector,
+      matches: this.matchesOf(selector, frame, candidates, every),
+    };
+  }
+
+  /** The elements of a role by one key of theirs, as `index` keeps them:
+   * made once per role, when first asked. */
+  private indexed(
+    index: Map<string, Map<string, StructuralNode[]>>,
+    role: string,
+    ofRole: readonly StructuralNode[],
+    keyOf: (node: StructuralNode) => string
+  ): Map<string, StructuralNode[]> {
+    let byKey = index.get(role);
+    if (!byKey) {
+      index.set(role, (byKey = new Map()));
+      for (const node of ofRole) add(byKey, keyOf(node), node);
+    }
+    return byKey;
   }
 
   /** The frame an element is in; null for one of the page's own
@@ -276,9 +436,9 @@ class PageLabels {
     return this.frameByRef.get(node.ref)!;
   }
 
-  /** The first of an element's forms that fits it alone on the page. */
+  /** The first of an element's forms that fits it alone in its document. */
   private alone(node: StructuralNode): Form | undefined {
-    return this.forms(node).find((form) => form.alike.length === 1);
+    return this.forms(node).find((form) => form.matches.nodes.length === 1);
   }
 
   of(node: StructuralNode): NamedElement | null {
@@ -286,6 +446,25 @@ class PageLabels {
     const named = this.build(node);
     this.labels.set(node.ref, named);
     return named;
+  }
+
+  /** How many of `matches` are inside `ancestor`: the elements placed
+   * after it and before its end, found by halving. */
+  private countInside(matches: Matches, ancestor: StructuralNode): number {
+    const from = this.order.get(ancestor.ref)!;
+    const to = this.ends.get(ancestor.ref)!;
+    const firstAt = (bound: number) => {
+      let low = 0;
+      let high = matches.nodes.length;
+      while (low < high) {
+        const middle = (low + high) >> 1;
+        if (this.order.get(matches.nodes[middle]!.ref)! < bound)
+          low = middle + 1;
+        else high = middle;
+      }
+      return low;
+    };
+    return firstAt(to) - firstAt(from + 1);
   }
 
   private build(node: StructuralNode): NamedElement | null {
@@ -303,34 +482,27 @@ class PageLabels {
         ? `${this.of(frame)!.selector} >> internal:control=enter-frame >> ${selector}`
         : selector,
     });
-    const alone = forms.find((form) => form.alike.length === 1);
+    const alone = forms.find((form) => form.matches.nodes.length === 1);
     if (alone) return framed(alone.words, alone.selector);
     // Inside the nearest ancestor with a role or a name that fits it alone,
-    // when the element is the only one of its look-alikes in it.
+    // when the element is the only one its selector matches in it.
     const within = frameAt === -1 ? ancestors : ancestors.slice(0, frameAt);
     for (const ancestor of within) {
       if (!this.own(ancestor)) continue;
       const theirs = this.alone(ancestor);
       if (!theirs) continue;
-      const from = this.order.get(ancestor.ref)!;
-      const to = this.ends.get(ancestor.ref)!;
-      const inside = last.alike.filter((one) => {
-        const at = this.order.get(one.ref)!;
-        return at > from && at < to;
-      });
-      if (inside.length === 1)
+      if (this.countInside(last.matches, ancestor) === 1)
         return framed(
           `${theirs.words} › ${last.words}`,
           `${theirs.selector} >> ${last.selector}`
         );
       break;
     }
-    // Its place on the page; the selector counts in its own document.
-    const at = last.alike.indexOf(node);
-    const inDocument = last.alike.filter((one) => this.frameOf(one) === frame);
+    // Its place among what its selector matches in its document.
+    const at = last.matches.place.get(node.ref) ?? 0;
     return framed(
-      `${last.words} (${ordinal(at + 1)} of ${last.alike.length})`,
-      `${last.selector} >> nth=${inDocument.indexOf(node)}`
+      `${last.words} (${ordinal(at + 1)} of ${last.matches.nodes.length})`,
+      `${last.selector} >> nth=${at}`
     );
   }
 }
@@ -349,19 +521,6 @@ const words = (own: OwnName) =>
     ...(own.name ? [quotedWords(own.name)] : []),
   ].join(" ");
 
-/** Playwright's selector for an element's own role and name, by their exact
- * words; for an element with no role but its text, by that text. */
-function selectorOf(own: OwnName): string {
-  const quoted = `"${escaped(own.name)}"`;
-  if (!own.byText)
-    return own.name
-      ? `internal:role=${own.role}[name=${quoted}s]`
-      : `internal:role=${own.role}`;
-  return NO_ROLE.has(own.role)
-    ? `internal:text=${quoted}s`
-    : `internal:role=${own.role} >> internal:has-text=${quoted}i`;
-}
-
 /** A text piece with its spaces as a page's text reads them. */
 const normal = (piece: string) => piece.replace(/\s+/g, " ").trim();
 
@@ -375,6 +534,26 @@ function longestIn(node: StructuralNode, deep = true): string {
     if (piece.length > text.length) text = piece;
   }
   return text;
+}
+
+/** An element's whole text as Playwright reads it: the text inside it,
+ * and the name of an element whose name is its text, with spaces as a
+ * page's text reads them. */
+function fullText(node: StructuralNode, pieces: readonly string[]): string {
+  if (pieces.length === 0 && node.name && NAMED_BY_CONTENT.has(node.role))
+    return node.name;
+  return normal(pieces.join(" "));
+}
+
+/** The whole text of an element as it stood, all of it. */
+function fullTextOf(node: StructuralNode): string {
+  const pieces = node.children.map((child) =>
+    typeof child === "string" ? normal(child) : fullTextOf(child)
+  );
+  return fullText(
+    node,
+    pieces.filter((piece) => piece)
+  );
 }
 
 const quotedWords = (text: string) => `"${escaped(text)}"`;

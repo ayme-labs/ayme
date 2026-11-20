@@ -1443,12 +1443,14 @@ const LABELLED = `
   <style>.destroy::after { content: "×"; }</style>
   <h1>todos</h1>
   <ul>
+    <li><input type="checkbox" aria-label="Toggle Todo"><label>Buy milk today</label><button class="destroy"></button></li>
     <li><input type="checkbox" aria-label="Toggle Todo"><label>buy milk</label><button class="destroy"></button></li>
     <li><input type="checkbox" aria-label="Toggle Todo"><label>feed the cat</label><button class="destroy"></button></li>
     <li><input type="checkbox" aria-label="Toggle Todo"><label>buy milk</label><button class="destroy"></button></li>
   </ul>
-  <span><strong>3</strong> items left</span>
+  <span><strong>4</strong> items left</span>
   <p>Saved</p>
+  <p>Not saved</p>
   <button>Twin</button>
   <iframe srcdoc="<button>Pay</button><button>Twin</button>"></iframe>`;
 
@@ -1494,15 +1496,19 @@ it("finds by the selector of each element's label, built from the page's own sna
   expect(labels).toEqual(
     expect.arrayContaining([
       'heading "todos"',
-      'listitem "buy milk" (1st of 2)',
+      // Its text is part of "Buy milk today" too, as Playwright matches it.
+      'listitem "buy milk" (2nd of 3)',
+      'listitem "Buy milk today"',
       'listitem "feed the cat"',
       'listitem "feed the cat" › checkbox "Toggle Todo"',
-      'checkbox "Toggle Todo" (3rd of 3)',
+      'checkbox "Toggle Todo" (4th of 4)',
       '"items left"',
       'paragraph "Saved"',
-      'button "Twin" (1st of 2)',
+      'paragraph "Not saved"',
+      // One in the page and one in the frame: each selector matches in its
+      // own document only.
+      'button "Twin"',
       'button "Pay"',
-      'button "Twin" (2nd of 2)',
     ])
   );
 });

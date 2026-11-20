@@ -1879,7 +1879,7 @@ describe("the timeline, for the highlight", () => {
       page: page1,
       find: {
         by: "selector",
-        selector: 'internal:role=paragraph >> internal:has-text="Saved"i',
+        selector: 'internal:role=paragraph >> internal:has-text="Saved"s',
       },
     });
     expect(timeline.liveTarget(interaction1, 1)).toEqual({
@@ -1958,7 +1958,7 @@ describe("the timeline, for the highlight", () => {
       page: page1,
       find: {
         by: "selector",
-        selector: 'internal:role=paragraph >> internal:has-text="Saved"i',
+        selector: 'internal:role=paragraph >> internal:has-text="Saved"s',
       },
     });
     expect(timeline.liveTarget(interaction1, 1)).toEqual({

@@ -384,6 +384,44 @@ describe("where an entry's target is now, for the highlight", () => {
   });
 });
 
+describe("a change row's element in words, for whoever shows the entry", () => {
+  it("names a removed element by its place on the page before the change, not where the change tree puts it", async () => {
+    // The second of two look-alikes goes; the other moves after a third.
+    const timeline = await timelineOf([
+      visit,
+      snapshot(
+        snapshotId("snapshot_1"),
+        10,
+        page(
+          `- button "Save" [ref=e2]`,
+          `- listitem [ref=e4]: Twin`,
+          `- listitem [ref=e5]: Twin`,
+          `- listitem [ref=e6]: Other`
+        )
+      ),
+      snapshot(
+        snapshotId("snapshot_2"),
+        20,
+        page(
+          `- button "Save" [ref=e2]`,
+          `- listitem [ref=e6]: Other`,
+          `- listitem [ref=e4]: Twin`
+        )
+      ),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
+    ]);
+
+    expect(timeline.visits()[0]!.entries[0]!).toMatchObject({
+      changes: expect.arrayContaining([
+        { kind: "removed", element: 'listitem "Twin" (2nd of 2)' },
+      ]),
+    });
+  });
+});
+
 describe("an entry's target in words, for whoever shows the entry", () => {
   it("is the role and name of the element its target ref names, and the package does not have it", async () => {
     const timeline = await timelineOf([
