@@ -1,6 +1,6 @@
 # Angular
 
-Everything about Ayme in an Angular app: `ng add` and manual setup, starting Ayme in the application config, Page Objects in components, server rendering, bundle size, limits and the API of `@ayme-dev/angular`.
+Everything about ayme in an Angular app: `ng add` and manual setup, starting ayme in the application config, Page Objects in components, server rendering, bundle size, limits and the API of `@ayme-dev/angular`.
 
 ## Install and configure
 
@@ -15,7 +15,7 @@ npm install -D @ayme-dev/inspector @ayme-dev/mcp
 
 - switches the project's build and serve builders to custom-esbuild, keeping their options;
 - writes the one-line plugin file, `ayme.plugin.mjs`;
-- adds the plugin to the build target, and with `include: true` to its development configuration, so `ng serve` has Ayme and `ng build` does not;
+- adds the plugin to the build target, and with `include: true` to its development configuration, so `ng serve` has ayme and `ng build` does not;
 - adds `provideAyme()` to the application config.
 
 It leaves bundle budgets alone; see [Bundle size](#bundle-size). If your app uses another custom builder or bootstraps an NgModule, `ng add` changes only what it can change safely and prints the remaining steps.
@@ -35,9 +35,9 @@ Install the `@angular-builders/custom-esbuild` major that matches your Angular m
 
 Finally add `provideAyme()` to the application config, as shown below.
 
-## Start Ayme in the application config
+## Start ayme in the application config
 
-Start Ayme once in the application config, with the Inspector and the Agent Connection in development:
+Start ayme once in the application config, with the Inspector and the Agent Connection in development:
 
 ```ts
 import { ApplicationConfig, isDevMode } from "@angular/core";
@@ -147,7 +147,7 @@ export class PublicationStatus {
 
 ## Root ownership
 
-Put `provideAyme` in the application config, not in route providers. The router does not destroy a route's environment injector on navigation, so an owner there would outlive its route. One application owns Ayme per document: `provideAyme` beneath another `provideAyme` throws, and so does a second application that starts Ayme while the first runs.
+Put `provideAyme` in the application config, not in route providers. The router does not destroy a route's environment injector on navigation, so an owner there would outlive its route. One application owns ayme per document: `provideAyme` beneath another `provideAyme` throws, and so does a second application that starts ayme while the first runs.
 
 ## Page Object Models
 
@@ -177,7 +177,7 @@ On the server, `provideAyme` creates a session per request but never starts it, 
 
 ## Bundle size
 
-Ayme adds about 290 kB transferred (about 1.35 MB raw) to the initial chunk of a build that includes it. That is over both of Angular's default `initial` budgets: the 500 kB warning and the 1 MB error. `ng add` leaves budgets to you. Raise the `initial` error budget in `angular.json`, as the [Angular example](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md) does:
+ayme adds about 290 kB transferred (about 1.35 MB raw) to the initial chunk of a build that includes it. That is over both of Angular's default `initial` budgets: the 500 kB warning and the 1 MB error. `ng add` leaves budgets to you. Raise the `initial` error budget in `angular.json`, as the [Angular example](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md) does:
 
 ```jsonc
 "configurations": {
@@ -189,7 +189,7 @@ Ayme adds about 290 kB transferred (about 1.35 MB raw) to the initial chunk of a
 }
 ```
 
-A build includes Ayme only with the plugin's `include: true`, and `ng add` sets it only in the development configuration. [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) shows a configuration that keeps Ayme in other builds.
+A build includes ayme only with the plugin's `include: true`, and `ng add` sets it only in the development configuration. [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) shows a configuration that keeps ayme in other builds.
 
 ## Limits
 
@@ -218,7 +218,7 @@ The supported Angular versions are on [Install](../start/install.md#supported-ve
 
 | Function                        | Returns                | Behavior                                                                                                                                                                                                          |
 | ------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `provideAyme(options?)`         | `EnvironmentProviders` | Starts Ayme with the environment injector that receives it, before the root component is created, and stops it when that injector is destroyed.                                                                   |
+| `provideAyme(options?)`         | `EnvironmentProviders` | Starts ayme with the environment injector that receives it, before the root component is created, and stops it when that injector is destroyed.                                                                   |
 | `injectAyme()`                  | `{ ayme, webMCP }`     | `ayme` is the [session](../reference/ayme.md). `webMCP.publicationStatus` is a read-only signal.                                                                                                                  |
 | `injectPageObject(Model)`       | the Page Object        | Registers the class with the session and returns its instance; its Page Object Tools stay registered until the caller is destroyed: component destruction, `@if` removal and router navigation all end it.        |
 | `injectPeek(values, name, id?)` | `void`                 | [Experimental](../reference/experimental-apis.md). Adds the caller's instance of the Peek `name` after its first render, until the caller is destroyed. The agent reads `values`, with its signals, when it asks. |

@@ -1,14 +1,14 @@
 # Troubleshooting
 
-The common reasons an Ayme setup fails, by what you see.
+The common reasons an ayme setup fails, by what you see.
 
 ## The build fails
 
 - **`Unsupported Page Object Tool input type for …`**: an action takes a parameter type the compiler cannot describe, such as a function or a class instance. [Page Object Models](guides/ayme-page-objects.md#aymeaction) lists the supported types. When the type is an import, check that the tsconfig the message names resolves it, for example through its `paths`.
 - **`Page Object Action … needs a name for every element of …`**, **`… takes two input fields named …`** or **`… have no type`**: a destructured parameter cannot be published as it is: an array pattern skips or nests an element or leaves a tuple element unbound, two input properties share a name, or an object pattern binds a name its type does not have, as an unannotated one does. See [Page Object Models](guides/ayme-page-objects.md#aymeaction).
-- **`<file>: Could not find a tsconfig.json for this module.`**: the Page Object Model is outside every tsconfig. Add one, or pass `tsconfigPath` to the [build plugin](reference/build-plugin.md). With `ayme mcp`, which has no `tsconfigPath`, add a `tsconfig.json` whose `include` covers `.ayme/` to the folder it starts in; see [Page Objects on a page without Ayme](guides/page-objects-without-ayme.md#set-it-up).
-- **Angular's `maximumError` budget fails**, or **Vite warns about a chunk over 500 kB**: Ayme adds about 290 kB transferred to the initial chunk. Raise the `initial` budget; see [Angular](frameworks/angular.md#bundle-size). A build includes Ayme only with the plugin's `include: true`; see [Include Ayme in a build](reference/build-plugin.md#include-ayme-in-a-build).
-- **`Ayme was removed from this build. <Model>.<action> is not in it.`**: the app called a Page Object in a build without Ayme, one without the plugin's `include: true`. Set it for builds whose own code drives Page Objects; see [Include Ayme in a build](reference/build-plugin.md#include-ayme-in-a-build).
+- **`<file>: Could not find a tsconfig.json for this module.`**: the Page Object Model is outside every tsconfig. Add one, or pass `tsconfigPath` to the [build plugin](reference/build-plugin.md). With `ayme mcp`, which has no `tsconfigPath`, add a `tsconfig.json` whose `include` covers `.ayme/` to the folder it starts in; see [Page Objects on a page without ayme](guides/page-objects-without-ayme.md#set-it-up).
+- **Angular's `maximumError` budget fails**, or **Vite warns about a chunk over 500 kB**: ayme adds about 290 kB transferred to the initial chunk. Raise the `initial` budget; see [Angular](frameworks/angular.md#bundle-size). A build includes ayme only with the plugin's `include: true`; see [Include ayme in a build](reference/build-plugin.md#include-ayme-in-a-build).
+- **`Ayme was removed from this build. <Model>.<action> is not in it.`**: the app called a Page Object in a build without ayme, one without the plugin's `include: true`. Set it for builds whose own code drives Page Objects; see [Include ayme in a build](reference/build-plugin.md#include-ayme-in-a-build).
 - **`Unsupported Playwright config loader version …`**: loading a Playwright config through `playwright.config` needs `@playwright/test` 1.62 to 1.64. Remove `config` and pass `use` values directly, or upgrade.
 
 ## A Page Object has no tools
@@ -22,14 +22,14 @@ The common reasons an Ayme setup fails, by what you see.
 
 ## The agent cannot reach the page
 
-These are for a coding agent connected through Ayme's MCP server, as [Connect an agent](guides/connect-an-agent.md) sets up.
+These are for a coding agent connected through ayme's MCP server, as [Connect an agent](guides/connect-an-agent.md) sets up.
 
 - **The agent has no `ayme_connect` tool**: the server is not registered or did not start. Check the registration for your agent, pinned to your `@ayme-dev/mcp` version, and restart the agent.
-- **An open tab does not pair by itself**: a tab pairs by itself only on `localhost` or `127.0.0.1`, and only when exactly one Ayme MCP server is running and not already working with another tab. With several running, such as one per agent or worktree, ask your agent for a link with `ayme_connect` and paste it into the tab; the page does not reload.
+- **An open tab does not pair by itself**: a tab pairs by itself only on `localhost` or `127.0.0.1`, and only when exactly one ayme MCP server is running and not already working with another tab. With several running, such as one per agent or worktree, ask your agent for a link with `ayme_connect` and paste it into the tab; the page does not reload.
 - **The page logs red failed-WebSocket lines in the console**: an unpaired page on `localhost` logs one for each port where it looks for a server and finds none. They are expected and harmless. The page looks again each time the tab gains focus, until it pairs.
 - **The agent sees only `ayme_connect`, `ayme_list_tools`, `ayme_call` and `ayme_inspect`, or no Page Object Tools**: the agent reads its tool list once, when it starts, and does not follow changes to it. Ask it to list the page's tools with `ayme_list_tools` and run them with `ayme_call`.
 - **A tool answers that no page is connected**: no tab is paired, or the tab closed or navigated to another origin. Right after the agent's MCP server restarts, a tab that was paired before pairs again by itself within a few seconds, and the page's tools come back. If they don't, or no tab was paired, ask the agent to call `ayme_connect` again and open the new link.
-- **A tool answers that no page reconnected in its place, or that the tab did not reconnect**: the tab loaded a page that doesn't run Ayme's Agent Connection, such as a page outside your app, or the tab closed. The server waits a few seconds for the new page before it gives this answer, and the call did not run. Go back to a page of your app in that tab, and its tools come back.
+- **A tool answers that no page reconnected in its place, or that the tab did not reconnect**: the tab loaded a page that doesn't run ayme's Agent Connection, such as a page outside your app, or the tab closed. The server waits a few seconds for the new page before it gives this answer, and the call did not run. Go back to a page of your app in that tab, and its tools come back.
 - **`No free port for the Ayme MCP server between 9350 and 9365.`**: other programs hold the range. Add `--port <port>` after `mcp` in the registration, with a free port. The connect link carries it, so the page needs no change.
 - **`The agentConnection option could not load @ayme-dev/mcp.`**: install `@ayme-dev/mcp` beside `@ayme-dev/ayme`, or turn the option off.
 - **The page is on a deployed preview or another non-local origin**: open the connect link there, and allow Chrome's local network access prompt if it asks.
@@ -37,10 +37,10 @@ These are for a coding agent connected through Ayme's MCP server, as [Connect an
 
 ## A Peek Tool is missing
 
-These are for [Peeks](reference/ayme.md#aymepeek), which reach a coding agent through Ayme's MCP server and the Inspector only.
+These are for [Peeks](reference/ayme.md#aymepeek), which reach a coding agent through ayme's MCP server and the Inspector only.
 
 - **No `peek.<name>` tool**: `ayme.peek` does nothing unless the session has `agentConnection` on, or `inspector` in the browser. A component's Peek appears once the component has mounted, and goes when its last instance unmounts. An agent that does not follow tool-list changes finds it with `ayme_list_tools`.
-- **No `peek.node.<name>` tool**: in Node, only `agentConnection` turns Peeks on, and the process must have started its session and paired. It pairs by itself only when exactly one Ayme MCP server answers on the ports from 9350 to 9365; with several running, name one with `agentConnection: { link }` or `{ port }`. See [In Node](reference/ayme.md#in-node).
+- **No `peek.node.<name>` tool**: in Node, only `agentConnection` turns Peeks on, and the process must have started its session and paired. It pairs by itself only when exactly one ayme MCP server answers on the ports from 9350 to 9365; with several running, name one with `agentConnection: { link }` or `{ port }`. See [In Node](reference/ayme.md#in-node).
 - **A `peek.node.<name>` in Next.js answers with old code, or misses what request code changed**: the Peek was added in `instrumentation.ts`, which `next dev` evaluates once, with its own copies of the modules it imports. Add it from a module request code imports. See [In Node](reference/ayme.md#in-node).
 - **`[ayme] peek.<name> is hidden: another tool uses that name.`**: another of the page's tools took the Peek Tool's name, and keeps it. Rename the Peek.
 - **`[ayme] peek.node.<name> is hidden: another App Process offers a tool with the same name.`**, in the process's terminal: two App Processes offer one name, and the one that connected first keeps it.
@@ -48,17 +48,17 @@ These are for [Peeks](reference/ayme.md#aymepeek), which reach a coding agent th
 
 ## In-browser agents see no tools
 
-These are for agents that run in the browser and read the tools Ayme publishes through WebMCP.
+These are for agents that run in the browser and read the tools ayme publishes through WebMCP.
 
-- **The publication status is `disabled`**: pass `webMCP: { enabled: true }` where Ayme starts. See [Publish tools](guides/publish-tools.md).
-- **`Ayme was removed from this build, but setup enables WebMCP publication.`** in the console: setup passes `webMCP: { enabled: true }`, but the build left Ayme out, so the session is inert, its publication status stays `disabled` and no tool is published. Set the [build plugin](reference/build-plugin.md)'s `include: true` for the build that publishes tools.
+- **The publication status is `disabled`**: pass `webMCP: { enabled: true }` where ayme starts. See [Publish tools](guides/publish-tools.md).
+- **`Ayme was removed from this build, but setup enables WebMCP publication.`** in the console: setup passes `webMCP: { enabled: true }`, but the build left ayme out, so the session is inert, its publication status stays `disabled` and no tool is published. Set the [build plugin](reference/build-plugin.md)'s `include: true` for the build that publishes tools.
 - **The status is `unavailable`**: no WebMCP driver appeared within two seconds. Load the polyfill or enable Chrome's flag before your app's entry module, as [Publish tools](guides/publish-tools.md#give-the-page-webmcp) shows, or call `retryPublication()` once it is there.
 - **The status is `failed`**: `@ayme-dev/webmcp` is not installed beside `@ayme-dev/ayme`, or the WebMCP driver rejected a registration. The message says which.
 - **The status is `active` but no tool is published**: two tools share a name, such as a Custom Tool named like a Page Object Tool, which leaves `ayme.tools.list()` empty. `ayme.tools.run` throws the error that names the tool.
 - **The tools have unexpected names**: `webMCP.toolNamePrefix` is set, and agents see the prefixed names.
 
-## Ayme starts twice
+## ayme starts twice
 
-- **`The Ayme runtime already has an active owner`**, or a framework's nested-owner error: start Ayme once, at the app's root. In a Node process, start one session, in the server's entry point. In SvelteKit, only the root `+layout.svelte` may call `useAyme(options)`; in Angular, put `provideAyme` in the application config, not in route providers.
+- **`The Ayme runtime already has an active owner`**, or a framework's nested-owner error: start ayme once, at the app's root. In a Node process, start one session, in the server's entry point. In SvelteKit, only the root `+layout.svelte` may call `useAyme(options)`; in Angular, put `provideAyme` in the application config, not in route providers.
 
 [Errors](reference/errors.md) lists every message with its cause.

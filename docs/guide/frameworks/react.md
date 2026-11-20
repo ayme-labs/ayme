@@ -1,10 +1,10 @@
 # React
 
-Everything about Ayme in a React app: setup, the provider, hooks, server rendering with Next.js, limits and the API of `@ayme-dev/react`.
+Everything about ayme in a React app: setup, the provider, hooks, server rendering with Next.js, limits and the API of `@ayme-dev/react`.
 
 ## Setup
 
-Install Ayme, the React package and the build plugin, with the Inspector and the Agent Connection for development, as the [React quickstart](../start/quickstart-react.md) does:
+Install ayme, the React package and the build plugin, with the Inspector and the Agent Connection for development, as the [React quickstart](../start/quickstart-react.md) does:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/react
@@ -23,11 +23,11 @@ export default defineConfig(({ command }) => ({
 }));
 ```
 
-`include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
+`include` keeps ayme in the dev server and out of `vite build`; [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
 On Next.js, use the Turbopack loader, as the [build plugin reference](../reference/build-plugin.md#nextjs) shows. Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows.
 
-## Start Ayme at the root
+## Start ayme at the root
 
 Wrap the app in `AymeProvider`, with the Inspector and the Agent Connection in development:
 
@@ -55,11 +55,11 @@ The provider takes the [`createAyme` options](../reference/ayme.md#createayme) a
 
 The props must stay fixed while the provider is mounted; remount the provider and its consumers to change them.
 
-Only one owner can run Ayme in a document. A provider nested inside another provider throws. A second provider elsewhere in the tree, or a `createAyme().start()` outside React, is rejected while the first owner runs. Unmounting the provider stops publication and observation.
+Only one owner can run ayme in a document. A provider nested inside another provider throws. A second provider elsewhere in the tree, or a `createAyme().start()` outside React, is rejected while the first owner runs. Unmounting the provider stops publication and observation.
 
 Strict Mode's effect replay in development keeps the session's Page and Page Objects.
 
-Wrap the application root, not a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout`, and the provider with it. Unmounting the provider stops Ayme and closes the agent connection. The agent can lose the answer to its call.
+Wrap the application root, not a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout`, and the provider with it. Unmounting the provider stops ayme and closes the agent connection. The agent can lose the answer to its call.
 
 ## Hooks
 
@@ -225,9 +225,9 @@ The build needs the Turbopack loader from the [build plugin reference](../refere
 
 ## Bundle size
 
-Ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in the entry chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
+ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in the entry chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
 
-A build includes Ayme only with the plugin's `include: true`. The config above keeps Ayme in the dev server and out of `vite build`; see [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
+A build includes ayme only with the plugin's `include: true`. The config above keeps ayme in the dev server and out of `vite build`; see [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
 
 ## Limits
 
@@ -238,7 +238,7 @@ A build includes Ayme only with the plugin's `include: true`. The config above k
 
 | Error                                                                        | Cause                                                                                  |
 | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `AymeProvider cannot be nested beneath another Ayme runtime owner.`          | A second provider beneath the first. Start Ayme once, at the root.                     |
+| `AymeProvider cannot be nested beneath another Ayme runtime owner.`          | A second provider beneath the first. Start ayme once, at the root.                     |
 | `The provider options changed while the provider was mounted.`               | A provider prop changed while mounted.                                                 |
 | `Ayme hooks require an ancestor AymeProvider.`                               | A hook without a provider above, including in the component that renders the provider. |
 | `The Page Object model or provider changed while the component was mounted.` | `usePageObject` got a different model.                                                 |
@@ -247,7 +247,7 @@ A build includes Ayme only with the plugin's `include: true`. The config above k
 
 | Export                       | Kind      | Does                                                                                                                                                              |
 | ---------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AymeProvider`               | Component | Starts and owns Ayme for its subtree. Props are the `createAyme` options.                                                                                         |
+| `AymeProvider`               | Component | Starts and owns ayme for its subtree. Props are the `createAyme` options.                                                                                         |
 | `useAyme()`                  | Hook      | Returns `{ ayme, webMCP }` from the provider above.                                                                                                               |
 | `usePageObject(Model)`       | Hook      | Returns the class's instance and registers it while the component is mounted.                                                                                     |
 | `usePeek(values, name, id?)` | Hook      | [Experimental](../reference/experimental-apis.md). Adds the component's instance of the Peek `name` while it is mounted, reading `values` from its latest render. |

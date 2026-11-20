@@ -1,8 +1,8 @@
 # @ayme-dev/eslint-config
 
-An internal building block of [Ayme](https://github.com/ayme-labs/ayme): the ESLint configuration Ayme's own packages share. It is under active development and is not intended for direct use.
+An internal building block of [ayme](https://github.com/ayme-labs/ayme): the ESLint configuration ayme's own packages share. It is under active development and is not intended for direct use.
 
-To add Ayme to an application, see [`@ayme-dev/ayme`](https://github.com/ayme-labs/ayme/tree/main/packages/ayme).
+To add ayme to an application, see [`@ayme-dev/ayme`](https://github.com/ayme-labs/ayme/tree/main/packages/ayme).
 
 ## License
 

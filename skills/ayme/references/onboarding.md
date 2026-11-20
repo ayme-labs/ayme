@@ -9,10 +9,10 @@
 3. Expose one of the project's existing actions on an existing POM, as
    [Page Object Models](ayme-page-objects.md) describes, in place of
    the quickstart's `ProjectsPage`.
-4. For a framework without an Ayme package, report that gap and stop at the
+4. For a framework without an ayme package, report that gap and stop at the
    documented integrations.
 5. Follow [Browser setup](browser-setup.md), then invoke the exposed action
-   through Ayme's MCP server.
+   through ayme's MCP server.
 
 When installing the skill elsewhere, keep the references directory and these
 links.

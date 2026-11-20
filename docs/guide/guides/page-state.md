@@ -1,10 +1,10 @@
 # Page state
 
-What an agent sees of your page: the Structural Page State, the Structural Refs it acts through, and the interaction history Ayme keeps.
+What an agent sees of your page: the Structural Page State, the Structural Refs it acts through, and the interaction history ayme keeps.
 
 ## Structural Page State
 
-Once Ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and marks each Page Object Root with its class, such as `ProjectRow`. An element that is the root of several classes lists their names in its `pom` property. Snapshots and Change Records use the same marks, including for removed roots. It covers the top-level document only.
+Once ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and marks each Page Object Root with its class, such as `ProjectRow`. An element that is the root of several classes lists their names in its `pom` property. Snapshots and Change Records use the same marks, including for removed roots. It covers the top-level document only.
 
 Content that is scrollable or blocked by a modal stays in the state. Page Object subtrees known to be hidden or off-canvas are left out. Being in the state does not mean a node can be interacted with.
 
@@ -29,13 +29,13 @@ An agent passes a ref back to act on that node:
 - a [Custom Tool](custom-tools.md) takes it as `ref`: `highlight_element({ ref: "e10" })`;
 - a rooted Page Object's tool takes its root's ref as `ref`: `ProjectRow.remove({ ref: "e10" })`. This holds for a rooted page or single child too.
 
-A ref comes from one capture. Within one document, Ayme tries to keep refs stable, so a ref from an earlier capture usually still names the same node. A ref that cannot be used fails with a `RefResolutionError`, such as `Cannot click ref "e13": it is no longer on the page.` Its reason says why:
+A ref comes from one capture. Within one document, ayme tries to keep refs stable, so a ref from an earlier capture usually still names the same node. A ref that cannot be used fails with a `RefResolutionError`, such as `Cannot click ref "e13": it is no longer on the page.` Its reason says why:
 
 | Reason                                                   | Meaning                                                                                                      |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `no snapshot of the current document issued it`          | No capture in this document printed the ref, such as one written by hand.                                    |
 | `it is no longer on the page`                            | The node the ref named was removed.                                                                          |
-| `it cannot be matched unambiguously to the current page` | Ayme cannot tell which current node the ref continues as. It does not mean the ref matches several elements. |
+| `it cannot be matched unambiguously to the current page` | ayme cannot tell which current node the ref continues as. It does not mean the ref matches several elements. |
 
 Refs restart with each document, so a ref from before a full load can resolve to a different node that the new document numbered the same, and the call succeeds on that node; only a ref the new document never issued fails, with the first reason.
 
@@ -49,7 +49,7 @@ Cannot click "[ref=e36]": the selector matches no element. It writes the Structu
 
 ## Keep parts of the page out
 
-Pass `ignore` where Ayme starts to drop elements, and everything inside them, from the page state. Its value is a CSS selector:
+Pass `ignore` where ayme starts to drop elements, and everything inside them, from the page state. Its value is a CSS selector:
 
 ```ts
 createAyme({
@@ -57,7 +57,7 @@ createAyme({
 });
 ```
 
-For a rule a selector cannot say, pass a function that takes the session's Playwright `Page` and returns a `Locator` of the elements to drop. Ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
+For a rule a selector cannot say, pass a function that takes the session's Playwright `Page` and returns a `Locator` of the elements to drop. ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
 
 ```ts
 const assistantName = "Assistant";
@@ -94,13 +94,13 @@ The element and everything in it:
 - lets picking and clicks pass through it;
 - is hidden from screenshots.
 
-The attribute needs no `ignore`, and it works in a build that leaves Ayme out.
+The attribute needs no `ignore`, and it works in a build that leaves ayme out.
 
 `ignore` changes page state only; it does not change which tools are published.
 
 ## Interaction history
 
-Ayme records what happens in the document for the length of its Page State Session: a Visit at load and at each same-document navigation, every tool call and Goal Loop step as an action, and every page state it captures. A full page load starts a new Page State Session and a new history.
+ayme records what happens in the document for the length of its Page State Session: a Visit at load and at each same-document navigation, every tool call and Goal Loop step as an action, and every page state it captures. A full page load starts a new Page State Session and a new history.
 
 Every action returns its Change Record: what changed on the page, in two parts. Take the list of [`ProjectRow`](ayme-page-objects.md#aymeaction)s above. Say an agent last read it with Launch plan (`e6`) and Q4 survey (`e10`). Then the user removes Launch plan by hand. Then the agent calls `ProjectRow.archive({ ref: "e10" })` to archive Q4 survey. The result is:
 
@@ -133,7 +133,7 @@ Every action returns its Change Record: what changed on the page, in two parts. 
 Each Caller name has its own cursor: the page state that Caller last received, from `snapshot` or as the Settled Page after its last action. The Caller names are:
 
 - `webmcp`, an agent calling through WebMCP;
-- `ayme-mcp`, an agent calling through the Ayme MCP server;
+- `ayme-mcp`, an agent calling through the ayme MCP server;
 - `inspector`, the Inspector;
 - `app`, your app's `ayme.tools.run`, or the name it passes as `by`.
 
@@ -141,11 +141,11 @@ Two Callers that use one name share one cursor.
 
 A Custom Tool's Change Record also covers what the tools it started through `run` changed.
 
-An action that fails still reports what it changed. Its error keeps its own message, such as a Playwright timeout and its call log, and carries the Change Record as fields named like an action result's: `page_changed`, and `changes_before` and `changes` when they have a change. The type `ActionFailure` describes them. An agent calling through WebMCP or the Ayme MCP server reads the error's text followed by `changes_before:` and `changes:` and each record; a failed Run in the Inspector shows the error alone. The Caller's cursor moves to the page the failed action left, so the next action does not report those changes again. A click that lands after its timeout has passed, as on a page too busy to keep up, fails with `TimeoutError` like in Playwright, and its `changes:` shows what the click did.
+An action that fails still reports what it changed. Its error keeps its own message, such as a Playwright timeout and its call log, and carries the Change Record as fields named like an action result's: `page_changed`, and `changes_before` and `changes` when they have a change. The type `ActionFailure` describes them. An agent calling through WebMCP or the ayme MCP server reads the error's text followed by `changes_before:` and `changes:` and each record; a failed Run in the Inspector shows the error alone. The Caller's cursor moves to the page the failed action left, so the next action does not report those changes again. A click that lands after its timeout has passed, as on a page too busy to keep up, fails with `TimeoutError` like in Playwright, and its `changes:` shows what the click did.
 
 ## Full page loads
 
-A tool call whose action starts loading a new document, such as a click on a plain link or on a form's submit button, answers at once, before the old document goes away and Ayme with it. The answer is the action result with `settled: false`, the Change Record up to that moment in `changes_before` and `changes`, the URL the navigation started for in `loading`, and in `next` a note that the page is loading and that `snapshot` is the next call. For a form submit, `loading` is the form's `action`: where the server redirects is not known yet when the answer goes out.
+A tool call whose action starts loading a new document, such as a click on a plain link or on a form's submit button, answers at once, before the old document goes away and ayme with it. The answer is the action result with `settled: false`, the Change Record up to that moment in `changes_before` and `changes`, the URL the navigation started for in `loading`, and in `next` a note that the page is loading and that `snapshot` is the next call. For a form submit, `loading` is the form's `action`: where the server redirects is not known yet when the answer goes out.
 
 ```ts
 {

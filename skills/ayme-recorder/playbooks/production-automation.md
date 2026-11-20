@@ -115,7 +115,7 @@ tests/replay.ts                    copy of assets/replay.ts, with match() for th
 Write plain Playwright page objects by
 [Page object design](../references/page-object-design.md) and
 [Write page objects from the recording](../SKILL.md#write-page-objects-from-the-recording),
-with no Ayme decorators. Each irreversible step is its own page object
+with no ayme decorators. Each irreversible step is its own page object
 action, and the wait for its result can also be called on its own.
 
 The flow is one function, `run<Flow>(page, params, { confirm })`. Before each
