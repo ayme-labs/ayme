@@ -102,9 +102,9 @@ mk Path-StartRecording-BlankPage "$IN" 2 2 1 1 1 1   $F     $F   $F   $F    $T  
 # recorded.
 mk Limit-BlankPageInput "$IN" 2 2 1 1 0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X3_NothingYouDidIsDropped R04_FinishSavesEverything F1_ShowsOnceItHasItsPlace" $F $F "$LR" $F $T $T
 mk Path-StartRecording-Continue "$IN" 2 2 1 2 1 0    $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS F1_ShowsOnceItHasItsPlace X3_NothingYouDidIsDropped R04_FinishSavesEverything" $F $F "$LR" $F $T $F $T
-# Rule 7 after Continue: typing right after picking an element, before the
-# recorder has read the page for it.
-mk Rule7-AssertThenType "$IN" 2 1 1  2   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
+# Rule 7 and 12 after Continue: typing right after picking an element, before
+# the recorder has read the page for it (12c8bf83).
+mk Rule7-AssertThenType "$IN" 2 1 1  2   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS F7_MeasuredFromFirstKey X12a_AssertionReadsInTimeOrder"
 mk Rule7-Navigation "$IN" 2 2   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
 mk Rules-WithoutB2  "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS F7s_MeasuredStrictly X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 # Known limits: each its own path.

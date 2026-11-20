@@ -351,9 +351,13 @@ GiveAll(s, os, t) ==
   ELSE LET o == CHOOSE x \in os : TRUE IN GiveAll(GiveSnap(s, o, t), os \ {o}, t)
 
 \* L snapshotTaken
+\* A read whose every request was dropped (<<e, "x">>, StartRep) belongs to
+\* nothing: it is not kept, and it is not the page's latest read.
 SnapIn(s, r, t) ==
+  IF r # {} /\ \A o \in r : o[2] = "x" THEN [s EXCEPT !.pend = Tail(@)]
+  ELSE
   LET s1 == [s EXCEPT !.pend = Tail(@), !.pgLatest = t, !.keptSn = @ \cup {t}]
-      s2 == GiveAll(s1, {o \in r : o[1] # 0}, t)
+      s2 == GiveAll(s1, {o \in r : o[1] # 0 /\ o[2] # "x"}, t)
   IN IF <<0, "final">> \in r THEN [s2 EXCEPT !.finals = "in"] ELSE s2
 
 \* L startNext
@@ -371,9 +375,23 @@ ShareWithOpen(s, o, e) ==
   IF s1.stage[o] = "settling" THEN AskShared(s1, o, e) ELSE s1
 
 \* L startReported. <<found a start now, new state>>
-StartRep(s, e) ==
-  LET ahead == {f \in Elems(s.lst) : Pos(s, f) < Pos(s, e) /\ s.stage[f] # "settled"
-                                    /\ s.ent[f] # "key"} IN
+\* An assertion ahead whose one read is still being taken, with nothing else
+\* ahead but inputs known from their report, is written at the page's latest
+\* read, and its read is dropped (12c8bf83): this input does not start after
+\* its first key.
+DropAsk(P, R) ==
+  [k \in DOMAIN P |-> {IF o[1] \in R /\ o[2] = "b" THEN <<o[1], "x">> ELSE o : o \in P[k]}]
+StartRep(s0, e) ==
+  LET ahead0 == {f \in Elems(s0.lst) : Pos(s0, f) < Pos(s0, e) /\ s0.stage[f] # "settled"
+                                      /\ s0.ent[f] # "key"}
+      reading == {f \in ahead0 : s0.ent[f] = "assert" /\ s0.stage[f] = "takingBefore"}
+      fold == s0.pgLatest # 0 /\ reading # {} /\ \A f \in ahead0 : s0.ent[f] = "rep" \/ f \in reading
+      s == IF ~fold THEN s0
+           ELSE [s0 EXCEPT !.stage = [f \in DOMAIN s0.stage |-> IF f \in reading THEN "settled" ELSE s0.stage[f]],
+                           !.bsnap = [f \in DOMAIN s0.bsnap |-> IF f \in reading THEN s0.pgLatest ELSE s0.bsnap[f]],
+                           !.asnap = [f \in DOMAIN s0.asnap |-> IF f \in reading THEN s0.pgLatest ELSE s0.asnap[f]],
+                           !.pend = DropAsk(s0.pend, reading)]
+      ahead == IF fold THEN ahead0 \ reading ELSE ahead0 IN
   IF \E f \in ahead : s.ent[f] # "rep" THEN <<FALSE, s>>
   ELSE IF ahead # {} THEN <<FALSE, ShareWithOpen(s, Last(s, ahead), e)>>
   ELSE IF s.pgLatest = 0 THEN <<FALSE, TakeFor(s, e, "b")>>
@@ -1575,6 +1593,21 @@ X2_SnapshotsInTimeOrder ==
 \* (L startReported: its page's latest) is read no later than the input.
 X8_StartsNoLaterThanTheInput ==
   \A e \in tl : ent[e] = "rep" => bsnap[e] <= evStamp[In(e)]
+
+\* 12 around an assertion, where B2 (typing after typing) is not in play: an
+\* assertion's read is in time order with the entries next to it, and an
+\* input known from its report right after an assertion starts no later than
+\* the input (config Rule7-AssertThenType, 12c8bf83). Entries N + i, as typing
+\* more into a field after Continue, are left out: their input's stamp is the
+\* field's first key, before the pause.
+X12a_AssertionReadsInTimeOrder ==
+  /\ \A e, f \in tl \cap Inputs :
+       (In(e) < In(f) /\ (ent[e] = "assert" \/ ent[f] = "assert")
+        /\ asnap[e] # 0 /\ DocAt(asnap[e]) = BefDoc(f)) => asnap[e] <= Bef(f)
+  /\ \A e \in tl \cap Inputs :
+       (ent[e] = "rep" /\ \E a \in tl : ent[a] = "assert" /\ In(a) < In(e)
+                                     /\ ~\E f \in tl : In(a) < In(f) /\ In(f) < In(e))
+         => bsnap[e] <= evStamp[In(e)]
 
 \* 13a. Nothing done while recording is thrown away.
 X3_NothingYouDidIsDropped ==
