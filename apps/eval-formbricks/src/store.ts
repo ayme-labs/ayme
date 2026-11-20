@@ -143,6 +143,7 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
     labCheckoutDirty: boolean(run, "labCheckoutDirty", what),
     versions: {
       claudeCode: nullableString(versions, "claudeCode", `${what} versions`),
+      ...(typeof versions.codex === "string" ? { codex: versions.codex } : {}),
       model: {
         requested: string(model, "requested", `${what} model`),
         used: nullableString(model, "used", `${what} model`),

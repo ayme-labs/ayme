@@ -1,0 +1,88 @@
+#!/usr/bin/env node
+/**
+ * A stand-in for `codex app-server` in the tests of the Codex driver. It
+ * answers `initialize` and `thread/start`, and each `turn/start` with the
+ * notifications of a turn: the setup turn replies ready, the task turn calls
+ * an MCP tool twice, one call failing. FAKE_CODEX_HANG_TURN names a turn (1
+ * or 2) that never completes, FAKE_CODEX_FAIL_TURN one that ends failed, and
+ * FAKE_CODEX_DELAY_MS delays each turn's end. FAKE_CODEX_SILENT answers
+ * nothing at all.
+ */
+import { createInterface } from "node:readline";
+
+const send = (message) => process.stdout.write(`${JSON.stringify(message)}\n`);
+const notify = (method, params) => send({ method, params });
+const usage = (input, cached, output) => ({
+  totalTokens: input + output,
+  inputTokens: input,
+  cachedInputTokens: cached,
+  cacheWriteInputTokens: 0,
+  outputTokens: output,
+  reasoningOutputTokens: 0,
+});
+const delay = Number(process.env.FAKE_CODEX_DELAY_MS ?? 0);
+let turns = 0;
+
+createInterface({ input: process.stdin }).on("line", (line) => {
+  const { id, method, params } = JSON.parse(line);
+  if (process.env.FAKE_CODEX_SILENT) return;
+  if (method === "initialize") send({ id, result: { userAgent: "fake" } });
+  if (method === "thread/start") {
+    send({
+      id,
+      result: {
+        thread: { id: "thread-1" },
+        model: "gpt-6-luna",
+        approvalPolicy: "never",
+      },
+    });
+    notify("mcpServer/startupStatus/updated", {
+      name: "playwright",
+      status: "starting",
+    });
+    notify("mcpServer/startupStatus/updated", {
+      name: "playwright",
+      status: "ready",
+    });
+  }
+  if (method !== "turn/start") return;
+  turns += 1;
+  const turn = turns;
+  process.stderr.write(`user message ${turn}: ${params.input[0].text}\n`);
+  send({ id, result: { turn: { id: `turn-${turn}`, status: "inProgress" } } });
+  notify("turn/started", { turn: { id: `turn-${turn}` } });
+  if (String(turn) === process.env.FAKE_CODEX_HANG_TURN) return;
+  const item = (value) => notify("item/completed", { item: value });
+  if (turn === 2) {
+    notify("item/agentMessage/delta", { delta: "Renaming" });
+    item({ type: "agentMessage", text: "Renaming the survey." });
+    for (const status of ["completed", "failed"])
+      item({
+        type: "mcpToolCall",
+        server: "playwright",
+        tool: "browser_click",
+        status,
+      });
+  }
+  item({ type: "agentMessage", text: turn === 1 ? "ready" : "Done." });
+  notify("thread/tokenUsage/updated", {
+    tokenUsage: {
+      total: turn === 1 ? usage(1000, 400, 5) : usage(5000, 3400, 85),
+      last: usage(0, 0, 0),
+    },
+  });
+  setTimeout(
+    () =>
+      notify("turn/completed", {
+        turn: {
+          id: `turn-${turn}`,
+          status:
+            String(turn) === process.env.FAKE_CODEX_FAIL_TURN
+              ? "failed"
+              : "completed",
+          durationMs: 1200 * turn,
+        },
+      }),
+    delay
+  );
+});
