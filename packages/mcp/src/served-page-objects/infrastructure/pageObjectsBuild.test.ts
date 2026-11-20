@@ -7,7 +7,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import * as esbuild from "esbuild";
 import { expect, it, vi } from "vitest";
@@ -18,6 +18,7 @@ import {
   failedPageObjects,
   pageObjectModels,
   type PageObjectsBuild,
+  watchPageObjects,
 } from "./pageObjectsBuild";
 
 const entry = "/project/.ayme/page-objects.ts";
@@ -851,5 +852,74 @@ it("invalidates and forgets compiled files on rebuild, retaining the last good b
   } finally {
     await context.dispose();
     await rm(folder, { recursive: true, force: true });
+  }
+});
+
+/**
+ * A project folder with its Page Objects entry and an installed
+ * `@ayme-dev/ayme` of `version`, whose compiler compiles nothing and records
+ * that it loaded, and whose runtime exports `runtime`.
+ */
+async function projectWithAyme(version: string, lockfile?: string) {
+  const project = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-version-"))
+  );
+  const ayme = join(project, "node_modules", "@ayme-dev", "ayme");
+  await mkdir(ayme, { recursive: true });
+  await writeFile(
+    join(ayme, "package.json"),
+    JSON.stringify({
+      name: "@ayme-dev/ayme",
+      version,
+      type: "module",
+      exports: { ".": "./index.js", "./compiler": "./dist/compiler.js" },
+    })
+  );
+  await writeFile(join(ayme, "index.js"), 'export const runtime = "ayme";');
+  await mkdir(join(ayme, "dist"));
+  await writeFile(
+    join(ayme, "dist", "compiler.js"),
+    `globalThis.aymeCompilerLoaded = true;
+export class PomCompileError extends Error {}
+export const createPomCompiler = () => ({ compile: () => null, invalidate() {} });`
+  );
+  if (lockfile !== undefined) await writeFile(join(project, lockfile), "");
+  const entry = join(project, ".ayme", "page-objects.ts");
+  await mkdir(dirname(entry));
+  await writeFile(entry, "export default [];");
+  return { project, entry };
+}
+
+declare global {
+  var aymeCompilerLoaded: boolean | undefined;
+}
+
+it("stops before it loads the compiler when the project's @ayme-dev/ayme is another version, naming both and the install command", async () => {
+  const { project, entry } = await projectWithAyme("0.1.3", "pnpm-lock.yaml");
+  globalThis.aymeCompilerLoaded = undefined;
+  try {
+    await expect(watchPageObjects(entry, () => {}, "0.1.5")).rejects.toThrow(
+      `Building the Page Objects entry ${entry} stopped: this project has @ayme-dev/ayme 0.1.3; ayme mcp 0.1.5 needs the same version. Run \`pnpm add -D @ayme-dev/ayme@0.1.5\`.`
+    );
+    expect(globalThis.aymeCompilerLoaded).toBeUndefined();
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+it("builds with the project's @ayme-dev/ayme when it is ayme mcp's version", async () => {
+  const { project, entry } = await projectWithAyme("0.1.5");
+  const log = vi.fn();
+  const build = await watchPageObjects(entry, log, "0.1.5");
+  try {
+    const modules = await build.modules();
+    expect([...modules.keys()]).toEqual(
+      expect.arrayContaining(["entry.js", "runtime.js"])
+    );
+    expect([...modules.values()].join("\n")).toContain('"ayme"');
+    expect(log).toHaveBeenCalledWith(`Built the Page Objects entry ${entry}.`);
+  } finally {
+    await build.close();
+    await rm(project, { recursive: true, force: true });
   }
 });

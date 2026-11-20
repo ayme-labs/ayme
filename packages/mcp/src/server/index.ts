@@ -78,7 +78,8 @@ export async function startMcpServer({
   // by this server, the Inspector relayed over its page channel: no other
   // server and no other port.
   // It rebuilds as the entry's files change, and logs each outcome.
-  const build = entry === undefined ? undefined : watchPageObjects(entry, log);
+  const build =
+    entry === undefined ? undefined : watchPageObjects(entry, log, version);
   build?.catch((error: unknown) => log((error as Error).message));
   const channel = createPageChannelServer({
     connection,

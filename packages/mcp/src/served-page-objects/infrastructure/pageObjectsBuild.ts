@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -6,6 +6,10 @@ import { pathToFileURL } from "node:url";
 
 import * as esbuild from "esbuild";
 
+import {
+  aymeVersionMismatch,
+  type PackageManager,
+} from "../domain/aymeVersion";
 import { PageObjectsBuildError, buildErrorLine } from "../domain/buildFailure";
 import { ENTRY_MODULE, RUNTIME_MODULE } from "../domain/servedPageObjects";
 
@@ -78,7 +82,9 @@ export type PageObjectsBuild = {
  * in chunks of its own, which a page fetches on first use. Every import,
  * the runtime's and the compiler's included, resolves from the entry's
  * folder, as in a build of the project itself, so the page runs, and its
- * Page Objects are compiled by, the project's own `@ayme-dev/ayme`.
+ * Page Objects are compiled by, the project's own `@ayme-dev/ayme`. It
+ * starts only when that is version `version`, `ayme mcp`'s own: it rejects
+ * with why otherwise, before it loads the compiler.
  *
  * It builds again whenever a file the build read changes, in watch mode,
  * and logs each outcome. A build that fails is logged with each error's
@@ -86,11 +92,20 @@ export type PageObjectsBuild = {
  */
 export async function watchPageObjects(
   entry: string,
-  log: (message: string) => void
+  log: (message: string) => void,
+  version: string
 ): Promise<PageObjectsBuild> {
   const folder = dirname(entry);
+  const compiler = resolveFrom(folder, COMPILER, entry);
+  const mismatch = aymeVersionMismatch({
+    entry,
+    project: packageVersion(compiler, RUNTIME),
+    mcp: version,
+    packageManager: packageManager(folder),
+  });
+  if (mismatch !== undefined) throw new Error(mismatch);
   const { createPomCompiler, PomCompileError } =
-    await importFile<PomCompilerEntry>(resolveFrom(folder, COMPILER, entry));
+    await importFile<PomCompilerEntry>(compiler);
   // Nothing is written there: the outputs stay in memory.
   const outdir = join(folder, "ayme-served");
   const outcomes = buildOutcomes({ entry, folder, outdir, log });
@@ -418,6 +433,45 @@ function resolveFrom(folder: string, specifier: string, entry: string) {
     throw new Error(
       `Building the Page Objects entry ${entry} needs ${specifier}, which does not resolve from ${folder}.`
     );
+  }
+}
+
+/**
+ * The version of the package `name` that `file` belongs to, read from the
+ * nearest `package.json` above it with that name, or `undefined` if none.
+ */
+function packageVersion(file: string, name: string): string | undefined {
+  for (let folder = dirname(file); ; folder = dirname(folder)) {
+    try {
+      const manifest = JSON.parse(
+        readFileSync(join(folder, "package.json"), "utf8")
+      ) as { name?: unknown; version?: unknown };
+      if (manifest.name === name && typeof manifest.version === "string")
+        return manifest.version;
+    } catch {
+      // No package.json here, or not one that parses: look further up.
+    }
+    if (dirname(folder) === folder) return undefined;
+  }
+}
+
+const LOCKFILES: readonly (readonly [string, PackageManager])[] = [
+  ["pnpm-lock.yaml", "pnpm"],
+  ["yarn.lock", "yarn"],
+  ["bun.lock", "bun"],
+  ["bun.lockb", "bun"],
+  ["package-lock.json", "npm"],
+];
+
+/**
+ * The package manager of the project `folder` is in, by the lockfile
+ * nearest above it; npm when there is none.
+ */
+function packageManager(folder: string): PackageManager {
+  for (let current = folder; ; current = dirname(current)) {
+    for (const [lockfile, manager] of LOCKFILES)
+      if (existsSync(join(current, lockfile))) return manager;
+    if (dirname(current) === current) return "npm";
   }
 }
 
