@@ -9,6 +9,7 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
+import { withoutClaudeVariables } from "../claude.ts";
 import {
   editorPath,
   missionStart,
@@ -82,7 +83,11 @@ export function ensureDatabaseBuilt(
       "build",
       "--filter=@formbricks/database...",
     ],
-    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: withoutClaudeVariables(process.env),
+    }
   );
   if (result.status !== 0 || !existsSync(entry))
     throw new Error(

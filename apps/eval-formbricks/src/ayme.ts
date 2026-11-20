@@ -487,6 +487,7 @@ export async function setUpAymeAgent(
         channel: "chrome",
         headless: true,
         viewport,
+        env: withoutClaudeVariables(process.env),
         args: ["--enable-features=WebMCP"],
       }
     );

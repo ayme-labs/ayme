@@ -9,6 +9,7 @@ import { arms } from "./arms.ts";
 import {
   claudeArguments,
   claudeEnvironment,
+  secretRedactor,
   runClaude,
   userMessageLine,
   type ClaudeInvocation,
@@ -178,6 +179,7 @@ describe("runClaude", () => {
     setupTimeoutMs?: number;
     resultDelayMs?: number;
     withoutTask?: boolean;
+    secrets?: string[];
   }): Promise<ClaudeRun & { stderr: string }> {
     const workDir = await mkdtemp(path.join(os.tmpdir(), "eval-claude-"));
     workDirs.push(workDir);
@@ -205,6 +207,7 @@ describe("runClaude", () => {
       setupTimeoutMs: options.setupTimeoutMs ?? 10_000,
       transcriptPath: path.join(workDir, "transcript.jsonl"),
       stderrPath,
+      ...(options.secrets === undefined ? {} : { secrets: options.secrets }),
     } as ClaudeInvocation);
     return { ...run, stderr: await readFile(stderrPath, "utf8") };
   }
@@ -277,5 +280,103 @@ describe("runClaude", () => {
     expect(turns).toHaveLength(2);
     expect(turns[0]?.result).not.toBeNull();
     expect(turns[1]?.result).toBeNull();
+  });
+
+  it("flags a usage limit in the setup turn, which ends the run before the task", async () => {
+    const run = await drive({ fixture: "limit-in-setup.jsonl" });
+    expect(run.usageLimited).toBe(true);
+    expect(run.task).toBeNull();
+  });
+
+  it("flags a usage limit in the task turn, after a completed setup turn", async () => {
+    const run = await drive({ fixture: "limit-in-task.jsonl" });
+    expect(run.usageLimited).toBe(true);
+    expect(run.setupFailure).toBeNull();
+    expect(run.task).not.toBeNull();
+  });
+
+  it("flags no limit in a completed run or in an error that is not one", async () => {
+    expect((await drive({ fixture: "complete.jsonl" })).usageLimited).toBe(
+      false
+    );
+    expect((await drive({ fixture: "setup-failed.jsonl" })).usageLimited).toBe(
+      false
+    );
+  });
+
+  it("reads each event as the agent wrote it, whatever is scrubbed from what is stored", async () => {
+    // A value that is part of every field name would rewrite `type` and `result`; the turns still end and the limit is seen.
+    const run = await drive({
+      fixture: "limit-in-setup.jsonl",
+      secrets: ["e"],
+    });
+    expect(run.usageLimited).toBe(true);
+    expect(run.setup.timedOut).toBe(false);
+    expect(run.task).toBeNull();
+  });
+});
+
+describe("secretRedactor", () => {
+  const token = "sk-ant-oat01-dummyTokenForTests0123456789";
+  const escaped = [...token]
+    .map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)
+    .join("");
+
+  it("replaces a token written out", () => {
+    expect(secretRedactor([token])(`debug: ${token} here, ${token}`)).toBe(
+      "debug: [redacted] here, [redacted]"
+    );
+  });
+
+  it("finds a token written with JSON escapes, in either case of hex digit, and changes nothing else", () => {
+    const line = `{ "type" : "system",  "message":"my token is ${escaped}","n":1}`;
+    expect(line).not.toContain(token);
+    expect(secretRedactor([token])(line)).toBe(
+      '{ "type" : "system",  "message":"my token is [redacted]","n":1}'
+    );
+    expect(secretRedactor(["k"])("\\u006b \\u006B")).toBe(
+      "[redacted] [redacted]"
+    );
+  });
+
+  it("finds a token used only as a JSON key, written out or in JSON escapes", () => {
+    for (const key of [token, escaped]) {
+      const stored = secretRedactor([token])(`{"${key}":{"list":["a"]}}`);
+      expect(JSON.parse(stored)).toEqual({ "[redacted]": { list: ["a"] } });
+    }
+  });
+
+  it("finds a token in indented JSON over several lines among other lines, as a value and as a key", () => {
+    const stderr = [
+      "starting",
+      "{",
+      '  "nested": {',
+      `    "value": "${escaped}",`,
+      `    "${escaped}": 1,`,
+      `    "literal": "${token}"`,
+      "  }",
+      "}",
+      "done",
+    ].join("\n");
+    const stored = secretRedactor([token])(stderr);
+    expect(stored).not.toContain(token);
+    expect(stored).not.toContain(escaped);
+    expect(stored.split("\n")).toHaveLength(9);
+    expect(stored.match(/\[redacted\]/g)).toHaveLength(3);
+  });
+
+  it("keeps a text without a token byte for byte", () => {
+    const line = '{ "type" : "result",  "result":"\\u0041 done" }';
+    expect(secretRedactor([token])(line)).toBe(line);
+  });
+
+  it("replaces every secret it is given", () => {
+    expect(secretRedactor(["a", "b"])("a b")).toBe("[redacted] [redacted]");
+  });
+
+  it("replaces a secret that begins with another one whole", () => {
+    expect(secretRedactor(["abc", "abcdef"])("abcdef abc")).toBe(
+      "[redacted] [redacted]"
+    );
   });
 });

@@ -25,14 +25,12 @@ import {
   claudeEnvironment,
   claudeVersion,
   runClaude,
+  withoutClaudeVariables,
 } from "./claude.ts";
-import {
-  openRouterKeyVariable,
-  readEnvVariable,
-  readOauthToken,
-} from "./environment.ts";
+import { openRouterKeyVariable, readEnvVariable } from "./environment.ts";
 import { decisionUsageFile, measureGoalLoop } from "./goalLoop.ts";
 import { moveFiles, readLabChanges } from "./labCheckout.ts";
+import { usageLimitError, withFallbackLogin, type Login } from "./login.ts";
 import {
   ensureDatabaseBuilt,
   openFormbricksDatabase,
@@ -115,8 +113,34 @@ export function log(line: string) {
   process.stderr.write(`[${new Date().toISOString()}] ${line}\n`);
 }
 
+/**
+ * One step of a run's teardown or of cleaning up a discarded attempt. As on
+ * `main`, a step that fails stops the suite when the run itself succeeded. When
+ * an error is already being reported (the refusal that triggers the repeat on the
+ * second login, the message that both logins are at their limit, or any other run
+ * error) the failure is logged instead and that error stays what the run ends with.
+ */
+export async function tearDown(
+  step: string,
+  action: () => Promise<unknown>,
+  errorInFlight: boolean
+) {
+  try {
+    await action();
+  } catch (error) {
+    if (!errorInFlight) throw error;
+    log(
+      `Could not ${step}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
 export function gitOutput(cwd: string, args: string[]) {
-  const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+  const result = spawnSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: withoutClaudeVariables(process.env),
+  });
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
@@ -131,9 +155,17 @@ export async function writeJson(filePath: string, value: unknown) {
 /**
  * Runs the mission once and stores it under `results/runs/<run id>/`.
  * Throws when the run cannot complete; a failed verdict is a result, not an error.
+ * A run whose first login hits its usage limit is done again from the start on the fallback login.
  */
 export async function runOnce(
   options: RunOptions
+): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
+  return withFallbackLogin(evalRoot, (login) => runOnceOn(options, login), log);
+}
+
+async function runOnceOn(
+  options: RunOptions,
+  login: Login
 ): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
   const runId = `${new Date().toISOString().replace(/[:.]/g, "-")}-${options.arm.id}-${randomBytes(3).toString("hex")}`;
   const runDir = path.join(runsRoot, runId);
@@ -147,16 +179,22 @@ export async function runOnce(
   await mkdir(outputDir, { recursive: true });
   await mkdir(claudeConfigDir, { recursive: true });
 
-  const oauthToken = readOauthToken(evalRoot);
   const environment =
-    oauthToken === undefined
+    login.token === undefined
       ? undefined
-      : claudeEnvironment({ configDir: claudeConfigDir, oauthToken });
+      : claudeEnvironment({
+          configDir: claudeConfigDir,
+          oauthToken: login.token,
+        });
 
   log("Checking preconditions.");
   try {
     await checkPreconditions([
-      claudeTokenPrecondition({ environment, envDirectory: evalRoot }),
+      claudeTokenPrecondition({
+        environment,
+        envDirectory: evalRoot,
+        variable: login.variable,
+      }),
       dockerPrecondition,
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
@@ -173,6 +211,7 @@ export async function runOnce(
 
   const database = await openFormbricksDatabase(formbricksRoot);
   let armSetup: ArmSetup | undefined;
+  let errorInFlight = false;
   try {
     log("Seeding the mission.");
     const mission = await seedMission(database, options.mission, runId, labUrl);
@@ -236,7 +275,23 @@ export async function runOnce(
       timeoutMs: options.timeoutSeconds * 1000,
       transcriptPath: path.join(runDir, "transcript.jsonl"),
       stderrPath: path.join(runDir, "stderr.log"),
+      secrets: login.secrets,
     });
+    // A limit ends the attempt: half a run is no measurement. It is cleaned up as after any run: untracked files
+    // move to this attempt's agent-files/; tracked changes stay, and stop the repeat at the clean-checkout check.
+    const limited = usageLimitError(run, login, runDir);
+    if (limited !== null) {
+      await tearDown(
+        "move what the agent left in the lab app folder",
+        () =>
+          moveFiles(
+            readLabChanges().untracked,
+            path.join(runDir, "agent-files")
+          ),
+        true
+      );
+      throw limited;
+    }
     // Without a completed setup turn there is no measured turn, so there is no result; the transcript stays in the run folder.
     if (run.task === null)
       throw new Error(
@@ -272,6 +327,7 @@ export async function runOnce(
 
     const result = normalizeRun({
       runId,
+      login: login.name,
       arm: options.arm.id,
       missionId: mission.id,
       requestedModel: options.model,
@@ -308,11 +364,28 @@ export async function runOnce(
         "Warning: the agent changed the lab app checkout. Files it created are in agent-files/; tracked files it modified are still there. Inspect them before the next run."
       );
     return { runId, runDir, result };
+  } catch (error) {
+    errorInFlight = true;
+    throw error;
   } finally {
-    await armSetup?.dispose();
-    await database.close();
-    await rm(profileDir, { recursive: true, force: true });
-    await rm(claudeConfigDir, { recursive: true, force: true });
+    await tearDown(
+      "close what the arm's setup started",
+      async () => {
+        await armSetup?.dispose();
+      },
+      errorInFlight
+    );
+    await tearDown("close the database", () => database.close(), errorInFlight);
+    await tearDown(
+      "delete the browser profile",
+      () => rm(profileDir, { recursive: true, force: true }),
+      errorInFlight
+    );
+    await tearDown(
+      "delete the Claude Code configuration folder",
+      () => rm(claudeConfigDir, { recursive: true, force: true }),
+      errorInFlight
+    );
   }
 }
 

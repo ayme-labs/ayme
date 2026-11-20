@@ -60,6 +60,7 @@ const failed: Verdict = {
 function artifacts(overrides: Partial<RunArtifacts>): RunArtifacts {
   return {
     runId: "run-1",
+    login: "first",
     arm: "playwright-mcp",
     missionId: "rename-survey-and-question",
     requestedModel: "sonnet",
@@ -107,6 +108,13 @@ const goalLoopRan = {
 // result event; the task turn (four browser calls, 48,920 tokens, $0.4633 cumulative) ends with the second.
 describe("a completed run", () => {
   const result = normalizeRun(artifacts({}));
+
+  it("records which login served the run, by name only", () => {
+    expect(result.login).toBe("first");
+    expect(normalizeRun(artifacts({ login: "fallback" })).login).toBe(
+      "fallback"
+    );
+  });
 
   it("takes tokens from the task turn's result event alone", () => {
     expect(result.tokens).toEqual({

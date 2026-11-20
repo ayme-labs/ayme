@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { mkdir, rename } from "node:fs/promises";
 import path from "node:path";
 
+import { withoutClaudeVariables } from "./claude.ts";
 import { formbricksRoot, labRoot, repoRoot } from "./paths.ts";
 
 /** Paths relative to the lab app folder. */
@@ -53,7 +54,7 @@ function gitStatus(cwd: string, args: string[]) {
   const result = spawnSync(
     "git",
     ["status", "--porcelain=v1", "-z", "--untracked-files=all", ...args],
-    { cwd, encoding: "utf8" }
+    { cwd, encoding: "utf8", env: withoutClaudeVariables(process.env) }
   );
   if (result.status !== 0)
     throw new Error(
