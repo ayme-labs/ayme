@@ -371,9 +371,11 @@ describe.each(aymeArmIds)("the %s arm", (armId) => {
       /\s+/g,
       " "
     );
-    const recommended = new RegExp(`\\*\\*Start:\\*\\* \`${command}\`\\.`).test(
-      section
-    );
+    // The command may be followed by when it applies, such as "on a page
+    // that doesn't ship Ayme".
+    const recommended = new RegExp(
+      `\\*\\*Start:\\*\\* \`${command}\`[.;\\s]`
+    ).test(section);
     const instead = section.includes(`instead:** start \`${command}\``);
     expect(recommended || instead).toBe(true);
   });
