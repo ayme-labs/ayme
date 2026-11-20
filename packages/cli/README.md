@@ -38,7 +38,7 @@ The terminal prints the address of the recorder window, such as `Recorder UI: ht
 
 - `--headed`: open Chromium with a visible window. This is the default.
 - `--headless`: open Chromium without a window. Open the printed window address in a browser to control the recording.
-- `--start-recording`: open the recorder already recording, so that the recording and its trace hold the first page load, its network requests included, unless you press **Stop** before the page has loaded. The page opens blank, the recorder starts recording, and only then does the page go to `<url>`. **Stop**, **Continue recording**, **Clear** and **Finish** work as they do after pressing **Record**; after **Clear**, the next recording starts from the page as it is then.
+- `--start-recording`: open the recorder already recording, so that the recording and its trace hold the first page load, its network requests included, unless you press **Stop** before the page has loaded. A click on the blank page before it loads, or an element picked there for **Assert visibility**, is not recorded. The page opens blank, the recorder starts recording, and only then does the page go to `<url>`. **Stop**, **Continue recording**, **Clear** and **Finish** work as they do after pressing **Record**; after **Clear**, the next recording starts from the page as it is then.
 
 To end, press **Finish**, close the browser, or press Ctrl+C in the terminal. Closing the browser or pressing Ctrl+C while recording or paused saves what was recorded so far, as Finish does; before you press Record there is nothing to save. Pressing Ctrl+C a second time does not cut the save short.
 
