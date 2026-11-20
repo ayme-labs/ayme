@@ -45,6 +45,8 @@ import { fileURLToPath } from "node:url";
 
 const GUIDE_DIR = "docs/guide";
 const SHARED_SKILL_DIR = "skills/shared";
+/** Skills that ship no shared reference: nothing in them is about Page Objects. */
+const SKILLS_WITHOUT_SHARED_REFERENCES = new Set(["product-surfaces"]);
 /** Guide pages a skill ships a copy of. */
 const GUIDE_COPIES = [
   {
@@ -87,7 +89,7 @@ export function skillReferenceText(root, source) {
     );
 }
 
-/** Each shared skill reference with the copy every skill under `skills/` ships. */
+/** Each shared skill reference with the copy a skill under `skills/` ships. */
 function sharedSkillReferences(root) {
   const shared = path.join(root, SHARED_SKILL_DIR);
   if (!fs.existsSync(shared)) return [];
@@ -96,6 +98,7 @@ function sharedSkillReferences(root) {
     .filter(
       (entry) =>
         entry.isDirectory() &&
+        !SKILLS_WITHOUT_SHARED_REFERENCES.has(entry.name) &&
         fs.existsSync(path.join(root, "skills", entry.name, "SKILL.md"))
     )
     .map((entry) => entry.name);
