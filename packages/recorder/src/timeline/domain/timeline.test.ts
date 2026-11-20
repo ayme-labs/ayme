@@ -108,6 +108,24 @@ describe("the timeline", () => {
       );
     });
 
+    it("gives an Interaction that changed nothing the read it started at as its after too", async () => {
+      const text = await packageOf(
+        [
+          visit,
+          snapshot(snapshotId("snapshot_1"), 10, idle),
+          click(snapshotId("snapshot_1"), snapshotId("snapshot_1"), {
+            ref: pictureRef("e2"),
+            tree: idle,
+          }),
+        ],
+        { snapshot_1: "11" }
+      );
+
+      expect(text).toContain(
+        [`    beforeSnapshotId: "11"`, `    afterSnapshotId: "11"`].join("\n")
+      );
+    });
+
     it("gives an Interaction that left its page a before and no after", async () => {
       const text = await packageOf(
         [
@@ -897,7 +915,13 @@ describe("the timeline, for an input known from its report", () => {
         expect.objectContaining({
           kind: "interaction",
           id: entryId("interaction_1"),
-          interaction: expect.objectContaining({ type: "fill", text: "m" }),
+          // Its field is known from the picture already.
+          interaction: expect.objectContaining({
+            type: "fill",
+            text: "m",
+            targetRef: "e3",
+          }),
+          targetElement: 'textbox "Item"',
           changes: null,
         }),
       ]);
@@ -1060,6 +1084,270 @@ describe("the timeline, for an input known from its report", () => {
       ]);
       expect(await timeline.package(header)).toContain("<added> [ref=s_");
     });
+
+    it("keeps the row of what had changed by the first key in its place when a later read names its elements, after the entries before it", async () => {
+      const timeline = await timelineOf([
+        ...earlier,
+        click(snapshotId("snapshot_1"), snapshotId("snapshot_1"), null),
+        typed("m", null),
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+      ]);
+
+      expect(entriesOf(timeline)).toEqual([
+        expect.objectContaining({
+          kind: "interaction",
+          id: entryId("interaction_1"),
+        }),
+        expect.objectContaining({
+          id: entryId("change_1"),
+          changes: [{ kind: "added", element: 'alert "Welcome back"' }],
+        }),
+        expect.objectContaining({ id: entryId("interaction_2") }),
+      ]);
+      expect(await traceOf(timeline)).toContain(
+        [
+          `  - interactionId: interaction_2`,
+          `    pageId: page_1`,
+          `    beforeSnapshotId: "1"`,
+          `    afterSnapshotId: "2"`,
+        ].join("\n")
+      );
+    });
+
+    it("keeps the ref of an element only the moment of the first key showed once the page is read again", async () => {
+      // Two elements the first read lacks: the next read has the status, but
+      // the alert was gone by then.
+      const moment = [
+        `- generic [ref=e1]:`,
+        `  - heading "Shopping" [level=1] [ref=e2]`,
+        `  - status [ref=e6]: Online`,
+        `  - alert [ref=e3]: Welcome back`,
+        `  - textbox "Item" [ref=e4]: m`,
+        `  - paragraph [ref=e5]: No draft`,
+      ].join("\n");
+      const online = [
+        `- generic [ref=e1]:`,
+        `  - heading "Shopping" [level=1] [ref=e2]`,
+        `  - status [ref=e7]: Online`,
+        `  - textbox "Item" [ref=e3]: milk`,
+        `  - paragraph [ref=e4]: No draft`,
+      ].join("\n");
+      const timeline = await timelineOf([...earlier, typed("m", null, moment)]);
+      const shown = (await timeline.package(header))!;
+      await timeline.add(snapshot(snapshotId("snapshot_2"), 20, online));
+      await timeline.add(typed("milk", snapshotId("snapshot_2"), moment));
+
+      const ref = (text: string) =>
+        /<added> \[ref=([^\]]+)\] alert/.exec(text)?.[1];
+      const now = (await timeline.package(header))!;
+      expect(ref(now)).toBe(ref(shown));
+      // The status is named as the next read names it.
+      expect(now).toContain("<added> [ref=e7] status: Online");
+    });
+
+    it("keeps a fill whose picture fits its first read but not that read and the next together, as it was shown", async () => {
+      // The picture misses the paragraph: it is taken as gone by the first
+      // key while only the first read is known; the next read still has it.
+      const missing = [
+        `- generic [ref=e1]:`,
+        `  - heading "Shopping" [level=1] [ref=e2]`,
+        `  - alert [ref=e3]: Welcome back`,
+        `  - textbox "Item" [ref=e4]: m`,
+      ].join("\n");
+      const timeline = await timelineOf([
+        ...earlier,
+        typed("m", null, missing),
+      ]);
+      await timeline.add(snapshot(snapshotId("snapshot_2"), 20, draftSaved));
+      await timeline.add(typed("milk", snapshotId("snapshot_2"), missing));
+
+      expect(entriesOf(timeline)).toEqual([
+        expect.objectContaining({ id: entryId("change_1") }),
+        expect.objectContaining({
+          id: entryId("interaction_1"),
+          interaction: expect.objectContaining({ text: "milk" }),
+        }),
+      ]);
+    });
+
+    /** The trace points of a timeline, every read at the place its number
+     * says. */
+    const traceOf = async (timeline: Timeline) => {
+      const text = (await timeline.package(
+        header,
+        tracePositions({ snapshot_1: "1", snapshot_2: "2", snapshot_3: "3" })
+      ))!;
+      return text.slice(text.indexOf("traceActionPoints:"));
+    };
+
+    it("tells the trace a fill added again under its key ends at its latest read", async () => {
+      const timeline = await timelineOf([
+        ...earlier,
+        typed("m", null),
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+        snapshot(snapshotId("snapshot_3"), 30, draftSaved),
+        typed("milky", snapshotId("snapshot_3")),
+      ]);
+
+      expect(await traceOf(timeline)).toBe(
+        [
+          `traceActionPoints:`,
+          `  - interactionId: interaction_1`,
+          `    pageId: page_1`,
+          `    beforeSnapshotId: "1"`,
+          `    afterSnapshotId: "3"`,
+          `    startedAt: 10`,
+          `    endedAt: 30`,
+          ``,
+        ].join("\n")
+      );
+    });
+
+    it("tells the trace a fill ends at the last read of its own page when its typing makes the page go elsewhere", async () => {
+      const timeline = await timelineOf([
+        ...earlier,
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+        {
+          kind: "visit",
+          page: pageId("page_1"),
+          url: "http://shop.test/next",
+          cause: "navigate",
+        },
+        snapshot(snapshotId("snapshot_3"), 30, draftEmpty),
+        typed("milk!", snapshotId("snapshot_3")),
+      ]);
+
+      expect(await traceOf(timeline)).toContain(
+        [
+          `    beforeSnapshotId: "1"`,
+          `    afterSnapshotId: "2"`,
+          `    startedAt: 10`,
+          `    endedAt: 20`,
+        ].join("\n")
+      );
+    });
+
+    it("tells the trace a fill whose page went on to another Visit before it was read again has no after in its Visit, and ends at the read it went on to (rule 7)", async () => {
+      const timeline = await timelineOf([
+        ...earlier,
+        typed("m", null),
+        {
+          kind: "visit",
+          page: pageId("page_1"),
+          url: "http://shop.test/next",
+          cause: "navigate",
+        },
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+      ]);
+
+      expect(await traceOf(timeline)).toBe(
+        [
+          `traceActionPoints:`,
+          `  - interactionId: interaction_1`,
+          `    pageId: page_1`,
+          `    beforeSnapshotId: "1"`,
+          `    startedAt: 10`,
+          `    endedAt: 20`,
+          ``,
+        ].join("\n")
+      );
+    });
+
+    it("leaves the list as it was when a fill added again is added once more with nothing new", async () => {
+      const timeline = await timelineOf([
+        ...earlier,
+        typed("m", null),
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+      ]);
+      const before = timeline.visits();
+      await timeline.add(typed("milk", snapshotId("snapshot_2")));
+
+      expect(timeline.visits()).toBe(before);
+    });
+
+    it("replaces a fill that is the first entry of its Visit, when nothing had changed by its first key", async () => {
+      const unchanged = [
+        `- generic [ref=e1]:`,
+        `  - heading "Shopping" [level=1] [ref=e2]`,
+        `  - textbox "Item" [ref=e4]: m`,
+        `  - paragraph [ref=e5]: No draft`,
+      ].join("\n");
+      const timeline = await timelineOf([
+        ...earlier,
+        typed("m", null, unchanged),
+      ]);
+      await timeline.add(snapshot(snapshotId("snapshot_2"), 20, draftSaved));
+      await timeline.add(typed("milk", snapshotId("snapshot_2"), unchanged));
+
+      expect(entriesOf(timeline)).toEqual([
+        expect.objectContaining({
+          id: entryId("interaction_1"),
+          interaction: expect.objectContaining({ text: "milk" }),
+        }),
+      ]);
+    });
+
+    it("keeps a fill the person left out left out when it is added again under its key", async () => {
+      const timeline = await timelineOf([
+        ...earlier,
+        typed("m", null),
+        { kind: "discard", entry: entryId("interaction_1") },
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+      ]);
+
+      expect(entriesOf(timeline)[1]).toMatchObject({
+        interaction: { text: "milk" },
+        discarded: true,
+      });
+    });
+
+    it("ignores a new text for a key no fill was added under", async () => {
+      const timeline = await timelineOf([...earlier, typed("m", null)]);
+      const before = timeline.visits();
+      await timeline.add({
+        kind: "text",
+        key: "fill_9",
+        report: {
+          type: "fill",
+          selector: 'internal:role=textbox[name="Item"i]',
+          target: null,
+          values: { text: "x" },
+        },
+      });
+
+      expect(timeline.visits()).toBe(before);
+    });
+
+    it("writes no change twice when a fill is added again after an input that followed it was written", async () => {
+      const sent = draftSaved.replace("Draft saved", "Draft sent");
+      const done = draftSaved.replace("Draft saved", "Done");
+      const timeline = await timelineOf([
+        ...earlier,
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        typed("milk", snapshotId("snapshot_2")),
+        snapshot(snapshotId("snapshot_3"), 30, sent),
+        click(snapshotId("snapshot_2"), snapshotId("snapshot_3"), null),
+      ]);
+      // Playwright's final write of the fill, with its last word.
+      await timeline.add(typed("milk!", snapshotId("snapshot_2")));
+      await timeline.add(snapshot(snapshotId("snapshot_4"), 40, done));
+      await timeline.add(
+        click(snapshotId("snapshot_3"), snapshotId("snapshot_4"), null)
+      );
+
+      expect(entriesOf(timeline).map((entry) => entry.id)).toEqual([
+        entryId("change_1"),
+        entryId("interaction_1"),
+        entryId("interaction_2"),
+        entryId("interaction_3"),
+      ]);
+    });
   });
 });
 
@@ -1199,6 +1487,76 @@ describe("the timeline, for the focus a click's press moved", () => {
     });
   });
 
+  it("keeps the focus a click's press moved out of a fill added again under its key, as one written once", async () => {
+    // A banner came before the first key: a row of its own ahead of the
+    // fill.
+    const atFirstKey = searching.replace(
+      "  - paragraph",
+      "  - alert [ref=e9]: Welcome\n  - paragraph"
+    );
+    const typed = [
+      `- generic [ref=e1]:`,
+      `  - textbox "Search" [ref=e2]: ayme`,
+      `  - link "ayme" [active] [ref=e3]`,
+      `  - alert [ref=e5]: Welcome`,
+      `  - paragraph [ref=e4]: Nothing loaded`,
+    ].join("\n");
+    const clicked = typed.replace("Nothing loaded", "Repository opened");
+    const fill = (
+      text: string,
+      after: SnapshotId | null
+    ): TimelineAddition => ({
+      kind: "interaction",
+      key: "fill_1",
+      interaction: {
+        page: pageId("page_1"),
+        report: {
+          type: "fill",
+          selector: 'internal:role=textbox[name="Search"s]',
+          target: { ref: pictureRef("e2"), tree: atFirstKey },
+          values: { text },
+        },
+        before: snapshotId("snapshot_1"),
+        after,
+        at: 15,
+        beforeFromReport: true,
+      },
+    });
+    const timeline = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, searching),
+      fill("a", null),
+      snapshot(snapshotId("snapshot_2"), 20, typed),
+      fill("ayme", snapshotId("snapshot_2")),
+      snapshot(snapshotId("snapshot_3"), 30, clicked),
+      {
+        kind: "interaction",
+        interaction: {
+          page: pageId("page_1"),
+          report: {
+            type: "click",
+            selector: 'internal:role=link[name="ayme"s]',
+            target: { ref: pictureRef("e3"), tree: typed },
+            values: { button: "left", clickCount: 1 },
+          },
+          before: snapshotId("snapshot_2"),
+          after: snapshotId("snapshot_3"),
+          at: 20,
+        },
+      },
+    ]);
+    const [banner, written] = timeline.visits().flatMap((one) => one.entries);
+
+    expect(banner).toMatchObject({ kind: "change" });
+    expect((written as { changes: unknown }).changes).toEqual([
+      expect.objectContaining({ element: 'textbox "Search"' }),
+    ]);
+    // Its final write, with nothing new, leaves the list as it was.
+    const shown = timeline.visits();
+    await timeline.add(fill("ayme", snapshotId("snapshot_2")));
+    expect(timeline.visits()).toBe(shown);
+  });
+
   it("shows the clicked element gaining focus, and the one before losing it, with the click's own changes; what else changed before it stays a row of its own", async () => {
     const timeline = await timelineOf(recorded(pressed));
     const entries = timeline.visits().flatMap((one) => one.entries);
@@ -1218,6 +1576,242 @@ describe("the timeline, for the focus a click's press moved", () => {
       ]),
     });
     expect(entries).toHaveLength(3);
+    expect((click as { changes: unknown }).changes).toEqual([
+      focus('textbox "Search"', "lost"),
+      focus('link "ayme"', "gained"),
+      opening,
+    ]);
+  });
+
+  /** A row of an element that gained or lost the focus. */
+  const focus = (element: string, how: "gained" | "lost") => ({
+    kind: "changed",
+    element,
+    changed: [
+      {
+        property: "active",
+        ...(how === "gained" ? { to: "true" } : { from: "true" }),
+      },
+    ],
+  });
+  const opening = {
+    kind: "changed",
+    element: 'paragraph "Repository opened"',
+    changed: [
+      { property: "text", from: "Banner loaded", to: "Repository opened" },
+    ],
+  };
+  /** The entries of `recorded`, with the read before the input and the
+   * input changed as given. */
+  const entriesWith = async (options: {
+    first?: string;
+    second?: string;
+    third?: string;
+    type?: string;
+    target?: string;
+    /** Known from Playwright's report alone: the gate never held it. */
+    reported?: boolean;
+    /** The input before ends at the read before this one. */
+    priorEndsThere?: boolean;
+  }) => {
+    const second = options.second ?? pressed;
+    const additions = recorded(second).map((addition): TimelineAddition => {
+      if (addition.kind === "snapshot") {
+        if (addition.snapshot.id === snapshotId("snapshot_1"))
+          return snapshot(
+            snapshotId("snapshot_1"),
+            10,
+            options.first ?? searching
+          );
+        if (addition.snapshot.id === snapshotId("snapshot_2"))
+          return snapshot(snapshotId("snapshot_2"), 20, second);
+        return snapshot(snapshotId("snapshot_3"), 30, options.third ?? opened);
+      }
+      if (
+        addition.kind === "interaction" &&
+        addition.interaction.before === snapshotId("snapshot_1")
+      )
+        return options.priorEndsThere
+          ? {
+              ...addition,
+              interaction: {
+                ...addition.interaction,
+                after: snapshotId("snapshot_2"),
+              },
+            }
+          : addition;
+      if (addition.kind === "interaction")
+        return {
+          ...addition,
+          interaction: {
+            ...addition.interaction,
+            ...(options.reported && { beforeFromReport: true }),
+            report: {
+              ...addition.interaction.report,
+              type: options.type ?? "click",
+              selector:
+                options.target === "e4"
+                  ? "internal:role=paragraph"
+                  : 'internal:role=link[name="ayme"s]',
+              target: {
+                ref: pictureRef(options.target ?? "e3"),
+                tree: second,
+              },
+            },
+          },
+        };
+      return addition;
+    });
+    // An input is added once the read it ends at is taken.
+    if (options.priorEndsThere)
+      additions.splice(3, 0, ...additions.splice(2, 1));
+    const timeline = await timelineOf(additions);
+    return timeline.visits().flatMap((one) => one.entries);
+  };
+  const changesOf = (entry: unknown) => (entry as { changes: unknown }).changes;
+
+  it.each(["check", "uncheck"])(
+    "shows the focus the press of a %s moved with it",
+    async (type) => {
+      const [, , input] = await entriesWith({ type });
+
+      expect(changesOf(input)).toEqual([
+        focus('textbox "Search"', "lost"),
+        focus('link "ayme"', "gained"),
+        opening,
+      ]);
+    }
+  );
+
+  it("shows no focus moved by a click on the element that had the focus already", async () => {
+    const onLink = searching
+      .replace(`textbox "Search" [active]`, `textbox "Search"`)
+      .replace(`link "ayme"`, `link "ayme" [active]`);
+    const [, before, click] = await entriesWith({ first: onLink });
+
+    expect(changesOf(before)).toEqual([
+      expect.objectContaining({
+        element: expect.stringContaining("paragraph"),
+      }),
+    ]);
+    expect(changesOf(click)).toEqual([opening]);
+  });
+
+  it("leaves the focus a read shows moved before a click known from its report alone as a change of its own: the gate never held that click, so the read was not taken after its press", async () => {
+    const [, before] = await entriesWith({ reported: true });
+
+    expect(changesOf(before)).toEqual(
+      expect.arrayContaining([
+        focus('textbox "Search"', "lost"),
+        focus('link "ayme"', "gained"),
+      ])
+    );
+  });
+
+  it("leaves the focus a read shows moved with the input that ended there when a click known from its report alone starts there", async () => {
+    const [prior] = await entriesWith({ reported: true, priorEndsThere: true });
+
+    expect(changesOf(prior)).toEqual(
+      expect.arrayContaining([
+        focus('textbox "Search"', "lost"),
+        focus('link "ayme"', "gained"),
+      ])
+    );
+  });
+
+  it("leaves a focus moved at a read before the one a click starts at as a change of its own", async () => {
+    // The click starts a read later: what moved the focus before that read
+    // was no press of its.
+    const later = opened.replace("Repository opened", "Banner gone");
+    const prior = recorded(pressed)[2];
+    const timeline = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, searching),
+      prior!,
+      snapshot(snapshotId("snapshot_2"), 20, pressed),
+      snapshot(snapshotId("snapshot_3"), 30, later),
+      snapshot(snapshotId("snapshot_4"), 40, opened),
+      {
+        kind: "interaction",
+        interaction: {
+          page: pageId("page_1"),
+          report: {
+            type: "click",
+            selector: 'internal:role=link[name="ayme"s]',
+            target: { ref: pictureRef("e3"), tree: later },
+            values: { button: "left", clickCount: 1 },
+          },
+          before: snapshotId("snapshot_3"),
+          after: snapshotId("snapshot_4"),
+          at: 30,
+        },
+      },
+    ]);
+    const [, first] = timeline.visits().flatMap((one) => one.entries);
+
+    expect(changesOf(first)).toEqual(
+      expect.arrayContaining([
+        focus('textbox "Search"', "lost"),
+        focus('link "ayme"', "gained"),
+      ])
+    );
+  });
+
+  it("shows the clicked element gaining a focus no element had before, with the click", async () => {
+    const [, before, click] = await entriesWith({
+      first: searching.replace(" [active]", ""),
+    });
+
+    expect(changesOf(before)).toEqual([
+      expect.objectContaining({
+        element: expect.stringContaining("paragraph"),
+      }),
+    ]);
+    expect(changesOf(click)).toEqual([focus('link "ayme"', "gained"), opening]);
+  });
+
+  it("leaves a focus moved before a key press as a change of its own: a key press moves no focus by its press", async () => {
+    const [, before, press] = await entriesWith({ type: "press" });
+
+    expect(changesOf(before)).toEqual(
+      expect.arrayContaining([
+        focus('textbox "Search"', "lost"),
+        focus('link "ayme"', "gained"),
+      ])
+    );
+    expect(changesOf(press)).toEqual([opening]);
+  });
+
+  it("leaves a focus moved to an element other than the one clicked, and not around it, as a change of its own", async () => {
+    const [, before, click] = await entriesWith({ target: "e4" });
+
+    expect(changesOf(before)).toEqual(
+      expect.arrayContaining([focus('link "ayme"', "gained")])
+    );
+    expect(changesOf(click)).toEqual([opening]);
+  });
+
+  it("shows the focus with the click when the press focused an element around the one clicked", async () => {
+    const card = (focused: "Search" | "Card", text: string) =>
+      [
+        `- generic [ref=e1]:`,
+        `  - textbox "Search"${focused === "Search" ? " [active]" : ""} [ref=e2]`,
+        `  - group "Card"${focused === "Card" ? " [active]" : ""} [ref=e3]:`,
+        `    - link "ayme" [ref=e5]`,
+        `  - paragraph [ref=e4]: ${text}`,
+      ].join("\n");
+    const [, , click] = await entriesWith({
+      first: card("Search", "Nothing loaded"),
+      second: card("Card", "Banner loaded"),
+      third: card("Card", "Repository opened"),
+      target: "e5",
+    });
+
+    expect(changesOf(click)).toEqual([
+      focus('textbox "Search"', "lost"),
+      focus('group "Card"', "gained"),
+      opening,
+    ]);
   });
 });
 

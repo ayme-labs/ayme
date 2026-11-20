@@ -2784,6 +2784,83 @@ describe("the lifecycle, for a page that is blank at Record", () => {
     expect(fillStarts(todo)).toEqual([snapshot3]);
   });
 
+  it("tells the timeline nothing when it goes to its address while paused: it had no Visit to leave", () => {
+    const { todo } = run([
+      blank,
+      ...started,
+      stop,
+      gateOff,
+      readBlank(snapshot1),
+      reportingOff,
+      loaded,
+    ]);
+
+    expect(todo.at(-1)).toEqual([]);
+  });
+
+  /** Another page, at its address all along, and a read of it. */
+  const other: Happening = {
+    kind: "pageOpened",
+    page: page2,
+    url: "http://shop.test/help",
+  };
+  const readOther = (id: SnapshotId): Happening => ({
+    kind: "snapshotTaken",
+    snapshot: { ...snapshot(id), page: page2, url: "http://shop.test/help" },
+  });
+  const onOther = (
+    input: InputId,
+    held?: Extract<Happening, { kind: "inputHeld" }>["held"]
+  ): Happening => ({
+    kind: "inputHeld" as const,
+    input,
+    page: page2,
+    ...(held && { held }),
+  });
+
+  it("keeps the read of another page when one goes from blank to its address: a key typed on that other page starts from it", () => {
+    const { todo } = run([
+      blank,
+      other,
+      ...started,
+      onOther(input1),
+      readOther(snapshot1),
+      passedOn(input1),
+      settledOn(page2, input1),
+      readOther(snapshot2),
+      loaded,
+      onOther(input2, { kind: "typing" }),
+    ]);
+
+    // No read is asked for the key: the other page's latest is its start.
+    expect(todo.at(-1)).not.toContainEqual(
+      expect.objectContaining({
+        ask: expect.objectContaining({ kind: "takeSnapshot" }),
+      })
+    );
+  });
+
+  it("takes a read of a page that is still blank as its read, while another page is at its address", () => {
+    const { todo } = run([
+      blank,
+      other,
+      ...started,
+      clickHeld(input1),
+      readBlank(snapshot1),
+      passedOn(input1),
+      settled(input1),
+      readBlank(snapshot2),
+      keyHeld(input2),
+    ]);
+
+    // The key starts from the blank page's latest read: none is asked.
+    expect(todo.at(-1)).not.toContainEqual(
+      expect.objectContaining({
+        ask: expect.objectContaining({ kind: "takeSnapshot" }),
+      })
+    );
+  });
+
   it("takes no read of the blank page that comes after the page went to its address as the page's read", () => {
     const { todo } = run([
       blank,
@@ -3181,6 +3258,42 @@ describe("the lifecycle, for Assert visibility", () => {
         targetRead: snapshot3,
       },
       { type: "fill", before: snapshot2, after: null },
+    ]);
+  });
+
+  it("places no assertion on a page with no read yet when typing is reported before its read: both start from that read", () => {
+    const { todo } = run([...recording, ...pickedThenTyped, taken(snapshot1)]);
+
+    expect(told(todo)).toEqual([
+      { type: "assertVisible", before: snapshot1, after: snapshot1 },
+      { type: "fill", before: snapshot1, after: null },
+    ]);
+  });
+
+  it("places typing reported while a click's read is still being taken ahead of that click: its keys came first, and it ends where the click starts", () => {
+    const { todo } = run([
+      ...recording,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      settled(input1),
+      taken(snapshot2),
+      reported,
+      clickHeld(input2),
+      filled,
+      taken(snapshot3),
+      passedOn(input2),
+      settled(input2),
+      taken(snapshot4),
+      reported,
+    ]);
+
+    expect(told(todo)).toEqual([
+      { type: "click", before: snapshot1, after: snapshot2 },
+      // Shown at once, then written with its "after".
+      { type: "fill", before: snapshot2, after: null },
+      { type: "fill", before: snapshot2, after: snapshot3 },
+      { type: "click", before: snapshot3, after: snapshot4 },
     ]);
   });
 
@@ -3967,6 +4080,32 @@ describe("the lifecycle, for what the review against the spec found", () => {
       state: { phase: "wrappingUp" },
     },
 
+    {
+      name: "a key typed before Stop needs no read of its own once its page settles in the wrap-up: its report says what it changed",
+      happened: [
+        opened,
+        ...started,
+        {
+          kind: "inputHeld",
+          input: input1,
+          page: page1,
+          held: { kind: "typing" },
+        },
+        stop,
+        gateOff,
+        taken(snapshot1),
+        passedOn(input1),
+        settled(input1),
+      ],
+      todo: [
+        [keep(snapshot1), passOn(input1)],
+        [waitForSettled(input1)],
+        // Settled with no read: the wrap-up goes on to its final read.
+        [holdNoMore, takeSnapshot(snapshot2)],
+      ],
+      state: { phase: "wrappingUp" },
+    },
+
     // The change analysis of the branch: behaviour no row pinned.
     {
       name: "a report of a kind the recorder does not record is ignored, while recording and while wrapping up",
@@ -4639,6 +4778,112 @@ describe("the lifecycle, with more than one page", () => {
     const result = run(happened);
     expect(writes(result).slice(-todo.length)).toEqual(todo);
     expect(result.state).toMatchObject(state);
+  });
+
+  /** Each Interaction told to the timeline, by its page and type. */
+  const toldOf = (todo: readonly (readonly ToDo[])[]) =>
+    todo
+      .flat()
+      .flatMap((item) =>
+        item.kind === "timeline" && item.add.kind === "interaction"
+          ? [`${item.add.interaction.page} ${item.add.interaction.report.type}`]
+          : []
+      );
+  const choiceOn2: Happening = {
+    kind: "interactionReported",
+    page: page2,
+    report: {
+      type: "select",
+      selector: "internal:role=combobox",
+      target: null,
+      values: { options: ["Large"] },
+    },
+  };
+
+  it("writes an input of one page while another page's input is still under way: entries keep the order of each page's inputs only", () => {
+    const { todo } = run([
+      opened,
+      opened2,
+      ...started,
+      clickHeld(input1),
+      takenOf(snapshot1, page1),
+      passedOn(input1),
+      choiceOn2,
+      takenOf(snapshot2, page2),
+      settledOn(page2, reported1),
+      takenOf(snapshot3, page2),
+    ]);
+
+    // Shown once reported, and written with its "after".
+    expect(toldOf(todo)).toEqual(["page_2 select", "page_2 select"]);
+  });
+
+  it("sets the text of a fill made final while another page's click has its report: a report on another page is not newer than the fill", () => {
+    const fillOn1 = (text: string) => ({
+      type: "fill",
+      selector: "internal:role=textbox",
+      target: null,
+      values: { text },
+    });
+    const { todo } = run([
+      opened,
+      opened2,
+      ...started,
+      { kind: "interactionReported", page: page1, report: fillOn1("m") },
+      takenOf(snapshot1, page1),
+      settledOn(page1, reported1),
+      takenOf(snapshot2, page1),
+      { kind: "inputHeld", input: input2, page: page2 },
+      takenOf(snapshot3, page2),
+      passedOn(input2),
+      {
+        kind: "interactionReported",
+        page: page2,
+        report: { ...click, values: { button: "left", clickCount: 1 } },
+      },
+      // The next input on the fill's page makes the fill final.
+      clickHeld(input3),
+      { kind: "interactionRevised", page: page1, report: fillOn1("mi") },
+    ]);
+
+    expect(todo.at(-1)).toEqual([
+      {
+        kind: "timeline",
+        add: { kind: "text", key: expect.any(String), report: fillOn1("mi") },
+      },
+    ]);
+  });
+
+  it("takes no revision Playwright reports for a page that closed", () => {
+    const { todo } = run([
+      opened,
+      opened2,
+      ...started,
+      { kind: "pageClosed", page: page2, pagesLeft: 1 },
+      { kind: "interactionRevised", page: page2, report: typed("x") },
+    ]);
+
+    expect(todo.at(-1)).toEqual([]);
+  });
+
+  it("writes an input of one page while another page's click waits for its report", () => {
+    const { todo } = run([
+      opened,
+      opened2,
+      ...started,
+      clickHeld(input1),
+      takenOf(snapshot1, page1),
+      passedOn(input1),
+      settledOn(page1, input1),
+      takenOf(snapshot2, page1),
+      choiceOn2,
+      takenOf(snapshot3, page2),
+      settledOn(page2, reported1),
+      takenOf(snapshot4, page2),
+    ]);
+
+    // Shown once reported, and written with its "after".
+    expect(toldOf(todo)).toEqual(["page_2 select", "page_2 select"]);
   });
 });
 
@@ -6412,6 +6657,19 @@ describe("the lifecycle, for a fill while it is typed", () => {
       ],
       state: { phase: "recording" },
       showing: [],
+    },
+    {
+      name: "a revision of another kind after a fill is final sets no text of the fill's (rule 5)",
+      happened: [
+        ...clicked,
+        reportedAs(fill("m")),
+        settled(reported1),
+        taken(snapshot3),
+        clickHeld(input2),
+        revised(choice),
+      ],
+      todo: [[]],
+      state: { phase: "recording" },
     },
     {
       name: "a revision after a newer report is dropped: it is not the fill's (rule 5)",
