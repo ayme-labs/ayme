@@ -129,17 +129,18 @@ function withoutChangeRecord(error: unknown): unknown {
 /**
  * Spike: whether the Page Object an action returned, `returned`, is
  * present by the Settled Page deadline: at the first ask, or after it came.
- * The deadline runs once while the action returns, which an action that
- * started a load may still be about to do, and again while the presence
- * predicate is asked. Only a declared or inherited presence predicate is
- * waited for: a Page Object without one, or a value that is none, is not.
+ * The deadline runs once, from here: it covers the action returning, which
+ * an action that started a load may still be about to do, and the asks of
+ * the presence predicate after it. Only a declared or inherited presence
+ * predicate is waited for: a Page Object without one, or a value that is
+ * none, is not.
  */
 async function presenceBy(
   returned: Promise<object | undefined>
 ): Promise<"present" | "came" | undefined> {
+  const deadline = Date.now() + SETTLED_PAGE_DEADLINE_MS;
   const pageObject = await within(returned, SETTLED_PAGE_DEADLINE_MS);
   if (!pageObject) return undefined;
-  const deadline = Date.now() + SETTLED_PAGE_DEADLINE_MS;
   for (let first = true; ; first = false) {
     const { present } = await askPresence(pageObject);
     if (present === undefined) return undefined;
