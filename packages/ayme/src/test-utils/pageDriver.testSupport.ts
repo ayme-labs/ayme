@@ -89,6 +89,8 @@ export function standInPageDriver(deps: {
 
   const driver: StandInPageDriver = {
     isLocator: (value): value is Locator => deps.isLocator(value),
+    // A stand-in locator may not render an aria snapshot; one that cannot rejects.
+    ariaSnapshot: async (locator) => locator.ariaSnapshot(),
     async probe(locator): Promise<RootState> {
       const refs = await refsOf(locator);
       const element = deps.elementsOf(locator)[0];
@@ -111,6 +113,9 @@ export function standInPageDriver(deps: {
     refs: refsOf,
     // A stand-in ref never changes name: a capture has marked nothing.
     currentRefs: async (refs) => [...refs],
+    // Nor does a stand-in element change ref: its ref is its key.
+    elementKeys: async (refs) => refs.map((ref) => ({ key: ref, ref })),
+    keyedRefs: async (keys) => [...keys],
     async names(locator, ref) {
       const refs = await refsOf(locator);
       return refs.length === 1 && refs[0] === ref;

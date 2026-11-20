@@ -9,6 +9,7 @@ const milk = {
   path: "ListPage.items[0]",
   name: "[0]",
   pathBelowPage: "items[0]",
+  id: "po5",
   ref: "e5",
   label: "Milk",
 };
@@ -58,7 +59,7 @@ it.each([
   [
     "runs a rooted action on its item",
     { collection: true, target: milk },
-    { kind: "run", input: { ref: "e5", args }, item: milk },
+    { kind: "run", input: { id: "po5", args }, item: milk },
   ],
   [
     "refuses a rooted action with no item",

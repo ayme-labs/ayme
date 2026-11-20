@@ -51,7 +51,7 @@ export function useInspectorRuntime({
     () => refreshPageState(),
     [refreshPageState]
   );
-  // A Run's item is the one its ref names in the latest look at the page.
+  // A Run's item is the one its Page Object id names in the latest look at the page.
   const latestStructure = useRef(emptyStructure);
   const latestRefs = useRef<readonly string[]>([]);
   const latestCollectionItems = useRef(toolInstances);
@@ -59,14 +59,14 @@ export function useInspectorRuntime({
     latestCollectionItems.current = toolInstances;
   }, [toolInstances]);
   const itemOf = useCallback(
-    (toolName: string, ref: string) =>
+    (toolName: string, id: string) =>
       latestMembers.current &&
       itemsOf(
         toolName,
         latestMembers.current,
         latestStructure.current,
         latestCollectionItems.current.get(toolName)
-      ).find((item) => item.ref === ref),
+      ).find((item) => item.id === id),
     []
   );
   const { runs, invoke, clear } = useRuns({

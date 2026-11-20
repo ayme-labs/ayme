@@ -1,4 +1,4 @@
-import { rootRef } from "../test-utils/agentCalls.testSupport";
+import { rootId } from "../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
 
@@ -187,7 +187,7 @@ describe("the one input check every Run passes, in Chromium", () => {
   it("refuses an unavailable tool's bad input as bad input", async () => {
     expect(
       await call("Item.archive", {
-        ref: "e404",
+        id: "po404404",
         args: {},
         extra: 1,
       })
@@ -197,10 +197,10 @@ describe("the one input check every Run passes, in Chromium", () => {
   it("refuses an unavailable tool's good input as unavailable", async () => {
     expect(
       await call("Item.archive", {
-        ref: await rootRef("InputPage.items[0]"),
+        id: await rootId("InputPage.items[0]"),
         args: {},
       })
-    ).toMatch(/^RuntimeStateError: Item on ref "e\d+" is unavailable/);
+    ).toMatch(/^RuntimeStateError: Item "po\d+" is unavailable/);
   });
 
   it("names a tool that does not exist before looking at its input", async () => {
@@ -257,7 +257,7 @@ describe("the one input check every Run passes, in Chromium", () => {
     document.querySelector("#overlay")!.remove();
     await probeRegisteredPomMembers();
 
-    expect(await call("Item.archive", { ref: "e404", args: { x: 1 } })).toBe(
+    expect(await call("Item.archive", { id: "po404404", args: { x: 1 } })).toBe(
       "ToolInputError: Input property args.x is not supported."
     );
   });
@@ -265,12 +265,12 @@ describe("the one input check every Run passes, in Chromium", () => {
   it("hands a tool only the input properties it checked", async () => {
     document.querySelector("#overlay")!.remove();
     const { structure } = (await run("snapshot", {})) as { structure: string };
-    const ref = structure.match(/(e\d+) Item\b/)?.[1];
+    const id = structure.match(/ Item (po\d+)/)?.[1];
     pin.mockClear();
 
     // An inherited property is not part of the input the check reads.
     const input = Object.assign(Object.create({ args: { top: "yes" } }), {
-      ref,
+      id,
     });
     expect(await call("Item.pin", input)).toBe("ran");
     expect(pin).toHaveBeenCalledOnce();
@@ -307,12 +307,12 @@ describe("the one input check every Run passes, in Chromium", () => {
     expect(save).toHaveBeenCalledExactlyOnceWith(undefined);
 
     const { structure } = (await run("snapshot", {})) as { structure: string };
-    const ref = structure.match(/(e\d+) Item\b/)?.[1];
-    expect(await call("Item.move", { ref, args: { y: 2 } })).toBe(
+    const id = structure.match(/ Item (po\d+)/)?.[1];
+    expect(await call("Item.move", { id, args: { y: 2 } })).toBe(
       "ToolInputError: Input property args.x is required when y is given."
     );
     expect(move).not.toHaveBeenCalled();
-    expect(await call("Item.move", { ref, args: { x: 1, y: 2 } })).toBe("ran");
+    expect(await call("Item.move", { id, args: { x: 1, y: 2 } })).toBe("ran");
     expect(move).toHaveBeenCalledExactlyOnceWith([1, 2]);
   });
 

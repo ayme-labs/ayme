@@ -43,13 +43,13 @@ const structure = {
 it("carries each item's verdict and reason from the registry", () => {
   const verdicts = [
     {
-      label: "ListPage.items[0]",
+      id: "po1",
       ref: "e1",
       present: true,
       available: true,
     },
     {
-      label: "ListPage.items[1]",
+      id: "po2",
       ref: "e2",
       present: true,
       available: false,
@@ -62,6 +62,7 @@ it("carries each item's verdict and reason from the registry", () => {
       path: "ListPage.items[0]",
       name: "[0]",
       pathBelowPage: "items[0]",
+      id: "po1",
       ref: "e1",
       label: "Milk",
       available: true,
@@ -70,6 +71,7 @@ it("carries each item's verdict and reason from the registry", () => {
       path: "ListPage.items[1]",
       name: "[1]",
       pathBelowPage: "items[1]",
+      id: "po2",
       ref: "e2",
       label: "Bread",
       available: false,
@@ -83,14 +85,14 @@ it("keeps each item's own verdict when the registry saw the items swap first", (
   // first, under the refs it gave before the swap.
   const verdicts = [
     {
-      label: "ListPage.items[0]",
+      id: "po2",
       ref: "e2",
       present: true,
       available: false,
       reason: "Bread is locked",
     },
     {
-      label: "ListPage.items[1]",
+      id: "po1",
       ref: "e1",
       present: true,
       available: true,
@@ -107,10 +109,6 @@ it("keeps each item's own verdict when the registry saw the items swap first", (
   ]);
 });
 
-it("leaves the verdict out for an item the registry has not observed", () => {
-  expect(
-    itemsOf("ListItem.archive", members, structure).map(
-      (candidate) => "available" in candidate
-    )
-  ).toEqual([false, false]);
+it("leaves out an item the registry has not observed, which has no id to run on", () => {
+  expect(itemsOf("ListItem.archive", members, structure)).toEqual([]);
 });

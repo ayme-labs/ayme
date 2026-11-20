@@ -14,6 +14,7 @@ export type {
   TargetField,
 } from "./elementTools";
 export { getPageContextTool, pageContextFor } from "./pageContext";
+export { pageObjectsTool } from "./pageObjectsTool";
 export type { PageContext } from "./pageContext";
 export { peekToolName } from "./peek";
 export type { PeekRead, PeekResult, PeekSide, PeekTool } from "./peek";

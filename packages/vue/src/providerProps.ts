@@ -35,6 +35,7 @@ export const providerProps = {
     type: Function as PropType<GoalLoopDecisionFunction>,
     required: false,
   },
+  /** @experimental */
   webMCP: {
     type: Object as PropType<AymeWebMcpOptions>,
     required: false,

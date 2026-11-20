@@ -1,5 +1,4 @@
 import type { Turn } from "./claude.ts";
-import { combinedCost, type GoalLoopUsage } from "./goalLoop.ts";
 import {
   summarizeTranscript,
   totalTokens,
@@ -37,8 +36,6 @@ export type RunArtifacts = {
     formbricksCommit: string | null;
     aymeCommit: string | null;
   };
-  /** The Goal Loop's own model calls, tokens and cost during the run; no calls for arms without it. */
-  goalLoop: GoalLoopUsage;
   /** What the arm's setup established before the measured window, such as the page paired with the Ayme MCP server; `null` for arms without a setup. */
   setup: Record<string, unknown> | null;
   /** What the agent changed in the lab app folder during the run. */
@@ -77,9 +74,6 @@ export type NormalizedResult = {
   tokens: TokenUsage | null;
   /** The task turn's cost: the session's cumulative cost at its end minus the setup turn's. */
   costUsd: number | null;
-  goalLoop: GoalLoopUsage;
-  /** The agent's cost plus the Goal Loop's where it ran; `null` while either is unknown. */
-  combinedCostUsd: number | null;
   toolCalls: ToolCallCounts;
   versions: {
     claudeCode: string | null;
@@ -178,8 +172,6 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     },
     tokens: result?.usage ?? null,
     costUsd,
-    goalLoop: artifacts.goalLoop,
-    combinedCostUsd: combinedCost(costUsd, artifacts.goalLoop),
     toolCalls: task.toolCalls,
     versions: {
       claudeCode: init?.claudeCodeVersion ?? artifacts.versions.claudeCode,
@@ -245,7 +237,7 @@ export function summarizeResult(result: NormalizedResult) {
         `  - ${name}: ${counts.total} (${counts.failed} failed)`
     )
     .join("\n");
-  const { goalLoop, setupTurn } = result;
+  const { setupTurn } = result;
   return `# Run ${result.runId}
 
 - Arm: ${result.arm}
@@ -258,10 +250,6 @@ export function summarizeResult(result: NormalizedResult) {
 - Cache read tokens: ${count(result.tokens?.cacheRead)}
 - Output tokens: ${count(result.tokens?.output)}
 - Cost: ${dollars(result.costUsd)}
-- Goal Loop calls: ${goalLoop.calls} (${goalLoop.failedCalls} failed)
-- Goal Loop tokens: ${goalLoop.usage === null ? "none" : `${goalLoop.usage.input} in, ${goalLoop.usage.output} out`}
-- Goal Loop cost: ${goalLoop.calls === 0 ? "none" : dollars(goalLoop.costUsd)}
-- Combined cost: ${dollars(result.combinedCostUsd)}
 - Tool calls: ${result.toolCalls.total} (${result.toolCalls.failed} failed)
 ${tools}
 - Permission denials: ${result.agent.permissionDenials}

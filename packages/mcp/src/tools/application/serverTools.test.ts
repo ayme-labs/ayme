@@ -35,7 +35,7 @@ it("ayme_connect returns the connect link for the app's URL", async () => {
   );
 });
 
-it("ayme_connect names the init script of the Page Objects the server serves", async () => {
+it("ayme_connect names the init script of the Page Objects the server serves, in one text item with the link on its own line", async () => {
   expect(
     await connectTool({
       ...context(),
@@ -45,15 +45,18 @@ it("ayme_connect names the init script of the Page Objects the server serves", a
     content: [
       {
         type: "text",
-        text: "http://localhost:5173/#ayme=ws://127.0.0.1:9351/f00d",
-      },
-      {
-        type: "text",
-        text: "This server serves Page Objects to pages that load /work/.ayme/init-script.js.",
+        text: "http://localhost:5173/#ayme=ws://127.0.0.1:9351/f00d\n\nThis server serves Page Objects to pages that load /work/.ayme/init-script.js.",
       },
     ],
   });
 });
+
+/** The link and the note after it, of `ayme_connect`'s one text item. */
+const linkAndNote = ({ content }: { content: unknown[] }) => {
+  expect(content).toHaveLength(1);
+  const [link, ...note] = (content[0] as { text: string }).text.split("\n\n");
+  return { link, note: note.join("\n\n") };
+};
 
 /**
  * A context whose served Page Objects have no good build until `fix()`.
@@ -84,11 +87,8 @@ it("ayme_connect says the Page Objects did not build, with the first error, unti
   });
 
   expect(isError).toBeUndefined();
-  expect(content[0]).toEqual({
-    type: "text",
-    text: "http://localhost:5173/#ayme=ws://127.0.0.1:9351/f00d",
-  });
-  const note = (content[1] as { text: string }).text;
+  const { link, note } = linkAndNote({ content });
+  expect(link).toBe("http://localhost:5173/#ayme=ws://127.0.0.1:9351/f00d");
   expect(note).toContain(
     "The Page Objects entry /work/.ayme/page-objects.ts did not build"
   );
@@ -105,11 +105,10 @@ it("ayme_connect says the Page Objects did not build, with the first error, unti
 
   fix();
   expect(
-    (await connect.call({ url: "http://localhost:5173/" })).content[1]
-  ).toEqual({
-    type: "text",
-    text: "This server serves Page Objects to pages that load /work/.ayme/init-script.js.",
-  });
+    linkAndNote(await connect.call({ url: "http://localhost:5173/" })).note
+  ).toBe(
+    "This server serves Page Objects to pages that load /work/.ayme/init-script.js."
+  );
 });
 
 it("ayme_connect does not promise a build when the server is not watching", async () => {
@@ -120,7 +119,7 @@ it("ayme_connect does not promise a build when the server is not watching", asyn
     failedPageObjects: async () => ({ ...failed, watching: false }),
   }).call({ url: "http://localhost:5173/" });
 
-  expect((result.content[1] as { text: string }).text).toMatch(
+  expect(linkAndNote(result).note).toMatch(
     /The server is not watching for changes: the build could not start, so no file is watched\.$/
   );
 });
@@ -173,4 +172,26 @@ it("ayme_inspect says to install @ayme-dev/inspector when it is missing", async 
       expect.stringContaining("npm install --save-dev @ayme-dev/inspector")
     )
   );
+});
+
+it("ayme_list_tools right after ayme_connect waits for the page the link opens and lists its tools", async () => {
+  const ctx = context();
+  await connectTool(ctx).call({ url: "http://localhost:5173/" });
+  const listing = listToolsTool(ctx).call({});
+
+  ctx.connection
+    .attach({ tab: "a", url: "http://localhost:5173/" }, () => {})!
+    .publishTools([
+      {
+        name: "Panel.remove",
+        description: "Removes the panel.",
+        inputSchema: { type: "object" },
+        available: true,
+      },
+    ]);
+
+  const [text] = (await listing).content as { text: string }[];
+  expect(
+    (JSON.parse(text!.text) as { name: string }[]).map(({ name }) => name)
+  ).toEqual(["Panel.remove"]);
 });

@@ -46,12 +46,12 @@ With Vite, a development build you serve without a dev server, such as static fi
 
 ## Register the server in your agent
 
-Pin the server to the version of `@ayme-dev/mcp` your app installed, so it matches the page client in your app. `npm ls @ayme-dev/mcp` prints that version. Use it in place of `<version>` below.
+Register the copy of `@ayme-dev/mcp` your app installed. It always matches the page client in your app, and nothing is downloaded again. The command is `npx` with the arguments `--no -p @ayme-dev/mcp ayme mcp`, and the agent has to start it in the app's folder, as an agent you run from that folder does. `--no` stops `npx` from downloading anything, so started from any other folder, the server fails to start instead of running another version.
 
 Claude Code:
 
 ```sh
-claude mcp add ayme -- npx -y @ayme-dev/mcp@<version> mcp
+claude mcp add ayme -- npx --no -p @ayme-dev/mcp ayme mcp
 ```
 
 Add `--scope project` before `ayme` to share the server with your team through the project's `.mcp.json`.
@@ -59,18 +59,18 @@ Add `--scope project` before `ayme` to share the server with your team through t
 Codex:
 
 ```sh
-codex mcp add ayme -- npx -y @ayme-dev/mcp@<version> mcp
+codex mcp add ayme -- npx --no -p @ayme-dev/mcp ayme mcp
 ```
 
-Or add it to `~/.codex/config.toml`, or to `.codex/config.toml` in a trusted project:
+Or add it to `.codex/config.toml` in a trusted project:
 
 ```toml
 [mcp_servers.ayme]
 command = "npx"
-args = ["-y", "@ayme-dev/mcp@<version>", "mcp"]
+args = ["--no", "-p", "@ayme-dev/mcp", "ayme", "mcp"]
 ```
 
-Cursor, in `.cursor/mcp.json` for the project or `~/.cursor/mcp.json` for every project:
+Cursor, in the project's `.cursor/mcp.json`:
 
 ```json
 {
@@ -78,15 +78,33 @@ Cursor, in `.cursor/mcp.json` for the project or `~/.cursor/mcp.json` for every 
     "ayme": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@ayme-dev/mcp@<version>", "mcp"]
+      "args": ["--no", "-p", "@ayme-dev/mcp", "ayme", "mcp"]
     }
   }
 }
 ```
 
-Any other MCP client takes the same command, `npx`, with the arguments `-y @ayme-dev/mcp@<version> mcp`. Restart the agent after registering, so it starts the server and lists `ayme_connect`.
+Any other MCP client takes the same command, `npx`, with the arguments `--no -p @ayme-dev/mcp ayme mcp`. Restart the agent after registering, so it starts the server and lists `ayme_connect`.
 
-If your client starts its servers in the app's folder, it can run the copy of `@ayme-dev/mcp` your app installed. That copy always matches the page client. Use the command `npx` with the arguments `--no -p @ayme-dev/mcp ayme mcp`. `--no` stops `npx` from downloading anything. So, started from any other folder, the server fails to start instead of running another version.
+If your agent starts its servers in another folder, as one registered for every project may, pin the server to the version your app installed instead, so it still matches the page client. `npm ls @ayme-dev/mcp` prints that version. The command is `npx` with the arguments `-y @ayme-dev/mcp@<version> mcp`, such as `claude mcp add ayme -- npx -y @ayme-dev/mcp@<version> mcp`. `npx` downloads that version the first time.
+
+### Options
+
+Options go after `mcp`, in the command or the client's `args` list:
+
+| Option                  | What it adds                                                                                                                                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--browser-tools`       | Ayme's own browser driving: the [Browser Tools](../reference/browser-tools.md), `snapshot`, `goal` and your Custom Tools. Use it when Ayme is your agent's only browser automation. Without it, see [What the agent sees](#what-the-agent-sees). |
+| `--port <port>`         | Listens on that port only; see [Ports](#ports).                                                                                                                                                                                                  |
+| `--page-objects <file>` | Experimental: serves that entry's Page Objects; see [Page Objects on a page without Ayme](page-objects-without-ayme.md).                                                                                                                         |
+
+For an agent with no other browser automation, such as Playwright MCP, Claude Code:
+
+```sh
+claude mcp add ayme -- npx --no -p @ayme-dev/mcp ayme mcp --browser-tools
+```
+
+`ayme mcp --help` prints the options and what each adds.
 
 ## Connect a tab
 
@@ -101,15 +119,19 @@ A duplicated tab keeps presenting the original tab's id, unlike a fresh second t
 
 ## What the agent sees
 
-Once a tab is paired, the page's tools are the agent's MCP tools, under the names the page gives them: `snapshot`, the [Browser Tools](../reference/browser-tools.md), your Custom Tools, the Page Object Tools of every Page Object on the page, the Peek Tools of the page's [Peeks](../reference/ayme.md#aymepeek), `peek.<name>`, and `goal` when the Goal Loop is configured. Each App Process paired beside the tab adds its own Peek Tools, `peek.node.<name>`. A good first check is to ask the agent to call one of your Page Object Tools and confirm the effect in the app.
+Once a tab is paired, the page's tools are the agent's MCP tools, under the names the page gives them: the Page Object Tools of every Page Object on the page, `page_objects`, and the Peek Tools of the page's [Peeks](../reference/ayme.md#aymepeek), `peek.<name>`. Each App Process paired beside the tab adds its own Peek Tools, `peek.node.<name>`. The agent clicks, types and reads the page with its own browser automation, such as Playwright MCP, Playwright CLI or agent-browser, and Ayme adds your Page Objects to it.
+
+With `--browser-tools`, the agent also gets Ayme's own browser driving: `snapshot`, the [Browser Tools](../reference/browser-tools.md), your Custom Tools, and `goal` when the Goal Loop is configured. The page lists the same tools either way and your app's code does not change: the server decides which of them the agent sees.
+
+A good first check is to ask the agent to call one of your Page Object Tools and confirm the effect in the app.
 
 A Peek's values reach the agent, and its model provider, unchanged, so return only what you want it to see; see [What a Peek exposes](../reference/ayme.md#what-a-peek-exposes).
 
-Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now stays listed, and a call to it is refused with its reason. [`@ayme.action`](ayme-page-objects.md#aymeaction) shows one. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, which changed their parameters, description or annotations, and which became available or unavailable, with the reason. A tool marked [destructive](../reference/ayme.md#destructive-actions) is listed with `annotations: { destructiveHint: true }`, and every other page tool without annotations.
+Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now stays listed, and a call to it is refused with its reason. [`@ayme.action`](ayme-page-objects.md#aymeaction) shows one. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, which changed their parameters, description or annotations, and which became available or unavailable, with the reason. A Page Object Tool's result says none of this. It is [its short answer](page-state.md#a-page-object-tools-answer-to-an-agent) alone, and the next result of another tool says what changed. A tool marked [destructive](../reference/ayme.md#destructive-actions) is listed with `annotations: { destructiveHint: true }`, and every other page tool without annotations.
 
 `ayme_inspect` returns the URL of the [Inspector in a window of its own](inspector.md#in-a-window-of-its-own), which the same server serves, and `ayme inspect` prints it from a terminal. An Agent App that shows MCP Apps shows that Inspector in the chat. Both need the optional `@ayme-dev/inspector` package, and say to install it when it is missing.
 
-Some agents read the tool list once, when they start, so they never see the page's tools, which arrive later. For them, `ayme_list_tools` lists the page's current tools with their input schemas, whether each is available and why not, and `ayme_call` runs any of them by name, with the tool's name as `tool` and its input as `input`. A failed tool call answers with an error result. Input that does not match a tool's input schema, the schema of `ayme_connect`, `ayme_list_tools`, `ayme_call` or `ayme_inspect` included, is refused before the tool runs, with a sentence for each problem: `ToolInputError: Input property name is not supported. Input property tool is required.` While neither a tab nor an App Process is paired, every page tool and fallback tool answers that no page is connected.
+Some agents read the tool list once, when they start, so they never see the page's tools, which arrive later. For them, `ayme_list_tools` lists the page's current tools with their input schemas, whether each is available and why not, and `ayme_call` runs any of them by name, with the tool's name as `tool` and its input as `input`. A failed tool call answers with an error result. Input that does not match a tool's input schema, the schema of `ayme_connect`, `ayme_list_tools`, `ayme_call` or `ayme_inspect` included, is refused before the tool runs, with a sentence for each problem: `ToolInputError: Input property name is not supported. Input property tool is required.` While neither a tab nor an App Process is paired, every page tool and fallback tool answers that no page is connected. Right after `ayme_connect`, though, a call of a page tool or `ayme_list_tools` waits up to 10 seconds for the page its link opens to pair, since the agent opens the link only once it has the answer.
 
 ## Reloads, navigation and closed tabs
 
@@ -123,7 +145,7 @@ The server listens on the loopback interface only, on the first free port from 9
 
 ## Limits
 
-- A page whose app doesn't ship Ayme never pairs. With Playwright MCP or Playwright CLI, `ayme mcp` can serve your Page Objects to it; see [Page Objects on a page without Ayme](page-objects-without-ayme.md).
+- A page whose app doesn't ship Ayme never pairs. With Playwright MCP, Playwright CLI or agent-browser, `ayme mcp` can serve your Page Objects to it; see [Page Objects on a page without Ayme](page-objects-without-ayme.md).
 - The agent and the browser must run on the same machine. Remote agents, such as an agent on another machine driving a browser on your computer, are not supported.
 - From an origin other than `localhost` or `127.0.0.1`, such as a deployed preview, a tab pairs only through a link, and Chrome may ask you to allow local network access before the page can reach the server. Allow it and reload.
 

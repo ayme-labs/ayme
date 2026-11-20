@@ -26,6 +26,7 @@ export {
   latestPageStateRefNamed,
   lookAtPageStateForDocument,
   onPageStateRecorded,
+  providePageObjectIds,
   providePageObjectProbe,
 } from "./pageState";
 export {
@@ -36,6 +37,7 @@ export {
   latestRefOfLocator,
   pageObjectsProbed,
   pageStateOf,
+  providePageObjectIdsOf,
   providePageObjectProbeOf,
 } from "./pageStates";
 export type { PageStateHost, PageStateStore } from "./pageStates";

@@ -10,6 +10,13 @@ import type { HeldCallExit, PageExit } from "./unansweredCall";
 export const RECONNECT_WAIT_MS = 5_000;
 
 /**
+ * How long, after `ayme_connect` handed out a link while no tab is paired,
+ * a call for the page waits for a page to pair: the agent opens the link
+ * only after it has the answer, and the page pairs a moment later.
+ */
+export const PAIR_WAIT_MS = 10_000;
+
+/**
  * The tab's previous document, gone or going, whose calls in flight wait
  * for an answer until `until`: the URL it had, and the document it said it
  * started loading, if it did.
@@ -22,6 +29,8 @@ type Left = { url: string; to?: PageNavigating; until: number };
  * caller passes as `now`.
  *
  * - `unpaired`: no tab.
+ * - `linked`: no tab, but a connect link went out, and a page is expected
+ *   to pair until `until`, after which it is unpaired again.
  * - `paired`: the page reported its tools; calls go out. `to` is where it
  *   last said it was navigating, if it is still there after the wait.
  * - `navigating`: the page said it started a cross-document navigation and
@@ -34,8 +43,8 @@ type Left = { url: string; to?: PageNavigating; until: number };
  *   first time, and has not reported its tools; until `until`, after which
  *   it is paired anyway.
  *
- * Page calls are held while the tab is navigating, disconnected or
- * reconnected (see `holdsPageCalls`).
+ * Page calls are held while a link went out, or the tab is navigating,
+ * disconnected or reconnected (see `holdsPageCalls`).
  *
  * In every state, `replaced` lists the tabs another tab's page replaced, if
  * any: the newest tab wins, and a replaced tab may not connect again for as
@@ -43,6 +52,7 @@ type Left = { url: string; to?: PageNavigating; until: number };
  */
 export type TabLifecycle = (
   | { name: "unpaired" }
+  | { name: "linked"; until: number }
   | { name: "paired"; tab: string; url: string; to?: PageNavigating }
   | {
       name: "navigating";
@@ -81,6 +91,7 @@ export const unpaired: TabLifecycle = { name: "unpaired" };
 /** Whether a call for the page waits rather than going out now. */
 export function holdsPageCalls(lifecycle: TabLifecycle): boolean {
   return (
+    lifecycle.name === "linked" ||
     lifecycle.name === "navigating" ||
     lifecycle.name === "disconnected" ||
     lifecycle.name === "reconnected"
@@ -90,6 +101,8 @@ export function holdsPageCalls(lifecycle: TabLifecycle): boolean {
 /** When the lifecycle next changes by time alone, if it does. */
 export function deadline(lifecycle: TabLifecycle): number | undefined {
   switch (lifecycle.name) {
+    case "linked":
+      return lifecycle.until;
     case "disconnected":
       return lifecycle.left.until;
     case "navigating":
@@ -120,7 +133,8 @@ export function attached(
     until: now + RECONNECT_WAIT_MS,
     ...kept(lifecycle),
   } as const;
-  if (lifecycle.name === "unpaired") return { lifecycle: page };
+  if (lifecycle.name === "unpaired" || lifecycle.name === "linked")
+    return { lifecycle: page };
   if (lifecycle.tab !== tab)
     return {
       lifecycle: {
@@ -133,13 +147,33 @@ export function attached(
   return { lifecycle: { ...page, left: leave(lifecycle, now) } };
 }
 
+/**
+ * `ayme_connect` handed out a link: while no tab is paired, calls for the
+ * page wait up to `PAIR_WAIT_MS` for the page the link opens.
+ */
+export function linked(lifecycle: TabLifecycle, now: number): Transition {
+  if (lifecycle.name !== "unpaired" && lifecycle.name !== "linked")
+    return { lifecycle };
+  return {
+    lifecycle: {
+      name: "linked",
+      until: now + PAIR_WAIT_MS,
+      ...kept(lifecycle),
+    },
+  };
+}
+
 /** The page said it started a cross-document navigation to `to`. */
 export function navigating(
   lifecycle: TabLifecycle,
   to: PageNavigating,
   now: number
 ): Transition {
-  if (lifecycle.name === "unpaired" || lifecycle.name === "disconnected")
+  if (
+    lifecycle.name === "unpaired" ||
+    lifecycle.name === "linked" ||
+    lifecycle.name === "disconnected"
+  )
     return { lifecycle };
   const { tab, url } = lifecycle;
   const left = lifecycle.name === "paired" ? undefined : lifecycle.left;
@@ -158,7 +192,11 @@ export function navigating(
 
 /** The page's channel closed: the server waits for its tab to reconnect. */
 export function disconnected(lifecycle: TabLifecycle, now: number): Transition {
-  if (lifecycle.name === "unpaired" || lifecycle.name === "disconnected")
+  if (
+    lifecycle.name === "unpaired" ||
+    lifecycle.name === "linked" ||
+    lifecycle.name === "disconnected"
+  )
     return { lifecycle };
   return {
     lifecycle: {
@@ -199,11 +237,19 @@ export function reported(
  * Time passed to `now`. The previous document's calls are answered with how
  * it left once the wait for it ends, and the held calls too when no page of
  * the tab came back. A page that said it was navigating but is still there,
- * or never reported its tools, is paired.
+ * or never reported its tools, is paired. A link no page followed in time
+ * leaves the tab unpaired, and the held calls go out to find no page.
  */
 export function elapsed(lifecycle: TabLifecycle, now: number): Transition {
   if (lifecycle.name === "unpaired" || lifecycle.name === "paired")
     return { lifecycle };
+  if (lifecycle.name === "linked")
+    return {
+      lifecycle:
+        lifecycle.until <= now
+          ? { ...unpaired, ...kept(lifecycle) }
+          : lifecycle,
+    };
   const { left } = lifecycle;
   if (left && left.until <= now) {
     const exit = exitOf(left);
@@ -248,7 +294,7 @@ export function stopped(lifecycle: TabLifecycle): Transition {
  * earlier wait, and the newer word on where the tab went.
  */
 function leave(
-  lifecycle: Exclude<TabLifecycle, { name: "unpaired" }>,
+  lifecycle: Exclude<TabLifecycle, { name: "unpaired" | "linked" }>,
   now: number
 ): Left {
   if (lifecycle.name === "disconnected") return lifecycle.left;

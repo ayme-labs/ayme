@@ -1,4 +1,4 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../test-utils/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { PomManifest, ToolManifest } from "../../shared";
@@ -121,7 +121,7 @@ describe("Page Object Root Marks in a Change Record, in Chromium", () => {
 
   const run = async (tool: string) =>
     (await agentTools().call(tool, {
-      ref: await rootRef(tool.slice(0, tool.lastIndexOf("."))),
+      id: await rootId(tool.slice(0, tool.lastIndexOf("."))),
       args: {},
     })) as ActionResultShape;
 
@@ -136,7 +136,10 @@ describe("Page Object Root Marks in a Change Record, in Chromium", () => {
     const structure = await readStructure();
 
     expect(firstLine(result.changes)).toMatch(/^- e\d+ ListPage:$/);
-    expect(structure).toContain(firstLine(result.changes));
+    // The snapshot prints the Page Object's id after the same mark.
+    expect(firstLine(structure)?.replace(/ po\d+:$/, ":")).toBe(
+      firstLine(result.changes)
+    );
     expect(result.changes).toContain("<added> listitem: Eggs");
   });
 
@@ -204,7 +207,7 @@ describe("Page Object Root Marks in a Change Record, in Chromium", () => {
     model({ root: rootOf })(Panel);
     registerCompiledPom(Panel, manifest("Panel", []));
     register(Panel);
-    expect(await readStructure()).toMatch(/- e\d+ Panel "Shopping list"/);
+    expect(await readStructure()).toMatch(/- e\d+ Panel po\d+ "Shopping list"/);
     target = "ul";
 
     const result = await run("ListPage.clearList");

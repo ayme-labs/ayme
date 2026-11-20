@@ -53,8 +53,8 @@ final "Confirm" can create a real contract. Only the user approves one.
    `npx playwright test <file> --repeat-each 3 --retries 0 --workers 1` and
    fix the page objects' locators and waits, never the flow's steps. When
    passing would take other steps, stop and tell the user. Keep every wait
-   that ends an action in its target state, as
-   [Page object design](../references/page-object-design.md#finish-in-the-target-state)
+   for an action's own outcome, as
+   [Page object design](../references/page-object-design.md#wait-only-for-the-actions-own-outcome)
    asks, even when the test passes without it. Prove each other wait: take it
    out and run three times at recorded speed, then three times with answers
    near-instant: `REPLAY_SPEED=1000` has `replay.ts` answer a thousand times

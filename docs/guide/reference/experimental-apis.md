@@ -17,6 +17,10 @@ An experimental API belongs to a feature Ayme keeps but whose shape is not settl
 - `decisionEndpoint(url, options?)` in `@ayme-dev/ayme`: the decision function that posts each step to your Decision Endpoint, in [`decisionEndpoint`](decision-endpoint.md#decisionendpoint).
 - `createDecisionEndpoint(options)` in `@ayme-dev/ayme/server`: the Decision Endpoint's handler, in [`createDecisionEndpoint`](decision-endpoint.md#createdecisionendpoint).
 
+## WebMCP publication
+
+- `webMCP` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the session option that publishes the session's tools through WebMCP, to an agent that runs in the browser, in [Publish tools](../guides/publish-tools.md).
+
 ## Page Objects that `ayme mcp` serves
 
 `ayme mcp` in `@ayme-dev/mcp` can serve your Page Object Models to a page that doesn't ship Ayme. The entry is a module whose default export lists the classes, as `createAyme`'s `pageObjects` option takes them:

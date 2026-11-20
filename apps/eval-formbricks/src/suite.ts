@@ -20,11 +20,7 @@ import path from "node:path";
 import { armIds, arms, isArmId, type ArmId } from "./arms.ts";
 import { parseFlags } from "./cli.ts";
 import { claudeEnvironment } from "./claude.ts";
-import {
-  openRouterKeyVariable,
-  readEnvVariable,
-  readOauthToken,
-} from "./environment.ts";
+import { readOauthToken } from "./environment.ts";
 import { ensureDatabaseBuilt } from "./formbricks/database.ts";
 import {
   defaultMissionId,
@@ -175,7 +171,6 @@ async function main() {
   await writeManifest(manifest);
   const { markdown, written } = await reportSuite(suiteId, {
     publish: false,
-    openRouterApiKey: readEnvVariable(openRouterKeyVariable, evalRoot),
   });
   process.stdout.write(markdown);
   log(`Summary written to ${written.join(", ")}.`);

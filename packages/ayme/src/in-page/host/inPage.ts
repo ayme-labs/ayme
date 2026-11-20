@@ -145,6 +145,20 @@ export type InPage = {
    * the capture's. Undefined for a ref whose element left the document.
    */
   currentRefs(refs: readonly string[]): Promise<(string | undefined)[]>;
+  /**
+   * The key of the element each of `refs`, now or before, names, and the ref
+   * it has now, in the order given: a key names its element for as long as
+   * it lives, however often captures rename it, and never an element of
+   * another document. Undefined for a ref whose element left the document.
+   */
+  elementKeys(
+    refs: readonly string[]
+  ): Promise<({ key: string; ref: string } | undefined)[]>;
+  /**
+   * The ref the element each of `keys` names has now, in the order given.
+   * Undefined once it left the document, and for a key of another document.
+   */
+  keyedRefs(keys: readonly string[]): Promise<(string | undefined)[]>;
   /** The URL the document resolves relative URLs against: its `baseURI`. */
   baseURI(): Promise<string>;
   /** The key of the document's current history entry, or none without the Navigation API. */
@@ -612,6 +626,17 @@ export function createInPageHost(version = packageVersion): InPageHost {
       async currentRefs(refs) {
         if (refs.length === 0) return [];
         return call<(string | undefined)[]>("currentRefs", [refs]);
+      },
+      async elementKeys(refs) {
+        if (refs.length === 0) return [];
+        return call<({ key: string; ref: string } | undefined)[]>(
+          "elementKeys",
+          [refs]
+        );
+      },
+      async keyedRefs(keys) {
+        if (keys.length === 0) return [];
+        return call<(string | undefined)[]>("keyedRefs", [keys]);
       },
       names: (target, ref) => callOn<boolean>(target, "names", ref),
       watch(probe) {

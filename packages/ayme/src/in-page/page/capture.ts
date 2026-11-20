@@ -163,7 +163,7 @@ export function createRefWorld(
     const present = (inputs.roots ?? []).filter(
       ({ element }) =>
         element.ownerDocument === root.ownerDocument &&
-        root.contains(element) &&
+        holds(root, element) &&
         !ancestry(element).some(ignores)
     );
     const snapshot = captureAriaSnapshot(root, { mode: "ai", aymeRefs });

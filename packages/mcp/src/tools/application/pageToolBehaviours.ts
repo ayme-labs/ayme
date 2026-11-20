@@ -3,8 +3,8 @@ import { ImageResultSchema } from "../../contract";
 import { errorText } from "../domain/toolResult";
 
 /**
- * Reports the page's tools, with each one's availability, when the channel
- * opens and after every change.
+ * Reports the page's tools, with each one's availability and group, when
+ * the channel opens and after every change.
  */
 export const publishPageTools: ClientBehaviour = ({ tools, channel }) => {
   const publish = (list: ReturnType<typeof tools.list>) =>
@@ -18,6 +18,7 @@ export const publishPageTools: ClientBehaviour = ({ tools, channel }) => {
             destructive,
             available,
             reason,
+            group,
           }) => ({
             name,
             description,
@@ -25,6 +26,7 @@ export const publishPageTools: ClientBehaviour = ({ tools, channel }) => {
             ...(destructive ? { destructive: true } : {}),
             available,
             reason,
+            group,
           })
         )
       )

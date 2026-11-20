@@ -55,8 +55,8 @@ export function useRuns({
   describeInteraction,
 }: {
   onSettled: () => void;
-  /** The item of the collection tool `toolName` whose root is `ref` now. */
-  itemOf: (toolName: string, ref: string) => CollectionItem | undefined;
+  /** The item of the rooted tool `toolName` that the Page Object id `id` names now. */
+  itemOf: (toolName: string, id: string) => CollectionItem | undefined;
   /** Reads the latest look synchronously, before an interaction changes the page. */
   describeInteraction: (
     interaction: Interaction
@@ -87,7 +87,7 @@ export function useRuns({
 
     /**
      * The item a new Run is on: a run of the panel's has the item it was
-     * started on; any other, the item its `ref` names on the page now.
+     * started on; any other, the item its `id` names on the page now.
      */
     const itemOfNewRun = (run: LogRun, rowId: string): RunNotes => {
       const panelRun =
@@ -100,10 +100,10 @@ export function useRuns({
             )
           : undefined;
       if (panelRun) panelRun.rowId = rowId;
-      const ref = (run.input as { ref?: unknown } | undefined)?.ref;
+      const id = (run.input as { id?: unknown } | undefined)?.id;
       const item =
         panelRun?.item ??
-        (typeof ref === "string" ? itemOf(run.tool, ref) : undefined);
+        (typeof id === "string" ? itemOf(run.tool, id) : undefined);
       return item ? { item } : {};
     };
 

@@ -97,7 +97,7 @@ it("answers a failed call with the error's text and the Change Record it carries
   });
 });
 
-it("publishes every tool of the page with its availability and reason, again after each change", () => {
+it("publishes every tool of the page with its availability, reason and group, again after each change", () => {
   const published: PageTool[][] = [];
   const channel = {
     publishTools: async (tools: PageTool[]) => void published.push(tools),
@@ -106,7 +106,8 @@ it("publishes every tool of the page with its availability and reason, again aft
     name,
     description: "",
     inputSchema: {},
-    group: "pageObject",
+    group: name === "snapshot" ? "agent" : "pageObject",
+    className: "Dialog",
     available,
     ...(reason === undefined ? {} : { reason }),
   });
@@ -130,6 +131,7 @@ it("publishes every tool of the page with its availability and reason, again aft
     description: "",
     inputSchema: {},
     available,
+    group: name === "snapshot" ? "agent" : "pageObject",
     ...(reason === undefined ? {} : { reason }),
   });
   expect(published).toEqual([

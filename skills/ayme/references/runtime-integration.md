@@ -70,7 +70,7 @@ On a page the POM is present on, check the tools and the page state:
 - The [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md)'s
   Model and Tools lenses show the Page Objects on the page and their tools; an
   unavailable tool shows dimmed with its reason.
-- `(await ayme.tools.run("snapshot", {})).structure` returns the Structural Page
-  State an agent receives, marked with Page Object class names.
+- `await ayme.tools.run("page_objects", {})` returns the Page Object tree an
+  agent reads, with each Page Object's id.
 
 Confirm that the intended POM, its declared children, and its tools appear.

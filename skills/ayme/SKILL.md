@@ -15,8 +15,11 @@ the project's Page Objects through Playwright MCP or Playwright CLI, read
 [Browser setup](references/browser-setup.md). A connected page with its tools
 listed needs no Browser setup.
 
-When you use the page's tools, a ref fails to resolve, or a tool answers that it
-is unavailable, read [Page tools](references/page-tools.md).
+When you use the page's tools, or a tool answers that it is unavailable or
+gone, read [Page tools](references/page-tools.md).
+
+When Playwright CLI, Playwright MCP or agent-browser drives the browser, read
+[Browser automation tools](references/browser-automation-tools.md).
 
 When `goal` is among your tools, read [Goal](references/goal.md).
 

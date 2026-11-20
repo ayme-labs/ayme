@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AgentConnection, RECONNECT_WAIT_MS } from "./agentConnection";
+import {
+  AgentConnection,
+  PAIR_WAIT_MS,
+  RECONNECT_WAIT_MS,
+} from "./agentConnection";
 
 const hello = (tab: string, url = "http://127.0.0.1:5173/") => ({ tab, url });
 const errorOf = async (outcome: Promise<unknown>) =>
@@ -105,6 +109,30 @@ describe("AgentConnection", () => {
     });
   });
 
+  it("names no tools in the answer to a Page Object Tool's call that a new document left unanswered", async () => {
+    vi.useFakeTimers();
+    const connection = new AgentConnection();
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([{ ...tool("ListPage.open"), group: "pageObject" }]);
+    const call = connection.call("ListPage.open", {});
+    connection.navigating(page, {
+      url: "http://127.0.0.1:5173/counter",
+      reload: false,
+    });
+    connection.detach(page);
+
+    connection
+      .attach(hello("a", "http://127.0.0.1:5173/counter"), () => {})!
+      .publishTools([tool("snapshot")]);
+
+    expect(await errorOf(call)).toEqual({
+      error:
+        "The page navigated to http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown.",
+      settled: false,
+      loading: "http://127.0.0.1:5173/counter",
+    });
+  });
+
   it("stays busy with a tab that went away, calls or not, until the wait ends", () => {
     vi.useFakeTimers();
     const connection = new AgentConnection();
@@ -159,14 +187,39 @@ describe("AgentConnection as a tab loads new documents", () => {
     expect(disconnect).not.toHaveBeenCalled();
   });
 
-  it("answers the earlier document's call once the tab's new page reports its tools, and ignores the earlier document afterwards", async () => {
+  it("takes the earlier document's own answer that arrives after the tab's new page reported its tools", async () => {
+    const connection = new AgentConnection();
+    const earlier = connection.attach(hello("a"), () => {})!;
+    earlier.publishTools([tool("click")]);
+    const call = connection.call("click", {});
+
+    connection
+      .attach(hello("a", "http://127.0.0.1:5173/other"), () => {})!
+      .publishTools([tool("snapshot")]);
+    await tick();
+    const loading = { settled: false, loading: "http://127.0.0.1:5173/other" };
+    earlier.answer({ callId: "1", ok: true, result: loading });
+
+    expect(await call).toEqual({ callId: "1", ok: true, result: loading });
+  });
+
+  it("answers the earlier document's call once its channel closed and the tab's new page reported its tools, and ignores the earlier document afterwards", async () => {
     const connection = new AgentConnection();
     const earlier = connection.attach(hello("a"), () => {})!;
     earlier.publishTools([tool("hold")]);
     const call = connection.call("hold", {});
+    let answered = false;
+    void call.then(() => (answered = true));
 
     const page = connection.attach(hello("a"), () => {})!;
     page.publishTools([tool("snapshot")]);
+    await tick();
+    expect(answered).toBe(false);
+    connection.navigating(earlier, {
+      url: "http://127.0.0.1:5173/",
+      reload: true,
+    });
+    connection.detach(earlier);
 
     expect(await errorOf(call)).toEqual({
       error:
@@ -175,14 +228,55 @@ describe("AgentConnection as a tab loads new documents", () => {
       loading: "http://127.0.0.1:5173/",
       tools: ["snapshot"],
     });
-    connection.navigating(earlier, {
-      url: "http://127.0.0.1:5173/",
-      reload: true,
-    });
-    connection.detach(earlier);
+    earlier.answer({ callId: "1", ok: true, result: "late" });
     void connection.call("snapshot", {});
     expect(connection.paired).toBe(true);
     expect(await sentCalls(page)).toEqual(["snapshot"]);
+  });
+
+  it("answers the earlier document's call when its channel stays open a wait past the tab's new page reporting its tools", async () => {
+    vi.useFakeTimers();
+    const connection = new AgentConnection();
+    const earlier = connection.attach(hello("a"), () => {})!;
+    earlier.publishTools([tool("hold")]);
+    const call = connection.call("hold", {});
+
+    connection.attach(hello("a"), () => {})!.publishTools([tool("snapshot")]);
+    vi.advanceTimersByTime(RECONNECT_WAIT_MS);
+
+    expect(await errorOf(call)).toMatchObject({
+      error:
+        "The page reloaded before it answered, so the call's outcome is unknown.",
+      tools: ["snapshot"],
+    });
+    vi.useRealTimers();
+  });
+
+  it("names no tools in the answer to a Page Object Tool's call held while the tab reconnected, sent, and left unanswered by the next document", async () => {
+    const connection = new AgentConnection();
+    const first = connection.attach(hello("a"), () => {})!;
+    first.publishTools([{ ...tool("ListPage.open"), group: "pageObject" }]);
+    connection.detach(first);
+    const call = connection.call("ListPage.open", {});
+
+    const second = connection.attach(hello("a"), () => {})!;
+    second.publishTools([{ ...tool("ListPage.open"), group: "pageObject" }]);
+    expect(await sentCalls(second)).toEqual(["ListPage.open"]);
+    connection.navigating(second, {
+      url: "http://127.0.0.1:5173/counter",
+      reload: false,
+    });
+    connection.detach(second);
+    connection
+      .attach(hello("a", "http://127.0.0.1:5173/counter"), () => {})!
+      .publishTools([tool("snapshot")]);
+
+    expect(await errorOf(call)).toEqual({
+      error:
+        "The page navigated to http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown.",
+      settled: false,
+      loading: "http://127.0.0.1:5173/counter",
+    });
   });
 });
 
@@ -191,6 +285,65 @@ const tool = (name: string) => ({
   description: "",
   inputSchema: {},
   available: true,
+});
+
+describe("AgentConnection after ayme_connect handed out a link", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("holds a call for the page until the page the link opens reports its tools, then sends it there", async () => {
+    const connection = new AgentConnection();
+    connection.linked();
+    const call = connection.call("Panel.remove", {});
+    const followed = connection.untilLinkFollowed();
+    let done = false;
+    void followed.then(() => (done = true));
+    await tick();
+    expect(done).toBe(false);
+
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("Panel.remove")]);
+    await followed;
+    await tick();
+    page.answer({ callId: "1", ok: true, result: { settled: true } });
+
+    expect(await call).toEqual({
+      callId: "1",
+      ok: true,
+      result: { settled: true },
+    });
+  });
+
+  it("finds no page for the call when none pairs within the wait", async () => {
+    vi.useFakeTimers();
+    const connection = new AgentConnection();
+    connection.linked();
+    const call = connection.call("Panel.remove", {});
+    const followed = connection.untilLinkFollowed();
+
+    vi.advanceTimersByTime(PAIR_WAIT_MS - 1);
+    await Promise.resolve();
+    vi.advanceTimersByTime(1);
+
+    await followed;
+    expect(await call).toBeUndefined();
+    expect(connection.paired).toBe(false);
+  });
+
+  it("holds nothing when a page is paired already", async () => {
+    const connection = new AgentConnection();
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("Panel.remove")]);
+    connection.linked();
+
+    await connection.untilLinkFollowed();
+    const call = connection.call("Panel.remove", {});
+    await tick();
+    page.answer({ callId: "1", ok: true, result: 1 });
+
+    expect(await call).toEqual({ callId: "1", ok: true, result: 1 });
+  });
 });
 
 describe("AgentConnection with App Processes", () => {

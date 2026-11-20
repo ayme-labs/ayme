@@ -1,6 +1,7 @@
 ---
 status: accepted
 amends: ADR-0020
+amended-by: ADR-0054
 ---
 
 # Page Object Actions declare their own availability, and every unavailable tool says why

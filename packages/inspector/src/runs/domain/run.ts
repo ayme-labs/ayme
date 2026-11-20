@@ -18,7 +18,7 @@ export type RunInteraction = Interaction & InteractionDescription;
 
 export type ToolArguments = Record<string, JsonValue>;
 
-/** A Page Object in a collection, e.g. ListPage.items[1], with its ref. */
+/** A Page Object in a collection, e.g. ListPage.items[1], with its id and ref. */
 export type CollectionItem = {
   /** Its path from the page, e.g. "ListPage.items[1]". */
   path: string;
@@ -26,7 +26,9 @@ export type CollectionItem = {
   name: string;
   /** Its path below its page, e.g. "items[1]". */
   pathBelowPage: string;
-  /** The Structural Ref of its root, which a rooted action takes. */
+  /** Its Page Object id, which a rooted action takes. */
+  id: string;
+  /** The Structural Ref of its root, which names it in the page state. */
   ref: string;
   /** What it shows, e.g. "Milk". */
   label: string;

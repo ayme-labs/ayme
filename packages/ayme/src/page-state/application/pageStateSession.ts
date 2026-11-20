@@ -36,6 +36,7 @@ import {
   type PageStateCapture,
   type RefResolution,
 } from "../domain/structuralPageState";
+import type { PomRootIds } from "../domain/pomRootMarks";
 import { resolveRequestedRef } from "./refResolution";
 
 /**
@@ -60,6 +61,14 @@ export type CaptureAsk = {
 export type ActionPage = {
   begin(): Promise<PageAction>;
 };
+
+/**
+ * The id of each Page Object `roots` name by its class and the Structural
+ * Ref of its root, in the order given.
+ */
+export type RootIds = (
+  roots: readonly { className: string; ref: string }[]
+) => Promise<(string | undefined)[]>;
 
 /** An action begun on the page: the page right before it, and the action. */
 export type PageAction = {
@@ -104,12 +113,18 @@ export class PageStateSession {
    * loaded. Each document has its own history, identity ledger and refs, as
    * the browser runtime's has by starting over at a full load. Without it,
    * the session keeps one document's.
+   *
+   * `rootIds`: what the page state text a reader receives prints on each
+   * Page Object Root beside its marks, by the root's Structural Ref, in the
+   * order asked; undefined for a root that has none. Without it, the text
+   * prints none.
    */
   constructor(
     history: InteractionHistory,
     private readonly captureDocument: CapturePage,
     private readonly actionPage: ActionPage,
-    private readonly restart?: (url: string) => InteractionHistory
+    private readonly restart?: (url: string) => InteractionHistory,
+    private readonly rootIds?: RootIds
   ) {
     this.current = history;
   }
@@ -160,7 +175,36 @@ export class PageStateSession {
   }
 
   async getPageState(cursor?: Cursor): Promise<PageState> {
-    return this.pageStateFor(await this.capture(cursor));
+    const capture = await this.capture(cursor);
+    return this.pageStateFor(capture, await this.rootIdsOf(capture));
+  }
+
+  /**
+   * The id of each Page Object rooted in `capture` that has one, by its
+   * root's ref and its class.
+   */
+  private async rootIdsOf(capture: PageCapture): Promise<PomRootIds> {
+    // In the order the tree shows the roots, and a root's classes in the
+    // order its marks print, which is the order a Page Object new to the
+    // page gets its id in.
+    const roots = capture.tree
+      .getAllRefs()
+      .flatMap((ref) =>
+        [...(capture.pomRootMarks.get(ref) ?? [])]
+          .sort()
+          .map((className) => ({ className, ref }))
+      );
+    if (!this.rootIds || roots.length === 0) return new Map();
+    const ids = await this.rootIds(roots);
+    const byRef = new Map<AriaRef, Map<string, string>>();
+    roots.forEach(({ className, ref }, index) => {
+      const id = ids[index];
+      if (id === undefined) return;
+      const classes = byRef.get(ref) ?? new Map<string, string>();
+      classes.set(className, id);
+      byRef.set(ref, classes);
+    });
+    return byRef;
   }
 
   async getPageStateCapture(
@@ -558,9 +602,9 @@ export class PageStateSession {
     }
   }
 
-  private pageStateFor(capture: PageCapture): PageState {
+  private pageStateFor(capture: PageCapture, rootIds: PomRootIds): PageState {
     return Object.freeze({
-      text: renderPageState(capture).text,
+      text: renderPageState(capture, rootIds).text,
       resolve: async (...refs: AriaRef[]) => this.resolveRefs(refs),
     });
   }

@@ -131,3 +131,23 @@ test("a page tool the agent listed before the tab closed says the tab did not co
     "The page's connection closed and its tab did not reconnect, so the call did not run."
   );
 });
+
+test("page tools and ayme_list_tools called right after ayme_connect wait for the page its link opens", async ({
+  agent,
+  page,
+  baseURL,
+}) => {
+  const { text } = await agent.call("ayme_connect", { url: `${baseURL}/` });
+  const pageObjects = agent.call("page_objects");
+  const listing = agent.call("ayme_list_tools");
+
+  await page.goto(text.split("\n")[0]!);
+
+  const read = await pageObjects;
+  expect(read.isError, read.text).toBe(false);
+  const listed = await listing;
+  expect(listed.isError, listed.text).toBe(false);
+  expect(
+    (JSON.parse(listed.text) as { name: string }[]).map(({ name }) => name)
+  ).toContain("page_objects");
+});

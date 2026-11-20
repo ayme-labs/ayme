@@ -127,7 +127,7 @@ function isInteraction(value: unknown): value is RunInteraction {
 function isItem(value: unknown): value is CollectionItem {
   return (
     isRecord(value) &&
-    ["path", "name", "pathBelowPage", "ref", "label"].every(
+    ["path", "name", "pathBelowPage", "id", "ref", "label"].every(
       (key) => typeof value[key] === "string"
     )
   );

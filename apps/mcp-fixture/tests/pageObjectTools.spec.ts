@@ -133,14 +133,21 @@ test("a class tool appears with its first instance and disappears with its last"
   expect((await agent.call("snapshot")).note).toBeUndefined();
   const removeFirst = async () => {
     const snapshot = await agent.call("snapshot");
-    const ref = JSON.parse(snapshot.text).structure.match(
-      /((?:e|s_)\w+) BasketItem\b/
+    const id = JSON.parse(snapshot.text).structure.match(
+      / BasketItem (po\d+)/
     )?.[1];
-    expect(ref, snapshot.text).toBeDefined();
-    return agent.call("BasketItem.remove", { ref });
+    expect(id, snapshot.text).toBeDefined();
+    return agent.call("BasketItem.remove", { id });
   };
+  const first = await removeFirst();
+  expect(first.note).toBeUndefined();
+  expect(JSON.parse(first.text).changes).toMatch(
+    /- BasketItem po\d+ \(removed\)/
+  );
+  // A Page Object Tool's answer carries no note of the tools that went; the
+  // next answer of another tool does.
   expect((await removeFirst()).note).toBeUndefined();
-  expect((await removeFirst()).note).toContain(
+  expect((await agent.call("ayme_list_tools")).note).toContain(
     "Disappeared: BasketItem.remove"
   );
 });

@@ -41,3 +41,4 @@ packages/*/CHANGELOG.md
 
 # Liquid template for the docs site, which Prettier cannot parse
 docs/guide/_layouts/
+/apps/lab-formbricks/.ayme/init-script.js

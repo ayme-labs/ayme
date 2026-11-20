@@ -39,10 +39,11 @@ import {
  * the agent listed before. One server object serves one agent, so that
  * view says when the agent hears `notifications/tools/list_changed` (under
  * 2026-07-28, the SDK passes it on only to a subscription that asked for
- * it), and every tool result carries its tool change note, if any, as a
- * text item after the tool's own, in every revision. The object listens to
- * the connection until it closes, which leaves the connection to the next
- * one. A server tool's input is checked against its input schema
+ * it), and every tool result but a Page Object Tool's carries its tool
+ * change note, if any, as a text item after the tool's own, in every
+ * revision: a Page Object Tool answers with what the page answered alone.
+ * The object listens to the connection until it closes, which leaves the
+ * connection to the next one. A server tool's input is checked against its input schema
  * before the tool runs, with arguments left out taken as `{}`; a page
  * tool's input is the page's to check. A server tool's page for Agent Apps
  * (`app`) is a resource of the server, linked from the tool's listing, the
@@ -149,7 +150,16 @@ export function createMcpToolServer({
     async (request, ctx): Promise<ToolResult> => {
       nameAgent(ctx);
       const { name, arguments: input = {} } = request.params;
+      // `ayme_call` answers what the tool it names answers.
+      const called =
+        name === "ayme_call" && typeof input.tool === "string"
+          ? input.tool
+          : name;
+      // Asked of the view, which keeps the tool's group while the page's tab
+      // reconnects and a held call waits for it.
+      const pageObjectTool = view.offeredAsPageObject(called);
       const result = await run(name, input);
+      if (pageObjectTool) return result;
       // Taken once the result is ready.
       const note = view.resultReturned({
         tools: connection.tools,

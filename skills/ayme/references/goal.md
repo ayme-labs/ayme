@@ -1,5 +1,7 @@
 # Goal
 
+`goal` is listed only when `ayme mcp` was started with `--browser-tools`.
+
 Pass the goal in words, and every value the task names in `values`. Label
 each value in plain words. A value is a string or a number. Example:
 `ProjectsPage` has an action `createProject(name)`.

@@ -1,8 +1,4 @@
 import { expect, test, type Page } from "@playwright/test";
-import {
-  recordPublishedTools,
-  waitForPublishedTool,
-} from "@ayme-dev/webmcp/testing";
 
 import { goalRunsVariable } from "../scripts/appEnvironment";
 import {
@@ -19,7 +15,7 @@ import {
   type BenchGoal,
   type IntendedStep,
 } from "./benchGoals";
-import { pursueGoal } from "./goalLane";
+import { pursueGoal, waitForAgentTool } from "./goalLane";
 
 /**
  * The bench goal set's plumbing, without a model (`test:e2e:dev`, through
@@ -164,8 +160,6 @@ function reportedRun() {
   return toGoalRun(result).run;
 }
 
-test.beforeEach(({ context }) => recordPublishedTools(context));
-
 for (const bench of benchGoals) {
   test(`scripted: ${bench.title}`, async ({ page }) => {
     const failures = await answerDecisions(
@@ -174,7 +168,7 @@ for (const bench of benchGoals) {
       bench.reason === "needs_value" ? "done" : bench.reason
     );
     await openBenchPage(page, bench);
-    await waitForPublishedTool(page, "goal");
+    await waitForAgentTool(page, "goal");
 
     const expectedSteps = expectedStepsOf(bench);
     const handover = await pursueGoal(page, bench.goal, bench.maxSteps, {
@@ -214,7 +208,7 @@ test("scripted: the harness counts repeated and wrong-target steps", async ({
   };
   await answerDecisions(page, [wrongFill, wrongFill, wrongFill]);
   await openBenchPage(page, bench);
-  await waitForPublishedTool(page, "goal");
+  await waitForAgentTool(page, "goal");
 
   const handover = await pursueGoal(page, bench.goal, 3, {
     values: bench.values,

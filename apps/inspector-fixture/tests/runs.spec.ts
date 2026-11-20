@@ -20,7 +20,7 @@ test("a non-POM target keeps its accessible name after clicking removes it and a
   const agent = new AgentView(page);
   const ref = await agent.ref('button "Dismiss notice"');
   await inspector.runs.showAll();
-  await agent.call("click", { target: ref });
+  await agent.run("click", { target: ref });
   const run = inspector.runs.latest("click");
   await expect
     .poll(() => run.toggle.textContent())
@@ -63,7 +63,7 @@ test("form fields keep their names and values without repeating their refs", asy
   const text = await agent.ref('textbox "New item"');
   const urgent = await agent.ref('checkbox "Urgent"');
   await inspector.runs.showAll();
-  await agent.call("fill_form", {
+  await agent.run("fill_form", {
     fields: [
       { name: "New item", type: "textbox", target: text, value: "Milk" },
       { name: "Urgent", type: "checkbox", target: urgent, value: "true" },
@@ -102,7 +102,7 @@ test("a selection's chosen values show beside its readable target", async ({
   const agent = new AgentView(page);
   const target = await agent.ref('combobox "Size"');
   await inspector.runs.showAll();
-  await agent.call("select_option", { target, values: ["Large"] });
+  await agent.run("select_option", { target, values: ["Large"] });
   const run = inspector.runs.latest("select_option");
   await expect.poll(() => run.toggle.textContent()).toContain('["Large"]');
   expect(await run.toggle.textContent()).toContain('combobox "Size"');

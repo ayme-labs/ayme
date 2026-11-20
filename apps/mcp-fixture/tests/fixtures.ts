@@ -67,6 +67,13 @@ export const test = base.extend<{
   /** Whether the `agent` fixture's server listens in the scanned range. */
   inScanRange: boolean;
   /**
+   * Whether the `agent` fixture's server starts with `--browser-tools`, so
+   * it lists the page's Browser Tools, `snapshot`, `goal` and Custom Tools;
+   * on unless a spec turns it off, since most specs drive the page with
+   * them.
+   */
+  browserTools: boolean;
+  /**
    * The MCP revision the `agent` fixture opens with: 2025-11-25 unless a
    * spec sets it.
    */
@@ -108,11 +115,18 @@ export const test = base.extend<{
     }
   },
   inScanRange: [false, { option: true }],
+  browserTools: [true, { option: true }],
   revision: ["2025-11-25", { option: true }],
-  agent: async ({ inScanRange, revision }, use) => {
+  agent: async ({ inScanRange, browserTools, revision }, use) => {
+    const options = browserTools ? ["--browser-tools"] : [];
     const agent = await (inScanRange
-      ? startAgent({ revision })
-      : startAgent({ revision }, "--port", String(await freePort())));
+      ? startAgent({ revision }, ...options)
+      : startAgent(
+          { revision },
+          "--port",
+          String(await freePort()),
+          ...options
+        ));
     try {
       await use(agent);
     } finally {
@@ -150,14 +164,15 @@ export async function serverAddress(agent: Agent) {
  * Starts `ayme mcp` in a project of its own under the test's output folder,
  * whose `.ayme` is a copy of `outside/.ayme`, so it serves that entry's Page
  * Objects, and runs the init script it writes in every page of `context`.
- * Returns the agent and the origin of its server, where a page fetches the
- * served code from. The agent opens with `revision`, 2025-11-25 by
- * default.
+ * `options` are more options of `ayme mcp`, such as `--browser-tools`. Returns the
+ * agent and the origin of its server, where a page fetches the served code
+ * from. The agent opens with `revision`, 2025-11-25 by default.
  */
 export async function startServingAgent(
   context: BrowserContext,
   testInfo: TestInfo,
-  revision?: McpRevision
+  revision?: McpRevision,
+  ...options: string[]
 ) {
   // Beside the fixture's own packages, as a project's `.ayme` sits beside its
   // installed `@ayme-dev/ayme`.
@@ -171,7 +186,8 @@ export async function startServingAgent(
   const agent = await startAgent(
     { cwd: project, revision },
     "--port",
-    String(port)
+    String(port),
+    ...options
   );
   await context.addInitScript({
     path: join(project, ".ayme", "init-script.js"),

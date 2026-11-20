@@ -15,6 +15,7 @@ test.use({ hydrationStatistics: /^Angular hydrated / });
 serverRenderTests();
 counterTests({
   CounterPage,
+  agentConnection: () => server === "dev",
   inspector: server === "dev",
   navigation: {
     away: "Other",

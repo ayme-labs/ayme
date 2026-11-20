@@ -14,8 +14,8 @@ const archiveMilk = aRun({
   id: "2",
   toolName: "ListItem.archive",
   className: "ListItem",
-  item: anItem("ListPage.items[1]", { ref: "e12", label: "Milk" }),
-  arguments: { ref: "e12", args: {} },
+  item: anItem("ListPage.items[1]", { id: "po12", ref: "e12", label: "Milk" }),
+  arguments: { id: "po12", args: {} },
 });
 const runs = [archiveMilk, addItem];
 const members = new Map([

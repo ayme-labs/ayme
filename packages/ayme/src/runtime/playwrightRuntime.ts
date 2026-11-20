@@ -17,6 +17,7 @@ import {
   pageNavigation,
   pageStateOf,
   playwrightPageHost,
+  providePageObjectIdsOf,
   providePageObjectProbeOf,
 } from "../page-state/infrastructure";
 import { pomRegistryOf } from "../page-objects/infrastructure";
@@ -123,6 +124,7 @@ function playwrightTarget(
           pageState().session.onRecorded(listener),
         providePageObjectProbe: (probe) =>
           providePageObjectProbeOf(page, probe),
+        providePageObjectIds: (idsOf) => providePageObjectIdsOf(page, idsOf),
       },
     });
   const sources: ToolSources = {

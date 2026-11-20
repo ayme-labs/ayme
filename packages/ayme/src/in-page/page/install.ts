@@ -28,6 +28,7 @@ import {
   type Settled,
 } from "./actions";
 import { watchActivity } from "./activity";
+import { createElementKeys } from "./elementKeys";
 import { readControls } from "./controls";
 import { createRefWorld, type CaptureAsk, type ElementInputs } from "./capture";
 import { createMatches } from "./filter";
@@ -206,6 +207,16 @@ export type Slot = {
    * document.
    */
   currentRefs(host: HostKey, refs: readonly string[]): (string | undefined)[];
+  /**
+   * The key of the element each of `refs`, now or before, names, and the ref
+   * it has now; none for one whose element is no longer in the document.
+   */
+  elementKeys(
+    host: HostKey,
+    refs: readonly string[]
+  ): ({ key: string; ref: string } | undefined)[];
+  /** The ref the element each of `keys` names has now; none once it left the document. */
+  keyedRefs(host: HostKey, keys: readonly string[]): (string | undefined)[];
   /** The URL the document resolves relative URLs against: its `baseURI`. */
   baseURI(host: HostKey): string;
   /** The key of the Navigation API's current history entry, or none where the browser has no such API. */
@@ -271,6 +282,16 @@ function createSlot(version: string, installedBy: HostKey): Slot {
   const bindings = new Map<HostKey, string>();
   // The document's one ref world: its marks, counters and ref map.
   const refs = createRefWorld(captureAriaSnapshot);
+  // Each Page Object Root's element by a key no rename retires.
+  const elementKeys = createElementKeys(token);
+  /**
+   * The ref `element` has now, while it is in the document: one moved into
+   * a frame's document stays connected, and is in this document no longer.
+   */
+  const refNow = (element: Element | undefined) =>
+    element?.isConnected && element.ownerDocument === document
+      ? refs.lastRefOf(element)
+      : undefined;
   const reach = createReach(refs.nameOf);
   // Each host's picking that is on, to end it.
   const pickings = new Map<string, () => void>();
@@ -456,6 +477,16 @@ function createSlot(version: string, installedBy: HostKey): Slot {
     historyEntry: () => window.navigation?.currentEntry?.key,
     currentRefs: (_host: HostKey, asked: readonly string[]) =>
       asked.map(refs.currentRefOf),
+    elementKeys: (_host: HostKey, asked: readonly string[]) =>
+      asked.map((ref) => {
+        const element = refs.elementEverNamed(ref);
+        const now = refNow(element);
+        return now === undefined
+          ? undefined
+          : { key: elementKeys.keyOf(element!), ref: now };
+      }),
+    keyedRefs: (_host: HostKey, keys: readonly string[]) =>
+      keys.map((key) => refNow(elementKeys.elementOf(key))),
     pick(host: HostKey, { id, ...request }: PickRequest) {
       if (cancelled.delete(`${host}:${id}`)) return Promise.resolve(undefined);
       // One picking at a time in the document: a new one ends the one before,
