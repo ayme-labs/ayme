@@ -41,7 +41,7 @@ test("each tool's page shows the description, schema and destructive mark an age
     expect(await toolPage.modelSees.schemaValue(tool.name)).toEqual(
       tool.inputSchema
     );
-    const destructive = tool.annotations?.consequentialHint === true;
+    const destructive = tool.annotations?.destructiveHint === true;
     expect(await toolPage.destructiveMark.count()).toBe(destructive ? 1 : 0);
     expect(await inspector.navigator.tools.markedDestructive(tool.name)).toBe(
       destructive
@@ -50,7 +50,7 @@ test("each tool's page shows the description, schema and destructive mark an age
   // The fixture's ListPage.clear is the one marked.
   expect(
     agentTools
-      .filter(({ annotations }) => annotations?.consequentialHint)
+      .filter(({ annotations }) => annotations?.destructiveHint)
       .map(({ name }) => name)
   ).toEqual(["ListPage.clear"]);
 });

@@ -10,8 +10,8 @@ export type AgentTool = {
   name: string;
   description: string;
   inputSchema: unknown;
-  /** Only on a tool marked destructive. */
-  annotations?: { consequentialHint?: boolean };
+  /** Only on a tool marked destructive, as the MCP tool list marks it. */
+  annotations?: { destructiveHint?: boolean };
 };
 
 /** A tool's description as the panel shows it: what Ayme MCP gives agents. */
@@ -40,10 +40,13 @@ export class AgentView {
     const { tools } = await this.agent.client.listTools();
     return tools
       .filter(({ name }) => !SERVER_TOOLS.includes(name))
-      .map(({ name, description, inputSchema }) => ({
+      .map(({ name, description, inputSchema, annotations }) => ({
         name,
         description: description ?? "",
         inputSchema,
+        ...(annotations?.destructiveHint
+          ? { annotations: { destructiveHint: true } }
+          : {}),
       }));
   }
 
