@@ -11,7 +11,7 @@ export class PlainPage {
 
   @ayme.child
   get note(): Locator {
-    return this.page.getByText("does not run Ayme");
+    return this.page.getByText("does not run ayme");
   }
 
   @ayme.action({ description: "Read the page's note." })

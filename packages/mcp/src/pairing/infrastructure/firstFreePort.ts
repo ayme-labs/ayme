@@ -20,7 +20,7 @@ export async function listenOnFirstFreePort(
     }
   }
   throw new Error(
-    `No free port for the Ayme MCP server between ${ports.first} and ${ports.last}.`
+    `No free port for the ayme MCP server between ${ports.first} and ${ports.last}.`
   );
 }
 

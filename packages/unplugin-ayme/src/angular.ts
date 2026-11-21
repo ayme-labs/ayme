@@ -38,7 +38,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
   );
   if (unknown.length > 0)
     throw new TypeError(
-      `Ayme's Angular plugin has no option(s): ${unknown.join(", ")}. Referenced in angular.json as a plain string, it receives the builder's options.`
+      `ayme's Angular plugin has no option(s): ${unknown.join(", ")}. Referenced in angular.json as a plain string, it receives the builder's options.`
     );
   if (
     options.tsconfigPath !== undefined &&
@@ -147,7 +147,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         const pom = await compiled.get(fileName);
         if (!pom)
           throw new Error(
-            `Ayme did not compile Page Object Model ${fileName}.`
+            `ayme did not compile Page Object Model ${fileName}.`
           );
         return {
           contents: pom.contents,

@@ -21,7 +21,7 @@ export const emptyInspectorState: InspectorState = Object.freeze({
   appProcessTools: Object.freeze([]),
   publication: Object.freeze({
     state: "disposed",
-    message: "No Ayme runtime session has started.",
+    message: "No ayme runtime session has started.",
   }),
   agentConnection: Object.freeze({ state: "off" }),
   runs: Object.freeze([]),

@@ -77,7 +77,7 @@ export function startAgentConnection(
     if (servers.length > 1 && !warnedSeveral) {
       warnedSeveral = true;
       console.warn(
-        `[ayme] Found ${servers.length} Ayme MCP servers on ports ${portList(servers)}; this process pairs with none of them.`
+        `[ayme] Found ${servers.length} ayme MCP servers on ports ${portList(servers)}; this process pairs with none of them.`
       );
     }
     later(scan);
@@ -107,7 +107,7 @@ export function startAgentConnection(
         if (!ended()) return;
         if (linked)
           return console.warn(
-            `[ayme] The Ayme MCP server at ${linked.address} does not know this connect link.`
+            `[ayme] The ayme MCP server at ${linked.address} does not know this connect link.`
           );
         known = undefined;
         void scan();
@@ -118,7 +118,7 @@ export function startAgentConnection(
       onClose() {
         if (!ended()) return;
         console.info(
-          "[ayme] This process lost its connection to the coding agent's Ayme MCP server, and looks for one again."
+          "[ayme] This process lost its connection to the coding agent's ayme MCP server, and looks for one again."
         );
         void lookAgain();
       },
@@ -135,7 +135,7 @@ export function startAgentConnection(
     open = opened;
     warnedSeveral = false;
     console.info(
-      `[ayme] This process is connected to the coding agent's Ayme MCP server at ${pairing.address}.`
+      `[ayme] This process is connected to the coding agent's ayme MCP server at ${pairing.address}.`
     );
   };
 

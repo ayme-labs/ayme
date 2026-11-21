@@ -148,7 +148,7 @@ export async function openFixture(
       .waitFor({ timeout: 30_000 });
   } catch {
     throw new Error(
-      `The Ayme runtime did not reach "${runtimeState}": ${await root.getAttribute("data-runtime")}, ${await root.getAttribute("data-runtime-message")}`
+      `The ayme runtime did not reach "${runtimeState}": ${await root.getAttribute("data-runtime")}, ${await root.getAttribute("data-runtime-message")}`
     );
   }
 

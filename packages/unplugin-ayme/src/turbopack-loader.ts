@@ -32,7 +32,7 @@ export default function turbopackLoader(this: LoaderContext, source: string) {
       if (dependencies.length === 0) return;
       if (!this.addDependency)
         throw new Error(
-          "Ayme's Turbopack loader requires loader dependency tracking."
+          "ayme's Turbopack loader requires loader dependency tracking."
         );
       const resourcePath = path.resolve(this.resourcePath);
       for (const dependency of dependencies) {

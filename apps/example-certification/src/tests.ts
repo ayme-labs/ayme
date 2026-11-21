@@ -300,7 +300,7 @@ export function counterTests({
           .toEqual(schema);
     });
 
-    test("publishes Ayme's own tools", async ({ page }) => {
+    test("publishes ayme's own tools", async ({ page }) => {
       await expect
         .poll(() => publishedToolNames(page))
         .toContain("CounterPage.increment");

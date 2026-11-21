@@ -118,7 +118,7 @@ export function openPageChannel(
   // and the server would send the tab's calls where none runs them (#968).
   const live = () => {
     if (closed)
-      throw new Error("The channel to the Ayme MCP server is closed.");
+      throw new Error("The channel to the ayme MCP server is closed.");
     return client;
   };
   // The tRPC client sends a request in a later task, to batch it with

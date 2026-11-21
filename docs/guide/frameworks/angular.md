@@ -208,10 +208,10 @@ The supported Angular versions are on [Install](../start/install.md#supported-ve
 
 | Error                                                                                          | Cause                                                       |
 | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `provideAyme cannot be nested beneath another Ayme runtime owner.`                             | `provideAyme` beneath another, such as in route providers.  |
-| `Ayme requires provideAyme() in an ancestor injector.`                                         | An inject function without `provideAyme`.                   |
-| `Ayme needs an Angular application project; …`                                                 | `ng add` ran in a workspace without an application project. |
-| `Ayme could not read the Angular major from the @angular/core dependency in package.json (…).` | `ng add` found no readable `@angular/core` version.         |
+| `provideAyme cannot be nested beneath another ayme runtime owner.`                             | `provideAyme` beneath another, such as in route providers.  |
+| `ayme requires provideAyme() in an ancestor injector.`                                         | An inject function without `provideAyme`.                   |
+| `ayme needs an Angular application project; …`                                                 | `ng add` ran in a workspace without an application project. |
+| `ayme could not read the Angular major from the @angular/core dependency in package.json (…).` | `ng add` found no readable `@angular/core` version.         |
 | A production build fails the `initial` budget                                                  | See [Bundle size](#bundle-size).                            |
 
 ## API

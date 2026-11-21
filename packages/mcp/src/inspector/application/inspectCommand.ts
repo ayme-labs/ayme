@@ -22,7 +22,7 @@ export async function inspectCommand({
   if (addresses.length === 0)
     return {
       ok: false,
-      text: "No Ayme MCP server is running. Start your coding agent, which runs `ayme mcp`, and try again.\n",
+      text: "No ayme MCP server is running. Start your coding agent, which runs `ayme mcp`, and try again.\n",
     };
   return {
     ok: true,

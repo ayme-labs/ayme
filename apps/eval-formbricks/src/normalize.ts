@@ -271,7 +271,7 @@ ${tools}
 - Browser interface: ${result.versions.browserInterface.name} ${result.versions.browserInterface.version}
 - Browser: ${result.versions.browser ?? "unknown"}
 - Formbricks: ${result.versions.formbricksCommit ?? "unknown"}
-- Ayme: ${result.versions.aymeCommit ?? "unknown"}
+- ayme: ${result.versions.aymeCommit ?? "unknown"}
 - MCP servers: ${result.isolation.mcpServers.map((server) => `${server.name} (${server.status})`).join(", ") || "none"}
 - Skills: ${result.isolation.skills.join(", ") || "none"}
 - Plugins: ${result.isolation.plugins.map((plugin) => plugin.source ?? plugin.name).join(", ") || "none"}

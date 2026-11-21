@@ -70,8 +70,8 @@ export function includeOption(value: unknown): boolean {
  * prints the compiler's once per build.
  */
 export function includeLine(include: boolean | undefined): string {
-  if (include) return "[ayme] Ayme is in this build: include is true.";
-  return `[ayme] Ayme is not in this build: include is ${include === undefined ? "not set" : "false"}.`;
+  if (include) return "[ayme] ayme is in this build: include is true.";
+  return `[ayme] ayme is not in this build: include is ${include === undefined ? "not set" : "false"}.`;
 }
 
 /**
@@ -184,7 +184,7 @@ function standInModule(
   for (const className of byName.keys())
     if (!classes.some((declaration) => declaration.name.text === className))
       throw new Error(
-        `Ayme could not remove Page Object Model ${className} from ${fileName}: it is not a top-level class.`
+        `ayme could not remove Page Object Model ${className} from ${fileName}: it is not a top-level class.`
       );
 
   let result = "";

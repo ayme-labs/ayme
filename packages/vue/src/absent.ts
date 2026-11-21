@@ -25,7 +25,7 @@ export type {
   UseAymeResult,
 } from "./index";
 
-const runtimeKey: InjectionKey<Ayme> = Symbol("Ayme runtime");
+const runtimeKey: InjectionKey<Ayme> = Symbol("ayme runtime");
 let inert: Ayme | undefined;
 
 function inherited() {

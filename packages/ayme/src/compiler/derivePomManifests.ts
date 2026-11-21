@@ -722,7 +722,7 @@ function rejectSameNamedClasses(
         [other, declaration].map((sameNamed) =>
           diagnosticAt(
             sameNamed,
-            `Page Object "${pageName}" reaches two different classes named "${name}". Ayme tells the classes of a Page Object apart by name.`
+            `Page Object "${pageName}" reaches two different classes named "${name}". ayme tells the classes of a Page Object apart by name.`
           )
         )
       );

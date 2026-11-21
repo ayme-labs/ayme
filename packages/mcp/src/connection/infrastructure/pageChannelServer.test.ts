@@ -170,9 +170,9 @@ describe("the Inspector link of the paired page", () => {
   });
 });
 
-describe("a page whose Ayme and the server's speak different pairing contracts", () => {
+describe("a page whose ayme and the server's speak different pairing contracts", () => {
   const GAP =
-    "Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts.";
+    "ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts.";
 
   function openVersionedPage(url: string, onVersionGap: (gap: string) => void) {
     const channel = openPageChannel(() => url, {

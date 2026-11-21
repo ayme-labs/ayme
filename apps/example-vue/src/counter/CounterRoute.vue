@@ -10,7 +10,7 @@ import CounterPageView from "./CounterPageView.vue";
 -->
 <template>
   <main>
-    <h1>Ayme Vue counter</h1>
+    <h1>ayme Vue counter</h1>
     <AymeProvider :webMCP="{ enabled: true }">
       <CounterPageView />
     </AymeProvider>

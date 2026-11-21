@@ -10,9 +10,9 @@ export const mcpPackage = `@ayme-dev/mcp@${mcpVersion}`;
 
 // Self-routing: the visitor pastes it before and after restarting the agent.
 export const setupPrompt = (pageUrl: string) =>
-  `I'm trying the Ayme playground at ${pageUrl}.
+  `I'm trying the ayme playground at ${pageUrl}.
 
-If you don't have an ayme_connect tool yet, add Ayme's MCP server as a stdio MCP server. Use your own MCP configuration format:
+If you don't have an ayme_connect tool yet, add ayme's MCP server as a stdio MCP server. Use your own MCP configuration format:
 
   command: npx
   args:    -y ${mcpPackage} mcp

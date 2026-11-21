@@ -66,7 +66,7 @@ describe("Structural Ref interactions", () => {
     vi.unstubAllGlobals();
   });
 
-  it("clicks the current resolved ref through Ayme's selector engine", async () => {
+  it("clicks the current resolved ref through ayme's selector engine", async () => {
     const button = document.querySelector("#save");
     if (!button) throw new Error("Expected the save button.");
     mockCapture(button, "e2");

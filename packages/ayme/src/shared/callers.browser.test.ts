@@ -46,7 +46,7 @@ describe("Callers of ayme.tools.run in Chromium", () => {
     });
   });
 
-  it("rejects an empty Caller name with an Ayme error and runs nothing", async () => {
+  it("rejects an empty Caller name with an ayme error and runs nothing", async () => {
     await expect(ayme.tools.run("click", SAVE, { by: "" })).rejects.toThrow(
       RuntimeStateError
     );

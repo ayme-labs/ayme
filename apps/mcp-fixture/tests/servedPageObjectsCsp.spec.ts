@@ -62,7 +62,7 @@ test.describe("with bypassCSP", () => {
 
       const { text, isError } = await agent.call(PLAIN_PAGE_TOOL);
       expect(isError, text).toBe(false);
-      expect(text).toContain("does not run Ayme");
+      expect(text).toContain("does not run ayme");
     } finally {
       await agent.close();
     }

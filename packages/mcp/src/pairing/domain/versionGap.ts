@@ -24,8 +24,8 @@ export function versionGap({
 }): string | undefined {
   if ((page.contract ?? 1) === server.contract) return undefined;
   const onPage =
-    page.version === undefined ? "An earlier Ayme" : `Ayme ${page.version}`;
-  return `${onPage} on the page and the Ayme MCP server ${server.version} speak different pairing contracts.`;
+    page.version === undefined ? "An earlier ayme" : `ayme ${page.version}`;
+  return `${onPage} on the page and the ayme MCP server ${server.version} speak different pairing contracts.`;
 }
 
 /** This package's ayme: its version and the pairing contract it speaks. */

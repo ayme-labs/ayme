@@ -49,7 +49,7 @@ export function sameNamedClassRefusal(
             other.pageObject === manifest.className
               ? `it reaches two different classes named "${node.className}"`
               : `it reaches a class named "${node.className}" that differs from the one the Page Object "${other.pageObject}" reaches`
-          }${declaredIn(other.node, node)}. Ayme tells the classes of Page Objects apart by name.`,
+          }${declaredIn(other.node, node)}. ayme tells the classes of Page Objects apart by name.`,
           { code: "same-named-class" }
         );
       if (!others.some((other) => other.node.file === node.file))

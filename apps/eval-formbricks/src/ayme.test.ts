@@ -21,7 +21,7 @@ import {
 } from "./ayme.ts";
 import { evalRoot, repoRoot } from "./paths.ts";
 
-describe("the Ayme arms' skill", () => {
+describe("the ayme arms' skill", () => {
   it("is the one the repository ships, under skills/", () => {
     const skills = path.join(repoRoot, "skills");
     expect(aymeSkillSource.startsWith(`${skills}${path.sep}`)).toBe(true);

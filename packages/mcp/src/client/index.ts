@@ -143,7 +143,7 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
       };
     },
     async run(name, input) {
-      if (!open) throw new Error("No Ayme MCP server is paired with this tab.");
+      if (!open) throw new Error("No ayme MCP server is paired with this tab.");
       const outcome = await open.channel.callProcessTool(name, input);
       if (!outcome.ok) throw new Error(outcome.error);
       return outcome.result;
@@ -218,7 +218,7 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
         // and looks again from its next focus.
         if (!current.token) return startSources(false);
         console.info(
-          "[ayme] This tab is no longer connected to the coding agent: another tab connected to its Ayme MCP server."
+          "[ayme] This tab is no longer connected to the coding agent: another tab connected to its ayme MCP server."
         );
       },
     });

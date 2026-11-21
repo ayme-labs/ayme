@@ -32,7 +32,7 @@ export { ayme } from "./page-objects/domain";
 export { DecisionEndpointError } from "./goal-loop/domain";
 export { sameRuntimeOptions, snapshotRuntimeOptions } from "./runtime";
 
-const REMOVED = "Ayme was removed from this build.";
+const REMOVED = "ayme was removed from this build.";
 
 const removed = (what: string) =>
   new RuntimeStateError(`${REMOVED} ${what} is not in it.`);
@@ -57,7 +57,7 @@ export function decisionEndpoint(): () => Promise<never> {
 }
 
 const PUBLICATION_ENABLED =
-  "Ayme was removed from this build, but setup enables WebMCP publication.";
+  "ayme was removed from this build, but setup enables WebMCP publication.";
 
 /**
  * An inert session: it starts nothing, lists no tools and runs none, and its

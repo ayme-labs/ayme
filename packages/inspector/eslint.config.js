@@ -138,7 +138,7 @@ export default [
           patterns: [
             {
               regex: "^@ayme-dev/ayme(/(?!inspector$).*)?$",
-              message: "Import Ayme only through @ayme-dev/ayme/inspector.",
+              message: "Import ayme only through @ayme-dev/ayme/inspector.",
             },
           ],
         },

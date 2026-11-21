@@ -187,7 +187,7 @@ test("a snapshot sent right after a full-load answer waits for the new page and 
   expect(await agent.pageToolNames()).toContain("read_other");
 });
 
-test("a call after a full load to a page without Ayme says no page came back, and did not run", async ({
+test("a call after a full load to a page without ayme says no page came back, and did not run", async ({
   agent,
   baseURL,
   connect,

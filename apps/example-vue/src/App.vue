@@ -109,7 +109,7 @@ function followScroll() {
           <p
             class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
           >
-            Ayme WebMCP
+            ayme WebMCP
           </p>
           <h1 class="mt-2 text-3xl font-semibold tracking-tight text-balance">
             Playground
@@ -121,10 +121,10 @@ function followScroll() {
             tools.
             <template v-if="agentConnection">
               Try it here — from the inspector or your own coding agent — before
-              adding Ayme WebMCP to your project.
+              adding ayme WebMCP to your project.
             </template>
             <template v-else>
-              Try it here from the inspector before adding Ayme WebMCP to your
+              Try it here from the inspector before adding ayme WebMCP to your
               project.
             </template>
           </p>

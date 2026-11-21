@@ -247,7 +247,7 @@ A build includes ayme only with the plugin's `include: true`. The config above k
 
 | Error                                                                                         | Cause                                                           |
 | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `AymeProvider cannot be nested beneath another Ayme runtime owner.`                           | A second owner beneath the first. Start ayme once, at the root. |
+| `AymeProvider cannot be nested beneath another ayme runtime owner.`                           | A second owner beneath the first. Start ayme once, at the root. |
 | `The provider options changed while the provider was mounted.`                                | A provider prop changed while mounted.                          |
 | `useAyme(options) received options beneath an existing AymeProvider or useAyme owner.`        | `useAyme(options)` beneath an owner.                            |
 | `useAyme must be called within an active Vue effect scope`, and the same for `usePageObject`  | Called outside `setup` or an effect scope.                      |

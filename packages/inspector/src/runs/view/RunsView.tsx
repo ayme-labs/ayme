@@ -511,7 +511,7 @@ const callerIcons = {
   webmcp: { Icon: BotIcon, label: "Run by an agent through WebMCP" },
   "ayme-mcp": {
     Icon: SquareTerminalIcon,
-    label: "Run by an agent through Ayme MCP",
+    label: "Run by an agent through ayme MCP",
   },
 } satisfies Record<BuiltInCaller, { Icon: typeof UserIcon; label: string }>;
 

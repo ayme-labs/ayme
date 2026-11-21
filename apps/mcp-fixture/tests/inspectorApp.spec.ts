@@ -155,7 +155,7 @@ for (const revision of MCP_REVISIONS)
 
           const run = shown.inspector.runs.latest(PLAIN_PAGE_TOOL);
           await expect.poll(() => run.status()).toBe("Succeeded");
-          expect(await run.resultText()).toContain("does not run Ayme");
+          expect(await run.resultText()).toContain("does not run ayme");
           expect(agent.log).toContain(
             "An Inspector window was admitted by its token (origin null)."
           );
@@ -278,7 +278,7 @@ for (const revision of MCP_REVISIONS)
           await expect(
             shown.page
               .frameLocator("#app")
-              .getByText("This Inspector lost its Ayme MCP server.")
+              .getByText("This Inspector lost its ayme MCP server.")
           ).toBeVisible({ timeout: 15_000 });
           await expect(shown.inspector.header.title).toHaveCount(0);
         } finally {

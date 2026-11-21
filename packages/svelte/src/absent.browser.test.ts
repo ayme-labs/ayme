@@ -35,7 +35,7 @@ import {
 class Model {
   constructor() {
     throw new Error(
-      "Page Objects are not constructed in a build without Ayme."
+      "Page Objects are not constructed in a build without ayme."
     );
   }
 }
@@ -96,6 +96,6 @@ it("passes the owner's options to the absent runtime, which logs the publication
   const logged = vi.spyOn(console, "error").mockImplementation(() => {});
   mount(Owner, { options: { webMCP: { enabled: true } } });
   expect(logged).toHaveBeenCalledWith(
-    "Ayme was removed from this build, but setup enables WebMCP publication."
+    "ayme was removed from this build, but setup enables WebMCP publication."
   );
 });

@@ -83,7 +83,7 @@ export function createPageChannelServer({
     if (extensions.some((extension) => extension.request(request, response)))
       return;
     response.statusCode = 426;
-    response.end("The Ayme MCP server accepts WebSocket connections only.");
+    response.end("The ayme MCP server accepts WebSocket connections only.");
   });
   const sockets = new WebSocketServer({ noServer: true });
   const pages = new WeakMap<WebSocket, PageChannelContext["page"]>();
@@ -121,7 +121,7 @@ export function createPageChannelServer({
       sockets.handleUpgrade(request, socket, head, (ws) =>
         ws.close(
           UNKNOWN_PAIRING_CLOSE_CODE,
-          "This Ayme MCP server does not know this pairing."
+          "This ayme MCP server does not know this pairing."
         )
       );
       return;
@@ -198,7 +198,7 @@ function acceptPage(
   const disconnect = () =>
     ws.close(
       DISCONNECTED_CLOSE_CODE,
-      "Another tab connected to this Ayme MCP server."
+      "Another tab connected to this ayme MCP server."
     );
   ws.once("close", () => {
     if (page) connection.detach(page);
@@ -237,7 +237,7 @@ function acceptPage(
       ) {
         ws.close(
           DISCONNECTED_CLOSE_CODE,
-          "This Ayme MCP server works with another tab."
+          "This ayme MCP server works with another tab."
         );
         return {};
       }

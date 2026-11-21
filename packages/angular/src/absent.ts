@@ -25,7 +25,7 @@ export type {
   AymeWebMcpPublicationStatus,
 } from "./index";
 
-const aymeSetup = new InjectionToken<AymeSetup>("Ayme setup");
+const aymeSetup = new InjectionToken<AymeSetup>("ayme setup");
 let inert: AymeSetup | undefined;
 
 function setup(ayme: Ayme): AymeSetup {

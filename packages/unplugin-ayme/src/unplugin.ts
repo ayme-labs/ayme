@@ -403,7 +403,7 @@ async function loadPlaywrightConfig(
   const playwrightVersion = readPackageVersion(playwrightPackagePath);
   if (!supportsConfigLoader(playwrightVersion))
     throw new Error(
-      `Unsupported Playwright config loader version ${playwrightVersion}. Ayme supports ${CONFIG_LOADER_RANGE}.`
+      `Unsupported Playwright config loader version ${playwrightVersion}. ayme supports ${CONFIG_LOADER_RANGE}.`
     );
 
   // Playwright does not expose its config loader publicly. Keep this one
@@ -414,7 +414,7 @@ async function loadPlaywrightConfig(
   );
   if (!existsSync(loaderPath))
     throw new Error(
-      `Unsupported Playwright config loader: ${loaderPath} does not exist. Ayme supports ${CONFIG_LOADER_RANGE}.`
+      `Unsupported Playwright config loader: ${loaderPath} does not exist. ayme supports ${CONFIG_LOADER_RANGE}.`
     );
 
   let loaderModule: PlaywrightLoaderModule;

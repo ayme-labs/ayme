@@ -76,7 +76,7 @@ function verifyBrowserOutput(directory, mode) {
 function verifyBuildWithoutAyme(directory) {
   const hits = findMarkers(directory, aymeMarkers);
   if (hits.length > 0)
-    throw new Error(`Ayme is in the build without Ayme:\n${hits.join("\n")}`);
+    throw new Error(`ayme is in the build without ayme:\n${hits.join("\n")}`);
 }
 
 // Publication is decided at runtime setup (ADR-0030), so one build covers

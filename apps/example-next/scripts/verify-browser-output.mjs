@@ -69,7 +69,7 @@ const present = new Set(
 const absent = aymeMarkers.filter((marker) => !present.has(marker));
 if (absent.length > 0)
   throw new Error(
-    `The build with Ayme carries none of these markers, so they prove nothing:\n${absent.join("\n")}`
+    `The build with ayme carries none of these markers, so they prove nothing:\n${absent.join("\n")}`
   );
 
 // The build without ayme (`AYME_INCLUDE=false next build`) proves on a real
@@ -78,9 +78,9 @@ if (absent.length > 0)
 const withoutAyme = path.join(appRoot, ".next-without-ayme");
 const hits = findMarkers(withoutAyme, aymeMarkers);
 if (hits.length > 0)
-  throw new Error(`Ayme is in the build without Ayme:\n${hits.join("\n")}`);
+  throw new Error(`ayme is in the build without ayme:\n${hits.join("\n")}`);
 const mapped = findMappedMarkers(withoutAyme, modelMarkers);
 if (mapped.length > 0)
   throw new Error(
-    `A Page Object Model is in the source maps of the build without Ayme:\n${mapped.join("\n")}`
+    `A Page Object Model is in the source maps of the build without ayme:\n${mapped.join("\n")}`
   );

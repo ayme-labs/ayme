@@ -23,7 +23,7 @@ readonly AYME_PACKAGES=(ayme react unplugin-ayme mcp webmcp)
 readonly PACKED_DIR="${FORMBRICKS_DIR}/.ayme-lab/packages"
 readonly TARBALL_DIR="${FORMBRICKS_DIR}/.ayme-lab/tarballs"
 
-printf 'Building and packing the Ayme packages from %s.\n' "$(git -C "${REPO_ROOT}" rev-parse --short HEAD)"
+printf 'Building and packing the ayme packages from %s.\n' "$(git -C "${REPO_ROOT}" rev-parse --short HEAD)"
 build_filters=()
 for name in "${AYME_PACKAGES[@]}"; do
   build_filters+=("--filter=@ayme-dev/${name}")
@@ -49,7 +49,7 @@ rm -f "${FORMBRICKS_DIR}/node_modules/.pnpm-workspace-state-v1.json"
 # the check below fails.
 formbricks_pnpm install --recursive --no-frozen-lockfile
 if is_dirty; then
-  fail "The Ayme packages' dependencies no longer match the Ayme overlay's lockfile. Regenerate it as the README's \"Moving the pin\" section describes."
+  fail "The ayme packages' dependencies no longer match the ayme overlay's lockfile. Regenerate it as the README's \"Moving the pin\" section describes."
 fi
 verify_checkout
 

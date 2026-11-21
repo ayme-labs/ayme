@@ -117,12 +117,12 @@ const ownPackage = [
   {
     regex: "^@ayme-dev/ayme(/.*)?$",
     message:
-      "Ayme's source never imports Ayme by its package name: import the module by its path.",
+      "ayme's source never imports ayme by its package name: import the module by its path.",
   },
   {
     regex: String.raw`^\.\.?/(.*/)?dist(/.*)?$`,
     message:
-      "Ayme's source never imports its own build output: import the module by its path in src/.",
+      "ayme's source never imports its own build output: import the module by its path in src/.",
   },
 ];
 

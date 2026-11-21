@@ -7,7 +7,7 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage as createPlaywrightLitePage } from "@ayme-dev/playwright-lite";
 import { createAymeRuntime, createPage } from "../page-objects/infrastructure";
 
-describe("the Ayme page state helper in Chromium", () => {
+describe("the ayme page state helper in Chromium", () => {
   it("resolves live elements and retargets historical refs through replacements", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const originalState = await ayme.getPageState();

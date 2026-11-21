@@ -137,8 +137,8 @@ function aymeArm(
 ): Arm {
   const { goalLoop, pageObjects } = options;
   const toolsLine = pageObjects
-    ? "`snapshot`, Ayme's Browser Tools and the Page Object Tools of the screen you are on."
-    : "`snapshot` and Ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed.";
+    ? "`snapshot`, ayme's Browser Tools and the Page Object Tools of the screen you are on."
+    : "`snapshot` and ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed.";
   const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, for every browser interaction: ${toolsLine}`;
   return {
     id,

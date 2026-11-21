@@ -238,9 +238,9 @@ A build includes ayme only with the plugin's `include: true`. The config above k
 
 | Error                                                                        | Cause                                                                                  |
 | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `AymeProvider cannot be nested beneath another Ayme runtime owner.`          | A second provider beneath the first. Start ayme once, at the root.                     |
+| `AymeProvider cannot be nested beneath another ayme runtime owner.`          | A second provider beneath the first. Start ayme once, at the root.                     |
 | `The provider options changed while the provider was mounted.`               | A provider prop changed while mounted.                                                 |
-| `Ayme hooks require an ancestor AymeProvider.`                               | A hook without a provider above, including in the component that renders the provider. |
+| `ayme hooks require an ancestor AymeProvider.`                               | A hook without a provider above, including in the component that renders the provider. |
 | `The Page Object model or provider changed while the component was mounted.` | `usePageObject` got a different model.                                                 |
 
 ## API

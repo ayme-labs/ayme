@@ -45,7 +45,7 @@ function uncompiledPageObjectError(PomClass: object) {
   const label =
     typeof name === "string" && name ? name : "An anonymous page object class";
   return new RuntimeStateError(
-    `${label} has no compiler-derived Ayme metadata.`
+    `${label} has no compiler-derived ayme metadata.`
   );
 }
 

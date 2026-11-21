@@ -40,7 +40,7 @@ test("ayme inspect says so when no server runs", async () => {
   expect(failure).toMatchObject({ code: 1, stdout: "" });
   expect(failure).toHaveProperty(
     "stderr",
-    expect.stringContaining("No Ayme MCP server is running")
+    expect.stringContaining("No ayme MCP server is running")
   );
 });
 

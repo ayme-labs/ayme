@@ -17,7 +17,7 @@ export type {
   UseAymeResult,
 } from "./index";
 
-const runtimeKey = Symbol("Ayme runtime");
+const runtimeKey = Symbol("ayme runtime");
 
 /**
  * Call during component initialisation. Beneath an owner, returns the owner's

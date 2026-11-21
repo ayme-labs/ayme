@@ -16,17 +16,17 @@ const cases: [string, { include?: boolean }, string][] = [
   [
     "include unset",
     {},
-    "[ayme] Ayme is not in this build: include is not set.",
+    "[ayme] ayme is not in this build: include is not set.",
   ],
   [
     "include false",
     { include: false },
-    "[ayme] Ayme is not in this build: include is false.",
+    "[ayme] ayme is not in this build: include is false.",
   ],
   [
     "include true",
     { include: true },
-    "[ayme] Ayme is in this build: include is true.",
+    "[ayme] ayme is in this build: include is true.",
   ],
 ];
 
@@ -36,7 +36,7 @@ function spiedLogger() {
   const aymeLines = () =>
     info.mock.calls
       .map(([message]) => String(message))
-      .filter((message) => message.startsWith("[ayme] Ayme"));
+      .filter((message) => message.startsWith("[ayme] ayme"));
   return { logger, aymeLines };
 }
 
@@ -87,7 +87,7 @@ it("a dev server prints the line once at start, not per module", async () => {
   });
   try {
     expect(aymeLines()).toEqual([
-      "[ayme] Ayme is not in this build: include is not set.",
+      "[ayme] ayme is not in this build: include is not set.",
     ]);
     await server.environments.client.transformRequest(`/@fs${entry}`);
     expect(aymeLines()).toHaveLength(1);

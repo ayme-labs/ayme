@@ -310,7 +310,7 @@ describe("a solution-style tsconfig", () => {
   });
 });
 
-describe("a build without Ayme", () => {
+describe("a build without ayme", () => {
   const fixture = (name: string) => {
     const fixturePath = fileURLToPath(
       new URL(`./fixtures/${name}.ts`, import.meta.url)
@@ -405,7 +405,7 @@ describe("a build without Ayme", () => {
     expect(transform("export const x = 1;", "/app/x.ts")).toBeNull();
   });
 
-  it("is the build with Ayme once include is true", () => {
+  it("is the build with ayme once include is true", () => {
     const code = createPomTransform({ include: true })(
       ...fixture("withoutAymePom")
     )?.code;

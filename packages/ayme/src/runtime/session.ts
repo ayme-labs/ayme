@@ -399,7 +399,7 @@ export function createAppProcessTools(runLog: () => RunLog) {
         () => {
           if (!paired)
             throw new RuntimeStateError(
-              "No Ayme MCP server is paired with this page."
+              "No ayme MCP server is paired with this page."
             );
           return paired.run(name, input);
         },
@@ -688,7 +688,7 @@ export function createAymeOn(
     configureRouterNavigateOf(key, undefined);
     if (started === ayme) setStarted(undefined);
     refreshTools();
-    setStatus({ state: "disposed", message: "The Ayme runtime was disposed." });
+    setStatus({ state: "disposed", message: "The ayme runtime was disposed." });
   }
 
   const webMCP: AymeWebMcp = {
@@ -783,7 +783,7 @@ export function createAymeOn(
   function lookUpRun(name: string, input: unknown) {
     if (!owner)
       throw new RuntimeStateError(
-        `Cannot run the tool "${name}": the Ayme runtime session is not started.`
+        `Cannot run the tool "${name}": the ayme runtime session is not started.`
       );
     const entry = resolveTools({ peeks }, sources).get(name);
     if (!entry) throw noSuchTool(name);
@@ -924,7 +924,7 @@ export function createAymeOn(
       if (onServer()) return startInProcess();
       if (owner)
         throw new RuntimeStateError(
-          "The Ayme runtime already has an active owner.",
+          "The ayme runtime already has an active owner.",
           { code: "active-owner" }
         );
       // Registered before anything starts: a filter that cannot be throws here.
@@ -1021,7 +1021,7 @@ export function createAymeOn(
   function startInProcess(): () => void {
     if (appProcessHolder.__aymeAppProcess)
       throw new RuntimeStateError(
-        "The Ayme runtime already has an active owner.",
+        "The ayme runtime already has an active owner.",
         { code: "active-owner" }
       );
     const processController = new AbortController();

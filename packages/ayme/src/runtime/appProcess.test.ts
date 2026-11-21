@@ -54,7 +54,7 @@ function started(options: AymeOptions = { agentConnection: true }) {
 
 const activeOwner = expect.objectContaining({
   name: "RuntimeStateError",
-  message: "The Ayme runtime already has an active owner.",
+  message: "The ayme runtime already has an active owner.",
   code: "active-owner",
 });
 
@@ -121,7 +121,7 @@ describe("createAyme in an App Process", () => {
     });
   });
 
-  it("answers with the newest read a re-evaluated module adds, from its own copy of Ayme", async () => {
+  it("answers with the newest read a re-evaluated module adds, from its own copy of ayme", async () => {
     // As in `next dev`: the server's entry starts the App Process, and a
     // module request code imports adds the Peek from another bundle's copy
     // of ayme, through a session it never starts. After an edit, the dev

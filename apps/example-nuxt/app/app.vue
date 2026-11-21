@@ -7,7 +7,7 @@ const agentConnection = import.meta.dev;
 
 <template>
   <main>
-    <h1>Ayme Nuxt prototype</h1>
+    <h1>ayme Nuxt prototype</h1>
     <p>Server-rendered Vue, with Page Objects running in the browser.</p>
     <AymeProvider
       :webMCP="{ enabled: true }"
