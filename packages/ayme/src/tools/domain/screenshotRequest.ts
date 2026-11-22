@@ -22,7 +22,7 @@ export type ScreenshotRequest = {
 
 const EXTENSION = /\.(png|jpe?g)$/i;
 
-/** The format a file name's extension names, if it is one Ayme writes. */
+/** The format a file name's extension names, if it is one ayme writes. */
 function typeOfFilename(filename: string): ImageType | undefined {
   const extension = EXTENSION.exec(filename)?.[1]?.toLowerCase();
   if (extension === undefined) return undefined;

@@ -9,7 +9,7 @@ const markSvg = readFileSync(
   "utf8"
 );
 
-describe("the Ayme mark", () => {
+describe("the ayme mark", () => {
   it("draws the same mark as logo/mark.svg", () => {
     expect(markSvg).toContain(`viewBox="${AYME_LOGO_VIEWBOX}"`);
     expect(markSvg).toContain(`d="${AYME_LOGO_PATH}"`);

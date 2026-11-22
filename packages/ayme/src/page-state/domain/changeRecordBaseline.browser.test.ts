@@ -160,7 +160,7 @@ describe("Change Record baseline in Chromium", () => {
     expect(second.changes_before).not.toContain("Result of the first action");
   });
 
-  // --- A capture Ayme makes for itself must not consume the change ---
+  // --- A capture ayme makes for itself must not consume the change ---
 
   it("keeps the Change Record complete when the inspector captures in between", async () => {
     document.body.innerHTML = '<button id="act">Act</button>';

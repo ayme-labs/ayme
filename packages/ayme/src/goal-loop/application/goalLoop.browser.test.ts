@@ -2394,7 +2394,7 @@ describe("Goal Loop goal in Chromium", () => {
     expect(refs).toContain(buttonRef);
     for (const ref of wrapperRefs) expect(refs).not.toContain(ref);
     // Block leaves: the capture keeps each as a generic of its own, unlike
-    // inline text, which it folds into the parent before Ayme sees it.
+    // inline text, which it folds into the parent before ayme sees it.
     const regions: unknown[][] = [];
     const walk = (node: unknown) => {
       if (Array.isArray(node)) return node.forEach(walk);

@@ -1,6 +1,6 @@
-# Page Objects on a page without Ayme
+# Page Objects on a page without ayme
 
-How to let `ayme mcp` serve your Page Objects to a page whose app doesn't ship Ayme, through Playwright MCP or Playwright CLI.
+How to let `ayme mcp` serve your Page Objects to a page whose app doesn't ship ayme, through Playwright MCP or Playwright CLI.
 
 > **Experimental:** this may change in any release. See [Experimental APIs](../reference/experimental-apis.md).
 
@@ -46,4 +46,4 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme 
 - After an edit, `ayme mcp` rebuilds and the open page swaps in the new Page Objects. A failed build is logged to `ayme mcp`'s standard error, and the page keeps the last good one.
 - Chromium-based browsers only.
 - Navigating to another origin needs a new `ayme_connect` link.
-- On a page whose app already ships Ayme, the app's own tools win over the served ones.
+- On a page whose app already ships ayme, the app's own tools win over the served ones.

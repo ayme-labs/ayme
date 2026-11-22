@@ -155,7 +155,7 @@ describe("POM root reachability", () => {
 
   // Playwright Lite reads a box-less element's visibility from its light
   // children alone, so a root whose content is only in its shadow tree is not
-  // visible to the click; Ayme agrees rather than offering what cannot be acted on.
+  // visible to the click; ayme agrees rather than offering what cannot be acted on.
   it("reads a display-contents root with only shadow content as absent, as the click does", async () => {
     document.body.innerHTML =
       '<section id="root" style="display:contents"></section>';

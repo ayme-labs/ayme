@@ -32,7 +32,7 @@ export function mountExternalInspector({
 
 /** What a window says once its server is gone for good. */
 export const SERVER_LOST_NOTICE =
-  "This Inspector lost its Ayme MCP server. Ask the agent to open the Inspector again.";
+  "This Inspector lost its ayme MCP server. Ask the agent to open the Inspector again.";
 
 /**
  * Says, in place of the Inspector, that the server this window read through

@@ -4,7 +4,7 @@ How to give the assistant inside your app, such as an onboarding helper, your Pa
 
 ## Your Page Objects are its tools
 
-An assistant in your app needs two things: actions it can take on the page, and a way to see what the page shows. Your Page Object Models already provide the first, and Ayme provides the second. The assistant works on the same page the user is looking at, so the user watches it act.
+An assistant in your app needs two things: actions it can take on the page, and a way to see what the page shows. Your Page Object Models already provide the first, and ayme provides the second. The assistant works on the same page the user is looking at, so the user watches it act.
 
 ```tsx
 // OnboardingAssistant.tsx
@@ -34,7 +34,7 @@ export function OnboardingAssistant() {
 
 ## Hand it every tool
 
-To give the assistant every tool Ayme knows instead of picking a few, read them from `ayme.tools`:
+To give the assistant every tool ayme knows instead of picking a few, read them from `ayme.tools`:
 
 ```ts
 const tools = ayme.tools.list().filter(({ available }) => available);
@@ -58,7 +58,7 @@ The list holds `snapshot`, your Page Object Tools, the Browser Tools and your [C
 }
 ```
 
-- Give the assistant `name`, `inputSchema`, and `agentDescription` when the tool has one. `agentDescription` is the text Ayme gives coding agents.
+- Give the assistant `name`, `inputSchema`, and `agentDescription` when the tool has one. `agentDescription` is the text ayme gives coding agents.
 - `createProject` has no description and returns no Page Object, so it has no `agentDescription`. If your framework requires a description, use the tool's name.
 - An action that returns another Page Object gets one that names it. `ProjectsPage.openNewProjectDialog` from [Page Object Models](ayme-page-objects.md) has `agentDescription: "Shows NewProjectDialog."` and `returnPoms: ["NewProjectDialog"]`.
 - To write your own wording, read `authorDescription`, which holds what the author wrote, and `returnPoms`.

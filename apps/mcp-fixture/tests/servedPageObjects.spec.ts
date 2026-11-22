@@ -55,14 +55,14 @@ const withReadTitle = (source: string) =>
   source.replace(
     "  async readNote() {",
     `  async readTitle() {
-    return "Without Ayme";
+    return "Without ayme";
   }
 
   @ayme.action({ description: "Read the page's note." })
   async readNote() {`
   );
 
-test("a page without Ayme gets the Page Objects ayme mcp serves through the init script it writes", async ({
+test("a page without ayme gets the Page Objects ayme mcp serves through the init script it writes", async ({
   context,
   page,
   baseURL,
@@ -87,13 +87,13 @@ test("a page without Ayme gets the Page Objects ayme mcp serves through the init
 
     const { text, isError } = await agent.call(PLAIN_PAGE_TOOL);
     expect(isError, text).toBe(false);
-    expect(text).toContain("does not run Ayme");
+    expect(text).toContain("does not run ayme");
   } finally {
     await agent.close();
   }
 });
 
-test("an app that ships Ayme keeps its own runtime, and ayme mcp's init script starts no second one", async ({
+test("an app that ships ayme keeps its own runtime, and ayme mcp's init script starts no second one", async ({
   context,
   page,
   baseURL,
@@ -199,7 +199,7 @@ test("after an edit to a Page Object the entry imports, the open page swaps in t
     ).toBe("edit");
     const { text, isError } = await agent.call("PlainPage.readTitle");
     expect(isError, text).toBe(false);
-    expect(text).toContain("Without Ayme");
+    expect(text).toContain("Without ayme");
   } finally {
     await agent.close();
   }
@@ -236,7 +236,7 @@ test("a Page Object that fails to compile is reported with its file, and the pag
       );
     // The one error, where it is in the file as written.
     expect(agent.log).toMatch(/pom[\\/]PlainPage\.ts:22:1: '}' expected\.\n/);
-    expect(agent.log).not.toContain("Could not transpile Ayme POM");
+    expect(agent.log).not.toContain("Could not transpile ayme POM");
     expect(agent.log.match(/PlainPage\.ts:\d+:\d+: /g)).toHaveLength(1);
     await page.reload();
 
@@ -514,7 +514,7 @@ test("the Inspector ayme_inspect links to shows the served Page Objects of the p
 
     const run = inspector.runs.latest(PLAIN_PAGE_TOOL);
     await expect.poll(() => run.status()).toBe("Succeeded");
-    expect(await run.resultText()).toContain("does not run Ayme");
+    expect(await run.resultText()).toContain("does not run ayme");
     // The init script leaves ayme mcp's own pages alone.
     expect(servedToWindow).toEqual([]);
   } finally {

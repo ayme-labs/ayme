@@ -17,7 +17,7 @@ export type LiveTool = {
   /**
    * For a Peek tool: where its Peek lives. `node` is an App Process's, a
    * Node process of the app paired beside the page, which the panel runs
-   * through the agent's Ayme MCP server. The page's otherwise.
+   * through the agent's ayme MCP server. The page's otherwise.
    */
   side?: PeekSide;
 };

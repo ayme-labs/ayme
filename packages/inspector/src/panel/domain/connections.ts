@@ -161,7 +161,7 @@ export function webMcpRow(
       return {
         tone: "off",
         label: "Stopped",
-        lines: ["No Ayme runtime session is running, so nothing is published."],
+        lines: ["No ayme runtime session is running, so nothing is published."],
       };
   }
 }

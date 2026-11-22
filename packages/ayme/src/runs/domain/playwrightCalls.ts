@@ -8,7 +8,7 @@ export type CallSubject = "locator" | "page" | "keyboard" | "mouse";
  * the runtime's Page: Interaction recording, and the Inspector's demo
  * feedback.
  * - `none` reads, waits, builds a locator, configures or scrolls; it runs
- *   as it is. A scroll is Ayme's own before every click it measures
+ *   as it is. A scroll is ayme's own before every click it measures
  *   (ADR-0041), and the click after it is paced.
  * - `navigate` is one of the Page's navigations: it acts on no element
  *   and is not an Interaction.

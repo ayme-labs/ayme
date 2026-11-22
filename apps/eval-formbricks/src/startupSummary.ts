@@ -130,7 +130,7 @@ export function buildStartupSummary(input: {
     ["Claude Code versions", versions.claudeCode],
     ["models", versions.modelUsed],
     ["thinking efforts", versions.effort],
-    ["Ayme commits", versions.aymeCommit],
+    ["ayme commits", versions.aymeCommit],
     ["timeouts", timeoutSeconds.map(String)],
   ] as const;
   for (const [label, values] of mixed)
@@ -182,7 +182,7 @@ export function renderStartupSummaryMarkdown(summary: StartupSummary) {
     `- Date: ${summary.date}`,
     `- Claude Code: ${list(versions.claudeCode)}`,
     `- Model: ${list(versions.modelUsed)} (requested ${list(versions.modelRequested)}, effort ${list(versions.effort)})`,
-    `- Ayme commit: ${list(versions.aymeCommit)}`,
+    `- ayme commit: ${list(versions.aymeCommit)}`,
   ];
   if (summary.notes.length > 0)
     lines.push("", "## Notes", "", ...summary.notes.map((note) => `- ${note}`));

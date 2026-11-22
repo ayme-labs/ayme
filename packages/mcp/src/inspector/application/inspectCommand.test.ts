@@ -42,6 +42,6 @@ describe("inspectCommand", () => {
     const result = await inspectCommand({ installed, servers: async () => [] });
 
     expect(result.ok).toBe(false);
-    expect(result.text).toContain("No Ayme MCP server is running");
+    expect(result.text).toContain("No ayme MCP server is running");
   });
 });

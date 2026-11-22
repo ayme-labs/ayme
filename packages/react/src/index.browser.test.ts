@@ -545,7 +545,7 @@ it("C3: rejects a second owner while the first is active, and accepts a new one 
   await act(() => first.render(h(AymeProvider, { pageFactory })));
   await expect(
     act(async () => root().render(h(AymeProvider, { pageFactory })))
-  ).rejects.toThrow("The Ayme runtime already has an active owner.");
+  ).rejects.toThrow("The ayme runtime already has an active owner.");
   await act(() => first.unmount());
   roots.splice(roots.indexOf(first), 1);
   await act(() => root().render(h(AymeProvider, { pageFactory })));
@@ -592,7 +592,7 @@ it("C8: rejects a Page Object Model the compiler did not reach", async () => {
   }
   await expect(
     act(async () => root().render(h(AymeProvider, { pageFactory }, h(Child))))
-  ).rejects.toThrow("Uncompiled has no compiler-derived Ayme metadata.");
+  ).rejects.toThrow("Uncompiled has no compiler-derived ayme metadata.");
 });
 
 // usePeek seam: the hook's contract with `ayme.peek`, which it adapts

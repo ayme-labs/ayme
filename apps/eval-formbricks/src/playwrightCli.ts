@@ -51,7 +51,7 @@ export function shimScript() {
  * session starts, so the setup and the agent share them. The session is named
  * after the run, so the plain command reaches it. The profile is the one the
  * harness prepared, even if the agent restarts the browser. The page's WebMCP tools stay
- * off: the lab app registers Ayme's, and this arm is the CLI alone.
+ * off: the lab app registers ayme's, and this arm is the CLI alone.
  */
 export function playwrightCliEnvironment(
   context: Pick<ArmContext, "runId" | "runDir" | "profileDir" | "outputDir">,

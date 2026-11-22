@@ -533,7 +533,7 @@ export function createPomRegistry(
   function claim(): () => void {
     if (owner)
       throw new RuntimeStateError(
-        "The Ayme runtime already has an active owner.",
+        "The ayme runtime already has an active owner.",
         { code: "active-owner" }
       );
     resetRegisteredPoms();

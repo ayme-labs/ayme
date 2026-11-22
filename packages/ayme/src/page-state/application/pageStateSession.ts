@@ -96,7 +96,7 @@ export class PageStateSession {
   /**
    * `history`: every capture is an observation in it; the observation a
    * cursor stands at is the "before" of its next Change Record, and its
-   * identity ledger keeps ref continuity. Captures Ayme makes for itself
+   * identity ledger keeps ref continuity. Captures ayme makes for itself
    * move no cursor.
    *
    * `restart`: a host whose Page outlives its documents, which a full load
@@ -193,7 +193,7 @@ export class PageStateSession {
    *
    * A Caller's state is what it received: `snapshot` and the Settled Page of
    * its previous action; each step's tree for the Goal Loop's fork. Captures
-   * Ayme makes for itself move no cursor: the before capture, taken right
+   * ayme makes for itself move no cursor: the before capture, taken right
    * before `perform` and recorded only when the page differs from the latest
    * observation, is one. A change that happened on its own since the Caller
    * last read the page, or by another Caller, is therefore in
@@ -577,7 +577,7 @@ export class PageStateSession {
 
   /** Resolve refs through the session's identity ledger and a fresh capture. */
   async resolveRefs(refs: readonly AriaRef[]): Promise<RefResolution[]> {
-    // A capture Ayme makes for itself: the observation session's identity
+    // A capture ayme makes for itself: the observation session's identity
     // ledger carries ref identities forward through it without it becoming
     // the state a caller received.
     // The ledger is read at the latest recorded observation, which may be a

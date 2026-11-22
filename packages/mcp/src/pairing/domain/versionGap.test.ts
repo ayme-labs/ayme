@@ -9,7 +9,7 @@ it("names both versions when the page speaks another pairing contract than the s
       server: { version: "0.4.0", contract: 2 },
     })
   ).toBe(
-    "Ayme 0.2.0 on the page and the Ayme MCP server 0.4.0 speak different pairing contracts."
+    "ayme 0.2.0 on the page and the ayme MCP server 0.4.0 speak different pairing contracts."
   );
 });
 
@@ -29,6 +29,6 @@ it("counts a page from before the contract was named as speaking the first one",
   expect(
     versionGap({ page: {}, server: { version: "0.4.0", contract: 2 } })
   ).toBe(
-    "An earlier Ayme on the page and the Ayme MCP server 0.4.0 speak different pairing contracts."
+    "An earlier ayme on the page and the ayme MCP server 0.4.0 speak different pairing contracts."
   );
 });

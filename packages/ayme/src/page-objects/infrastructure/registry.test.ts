@@ -186,7 +186,7 @@ describe("live Page Object registry", () => {
 
     expect(first.page).toBe(firstPage);
     expect(() => createAymeRuntime({} as Page)).toThrow(
-      "The Ayme runtime already has an active owner."
+      "The ayme runtime already has an active owner."
     );
     expect(() => createAymeRuntime({} as Page)).toThrow(
       expect.objectContaining({
@@ -216,7 +216,7 @@ describe("live Page Object registry", () => {
     class SignInPage {}
     const uncompiled = expect.objectContaining({
       name: "RuntimeStateError",
-      message: "SignInPage has no compiler-derived Ayme metadata.",
+      message: "SignInPage has no compiler-derived ayme metadata.",
     });
 
     expect(() => registry.constructPageObject(SignInPage, {} as Page)).toThrow(
@@ -231,7 +231,7 @@ describe("live Page Object registry", () => {
     const registry = await import("./registry");
     const Anonymous = (() => class {})();
     const message =
-      "An anonymous page object class has no compiler-derived Ayme metadata.";
+      "An anonymous page object class has no compiler-derived ayme metadata.";
 
     expect(Anonymous.name).toBe("");
     expect(() => registry.constructPageObject(Anonymous, {} as Page)).toThrow(
@@ -253,7 +253,7 @@ describe("live Page Object registry", () => {
       expect.objectContaining({
         name: "RuntimeStateError",
         message:
-          "An anonymous page object class has no compiler-derived Ayme metadata.",
+          "An anonymous page object class has no compiler-derived ayme metadata.",
       })
     );
   });
@@ -736,7 +736,7 @@ describe("live Page Object registry", () => {
         name: "RuntimeStateError",
         code: "same-named-class",
         message:
-          'Cannot register the Page Object "UsersPage": it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts. Ayme tells the classes of Page Objects apart by name.',
+          'Cannot register the Page Object "UsersPage": it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts. ayme tells the classes of Page Objects apart by name.',
       })
     );
     expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
@@ -780,7 +780,7 @@ describe("live Page Object registry", () => {
       expect.objectContaining({
         code: "same-named-class",
         message:
-          'Cannot register the Page Object "Row": it reaches two different classes named "Row". Ayme tells the classes of Page Objects apart by name.',
+          'Cannot register the Page Object "Row": it reaches two different classes named "Row". ayme tells the classes of Page Objects apart by name.',
       })
     );
     expect(registry.listRegisteredPoms()).toEqual([]);

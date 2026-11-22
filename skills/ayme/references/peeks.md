@@ -50,7 +50,7 @@ Process's. Follow the linked README for the exact call.
 | Outside components | `ayme.peek(read, name, id?)`, such as for a store ([`@ayme-dev/ayme`](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#peek-at-app-state)) |
 | The app's server   | `ayme.peek` on the session the server starts ([In Node](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#in-node))                    |
 
-When the server already starts Ayme, add the Peek to that session. Don't
+When the server already starts ayme, add the Peek to that session. Don't
 start a second one. A server process has one App Process, started once in its
 entry point, as a document has one
 [runtime owner](runtime-integration.md#keep-one-runtime-owner-at-the-root).

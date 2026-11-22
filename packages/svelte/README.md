@@ -1,6 +1,6 @@
 # @ayme-dev/svelte
 
-The Svelte package for [Ayme](https://github.com/ayme-labs/ayme): it starts Ayme in the root component of your Svelte or SvelteKit app and gives components their Page Objects.
+The Svelte package for [ayme](https://github.com/ayme-labs/ayme): it starts ayme in the root component of your Svelte or SvelteKit app and gives components their Page Objects.
 
 ## Install
 
@@ -13,7 +13,7 @@ Add `ayme()` from `@ayme-dev/unplugin-ayme/vite` to your Vite plugins, after `sv
 
 ## Setup
 
-Start Ayme in the root `+layout.svelte`, or `App.svelte` without SvelteKit:
+Start ayme in the root `+layout.svelte`, or `App.svelte` without SvelteKit:
 
 ```svelte
 <script lang="ts">
@@ -48,7 +48,7 @@ Call it during component initialisation, beneath a `useAyme` owner. It takes a g
 
 - [Quickstart: Svelte](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/quickstart-svelte.md): from an empty app to your first Page Object Tool.
 - [Svelte page](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/svelte.md): SvelteKit and plain Svelte setup, root ownership, composables, server rendering, limits and API.
-- [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
+- [ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 
 ## Supported versions
 

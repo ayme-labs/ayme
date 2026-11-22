@@ -140,7 +140,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         // belongs to the client one, which the option decides about.
         if (!config.build.ssr) config.logger.info(compiler.includeLine);
       },
-      // A build without Ayme resolves the runtime's two entries and the
+      // A build without ayme resolves the runtime's two entries and the
       // framework packages to their absent entries, in the client output
       // only: a server bundle keeps Vite's own emit, as the load hook below
       // leaves server modules alone.
@@ -152,7 +152,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         if (this.environment.config.consumer !== "client") return null;
         return this.resolve(absent, importer, { skipSelf: true });
       },
-      // A build without Ayme compiles each Page Object Model to its stand-in
+      // A build without ayme compiles each Page Object Model to its stand-in
       // while loading, not while transforming: Rollup and Rolldown keep a
       // module's loaded code as the source of its source map, so a stand-in
       // made by a transform would ship the model it replaced, locators and
@@ -176,7 +176,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         filter: { id: /\.[cm]?[jt]sx?$/ },
         handler(code, id, transformOptions) {
           // The stand-in loaded above carries no marker, and nothing else is
-          // compiled in a build without Ayme.
+          // compiled in a build without ayme.
           if (!include) return null;
           if (transformOptions?.ssr) return null;
           const transformed = transformPom(code, id);
@@ -403,7 +403,7 @@ async function loadPlaywrightConfig(
   const playwrightVersion = readPackageVersion(playwrightPackagePath);
   if (!supportsConfigLoader(playwrightVersion))
     throw new Error(
-      `Unsupported Playwright config loader version ${playwrightVersion}. Ayme supports ${CONFIG_LOADER_RANGE}.`
+      `Unsupported Playwright config loader version ${playwrightVersion}. ayme supports ${CONFIG_LOADER_RANGE}.`
     );
 
   // Playwright does not expose its config loader publicly. Keep this one
@@ -414,7 +414,7 @@ async function loadPlaywrightConfig(
   );
   if (!existsSync(loaderPath))
     throw new Error(
-      `Unsupported Playwright config loader: ${loaderPath} does not exist. Ayme supports ${CONFIG_LOADER_RANGE}.`
+      `Unsupported Playwright config loader: ${loaderPath} does not exist. ayme supports ${CONFIG_LOADER_RANGE}.`
     );
 
   let loaderModule: PlaywrightLoaderModule;

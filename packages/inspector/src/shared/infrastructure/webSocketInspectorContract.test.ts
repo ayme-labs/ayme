@@ -140,7 +140,7 @@ describe("webSocketInspectorContract", () => {
     const [{ id }] = socket().sent;
     socket().receive({
       id,
-      error: "No page is connected to this Ayme MCP server.",
+      error: "No page is connected to this ayme MCP server.",
     });
 
     await expect(asked).rejects.toThrow("No page is connected");

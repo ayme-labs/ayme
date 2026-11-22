@@ -1,5 +1,5 @@
 /**
- * What a build without Ayme resolves `@ayme-dev/svelte` to: the names of the
+ * What a build without ayme resolves `@ayme-dev/svelte` to: the names of the
  * index with their types, over the runtime's absent entry, so a component
  * tree renders as with the real package. The owner's session is inert and
  * the consumers return its values; nothing here starts, stops or checks for
@@ -17,7 +17,7 @@ export type {
   UseAymeResult,
 } from "./index";
 
-const runtimeKey = Symbol("Ayme runtime");
+const runtimeKey = Symbol("ayme runtime");
 
 /**
  * Call during component initialisation. Beneath an owner, returns the owner's

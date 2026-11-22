@@ -1,4 +1,4 @@
-// The entry a build without Ayme resolves `@ayme-dev/svelte` to: the names of
+// The entry a build without ayme resolves `@ayme-dev/svelte` to: the names of
 // the index, backed by the runtime's absent entry, so a component tree
 // renders as it does with the real package. The fixture components import the
 // index, which this file points at the absent entry.
@@ -35,7 +35,7 @@ import {
 class Model {
   constructor() {
     throw new Error(
-      "Page Objects are not constructed in a build without Ayme."
+      "Page Objects are not constructed in a build without ayme."
     );
   }
 }
@@ -96,6 +96,6 @@ it("passes the owner's options to the absent runtime, which logs the publication
   const logged = vi.spyOn(console, "error").mockImplementation(() => {});
   mount(Owner, { options: { webMCP: { enabled: true } } });
   expect(logged).toHaveBeenCalledWith(
-    "Ayme was removed from this build, but setup enables WebMCP publication."
+    "ayme was removed from this build, but setup enables WebMCP publication."
   );
 });

@@ -1,10 +1,10 @@
 # Svelte
 
-Everything about Ayme in a Svelte or SvelteKit app: setup, starting Ayme in the root component, root ownership, composables, server rendering, limits and the API of `@ayme-dev/svelte`.
+Everything about ayme in a Svelte or SvelteKit app: setup, starting ayme in the root component, root ownership, composables, server rendering, limits and the API of `@ayme-dev/svelte`.
 
 ## Setup
 
-Install Ayme, the Svelte package and the build plugin, with the Inspector and the Agent Connection for development, as the [Svelte quickstart](../start/quickstart-svelte.md) does:
+Install ayme, the Svelte package and the build plugin, with the Inspector and the Agent Connection for development, as the [Svelte quickstart](../start/quickstart-svelte.md) does:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/svelte
@@ -24,7 +24,7 @@ export default defineConfig(({ command }) => ({
 }));
 ```
 
-`include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
+`include` keeps ayme in the dev server and out of `vite build`; [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
 Enable `experimentalDecorators` in the tsconfig, keeping SvelteKit's generated base:
 
@@ -38,7 +38,7 @@ Enable `experimentalDecorators` in the tsconfig, keeping SvelteKit's generated b
 
 On SvelteKit 3, which reads its configuration from the `sveltekit()` call, extend `$app/tsconfig` instead and import Page Object Models with their `.ts` extension, such as `#lib/pom/ProjectsPage.ts`. Keep `svelte.config.js` and its adapter as they are. Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows, in `.ts` modules.
 
-## Start Ayme at the root
+## Start ayme at the root
 
 Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without SvelteKit, with the Inspector and the Agent Connection in development:
 
@@ -178,9 +178,9 @@ The [SvelteKit example](https://github.com/ayme-labs/ayme/blob/main/apps/example
 
 ## Bundle size
 
-Ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in one chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
+ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in one chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
 
-A build includes Ayme only with the plugin's `include: true`. The config above keeps Ayme in the dev server and out of `vite build`; see [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
+A build includes ayme only with the plugin's `include: true`. The config above keeps ayme in the dev server and out of `vite build`; see [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
 
 ## Limits
 

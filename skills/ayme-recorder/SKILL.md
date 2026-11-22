@@ -1,11 +1,11 @@
 ---
 name: ayme-recorder
-description: Record a user flow with the Ayme recorder while the user drives their app, then turn the Recording Package into Playwright page objects and a test, or a parameterised automation of the flow.
+description: Record a user flow with the ayme recorder while the user drives their app, then turn the Recording Package into Playwright page objects and a test, or a parameterised automation of the flow.
 ---
 
-# Ayme recorder
+# ayme recorder
 
-The Ayme recorder listens while the user drives their app in a browser, and
+The ayme recorder listens while the user drives their app in a browser, and
 writes what it saw to a Recording Package: the page structure at each visit,
 what changed and every interaction.
 

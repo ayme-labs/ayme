@@ -2,7 +2,7 @@ shadcn/ui
 Source: https://github.com/shadcn-ui/ui
 
 The components in src/components were added with the shadcn CLI (new-york style)
-and adapted by Ayme, and the cn() helper in src/lib/utils.ts comes from the same
+and adapted by ayme, and the cn() helper in src/lib/utils.ts comes from the same
 project. The upstream license follows unchanged.
 
 MIT License

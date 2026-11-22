@@ -10,7 +10,7 @@ import {
 // Runtime object seam in a Node process of the app (an App Process): no
 // window and no document. `start()` claims the process and hands `ayme` to
 // the App Process's side of the Agent Connection, which this test records in
-// place of the real one, which would scan for an agent's Ayme MCP server.
+// place of the real one, which would scan for an agent's ayme MCP server.
 
 const processConnections = vi.hoisted(
   () =>
@@ -54,7 +54,7 @@ function started(options: AymeOptions = { agentConnection: true }) {
 
 const activeOwner = expect.objectContaining({
   name: "RuntimeStateError",
-  message: "The Ayme runtime already has an active owner.",
+  message: "The ayme runtime already has an active owner.",
   code: "active-owner",
 });
 
@@ -74,7 +74,7 @@ describe("createAyme in an App Process", () => {
     expect(processConnections).toHaveLength(1);
     const { tools } = processConnections[0]!.ayme;
     expect(tools.run).toBe(ayme.tools.run);
-    // The connection lists each tool as Ayme MCP does: by its Agent
+    // The connection lists each tool as ayme MCP does: by its Agent
     // Description, before and after a change.
     const heard: unknown[] = [];
     cleanups.push(tools.subscribe((list) => heard.push(list)));
@@ -121,10 +121,10 @@ describe("createAyme in an App Process", () => {
     });
   });
 
-  it("answers with the newest read a re-evaluated module adds, from its own copy of Ayme", async () => {
+  it("answers with the newest read a re-evaluated module adds, from its own copy of ayme", async () => {
     // As in `next dev`: the server's entry starts the App Process, and a
     // module request code imports adds the Peek from another bundle's copy
-    // of Ayme, through a session it never starts. After an edit, the dev
+    // of ayme, through a session it never starts. After an edit, the dev
     // server evaluates that module again, with fresh code.
     const appProcess = started();
     const heard: string[][] = [];

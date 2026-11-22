@@ -136,7 +136,7 @@ describe("Runs", () => {
     );
   });
 
-  it("marks each run with its Caller: an icon for Ayme's own, the name for any other", async () => {
+  it("marks each run with its Caller: an icon for ayme's own, the name for any other", async () => {
     renderRuns({
       runs: [
         aRun({ by: "inspector" }),
@@ -155,7 +155,7 @@ describe("Runs", () => {
       { icon: "Run by you from the Inspector" },
       { icon: "Run by the app" },
       { icon: "Run by an agent through WebMCP" },
-      { icon: "Run by an agent through Ayme MCP" },
+      { icon: "Run by an agent through ayme MCP" },
       { text: "support-assistant" },
     ]);
   });
@@ -262,7 +262,7 @@ describe("Runs", () => {
     expect(await runsView.run(0).earlierPage.count()).toBe(0);
     expect(await runsView.run(1).earlierPage.count()).toBe(1);
     expect(await runsView.run(1).caller()).toEqual({
-      icon: "Run by an agent through Ayme MCP",
+      icon: "Run by an agent through ayme MCP",
     });
   });
 

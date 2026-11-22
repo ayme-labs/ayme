@@ -233,7 +233,7 @@ it("in watch mode, rebuilds after an edit to a Page Object Model module that its
   }
 }, 30_000);
 
-it("resolves the runtime to its absent entry and compiles stand-ins in a build without Ayme, the default", async () => {
+it("resolves the runtime to its absent entry and compiles stand-ins in a build without ayme, the default", async () => {
   const result = await build({
     absWorkingDir: fixtures,
     entryPoints: ["main.ts"],
@@ -254,7 +254,7 @@ it("resolves the runtime to its absent entry and compiles stand-ins in a build w
 
   expect(inputs.some((input) => input.endsWith("/dist/absent.mjs"))).toBe(true);
   expect(inputs.some((input) => input.endsWith("/dist/index.mjs"))).toBe(false);
-  expect(code).toContain("Ayme was removed from this build.");
+  expect(code).toContain("ayme was removed from this build.");
   expect(code).toMatch(
     /absentPageObject\("CounterPage", \{ "actions": \["increment", "setMode"\]/
   );
@@ -263,7 +263,7 @@ it("resolves the runtime to its absent entry and compiles stand-ins in a build w
   expect(code).not.toContain("Waiting for the WebMCP driver.");
 }, 30_000);
 
-it("resolves the framework packages to their absent entries in a build without Ayme", async () => {
+it("resolves the framework packages to their absent entries in a build without ayme", async () => {
   const frameworks = ["vue", "react", "svelte", "angular"];
   // Stand-ins for the installed packages: each entry names itself.
   const root = await workspace({
@@ -508,20 +508,20 @@ it.each([
   [
     "include unset",
     {},
-    "[ayme] Ayme is not in this build: include is not set.",
+    "[ayme] ayme is not in this build: include is not set.",
   ],
   [
     "include false",
     { include: false },
-    "[ayme] Ayme is not in this build: include is false.",
+    "[ayme] ayme is not in this build: include is false.",
   ],
   [
     "include true",
     { include: true },
-    "[ayme] Ayme is in this build: include is true.",
+    "[ayme] ayme is in this build: include is true.",
   ],
 ])(
-  "prints once per build whether Ayme is in it, with %s",
+  "prints once per build whether ayme is in it, with %s",
   async (_, options, line) => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     try {
@@ -542,7 +542,7 @@ it.each([
       expect(
         info.mock.calls
           .map(([message]) => String(message))
-          .filter((message) => message.startsWith("[ayme] Ayme"))
+          .filter((message) => message.startsWith("[ayme] ayme"))
       ).toEqual([line]);
     } finally {
       info.mockRestore();

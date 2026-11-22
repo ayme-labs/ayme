@@ -25,7 +25,7 @@ const connectedPageTools: StubTool[] = [
   {
     name: "ayme_connect",
     description:
-      "Returns a link that connects a browser tab to this Ayme MCP server.",
+      "Returns a link that connects a browser tab to this ayme MCP server.",
   },
   {
     name: "ayme_list_tools",
@@ -38,7 +38,7 @@ const connectedPageTools: StubTool[] = [
   {
     name: "snapshot",
     description:
-      "Return the current live structural page state together with compact POM capability definitions known to Ayme.",
+      "Return the current live structural page state together with compact POM capability definitions known to ayme.",
   },
   { name: "click", description: "Click one element." },
   {
@@ -71,7 +71,7 @@ const goalTool: StubTool = {
 };
 
 const driveFraming =
-  "Get ready to drive the web page that is already open and connected through Ayme.";
+  "Get ready to drive the web page that is already open and connected through ayme.";
 
 /** The framing says the page is connected and its tools are listed, so browser setup has no part in it. */
 const notForDriving = [
@@ -108,7 +108,7 @@ export const startupScenarios: Record<string, StartupScenario> = {
   },
   "set-up-ayme": {
     id: "set-up-ayme",
-    framing: "Get ready to set up Ayme in this project.",
+    framing: "Get ready to set up ayme in this project.",
     expected: ["references/onboarding.md", "references/runtime-integration.md"],
     allowed: [
       "references/page-object-design.md",

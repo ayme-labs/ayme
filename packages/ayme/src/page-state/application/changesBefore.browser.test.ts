@@ -313,7 +313,7 @@ describe("The two parts of a Change Record, in Chromium", () => {
     expect(result.page_changed).toBe(true);
   });
 
-  it("tells the model how an action result reports changes on Ayme's Browser Tools only", async () => {
+  it("tells the model how an action result reports changes on ayme's Browser Tools only", async () => {
     const highlight: CustomTool = {
       name: "highlight_element",
       description: "Highlight one element on the page.",

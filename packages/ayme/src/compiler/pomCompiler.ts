@@ -25,7 +25,7 @@ export type PomCompilerOptions = {
    */
   tsconfigPath?: string;
   /**
-   * Whether the build includes Ayme. Defaults to false: the runtime's entries
+   * Whether the build includes ayme. Defaults to false: the runtime's entries
    * then resolve to its absent entry and each Page Object Model compiles to a
    * stand-in. A value that is not a boolean throws a `TypeError`.
    */
@@ -68,7 +68,7 @@ export type PomCompileOptions = {
  * when its inputs may have changed (ADR-0036).
  */
 export type PomCompiler = {
-  /** The one line a build prints saying whether Ayme is in it and why. */
+  /** The one line a build prints saying whether ayme is in it and why. */
   readonly includeLine: string;
   /** The bare specifier a compiled module imports. */
   readonly injectedImport: string;
@@ -84,7 +84,7 @@ export type PomCompiler = {
   /** Any module transpiled to JavaScript, as `compile` emits it. */
   transpile(fileName: string, source: string): string;
   /**
-   * What a build without Ayme resolves `specifier` to, or undefined when the
+   * What a build without ayme resolves `specifier` to, or undefined when the
    * specifier does not leave such a build.
    */
   absentEntry(specifier: string): string | undefined;

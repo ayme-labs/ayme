@@ -40,7 +40,7 @@ while rendering on the server. Real instances are constructed in browser setup.
 Custom browser Pages must also be created only in the browser.
 
 The Vite plugin skips the POM source transform for SSR, while retaining shared
-Playwright build settings. The example transpiles the Ayme
+Playwright build settings. The example transpiles the ayme
 runtime packages in both graphs so those settings reach server-rendered code.
 It uses built package exports, not workspace source aliases. A separate
 `tsconfig.pom.json` gives the compiler explicit POM and test roots instead of
@@ -54,11 +54,11 @@ publication becomes unavailable; local POM actions remain usable.
 
 The counter adds the Peek `counter` with `usePeek`, read as `peek.counter`.
 In development, the Nitro server plugin `server/plugins/ayme.ts` starts an
-App Process: the server pairs with the agent's Ayme MCP server beside the tab
+App Process: the server pairs with the agent's ayme MCP server beside the tab
 and offers the Peek `renders`, how many pages it rendered, read as
 `peek.node.renders`. The plugin does nothing in a production build. It looks
 for the agent's server on the port range, or only on the port in
-`AYME_EXAMPLE_AGENT_PORT` when set, which the e2e tests set; Ayme itself
+`AYME_EXAMPLE_AGENT_PORT` when set, which the e2e tests set; ayme itself
 reads no environment variable. `usePeek` registers after mount, in the
 browser, so server rendering adds no `counter` instance to the App Process.
 
@@ -82,7 +82,7 @@ the CSR regression test.
 
 The fixture imports only the public Vue integration. The E2E tests observe the
 compiled POM metadata and the registration lifetime through the tool schemas a
-WebMCP driver fixture receives, not through Ayme's internal registry.
+WebMCP driver fixture receives, not through ayme's internal registry.
 
 ## Limits
 

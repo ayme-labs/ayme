@@ -1,7 +1,7 @@
 # Browser setup
 
 Set up the connection as [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md)
-describes: `agentConnection` on behind the app's dev flag, and Ayme's MCP
+describes: `agentConnection` on behind the app's dev flag, and ayme's MCP
 server registered in your agent, pinned to the project's `@ayme-dev/mcp`
 version. Diagnose with the "The agent cannot reach the page" section of
 [Troubleshooting](https://github.com/ayme-labs/ayme/blob/main/docs/guide/troubleshooting.md).
@@ -28,7 +28,7 @@ resolve or an unavailable tool's reason, read [Page tools](page-tools.md).
 - When a tool answers that no page reconnected in its place, the page the tab
   loaded did not pair within a few seconds. A slow page of the app pairs
   later by itself, and its tools come back with a tool list change. A page
-  that doesn't run Ayme's Agent Connection and loads no
+  that doesn't run ayme's Agent Connection and loads no
   [served Page Objects](#a-page-that-doesnt-ship-ayme), such as another site,
   never pairs. `ayme_connect` can't pair it either. Go back to a page of the
   app in that tab, with your browser tool or by asking the user. Its tools
@@ -53,17 +53,17 @@ resolve or an unavailable tool's reason, read [Page tools](page-tools.md).
   can keep its earlier tools after a refused hot update. Once the build
   succeeds again, `reload` that page before relying on its tools. Until then
   it may still run the Page Objects from before the refusal.
-- Check the connection end to end: invoke the exposed action through Ayme's
-  MCP server and confirm its visible effect in the app. A direct Ayme call or
+- Check the connection end to end: invoke the exposed action through ayme's
+  MCP server and confirm its visible effect in the app. A direct ayme call or
   a page-state read alone does not check the connection.
 - When Chrome asks to allow local network access, ask the user to allow it,
   then reload.
 
-## A page that doesn't ship Ayme
+## A page that doesn't ship ayme
 
 Experimental. With Playwright MCP or Playwright CLI, `ayme mcp` can serve the
-project's Page Objects to a page that doesn't ship Ayme. Set it up as
-[Page Objects on a page without Ayme](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-objects-without-ayme.md)
+project's Page Objects to a page that doesn't ship ayme. Set it up as
+[Page Objects on a page without ayme](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-objects-without-ayme.md)
 describes. When it fails:
 
 - The browser tool fails with `Init script file does not exist`: start

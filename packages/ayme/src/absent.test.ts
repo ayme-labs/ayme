@@ -11,16 +11,16 @@ import {
 } from "./absent";
 import * as absent from "./absent";
 
-// The entry a build without Ayme resolves `@ayme-dev/ayme` to: inert, and
+// The entry a build without ayme resolves `@ayme-dev/ayme` to: inert, and
 // every use of what the build left out fails naming it.
 
 const removed = expect.objectContaining({
   name: "RuntimeStateError",
-  message: expect.stringContaining("Ayme was removed from this build."),
+  message: expect.stringContaining("ayme was removed from this build."),
 });
 
 describe("the absent entry's surface", () => {
-  it("has every value the index exports, so an app's import builds without Ayme", () => {
+  it("has every value the index exports, so an app's import builds without ayme", () => {
     const missing = Object.keys(index).filter((name) => !(name in absent));
     expect(missing).toEqual([]);
   });
@@ -43,7 +43,7 @@ describe("the absent session", () => {
     expect(getStartedAyme()).toBeUndefined();
     expect(session.webMCP.publicationStatus.state).toBe("disabled");
     expect(session.webMCP.publicationStatus.message).toContain(
-      "Ayme was removed from this build."
+      "ayme was removed from this build."
     );
     expect(session.tools.list()).toEqual([]);
     expect(session.runs.list()).toEqual([]);
@@ -59,7 +59,7 @@ describe("the absent session", () => {
       const session = createAyme({ webMCP: { enabled: true } });
       expect(logged).toHaveBeenCalledTimes(1);
       expect(logged).toHaveBeenCalledWith(
-        "Ayme was removed from this build, but setup enables WebMCP publication."
+        "ayme was removed from this build, but setup enables WebMCP publication."
       );
       expect(session.webMCP.publicationStatus.state).toBe("disabled");
       expect(session.tools.list()).toEqual([]);

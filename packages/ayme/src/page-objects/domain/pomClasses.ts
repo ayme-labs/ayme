@@ -9,7 +9,7 @@ export type RegisteredPomClass = {
 };
 
 /**
- * Ayme tells Page Object classes apart by name: tools are named after their
+ * ayme tells Page Object classes apart by name: tools are named after their
  * class, and definitions and Page Object Children are looked up by it. So no
  * two different classes the registered Page Objects reach, at any depth, may
  * share a name. Children carry no class at runtime, only their compiled
@@ -49,7 +49,7 @@ export function sameNamedClassRefusal(
             other.pageObject === manifest.className
               ? `it reaches two different classes named "${node.className}"`
               : `it reaches a class named "${node.className}" that differs from the one the Page Object "${other.pageObject}" reaches`
-          }${declaredIn(other.node, node)}. Ayme tells the classes of Page Objects apart by name.`,
+          }${declaredIn(other.node, node)}. ayme tells the classes of Page Objects apart by name.`,
           { code: "same-named-class" }
         );
       if (!others.some((other) => other.node.file === node.file))

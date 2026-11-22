@@ -40,10 +40,10 @@ export const ENTRY_MODULE = "entry.js";
  *
  * It runs before the page's own scripts, so it waits for the document's
  * `load`, and then for the page to go idle, before it follows the stamps:
- * a page that ships Ayme has started its runtime by then, and gets none
+ * a page that ships ayme has started its runtime by then, and gets none
  * from ayme mcp, so one runtime pairs. It knows that runtime by the
  * Inspector contract every started browser runtime publishes on the
- * document's global (ADR-0049). A page that starts Ayme only later still
+ * document's global (ADR-0049). A page that starts ayme only later still
  * gets both.
  */
 export function initScript(port: number): string {

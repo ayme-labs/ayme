@@ -127,7 +127,7 @@ it("names a Page Object Model's syntax error where it is in the source", () => {
   );
 });
 
-it("compiles a Page Object Model to a stand-in in a build without Ayme, the default", () => {
+it("compiles a Page Object Model to a stand-in in a build without ayme, the default", () => {
   const { context } = loaderContext();
   const code = turbopackLoader.call(
     { ...context, getOptions: () => ({}) },
@@ -160,20 +160,20 @@ it.each([
   [
     "include unset",
     {},
-    "[ayme] Ayme is not in this build: include is not set.",
+    "[ayme] ayme is not in this build: include is not set.",
   ],
   [
     "include false",
     { include: false },
-    "[ayme] Ayme is not in this build: include is false.",
+    "[ayme] ayme is not in this build: include is false.",
   ],
   [
     "include true",
     { include: true },
-    "[ayme] Ayme is in this build: include is true.",
+    "[ayme] ayme is in this build: include is true.",
   ],
 ])(
-  "prints once per process whether Ayme is in it, with %s",
+  "prints once per process whether ayme is in it, with %s",
   async (_, options, line) => {
     // The loader runs per module, so the line belongs to the process: a fresh
     // module instance stands in for a fresh one.
@@ -188,7 +188,7 @@ it.each([
       expect(
         info.mock.calls
           .map(([message]) => String(message))
-          .filter((message) => message.startsWith("[ayme] Ayme"))
+          .filter((message) => message.startsWith("[ayme] ayme"))
       ).toEqual([line]);
     } finally {
       info.mockRestore();

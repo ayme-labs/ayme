@@ -1,5 +1,5 @@
 /**
- * Everything the Ayme arms set up before the measured window: the Ayme MCP
+ * Everything the ayme arms set up before the measured window: the ayme MCP
  * server the agent talks to, `ayme mcp` from `@ayme-dev/mcp`, paired with a
  * headless browser holding the mission's start page, with the Goal Loop and
  * page objects switches set for the arm. The pairing follows the tab through the screens
@@ -52,7 +52,7 @@ export function aymeMcpVersion(): string {
 /** The MCP server's name in the agent's configuration; its tools are `mcp__ayme__<tool>`. */
 export const aymeServerName = "ayme";
 
-/** The skill the Ayme arms load: the one this repository ships to consumers, so the eval measures that. */
+/** The skill the ayme arms load: the one this repository ships to consumers, so the eval measures that. */
 export const aymeSkillName = "ayme";
 export const aymeSkillSource = path.join(repoRoot, "skills", aymeSkillName);
 
@@ -89,7 +89,7 @@ export const serverPorts = { first: 9350, last: 9365 };
 
 /**
  * A Page Object Tool each start screen publishes: proof that the paired page
- * is that screen with Ayme's tools. Without page objects the proof is
+ * is that screen with ayme's tools. Without page objects the proof is
  * `snapshot` and the start page's URL.
  */
 export const startScreenTool: Record<StartScreen, string> = {
@@ -168,23 +168,23 @@ async function portsInUse(): Promise<number[]> {
 
 /**
  * The server command must be built, and the range a page scans must be free:
- * a tab pairs by itself only when exactly one Ayme MCP server listens there,
+ * a tab pairs by itself only when exactly one ayme MCP server listens there,
  * so another coding agent's `ayme mcp` would keep the page from pairing.
  */
 export const aymeMcpPreconditions: Precondition[] = [
   {
-    name: "Ayme MCP server",
+    name: "ayme MCP server",
     check: () =>
       existsSync(aymeMcpCliPath)
         ? null
         : `${aymeMcpPackageName} is not built: ${aymeMcpCliPath} is missing. Run pnpm build at the repository root.`,
   },
   {
-    name: "Ayme MCP ports",
+    name: "ayme MCP ports",
     check: async () => {
       const ports = await portsInUse();
       if (ports.length === 0) return null;
-      return `Something listens on port ${ports.join(", ")}, in the range ${serverPorts.first} to ${serverPorts.last} a page scans for Ayme MCP servers; the page would not pair with this run's server alone. Stop it (another coding agent's ayme mcp, for example) and run again.`;
+      return `Something listens on port ${ports.join(", ")}, in the range ${serverPorts.first} to ${serverPorts.last} a page scans for ayme MCP servers; the page would not pair with this run's server alone. Stop it (another coding agent's ayme mcp, for example) and run again.`;
     },
   },
 ];
@@ -226,7 +226,7 @@ function publishedToolNames(page: Page): Promise<string[]> {
   });
 }
 
-/** Page Object Tools are named `<page object>.<action>`; Ayme's own tools carry no dot. */
+/** Page Object Tools are named `<page object>.<action>`; ayme's own tools carry no dot. */
 export function pageObjectToolNames(names: string[]): string[] {
   return names.filter((name) => name.includes("."));
 }
@@ -342,7 +342,7 @@ class HarnessedServer {
       const dropped = this.pendingOutput.slice(0, lastNewline).split("\n");
       this.pendingOutput = this.pendingOutput.slice(lastNewline + 1);
       this.context.log(
-        `Dropped ${dropped.length} message(s) the Ayme MCP server sent before the agent connected.`
+        `Dropped ${dropped.length} message(s) the ayme MCP server sent before the agent connected.`
       );
     });
   }
@@ -354,7 +354,7 @@ class HarnessedServer {
       const onExit = (code: number | null) =>
         reject(
           new Error(
-            `The Ayme MCP server exited with ${code} before it listened. Its log:\n${this.log.join("\n")}`
+            `The ayme MCP server exited with ${code} before it listened. Its log:\n${this.log.join("\n")}`
           )
         );
       this.process.once("exit", onExit);
@@ -367,7 +367,7 @@ class HarnessedServer {
           this.process.off("exit", onExit);
           reject(
             new Error(
-              `The Ayme MCP server did not listen on port ${port} within ${timeoutMs / 1000} s. Its log:\n${this.log.join("\n")}`
+              `The ayme MCP server did not listen on port ${port} within ${timeoutMs / 1000} s. Its log:\n${this.log.join("\n")}`
             )
           );
         } else setTimeout(() => void poll(), 100);
@@ -382,13 +382,13 @@ class HarnessedServer {
     const listener = net.createServer((client) => {
       if (this.agent) {
         this.context.log(
-          "Refused a second client of the Ayme MCP server's socket."
+          "Refused a second client of the ayme MCP server's socket."
         );
         client.destroy();
         return;
       }
       this.agent = client;
-      this.context.log("The agent connected to the Ayme MCP server.");
+      this.context.log("The agent connected to the ayme MCP server.");
       if (this.pendingOutput) client.write(this.pendingOutput);
       this.pendingOutput = "";
       client.on("data", (chunk: Buffer) => this.process.stdin!.write(chunk));
@@ -423,7 +423,7 @@ class HarnessedServer {
 }
 
 /**
- * Starts the Ayme MCP server, opens the mission's start page with the Goal
+ * Starts the ayme MCP server, opens the mission's start page with the Goal
  * Loop and page objects switches set for the arm, waits until the page has
  * paired with the server and published the screen's tools, and hands the
  * server to the agent.
@@ -448,7 +448,7 @@ export async function setUpAymeAgent(
   const inUse = await portsInUse();
   if (inUse.length > 0)
     throw new Error(
-      `Something listens on port ${inUse.join(", ")}, in the range a page scans for Ayme MCP servers. Stop it and run again.`
+      `Something listens on port ${inUse.join(", ")}, in the range a page scans for ayme MCP servers. Stop it and run again.`
     );
   const port = serverPorts.first;
   const server = new HarnessedServer(port, context);
@@ -465,7 +465,7 @@ export async function setUpAymeAgent(
         await close();
       } catch (error) {
         context.log(
-          `Closing the Ayme setup failed: ${error instanceof Error ? error.message : String(error)}`
+          `Closing the ayme setup failed: ${error instanceof Error ? error.message : String(error)}`
         );
       }
     }
@@ -474,7 +474,7 @@ export async function setUpAymeAgent(
 
   try {
     await server.waitUntilListening(port, 15_000);
-    context.log(`Ayme MCP server listening on port ${port}.`);
+    context.log(`ayme MCP server listening on port ${port}.`);
     await mkdir(context.runDir, { recursive: true });
     await writeFile(proxyScriptPath(context.runDir), proxyScript());
     await server.listen(socketPath);
@@ -499,7 +499,7 @@ export async function setUpAymeAgent(
     await page.goto(context.start.url);
     // The page scans the range as it loads and finds this run's server alone.
     const pairing = await waitFor(
-      "Pairing the start page with the Ayme MCP server",
+      "Pairing the start page with the ayme MCP server",
       90_000,
       () => storedPairing(page),
       () =>
@@ -549,7 +549,7 @@ export async function setUpAymeAgent(
       if (problem) throw new Error(`${problem} (${context.runId})`);
     }
     context.log(
-      `The start page paired with the Ayme MCP server ${pairedAt.getTime() - opened} ms after opening, with ${tools.length} tools; goal ${goalToolPublished ? "is" : "is not"} published; page objects are ${options.pageObjects ? "on" : "off"}.`
+      `The start page paired with the ayme MCP server ${pairedAt.getTime() - opened} ms after opening, with ${tools.length} tools; goal ${goalToolPublished ? "is" : "is not"} published; page objects are ${options.pageObjects ? "on" : "off"}.`
     );
     await writeLog();
     const evidence: AymeEvidence = {

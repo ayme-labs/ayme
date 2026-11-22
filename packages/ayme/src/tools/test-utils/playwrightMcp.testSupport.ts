@@ -133,7 +133,7 @@ export const PLAYWRIGHT_MCP_SCHEMAS: Record<
 
 /**
  * The shape of browser_take_screenshot, the counterpart of `screenshot`,
- * without the `webp` type and the `scale` option, which Ayme leaves out.
+ * without the `webp` type and the `scale` option, which ayme leaves out.
  * `screenshot` is not published to WebMCP, so it is compared on its own.
  */
 export const PLAYWRIGHT_MCP_SCREENSHOT_SCHEMA: Shape = {
@@ -155,9 +155,9 @@ export const FILL_SCHEMA: Shape = {
 };
 
 /**
- * A Playwright MCP schema as Ayme publishes it: without `element`, the
+ * A Playwright MCP schema as ayme publishes it: without `element`, the
  * description Playwright MCP's host shows in its permission prompt, which
- * Ayme has no use for.
+ * ayme has no use for.
  */
 export function withoutElement(shape: Shape): Shape {
   const { element: _element, ...properties } = shape.properties ?? {};

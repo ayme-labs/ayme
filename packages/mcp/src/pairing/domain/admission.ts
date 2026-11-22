@@ -9,7 +9,7 @@
  *   token that is not this server's, as when another server took the port
  *   of the one it paired with; the server tells it so it forgets that
  *   pairing;
- * - `probe`: an auto-pair scan asks whether this is an Ayme MCP server; the
+ * - `probe`: an auto-pair scan asks whether this is an ayme MCP server; the
  *   server answers by closing with {@link SERVER_IDENTITY} (see
  *   `probeAnswer`);
  * - `refused`: anything else.
@@ -30,7 +30,7 @@ export const SERVER_IDENTITY = Object.freeze({
 });
 
 /**
- * How a busy server closes a probe: it is an Ayme MCP server, but one a
+ * How a busy server closes a probe: it is an ayme MCP server, but one a
  * page may not pair with by itself, so the scan does not count it.
  */
 export const BUSY_SERVER = Object.freeze({

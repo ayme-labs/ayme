@@ -4,14 +4,14 @@ import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";
 
 // Certification fixture only. There is deliberately no webpack configuration or fallback.
 export default function nextConfig(phase) {
-  // `AYME_INCLUDE=false next build` is the one build without Ayme, written
+  // `AYME_INCLUDE=false next build` is the one build without ayme, written
   // to its own distDir for scripts/verify-browser-output.mjs to check; every
-  // other build keeps Ayme, because the Playwright suite runs against the
+  // other build keeps ayme, because the Playwright suite runs against the
   // production build.
   const include = process.env.AYME_INCLUDE !== "false";
   return {
     reactStrictMode: true,
-    // Keep the dev check and the build without Ayme from overwriting the
+    // Keep the dev check and the build without ayme from overwriting the
     // production build under test.
     distDir:
       phase === PHASE_DEVELOPMENT_SERVER
@@ -19,11 +19,11 @@ export default function nextConfig(phase) {
         : include
           ? ".next"
           : ".next-without-ayme",
-    // The verify script reads the source maps of the build without Ayme.
+    // The verify script reads the source maps of the build without ayme.
     productionBrowserSourceMaps: !include,
     turbopack: {
       root: fileURLToPath(new URL("../../", import.meta.url)),
-      // A build without Ayme points the runtime's two entries and the
+      // A build without ayme points the runtime's two entries and the
       // framework package at their absent entries for the browser, because
       // a loader cannot alias.
       resolveAlias: include

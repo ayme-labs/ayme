@@ -34,7 +34,7 @@ function strictCsp(): Plugin {
  */
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
-  // Ayme stays in every build: the e2e suite drives the fixture's tools.
+  // ayme stays in every build: the e2e suite drives the fixture's tools.
   plugins: [ayme({ include: true }), strictCsp()],
   // The runtime imports the page client, WebMCP publication and the
   // Inspector only once the session starts. Found that late, Vite would
