@@ -32,7 +32,8 @@ for c in Rules Rules-Pages Rules-Rounds Rules-Ends Surfaces TimeLimit TimeLimit-
          Rule7-TypeAfterStopOnNewPage Fold-AfterStep Rules-WithoutB2 \
          Limit-TypingThenTyping Limit-ClosedPageWaits Limit-BlankPageInput \
          Path-AfterStop Path-StopClickCtrlC Path-HeldKeyAfterStop Path-PickOnNewPage \
-         Path-PickOnNewPage-NextClick Path-TypingAfterContinue Path-NavigationThenType \
+         Path-PickOnNewPage-NextClick Path-TypingAfterContinue Path-NavigationThenType Path-ReadAcrossNavigation Input-ReadAcrossNavigation \
+         Path-TypingAfterNavigation Fill-AddressChangeWhileTyping \
          Races Race-LateRevision Race-LateRevision-Stop Race-LateTypingReport Race-LastText \
          Race-ClickLostAfterStop Race-ClickAfterPicking Race-HeldMessageAfterStop \
          Race-NavigationBeforeTypingReport \

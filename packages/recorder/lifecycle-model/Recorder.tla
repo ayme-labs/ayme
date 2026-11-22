@@ -56,9 +56,17 @@ CONSTANTS
               \* every other one
   PageNavigates,\* the page may go elsewhere with no held input making it go:
               \* the browser's Back button, a redirect
-  NavAfterReports,\* a page commits a navigation only once the report of what
-              \* was typed in the document it leaves is in (off: the race of
-              \* config Race-NavigationBeforeTypingReport)
+  NavAfterReports,\* a page commits a navigation only once the report, or the
+              \* revision, of what was typed in the document it leaves is in
+              \* (off: race R12, config Race-NavigationBeforeTypingReport)
+  ReadHeardLate,\* a read the page took may reach the engine after a navigation
+              \* (a read in flight; L keepRead, 5ecea373)
+  SameFieldElsewhere,\* after a navigation, typing in a field of the new page
+              \* that Playwright reports as a revision of the last fill
+              \* (8d1c4656)
+  AddressChanges,\* the page may change its address within its document, as
+              \* history.replaceState or a change of the hash does; Playwright
+              \* tells it as a navigation
   TypeAfterStopOnNewPage,\* during a wrap-up, with the pages no longer holding,
               \* a key may be typed in a document the recorder has not read
               \* yet; not a fix: off, it leaves that path out (config
@@ -94,6 +102,8 @@ VARIABLES
                   \* Record or Continue
   pgLastFill,     \* L PageGate.lastFill: the fill written last while nothing
                   \* newer was reported on the page (0 = none)
+  els,            \* L Input.elsewhere: entries known from their report on a page
+                  \* that went to another address since; no revision is theirs
   pic,            \* per entry known from its report: when Playwright's picture
                   \* of it was taken (its first key)
   lst,            \* L Flow.inputs: the engine's entries, oldest first
@@ -135,7 +145,11 @@ VARIABLES
                   \* clicks to picking (SB pick(false): Playwright's mode first)
   mode,           \* Playwright's recorder: none | rec | pick
   tracing,        \* off | on | kept
-  clock, docOf,   \* snapshots read so far; the document each was read in
+  clock, docOf,   \* snapshots read so far; the document each was read in (0: one a
+                  \* navigation overtook, which no Visit holds)
+  readFly,        \* a read the page took that the engine has not heard yet: its
+                  \* id (0 = none), the request it answers, and the round and
+                  \* recording it was asked in (ReadHeardLate)
   seen,           \* how many inputs Playwright has seen (report order)
   \* --- what the person did ---
   kind, at, hits, ev, ord, evStamp, made, keys, revFly, revOrd, revMade, revAt,
@@ -147,13 +161,13 @@ VARIABLES
 
 engVars == <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
              traceStarting, discarding, stopping, savedTold, gen, pgHold, pgLatest,
-             pgReported, pgLastFill, pic,
+             pgReported, pgLastFill, els, pic,
              lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
              passReq, gateQ, modeQ, traceQ, tl, tlAtPause, dis, kept, revLost,
              pkg, saves, pkgHas, pkgDis, holdPg,
              keptSn, newT, pkgNew, shown, txt, fin, pos>>
 pageVars == <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
-              tracing, clock, docOf, seen>>
+              tracing, clock, docOf, readFly, seen>>
 personVars == <<kind, at, hits, ev, ord, evStamp, made, keys, revFly, revOrd,
                 revMade, revAt, touched, heldEver, navs, wrong, overtook>>
 pubVars == <<tbFresh, ansFresh, winBehind>>
@@ -170,7 +184,7 @@ Eng == [phase |-> phase, boot |-> boot, resumed |-> resumed, picking |-> picking
         switchingOff |-> switchingOff, traceStarting |-> traceStarting,
         discarding |-> discarding, stopping |-> stopping, savedTold |-> savedTold,
         gen |-> gen, pgHold |-> pgHold, pgLatest |-> pgLatest, lst |-> lst,
-        pgReported |-> pgReported, pgLastFill |-> pgLastFill, pic |-> pic,
+        pgReported |-> pgReported, pgLastFill |-> pgLastFill, els |-> els, pic |-> pic,
         ent |-> ent, stage |-> stage, rep |-> rep, repOf |-> repOf,
         unrep |-> unrep, revised |-> revised, bsnap |-> bsnap, asnap |-> asnap,
         pend |-> pend, passReq |-> passReq, gateQ |-> gateQ, modeQ |-> modeQ,
@@ -190,7 +204,7 @@ Commit(t) ==   \* t is computed once (TLC passes arguments unevaluated)
     /\ traceStarting' = s.traceStarting /\ discarding' = s.discarding
     /\ stopping' = s.stopping /\ savedTold' = s.savedTold /\ gen' = s.gen
     /\ pgHold' = s.pgHold /\ pgLatest' = s.pgLatest /\ lst' = s.lst
-    /\ pgReported' = s.pgReported /\ pgLastFill' = s.pgLastFill /\ pic' = s.pic
+    /\ pgReported' = s.pgReported /\ pgLastFill' = s.pgLastFill /\ els' = s.els /\ pic' = s.pic
     /\ ent' = s.ent /\ stage' = s.stage /\ rep' = s.rep /\ repOf' = s.repOf
     /\ unrep' = s.unrep /\ revised' = s.revised /\ bsnap' = s.bsnap
     /\ asnap' = s.asnap /\ pend' = s.pend /\ passReq' = s.passReq
@@ -231,8 +245,9 @@ DocAt(t) == IF t >= 1 /\ t <= Len(docOf) THEN docOf[t] ELSE doc
 \* The blank page a recording started on has no Visit (L atRecord,
 \* "blankAtRecord"): the timeline keeps no read of it, and drops an
 \* Interaction that starts there (TL add "interaction": no Visit holds its
-\* "before").
-NoVisit(d) == StartBlank /\ d = 1
+\* "before"). So does a read a navigation overtook (document 0; L keepRead,
+\* TL add "snapshot", 5ecea373).
+NoVisit(d) == (StartBlank /\ d = 1) \/ d = 0
 Row(k, e, d, a, b, t) == [k |-> k, e |-> e, d |-> d, a |-> a, b |-> b, t |-> t, p |-> 0, f |-> FALSE]
 EntryRow(T, e, d, a, b, t) == [Row("entry", e, d, a, b, t) EXCEPT !.f = b \in T.pf]
 \* A held click's "before" is read: it shows the focus the press moved.
@@ -361,8 +376,13 @@ GiveAll(s, os, t) ==
   ELSE LET o == CHOOSE x \in os : TRUE IN GiveAll(GiveSnap(s, o, t), os \ {o}, t)
 
 \* L snapshotTaken
+\* A read of a document the page has left, as one a navigation overtook
+\* (DocAt = 0), is still given to whoever asked for it, but it is neither the
+\* page's latest read nor kept in any Visit (L keepRead, 5ecea373).
 SnapIn(s, r, t) ==
-  LET s1 == [s EXCEPT !.pend = Tail(@), !.pgLatest = t, !.keptSn = @ \cup {t}]
+  LET stale == DocAt(t) = 0
+      s1 == [s EXCEPT !.pend = Tail(@), !.pgLatest = IF stale THEN @ ELSE t,
+                      !.keptSn = IF stale THEN @ ELSE @ \cup {t}]
       s2 == GiveAll(s1, {o \in r : o[1] # 0}, t)
   IN IF <<0, "final">> \in r THEN [s2 EXCEPT !.finals = "in"] ELSE s2
 
@@ -565,14 +585,14 @@ WrapUp(s, g) ==
 Record(s) ==
   [s EXCEPT !.phase = "recording", !.boot = "trace", !.resumed = FALSE,
             !.picking = "off", !.traceStarting = TRUE, !.lst = <<>>, !.pend = <<>>,
-            !.pgHold = TRUE, !.pgLatest = 0, !.pgReported = FALSE, !.pgLastFill = 0,
+            !.pgHold = TRUE, !.pgLatest = 0, !.pgReported = FALSE, !.pgLastFill = 0, !.els = {},
             !.traceQ = Append(@, "start")]
 
 \* L resume
 Resume(s) ==
   [s EXCEPT !.phase = "recording", !.boot = "report", !.resumed = TRUE,
             !.picking = "off", !.traceStarting = FALSE, !.lst = <<>>, !.pend = <<>>,
-            !.pgHold = TRUE, !.pgLatest = 0, !.pgReported = FALSE, !.pgLastFill = 0,
+            !.pgHold = TRUE, !.pgLatest = 0, !.pgReported = FALSE, !.pgLastFill = 0, !.els = {},
             !.kept = s.dis,
             !.modeQ = Append(@, "on")]
 
@@ -759,7 +779,7 @@ OnPicking(s, on) ==
 \* from before, and starts a fill of its own (bug B6, fixed). Else it is lost.
 OnRevised(s, i) ==
   IF ~During(s) THEN [s EXCEPT !.revLost[i] = TRUE]
-  ELSE LET o == Last(s, {f \in Elems(s.lst) : s.ent[f] = "rep"}) IN
+  ELSE LET o == Last(s, {f \in Elems(s.lst) : s.ent[f] = "rep" /\ f \notin s.els}) IN
        IF o = 0 THEN
          IF s.pgLastFill # 0
          THEN IF kind[In(s.pgLastFill)] = "type"
@@ -774,6 +794,29 @@ OnRevised(s, i) ==
          ELSE Proceed([s EXCEPT !.revLost[i] = TRUE], FALSE)
        ELSE IF kind[In(o)] # "type" THEN Proceed([s EXCEPT !.revLost[i] = TRUE], FALSE)
        ELSE LET s1 == [s EXCEPT !.revLost[i] = (In(o) # i), !.txt[o] = @ + 1] IN
+            Proceed(IF s1.stage[o] = "takingAfter" THEN [s1 EXCEPT !.revised[o] = TRUE]
+                    ELSE IF s1.stage[o] = "settled" THEN [s1 EXCEPT !.stage[o] = "settling"]
+                    ELSE s1, FALSE)
+
+\* L interactionRevised for typing i that Playwright reports as a revision of
+\* the fill before it, typed in another document (SameFieldElsewhere): the
+\* open input known from its report takes it, else the page's last fill;
+\* with neither, and nothing reported on the page, it is a fill of its own
+\* (L knownFromReport). After a navigation, the page has neither (8d1c4656).
+OnRevisedAsTyping(s, i) ==
+  IF ~During(s) THEN s
+  ELSE LET o == Last(s, {f \in Elems(s.lst) : s.ent[f] = "rep" /\ f \notin s.els}) IN
+       IF o = 0 THEN
+         IF s.pgLastFill # 0 /\ kind[In(s.pgLastFill)] = "type"
+         THEN LET e == s.pgLastFill IN
+              Proceed([s EXCEPT !.txt[e] = @ + 1, !.stage[e] = "textSet",
+                                !.newT = ReviseText(@, e, s.txt[e] + 1)], FALSE)
+         ELSE IF ~s.pgReported /\ s.pages
+         THEN Proceed(KnownFromReport([s EXCEPT !.pgReported = TRUE, !.pgLastFill = 0], i, i,
+                                      evStamp[i]), FALSE)
+         ELSE s
+       ELSE IF kind[In(o)] # "type" THEN s
+       ELSE LET s1 == [s EXCEPT !.txt[o] = @ + 1] IN
             Proceed(IF s1.stage[o] = "takingAfter" THEN [s1 EXCEPT !.revised[o] = TRUE]
                     ELSE IF s1.stage[o] = "settled" THEN [s1 EXCEPT !.stage[o] = "settling"]
                     ELSE s1, FALSE)
@@ -902,6 +945,8 @@ PersonMayAct ==
        /\ ~(phase = "wrap" /\ finals = "asked")
 
 Alive == phase \notin {"saved", "empty"}
+\* No read the page took is waiting to be heard.
+NoRead == [t |-> 0, r |-> {}, round |-> 0, gen |-> 0]
 IsNext(i) == at[i] = "notyet" /\ \A j \in Inputs : j < i => at[j] # "notyet"
 HeldHere(j) == at[j] \in {"held", "holding"} /\ made[j].doc = doc
 \* The page is still the blank one it opened as: nothing to type into, and
@@ -935,18 +980,18 @@ Init ==
   /\ revLost = [i \in Inputs |-> FALSE]
   /\ pkg = "none" /\ saves = 0 /\ pkgHas = {} /\ pkgDis = {}
   /\ keptSn = {} /\ newT = NoTL /\ pkgNew = <<>>
-  /\ pgReported = FALSE /\ pgLastFill = 0 /\ pic = [e \in Ids |-> 0]
+  /\ pgReported = FALSE /\ pgLastFill = 0 /\ els = {} /\ pic = [e \in Ids |-> 0]
   /\ shown = [e \in Ids |-> FALSE] /\ txt = [e \in Ids |-> 0]
   /\ fin = [e \in Ids |-> FALSE] /\ pos = [e \in Ids |-> 0]
   /\ page = "open" /\ doc = 1 /\ navFlying = FALSE /\ gateOn = FALSE /\ holdPg = FALSE
   /\ gateStart = FALSE /\ pickPg = FALSE /\ unpick = FALSE /\ mode = "none"
-  /\ tracing = "off" /\ clock = 1 /\ docOf = <<1>> /\ seen = 1
+  /\ tracing = "off" /\ clock = 1 /\ docOf = <<1>> /\ readFly = NoRead /\ seen = 1
   /\ kind = [i \in Inputs |-> "none"] /\ at = [i \in Inputs |-> "notyet"]
   /\ hits = [i \in Inputs |-> 0] /\ ev = [i \in Inputs |-> "none"]
   /\ ord = [i \in Inputs |-> 0] /\ evStamp = [i \in Inputs |-> 0]
   /\ made = [i \in Inputs |-> [phase |-> "none", view |-> "none", gen |-> 0, doc |-> 0, round |-> 0]]
   /\ keys = [i \in Inputs |-> 0] /\ revFly = [i \in Inputs |-> FALSE]
-  /\ revOrd = [i \in Inputs |-> 0] /\ revMade = [i \in Inputs |-> [view |-> "none", round |-> 0]]
+  /\ revOrd = [i \in Inputs |-> 0] /\ revMade = [i \in Inputs |-> [view |-> "none", round |-> 0, doc |-> 0]]
   /\ revAt = [i \in Inputs |-> 0]
   /\ touched = [i \in Inputs |-> FALSE] /\ heldEver = [i \in Inputs |-> FALSE]
   /\ navs = [i \in Inputs |-> FALSE] /\ wrong = [i \in Inputs |-> FALSE]
@@ -1024,7 +1069,7 @@ YouDiscard(e) ==
                  lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
                  passReq, gateQ, modeQ, traceQ, tl, tlAtPause, kept, revLost,
                  pkg, saves, pkgHas, pkgDis, holdPg, keptSn, newT, pkgNew,
-                 pgReported, pgLastFill, pic,
+                 pgReported, pgLastFill, els, pic,
                  shown, txt, fin, pos,
                  pageVars, personVars, surfVars, miscVars>>
   /\ Publish
@@ -1037,7 +1082,7 @@ YouRestore(e) ==
                  lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
                  passReq, gateQ, modeQ, traceQ, tl, tlAtPause, kept, revLost,
                  pkg, saves, pkgHas, pkgDis, holdPg, keptSn, newT, pkgNew,
-                 pgReported, pgLastFill, pic,
+                 pgReported, pgLastFill, els, pic,
                  shown, txt, fin, pos,
                  pageVars, personVars, surfVars, miscVars>>
   /\ Publish
@@ -1063,7 +1108,7 @@ ClickPicked(i) ==
   /\ touched' = [touched EXCEPT ![i] = TRUE]
   /\ mode' = "rec" /\ pickPg' = FALSE
   /\ Commit(OnPicking(Eng, FALSE))   \* Playwright tells it left picking
-  /\ UNCHANGED << page, doc, navFlying, gateOn, gateStart, unpick, tracing, clock, docOf,
+  /\ UNCHANGED << page, doc, navFlying, gateOn, gateStart, unpick, tracing, clock, docOf, readFly,
                  hits, keys, revFly, revOrd, revMade, revAt, heldEver, navs, wrong, overtook,
                  surfVars, miscVars>>
   /\ Publish
@@ -1086,7 +1131,7 @@ ClickAfterPicking(i) ==
   /\ overtook' = (overtook \/ \E j \in Inputs : HeldHere(j))
   /\ pickPg' = FALSE
   /\ UNCHANGED <<engVars, page, doc, navFlying, gateOn, gateStart, unpick, mode, tracing,
-                 clock, docOf, keys, revFly, revOrd, revMade, revAt, touched, heldEver,
+                 clock, docOf, readFly, keys, revFly, revOrd, revMade, revAt, touched, heldEver,
                  navs, wrong, surfVars, miscVars>>
   /\ Publish
 
@@ -1095,7 +1140,7 @@ GatesUnpick ==
   /\ Alive /\ unpick
   /\ pickPg' = FALSE /\ unpick' = FALSE
   /\ UNCHANGED <<engVars, page, doc, navFlying, gateOn, gateStart, mode, tracing, clock,
-                 docOf, seen, personVars, surfVars, miscVars>>
+                 docOf, readFly, seen, personVars, surfVars, miscVars>>
   /\ Publish
 
 \* The gate holds the click back and tells the engine (G hold). A right-click
@@ -1122,7 +1167,7 @@ ClickHeld(i) ==
         /\ at' = [at EXCEPT ![i] = "holding"]
         /\ Commit([Eng EXCEPT !.holdPg = TRUE])
   /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
-                 tracing, clock, docOf, seen, hits, ev, ord, keys, revFly, revOrd,
+                 tracing, clock, docOf, readFly, seen, hits, ev, ord, keys, revFly, revOrd,
                  revMade, revAt, wrong, overtook, surfVars, miscVars>>
   /\ Publish
 
@@ -1133,7 +1178,7 @@ HeldMessageArrives(i) ==
   /\ at' = [at EXCEPT ![i] = "held"]
   /\ Commit(OnInputHeld(Eng, i, "click"))
   /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
-                 tracing, clock, docOf, seen, kind, hits, ev, ord, evStamp, made, keys,
+                 tracing, clock, docOf, readFly, seen, kind, hits, ev, ord, evStamp, made, keys,
                  revFly, revOrd, revMade, revAt, touched, heldEver, navs, wrong, overtook,
                  surfVars, miscVars>>
   /\ Publish
@@ -1155,7 +1200,7 @@ ClickReaches(i) ==
   /\ overtook' = (overtook \/ \E j \in Inputs : HeldHere(j))
   \* (only a left click leads elsewhere in the model)
   /\ \E n \in IF kind'[i] = "click" /\ ~BlankHere THEN NavOptions ELSE {FALSE} : navFlying' = (navFlying \/ n)
-  /\ UNCHANGED << page, doc, gateOn, gateStart, pickPg, unpick, tracing, clock, docOf,
+  /\ UNCHANGED << page, doc, gateOn, gateStart, pickPg, unpick, tracing, clock, docOf, readFly,
                  keys, revFly, revOrd, revMade, revAt, touched, heldEver, navs, wrong,
                  surfVars, miscVars>>
   /\ Publish
@@ -1181,7 +1226,7 @@ TypeHeld(i) ==
   /\ heldEver' = [heldEver EXCEPT ![i] = TRUE]
   /\ Commit(OnInputHeld([Eng EXCEPT !.holdPg = TRUE], N + i, "key"))
   /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
-                 tracing, clock, docOf, seen, hits, ev, ord, keys, revFly, revOrd,
+                 tracing, clock, docOf, readFly, seen, hits, ev, ord, keys, revFly, revOrd,
                  revMade, revAt, navs, wrong, overtook, surfVars, miscVars>>
   /\ Publish
 
@@ -1199,7 +1244,7 @@ TypeReaches(i) ==
   /\ ord' = [ord EXCEPT ![i] = seen] /\ seen' = seen + 1
   /\ overtook' = (overtook \/ \E j \in Inputs : HeldHere(j))
   /\ UNCHANGED <<engVars, page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
-                 tracing, clock, docOf, keys, revFly, revOrd, revMade, revAt, touched, heldEver,
+                 tracing, clock, docOf, readFly, keys, revFly, revOrd, revMade, revAt, touched, heldEver,
                  navs, wrong, surfVars, miscVars>>
   /\ Publish
 
@@ -1209,15 +1254,15 @@ TypeReaches(i) ==
 TypeMore(i) ==
   /\ PersonMayAct /\ Alive /\ page = "open" /\ kind[i] = "type" /\ at[i] = "page"
   /\ \A j \in Inputs : j > i => kind[j] = "none"
-  /\ keys[i] < MaxKeys /\ doc = made[i].doc /\ ~holdPg /\ ~pickPg /\ mode = "rec"
+  /\ keys[i] < MaxKeys /\ (doc = made[i].doc \/ SameFieldElsewhere) /\ ~holdPg /\ ~pickPg /\ mode = "rec"
   /\ ev[i] \in {"flying", "in"} /\ ~revFly[i]
   /\ keys' = [keys EXCEPT ![i] = @ + 1]
   /\ revFly' = [revFly EXCEPT ![i] = TRUE]
   /\ revOrd' = [revOrd EXCEPT ![i] = seen] /\ seen' = seen + 1
-  /\ revMade' = [revMade EXCEPT ![i] = [view |-> View, round |-> rounds]]
+  /\ revMade' = [revMade EXCEPT ![i] = [view |-> View, round |-> rounds, doc |-> doc]]
   /\ revAt' = [revAt EXCEPT ![i] = clock]
   /\ UNCHANGED <<engVars, page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
-                 tracing, clock, docOf, kind, at, hits, ev, ord, evStamp, made,
+                 tracing, clock, docOf, readFly, kind, at, hits, ev, ord, evStamp, made,
                  touched, heldEver, navs, wrong, overtook, surfVars, miscVars>>
   /\ Publish
 
@@ -1252,24 +1297,44 @@ PassOn(i) ==
         /\ pickPg' = IF picked THEN FALSE ELSE pickPg
         /\ LET s == OnPassedOn([Eng EXCEPT !.passReq[i] = FALSE, !.holdPg = pg], HeldId(i))
            IN Commit(IF picked THEN OnPicking(s, FALSE) ELSE s)
-  /\ UNCHANGED <<page, doc, gateOn, gateStart, unpick, tracing, clock, docOf,
+  /\ UNCHANGED <<page, doc, gateOn, gateStart, unpick, tracing, clock, docOf, readFly,
                  kind, made, keys, revFly, revOrd, revMade, revAt, touched, heldEver, navs, wrong,
                  surfVars, miscVars>>
   /\ Publish
 
 \* SB takeSnapshot: the page is read, marked in the trace, and told.
+\* The page is read, and the engine hears it in the same step; with
+\* ReadHeardLate, the engine may hear it later (ReadHeard), after a
+\* navigation.
 SnapshotTaken ==
-  /\ Alive /\ page = "open" /\ ~FastFlying /\ pend # <<>>
-  /\ Commit(OnSnapshot(Eng, Head(pend), clock + 1))
+  /\ Alive /\ page = "open" /\ ~FastFlying /\ pend # <<>> /\ readFly.t = 0
+  /\ \/ /\ Commit(OnSnapshot(Eng, Head(pend), clock + 1))
+        /\ UNCHANGED readFly
+     \/ /\ ReadHeardLate
+        /\ readFly' = [t |-> clock + 1, r |-> Head(pend), round |-> rounds, gen |-> gen]
+        /\ UNCHANGED engVars
   /\ clock' = clock + 1 /\ docOf' = Append(docOf, doc)
   /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
                  tracing, seen, personVars, surfVars, miscVars>>
   /\ Publish
 
+\* The engine hears a read the page took earlier. One whose request was
+\* dropped meanwhile, as at Stop, Clear, Record or Continue, belongs to nothing
+\* and changes nothing (L snapshotTaken: nobody waits for it).
+ReadHeard ==
+  /\ Alive /\ readFly.t # 0 /\ ~FastFlying
+  /\ IF pend # <<>> /\ Head(pend) = readFly.r /\ rounds = readFly.round /\ gen = readFly.gen
+     THEN Commit(OnSnapshot(Eng, Head(pend), readFly.t))
+     ELSE UNCHANGED engVars
+  /\ readFly' = NoRead
+  /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
+                 tracing, clock, docOf, seen, personVars, surfVars, miscVars>>
+  /\ Publish
+
 \* A snapshot asked before the page closed cannot be taken: "requestFailed"
 \* (L unanswered). Nobody waits for it any more (L withoutPage).
 SnapshotFails ==
-  /\ Alive /\ page = "closed" /\ pend # <<>>
+  /\ Alive /\ page = "closed" /\ pend # <<>> /\ readFly.t = 0
   /\ Commit(IF During(Eng) THEN Proceed([Eng EXCEPT !.pend = Tail(@)], FALSE)
             ELSE [Eng EXCEPT !.pend = Tail(@)])
   /\ UNCHANGED <<pageVars, personVars, surfVars, miscVars>>
@@ -1302,6 +1367,18 @@ ReportArrives(i) ==
                  revMade, revAt, touched, heldEver, navs, wrong, overtook, surfVars, miscVars>>
   /\ Publish
 
+\* Playwright reports typing i, in a field of the new page with the selector
+\* of a field typed in before the page went elsewhere, as a revision of that
+\* fill (SameFieldElsewhere).
+ReportArrivesAsRevision(i) ==
+  /\ SameFieldElsewhere /\ Alive /\ ev[i] = "flying" /\ InOrder(ord[i]) /\ kind[i] = "type"
+  /\ \E j \in Inputs : j < i /\ kind[j] = "type" /\ made[j].doc # made[i].doc
+  /\ ev' = [ev EXCEPT ![i] = "in"]
+  /\ Commit(OnRevisedAsTyping(Eng, i))
+  /\ UNCHANGED <<pageVars, kind, at, hits, ord, evStamp, made, keys, revFly, revOrd,
+                 revMade, revAt, touched, heldEver, navs, wrong, overtook, surfVars, miscVars>>
+  /\ Publish
+
 RevisionArrives(i) ==
   /\ Alive /\ revFly[i] /\ ev[i] = "in" /\ InOrder(revOrd[i])
   /\ revFly' = [revFly EXCEPT ![i] = FALSE]
@@ -1324,7 +1401,7 @@ GateSwitchLands ==
         \* SB holdInputs: once the pages hold inputs back, the page opened
         \* blank goes to its address (SB opening)
         /\ navFlying' = (navFlying \/ (want /\ Opening))
-  /\ UNCHANGED <<page, doc, pickPg, unpick, mode, tracing, clock, docOf,
+  /\ UNCHANGED <<page, doc, pickPg, unpick, mode, tracing, clock, docOf, readFly,
                  seen, personVars, surfVars, miscVars>>
   /\ Publish
 
@@ -1357,7 +1434,7 @@ ModeLands ==
             /\ Commit(IF mode = "pick" THEN OnPicking([Eng EXCEPT !.modeQ = Tail(@)], FALSE)
                       ELSE [Eng EXCEPT !.modeQ = Tail(@)])
             /\ UNCHANGED <<pickPg>>
-  /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, tracing, clock, docOf, seen,
+  /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, tracing, clock, docOf, readFly, seen,
                  personVars, surfVars, miscVars>>
   /\ Publish
 
@@ -1371,7 +1448,7 @@ TraceLands ==
                      [] t = "keep" -> WritePackage(s)
                      [] OTHER -> TraceGone(s))
   /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode, clock,
-                 docOf, seen, personVars, surfVars, miscVars>>
+                 docOf, readFly, seen, personVars, surfVars, miscVars>>
   /\ Publish
 
 \* L saved: the package is written, or there was nothing to write.
@@ -1384,7 +1461,7 @@ SavedArrives ==
                  stage, rep, repOf, unrep, revised, bsnap, asnap, pend, passReq, gateQ,
                  modeQ, traceQ, tl, tlAtPause, dis, kept, revLost, pkg, saves, pkgHas,
                  pkgDis, holdPg, keptSn, newT, pkgNew, shown, txt, fin, pos,
-                 pgReported, pgLastFill, pic,
+                 pgReported, pgLastFill, els, pic,
                  pageVars, personVars, surfVars, miscVars>>
   /\ Publish
 
@@ -1398,13 +1475,24 @@ TimeLimitPasses ==
 -----------------------------------------------------------------------------
 \* The page
 
+\* L pageNavigated, while recording or wrapping up (leftDocument, elsewhere):
+\* the page forgets its latest read, its last fill and that Playwright
+\* reported on it, and its inputs known from their report take no more
+\* revisions.
+LeftDocument(s) ==
+  [s EXCEPT !.pgLatest = 0, !.pgLastFill = 0, !.pgReported = FALSE,
+            !.els = @ \cup {f \in Elems(s.lst) : s.ent[f] = "rep"}]
+
 \* The new document's gate starts as the latest start says (G startGate);
 \* it leaves the picking click to Playwright as the latest picking start says
 \* (drawing.ts startPicking, pickWithGate; one start per change of
 \* Playwright's mode, so the latest says whether it picks now).
 NavCommits ==
   /\ Alive /\ page = "open" /\ navFlying
-  /\ NavAfterReports => ~\E k \in Inputs : kind[k] = "type" /\ ev[k] = "flying" /\ made[k].doc = doc
+  \* (a report of typing, or its revision, typed in this document is in first)
+  /\ NavAfterReports =>
+       ~\E k \in Inputs : (kind[k] = "type" /\ ev[k] = "flying" /\ made[k].doc = doc)
+                         \/ (revFly[k] /\ revMade[k].doc = doc)
   /\ doc' = doc + 1 /\ navFlying' = FALSE
   /\ gateOn' = gateStart /\ pickPg' = (mode = "pick") /\ unpick' = FALSE
   \* While paused, the timeline is told the page went elsewhere (L
@@ -1415,14 +1503,29 @@ NavCommits ==
   \* document first waits for a read of it. (L snapshotTaken also leaves out
   \* a read of the blank page heard after it left; here a read and its answer
   \* are one step.)
+  \* It also forgets its last fill and that Playwright reported on it, and
+  \* the inputs known from their report there take no more revisions (L
+  \* pageNavigated, leftDocument, elsewhere; 8d1c4656).
   /\ Commit(IF Active(Eng)
-            THEN Proceed([Eng EXCEPT !.holdPg = gateStart, !.pgLatest = 0], FALSE)
+            THEN Proceed(LeftDocument([Eng EXCEPT !.holdPg = gateStart]), FALSE)
             ELSE [Eng EXCEPT !.holdPg = gateStart])
+  \* a read taken of the document the page left, not heard yet, is of none
+  /\ docOf' = IF readFly.t # 0 THEN [docOf EXCEPT ![readFly.t] = 0] ELSE docOf
   /\ tb' = IF Surfaces THEN "loading" ELSE tb
   /\ tbAns' = "none"
   /\ PageGone
-  /\ UNCHANGED <<page, gateStart, mode, tracing, clock, docOf, seen,
+  /\ UNCHANGED <<page, gateStart, mode, tracing, clock, readFly, seen,
                  personVars, win, miscVars>>
+
+\* The page changes its address within its document (AddressChanges), as
+\* history.replaceState or a change of the hash does. Playwright tells it as
+\* a navigation, and the engine takes it as one (L pageNavigated): the
+\* document, its gate and its Visit stay.
+AddressChangesInDocument ==
+  /\ AddressChanges /\ Alive /\ page = "open" /\ ~BlankHere
+  /\ Commit(IF Active(Eng) THEN Proceed(LeftDocument(Eng), FALSE) ELSE Eng)
+  /\ UNCHANGED <<pageVars, personVars, surfVars, miscVars>>
+  /\ Publish
 
 \* The person closes the last page. A report Playwright already has may
 \* still reach the engine; one still in the page (as a click Playwright holds
@@ -1439,7 +1542,7 @@ PageCloses ==
   /\ tb' = IF Surfaces THEN "gone" ELSE tb
   /\ tbAns' = "none"
   /\ PageGone
-  /\ UNCHANGED <<doc, gateStart, mode, tracing, clock, docOf, seen,
+  /\ UNCHANGED <<doc, gateStart, mode, tracing, clock, docOf, readFly, seen,
                  kind, hits, ord, evStamp, made, keys, revOrd, revMade, revAt, touched, heldEver,
                  navs, wrong, overtook, win, miscVars>>
 
@@ -1491,7 +1594,7 @@ EngineNext ==
   \/ \E i \in Inputs : PassGone(i) \/ PassOn(i)
   \/ SnapshotTaken \/ SnapshotFails
   \/ \E e \in Ids : PageSettles(e)
-  \/ \E i \in Inputs : ReportArrives(i) \/ RevisionArrives(i)
+  \/ \E i \in Inputs : ReportArrives(i) \/ RevisionArrives(i) \/ ReportArrivesAsRevision(i)
   \/ GateSwitchLands \/ ModeLands \/ TraceLands \/ SavedArrives
   \/ TimeLimitPasses \/ TerminalStop
 
@@ -1503,10 +1606,11 @@ PageGoesElsewhere ==
   /\ PageNavigates /\ Alive /\ page = "open" /\ ~navFlying /\ doc < MaxDoc /\ ~BlankHere
   /\ navFlying' = TRUE
   /\ UNCHANGED <<engVars, page, doc, gateOn, gateStart, pickPg, unpick, mode, tracing, clock,
-                 docOf, seen, personVars, surfVars, miscVars>>
+                 docOf, readFly, seen, personVars, surfVars, miscVars>>
   /\ Publish
 
-Next == EngineNext \/ NavCommits \/ PageCloses \/ PageGoesElsewhere \/ SurfaceNext \/ Ended
+Next == EngineNext \/ NavCommits \/ PageCloses \/ PageGoesElsewhere \/ AddressChangesInDocument
+        \/ ReadHeard \/ SurfaceNext \/ Ended
 
 \* Steps that need nobody to press anything, the time limit left out.
 OnItsOwn ==
@@ -1688,9 +1792,20 @@ IsFillEntry(e) == ent[e] = "rep" /\ kind[In(e)] = "type"
 \* A fill starts from a read of the document it was typed in, so it lands in
 \* that document's Visit, never in the Visit of a document the page left
 \* (c5305756; config Path-NavigationThenType).
+\* A fill of its own from a revision (entry N + i, after Continue or after a
+\* navigation) was typed where its revision was.
+TypedDoc(e) == IF e \in Inputs THEN made[e].doc ELSE revMade[In(e)].doc
 X10_FillStartsInItsDocument ==
-  \A e \in (tl \cup Elems(lst)) \cap Inputs :
-    (IsFillEntry(e) /\ bsnap[e] # 0) => DocAt(bsnap[e]) = made[e].doc
+  \A e \in tl \cup Elems(lst) :
+    (IsFillEntry(e) /\ bsnap[e] # 0) => DocAt(bsnap[e]) = TypedDoc(e)
+
+\* A read the page took of a document it has since left is never the page's
+\* latest read while recording or wrapping up, and no Visit keeps it (L
+\* keepRead, 5ecea373; config Path-ReadAcrossNavigation).
+X11_LatestReadIsOfThisDocument ==
+  /\ ((phase = "recording" \/ (phase = "wrap" /\ goal # "clear")) /\ page = "open" /\ pgLatest # 0)
+       => DocAt(pgLatest) = doc
+  /\ \A t \in keptSn : DocAt(t) # 0
 WRows == newT.rows
 \* The next row of the same Visit after row k, or 0.
 NextInDoc(k) ==
@@ -1770,10 +1885,20 @@ F4_StopAndFinishKeepLastText ==
   (phase = "paused" \/ pkg # "none") =>
     \A i \in Inputs :
       (/\ kind[i] = "type" /\ Shown(i) /\ made[i].gen = gen /\ EntryIx(newT, i) # 0
-       \* the keys typed in the stretch the fill was made in (after Continue,
-       \* more keys make a fill of their own)
-       /\ (keys[i] = 0 \/ (revMade[i].view \in ShownRec /\ revMade[i].round = made[i].round)))
+       \* the keys typed in the stretch the fill was made in, while the page
+       \* stayed at its document (after Continue, or once the page went to
+       \* another document, more keys make a fill of their own; 8d1c4656)
+       /\ (keys[i] = 0 \/ (revMade[i].view \in ShownRec /\ revMade[i].round = made[i].round
+                           /\ revMade[i].doc = made[i].doc)))
         => EntryRowOf(newT, i).t = 1 + keys[i]
+
+\* 4, the other way: a key typed once the page went to another document is
+\* never the text of the fill before (8d1c4656; config
+\* Path-TypingAfterNavigation, where a field takes one more key at most).
+F4n_KeyElsewhereIsNotTheFillsText ==
+  \A i \in Inputs :
+    (kind[i] = "type" /\ keys[i] = 1 /\ revMade[i].doc # made[i].doc /\ EntryIx(newT, i) # 0)
+      => EntryRowOf(newT, i).t = 1
 
 \* 5. Clear removes it for good. No late report brings it back.
 F5_ClearRemovesForGood ==
@@ -1971,18 +2096,18 @@ StartedRecording ==
   /\ revLost = [i \in Inputs |-> FALSE]
   /\ pkg = "none" /\ saves = 0 /\ pkgHas = {} /\ pkgDis = {}
   /\ keptSn = {} /\ newT = NoTL /\ pkgNew = <<>>
-  /\ pgReported = FALSE /\ pgLastFill = 0 /\ pic = [e \in Ids |-> 0]
+  /\ pgReported = FALSE /\ pgLastFill = 0 /\ els = {} /\ pic = [e \in Ids |-> 0]
   /\ shown = [e \in Ids |-> FALSE] /\ txt = [e \in Ids |-> 0]
   /\ fin = [e \in Ids |-> FALSE] /\ pos = [e \in Ids |-> 0]
   /\ page = "open" /\ doc = 1 /\ navFlying = FALSE /\ gateOn = TRUE /\ holdPg = TRUE
   /\ gateStart = TRUE /\ pickPg = FALSE /\ unpick = FALSE /\ mode = "rec"
-  /\ tracing = "on" /\ clock = 1 /\ docOf = <<1>> /\ seen = 1
+  /\ tracing = "on" /\ clock = 1 /\ docOf = <<1>> /\ readFly = NoRead /\ seen = 1
   /\ kind = [i \in Inputs |-> "none"] /\ at = [i \in Inputs |-> "notyet"]
   /\ hits = [i \in Inputs |-> 0] /\ ev = [i \in Inputs |-> "none"]
   /\ ord = [i \in Inputs |-> 0] /\ evStamp = [i \in Inputs |-> 0]
   /\ made = [i \in Inputs |-> [phase |-> "none", view |-> "none", gen |-> 0, doc |-> 0, round |-> 0]]
   /\ keys = [i \in Inputs |-> 0] /\ revFly = [i \in Inputs |-> FALSE]
-  /\ revOrd = [i \in Inputs |-> 0] /\ revMade = [i \in Inputs |-> [view |-> "none", round |-> 0]]
+  /\ revOrd = [i \in Inputs |-> 0] /\ revMade = [i \in Inputs |-> [view |-> "none", round |-> 0, doc |-> 0]]
   /\ revAt = [i \in Inputs |-> 0]
   /\ touched = [i \in Inputs |-> FALSE] /\ heldEver = [i \in Inputs |-> FALSE]
   /\ navs = [i \in Inputs |-> FALSE] /\ wrong = [i \in Inputs |-> FALSE]

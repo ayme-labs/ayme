@@ -3,7 +3,7 @@
 # Constants, in order:
 #   N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick
 #   LateRevisions LeaveOutB2 LateTypingReport, then after what to check, when
-#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage
+#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges
 # LeaveOutB2 leaves a known limit out, to check every other path of the same
 # rule; it is not a fix. LateRevisions, LateTypingReport, SlowFlush,
 # SlowPickEnd and SlowHeldMessage allow five races. Buttons is what the person
@@ -28,10 +28,10 @@ MIX='{"left", "right", "middle", "leftOnCheckbox", "middleOnCheckbox"}'
 RULES="$HOLD X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 PROBES="P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten"
 WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow"
-mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage]
+mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges]
   name=$1; head=$2; shift 2
   laterev=${12}; lob2=${13}; latetype=${14}; what=${15}
-  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}; pagenavigates=${23:-FALSE}; navafterreports=${24:-TRUE}; typeafterstop=${25:-TRUE}
+  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}; pagenavigates=${23:-FALSE}; navafterreports=${24:-TRUE}; typeafterstop=${25:-TRUE}; readlate=${26:-FALSE}; samefield=${27:-FALSE}; addrchanges=${28:-FALSE}
   {
     printf '%s\n' "$head"
     cat <<CFG
@@ -59,6 +59,9 @@ CONSTANTS
   PageNavigates = $pagenavigates
   NavAfterReports = $navafterreports
   TypeAfterStopOnNewPage = $typeafterstop
+  ReadHeardLate = $readlate
+  SameFieldElsewhere = $samefield
+  AddressChanges = $addrchanges
   Buttons = $buttons
 CHECK_DEADLOCK FALSE
 CFG
@@ -111,6 +114,16 @@ mk Rule7-AssertThenType "$IN" 2 1 1  2   1    0     $F     $F   $F   $F    $T   
 # A navigation no held input made (the browser's Back button, a redirect),
 # then typing in the new document; B2 left out.
 mk Path-NavigationThenType "$IN" 2 2 1 1 1  0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X10_FillStartsInItsDocument F1_ShowsOnceItHasItsPlace F6_WindowIsWhatIsSaved" $F $F "$LR" $F $F $F $F $T $T
+# A read taken before a navigation and heard after it (5ecea373).
+mk Path-ReadAcrossNavigation "$IN" 2 2 1 1 0 0   $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X11_LatestReadIsOfThisDocument X10_FillStartsInItsDocument" $F $F "$LR" $F $F $F $F $T $T $T $T
+# An input whose read a navigation overtook (5ecea373).
+mk Input-ReadAcrossNavigation "$IN" 2 2 1 1 0 0  $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X3_NothingYouDidIsDropped R04_FinishSavesEverything" $F $F "$LR" $F $F $F $F $T $T $T $T
+# Typing after a navigation that Playwright reports as a revision of the last
+# fill: a fill of its own in the new document (8d1c4656).
+mk Path-TypingAfterNavigation "$IN" 2 2 1 1 1 1  $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X10_FillStartsInItsDocument F4n_KeyElsewhereIsNotTheFillsText X3_NothingYouDidIsDropped $FILLS
+$F3P" $F $F "$LR" $F $F $F $F $T $T $T $F $T
+# Typing while the page changes its address within its document.
+mk Fill-AddressChangeWhileTyping "$IN" 1 1 1 1 1 0 $F    $F   $F   $F    $T    $F      $F $F "INVARIANT F4_StopAndFinishKeepLastText" $F $F "$LR" $F $F $F $F $F $T $T $F $F $T
 # The same, with a navigation that commits before the report of a key typed
 # in the document it leaves.
 mk Race-NavigationBeforeTypingReport "$IN" 2 2 1 1 0 0 $F  $F   $F   $F    $T    $F      $T $F "INVARIANT X10_FillStartsInItsDocument" $F $F "$LR" $F $F $F $F $T $F
