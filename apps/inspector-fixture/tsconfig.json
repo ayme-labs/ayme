@@ -4,7 +4,7 @@
     "experimentalDecorators": true,
     "types": ["node"],
     // The Inspector's Page Object from source, as the Vite config resolves
-    // it: the Ayme plugin reads its decorators, which the shipped
+    // it: the ayme plugin reads its decorators, which the shipped
     // declarations drop.
     "paths": {
       "@ayme-dev/inspector/testing": [

@@ -2,7 +2,7 @@
 name: inspector-dogfood
 description: >
   Verify a change to the Inspector by driving the Inspector itself through
-  Ayme, as a coding agent: the fixture's dogfood page registers the panel's
+  ayme, as a coding agent: the fixture's dogfood page registers the panel's
   own Page Object, so its tools and runs are visible through `ayme mcp`
   beside Playwright MCP. Use when a change touches `packages/inspector` and before
   showing the change to the user.
@@ -10,7 +10,7 @@ description: >
 
 # Dogfooding the Inspector
 
-The Inspector normally hides from Ayme: a closed shadow root, a host the page
+The Inspector normally hides from ayme: a closed shadow root, a host the page
 state ignores. The inspector-fixture app's `/dogfood.html` mounts it the other
 way round, with `mountInspector({ dogfood: true })`: an open shadow root, the
 Agent Connection on, and the Inspector's own Page Object (the one its tests

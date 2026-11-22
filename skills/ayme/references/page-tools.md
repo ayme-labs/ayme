@@ -10,7 +10,7 @@ as `ProjectRow_remove`. It's the same tool. Drive the rest of the page with your
 Playwright CLI, Playwright MCP or agent-browser, read
 [Browser automation tools](browser-automation-tools.md).
 
-`ayme mcp` lists none of Ayme's own browser driving. To connect to the page,
+`ayme mcp` lists none of ayme's own browser driving. To connect to the page,
 when its tools are missing, or when the page left before a call answered,
 read [Browser setup](browser-setup.md).
 

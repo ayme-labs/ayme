@@ -449,7 +449,7 @@ await expect(rejected.nameError).toBeVisible();
 
 ## State facts in descriptions and reasons
 
-When a page object is marked for Ayme, an agent reads its descriptions and,
+When a page object is marked for ayme, an agent reads its descriptions and,
 for an action that cannot run now, the reason. Each should carry a fact about the
 page object: what the action causes, who may do it, why it cannot run. The
 agent decides its next step itself.

@@ -50,7 +50,7 @@ test("an App Process's Peek tool shows in the Inspector's Node section while it 
     .toEqual({ Browser: ["peek.cart"] });
 });
 
-test("an agent's call over the Ayme MCP server is an ayme-mcp Run in the page's Run log, which the Inspector shows", async ({
+test("an agent's call over the ayme MCP server is an ayme-mcp Run in the page's Run log, which the Inspector shows", async ({
   agent,
   connect,
   page,
@@ -65,7 +65,7 @@ test("an agent's call over the Ayme MCP server is an ayme-mcp Run in the page's 
   const run = inspector.runs.latest("GroceriesPage.readHeading");
   await expect.poll(() => run.status()).toBe("Succeeded");
   expect(await run.caller()).toEqual({
-    icon: "Run by an agent through Ayme MCP",
+    icon: "Run by an agent through ayme MCP",
   });
 });
 

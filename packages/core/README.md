@@ -1,8 +1,8 @@
 # @ayme-dev/core
 
-An internal building block of [Ayme](https://github.com/ayme-labs/ayme). It is under active development and is not intended for direct use. Its API may change in any release without notice.
+An internal building block of [ayme](https://github.com/ayme-labs/ayme). It is under active development and is not intended for direct use. Its API may change in any release without notice.
 
-To add Ayme to an application, see [`@ayme-dev/ayme`](https://github.com/ayme-labs/ayme/tree/main/packages/ayme).
+To add ayme to an application, see [`@ayme-dev/ayme`](https://github.com/ayme-labs/ayme/tree/main/packages/ayme).
 
 ## License
 

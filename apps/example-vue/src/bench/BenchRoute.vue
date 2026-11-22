@@ -13,8 +13,8 @@ import ProjectsPage from "./ProjectsPage.vue";
 import SettingsPage from "./SettingsPage.vue";
 
 /**
- * The bench pages: generic app screens with no Page Objects and no Ayme
- * annotations, for the run harness's `bench` goal set. They run Ayme as an
+ * The bench pages: generic app screens with no Page Objects and no ayme
+ * annotations, for the run harness's `bench` goal set. They run ayme as an
  * app without Page Objects does, so the Goal Loop can only act through the
  * Browser Tools. The dev server serves them; the production build has none.
  */

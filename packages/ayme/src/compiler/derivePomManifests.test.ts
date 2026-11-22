@@ -983,7 +983,7 @@ describe("derivePomManifests", () => {
     /** One diagnostic at each class's name, the one reached first first. */
     const clash = (page: string, first: string, second: string) =>
       [first, second].map((name) => ({
-        text: `Page Object "${page}" reaches two different classes named "Row". Ayme tells the classes of a Page Object apart by name.`,
+        text: `Page Object "${page}" reaches two different classes named "Row". ayme tells the classes of a Page Object apart by name.`,
         file: fixture(name),
         ...positionOf(fixture(name), "Row {"),
       }));

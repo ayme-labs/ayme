@@ -3,11 +3,11 @@ status: accepted
 amends: ADR-0035
 ---
 
-# An agent reads a Page Object Tool's result as a short answer, and Ayme adds no wait
+# An agent reads a Page Object Tool's result as a short answer, and ayme adds no wait
 
 ## Why
 
-A Page Object Tool answered an agent with the full action result: both parts of the Change Record, a structural diff of the whole page with element refs, a `next` hint, and, through `ayme mcp`, a note of the tools that appeared, went away or changed availability. Every call added thousands of characters to the agent's context, whether it needed them or not. Ayme now sits next to the agent's own browser automation, which already reads the page, so the agent needs from Ayme what the action did to the Page Objects, not the whole page again.
+A Page Object Tool answered an agent with the full action result: both parts of the Change Record, a structural diff of the whole page with element refs, a `next` hint, and, through `ayme mcp`, a note of the tools that appeared, went away or changed availability. Every call added thousands of characters to the agent's context, whether it needed them or not. ayme now sits next to the agent's own browser automation, which already reads the page, so the agent needs from ayme what the action did to the Page Objects, not the whole page again.
 
 ## Decision
 
@@ -18,7 +18,7 @@ The two agent channels, WebMCP publication and `ayme mcp`, present a Page Object
 - The answer has no availability listing, and `ayme mcp` adds no note of tools that appeared or went away to it. The next answer of another tool still carries that note.
 - Both channels take the Page Object Tools and their answers from one source, so the answer cannot differ between them.
 - `ayme.tools.run` keeps returning the full action result: application code, the Inspector and the Goal Loop read it. The short answer is a presentation for agents, not a new result type.
-- Ayme adds no wait of its own after a Page Object Action beyond its Settled Page wait. Waiting for a navigation the action started belongs to the browser automation.
+- ayme adds no wait of its own after a Page Object Action beyond its Settled Page wait. Waiting for a navigation the action started belongs to the browser automation.
 
 ## Considered and rejected
 

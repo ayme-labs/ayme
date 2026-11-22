@@ -6,7 +6,7 @@ import { RouterOutlet } from "@angular/router";
   imports: [RouterOutlet],
   template: `
     <main>
-      <h1>Ayme Angular example</h1>
+      <h1>ayme Angular example</h1>
       <router-outlet />
     </main>
   `,

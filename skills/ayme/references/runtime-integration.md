@@ -4,7 +4,7 @@
 covers marking, tool names, and Page Object Children; the page for the project's
 framework, linked from the
 [documentation index](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md),
-covers starting Ayme and registering Page Objects. Follow
+covers starting ayme and registering Page Objects. Follow
 [Page object design](page-object-design.md) and
 [Page Object Models](ayme-page-objects.md) for members, roots, and action
 returns.
@@ -12,7 +12,7 @@ returns.
 ## Register top-level POMs at setup
 
 Register every page POM once, at app setup: list it in the `pageObjects`
-option where Ayme starts (`createAyme`, `AymeProvider`, `useAyme` or
+option where ayme starts (`createAyme`, `AymeProvider`, `useAyme` or
 `provideAyme`). A page is
 present by its URL through the page base class of
 [Page Object Models](ayme-page-objects.md#ayme),
@@ -37,7 +37,7 @@ and a marked class that no registered POM reaches.
 
 ## Keep one runtime owner at the root
 
-One owner per document starts Ayme. Put it at the application root, not in a
+One owner per document starts ayme. Put it at the application root, not in a
 per-route or per-page layout, as each framework page explains:
 [Vue](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/vue.md#root-ownership),
 [React](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/react.md#root-ownership),

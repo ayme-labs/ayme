@@ -31,7 +31,7 @@ export function watchActivity(target: Document): PageActivitySource {
     for (const listener of [...listeners]) listener();
   };
   new MutationObserver((records) => {
-    // Ayme's and Playwright's own marks are no activity of the page.
+    // ayme's and Playwright's own marks are no activity of the page.
     if (!onlyOwnMarks(records)) notify();
   }).observe(target, {
     subtree: true,

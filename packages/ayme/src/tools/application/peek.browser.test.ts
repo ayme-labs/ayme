@@ -17,7 +17,7 @@ import { createAyme, type Ayme, type AymeOptions } from "../../runtime";
 
 // The Agent Connection and the Inspector load as no-ops that keep the
 // session they are started with: the dev gate only needs their options on,
-// and a real page client would scan for an agent's Ayme MCP server.
+// and a real page client would scan for an agent's ayme MCP server.
 const connected = vi.hoisted(() => ({ sessions: [] as unknown[] }));
 vi.mock("../../runtime/agentConnection", () => ({
   loadProcessConnection: async () => {

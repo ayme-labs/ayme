@@ -38,7 +38,7 @@ export class GroceriesPage {
     location.assign("/other");
   }
 
-  @ayme.action({ description: "Open a page of the app without Ayme." })
+  @ayme.action({ description: "Open a page of the app without ayme." })
   openPlain() {
     location.assign("/plain.html");
   }

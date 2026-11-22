@@ -1,5 +1,5 @@
 // Stryker disable all
-// The document's one ref world and Ayme's dual capture over it: Playwright's
+// The document's one ref world and ayme's dual capture over it: Playwright's
 // pinned snapshot code, with marks, a ref counter and a ref map that only
 // this module has, one set per document.
 import {

@@ -28,13 +28,13 @@ export type LiveTools = Readonly<{
   live: readonly ToolInfo[];
   /**
    * The tools of the App Processes paired beside the page, which the
-   * panel runs through the agent's Ayme MCP server: none while no server
+   * panel runs through the agent's ayme MCP server: none while no server
    * is paired. An App Process offers Peek tools only, read in Node.
    */
   appProcess: readonly NodePeekTool[];
   /** WebMCP publication; a failure carries its error in `message`. */
   publication: AymeWebMcpPublicationStatus;
-  /** Whether the page is connected to a coding agent's Ayme MCP server. */
+  /** Whether the page is connected to a coding agent's ayme MCP server. */
   agentConnection: AgentConnectionStatus;
 }>;
 

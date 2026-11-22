@@ -1,10 +1,10 @@
 /**
- * Everything the arms with Ayme set up before the measured window. The lab
- * app is unmodified Formbricks and ships no Ayme: an `ayme mcp` from
+ * Everything the arms with ayme set up before the measured window. The lab
+ * app is unmodified Formbricks and ships no ayme: an `ayme mcp` from
  * `@ayme-dev/mcp`, started in the lab app's folder, builds and serves the
  * Page Objects in its `.ayme/` and writes `.ayme/init-script.js`, and the
  * headless browser the harness launches on the mission's start page runs
- * that init script in every document, so the page starts Ayme and pairs
+ * that init script in every document, so the page starts ayme and pairs
  * with the server by itself.
  *
  * The server is started with the command the `ayme` skill's reference on
@@ -55,12 +55,12 @@ export function aymeMcpVersion(): string {
 /** The MCP server's name in the agent's configuration; its tools are `mcp__ayme__<tool>`. */
 export const aymeServerName = "ayme";
 
-/** The skill the arms with Ayme load: the one this repository ships to consumers, so the eval measures that. */
+/** The skill the arms with ayme load: the one this repository ships to consumers, so the eval measures that. */
 export const aymeSkillName = "ayme";
 export const aymeSkillSource = path.join(repoRoot, "skills", aymeSkillName);
 
 /**
- * The skill's reference the setup turn of every arm with Ayme reads: what to
+ * The skill's reference the setup turn of every arm with ayme reads: what to
  * start, and what to read after a Page Object Tool, per browser automation.
  * The interface line carries none of it.
  */
@@ -133,7 +133,7 @@ export function isPageObjectToolName(name: string): boolean {
 
 /**
  * The names among `listed` that `ayme mcp` must not list here: anything but
- * Page Object Tools, `page_objects` and its own tools. Ayme's `snapshot`,
+ * Page Object Tools, `page_objects` and its own tools. ayme's `snapshot`,
  * `goal` and Browser Tools land here.
  */
 export function unexpectedToolNames(listed: string[]): string[] {
@@ -229,11 +229,11 @@ function resolvesFromLab(specifier: string): boolean {
 /**
  * The server command must be built, and so must the `@ayme-dev/ayme` it
  * builds the lab app's Page Objects with. The range a page
- * scans must be free: a tab pairs by itself only when exactly one Ayme MCP
+ * scans must be free: a tab pairs by itself only when exactly one ayme MCP
  * server listens there. Shared objects, so a suite checks each once.
  */
 const aymeMcpBuilt: Precondition = {
-  name: "Ayme MCP server",
+  name: "ayme MCP server",
   check: () => {
     if (!existsSync(aymeMcpCliPath))
       return `${aymeMcpPackageName} is not built: ${aymeMcpCliPath} is missing. Run pnpm lab:prepare in apps/lab-formbricks.`;
@@ -244,11 +244,11 @@ const aymeMcpBuilt: Precondition = {
 };
 
 const aymeMcpPorts: Precondition = {
-  name: "Ayme MCP ports",
+  name: "ayme MCP ports",
   check: async () => {
     const ports = await portsInUse();
     if (ports.length === 0) return null;
-    return `Something listens on port ${ports.join(", ")}, in the range ${serverPorts.first} to ${serverPorts.last} a page scans for Ayme MCP servers; the page would not pair with this run's server alone. Stop it (another coding agent's ayme mcp, for example) and run again.`;
+    return `Something listens on port ${ports.join(", ")}, in the range ${serverPorts.first} to ${serverPorts.last} a page scans for ayme MCP servers; the page would not pair with this run's server alone. Stop it (another coding agent's ayme mcp, for example) and run again.`;
   },
 };
 
@@ -390,7 +390,7 @@ class HarnessedServer {
   listToolNames(timeoutMs = 10_000): Promise<string[]> {
     if (this.agent)
       throw new Error(
-        "The Ayme MCP server's stdio is the agent's once it has connected."
+        "The ayme MCP server's stdio is the agent's once it has connected."
       );
     const id = `eval-harness-${(this.requestCount += 1)}`;
     return new Promise((resolve, reject) => {
@@ -398,7 +398,7 @@ class HarnessedServer {
         this.requests.delete(id);
         reject(
           new Error(
-            `The Ayme MCP server did not answer tools/list within ${timeoutMs / 1000} s. Its log:\n${this.log.join("\n")}`
+            `The ayme MCP server did not answer tools/list within ${timeoutMs / 1000} s. Its log:\n${this.log.join("\n")}`
           )
         );
       }, timeoutMs);
@@ -411,7 +411,7 @@ class HarnessedServer {
         else
           reject(
             new Error(
-              `The Ayme MCP server answered tools/list with ${JSON.stringify(error ?? result)}.`
+              `The ayme MCP server answered tools/list with ${JSON.stringify(error ?? result)}.`
             )
           );
       });
@@ -428,7 +428,7 @@ class HarnessedServer {
       const onExit = (code: number | null) =>
         reject(
           new Error(
-            `The Ayme MCP server exited with ${code} before it listened. Its log:\n${this.log.join("\n")}`
+            `The ayme MCP server exited with ${code} before it listened. Its log:\n${this.log.join("\n")}`
           )
         );
       this.process.once("exit", onExit);
@@ -441,7 +441,7 @@ class HarnessedServer {
           this.process.off("exit", onExit);
           reject(
             new Error(
-              `The Ayme MCP server did not listen on port ${port} within ${timeoutMs / 1000} s. Its log:\n${this.log.join("\n")}`
+              `The ayme MCP server did not listen on port ${port} within ${timeoutMs / 1000} s. Its log:\n${this.log.join("\n")}`
             )
           );
         } else setTimeout(() => void poll(), 100);
@@ -456,13 +456,13 @@ class HarnessedServer {
     const listener = net.createServer((client) => {
       if (this.agent) {
         this.context.log(
-          "Refused a second client of the Ayme MCP server's socket."
+          "Refused a second client of the ayme MCP server's socket."
         );
         client.destroy();
         return;
       }
       this.agent = client;
-      this.context.log("The agent connected to the Ayme MCP server.");
+      this.context.log("The agent connected to the ayme MCP server.");
       if (this.pendingOutput) client.write(this.pendingOutput);
       this.pendingOutput = "";
       client.on("data", (chunk: Buffer) => this.process.stdin!.write(chunk));
@@ -517,7 +517,7 @@ class HarnessedServer {
  * a context that lets it reach the server: the page the harness opens here,
  * and whatever the agent's own browser automation, attached over CDP,
  * navigates it to or opens beside it, since the harness stays attached for
- * the run. Without it the page is Formbricks as it is, with nothing of Ayme.
+ * the run. Without it the page is Formbricks as it is, with nothing of ayme.
  */
 export async function launchStartPage(
   context: Pick<ArmContext, "profileDir" | "start">,
@@ -561,7 +561,7 @@ export type AymeSetup = {
  * that init script on the mission's start page, waits until the page has
  * paired with the server, and then until the server lists the start
  * screen's Page Object Tool, read as the agent will read it. It must list
- * `page_objects` beside it and nothing of Ayme's own browser driving. The
+ * `page_objects` beside it and nothing of ayme's own browser driving. The
  * server's stdio becomes the agent's, through the proxy written into the run
  * folder. Disposes of what it started when it fails.
  */
@@ -577,7 +577,7 @@ export async function setUpAymePage(
   const inUse = await portsInUse();
   if (inUse.length > 0)
     throw new Error(
-      `Something listens on port ${inUse.join(", ")}, in the range a page scans for Ayme MCP servers. Stop it and run again.`
+      `Something listens on port ${inUse.join(", ")}, in the range a page scans for ayme MCP servers. Stop it and run again.`
     );
   const port = serverPorts.first;
   const args = aymeMcpArgs(port);
@@ -601,7 +601,7 @@ export async function setUpAymePage(
         await close();
       } catch (error) {
         context.log(
-          `Closing the Ayme setup failed: ${error instanceof Error ? error.message : String(error)}`
+          `Closing the ayme setup failed: ${error instanceof Error ? error.message : String(error)}`
         );
       }
     }
@@ -611,7 +611,7 @@ export async function setUpAymePage(
   try {
     await server.waitUntilListening(port, 15_000);
     context.log(
-      `Ayme MCP server listening on port ${port}: ayme ${args.join(" ")}.`
+      `ayme MCP server listening on port ${port}: ayme ${args.join(" ")}.`
     );
     // The server says so once the init script is written, after it listens.
     await waitFor(
@@ -638,7 +638,7 @@ export async function setUpAymePage(
     const { page, opened } = launched;
     // The page scans the range as it loads and finds this run's server alone.
     const pairing = await waitFor(
-      "Pairing the start page with the Ayme MCP server",
+      "Pairing the start page with the ayme MCP server",
       90_000,
       () => storedPairing(page),
       () =>
@@ -670,7 +670,7 @@ export async function setUpAymePage(
         `The page's tools through ayme mcp are ${tools.join(", ")}: they hold ${unexpected.join(", ") || `no ${pageObjectsToolName}`} (${context.runId}).`
       );
     context.log(
-      `The start page paired with the Ayme MCP server ${pairedAt.getTime() - opened} ms after opening; the server lists ${tools.join(", ")}.`
+      `The start page paired with the ayme MCP server ${pairedAt.getTime() - opened} ms after opening; the server lists ${tools.join(", ")}.`
     );
     await writeLog();
     return {

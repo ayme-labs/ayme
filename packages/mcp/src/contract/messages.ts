@@ -1,7 +1,7 @@
 import * as z from "zod/mini";
 
 /**
- * The messages between the Ayme MCP server and the page client. Both sides
+ * The messages between the ayme MCP server and the page client. Both sides
  * validate what they receive against these schemas.
  */
 
@@ -11,7 +11,7 @@ import * as z from "zod/mini";
  * is on the page, and `reason` says why an unavailable one cannot run, when
  * the page knows (ADR-0035). A Page Object Tool whose action says nothing
  * beyond its name and schema has no description, and MCP lists it without
- * one. `group` is where the tool comes from, as Ayme's runtime names it
+ * one. `group` is where the tool comes from, as ayme's runtime names it
  * (`pageObject`, `browser`, `custom`, `peek` or `agent`); the server decides
  * by it which tools it lists. A page from before it was sent sends none.
  */

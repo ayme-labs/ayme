@@ -1,7 +1,7 @@
 {
   "name": "@ayme-dev/webmcp",
   "version": "0.2.0",
-  "description": "Publishing Ayme's tools through WebMCP, for agents that run in the browser.",
+  "description": "Publishing ayme's tools through WebMCP, for agents that run in the browser.",
   "keywords": [
     "ai-agent",
     "coding-agent",

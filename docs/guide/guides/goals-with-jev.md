@@ -6,11 +6,11 @@ How to let a decision model drive your page toward a goal, with the Goal Loop, y
 
 ## What the Goal Loop does
 
-An agent connected to your page can hand Ayme a goal in natural language, such as "archive the oldest item", through the `goal` tool. The Goal Loop drives the page toward it in steps. In each step a decision model, a fast model that picks among options it is given, chooses at most one operation to run, not the calling agent's LLM. The model Ayme uses today is Jev, TypeSafe's System One model. When the loop stops, it hands control back to the calling agent with a Handover: why it stopped, what it did and what to do next.
+An agent connected to your page can hand ayme a goal in natural language, such as "archive the oldest item", through the `goal` tool. The Goal Loop drives the page toward it in steps. In each step a decision model, a fast model that picks among options it is given, chooses at most one operation to run, not the calling agent's LLM. The model ayme uses today is Jev, TypeSafe's System One model. When the loop stops, it hands control back to the calling agent with a Handover: why it stopped, what it did and what to do next.
 
 ## Mount the Decision Endpoint
 
-The decision model needs your key, from TypeSafe or from OpenRouter, which must stay on your server. The Decision Endpoint is the route in your backend that adds the key to each decision model request; Ayme ships its handler:
+The decision model needs your key, from TypeSafe or from OpenRouter, which must stay on your server. The Decision Endpoint is the route in your backend that adds the key to each decision model request; ayme ships its handler:
 
 ```ts
 import { createDecisionEndpoint } from "@ayme-dev/ayme/server";
@@ -80,7 +80,7 @@ Keep the key in a server-only environment variable; in Vite, one without the `VI
 
 ## Turn the loop on
 
-Pass `goalLoop` where Ayme starts. `decisionEndpoint(url)` builds the decision function that calls your route:
+Pass `goalLoop` where ayme starts. `decisionEndpoint(url)` builds the decision function that calls your route:
 
 ```ts
 import { createAyme, decisionEndpoint } from "@ayme-dev/ayme";
@@ -120,7 +120,7 @@ The history shows the value a step used as `label: value`, such as `fill(textbox
 
 ## What leaves the page
 
-Each step sends the page state, the Page Object Model definitions, the goal, the Goal Values, the run's history and the step's question from the browser to your Decision Endpoint, and from there, with your key, to the model. Nothing goes to Ayme, which has no backend.
+Each step sends the page state, the Page Object Model definitions, the goal, the Goal Values, the run's history and the step's question from the browser to your Decision Endpoint, and from there, with your key, to the model. Nothing goes to ayme, which has no backend.
 
 ## The Handover
 

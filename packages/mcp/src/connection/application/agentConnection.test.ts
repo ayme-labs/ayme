@@ -25,7 +25,7 @@ describe("AgentConnection", () => {
     connection.close();
 
     expect(await errorOf(call)).toMatchObject({
-      error: expect.stringMatching(/^The Ayme MCP server stopped/),
+      error: expect.stringMatching(/^The ayme MCP server stopped/),
     });
     expect(connection.paired).toBe(false);
   });
@@ -40,7 +40,7 @@ describe("AgentConnection", () => {
     connection.close();
 
     expect(await errorOf(call)).toMatchObject({
-      error: expect.stringMatching(/^The Ayme MCP server stopped/),
+      error: expect.stringMatching(/^The ayme MCP server stopped/),
     });
   });
 
@@ -76,7 +76,7 @@ describe("AgentConnection", () => {
     const answer = await errorOf(call);
     expect(answer).toEqual({
       error:
-        "The page started loading http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown. No page reconnected in its place: the tab closed, or the page it loaded does not run Ayme's Agent Connection.",
+        "The page started loading http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown. No page reconnected in its place: the tab closed, or the page it loaded does not run ayme's Agent Connection.",
       settled: false,
       url: "http://127.0.0.1:5173/counter",
     });
@@ -455,7 +455,7 @@ describe("AgentConnection with App Processes", () => {
     connection.close();
 
     expect(await errorOf(call)).toMatchObject({
-      error: expect.stringMatching(/^The Ayme MCP server stopped/),
+      error: expect.stringMatching(/^The ayme MCP server stopped/),
     });
     expect(connection.connected).toBe(false);
   });

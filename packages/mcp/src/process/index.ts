@@ -11,7 +11,7 @@ import { processBehaviours } from "./processBehaviours";
 /** How long an unpaired App Process waits before it scans again. */
 export const SCAN_INTERVAL_MS = 3_000;
 
-/** The part of Ayme's runtime object an App Process uses. */
+/** The part of ayme's runtime object an App Process uses. */
 export type AgentConnectionRuntime = { readonly tools: PageTools };
 
 export type AppProcessOptions = {
@@ -30,8 +30,8 @@ export type AppProcessOptions = {
 
 /**
  * Starts an App Process's side of the Agent Connection, in a Node process
- * of the app such as its dev server, for the runtime object Ayme's setup
- * returns: it pairs with the coding agent's Ayme MCP server beside the
+ * of the app such as its dev server, for the runtime object ayme's setup
+ * returns: it pairs with the coding agent's ayme MCP server beside the
  * page, offers `ayme.tools` there and runs the agent's calls to them.
  *
  * It looks for the server the way a tab's auto-pairing does, and pairs
@@ -77,7 +77,7 @@ export function startAgentConnection(
     if (servers.length > 1 && !warnedSeveral) {
       warnedSeveral = true;
       console.warn(
-        `[ayme] Found ${servers.length} Ayme MCP servers on ports ${portList(servers)}; this process pairs with none of them.`
+        `[ayme] Found ${servers.length} ayme MCP servers on ports ${portList(servers)}; this process pairs with none of them.`
       );
     }
     later(scan);
@@ -107,7 +107,7 @@ export function startAgentConnection(
         if (!ended()) return;
         if (linked)
           return console.warn(
-            `[ayme] The Ayme MCP server at ${linked.address} does not know this connect link.`
+            `[ayme] The ayme MCP server at ${linked.address} does not know this connect link.`
           );
         known = undefined;
         void scan();
@@ -118,7 +118,7 @@ export function startAgentConnection(
       onClose() {
         if (!ended()) return;
         console.info(
-          "[ayme] This process lost its connection to the coding agent's Ayme MCP server, and looks for one again."
+          "[ayme] This process lost its connection to the coding agent's ayme MCP server, and looks for one again."
         );
         void lookAgain();
       },
@@ -135,7 +135,7 @@ export function startAgentConnection(
     open = opened;
     warnedSeveral = false;
     console.info(
-      `[ayme] This process is connected to the coding agent's Ayme MCP server at ${pairing.address}.`
+      `[ayme] This process is connected to the coding agent's ayme MCP server at ${pairing.address}.`
     );
   };
 

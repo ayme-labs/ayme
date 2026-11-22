@@ -30,7 +30,7 @@ const freePort = () =>
   });
 
 /**
- * The port of the agent's Ayme MCP server that an example's App Process
+ * The port of the agent's ayme MCP server that an example's App Process
  * looks for, in place of the auto-pair range. The example's server start
  * reads it from `AYME_EXAMPLE_AGENT_PORT`, which the run's `webServer`
  * passes, and the Agent Connection suite's App Process case starts its

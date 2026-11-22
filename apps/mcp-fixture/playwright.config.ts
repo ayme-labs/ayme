@@ -22,7 +22,7 @@ export const baseURL = `http://127.0.0.1:${port}`;
 export default defineConfig({
   testDir: "./tests",
   reporter: "list",
-  // Each test starts an Ayme MCP server, which takes a port of the server's
+  // Each test starts an ayme MCP server, which takes a port of the server's
   // range; other worktrees' runs use that range too.
   workers: 2,
   use: {

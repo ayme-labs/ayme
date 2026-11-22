@@ -1,10 +1,10 @@
 # Page state
 
-What an agent sees of your page: the Structural Page State, the Structural Refs and Page Object ids it acts through, and the interaction history Ayme keeps.
+What an agent sees of your page: the Structural Page State, the Structural Refs and Page Object ids it acts through, and the interaction history ayme keeps.
 
 ## Structural Page State
 
-Once Ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and marks each Page Object Root with its class, such as `ProjectRow`. An element that is the root of several classes lists their names in its `pom` property. Snapshots and Change Records use the same marks, including for removed roots. It covers the top-level document only.
+Once ayme has started and Page Objects are registered, it captures the Structural Page State: a model-facing view of what the page presents and which Page Objects it holds. It is based on the page's accessibility tree and marks each Page Object Root with its class, such as `ProjectRow`. An element that is the root of several classes lists their names in its `pom` property. Snapshots and Change Records use the same marks, including for removed roots. It covers the top-level document only.
 
 The state an agent reads also prints each Page Object's id on its root, after the class: `e10 ProjectRow po2`. A root of several classes is the root of several Page Objects: its `id` property lists their ids in the order `pom` lists the classes. See [Page Object ids](#page-object-ids).
 
@@ -32,13 +32,13 @@ An agent passes a ref back to act on that node:
 
 A ref names an element only. A rooted Page Object's tool takes its [Page Object id](#page-object-ids) instead: `ProjectRow.remove({ id: "po2" })`.
 
-A ref comes from one capture. Within one document, Ayme tries to keep refs stable, so a ref from an earlier capture usually still names the same node. A ref that cannot be used fails with a `RefResolutionError`, such as `Cannot click ref "e13": it is no longer on the page.` Its reason says why:
+A ref comes from one capture. Within one document, ayme tries to keep refs stable, so a ref from an earlier capture usually still names the same node. A ref that cannot be used fails with a `RefResolutionError`, such as `Cannot click ref "e13": it is no longer on the page.` Its reason says why:
 
 | Reason                                                   | Meaning                                                                                                      |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `no snapshot of the current document issued it`          | No capture in this document printed the ref, such as one written by hand.                                    |
 | `it is no longer on the page`                            | The node the ref named was removed.                                                                          |
-| `it cannot be matched unambiguously to the current page` | Ayme cannot tell which current node the ref continues as. It does not mean the ref matches several elements. |
+| `it cannot be matched unambiguously to the current page` | ayme cannot tell which current node the ref continues as. It does not mean the ref matches several elements. |
 
 Refs restart with each document, so a ref from before a full load can resolve to a different node that the new document numbered the same, and the call succeeds on that node; only a ref the new document never issued fails, with the first reason.
 
@@ -74,7 +74,7 @@ In TypeScript the id is a `PageObjectId`, exported from `@ayme-dev/ayme`. It is 
 
 ## Keep parts of the page out
 
-Pass `ignore` where Ayme starts to drop elements, and everything inside them, from the page state. Its value is a CSS selector:
+Pass `ignore` where ayme starts to drop elements, and everything inside them, from the page state. Its value is a CSS selector:
 
 ```ts
 createAyme({
@@ -82,7 +82,7 @@ createAyme({
 });
 ```
 
-For a rule a selector cannot say, pass a function that takes the session's Playwright `Page` and returns a `Locator` of the elements to drop. Ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
+For a rule a selector cannot say, pass a function that takes the session's Playwright `Page` and returns a `Locator` of the elements to drop. ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
 
 ```ts
 const assistantName = "Assistant";
@@ -119,13 +119,13 @@ The element and everything in it:
 - lets picking and clicks pass through it;
 - is hidden from screenshots.
 
-The attribute needs no `ignore`, and it works in a build that leaves Ayme out.
+The attribute needs no `ignore`, and it works in a build that leaves ayme out.
 
 `ignore` changes page state only; it does not change which tools are published.
 
 ## Interaction history
 
-Ayme records what happens in the document for the length of its Page State Session: a Visit at load and at each same-document navigation, every tool call and Goal Loop step as an action, and every page state it captures. A full page load starts a new Page State Session and a new history.
+ayme records what happens in the document for the length of its Page State Session: a Visit at load and at each same-document navigation, every tool call and Goal Loop step as an action, and every page state it captures. A full page load starts a new Page State Session and a new history.
 
 Every action returns its Change Record: what changed on the page, in two parts. Take the list of [`ProjectRow`](ayme-page-objects.md#aymeaction)s above. Say your app's code last read it with Launch plan (`e6`) and Q4 survey (`e10`). Then the user removes Launch plan by hand. Then your code runs `ayme.tools.run("ProjectRow.archive", { id: "po2" })` to archive Q4 survey. The result is:
 
@@ -160,7 +160,7 @@ An agent's Page Object Tool call answers in [a shorter form](#a-page-object-tool
 Each Caller name has its own cursor: the page state that Caller last received, from `snapshot` or as the Settled Page after its last action. The Caller names are:
 
 - `webmcp`, an agent calling through WebMCP;
-- `ayme-mcp`, an agent calling through the Ayme MCP server;
+- `ayme-mcp`, an agent calling through the ayme MCP server;
 - `inspector`, the Inspector;
 - `app`, your app's `ayme.tools.run`, or the name it passes as `by`.
 
@@ -172,7 +172,7 @@ An action that fails still reports what it changed. Its error keeps its own mess
 
 ## Full page loads
 
-A tool call whose action starts loading a new document, such as a click on a plain link or on a form's submit button, answers at once, before the old document goes away and Ayme with it. The answer is the action result with `settled: false`, the Change Record up to that moment in `changes_before` and `changes`, the URL the navigation started for in `loading`, and in `next` a note that the page is loading and that `snapshot` is the next call. For a form submit, `loading` is the form's `action`: where the server redirects is not known yet when the answer goes out.
+A tool call whose action starts loading a new document, such as a click on a plain link or on a form's submit button, answers at once, before the old document goes away and ayme with it. The answer is the action result with `settled: false`, the Change Record up to that moment in `changes_before` and `changes`, the URL the navigation started for in `loading`, and in `next` a note that the page is loading and that `snapshot` is the next call. For a form submit, `loading` is the form's `action`: where the server redirects is not known yet when the answer goes out.
 
 ```ts
 {
@@ -189,7 +189,7 @@ This holds for Browser Tools, Custom Tools and Page Object Tools alike; an agent
 
 ## A Page Object Tool's answer to an agent
 
-An agent that calls a Page Object Tool through WebMCP or through the Ayme MCP server gets a short answer instead of the action result, the same in both:
+An agent that calls a Page Object Tool through WebMCP or through the ayme MCP server gets a short answer instead of the action result, the same in both:
 
 ```ts
 {
@@ -213,4 +213,4 @@ An agent that calls a Page Object Tool through WebMCP or through the Ayme MCP se
 }
 ```
 
-A refused call answers with its reason alone, such as `RuntimeStateError: Item.archive is unavailable: The item is archived.`, and a failed one with its error and, when the Page Object Tree changed while it ran, `changes:` and that change in the same tree, without the Change Record. Ayme adds no wait of its own after the action beyond its Settled Page wait; waiting for a navigation the action started is the browser automation's. `ayme.tools.run` in your code, the Inspector and the Goal Loop keep reading the full action result.
+A refused call answers with its reason alone, such as `RuntimeStateError: Item.archive is unavailable: The item is archived.`, and a failed one with its error and, when the Page Object Tree changed while it ran, `changes:` and that change in the same tree, without the Change Record. ayme adds no wait of its own after the action beyond its Settled Page wait; waiting for a navigation the action started is the browser automation's. `ayme.tools.run` in your code, the Inspector and the Goal Loop keep reading the full action result.

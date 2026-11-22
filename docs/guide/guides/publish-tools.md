@@ -1,10 +1,10 @@
 # Publish tools
 
-How to start Ayme in your app and turn on WebMCP publication, so agents that run in the browser see your tools.
+How to start ayme in your app and turn on WebMCP publication, so agents that run in the browser see your tools.
 
-## Start Ayme
+## Start ayme
 
-Your framework package starts Ayme at the root of your app and gives the rest of the app the running session, `ayme`. Vue and React wrap the app in `AymeProvider`, Svelte calls `useAyme` in the root component, and Angular adds `provideAyme()` to the application config. Each takes the same options, including `webMCP`:
+Your framework package starts ayme at the root of your app and gives the rest of the app the running session, `ayme`. Vue and React wrap the app in `AymeProvider`, Svelte calls `useAyme` in the root component, and Angular adds `provideAyme()` to the application config. Each takes the same options, including `webMCP`:
 
 ```tsx
 <AymeProvider webMCP={{ enabled: true }}>
@@ -41,7 +41,7 @@ A registration counts, so a class registered at setup and in a component stays r
 
 ## Turn publication on
 
-> **Experimental:** WebMCP publication may change in any release. See [Experimental APIs](../reference/experimental-apis.md). A coding agent that drives the browser from outside it connects through [Ayme's MCP server](connect-an-agent.md) instead.
+> **Experimental:** WebMCP publication may change in any release. See [Experimental APIs](../reference/experimental-apis.md). A coding agent that drives the browser from outside it connects through [ayme's MCP server](connect-an-agent.md) instead.
 
 Publication lives in its own package. Install it beside `@ayme-dev/ayme`, which declares it as an optional peer dependency:
 
@@ -49,7 +49,7 @@ Publication lives in its own package. Install it beside `@ayme-dev/ayme`, which 
 npm install @ayme-dev/webmcp
 ```
 
-The call that starts Ayme decides whether its tools are published through WebMCP.
+The call that starts ayme decides whether its tools are published through WebMCP.
 
 - `webMCP.enabled` turns publication on. With it off, the page loads none of WebMCP's code. It is off unless set. Page Objects, page state and the Goal Loop work either way.
 - `webMCP.toolNamePrefix` is prepended to every published tool name: `snapshot`, `page_objects`, `goal`, the Browser Tools, Custom Tools and Page Object Tools. With `toolNamePrefix: "shop_"`, the agent sees `shop_snapshot` and `shop_ProjectsPage.openNewProjectDialog`. It is empty by default. It applies only at publication: `ayme.tools`, the Goal Loop and the Inspector use the unprefixed names.
@@ -58,11 +58,11 @@ The call that starts Ayme decides whether its tools are published through WebMCP
 createAyme({ webMCP: { enabled: true, toolNamePrefix: "shop_" } });
 ```
 
-WebMCP publication is for agents that run in the browser and read the page's `document.modelContext`. A coding agent such as Claude Code, Codex or Cursor connects through Ayme's MCP server instead, with or without publication; see [Connect an agent](connect-an-agent.md).
+WebMCP publication is for agents that run in the browser and read the page's `document.modelContext`. A coding agent such as Claude Code, Codex or Cursor connects through ayme's MCP server instead, with or without publication; see [Connect an agent](connect-an-agent.md).
 
 ## Give the page WebMCP
 
-Chrome with the WebMCP flag supplies `document.modelContext` natively: open `chrome://flags/#enable-webmcp-testing`, enable the flag and relaunch, as [Chrome's WebMCP guide](https://developer.chrome.com/docs/ai/webmcp) describes. In any other browser, load a WebMCP polyfill, such as [`@mcp-b/global`](https://www.npmjs.com/package/@mcp-b/global) pinned to a version, before your app's entry module. If it loads after Ayme's initial wait, retry publication as [Publication status](#publication-status) describes.
+Chrome with the WebMCP flag supplies `document.modelContext` natively: open `chrome://flags/#enable-webmcp-testing`, enable the flag and relaunch, as [Chrome's WebMCP guide](https://developer.chrome.com/docs/ai/webmcp) describes. In any other browser, load a WebMCP polyfill, such as [`@mcp-b/global`](https://www.npmjs.com/package/@mcp-b/global) pinned to a version, before your app's entry module. If it loads after ayme's initial wait, retry publication as [Publication status](#publication-status) describes.
 
 ## What gets published
 

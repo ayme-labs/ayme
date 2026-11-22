@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App.vue";
 
-// Only App.vue's own template and its useAyme options are under test, so Ayme
+// Only App.vue's own template and its useAyme options are under test, so ayme
 // and the playground itself are stubbed out.
 const useAyme = vi.hoisted(() =>
   vi.fn(() => ({ ayme: { runs: { subscribe: () => () => {} } } }))

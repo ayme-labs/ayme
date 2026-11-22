@@ -76,10 +76,10 @@ it("keeps the compiler's Programs for the length of a build", async () => {
   oneBuild();
 }, 30_000);
 
-// Integration on the built packages: a build without Ayme, which every build
+// Integration on the built packages: a build without ayme, which every build
 // is unless it says `include: true`, ships none of the runtime and none of a
 // Page Object Model's implementation, and the app's setup still runs.
-it("ships neither the runtime nor the Page Object Models in a build without Ayme, and still runs the app's setup", async () => {
+it("ships neither the runtime nor the Page Object Models in a build without ayme, and still runs the app's setup", async () => {
   const root = fileURLToPath(
     new URL("./__tests__/fixtures/withoutAyme/", import.meta.url)
   );
@@ -117,7 +117,7 @@ it("ships neither the runtime nor the Page Object Models in a build without Ayme
     expect(app.ayme.tools.list()).toEqual([]);
     expect(app.ayme.webMCP.publicationStatus.state).toBe("disabled");
     await expect(app.page.addItem("Eggs")).rejects.toThrow(
-      "Ayme was removed from this build. ListPage.addItem is not in it."
+      "ayme was removed from this build. ListPage.addItem is not in it."
     );
     app.stop();
   } finally {
@@ -125,14 +125,14 @@ it("ships neither the runtime nor the Page Object Models in a build without Ayme
   }
 }, 30_000);
 
-// Integration on the built packages: the source map of a build without Ayme
+// Integration on the built packages: the source map of a build without ayme
 // carries the stand-in, not the Page Object Model it replaced. Rollup keeps
 // a module's loaded code as the leaf of its source-map chain, so a stand-in
 // made by a transform hook shipped the model in `sourcesContent` on Vite 7;
 // the plugin now compiles the stand-in while loading. Rolldown (Vite 8), which
 // runs here, did not leak through a transform either, so this is a regression
 // guard rather than the reproduction.
-it("maps a build without Ayme to the stand-in, not to the Page Object Model", async () => {
+it("maps a build without ayme to the stand-in, not to the Page Object Model", async () => {
   const root = fileURLToPath(
     new URL("./__tests__/fixtures/withoutAyme/", import.meta.url)
   );
@@ -176,9 +176,9 @@ it("maps a build without Ayme to the stand-in, not to the Page Object Model", as
 }, 30_000);
 
 // Integration on the built packages: a framework package leaves a build
-// without Ayme with the runtime, so none of its hook code ships. React is the
+// without ayme with the runtime, so none of its hook code ships. React is the
 // integration the plugin's tests can bundle with the fewest dependencies.
-it("ships none of a framework package's hook code in a build without Ayme", async () => {
+it("ships none of a framework package's hook code in a build without ayme", async () => {
   const root = fileURLToPath(
     new URL("./__tests__/fixtures/withoutAymeReact/", import.meta.url)
   );
@@ -198,10 +198,10 @@ it("ships none of a framework package's hook code in a build without Ayme", asyn
     const code = readFileSync(join(outDir, "app.js"), "utf8");
 
     // The absent entries are in; the index's errors and hooks are not.
-    expect(code).toContain("Ayme was removed from this build.");
-    expect(code).not.toContain("Ayme hooks require an ancestor AymeProvider.");
+    expect(code).toContain("ayme was removed from this build.");
+    expect(code).not.toContain("ayme hooks require an ancestor AymeProvider.");
     expect(code).not.toContain(
-      "AymeProvider cannot be nested beneath another Ayme runtime owner."
+      "AymeProvider cannot be nested beneath another ayme runtime owner."
     );
     expect(code).not.toContain(
       "The provider options changed while the provider was mounted."

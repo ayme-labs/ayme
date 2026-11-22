@@ -239,7 +239,7 @@ it("gives no tools while no session is started, and follows the next one", async
     appProcess: [],
     publication: {
       state: "disposed",
-      message: "No Ayme runtime session has started.",
+      message: "No ayme runtime session has started.",
     },
     agentConnection: { state: "off" },
   });

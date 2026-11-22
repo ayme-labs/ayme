@@ -1,5 +1,5 @@
 /**
- * What a build without Ayme resolves `@ayme-dev/react` to: the names of the
+ * What a build without ayme resolves `@ayme-dev/react` to: the names of the
  * index with their types, over the runtime's absent entry, so a component
  * tree renders as with the real package. The provider renders its children
  * and the hooks return the inert session's values; nothing here owns a

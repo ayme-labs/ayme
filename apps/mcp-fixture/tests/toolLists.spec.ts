@@ -14,7 +14,7 @@ import {
 } from "./fixtures";
 
 /**
- * Ayme's own browser driving the fixture page offers, which `ayme mcp` never
+ * ayme's own browser driving the fixture page offers, which `ayme mcp` never
  * lists: a Browser Tool, `snapshot` and a Custom Tool.
  */
 const AYMES_OWN_BROWSER_DRIVING = ["click", "snapshot", "read_text"];
@@ -26,7 +26,7 @@ async function listed(agent: Agent, name: string) {
     .toContain(name);
 }
 
-test("a page that ships Ayme pairs through ayme_connect, and the agent sees its Page Object Tools, page_objects, Peek Tools and an App Process's tools, but none of Ayme's own browser driving", async ({
+test("a page that ships ayme pairs through ayme_connect, and the agent sees its Page Object Tools, page_objects, Peek Tools and an App Process's tools, but none of ayme's own browser driving", async ({
   agent,
   connect,
   page,

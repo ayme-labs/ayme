@@ -177,7 +177,7 @@ test("a call sent right after an action's full-load answer waits for the new pag
   expect(JSON.parse(heading.text)).toMatchObject({ result: "Groceries" });
 });
 
-test("a call after a full load to a page without Ayme says no page came back, and did not run", async ({
+test("a call after a full load to a page without ayme says no page came back, and did not run", async ({
   agent,
   baseURL,
   connect,

@@ -37,10 +37,10 @@ export type AymeSetup = {
 };
 
 // Stryker disable next-line StringLiteral: a debugging label Angular may print in injector errors; no behaviour reads it
-const aymeSetup = new InjectionToken<AymeSetup>("Ayme setup");
+const aymeSetup = new InjectionToken<AymeSetup>("ayme setup");
 
 /**
- * Starts Ayme with the environment injector that receives these providers,
+ * Starts ayme with the environment injector that receives these providers,
  * before the root component is created, and stops it when that injector is
  * destroyed. Put it in the application config, not in route providers: the
  * router does not destroy a route's environment injector on navigation.
@@ -52,7 +52,7 @@ export function provideAyme(options: AymeOptions = {}): EnvironmentProviders {
       useFactory: (): AymeSetup => {
         if (inject(aymeSetup, { skipSelf: true, optional: true }))
           throw new Error(
-            "provideAyme cannot be nested beneath another Ayme runtime owner."
+            "provideAyme cannot be nested beneath another ayme runtime owner."
           );
         const ayme = createAyme(options);
         // Without a window, Angular renders on the server, where the session
@@ -79,12 +79,12 @@ export function provideAyme(options: AymeOptions = {}): EnvironmentProviders {
   ]);
 }
 
-/** Reads the Ayme setup of the nearest `provideAyme`. Call in an injection context. */
+/** Reads the ayme setup of the nearest `provideAyme`. Call in an injection context. */
 export function injectAyme(): AymeSetup {
   assertInInjectionContext(injectAyme);
   const setup = inject(aymeSetup, { optional: true });
   if (!setup)
-    throw new Error("Ayme requires provideAyme() in an ancestor injector.");
+    throw new Error("ayme requires provideAyme() in an ancestor injector.");
   return setup;
 }
 

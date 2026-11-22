@@ -6,7 +6,7 @@ status: accepted
 
 ## Why
 
-Ayme has two readers. A developer writes code and configuration against it. An agent reads the tool list, descriptions and results while it works. We had no rule for which changes count as breaking, and adding Page Object Tools beside a developer's browser automation changes both sides at once.
+ayme has two readers. A developer writes code and configuration against it. An agent reads the tool list, descriptions and results while it works. We had no rule for which changes count as breaking, and adding Page Object Tools beside a developer's browser automation changes both sides at once.
 
 ## Decision
 

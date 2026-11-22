@@ -5,7 +5,7 @@ import type { Inspector } from "@ayme-dev/inspector/testing";
 import { expect, openFixture, outline, test } from "./fixtures";
 
 // E2E: the built Inspector on fixture pages with a real Page Object, the
-// Ayme runtime and a recording WebMCP driver. Each test has one reason to
+// ayme runtime and a recording WebMCP driver. Each test has one reason to
 // fail; fixture and runtime problems fail first, in openFixture.
 
 test("the page objects reach into the Inspector's closed shadow root", async ({

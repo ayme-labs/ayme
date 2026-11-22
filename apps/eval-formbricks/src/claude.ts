@@ -135,8 +135,8 @@ export function claudeArguments(invocation: {
 }
 
 /**
- * The environment without any Claude Code, Anthropic or Ayme variable of
- * whoever launched the eval. The Ayme variables hold the lab app's model key,
+ * The environment without any Claude Code, Anthropic or ayme variable of
+ * whoever launched the eval. The ayme variables hold the lab app's model key,
  * which the agent must never see.
  */
 export function withoutClaudeVariables(
@@ -151,7 +151,7 @@ export function withoutClaudeVariables(
 
 /**
  * The environment the agent runs in: the parent's, minus every Claude Code,
- * Anthropic and Ayme variable the launcher may carry (its own settings, base
+ * Anthropic and ayme variable the launcher may carry (its own settings, base
  * URL, session ids, the lab app's model key), plus a fresh configuration
  * directory and the eval's own token. Nothing else. The token is never written
  * anywhere; it lives only in this environment.

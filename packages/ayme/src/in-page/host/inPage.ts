@@ -323,7 +323,7 @@ export function createInPageHost(version = packageVersion): InPageHost {
 
   const versionError = (found: string) =>
     new InPageVersionError(
-      `This document runs Ayme's in-page module ${found}; this host is ${version}.`
+      `This document runs ayme's in-page module ${found}; this host is ${version}.`
     );
 
   function forPage(page: Page): InPage {
@@ -431,7 +431,7 @@ export function createInPageHost(version = packageVersion): InPageHost {
         if (installed) {
           if (inFrame && "framed" in result && result.framed) return inFrame();
           throw new RuntimeStateError(
-            "The document lost Ayme's in-page module right after it was installed."
+            "The document lost ayme's in-page module right after it was installed."
           );
         }
         await bound();

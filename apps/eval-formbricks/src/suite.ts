@@ -102,7 +102,7 @@ async function main() {
       dockerPrecondition,
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
-      // Once each: the two Ayme arms share theirs.
+      // Once each: the two ayme arms share theirs.
       ...new Set(
         options.arms.flatMap((armId) => arms[armId].preconditions ?? [])
       ),

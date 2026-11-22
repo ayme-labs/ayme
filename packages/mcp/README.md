@@ -1,6 +1,6 @@
 # @ayme-dev/mcp
 
-Ayme's MCP server for coding agents, and the page client and App Process side
+ayme's MCP server for coding agents, and the page client and App Process side
 it pairs with. A coding agent runs its own server over stdio; the server pairs
 with one browser tab of your app, and with the app's own Node processes beside
 it, and their tools become MCP tools the agent can call.
@@ -22,14 +22,14 @@ installed instead: `npx -y @ayme-dev/mcp@<version> mcp`.
 The server adds your Page Objects to the browser automation your agent already
 uses, such as Playwright MCP: it lists their Page Object Tools and
 `page_objects`, and your agent keeps driving the browser with its own tools.
-It lists none of Ayme's own browser driving, so an agent without browser
+It lists none of ayme's own browser driving, so an agent without browser
 automation needs one first.
 
 `ayme mcp --help` lists every option.
 
 Install the package beside `@ayme-dev/ayme`, which declares it as an optional
 peer dependency, and turn the page side on with `agentConnection: true` where
-Ayme starts: `useAyme` or `AymeProvider` in Vue, `AymeProvider` in React,
+ayme starts: `useAyme` or `AymeProvider` in Vue, `AymeProvider` in React,
 `useAyme` in Svelte, `provideAyme` in Angular, or `createAyme`:
 
 ```ts
@@ -63,7 +63,7 @@ the address bar without reloading. Pasting the link into a tab that is already
 open changes only its hash, so the page does not reload.
 
 A tab with no link and no stored pairing pairs by itself when the page is on
-`localhost` or `127.0.0.1` and exactly one Ayme MCP server runs on the
+`localhost` or `127.0.0.1` and exactly one ayme MCP server runs on the
 machine. With none or several running, it stays unpaired until you open or
 paste a connect link, so it never pairs with the wrong agent. Until it pairs,
 it looks again each time the tab gains focus, so a tab opened before the
@@ -147,7 +147,7 @@ of the connection that `start()` loads in Node:
 and returns `{ dispose }`.
 
 - **Finding the server:** it probes the ports from 9350 to 9365 and pairs only
-  when exactly one Ayme MCP server answers, as a tab's auto-pairing does.
+  when exactly one ayme MCP server answers, as a tab's auto-pairing does.
   `port` makes it look on that one port instead, for a server started with
   `--port`. `link`, a connect link from `ayme_connect`, names one server
   instead of looking; it throws when the link is not one.
@@ -222,7 +222,7 @@ the cases apart like this:
   starts, such as a link click or `location.reload()`), and the tab has not
   reconnected. The answer has `settled: false` and the URL in `url`.
 - **Closed:** the tab did not reconnect and the page said nothing, as when the
-  tab closes or the browser itself loads a document without Ayme.
+  tab closes or the browser itself loads a document without ayme.
 - **Another tab connected:** the newest tab wins. Pairing a second tab answers
   the first tab's calls at once, the first tab forgets its pairing and does not
   reconnect, and the server works with the second tab.

@@ -7,7 +7,7 @@ amends: ADR-0043
 
 ## Why
 
-ADR-0043 had an agent name a Page Object by the Structural Ref of its root, `e41`, read from Ayme's snapshot. Now Ayme sits next to Playwright, which prints refs of the same shape for every other element. An agent holding both can pass Playwright's `e41` where Ayme's was meant. The call then runs on whatever that ref resolves to, and nothing fails.
+ADR-0043 had an agent name a Page Object by the Structural Ref of its root, `e41`, read from ayme's snapshot. Now ayme sits next to Playwright, which prints refs of the same shape for every other element. An agent holding both can pass Playwright's `e41` where ayme's was meant. The call then runs on whatever that ref resolves to, and nothing fails.
 
 ## Decision
 
@@ -21,7 +21,7 @@ A Page Object of a class with a root gets an id, `po<n>`, and its tools take tha
 
 ## Where it lives
 
-In the Page Object module of the `ayme` package, with its own type that cannot be mixed with a Structural Ref. `@ayme-dev/core` does not change. A ref stays the address of a node in one capture, and it now names elements only, for Browser Tools and Custom Tools. Ayme's own snapshot prints the id beside each root's class. A root of several classes lists them in its `pom` property and their ids, in the same order, in its `id` property. The Goal Loop and the Inspector pass the id.
+In the Page Object module of the `ayme` package, with its own type that cannot be mixed with a Structural Ref. `@ayme-dev/core` does not change. A ref stays the address of a node in one capture, and it now names elements only, for Browser Tools and Custom Tools. ayme's own snapshot prints the id beside each root's class. A root of several classes lists them in its `pom` property and their ids, in the same order, in its `id` property. The Goal Loop and the Inspector pass the id.
 
 ## Considered and rejected
 

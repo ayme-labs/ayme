@@ -11,12 +11,12 @@ import {
 
 export type AymeAngularOptions = {
   /**
-   * The tsconfig Ayme's compiler reads, resolved from the workspace root.
+   * The tsconfig ayme's compiler reads, resolved from the workspace root.
    * Point it at the app's own tsconfig, which Angular's watcher also reads.
    */
   tsconfigPath?: string;
   /**
-   * Whether the build includes Ayme. Defaults to false: the runtime's
+   * Whether the build includes ayme. Defaults to false: the runtime's
    * entries then resolve to its absent entry and each Page Object Model
    * compiles to a stand-in.
    */
@@ -38,7 +38,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
   );
   if (unknown.length > 0)
     throw new TypeError(
-      `Ayme's Angular plugin has no option(s): ${unknown.join(", ")}. Referenced in angular.json as a plain string, it receives the builder's options.`
+      `ayme's Angular plugin has no option(s): ${unknown.join(", ")}. Referenced in angular.json as a plain string, it receives the builder's options.`
     );
   if (
     options.tsconfigPath !== undefined &&
@@ -73,7 +73,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         compiler.invalidate();
       });
 
-      // The stand-in of a build without Ayme is what `onLoad` hands esbuild
+      // The stand-in of a build without ayme is what `onLoad` hands esbuild
       // as the module's contents, and esbuild maps a module to the contents
       // it loaded, so no source map carries the replaced model.
       const compile = async (fileName: string) => {
@@ -86,7 +86,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         };
       };
 
-      // A build without Ayme resolves the runtime's two entries and the
+      // A build without ayme resolves the runtime's two entries and the
       // framework packages to their absent entries, wherever they are
       // imported from.
       if (!include)
@@ -147,7 +147,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         const pom = await compiled.get(fileName);
         if (!pom)
           throw new Error(
-            `Ayme did not compile Page Object Model ${fileName}.`
+            `ayme did not compile Page Object Model ${fileName}.`
           );
         return {
           contents: pom.contents,

@@ -102,7 +102,7 @@ export async function seedUser(): Promise<SeededUser> {
         create: {
           organization: {
             create: {
-              name: "Ayme Lab",
+              name: "ayme Lab",
               billing: {
                 create: {
                   limits: { workspaces: 3, monthly: { responses: 1500 } },
@@ -110,7 +110,7 @@ export async function seedUser(): Promise<SeededUser> {
                   usageCycleAnchor: new Date(),
                 },
               },
-              workspaces: { create: { name: "Ayme Lab Workspace" } },
+              workspaces: { create: { name: "ayme Lab Workspace" } },
             },
           },
           role: "owner",

@@ -129,7 +129,7 @@ describe("openPageChannel", () => {
     });
     await expect.poll(() => started).toBe(true);
 
-    // As when the page's Ayme setup is disposed while one of its tools runs.
+    // As when the page's ayme setup is disposed while one of its tools runs.
     channel.close();
     await expect.poll(() => server!.clients.size).toBe(0);
     finish();
@@ -152,7 +152,7 @@ describe("openPageChannel", () => {
       WebSocket,
     });
     void channel.publishTools([]).catch(() => {});
-    // As when the page's Ayme setup is disposed while its socket opens.
+    // As when the page's ayme setup is disposed while its socket opens.
     channel.close();
 
     await new Promise((resolve) => setTimeout(resolve, 1500));

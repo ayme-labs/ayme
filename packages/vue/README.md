@@ -1,6 +1,6 @@
 # @ayme-dev/vue
 
-The Vue package for [Ayme](https://github.com/ayme-labs/ayme): it starts Ayme at the root of your Vue app and gives components their Page Objects.
+The Vue package for [ayme](https://github.com/ayme-labs/ayme): it starts ayme at the root of your Vue app and gives components their Page Objects.
 
 ## Install
 
@@ -52,7 +52,7 @@ usePeek({ count }, "counter");
 
 - [Quickstart: Vue](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/quickstart-vue.md): from an empty app to your first Page Object Tool.
 - [Vue page](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/vue.md): the provider and standalone setup, root ownership, hooks, server rendering with Nuxt, limits and API.
-- [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
+- [ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 
 ## Supported versions
 

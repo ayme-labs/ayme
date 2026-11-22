@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from "node:url";
 
 const appRoot = fileURLToPath(new URL("../", import.meta.url));
 
-// What a Build without Ayme leaves out: the runtime's own text, the compiled
+// What a Build without ayme leaves out: the runtime's own text, the compiled
 // Page Object Model manifest, whose key stands for the registration call
 // the build minifies, the models' action descriptions and locator calls,
 // and Playwright in the browser.
@@ -60,8 +60,8 @@ function findMappedMarkers(distDir, markers) {
   return hits;
 }
 
-// The build with Ayme carries the markers, so a stale marker list would
-// fail here rather than pass the build without Ayme by accident.
+// The build with ayme carries the markers, so a stale marker list would
+// fail here rather than pass the build without ayme by accident.
 const withAyme = path.join(appRoot, ".next");
 const present = new Set(
   findMarkers(withAyme, aymeMarkers).map((hit) => hit.split(": ")[1])
@@ -69,18 +69,18 @@ const present = new Set(
 const absent = aymeMarkers.filter((marker) => !present.has(marker));
 if (absent.length > 0)
   throw new Error(
-    `The build with Ayme carries none of these markers, so they prove nothing:\n${absent.join("\n")}`
+    `The build with ayme carries none of these markers, so they prove nothing:\n${absent.join("\n")}`
   );
 
-// The build without Ayme (`AYME_INCLUDE=false next build`) proves on a real
+// The build without ayme (`AYME_INCLUDE=false next build`) proves on a real
 // Next.js app what the build plugin promises for `include: false`, in the
 // browser chunks and in their source maps.
 const withoutAyme = path.join(appRoot, ".next-without-ayme");
 const hits = findMarkers(withoutAyme, aymeMarkers);
 if (hits.length > 0)
-  throw new Error(`Ayme is in the build without Ayme:\n${hits.join("\n")}`);
+  throw new Error(`ayme is in the build without ayme:\n${hits.join("\n")}`);
 const mapped = findMappedMarkers(withoutAyme, modelMarkers);
 if (mapped.length > 0)
   throw new Error(
-    `A Page Object Model is in the source maps of the build without Ayme:\n${mapped.join("\n")}`
+    `A Page Object Model is in the source maps of the build without ayme:\n${mapped.join("\n")}`
   );

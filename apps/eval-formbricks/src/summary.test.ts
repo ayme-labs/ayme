@@ -281,7 +281,7 @@ describe("the versions a rerun must match", () => {
       "- Model: claude-sonnet-fixture (requested sonnet, effort medium)"
     );
     expect(markdown).toContain("- @playwright/mcp 0.0.83 (playwright-mcp)");
-    expect(markdown).toContain("- Ayme commit: 4cdac8dd");
+    expect(markdown).toContain("- ayme commit: 4cdac8dd");
     expect(markdown).toContain("- Formbricks commit: 8abe0b42");
     expect(markdown).not.toContain("## Notes");
   });
@@ -296,7 +296,7 @@ describe("the versions a rerun must match", () => {
     ]);
     expect(summary.versions.aymeCommit).toEqual(["4cdac8dd", "ffffffff"]);
     expect(summary.notes).toContain(
-      "The runs differ in Ayme commits: 4cdac8dd, ffffffff. A rerun cannot match them all."
+      "The runs differ in ayme commits: 4cdac8dd, ffffffff. A rerun cannot match them all."
     );
   });
 

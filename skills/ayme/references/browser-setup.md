@@ -1,7 +1,7 @@
 # Browser setup
 
 Set up the connection as [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md)
-describes: `agentConnection` on behind the app's dev flag, and Ayme's MCP
+describes: `agentConnection` on behind the app's dev flag, and ayme's MCP
 server registered in your agent as the copy of `@ayme-dev/mcp` the project
 installed, started in the project's folder. Diagnose with the "The agent cannot reach the page" section of
 [Troubleshooting](https://github.com/ayme-labs/ayme/blob/main/docs/guide/troubleshooting.md).
@@ -13,7 +13,7 @@ by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
   agent starts its servers in another folder. It lists the Page Object Tools,
   `page_objects`, Peek Tools and its own tools beside your browser
   automation, such as Playwright MCP, Playwright CLI or agent-browser, and
-  none of Ayme's own browser driving. Without any browser automation, add one
+  none of ayme's own browser driving. Without any browser automation, add one
   first. [Browser automation tools](browser-automation-tools.md) shows how
   each of those three connects.
 - The server's tools reach you only after your client restarts. When you
@@ -27,7 +27,7 @@ by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
 - Right after `ayme_connect`, a call of a page tool or `ayme_list_tools`
   waits up to 10 seconds for the page its link opens to pair. When it still
   answers that no page is connected, the link was not opened, or the page
-  has no Ayme: see [A page that doesn't ship Ayme](#a-page-that-doesnt-ship-ayme).
+  has no ayme: see [A page that doesn't ship ayme](#a-page-that-doesnt-ship-ayme).
 - When a tool answers that no page is connected right after your MCP server
   restarted, and a tab was paired before, wait a few seconds: the tab pairs
   again by itself, and the page's tools come back with a tool list change.
@@ -40,7 +40,7 @@ by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
 - When a tool answers that no page reconnected in its place, the page the tab
   loaded did not pair within a few seconds. A slow page of the app pairs
   later by itself, and its tools come back with a tool list change. A page
-  that doesn't run Ayme's Agent Connection and loads no
+  that doesn't run ayme's Agent Connection and loads no
   [served Page Objects](#a-page-that-doesnt-ship-ayme), such as another site,
   never pairs. `ayme_connect` can't pair it either. Go back to a page of the
   app in that tab, with your browser tool or by asking the user. Its tools
@@ -65,18 +65,18 @@ by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
   can keep its earlier tools after a refused hot update. Once the build
   succeeds again, reload that page before relying on its tools. Until then
   it may still run the Page Objects from before the refusal.
-- Check the connection end to end: invoke the exposed action through Ayme's
-  MCP server and confirm its visible effect in the app. A direct Ayme call or
+- Check the connection end to end: invoke the exposed action through ayme's
+  MCP server and confirm its visible effect in the app. A direct ayme call or
   a page-state read alone does not check the connection.
 - When Chrome asks to allow local network access, ask the user to allow it,
   then reload.
 
-## A page that doesn't ship Ayme
+## A page that doesn't ship ayme
 
 Experimental. With Playwright MCP, Playwright CLI or agent-browser, `ayme mcp`
-can serve the project's Page Objects to a page that doesn't ship Ayme. Set it
+can serve the project's Page Objects to a page that doesn't ship ayme. Set it
 up as
-[Page Objects on a page without Ayme](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-objects-without-ayme.md)
+[Page Objects on a page without ayme](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-objects-without-ayme.md)
 describes. When it fails:
 
 - The browser tool fails with `Init script file does not exist`: start

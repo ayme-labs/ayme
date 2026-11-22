@@ -82,7 +82,7 @@ describe("runStartup", () => {
   it("sends one message, which names the skill and no reference", async () => {
     const { stored } = await start("startup-exact.jsonl");
     const message =
-      "Get ready to drive the web page that is already open and connected through Ayme. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n";
+      "Get ready to drive the web page that is already open and connected through ayme. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n";
     expect(await stored("setup-prompt.txt")).toBe(message);
     const stderr = await stored("stderr.log");
     expect(stderr).toContain(`user message 1: ${message}`);

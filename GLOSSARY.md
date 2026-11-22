@@ -1,6 +1,6 @@
-# Ayme WebMCP
+# ayme WebMCP
 
-Ayme WebMCP exposes selected Page Object behavior as WebMCP Tools while keeping the Page Object Model as the source of that behavior.
+ayme WebMCP exposes selected Page Object behavior as WebMCP Tools while keeping the Page Object Model as the source of that behavior.
 
 ## Language
 
@@ -31,13 +31,13 @@ _Avoid_: computed description, composed description
 A model-facing observation of the currently presented page structure and its Page Object Root Marks. Normally scrollable content and modal-blocked content remain represented. Known hidden or unreachable off-canvas Page Object subtrees are omitted. Structural inclusion does not imply interaction availability.
 
 **Structural Ref**:
-A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node. Its grammar (a real `e…` ref, which Playwright may prefix with a frame as `f…e…`, a synthetic `s_…` ref, and its `ayme-ref=…` selector) is owned by core's structural observation module; nothing else restates it. A ref is acted on through Ayme's own selector engine, which resolves it from the current capture, so a synthetic ref is as actionable as a real one; a synthetic ref stays with its root element across the session's captures, as Playwright keeps a real ref with its element. A ref names an element, for a Browser Tool or a Custom Tool; it does not name a Page Object, which has a Page Object Id.
+A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node. Its grammar (a real `e…` ref, which Playwright may prefix with a frame as `f…e…`, a synthetic `s_…` ref, and its `ayme-ref=…` selector) is owned by core's structural observation module; nothing else restates it. A ref is acted on through ayme's own selector engine, which resolves it from the current capture, so a synthetic ref is as actionable as a real one; a synthetic ref stays with its root element across the session's captures, as Playwright keeps a real ref with its element. A ref names an element, for a Browser Tool or a Custom Tool; it does not name a Page Object, which has a Page Object Id.
 
 **Page State Session**:
-The lifetime within one browser document during which Ayme maintains best-effort continuity between successive Structural Page States. It also records the document's interaction history: its Visits, the actions taken and what each caused. Each Host keeps its own over one document.
+The lifetime within one browser document during which ayme maintains best-effort continuity between successive Structural Page States. It also records the document's interaction history: its Visits, the actions taken and what each caused. Each Host keeps its own over one document.
 
 **In-page Module**:
-The one per-document instance of Ayme's DOM work that every Host binds to. The first Host to reach the document installs it, every later Host binds to it, and a Host of another version is refused.
+The one per-document instance of ayme's DOM work that every Host binds to. The first Host to reach the document installs it, every later Host binds to it, and a Host of another version is refused.
 _Avoid_: injected script (Playwright's own)
 
 **Host**:
@@ -74,14 +74,14 @@ Whether a Page Object Action can run right now. An action is available when its 
 The one fact that makes a Page Object Action, or a Browser Tool call on a single element, unavailable, as a string. The runtime writes it when a click would not reach the root or the element, or when an element a tool types into cannot take focus, naming the Structural Ref of the element in the way when it has one; the author's predicate writes it otherwise. The runtime never infers more than it measured.
 
 **Browser Tool**:
-A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose, and offers and accepts only elements its input would reach: a click for one that clicks or hovers, focus for one that types or selects. It reaches an agent in the page through WebMCP publication, and never a coding agent through an Ayme MCP server.
+A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose, and offers and accepts only elements its input would reach: a click for one that clicks or hovers, focus for one that types or selects. It reaches an agent in the page through WebMCP publication, and never a coding agent through an ayme MCP server.
 
 **Locator Recommendation**:
 A Playwright locator string derived for one element, optionally relative to a container element. It matches exactly that element and never contains a Structural Ref. It is code for a Page Object Model, not an address for a later tool call.
 _Avoid_: selector suggestion
 
 **Custom Tool**:
-An operation an app registers that applies to one element. One registration makes it a published tool and an operation the Goal Loop may choose. It reaches an agent in the page through WebMCP publication, and never a coding agent through an Ayme MCP server.
+An operation an app registers that applies to one element. One registration makes it a published tool and an operation the Goal Loop may choose. It reaches an agent in the page through WebMCP publication, and never a coding agent through an ayme MCP server.
 
 **Settled Page**:
 A page that has shown no activity for a quiet window after an action. A wait for it is bounded by a deadline and reports whether the page became stable.
@@ -94,7 +94,7 @@ One execution of a tool, from its start to its outcome. It is started by a Calle
 _Avoid_: tool call, invocation
 
 **Caller**:
-Whoever starts a top-level Run from outside: an agent through WebMCP or the Ayme MCP server, the Inspector, or the app's own code. A Caller names itself. A Run started inside another Run has a parent instead.
+Whoever starts a top-level Run from outside: an agent through WebMCP or the ayme MCP server, the Inspector, or the app's own code. A Caller names itself. A Run started inside another Run has a parent instead.
 
 **Interaction**:
 One input a Run gives the page: a click, fill, key press, hover or selection on one element. A Run's Interactions are the ones it performed itself; its child Runs have their own.
@@ -113,23 +113,23 @@ The Goal Loop returning control to the calling agent, with the reason it stopped
 What one step of the Goal Loop does, decided from the page the loop received, the goal, the Goal Values and the steps so far: an operation with its arguments, or the reason the loop stops. The Goal Loop runs the operation and records the step; it does not decide.
 
 **Decision Endpoint**:
-The route in an app's own backend that adds the provider's key and Jev model to a decision request and forwards it to that provider. Ayme provides its definition; the app deploys and gates it.
+The route in an app's own backend that adds the provider's key and Jev model to a decision request and forwards it to that provider. ayme provides its definition; the app deploys and gates it.
 _Avoid_: relay (means the WebMCP local relay), proxy.
 
 **Inspector**:
 The panel that shows a page's Page Objects, its Structural Page State and its tools, and lets a developer run those tools by hand. It runs inline in the inspected page or outside it.
 _Avoid_: debug panel, debugger, POM inspector
 
-**Build without Ayme**:
-A browser build that contains no Ayme runtime and no Page Object Model implementation. Application code that imports Ayme still loads; what it would call is not there.
-_Avoid_: stripped build, removed build, production build (a production build may include Ayme)
+**Build without ayme**:
+A browser build that contains no ayme runtime and no Page Object Model implementation. Application code that imports ayme still loads; what it would call is not there.
+_Avoid_: stripped build, removed build, production build (a production build may include ayme)
 
 **Demo Mode**:
 The Inspector's setting for showing people what an agent does: it pauses briefly before each action and shows a cue where each click lands, whoever makes the call (the panel, an agent or WebMCP). Off by default, so calls run at full speed.
 _Avoid_: slow mode, demo trace
 
 **Agent Connection**:
-The link between one agent's Ayme MCP server and one page, plus the App Processes paired beside it, through which the agent calls their tools. The server decides which of the page's tools the agent sees: its Page Object Tools, `page_objects` and Peek Tools, and none of its Browser Tools, `snapshot`, `goal` or Custom Tools.
+The link between one agent's ayme MCP server and one page, plus the App Processes paired beside it, through which the agent calls their tools. The server decides which of the page's tools the agent sees: its Page Object Tools, `page_objects` and Peek Tools, and none of its Browser Tools, `snapshot`, `goal` or Custom Tools.
 
 **Agent App**:
 The program a developer runs an agent in, which starts `ayme mcp` and connects to it over MCP: Cursor, Claude Desktop, T3 Code, Claude Code. Some show an MCP App, a page the server gives them, inside the chat.

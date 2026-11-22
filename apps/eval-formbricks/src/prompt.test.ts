@@ -219,7 +219,7 @@ const aymeArmIds = armIds.filter((armId) => arms[armId].withAyme);
 const aloneArmIds = armIds.filter((armId) => !arms[armId].withAyme);
 
 describe("the arms", () => {
-  it("are each browser automation alone and with Ayme as its own MCP server", () => {
+  it("are each browser automation alone and with ayme as its own MCP server", () => {
     expect(armIds.toSorted()).toEqual(
       [
         "playwright-mcp",
@@ -311,10 +311,10 @@ describe("the setup message", () => {
   });
 });
 
-describe.each(aloneArmIds)("the %s arm, without Ayme", (armId) => {
+describe.each(aloneArmIds)("the %s arm, without ayme", (armId) => {
   const arm = arms[armId];
 
-  it("gets no Ayme tool, server, skill, sentence or precondition", () => {
+  it("gets no ayme tool, server, skill, sentence or precondition", () => {
     expect(arm.withAyme).toBe(false);
     expect(Object.keys(arm.mcpServers(armContext))).not.toContain("ayme");
     expect(arm.allowedTools.join(" ")).not.toMatch(/ayme/i);
@@ -328,7 +328,7 @@ describe.each(aloneArmIds)("the %s arm, without Ayme", (armId) => {
 describe.each(aymeArmIds)("the %s arm", (armId) => {
   const arm = arms[armId];
 
-  it("starts Ayme with the command the skill reference gives", () => {
+  it("starts ayme with the command the skill reference gives", () => {
     const command = aymeStartArgs.join(" ");
     expect(aymeMcpArgs(9350)).toEqual([...aymeStartArgs, "--port", "9350"]);
     const reference = readFileSync(
@@ -361,8 +361,8 @@ describe.each(aymeArmIds)("the %s arm", (armId) => {
 
   it("checks the server's build and ports first, and sets the server and the page up outside the measured window", () => {
     expect(arm.preconditions?.map((p) => p.name)).toEqual([
-      "Ayme MCP server",
-      "Ayme MCP ports",
+      "ayme MCP server",
+      "ayme MCP ports",
     ]);
     expect(arm.setup).toBeTypeOf("function");
   });

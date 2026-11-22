@@ -354,7 +354,7 @@ describe("the page's own runtime and a Node host on one document", () => {
     await expect(
       built.createInPageHost("0.0.0-other").inPage(page).bound()
     ).rejects.toThrow(
-      `This document runs Ayme's in-page module ${runtime.version}; this host is 0.0.0-other.`
+      `This document runs ayme's in-page module ${runtime.version}; this host is 0.0.0-other.`
     );
     expect((await built.inPage(page).bound()).installedBy).toBe(runtime.host);
   });

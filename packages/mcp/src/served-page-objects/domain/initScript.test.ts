@@ -187,7 +187,7 @@ it("follows the stamps only once the document has loaded", () => {
   expect(page.sockets).toHaveLength(1);
 });
 
-it("loads nothing into a page whose own Ayme runtime has started", () => {
+it("loads nothing into a page whose own ayme runtime has started", () => {
   const page = runInitScript({ slot: { contract: {} } });
 
   expect(page.sockets).toHaveLength(0);

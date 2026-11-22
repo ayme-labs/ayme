@@ -1,5 +1,5 @@
 /**
- * What a build without Ayme resolves `@ayme-dev/vue` to: the names of the
+ * What a build without ayme resolves `@ayme-dev/vue` to: the names of the
  * index with their types, over the runtime's absent entry, so a component
  * tree renders as with the real package. The provider renders its children
  * and the hooks return the inert session's values; nothing here owns a
@@ -25,7 +25,7 @@ export type {
   UseAymeResult,
 } from "./index";
 
-const runtimeKey: InjectionKey<Ayme> = Symbol("Ayme runtime");
+const runtimeKey: InjectionKey<Ayme> = Symbol("ayme runtime");
 let inert: Ayme | undefined;
 
 function inherited() {
@@ -41,7 +41,7 @@ function own(options?: UseAymeOptions) {
 
 // The same props as the index's provider, so a template's `:web-m-c-p`
 // reaches the absent runtime as `webMCP`, and its publication error is
-// logged as it would be with Ayme in the build.
+// logged as it would be with ayme in the build.
 export const AymeProvider: DefineComponent<UseAymeOptions> = defineComponent({
   name: "AymeProvider",
   props: providerProps,

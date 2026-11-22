@@ -1,4 +1,4 @@
-// The Playwright entry (ADR-0049): Ayme over a real Playwright Page, for a
+// The Playwright entry (ADR-0049): ayme over a real Playwright Page, for a
 // Node host. It composes the same session code and adapters as the browser
 // runtime over the Page it is handed, and carries no browser code: no
 // Playwright Lite, no document, no Inspector.

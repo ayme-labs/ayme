@@ -1,7 +1,7 @@
-# Using Ayme with browser automation tools
+# Using ayme with browser automation tools
 
 You keep driving the browser with the automation you already use, such as
-Playwright CLI, Playwright MCP or agent-browser. Ayme adds two things to it for
+Playwright CLI, Playwright MCP or agent-browser. ayme adds two things to it for
 the screen the browser is on: a Page Object Tool for each action of the Page
 Objects there, and `page_objects`, which lists those Page Objects as a tree
 with the id (`po<n>`) each rooted Page Object Tool takes. A rooted Page Object
@@ -11,14 +11,14 @@ Object with no id takes the action's arguments directly, such as
 `{"text": "Soy milk"}`. [Page tools](page-tools.md) shows how to read the tree
 and a Page Object Tool's answer.
 
-Ayme reaches you as its own MCP server, `ayme`, beside your browser
+ayme reaches you as its own MCP server, `ayme`, beside your browser
 automation. Its start command is `mcp`, after
 `npx --no -p @ayme-dev/mcp ayme`, registered in your agent as
 [Browser setup](browser-setup.md) describes.
 
-On a page that doesn't ship Ayme, the server serves the project's Page Objects
+On a page that doesn't ship ayme, the server serves the project's Page Objects
 through the init script your browser automation loads; see
-[A page that doesn't ship Ayme](browser-setup.md#a-page-that-doesnt-ship-ayme).
+[A page that doesn't ship ayme](browser-setup.md#a-page-that-doesnt-ship-ayme).
 Playwright CLI and Playwright MCP load it from their config file; start
 agent-browser with `--init-script .ayme/init-script.js`.
 

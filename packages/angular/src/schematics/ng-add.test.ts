@@ -66,7 +66,7 @@ const architect = (tree: UnitTestTree) =>
   tree.readJson("angular.json") as AngularJson;
 
 // The entry under the build target's options, without `include`, so that
-// `ng build` is a Build without Ayme.
+// `ng build` is a Build without ayme.
 const buildEntry = {
   path: "./ayme.plugin.mjs",
   options: { tsconfigPath: "projects/app/tsconfig.app.json" },
@@ -79,7 +79,7 @@ const developmentEntry = {
 };
 
 describe.each([true, false])("a standalone app with ssr=%s", (ssr) => {
-  it("switches the builders to custom-esbuild with Ayme's plugin in development only, writes the plugin file and adds provideAyme()", async () => {
+  it("switches the builders to custom-esbuild with ayme's plugin in development only, writes the plugin file and adds provideAyme()", async () => {
     const before = await workspace({ ssr });
     const buildBefore = architect(before).projects["app"]!.architect["build"]!;
 
@@ -296,10 +296,10 @@ it("leaves an unrelated ayme.plugin.mjs and angular.json alone and prints the ma
     .map(({ message }) => message)
     .join("\n");
   expect(warnings).toContain(
-    "ayme.plugin.mjs already exists and does not re-export Ayme's plugin"
+    "ayme.plugin.mjs already exists and does not re-export ayme's plugin"
   );
   expect(messages.map(({ message }) => message).join("\n")).not.toContain(
-    "Ayme is set up"
+    "ayme is set up"
   );
 });
 
@@ -347,7 +347,7 @@ it("carries the base options' other plugins into a development configuration wit
     buildEntry,
   ]);
   // The development array replaces the base one, so it repeats the other
-  // plugin, with Ayme's entry in the base entry's place.
+  // plugin, with ayme's entry in the base entry's place.
   expect(after.configurations!["development"]!["plugins"]).toEqual([
     { path: "./other.plugin.mjs" },
     developmentEntry,

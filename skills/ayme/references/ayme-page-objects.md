@@ -1,8 +1,8 @@
 # Page Object Models
 
-How to mark a Page Object Model, decorator by decorator, so Ayme turns what a user does with it into Page Object Tools.
+How to mark a Page Object Model, decorator by decorator, so ayme turns what a user does with it into Page Object Tools.
 
-Put marked models in `.ts` files the application imports, with `experimentalDecorators` on; the [build plugin](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/build-plugin.md#what-it-compiles) compiles them. They run in the browser, so they use Playwright's types only, as [Playwright in the browser](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/playwright-in-the-browser.md) explains. A marked model stays your Page Object Model: it needs no Ayme base class, and it keeps working in your Playwright tests.
+Put marked models in `.ts` files the application imports, with `experimentalDecorators` on; the [build plugin](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/build-plugin.md#what-it-compiles) compiles them. They run in the browser, so they use Playwright's types only, as [Playwright in the browser](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/playwright-in-the-browser.md) explains. A marked model stays your Page Object Model: it needs no ayme base class, and it keeps working in your Playwright tests.
 
 An agent sees each model as its definition: the model with its description, its children, then its actions with theirs. The examples below add up to this one:
 
@@ -179,7 +179,7 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-An agent gets the mark as the tool's annotation, `destructiveHint` over `ayme mcp` and `consequentialHint` over WebMCP, so it or the harness driving it can stop before the call. Ayme still runs the tool like any other. Write `true` in the decorator itself: the build reads it from source, as it reads `description`. [Destructive actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#destructive-actions) has the details.
+An agent gets the mark as the tool's annotation, `destructiveHint` over `ayme mcp` and `consequentialHint` over WebMCP, so it or the harness driving it can stop before the call. ayme still runs the tool like any other. Write `true` in the decorator itself: the build reads it from source, as it reads `description`. [Destructive actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#destructive-actions) has the details.
 
 ## `@ayme.child`
 
@@ -187,7 +187,7 @@ An agent gets the mark as the tool's annotation, `destructiveHint` over `ayme mc
 
 Declare what an agent reads or acts on, such as the inputs, buttons and lists the model's actions are about. Leave undeclared what only your tests or helper code use, layout wrappers, and the root itself.
 
-A child Page Object needs the declaration too. Ayme reaches a component only through the members its models declare. Without `@ayme.collection` on `projects` below, no `ProjectRow` is reached, and `ProjectRow.remove` never becomes a tool. Nothing warns you. The [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md)'s Model view shows what a model holds.
+A child Page Object needs the declaration too. ayme reaches a component only through the members its models declare. Without `@ayme.collection` on `projects` below, no `ProjectRow` is reached, and `ProjectRow.remove` never becomes a tool. Nothing warns you. The [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md)'s Model view shows what a model holds.
 
 Declare a locator as a getter, and a child page object built from `this.page` or `this.root` the same way. A getter reads `this.page` when the locator is used, after the constructor has set it.
 

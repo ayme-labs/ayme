@@ -47,7 +47,7 @@ export class SignInPage extends AppPage {
     await this.logInWithEmailButton.click();
     // A sign-in that went through shows nothing here before Formbricks leaves
     // the page, so the one outcome to see on this page is the error, which a
-    // refused sign-in showed after 0.3 s. Without one within Ayme's own limit
+    // refused sign-in showed after 0.3 s. Without one within ayme's own limit
     // for a wait, stated here for Playwright, which has none, the sign-in is
     // taken to have gone through.
     const refused = await this.errorMessage

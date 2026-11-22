@@ -183,7 +183,7 @@ type ToolHolder = PageSession | ProcessSession;
  * page's tab is navigating, disconnected or reconnected, a call for the
  * page waits for the new page (see `TabLifecycle`).
  *
- * Of the page's tools it keeps only those the server lists: none of Ayme's
+ * Of the page's tools it keeps only those the server lists: none of ayme's
  * own browser driving (see `listsPageTool`).
  * An App Process's tools it keeps all.
  */
@@ -244,7 +244,7 @@ export class AgentConnection {
   }
 
   /**
-   * Why the server refused the last page that said hello, when its Ayme and
+   * Why the server refused the last page that said hello, when its ayme and
    * the server's can't work together (see `versionGap`), naming both
    * versions. A page that pairs clears it.
    */
@@ -252,7 +252,7 @@ export class AgentConnection {
     return this.#versionGap;
   }
 
-  /** The server refused a page whose Ayme it can't work with, as `gap` says. */
+  /** The server refused a page whose ayme it can't work with, as `gap` says. */
   refuseVersion(gap: string) {
     this.#versionGap = gap;
   }

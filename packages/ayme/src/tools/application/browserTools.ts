@@ -1,7 +1,7 @@
 // Browser Tools: the built-in operations on the page itself, mirroring
 // Playwright MCP's tools at the revision the README pins. Field names and
 // defaults follow Playwright MCP, without its permission-prompt `element`;
-// descriptions are Ayme's own.
+// descriptions are ayme's own.
 import type { Locator } from "@playwright/test";
 import type { JsonSchema } from "../../shared";
 import {

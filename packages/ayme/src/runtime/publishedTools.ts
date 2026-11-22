@@ -69,7 +69,7 @@ export async function listElementToolTargets(
 ): Promise<Map<string, AriaRef[]>> {
   const started = startedPageOf(pageOfDocument(document));
   if (!started)
-    throw new RuntimeStateError("The Ayme browser runtime is not configured.");
+    throw new RuntimeStateError("The ayme browser runtime is not configured.");
   const elementTools = listElementTools();
   const current = capture ?? (await lookAtPageStateForDocument(document));
   return new Map(

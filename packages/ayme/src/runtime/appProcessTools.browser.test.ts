@@ -226,13 +226,13 @@ it("lists none, and runs none, without the Agent Connection, recording the Run a
   expect(getAppProcessTools(ayme).list()).toEqual([]);
   await expect(
     getAppProcessTools(ayme).run("peek.node.jobs", {})
-  ).rejects.toThrow("No Ayme MCP server is paired with this page.");
+  ).rejects.toThrow("No ayme MCP server is paired with this page.");
   expect(ayme.runs.list().filter((run) => !before.has(run.id))).toEqual([
     expect.objectContaining({
       tool: "peek.node.jobs",
       by: callers.app,
       status: "failed",
-      error: "RuntimeStateError: No Ayme MCP server is paired with this page.",
+      error: "RuntimeStateError: No ayme MCP server is paired with this page.",
     }),
   ]);
 });

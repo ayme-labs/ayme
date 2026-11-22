@@ -3,8 +3,8 @@
 The Inspector's end-to-end tests and the fixture app they run against. It is
 private and never published.
 
-The app is a set of plain pages that start the Ayme runtime with a real Page
-Object and mount the built Inspector. Its Page Objects are compiled by the Ayme
+The app is a set of plain pages that start the ayme runtime with a real Page
+Object and mount the built Inspector. Its Page Objects are compiled by the ayme
 Vite plugin, the way an app's are. The tests live here rather than in
 `packages/inspector` because the plugin depends on the Inspector.
 

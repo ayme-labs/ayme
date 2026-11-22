@@ -22,7 +22,7 @@ export const connectTool: ServerToolFactory = ({
 }) => ({
   name: "ayme_connect",
   description:
-    "Returns a link that connects a browser tab to this Ayme MCP server. Open the link, in your browser tool or ask the developer to open it in theirs; the page's tools then become available as MCP tools.",
+    "Returns a link that connects a browser tab to this ayme MCP server. Open the link, in your browser tool or ask the developer to open it in theirs; the page's tools then become available as MCP tools.",
   inputSchema: {
     type: "object",
     properties: {

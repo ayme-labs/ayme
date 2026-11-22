@@ -598,7 +598,7 @@ export function createPomRegistry(
   function claim(): () => void {
     if (owner)
       throw new RuntimeStateError(
-        "The Ayme runtime already has an active owner.",
+        "The ayme runtime already has an active owner.",
         { code: "active-owner" }
       );
     resetRegisteredPoms();
@@ -722,7 +722,7 @@ function createTool(
         args = actionArgs;
         const label = `call ${tool.name} on`;
         const id = givenPageObjectId(given);
-        // A capture Ayme makes for itself, which moves no cursor: the call
+        // A capture ayme makes for itself, which moves no cursor: the call
         // is judged against the page as it is now.
         await context.pageStateSession.getPageStateCapture();
         const resolved = await pageObjectIds.rootOf(id);

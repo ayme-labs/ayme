@@ -42,7 +42,7 @@ export type CustomTool = {
    * Marks the operation as one that cannot be undone, such as deleting a
    * record or submitting an order. The published tool says so in its
    * annotations: `destructiveHint` over MCP, `consequentialHint` over
-   * WebMCP. Ayme still runs it like any other tool. `false` is the same as
+   * WebMCP. ayme still runs it like any other tool. `false` is the same as
    * leaving it out.
    */
   destructive?: boolean;
@@ -70,7 +70,7 @@ export type CustomTool = {
 export type CustomToolContext = {
   /**
    * Starts a Run of the live tool `name` as a child Run of the Custom Tool's
-   * Run, and returns its result. Throws Ayme's errors, as `ayme.tools.run`
+   * Run, and returns its result. Throws ayme's errors, as `ayme.tools.run`
    * does.
    */
   run<N extends string>(name: N, input: ToolInput<N>): Promise<ToolResult<N>>;

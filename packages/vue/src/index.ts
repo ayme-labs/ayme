@@ -32,7 +32,7 @@ import { providerProps } from "./providerProps";
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
 /** The options of `createAyme`, passed to it unchanged. */
 export type UseAymeOptions = AymeOptions;
-const runtimeKey: InjectionKey<Ayme> = Symbol("Ayme runtime");
+const runtimeKey: InjectionKey<Ayme> = Symbol("ayme runtime");
 
 function inheritedRuntime() {
   return getCurrentInstance() ? inject(runtimeKey, undefined) : undefined;
@@ -74,7 +74,7 @@ export const AymeProvider: DefineComponent<UseAymeOptions> = defineComponent({
   setup(props, { slots }) {
     if (inheritedRuntime())
       throw new Error(
-        "AymeProvider cannot be nested beneath another Ayme runtime owner."
+        "AymeProvider cannot be nested beneath another ayme runtime owner."
       );
     const snapshotOptions = () => snapshotRuntimeOptions(props);
     const options = snapshotOptions();

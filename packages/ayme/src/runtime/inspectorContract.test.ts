@@ -334,7 +334,7 @@ describe("the Inspector contract the runtime serves", () => {
     });
     expect((await none.getState()).tools).toEqual([]);
     expect((await none.runTool({ name: "click" })).error).toMatch(
-      /not started|No Ayme/
+      /not started|No ayme/
     );
     void contract;
   });

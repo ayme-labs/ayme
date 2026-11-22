@@ -36,7 +36,7 @@ export type RunArtifacts = {
     formbricksCommit: string | null;
     aymeCommit: string | null;
   };
-  /** What the arm's setup established before the measured window, such as the page paired with the Ayme MCP server; `null` for arms without a setup. */
+  /** What the arm's setup established before the measured window, such as the page paired with the ayme MCP server; `null` for arms without a setup. */
   setup: Record<string, unknown> | null;
   /** What the agent changed in the lab app folder during the run. */
   labCheckout: {
@@ -259,7 +259,7 @@ ${tools}
 - Browser interface: ${result.versions.browserInterface.name} ${result.versions.browserInterface.version}
 - Browser: ${result.versions.browser ?? "unknown"}
 - Formbricks: ${result.versions.formbricksCommit ?? "unknown"}
-- Ayme: ${result.versions.aymeCommit ?? "unknown"}
+- ayme: ${result.versions.aymeCommit ?? "unknown"}
 - MCP servers: ${result.isolation.mcpServers.map((server) => `${server.name} (${server.status})`).join(", ") || "none"}
 - Skills: ${result.isolation.skills.join(", ") || "none"}
 - Plugins: ${result.isolation.plugins.map((plugin) => plugin.source ?? plugin.name).join(", ") || "none"}

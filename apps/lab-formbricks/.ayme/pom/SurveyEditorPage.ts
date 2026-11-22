@@ -135,7 +135,7 @@ export class SurveyEditorPage extends AppPage {
     // While Formbricks saves, the button shows a spinner in place of its
     // name, so it is back once the save has ended. The save is a round trip
     // to the server, which took 0.5 to 0.75 s on a warm dev server: too close
-    // to the one second Ayme gives a wait, so this one has its own limit.
+    // to the one second ayme gives a wait, so this one has its own limit.
     await button.waitFor({ timeout: 5_000 });
     if (!(await this.changesSavedMessage.isVisible()))
       throw new Error("Formbricks did not save the survey.");

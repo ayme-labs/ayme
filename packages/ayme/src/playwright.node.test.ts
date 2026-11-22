@@ -1,5 +1,5 @@
 // The `./playwright` entry in Node, over real Playwright Chromium and against
-// the built package: Ayme over a Page a Node host was handed (ADR-0049).
+// the built package: ayme over a Page a Node host was handed (ADR-0049).
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -30,7 +30,7 @@ afterAll(async () => {
 /** A page of its own context showing `body`. */
 async function pageShowing(body: string): Promise<Page> {
   const page = await browser.newPage();
-  await page.setContent(`<!doctype html><title>Ayme</title>${body}`);
+  await page.setContent(`<!doctype html><title>ayme</title>${body}`);
   return page;
 }
 
@@ -86,7 +86,7 @@ async function snapshot(ayme: Playwright.PlaywrightAyme): Promise<string> {
   return structure;
 }
 
-describe("Ayme over a Playwright Page", () => {
+describe("ayme over a Playwright Page", () => {
   it("runs a live Page Object Tool and reports what it changed", async () => {
     const page = await pageShowing(
       '<section id="counter"><output>0</output><button>Add</button></section>' +
@@ -238,7 +238,7 @@ describe("Ayme over a Playwright Page", () => {
           contentType: "text/html",
           headers: { "content-security-policy": "script-src 'unsafe-inline'" },
           body:
-            "<!doctype html><title>Ayme</title>" +
+            "<!doctype html><title>ayme</title>" +
             panels +
             '<script>try { new Function("return 1"); window.evaluates = true } catch { window.evaluates = false }</script>',
         })
@@ -337,7 +337,7 @@ describe("Ayme over a Playwright Page", () => {
     await page.route("http://app.test/**", (route) =>
       route.fulfill({
         contentType: "text/html",
-        body: `<!doctype html><title>Ayme</title>${serve(new URL(route.request().url()))}`,
+        body: `<!doctype html><title>ayme</title>${serve(new URL(route.request().url()))}`,
       })
     );
     await page.goto(first);

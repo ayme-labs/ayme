@@ -22,7 +22,7 @@ export function readyLine({
 }
 
 /**
- * What the setup turn of an arm with Ayme asks: load the browser
+ * What the setup turn of an arm with ayme asks: load the browser
  * automation's skill, if it has one, and the `ayme` skill, and read that
  * skill's reference on browser automation tools, where the instruction on
  * what to read after a Page Object Tool lives.
@@ -40,7 +40,7 @@ export function aymeReadyLine({ skill }: Pick<Arm, "skill">) {
  * agent off the page. Starting up and loading the arm's skills happen in this
  * turn, outside the measured one, so the prompt names the skills: a bare
  * "load your skill if you have one" left the agent skipping it in some runs
- * and loading it in the measured turn instead. An arm with Ayme reads the
+ * and loading it in the measured turn instead. An arm with ayme reads the
  * skill reference here too.
  */
 export function setupPrompt(arm: Pick<Arm, "skill" | "withAyme">) {

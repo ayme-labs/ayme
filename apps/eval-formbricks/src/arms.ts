@@ -7,12 +7,12 @@
  *
  * Each browser automation, Playwright MCP, Playwright CLI and agent-browser,
  * has two arms: the browser automation alone, on Formbricks as it is; and
- * with Ayme as its own MCP server, `ayme`, beside it. The arm with Ayme
+ * with ayme as its own MCP server, `ayme`, beside it. The arm with ayme
  * serves the lab app's Page Objects with the run's `ayme mcp`, started as
  * the `ayme` skill's reference on browser automation tools says, and loads
  * that skill and that reference in the setup turn. The interface
- * line states which tools the agent has, and no instruction of Ayme's: those
- * come from the reference. The arms alone get nothing of Ayme.
+ * line states which tools the agent has, and no instruction of ayme's: those
+ * come from the reference. The arms alone get nothing of ayme.
  */
 import {
   agentBrowserVersion,
@@ -81,7 +81,7 @@ export type ArmSetup = {
 export type Arm = {
   id: ArmId;
   browserAutomation: BrowserAutomation;
-  /** Whether the arm adds Ayme's Page Object Tools to its browser automation. */
+  /** Whether the arm adds ayme's Page Object Tools to its browser automation. */
   withAyme: boolean;
   /** The one prompt line that differs between arms; it may say where the browser is. */
   interfaceLine: (start: Mission["start"]) => string;
@@ -138,13 +138,13 @@ const aloneLines: Record<
 };
 
 /**
- * What an arm with Ayme adds to its browser automation's line: where the
+ * What an arm with ayme adds to its browser automation's line: where the
  * Page Object Tools are, as a fact. Nothing on when to call them or what to
  * read after one: that is the skill reference's.
  */
 export const aymeToolsSentence = `The \`${aymeServerName}\` MCP server lists the Page Object Tools of the screen the browser is on.`;
 
-/** What each browser automation runs on and is set up with; an arm with Ayme adds to it. */
+/** What each browser automation runs on and is set up with; an arm with ayme adds to it. */
 const browserAutomations: Record<
   BrowserAutomation,
   Pick<
@@ -229,7 +229,7 @@ function armAlone(browserAutomation: BrowserAutomation): Arm {
 }
 
 /**
- * The arm of a browser automation with Ayme: the arm alone, its browser
+ * The arm of a browser automation with ayme: the arm alone, its browser
  * attached over CDP to the page the run's `ayme mcp` serves, plus the `ayme`
  * skill and the `ayme` server with its permission.
  */

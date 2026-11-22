@@ -23,9 +23,9 @@ import {
 } from "./seed";
 
 // The qualification drives the Page Objects with Playwright; the lab app,
-// which ships no Ayme, gets the same classes from an `ayme mcp` server, which
+// which ships no ayme, gets the same classes from an `ayme mcp` server, which
 // builds them and loads them into the page through its init script. It needs
-// the lab app running (pnpm lab:dev), and no other Ayme MCP server listening
+// the lab app running (pnpm lab:dev), and no other ayme MCP server listening
 // on ports 9350 to 9365: a page pairs by itself only with exactly one.
 
 /** The lab app's folder, where `ayme mcp` finds `.ayme/page-objects.ts`. */
@@ -57,7 +57,7 @@ const test = base.extend<{
 
 test.afterAll(disconnect);
 
-/** Page Object Tools are named `<page object>.<action>`; Ayme's own tools carry no dot. */
+/** Page Object Tools are named `<page object>.<action>`; ayme's own tools carry no dot. */
 const pageObjectTools = (names: string[]) =>
   names.filter((name) => name.includes(".")).sort();
 
@@ -287,7 +287,7 @@ test("each page object locator resolves exactly once in its intended state, and 
   expect(noSave.text).toContain(
     "This survey is a draft, and Formbricks shows Save only for a survey that is no longer one."
   );
-  const draftName = `Ayme lab draft ${surveyId}`;
+  const draftName = `ayme lab draft ${surveyId}`;
   await call("SurveyEditorPage.fillSurveyForm", { name: draftName });
   await call("SurveyEditorPage.saveAsDraft");
   // The action returned once the save had ended, and the survey is not published.
@@ -305,7 +305,7 @@ test("each page object locator resolves exactly once in its intended state, and 
   await expect(surveyEditorPage.surveyNameInput).toHaveValue(draftName);
   await expectTools(agent, ["SurveyEditorPage.saveAndClose"]);
 
-  const surveyName = `Ayme lab qualification ${surveyId}`;
+  const surveyName = `ayme lab qualification ${surveyId}`;
   const questionText = `What should the lab check next? ${surveyId}`;
   await call("SurveyEditorPage.fillSurveyForm", {
     name: surveyName,
@@ -356,7 +356,7 @@ test("each page object locator resolves exactly once in its intended state, and 
   expect(notADraft.text).toContain(
     "This survey is no longer a draft, and Formbricks shows Save as draft only for a draft."
   );
-  const publishedName = `Ayme lab published ${surveyId}`;
+  const publishedName = `ayme lab published ${surveyId}`;
   await call("SurveyEditorPage.fillSurveyForm", { name: publishedName });
   await call("SurveyEditorPage.save");
   // The action returned once the save had ended; the survey stays published and the editor open.

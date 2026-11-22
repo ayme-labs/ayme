@@ -7,7 +7,7 @@ import { callers, errorText, type ToolInfo } from "../shared";
 import { createAyme } from "./runtime";
 
 // Runtime seam: a Page Object Tool as an agent calls it through WebMCP
-// publication and through the Ayme MCP server's page client, each reached
+// publication and through the ayme MCP server's page client, each reached
 // through the source the session hands that channel's package.
 
 type Source = {

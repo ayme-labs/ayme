@@ -86,7 +86,7 @@ describe("ayme WebMCP transform", () => {
     const unsupportedOption: AymeOptions = {
       playwright: {
         use: {
-          // @ts-expect-error Playwright fields outside Ayme's supported subset are rejected.
+          // @ts-expect-error Playwright fields outside ayme's supported subset are rejected.
           baseURL: "https://example.test",
         },
       },

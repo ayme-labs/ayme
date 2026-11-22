@@ -5,7 +5,7 @@
  * the harness launched on the mission's start page. agent-browser never
  * launches or downloads a browser of its own, and the measured agent
  * installs nothing. Its WebMCP support is off. The arm alone gets
- * Formbricks as it is. The arm with Ayme gets the lab app's Page Objects
+ * Formbricks as it is. The arm with ayme gets the lab app's Page Objects
  * served into its page by the run's `ayme mcp`, and that server as its
  * `ayme` MCP server.
  */
@@ -132,7 +132,7 @@ async function installCliAndSkill(context: ArmContext): Promise<string> {
   return skillDir;
 }
 
-/** The page of the arm alone: Formbricks as it is, on the harness's browser, with nothing of Ayme. */
+/** The page of the arm alone: Formbricks as it is, on the harness's browser, with nothing of ayme. */
 async function setUpPlainPage(
   context: ArmContext,
   browserArgs: string[]
@@ -158,7 +158,7 @@ async function setUpPlainPage(
 /**
  * The setup of every agent-browser arm: the start page on a Chrome the
  * harness launches with a remote-debugging port, then the run's session
- * attached to it. Without Ayme the page is Formbricks as it is; with it, the
+ * attached to it. Without ayme the page is Formbricks as it is; with it, the
  * page paired with the run's `ayme mcp`, started as the skill reference says,
  * and the `ayme` skill beside agent-browser's. The session
  * starts with `get url`, which attaches and adopts the open tab without
@@ -234,7 +234,7 @@ export function setUpAgentBrowserAlone(context: ArmContext) {
   return setUpAgentBrowser(context, false);
 }
 
-/** The arm with Ayme. */
+/** The arm with ayme. */
 export function setUpAgentBrowserWithAyme(context: ArmContext) {
   return setUpAgentBrowser(context, true);
 }

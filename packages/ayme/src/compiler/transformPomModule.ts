@@ -20,16 +20,16 @@ import { rewritePomImports } from "./rewritePomImports";
 
 const RUNTIME_MODULE = "@ayme-dev/ayme";
 const REGISTRATION_MODULE = "@ayme-dev/ayme/internal";
-/** The entry a build without Ayme resolves `@ayme-dev/ayme` and its internal entry to. */
+/** The entry a build without ayme resolves `@ayme-dev/ayme` and its internal entry to. */
 export const ABSENT_MODULE = "@ayme-dev/ayme/absent";
 /**
- * The framework packages, whose root entry a build without Ayme resolves to
+ * The framework packages, whose root entry a build without ayme resolves to
  * their own absent entry, `@ayme-dev/<framework>/absent`.
  */
 const FRAMEWORK_MODULES = /^@ayme-dev\/(vue|react|svelte|angular)$/;
 
 /**
- * The absent entry a build without Ayme resolves `specifier` to, or
+ * The absent entry a build without ayme resolves `specifier` to, or
  * undefined when the specifier is not one of the entries that leave such a
  * build: the runtime's root and internal entries and the four framework
  * packages' root entries. Every bundler adapter maps through this one table,
@@ -44,8 +44,8 @@ export function absentEntryFor(specifier: string): string | undefined {
 
 export type PomTransformOptions = PomProjectOptions & {
   /**
-   * Whether the build includes Ayme. Nothing else decides: without `true`,
-   * the build is a build without Ayme, in which each Page Object Model
+   * Whether the build includes ayme. Nothing else decides: without `true`,
+   * the build is a build without ayme, in which each Page Object Model
    * compiles to a stand-in from the absent entry instead of its
    * implementation. Defaults to false.
    */
@@ -65,13 +65,13 @@ export function includeOption(value: unknown): boolean {
 }
 
 /**
- * The one line a build prints saying whether Ayme is in it and why, so a
+ * The one line a build prints saying whether ayme is in it and why, so a
  * build log shows the decision before anything reaches users. Each adapter
  * prints the compiler's once per build.
  */
 export function includeLine(include: boolean | undefined): string {
-  if (include) return "[ayme] Ayme is in this build: include is true.";
-  return `[ayme] Ayme is not in this build: include is ${include === undefined ? "not set" : "false"}.`;
+  if (include) return "[ayme] ayme is in this build: include is true.";
+  return `[ayme] ayme is not in this build: include is ${include === undefined ? "not set" : "false"}.`;
 }
 
 /**
@@ -184,7 +184,7 @@ function standInModule(
   for (const className of byName.keys())
     if (!classes.some((declaration) => declaration.name.text === className))
       throw new Error(
-        `Ayme could not remove Page Object Model ${className} from ${fileName}: it is not a top-level class.`
+        `ayme could not remove Page Object Model ${className} from ${fileName}: it is not a top-level class.`
       );
 
   let result = "";
@@ -295,7 +295,7 @@ function isBindingReference(node: ts.Identifier) {
 
 /**
  * The module without the imports only its replaced Page Object Models used,
- * so what they imported for their implementation, Ayme's decorators
+ * so what they imported for their implementation, ayme's decorators
  * included, leaves the build with them. A bare import for its side effects
  * stays, as does every binding the rest of the module references.
  */

@@ -310,14 +310,14 @@ describe("a solution-style tsconfig", () => {
   });
 });
 
-describe("a build without Ayme", () => {
+describe("a build without ayme", () => {
   const fixture = (name: string) => {
     const fixturePath = fileURLToPath(
       new URL(`./fixtures/${name}.ts`, import.meta.url)
     );
     return [readFileSync(fixturePath, "utf8"), fixturePath] as const;
   };
-  // Without `include: true`, every build is a build without Ayme.
+  // Without `include: true`, every build is a build without ayme.
   const transform = createPomTransform();
 
   it("compiles each Page Object Model to a stand-in of its name, keeping the rest of the module", () => {
@@ -405,7 +405,7 @@ describe("a build without Ayme", () => {
     expect(transform("export const x = 1;", "/app/x.ts")).toBeNull();
   });
 
-  it("is the build with Ayme once include is true", () => {
+  it("is the build with ayme once include is true", () => {
     const code = createPomTransform({ include: true })(
       ...fixture("withoutAymePom")
     )?.code;

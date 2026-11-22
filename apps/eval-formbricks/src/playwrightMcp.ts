@@ -1,7 +1,7 @@
 /**
  * The pinned Playwright MCP as the arms run it: its server entry, on a
  * browser it launches itself or on one the harness launched, and the setup
- * of the arms that add Ayme's Page Object Tools to it. Those drive, through
+ * of the arms that add ayme's Page Object Tools to it. Those drive, through
  * Playwright MCP, the page the run's `ayme mcp` serves the lab app's Page
  * Objects to: the harness launches the browser with a remote-debugging port
  * and the server's init script, and Playwright MCP attaches to it over CDP
@@ -82,7 +82,7 @@ export function cdpEndpoint(port: number) {
 }
 
 /**
- * The setup of the Playwright MCP arm with Ayme: the page paired with the
+ * The setup of the Playwright MCP arm with ayme: the page paired with the
  * run's `ayme mcp`, started as the skill reference says, on a browser with a
  * remote-debugging port; the `ayme` skill in the run's configuration folder;
  * then Playwright MCP's entry, attached to that browser.

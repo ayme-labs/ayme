@@ -35,7 +35,7 @@ export type ServerToolContext = {
 };
 
 /**
- * A tool of the Ayme MCP server itself, as opposed to one the page offers.
+ * A tool of the ayme MCP server itself, as opposed to one the page offers.
  * It lives only in the server, so it is never published to the page's
  * WebMCP tools.
  */

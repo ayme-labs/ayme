@@ -3,28 +3,28 @@ status: accepted
 amends: ADR-0033
 ---
 
-# Ayme adds Page Object Tools to the developer's browser automation, and `ayme mcp` offers only that
+# ayme adds Page Object Tools to the developer's browser automation, and `ayme mcp` offers only that
 
 ## Why
 
-Developers who drive a browser with a coding agent already use Playwright MCP, Playwright CLI or agent-browser. `ayme mcp` offered Ayme's own Browser Tools, `snapshot`, `goal` and Custom Tools beside its Page Object Tools. An agent that had both saw two ways to click and two ways to read the page, and nothing said which to use. On the Formbricks eval, Ayme made each of the three browser automations cheaper or faster only with a short tool list. With the long one it often did not.
+Developers who drive a browser with a coding agent already use Playwright MCP, Playwright CLI or agent-browser. `ayme mcp` offered ayme's own Browser Tools, `snapshot`, `goal` and Custom Tools beside its Page Object Tools. An agent that had both saw two ways to click and two ways to read the page, and nothing said which to use. On the Formbricks eval, ayme made each of the three browser automations cheaper or faster only with a short tool list. With the long one it often did not.
 
 ## Decision
 
-Ayme adds to the browser automation a developer already uses. It does not replace it.
+ayme adds to the browser automation a developer already uses. It does not replace it.
 
 - `ayme mcp` is how a coding agent outside the browser reaches the page, whatever drives the browser. It lists the page's Page Object Tools, `page_objects` and Peek Tools, the App Processes' tools, and its own tools (`ayme_connect`, `ayme_inspect`, `ayme_list_tools`, `ayme_call`).
-- `ayme mcp` lists none of Ayme's own browser driving: not the Browser Tools, `snapshot`, `goal` or Custom Tools. A coding agent drives the browser with its own browser automation; one without any adds one. Custom Tools go with the Browser Tools because a Custom Tool names its element by a Structural Ref, which only Ayme's `snapshot` gives.
-- The server decides what it lists. The page reports every tool with its group, so the page code is the same whichever agent reaches it, whether the page ships Ayme and pairs through `ayme_connect` or loads served Page Objects.
-- The server's own tools stay. A page that ships Ayme pairs through `ayme_connect`, and an agent whose client never refreshes its tool list reaches the page through `ayme_list_tools` and `ayme_call`.
+- `ayme mcp` lists none of ayme's own browser driving: not the Browser Tools, `snapshot`, `goal` or Custom Tools. A coding agent drives the browser with its own browser automation; one without any adds one. Custom Tools go with the Browser Tools because a Custom Tool names its element by a Structural Ref, which only ayme's `snapshot` gives.
+- The server decides what it lists. The page reports every tool with its group, so the page code is the same whichever agent reaches it, whether the page ships ayme and pairs through `ayme_connect` or loads served Page Objects.
+- The server's own tools stay. A page that ships ayme pairs through `ayme_connect`, and an agent whose client never refreshes its tool list reaches the page through `ayme_list_tools` and `ayme_call`.
 - WebMCP publication is for an agent that runs in the page, which has no browser automation of its own. It publishes the session's tools, `page_objects` among them, and is experimental. A page that loads served Page Objects publishes nothing through WebMCP.
 
 ## Considered and rejected
 
 - Keep the long list and explain in descriptions when to use which tool. Agents follow descriptions unevenly, and the long list itself cost tokens and turns on the eval.
-- Keep Ayme's own browser driving behind an option of `ayme mcp`, for a developer whose only browser automation is Ayme. Each coding agent the eval ran already has browser automation, or adds one with a line of setup, and the option kept a second listing, its tests and a second way to drive the page in every guide.
-- An option that strips the list to Page Object Tools alone. It drops the server's own tools, so a page that ships Ayme could no longer pair, and it works only for served Page Objects.
-- Let the page decide what it hands the server. The developer's app code would change with the agent's setup, and a page that ships Ayme would need a new option.
+- Keep ayme's own browser driving behind an option of `ayme mcp`, for a developer whose only browser automation is ayme. Each coding agent the eval ran already has browser automation, or adds one with a line of setup, and the option kept a second listing, its tests and a second way to drive the page in every guide.
+- An option that strips the list to Page Object Tools alone. It drops the server's own tools, so a page that ships ayme could no longer pair, and it works only for served Page Objects.
+- Let the page decide what it hands the server. The developer's app code would change with the agent's setup, and a page that ships ayme would need a new option.
 - Hand the Page Object Tools to the browser automation through the page's WebMCP tools, which Playwright CLI, Playwright MCP and agent-browser can read. Each needs a Chrome started with a WebMCP flag and reads the page's tools in its own way, and none of them gains anything `ayme mcp` beside it does not give.
 - Publish only Page Object Tools and `page_objects` through WebMCP too. An agent in the page has nothing else to act with.
 
@@ -36,4 +36,4 @@ ADR-0034 needs no change: Peek Tools stay offered through the Agent Connection, 
 
 ## Cost
 
-A developer who used Ayme as their only browser automation must add another, such as Playwright MCP, and a coding agent can no longer run the Goal Loop through `goal`; the changelog says so in one line. A page from before the page client sent each tool's group gets every tool listed, as before, until its `@ayme-dev/mcp` is updated.
+A developer who used ayme as their only browser automation must add another, such as Playwright MCP, and a coding agent can no longer run the Goal Loop through `goal`; the changelog says so in one line. A page from before the page client sent each tool's group gets every tool listed, as before, until its `@ayme-dev/mcp` is updated.

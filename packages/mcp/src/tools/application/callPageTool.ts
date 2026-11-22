@@ -10,7 +10,7 @@ import {
  * Runs the tool `name` of the page or App Process that offers it, as an MCP
  * result. A name no connection offers gets `unknown(name)` while a page or
  * App Process is paired; otherwise, or while only an App Process is paired
- * after the server refused a page's Ayme, it answers that no page is
+ * after the server refused a page's ayme, it answers that no page is
  * connected, and why, since the name may be a page tool the agent listed
  * before. While the served Page Objects have no good build, that answer
  * says why (`failedPageObjects`). A call for the page waits while its tab

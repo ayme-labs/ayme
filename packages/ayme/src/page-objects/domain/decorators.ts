@@ -76,7 +76,7 @@ export type AymeActionOptions<Self = unknown> = {
   /**
    * Marks the action as one that cannot be undone, such as deleting a record
    * or submitting an order. Its published tool says so in its annotations:
-   * `destructiveHint` over MCP, `consequentialHint` over WebMCP. Ayme still
+   * `destructiveHint` over MCP, `consequentialHint` over WebMCP. ayme still
    * runs it like any other tool. The build reads it from source, so it must
    * be `true` or `false` as written; `false` is the same as leaving it out.
    */

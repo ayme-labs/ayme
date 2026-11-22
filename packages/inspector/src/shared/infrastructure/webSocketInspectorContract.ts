@@ -77,7 +77,7 @@ export function webSocketInspectorContract(
   let failed = 0;
   let lost = false;
   const closed = () =>
-    new Error("The connection to the Ayme MCP server closed.");
+    new Error("The connection to the ayme MCP server closed.");
 
   const raise = <T extends { revision: number }>(value: T): T => {
     const revision = value.revision + base;

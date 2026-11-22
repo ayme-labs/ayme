@@ -28,11 +28,11 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 const ref = AriaRefSchema.parse;
 
-describe("the Ayme page state helper", () => {
+describe("the ayme page state helper", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "document",
-      document.implementation.createHTMLDocument("Ayme test")
+      document.implementation.createHTMLDocument("ayme test")
     );
     document.body.innerHTML = '<button id="save">Save changes</button>';
     vi.clearAllMocks();

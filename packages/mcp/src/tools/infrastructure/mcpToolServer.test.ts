@@ -632,7 +632,7 @@ describe("a Page Object Tool's answer", () => {
   });
 });
 
-/** A tool of `group`, as a page that ships Ayme or loads served Page Objects reports it. */
+/** A tool of `group`, as a page that ships ayme or loads served Page Objects reports it. */
 const grouped = (name: string, group: string): PageTool => ({
   ...tool(name),
   group,

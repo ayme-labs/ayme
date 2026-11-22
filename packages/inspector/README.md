@@ -1,6 +1,6 @@
 # @ayme-dev/inspector
 
-The in-page panel for [Ayme](https://github.com/ayme-labs/ayme): it shows your page's Page Objects, its Structural Page State and its tools, and lets you run those tools by hand.
+The in-page panel for [ayme](https://github.com/ayme-labs/ayme): it shows your page's Page Objects, its Structural Page State and its tools, and lets you run those tools by hand.
 
 ## Install
 
@@ -10,7 +10,7 @@ npm install -D @ayme-dev/inspector
 
 ## Turn it on
 
-Pass `inspector: true` where Ayme starts, such as `useAyme`, `AymeProvider`, `provideAyme` or `createAyme`:
+Pass `inspector: true` where ayme starts, such as `useAyme`, `AymeProvider`, `provideAyme` or `createAyme`:
 
 ```ts
 useAyme({ inspector: import.meta.env.DEV });
@@ -23,11 +23,11 @@ To run it outside the page instead, pass `inspector: { placement: "external" }` 
 ## Documentation
 
 - [Inspector guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md): the lenses, running tools, the panel and what it never changes.
-- [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
+- [ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 
 ## Supported versions
 
-Any framework Ayme supports; the Inspector bundles its own React. `@playwright/test` 1.29 to 1.64 for the types.
+Any framework ayme supports; the Inspector bundles its own React. `@playwright/test` 1.29 to 1.64 for the types.
 
 ## License
 

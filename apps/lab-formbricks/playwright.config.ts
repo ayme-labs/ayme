@@ -8,7 +8,7 @@ export default defineConfig({
   testDir: "./tests",
   testMatch: "*.qualify.ts",
   fullyParallel: false,
-  // Each test starts an Ayme MCP server the page pairs with by itself, which
+  // Each test starts an ayme MCP server the page pairs with by itself, which
   // it does only while exactly one runs.
   workers: 1,
   retries: 0,
@@ -19,7 +19,7 @@ export default defineConfig({
   use: {
     ...devices["Desktop Chrome"],
     // What the init script of `ayme mcp` needs of the browser, as the guide to
-    // Page Objects on a page without Ayme sets it up: Formbricks's content
+    // Page Objects on a page without ayme sets it up: Formbricks's content
     // security policy allows neither the served modules nor the server's
     // loopback WebSocket.
     bypassCSP: true,

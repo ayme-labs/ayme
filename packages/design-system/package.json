@@ -1,7 +1,7 @@
 {
   "name": "@ayme-dev/design-system",
   "version": "0.0.0",
-  "description": "Ayme's design system: palette, tokens, logos and React components shared across Ayme surfaces.",
+  "description": "ayme's design system: palette, tokens, logos and React components shared across ayme surfaces.",
   "license": "FSL-1.1-ALv2",
   "private": true,
   "type": "module",

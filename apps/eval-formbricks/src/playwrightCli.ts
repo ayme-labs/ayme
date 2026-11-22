@@ -4,7 +4,7 @@
  * run's Claude Code configuration folder, and a browser session already open
  * on the mission's start page. The measured agent installs and downloads
  * nothing. The arm alone opens its own browser on Formbricks as it is; the
- * arms with Ayme attach the session over CDP to the browser the harness
+ * arms with ayme attach the session over CDP to the browser the harness
  * launched on the page the run's `ayme mcp` serves the lab app's Page
  * Objects to.
  */
@@ -176,7 +176,7 @@ export async function setUpPlaywrightCli(
 }
 
 /**
- * The setup of the CLI arm with Ayme: the page paired with the run's `ayme
+ * The setup of the CLI arm with ayme: the page paired with the run's `ayme
  * mcp`, started as the skill reference says, on a browser listening on a
  * remote-debugging port; the CLI and its skill as for the arm alone, and the
  * `ayme` skill beside it; then the session attached to that browser.

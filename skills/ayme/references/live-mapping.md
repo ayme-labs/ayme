@@ -3,8 +3,8 @@
 Map a user flow into a POM against the running app, in this order:
 
 1. **Connect** to the app's page with the browser automation you already use,
-   and connect Ayme to it, as
-   [Using Ayme with browser automation tools](browser-automation-tools.md)
+   and connect ayme to it, as
+   [Using ayme with browser automation tools](browser-automation-tools.md)
    describes. Without any browser automation, add one first, such as
    Playwright MCP or Playwright CLI.
 2. **Discover** the flow with your browser automation: its snapshot, click

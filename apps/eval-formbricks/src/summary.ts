@@ -195,7 +195,7 @@ export function buildSummary(input: {
     ["Claude Code versions", versions.claudeCode],
     ["models", versions.modelUsed],
     ["thinking efforts", versions.effort],
-    ["Ayme commits", versions.aymeCommit],
+    ["ayme commits", versions.aymeCommit],
     ["Formbricks commits", versions.formbricksCommit],
     ["timeouts", timeoutSeconds.map(String)],
   ] as const;
@@ -273,7 +273,7 @@ export function renderSummaryMarkdown(summary: SuiteSummary) {
       ({ arm, name, version }) => `- ${name} ${version} (${arm})`
     ),
     `- Browser: ${list(versions.browser)}`,
-    `- Ayme commit: ${list(versions.aymeCommit)}`,
+    `- ayme commit: ${list(versions.aymeCommit)}`,
     `- Formbricks commit: ${list(versions.formbricksCommit)}`,
   ];
   if (summary.notes.length > 0)

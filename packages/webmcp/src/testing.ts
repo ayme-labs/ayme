@@ -18,14 +18,14 @@ export type RecordingDriver = {
   tools: PublishedTool[];
 };
 
-/** Install a minimal `document.modelContext` that records what the Ayme
+/** Install a minimal `document.modelContext` that records what the ayme
  *  runtime publishes, so a test can read and execute the published tools. */
 export async function recordPublishedTools(context: BrowserContext) {
   await context.addInitScript(installRecordingDriver);
 }
 
 /** Install the same recording driver into the page's current document, after
- *  it loaded: for a test of a driver that appears after Ayme's initial wait,
+ *  it loaded: for a test of a driver that appears after ayme's initial wait,
  *  followed by `retryPublication`. */
 export async function recordPublishedToolsLate(page: Page) {
   await page.evaluate(installRecordingDriver);

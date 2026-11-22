@@ -78,7 +78,7 @@ export const test = base.extend<{
    */
   connect: (path?: string) => Promise<string>;
   /**
-   * The ports whose Ayme MCP server the page's auto-pair scan can find;
+   * The ports whose ayme MCP server the page's auto-pair scan can find;
    * none unless a test adds them. It keeps a page from auto-pairing with a
    * server of another test, or of another run on this machine.
    */
@@ -128,7 +128,7 @@ export const test = base.extend<{
     async ({ context, limitScan }, use) => {
       const ports = new Set<number>();
       if (!limitScan) return use(ports);
-      // Answers every other probe of the scan as no Ayme MCP server would.
+      // Answers every other probe of the scan as no ayme MCP server would.
       await ignoreAutoPairScan(context, ports);
       await use(ports);
     },
