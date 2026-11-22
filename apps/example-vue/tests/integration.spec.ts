@@ -1,4 +1,3 @@
-import { server } from "@ayme-dev/example-certification/config";
 import {
   counterTests,
   devRebuildTests,
@@ -9,7 +8,7 @@ import { CounterPage } from "../playwright/pom/CounterPage";
 // on the playground's `/counter` route. The app is a single-page app with no
 // router, so it has no client navigation to check and no server-rendered page.
 // The counter route mounts no Inspector.
-counterTests({ CounterPage, agentConnection: () => server === "dev" });
+counterTests({ CounterPage });
 // Last: it edits a source file, and the dev server rebuilds after it.
 devRebuildTests({
   counterModePath: new URL("../playwright/pom/CounterMode.ts", import.meta.url),

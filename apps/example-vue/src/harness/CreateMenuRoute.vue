@@ -18,8 +18,6 @@ useAyme({
     ? decisionEndpoint(decisionEndpointPath)
     : undefined,
   webMCP: { enabled: true },
-  // The goal specs reach `goal` and the Browser Tools through `ayme mcp`.
-  agentConnection: import.meta.env.DEV,
 });
 
 const menuOpen = ref(false);

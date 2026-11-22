@@ -105,10 +105,7 @@ export function startAyme({
       inspector: external
         ? { placement: "external", demo }
         : mount === "session" && (demo ? { demo } : true),
-      // `?agent` is the e2e tests' link to an `ayme mcp` server for an inline
-      // page.
-      agentConnection:
-        dogfood || new URLSearchParams(location.search).has("agent"),
+      agentConnection: dogfood,
       // The Structure lens and the search results render the page state; in
       // page state they would render themselves, over and over.
       ignore: dogfood ? rendersThePage : undefined,

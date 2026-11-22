@@ -155,7 +155,7 @@ for (const zIndex of [50, 101]) {
       expect(await inspectorIsOnTopAt(page, button)).toBe(true);
       const agent = new AgentView(page);
 
-      await agent.run("click", {
+      await agent.call("click", {
         target: await agent.ref('button "Covered button"'),
       });
 

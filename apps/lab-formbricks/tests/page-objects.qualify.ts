@@ -42,7 +42,7 @@ const test = base.extend<{
   agent: Agent;
 }>({
   agent: async ({ context }, use) => {
-    const agent = await startAgent({ cwd: LAB_DIR }, "--browser-tools");
+    const agent = await startAgent({ cwd: LAB_DIR });
     try {
       // The server wrote it as it started, naming its port.
       await context.addInitScript({
@@ -82,36 +82,18 @@ async function expectTools(agent: Agent, names: string[]): Promise<void> {
 
 /**
  * How a call names the one Page Object of `className` on the page, as the
- * input of a rooted Page Object Tool: by its Page Object id, which `snapshot`
- * prints on its Page Object Root, after the class name or, on a root of
- * several classes, in `id` in the order `pom` lists the classes. Every call of a rooted tool below
- * names its Page Object through here.
+ * input of a rooted Page Object Tool: by its Page Object id, which
+ * `page_objects` prints after its class name. Every call of a rooted tool
+ * below names its Page Object through here.
  */
-/**
- * The id of the `className` on a root of several classes: `id` lists the
- * ids in the order `pom` lists the classes.
- */
-function sharedRootId(structure: string, className: string) {
-  for (const [, classes, ids] of structure.matchAll(
-    /\/pom: (\[[^\]]*\])\s+- \/id: (\[[^\]]*\])/g
-  )) {
-    const at = (JSON.parse(classes!) as string[]).indexOf(className);
-    if (at >= 0) return (JSON.parse(ids!) as string[])[at];
-  }
-  return undefined;
-}
-
 async function named(
   agent: Agent,
   className: string
 ): Promise<Record<string, unknown>> {
-  const snapshot = await agent.call("snapshot");
-  expect(snapshot.isError, snapshot.text).toBe(false);
-  const { structure } = JSON.parse(snapshot.text) as { structure: string };
-  const id =
-    new RegExp(`(?:e|s_)\\w+ ${className} (po\\d+)`).exec(structure)?.[1] ??
-    sharedRootId(structure, className);
-  expect(id, `no ${className} in:\n${structure}`).toBeDefined();
+  const { text: tree, isError } = await agent.call("page_objects");
+  expect(isError, tree).toBe(false);
+  const id = new RegExp(`\\b${className} (po\\d+)`).exec(tree)?.[1];
+  expect(id, `no ${className} in:\n${tree}`).toBeDefined();
   return { id };
 }
 

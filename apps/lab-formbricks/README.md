@@ -55,7 +55,7 @@ pnpm lab:smoke
 
 An action returns without waiting for the screen it leads to, so the test waits for each screen itself. Before that walk, a throwaway user walks the same screens with Playwright alone, because Turbopack compiles each route and each server action on its first use, which takes longer than `save` and `saveAsDraft` wait for theirs (see [Timeouts](#timeouts)).
 
-A rooted Page Object Tool is told which Page Object to act on. The test's `named` helper is the one place that says how: by its Page Object Id, which `snapshot` prints on the Page Object Root.
+A rooted Page Object Tool is told which Page Object to act on. The test's `named` helper is the one place that says how: by its Page Object Id, which `page_objects` prints after its class name.
 
 `lab:smoke` runs Formbricks's own start-from-scratch Playwright scenario against the running app, with Formbricks's own Playwright. At the pinned revision it can fail at sign-in: the scenario writes its user to Postgres and signs in at once, while Formbricks's background worker copies the user into the authorization store a second or more later. When it is sent to "create organization", that race is the cause, not the lab app. Formbricks's own CI runs the scenario against a production build. `lab:qualify` waits for that copy before it signs in.
 
@@ -85,7 +85,7 @@ Formbricks runs as its upstream wrote it, at `8abe0b42`, the `main` of the `ayme
 
    Playwright MCP and Playwright CLI take the same three settings in their config file, as [the guide](../../docs/guide/guides/page-objects-without-ayme.md#set-it-up) shows.
 
-4. In the page, the init script loads Ayme's runtime and the Page Objects from the server and turns the [Agent Connection](../../docs/guide/guides/connect-an-agent.md) on. On `localhost` the tab then pairs with the server by itself when exactly one Ayme MCP server runs, and otherwise through the link `ayme_connect` returns. The screen's Page Object Tools and `page_objects` are then among the agent's MCP tools; `snapshot` and the Browser Tools are too when the server was started with `--browser-tools`.
+4. In the page, the init script loads Ayme's runtime and the Page Objects from the server and turns the [Agent Connection](../../docs/guide/guides/connect-an-agent.md) on. On `localhost` the tab then pairs with the server by itself when exactly one Ayme MCP server runs, and otherwise through the link `ayme_connect` returns. The screen's Page Object Tools and `page_objects` are then among the agent's MCP tools, beside its own browser automation.
 
 ### Page Objects
 

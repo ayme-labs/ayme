@@ -1,12 +1,11 @@
 import path from "node:path";
 
 import { expect, selectors, type Page } from "@playwright/test";
-import { connectPage, freePort, startAgent } from "@ayme-dev/mcp/testing";
-import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 import { server } from "@ayme-dev/example-certification/config";
+import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 
-import { ListPage } from "../playwright/pom/ListPage";
 import { readDecisionProvider } from "../scripts/appEnvironment";
+import { ListPage } from "../playwright/pom/ListPage";
 import { createPomCompiler } from "@ayme-dev/ayme/compiler";
 import {
   Inspector,
@@ -18,45 +17,13 @@ import {
 } from "@ayme-dev/webmcp/testing";
 
 /**
- * The coding agents' servers (`ayme mcp --browser-tools`) the tests started,
- * by the page each one is paired with. A test that reads the page state or
- * clicks reaches them through its server, as a coding agent does.
- */
-const agents = new Map<Page, Awaited<ReturnType<typeof startAgent>>>();
-test.afterEach(async () => {
-  await Promise.all([...agents.values()].map((agent) => agent.close()));
-  agents.clear();
-});
-
-/** Opens the playground, paired with an `ayme mcp --browser-tools` server. */
-async function openPaired(page: Page) {
-  const agent = await startAgent(
-    "--port",
-    String(await freePort()),
-    "--browser-tools"
-  );
-  agents.set(page, agent);
-  const baseURL = test.info().project.use.baseURL!;
-  await connectPage(agent, page, new URL("/", baseURL).href, {
-    timeout: 45_000,
-  });
-  return agent;
-}
-
-/** Calls one of the paired server's tools and parses its JSON text. */
-async function callAgent(page: Page, name: string, input = {}) {
-  const { text, isError } = await agents.get(page)!.call(name, input);
-  return { isError, text, json: () => JSON.parse(text) as unknown };
-}
-
-/**
  * Opens the playground with the Inspector collapsed, for a test that clicks
  * the archive dialog itself, as a person does. The panel paints above the
  * page's own UI and at its default place covers the dialog's confirm button.
  * Tool calls pass through the panel; a person moves or collapses it.
  */
 async function openWithInspectorCollapsed(page: Page) {
-  await openPaired(page);
+  await page.goto("/");
   await new Inspector(page).collapse();
 }
 
@@ -66,7 +33,7 @@ async function openWithInspectorCollapsed(page: Page) {
  * call already running when it mounts over the call's target does not.
  */
 async function openWithInspector(page: Page) {
-  await openPaired(page);
+  await page.goto("/");
   await new Inspector(page).open();
 }
 
@@ -81,9 +48,14 @@ async function getInstanceId(
   className: string,
   index = 0
 ): Promise<string> {
-  const pageState = (
-    (await callAgent(page, "snapshot")).json() as { structure: string }
-  ).structure;
+  const pageState = await page.evaluate(async () => {
+    const tool = (
+      document.modelContext as unknown as RecordingDriver
+    ).tools.find((candidate) => candidate.name === "snapshot");
+    if (!tool) throw new Error("snapshot tool was not published.");
+    const result = (await tool.execute({})) as { structure: string };
+    return result.structure;
+  });
   const id = [...pageState.matchAll(new RegExp(` ${className} (po\\d+)`, "g"))][
     index
   ]?.[1];
@@ -284,25 +256,23 @@ test("runs the WebMCP POM source through real Playwright", async ({ page }) => {
 test("publishes the current page as ref-bearing ARIA state", async ({
   page,
 }) => {
-  await openPaired(page);
+  await page.goto("/");
   // The Inspector is open on the page, so leaving it out is observable.
   await new Inspector(page).open();
   await expect
-    .poll(async () =>
-      (await recordedToolNames(page)).includes("ListPage.addItem")
-    )
+    .poll(async () => (await recordedToolNames(page)).includes("snapshot"))
     .toBe(true);
 
-  const result = {
-    hasPomIdentity: await page.evaluate(() => {
-      const tool = (
-        document.modelContext as unknown as RecordingDriver
-      ).tools.find((candidate) => candidate.name === "ListPage.addItem");
-      if (!tool) throw new Error("ListPage.addItem was not published.");
-      return "pomId" in tool;
-    }),
-    context: (await callAgent(page, "snapshot")).json(),
-  };
+  const result = await page.evaluate(async () => {
+    const tool = (
+      document.modelContext as unknown as RecordingDriver
+    ).tools.find((candidate) => candidate.name === "snapshot");
+    if (!tool) throw new Error("snapshot WebMCP tool was not published.");
+    return {
+      hasPomIdentity: "pomId" in tool,
+      context: await tool.execute({}),
+    };
+  });
 
   expect(result.hasPomIdentity).toBe(false);
   const context = result.context;
@@ -380,22 +350,37 @@ test("resolves every ref of a snapshot taken after the archive dialog closes", a
   page,
 }) => {
   await openWithInspectorCollapsed(page);
-  const snapshot = async () =>
-    ((await callAgent(page, "snapshot")).json() as { structure: string })
-      .structure;
+  const snapshot = () =>
+    page.evaluate(async () => {
+      const tool = (
+        document.modelContext as unknown as RecordingDriver
+      ).tools.find((candidate) => candidate.name === "snapshot");
+      if (!tool) throw new Error("snapshot WebMCP tool was not published.");
+      return ((await tool.execute({})) as { structure: string }).structure;
+    });
 
   const archive = /- (e\d+) button "Archive item-1"/.exec(await snapshot());
   if (!archive) throw new Error("No ref for the Archive item-1 button.");
-  await callAgent(page, "click", { target: archive[1] });
-  await callAgent(page, "press_key", { key: "Escape" });
+  await executePublishedTool(page, "click", { target: archive[1] });
+  await executePublishedTool(page, "press_key", { key: "Escape" });
 
   // The dialog's portal wrapped the page's root and then left again.
   const refs = [...new Set((await snapshot()).match(/\be\d+\b/g))];
   expect(refs.length).toBeGreaterThan(0);
-  const refused: string[] = [];
-  for (const target of refs)
-    if ((await callAgent(page, "hover", { target })).isError)
-      refused.push(target);
+  const refused = await page.evaluate(async (refs) => {
+    const hover = (
+      document.modelContext as unknown as RecordingDriver
+    ).tools.find((candidate) => candidate.name === "hover");
+    if (!hover) throw new Error("hover WebMCP tool was not published.");
+    const failures: string[] = [];
+    for (const target of refs) {
+      const result = (await hover.execute({ target })) as {
+        isError?: boolean;
+      };
+      if (result.isError) failures.push(target);
+    }
+    return failures;
+  }, refs);
   expect(refused).toEqual([]);
 });
 

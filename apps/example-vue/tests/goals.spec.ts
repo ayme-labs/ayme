@@ -4,7 +4,6 @@ import {
   activeItems,
   archivedItems,
   itemIds,
-  openPaired,
   pursueGoal,
   useGoalLane,
 } from "./goalLane";
@@ -14,7 +13,7 @@ import {
 useGoalLane("Live goal lane");
 
 test("a goal given the value it needs adds the item", async ({ page }) => {
-  await openPaired(page, "/");
+  await page.goto("/");
   await expect(activeItems(page)).toHaveCount(2);
 
   const handover = await pursueGoal(page, "Add an item called Milk", 5, {
@@ -29,7 +28,7 @@ test("a goal given the value it needs adds the item", async ({ page }) => {
 test("a goal that needs a value it was not given hands over", async ({
   page,
 }) => {
-  await openPaired(page, "/");
+  await page.goto("/");
   await expect(activeItems(page)).toHaveCount(2);
   const itemsBefore = await activeItems(page).allInnerTexts();
 
@@ -42,7 +41,7 @@ test("a goal that needs a value it was not given hands over", async ({
 test("a goal that names a collection instance archives it", async ({
   page,
 }) => {
-  await openPaired(page, "/");
+  await page.goto("/");
   await expect(activeItems(page)).toHaveCount(2);
   const [firstId, secondId] = await itemIds(activeItems(page));
 

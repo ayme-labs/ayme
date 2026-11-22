@@ -1,9 +1,12 @@
 import { AgentView, panelDescription } from "./agentView";
 import { expect, openFixture, test } from "./fixtures";
 
-// E2E: the panel shows exactly what a coding agent gets from the page's Ayme
-// MCP server. The expected values come from that server's tool list and the
-// page's snapshot, never from the panel.
+// E2E: the panel shows exactly what an agent gets over WebMCP, but for a bare
+// action's description, which it shows as Ayme MCP does. The expected values
+// come from the page's WebMCP tool list and snapshot, never from the panel.
+
+// Live, but never published to WebMCP: its result is an image.
+const NOT_ON_WEBMCP = ["screenshot"];
 
 test("the Tools lens lists exactly the tools an agent gets", async ({
   page,
@@ -19,7 +22,7 @@ test("the Tools lens lists exactly the tools an agent gets", async ({
         .flat()
         .sort()
     )
-    .toEqual(agentTools.map(({ name }) => name).sort());
+    .toEqual([...agentTools.map(({ name }) => name), ...NOT_ON_WEBMCP].sort());
 });
 
 test("each tool's page shows the description, schema and destructive mark an agent gets", async ({
@@ -41,7 +44,7 @@ test("each tool's page shows the description, schema and destructive mark an age
     expect(await toolPage.modelSees.schemaValue(tool.name)).toEqual(
       tool.inputSchema
     );
-    const destructive = tool.annotations?.destructiveHint === true;
+    const destructive = tool.annotations?.consequentialHint === true;
     expect(await toolPage.destructiveMark.count()).toBe(destructive ? 1 : 0);
     expect(await inspector.navigator.tools.markedDestructive(tool.name)).toBe(
       destructive
@@ -50,7 +53,7 @@ test("each tool's page shows the description, schema and destructive mark an age
   // The fixture's ListPage.clear is the one marked.
   expect(
     agentTools
-      .filter(({ annotations }) => annotations?.destructiveHint)
+      .filter(({ annotations }) => annotations?.consequentialHint)
       .map(({ name }) => name)
   ).toEqual(["ListPage.clear"]);
 });
@@ -95,11 +98,10 @@ test("reading What the model sees leaves the agent's view of the page alone", as
 
 test("with publication off, the Tools lens still lists the live tools", async ({
   page,
-  agent,
 }) => {
-  // The same list app with publication on: its Ayme MCP server lists the
-  // live set.
-  await openFixture(page, "/", { paired: { agent: agent! } });
+  // The same list app with publication on: every live tool but screenshot is
+  // published, so its WebMCP tool list and screenshot are the live set.
+  await openFixture(page, "/");
   const liveTools = (await new AgentView(page).tools()).map(({ name }) => name);
 
   const { inspector } = await openFixture(page, "/unpublished.html");
@@ -111,5 +113,5 @@ test("with publication off, the Tools lens still lists the live tools", async ({
         .flat()
         .sort()
     )
-    .toEqual(liveTools.sort());
+    .toEqual([...liveTools, ...NOT_ON_WEBMCP].sort());
 });

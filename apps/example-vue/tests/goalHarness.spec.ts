@@ -1,13 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { waitForPublishedTool } from "@ayme-dev/webmcp/testing";
 
 import {
   activeItems,
   archivedItems,
   itemIds,
-  openPaired,
   pursueGoal,
   useGoalLane,
-  waitForAgentTool,
 } from "./goalLane";
 
 /** The run harness's own goal set (`playwright.harness.config.ts`): goals
@@ -15,7 +14,7 @@ import {
 useGoalLane("Harness goal set");
 
 test("archive Review onboarding flow", async ({ page }) => {
-  await openPaired(page, "/");
+  await page.goto("/");
   await expect(activeItems(page)).toHaveCount(2);
   const [reviewId] = await itemIds(
     activeItems(page).filter({ hasText: "Review onboarding flow" })
@@ -38,13 +37,13 @@ test("archive Review onboarding flow", async ({ page }) => {
 test("the top bar's Create menu is open, while it is closed", async ({
   page,
 }) => {
-  await openPaired(page, "/harness/create-menu");
+  await page.goto("/harness/create-menu");
   const menu = page.getByRole("menu", { name: "Create" });
   await expect(page.getByRole("button", { name: "Create" })).toHaveAttribute(
     "aria-expanded",
     "false"
   );
-  await waitForAgentTool(page, "TopBar.openCreateMenu");
+  await waitForPublishedTool(page, "TopBar.openCreateMenu");
 
   // Expected: one step opens the menu, the next judges the goal met.
   const handover = await pursueGoal(
