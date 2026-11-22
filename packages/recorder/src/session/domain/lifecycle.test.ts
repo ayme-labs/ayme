@@ -2907,6 +2907,75 @@ describe("the lifecycle, for a page that is blank at Record", () => {
   });
 });
 
+// A page can go to another document with no input the gate held: the
+// browser's Back button, a redirect. A key typed there starts from a read of
+// the document it is typed in.
+describe("the lifecycle, for a page that goes elsewhere with no held input", () => {
+  const keyHeld = (input: InputId): Happening => ({
+    kind: "inputHeld",
+    input,
+    page: page1,
+    held: { kind: "typing" },
+  });
+  const fill: InteractionReport = {
+    type: "fill",
+    selector: "internal:role=textbox",
+    target: { ref: pictureRef("e2"), tree: `- textbox "Name" [ref=e2]` },
+    values: { text: "a" },
+  };
+  /** A click recorded on the first page: its "after" is the page's latest
+   * read. */
+  const clickedFirst = [
+    opened,
+    ...started,
+    clickHeld(input1),
+    taken(snapshot1),
+    passedOn(input1),
+    settled(input1),
+    taken(snapshot2),
+    reported,
+  ];
+  const typedThere = [
+    keyHeld(input2),
+    taken(snapshot3),
+    passedOn(input2, 30),
+    { kind: "interactionReported", page: page1, report: fill } as Happening,
+  ];
+  /** The "before" each fill is told to the timeline with. */
+  const fillStarts = (todo: readonly (readonly ToDo[])[]) =>
+    todo
+      .flat()
+      .flatMap((item) =>
+        item.kind === "timeline" &&
+        item.add.kind === "interaction" &&
+        item.add.interaction.report.type === "fill"
+          ? [item.add.interaction.before]
+          : []
+      );
+
+  it("reads the new document for the first key typed there: the read before it was of the document the page left", () => {
+    const { todo } = run([
+      ...clickedFirst,
+      navigated("http://shop.test/cart"),
+      ...typedThere,
+    ]);
+
+    // The key waits for a read of the new document, and starts from it.
+    expect(todo.at(-4)).toEqual([takeSnapshot(snapshot3)]);
+    expect(fillStarts(todo)).toEqual([snapshot3]);
+  });
+
+  it("reads the document again for the first key typed once the page went only to another part of it", () => {
+    const { todo } = run([
+      ...clickedFirst,
+      navigated(`${url}#reviews`),
+      ...typedThere,
+    ]);
+
+    expect(fillStarts(todo)).toEqual([snapshot3]);
+  });
+});
+
 describe("the lifecycle, for a click made while the recorder wraps up", () => {
   const clickReport = (count: number): InteractionReport => ({
     ...click,

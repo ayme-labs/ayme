@@ -678,26 +678,23 @@ function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
   const page = state.pages.find((open) => open.id === id);
   if (!page) return stay(state);
   const at = { ...page, url };
-  const moved = (next: Page) => ({
-    ...state,
-    pages: state.pages.map((open) => (open === page ? next : open)),
-  });
-  if (isActive(state) && at.url !== BLANK)
-    return proceed(
-      {
-        ...state,
-        pages: state.pages.map((open) => (open === page ? visited(at) : open)),
-        // A read of the blank page it left is no start for what is done
-        // at its address: a key typed there first waits for a read of it.
-        ...(page.url === BLANK ? { gates: unread(state.gates, id) } : {}),
-      },
-      [visitOf(at.id, at.url, causeOf(at))]
-    );
+  // A read of the document it left is no start for what is done in the one
+  // it went to, whatever took it there: a key typed there first waits for a
+  // read of it.
+  const left: LifecycleState = isActive(state)
+    ? { ...state, gates: unread(state.gates, id) }
+    : state;
+  const pagesWith = (next: Page) =>
+    left.pages.map((open) => (open === page ? next : open));
+  if (isActive(left) && at.url !== BLANK)
+    return proceed({ ...left, pages: pagesWith(visited(at)) }, [
+      visitOf(at.id, at.url, causeOf(at)),
+    ]);
   // It is elsewhere with no Visit there yet. Continue starts one for it;
   // Record says which Visit its pages start, whatever became of them.
   // Stryker disable next-line StringLiteral: every mark but "opened" and "blankAtRecord" starts a Visit by navigation
   const since = at.since ?? "moved";
-  const next = moved({ ...at, since });
+  const next = { ...left, pages: pagesWith({ ...at, since }) };
   // While paused, the timeline is told at once of each address a page that
   // had a Visit goes to, the second as much as the first: it says whether
   // the page left its Visit, and an element of a Visit left is looked for
