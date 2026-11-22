@@ -31,11 +31,7 @@ import {
   watchPageObjects,
   writeInitScript,
 } from "../served-page-objects";
-import {
-  createMcpToolServer,
-  saveToScreenshotFolder,
-  screenshotFolder,
-} from "../tools";
+import { createMcpToolServer } from "../tools";
 import { connectionBehaviours } from "./connectionBehaviours";
 import { serverTools } from "./serverTools";
 
@@ -87,7 +83,6 @@ export async function startMcpServer({
   const channel = createPageChannelServer({
     connection,
     token,
-    imageFolder: screenshotFolder,
     agent: () => agentName,
     extensions: [
       externalInspectorServer({
@@ -136,7 +131,6 @@ export async function startMcpServer({
   const context = {
     connection,
     pairing,
-    saveImage: saveToScreenshotFolder,
     initScript,
     failedPageObjects: async () =>
       entry === undefined || build === undefined

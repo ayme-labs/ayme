@@ -50,8 +50,6 @@ export type RunImage = {
    * storage, so a run from before a reload has none.
    */
   src?: string;
-  /** The file `ayme mcp` saved it to, for an agent's run. */
-  savedTo?: string;
 };
 
 /**

@@ -23,14 +23,12 @@ export type RunTarget = { className: string; objectPath?: string };
 /**
  * What the panel knows of a Run beyond the log: the Page Object its tool
  * was on when the panel first saw it, the item a run made from the panel
- * ran on, the member each of its Interactions acted on, by place, and the
- * file `ayme mcp` saved the image an agent's Run returned to.
+ * ran on, and the member each of its Interactions acted on, by place.
  */
 export type RunNotes = {
   target?: RunTarget;
   item?: CollectionItem;
   descriptions?: readonly InteractionDescription[];
-  savedTo?: string;
 };
 
 /**
@@ -56,7 +54,7 @@ function nodeOf(
   const id = rowIdOf(run);
   const notes = notesOf(id);
   // An image shows as itself, never as its base64 JSON.
-  const image = runImageOf(run.result, notes.savedTo);
+  const image = runImageOf(run.result);
   return {
     id,
     toolName: run.tool,
@@ -143,7 +141,7 @@ export function shownRuns({
 
 /** The notes a kept row and the rows nested in it were kept with. */
 function noteTree(
-  { id, className, objectPath, item, image, interactions, children }: ChildRun,
+  { id, className, objectPath, item, interactions, children }: ChildRun,
   notes: Map<string, RunNotes>
 ) {
   notes.set(id, {
@@ -154,7 +152,6 @@ function noteTree(
       target,
       context,
     })),
-    ...(image?.savedTo === undefined ? {} : { savedTo: image.savedTo }),
   });
   for (const child of children) noteTree(child, notes);
 }

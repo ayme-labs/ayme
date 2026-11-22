@@ -61,15 +61,12 @@ export type ServerExtension = {
 export function createPageChannelServer({
   connection,
   token,
-  imageFolder,
   agent,
   extensions = [],
   ayme = OUR_AYME,
 }: {
   connection: AgentConnection;
   token: string;
-  /** Where the server saves a tool's images, which a page's welcome names. */
-  imageFolder?: string;
   /**
    * The name the agent's MCP client introduced itself with, if it has,
    * read at each hello, which the page's welcome names.
@@ -134,7 +131,6 @@ export function createPageChannelServer({
         acceptPage(connection, ws, {
           handOver: tokenless ? token : undefined,
           fromProcess,
-          imageFolder,
           agent,
           ayme,
         })
@@ -162,7 +158,7 @@ export function createPageChannelServer({
  * connection `fromProcess`, which sent no `Origin`, may say hello as an App
  * Process, and the server is never too busy for it. One that connected
  * without a token gets `handOver`, the server's token, in reply to its
- * hello, and every one gets `imageFolder` and the agent's name. A page
+ * hello, and every one gets the agent's name. A page
  * whose Ayme can't work with the server's `ayme` is closed with
  * `VERSION_GAP_CLOSE_CODE` and the gap as the reason, and `connection`
  * records the gap for the agent.
@@ -173,13 +169,11 @@ function acceptPage(
   {
     handOver,
     fromProcess,
-    imageFolder,
     agent,
     ayme,
   }: {
     handOver: string | undefined;
     fromProcess: boolean;
-    imageFolder: string | undefined;
     agent: () => string | undefined;
     ayme: Required<AymeVersion>;
   }
@@ -210,7 +204,6 @@ function acceptPage(
       if (page) return {};
       const welcome = pageWelcome({
         token: handOver,
-        imageFolder,
         agent: agent(),
       });
       if ("process" in hello) {

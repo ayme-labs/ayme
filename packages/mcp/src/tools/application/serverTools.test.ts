@@ -15,7 +15,6 @@ import { listToolsTool } from "./listToolsTool";
 const context = () => ({
   connection: new AgentConnection(),
   pairing: { address: "ws://127.0.0.1:9351", token: "f00d" },
-  saveImage: async (filename: string) => `/tmp/${filename}`,
   wasOffered: () => false,
   failedPageObjects: async () => undefined,
   inspector: {

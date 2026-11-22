@@ -232,28 +232,8 @@ export type InspectorState = Readonly<{
   pomDefinitions: readonly PomDefinition[];
 }>;
 
-/** An agent's call whose result is an image, once `ayme mcp` saved it. */
-export type InspectorAgentImageRun = Readonly<{
-  name: string;
-  input: JsonValue;
-  /** The file `ayme mcp` saved the image to, when it named its folder. */
-  savedTo?: string;
-  startedAt: number;
-  durationMs: number;
-}>;
-
-/**
- * What the runtime pushes. `state` carries the new canonical state;
- * `agent-image-run` reports a fact that is no state, and carries the
- * revision it was seen at.
- */
-export type InspectorEvent =
-  | Readonly<{ type: "state"; state: InspectorState }>
-  | Readonly<{
-      type: "agent-image-run";
-      revision: number;
-      run: InspectorAgentImageRun;
-    }>;
+/** What the runtime pushes: `state` carries the new canonical state. */
+export type InspectorEvent = Readonly<{ type: "state"; state: InspectorState }>;
 
 /** The two highlights: `hover` (dashed) and `pinned` (solid). */
 export type InspectorHighlightLayer = "hover" | "pinned";

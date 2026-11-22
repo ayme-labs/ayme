@@ -2,10 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { Interaction, RegisteredPomTool } from "@ayme-dev/ayme";
-import type {
-  InspectorAgentImageRun as AgentImageRun,
-  InspectorPageObject,
-} from "@ayme-dev/ayme/inspector";
+import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
 import { forest, node } from "../structure/test-utils/projected";
 import {
@@ -522,7 +519,7 @@ it("does not invent a generic name for an unnamed target", async () => {
   ).not.toContain("generic");
 });
 
-it("shows an image a Run returned as itself, with the file Ayme MCP saved it to", async () => {
+it("shows an image a Run returned as itself", async () => {
   const image = {
     type: "image",
     subject: "the viewport",
@@ -532,7 +529,7 @@ it("shows an image a Run returned as itself, with the file Ayme MCP saved it to"
     height: 1,
     data: "iVBORw0KGgo=",
   } as const;
-  const screenshot = startedAyme.runs.start("screenshot", {}, "ayme-mcp");
+  const screenshot = startedAyme.runs.start("screenshot", {}, "inspector");
   screenshot.succeed(image);
   renderApp();
 
@@ -541,21 +538,6 @@ it("shows an image a Run returned as itself, with the file Ayme MCP saved it to"
     .poll(() => run.image.textContent())
     .toBe("Screenshot of the viewport, 2×1 PNG");
   expect(await run.resultToggle.count()).toBe(0);
-
-  // `ayme mcp` reports the file it saved the image to once the Run ended.
-  startedAyme.reportAgentImageRun({
-    name: "screenshot",
-    input: {},
-    savedTo: "/tmp/ayme-screenshots/page-1.png",
-    startedAt: Date.now(),
-    durationMs: 1,
-  } satisfies AgentImageRun);
-
-  await expect
-    .poll(() => run.image.textContent())
-    .toBe(
-      "Screenshot of the viewport, 2×1 PNG, saved to /tmp/ayme-screenshots/page-1.png"
-    );
 });
 
 it("shows a tree of Runs in the selection's scope when a child Run is in it", async () => {

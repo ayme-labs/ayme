@@ -1,73 +1,24 @@
 import { expect, it, vi } from "vitest";
 
-import type { AgentImageRun, PageChannel, PageTools } from "../../connection";
+import type { PageChannel, PageTools } from "../../connection";
 import type { PageTool, ToolCall, ToolCallOutcome } from "../../contract";
 import { answerToolCalls, publishPageTools } from "./pageToolBehaviours";
 
-const image = {
-  type: "image",
-  subject: "the viewport",
-  filename: "shot.png",
-  mimeType: "image/png",
-  width: 10,
-  height: 10,
-  data: "iVBORw0KGgo=",
-};
-
-/** Answers one call through `answerToolCalls`, with the page's tool returning `result`. */
-async function answer(
-  result: unknown,
-  imageFolder: string | undefined
-): Promise<{ outcome: ToolCallOutcome; recorded: AgentImageRun[] }> {
+it("answers a call with its tool's result", async () => {
   let handler!: (call: ToolCall) => Promise<ToolCallOutcome>;
   const channel = {
-    imageFolder,
     answerCalls(answerWith: typeof handler) {
       handler = answerWith;
       return () => {};
     },
   } as unknown as PageChannel;
-  const tools = { run: vi.fn(async () => result) } as unknown as PageTools;
-  const recorded: AgentImageRun[] = [];
-  answerToolCalls({
-    tools,
-    channel,
-    recordAgentImage: (run) => recorded.push(run),
-  });
-  const outcome = await handler({
-    callId: "1",
-    name: "screenshot",
-    input: { fullPage: true },
-  });
-  return { outcome, recorded };
-}
+  const run = vi.fn(async () => ({ settled: true }));
+  answerToolCalls({ tools: { run } as unknown as PageTools, channel });
 
-it("records an agent's image with the file the server saves it to", async () => {
-  const { outcome, recorded } = await answer(image, "/tmp/ayme-screenshots/");
-
-  expect(outcome).toEqual({ callId: "1", ok: true, result: image });
-  expect(recorded).toEqual([
-    {
-      name: "screenshot",
-      input: { fullPage: true },
-      result: image,
-      savedTo: "/tmp/ayme-screenshots/shot.png",
-      startedAt: expect.any(Number),
-      durationMs: expect.any(Number),
-    },
-  ]);
-});
-
-it("records an image without a file when the server named no folder", async () => {
-  const { recorded } = await answer(image, undefined);
-
-  expect(recorded[0]?.savedTo).toBeUndefined();
-});
-
-it("records no other result", async () => {
-  const { recorded } = await answer({ page_changed: false }, "/tmp/x/");
-
-  expect(recorded).toEqual([]);
+  expect(
+    await handler({ callId: "1", name: "Dialog.confirm", input: { a: 1 } })
+  ).toEqual({ callId: "1", ok: true, result: { settled: true } });
+  expect(run).toHaveBeenCalledWith("Dialog.confirm", { a: 1 });
 });
 
 it("answers a failed call with the error's text and the Change Record it carries", async () => {

@@ -6,10 +6,7 @@ import type { GoalInput, Handover } from "../../shared";
 type Target = { target: string };
 type Modifier = "Alt" | "Control" | "ControlOrMeta" | "Meta" | "Shift";
 
-/**
- * An image a tool returns, such as a screenshot. `ayme mcp` gives it to the
- * agent as an MCP image and writes it to a file named `filename`.
- */
+/** An image a tool returns, such as a screenshot, which the Inspector's Runs show. */
 export type ImageResult = {
   type: "image";
   /** What it shows, e.g. "the viewport", "the full page" or "element e12". */

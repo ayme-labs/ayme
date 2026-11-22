@@ -61,7 +61,6 @@ const client = createInspectorClient(
     },
     appProcessTools: appProcessToolsOf,
     connectionStatus: () => connection,
-    subscribeToAgentImageRuns: () => () => {},
     highlights: { set: async () => {} },
     pick: async () => undefined,
     registry: {

@@ -60,7 +60,6 @@ export function openPageChannel(
   let reported: PageTool[] | undefined;
   let opened = false;
   let closed = false;
-  let imageFolder: string | undefined;
   // Who follows the App Processes' tools: they hear of none once the
   // socket closes, and the subscription gives them again once it reopens.
   const processToolListeners = new Set<(tools: readonly PageTool[]) => void>();
@@ -82,7 +81,6 @@ export function openPageChannel(
         .then((welcome) => {
           if (closed) return;
           const parsed = PageWelcomeSchema.parse(welcome);
-          imageFolder = parsed.imageFolder;
           onWelcome(parsed);
           if (reopened && reported && !sendAtOnce("publishTools", reported))
             return live().publishTools.mutate(reported);
@@ -145,9 +143,6 @@ export function openPageChannel(
     return true;
   };
   return {
-    get imageFolder() {
-      return imageFolder;
-    },
     async publishTools(tools) {
       reported = [...tools];
       if (!sendAtOnce("publishTools", reported))

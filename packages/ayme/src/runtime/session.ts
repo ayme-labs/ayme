@@ -23,7 +23,6 @@ import {
   getPageContextTool,
   pageObjectsTool,
   peekToolName,
-  recordAgentImageRun,
   type CustomTool,
   type RegisteredElementTool,
   type PeekRead,
@@ -1016,7 +1015,6 @@ export function createAymeOn(
               ]).then(([{ startAgentConnection }, inspectorPort]) => () => {
                 const connection = startAgentConnection({
                   tools: aymeMcpTools,
-                  recordAgentImage: recordAgentImageRun,
                   inspector: inspectorPort,
                 });
                 // A page client from before App Processes hands over none.

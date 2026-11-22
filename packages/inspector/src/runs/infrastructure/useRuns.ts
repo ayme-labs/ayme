@@ -44,8 +44,7 @@ type PendingRun = {
  * Caller's Runs with the Runs they started nested under them, each on the
  * collection item its ref named when it started, and each Run's
  * Interactions, named by the member they acted on once it ends. An image a
- * Run returned, such as a screenshot, shows as itself, with the file
- * `ayme mcp` saved it to for an agent's. The rows shown are kept for the
+ * Run returned, such as a screenshot, shows as itself. The rows shown are kept for the
  * tab, so a reload still shows them, as earlier page rows. `invoke` runs a
  * tool as the Inspector.
  */
@@ -108,13 +107,11 @@ export function useRuns({
     };
 
     const client = inspectorClient();
-    // The Runs seen so far, the ended Runs whose Interactions have been
-    // named, and the agent's image Runs whose file has been noted, by row id.
+    // The Runs seen so far and the ended Runs whose Interactions have been
+    // named, by row id.
     const seen = new Set<string>();
     const descriptions = new Map<string, InteractionDescription[]>();
     const described = new Set<string>();
-    const saved = new Set<string>();
-    let listedRuns = NO_RUNS;
     // The Interactions named a ref, not yet named from the recorded page
     // state, by row id and place in the Run.
     let unnamed: { rowId: string; index: number; ref: string }[] = [];
@@ -163,10 +160,9 @@ export function useRuns({
       note(rowId, { descriptions: resolved });
     };
     const read = (runs: readonly LogRun[]) => {
-      listedRuns = runs;
       const listed = new Set(runs.map(rowIdOf));
       // What the panel knows of a Run goes when the log drops the Run.
-      for (const ids of [seen, described, saved])
+      for (const ids of [seen, described])
         for (const rowId of ids) if (!listed.has(rowId)) ids.delete(rowId);
       const fresh = new Map<string, RunNotes>();
       for (const run of runs) {
@@ -217,29 +213,7 @@ export function useRuns({
     };
     const unsubscribeFromLog = client.subscribe(follow);
     follow();
-    // `ayme mcp` reports the file it saves an image to after the Run ended,
-    // so the log already lists it: the newest such Run with no file yet.
-    const unsubscribeFromImages = client.onAgentImageRun(
-      ({ name, input, savedTo }) => {
-        if (savedTo === undefined) return;
-        const json = JSON.stringify(input);
-        const run = listedRuns.findLast(
-          (candidate) =>
-            candidate.by === callers.aymeMcp &&
-            candidate.tool === name &&
-            candidate.status === "succeeded" &&
-            !saved.has(rowIdOf(candidate)) &&
-            JSON.stringify(candidate.input) === json
-        );
-        if (!run) return;
-        saved.add(rowIdOf(run));
-        note(rowIdOf(run), { savedTo });
-      }
-    );
-    return () => {
-      unsubscribeFromLog();
-      unsubscribeFromImages();
-    };
+    return unsubscribeFromLog;
   }, [itemOf, describeInteraction]);
 
   const runs = useMemo(

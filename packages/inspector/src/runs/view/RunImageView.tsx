@@ -34,11 +34,6 @@ export function RunImageView({
       )}
       <figcaption className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
         {image.description}
-        {image.savedTo !== undefined && (
-          <>
-            , saved to <span className="font-mono">{image.savedTo}</span>
-          </>
-        )}
       </figcaption>
     </figure>
   );

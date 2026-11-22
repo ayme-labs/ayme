@@ -84,10 +84,10 @@ export function webSocketInspectorContract(
     newest = Math.max(newest, revision);
     return { ...value, revision };
   };
-  const raiseEvent = (event: InspectorEvent): InspectorEvent =>
-    event.type === "state"
-      ? { type: "state", state: raise(event.state) }
-      : { ...event, revision: raise(event).revision };
+  const raiseEvent = (event: InspectorEvent): InspectorEvent => ({
+    type: "state",
+    state: raise(event.state),
+  });
   const raiseResult = (result: InspectorCommandResult) => ({
     ...result,
     state: raise(result.state),

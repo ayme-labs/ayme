@@ -1,8 +1,3 @@
-export {
-  recordAgentImageRun,
-  subscribeToAgentImageRuns,
-} from "./agentImageRuns";
-export type { AgentImageRun } from "./agentImageRuns";
 export { elementToolTargets, registerCustomTool } from "./elementTools";
 export type { ElementToolTargets } from "./elementTools";
 export type {

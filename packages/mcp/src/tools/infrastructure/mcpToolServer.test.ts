@@ -82,7 +82,6 @@ function serveProcess() {
         context: {
           connection,
           pairing: { address: "ws://x", token: "t" },
-          saveImage: async () => "/x",
           failedPageObjects: async () => undefined,
           inspector: {
             url: "http://x/inspector",

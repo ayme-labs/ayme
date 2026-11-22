@@ -203,17 +203,16 @@ it("keeps a run's image description but not the image itself", () => {
   ]);
 });
 
-it("keeps an agent's screenshot run and the file its image was saved to", () => {
-  const agentRun: Run = {
+it("keeps a screenshot run's description, not its image", () => {
+  const screenshotRun: Run = {
     id: "3@2000",
     toolName: "screenshot",
-    by: "ayme-mcp",
+    by: "inspector",
     arguments: {},
     status: "succeeded",
     image: {
       description: "Screenshot of the viewport, 1280×720 PNG",
       src: "data:image/png;base64,iVBORw0KGgo=",
-      savedTo: "/tmp/ayme-screenshots/page-1.png",
     },
     startedAt: 2_000,
     durationMs: 90,
@@ -221,13 +220,10 @@ it("keeps an agent's screenshot run and the file its image was saved to", () => 
     children: [],
   };
 
-  expect(reloaded([agentRun])).toEqual([
+  expect(reloaded([screenshotRun])).toEqual([
     before({
-      ...agentRun,
-      image: {
-        description: "Screenshot of the viewport, 1280×720 PNG",
-        savedTo: "/tmp/ayme-screenshots/page-1.png",
-      },
+      ...screenshotRun,
+      image: { description: "Screenshot of the viewport, 1280×720 PNG" },
     }),
   ]);
 });

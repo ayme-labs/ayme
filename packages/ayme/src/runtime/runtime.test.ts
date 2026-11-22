@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Locator } from "@playwright/test";
-import { recordAgentImageRun } from "../tools/application";
 import { ayme } from "../page-objects/domain";
 import { createPage, listRegisteredPoms } from "../page-objects/infrastructure";
 import { registerCompiledPom } from "../page-objects/application";
@@ -344,11 +343,9 @@ it("starts the Agent Connection while a session with agentConnection is started"
   await flush();
   expect(startAgentConnection).toHaveBeenCalledOnce();
   // The page client reaches the session's tools, and runs them as ayme-mcp.
-  const [{ tools, recordAgentImage }] = startAgentConnection.mock
-    .calls[0] as unknown as [
-    { tools: Ayme["tools"]; recordAgentImage: unknown },
+  const [{ tools }] = startAgentConnection.mock.calls[0] as unknown as [
+    { tools: Ayme["tools"] },
   ];
-  expect(recordAgentImage).toBe(recordAgentImageRun);
   const names = (list: readonly { name: string }[]) =>
     list.map(({ name }) => name);
   expect(names(tools.list())).toEqual(names(runtime.tools.list()));

@@ -31,10 +31,7 @@ function withoutImages<R extends ChildRun>(run: R): R {
     ...(image?.src === undefined
       ? {}
       : {
-          image: {
-            description: image.description,
-            ...(image.savedTo === undefined ? {} : { savedTo: image.savedTo }),
-          },
+          image: { description: image.description },
         }),
     children: run.children.map(withoutImages),
   };
@@ -100,10 +97,7 @@ function decodeChildRun(stored: unknown): ChildRun | undefined {
           ...(isRecord(stored.image) &&
           typeof stored.image.description === "string"
             ? {
-                image: {
-                  description: stored.image.description,
-                  ...text("savedTo", stored.image.savedTo),
-                },
+                image: { description: stored.image.description },
               }
             : {}),
           ...text("error", stored.error),

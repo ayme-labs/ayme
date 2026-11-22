@@ -116,20 +116,6 @@ it("stops listening to the transport when the last listener leaves", async () =>
   expect(t.listening()).toBe(0);
 });
 
-it("passes agent image runs to those who listen for them", async () => {
-  const t = transport(state(1));
-  const client = createInspectorClient(t.contract);
-  const heard: string[] = [];
-  client.subscribe(() => {});
-  client.onAgentImageRun((run) => heard.push(run.name));
-  t.push({
-    type: "agent-image-run",
-    revision: 1,
-    run: { name: "screenshot", input: {}, startedAt: 1, durationMs: 2 },
-  });
-  expect(heard).toEqual(["screenshot"]);
-});
-
 it("picks a ref and cancels the pick when its signal aborts", async () => {
   const t = transport(state(1));
   const client = createInspectorClient(t.contract);
