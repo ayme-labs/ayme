@@ -6844,6 +6844,20 @@ describe("the lifecycle, for a fill while it is typed", () => {
       showing: [],
     },
     {
+      name: "a revision after a fill is final still sets its text once the page went to another address (rule 5)",
+      happened: [
+        ...clicked,
+        reportedAs(fill("m")),
+        settled(reported1),
+        taken(snapshot3),
+        clickHeld(input2),
+        navigated("http://shop.test/cart"),
+        revised(fill("mi")),
+      ],
+      todo: [[retext(fill("mi"), snapshot2)]],
+      state: { phase: "recording" },
+    },
+    {
       name: "a revision of another kind after a fill is final sets no text of the fill's (rule 5)",
       happened: [
         ...clicked,
