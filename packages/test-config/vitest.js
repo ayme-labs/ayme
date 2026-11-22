@@ -5,7 +5,7 @@
  */
 import { configDefaults, defineConfig, mergeConfig } from "vitest/config";
 
-import { nonProductionPatterns } from "./analysis.js";
+import { nonProductionPatterns, notScoredPatterns } from "./analysis.js";
 
 /** Tests that never belong to the fast lane, whatever the package runs. */
 export const fastLaneExcludes = Object.freeze([
@@ -33,7 +33,7 @@ export function defineFastLaneConfig(baseConfig, { exclude = [] } = {}) {
           reportsDirectory: "./coverage/crap",
           reporter: ["json"],
           include: ["src/**/*.{ts,tsx}"],
-          exclude: [...nonProductionPatterns],
+          exclude: [...nonProductionPatterns, ...notScoredPatterns],
         },
       },
     })

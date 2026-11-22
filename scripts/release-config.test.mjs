@@ -15,16 +15,35 @@ const config = readJson("release-please-config.json");
 const manifest = readJson(".release-please-manifest.json");
 const linked = config.plugins.find(({ type }) => type === "linked-versions");
 
+const isPrivate = (dir) => readJson(`${dir}/package.json`).private === true;
 const publishedPaths = fs
   .readdirSync(path.join(repoRoot, "packages"))
   .map((dir) => `packages/${dir}`)
   .filter((dir) => fs.existsSync(path.join(repoRoot, dir, "package.json")))
-  .filter((dir) => !readJson(`${dir}/package.json`).private)
+  .filter((dir) => !isPrivate(dir))
   .sort();
+
+// Packages that are built and checked but not released yet. Each is private
+// and absent from the release configuration, so that nothing tags or
+// publishes it. docs/releasing.md ("A package that is built but held back")
+// lists what releases one.
+const HELD_BACK = ["packages/cli"];
 
 test("Release Please releases exactly the packages that are not private", () => {
   assert.deepEqual(Object.keys(config.packages).sort(), publishedPaths);
   assert.deepEqual(Object.keys(manifest).sort(), publishedPaths);
+});
+
+test("a held-back package is private and absent from the release configuration", () => {
+  for (const dir of HELD_BACK) {
+    assert.equal(isPrivate(dir), true, `${dir} must stay private`);
+    assert.equal(config.packages[dir], undefined, `${dir} in packages`);
+    assert.equal(manifest[dir], undefined, `${dir} in the manifest`);
+    assert.ok(
+      !linked.components.includes(path.basename(dir)),
+      `${dir} in the linked group`
+    );
+  }
 });
 
 test("every released package is in the linked group", () => {

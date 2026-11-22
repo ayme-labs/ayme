@@ -39,7 +39,21 @@
         "$TURBO_ROOT$/packages/webmcp/package.json",
         "$TURBO_ROOT$/packages/webmcp/tsdown.config.ts",
         "$TURBO_ROOT$/packages/webmcp/README.md",
-        "$TURBO_ROOT$/packages/webmcp/LICENSE"
+        "$TURBO_ROOT$/packages/webmcp/LICENSE",
+        "$TURBO_ROOT$/packages/cli/src/**",
+        "$TURBO_ROOT$/packages/cli/*.ts",
+        "$TURBO_ROOT$/packages/cli/package.json",
+        "$TURBO_ROOT$/packages/cli/README.md",
+        "$TURBO_ROOT$/packages/cli/LICENSE",
+        "$TURBO_ROOT$/packages/recorder/src/**",
+        "$TURBO_ROOT$/packages/recorder/tsdown.config.ts",
+        "$TURBO_ROOT$/packages/recorder/package.json",
+        "$TURBO_ROOT$/packages/recorder/playwright-range.json",
+        "$TURBO_ROOT$/packages/recorder-window/src/**",
+        "$TURBO_ROOT$/packages/recorder-window/*.ts",
+        "$TURBO_ROOT$/packages/recorder-window/package.json",
+        "$TURBO_ROOT$/packages/design-system/src/**",
+        "$TURBO_ROOT$/packages/design-system/package.json"
       ]
     },
     "test:crap": {
