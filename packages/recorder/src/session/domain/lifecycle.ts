@@ -2116,7 +2116,8 @@ function writeDown(draft: Draft, last: boolean) {
       draft.inputs = draft.inputs.filter((held) => held.id !== input.id);
       continue;
     }
-    if (!input.report || !input.before) continue;
+    const { report, before } = input;
+    if (!report || !before) continue;
     const covered = draft.inputs.filter((held) => held.joins === input.id);
     const complete =
       input.stage === "settled" &&
@@ -2130,7 +2131,10 @@ function writeDown(draft: Draft, last: boolean) {
     if (!complete) continue;
     draft.todo.push({
       kind: "timeline",
-      add: { kind: "interaction", interaction: written(input, covered) },
+      add: {
+        kind: "interaction",
+        interaction: written(input, report, before, covered),
+      },
     });
     draft.inputs = draft.inputs.filter(
       (held) => held.id !== input.id && held.joins !== input.id
@@ -2138,12 +2142,18 @@ function writeDown(draft: Draft, last: boolean) {
   }
 }
 
-/** An input the pages held, as the timeline is told it. */
-function written(input: Input, covered: readonly Input[]): RecordedInteraction {
+/** An input the pages held, with its report and its "before", as the
+ * timeline is told it. */
+function written(
+  input: Input,
+  report: InteractionReport,
+  before: SnapshotId,
+  covered: readonly Input[]
+): RecordedInteraction {
   return {
     page: input.page,
-    report: input.report!,
-    before: input.before!,
+    report,
+    before,
     // The clicks its report covers end where the last of them does.
     after: covered.at(-1)?.after ?? input.after,
     at: input.passedOnAt ?? 0,

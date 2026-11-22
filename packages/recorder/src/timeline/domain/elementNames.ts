@@ -83,7 +83,7 @@ export function labelNear(
   const place = placeOf(tree, node, view);
   const labels = labelsOf(place.tree);
   const named = [place.node, ...place.tree.getAncestorsOf(place.node.ref)].find(
-    (one) => labels.own(one) !== null
+    (one) => ownName(one) !== null
   );
   return labels.of(named ?? place.node);
 }
@@ -273,10 +273,6 @@ class PageLabels {
     for (const root of tree.getRootNodes()) visit(root, null);
   }
 
-  own(node: StructuralNode): OwnName | null {
-    return ownName(node);
-  }
-
   /** Whether a text selector of the document `frame`, which `fits` an
    * element by its text, may match otherwise in the page: an element whose
    * text may hold a name fits it by one reading of its text and not by the
@@ -301,7 +297,7 @@ class PageLabels {
    * directly inside it: one it wraps with the same text is the element of
    * that text, as Playwright's text lookup finds the innermost. */
   private textIn(node: StructuralNode): string {
-    return (this.own(node) ? this.texts : this.ownTexts).get(node.ref)!;
+    return (ownName(node) ? this.texts : this.ownTexts).get(node.ref)!;
   }
 
   /** What a selector matches in the document `frame`, worked out once: the
@@ -336,7 +332,7 @@ class PageLabels {
   /** The ways to name an element, plainest first: its role and name, and
    * those with the text inside it. */
   private forms(node: StructuralNode): Form[] {
-    const own = this.own(node);
+    const own = ownName(node);
     const frame = this.frameOf(node);
     // A frame has no role Playwright's selectors know, and its document's
     // text is not its own: it is one of the frames of its document.
@@ -519,7 +515,7 @@ class PageLabels {
     // when the element is the only one its selector matches in it. Its
     // frame holds all it matches, and so ends the search.
     for (const ancestor of this.tree.getAncestorsOf(node.ref)) {
-      if (!this.own(ancestor)) continue;
+      if (!ownName(ancestor)) continue;
       const theirs = this.alone(ancestor);
       if (!theirs) continue;
       if (this.countInside(last.matches, ancestor) === 1)
