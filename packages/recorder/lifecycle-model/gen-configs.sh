@@ -122,8 +122,10 @@ mk Input-ReadAcrossNavigation "$IN" 2 2 1 1 0 0  $F     $F   $F   $F    $T    $F
 # fill: a fill of its own in the new document (8d1c4656).
 mk Path-TypingAfterNavigation "$IN" 2 2 1 1 1 1  $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X10_FillStartsInItsDocument F4n_KeyElsewhereIsNotTheFillsText X3_NothingYouDidIsDropped $FILLS
 $F3P" $F $F "$LR" $F $F $F $F $T $T $T $F $T
-# Typing while the page changes its address within its document.
-mk Fill-AddressChangeWhileTyping "$IN" 1 1 1 1 1 0 $F    $F   $F   $F    $T    $F      $F $F "INVARIANT F4_StopAndFinishKeepLastText" $F $F "$LR" $F $F $F $F $F $T $T $F $F $T
+# Typing while the page changes its address within its document: the fill
+# goes on (b2af1120).
+mk Path-AddressChangeWhileTyping "$IN" 1 1 1 1 1 0 $F    $F   $F   $F    $T    $F      $F $F "INVARIANTS $FILLS F7_MeasuredFromFirstKey
+$F3P" $F $F "$LR" $F $F $F $F $F $T $T $F $F $T
 # The same, with a navigation that commits before the report of a key typed
 # in the document it leaves.
 mk Race-NavigationBeforeTypingReport "$IN" 2 2 1 1 0 0 $F  $F   $F   $F    $T    $F      $T $F "INVARIANT X10_FillStartsInItsDocument" $F $F "$LR" $F $F $F $F $T $F

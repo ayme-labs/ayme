@@ -1475,10 +1475,10 @@ TimeLimitPasses ==
 -----------------------------------------------------------------------------
 \* The page
 
-\* L pageNavigated, while recording or wrapping up (leftDocument, elsewhere):
-\* the page forgets its latest read, its last fill and that Playwright
-\* reported on it, and its inputs known from their report take no more
-\* revisions.
+\* L pageNavigated, while recording or wrapping up, when the page goes to
+\* another document (leftDocument, elsewhere; b2af1120): the page forgets its
+\* latest read, its last fill and that Playwright reported on it, and its
+\* inputs known from their report take no more revisions.
 LeftDocument(s) ==
   [s EXCEPT !.pgLatest = 0, !.pgLastFill = 0, !.pgReported = FALSE,
             !.els = @ \cup {f \in Elems(s.lst) : s.ent[f] = "rep"}]
@@ -1498,11 +1498,9 @@ NavCommits ==
   \* While paused, the timeline is told the page went elsewhere (L
   \* pageNavigated, "elsewhere"): it adds no entry, and the next Visit starts
   \* with the new document, as here.
-  \* While recording or wrapping up, a page forgets its latest read at every
-  \* navigation (L pageNavigated, unread; c5305756): a key typed in the new
-  \* document first waits for a read of it. (L snapshotTaken also leaves out
-  \* a read of the blank page heard after it left; here a read and its answer
-  \* are one step.)
+  \* While recording or wrapping up, a page that goes to another document
+  \* forgets its latest read (L pageNavigated, leftDocument; c5305756,
+  \* b2af1120): a key typed in the new document first waits for a read of it.
   \* It also forgets its last fill and that Playwright reported on it, and
   \* the inputs known from their report there take no more revisions (L
   \* pageNavigated, leftDocument, elsewhere; 8d1c4656).
@@ -1518,12 +1516,15 @@ NavCommits ==
                  personVars, win, miscVars>>
 
 \* The page changes its address within its document (AddressChanges), as
-\* history.replaceState or a change of the hash does. Playwright tells it as
-\* a navigation, and the engine takes it as one (L pageNavigated): the
-\* document, its gate and its Visit stay.
+\* history.replaceState or a change of the query or the hash does.
+\* Playwright tells it as a navigation; the engine sees the same document
+\* (L pageNavigated, sameDocument; b2af1120): its gate keeps its latest read,
+\* its last fill and its reports, and its fills go on. The document, its gate
+\* and its Visit stay; only the page's address changes, which the model has
+\* not.
 AddressChangesInDocument ==
   /\ AddressChanges /\ Alive /\ page = "open" /\ ~BlankHere
-  /\ Commit(IF Active(Eng) THEN Proceed(LeftDocument(Eng), FALSE) ELSE Eng)
+  /\ Commit(IF Active(Eng) THEN Proceed(Eng, FALSE) ELSE Eng)
   /\ UNCHANGED <<pageVars, personVars, surfVars, miscVars>>
   /\ Publish
 
