@@ -354,7 +354,6 @@ const EXPECTED_TOOLS: [string, PublishedToolGroup][] = [
   ["fill_form", "browser"],
   ["press_key", "browser"],
   ["generate_locator", "browser"],
-  ["screenshot", "browser"],
   ["navigate", "browser"],
   ["navigate_back", "browser"],
   ["navigate_forward", "browser"],

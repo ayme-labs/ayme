@@ -134,10 +134,9 @@ describe("startWebMcpPublication", () => {
     });
   });
 
-  it("publishes every listed tool but Peek Tools and screenshot", async () => {
+  it("publishes every listed tool but Peek Tools", async () => {
     const tools = toolSource([
       tool("snapshot", undefined, { group: "agent" }),
-      tool("screenshot", undefined, { group: "browser" }),
       tool("peek.cart", undefined, { group: "peek" }),
       tool("Dialog.close"),
     ]);

@@ -1,6 +1,5 @@
 import type { Run as LogRun, callers } from "@ayme-dev/ayme/inspector";
 
-import { runImageOf } from "./runImage";
 import type {
   ChildRun,
   CollectionItem,
@@ -53,8 +52,6 @@ function nodeOf(
 ): ChildRun {
   const id = rowIdOf(run);
   const notes = notesOf(id);
-  // An image shows as itself, never as its base64 JSON.
-  const image = runImageOf(run.result);
   return {
     id,
     toolName: run.tool,
@@ -62,11 +59,9 @@ function nodeOf(
     ...(notes.item ? { item: notes.item, objectPath: notes.item.path } : {}),
     arguments: isArguments(run.input) ? run.input : {},
     status: run.status,
-    ...(image
-      ? { image }
-      : run.result === undefined
-        ? {}
-        : { result: JSON.stringify(run.result, null, 2) }),
+    ...(run.result === undefined
+      ? {}
+      : { result: JSON.stringify(run.result, null, 2) }),
     ...(run.error === undefined ? {} : { error: run.error }),
     startedAt: run.startedAt,
     ...(run.durationMs === undefined

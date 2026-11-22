@@ -16,25 +16,11 @@ export const keptRuns = 50;
 export const reloadedError = "The page reloaded before the run returned.";
 
 /**
- * The run history as it is kept: the newest runs only, without their images,
- * as the tab's storage is small and shared with the app.
+ * The run history as it is kept: the newest runs only, as the tab's storage
+ * is small and shared with the app.
  */
 export function encodeRuns(runs: readonly Run[]): readonly Run[] {
-  return runs.slice(0, keptRuns).map(withoutImages);
-}
-
-/** A run and the runs nested under it, each without its image itself. */
-function withoutImages<R extends ChildRun>(run: R): R {
-  const { image } = run;
-  return {
-    ...run,
-    ...(image?.src === undefined
-      ? {}
-      : {
-          image: { description: image.description },
-        }),
-    children: run.children.map(withoutImages),
-  };
+  return runs.slice(0, keptRuns);
 }
 
 /**
@@ -94,12 +80,6 @@ function decodeChildRun(stored: unknown): ChildRun | undefined {
       : {
           status,
           ...text("result", stored.result),
-          ...(isRecord(stored.image) &&
-          typeof stored.image.description === "string"
-            ? {
-                image: { description: stored.image.description },
-              }
-            : {}),
           ...text("error", stored.error),
           ...(typeof stored.durationMs === "number"
             ? { durationMs: stored.durationMs }

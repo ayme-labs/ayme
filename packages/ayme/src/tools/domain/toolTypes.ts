@@ -6,21 +6,6 @@ import type { GoalInput, Handover } from "../../shared";
 type Target = { target: string };
 type Modifier = "Alt" | "Control" | "ControlOrMeta" | "Meta" | "Shift";
 
-/** An image a tool returns, such as a screenshot, which the Inspector's Runs show. */
-export type ImageResult = {
-  type: "image";
-  /** What it shows, e.g. "the viewport", "the full page" or "element e12". */
-  subject: string;
-  /** A bare file name, ending in the extension of its format. */
-  filename: string;
-  mimeType: "image/png" | "image/jpeg";
-  /** Its size in pixels. */
-  width: number;
-  height: number;
-  /** The image's bytes, base64-encoded. */
-  data: string;
-};
-
 /** What `snapshot` answers: the page's structure and its Page Object Model definitions. */
 export type PageContextPayload = {
   readonly structure: string;
@@ -76,15 +61,6 @@ export type BuiltInTools = {
         | { within: string; error: string }
       )[];
     };
-  };
-  screenshot: {
-    input: {
-      type?: "png" | "jpeg";
-      target?: string;
-      fullPage?: boolean;
-      filename?: string;
-    };
-    result: ImageResult;
   };
   navigate: { input: { url: string }; result: ActionResult };
   navigate_back: { input: Record<string, never>; result: ActionResult };

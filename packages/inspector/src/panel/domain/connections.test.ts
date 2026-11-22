@@ -223,12 +223,11 @@ describe("webMcpRow", () => {
 });
 
 describe("webMcpToolCount", () => {
-  it("counts the tools WebMCP publishes, leaving out Peek tools and screenshot", () => {
+  it("counts the tools WebMCP publishes, leaving out Peek tools", () => {
     expect(
       webMcpToolCount([
         { name: "ListPage.addItem", group: "pageObject" },
         { name: "snapshot", group: "agent" },
-        { name: "screenshot", group: "agent" },
         { name: "peek.jobs", group: "peek" },
       ])
     ).toBe(2);

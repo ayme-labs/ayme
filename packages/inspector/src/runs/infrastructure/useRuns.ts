@@ -43,9 +43,8 @@ type PendingRun = {
  * Runs as the panel shows them, newest first: the page's Run log, every
  * Caller's Runs with the Runs they started nested under them, each on the
  * collection item its ref named when it started, and each Run's
- * Interactions, named by the member they acted on once it ends. An image a
- * Run returned, such as a screenshot, shows as itself. The rows shown are kept for the
- * tab, so a reload still shows them, as earlier page rows. `invoke` runs a
+ * Interactions, named by the member they acted on once it ends. The rows
+ * shown are kept for the tab, so a reload still shows them, as earlier page rows. `invoke` runs a
  * tool as the Inspector.
  */
 export function useRuns({

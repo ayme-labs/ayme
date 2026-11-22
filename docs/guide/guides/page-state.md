@@ -116,8 +116,7 @@ widget.setAttribute(EXCLUDE_ATTRIBUTE, "");
 The element and everything in it:
 
 - is out of every capture;
-- lets picking and clicks pass through it;
-- is hidden from screenshots.
+- lets picking and clicks pass through it.
 
 The attribute needs no `ignore`, and it works in a build that leaves ayme out.
 

@@ -519,27 +519,6 @@ it("does not invent a generic name for an unnamed target", async () => {
   ).not.toContain("generic");
 });
 
-it("shows an image a Run returned as itself", async () => {
-  const image = {
-    type: "image",
-    subject: "the viewport",
-    filename: "page-1.png",
-    mimeType: "image/png",
-    width: 2,
-    height: 1,
-    data: "iVBORw0KGgo=",
-  } as const;
-  const screenshot = startedAyme.runs.start("screenshot", {}, "inspector");
-  screenshot.succeed(image);
-  renderApp();
-
-  const run = inspector.runs.latest("screenshot");
-  await expect
-    .poll(() => run.image.textContent())
-    .toBe("Screenshot of the viewport, 2×1 PNG");
-  expect(await run.resultToggle.count()).toBe(0);
-});
-
 it("shows a tree of Runs in the selection's scope when a child Run is in it", async () => {
   registerEditor();
   const goal = startedAyme.runs.start("goal", { goal: "Save" }, "ayme-mcp");

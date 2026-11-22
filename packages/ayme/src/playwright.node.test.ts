@@ -388,21 +388,6 @@ describe("ayme over a Playwright Page", () => {
     expect(JSON.stringify(result)).not.toContain("Second document");
   });
 
-  it("takes a screenshot with its size", async () => {
-    const page = await pageShowing("<h1>Shot</h1>");
-    const ayme = await startedOn(page);
-
-    const result = (await ayme.tools.run("screenshot", {})) as {
-      width: number;
-      height: number;
-      mimeType: string;
-    };
-
-    expect(result).toMatchObject({ mimeType: "image/png" });
-    expect(result.width).toBe(page.viewportSize()!.width);
-    expect(result.height).toBe(page.viewportSize()!.height);
-  });
-
   it("resolves a relative navigation against the document's base URL", async () => {
     const page = await pageServing(
       () => '<base href="/sub/"><p>Page</p>',
