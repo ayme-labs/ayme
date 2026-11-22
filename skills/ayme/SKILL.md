@@ -33,7 +33,9 @@ For designing or restructuring Page Object Models, read
 the project's conventions, raise the conflict with the user.
 
 For mapping a user flow into a POM against the running app, read
-[Live mapping](references/live-mapping.md).
+[Live mapping](references/live-mapping.md). To record a flow the user drives
+and turn it into page objects and a Playwright test, use the `ayme-recorder`
+skill, which [Coding agent skills](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/coding-agent-skill.md#ayme-recorder) says how to install.
 
 For registering Page Objects, placing or configuring the runtime owner, or
 checking which tools are live, read

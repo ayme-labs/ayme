@@ -44,6 +44,9 @@ points to another file. It overrides this skill's defaults.
      parameterised automation that does the flow with new data, such as data
      entry that ends in a real submission.
 
+When the page objects should also become ayme tools, use the `ayme` skill,
+which [Coding agent skills](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/coding-agent-skill.md#ayme) says how to install.
+
 ## Read the package
 
 The package is YAML-style text; it may not parse as YAML. Its outline:
