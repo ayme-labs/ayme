@@ -595,7 +595,7 @@ it("rejects a run before start, after stop and for a tool that does not exist", 
   await expect(
     runtime.tools.run("goal", { goal: "save", maxSteps: 1 })
   ).rejects.toThrow(
-    'Cannot run the tool "goal": the Ayme runtime session is not started.'
+    'Cannot run the tool "goal": the ayme runtime session is not started.'
   );
   const stop = start(runtime);
   await expect(
@@ -686,7 +686,7 @@ it("runs goal as the application while publication is unavailable", async () => 
 });
 
 it("lists the element tools' targets only while a session is started", async () => {
-  const notConfigured = "The Ayme browser runtime is not configured.";
+  const notConfigured = "The ayme browser runtime is not configured.";
   await expect(listElementToolTargets()).rejects.toThrow(notConfigured);
   start(session(false))();
   await expect(listElementToolTargets()).rejects.toThrow(notConfigured);
@@ -851,7 +851,7 @@ it("C3: rejects concurrent owners with the active-owner code and permits a fresh
   expect(() => second.start()).toThrow(
     expect.objectContaining({
       name: "RuntimeStateError",
-      message: "The Ayme runtime already has an active owner.",
+      message: "The ayme runtime already has an active owner.",
       code: "active-owner",
     })
   );
@@ -887,7 +887,7 @@ it("publishes while a session with webMCP.enabled is started, under its toolName
   expect(options.signal.aborted).toBe(true);
   expect(runtime.webMCP.publicationStatus).toEqual({
     state: "disposed",
-    message: "The Ayme runtime was disposed.",
+    message: "The ayme runtime was disposed.",
   });
 });
 

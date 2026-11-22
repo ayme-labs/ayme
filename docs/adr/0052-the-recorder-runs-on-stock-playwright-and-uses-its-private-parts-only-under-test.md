@@ -4,7 +4,7 @@ status: accepted
 
 # The recorder runs on stock Playwright and uses its private parts only under test
 
-The first Ayme recorder ran on a fork of Playwright itself (not Playwright Lite, which ADR-0021 covers), bundled into the CLI. The fork gave the recorder its own page structure capture, refs stamped into the trace, and a slot for its toolbar. It also tied every user to the fork's Playwright version, and had to be rebased on every Playwright release.
+The first ayme recorder ran on a fork of Playwright itself (not Playwright Lite, which ADR-0021 covers), bundled into the CLI. The fork gave the recorder its own page structure capture, refs stamped into the trace, and a slot for its toolbar. It also tied every user to the fork's Playwright version, and had to be rebased on every Playwright release.
 
 The recorder now uses the Playwright the project already has installed. Nothing of Playwright is bundled or patched. Interactions come from Playwright's own recorder, page structure from its public snapshot, and the trace from its public tracing.
 

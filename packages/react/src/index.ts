@@ -43,7 +43,7 @@ export function AymeProvider({
   });
   if (ancestor)
     throw new Error(
-      "AymeProvider cannot be nested beneath another Ayme runtime owner."
+      "AymeProvider cannot be nested beneath another ayme runtime owner."
     );
   if (!sameRuntimeOptions(options, setup.options))
     throw new Error(
@@ -59,7 +59,7 @@ export function AymeProvider({
 
 function useRuntime() {
   const runtime = useContext(RuntimeContext);
-  if (!runtime) throw new Error("Ayme hooks require an ancestor AymeProvider.");
+  if (!runtime) throw new Error("ayme hooks require an ancestor AymeProvider.");
   return runtime;
 }
 

@@ -38,7 +38,7 @@ export class InputsPage extends FixturePage {
   @ayme.child
   readonly shadowState = this.page.locator("#shadowSaid");
 
-  // In a same-origin frame. Ayme runs a served Page Object on Playwright
+  // In a same-origin frame. ayme runs a served Page Object on Playwright
   // Lite, which does not enter frames: these are left undeclared, and built
   // only when a test reads them.
   get innerButton() {

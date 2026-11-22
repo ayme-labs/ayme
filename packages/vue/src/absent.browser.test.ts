@@ -1,4 +1,4 @@
-// The entry a build without Ayme resolves `@ayme-dev/vue` to: the names of
+// The entry a build without ayme resolves `@ayme-dev/vue` to: the names of
 // the index, backed by the runtime's absent entry, so a component tree
 // renders as it does with the real package.
 import { createApp, defineComponent, h, nextTick, type App } from "vue";
@@ -32,7 +32,7 @@ import type * as index from "./index";
 class Model {
   constructor() {
     throw new Error(
-      "Page Objects are not constructed in a build without Ayme."
+      "Page Objects are not constructed in a build without ayme."
     );
   }
 }
@@ -93,7 +93,7 @@ it("normalises the provider's props as the index does, so a kebab-case attribute
 
   expect(element.innerHTML).toBe("<output>rendered</output>");
   expect(logged).toHaveBeenCalledWith(
-    "Ayme was removed from this build, but setup enables WebMCP publication."
+    "ayme was removed from this build, but setup enables WebMCP publication."
   );
 });
 
@@ -107,6 +107,6 @@ it("passes a standalone owner's options to the absent runtime, which logs the pu
   });
   expect(mount(Root).innerHTML).toBe("<output>disabled</output>");
   expect(logged).toHaveBeenCalledWith(
-    "Ayme was removed from this build, but setup enables WebMCP publication."
+    "ayme was removed from this build, but setup enables WebMCP publication."
   );
 });

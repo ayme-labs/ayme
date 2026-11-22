@@ -1,11 +1,11 @@
 ---
 name: ayme-recorder
-description: Record a user flow with the Ayme recorder while the user drives their app, then turn the Recording Package into Playwright page objects and a test, or a parameterised automation of the flow.
+description: Record a user flow with the ayme recorder while the user drives their app, then turn the Recording Package into Playwright page objects and a test, or a parameterised automation of the flow.
 ---
 
-# Ayme recorder
+# ayme recorder
 
-The Ayme recorder listens while the user drives their app in a browser, and
+The ayme recorder listens while the user drives their app in a browser, and
 writes what it saw to a Recording Package: the page structure at each visit,
 what changed and every interaction.
 
@@ -53,6 +53,9 @@ points to another file. It overrides this skill's defaults.
    - [Production automation](playbooks/production-automation.md): a
      parameterised automation that does the flow with new data, such as data
      entry that ends in a real submission.
+
+When the page objects should also become ayme tools, use the `ayme` skill,
+which [Coding agent skills](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/coding-agent-skill.md#ayme) says how to install.
 
 ## Read the package
 

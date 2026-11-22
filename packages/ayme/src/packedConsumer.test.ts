@@ -1,5 +1,5 @@
 /**
- * Packed-consumer regression for the publishable Ayme packages.
+ * Packed-consumer regression for the publishable ayme packages.
  *
  * Each package is built into an isolated staging directory, so the shared
  * workspace `dist` that parallel tests read is never mutated, and is packed

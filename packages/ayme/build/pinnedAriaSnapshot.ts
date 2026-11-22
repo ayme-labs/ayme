@@ -47,13 +47,13 @@ const edits: Edit[] = [
     count: 1,
   },
   {
-    why: "marks private to Ayme's module, never Playwright's `_ariaRef` expando",
+    why: "marks private to ayme's module, never Playwright's `_ariaRef` expando",
     find: "let ariaRef = element._ariaRef;",
     replace: "let ariaRef = options.aymeRefs.marks.get(element);",
     count: 1,
   },
   {
-    why: "marks private to Ayme's module, never Playwright's `_ariaRef` expando",
+    why: "marks private to ayme's module, never Playwright's `_ariaRef` expando",
     find: "element._ariaRef = ariaRef;",
     replace: "options.aymeRefs.marks.set(element, ariaRef);",
     count: 1,
@@ -83,7 +83,7 @@ export function pinnedAriaSnapshotModule(): string {
     const found = source.split(find).length - 1;
     if (found !== count)
       throw new Error(
-        `The pinned InjectedScript has ${found} of ${JSON.stringify(find)} where Ayme's build expects ${count} (${why}).`
+        `The pinned InjectedScript has ${found} of ${JSON.stringify(find)} where ayme's build expects ${count} (${why}).`
       );
     source = source.replaceAll(find, replace);
   }

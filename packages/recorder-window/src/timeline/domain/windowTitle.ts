@@ -4,5 +4,5 @@
  * or the state is not known yet.
  */
 export function windowTitle(url: string | null): string {
-  return url ? `Ayme Recorder - ${url}` : "Ayme Recorder";
+  return url ? `ayme Recorder - ${url}` : "ayme Recorder";
 }

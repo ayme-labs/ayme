@@ -67,7 +67,7 @@ export type InspectorContractPorts = {
 
 const NO_SESSION: InspectorPublication = Object.freeze({
   state: "disposed",
-  message: "No Ayme runtime session has started.",
+  message: "No ayme runtime session has started.",
 });
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);

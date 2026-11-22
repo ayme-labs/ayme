@@ -1,5 +1,5 @@
 ------------------------------ MODULE Recorder ------------------------------
-\* The lifecycle of the Ayme Recorder, as the engine is built. README.md says
+\* The lifecycle of the ayme Recorder, as the engine is built. README.md says
 \* which engine commit it was last compared with, the rules and how to run it.
 \*
 \* One page, one recorder window, one toolbar, N things the person does.

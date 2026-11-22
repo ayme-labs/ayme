@@ -115,7 +115,7 @@ describe("ayme Vite integration", () => {
     });
   });
 
-  describe("resolving in a build without Ayme, the default", () => {
+  describe("resolving in a build without ayme, the default", () => {
     const resolveThrough = async (
       specifier: string,
       context: {

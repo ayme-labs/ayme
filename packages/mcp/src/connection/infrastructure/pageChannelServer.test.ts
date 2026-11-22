@@ -73,7 +73,7 @@ it("sends the tab's calls to its new channel after the old one closed during a c
   const running = connection.call("click", {});
   await expect.poll(() => finish).toBeDefined();
 
-  // As when the page's Ayme setup is disposed and started again while a
+  // As when the page's ayme setup is disposed and started again while a
   // tool runs, in the same document.
   first.close();
   openPage(url, async () => "from the new channel", [
@@ -170,9 +170,9 @@ describe("the Inspector link of the paired page", () => {
   });
 });
 
-describe("a page whose Ayme and the server's speak different pairing contracts", () => {
+describe("a page whose ayme and the server's speak different pairing contracts", () => {
   const GAP =
-    "Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts.";
+    "ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts.";
 
   function openVersionedPage(url: string, onVersionGap: (gap: string) => void) {
     const channel = openPageChannel(() => url, {

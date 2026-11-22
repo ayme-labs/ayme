@@ -14,7 +14,7 @@ The Goal Loop can choose a Custom Tool too, so a goal like "show me where the bi
 
 ## Register a Custom Tool
 
-A Custom Tool is an operation your app registers for one element at a time. Pass it in `customTools` where Ayme starts. One registration publishes it for the calling agent and makes it an operation the Goal Loop may choose, as the single-element Browser Tools are:
+A Custom Tool is an operation your app registers for one element at a time. Pass it in `customTools` where ayme starts. One registration publishes it for the calling agent and makes it an operation the Goal Loop may choose, as the single-element Browser Tools are:
 
 ```ts
 import type { CustomTool } from "@ayme-dev/ayme";
@@ -34,7 +34,7 @@ createAyme({ customTools: [highlight] });
 
 ## How it runs
 
-- The published tool takes `{ ref }`. Ayme resolves the Structural Ref against the current page and calls `execute` with the current ref and a Playwright `Locator` of its element: act on the element through the Locator, as `locator.click()` or `locator.evaluate(…)` does. An unknown, removed or ambiguous ref fails before `execute` runs.
+- The published tool takes `{ ref }`. ayme resolves the Structural Ref against the current page and calls `execute` with the current ref and a Playwright `Locator` of its element: act on the element through the Locator, as `locator.click()` or `locator.evaluate(…)` does. An unknown, removed or ambiguous ref fails before `execute` runs.
 - `description` is the only instruction the model gets about the operation.
 - The call returns the same action result as every other action: a JSON value returned by `execute` appears under `result`, next to `page_changed`, `settled` and, when the page changed, `changes_before` and `changes`.
 - `filter` limits only which elements the Goal Loop may offer for this tool. It is not enforced when an agent calls the tool with a ref. Without a `filter`, every node that has a ref may be offered.
@@ -59,11 +59,11 @@ const deleteRow: CustomTool = {
 };
 ```
 
-The published tool says so in its annotations, `destructiveHint` over `ayme mcp` and `consequentialHint` over WebMCP, and Ayme still runs it like any other tool. `false` is the same as leaving it out. [Destructive actions](../reference/ayme.md#destructive-actions) has the details, which Page Object Actions share.
+The published tool says so in its annotations, `destructiveHint` over `ayme mcp` and `consequentialHint` over WebMCP, and ayme still runs it like any other tool. `false` is the same as leaving it out. [Destructive actions](../reference/ayme.md#destructive-actions) has the details, which Page Object Actions share.
 
 ## A Locator filter
 
-A `filter` that a selector cannot express is a function that takes the session's Playwright `Page` and returns a `Locator` of the elements the Goal Loop may offer. Ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
+A `filter` that a selector cannot express is a function that takes the session's Playwright `Page` and returns a `Locator` of the elements the Goal Loop may offer. ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
 
 ```ts
 const linksTable = "Shared links";
@@ -85,7 +85,7 @@ const copyLink: CustomTool = {
 
 In the browser, `page` is the session's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names the `filter` of the Custom Tool.
 
-Ayme resolves the Locator again each time, right before it reads the page, so the elements it offers follow the page. One that appears after the Locator resolved and before the page was read is offered from the next page state on.
+ayme resolves the Locator again each time, right before it reads the page, so the elements it offers follow the page. One that appears after the Locator resolved and before the page was read is offered from the next page state on.
 
 ## Migrating from the earlier shape
 

@@ -49,7 +49,7 @@ function licenceOf(pkg: BundledPackage): string {
  * licence it ships. The window's and the toolbar's packages come from the
  * lists their builds write, which the window package exports as
  * `@ayme-dev/recorder-window/bundled-packages.json` and
- * `@ayme-dev/recorder-window/toolbar-bundled-packages.json`. Ayme's own packages are
+ * `@ayme-dev/recorder-window/toolbar-bundled-packages.json`. ayme's own packages are
  * under the package's LICENSE.
  */
 export function thirdPartyNotices(): Rolldown.Plugin {

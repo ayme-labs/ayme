@@ -1,7 +1,7 @@
 export { ENTRY_FILE } from "./domain/servedPageObjects";
 export {
   failedPageObjects,
-  watchPageObjects,
+  startPageObjects,
 } from "./infrastructure/pageObjectsBuild";
 export type {
   BuiltModules,

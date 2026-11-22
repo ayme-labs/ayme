@@ -1,7 +1,7 @@
 {
   "name": "@ayme-dev/inspector",
   "version": "0.2.0",
-  "description": "Ayme's in-page panel for a page's Page Objects, Structural Page State and tools.",
+  "description": "ayme's in-page panel for a page's Page Objects, Structural Page State and tools.",
   "keywords": [
     "ai-agent",
     "coding-agent",

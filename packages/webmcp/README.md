@@ -1,6 +1,6 @@
 # @ayme-dev/webmcp
 
-Publishes an Ayme session's tools through WebMCP, for agents that run in the browser and read the page's `document.modelContext`.
+Publishes an ayme session's tools through WebMCP, for agents that run in the browser and read the page's `document.modelContext`.
 
 ## Setup
 
@@ -10,7 +10,7 @@ Install the package beside `@ayme-dev/ayme`, which declares it as an optional pe
 npm install @ayme-dev/webmcp
 ```
 
-Turn publication on where Ayme starts, with `webMCP: { enabled: true }`: `AymeProvider` in Vue and React, `useAyme` in Svelte, `provideAyme` in Angular, or `createAyme`:
+Turn publication on where ayme starts, with `webMCP: { enabled: true }`: `AymeProvider` in Vue and React, `useAyme` in Svelte, `provideAyme` in Angular, or `createAyme`:
 
 ```ts
 const ayme = createAyme({ webMCP: { enabled: true } });

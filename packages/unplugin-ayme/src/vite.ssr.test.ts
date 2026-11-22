@@ -90,6 +90,6 @@ it("a server build with include unset keeps the real runtime", async () => {
 
   expect(code).toContain("Waiting for the WebMCP driver.");
   expect(code).toContain("Add an item to the list.");
-  expect(code).not.toContain("Ayme was removed from this build.");
+  expect(code).not.toContain("ayme was removed from this build.");
   expect(code).not.toContain("absentPageObject");
 }, 30_000);

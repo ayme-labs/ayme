@@ -4,7 +4,7 @@ import type { Locator, Page } from "@playwright/test";
 import { ListItem } from "./ListItem";
 
 /**
- * The fixture page's Page Object. The page registers it with the Ayme
+ * The fixture page's Page Object. The page registers it with the ayme
  * runtime, which constructs it on playwright-lite and publishes `addItem` as
  * a Page Object Tool; the e2e tests construct the same class on
  * Playwright to read the page.

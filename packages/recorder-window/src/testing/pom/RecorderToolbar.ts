@@ -90,7 +90,7 @@ export class RecorderToolbar {
   }
 
   /** Builds it on a selector engine `on` has registered: use `on`. Public
-   * only because Ayme's class decorator takes a class it can construct. */
+   * only because ayme's class decorator takes a class it can construct. */
   constructor(
     readonly page: Page,
     private readonly engine: string

@@ -2,7 +2,7 @@
   "name": "@ayme-dev/recorder-window",
   "version": "0.0.0",
   "private": true,
-  "description": "The Ayme Recorder's window and in-page toolbar",
+  "description": "The ayme Recorder's window and in-page toolbar",
   "license": "FSL-1.1-ALv2",
   "type": "module",
   "exports": {

@@ -123,7 +123,7 @@ type PomChild = {
 
 /**
  * The role of a Page Object member: a Page Object Child, a Page Object Action,
- * a public method that is neither, or nothing Ayme reads. Markers decide:
+ * a public method that is neither, or nothing ayme reads. Markers decide:
  * `@ayme.child` and `@ayme.collection` declare a child, `@ayme.action` an
  * action, and an unmarked member is neither, whatever its type.
  */
@@ -722,7 +722,7 @@ function rejectSameNamedClasses(
         [other, declaration].map((sameNamed) =>
           diagnosticAt(
             sameNamed,
-            `Page Object "${pageName}" reaches two different classes named "${name}". Ayme tells the classes of a Page Object apart by name.`
+            `Page Object "${pageName}" reaches two different classes named "${name}". ayme tells the classes of a Page Object apart by name.`
           )
         )
       );

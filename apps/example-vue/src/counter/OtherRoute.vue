@@ -2,7 +2,7 @@
 import { AymeProvider } from "@ayme-dev/vue";
 </script>
 
-<!-- A page without Page Objects, which still runs Ayme's own tools. -->
+<!-- A page without Page Objects, which still runs ayme's own tools. -->
 <template>
   <main>
     <AymeProvider :webMCP="{ enabled: true }">

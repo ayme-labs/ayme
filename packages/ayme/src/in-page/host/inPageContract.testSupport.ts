@@ -177,7 +177,7 @@ export function inPageContract(lane: InPageLane) {
     ).rejects.toMatchObject({
       name: "InPageVersionError",
       message:
-        "This document runs Ayme's in-page module 1.0.0; this host is 2.0.0.",
+        "This document runs ayme's in-page module 1.0.0; this host is 2.0.0.",
     });
     const later = await lane.createHost(page, "1.0.0").inPage(page).bound();
 
@@ -595,12 +595,12 @@ export function inPageContract(lane: InPageLane) {
     ).toMatchObject({ kind: "bad-selector" });
   });
 
-  it("ayme-ref resolves Ayme's refs, and Playwright's aria-ref only its own", async () => {
+  it("ayme-ref resolves ayme's refs, and Playwright's aria-ref only its own", async () => {
     const page = await lane.newPage();
     await setBody(page, "<button>First</button><button>Second</button>");
     const host = lane.createHost(page);
     const before = await host.inPage(page).capture();
-    // Playwright's own snapshot sees an element Ayme has not, first.
+    // Playwright's own snapshot sees an element ayme has not, first.
     await page.evaluate(
       `document.body.insertAdjacentHTML("afterbegin", "<button>Early</button>")`
     );

@@ -28,7 +28,7 @@ import {
   failedPageObjects,
   findPageObjectsEntry,
   servedPageObjectsServer,
-  watchPageObjects,
+  startPageObjects,
   writeInitScript,
 } from "../served-page-objects";
 import {
@@ -43,7 +43,7 @@ const log = (message: string) =>
   process.stderr.write(`[ayme mcp] ${message}\n`);
 
 /**
- * Runs the Ayme MCP server: MCP over stdio for the agent, and a WebSocket
+ * Runs the ayme MCP server: MCP over stdio for the agent, and a WebSocket
  * server on the loopback interface for the page, on `port` if given, else on
  * the first free port of the server's range. Stops once its connection to
  * the agent closes.
@@ -59,7 +59,7 @@ const log = (message: string) =>
  * With a Page Objects entry, `pageObjects` or else `.ayme/page-objects.ts`
  * in the working folder, it also builds the entry in watch mode, serves its
  * last good build on the same server, and writes `.ayme/init-script.js`,
- * which loads it into a page that doesn't ship Ayme. Experimental (ADR-0037).
+ * which loads it into a page that doesn't ship ayme. Experimental (ADR-0037).
  */
 export async function startMcpServer({
   port: pinnedPort,
@@ -77,10 +77,10 @@ export async function startMcpServer({
   // The external Inspector and the Page Objects entry's build are served
   // by this server, the Inspector relayed over its page channel: no other
   // server and no other port.
-  // It rebuilds as the entry's files change, and logs each outcome.
+  // It rebuilds as the entry's files change, and logs each outcome; when
+  // it cannot start, it starts again as the project's install changes.
   const build =
-    entry === undefined ? undefined : watchPageObjects(entry, log, version);
-  build?.catch((error: unknown) => log((error as Error).message));
+    entry === undefined ? undefined : startPageObjects(entry, log, version);
   const channel = createPageChannelServer({
     connection,
     token,
@@ -191,7 +191,7 @@ class AgentConnectionTransport extends StdioServerTransport {
 }
 
 /**
- * Prints the URL of the external Inspector of the running Ayme MCP server
+ * Prints the URL of the external Inspector of the running ayme MCP server
  * (every one that answers, in port order) on stdout, or says why there is
  * none on stderr. A server with a page paired answers a local process's
  * probe too, so it counts. Returns the exit code.

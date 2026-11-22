@@ -46,7 +46,7 @@ function unansweredCall(exit: PageExit) {
       };
     case "stopped":
       return {
-        error: `The Ayme MCP server stopped before the page answered, ${UNKNOWN}.`,
+        error: `The ayme MCP server stopped before the page answered, ${UNKNOWN}.`,
       };
     default: {
       const { type, url, tools } = exit;
@@ -60,7 +60,7 @@ function unansweredCall(exit: PageExit) {
             : `The page started loading ${url}`;
       if (!tools)
         return {
-          error: `${what} before it answered, ${UNKNOWN}. No page reconnected in its place: the tab closed, or the page it loaded does not run Ayme's Agent Connection.`,
+          error: `${what} before it answered, ${UNKNOWN}. No page reconnected in its place: the tab closed, or the page it loaded does not run ayme's Agent Connection.`,
           settled: false,
           loading: url,
         };
@@ -81,7 +81,7 @@ function unansweredCall(exit: PageExit) {
 export function heldCallText(exit: HeldCallExit): string {
   switch (exit.type) {
     case "stopped":
-      return "The Ayme MCP server stopped before the page reconnected, so the call did not run.";
+      return "The ayme MCP server stopped before the page reconnected, so the call did not run.";
     case "closed":
       return "The page's connection closed and its tab did not reconnect, so the call did not run.";
     case "replaced":
@@ -91,7 +91,7 @@ export function heldCallText(exit: HeldCallExit): string {
         exit.type === "reloaded"
           ? "The page started reloading"
           : `The page started loading ${exit.url}`;
-      return `${what} and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run Ayme's Agent Connection.`;
+      return `${what} and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run ayme's Agent Connection.`;
     }
   }
 }

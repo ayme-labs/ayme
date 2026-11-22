@@ -1,6 +1,6 @@
 # @ayme-dev/angular
 
-The Angular package for [Ayme](https://github.com/ayme-labs/ayme): it starts Ayme in your application config and gives components their Page Objects.
+The Angular package for [ayme](https://github.com/ayme-labs/ayme): it starts ayme in your application config and gives components their Page Objects.
 
 ## Install
 
@@ -8,7 +8,7 @@ The Angular package for [Ayme](https://github.com/ayme-labs/ayme): it starts Aym
 ng add @ayme-dev/angular
 ```
 
-`ng add` installs Ayme and the build plugin, switches the build and serve builders to `@angular-builders/custom-esbuild`, adds the plugin and adds `provideAyme()` to the application config.
+`ng add` installs ayme and the build plugin, switches the build and serve builders to `@angular-builders/custom-esbuild`, adds the plugin and adds `provideAyme()` to the application config.
 
 ## Setup
 
@@ -56,7 +56,7 @@ Each component is one instance of the Peek, under the `id` you pass or one of it
 
 - [Quickstart: Angular](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/quickstart-angular.md): from an empty app to your first Page Object Tool.
 - [Angular page](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/angular.md): manual setup, `provideAyme`, `injectAyme`, `injectPageObject`, `injectPeek`, server rendering, bundle size, limits and API.
-- [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
+- [ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 
 ## Supported versions
 

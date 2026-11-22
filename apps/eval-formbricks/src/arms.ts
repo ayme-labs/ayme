@@ -119,7 +119,7 @@ export const goalFirstSentence =
   "Hand the goal to the `goal` tool first; use the other tools only if it can't finish.";
 
 /**
- * An Ayme arm: the page's own tools through Ayme's MCP server, paired with
+ * An ayme arm: the page's own tools through ayme's MCP server, paired with
  * the page before the agent starts, and nothing else. The arms differ in
  * the lab app's two switches, which the setup sets before the page loads:
  * the Goal Loop, which adds the goal-first sentence to the prompt's
@@ -137,8 +137,8 @@ function aymeArm(
 ): Arm {
   const { goalLoop, pageObjects } = options;
   const toolsLine = pageObjects
-    ? "`snapshot`, Ayme's Browser Tools and the Page Object Tools of the screen you are on."
-    : "`snapshot` and Ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed.";
+    ? "`snapshot`, ayme's Browser Tools and the Page Object Tools of the screen you are on."
+    : "`snapshot` and ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed.";
   const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, for every browser interaction: ${toolsLine}`;
   return {
     id,
@@ -176,7 +176,7 @@ export const arms: Record<ArmId, Arm> = {
           "--browser",
           "chrome",
           "--headless",
-          // The lab app publishes Ayme's tools through WebMCP; this arm gets Playwright MCP's own tools only.
+          // The lab app publishes ayme's tools through WebMCP; this arm gets Playwright MCP's own tools only.
           "--no-webmcp",
           "--user-data-dir",
           profileDir,

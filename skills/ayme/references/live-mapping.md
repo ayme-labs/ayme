@@ -43,5 +43,5 @@ Map a user flow into a POM against the running app, in this order:
    component's `root`. A target that fails gets `{ target, error }`. A ref
    belongs to one snapshot and does not belong in code.
 
-4. **Verify** by calling each new action through Ayme's MCP server and
+4. **Verify** by calling each new action through ayme's MCP server and
    confirming its effect on the page.

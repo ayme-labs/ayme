@@ -78,10 +78,10 @@ it("answers that no page is connected and that the served Page Objects did not b
   ]);
 });
 
-it("answers that no page is connected, and why, after the server refused a page whose Ayme it can't work with", async () => {
+it("answers that no page is connected, and why, after the server refused a page whose ayme it can't work with", async () => {
   const connection = new AgentConnection();
   connection.refuseVersion(
-    "Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts."
+    "ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts."
   );
 
   expect(
@@ -95,7 +95,7 @@ it("answers that no page is connected, and why, after the server refused a page 
     )
   ).toEqual(
     errorResult(
-      "No page is connected: Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts."
+      "No page is connected: ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts."
     )
   );
 });
@@ -104,7 +104,7 @@ it("answers why no page is connected while only an App Process is paired after t
   const connection = new AgentConnection();
   connection.attachProcess({ process: "server" }).publishTools([]);
   connection.refuseVersion(
-    "Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts."
+    "ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts."
   );
 
   expect(
@@ -118,7 +118,7 @@ it("answers why no page is connected while only an App Process is paired after t
     )
   ).toEqual(
     errorResult(
-      "No page is connected: Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts."
+      "No page is connected: ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts."
     )
   );
 });
@@ -222,7 +222,7 @@ describe("a call while the tab loads a new document", () => {
     next.publishTools([pageTool("snapshot")]);
   };
   const leftFor = (to: string) =>
-    `The page started loading ${to} and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run Ayme's Agent Connection.`;
+    `The page started loading ${to} and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run ayme's Agent Connection.`;
 
   it("waits for the new page when sent after the page said it is navigating, and runs there", async () => {
     vi.useFakeTimers();
@@ -288,7 +288,7 @@ describe("a call while the tab loads a new document", () => {
 
     expect(await result).toEqual(
       errorResult(
-        "The page started reloading and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run Ayme's Agent Connection."
+        "The page started reloading and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run ayme's Agent Connection."
       )
     );
   });
@@ -437,7 +437,7 @@ describe("a call while the tab loads a new document", () => {
 
     expect(await result).toEqual(
       errorResult(
-        "The Ayme MCP server stopped before the page reconnected, so the call did not run."
+        "The ayme MCP server stopped before the page reconnected, so the call did not run."
       )
     );
   });

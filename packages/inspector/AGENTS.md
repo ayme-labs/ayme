@@ -53,13 +53,13 @@ Layers, only where a slice has that kind of code: `domain` (pure rules and types
 - Demo mode is not in this package. The runtime paces each action and cues each click on its own Pages (`runs/infrastructure/demoFeedback.ts`) while its `inspector` option has `demo: true` or a panel mounted with `demo` has asked for it through the contract's `demo` command, and lets pointer actions pass through the panel's host while it covers their target. The Inspector only mounts the panel and sends that command.
 - The Runs lens names an Interaction's element from `recordedPageState`, the contract's read of the runtime's latest recorded page state, not from a look of its own.
 
-The `./external` build (`src/external.ts`, a second tsdown build that bundles React and Ayme's contract entry into one script with no static import of another file; the server serves that file alone) is what `ayme mcp` serves to a window of its own, at `/inspector`; it mounts the same app filling the window (`panel`'s `WindowShell`, no dock, drag or collapse) over the channel transport. `ayme mcp` also puts the script inside the page an Agent App shows in its chat as an MCP App, with an element naming the socket to connect to (the page's own address is the Agent App's); finding it, the build talks to the Agent App through the MCP Apps SDK, which only it imports (`app`'s `connectAgentApp`): it asks for its height, and the header offers fullscreen while the Agent App does. The window shows the page's host as "page": the contract does not carry its address.
+The `./external` build (`src/external.ts`, a second tsdown build that bundles React and ayme's contract entry into one script with no static import of another file; the server serves that file alone) is what `ayme mcp` serves to a window of its own, at `/inspector`; it mounts the same app filling the window (`panel`'s `WindowShell`, no dock, drag or collapse) over the channel transport. `ayme mcp` also puts the script inside the page an Agent App shows in its chat as an MCP App, with an element naming the socket to connect to (the page's own address is the Agent App's); finding it, the build talks to the Agent App through the MCP Apps SDK, which only it imports (`app`'s `connectAgentApp`): it asks for its height, and the header offers fullscreen while the Agent App does. The window shows the page's host as "page": the contract does not carry its address.
 
-The Inspector reads Ayme only through `@ayme-dev/ayme/inspector`. Lint enforces this for all source except `src/testing/`, test files and test-utils, which may use Ayme's public API and `@ayme-dev/ayme/testing`.
+The Inspector reads ayme only through `@ayme-dev/ayme/inspector`. Lint enforces this for all source except `src/testing/`, test files and test-utils, which may use ayme's public API and `@ayme-dev/ayme/testing`.
 
 ## Testing
 
-The Inspector is tested the way Ayme asks its users to test: through a Page
+The Inspector is tested the way ayme asks its users to test: through a Page
 Object Model of the panel. `@ayme-dev/inspector/testing` exports it
 (ADR-0026: only tests may import a testing entry). `Inspector` takes a
 Playwright `Page` and is built from one page object per part of the panel,
@@ -100,7 +100,7 @@ Run from this directory inside the repository's Devbox shell:
   playwright-lite.
 - The end-to-end tests, which run the built package on fixture pages, live in
   [`apps/inspector-fixture`](https://github.com/ayme-labs/ayme/tree/main/apps/inspector-fixture).
-  The app builds its Page Objects with the Ayme plugin, which depends on this
+  The app builds its Page Objects with the ayme plugin, which depends on this
   package, so the tests can't live here.
 
 playwright-lite's `page.mouse` and `dragTo` don't follow pointer capture. The

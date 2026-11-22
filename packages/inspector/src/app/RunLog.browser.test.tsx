@@ -182,7 +182,7 @@ it("nests a goal Run's child Runs under it, each with its own Interactions", asy
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
   const run = inspector.runs.latest("goal");
   expect(await run.caller()).toEqual({
-    icon: "Run by an agent through Ayme MCP",
+    icon: "Run by an agent through ayme MCP",
   });
   expect(await run.interactions.count()).toBe(0);
   expect(await run.childTools()).toEqual(["fill", "click"]);
@@ -522,7 +522,7 @@ it("does not invent a generic name for an unnamed target", async () => {
   ).not.toContain("generic");
 });
 
-it("shows an image a Run returned as itself, with the file Ayme MCP saved it to", async () => {
+it("shows an image a Run returned as itself, with the file ayme MCP saved it to", async () => {
   const image = {
     type: "image",
     subject: "the viewport",
@@ -632,7 +632,7 @@ it("keeps every Caller's rows it showed as earlier page rows after a reload", as
 
   await expect.poll(() => inspector.runs.runs.count()).toBe(3);
   expect(await callersShown()).toEqual([
-    { icon: "Run by an agent through Ayme MCP" },
+    { icon: "Run by an agent through ayme MCP" },
     { icon: "Run by you from the Inspector" },
     { icon: "Run by an agent through WebMCP" },
   ]);
@@ -652,7 +652,7 @@ it("scopes every Caller's Runs to the selection", async () => {
 
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
   expect(await inspector.runs.run(0).caller()).toEqual({
-    icon: "Run by an agent through Ayme MCP",
+    icon: "Run by an agent through ayme MCP",
   });
   await inspector.runs.showAll();
   await expect.poll(() => inspector.runs.runs.count()).toBe(2);

@@ -67,7 +67,7 @@ it("refuses a wrong token from any other origin, and any other path", () => {
     expect(admit({ path, origin, token }), path).toBe("refused");
 });
 
-// Pages and servers of different Ayme versions read these close frames.
+// Pages and servers of different ayme versions read these close frames.
 it("closes a probe with the codes and reasons older pages know", () => {
   expect(SERVER_IDENTITY).toEqual({ code: 4350, reason: "ayme-mcp" });
   expect(BUSY_SERVER).toEqual({ code: 4351, reason: "ayme-mcp-busy" });

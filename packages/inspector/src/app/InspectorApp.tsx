@@ -151,7 +151,7 @@ export function InspectorApp({
   const detail = unserved ? (
     <Empty>
       No page is serving the Inspector. Pair a page with this ayme mcp, and
-      start that page&apos;s Ayme session with{" "}
+      start that page&apos;s ayme session with{" "}
       <code>
         inspector: {"{"} placement: &quot;external&quot; {"}"}
       </code>

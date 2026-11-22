@@ -138,7 +138,7 @@ jobs:
           VERSION: ${{ needs.canary.outputs.version }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          title="Playwright canary: @playwright/test $VERSION breaks Ayme"
+          title="Playwright canary: @playwright/test $VERSION breaks ayme"
           {
             echo "The [Playwright canary run]($RUN_URL) failed against \`@playwright/test@$VERSION\`, installed outside the supported peer range with the config loader's version gate lifted."
             for log in packed-consumer config-loader recorder-compat; do

@@ -543,7 +543,7 @@ describe("the page state", () => {
     `);
   });
 
-  it("shares its session with Ayme when a structural ref is retargeted", async () => {
+  it("shares its session with ayme when a structural ref is retargeted", async () => {
     const original = document.querySelector("#captured");
     if (!original) throw new Error("Missing original root.");
 

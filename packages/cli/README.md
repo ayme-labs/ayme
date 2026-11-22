@@ -1,6 +1,6 @@
 # @ayme-dev/cli
 
-The Ayme Recorder. You click through a flow in your app; the recorder writes down what you did and what each step changed on the page. A coding agent then turns that Recording Package into Playwright page objects and a test, with the [`ayme-recorder` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-recorder/SKILL.md).
+The ayme Recorder. You click through a flow in your app; the recorder writes down what you did and what each step changed on the page. A coding agent then turns that Recording Package into Playwright page objects and a test, with the [`ayme-recorder` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-recorder/SKILL.md).
 
 The recorder runs on the Playwright your project already has. It brings no Playwright and no browser of its own.
 

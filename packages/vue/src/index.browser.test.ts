@@ -429,7 +429,7 @@ it("C3: rejects a second owner while the first is active", () => {
   const second = effectScope();
   scopes.push(second);
   expect(() => second.run(() => useAyme({ pageFactory }))).toThrow(
-    "The Ayme runtime already has an active owner."
+    "The ayme runtime already has an active owner."
   );
 });
 
@@ -462,7 +462,7 @@ it("C8: rejects a Page Object Model the compiler did not reach", () => {
       useAyme({ pageFactory });
       usePageObject(Uncompiled);
     })
-  ).toThrow("Uncompiled has no compiler-derived Ayme metadata.");
+  ).toThrow("Uncompiled has no compiler-derived ayme metadata.");
 });
 
 it("C5: follows the session's status, and a retry is the session's own", async () => {

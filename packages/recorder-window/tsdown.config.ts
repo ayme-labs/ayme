@@ -23,7 +23,7 @@ export default defineConfig([
     entry: { testing: "src/testing/index.ts" },
     format: ["esm"],
     // Playwright is the test's own: the page objects only name its types.
-    // Ayme, whose decorators they carry, is the test's own too.
+    // ayme, whose decorators they carry, is the test's own too.
     deps: {
       neverBundle: [
         /^@playwright\//,

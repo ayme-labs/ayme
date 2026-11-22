@@ -763,7 +763,7 @@ it("names the page that is open in its title, recording or not", async () => {
   const { channel, tell } = scriptedChannel();
   mount(channel);
   tell({ phase: "notRecording", commands: [] });
-  await expect.poll(() => document.title).toBe("Ayme Recorder");
+  await expect.poll(() => document.title).toBe("ayme Recorder");
 
   // Before Record: no Visit yet, and the page is named all the same.
   tell({
@@ -773,7 +773,7 @@ it("names the page that is open in its title, recording or not", async () => {
   });
   await expect
     .poll(() => document.title)
-    .toBe("Ayme Recorder - http://shop.test/login");
+    .toBe("ayme Recorder - http://shop.test/login");
   // While paused, the page goes on to another that no Visit records.
   tell({
     phase: "paused",
@@ -783,7 +783,7 @@ it("names the page that is open in its title, recording or not", async () => {
   });
   await expect
     .poll(() => document.title)
-    .toBe("Ayme Recorder - http://shop.test/inventory");
+    .toBe("ayme Recorder - http://shop.test/inventory");
 });
 
 it("leaves nothing of its stylesheet in the document once it is taken out", async () => {

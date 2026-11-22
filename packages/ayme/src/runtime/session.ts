@@ -122,10 +122,10 @@ export type AymeTools = {
   subscribe(listener: (tools: readonly ToolInfo[]) => void): () => void;
   /**
    * Starts a Run of an available tool for the Caller `by` names, `"app"`
-   * by default: every Caller, WebMCP and the Ayme MCP server included,
+   * by default: every Caller, WebMCP and the ayme MCP server included,
    * starts its Runs here. Runs take turns, one at a time per page: an
    * action's turn ends once the page has settled, a read's without a settle
-   * wait. Throws Ayme's errors, and `RuntimeStateError` for an empty `by`,
+   * wait. Throws ayme's errors, and `RuntimeStateError` for an empty `by`,
    * while the session is not started, when no tool has the name, or when
    * the tool is not available.
    */
@@ -186,7 +186,7 @@ export type Ayme = {
    * options ask for; returns the function that stops it. In the browser it
    * owns the document; in a Node process it owns the process, as its App
    * Process, which offers its Peek Tools alone and, with `agentConnection`,
-   * pairs with the agent's Ayme MCP server beside the page. One session owns
+   * pairs with the agent's ayme MCP server beside the page. One session owns
    * each at a time: a second start while one is started throws
    * `RuntimeStateError` with `code: "active-owner"`. A session a framework
    * integration created to render on the server starts nothing.
@@ -240,7 +240,7 @@ export type AymeOptions = {
    */
   inspector?: boolean | InspectorOptions;
   /**
-   * Connects the session to a coding agent's Ayme MCP server through the
+   * Connects the session to a coding agent's ayme MCP server through the
    * optional `@ayme-dev/mcp` package while the session is started: in the
    * browser, the page, through its page client; in Node, the process, as an
    * App Process beside the page. Off unless set. An object turns it on and,
@@ -256,7 +256,7 @@ export type AymeOptions = {
 };
 
 /**
- * Where an App Process finds the agent's Ayme MCP server. Without either,
+ * Where an App Process finds the agent's ayme MCP server. Without either,
  * it pairs with the one server that answers on the ports from 9350 to 9365.
  * A page ignores them.
  */
@@ -347,7 +347,7 @@ export type { AppProcessTool };
 
 /**
  * The tools of the App Processes paired with the session's Agent
- * Connection, which its page client hears of from the agent's Ayme MCP
+ * Connection, which its page client hears of from the agent's ayme MCP
  * server, for the Inspector. None while no server is paired.
  */
 export type AppProcessTools = {
@@ -356,7 +356,7 @@ export type AppProcessTools = {
   /** Calls `listener` with the new list after each change. */
   subscribe(listener: (tools: readonly AppProcessTool[]) => void): () => void;
   /**
-   * Runs one in its App Process, through the agent's Ayme MCP server, and
+   * Runs one in its App Process, through the agent's ayme MCP server, and
    * records it as a Run in the page's Run log for the Caller `by` names,
    * `"app"` by default. It acts on no page, so it takes no turn on the
    * page's queue and has no Interactions. Throws its error, or when no
@@ -399,7 +399,7 @@ export function createAppProcessTools(runLog: () => RunLog) {
         () => {
           if (!paired)
             throw new RuntimeStateError(
-              "No Ayme MCP server is paired with this page."
+              "No ayme MCP server is paired with this page."
             );
           return paired.run(name, input);
         },
@@ -445,11 +445,11 @@ export function subscribeToStartedAyme(
 
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 
-/** A tool as Ayme MCP lists it. */
+/** A tool as ayme MCP lists it. */
 type AymeMcpTool = ToolInfo & { description?: string };
 
 /**
- * A tool as Ayme MCP lists it: its Agent Description as its description,
+ * A tool as ayme MCP lists it: its Agent Description as its description,
  * and none when the tool says nothing beyond its name and schema, which MCP
  * allows.
  */
@@ -688,7 +688,7 @@ export function createAymeOn(
     configureRouterNavigateOf(key, undefined);
     if (started === ayme) setStarted(undefined);
     refreshTools();
-    setStatus({ state: "disposed", message: "The Ayme runtime was disposed." });
+    setStatus({ state: "disposed", message: "The ayme runtime was disposed." });
   }
 
   const webMCP: AymeWebMcp = {
@@ -783,7 +783,7 @@ export function createAymeOn(
   function lookUpRun(name: string, input: unknown) {
     if (!owner)
       throw new RuntimeStateError(
-        `Cannot run the tool "${name}": the Ayme runtime session is not started.`
+        `Cannot run the tool "${name}": the ayme runtime session is not started.`
       );
     const entry = resolveTools({ peeks }, sources).get(name);
     if (!entry) throw noSuchTool(name);
@@ -842,7 +842,7 @@ export function createAymeOn(
   }
 
   /**
-   * The session's tools as the Ayme MCP server's client reaches them: its
+   * The session's tools as the ayme MCP server's client reaches them: its
    * Runs are `ayme-mcp`'s, so `@ayme-dev/mcp` names no Caller.
    */
   const aymeMcpTools = {
@@ -924,7 +924,7 @@ export function createAymeOn(
       if (onServer()) return startInProcess();
       if (owner)
         throw new RuntimeStateError(
-          "The Ayme runtime already has an active owner.",
+          "The ayme runtime already has an active owner.",
           { code: "active-owner" }
         );
       // Registered before anything starts: a filter that cannot be throws here.
@@ -1016,12 +1016,12 @@ export function createAymeOn(
   /**
    * Claims the Node process as its App Process: no page and no document. It
    * offers its Peek Tools and, with `agentConnection`, pairs with the
-   * agent's Ayme MCP server beside the page.
+   * agent's ayme MCP server beside the page.
    */
   function startInProcess(): () => void {
     if (appProcessHolder.__aymeAppProcess)
       throw new RuntimeStateError(
-        "The Ayme runtime already has an active owner.",
+        "The ayme runtime already has an active owner.",
         { code: "active-owner" }
       );
     const processController = new AbortController();
@@ -1050,7 +1050,7 @@ export function createAymeOn(
         surfaces!.loadProcessConnection().then(
           ({ startAgentConnection }) =>
             () =>
-              // Its tools listed as Ayme MCP lists the page's; its calls run
+              // Its tools listed as ayme MCP lists the page's; its calls run
               // through the session as before.
               startAgentConnection(
                 {

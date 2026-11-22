@@ -28,12 +28,12 @@ export default defineConfig({
     "src/internal.ts",
     // The Inspector contract and the runtime's inline serving of it.
     "src/inspector.ts",
-    // What a Build without Ayme resolves the two entries above to.
+    // What a Build without ayme resolves the two entries above to.
     "src/absent.ts",
     "src/server.ts",
     // The last Goal Loop run's result, for tests only (ADR-0026).
     "src/testing.ts",
-    // Ayme over a real Playwright Page, for a Node host (ADR-0049).
+    // ayme over a real Playwright Page, for a Node host (ADR-0049).
     "src/playwright.ts",
     // The Page Object compiler, for Node: the bundler integrations and
     // `ayme mcp` (ADR-0006: no browser entry ships TypeScript).

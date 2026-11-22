@@ -9,9 +9,9 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 | `@ayme-dev/ayme`        | Your app: the decorators, `createAyme`, `createPage`, `decisionEndpoint`, the errors and their types. |
 | `@ayme-dev/ayme/server` | Your backend: `createDecisionEndpoint`, the Decision Endpoint handler.                                |
 
-Three more entries serve Ayme itself: `@ayme-dev/ayme/internal`, `@ayme-dev/ayme/inspector` and `@ayme-dev/ayme/absent`. Applications import none of them, and they may change in any release.
+Three more entries serve ayme itself: `@ayme-dev/ayme/internal`, `@ayme-dev/ayme/inspector` and `@ayme-dev/ayme/absent`. Applications import none of them, and they may change in any release.
 
-A build without Ayme resolves `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` to `@ayme-dev/ayme/absent`; see [Include Ayme in a build](build-plugin.md#include-ayme-in-a-build). Such a build publishes nothing, so its `createAyme` logs an error when `webMCP.enabled` is on.
+A build without ayme resolves `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` to `@ayme-dev/ayme/absent`; see [Include ayme in a build](build-plugin.md#include-ayme-in-a-build). Such a build publishes nothing, so its `createAyme` logs an error when `webMCP.enabled` is on.
 
 ## Decorators
 
@@ -346,7 +346,7 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-The mark reaches agents only as the tool's standard annotation. Ayme still lists and runs the tool like any other: it never asks for confirmation, refuses a call or hides the tool. What to do about the mark is up to whoever calls the tool.
+The mark reaches agents only as the tool's standard annotation. ayme still lists and runs the tool like any other: it never asks for confirmation, refuses a call or hides the tool. What to do about the mark is up to whoever calls the tool.
 
 | Where the tool is published                 | What a marked tool carries                                                                                                                                 |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -355,7 +355,7 @@ The mark reaches agents only as the tool's standard annotation. Ayme still lists
 | [`ayme.tools.list()`](#toolinfo)            | `destructive: true`                                                                                                                                        |
 | The [Inspector](../guides/inspector.md)     | A warning icon in the Tools list and a Destructive mark beside the tool's name                                                                             |
 
-A tool without the mark carries no annotations at all, so Ayme never says a tool is safe. MCP takes a tool without annotations as possibly destructive.
+A tool without the mark carries no annotations at all, so ayme never says a tool is safe. MCP takes a tool without annotations as possibly destructive.
 
 The build reads `destructive` from source, as it reads `description`, so it must be written as `true` or `false`. `false` is the same as leaving it out. A value from a variable, a spread, options held in a variable, or a computed key the build cannot resolve fails the build; see [Build plugin errors](./build-plugin.md#errors). A subclass inherits the mark with the action. A [Custom Tool](../guides/custom-tools.md#mark-a-destructive-custom-tool) takes the same option.
 
@@ -373,7 +373,7 @@ The build reads `destructive` from source, as it reads `description`, so it must
 | `webMCP`          | `AymeWebMcpOptions`                                                 | `{ enabled, toolNamePrefix }`. See [Publish tools](../guides/publish-tools.md).                                                                                                                                                                                                                                                                                                                                                                    |
 | `inspector`       | `boolean \| { placement?: "inline" \| "external"; demo?: boolean }` | Turns on the [Inspector](../guides/inspector.md) when the session starts in the browser. Off unless set. See [Inspector placement](#inspector-placement).                                                                                                                                                                                                                                                                                          |
 | `navigate`        | `(url: string) => unknown`                                          | Your client router's navigation, which the [`navigate` Browser Tool](browser-tools.md) calls instead of loading a new document. See below.                                                                                                                                                                                                                                                                                                         |
-| `agentConnection` | `boolean \| { link?: string; port?: number }`                       | Lets a coding agent's Ayme MCP server pair with the session and call its tools while it is started: in the browser, the page; in Node, the process, as an App Process beside the page. Loads the optional `@ayme-dev/mcp` package on demand, so install it beside `@ayme-dev/ayme`. Off unless set. For an App Process, `link` (a connect link from `ayme_connect`) names one server, and `port` looks on that one port only; a page ignores both. |
+| `agentConnection` | `boolean \| { link?: string; port?: number }`                       | Lets a coding agent's ayme MCP server pair with the session and call its tools while it is started: in the browser, the page; in Node, the process, as an App Process beside the page. Loads the optional `@ayme-dev/mcp` package on demand, so install it beside `@ayme-dev/ayme`. Off unless set. For an App Process, `link` (a connect link from `ayme_connect`) names one server, and `port` looks on that one port only; a page ignores both. |
 
 `ignore`, `customTools`, `goalLoop` and `navigate` take effect on `start()` and are cleared when the session stops.
 
@@ -424,7 +424,7 @@ Presence decides whether a Page Object Tool is listed. It is listed while any in
 
 Errors from the browser Page pass through unchanged. `BuiltInTools` maps each built-in tool name to its input and result. `ToolInput<Name>` and `ToolResult<Name>` read them.
 
-Every Caller starts its Runs through `run`: WebMCP publication as `"webmcp"`, the Ayme MCP server's page client as `"ayme-mcp"`, and your code as `"app"` unless it passes another name, such as `{ by: "support-assistant" }` for an in-app assistant. A Caller name is any non-empty string; use lowercase kebab-case, which is not enforced. `callers` holds the built-in names (`callers.app`, `callers.webmcp`, `callers.aymeMcp`, `callers.inspector`); `BuiltInCaller` is one of them, and `Caller` is any name. Each Caller name has its own Change Record cursor, the page that Caller last received, so a Run's Change Record starts at its Caller's own last page: `changes_before` up to the action, `changes` from there; two Callers under one name share one cursor.
+Every Caller starts its Runs through `run`: WebMCP publication as `"webmcp"`, the ayme MCP server's page client as `"ayme-mcp"`, and your code as `"app"` unless it passes another name, such as `{ by: "support-assistant" }` for an in-app assistant. A Caller name is any non-empty string; use lowercase kebab-case, which is not enforced. `callers` holds the built-in names (`callers.app`, `callers.webmcp`, `callers.aymeMcp`, `callers.inspector`); `BuiltInCaller` is one of them, and `Caller` is any name. Each Caller name has its own Change Record cursor, the page that Caller last received, so a Run's Change Record starts at its Caller's own last page: `changes_before` up to the action, `changes` from there; two Callers under one name share one cursor.
 
 Runs take turns: the page runs one at a time, in the order they were started, whatever their Callers. After an action, the next Run starts once the page has settled. A failed Run ends its turn like any other.
 
@@ -460,7 +460,7 @@ A child Run runs inside its parent's turn, so it doesn't wait behind other Runs.
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`              | The unprefixed tool name.                                                                                                                                                                                                                                      |
 | `authorDescription` | What the tool's author wrote. Absent when there is none.                                                                                                                                                                                                       |
-| `agentDescription`  | The text Ayme's own adapters give agents. Hand this one to an agent of your own. On a Page Object Tool it adds the Page Objects the page shows afterwards; see [Action descriptions](#action-descriptions). On every other tool it equals `authorDescription`. |
+| `agentDescription`  | The text ayme's own adapters give agents. Hand this one to an agent of your own. On a Page Object Tool it adds the Page Objects the page shows afterwards; see [Action descriptions](#action-descriptions). On every other tool it equals `authorDescription`. |
 | `inputSchema`       | The JSON Schema of the input. A rooted class's tools take `ref` and `args`; see [Page Object root](#page-object-root).                                                                                                                                         |
 | `group`             | `"browser"`, `"custom"`, `"pageObject"`, `"peek"` or `"agent"`.                                                                                                                                                                                                |
 | `available`         | Whether `run` can run it now. Only a Page Object Tool can be `false`. That happens while its Page Object is unavailable, or while its [availability predicate](#action-availability) fails for every instance.                                                 |
@@ -578,7 +578,7 @@ Every registration of a class shares one instance, so a Page Object should keep 
 
 ### Classes with one name
 
-Ayme tells classes apart by name. Say `ProjectsPage` is registered, and its `accountMenu` child is the `AccountMenu` in `projects/AccountMenu.ts`. Now you register `SettingsPage`, whose `accountMenu` is a different `AccountMenu`, in `settings/AccountMenu.ts`. `SettingsPage` is not registered, and nothing throws. The console gets a `RuntimeStateError` with `code: "same-named-class"`, and `SettingsPage`'s tools are not listed. Once `ProjectsPage` is unregistered, `SettingsPage` is registered without another call.
+ayme tells classes apart by name. Say `ProjectsPage` is registered, and its `accountMenu` child is the `AccountMenu` in `projects/AccountMenu.ts`. Now you register `SettingsPage`, whose `accountMenu` is a different `AccountMenu`, in `settings/AccountMenu.ts`. `SettingsPage` is not registered, and nothing throws. The console gets a `RuntimeStateError` with `code: "same-named-class"`, and `SettingsPage`'s tools are not listed. Once `ProjectsPage` is unregistered, `SettingsPage` is registered without another call.
 
 ## ayme.peek
 
@@ -595,7 +595,7 @@ Peek Tools are in `ayme.tools` and reach coding agents through the Agent Connect
 
 ### What a Peek exposes
 
-Through the Agent Connection, whatever `read` returns goes to the coding agent unchanged, and from the agent's context to its model provider, as a page snapshot does; the Inspector shows it to you. Ayme sends it nowhere else. A Peek is live only while the Agent Connection or the Inspector is on, which you turn on in development only; there is no production guard. `read` is where you decide what the agent sees: return only what you would paste into a chat with that provider. Pick the fields rather than handing over a whole record, and a class with a `toJSON` method controls its own shape:
+Through the Agent Connection, whatever `read` returns goes to the coding agent unchanged, and from the agent's context to its model provider, as a page snapshot does; the Inspector shows it to you. ayme sends it nowhere else. A Peek is live only while the Agent Connection or the Inspector is on, which you turn on in development only; there is no production guard. `read` is where you decide what the agent sees: return only what you would paste into a chat with that provider. Pick the fields rather than handing over a whole record, and a class with a `toJSON` method controls its own shape:
 
 ```ts
 ayme.peek(() => ({ id: user.id, name: user.name }), "user"); // not the whole user, with its email and token
@@ -603,7 +603,7 @@ ayme.peek(() => ({ id: user.id, name: user.name }), "user"); // not the whole us
 
 ### In Node
 
-In Node, `start()` makes the session the process's App Process, unless a framework integration created the session to render a request. It needs no page, and the session's tools are its Peek Tools alone; with `agentConnection` the process pairs with the agent's Ayme MCP server beside the page. Without `agentConnection` the session still owns the process, but connects nothing and offers no Peeks. A process has one App Process, so start one session per process, once, in the server's entry point.
+In Node, `start()` makes the session the process's App Process, unless a framework integration created the session to render a request. It needs no page, and the session's tools are its Peek Tools alone; with `agentConnection` the process pairs with the agent's ayme MCP server beside the page. Without `agentConnection` the session still owns the process, but connects nothing and offers no Peeks. A process has one App Process, so start one session per process, once, in the server's entry point.
 
 Peeks follow one rule on both sides: start the connection where the process starts, and define each Peek in the module that owns the state it reads. In the browser, that is the component, with your framework's Peek hook. In Node, it is the module that holds the state, or one next to it that the same code imports. The App Process offers the Peeks of every session in the process that has `agentConnection` on, so that module needs no started session: it creates its own with `agentConnection` on in development and calls `peek` on it. When a dev server evaluates the module again after an edit, its new `ayme.peek` call replaces the old instance, so the Peek reads the new code.
 
@@ -635,7 +635,7 @@ Do not add Peeks in `register()`. `next dev` never evaluates `instrumentation.ts
 
 In Nuxt, start it in a Nitro server plugin, as the [Nuxt example](https://github.com/ayme-labs/ayme/blob/main/apps/example-nuxt/README.md#peeks) does.
 
-The process finds the agent's server the way a tab does: it pairs only when exactly one Ayme MCP server answers on the ports from 9350 to 9365. While unpaired it looks again every few seconds, and again when its server goes away, so a dev server started before the agent pairs once the agent is up. With several servers running, name one with `agentConnection: { link }` or `{ port }`. Read these from your own environment if you need them; Ayme reads none. Component Peeks register only after mount in the browser, so server rendering adds none to the process. While the tab is paired with that server too, its Inspector lists the process's Peek Tools in the Node section of its Peek tools and runs them through the server. The [`@ayme-dev/mcp` README](https://github.com/ayme-labs/ayme/blob/main/packages/mcp/README.md#app-processes) covers the pairing and what happens when two App Processes offer one name.
+The process finds the agent's server the way a tab does: it pairs only when exactly one ayme MCP server answers on the ports from 9350 to 9365. While unpaired it looks again every few seconds, and again when its server goes away, so a dev server started before the agent pairs once the agent is up. With several servers running, name one with `agentConnection: { link }` or `{ port }`. Read these from your own environment if you need them; ayme reads none. Component Peeks register only after mount in the browser, so server rendering adds none to the process. While the tab is paired with that server too, its Inspector lists the process's Peek Tools in the Node section of its Peek tools and runs them through the server. The [`@ayme-dev/mcp` README](https://github.com/ayme-labs/ayme/blob/main/packages/mcp/README.md#app-processes) covers the pairing and what happens when two App Processes offer one name.
 
 ## ayme.webMCP
 
@@ -663,4 +663,4 @@ createAyme({ pageFactory: () => createPage({ actionTimeout: 500 }) });
 
 ## Errors
 
-Ayme's own failures are `AymeError` subclasses: `ToolInputError`, `RefResolutionError`, `RuntimeStateError` and `DecisionEndpointError`. [Errors](errors.md) says what each means and lists the messages.
+ayme's own failures are `AymeError` subclasses: `ToolInputError`, `RefResolutionError`, `RuntimeStateError` and `DecisionEndpointError`. [Errors](errors.md) says what each means and lists the messages.

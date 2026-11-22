@@ -4,7 +4,7 @@ import type { InspectorReply, WindowRequest } from "../domain/windowFrames";
 /** An Inspector window as the relay sees it: where its replies go. */
 export type InspectorWindow = { send(reply: InspectorReply): void };
 
-const NO_PAGE = "No page is connected to this Ayme MCP server.";
+const NO_PAGE = "No page is connected to this ayme MCP server.";
 
 /**
  * Relays the Inspector contract between external Inspector windows and the

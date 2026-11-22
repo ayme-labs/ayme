@@ -310,7 +310,7 @@ describe("startAgentConnection's status", () => {
 
 describe("startAgentConnection's version gap", () => {
   const GAP =
-    "Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts.";
+    "ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts.";
 
   it("names its version and pairing contract when it says hello", () => {
     vi.stubGlobal("window", { location: { href: "http://localhost/" } });
@@ -403,6 +403,6 @@ describe("startAgentConnection's App Process tools", () => {
 
     await expect(
       connection.processTools.run("peek.node.jobs", {})
-    ).rejects.toThrow("No Ayme MCP server is paired with this tab.");
+    ).rejects.toThrow("No ayme MCP server is paired with this tab.");
   });
 });
