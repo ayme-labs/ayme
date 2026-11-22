@@ -58,7 +58,11 @@ export function bindDocument(
 export async function captureDocument(
   currentDocument: Document,
   inputs: ElementInputs,
-  ask: { accepts?: readonly Predicate[]; filters?: readonly NamedFilter[] } = {}
+  ask: {
+    accepts?: readonly Predicate[];
+    filters?: readonly NamedFilter[];
+    keep?: readonly string[];
+  } = {}
 ): Promise<Capture> {
   const page = browserPageOf(currentDocument);
   // The inputs are plain data, which the module reads in the page
@@ -69,6 +73,7 @@ export async function captureDocument(
       elements,
       ...(ask.accepts ? { accepts: ask.accepts } : {}),
       ...(ask.filters?.length ? { filters: ask.filters } : {}),
+      ...(ask.keep ? { keep: ask.keep } : {}),
     });
   } finally {
     void elements.dispose();

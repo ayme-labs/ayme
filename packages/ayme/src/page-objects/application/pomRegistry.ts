@@ -441,18 +441,14 @@ export function createPomRegistry(
    * Package-internal: the Page Object Tree of the page now, after a probe
    * run that began after this call: each present Page Object, nested as
    * the models nest, with the Page Object id of each one with a root, and
-   * its element children read from the capture `capture` takes after it.
+   * its element children read from the capture `capture` takes after it,
+   * which keeps the elements `keep` names as nodes of their own.
    */
   async function readPageObjectTree(
-    capture: () => Promise<PageStateCapture>
+    capture: (keep: readonly string[]) => Promise<PageStateCapture>
   ): Promise<PageObjectTreeRead> {
     await probeRegisteredPomMembers();
-    return readTree(
-      driver,
-      [...registeredPoms],
-      pageObjectIds,
-      await capture()
-    );
+    return readTree(driver, [...registeredPoms], pageObjectIds, capture);
   }
 
   /**

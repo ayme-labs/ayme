@@ -231,4 +231,39 @@ describe("page_objects on a real page", () => {
       session.stop();
     }
   });
+
+  it("leaves out a declared child's element in an excluded subtree", async () => {
+    document.body.innerHTML = `
+      <h1>Account</h1>
+      <p><span>Visible note</span></p>
+      <p data-ayme-exclude><span>Secret note</span></p>`;
+    const page = createPage();
+    const session = startSession(page);
+    class AccountPage {
+      notes = page.locator("p span");
+    }
+    registerCompiledPom(AccountPage, {
+      className: "AccountPage",
+      tools: [],
+      members: [
+        {
+          memberName: "notes",
+          kind: "locator",
+          access: "field",
+          collection: true,
+        },
+      ],
+      components: [],
+    });
+    session.register(AccountPage);
+    try {
+      const text = (await session.ayme.tools.run("page_objects", {})) as string;
+
+      expect(text).toBe(
+        ["AccountPage", "  notes:", "    - text: Visible note"].join("\n")
+      );
+    } finally {
+      session.stop();
+    }
+  });
 });

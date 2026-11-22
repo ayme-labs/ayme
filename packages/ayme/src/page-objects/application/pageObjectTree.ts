@@ -29,16 +29,18 @@ export type TreeRegistration = {
  * observation found them: each present Page Object, nested as the models
  * nest (a present one inside one that is not takes its place), one with a
  * root with its Page Object id, and each declared element
- * child as its elements' subtrees in `capture`, a capture of the page taken
- * after that observation; its elements are the ones the child's Locator
- * resolves to now, and one the capture holds no node of is read on its own. Ids are given in the order the tree shows the roots.
+ * child as its elements' subtrees in a capture of the page that `capture`
+ * takes after that observation, keeping each of those elements as a node;
+ * its elements are the ones the child's Locator resolves to now. Ids are
+ * given in the order the tree shows the roots.
  */
 export async function readPageObjectTree(
-  driver: Pick<PageDriver, "ariaSnapshot" | "refs">,
+  driver: Pick<PageDriver, "refs" | "currentRefs">,
   registrations: readonly TreeRegistration[],
   ids: PageObjectIds,
-  capture: PageStateCapture
+  capture: (keep: readonly string[]) => Promise<PageStateCapture>
 ): Promise<PageObjectTreeRead> {
+  const pending: PendingChild[] = [];
   const reads = registrations.flatMap((registration) => {
     const instances = new Map(
       (registration.instances ?? []).map((instance) => [
@@ -49,8 +51,7 @@ export async function readPageObjectTree(
     const page = instances.get("");
     if (!page) return [];
     const read: Read = {
-      driver,
-      capture,
+      pending,
       label: registration.manifest.className,
       components: componentsOf(registration.manifest),
       instances,
@@ -64,7 +65,23 @@ export async function readPageObjectTree(
   });
   const tree: PageObjectTreeNode[] = [];
   for (const { read, page, manifest } of reads)
-    tree.push(...(await readNodes(read, page, manifest)));
+    tree.push(...readNodes(read, page, manifest));
+  // The elements each element child's Locator resolves to now, then one
+  // capture that keeps every one of them as a node, read in its place.
+  const refs = await Promise.all(
+    pending.map(({ locator }) => driver.refs(locator).catch(() => []))
+  );
+  const captured = await capture(refs.flat());
+  // A ref minted before the capture gives way to the one it marked the
+  // element with, such as after the element's name changed.
+  const current = await driver.currentRefs(refs.flat());
+  let at = 0;
+  pending.forEach(({ child, siblings }, index) => {
+    const named = refs[index]!.map((ref) => current[at++] ?? ref);
+    child.elements = elementsIn(captured, named);
+    if (!child.collection && child.elements.length === 0)
+      siblings.splice(siblings.indexOf(child), 1);
+  });
   // One read of the ids for every root, in the order the tree shows them.
   const roots = reads.flatMap(({ read }) => read.roots);
   const given = await ids.rootsOf(
@@ -74,16 +91,26 @@ export async function readPageObjectTree(
     const id = given[index]?.id;
     if (id) node.id = id;
   });
-  return { objects: tree, tree: capture.tree };
+  return { objects: tree, tree: captured.tree };
 }
 
 type MutableNode = {
   -readonly [K in keyof PageObjectTreeNode]: PageObjectTreeNode[K];
 };
 
+/** An element child of the tree, whose elements the capture gives. */
+type PendingChild = {
+  child: { -readonly [K in keyof ElementsChild]: ElementsChild[K] };
+  locator: Locator;
+  /** The children it is one of, which drop a single child with no element. */
+  siblings: PageObjectTreeChild[];
+};
+
+type ElementsChild = Extract<PageObjectTreeChild, { kind: "elements" }>;
+
 type Read = {
-  driver: Pick<PageDriver, "ariaSnapshot" | "refs">;
-  capture: PageStateCapture;
+  /** The element children of the tree, read once the capture is taken. */
+  pending: PendingChild[];
   label: string;
   components: ReadonlyMap<string, PomComponentManifest>;
   instances: ReadonlyMap<string, PomInstanceObservation>;
@@ -96,11 +123,11 @@ type Read = {
 const join = (prefix: string, name: string) =>
   prefix ? `${prefix}.${name}` : name;
 
-async function readNode(
+function readNode(
   read: Read,
   instance: PomInstanceObservation,
   manifest: Pick<PomComponentManifest, "members">
-): Promise<PageObjectTreeNode> {
+): PageObjectTreeNode {
   const children: PageObjectTreeChild[] = [];
   const node: MutableNode = { className: instance.className, children };
   const rootRef = instance.root?.present ? instance.root.ref : undefined;
@@ -111,22 +138,21 @@ async function readNode(
       if (read.rootMemberPaths.has(path)) continue;
       const source = read.sources.get(join(read.label, path));
       if (!source) continue;
-      const collection = member.collection === true;
-      const elements = await elementsOf(read, source.locator);
-      if (collection || elements.length > 0)
-        children.push({
-          kind: "elements",
-          name: member.memberName,
-          collection,
-          elements,
-        });
+      const child: PendingChild["child"] = {
+        kind: "elements",
+        name: member.memberName,
+        collection: member.collection === true,
+        elements: [],
+      };
+      children.push(child);
+      read.pending.push({ child, locator: source.locator, siblings: children });
       continue;
     }
     const component = read.components.get(member.componentClassName);
     if (!component) continue;
     const objects: PageObjectTreeNode[] = [];
     for (const child of childInstances(read, path, member.collection === true))
-      objects.push(...(await readNodes(read, child, component)));
+      objects.push(...readNodes(read, child, component));
     if (member.collection)
       children.push({ kind: "objects", name: member.memberName, objects });
     else
@@ -162,12 +188,12 @@ function childInstances(
  * the page while the Page Object it is reached through is not (ADR-0042),
  * and its tools are listed.
  */
-async function readNodes(
+function readNodes(
   read: Read,
   instance: PomInstanceObservation,
   manifest: Pick<PomComponentManifest, "members">
-): Promise<PageObjectTreeNode[]> {
-  if (instance.present) return [await readNode(read, instance, manifest)];
+): PageObjectTreeNode[] {
+  if (instance.present) return [readNode(read, instance, manifest)];
   const nodes: PageObjectTreeNode[] = [];
   for (const member of manifest.members) {
     if (member.kind === "locator") continue;
@@ -175,38 +201,26 @@ async function readNodes(
     if (!component) continue;
     const path = join(instance.path, member.memberName);
     for (const child of childInstances(read, path, member.collection === true))
-      nodes.push(...(await readNodes(read, child, component)));
+      nodes.push(...readNodes(read, child, component));
   }
   return nodes;
 }
 
 /**
- * Each element `locator` resolves to now, by the ref the capture gives it,
- * with its subtree there; an element the capture holds no node of, such as
- * a span of text, by the ref the page names it by, with its aria snapshot.
- * One that is on neither is left out.
+ * The elements `refs` name, by the ref `capture` gives each, with its
+ * subtree there. One the capture holds no node of, such as one in an
+ * excluded subtree, is left out.
  */
-async function elementsOf(
-  { driver, capture }: Pick<Read, "driver" | "capture">,
-  locator: Locator
-): Promise<ChildElement[]> {
-  const refs = await driver.refs(locator).catch(() => []);
-  const elements = await Promise.all(
-    refs.map(async (ref, index): Promise<ChildElement> => {
-      const named = capturedRef(capture, ref);
-      if (named !== undefined)
-        return {
-          ref: named,
-          text: elementText(capture.tree, named),
-          captured: true,
-        };
-      const text = await driver
-        .ariaSnapshot(refs.length === 1 ? locator : locator.nth(index))
-        .catch(() => "");
-      return { ref, text, captured: false };
-    })
-  );
-  return elements.filter(({ text }) => text.trim());
+function elementsIn(
+  capture: PageStateCapture,
+  refs: readonly string[]
+): ChildElement[] {
+  return refs.flatMap((ref) => {
+    const named = capturedRef(capture, ref);
+    if (named === undefined) return [];
+    const text = elementText(capture.tree, named);
+    return text.trim() ? [{ ref: named, text }] : [];
+  });
 }
 
 /**

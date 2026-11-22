@@ -98,16 +98,6 @@ function splitAriaLine(
     : { key: match[1]!, value: match[2] };
 }
 
-/** How an element's text changed, as a whole: one line as `old → new`. */
-function textChange(before: string, after: string): string[] {
-  if (before === after) return [];
-  const old = before.split("\n");
-  const now = after.split("\n");
-  if (old.length === 1 && now.length === 1)
-    return [valueChange(old[0]!, now[0]!)];
-  return [`${old[0]} (removed)`, ...added(now)];
-}
-
 /** How `node`'s own line changed from `before`'s. */
 function ownChange(before: StructuralNode, node: StructuralNode): string[] {
   const old = ownLines(before);
@@ -166,14 +156,11 @@ function reconciledNode(
 
 /**
  * One element of a declared child: its ref in the capture the tree was read
- * from and its subtree there, or, for an element the capture holds no node
- * of, such as a span of text, the ref the page names it by and its own aria
- * snapshot.
+ * from, which keeps every such element as a node, and its subtree there.
  */
 export type ChildElement = {
   readonly ref: string;
   readonly text: string;
-  readonly captured: boolean;
 };
 
 /**
@@ -196,17 +183,8 @@ export function elementChanges(
   const changes: string[] = [];
   for (const element of after) {
     if (!element.text) continue;
-    const old = was.get(element.ref);
-    // An element no capture holds a node of: its text, as it was and is.
-    if (!element.captured) {
-      if (old && !old.captured) {
-        stayed.add(old.ref);
-        changes.push(...textChange(old.text, element.text));
-      } else changes.push(...added(element.text.split("\n")));
-      continue;
-    }
     const found = reconciledNode(reconciled, element.ref as AriaRef);
-    if (found?.before !== undefined && was.get(found.before)?.captured) {
+    if (found?.before !== undefined && was.has(found.before)) {
       stayed.add(found.before);
       changes.push(...subtreeChanges(reconciled, found.node, single ? -1 : 0));
     } else changes.push(...added(element.text.split("\n")));

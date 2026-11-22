@@ -62,7 +62,11 @@ export type PageStateHost = {
   /** A capture of the page with these exclusions and asks. */
   capture(
     inputs: ElementInputs,
-    ask: { accepts?: readonly Predicate[]; filters?: readonly NamedFilter[] }
+    ask: {
+      accepts?: readonly Predicate[];
+      filters?: readonly NamedFilter[];
+      keep?: readonly string[];
+    }
   ): Promise<Capture>;
   /**
    * Begins an action: the before capture, and the action, whose captures read
@@ -260,7 +264,10 @@ function createStore(page: Page, host: PageStateHost): PageStateStore {
       ignores: read.ignore ? [await filterInput(read.ignore, IGNORE_KEY)] : [],
     };
   }
-  const captureWith = async (accepts?: readonly Predicate[]) => {
+  const captureWith = async (
+    accepts?: readonly Predicate[],
+    keep?: readonly string[]
+  ) => {
     const inputs = await elementInputs();
     const filters = await Promise.all(
       (read.filters ?? []).map(async ({ name, filter }) => ({
@@ -268,7 +275,7 @@ function createStore(page: Page, host: PageStateHost): PageStateStore {
         filter: await filterInput(filter, toolFilterKey(name)),
       }))
     );
-    return host.capture(inputs, { accepts, filters });
+    return host.capture(inputs, { accepts, filters, ...(keep && { keep }) });
   };
 
   let url = host.url();

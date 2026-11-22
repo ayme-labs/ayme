@@ -17,12 +17,6 @@ export type PageDriver = {
    * Inside a probe run of `watch`, it also labels the root in later captures.
    */
   probe(root: Locator, label: string): Promise<RootState>;
-  /**
-   * The aria snapshot of the one element `locator` resolves to now, as
-   * Playwright renders it, without refs: for an element a capture holds no
-   * node of, such as a span of text.
-   */
-  ariaSnapshot(locator: Locator): Promise<string>;
   /** The Structural Ref of each element `locator` resolves to now. */
   refs(locator: Locator): Promise<string[]>;
   /**

@@ -611,12 +611,13 @@ export function createAymeOn(
   };
   /**
    * The Page Object Tree now, its element children read from one capture
-   * of the page that records nothing and moves no cursor.
+   * of the page that records nothing, moves no cursor and keeps each of them
+   * as a node.
    */
   const readPageObjectTreeNow = () =>
     target
       .registry()
-      .readPageObjectTree(() => target.pageState().session.look());
+      .readPageObjectTree((keep) => target.pageState().session.look({ keep }));
   /**
    * How the agent channels run the session's tools, their calls made by
    * `by`: the one source WebMCP publication and the ayme MCP server share.

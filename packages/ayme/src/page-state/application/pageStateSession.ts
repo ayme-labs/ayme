@@ -44,12 +44,20 @@ import { resolveRequestedRef } from "./refResolution";
  * plain data from the document's in-page module, whose refs, synthetic ones
  * included, are the document's own, whoever captures.
  */
-export type CapturePage = (accepts?: readonly Predicate[]) => Promise<Capture>;
+export type CapturePage = (
+  accepts?: readonly Predicate[],
+  keep?: readonly string[]
+) => Promise<Capture>;
 
 /** What a reader of a capture asks of it besides its tree. */
 export type CaptureAsk = {
   /** The predicates whose accepted refs the capture carries. */
   accepts?: readonly Predicate[];
+  /**
+   * The refs of elements the capture keeps as nodes of their own, such as
+   * a Page Object's declared span of text; a look alone asks for them.
+   */
+  keep?: readonly string[];
 };
 
 /**
@@ -155,8 +163,9 @@ export class PageStateSession {
   /** A capture of the page as the session reads it: its tree and marks. */
   private async capturePage({
     accepts,
+    keep,
   }: CaptureAsk = {}): Promise<PageCapture> {
-    const capture = await this.captureDocument(accepts);
+    const capture = await this.captureDocument(accepts, keep);
     this.enter(capture);
     return this.read(capture);
   }

@@ -59,6 +59,11 @@ export type Capture = {
    */
   accepted?: Record<string, string[]>;
   /**
+   * The refs of the elements the host asked the capture to keep as nodes of
+   * their own, which it gave a node; absent when the host asked for none.
+   */
+  kept?: string[];
+  /**
    * The mark this capture gave each element a probe or a reach had named by a
    * synthetic ref first, under that ref: what tells a ref read before the
    * capture from the one the capture shows. Absent when none was renamed.

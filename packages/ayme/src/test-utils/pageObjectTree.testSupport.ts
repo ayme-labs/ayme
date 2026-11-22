@@ -36,7 +36,7 @@ export function treeRead(
     collection: Array.isArray(refs),
     elements: [refs].flat().flatMap((ref) => {
       const text = elementText(tree, ref as AriaRef);
-      return text ? [{ ref, text, captured: true }] : [];
+      return text ? [{ ref, text }] : [];
     }),
   });
   return { objects: objects(elements), tree };

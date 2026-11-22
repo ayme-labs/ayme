@@ -285,6 +285,8 @@ export type CaptureOptions = {
   accepts?: readonly Predicate[];
   /** The Custom Tools' filters whose accepted refs the capture carries, under each name. */
   filters?: readonly NamedFilter[];
+  /** The refs of elements the capture keeps as nodes of their own (`Capture.kept`). */
+  keep?: readonly string[];
   /**
    * The host's inputs, plain data (`ElementInputs`). Transitional: the
    * browser runtime gives a handle to them, for Playwright Lite's page
@@ -558,10 +560,14 @@ export function createInPageHost(version = packageVersion): InPageHost {
 
     const inPage: InPage = {
       bound,
-      capture: ({ elements, accepts, filters } = {}) => {
+      capture: ({ elements, accepts, filters, keep } = {}) => {
         const ask =
-          accepts || filters
-            ? { ...(accepts && { accepts }), ...(filters && { filters }) }
+          accepts || filters || keep
+            ? {
+                ...(accepts && { accepts }),
+                ...(filters && { filters }),
+                ...(keep && { keep }),
+              }
             : undefined;
         return call<Capture>("capture", [elements, ask]);
       },

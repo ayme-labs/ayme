@@ -239,23 +239,14 @@ describe("renderPageObjectTreeChanges", () => {
     );
   });
 
-  it("compares the text of an element no capture holds a node of, such as a span of text", () => {
+  it("compares the text of a span of text the capture kept as a node", () => {
     const named = (text: string) =>
-      treeRead("- listitem [ref=e1]", () => [
-        {
-          className: "Item",
-          children: [
-            {
-              kind: "elements",
-              name: "name",
-              collection: false,
-              elements: [
-                { ref: "s_4", text: `- text: ${text}`, captured: false },
-              ],
-            },
-          ],
-        },
-      ]);
+      treeRead(
+        `- listitem [ref=e1]:\n  - generic [ref=e2]: ${text}`,
+        (elements) => [
+          { className: "Item", children: [elements("name", "e2")] },
+        ]
+      );
     expect(
       renderPageObjectTreeChanges(named("Milk"), named("Milk"))
     ).toBeUndefined();
