@@ -168,7 +168,7 @@ Two Callers that use one name share one cursor.
 
 A Custom Tool's Change Record also covers what the tools it started through `run` changed.
 
-An action that fails still reports what it changed. Its error keeps its own message, such as a Playwright timeout and its call log, and carries the Change Record as fields named like an action result's: `page_changed`, and `changes_before` and `changes` when they have a change. The type `ActionFailure` describes them. An agent calling a Browser Tool or Custom Tool through WebMCP or the Ayme MCP server reads the error's text followed by `changes_before:` and `changes:` and each record; a failed Run in the Inspector shows the error alone, and an agent's failed Page Object Tool call shows the error and how the Page Object Tree changed (see [A Page Object Tool's answer to an agent](#a-page-object-tools-answer-to-an-agent)). The Caller's cursor moves to the page the failed action left, so the next action does not report those changes again. A click that lands after its timeout has passed, as on a page too busy to keep up, fails with `TimeoutError` like in Playwright, and its `changes:` shows what the click did.
+An action that fails still reports what it changed. Its error keeps its own message, such as a Playwright timeout and its call log, and carries the Change Record as fields named like an action result's: `page_changed`, and `changes_before` and `changes` when they have a change. The type `ActionFailure` describes them. An agent calling a Browser Tool or Custom Tool through WebMCP reads the error's text followed by `changes_before:` and `changes:` and each record; a failed Run in the Inspector shows the error alone, and an agent's failed Page Object Tool call shows the error and how the Page Object Tree changed (see [A Page Object Tool's answer to an agent](#a-page-object-tools-answer-to-an-agent)). The Caller's cursor moves to the page the failed action left, so the next action does not report those changes again. A click that lands after its timeout has passed, as on a page too busy to keep up, fails with `TimeoutError` like in Playwright, and its `changes:` shows what the click did.
 
 ## Full page loads
 
@@ -200,7 +200,7 @@ An agent that calls a Page Object Tool through WebMCP or through the Ayme MCP se
 }
 ```
 
-`changes` is in the notation of `page_objects`, not a Change Record: a Page Object that went away is marked `(removed)`, one that appeared is shown in full after `+`, with its declared children and its id, and a declared child whose value changed reads `old → new`. It is absent when the Page Objects did not change. When the action starts loading a new document, `settled` is `false`, `url` is the URL it loads and `changes` is absent.
+`changes` is in the notation of `page_objects`, not a Change Record: a Page Object that went away is marked `(removed)`, one that appeared is shown in full after `+`, with its declared children and its id, and a declared child whose value changed reads `old → new`. It is absent when the Page Objects did not change. When the action starts loading a new document, `settled` is `false`, `url` is the URL it loads when that differs from the page's, as it does not for a reload, and `changes` is absent.
 
 ```ts
 {

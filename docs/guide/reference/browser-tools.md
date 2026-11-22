@@ -2,7 +2,7 @@
 
 Every built-in tool Ayme publishes, with its input.
 
-`ayme mcp` lists the Browser Tools, `snapshot` and `goal` only when started with `--browser-tools`; see [Connect an agent](../guides/connect-an-agent.md#options).
+They reach an agent that runs in the page through [WebMCP publication](experimental-apis.md), which is experimental. `ayme mcp` lists only `page_objects` of them: a coding agent drives the browser with its own browser automation; see [What the agent sees](../guides/connect-an-agent.md#what-the-agent-sees).
 
 ## Browser Tools
 

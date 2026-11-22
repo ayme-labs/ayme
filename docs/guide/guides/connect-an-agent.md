@@ -92,17 +92,10 @@ If your agent starts its servers in another folder, as one registered for every 
 
 Options go after `mcp`, in the command or the client's `args` list:
 
-| Option                  | What it adds                                                                                                                                                                                                                                     |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--browser-tools`       | Ayme's own browser driving: the [Browser Tools](../reference/browser-tools.md), `snapshot`, `goal` and your Custom Tools. Use it when Ayme is your agent's only browser automation. Without it, see [What the agent sees](#what-the-agent-sees). |
-| `--port <port>`         | Listens on that port only; see [Ports](#ports).                                                                                                                                                                                                  |
-| `--page-objects <file>` | Experimental: serves that entry's Page Objects; see [Page Objects on a page without Ayme](page-objects-without-ayme.md).                                                                                                                         |
-
-For an agent with no other browser automation, such as Playwright MCP, Claude Code:
-
-```sh
-claude mcp add ayme -- npx --no -p @ayme-dev/mcp ayme mcp --browser-tools
-```
+| Option                  | What it adds                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `--port <port>`         | Listens on that port only; see [Ports](#ports).                                                                          |
+| `--page-objects <file>` | Experimental: serves that entry's Page Objects; see [Page Objects on a page without Ayme](page-objects-without-ayme.md). |
 
 `ayme mcp --help` prints the options and what each adds.
 
@@ -121,7 +114,7 @@ A duplicated tab keeps presenting the original tab's id, unlike a fresh second t
 
 Once a tab is paired, the page's tools are the agent's MCP tools, under the names the page gives them: the Page Object Tools of every Page Object on the page, `page_objects`, and the Peek Tools of the page's [Peeks](../reference/ayme.md#aymepeek), `peek.<name>`. Each App Process paired beside the tab adds its own Peek Tools, `peek.node.<name>`. The agent clicks, types and reads the page with its own browser automation, such as Playwright MCP, Playwright CLI or agent-browser, and Ayme adds your Page Objects to it.
 
-With `--browser-tools`, the agent also gets Ayme's own browser driving: `snapshot`, the [Browser Tools](../reference/browser-tools.md), your Custom Tools, and `goal` when the Goal Loop is configured. The page lists the same tools either way and your app's code does not change: the server decides which of them the agent sees.
+The server lists none of Ayme's own browser driving: not `snapshot`, the [Browser Tools](../reference/browser-tools.md), your Custom Tools or `goal`. An agent without browser automation of its own needs one, such as Playwright MCP, before it can work with the page.
 
 A good first check is to ask the agent to call one of your Page Object Tools and confirm the effect in the app.
 

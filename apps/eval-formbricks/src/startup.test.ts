@@ -184,7 +184,7 @@ describe("runStartup", () => {
     const { result } = await start("startup-extra-reference.jsonl", {
       scenario: {
         ...scenario,
-        expected: ["references/goal.md"],
+        expected: ["references/live-mapping.md"],
         forbidden: [],
         allowed: ["references/page-tools.md"],
       },
@@ -192,7 +192,7 @@ describe("runStartup", () => {
     expect(result.failed).toEqual([
       {
         condition: "expected-files-read",
-        detail: "expected references/goal.md; read references/peeks.md",
+        detail: "expected references/live-mapping.md; read references/peeks.md",
       },
     ]);
   });
@@ -212,29 +212,6 @@ describe("runStartup", () => {
         condition: "no-forbidden-file",
         detail: "read references/page-tools.md",
       },
-    ]);
-  });
-
-  it("passes a drive run that reads goal when it is listed", async () => {
-    const { result } = await start("startup-drive-goal-listed.jsonl", {
-      scenario: startupScenarios["drive-the-open-page-with-goal"],
-    });
-    expect(result.pass).toBe(true);
-    expect(result.filesRead).toEqual([
-      "references/page-tools.md",
-      "references/goal.md",
-    ]);
-  });
-
-  it("fails a drive run that reads goal when it is not listed", async () => {
-    const { result } = await start("startup-drive-goal-not-listed.jsonl");
-    expect(result.failed).toEqual([
-      {
-        condition: "expected-files-read",
-        detail:
-          "expected references/page-tools.md; read references/page-tools.md, references/goal.md",
-      },
-      { condition: "no-forbidden-file", detail: "read references/goal.md" },
     ]);
   });
 

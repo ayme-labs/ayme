@@ -21,8 +21,6 @@ gone, read [Page tools](references/page-tools.md).
 When Playwright CLI, Playwright MCP or agent-browser drives the browser, read
 [Browser automation tools](references/browser-automation-tools.md).
 
-When `goal` is among your tools, read [Goal](references/goal.md).
-
 For designing or restructuring Page Object Models, read
 [Page object design](references/page-object-design.md) and
 [Page Object Models](references/ayme-page-objects.md). Where they conflict with

@@ -10,12 +10,9 @@ as `ProjectRow_remove`. It's the same tool. Drive the rest of the page with your
 Playwright CLI, Playwright MCP or agent-browser, read
 [Browser automation tools](browser-automation-tools.md).
 
-Ayme's own Browser Tools, `snapshot`, `goal` and Custom Tools are listed only
-when `ayme mcp` was started with `--browser-tools`, for an agent that has no
-other browser automation. [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md)
-lists them with their input. When `goal` is among your tools, read
-[Goal](goal.md). To connect to the page, when its tools are missing, or when
-the page left before a call answered, read [Browser setup](browser-setup.md).
+`ayme mcp` lists none of Ayme's own browser driving. To connect to the page,
+when its tools are missing, or when the page left before a call answered,
+read [Browser setup](browser-setup.md).
 
 ## The tools follow the screen
 

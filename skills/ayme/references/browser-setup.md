@@ -8,16 +8,14 @@ installed, started in the project's folder. Diagnose with the "The agent cannot 
 For using the page's tools once it is connected, such as naming a Page Object
 by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
 
-- Start command, after `npx --no -p @ayme-dev/mcp ayme`, or after
+- Start command: `mcp`, after `npx --no -p @ayme-dev/mcp ayme`, or after
   `npx -y @ayme-dev/mcp@<version>`, pinned to the project's version, when your
-  agent starts its servers in another folder:
-  - `mcp` beside another browser automation, such as Playwright MCP,
-    Playwright CLI or agent-browser: it lists the Page Object Tools,
-    `page_objects`, Peek Tools and its own tools, and none of Ayme's own
-    browser driving. [Browser automation tools](browser-automation-tools.md)
-    names the start command for each.
-  - `mcp --browser-tools` when Ayme is your only browser automation: it also
-    lists `snapshot`, the Browser Tools, the app's Custom Tools and `goal`.
+  agent starts its servers in another folder. It lists the Page Object Tools,
+  `page_objects`, Peek Tools and its own tools beside your browser
+  automation, such as Playwright MCP, Playwright CLI or agent-browser, and
+  none of Ayme's own browser driving. Without any browser automation, add one
+  first. [Browser automation tools](browser-automation-tools.md) shows how
+  each of those three connects.
 - The server's tools reach you only after your client restarts. When you
   cannot register the server or restart yourself, give the user the
   registration for your client and ask them to restart you.

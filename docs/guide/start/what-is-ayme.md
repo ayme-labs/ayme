@@ -10,21 +10,23 @@ Your Page Object Models run in the browser on [playwright-lite](https://github.c
 
 ## What an agent gets
 
-A coding agent such as Claude Code, Codex or Cursor connects to the page through Ayme's MCP server, which the agent starts; you turn the page side on when you start Ayme, as [Connect an agent](../guides/connect-an-agent.md) shows. Agents that run in the browser get their tools through WebMCP, the browser's standard for offering tools on a page to agents, when you turn on publication, which is experimental. An agent connected through Ayme's MCP server sees:
+A coding agent such as Claude Code, Codex or Cursor connects to the page through Ayme's MCP server, which the agent starts; you turn the page side on when you start Ayme, as [Connect an agent](../guides/connect-an-agent.md) shows. It sees:
 
 - the Page Object Tools of every Page Object currently on the page;
 - `page_objects`, which shows those Page Objects as a tree, with the id a rooted Page Object Tool takes.
 
-The agent keeps driving the browser with its own browser automation, such as Playwright MCP. An agent with no other browser automation starts the server with `--browser-tools`, and then also sees:
+The agent keeps driving the browser with its own browser automation, such as Playwright MCP, and Ayme adds your Page Objects to it. A Page Object Tool answers the agent with its result, whether the page settled, and how the Page Objects changed.
+
+While you develop, a coding agent can also read app state the page does not show, such as unsaved edits, a store or what your server holds, through the Peek Tools of the [Peeks](../reference/ayme.md#aymepeek) your app adds, in the page and in its own Node processes. WebMCP never publishes them.
+
+An agent that runs in the browser gets its tools through WebMCP, the browser's standard for offering tools on a page to agents, when you turn on publication, which is experimental. It has no browser automation of its own, so beside the Page Object Tools and `page_objects` it also sees:
 
 - `snapshot`, which reads the page state;
 - Browser Tools, built-in operations on the page itself, such as clicking an element or filling a field;
 - Custom Tools your app registers for single elements;
 - `goal`, which runs the Goal Loop, when you configure one.
 
-While you develop, a coding agent can also read app state the page does not show, such as unsaved edits, a store or what your server holds, through the Peek Tools of the [Peeks](../reference/ayme.md#aymepeek) your app adds, in the page and in its own Node processes. WebMCP never publishes them.
-
-A Page Object Tool answers the agent with its result, whether the page settled, and how the Page Objects changed. With `--browser-tools`, Ayme also describes the whole page. The Structural Page State is a model-facing view of what the page presents and which Page Objects it holds, with Structural Refs the agent passes back to act on a node.
+The Structural Page State `snapshot` reads is a model-facing view of what the page presents and which Page Objects it holds, with Structural Refs the agent passes back to act on a node. After each action, the agent learns what changed.
 
 ## The Goal Loop
 
