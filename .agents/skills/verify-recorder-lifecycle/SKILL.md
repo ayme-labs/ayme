@@ -145,8 +145,8 @@ a shared machine run one at a time.
 - **Holds** covers the model within its bounds and assumptions (README, "How
   the model stands for the engine"): one page, a few inputs, the speed
   assumption Quick. It is not a proof of the whole recorder.
-- A rule the README lists under "Known limits", "Open findings" or "Races"
-  breaks on purpose in its own config; a new path to it is still a finding.
+- A rule the README lists under "Known limits" or "Races" breaks on purpose
+  in its own config; a new path to it is still a finding.
 - The model has no clock and no Change Tree: it cannot tell whether a row is
   late or what a row says. Check those with the engine's tests
   (`packages/recorder/AGENTS.md`, "Testing") and the recorder fixture.
