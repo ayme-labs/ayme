@@ -1,22 +1,30 @@
-import { executePublishedTool } from "@ayme-dev/webmcp/testing";
+import type { Agent } from "@ayme-dev/mcp/testing";
 
-import { AgentView } from "./agentView";
+import { AppView } from "./appView";
 import { expect, test } from "./fixtures";
 
 // E2E: on the dogfood page the Inspector's own Page Object is a Page Object
-// Model like any other: an agent lists its tools, drives the panel through
-// them, and sees the panel in the page state.
+// Model like any other: an agent lists its tools over ayme MCP, drives the
+// panel through them, and the panel shows in the page state.
 
-test.use({ fixturePath: "/dogfood.html" });
+test.use({ fixturePath: "/dogfood.html", connected: true });
+
+/** Calls a tool over ayme MCP, failing the test when the tool fails. */
+async function call(agent: Agent, name: string, input: object) {
+  const { text, isError } = await agent.call(name, { ...input });
+  expect(isError, text).toBe(false);
+}
 // The first load compiles the Inspector's Page Object from source, one
 // TypeScript Program per class, which takes the dev server a while.
 test.setTimeout(90_000);
 
 test("an agent drives the panel through the Inspector's Page Object Tools", async ({
   page,
+  agent,
   inspector,
 }) => {
-  const names = (await new AgentView(page).tools()).map(({ name }) => name);
+  const app = new AppView(page);
+  const names = await agent!.pageToolNames();
   expect(names).toEqual(
     expect.arrayContaining([
       "ListPage.addItem",
@@ -26,8 +34,8 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
     ])
   );
 
-  await executePublishedTool(page, "Navigator.showLens", {
-    id: await new AgentView(page).id("Navigator"),
+  await call(agent!, "Navigator.showLens", {
+    id: await app.id("Navigator"),
     args: { name: "Tools" },
   });
 
@@ -43,34 +51,29 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
 
   // A search in progress does not stop the agent from opening a run card,
   // and the card's own actions come alive with it.
-  await executePublishedTool(page, "Navigator.search", {
-    id: await new AgentView(page).id("Navigator"),
+  await call(agent!, "Navigator.search", {
+    id: await app.id("Navigator"),
     args: { query: "addItem" },
   });
-  await executePublishedTool(page, "Inspector.tool", {
-    name: "ListPage.addItem",
-  });
+  await call(agent!, "Inspector.tool", { name: "ListPage.addItem" });
   await expect(inspector.detail.toolPage.title).toHaveText("ListPage.addItem");
-  await expect
-    .poll(async () =>
-      (await new AgentView(page).tools()).map(({ name }) => name)
-    )
-    .toContain("RunCard.fillJson");
+  await expect.poll(() => agent!.pageToolNames()).toContain("RunCard.fillJson");
 });
 
 test("an agent finds the forms' actions, and sets a fill_form field to a boolean through one", async ({
   page,
+  agent,
   inspector,
 }) => {
-  const agent = new AgentView(page);
-  const toolNames = async () => (await agent.tools()).map(({ name }) => name);
+  const app = new AppView(page);
+  const toolNames = () => agent!.pageToolNames();
   const card = "RunCard";
   /** Opens a tool's card and its form, whose tools then list. */
   const openForm = async (tool: string, ...actions: string[]) => {
-    await executePublishedTool(page, "Inspector.tool", { name: tool });
+    await call(agent!, "Inspector.tool", { name: tool });
     await expect.poll(toolNames).toContain(`${card}.openArguments`);
-    await executePublishedTool(page, `${card}.openArguments`, {
-      id: await agent.id("RunCard"),
+    await call(agent!, `${card}.openArguments`, {
+      id: await app.id("RunCard"),
     });
     await expect
       .poll(toolNames)
@@ -83,8 +86,8 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
   const form = inspector.detail.toolPage.card.fillForm;
   await expect(form.control("Urgent")).not.toBeChecked();
   // The editor's root surrounds the list that stays out of page state.
-  const editorId = await agent.id("FillForm");
-  await executePublishedTool(page, `FillForm.set`, {
+  const editorId = await app.id("FillForm");
+  await call(agent!, `FillForm.set`, {
     id: editorId,
     args: { name: "Urgent", value: true },
   });
@@ -95,12 +98,10 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
 });
 
 test("a rooted single instance is preselected and runs from the panel", async ({
-  page,
+  agent,
   inspector,
 }) => {
-  await executePublishedTool(page, "Inspector.tool", {
-    name: "Navigator.search",
-  });
+  await call(agent!, "Inspector.tool", { name: "Navigator.search" });
   const card = inspector.detail.toolPage.card;
   await card.openArguments();
   await expect(card.items).toHaveCount(1);
@@ -109,14 +110,12 @@ test("a rooted single instance is preselected and runs from the panel", async ({
   await expect(inspector.navigator.searchBox).toHaveValue("ListPage.addItem");
 });
 
-test("the page state an agent reads includes the panel", async ({
+test("the page state snapshot gives includes the panel", async ({
   page,
   inspector,
 }) => {
   await expect(inspector.panel).toBeVisible();
-  const { structure } = (await new AgentView(page).call("snapshot", {})) as {
-    structure: string;
-  };
+  const structure = await new AppView(page).structure();
   expect(structure).toMatch(/PanelShell po\d+ "ayme"/);
 });
 
@@ -124,9 +123,8 @@ test("the panel's renderings of the page stay out of the page state", async ({
   page,
   inspector,
 }) => {
-  const agent = new AgentView(page);
-  const snapshot = async () =>
-    ((await agent.call("snapshot", {})) as { structure: string }).structure;
+  const app = new AppView(page);
+  const snapshot = () => app.structure();
 
   await inspector.navigator.showLens("Structure");
   await expect(inspector.structure.tree).toBeVisible();

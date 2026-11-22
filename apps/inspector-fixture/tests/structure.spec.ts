@@ -1,7 +1,6 @@
 import { expect, outline, test } from "./fixtures";
 
-// E2E: the Structure lens on the fixture page, with the real runtime and
-// Chromium's own WebMCP.
+// E2E: the Structure lens on the fixture page, with the real runtime.
 
 test("hovering a structure node highlights it on the page, and selecting it keeps it highlighted", async ({
   inspector,

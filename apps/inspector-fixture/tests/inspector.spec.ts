@@ -1,12 +1,13 @@
 import type { Page } from "@playwright/test";
-import { executePublishedTool } from "@ayme-dev/webmcp/testing";
+import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
 import type { Inspector } from "@ayme-dev/inspector/testing";
 
-import { expect, openFixture, outline, test } from "./fixtures";
+import { AppView } from "./appView";
+import { callOverMcp, expect, openFixture, outline, test } from "./fixtures";
 
-// E2E: the built Inspector on fixture pages with a real Page Object, the
-// ayme runtime and a recording WebMCP driver. Each test has one reason to
-// fail; fixture and runtime problems fail first, in openFixture.
+// E2E: the built Inspector on fixture pages with a real Page Object and the
+// ayme runtime. Each test has one reason to fail; fixture and runtime
+// problems fail first, in openFixture.
 
 test("the page objects reach into the Inspector's closed shadow root", async ({
   inspector,
@@ -154,9 +155,7 @@ test("a host member named like one of the panel's controls stays one match, and 
   await expect(inspector.runs.clearButton).toBeVisible();
 
   await expect(listPage.clearButton).toHaveCount(1);
-  expect(await executePublishedTool(page, "ListPage.clear")).not.toMatchObject({
-    isError: true,
-  });
+  await new AppView(page).run("ListPage.clear");
   await expect(listPage.items).toHaveCount(0);
 });
 
@@ -177,28 +176,33 @@ test("the Structure view follows typing and text changes on the page", async ({
   await expect.poll(structure).toContain('heading"Groceries for Friday"');
 });
 
-test("the Inspector's looks at the page leave the agent's view of it alone", async ({
-  page,
-  inspector,
-}) => {
-  // The panel has looked at the page: its structure shows the heading.
-  await inspector.navigator.showLens("Structure");
-  await expect
-    .poll(() => inspector.structure.tree.textContent())
-    .toContain("Groceries");
+test.describe("connected to an agent", () => {
+  test.use({ connected: true });
 
-  // A toast appears, then the agent's first action changes nothing. Had the
-  // panel's look been recorded, it would be the agent's "before" and the
-  // toast would count as the action's change.
-  await page.evaluate(() => {
-    const toast = document.createElement("p");
-    toast.setAttribute("role", "status");
-    toast.textContent = "Saved";
-    document.body.append(toast);
+  test("the Inspector's looks at the page leave the agent's view of it alone", async ({
+    page,
+    agent,
+    inspector,
+  }) => {
+    // The panel has looked at the page: its structure shows the heading.
+    await inspector.navigator.showLens("Structure");
+    await expect
+      .poll(() => inspector.structure.tree.textContent())
+      .toContain("Groceries");
+
+    // A toast appears, then the agent's first action changes nothing. Had
+    // the panel's look been recorded, it would be the agent's "before" and
+    // the toast would count as the action's change.
+    await page.evaluate(() => {
+      const toast = document.createElement("p");
+      toast.setAttribute("role", "status");
+      toast.textContent = "Saved";
+      document.body.append(toast);
+    });
+    const result = await callOverMcp(agent!, "ListPage.countItems");
+
+    expect(result).not.toHaveProperty("changes");
   });
-  const result = await executePublishedTool(page, "ListPage.countItems");
-
-  expect(result).not.toHaveProperty("changes");
 });
 
 test("the header's menu and switches work by mouse inside the closed shadow root", async ({
@@ -231,8 +235,12 @@ test("the header's menu and switches work by mouse inside the closed shadow root
 });
 
 test("with the tools published and no Agent Connection, the header says no agent and WebMCP is published", async ({
-  inspector,
+  page,
+  context,
 }) => {
+  // The browser's WebMCP, which the runtime publishes its tools to.
+  await recordPublishedTools(context);
+  const { inspector } = await openFixture(page, "/");
   const { connections } = inspector.header;
 
   await expect(connections.pill).toHaveText("No agent");

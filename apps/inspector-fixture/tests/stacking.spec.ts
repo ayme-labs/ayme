@@ -1,12 +1,12 @@
 import type { Locator, Page } from "@playwright/test";
 import type { LayoutChoice } from "@ayme-dev/inspector/testing";
 
-import { AgentView } from "./agentView";
+import { AppView } from "./appView";
 import { expect, test } from "./fixtures";
 
 // E2E: the Inspector stays above, and operable over, the page's own
-// positioned UI, while the rest of the page keeps its pointer. An agent's
-// clicks reach page elements under the panel.
+// positioned UI, while the rest of the page keeps its pointer. The click
+// Browser Tool reaches page elements under the panel.
 
 /** Covers the page with a fixed widget at this z-index, counting its clicks. */
 async function coverPage(page: Page, zIndex: number) {
@@ -147,16 +147,16 @@ for (const zIndex of [50, 101]) {
       await clickOutside(inspector.logo.root);
     });
 
-    test("an agent's click reaches a page button under the panel", async ({
+    test("a click Browser Tool reaches a page button under the panel", async ({
       page,
       inspector,
     }) => {
       const button = await placeButtonUnder(page, inspector.panel, zIndex);
       expect(await inspectorIsOnTopAt(page, button)).toBe(true);
-      const agent = new AgentView(page);
+      const app = new AppView(page);
 
-      await agent.call("click", {
-        target: await agent.ref('button "Covered button"'),
+      await app.run("click", {
+        target: await app.ref('button "Covered button"'),
       });
 
       await expect(button).toHaveAttribute("data-clicks", "1");

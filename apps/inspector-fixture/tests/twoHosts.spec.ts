@@ -13,15 +13,12 @@ import {
   type PlaywrightAyme,
 } from "@ayme-dev/ayme/playwright";
 import { ignoreAutoPairScan } from "@ayme-dev/mcp/testing";
-import {
-  executePublishedTool,
-  recordPublishedTools,
-  waitForPublishedTool,
-} from "@ayme-dev/webmcp/testing";
+
+import { AppView } from "./appView";
 
 // E2E, tracer bullet 5 of the Node host work (#1169): on the dogfood page the
-// page's own runtime runs and answers an agent through the page's WebMCP,
-// while a Node host attaches to the same page through
+// page's own runtime runs tools for the app, as `ayme.tools.run` does, while
+// a Node host attaches to the same page through
 // `@ayme-dev/ayme/playwright`. Both mint refs for the page's elements, which
 // they must do from one ref world: over a hundred additions, with each side
 // reading the page right after the other acted, no capture shows a ref twice,
@@ -119,21 +116,25 @@ test("a Node host and the page's own runtime share one ref world over a hundred 
 }) => {
   test.setTimeout(600_000);
   await ignoreAutoPairScan(context);
-  await recordPublishedTools(context);
   // Before the page loads, so its frames know the Node host's `ayme-ref`.
   await registerAymeRef(selectors);
-  // The agent in the page: it calls the tools the page's runtime publishes.
-  const agent = {
+  // The app in the page: it runs tools on the page's runtime.
+  const app = {
     async call(name: string, input: Record<string, unknown> = {}) {
-      const result = await executePublishedTool(page, name, input);
-      return {
-        text: JSON.stringify(result),
-        isError: (result as { isError?: boolean } | null)?.isError === true,
-      };
+      try {
+        const result = await new AppView(page).run(name, input);
+        return { text: JSON.stringify(result), isError: false };
+      } catch (error) {
+        return { text: String(error), isError: true };
+      }
     },
   };
   await page.goto(`${baseURL}/dogfood.html`);
-  await waitForPublishedTool(page, "ListPage.addItem");
+  await page.waitForFunction(() =>
+    window.fixtureAyme?.tools
+      .list()
+      .some(({ name, available }) => name === "ListPage.addItem" && available)
+  );
   // Where a click lands: the text of the element it reached.
   await page.evaluate(() => {
     const clicked: string[] = [];
@@ -153,8 +154,8 @@ test("a Node host and the page's own runtime share one ref world over a hundred 
 
   const nodeSees = async () =>
     ((await node.tools.run("snapshot", {})) as { structure: string }).structure;
-  const agentSees = async () => {
-    const { text, isError } = await agent.call("snapshot");
+  const appSees = async () => {
+    const { text, isError } = await app.call("snapshot");
     // The page's runtime refuses a capture with a ref twice.
     expect(isError, text).toBe(false);
     return (JSON.parse(text) as { structure: string }).structure;
@@ -168,7 +169,7 @@ test("a Node host and the page's own runtime share one ref world over a hundred 
     expect(new Set(refs).size, `${side} sees a ref twice`).toBe(refs.length);
   };
 
-  const records = { agent: [] as string[], node: [] as string[] };
+  const records = { app: [] as string[], node: [] as string[] };
   for (let step = 1; step <= ADDITIONS_PER_SIDE; step += 1) {
     // Each side reads the page right before it acts, so its Change Record
     // starts there, and right after the other acted, in turn first.
@@ -180,67 +181,65 @@ test("a Node host and the page's own runtime share one ref world over a hundred 
       })) as unknown as Run;
       records.node.push(changes);
     };
-    const addByAgent = async () => {
-      await agentSees();
-      const { text, isError } = await agent.call("ListPage.addItem", {
+    const addByApp = async () => {
+      await appSees();
+      const { text, isError } = await app.call("ListPage.addItem", {
         text: `Item ${step}`,
       });
       expect(isError, text).toBe(false);
-      records.agent.push((JSON.parse(text) as Run).changes);
+      records.app.push((JSON.parse(text) as Run).changes);
     };
     if (nodeFirst) {
       await addByNode();
-      await addByAgent();
+      await addByApp();
     } else {
-      await addByAgent();
+      await addByApp();
       await addByNode();
     }
 
     const seenByNode = await nodeSees();
-    const seenByAgent = await agentSees();
+    const seenByApp = await appSees();
     unique(seenByNode, "the Node host");
-    unique(seenByAgent, "the page's runtime");
+    unique(seenByApp, "the page's runtime");
     for (const added of [`Node ${step}`, `Item ${step}`])
-      expect(refOf(seenByNode, added), added).toBe(refOf(seenByAgent, added));
+      expect(refOf(seenByNode, added), added).toBe(refOf(seenByApp, added));
 
-    // A click through a ref lands on its element, whoever clicks: the
-    // agent through its tool, the Node host through its own Playwright.
+    // A click through a ref lands on its element, whoever clicks: the app
+    // through the click tool, the Node host through its own Playwright.
     // Each click takes seconds on a page this busy, so some steps click.
     if (step % CLICK_EVERY === 1) {
-      const nodeItem = refOf(seenByAgent, `Node ${step}`);
-      const click = await agent.call("click", { target: nodeItem });
+      const nodeItem = refOf(seenByApp, `Node ${step}`);
+      const click = await app.call("click", { target: nodeItem });
       expect(click.isError, click.text).toBe(false);
       expect(await lastClick()).toBe(`Node ${step}`);
-      const agentItem = refOf(seenByNode, `Item ${step}`);
-      await page.locator(`ayme-ref=${agentItem}`).click();
+      const appItem = refOf(seenByNode, `Item ${step}`);
+      await page.locator(`ayme-ref=${appItem}`).click();
       expect(await lastClick()).toBe(`Item ${step}`);
     }
 
-    // The agent's actions time out after a second, which a list that
+    // The page's actions time out after a second, which a list that
     // scrolls and the panel's Runs timeline, one more row for every call,
     // would overrun: so each batch clears both.
     if (step % BATCH === 0) {
-      const cleared = await agent.call("ListPage.clear");
+      const cleared = await app.call("ListPage.clear");
       expect(cleared.isError, cleared.text).toBe(false);
-      const runs = /RunsView (po\d+)/.exec(await agentSees())?.[1];
-      const forgotten = await agent.call("RunsView.clear", { id: runs });
+      const runs = /RunsView (po\d+)/.exec(await appSees())?.[1];
+      const forgotten = await app.call("RunsView.clear", { id: runs });
       expect(forgotten.isError, forgotten.text).toBe(false);
     }
   }
 
   expect(records.node).toHaveLength(ADDITIONS_PER_SIDE);
-  // The Node host's answer is the full Change Record and the agent's the
-  // short answer's Page Object tree, so they differ in form. What both
-  // share is that each names the item its own action added, and not the
+  // Each side's answer names the item its own action added, and not the
   // other side's.
   records.node.forEach((changes, index) => {
     expect(changes).toContain(`Node ${index + 1}`);
     expect(changes).not.toContain(`Item ${index + 1}`);
   });
-  records.agent.forEach((changes, index) => {
+  records.app.forEach((changes, index) => {
     expect(changes).toContain(`Item ${index + 1}`);
     expect(changes).not.toContain(`Node ${index + 1}`);
   });
-  expect(records.agent).toHaveLength(ADDITIONS_PER_SIDE);
+  expect(records.app).toHaveLength(ADDITIONS_PER_SIDE);
   stop();
 });
