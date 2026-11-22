@@ -67,13 +67,6 @@ export const test = base.extend<{
   /** Whether the `agent` fixture's server listens in the scanned range. */
   inScanRange: boolean;
   /**
-   * Whether the `agent` fixture's server starts with `--browser-tools`, so
-   * it lists the page's Browser Tools, `snapshot`, `goal` and Custom Tools;
-   * on unless a spec turns it off, since most specs drive the page with
-   * them.
-   */
-  browserTools: boolean;
-  /**
    * The MCP revision the `agent` fixture opens with: 2025-11-25 unless a
    * spec sets it.
    */
@@ -115,18 +108,11 @@ export const test = base.extend<{
     }
   },
   inScanRange: [false, { option: true }],
-  browserTools: [true, { option: true }],
   revision: ["2025-11-25", { option: true }],
-  agent: async ({ inScanRange, browserTools, revision }, use) => {
-    const options = browserTools ? ["--browser-tools"] : [];
+  agent: async ({ inScanRange, revision }, use) => {
     const agent = await (inScanRange
-      ? startAgent({ revision }, ...options)
-      : startAgent(
-          { revision },
-          "--port",
-          String(await freePort()),
-          ...options
-        ));
+      ? startAgent({ revision })
+      : startAgent({ revision }, "--port", String(await freePort())));
     try {
       await use(agent);
     } finally {
@@ -164,15 +150,14 @@ export async function serverAddress(agent: Agent) {
  * Starts `ayme mcp` in a project of its own under the test's output folder,
  * whose `.ayme` is a copy of `outside/.ayme`, so it serves that entry's Page
  * Objects, and runs the init script it writes in every page of `context`.
- * `options` are more options of `ayme mcp`, such as `--browser-tools`. Returns the
- * agent and the origin of its server, where a page fetches the served code
- * from. The agent opens with `revision`, 2025-11-25 by default.
+ * Returns the agent and the origin of its server, where a page fetches the
+ * served code from. The agent opens with `revision`, 2025-11-25 by
+ * default.
  */
 export async function startServingAgent(
   context: BrowserContext,
   testInfo: TestInfo,
-  revision?: McpRevision,
-  ...options: string[]
+  revision?: McpRevision
 ) {
   // Beside the fixture's own packages, as a project's `.ayme` sits beside its
   // installed `@ayme-dev/ayme`.
@@ -186,8 +171,7 @@ export async function startServingAgent(
   const agent = await startAgent(
     { cwd: project, revision },
     "--port",
-    String(port),
-    ...options
+    String(port)
   );
   await context.addInitScript({
     path: join(project, ".ayme", "init-script.js"),
@@ -195,14 +179,16 @@ export async function startServingAgent(
   return { agent, server: `http://127.0.0.1:${port}` };
 }
 
-/** The ref of the page's "Add item" button, from its snapshot, as an agent finds one. */
-export async function addItemRef(agent: Agent) {
-  const { text: snapshot } = await agent.call("snapshot");
-  const ref = /(e\d+) button "Add item"/.exec(
-    JSON.parse(snapshot).structure
-  )?.[1];
-  expect(ref, snapshot).toBeDefined();
-  return ref!;
+/**
+ * The heading of the paired page, read with its own Page Object's
+ * `readHeading`: `GroceriesPage`'s, or `OtherPage`'s with `other`.
+ */
+export async function pageHeading(agent: Agent, other = false) {
+  const { text, isError } = await agent.call(
+    other ? "OtherPage.readHeading" : "GroceriesPage.readHeading"
+  );
+  expect(isError, text).toBe(false);
+  return (JSON.parse(text) as { result: string }).result;
 }
 
 /** The pairing `page`'s tab keeps in sessionStorage, as stored, or `null`. */
@@ -211,19 +197,19 @@ export function storedPairing(page: Page) {
 }
 
 /**
- * Calls the fixture's `hold` tool, which never answers, on the "Add item"
- * button of `page`, and waits until the page runs it. Returns the call's
- * pending result as `answer`.
+ * Calls `GroceriesPage.hold`, or `OtherPage.hold` with `other`, which never
+ * answers, and waits until `page` runs it. Returns the call's pending
+ * result as `answer`.
  */
 export async function holdCall(
   agent: Agent,
-  page: Page
+  page: Page,
+  other = false
 ): Promise<{ answer: ReturnType<Agent["call"]> }> {
-  const ref = await addItemRef(agent);
-  const answer = agent.call("hold", { ref });
+  const answer = agent.call(other ? "OtherPage.hold" : "GroceriesPage.hold");
   // A test may leave the call in flight; closing the agent then rejects it.
   answer.catch(() => {});
-  await expect(page.locator(`html[data-holding="${ref}"]`)).toBeAttached();
+  await expect(page.locator("html[data-holding]")).toBeAttached();
   return { answer };
 }
 
@@ -233,8 +219,7 @@ export function unanswered(answer: { text: string; isError: boolean }) {
   return JSON.parse(answer.text) as {
     error: string;
     settled?: false;
-    loading?: string;
-    tools?: string[];
+    url?: string;
   };
 }
 

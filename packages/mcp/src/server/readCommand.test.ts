@@ -52,52 +52,6 @@ describe("readCommand", () => {
     expect(USAGE).toMatch(/--page-objects <file>\s+Experimental:/);
   });
 
-  it("starts the server listing Ayme's own Browser Tools for --browser-tools", () => {
-    expect(readCommand(["mcp", "--browser-tools"])).toEqual({
-      kind: "start",
-      browserTools: true,
-    });
-  });
-
-  it("reads --browser-tools together with the other options", () => {
-    expect(
-      readCommand([
-        "mcp",
-        "--page-objects",
-        "e2e/agent.ts",
-        "--browser-tools",
-        "--port",
-        "9400",
-      ])
-    ).toEqual({
-      kind: "start",
-      port: 9400,
-      pageObjects: "e2e/agent.ts",
-      browserTools: true,
-    });
-  });
-
-  it("rejects --browser-tools for `inspect`", () => {
-    expect(readCommand(["inspect", "--browser-tools"])).toEqual({
-      kind: "error",
-      text: `--browser-tools is an option of \`ayme mcp\` only.\n\n${USAGE}`,
-    });
-  });
-
-  it("rejects a value for --browser-tools, which takes none", () => {
-    const command = readCommand(["mcp", "--browser-tools=yes"]);
-
-    expect(command).toMatchObject({ kind: "error" });
-    expect((command as { text: string }).text).toContain("--browser-tools");
-  });
-
-  it("says in the usage text what --browser-tools adds, and does not mark it experimental", () => {
-    expect(USAGE).toMatch(
-      /--browser-tools\s+Also list Ayme's own Browser Tools, snapshot, goal and\s+Custom Tools/
-    );
-    expect(USAGE).not.toMatch(/--browser-tools\s+Experimental/);
-  });
-
   it("prints the Inspector's URL for `inspect`, on the given port if any", () => {
     expect(readCommand(["inspect"])).toEqual({ kind: "inspect" });
     expect(readCommand(["inspect", "--port", "9400"])).toEqual({

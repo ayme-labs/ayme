@@ -178,8 +178,7 @@ export async function startAgent(
 /**
  * Asks the agent's server for a connect link to `url`, opens it in `page`
  * and waits until the page's tools are MCP tools: until the server lists
- * `page_objects`, a tool every page offers, with or without
- * `--browser-tools`. Returns the link.
+ * `page_objects`, a tool every page offers. Returns the link.
  */
 export async function connectPage(
   agent: Agent,

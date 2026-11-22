@@ -1,6 +1,7 @@
 import {
   expect,
   freePort,
+  pageHeading,
   serverAddress,
   startAgent,
   test,
@@ -47,16 +48,14 @@ test("an App Process pairs beside the paired page, the agent lists and calls bot
 
   await listed(agent, TOOL);
   expect(await agent.toolNames()).toEqual(
-    expect.arrayContaining(["snapshot", "read_text", TOOL])
+    expect.arrayContaining(["page_objects", "GroceriesPage.readHeading", TOOL])
   );
   expect(await valueOf(agent)).toBe("server");
-  const { text: snapshot, isError } = await agent.call("snapshot");
-  expect(isError, snapshot).toBe(false);
-  expect(JSON.parse(snapshot).structure).toContain('heading "Groceries"');
+  expect(await pageHeading(agent)).toBe("Groceries");
   const { text: listing } = await agent.call("ayme_list_tools");
   expect(
     (JSON.parse(listing) as { name: string }[]).map(({ name }) => name)
-  ).toEqual(expect.arrayContaining(["snapshot", TOOL]));
+  ).toEqual(expect.arrayContaining(["page_objects", TOOL]));
 });
 
 test("an App Process's tool goes when it exits, and the agent's next result says so", async ({

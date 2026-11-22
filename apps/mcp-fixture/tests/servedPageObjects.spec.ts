@@ -110,8 +110,7 @@ test("an app that ships Ayme keeps its own runtime, and ayme mcp's init script s
   const agent = await startAgent(
     { cwd: project },
     "--port",
-    String(await freePort()),
-    "--browser-tools"
+    String(await freePort())
   );
   try {
     await context.addInitScript({
@@ -125,7 +124,7 @@ test("an app that ships Ayme keeps its own runtime, and ayme mcp's init script s
     await connectPage(agent, page, `${baseURL}/`);
     await expect
       .poll(() => agent.pageToolNames(), { message: agent.log })
-      .toContain("read_text");
+      .toContain("page_objects");
     // The init script decides once the page has loaded and gone idle; an
     // idle callback asked for after the load runs after its own.
     await page.waitForLoadState("load");

@@ -1,7 +1,6 @@
 import { parseArgs } from "node:util";
 
 export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>]
-                [--browser-tools]
        ayme inspect [--port <port>]
 
   mcp            Start the Ayme MCP server for a coding agent, over stdio.
@@ -15,12 +14,6 @@ export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>]
                  export lists Page Object classes, to pages that load
                  .ayme/init-script.js, which the server writes. Without it,
                  the server serves .ayme/page-objects.ts if there is one.
-  --browser-tools
-                 Also list Ayme's own Browser Tools, snapshot, goal and
-                 Custom Tools, for an agent with no other browser
-                 automation. Without it the server lists the Page Object
-                 Tools, page_objects, Peek Tools, App Process tools and
-                 its own tools.
   -h, --help     Print this usage text.
 `;
 
@@ -29,12 +22,7 @@ export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>]
  * print help, or fail with a message.
  */
 export type Command =
-  | {
-      kind: "start";
-      port?: number;
-      pageObjects?: string;
-      browserTools?: true;
-    }
+  | { kind: "start"; port?: number; pageObjects?: string }
   | { kind: "inspect"; port?: number }
   | { kind: "help"; text: string }
   | { kind: "error"; text: string };
@@ -42,12 +30,7 @@ export type Command =
 /** The command the arguments (without the node and script paths) ask for. */
 export function readCommand(args: string[]): Command {
   let positionals: string[];
-  let values: {
-    port?: string;
-    "page-objects"?: string;
-    "browser-tools"?: boolean;
-    help?: boolean;
-  };
+  let values: { port?: string; "page-objects"?: string; help?: boolean };
   try {
     ({ positionals, values } = parseArgs({
       args,
@@ -55,7 +38,6 @@ export function readCommand(args: string[]): Command {
       options: {
         port: { type: "string" },
         "page-objects": { type: "string" },
-        "browser-tools": { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
     }));
@@ -74,30 +56,23 @@ export function readCommand(args: string[]): Command {
           : undefined;
   if (!kind) return { kind: "error", text: USAGE };
   const pageObjects = values["page-objects"];
-  const onlyMcp = [
-    ...(pageObjects === undefined ? [] : ["--page-objects"]),
-    ...(values["browser-tools"] ? ["--browser-tools"] : []),
-  ];
-  if (onlyMcp.length > 0 && kind !== "start")
+  if (pageObjects !== undefined && kind !== "start")
     return {
       kind: "error",
-      text: `${onlyMcp[0]} is an option of \`ayme mcp\` only.\n\n${USAGE}`,
+      text: `--page-objects is an option of \`ayme mcp\` only.\n\n${USAGE}`,
     };
   if (pageObjects !== undefined && pageObjects.trim() === "")
     return {
       kind: "error",
       text: `--page-objects expects a file, got an empty value.\n\n${USAGE}`,
     };
-  const options = {
-    ...(pageObjects === undefined ? {} : { pageObjects }),
-    ...(values["browser-tools"] ? { browserTools: true as const } : {}),
-  };
-  if (values.port === undefined) return { kind, ...options };
+  const entry = pageObjects === undefined ? {} : { pageObjects };
+  if (values.port === undefined) return { kind, ...entry };
   const port = Number(values.port);
   if (!Number.isInteger(port) || port < 1 || port > 65_535)
     return {
       kind: "error",
       text: `--port expects a port number, got "${values.port}".\n\n${USAGE}`,
     };
-  return { kind, port, ...options };
+  return { kind, port, ...entry };
 }

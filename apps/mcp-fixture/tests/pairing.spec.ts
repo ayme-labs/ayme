@@ -44,7 +44,7 @@ test("pasting the connect link into an open tab pairs it without a reload", asyn
   await connect("/");
 
   expect(await page.evaluate(() => "beforePairing" in window)).toBe(true);
-  expect(await agent.pageToolNames()).toContain("snapshot");
+  expect(await agent.pageToolNames()).toContain("GroceriesPage.readHeading");
 });
 
 test("a link arriving by hashchange in an already paired tab keeps its id through reload", async ({

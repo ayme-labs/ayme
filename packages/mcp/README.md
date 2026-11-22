@@ -19,12 +19,11 @@ npx --no -p @ayme-dev/mcp ayme mcp
 If your agent starts its servers in another folder, pin the version your app
 installed instead: `npx -y @ayme-dev/mcp@<version> mcp`.
 
-By default, the server adds your Page Objects to the browser automation your
-agent already uses, such as Playwright MCP: it lists their Page Object Tools
-and `page_objects`, and your agent keeps driving the browser with its own
-tools. For an agent with no other browser automation, `--browser-tools` makes
-the server also list Ayme's own Browser Tools, `snapshot`, `goal` and the app's
-Custom Tools, so the agent can drive the browser with Ayme alone.
+The server adds your Page Objects to the browser automation your agent already
+uses, such as Playwright MCP: it lists their Page Object Tools and
+`page_objects`, and your agent keeps driving the browser with its own tools.
+It lists none of Ayme's own browser driving, so an agent without browser
+automation needs one first.
 
 `ayme mcp --help` lists every option.
 
@@ -76,9 +75,8 @@ and reconnects with like a link's. If another server has taken that port since,
 it does not know the token: the tab forgets the pairing and looks again.
 
 After pairing, the page's Page Object Tools, `page_objects` and Peek Tools
-are MCP tools under the names the page gives them, and with `--browser-tools`
-its Browser Tools, `snapshot`, `goal` and Custom Tools too; calling one runs it
-on the page and returns its result. The server's own tools stay in the server: the page never publishes
+are MCP tools under the names the page gives them; calling one runs it on the
+page and returns its result. The server's own tools stay in the server: the page never publishes
 them through WebMCP.
 
 Page Object Tools appear and disappear as MCP tools while the page registers
@@ -217,12 +215,12 @@ the cases apart like this:
 - **Reloaded or navigated:** the same tab reconnected. It reloaded when the
   page said it started a reload, or, without a word from the page, when the
   new document has the old one's URL; otherwise it navigated. The answer has
-  `settled: false`, the new document's URL in `loading` and its tools in
-  `tools`.
+  `settled: false` and the new document's URL in `url`, as a Page Object
+  Tool's own answer from a loading document has.
 - **Started loading, not reconnected yet:** the page said it started loading
   another document (the Navigation API's `navigate` event, for loads the page
   starts, such as a link click or `location.reload()`), and the tab has not
-  reconnected. The answer has `settled: false` and the URL in `loading`.
+  reconnected. The answer has `settled: false` and the URL in `url`.
 - **Closed:** the tab did not reconnect and the page said nothing, as when the
   tab closes or the browser itself loads a document without Ayme.
 - **Another tab connected:** the newest tab wins. Pairing a second tab answers

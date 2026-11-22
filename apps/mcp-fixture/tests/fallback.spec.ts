@@ -1,4 +1,4 @@
-import { SERVER_TOOLS, addItemRef, expect, test } from "./fixtures";
+import { SERVER_TOOLS, expect, test } from "./fixtures";
 
 test("ayme_list_tools lists the page's tools as the MCP tool list does, and whether each can run", async ({
   agent,
@@ -30,7 +30,7 @@ test("ayme_list_tools lists the page's tools as the MCP tool list does, and whet
   // Nothing on the fixture page is unavailable before a Page Object shows.
   expect(listed.every((tool) => tool.available)).toBe(true);
   expect(pageTools.map((tool) => tool.name)).toEqual(
-    expect.arrayContaining(["snapshot", "read_text"])
+    expect.arrayContaining(["page_objects", "GroceriesPage.readHeading"])
   );
 });
 
@@ -40,7 +40,7 @@ test("ayme_call runs a tool the agent's client never listed", async ({
   baseURL,
 }) => {
   const listed = await agent.toolNames();
-  expect(listed).not.toContain("snapshot");
+  expect(listed).not.toContain("GroceriesPage.readHeading");
   const { text: link } = await agent.call("ayme_connect", {
     url: new URL("/", baseURL).href,
   });
@@ -51,10 +51,12 @@ test("ayme_call runs a tool the agent's client never listed", async ({
     })
     .toBe(false);
 
-  const { text, isError } = await agent.call("ayme_call", { tool: "snapshot" });
+  const { text, isError } = await agent.call("ayme_call", {
+    tool: "GroceriesPage.readHeading",
+  });
 
   expect(isError, text).toBe(false);
-  expect(JSON.parse(text).structure).toContain('heading "Groceries"');
+  expect(JSON.parse(text)).toMatchObject({ result: "Groceries" });
 });
 
 test("ayme_call returns the result a direct call returns", async ({
@@ -62,14 +64,10 @@ test("ayme_call returns the result a direct call returns", async ({
   connect,
 }) => {
   await connect();
-  const ref = await addItemRef(agent);
 
-  for (const input of [{ ref }, { ref: "e999" }]) {
-    const direct = await agent.call("read_text", input);
-    const fallback = await agent.call("ayme_call", {
-      tool: "read_text",
-      input,
-    });
+  for (const tool of ["GroceriesPage.readHeading", "GroceriesPage.fail"]) {
+    const direct = await agent.call(tool);
+    const fallback = await agent.call("ayme_call", { tool });
     expect(fallback).toEqual(direct);
   }
 });
@@ -104,8 +102,8 @@ test("with no page connected, page tools and fallback tools say no page is conne
 }) => {
   for (const [name, input] of [
     ["ayme_list_tools", {}],
-    ["ayme_call", { tool: "snapshot" }],
-    ["snapshot", {}],
+    ["ayme_call", { tool: "page_objects" }],
+    ["page_objects", {}],
   ] as const) {
     const { text, isError } = await agent.call(name, input);
     expect(isError, name).toBe(true);
@@ -119,13 +117,13 @@ test("a page tool the agent listed before the tab closed says the tab did not co
   page,
 }) => {
   await connect();
-  expect(await agent.pageToolNames()).toContain("snapshot");
+  expect(await agent.pageToolNames()).toContain("page_objects");
 
   await page.close();
   await expect.poll(() => agent.pageToolNames()).toEqual([]);
 
   // The server holds the call while it waits for the tab to reconnect.
-  const { text, isError } = await agent.call("snapshot");
+  const { text, isError } = await agent.call("page_objects");
   expect(isError).toBe(true);
   expect(text).toBe(
     "The page's connection closed and its tab did not reconnect, so the call did not run."

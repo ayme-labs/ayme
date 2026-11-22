@@ -61,22 +61,17 @@ const log = (message: string) =>
  * last good build on the same server, and writes `.ayme/init-script.js`,
  * which loads it into a page that doesn't ship Ayme. Experimental (ADR-0037).
  *
- * Without `browserTools`, it lists none of Ayme's own browser driving of
- * the paired page, whether the page ships Ayme or loads the served Page
- * Objects (see `AgentConnection`).
+ * It lists none of Ayme's own browser driving of the paired page, whether
+ * the page ships Ayme or loads the served Page Objects (see
+ * `AgentConnection`).
  */
 export async function startMcpServer({
   port: pinnedPort,
   pageObjects,
-  browserTools = false,
-}: {
-  port?: number;
-  pageObjects?: string;
-  browserTools?: boolean;
-} = {}): Promise<void> {
+}: { port?: number; pageObjects?: string } = {}): Promise<void> {
   const folder = process.cwd();
   const entry = findPageObjectsEntry({ folder, named: pageObjects });
-  const connection = new AgentConnection({ browserTools });
+  const connection = new AgentConnection();
   const token = randomUUID();
   // Admits the Inspector's page an Agent App shows, whose origin is the
   // Agent App's: a token of its own, which pairs no page.

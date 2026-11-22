@@ -78,11 +78,11 @@ describe("AgentConnection", () => {
       error:
         "The page started loading http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown. No page reconnected in its place: the tab closed, or the page it loaded does not run Ayme's Agent Connection.",
       settled: false,
-      loading: "http://127.0.0.1:5173/counter",
+      url: "http://127.0.0.1:5173/counter",
     });
   });
 
-  it("answers the calls of a page that started loading a new document with the tools of the page that came back", async () => {
+  it("answers the calls of a page that started loading a new document that came back", async () => {
     vi.useFakeTimers();
     const connection = new AgentConnection();
     const page = connection.attach(hello("a"), () => {})!;
@@ -104,32 +104,7 @@ describe("AgentConnection", () => {
       error:
         "The page navigated to http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown.",
       settled: false,
-      loading: "http://127.0.0.1:5173/counter",
-      tools: ["snapshot"],
-    });
-  });
-
-  it("names no tools in the answer to a Page Object Tool's call that a new document left unanswered", async () => {
-    vi.useFakeTimers();
-    const connection = new AgentConnection();
-    const page = connection.attach(hello("a"), () => {})!;
-    page.publishTools([{ ...tool("ListPage.open"), group: "pageObject" }]);
-    const call = connection.call("ListPage.open", {});
-    connection.navigating(page, {
       url: "http://127.0.0.1:5173/counter",
-      reload: false,
-    });
-    connection.detach(page);
-
-    connection
-      .attach(hello("a", "http://127.0.0.1:5173/counter"), () => {})!
-      .publishTools([tool("snapshot")]);
-
-    expect(await errorOf(call)).toEqual({
-      error:
-        "The page navigated to http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown.",
-      settled: false,
-      loading: "http://127.0.0.1:5173/counter",
     });
   });
 
@@ -225,8 +200,7 @@ describe("AgentConnection as a tab loads new documents", () => {
       error:
         "The page reloaded before it answered, so the call's outcome is unknown.",
       settled: false,
-      loading: "http://127.0.0.1:5173/",
-      tools: ["snapshot"],
+      url: "http://127.0.0.1:5173/",
     });
     earlier.answer({ callId: "1", ok: true, result: "late" });
     void connection.call("snapshot", {});
@@ -247,36 +221,9 @@ describe("AgentConnection as a tab loads new documents", () => {
     expect(await errorOf(call)).toMatchObject({
       error:
         "The page reloaded before it answered, so the call's outcome is unknown.",
-      tools: ["snapshot"],
+      url: "http://127.0.0.1:5173/",
     });
     vi.useRealTimers();
-  });
-
-  it("names no tools in the answer to a Page Object Tool's call held while the tab reconnected, sent, and left unanswered by the next document", async () => {
-    const connection = new AgentConnection();
-    const first = connection.attach(hello("a"), () => {})!;
-    first.publishTools([{ ...tool("ListPage.open"), group: "pageObject" }]);
-    connection.detach(first);
-    const call = connection.call("ListPage.open", {});
-
-    const second = connection.attach(hello("a"), () => {})!;
-    second.publishTools([{ ...tool("ListPage.open"), group: "pageObject" }]);
-    expect(await sentCalls(second)).toEqual(["ListPage.open"]);
-    connection.navigating(second, {
-      url: "http://127.0.0.1:5173/counter",
-      reload: false,
-    });
-    connection.detach(second);
-    connection
-      .attach(hello("a", "http://127.0.0.1:5173/counter"), () => {})!
-      .publishTools([tool("snapshot")]);
-
-    expect(await errorOf(call)).toEqual({
-      error:
-        "The page navigated to http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown.",
-      settled: false,
-      loading: "http://127.0.0.1:5173/counter",
-    });
   });
 });
 

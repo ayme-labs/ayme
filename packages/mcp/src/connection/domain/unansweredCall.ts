@@ -23,20 +23,17 @@ const UNKNOWN = "so the call's outcome is unknown";
 /**
  * The text the server answers a call with when its page left before
  * answering: a JSON object with `error` saying what happened, and, when the
- * page was loading a new document, `settled: false`, the URL in `loading`
- * and the reconnected page's `tools`, unless `namesTools` is false, as for
- * a Page Object Tool, whose answer names no tools.
+ * page was loading a new document, `settled: false` and its `url`, as a
+ * Page Object Tool answers from a loading document.
  */
-export function unansweredCallText(exit: PageExit, namesTools = true): string {
-  const { tools, ...call } = unansweredCall(exit);
-  return JSON.stringify(namesTools && tools ? { ...call, tools } : call);
+export function unansweredCallText(exit: PageExit): string {
+  return JSON.stringify(unansweredCall(exit));
 }
 
 function unansweredCall(exit: PageExit): {
   error: string;
   settled?: false;
-  loading?: string;
-  tools?: readonly string[];
+  url?: string;
 } {
   switch (exit.type) {
     case "closed":
@@ -69,13 +66,12 @@ function unansweredCall(exit: PageExit): {
         return {
           error: `${what} before it answered, ${UNKNOWN}. No page reconnected in its place: the tab closed, or the page it loaded does not run Ayme's Agent Connection.`,
           settled: false,
-          loading: url,
+          url,
         };
       return {
         error: `${what} before it answered, ${UNKNOWN}.`,
         settled: false,
-        loading: url,
-        tools,
+        url,
       };
     }
   }

@@ -46,12 +46,9 @@ afterEach(async () => {
  * A paired page's connection and the process's side of MCP: `serveStdio`
  * over memory, building each server object the way `ayme mcp` does.
  * `listening()` counts the server objects' subscriptions to the connection.
- * `browserTools` lists Ayme's own Browser Tools, as `--browser-tools` does.
  */
-function serveProcess({
-  browserTools = false,
-}: { browserTools?: boolean } = {}) {
-  const connection = new AgentConnection({ browserTools });
+function serveProcess() {
+  const connection = new AgentConnection();
   const page = connection.attach({ tab: "a", url: "http://x/" }, () => {})!;
   let listening = 0;
   const subscribe = connection.subscribe.bind(connection);
@@ -116,16 +113,13 @@ function serveProcess({
 /**
  * A server with a paired page, and an agent connected to it over memory
  * with `revision`; under 2026-07-28 it listens for tool list changes unless
- * `listen` is false; `browserTools` lists Ayme's own Browser Tools.
+ * `listen` is false.
  */
 async function connectAgent(
   revision: Revision = OLDER,
-  {
-    listen = true,
-    browserTools = false,
-  }: { listen?: boolean; browserTools?: boolean } = {}
+  { listen = true }: { listen?: boolean } = {}
 ) {
-  const process = serveProcess({ browserTools });
+  const process = serveProcess();
   const client = new Client(
     { name: "test", version: "0.0.0" },
     revision === MODERN
@@ -704,18 +698,5 @@ it("refuses a Browser Tool it does not list as unknown, called directly or throu
   expect([throughCall.isError, throughCall.texts[0]]).toEqual([
     true,
     'No connected page or App Process offers a tool "snapshot".',
-  ]);
-});
-
-it("lists every tool of the page with Ayme's own Browser Tools on", async () => {
-  const agent = await connectAgent(OLDER, { browserTools: true });
-  await agent.publish(everyGroup);
-
-  expect(await listedNames(agent)).toEqual([
-    "ayme_connect",
-    "ayme_list_tools",
-    "ayme_call",
-    "ayme_noop",
-    ...everyGroup.map(({ name }) => name),
   ]);
 });

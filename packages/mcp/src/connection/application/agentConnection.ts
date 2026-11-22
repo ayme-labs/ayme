@@ -28,21 +28,10 @@ export type ConnectionEvent =
 
 type Answer = (outcome: ToolCallOutcome) => void;
 
-/**
- * Answers every call in `calls` for a page that left as `exit` says, naming
- * the reconnected page's tools unless the call is in `pageObjectCalls`.
- */
-function answerUnanswered(
-  calls: Map<string, Answer>,
-  exit: PageExit,
-  pageObjectCalls: ReadonlySet<string> = new Set()
-) {
-  for (const [callId, answer] of calls)
-    answer({
-      callId,
-      ok: false,
-      error: unansweredCallText(exit, !pageObjectCalls.has(callId)),
-    });
+/** Answers every call in `calls` for a page that left as `exit` says. */
+function answerUnanswered(calls: Map<string, Answer>, exit: PageExit) {
+  const error = unansweredCallText(exit);
+  for (const [callId, answer] of calls) answer({ callId, ok: false, error });
 }
 
 /**
@@ -194,12 +183,11 @@ type ToolHolder = PageSession | ProcessSession;
  * page's tab is navigating, disconnected or reconnected, a call for the
  * page waits for the new page (see `TabLifecycle`).
  *
- * Of the page's tools it keeps only those the server lists: without
- * `browserTools`, none of Ayme's own browser driving (see `listsPageTool`).
+ * Of the page's tools it keeps only those the server lists: none of Ayme's
+ * own browser driving (see `listsPageTool`).
  * An App Process's tools it keeps all.
  */
 export class AgentConnection {
-  readonly #browserTools: boolean;
   #page: PageSession | undefined;
   /** In the order they connected, which decides who keeps a name. */
   readonly #processes = new Map<string, ProcessSession>();
@@ -216,8 +204,6 @@ export class AgentConnection {
    * known, as for a channel that never closes.
    */
   readonly #leaving = new Map<PageSession, PageExit | undefined>();
-  /** The calls in flight of a Page Object Tool. */
-  readonly #pageObjectCalls = new Set<string>();
   /**
    * The calls held for the page: each goes out when called without an
    * exit, or is answered without running.
@@ -228,10 +214,6 @@ export class AgentConnection {
   #nextCallId = 1;
   readonly #listeners = new Set<(event: ConnectionEvent) => void>();
   #versionGap: string | undefined;
-
-  constructor({ browserTools = false }: { browserTools?: boolean } = {}) {
-    this.#browserTools = browserTools;
-  }
 
   /** The tools the agent sees: the page's, then the App Processes'. */
   get tools(): readonly PageTool[] {
@@ -349,7 +331,7 @@ export class AgentConnection {
         );
         this.#emit({ type: "toolsChanged", tools: this.tools });
       },
-      (tool) => listsPageTool(tool, { browserTools: this.#browserTools })
+      listsPageTool
     );
     this.#page = page;
     this.#apply(transition);
@@ -444,10 +426,6 @@ export class AgentConnection {
     const callId = String(this.#nextCallId++);
     const send = async () => {
       const shown = this.#shown(name);
-      // A Page Object Tool's answer names no tools, even one the server
-      // gives. Known as the call goes out, since a held call waits while
-      // no page offers the tool.
-      if (shown?.tool.group === "pageObject") this.#pageObjectCalls.add(callId);
       return shown?.holder.call({ callId, name, input });
     };
     const outcome =
@@ -464,7 +442,7 @@ export class AgentConnection {
             (exit): Promise<ToolCallOutcome | undefined> | ToolCallOutcome =>
               exit ? { callId, ok: false, error: heldCallText(exit) } : send()
           );
-    return outcome.finally(() => this.#pageObjectCalls.delete(callId));
+    return outcome;
   }
 
   /**
@@ -622,7 +600,7 @@ export class AgentConnection {
     const exit = this.#leaving.get(session);
     this.#leaving.delete(session);
     const calls = session.takeUnanswered();
-    if (exit) answerUnanswered(calls, exit, this.#pageObjectCalls);
+    if (exit) answerUnanswered(calls, exit);
     else
       for (const [callId, answer] of calls) this.#leftCalls.set(callId, answer);
   }
@@ -637,7 +615,7 @@ export class AgentConnection {
     if (left) {
       const calls = this.#leftCalls;
       this.#leftCalls = new Map();
-      answerUnanswered(calls, left, this.#pageObjectCalls);
+      answerUnanswered(calls, left);
       for (const [session, exit] of this.#leaving) {
         // Another tab or the server's stop ends the earlier document's
         // calls at once.
