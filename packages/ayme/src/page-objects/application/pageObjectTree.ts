@@ -27,7 +27,8 @@ export type TreeRegistration = {
 /**
  * Package-internal: the Page Object Tree of `registrations`, as their last
  * observation found them: each present Page Object, nested as the models
- * nest, one with a root with its Page Object id, and each declared element
+ * nest (a present one inside one that is not takes its place), one with a
+ * root with its Page Object id, and each declared element
  * child as its elements' subtrees in `capture`, a capture of the page taken
  * after that observation; its elements are the ones the child's Locator
  * resolves to now, and one the capture holds no node of is read on its own. Ids are given in the order the tree shows the roots.
@@ -46,7 +47,7 @@ export async function readPageObjectTree(
       ])
     );
     const page = instances.get("");
-    if (!page?.present) return [];
+    if (!page) return [];
     const read: Read = {
       driver,
       capture,
@@ -63,7 +64,7 @@ export async function readPageObjectTree(
   });
   const tree: PageObjectTreeNode[] = [];
   for (const { read, page, manifest } of reads)
-    tree.push(await readNode(read, page, manifest));
+    tree.push(...(await readNodes(read, page, manifest)));
   // One read of the ids for every root, in the order the tree shows them.
   const roots = reads.flatMap(({ read }) => read.roots);
   const given = await ids.rootsOf(
@@ -123,26 +124,60 @@ async function readNode(
     }
     const component = read.components.get(member.componentClassName);
     if (!component) continue;
-    if (!member.collection) {
-      const child = read.instances.get(path);
-      if (child?.present)
-        children.push({
-          kind: "object",
-          name: member.memberName,
-          object: await readNode(read, child, component),
-        });
-      continue;
-    }
     const objects: PageObjectTreeNode[] = [];
-    for (
-      let index = 0, child = read.instances.get(`${path}[0]`);
-      child;
-      child = read.instances.get(`${path}[${++index}]`)
-    )
-      if (child.present) objects.push(await readNode(read, child, component));
-    children.push({ kind: "objects", name: member.memberName, objects });
+    for (const child of childInstances(read, path, member.collection === true))
+      objects.push(...(await readNodes(read, child, component)));
+    if (member.collection)
+      children.push({ kind: "objects", name: member.memberName, objects });
+    else
+      for (const object of objects)
+        children.push({ kind: "object", name: member.memberName, object });
   }
   return node;
+}
+
+/** The instances observed at a child member's `path`: its one, or a collection's in order. */
+function childInstances(
+  read: Read,
+  path: string,
+  collection: boolean
+): PomInstanceObservation[] {
+  if (!collection) {
+    const child = read.instances.get(path);
+    return child ? [child] : [];
+  }
+  const children: PomInstanceObservation[] = [];
+  for (
+    let index = 0, child = read.instances.get(`${path}[0]`);
+    child;
+    child = read.instances.get(`${path}[${++index}]`)
+  )
+    children.push(child);
+  return children;
+}
+
+/**
+ * `instance` as the tree shows it: its node while it is present; else, in
+ * its place, the present Page Objects inside it, since a child can be on
+ * the page while the Page Object it is reached through is not (ADR-0042),
+ * and its tools are listed.
+ */
+async function readNodes(
+  read: Read,
+  instance: PomInstanceObservation,
+  manifest: Pick<PomComponentManifest, "members">
+): Promise<PageObjectTreeNode[]> {
+  if (instance.present) return [await readNode(read, instance, manifest)];
+  const nodes: PageObjectTreeNode[] = [];
+  for (const member of manifest.members) {
+    if (member.kind === "locator") continue;
+    const component = read.components.get(member.componentClassName);
+    if (!component) continue;
+    const path = join(instance.path, member.memberName);
+    for (const child of childInstances(read, path, member.collection === true))
+      nodes.push(...(await readNodes(read, child, component)));
+  }
+  return nodes;
 }
 
 /**

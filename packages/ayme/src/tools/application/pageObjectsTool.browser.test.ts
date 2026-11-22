@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { registerCompiledPom } from "../../page-objects/application";
 import { createPage } from "../../page-objects/infrastructure";
-import { rooted } from "../../test-utils/pomRoot.testSupport";
+import { rooted, rootOf } from "../../test-utils/pomRoot.testSupport";
+import { ayme as decorate } from "../../page-objects/domain";
 import { startSession } from "../../test-utils/session.testSupport";
 
 const action = (toolName: string) => ({
@@ -148,6 +149,86 @@ describe("page_objects on a real page", () => {
       expect(archived.mock.calls).toEqual([["Eggs"]]);
     } finally {
       stop();
+    }
+  });
+
+  it("shows a present Page Object inside one that is not, in its place, with an id its tools accept", async () => {
+    // The page's shell is gone; its dialog, portaled to the body, is not.
+    document.body.innerHTML = `
+      <div role="dialog" aria-label="Delete"><h2>Delete the list?</h2></div>`;
+    const page = createPage();
+    const session = startSession(page);
+    const confirmed = vi.fn();
+    class ShellPage {
+      root = page.locator("main");
+      dialog = rooted(page.getByRole("dialog"), {
+        heading: page.getByRole("dialog").getByRole("heading"),
+        confirm: async () => confirmed(),
+      });
+    }
+    decorate({ root: rootOf })(ShellPage);
+    registerCompiledPom(ShellPage, {
+      className: "ShellPage",
+      tools: [],
+      members: [
+        {
+          memberName: "root",
+          kind: "locator",
+          access: "field",
+          collection: false,
+        },
+        {
+          memberName: "dialog",
+          kind: "component",
+          access: "field",
+          componentClassName: "Dialog",
+          collection: false,
+        },
+      ],
+      components: [
+        {
+          className: "Dialog",
+          members: [
+            {
+              memberName: "root",
+              kind: "locator",
+              access: "field",
+              collection: false,
+            },
+            {
+              memberName: "heading",
+              kind: "locator",
+              access: "field",
+              collection: false,
+            },
+          ],
+          tools: [action("Dialog.confirm")],
+        },
+      ],
+    });
+    session.register(ShellPage);
+    try {
+      await expect
+        .poll(
+          () =>
+            session.ayme.tools
+              .list()
+              .find(({ name }) => name === "Dialog.confirm")?.available
+        )
+        .toBe(true);
+      const text = (await session.ayme.tools.run("page_objects", {})) as string;
+      const dialog = /^Dialog (po\d+)$/m.exec(text)?.[1];
+
+      expect(text).toBe(
+        [
+          `Dialog ${dialog}`,
+          '  heading: heading "Delete the list?" [level=2]',
+        ].join("\n")
+      );
+      await session.ayme.tools.run("Dialog.confirm", { id: dialog, args: {} });
+      expect(confirmed).toHaveBeenCalledOnce();
+    } finally {
+      session.stop();
     }
   });
 });
