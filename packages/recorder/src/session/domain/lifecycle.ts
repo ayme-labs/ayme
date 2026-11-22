@@ -390,6 +390,9 @@ type Input = {
    * was reported, and had no snapshot yet: its "after" is its "before" too,
    * and Playwright's picture of the page is not set against it. */
   readonly unread: boolean;
+  /** Known from its report, on a page that went to another document since:
+   * what Playwright reports as a revision of it is typing of its own there. */
+  readonly elsewhere?: boolean;
   /** For an input known from its report only: what the timeline was last
    * told of it while it shows, before it is final. Null until it shows. */
   readonly told: {
@@ -679,11 +682,16 @@ function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
   const page = state.pages.find((open) => open.id === id);
   if (!page) return stay(state);
   const at = { ...page, url };
-  // A read of the document it left is no start for what is done in the one
-  // it went to, whatever took it there: a key typed there first waits for a
-  // read of it.
   const left: LifecycleState = isActive(state)
-    ? { ...state, gates: unread(state.gates, id) }
+    ? {
+        ...state,
+        gates: leftDocument(state.gates, id),
+        inputs: state.inputs.map((input) =>
+          input.page === id && input.held.kind === "reported"
+            ? { ...input, elsewhere: true }
+            : input
+        ),
+      }
     : state;
   const pagesWith = (next: Page) =>
     left.pages.map((open) => (open === page ? next : open));
@@ -707,9 +715,17 @@ function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
   };
 }
 
-/** The gates, with the page's latest read forgotten. */
-const unread = (gates: readonly PageGate[], page: PageId): PageGate[] =>
-  gates.map((gate) => (gate.page === page ? { ...gate, latest: null } : gate));
+/** The gates, with what the page's gate knows of the document it left
+ * forgotten, whatever took it to another: its latest read is no start for
+ * what is done in the new one, so a key typed there first waits for a read of
+ * it; and typing there that Playwright reports as a revision is typing of its
+ * own, not the last fill's. */
+const leftDocument = (gates: readonly PageGate[], page: PageId): PageGate[] =>
+  gates.map((gate) =>
+    gate.page === page
+      ? { ...gate, latest: null, lastFill: null, reported: false }
+      : gate
+  );
 
 /** Whether a page had a Visit: one that opened while paused, or was blank
  * at Record, has none until it is recorded at an address. */
@@ -1574,7 +1590,8 @@ function interactionRevised(
   report: InteractionReport
 ) {
   const open = draft.inputs.findLast(
-    (input) => input.page === page && input.held.kind === "reported"
+    (input) =>
+      input.page === page && input.held.kind === "reported" && !input.elsewhere
   );
   const gate = gateOf(draft, page);
   if (!open) {

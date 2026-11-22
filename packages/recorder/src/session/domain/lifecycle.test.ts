@@ -3007,6 +3007,24 @@ describe("the lifecycle, for a page that goes elsewhere with no held input", () 
     expect(fillStarts(todo)).toEqual([snapshot2]);
   });
 
+  it("lets the page through after a held click that took it to another document, once that click's read is in", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      navigated("http://shop.test/cart"),
+      settled(input1),
+      {
+        kind: "snapshotTaken",
+        snapshot: { ...snapshot(snapshot2), url: "http://shop.test/cart" },
+      },
+    ]);
+
+    expect(todo.at(-1)).toContainEqual(through(page1, input1));
+  });
+
   it("reads the document again for the first key typed once the page went only to another part of it", () => {
     const { todo } = run([
       ...clickedFirst,
@@ -5088,6 +5106,28 @@ describe("the lifecycle, with more than one page", () => {
     );
   });
 
+  it("revises a fill still open on one page when another page went to another document", () => {
+    const { todo } = run([
+      opened,
+      opened2,
+      ...started,
+      { kind: "interactionReported", page: page1, report: typed("m") },
+      takenOf(snapshot1, page1),
+      navigated("http://shop.test/faq", page2),
+      { kind: "interactionRevised", page: page1, report: typed("mi") },
+    ]);
+
+    expect(todo.at(-1)).toContainEqual(
+      expect.objectContaining({
+        kind: "timeline",
+        add: expect.objectContaining({
+          kind: "interaction",
+          interaction: expect.objectContaining({ report: typed("mi") }),
+        }),
+      })
+    );
+  });
+
   it("takes no revision Playwright reports for a page that closed", () => {
     const { todo } = run([
       opened,
@@ -6893,7 +6933,7 @@ describe("the lifecycle, for a fill while it is typed", () => {
       showing: [],
     },
     {
-      name: "a revision after a fill is final still sets its text once the page went to another address (rule 5)",
+      name: "typing Playwright reports as a revision of a final fill once the page went to another address is a fill of its own there: it waits for a read of the new document",
       happened: [
         ...clicked,
         reportedAs(fill("m")),
@@ -6901,9 +6941,44 @@ describe("the lifecycle, for a fill while it is typed", () => {
         taken(snapshot3),
         clickHeld(input2),
         navigated("http://shop.test/cart"),
-        revised(fill("mi")),
+        revised(fill("x")),
       ],
-      todo: [[retext(fill("mi"), snapshot2)]],
+      todo: [[takeSnapshot(snapshot5)]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "typing Playwright reports as a revision of a fill still open once the page went to another address is a fill of its own there, not the open fill's",
+      happened: [
+        ...clicked,
+        reportedAs(fill("m")),
+        settled(reported1),
+        taken(snapshot3),
+        navigated("http://shop.test/cart"),
+        revised(fill("x")),
+        {
+          kind: "snapshotTaken",
+          snapshot: { ...snapshot(snapshot4), url: "http://shop.test/cart" },
+        },
+      ],
+      todo: [
+        // The open fill is final with its own text; the new one waits for a
+        // read of the new document.
+        [takeSnapshot(snapshot4), final(fill("m"), snapshot2, snapshot3)],
+        [
+          {
+            kind: "timeline",
+            add: {
+              kind: "snapshot",
+              snapshot: {
+                ...snapshot(snapshot4),
+                url: "http://shop.test/cart",
+              },
+            },
+          },
+          waitForSettled(reported2),
+          shown(fill("x"), snapshot4, null, reported2),
+        ],
+      ],
       state: { phase: "recording" },
     },
     {
