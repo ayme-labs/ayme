@@ -1088,12 +1088,15 @@ export class Timeline {
     const reached = visit.through >= upTo;
     if (reached || !next) return false;
     // What changed while the recorder was paused is left out: the
-    // snapshot where recording resumes is compared with nothing before it.
-    // A focus a click's press moved is the click's own change.
-    const click = visit.waiting.find(
-      (waiting) =>
-        waiting.before === next.snapshot.id && !waiting.beforeFromReport
-    );
+    // snapshot where recording resumes is compared with nothing before it,
+    // and a focus it shows may have moved while paused. Elsewhere, a focus a
+    // click's press moved is the click's own change.
+    const click = next.resumes
+      ? undefined
+      : visit.waiting.find(
+          (waiting) =>
+            waiting.before === next.snapshot.id && !waiting.beforeFromReport
+        );
     const pressed = click && this.beforeItsPress(through, next, click.report);
     if (pressed) this.beforePress.set(next.snapshot.id, pressed);
     const change = next.resumes

@@ -1613,6 +1613,8 @@ describe("the timeline, for the focus a click's press moved", () => {
     reported?: boolean;
     /** The input before ends at the read before this one. */
     priorEndsThere?: boolean;
+    /** The read the input starts at is where recording resumed. */
+    resumes?: boolean;
   }) => {
     const second = options.second ?? pressed;
     const additions = recorded(second).map((addition): TimelineAddition => {
@@ -1624,7 +1626,10 @@ describe("the timeline, for the focus a click's press moved", () => {
             options.first ?? searching
           );
         if (addition.snapshot.id === snapshotId("snapshot_2"))
-          return snapshot(snapshotId("snapshot_2"), 20, second);
+          return {
+            ...snapshot(snapshotId("snapshot_2"), 20, second),
+            ...(options.resumes && { resumes: true }),
+          };
         return snapshot(snapshotId("snapshot_3"), 30, options.third ?? opened);
       }
       if (
@@ -1756,6 +1761,18 @@ describe("the timeline, for the focus a click's press moved", () => {
       ])
     );
   });
+
+  it.each([
+    ["the entries reach that read by a step", false],
+    ["the input before ends at that read", true],
+  ])(
+    "shows no focus move with a click at the read where recording resumed, when %s: the focus may have moved while paused",
+    async (_, priorEndsThere) => {
+      const entries = await entriesWith({ resumes: true, priorEndsThere });
+
+      expect(changesOf(entries.at(-1))).toEqual([opening]);
+    }
+  );
 
   it("shows the clicked element gaining a focus no element had before, with the click", async () => {
     const [, before, click] = await entriesWith({
