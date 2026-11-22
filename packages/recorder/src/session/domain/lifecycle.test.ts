@@ -3025,14 +3025,16 @@ describe("the lifecycle, for a page that goes elsewhere with no held input", () 
     expect(todo.at(-1)).toContainEqual(through(page1, input1));
   });
 
-  it("reads the document again for the first key typed once the page went only to another part of it", () => {
+  it("starts the first key typed once the page went only to another part of its document from the read before: it is a read of that document", () => {
     const { todo } = run([
       ...clickedFirst,
       navigated(`${url}#reviews`),
-      ...typedThere(`${url}#reviews`),
+      keyHeld(input2),
+      passedOn(input2, 30),
+      { kind: "interactionReported", page: page1, report: fill },
     ]);
 
-    expect(fillStarts(todo)).toEqual([snapshot3]);
+    expect(fillStarts(todo)).toEqual([snapshot2]);
   });
 });
 
@@ -6931,6 +6933,33 @@ describe("the lifecycle, for a fill while it is typed", () => {
       ],
       state: { phase: "recording" },
       showing: [],
+    },
+    {
+      name: "typing in a field while the page writes the text into its address at each key stays one fill, with its whole text: the page stays at its document",
+      happened: [
+        ...clicked,
+        reportedAs(fill("m")),
+        navigated(`${url}?q=m`),
+        revised(fill("mi")),
+        navigated(`${url}?q=mi`),
+        revised(fill("mil")),
+      ],
+      todo: [[shown(fill("mil"), snapshot2, null)]],
+      state: { phase: "recording" },
+    },
+    {
+      name: "a late key still sets a final fill's text after the page changed only its address's query: it stays at its document (rule 5)",
+      happened: [
+        ...clicked,
+        reportedAs(fill("m")),
+        settled(reported1),
+        taken(snapshot3),
+        clickHeld(input2),
+        navigated(`${url}?q=m`),
+        revised(fill("mi")),
+      ],
+      todo: [[retext(fill("mi"), snapshot2)]],
+      state: { phase: "recording" },
     },
     {
       name: "typing Playwright reports as a revision of a final fill once the page went to another address is a fill of its own there: it waits for a read of the new document",

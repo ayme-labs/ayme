@@ -682,17 +682,21 @@ function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
   const page = state.pages.find((open) => open.id === id);
   if (!page) return stay(state);
   const at = { ...page, url };
-  const left: LifecycleState = isActive(state)
-    ? {
-        ...state,
-        gates: leftDocument(state.gates, id),
-        inputs: state.inputs.map((input) =>
-          input.page === id && input.held.kind === "reported"
-            ? { ...input, elsewhere: true }
-            : input
-        ),
-      }
-    : state;
+  // Only a page that leaves its document leaves what its gate knows of it
+  // behind; within it, as when typing writes itself into the query, a fill
+  // goes on and the read before stays a read of the document.
+  const left: LifecycleState =
+    isActive(state) && !sameDocument(page.url, url)
+      ? {
+          ...state,
+          gates: leftDocument(state.gates, id),
+          inputs: state.inputs.map((input) =>
+            input.page === id && input.held.kind === "reported"
+              ? { ...input, elsewhere: true }
+              : input
+          ),
+        }
+      : state;
   const pagesWith = (next: Page) =>
     left.pages.map((open) => (open === page ? next : open));
   if (isActive(left) && at.url !== BLANK)
