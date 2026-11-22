@@ -3355,6 +3355,68 @@ describe("the lifecycle, for Assert visibility", () => {
     ]);
   });
 
+  it("places no assertion at the page's earlier read when typing is reported while a click ahead of it still waits for that read: the click ends there, and the assertion and the typing start there", () => {
+    const { todo } = run([
+      ...recording,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      reported,
+      assertVisibility,
+      picking(true),
+      assertionReported,
+      filled,
+      taken(snapshot2),
+    ]);
+
+    expect(told(todo)).toEqual([
+      { type: "click", before: snapshot1, after: snapshot2 },
+      { type: "assertVisible", before: snapshot2, after: snapshot2 },
+      { type: "fill", before: snapshot2, after: null },
+    ]);
+  });
+
+  it("places an assertion at the page's latest read when typing is reported while a choice ahead of it is still open, and starts the typing where the choice ends", () => {
+    const { todo } = run([
+      ...recording,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      settled(input1),
+      taken(snapshot2),
+      reported,
+      {
+        kind: "interactionReported",
+        page: page1,
+        report: {
+          type: "select",
+          selector: "internal:role=combobox",
+          target: null,
+          values: { options: ["Large"] },
+        },
+      },
+      assertVisibility,
+      picking(true),
+      assertionReported,
+      filled,
+      taken(snapshot3),
+    ]);
+
+    expect(told(todo)).toEqual([
+      { type: "click", before: snapshot1, after: snapshot2 },
+      // Shown once reported, and written with its "after".
+      { type: "select", before: snapshot2, after: null },
+      { type: "select", before: snapshot2, after: snapshot3 },
+      {
+        type: "assertVisible",
+        before: snapshot2,
+        after: snapshot2,
+        targetRead: snapshot3,
+      },
+      { type: "fill", before: snapshot3, after: null },
+    ]);
+  });
+
   it("places no assertion on a page with no read yet when typing is reported before its read: both start from that read", () => {
     const { todo } = run([...recording, ...pickedThenTyped, taken(snapshot1)]);
 
