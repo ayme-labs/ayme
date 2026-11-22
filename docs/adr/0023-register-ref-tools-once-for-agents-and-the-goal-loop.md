@@ -1,6 +1,5 @@
 ---
 status: accepted
-amended-by: ADR-0055
 ---
 
 # Ref Tools are one registration, visible to agents and to the Goal Loop

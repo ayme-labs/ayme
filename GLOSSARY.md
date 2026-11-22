@@ -74,14 +74,14 @@ Whether a Page Object Action can run right now. An action is available when its 
 The one fact that makes a Page Object Action, or a Browser Tool call on a single element, unavailable, as a string. The runtime writes it when a click would not reach the root or the element, or when an element a tool types into cannot take focus, naming the Structural Ref of the element in the way when it has one; the author's predicate writes it otherwise. The runtime never infers more than it measured.
 
 **Browser Tool**:
-A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose, and offers and accepts only elements its input would reach: a click for one that clicks or hovers, focus for one that types or selects. It reaches a coding agent only through an Ayme MCP server started with `--browser-tools`, for an agent whose only browser automation is Ayme; WebMCP never publishes it.
+A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose, and offers and accepts only elements its input would reach: a click for one that clicks or hovers, focus for one that types or selects. It reaches an agent in the page through WebMCP publication, and never a coding agent through an Ayme MCP server.
 
 **Locator Recommendation**:
 A Playwright locator string derived for one element, optionally relative to a container element. It matches exactly that element and never contains a Structural Ref. It is code for a Page Object Model, not an address for a later tool call.
 _Avoid_: selector suggestion
 
 **Custom Tool**:
-An operation an app registers that applies to one element. One registration makes it a published tool and an operation the Goal Loop may choose. It reaches a coding agent through an Ayme MCP server started with `--browser-tools`, and application code through `ayme.tools`; WebMCP never publishes it.
+An operation an app registers that applies to one element. One registration makes it a published tool and an operation the Goal Loop may choose. It reaches an agent in the page through WebMCP publication, and never a coding agent through an Ayme MCP server.
 
 **Settled Page**:
 A page that has shown no activity for a quiet window after an action. A wait for it is bounded by a deadline and reports whether the page became stable.
@@ -129,7 +129,7 @@ The Inspector's setting for showing people what an agent does: it pauses briefly
 _Avoid_: slow mode, demo trace
 
 **Agent Connection**:
-The link between one agent's Ayme MCP server and one page, plus the App Processes paired beside it, through which the agent calls their tools. The server decides which of the page's tools the agent sees: by default its Page Object Tools, `page_objects` and Peek Tools, and also its Browser Tools, `snapshot`, `goal` and Custom Tools when started with `--browser-tools`.
+The link between one agent's Ayme MCP server and one page, plus the App Processes paired beside it, through which the agent calls their tools. The server decides which of the page's tools the agent sees: its Page Object Tools, `page_objects` and Peek Tools, and none of its Browser Tools, `snapshot`, `goal` or Custom Tools.
 
 **Agent App**:
 The program a developer runs an agent in, which starts `ayme mcp` and connects to it over MCP: Cursor, Claude Desktop, T3 Code, Claude Code. Some show an MCP App, a page the server gives them, inside the chat.
