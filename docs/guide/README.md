@@ -23,7 +23,7 @@ How to turn your app's Page Object Models into tools that coding agents and your
 - [Goals with Jev](guides/goals-with-jev.md): let a decision model drive your page toward a goal, and read the Handover it returns.
 - [Inspector](guides/inspector.md): turn on the in-page panel that shows your Page Objects, the page state and the tools, and run them by hand.
 - [Server rendering](guides/server-rendering.md): what Ayme does on the server and in the browser with Next.js, Nuxt, SvelteKit and Angular SSR.
-- [Coding agent skill](guides/coding-agent-skill.md): let a coding agent set up Ayme in your project with the `ayme` skill.
+- [Coding agent skills](guides/coding-agent-skill.md): the skills ayme ships for your coding agent, what each is for and how to install it.
 
 ## Frameworks
 
