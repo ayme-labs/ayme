@@ -28,7 +28,7 @@ import {
   failedPageObjects,
   findPageObjectsEntry,
   servedPageObjectsServer,
-  watchPageObjects,
+  startPageObjects,
   writeInitScript,
 } from "../served-page-objects";
 import {
@@ -77,10 +77,10 @@ export async function startMcpServer({
   // The external Inspector and the Page Objects entry's build are served
   // by this server, the Inspector relayed over its page channel: no other
   // server and no other port.
-  // It rebuilds as the entry's files change, and logs each outcome.
+  // It rebuilds as the entry's files change, and logs each outcome; when
+  // it cannot start, it starts again as the project's install changes.
   const build =
-    entry === undefined ? undefined : watchPageObjects(entry, log, version);
-  build?.catch((error: unknown) => log((error as Error).message));
+    entry === undefined ? undefined : startPageObjects(entry, log, version);
   const channel = createPageChannelServer({
     connection,
     token,

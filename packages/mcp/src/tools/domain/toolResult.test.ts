@@ -131,6 +131,35 @@ describe("pageObjectsNotBuilt", () => {
     expect(text).not.toContain("Make the");
   });
 
+  it("states which install files the server watches when the build could not start, and gives no advice", () => {
+    const error =
+      "Building the Page Objects entry /work/.ayme/page-objects.ts stopped: this project has @ayme-dev/ayme 0.0.1; ayme mcp 0.2.0 needs the same version.";
+    const text = pageObjectsNotBuilt({
+      entry,
+      error,
+      watching: true,
+      installFiles: ["/work/package.json", "/pnpm-lock.yaml"],
+    });
+
+    expect(text).toBe(
+      [
+        `${failed} The first error: ${error}`,
+        "The server is watching /work/package.json and /pnpm-lock.yaml for changes: it starts the build again when either changes.",
+      ].join("\n")
+    );
+    expect(text).not.toContain("not watching");
+    expect(
+      pageObjectsNotBuilt({
+        entry,
+        error,
+        watching: true,
+        installFiles: ["/work/package.json"],
+      })
+    ).toMatch(
+      /\nThe server is watching \/work\/package\.json for changes: it starts the build again when it changes\.$/
+    );
+  });
+
   it("states that the server is not watching when the build could not start", () => {
     const error = "needs @ayme-dev/ayme/compiler, which does not resolve";
     const text = pageObjectsNotBuilt({ entry, error, watching: false });

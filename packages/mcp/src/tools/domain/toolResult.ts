@@ -119,13 +119,19 @@ export function imageToolResult(
 
 /**
  * The Page Objects entry this server serves, while no build of it has
- * succeeded, the first error of its last build, and whether its build
- * watches the entry's files, which it does unless it could not start.
+ * succeeded, the first error of its last build, and whether the server
+ * watches for changes: the entry's files once the build started, or,
+ * while it could not start, `installFiles`.
  */
 export type FailedPageObjects = {
   entry: string;
   error: string;
   watching: boolean;
+  /**
+   * While the build could not start: the project's `package.json` and
+   * lockfile, on whose change the server starts it again.
+   */
+  installFiles?: readonly string[];
 };
 
 /**
@@ -137,10 +143,13 @@ export function pageObjectsNotBuilt({
   entry,
   error,
   watching,
+  installFiles,
 }: FailedPageObjects) {
-  const state = watching
-    ? "The server is watching for changes: it rebuilds the entry when a file it read changes."
-    : "The server is not watching for changes: the build could not start, so no file is watched.";
+  const state = !watching
+    ? "The server is not watching for changes: the build could not start, so no file is watched."
+    : installFiles?.length
+      ? `The server is watching ${installFiles.join(" and ")} for changes: it starts the build again when ${installFiles.length === 1 ? "it changes" : "either changes"}.`
+      : "The server is watching for changes: it rebuilds the entry when a file it read changes.";
   return [
     `The Page Objects entry ${entry} did not build, and no build of it has succeeded, so this server serves no Page Objects. The first error: ${error}`,
     state,
