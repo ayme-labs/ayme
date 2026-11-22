@@ -27,10 +27,12 @@ export const visit: TimelineAddition = {
 export const snapshot = (
   id: SnapshotId,
   at: number,
-  tree: string
+  tree: string,
+  /** The address the page was at as it was read. */
+  address = url
 ): { kind: "snapshot"; snapshot: PageSnapshot } => ({
   kind: "snapshot",
-  snapshot: { id, page: pageId("page_1"), url, at, tree },
+  snapshot: { id, page: pageId("page_1"), url: address, at, tree },
 });
 
 /** A timeline that was given these additions, in order. */

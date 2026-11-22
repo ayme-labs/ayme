@@ -229,8 +229,11 @@ function lookupOf(
   );
 }
 
-/** The address of a page with nothing loaded yet. */
-const BLANK = "about:blank";
+/** Whether a read taken at the address `read` is of the document a page at
+ * `page` shows: a change of the address's query or hash alone keeps the
+ * document, as it keeps the Visit. */
+export const sameDocument = (page: string, read: string) =>
+  !startsNewVisit(page, read);
 
 /** The reports of an input whose press can move the focus before the gate
  * holds it. */
@@ -377,11 +380,10 @@ export class Timeline {
     addition: Extract<TimelineAddition, { kind: "snapshot" }>
   ) {
     this.readAt.set(addition.snapshot.id, addition.snapshot.at);
-    // A read of the blank page, which no Visit is of, is none of the Visit
-    // of the address the page went to.
-    if (addition.snapshot.url === BLANK) return;
+    // A read of a document the page has left, as one a navigation overtook,
+    // or of the blank page, is none of the Visit of where the page went.
     const visit = this.current.get(addition.snapshot.page);
-    if (visit)
+    if (visit && sameDocument(visit.url, addition.snapshot.url))
       visit.snapshots.push({
         ...(await this.keep(visit, addition.snapshot)),
         resumes: addition.resumes === true,

@@ -18,4 +18,4 @@ export {
   type PictureRef,
   type SnapshotRef,
 } from "./refs";
-export { Timeline, type PackageHeader } from "./timeline";
+export { sameDocument, Timeline, type PackageHeader } from "./timeline";

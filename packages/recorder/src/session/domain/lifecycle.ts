@@ -18,6 +18,7 @@ import type {
   TimelineAddition,
   VisitCause,
 } from "../../timeline/domain";
+import { sameDocument } from "../../timeline/domain";
 
 /** An input a page held back, or one Playwright reported: the browser names
  * it, such as "input_3", when it tells of it. */
@@ -1427,11 +1428,12 @@ function keepRead(
       ? { kind: "snapshot", snapshot, resumes: true }
       : { kind: "snapshot", snapshot },
   });
-  // A read of the blank page that comes once the page is at an address is
-  // no read of the page as it is.
-  const stale =
-    snapshot.url === BLANK &&
-    state.pages.some((page) => page.id === snapshot.page && page.url !== BLANK);
+  // A read of a document the page has left, as one a navigation overtook,
+  // is no read of the page as it is: not of the blank page once the page is
+  // at an address, nor of an address it went on from.
+  const stale = state.pages.some(
+    (page) => page.id === snapshot.page && !sameDocument(page.url, snapshot.url)
+  );
   changeGate(draft, snapshot.page, {
     ...(stale ? {} : { latest: { id: snapshot.id, at: snapshot.at } }),
     ...(resumes ? { resumes: false } : {}),

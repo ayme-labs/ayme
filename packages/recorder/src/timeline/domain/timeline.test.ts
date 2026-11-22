@@ -649,7 +649,7 @@ describe("the timeline", () => {
         visit,
         snapshot(snapshotId("snapshot_1"), 10, idle),
         toCart,
-        snapshot(snapshotId("snapshot_2"), 20, cart),
+        snapshot(snapshotId("snapshot_2"), 20, cart, cartUrl),
         click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
           ref: pictureRef("e2"),
           tree: idle,
@@ -709,7 +709,7 @@ describe("the timeline", () => {
       visit,
       snapshot(snapshotId("snapshot_1"), 10, idle),
       toCart,
-      snapshot(snapshotId("snapshot_2"), 20, cart),
+      snapshot(snapshotId("snapshot_2"), 20, cart, cartUrl),
       click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
         ref: pictureRef("e2"),
         tree: idle,
@@ -719,8 +719,8 @@ describe("the timeline", () => {
     it("starts a Visit from the page as it stood just before its first Interaction: what it rendered before that is no change", async () => {
       const text = await packageOf([
         ...leaving,
-        snapshot(snapshotId("snapshot_3"), 30, cartWithOffer),
-        snapshot(snapshotId("snapshot_4"), 40, paid),
+        snapshot(snapshotId("snapshot_3"), 30, cartWithOffer, cartUrl),
+        snapshot(snapshotId("snapshot_4"), 40, paid, cartUrl),
         click(snapshotId("snapshot_3"), snapshotId("snapshot_4"), {
           ref: pictureRef("f1e3"),
           tree: cart,
@@ -736,7 +736,7 @@ describe("the timeline", () => {
     it("starts a Visit without Interactions from the page as it stood at the end", async () => {
       const text = await packageOf([
         ...leaving,
-        snapshot(snapshotId("snapshot_3"), 30, cartWithOffer),
+        snapshot(snapshotId("snapshot_3"), 30, cartWithOffer, cartUrl),
       ]);
 
       expect(text).toContain(
@@ -2188,13 +2188,13 @@ describe("the timeline, for discard and restore", () => {
         url: "http://shop.test/cart",
         cause: "navigate",
       },
-      snapshot(snapshotId("snapshot_2"), 20, cart),
+      snapshot(snapshotId("snapshot_2"), 20, cart, "http://shop.test/cart"),
       click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
         ref: pictureRef("e2"),
         tree: idle,
       }),
-      snapshot(snapshotId("snapshot_3"), 30, cart),
-      snapshot(snapshotId("snapshot_4"), 40, paid),
+      snapshot(snapshotId("snapshot_3"), 30, cart, "http://shop.test/cart"),
+      snapshot(snapshotId("snapshot_4"), 40, paid, "http://shop.test/cart"),
       click(snapshotId("snapshot_3"), snapshotId("snapshot_4"), {
         ref: pictureRef("f1e3"),
         tree: cart,

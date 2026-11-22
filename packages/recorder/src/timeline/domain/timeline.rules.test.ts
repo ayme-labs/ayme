@@ -402,6 +402,48 @@ describe("a read of the blank page", () => {
   });
 });
 
+describe("a read of a document the page has left", () => {
+  /** The page goes to `to`, and a read taken of the document it left comes
+   * after, then one of where it went; a click starts from the first. */
+  const leftThenRead = (to: string) => [
+    visit,
+    snapshot(snapshotId("snapshot_1"), 10, idle),
+    {
+      kind: "visit",
+      page: pageId("page_1"),
+      url: to,
+      cause: "navigate",
+    } as TimelineAddition,
+    // Its address is the one the page left: it was read before it went.
+    snapshot(snapshotId("snapshot_2"), 20, idle),
+    {
+      ...snapshot(snapshotId("snapshot_3"), 30, saved),
+      snapshot: {
+        ...snapshot(snapshotId("snapshot_3"), 30, saved).snapshot,
+        url: to,
+      },
+    },
+    click(snapshotId("snapshot_2"), snapshotId("snapshot_3"), null),
+  ];
+
+  it("is never stored in the Visit of the address the page went to: an input that started from it is not recorded there", async () => {
+    const timeline = await timelineOf(leftThenRead("http://shop.test/cart"));
+
+    expect(timeline.visits()[1]!.entries).toEqual([]);
+  });
+
+  it("is a read of the same document when the page went only to another part of it: the Visit is the same", async () => {
+    const timeline = await timelineOf(
+      leftThenRead("http://shop.test/#reviews")
+    );
+
+    expect(timeline.visits()).toHaveLength(1);
+    expect(timeline.visits()[0]!.entries).toEqual([
+      expect.objectContaining({ id: entryId("interaction_1") }),
+    ]);
+  });
+});
+
 describe("a change row's element in words, for whoever shows the entry", () => {
   it("names a removed element by its place on the page before the change, not where the change tree puts it", async () => {
     // The second of two look-alikes goes; the other moves after a third.

@@ -2935,11 +2935,15 @@ describe("the lifecycle, for a page that goes elsewhere with no held input", () 
     taken(snapshot2),
     reported,
   ];
-  const typedThere = [
+  /** A key typed at `address`, and the read it waits for, of that address. */
+  const typedThere = (address: string): Happening[] => [
     keyHeld(input2),
-    taken(snapshot3),
+    {
+      kind: "snapshotTaken",
+      snapshot: { ...snapshot(snapshot3), url: address },
+    },
     passedOn(input2, 30),
-    { kind: "interactionReported", page: page1, report: fill } as Happening,
+    { kind: "interactionReported", page: page1, report: fill },
   ];
   /** The "before" each fill is told to the timeline with. */
   const fillStarts = (todo: readonly (readonly ToDo[])[]) =>
@@ -2957,7 +2961,7 @@ describe("the lifecycle, for a page that goes elsewhere with no held input", () 
     const { todo } = run([
       ...clickedFirst,
       navigated("http://shop.test/cart"),
-      ...typedThere,
+      ...typedThere("http://shop.test/cart"),
     ]);
 
     // The key waits for a read of the new document, and starts from it.
@@ -2965,11 +2969,49 @@ describe("the lifecycle, for a page that goes elsewhere with no held input", () 
     expect(fillStarts(todo)).toEqual([snapshot3]);
   });
 
+  it("takes no read of the document the page left, coming once it went elsewhere, as its read: a key typed there starts from a read of where it went", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      settled(input1),
+      navigated("http://shop.test/cart"),
+      // Read before the page went: its address is the one it left.
+      taken(snapshot2),
+      reported,
+      ...typedThere("http://shop.test/cart"),
+    ]);
+
+    expect(todo.at(-4)).toEqual([takeSnapshot(snapshot3)]);
+    expect(fillStarts(todo)).toEqual([snapshot3]);
+  });
+
+  it("takes a read of the document, coming once the page went only to another part of it, as its read", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      settled(input1),
+      navigated(`${url}#reviews`),
+      taken(snapshot2),
+      reported,
+      keyHeld(input2),
+      passedOn(input2, 30),
+      { kind: "interactionReported", page: page1, report: fill },
+    ]);
+
+    expect(fillStarts(todo)).toEqual([snapshot2]);
+  });
+
   it("reads the document again for the first key typed once the page went only to another part of it", () => {
     const { todo } = run([
       ...clickedFirst,
       navigated(`${url}#reviews`),
-      ...typedThere,
+      ...typedThere(`${url}#reviews`),
     ]);
 
     expect(fillStarts(todo)).toEqual([snapshot3]);
@@ -4457,9 +4499,13 @@ describe("the lifecycle, for a highlight that the recorder leaves behind", () =>
 // The change analysis of the branch: rows for more than one page, which no
 // row had, and for what is told when nothing waits for it.
 // Shared by the lifecycle's tests of pages, inputs and their snapshots.
+/** Where each page is in the rows of more than one page: a read carries the
+ * address its page was at. */
+const addressOf = (page: PageId) =>
+  page === page2 ? "http://shop.test/help" : url;
 const takenOf = (id: SnapshotId, page: PageId): Happening => ({
   kind: "snapshotTaken",
-  snapshot: { ...snapshot(id), page },
+  snapshot: { ...snapshot(id), page, url: addressOf(page) },
 });
 const snap = (id: SnapshotId, page: PageId): ToDo => ({
   kind: "browser",
@@ -4467,7 +4513,10 @@ const snap = (id: SnapshotId, page: PageId): ToDo => ({
 });
 const kept = (id: SnapshotId, page: PageId): ToDo => ({
   kind: "timeline",
-  add: { kind: "snapshot", snapshot: { ...snapshot(id), page } },
+  add: {
+    kind: "snapshot",
+    snapshot: { ...snapshot(id), page, url: addressOf(page) },
+  },
 });
 const settledOn = (page: PageId, input: InputId): Happening => ({
   kind: "pageSettled",
