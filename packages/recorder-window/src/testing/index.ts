@@ -6,6 +6,7 @@ export { RecorderWindow } from "./pom/RecorderWindow";
 export {
   ChangeRow,
   Entry,
+  type EntryLook,
   Timeline,
   Visit,
   type WhatChanged,

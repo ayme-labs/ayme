@@ -21,6 +21,16 @@ export class ChangeRow extends RecorderPart {
   }
 }
 
+/** How an entry shows, apart from its words (`Entry.look`). */
+export type EntryLook = {
+  readonly opacity: string;
+  readonly fontStyle: string;
+  readonly background: string;
+  readonly border: string;
+  readonly busy: string | null;
+  readonly live: string | null;
+};
+
 /** One entry of a Visit: an Interaction, or a change no Interaction made. */
 export class Entry extends RecorderPart {
   @ayme.child
@@ -69,6 +79,22 @@ export class Entry extends RecorderPart {
         effect: (await row.effect.innerText()).trim(),
       });
     return read;
+  }
+
+  /** How the entry shows, apart from its words: whatever could mark one
+   * entry out from another, as a state of its own. */
+  async look(): Promise<EntryLook> {
+    return this.root.evaluate((entry) => {
+      const shown = getComputedStyle(entry);
+      return {
+        opacity: shown.opacity,
+        fontStyle: shown.fontStyle,
+        background: shown.backgroundColor,
+        border: shown.borderColor,
+        busy: entry.getAttribute("aria-busy"),
+        live: entry.getAttribute("aria-live"),
+      };
+    });
   }
 
   /** Whether the entry shows as left out: its title struck through. */

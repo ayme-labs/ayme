@@ -1508,11 +1508,19 @@ it("draws the highlight on every element a selector names in each frame its fram
 });
 
 it("reads the boxes of every element a selector names in one call per frame, not one per element", async () => {
+  // Two frames of ten look-alikes each: one selector names all twenty.
+  const buttons = Array.from(
+    { length: 10 },
+    (_, at) => `<button>Twin ${at}</button>`
+  ).join("");
   const browser = await onStockPlaywright(
-    Array.from({ length: 20 }, (_, at) => `<button>Twin ${at}</button>`).join(
-      ""
-    )
+    `<iframe srcdoc="${buttons}"></iframe><iframe srcdoc="${buttons}"></iframe>`
   );
+  await browser.page
+    .frameLocator("iframe")
+    .last()
+    .getByText("Twin 9")
+    .waitFor();
   await browser.ask({ kind: "startTrace" });
   await browser.toldOf("traceStarted");
 
@@ -1521,15 +1529,25 @@ it("reads the boxes of every element a selector names in one call per frame, not
     highlight: 1,
     target: {
       page: "page_1",
-      find: { by: "selector", selector: "internal:role=button" },
+      find: {
+        by: "selector",
+        selector:
+          "iframe >> internal:control=enter-frame >> internal:role=button",
+      },
     },
   });
   await browser.toldOf("highlighted");
   await browser.ask({ kind: "stopTrace", keep: true });
   const { trace } = await browser.toldOf("traceStopped");
 
+  // Each call is an action of the trace, under the locator it ran on: the
+  // boxes are read once in each frame, and no box is read element by
+  // element.
   const actions = await stockToolActions(trace.file);
-  expect(actions.match(/Bounding box/g)?.length ?? 0).toBeLessThan(2);
+  expect(actions.match(/Bounding box/g) ?? []).toEqual([]);
+  expect(
+    actions.match(/Evaluate[^\n]*\n\s+getByRole\('button'\)/g)?.length
+  ).toBe(2);
   await expect.poll(() => drawnCount(browser.page)).toBe(20);
   await rm(dirname(trace.file), { recursive: true, force: true });
 });

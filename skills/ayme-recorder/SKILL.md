@@ -88,8 +88,11 @@ a select or an upload, which the recorder does not hold back, it is when the
 recorder read the page just before it. A `kind: change` entry's `timestamp` is
 when the recorder read the page that showed the change. A trace point's
 `endedAt` is when the interaction's "after" was read. A step that left the
-page has an `endedAt` but no `afterSnapshotId`: its "after" is the next
-visit's. With no "after" at all, `endedAt` equals `startedAt`.
+page before the recorder read the page again has an `endedAt` but no
+`afterSnapshotId`: its "after" is the next visit's. Typing that made the page
+navigate after the recorder had read the page during it keeps that last read
+of its own page as its "after", with its `afterSnapshotId` and `endedAt`.
+With no "after" at all, `endedAt` equals `startedAt`.
 
 A package made by the 0.1 recorder differs in a few places; see
 [Packages from the 0.1 recorder](#packages-from-the-01-recorder).

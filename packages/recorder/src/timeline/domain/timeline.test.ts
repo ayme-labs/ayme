@@ -1159,16 +1159,24 @@ describe("the timeline, for an input known from its report", () => {
         ...earlier,
         typed("m", null, missing),
       ]);
+      const shown = entriesOf(timeline);
       await timeline.add(snapshot(snapshotId("snapshot_2"), 20, draftSaved));
       await timeline.add(typed("milk", snapshotId("snapshot_2"), missing));
+      const after = entriesOf(timeline);
 
-      expect(entriesOf(timeline)).toEqual([
-        expect.objectContaining({ id: entryId("change_1") }),
-        expect.objectContaining({
-          id: entryId("interaction_1"),
-          interaction: expect.objectContaining({ text: "milk" }),
-        }),
-      ]);
+      // The same entries in the same order; the row of what had changed by
+      // the first key as it was shown, the fill with its new text.
+      expect(after.map((entry) => entry.id)).toEqual(
+        shown.map((entry) => entry.id)
+      );
+      expect(after[0]).toEqual(shown[0]);
+      const [, fill] = shown;
+      if (fill?.kind !== "interaction") throw new Error("No fill.");
+      expect(after[1]).toMatchObject({
+        kind: "interaction",
+        interaction: { ...fill.interaction, text: "milk" },
+        targetElement: fill.targetElement,
+      });
     });
 
     /** The trace points of a timeline, every read at the place its number

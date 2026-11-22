@@ -487,20 +487,32 @@ it("shows a fill still being typed as any other step: nothing marks it", async (
   } as RecordedVisit;
   tell({ phase: "recording", visits: [typing], commands: ["stop"] });
   await expect.poll(async () => (await visits()).length).toBe(1);
-  const [fill] = await (await visits())[0]!.entries();
+  const [live] = await (await visits())[0]!.entries();
+  const shownLive = {
+    title: await live!.title.textContent(),
+    target: await live!.target.textContent(),
+    look: await live!.look(),
+  };
 
-  expect(await fill!.title.textContent()).toBe("Fill 'secret'");
-  expect(await fill!.target.textContent()).toBe("textbox “Password”");
-  expect(
-    await fill!.title.evaluate((title) => {
-      const card = title.closest("[data-entry-id], li, article") ?? title;
-      return [...card.querySelectorAll("*")].flatMap((node) =>
-        [...node.attributes]
-          .map((attribute) => attribute.name)
-          .filter((name) => /busy|live|typing|pending/.test(name))
-      );
-    })
-  ).toEqual([]);
+  // The same fill once it is final, with what it changed.
+  tell({
+    phase: "recording",
+    visits: [{ ...login, entries: [fillEntry] }],
+    commands: ["stop"],
+  });
+  await expect
+    .poll(async () =>
+      (await (await visits())[0]!.entries())[0]!.title.textContent()
+    )
+    .toBe("Fill 'secret_sauce'");
+  const [final] = await (await visits())[0]!.entries();
+
+  expect(shownLive).toEqual({
+    title: "Fill 'secret'",
+    target: "textbox “Password”",
+    look: await final!.look(),
+  });
+  expect(shownLive.look).toMatchObject({ busy: null, live: null });
 });
 
 it("offers Stop, Assert visibility, Clear and Finish while recording, and sends each", async () => {
