@@ -1844,37 +1844,35 @@ describe("the timeline, for a target the snapshot does not list", () => {
     `    - paragraph [ref=e3]: Not saved`,
   ].join("\n");
 
-  it("marks a click on its nearest ancestor that is listed, and keeps the selector of the real element", async () => {
-    // The element clicked is a decoration with no role: Playwright's picture
-    // does not list it, nor its parent, but its grandparent.
-    const text = await packageOf([
-      visit,
-      snapshot(snapshotId("snapshot_1"), 10, page),
-      snapshot(snapshotId("snapshot_2"), 20, page),
-      {
-        kind: "interaction",
-        interaction: {
-          page: pageId("page_1"),
-          report: {
-            type: "click",
-            selector: "#star",
-            target: {
-              ref: null,
-              ancestors: [
-                pictureRef("e99"),
-                pictureRef("e6"),
-                pictureRef("e5"),
-              ],
-              tree: listed,
-            },
-            values: { clickCount: 1 },
+  /** A click on a decoration with no role: Playwright's picture does not
+   * list it, nor its parent, but its grandparent. */
+  const starClicked: TimelineAddition[] = [
+    visit,
+    snapshot(snapshotId("snapshot_1"), 10, page),
+    snapshot(snapshotId("snapshot_2"), 20, page),
+    {
+      kind: "interaction",
+      interaction: {
+        page: pageId("page_1"),
+        report: {
+          type: "click",
+          selector: "#star",
+          target: {
+            ref: null,
+            ancestors: [pictureRef("e99"), pictureRef("e6"), pictureRef("e5")],
+            tree: listed,
           },
-          before: snapshotId("snapshot_1"),
-          after: snapshotId("snapshot_2"),
-          at: 15,
+          values: { clickCount: 1 },
         },
+        before: snapshotId("snapshot_1"),
+        after: snapshotId("snapshot_2"),
+        at: 15,
       },
-    ]);
+    },
+  ];
+
+  it("marks a click on its nearest ancestor that is listed, and keeps the selector of the real element", async () => {
+    const text = await packageOf(starClicked);
 
     expect(text).toContain(
       [
@@ -1884,6 +1882,15 @@ describe("the timeline, for a target the snapshot does not list", () => {
         ``,
       ].join("\n")
     );
+  });
+
+  it("lights the element itself by its selector when the step is hovered, not the ancestor it is marked on", async () => {
+    const timeline = await timelineOf(starClicked);
+
+    expect(timeline.liveTarget(entryId("interaction_1"))).toEqual({
+      page: pageId("page_1"),
+      find: { by: "selector", selector: "#star" },
+    });
   });
 
   it("writes a null target ref for a key pressed with nothing focused, and keeps its selector", async () => {

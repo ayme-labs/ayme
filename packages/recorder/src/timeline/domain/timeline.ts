@@ -11,12 +11,7 @@ import {
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
 
-import type {
-  EntryId,
-  RecordedVisit,
-  RecorderWarning,
-  TimelineEntry,
-} from "../../contract";
+import type { EntryId, RecordedVisit, RecorderWarning } from "../../contract";
 import { foundRows, type FoundRow } from "./changeRows";
 import {
   labelNear,
@@ -152,7 +147,12 @@ const changedSomething = (change: StructuralTree) =>
 
 /** An entry as the timeline keeps it, with the element each row of its
  * changes names: the one a highlight of the row looks for. */
-type Entry = KeptEntry & { readonly rows: readonly (NamedElement | null)[] };
+type Entry = KeptEntry & {
+  readonly rows: readonly (NamedElement | null)[];
+  /** Its target ref is the nearest ancestor the report's picture lists:
+   * the picture does not list the element itself. */
+  readonly byAncestor?: true;
+};
 
 /** A target in its tree, named; null when the tree does not know it. */
 const namedTarget = (tree: StructuralTree, ref: AriaRef | undefined) => {
@@ -198,18 +198,21 @@ function refNow(
 
 /** How the page is asked for an entry's target: by the ref the Visit's
  * latest snapshot gives it while the page is still on the Visit, or else
- * by its recorded selector. */
+ * by its recorded selector; by the selector first when the ref is an
+ * ancestor's, which would light more than the element. */
 function targetLookupOf(
   visit: Visit,
-  entry: TimelineEntry,
+  { entry, byAncestor }: Entry,
   left: boolean
 ): ElementLookup | null {
   if (entry.kind !== "interaction") return null;
   const { targetRef, targetSelector } = entry.interaction;
-  return (
-    refNow(visit, targetRef, left) ??
-    (targetSelector ? { by: "selector", selector: targetSelector } : null)
-  );
+  const bySelector: ElementLookup | null = targetSelector
+    ? { by: "selector", selector: targetSelector }
+    : null;
+  return byAncestor
+    ? (bySelector ?? refNow(visit, targetRef, left))
+    : (refNow(visit, targetRef, left) ?? bySelector);
 }
 
 /** How the page is asked for the element a row names: by the ref the
@@ -546,7 +549,7 @@ export class Timeline {
       const left = this.current.get(visit.page) !== visit;
       const find =
         row === undefined
-          ? targetLookupOf(visit, found.entry, left)
+          ? targetLookupOf(visit, found, left)
           : lookupOf(visit, found.rows[row], left);
       return find && { page: visit.page, find };
     }
@@ -970,6 +973,10 @@ export class Timeline {
       },
       change: changed,
       rows: told ? told.rows : [],
+      // A target the picture does not list is marked on an ancestor.
+      ...(target && interaction.report.target?.ref === null
+        ? { byAncestor: true as const }
+        : {}),
     };
   }
 
