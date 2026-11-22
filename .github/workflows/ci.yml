@@ -237,6 +237,16 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm exec turbo run build ${{ needs.changes.outputs.affected }} ${{ needs.changes.outputs.uncached_builds }}
 
+  # Reads every tracked file, so no change is outside it.
+  name:
+    name: Name check
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm run name:check
+
   static:
     name: Static checks
     needs: [changes, build]
@@ -317,7 +327,7 @@ jobs:
   # skipped and matrix jobs report under names that change with the run.
   check:
     name: Check
-    needs: [changes, build, static, unit, e2e]
+    needs: [changes, build, name, static, unit, e2e]
     if: always()
     runs-on: ubuntu-latest
     steps:
