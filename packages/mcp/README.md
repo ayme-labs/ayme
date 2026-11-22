@@ -91,7 +91,7 @@ churn. Calling an unavailable tool is refused before anything runs,
 with an error result that carries its reason, such as `RuntimeStateError:
 Panel.remove is unavailable: No item is selected.`
 
-A Page Object Tool or Custom Tool its author marked `destructive: true` is
+A Page Object Tool its author marked `destructive: true` is
 listed with `annotations: { destructiveHint: true }`, here and in
 `ayme_list_tools`. Every other page tool is listed without annotations, which
 MCP reads as possibly destructive. The server runs a marked tool like any
