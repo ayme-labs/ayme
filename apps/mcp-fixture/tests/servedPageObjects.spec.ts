@@ -368,16 +368,15 @@ test("while the entry has never built, ayme_connect and the no-page answers say 
   }
 });
 
-test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets told once, in the answer and the log, which version to install, and once it installs that version the page gets its tools", async ({
-  context,
-  page,
-  baseURL,
-}, testInfo) => {
-  const project = testInfo.outputPath("project");
+/**
+ * A project whose `.ayme` is the outside one, with a release of
+ * @ayme-dev/ayme from before its compiler entry installed in it, which
+ * resolves before the fixture's own; the repository's pnpm lockfile is the
+ * one nearest above it. With ayme mcp's version, and what ayme mcp says
+ * of the older one.
+ */
+async function projectWithOlderAyme(project: string) {
   await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
-  // A release of @ayme-dev/ayme from before its compiler entry, installed
-  // in the project, which resolves before the fixture's own. The
-  // repository's pnpm lockfile is the one nearest above the project.
   const older = join(project, "node_modules", "@ayme-dev", "ayme");
   await mkdir(older, { recursive: true });
   await writeFile(
@@ -394,10 +393,22 @@ test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets tol
   const { version } = createRequire(import.meta.url)(
     "@ayme-dev/mcp/package.json"
   ) as { version: string };
+  return {
+    version,
+    mismatch: `this project has @ayme-dev/ayme 0.0.1; ayme mcp ${version} needs the same version. Run \`pnpm add -D @ayme-dev/ayme@${version}\` in ${project}.`,
+  };
+}
+
+test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets told once, in the answer and the log, which version to install, and once it installs that version the page gets its tools", async ({
+  context,
+  page,
+  baseURL,
+}, testInfo) => {
+  const project = testInfo.outputPath("project");
+  const { version, mismatch } = await projectWithOlderAyme(project);
   const lockfile = fileURLToPath(
     new URL("../../../pnpm-lock.yaml", import.meta.url)
   );
-  const mismatch = `this project has @ayme-dev/ayme 0.0.1; ayme mcp ${version} needs the same version. Run \`pnpm add -D @ayme-dev/ayme@${version}\` in ${project}.`;
   const agent = await startAgent(
     { cwd: project },
     "--port",
@@ -416,6 +427,7 @@ test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets tol
 
     // What an install of ayme mcp's version leaves: the workspace's
     // @ayme-dev/ayme resolves, and the project's package.json names it.
+    // No answer is asked for until it has built.
     await rm(join(project, "node_modules"), { recursive: true });
     await writeFile(
       join(project, "package.json"),
@@ -438,6 +450,30 @@ test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets tol
     await expect
       .poll(() => agent.pageToolNames(), { message: agent.log })
       .toContain(PLAIN_PAGE_TOOL);
+  } finally {
+    await agent.close();
+  }
+});
+
+// Playwright reads a test's fixtures from this pattern.
+// eslint-disable-next-line no-empty-pattern
+test("after an install that writes only node_modules, the next answer no longer names the older @ayme-dev/ayme", async ({}, testInfo) => {
+  const project = testInfo.outputPath("project");
+  const { mismatch } = await projectWithOlderAyme(project);
+  const agent = await startAgent(
+    { cwd: project },
+    "--port",
+    String(await freePort())
+  );
+  try {
+    expect((await agent.call("ayme_list_tools")).text).toContain(mismatch);
+
+    await rm(join(project, "node_modules"), { recursive: true });
+    expect(await agent.call("ayme_list_tools")).toMatchObject({
+      text: "No page is connected.",
+      isError: true,
+    });
+    expect(agent.log.split(mismatch)).toHaveLength(2);
   } finally {
     await agent.close();
   }

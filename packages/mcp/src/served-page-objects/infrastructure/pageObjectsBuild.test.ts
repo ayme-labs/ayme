@@ -13,6 +13,7 @@ import * as esbuild from "esbuild";
 import { expect, it, vi } from "vitest";
 
 import { PageObjectsBuildError, buildErrorLine } from "../domain/buildFailure";
+import { ENTRY_MODULE } from "../domain/servedPageObjects";
 import {
   buildOutcomes,
   failedPageObjects,
@@ -20,6 +21,7 @@ import {
   type PageObjectsBuild,
   PageObjectsNotStarted,
   startPageObjects,
+  watchFiles,
   watchPageObjects,
 } from "./pageObjectsBuild";
 
@@ -103,85 +105,221 @@ it("gives why the build has not started, and the install files it watches to sta
   });
 });
 
-/** A project folder with a `package.json` and a pnpm lockfile, and its entry. */
-async function installedProject() {
+/**
+ * A project with a Page Objects entry, a `package.json` and a pnpm
+ * lockfile, and `install`, which installs a fake `@ayme-dev/ayme` of a
+ * version as a package manager would: by pointing its folder at another
+ * copy, as pnpm does, or by writing over it.
+ */
+async function aymeProject() {
   const project = await realpath(
     await mkdtemp(join(tmpdir(), "ayme-install-"))
   );
+  const entry = join(project, ".ayme", "page-objects.ts");
+  await mkdir(dirname(entry), { recursive: true });
+  await writeFile(entry, "export default {};\n");
   await writeFile(join(project, "package.json"), "{}");
   await writeFile(join(project, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
-  return { project, entry: join(project, ".ayme", "page-objects.ts") };
+  const installed = join(project, "node_modules", "@ayme-dev", "ayme");
+  const install = async (
+    version: string,
+    how: "repoint" | "replace" = "replace"
+  ) => {
+    const target =
+      how === "repoint" ? join(project, "store", version) : installed;
+    // The compiler entry came after the first releases.
+    const compiler = version !== "0.0.1";
+    await mkdir(target, { recursive: true });
+    await writeFile(
+      join(target, "package.json"),
+      JSON.stringify({
+        name: "@ayme-dev/ayme",
+        version,
+        type: "module",
+        exports: {
+          ".": "./index.mjs",
+          ...(compiler ? { "./compiler": "./compiler.mjs" } : {}),
+        },
+      })
+    );
+    await writeFile(join(target, "index.mjs"), "export const ayme = 1;\n");
+    if (compiler)
+      await writeFile(
+        join(target, "compiler.mjs"),
+        `export class PomCompileError extends Error {}
+export const createPomCompiler = () => ({ compile: () => null, invalidate() {} });
+`
+      );
+    if (how === "repoint") {
+      await mkdir(dirname(installed), { recursive: true });
+      await rm(installed, { recursive: true, force: true });
+      await symlink(target, installed, "dir");
+    }
+  };
+  return {
+    project,
+    entry,
+    install,
+    packageJson: join(project, "package.json"),
+    lockfile: join(project, "pnpm-lock.yaml"),
+    remove: () => rm(project, { recursive: true, force: true }),
+  };
 }
 
-it("after a failed start, starts the build again when the project's lockfile or package.json changes, and stops watching once it starts", async () => {
-  const { project, entry } = await installedProject();
-  const built = new Map([["entry.js", "export default {}"]]);
-  const close = vi.fn(async () => {});
-  const start = vi
-    .fn<typeof watchPageObjects>()
-    .mockRejectedValueOnce(new Error("this project has @ayme-dev/ayme 0.0.1"))
-    .mockRejectedValueOnce(new Error("this project has @ayme-dev/ayme 0.0.2"))
-    .mockResolvedValue({
-      modules: async () => built,
-      onBuilt: () => () => {},
-      close,
-    });
+/** A file watcher the test fires by hand, and whether it is watching. */
+function handWatch() {
+  const watcher = {
+    files: [] as readonly string[],
+    watching: false,
+    change: () => {},
+    watch: (files: readonly string[], changed: () => void) => {
+      watcher.files = files;
+      watcher.change = changed;
+      watcher.watching = true;
+      return () => (watcher.watching = false);
+    },
+  };
+  return watcher;
+}
+
+for (const how of ["repoint", "replace"] as const) {
+  it(`a start after an install that ${how}s the project's @ayme-dev/ayme reads the new install`, async () => {
+    const { entry, install, remove } = await aymeProject();
+    try {
+      await install("0.0.1", how);
+      await expect(watchPageObjects(entry, () => {}, "0.2.0")).rejects.toThrow(
+        "this project has @ayme-dev/ayme 0.0.1"
+      );
+
+      await install("0.2.0", how);
+      const build = await watchPageObjects(entry, () => {}, "0.2.0");
+      try {
+        expect((await build.modules()).has(ENTRY_MODULE)).toBe(true);
+      } finally {
+        await build.close();
+      }
+    } finally {
+      await remove();
+    }
+  });
+}
+
+it("after a failed start, starts the build again when an install file changes, keeps watching the lockfile while it is gone, and stops watching once started", async () => {
+  const { entry, install, packageJson, lockfile, remove } = await aymeProject();
+  const watcher = handWatch();
   const logged: string[] = [];
-  const build = startPageObjects(entry, (m) => logged.push(m), "0.2.0", start);
-  const onBuilt = vi.fn();
-  (await build).onBuilt(onBuilt);
-
-  await expect
-    .poll(() => failedPageObjects(entry, build))
-    .toEqual({
+  let build: PageObjectsBuild | undefined;
+  try {
+    await install("0.0.1");
+    build = await startPageObjects(
       entry,
-      error: "this project has @ayme-dev/ayme 0.0.1",
+      (message) => logged.push(message),
+      "0.2.0",
+      watcher.watch
+    );
+    const onBuilt = vi.fn();
+    build.onBuilt(onBuilt);
+    expect(await failedPageObjects(entry, Promise.resolve(build))).toEqual({
+      entry,
+      error: expect.stringContaining("this project has @ayme-dev/ayme 0.0.1"),
       watching: true,
-      installFiles: [
-        join(project, "package.json"),
-        join(project, "pnpm-lock.yaml"),
-      ],
+      installFiles: [packageJson, lockfile],
     });
-  expect(logged).toEqual(["this project has @ayme-dev/ayme 0.0.1"]);
+    expect(logged).toHaveLength(1);
 
-  await writeFile(
-    join(project, "pnpm-lock.yaml"),
-    "lockfileVersion: '9.0'\n\n"
-  );
-  await expect
-    .poll(async () => (await failedPageObjects(entry, build))?.error)
-    .toBe("this project has @ayme-dev/ayme 0.0.2");
-  expect(logged).toEqual([
-    "this project has @ayme-dev/ayme 0.0.1",
-    "this project has @ayme-dev/ayme 0.0.2",
-  ]);
+    // An install that removes the lockfile and fails.
+    await rm(lockfile);
+    watcher.change();
+    await expect.poll(() => logged).toHaveLength(2);
+    expect(watcher.files).toEqual([packageJson, lockfile]);
 
-  await writeFile(join(project, "package.json"), '{"devDependencies":{}}');
-  await expect.poll(() => failedPageObjects(entry, build)).toBeUndefined();
-  expect(await (await build).modules()).toBe(built);
-  expect(onBuilt).toHaveBeenCalledWith(built);
+    await install("0.2.0");
+    watcher.change();
+    await expect
+      .poll(() => failedPageObjects(entry, Promise.resolve(build!)))
+      .toBeUndefined();
+    expect(onBuilt).toHaveBeenCalledWith(await build.modules());
+    expect(watcher.watching).toBe(false);
+  } finally {
+    await build?.close();
+    await remove();
+  }
+});
 
-  await writeFile(join(project, "package.json"), "{}");
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  expect(start).toHaveBeenCalledTimes(3);
-  await (await build).close();
-  expect(close).toHaveBeenCalled();
+it("an answer while the build has not started checks the install again: unchanged, it logs nothing; changed, it starts the build again", async () => {
+  const { entry, install, remove } = await aymeProject();
+  const logged: string[] = [];
+  let build: PageObjectsBuild | undefined;
+  try {
+    await install("0.0.1");
+    // No file change reaches it: an install that writes only node_modules.
+    build = await startPageObjects(
+      entry,
+      (message) => logged.push(message),
+      "0.2.0",
+      handWatch().watch
+    );
+    const answer = () => failedPageObjects(entry, Promise.resolve(build!));
+    expect((await answer())?.error).toContain("@ayme-dev/ayme 0.0.1");
+    expect((await answer())?.error).toContain("@ayme-dev/ayme 0.0.1");
+    expect(logged).toHaveLength(1);
+
+    await install("0.1.0");
+    expect((await answer())?.error).toContain("@ayme-dev/ayme 0.1.0");
+    expect(logged).toHaveLength(2);
+
+    await install("0.2.0");
+    expect(await answer()).toBeUndefined();
+  } finally {
+    await build?.close();
+    await remove();
+  }
 });
 
 it("stops watching the install files once closed", async () => {
-  const { project, entry } = await installedProject();
-  const start = vi
-    .fn<typeof watchPageObjects>()
-    .mockRejectedValue(new Error("does not resolve"));
-  const build = startPageObjects(entry, () => {}, "0.2.0", start);
-  await expect
-    .poll(async () => (await failedPageObjects(entry, build))?.watching)
-    .toBe(true);
+  const { entry, install, remove } = await aymeProject();
+  const watcher = handWatch();
+  const logged: string[] = [];
+  try {
+    await install("0.0.1");
+    const build = await startPageObjects(
+      entry,
+      (message) => logged.push(message),
+      "0.2.0",
+      watcher.watch
+    );
+    expect(watcher.watching).toBe(true);
 
-  await (await build).close();
-  await writeFile(join(project, "pnpm-lock.yaml"), "changed\n");
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  expect(start).toHaveBeenCalledTimes(1);
+    await build.close();
+    expect(watcher.watching).toBe(false);
+    watcher.change();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(logged).toHaveLength(1);
+  } finally {
+    await remove();
+  }
+});
+
+it("watches files that are written, removed and created again", async () => {
+  const folder = await mkdtemp(join(tmpdir(), "ayme-watch-"));
+  const lockfile = join(folder, "pnpm-lock.yaml");
+  await writeFile(lockfile, "a");
+  const changed = vi.fn();
+  const stop = watchFiles([lockfile], changed);
+  try {
+    // On macOS, a watch misses what is written as it starts.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await writeFile(join(folder, "other.txt"), "a");
+    await writeFile(lockfile, "b");
+    await expect.poll(() => changed.mock.calls.length).toBeGreaterThan(0);
+    await rm(lockfile);
+    changed.mockClear();
+    await writeFile(lockfile, "c");
+    await expect.poll(() => changed.mock.calls.length).toBeGreaterThan(0);
+  } finally {
+    stop();
+    await rm(folder, { recursive: true, force: true });
+  }
 });
 
 it("gives the message of another error the started build rejects with", async () => {

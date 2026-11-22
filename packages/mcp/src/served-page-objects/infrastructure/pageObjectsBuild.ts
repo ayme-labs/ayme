@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, realpathSync, watch } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -94,17 +93,18 @@ const SETTLED_MS = 100;
 /**
  * The build of `entry`, started as {@link watchPageObjects} starts it. When
  * it cannot start, for instance while the project's `@ayme-dev/ayme` is
- * another version than `version` or does not resolve, it logs why, watches
- * the project's `package.json` and nearest lockfile, and starts it again
- * when either changes, until it starts or is closed. Until then
- * `modules()` rejects with a {@link PageObjectsNotStarted}, and
+ * another version than `version` or does not resolve, it logs why and
+ * starts it again: when the project's `package.json` or nearest lockfile
+ * changes (`watch` watches them), and when `modules()` is asked and the
+ * project's `@ayme-dev/ayme` no longer is what the last start found. Until
+ * it starts, `modules()` rejects with a {@link PageObjectsNotStarted}, and
  * `onBuilt` listeners hear the builds of the build that starts.
  */
 export async function startPageObjects(
   entry: string,
   log: (message: string) => void,
   version: string,
-  start: typeof watchPageObjects = watchPageObjects
+  watch: typeof watchFiles = watchFiles
 ): Promise<PageObjectsBuild> {
   const folder = dirname(entry);
   const listeners = new Set<(modules: BuiltModules) => void>();
@@ -114,40 +114,63 @@ export async function startPageObjects(
     lastHeard = modules;
     for (const listener of listeners) listener(modules);
   };
+  const problemNow = async () => {
+    const found = await projectAyme(entry, version);
+    return "problem" in found ? found.problem : undefined;
+  };
   let started: PageObjectsBuild | undefined;
-  let notStarted: PageObjectsNotStarted | undefined;
+  /**
+   * Why the last start failed, what was wrong with the project's
+   * `@ayme-dev/ayme` then, and the install files watched since.
+   */
+  let failure:
+    | { message: string; problem: string | undefined; watched: string[] }
+    | undefined;
   let stopWatching = () => {};
   let closed = false;
   let attempt: Promise<void> | undefined;
   let settling: NodeJS.Timeout | undefined;
+  // A change during an attempt starts another once it ends.
+  let changedMeanwhile = false;
   const tryStart = async () => {
+    let problem: string | undefined;
     try {
-      const build = await start(entry, log, version);
+      problem = await problemNow();
+      const build = await watchPageObjects(entry, log, version);
       if (closed) return void (await build.close());
       stopWatching();
       started = build;
-      notStarted = undefined;
+      failure = undefined;
       build.onBuilt(hear);
       build.modules().then(hear, () => {});
     } catch (error) {
       const message = (error as Error).message;
       log(message);
       stopWatching();
-      if (closed) return;
-      const files = installFiles(folder);
-      try {
-        stopWatching = watchFiles(files, () => {
-          clearTimeout(settling);
-          settling = setTimeout(retry, SETTLED_MS);
-        });
-        notStarted = new PageObjectsNotStarted(message, files);
-      } catch {
-        notStarted = new PageObjectsNotStarted(message, []);
-      }
+      const watched: string[] = [];
+      if (!closed)
+        try {
+          // A file watched before stays watched, so that a lockfile an
+          // install removes is watched when it writes it again.
+          for (const file of [
+            ...(failure?.watched ?? []),
+            ...installFiles(folder),
+          ])
+            if (!watched.includes(file)) watched.push(file);
+          stopWatching = watch(
+            watched,
+            () => {
+              clearTimeout(settling);
+              settling = setTimeout(retry, SETTLED_MS);
+            },
+            () => (watched.length = 0)
+          );
+        } catch {
+          watched.length = 0;
+        }
+      failure = { message, problem, watched };
     }
   };
-  // A change during an attempt starts another once it ends.
-  let changedMeanwhile = false;
   const retry = () => {
     if (started !== undefined || closed) return;
     if (attempt !== undefined) return void (changedMeanwhile = true);
@@ -159,13 +182,24 @@ export async function startPageObjects(
       }
     });
   };
+  const attempted = async () => {
+    while (attempt !== undefined) await attempt;
+  };
   retry();
-  await attempt;
+  await attempted();
   return {
     async modules() {
-      await attempt;
+      await attempted();
+      if (
+        started === undefined &&
+        !closed &&
+        (await problemNow()) !== failure!.problem
+      ) {
+        retry();
+        await attempted();
+      }
       if (started !== undefined) return started.modules();
-      throw notStarted!;
+      throw new PageObjectsNotStarted(failure!.message, failure!.watched);
     },
     onBuilt(listener) {
       listeners.add(listener);
@@ -175,18 +209,22 @@ export async function startPageObjects(
       closed = true;
       clearTimeout(settling);
       stopWatching();
-      await attempt;
+      await attempted();
       await started?.close();
     },
   };
 }
 
 /**
- * Calls `changed` whenever one of `files` is written, created or removed;
- * returns how to stop. Watches each file's folder, so a file that does not
- * exist yet is watched too.
+ * Calls `changed` whenever one of `files` is written, created or removed,
+ * and `failed` if watching stops on its own; returns how to stop. Watches
+ * each file's folder, so a file that does not exist yet is watched too.
  */
-function watchFiles(files: readonly string[], changed: () => void) {
+export function watchFiles(
+  files: readonly string[],
+  changed: () => void,
+  failed: () => void = () => {}
+): () => void {
   const names = new Map<string, Set<string>>();
   for (const file of files)
     names.set(
@@ -200,8 +238,11 @@ function watchFiles(files: readonly string[], changed: () => void) {
       const watcher = watch(folder, (_event, name) => {
         if (name === null || inFolder.has(String(name))) changed();
       });
-      // A watched folder that goes away stops its watcher, not the server.
-      watcher.on("error", () => watcher.close());
+      // A watched folder that goes away stops the watching, not the server.
+      watcher.on("error", () => {
+        stop();
+        failed();
+      });
       watchers.push(watcher);
     }
   } catch (error) {
@@ -247,17 +288,10 @@ export async function watchPageObjects(
   version: string
 ): Promise<PageObjectsBuild> {
   const folder = dirname(entry);
-  // Read through the main entry, which every release exports, so that a
-  // release without the compiler entry gets the same answer.
-  const mismatch = aymeVersionMismatch({
-    entry,
-    project: packageVersion(resolveFrom(folder, RUNTIME, entry), RUNTIME),
-    mcp: version,
-    install: projectInstall(folder),
-  });
-  if (mismatch !== undefined) throw new Error(mismatch);
+  const found = await projectAyme(entry, version);
+  if ("problem" in found) throw new Error(found.problem);
   const { createPomCompiler, PomCompileError } =
-    await importFile<PomCompilerEntry>(resolveFrom(folder, COMPILER, entry));
+    await importFile<PomCompilerEntry>(found.compiler);
   // Nothing is written there: the outputs stay in memory.
   const outdir = join(folder, "ayme-served");
   const outcomes = buildOutcomes({ entry, folder, outdir, log });
@@ -538,7 +572,15 @@ const BYTE_ORDER_MARK = Buffer.from([0xef, 0xbb, 0xbf]);
 export async function failedPageObjects(
   entry: string,
   build: Promise<PageObjectsBuild>
-): Promise<{ entry: string; error: string; watching: boolean } | undefined> {
+): Promise<
+  | {
+      entry: string;
+      error: string;
+      watching: boolean;
+      installFiles?: readonly string[];
+    }
+  | undefined
+> {
   let started: PageObjectsBuild;
   try {
     started = await build;
@@ -586,14 +628,75 @@ function runtimeEntry(folder: string): esbuild.Plugin {
   };
 }
 
-function resolveFrom(folder: string, specifier: string, entry: string) {
-  try {
-    return createRequire(join(folder, "index.js")).resolve(specifier);
-  } catch {
-    throw new Error(
-      `Building the Page Objects entry ${entry} needs ${specifier}, which does not resolve from ${folder}.`
-    );
-  }
+/**
+ * The compiler entry of the project's `@ayme-dev/ayme`, resolved from the
+ * folder of `entry`, or why it does not build `entry`: it does not
+ * resolve, or it is not version `version`. Its version is read through the
+ * main entry, which every release exports, so that a release without the
+ * compiler entry gets the same answer. Both are resolved afresh on each
+ * call, unlike Node's resolver, which keeps what it resolved for the life
+ * of the process, so a call after an install finds what it installed.
+ */
+async function projectAyme(
+  entry: string,
+  version: string
+): Promise<{ compiler: string } | { problem: string }> {
+  const folder = dirname(entry);
+  const resolved = await resolveAfresh(folder, [RUNTIME, COMPILER]);
+  const doesNotResolve = (specifier: string) => ({
+    problem: `Building the Page Objects entry ${entry} needs ${specifier}, which does not resolve from ${folder}.`,
+  });
+  const runtime = resolved.get(RUNTIME);
+  if (runtime === undefined) return doesNotResolve(RUNTIME);
+  const mismatch = aymeVersionMismatch({
+    entry,
+    project: packageVersion(runtime, RUNTIME),
+    mcp: version,
+    install: projectInstall(folder),
+  });
+  if (mismatch !== undefined) return { problem: mismatch };
+  const compiler = resolved.get(COMPILER);
+  return compiler === undefined ? doesNotResolve(COMPILER) : { compiler };
+}
+
+/** Each of `specifiers` that resolves from `folder` as an import, by esbuild, which keeps nothing between builds. */
+async function resolveAfresh(
+  folder: string,
+  specifiers: readonly string[]
+): Promise<Map<string, string>> {
+  const resolved = new Map<string, string>();
+  const probe = Symbol("resolving");
+  await esbuild.build({
+    stdin: {
+      contents: specifiers
+        .map((s) => `import ${JSON.stringify(s)};`)
+        .join("\n"),
+      resolveDir: folder,
+    },
+    bundle: true,
+    write: false,
+    platform: "node",
+    format: "esm",
+    logLevel: "silent",
+    plugins: [
+      {
+        name: "ayme-resolve-afresh",
+        setup(build) {
+          build.onResolve({ filter: /.*/ }, async ({ path, pluginData }) => {
+            if (pluginData === probe || !specifiers.includes(path)) return;
+            const result = await build.resolve(path, {
+              kind: "import-statement",
+              resolveDir: folder,
+              pluginData: probe,
+            });
+            if (result.errors.length === 0) resolved.set(path, result.path);
+            return { path, external: true };
+          });
+        },
+      },
+    ],
+  });
+  return resolved;
 }
 
 /**
@@ -643,15 +746,12 @@ function projectInstall(folder: string): ProjectInstall {
 
 /** The lockfile nearest above `folder`, from `folder` itself up, if any. */
 function nearestLockfile(folder: string) {
-  const lockfileIn = (current: string) =>
-    LOCKFILES.find(([lockfile]) => existsSync(join(current, lockfile)));
-  const lockfileFolder = nearestAbove(
-    folder,
-    (current) => lockfileIn(current) !== undefined
-  );
-  if (lockfileFolder === undefined) return undefined;
-  const [name, packageManager] = lockfileIn(lockfileFolder)!;
-  return { folder: lockfileFolder, name, packageManager };
+  for (let current = folder; ; current = dirname(current)) {
+    const found = LOCKFILES.find(([name]) => existsSync(join(current, name)));
+    if (found !== undefined)
+      return { folder: current, name: found[0], packageManager: found[1] };
+    if (dirname(current) === current) return undefined;
+  }
 }
 
 /** The nearest folder from `folder` up for which `found` holds, if any. */
