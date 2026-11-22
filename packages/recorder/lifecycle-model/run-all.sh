@@ -28,12 +28,14 @@ one Chart-Fill view-fill.mjs
 for c in Rules Rules-Pages Rules-Rounds Rules-Ends Surfaces TimeLimit TimeLimit-Holds \
          Rules-StartRecording Path-StartRecording-Stop Path-StartRecording-BlankPage \
          Path-StartRecording-Continue \
-         Rule7 Rule7-Strict Rule7-Navigation Rule7-StartRecording Rule7-AssertThenType Fold-AfterStep Rules-WithoutB2 \
+         Rule7 Rule7-Strict Rule7-Navigation Rule7-StartRecording Rule7-AssertThenType \
+         Rule7-TypeAfterStopOnNewPage Fold-AfterStep Rules-WithoutB2 \
          Limit-TypingThenTyping Limit-ClosedPageWaits Limit-BlankPageInput \
          Path-AfterStop Path-StopClickCtrlC Path-HeldKeyAfterStop Path-PickOnNewPage \
-         Path-PickOnNewPage-NextClick Path-TypingAfterContinue \
+         Path-PickOnNewPage-NextClick Path-TypingAfterContinue Path-NavigationThenType \
          Races Race-LateRevision Race-LateRevision-Stop Race-LateTypingReport Race-LastText \
          Race-ClickLostAfterStop Race-ClickAfterPicking Race-HeldMessageAfterStop \
+         Race-NavigationBeforeTypingReport \
          Clicks-Middle Clicks-Middle-Fill Clicks-MiddleOnCheckbox Clicks-Mixed \
          Probes Probes-Discard Probes-Clear Probes-Window Probes-Window-Navigation Probes-Continue Probes-LateRevision; do
   one "$c"

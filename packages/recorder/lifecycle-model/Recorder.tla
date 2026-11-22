@@ -54,6 +54,15 @@ CONSTANTS
   ContinueOnBlank,\* with StartBlank: Continue may be pressed while the page is
               \* still blank; not a fix: off, it leaves a path out, to check
               \* every other one
+  PageNavigates,\* the page may go elsewhere with no held input making it go:
+              \* the browser's Back button, a redirect
+  NavAfterReports,\* a page commits a navigation only once the report of what
+              \* was typed in the document it leaves is in (off: the race of
+              \* config Race-NavigationBeforeTypingReport)
+  TypeAfterStopOnNewPage,\* during a wrap-up, with the pages no longer holding,
+              \* a key may be typed in a document the recorder has not read
+              \* yet; not a fix: off, it leaves that path out (config
+              \* Rule7-TypeAfterStopOnNewPage), to check every other one
   Buttons     \* what the person clicks with: a subset of {"left", "right",
               \* "middle", "leftOnCheckbox", "middleOnCheckbox"}; Playwright
               \* reports a click on a checkbox as a check, which names no button
@@ -339,7 +348,8 @@ GiveSnap(s, o, t) ==
   ELSE
      IF s.stage[e] # "takingBefore" THEN s
      ELSE CASE s.ent[e] = "assert" ->
-                 [s EXCEPT !.stage[e] = "settled", !.bsnap[e] = t, !.asnap[e] = t]
+                 IF s.bsnap[e] # 0 THEN [s EXCEPT !.stage[e] = "settled"]
+                 ELSE [s EXCEPT !.stage[e] = "settled", !.bsnap[e] = t, !.asnap[e] = t]
             [] s.ent[e] = "rep" -> [s EXCEPT !.stage[e] = "settling", !.bsnap[e] = t]
             [] OTHER -> [s EXCEPT !.stage[e] = "passingOn", !.bsnap[e] = t,
                                   !.passReq[In(e)] = TRUE,
@@ -351,13 +361,9 @@ GiveAll(s, os, t) ==
   ELSE LET o == CHOOSE x \in os : TRUE IN GiveAll(GiveSnap(s, o, t), os \ {o}, t)
 
 \* L snapshotTaken
-\* A read whose every request was dropped (<<e, "x">>, StartRep) belongs to
-\* nothing: it is not kept, and it is not the page's latest read.
 SnapIn(s, r, t) ==
-  IF r # {} /\ \A o \in r : o[2] = "x" THEN [s EXCEPT !.pend = Tail(@)]
-  ELSE
   LET s1 == [s EXCEPT !.pend = Tail(@), !.pgLatest = t, !.keptSn = @ \cup {t}]
-      s2 == GiveAll(s1, {o \in r : o[1] # 0 /\ o[2] # "x"}, t)
+      s2 == GiveAll(s1, {o \in r : o[1] # 0}, t)
   IN IF <<0, "final">> \in r THEN [s2 EXCEPT !.finals = "in"] ELSE s2
 
 \* L startNext
@@ -376,21 +382,18 @@ ShareWithOpen(s, o, e) ==
 
 \* L startReported. <<found a start now, new state>>
 \* An assertion ahead whose one read is still being taken, with nothing else
-\* ahead but inputs known from their report, is written at the page's latest
-\* read, and its read is dropped (12c8bf83): this input does not start after
-\* its first key.
-DropAsk(P, R) ==
-  [k \in DOMAIN P |-> {IF o[1] \in R /\ o[2] = "b" THEN <<o[1], "x">> ELSE o : o \in P[k]}]
+\* ahead but inputs known from their report, is placed at the page's latest
+\* read, and this input starts there too (12c8bf83, 0380307f): it does not
+\* start after its first key. The assertion still waits for its own read, and
+\* settles at it where it was placed (L giveSnapshot, targetRead).
 StartRep(s0, e) ==
   LET ahead0 == {f \in Elems(s0.lst) : Pos(s0, f) < Pos(s0, e) /\ s0.stage[f] # "settled"
                                       /\ s0.ent[f] # "key"}
       reading == {f \in ahead0 : s0.ent[f] = "assert" /\ s0.stage[f] = "takingBefore"}
       fold == s0.pgLatest # 0 /\ reading # {} /\ \A f \in ahead0 : s0.ent[f] = "rep" \/ f \in reading
       s == IF ~fold THEN s0
-           ELSE [s0 EXCEPT !.stage = [f \in DOMAIN s0.stage |-> IF f \in reading THEN "settled" ELSE s0.stage[f]],
-                           !.bsnap = [f \in DOMAIN s0.bsnap |-> IF f \in reading THEN s0.pgLatest ELSE s0.bsnap[f]],
-                           !.asnap = [f \in DOMAIN s0.asnap |-> IF f \in reading THEN s0.pgLatest ELSE s0.asnap[f]],
-                           !.pend = DropAsk(s0.pend, reading)]
+           ELSE [s0 EXCEPT !.bsnap = [f \in DOMAIN s0.bsnap |-> IF f \in reading THEN s0.pgLatest ELSE s0.bsnap[f]],
+                           !.asnap = [f \in DOMAIN s0.asnap |-> IF f \in reading THEN s0.pgLatest ELSE s0.asnap[f]]]
       ahead == IF fold THEN ahead0 \ reading ELSE ahead0 IN
   IF \E f \in ahead : s.ent[f] # "rep" THEN <<FALSE, s>>
   ELSE IF ahead # {} THEN <<FALSE, ShareWithOpen(s, Last(s, ahead), e)>>
@@ -1185,6 +1188,7 @@ TypeHeld(i) ==
 TypeReaches(i) ==
   /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ mode # "pick"
   /\ ~holdPg /\ ~BlankHere
+  /\ (TypeAfterStopOnNewPage \/ ~(phase = "wrap" /\ pgLatest = 0))
   /\ LeaveOutB2 => ~TypingOpen
   /\ kind' = [kind EXCEPT ![i] = "type"]
   /\ made' = [made EXCEPT ![i] = MadeNow]
@@ -1400,18 +1404,19 @@ TimeLimitPasses ==
 \* Playwright's mode, so the latest says whether it picks now).
 NavCommits ==
   /\ Alive /\ page = "open" /\ navFlying
+  /\ NavAfterReports => ~\E k \in Inputs : kind[k] = "type" /\ ev[k] = "flying" /\ made[k].doc = doc
   /\ doc' = doc + 1 /\ navFlying' = FALSE
   /\ gateOn' = gateStart /\ pickPg' = (mode = "pick") /\ unpick' = FALSE
   \* While paused, the timeline is told the page went elsewhere (L
   \* pageNavigated, "elsewhere"): it adds no entry, and the next Visit starts
   \* with the new document, as here.
-  \* A page that leaves the blank page while recording forgets its latest
-  \* read (L pageNavigated, unread): a key typed at its address first waits
-  \* for a read of it. (L snapshotTaken also leaves out a read of the blank
-  \* page heard after it left; here a read and its answer are one step.)
+  \* While recording or wrapping up, a page forgets its latest read at every
+  \* navigation (L pageNavigated, unread; c5305756): a key typed in the new
+  \* document first waits for a read of it. (L snapshotTaken also leaves out
+  \* a read of the blank page heard after it left; here a read and its answer
+  \* are one step.)
   /\ Commit(IF Active(Eng)
-            THEN Proceed([Eng EXCEPT !.holdPg = gateStart,
-                                     !.pgLatest = IF BlankHere THEN 0 ELSE @], FALSE)
+            THEN Proceed([Eng EXCEPT !.holdPg = gateStart, !.pgLatest = 0], FALSE)
             ELSE [Eng EXCEPT !.holdPg = gateStart])
   /\ tb' = IF Surfaces THEN "loading" ELSE tb
   /\ tbAns' = "none"
@@ -1492,7 +1497,16 @@ EngineNext ==
 
 SurfaceNext == BridgeAnswers \/ AnswerLands \/ WindowCatchesUp \/ YouReloadWindow
 
-Next == EngineNext \/ NavCommits \/ PageCloses \/ SurfaceNext \/ Ended
+\* The page goes elsewhere with no held input making it go, as by the browser's
+\* Back button or a redirect (PageNavigates).
+PageGoesElsewhere ==
+  /\ PageNavigates /\ Alive /\ page = "open" /\ ~navFlying /\ doc < MaxDoc /\ ~BlankHere
+  /\ navFlying' = TRUE
+  /\ UNCHANGED <<engVars, page, doc, gateOn, gateStart, pickPg, unpick, mode, tracing, clock,
+                 docOf, seen, personVars, surfVars, miscVars>>
+  /\ Publish
+
+Next == EngineNext \/ NavCommits \/ PageCloses \/ PageGoesElsewhere \/ SurfaceNext \/ Ended
 
 \* Steps that need nobody to press anything, the time limit left out.
 OnItsOwn ==
@@ -1670,6 +1684,13 @@ D1_TypingWaitsForSomethingNewer ==
 \* shows the timeline's rows (newT). A fill is an entry of typing known from
 \* its report only; a choice and an upload act the same, with no more keys.
 IsFillEntry(e) == ent[e] = "rep" /\ kind[In(e)] = "type"
+
+\* A fill starts from a read of the document it was typed in, so it lands in
+\* that document's Visit, never in the Visit of a document the page left
+\* (c5305756; config Path-NavigationThenType).
+X10_FillStartsInItsDocument ==
+  \A e \in (tl \cup Elems(lst)) \cap Inputs :
+    (IsFillEntry(e) /\ bsnap[e] # 0) => DocAt(bsnap[e]) = made[e].doc
 WRows == newT.rows
 \* The next row of the same Visit after row k, or 0.
 NextInDoc(k) ==

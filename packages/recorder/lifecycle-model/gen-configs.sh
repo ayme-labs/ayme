@@ -3,7 +3,7 @@
 # Constants, in order:
 #   N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick
 #   LateRevisions LeaveOutB2 LateTypingReport, then after what to check, when
-#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank
+#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage
 # LeaveOutB2 leaves a known limit out, to check every other path of the same
 # rule; it is not a fix. LateRevisions, LateTypingReport, SlowFlush,
 # SlowPickEnd and SlowHeldMessage allow five races. Buttons is what the person
@@ -12,7 +12,7 @@
 # as have clicks on a checkbox, which Playwright reports as a check. Deadlock is not
 # checked: a state where nothing is left to do is often a bound of the model
 # (no more Record). X4 checks that a wrap-up ends.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit 2
 # The rules that hold at a person's speed. The rules that break are checked
 # in configs of their own (Limit-*, Race-*), one shortest path each, so that a
 # break does not cut the other rules' runs short (the statechart tool bounds
@@ -28,10 +28,10 @@ MIX='{"left", "right", "middle", "leftOnCheckbox", "middleOnCheckbox"}'
 RULES="$HOLD X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 PROBES="P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten"
 WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow"
-mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank]
+mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage]
   name=$1; head=$2; shift 2
   laterev=${12}; lob2=${13}; latetype=${14}; what=${15}
-  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}
+  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}; pagenavigates=${23:-FALSE}; navafterreports=${24:-TRUE}; typeafterstop=${25:-TRUE}
   {
     printf '%s\n' "$head"
     cat <<CFG
@@ -56,11 +56,14 @@ CONSTANTS
   StartBlank = $startblank
   ActOnBlank = $actonblank
   ContinueOnBlank = $continueonblank
+  PageNavigates = $pagenavigates
+  NavAfterReports = $navafterreports
+  TypeAfterStopOnNewPage = $typeafterstop
   Buttons = $buttons
 CHECK_DEADLOCK FALSE
 CFG
     printf '%s\n' "$what"
-  } > "$name.cfg"
+  } > "$name.cfg" || exit 2
 }
 IN="INIT Init
 NEXT Next"
@@ -105,7 +108,16 @@ mk Path-StartRecording-Continue "$IN" 2 2 1 2 1 0    $F     $F   $F   $F    $T  
 # Rule 7 and 12 after Continue: typing right after picking an element, before
 # the recorder has read the page for it (12c8bf83).
 mk Rule7-AssertThenType "$IN" 2 1 1  2   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS F7_MeasuredFromFirstKey X12a_AssertionReadsInTimeOrder"
-mk Rule7-Navigation "$IN" 2 2   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
+# A navigation no held input made (the browser's Back button, a redirect),
+# then typing in the new document; B2 left out.
+mk Path-NavigationThenType "$IN" 2 2 1 1 1  0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X10_FillStartsInItsDocument F1_ShowsOnceItHasItsPlace F6_WindowIsWhatIsSaved" $F $F "$LR" $F $F $F $F $T $T
+# The same, with a navigation that commits before the report of a key typed
+# in the document it leaves.
+mk Race-NavigationBeforeTypingReport "$IN" 2 2 1 1 0 0 $F  $F   $F   $F    $T    $F      $T $F "INVARIANT X10_FillStartsInItsDocument" $F $F "$LR" $F $F $F $F $T $F
+mk Rule7-Navigation "$IN" 2 2   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey" $F $F "$LR" $F $F $F $F $F $T $F
+# Rule 7 when you type in a page the recorder has not read yet, after Stop
+# and before "Paused", with the pages no longer holding.
+mk Rule7-TypeAfterStopOnNewPage "$IN" 2 2 1 1 1 0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
 mk Rules-WithoutB2  "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS F7s_MeasuredStrictly X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 # Known limits: each its own path.
 mk Limit-TypingThenTyping "$IN" 2 1 1 1  0    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS N3_TypingThenTypingInTimeOrder N5_RecordingInTimeOrder N6_RecordingStartsInTime"
