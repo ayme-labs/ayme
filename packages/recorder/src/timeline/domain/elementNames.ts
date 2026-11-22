@@ -197,6 +197,13 @@ class PageLabels {
    * case. */
   private readonly fullTexts = new Map<AriaRef, string>();
   private readonly lowerTexts = new Map<AriaRef, string>();
+  /** The same, with no name read as text: the text certainly inside. A
+   * snapshot writes a name the same whether it is the element's text or an
+   * aria-label, which is no text, so where the two differ, which one
+   * Playwright reads cannot be told. */
+  private readonly certainTexts = new Map<AriaRef, string>();
+  /** The elements whose text may or may not hold a name, in order. */
+  private readonly unsure: StructuralNode[] = [];
   /** The frame each element is in; null for the page's own document. */
   private readonly frameByRef = new Map<AriaRef, StructuralNode | null>();
   /** The elements by their whole text, in order. */
@@ -220,8 +227,9 @@ class PageLabels {
     const visit = (
       node: StructuralNode,
       frame: StructuralNode | null
-    ): { longest: string; full: string } => {
-      if (node.status?.kind === "removed") return { longest: "", full: "" };
+    ): { longest: string; full: string; certain: string } => {
+      if (node.status?.kind === "removed")
+        return { longest: "", full: "", certain: "" };
       this.order.set(node.ref, this.order.size);
       this.all.push(node);
       this.frameByRef.set(node.ref, frame);
@@ -229,34 +237,62 @@ class PageLabels {
       const inside = node.role === "iframe" ? node : frame;
       let longest = "";
       const pieces: string[] = [];
+      const certainPieces: string[] = [];
       for (const child of node.children) {
         const piece =
           typeof child === "string"
-            ? { longest: normal(child), full: normal(child) }
+            ? {
+                longest: normal(child),
+                full: normal(child),
+                certain: normal(child),
+              }
             : visit(child, inside);
         if (piece.longest.length > longest.length) longest = piece.longest;
         pieces.push(piece.full);
+        certainPieces.push(piece.certain);
       }
       // A frame's document is its own: none of its text is the frame
       // element's, or its ancestors', as Playwright reads an element's text.
       if (node.role === "iframe") {
         longest = "";
         pieces.length = 0;
+        certainPieces.length = 0;
       }
       const full = fullText(node, pieces);
+      const certain = normal(certainPieces.join(" "));
+      this.certainTexts.set(node.ref, certain);
+      if (certain !== full) this.unsure.push(node);
       this.ends.set(node.ref, this.order.size);
       this.texts.set(node.ref, shortened(longest));
       this.ownTexts.set(node.ref, shortened(longestOwn(node)));
       this.fullTexts.set(node.ref, full);
       add(this.byFullText, full, node);
       this.lowerTexts.set(node.ref, full.toLowerCase());
-      return { longest, full };
+      return { longest, full, certain };
     };
     for (const root of tree.getRootNodes()) visit(root, null);
   }
 
   own(node: StructuralNode): OwnName | null {
     return ownName(node);
+  }
+
+  /** Whether a text selector of the document `frame`, which `fits` an
+   * element by its text, may match otherwise in the page: an element whose
+   * text may hold a name fits it by one reading of its text and not by the
+   * other. `role` limits it to the elements of a role. */
+  private unsureOf(
+    frame: StructuralNode | null,
+    role: string | null,
+    fits: (text: string) => boolean
+  ): boolean {
+    return this.unsure.some(
+      (node) =>
+        (role === null || node.role === role) &&
+        this.frameOf(node) === frame &&
+        fits(this.fullTexts.get(node.ref)!) !==
+          fits(this.certainTexts.get(node.ref)!)
+    );
   }
 
   /** The text inside an element: its longest text piece, which is one
@@ -326,6 +362,10 @@ class PageLabels {
     const lower = kept.toLowerCase();
     const holds = (one: StructuralNode) =>
       this.lowerTexts.get(one.ref)!.includes(lower);
+    // A text that may be a name alone, or not, says nothing certain.
+    const role = own && !NO_ROLE.has(own.role) ? own.role : null;
+    if (this.unsureOf(frame, role, (one) => one.toLowerCase().includes(lower)))
+      return forms;
     if (first) {
       const selector = `${first.selector} >> internal:has-text=${JSON.stringify(kept)}i`;
       forms.push({
@@ -348,7 +388,7 @@ class PageLabels {
    * Playwright does: a name exactly, a role alone any element of the role,
    * and a text of its own exactly. The element is among what it matches,
    * so each list it is looked up in has it. */
-  private ownForm(own: OwnName, frame: StructuralNode | null): Form {
+  private ownForm(own: OwnName, frame: StructuralNode | null): Form | null {
     const { role, name } = own;
     const ofRole = this.byRole.get(role)!;
     const quoted = JSON.stringify(name);
@@ -364,6 +404,22 @@ class PageLabels {
         words: words(own),
         selector,
         matches: this.matchesOf(selector, frame, candidates, every),
+      };
+    }
+    // A text that may be a name alone, or not, says nothing certain: an
+    // element with a role is then named by its role alone, and its place.
+    const unsure = this.unsureOf(
+      frame,
+      NO_ROLE.has(role) ? null : role,
+      (text) => text === name
+    );
+    if (unsure && NO_ROLE.has(role)) return null;
+    if (unsure) {
+      const selector = `internal:role=${role}`;
+      return {
+        words: role,
+        selector,
+        matches: this.matchesOf(selector, frame, ofRole, every),
       };
     }
     if (NO_ROLE.has(role)) {

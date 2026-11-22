@@ -340,7 +340,7 @@ describe("the label of an element, in the details of how it is read", () => {
     "tooltip",
     "treeitem",
   ])(
-    "reads the name of a %s with no text of its own as its text, as Playwright reads an element's text",
+    "names an element by no text that may be a %s's name alone: the snapshot writes a name the same from an aria-label, which is no text, and from the text inside",
     (role) => {
       const tree = page(
         `- listitem [ref=e2]: Docs`,
@@ -348,10 +348,40 @@ describe("the label of an element, in the details of how it is read", () => {
         `  - ${role} "Docs" [ref=e4]`
       );
 
-      // Both items' text holds "Docs": the place tells them apart.
-      expect(label(tree, "e2")?.label).toBe('listitem "Docs" (1st of 2)');
+      // Whether the second item's text holds "Docs" cannot be told: its
+      // place among the items tells them apart either way.
+      expect(label(tree, "e2")).toEqual({
+        label: "listitem (1st of 2)",
+        selector: "internal:role=listitem >> nth=0",
+      });
     }
   );
+
+  it("counts no icon-only button's aria-label as text: an item with the same text is named by its place", () => {
+    const tree = page(
+      `- listitem [ref=e2]:`,
+      `  - button "Docs" [ref=e3]`,
+      `- listitem [ref=e4]: Docs`
+    );
+
+    expect(label(tree, "e4")).toEqual({
+      label: "listitem (2nd of 2)",
+      selector: "internal:role=listitem >> nth=1",
+    });
+  });
+
+  it("names an element by a text no name of another element could be", () => {
+    const tree = page(
+      `- listitem [ref=e2]:`,
+      `  - button "Help" [ref=e3]`,
+      `- listitem [ref=e4]: Docs`
+    );
+
+    expect(label(tree, "e4")).toEqual({
+      label: 'listitem "Docs"',
+      selector: 'internal:role=listitem >> internal:has-text="Docs"s',
+    });
+  });
 
   it("reads the text inside an element named otherwise as its text, not its name", () => {
     const tree = page(

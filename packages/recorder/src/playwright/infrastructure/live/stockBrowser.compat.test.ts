@@ -1548,6 +1548,12 @@ const LABELLED = `
   <span><strong>4</strong> items left</span>
   <p>Saved</p>
   <p>Not saved</p>
+  <ol>
+    <li><button aria-label="Docs"></button></li>
+    <li>Docs</li>
+    <li><button>Help</button></li>
+    <li>Help</li>
+  </ol>
   <button>Twin</button>
   <iframe srcdoc="<button>Pay</button><button>Twin</button>"></iframe>`;
 
@@ -1602,6 +1608,11 @@ it("finds by the selector of each element's label, built from the page's own sna
       '"items left"',
       'paragraph "Saved"',
       'paragraph "Not saved"',
+      // An icon-only button's aria-label is no text, a button's own text
+      // is: the snapshot writes both as a name, so neither item is named by
+      // a text that may be one.
+      'button "Docs"',
+      'button "Help"',
       // One in the page and one in the frame: each selector matches in its
       // own document only.
       'button "Twin"',
