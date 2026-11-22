@@ -47,8 +47,8 @@ each function named in a comment beside the operator that models it (search
   `interactionRevised`, `writeDown`, `showOrWrite`, `behindUnshown`,
   `behindUnwritten`, `mayBeRevised`, `letThrough`, `withoutPage`, `asserted`,
   `assertVisibility`, `leaveAssertVisibility`, `pickNow`, `pickingChanged`,
-  `pageNavigated` (with `unread` and `hadVisit`), `atRecord`, `causeOf`, to
-  `shown` and `offered`.
+  `pageNavigated` (with `leftDocument`, `elsewhere` and `hadVisit`),
+  `keepRead`, `atRecord`, `causeOf`, to `shown` and `offered`.
 - `playwright/infrastructure/live/stockBrowser.ts`: `passOnHeld`, `passOn`,
   `holdInputs`, `letInputsThrough`, `reportInteractions`,
   `everyReportDelivered`, `pick` (Playwright's mode first, then the gates),
@@ -70,12 +70,12 @@ each function named in a comment beside the operator that models it (search
   `--start-recording`), `server/infrastructure/toolbarBridge.ts`,
   `server/infrastructure/windowChannelRouter.ts`.
 
-**Sync commit: `4022c73a`** (`feat/recorder-rebuild`). To see what changed in
+**Sync commit: `8f7359d1`** (`feat/recorder-rebuild`). To see what changed in
 covered code since, from any folder of the repository (the procedure below
 runs in the model's):
 
 ```sh
-git log --oneline 4022c73a..HEAD -- ':(top)packages/recorder/src'
+git log --oneline 8f7359d1..HEAD -- ':(top)packages/recorder/src'
 ```
 
 A change touches the model when it adds, removes or reorders a step of the
@@ -145,8 +145,8 @@ a shared machine run one at a time.
 - **Holds** covers the model within its bounds and assumptions (README, "How
   the model stands for the engine"): one page, a few inputs, the speed
   assumption Quick. It is not a proof of the whole recorder.
-- A rule the README lists under "Known limits" or "Races" breaks on purpose
-  in its own config; a new path to it is still a finding.
+- A rule the README lists under "Known limits", "Open findings" or "Races"
+  breaks on purpose in its own config; a new path to it is still a finding.
 - The model has no clock and no Change Tree: it cannot tell whether a row is
   late or what a row says. Check those with the engine's tests
   (`packages/recorder/AGENTS.md`, "Testing") and the recorder fixture.
