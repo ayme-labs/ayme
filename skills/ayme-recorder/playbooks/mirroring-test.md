@@ -31,6 +31,10 @@ returns a `ProjectPage` or the dialog. After
 `const created = await dialog.create()`, write
 `assert(created instanceof ProjectPage)`, with `assert` from `node:assert`.
 
+A click with no `changeTree` that led to no other page may be a stray click.
+Name each such click in your proposal and ask the user whether it belongs to
+the flow. Do not keep or drop it without asking.
+
 Turn the timeline into assertions:
 
 - Assert what a step caused beyond the element it acted on: something appears,

@@ -20,7 +20,8 @@ points to another file. It overrides this skill's defaults.
    the project has installed. It opens the page in Chromium with a recorder
    window beside it and a small toolbar on the page. Recording is off until the
    user presses Record; they perform the flow and press Finish. The command
-   then prints `Recording package: <path>`. To record a Chromium the user
+   then prints `Recording package: <path>`. `.ayme/recordings/latest.yaml` is
+   a copy of the newest package. To record a Chromium the user
    already has running, run `codegen --cdp-endpoint <address>` instead, with
    the address of its DevTools protocol, such as `http://127.0.0.1:9222`.
 
@@ -93,6 +94,14 @@ page before the recorder read the page again has an `endedAt` but no
 navigate after the recorder had read the page during it keeps that last read
 of its own page as its "after", with its `afterSnapshotId` and `endedAt`.
 With no "after" at all, `endedAt` equals `startedAt`.
+
+A visit's `cause` is `initial` for the page the recording started on,
+`navigate` for a page that went to another address, and `openPage` for a tab
+or window that opened. The package does not say what made a page navigate.
+When the last step of the visit before could have led there, such as a click
+on a link or Enter pressed in a form, it did. When no step could have, the
+user used the browser's Back or Forward button, reloaded or typed an address,
+or the page redirected by itself. Ask the user which it was rather than guess.
 
 A package made by the 0.1 recorder differs in a few places; see
 [Packages from the 0.1 recorder](#packages-from-the-01-recorder).
@@ -235,6 +244,11 @@ Target selectors are candidates. Check each by
 one that meets it. Look in the trace for an element that has no candidate, or
 whose candidate does not meet the strategy.
 
+A click on an icon or on empty space can have only a candidate made of
+generated ids or hashed class names, and no element in the trace that meets
+the strategy. Do not invent a locator for it. Ask the user whether the click
+matters to the flow.
+
 ## Use the trace
 
 The recording's trace holds a DOM snapshot of the page before and after each
@@ -242,7 +256,8 @@ recorded interaction, with the real elements and their attributes. Read it
 when a tree does not settle what a step did, or to find a locator for an
 element. Open it with the project's own Playwright, `npx playwright trace`,
 run in the project's folder. The tool keeps the trace it opened in that
-folder, so run every command of one lookup from there.
+folder, so run every command of one lookup from there. It also writes its
+logs to a `.playwright-cli/` folder there: keep that folder out of commits.
 
 The trace also holds the network log: every request, with its timing,
 headers and bodies. `trace requests` lists the requests with their method,
@@ -336,8 +351,11 @@ element.
 `trace snapshot <number> --phase after snapshot` prints the page structure of
 a snapshot with refs of its own; they are not the package's refs.
 
-A click that leaves the page has a `beforeSnapshotId` and no
-`afterSnapshotId`: its result is the next visit's baseline. An `assert*`
+A click that leaves the page shows its result in the next visit's baseline.
+It has no `afterSnapshotId` when the page left before the recorder read it
+again. When the page was slower to leave, as an app that loads the next page
+in the background is, the click has an `afterSnapshotId`: that snapshot is of
+the page it was on, not of where it led. An `assert*`
 interaction has the same number in both. A pause is still part of the trace:
 the trace has screenshots of the page throughout, also of what was on screen
 while recording was stopped, and what the user did then, typing included, can
