@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer, type AddressInfo } from "node:net";
 import { join } from "node:path";
@@ -368,9 +368,11 @@ test("while the entry has never built, ayme_connect and the no-page answers say 
   }
 });
 
-// Playwright reads a test's fixtures from this pattern.
-// eslint-disable-next-line no-empty-pattern
-test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets told once, in the answer and the log, which version to install", async ({}, testInfo) => {
+test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets told once, in the answer and the log, which version to install, and once it installs that version the page gets its tools", async ({
+  context,
+  page,
+  baseURL,
+}, testInfo) => {
   const project = testInfo.outputPath("project");
   await cp(OUTSIDE_THE_APP, join(project, ".ayme"), { recursive: true });
   // A release of @ayme-dev/ayme from before its compiler entry, installed
@@ -392,6 +394,9 @@ test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets tol
   const { version } = createRequire(import.meta.url)(
     "@ayme-dev/mcp/package.json"
   ) as { version: string };
+  const lockfile = fileURLToPath(
+    new URL("../../../pnpm-lock.yaml", import.meta.url)
+  );
   const mismatch = `this project has @ayme-dev/ayme 0.0.1; ayme mcp ${version} needs the same version. Run \`pnpm add -D @ayme-dev/ayme@${version}\` in ${project}.`;
   const agent = await startAgent(
     { cwd: project },
@@ -403,10 +408,36 @@ test("a project whose @ayme-dev/ayme is another version than ayme mcp's gets tol
     expect(isError).toBe(true);
     expect(text.split(mismatch)).toHaveLength(2);
     expect(text).toContain(
-      "The server is not watching for changes: the build could not start"
+      `The server is watching ${join(project, "package.json")} and ${lockfile} for changes: it starts the build again when either changes.`
     );
+    expect(text).not.toContain("not watching");
     await expect.poll(() => agent.log).toContain(mismatch);
     expect(agent.log.split(mismatch)).toHaveLength(2);
+
+    // What an install of ayme mcp's version leaves: the workspace's
+    // @ayme-dev/ayme resolves, and the project's package.json names it.
+    await rm(join(project, "node_modules"), { recursive: true });
+    await writeFile(
+      join(project, "package.json"),
+      JSON.stringify({ devDependencies: { "@ayme-dev/ayme": version } })
+    );
+    const entry = join(project, ".ayme", "page-objects.ts");
+    await expect
+      .poll(() => agent.log, REBUILT_WITHIN)
+      .toContain(`Built the Page Objects entry ${entry}.`);
+    expect(agent.log.split(mismatch)).toHaveLength(2);
+    expect(await agent.call("ayme_list_tools")).toMatchObject({
+      text: "No page is connected.",
+      isError: true,
+    });
+
+    await context.addInitScript({
+      path: join(project, ".ayme", "init-script.js"),
+    });
+    await connectPage(agent, page, `${baseURL}/plain.html`);
+    await expect
+      .poll(() => agent.pageToolNames(), { message: agent.log })
+      .toContain(PLAIN_PAGE_TOOL);
   } finally {
     await agent.close();
   }

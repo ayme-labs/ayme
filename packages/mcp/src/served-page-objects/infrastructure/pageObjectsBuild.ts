@@ -1,7 +1,7 @@
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, watch } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import * as esbuild from "esbuild";
@@ -73,6 +73,156 @@ export type PageObjectsBuild = {
   /** Stops watching. */
   close(): Promise<void>;
 };
+
+/**
+ * Why the build of the Page Objects entry has not started, and the
+ * project's install files whose change starts it again: none when they
+ * could not be watched.
+ */
+export class PageObjectsNotStarted extends Error {
+  constructor(
+    message: string,
+    readonly watched: readonly string[]
+  ) {
+    super(message);
+  }
+}
+
+/** How long the install files stay unchanged before a start: an install writes them more than once. */
+const SETTLED_MS = 100;
+
+/**
+ * The build of `entry`, started as {@link watchPageObjects} starts it. When
+ * it cannot start, for instance while the project's `@ayme-dev/ayme` is
+ * another version than `version` or does not resolve, it logs why, watches
+ * the project's `package.json` and nearest lockfile, and starts it again
+ * when either changes, until it starts or is closed. Until then
+ * `modules()` rejects with a {@link PageObjectsNotStarted}, and
+ * `onBuilt` listeners hear the builds of the build that starts.
+ */
+export async function startPageObjects(
+  entry: string,
+  log: (message: string) => void,
+  version: string,
+  start: typeof watchPageObjects = watchPageObjects
+): Promise<PageObjectsBuild> {
+  const folder = dirname(entry);
+  const listeners = new Set<(modules: BuiltModules) => void>();
+  let lastHeard: BuiltModules | undefined;
+  const hear = (modules: BuiltModules) => {
+    if (modules === lastHeard) return;
+    lastHeard = modules;
+    for (const listener of listeners) listener(modules);
+  };
+  let started: PageObjectsBuild | undefined;
+  let notStarted: PageObjectsNotStarted | undefined;
+  let stopWatching = () => {};
+  let closed = false;
+  let attempt: Promise<void> | undefined;
+  let settling: NodeJS.Timeout | undefined;
+  const tryStart = async () => {
+    try {
+      const build = await start(entry, log, version);
+      if (closed) return void (await build.close());
+      stopWatching();
+      started = build;
+      notStarted = undefined;
+      build.onBuilt(hear);
+      build.modules().then(hear, () => {});
+    } catch (error) {
+      const message = (error as Error).message;
+      log(message);
+      stopWatching();
+      if (closed) return;
+      const files = installFiles(folder);
+      try {
+        stopWatching = watchFiles(files, () => {
+          clearTimeout(settling);
+          settling = setTimeout(retry, SETTLED_MS);
+        });
+        notStarted = new PageObjectsNotStarted(message, files);
+      } catch {
+        notStarted = new PageObjectsNotStarted(message, []);
+      }
+    }
+  };
+  // A change during an attempt starts another once it ends.
+  let changedMeanwhile = false;
+  const retry = () => {
+    if (started !== undefined || closed) return;
+    if (attempt !== undefined) return void (changedMeanwhile = true);
+    attempt = tryStart().finally(() => {
+      attempt = undefined;
+      if (changedMeanwhile) {
+        changedMeanwhile = false;
+        retry();
+      }
+    });
+  };
+  retry();
+  await attempt;
+  return {
+    async modules() {
+      await attempt;
+      if (started !== undefined) return started.modules();
+      throw notStarted!;
+    },
+    onBuilt(listener) {
+      listeners.add(listener);
+      return () => void listeners.delete(listener);
+    },
+    async close() {
+      closed = true;
+      clearTimeout(settling);
+      stopWatching();
+      await attempt;
+      await started?.close();
+    },
+  };
+}
+
+/**
+ * Calls `changed` whenever one of `files` is written, created or removed;
+ * returns how to stop. Watches each file's folder, so a file that does not
+ * exist yet is watched too.
+ */
+function watchFiles(files: readonly string[], changed: () => void) {
+  const names = new Map<string, Set<string>>();
+  for (const file of files)
+    names.set(
+      dirname(file),
+      (names.get(dirname(file)) ?? new Set()).add(basename(file))
+    );
+  const watchers: ReturnType<typeof watch>[] = [];
+  const stop = () => watchers.forEach((watcher) => watcher.close());
+  try {
+    for (const [folder, inFolder] of names) {
+      const watcher = watch(folder, (_event, name) => {
+        if (name === null || inFolder.has(String(name))) changed();
+      });
+      // A watched folder that goes away stops its watcher, not the server.
+      watcher.on("error", () => watcher.close());
+      watchers.push(watcher);
+    }
+  } catch (error) {
+    stop();
+    throw error;
+  }
+  return stop;
+}
+
+/**
+ * The project's `package.json`, for the project `folder` is in, and the
+ * nearest lockfile above it, if any: the files an install changes.
+ */
+function installFiles(folder: string): string[] {
+  const { folder: projectFolder } = projectInstall(folder);
+  const lockfile = nearestLockfile(projectFolder);
+  return [
+    join(projectFolder, "package.json"),
+    ...(lockfile === undefined ? [] : [join(lockfile.folder, lockfile.name)]),
+  ];
+}
 
 /**
  * Builds `entry` for the browser, with esbuild and the Page Object compiler
@@ -380,7 +530,8 @@ const BYTE_ORDER_MARK = Buffer.from([0xef, 0xbb, 0xbf]);
 /**
  * Why `build` serves nothing while no build of `entry` has succeeded: the
  * first error of the last build, or why the build could not start, and
- * whether it watches the entry's files, which it does once started. It
+ * whether it watches the entry's files, which it does once started, or the
+ * project's install files, which it does while it could not start. It
  * waits for the first build to end, and resolves with `undefined` once a
  * build has succeeded.
  */
@@ -398,6 +549,13 @@ export async function failedPageObjects(
     await started.modules();
     return undefined;
   } catch (error) {
+    if (error instanceof PageObjectsNotStarted)
+      return {
+        entry,
+        error: error.message,
+        watching: error.watched.length > 0,
+        ...(error.watched.length > 0 ? { installFiles: error.watched } : {}),
+      };
     return {
       entry,
       error:
@@ -476,19 +634,24 @@ function projectInstall(folder: string): ProjectInstall {
     existsSync(join(current, "package.json"))
   );
   const projectFolder = project ?? folder;
-  const lockfileIn = (current: string) =>
-    LOCKFILES.find(([lockfile]) => existsSync(join(current, lockfile)))?.[1];
-  const lockfileFolder = nearestAbove(
-    projectFolder,
-    (current) => lockfileIn(current) !== undefined
-  );
-  const packageManager =
-    lockfileFolder === undefined ? "npm" : lockfileIn(lockfileFolder)!;
   return {
-    packageManager,
+    packageManager: nearestLockfile(projectFolder)?.packageManager ?? "npm",
     folder: projectFolder,
     workspaceRoot: existsSync(join(projectFolder, "pnpm-workspace.yaml")),
   };
+}
+
+/** The lockfile nearest above `folder`, from `folder` itself up, if any. */
+function nearestLockfile(folder: string) {
+  const lockfileIn = (current: string) =>
+    LOCKFILES.find(([lockfile]) => existsSync(join(current, lockfile)));
+  const lockfileFolder = nearestAbove(
+    folder,
+    (current) => lockfileIn(current) !== undefined
+  );
+  if (lockfileFolder === undefined) return undefined;
+  const [name, packageManager] = lockfileIn(lockfileFolder)!;
+  return { folder: lockfileFolder, name, packageManager };
 }
 
 /** The nearest folder from `folder` up for which `found` holds, if any. */

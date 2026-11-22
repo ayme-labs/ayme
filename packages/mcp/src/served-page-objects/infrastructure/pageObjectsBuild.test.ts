@@ -18,6 +18,8 @@ import {
   failedPageObjects,
   pageObjectModels,
   type PageObjectsBuild,
+  PageObjectsNotStarted,
+  startPageObjects,
   watchPageObjects,
 } from "./pageObjectsBuild";
 
@@ -83,6 +85,103 @@ it("gives why the build could not start", async () => {
     error: "needs @ayme-dev/ayme/compiler, which does not resolve",
     watching: false,
   });
+});
+
+it("gives why the build has not started, and the install files it watches to start it again", async () => {
+  const notStarted = buildWith(async () => {
+    throw new PageObjectsNotStarted("this project has @ayme-dev/ayme 0.0.1", [
+      "/project/package.json",
+      "/pnpm-lock.yaml",
+    ]);
+  });
+
+  expect(await failedPageObjects(entry, notStarted)).toEqual({
+    entry,
+    error: "this project has @ayme-dev/ayme 0.0.1",
+    watching: true,
+    installFiles: ["/project/package.json", "/pnpm-lock.yaml"],
+  });
+});
+
+/** A project folder with a `package.json` and a pnpm lockfile, and its entry. */
+async function installedProject() {
+  const project = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-install-"))
+  );
+  await writeFile(join(project, "package.json"), "{}");
+  await writeFile(join(project, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+  return { project, entry: join(project, ".ayme", "page-objects.ts") };
+}
+
+it("after a failed start, starts the build again when the project's lockfile or package.json changes, and stops watching once it starts", async () => {
+  const { project, entry } = await installedProject();
+  const built = new Map([["entry.js", "export default {}"]]);
+  const close = vi.fn(async () => {});
+  const start = vi
+    .fn<typeof watchPageObjects>()
+    .mockRejectedValueOnce(new Error("this project has @ayme-dev/ayme 0.0.1"))
+    .mockRejectedValueOnce(new Error("this project has @ayme-dev/ayme 0.0.2"))
+    .mockResolvedValue({
+      modules: async () => built,
+      onBuilt: () => () => {},
+      close,
+    });
+  const logged: string[] = [];
+  const build = startPageObjects(entry, (m) => logged.push(m), "0.2.0", start);
+  const onBuilt = vi.fn();
+  (await build).onBuilt(onBuilt);
+
+  await expect
+    .poll(() => failedPageObjects(entry, build))
+    .toEqual({
+      entry,
+      error: "this project has @ayme-dev/ayme 0.0.1",
+      watching: true,
+      installFiles: [
+        join(project, "package.json"),
+        join(project, "pnpm-lock.yaml"),
+      ],
+    });
+  expect(logged).toEqual(["this project has @ayme-dev/ayme 0.0.1"]);
+
+  await writeFile(
+    join(project, "pnpm-lock.yaml"),
+    "lockfileVersion: '9.0'\n\n"
+  );
+  await expect
+    .poll(async () => (await failedPageObjects(entry, build))?.error)
+    .toBe("this project has @ayme-dev/ayme 0.0.2");
+  expect(logged).toEqual([
+    "this project has @ayme-dev/ayme 0.0.1",
+    "this project has @ayme-dev/ayme 0.0.2",
+  ]);
+
+  await writeFile(join(project, "package.json"), '{"devDependencies":{}}');
+  await expect.poll(() => failedPageObjects(entry, build)).toBeUndefined();
+  expect(await (await build).modules()).toBe(built);
+  expect(onBuilt).toHaveBeenCalledWith(built);
+
+  await writeFile(join(project, "package.json"), "{}");
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  expect(start).toHaveBeenCalledTimes(3);
+  await (await build).close();
+  expect(close).toHaveBeenCalled();
+});
+
+it("stops watching the install files once closed", async () => {
+  const { project, entry } = await installedProject();
+  const start = vi
+    .fn<typeof watchPageObjects>()
+    .mockRejectedValue(new Error("does not resolve"));
+  const build = startPageObjects(entry, () => {}, "0.2.0", start);
+  await expect
+    .poll(async () => (await failedPageObjects(entry, build))?.watching)
+    .toBe(true);
+
+  await (await build).close();
+  await writeFile(join(project, "pnpm-lock.yaml"), "changed\n");
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  expect(start).toHaveBeenCalledTimes(1);
 });
 
 it("gives the message of another error the started build rejects with", async () => {
