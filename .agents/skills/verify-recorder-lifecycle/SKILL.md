@@ -70,12 +70,12 @@ each function named in a comment beside the operator that models it (search
   `--start-recording`), `server/infrastructure/toolbarBridge.ts`,
   `server/infrastructure/windowChannelRouter.ts`.
 
-**Sync commit: `8f7359d1`** (`feat/recorder-rebuild`). To see what changed in
+**Sync commit: `b2af1120`** (`feat/recorder-rebuild`). To see what changed in
 covered code since, from any folder of the repository (the procedure below
 runs in the model's):
 
 ```sh
-git log --oneline 8f7359d1..HEAD -- ':(top)packages/recorder/src'
+git log --oneline b2af1120..HEAD -- ':(top)packages/recorder/src'
 ```
 
 A change touches the model when it adds, removes or reorders a step of the
