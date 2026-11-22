@@ -370,6 +370,49 @@ describe("the label of an element, in the details of how it is read", () => {
     });
   });
 
+  it("names no element with no role by a text that may be a button's name alone: nothing certain is left to name it by", () => {
+    const tree = page(`- generic [ref=e2]: Docs`, `- button "Docs" [ref=e3]`);
+
+    expect(label(tree, "e2")).toBeNull();
+  });
+
+  it("drops the text inside from a label when an element of its role may hold that text as a name alone", () => {
+    const tree = page(
+      `- listitem [ref=e2]:`,
+      `  - checkbox "Done" [ref=e3]`,
+      `  - text: Docs`,
+      `- listitem [ref=e4]:`,
+      `  - checkbox "Done" [ref=e5]`,
+      `  - button "Docs" [ref=e6]`
+    );
+
+    expect(label(tree, "e2")).toEqual({
+      label: "listitem (1st of 2)",
+      selector: "internal:role=listitem >> nth=0",
+    });
+  });
+
+  it("keeps the text inside in a label when only an element of another role, or of another document, may hold it as a name", () => {
+    const tree = page(
+      `- listitem [ref=e2]:`,
+      `  - checkbox "Done" [ref=e3]`,
+      `  - text: Docs`,
+      `- listitem [ref=e4]:`,
+      `  - checkbox "Done" [ref=e5]`,
+      `  - text: Other`,
+      `- row [ref=e6]:`,
+      `  - button "Docs" [ref=e7]`,
+      `- iframe [ref=e8]:`,
+      `  - listitem [ref=f1e1]:`,
+      `    - button "Docs" [ref=f1e2]`
+    );
+
+    expect(label(tree, "e2")).toEqual({
+      label: 'listitem "Docs"',
+      selector: 'internal:role=listitem >> internal:has-text="Docs"i',
+    });
+  });
+
   it("names an element by a text no name of another element could be", () => {
     const tree = page(
       `- listitem [ref=e2]:`,
