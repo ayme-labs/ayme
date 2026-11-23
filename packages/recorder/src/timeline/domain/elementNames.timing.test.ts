@@ -14,12 +14,14 @@ import { labelOf } from "./elementNames";
  * elements once, as the rows of a page that shows the whole list at once
  * are labelled.
  *
- * It runs only with `AYME_LABEL_TIMING` set to the file it writes the
- * times to: for each shape and count, the least and the most of `REPEATS`
- * runs after `WARM_UPS` runs, and their median. From this package's
- * directory:
+ * `pnpm test` leaves it out (`timingTests` in vitest.config.ts). Run it by
+ * hand from this package's directory, with `AYME_LABEL_TIMING` set to the
+ * file it writes the times to:
  *
- *     AYME_LABEL_TIMING=label-timing.txt pnpm exec vitest run src/timeline/domain/elementNames.timing.test.ts
+ *     AYME_LABEL_TIMING=label-timing.txt pnpm test:timing
+ *
+ * For each shape and count, it writes the least and the most of `REPEATS`
+ * runs after `WARM_UPS` runs, and their median.
  *
  * Times depend on the machine and on what else runs on it: compare the
  * shapes of one run, not runs on different machines.
@@ -84,12 +86,15 @@ function labelEvery(yaml: string): number {
   return performance.now() - start;
 }
 
-const out = process.env.AYME_LABEL_TIMING;
-
-it.runIf(out)(
+it(
   "times labelling every element of a large list",
   { timeout: 600_000 },
   () => {
+    const out = process.env.AYME_LABEL_TIMING;
+    if (!out)
+      throw new Error(
+        "Set AYME_LABEL_TIMING to the file to write the times to."
+      );
     const lines = [`shape, items: least–most ms of ${REPEATS} (median)`];
     for (const [name, item] of Object.entries(shapes))
       for (const count of COUNTS) {
@@ -103,6 +108,6 @@ it.runIf(out)(
           `${name}, ${count}: ${ms(times[0]!)}–${ms(times.at(-1)!)} (${ms(times[REPEATS >> 1]!)})`
         );
       }
-    writeFileSync(out!, `${lines.join("\n")}\n`);
+    writeFileSync(out, `${lines.join("\n")}\n`);
   }
 );
