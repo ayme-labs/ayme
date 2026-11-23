@@ -1144,9 +1144,11 @@ const PICKING_MODE = "assertingVisibility";
  * it does. A selector's matches are read in one call in each frame they
  * are in: its part before each frame it enters may match more than one
  * frame, and every match in each lights up. A selector that starts in any
- * frame starts in every frame of the page: Playwright's locator would
- * read it in the one frame it matches in without moving it by that
- * frame's place, and read nothing when it matches in two.
+ * frame starts in each frame Playwright's "any frame" looks in: its
+ * locator would read it in the one frame it matches in without moving it
+ * by that frame's place, and read nothing when it matches in two. A frame
+ * that cannot be read, as one gone meanwhile, lights nothing up, and the
+ * others still do.
  */
 async function boxesOf(
   page: Page,
@@ -1165,17 +1167,24 @@ async function boxesOf(
     .slice(anyFrame ? ANY_FRAME.length : 0)
     .split(ENTER_FRAME);
   const last = parts.pop()!;
-  let frames = anyFrame ? page.frames() : [page.mainFrame()];
+  let frames = anyFrame
+    ? await framesUnder(page.mainFrame())
+    : [page.mainFrame()];
   for (const part of parts) frames = await framesIn(frames, part);
   const found = await Promise.all(
     frames.map(async (frame) => {
-      const boxes = await frame
-        .locator(last)
-        .evaluateAll(boxesIn)
-        .catch(() => []);
-      if (boxes.length === 0) return [];
-      const at = await placeInPage(frame, { x: 0, y: 0 });
-      return boxes.map((box) => ({ ...box, x: box.x + at.x, y: box.y + at.y }));
+      try {
+        const boxes = await frame.locator(last).evaluateAll(boxesIn);
+        if (boxes.length === 0) return [];
+        const at = await placeInPage(frame, { x: 0, y: 0 });
+        return boxes.map((box) => ({
+          ...box,
+          x: box.x + at.x,
+          y: box.y + at.y,
+        }));
+      } catch {
+        return [];
+      }
     })
   );
   return found.flat();
@@ -1183,9 +1192,24 @@ async function boxesOf(
 
 /** How a selector enters the frame the part before it names. */
 const ENTER_FRAME = " >> internal:control=enter-frame >> ";
-/** How a selector starts that is looked for in every frame: Playwright
- * 1.63 and later write one so for a target in a frame inside a frame. */
+/** How a selector starts that is looked for in any frame: Playwright 1.63
+ * and later may start so the selector of a target in a frame inside a
+ * frame. */
 const ANY_FRAME = "internal:control=any-frame >> ";
+
+/** A frame and the frames inside it that a selector reaches, frames in
+ * frames included, as Playwright's "any frame" finds them: by their frame
+ * elements, so none inside a closed shadow root. */
+async function framesUnder(frame: Frame): Promise<Frame[]> {
+  const frames: Frame[] = [];
+  for (
+    let level = [frame];
+    level.length > 0;
+    level = await framesIn(level, "frame, iframe")
+  )
+    frames.push(...level);
+  return frames;
+}
 
 /** The frames of the frame elements a selector names in each of `frames`. */
 async function framesIn(

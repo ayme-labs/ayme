@@ -1508,26 +1508,45 @@ it("draws the highlight on every element a selector names in each frame its fram
 });
 
 /** A frame inside a frame, each moved away from its parent's corner, with
- * a look-alike in each. */
+ * a look-alike in each, and one more in a frame of a closed shadow root. */
 const OFFSET_FRAMES = `
   <h1>Orders</h1>
   <iframe id="outer" style="margin: 30px 0 0 60px; width: 400px; height: 200px"></iframe>
+  <closed-place></closed-place>
   <script>
     document.getElementById("outer").srcdoc =
       '<button>Pay</button><iframe id="inner" style="margin-left: 50px; height: 80px"></iframe>' +
       '<script>document.getElementById("inner").srcdoc = "<button>Pay</button><button>Deep</button>";<\\/script>';
+    customElements.define("closed-place", class extends HTMLElement {
+      constructor() {
+        super();
+        this.attachShadow({ mode: "closed" }).innerHTML =
+          '<iframe srcdoc="<button>Pay</button>"></iframe>';
+      }
+    });
   </script>`;
 
-// From Playwright 1.63 the recorder starts the selector of a target in a
-// frame inside a frame with "any frame" (`shortensFramePaths` below): a
-// step of a Visit already left is looked up by it. The adapter finds the
-// frames itself, so that each is moved by its own place in the page.
-it("draws the highlight in its place in the page on every element a selector that starts in any frame names: in a frame inside a frame, and in each frame it matches in", async () => {
+// From Playwright 1.63 the recorder may start the selector of a target in
+// a frame inside a frame with "any frame" (`shortensFramePaths` below), and
+// 1.62 enters each frame: a step of a Visit already left is looked up by
+// it. The adapter finds the frames itself, as Playwright's "any frame"
+// does, so that each is moved by its own place in the page.
+it("draws the highlight in its place in the page on every element a selector names in a frame inside a frame, entering each frame or starting in any frame, and in each frame it matches in, but in none a closed shadow root keeps from selectors", async () => {
   const browser = await onStockPlaywright(OFFSET_FRAMES);
   const outer = browser.page.frameLocator("#outer");
   const inner = outer.frameLocator("#inner");
   await inner.getByRole("button", { name: "Deep" }).waitFor();
-  const boxOf = async (element: Locator) => (await element.boundingBox())!;
+  // The look-alike in the closed shadow root's frame is on the page too.
+  await expect
+    .poll(async () => {
+      const counts = await Promise.all(
+        browser.page
+          .frames()
+          .map((frame) => frame.getByRole("button", { name: "Pay" }).count())
+      );
+      return counts.reduce((sum, count) => sum + count, 0);
+    })
+    .toBe(3);
   const deep = await boxOf(inner.getByRole("button", { name: "Deep" }));
   const pays = await Promise.all(
     [outer, inner].map((frame) =>
@@ -1535,6 +1554,10 @@ it("draws the highlight in its place in the page on every element a selector tha
     )
   );
   const lookups = [
+    [
+      `#outer >> internal:control=enter-frame >> #inner >> internal:control=enter-frame >> internal:role=button[name="Deep"s]`,
+      [deep],
+    ],
     [
       `internal:control=any-frame >> internal:role=button[name="Deep"s]`,
       [deep],
@@ -1546,16 +1569,6 @@ it("draws the highlight in its place in the page on every element a selector tha
     // Two frames have a look-alike: each lights up.
     [`internal:control=any-frame >> internal:role=button[name="Pay"s]`, pays],
   ] as const;
-  /** Boxes to the pixel, in order on the page. */
-  const placed = (boxes: readonly (typeof deep)[]) =>
-    boxes
-      .map((box) => ({
-        x: Math.round(box.x),
-        y: Math.round(box.y),
-        width: Math.round(box.width),
-        height: Math.round(box.height),
-      }))
-      .sort((a, b) => a.y - b.y || a.x - b.x);
 
   for (const [index, [selector, boxes]] of lookups.entries()) {
     await browser.ask({
@@ -1569,8 +1582,11 @@ it("draws the highlight in its place in the page on every element a selector tha
     );
     expect([selector, found]).toEqual([selector, true]);
     await expect
-      .poll(async () => [selector, placed(await drawnBoxes(browser.page))])
-      .toEqual([selector, placed(boxes)]);
+      .poll(async () => {
+        const drawn = await drawnBoxes(browser.page);
+        return [selector, drawn.length, drawn];
+      })
+      .toEqual([selector, boxes.length, expect.arrayContaining([...boxes])]);
   }
 });
 
