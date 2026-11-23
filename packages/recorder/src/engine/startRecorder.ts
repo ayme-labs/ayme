@@ -35,8 +35,9 @@ export type RecorderOptions = {
           readonly loadStorage?: string;
           /** Where the recorded context's storage state is saved when the
            * recorder ends, however it ends, as Playwright's codegen
-           * `--save-storage` does: after the recording and its trace. One
-           * that cannot be saved is a warning. */
+           * `--save-storage` does: once the recording is over and its
+           * trace is stopped, thrown away or given up on. One that cannot
+           * be saved is a warning. */
           readonly saveStorage?: string;
         };
       }

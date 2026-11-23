@@ -1748,10 +1748,14 @@ describe("the lifecycle", () => {
         record,
         traceStarted,
         failed(reportInteractions),
+        traceDiscarded,
         storageSaved,
       ],
       todo: [
-        [{ kind: "replyDeferred", result: "ignored" }, saveStorage],
+        // The trace started is thrown away before the storage state is
+        // saved: nothing was recorded.
+        [{ kind: "replyDeferred", result: "ignored" }, discardTrace],
+        [saveStorage],
         [cannotStart],
       ],
       state: {
@@ -1785,10 +1789,12 @@ describe("the lifecycle", () => {
         traceStarted,
         reporting,
         failed(holdInputs),
+        traceDiscarded,
         storageSaved,
       ],
       todo: [
-        [{ kind: "replyDeferred", result: "ignored" }, saveStorage],
+        [{ kind: "replyDeferred", result: "ignored" }, discardTrace],
+        [saveStorage],
         [cannotStart],
       ],
       state: {
@@ -2009,6 +2015,13 @@ describe("the lifecycle, for the storage state", () => {
     kind: "end",
     outcome: { kind: "saved", folder: "/project/rec_1" },
   };
+  const storageNotSaved: ToDo = {
+    kind: "warn",
+    warning: {
+      kind: "storageNotSaved",
+      message: "The storage state could not be saved. It broke.",
+    },
+  };
 
   it.each<{
     name: string;
@@ -2091,6 +2104,72 @@ describe("the lifecycle, for the storage state", () => {
       state: { phase: "saving" },
     },
     {
+      name: "a Record that cannot start, after its trace started, saves the storage state once the trace is gone, or could not be stopped in time",
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        failed(reportInteractions),
+        failed(discardTrace),
+      ],
+      todo: [[saveStorage]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a storage state told saved while a failed start's trace is thrown away changes nothing: the save was not asked",
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        failed(reportInteractions),
+        storageSaved,
+      ],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a failure to save the storage state while a failed start's trace is thrown away changes nothing: the save was not asked",
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        failed(reportInteractions),
+        failed(saveStorage),
+      ],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "an outside end while a failed start's trace is thrown away changes nothing",
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        failed(reportInteractions),
+        outsideEnd,
+      ],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a breakdown while a failed start's trace is thrown away ends at once, with the outcome decided and one warning",
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        failed(reportInteractions),
+        { kind: "brokeDown", reason: "It broke." },
+      ],
+      todo: [[storageNotSaved, cannotStart]],
+      state: {
+        phase: "ended",
+        outcome: {
+          kind: "failed",
+          reason: "Recording could not start. It broke.",
+        },
+      },
+    },
+    {
       name: "a storage state told saved when no end waits for it changes nothing",
       happened: [opened, storageSaved],
       todo: [[]],
@@ -2109,9 +2188,9 @@ describe("the lifecycle, for the storage state", () => {
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
     {
-      name: "a breakdown while the storage state is saved ends at once, with the outcome decided: nothing would hear the answer",
+      name: "a breakdown while the storage state is saved ends at once, with the outcome decided and one warning: nothing would hear the answer",
       happened: [...savedPackage, { kind: "brokeDown", reason: "It broke." }],
-      todo: [[endSaved]],
+      todo: [[storageNotSaved, endSaved]],
       state: {
         phase: "ended",
         outcome: { kind: "saved", folder: "/project/rec_1" },
@@ -4659,6 +4738,24 @@ describe("the lifecycle, for the time an answer is given", () => {
       name: "a Clear does not wait for a trace to be kept",
       happened: discarding,
       of: stopTrace,
+      awaited: false,
+    },
+    {
+      name: "a Record that cannot start waits for its trace to be thrown away",
+      happened: [opened, record, traceStarted, failed(reportInteractions)],
+      of: discardTrace,
+      awaited: true,
+    },
+    {
+      name: "a Record that cannot start waits for no trace that never started",
+      happened: [opened, record, failed(startTrace)],
+      of: discardTrace,
+      awaited: false,
+    },
+    {
+      name: "a Record that cannot start does not wait for the storage state while its trace is thrown away",
+      happened: [opened, record, traceStarted, failed(reportInteractions)],
+      of: saveStorage,
       awaited: false,
     },
     {
