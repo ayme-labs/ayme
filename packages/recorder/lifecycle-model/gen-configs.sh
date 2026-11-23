@@ -17,9 +17,9 @@ cd "$(dirname "$0")" || exit 2
 # in configs of their own (Limit-*, Race-*), one shortest path each, so that a
 # break does not cut the other rules' runs short (the statechart tool bounds
 # every run after the first break).
-HOLD="R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter R03a_StoppedClicksAreUntouched R03b_StoppedAddsNothing R03c_TracingRunsThroughPause R04_FinishSavesEverything R05_ClearLeavesNothing R06_ReviewOnlyWhilePaused R07_AssertionCarriesNoChanges R09_NeverHalfWritten R10_SavesOnce X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X6_TypingWrittenWhole X7_EntryHasItsOwnReport"
+HOLD="R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter R03a_StoppedClicksAreUntouched R03b_StoppedAddsNothing R03c_TracingRunsThroughPause R04_FinishSavesEverything R05_ClearLeavesNothing R06_ReviewUntilFinishOrClear R07_AssertionCarriesNoChanges R09_NeverHalfWritten R10_SavesOnce X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X6_TypingWrittenWhole X7_EntryHasItsOwnReport"
 FILLS="F1_ShowsOnceItHasItsPlace F2_StaysInPlace F3_NextActionMakesItFinal F4_StopAndFinishKeepLastText F5_ClearRemovesForGood F6_WindowIsWhatIsSaved"
-F3P="PROPERTIES F3_FinalKeepsItsChanges"
+F3P="PROPERTIES F3_FinalKeepsItsChanges R06_DecisionsChangeOnlyByAPress"
 ALLB='{"left", "right", "middle"}'
 LR='{"left", "right"}'
 LEFT='{"left"}'
@@ -84,7 +84,7 @@ mk Surfaces         "$IN" 1 1   1   2   1    0     $F     $T   $F   $F    $T    
 mk TimeLimit        "$IN" 2 1   1   1   1    0     $F     $F   $T   $F    $T    $F      $F $F "INVARIANTS $RULES $FILLS
 $F3P"
 # The rules TimeLimit cannot check past the tool's bound after its first break.
-mk TimeLimit-Holds  "$IN" 2 1   1   1   1    0     $F     $F   $T   $F    $T    $F      $F $F "INVARIANTS R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter R03b_StoppedAddsNothing R03c_TracingRunsThroughPause R05_ClearLeavesNothing R06_ReviewOnlyWhilePaused R07_AssertionCarriesNoChanges R09_NeverHalfWritten R10_SavesOnce X6_TypingWrittenWhole X7_EntryHasItsOwnReport X4_WrapUpNeverGetsStuck $FILLS
+mk TimeLimit-Holds  "$IN" 2 1   1   1   1    0     $F     $F   $T   $F    $T    $F      $F $F "INVARIANTS R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter R03b_StoppedAddsNothing R03c_TracingRunsThroughPause R05_ClearLeavesNothing R06_ReviewUntilFinishOrClear R07_AssertionCarriesNoChanges R09_NeverHalfWritten R10_SavesOnce X6_TypingWrittenWhole X7_EntryHasItsOwnReport X4_WrapUpNeverGetsStuck $FILLS
 $F3P"
 # Rules 7 and 12: rule 7 with its exception for the known limit B2; without
 # it; and with B2 left out.
@@ -167,7 +167,7 @@ mk Progress         "SPECIFICATION LiveSpec" 1 1 1 1 0 0 $T $F $T $F $T $F $F $F
 # Probes: each must break, which shows the model reaches that situation.
 mk Probes           "$IN" 2 2   1   1   1    0     $T     $F   $F   $F    $T    $F      $F $F "INVARIANTS $PROBES"
 # P2's path is longer than the statechart tool's bound after a first break.
-mk Probes-Discard   "$IN" 2 2   1   1   1    0     $T     $F   $F   $F    $T    $F      $F $F "INVARIANT P2_NeverSavesADiscard"
+mk Probes-Discard   "$IN" 2 2   1   1   1    0     $T     $F   $F   $F    $T    $F      $F $F "INVARIANTS P2_NeverSavesADiscard P24_NeverDiscardsWhileRecording P25_NeverTypesOnInADiscardedFill"
 mk Probes-Clear     "$IN" 1 1   1   2   0    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS P6_NeverClearsThenRecordsAgain P8_NeverEndsEmptyAfterRecording"
 mk Probes-Window    "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $WPROBES"
 mk Probes-Window-Navigation "$IN" 2 2 1 1 1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT P19_NeverNavigatesUnderALiveFill"

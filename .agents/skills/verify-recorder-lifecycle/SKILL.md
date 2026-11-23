@@ -47,6 +47,7 @@ each function named in a comment beside the operator that models it (search
   `interactionRevised`, `writeDown`, `showOrWrite`, `behindUnshown`,
   `behindUnwritten`, `mayBeRevised`, `letThrough`, `withoutPage`, `asserted`,
   `assertVisibility`, `leaveAssertVisibility`, `pickNow`, `pickingChanged`,
+  `decidable`, `decide`,
   `pageNavigated` (with `leftDocument`, `elsewhere` and `hadVisit`),
   `keepRead`, `atRecord`, `causeOf`, to `shown` and `offered`.
 - `playwright/infrastructure/live/stockBrowser.ts`: `passOnHeld`, `passOn`,
@@ -130,7 +131,7 @@ a shared machine run one at a time.
      mechanism in a scratch copy of `Recorder.tla` (remove the new check,
      reorder the new step) and confirm the rule breaks. A check you never saw
      fail proves nothing.
-   - Every probe (P1 to P23) must still break: each shows the model still
+   - Every probe (P1 to P25) must still break: each shows the model still
      reaches a situation.
 
 5. **Update the README and this skill**: the rules and their outcomes, the

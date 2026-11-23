@@ -25,7 +25,7 @@ export const state = (v) => {
         quit: "Wrapping up, then clear and end",
       }[v.goal];
     case "paused":
-      return "Paused (you can discard and restore entries)";
+      return "Paused";
     case "saving":
       return "Saving the package";
     case "saved":
