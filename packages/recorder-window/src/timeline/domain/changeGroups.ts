@@ -43,10 +43,12 @@ export function shownRows(
   const placed = rows
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => !cursorOnly(row));
-  const together = new Map<string, PlacedRow[]>();
+  // The rows by what they fold with. Those that fold with nothing are kept
+  // under no key, and never read.
+  const together = new Map<string | null, PlacedRow[]>();
   for (const one of placed) {
     const key = foldKey(one.row);
-    if (key) together.set(key, [...(together.get(key) ?? []), one]);
+    together.set(key, [...(together.get(key) ?? []), one]);
   }
   const shown: (PlacedRow | FoldedRows)[] = [];
   for (const one of placed) {
