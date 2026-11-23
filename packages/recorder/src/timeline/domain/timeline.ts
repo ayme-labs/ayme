@@ -16,7 +16,6 @@ import { foundRows, type FoundRow } from "./changeRows";
 import {
   labelNear,
   selectorWords,
-  withPageBefore,
   wordsOf,
   type NamedElement,
 } from "./elementNames";
@@ -172,12 +171,9 @@ function targetWords(
 }
 
 /** The rows of a Change Tree as an entry tells them, and their elements. */
-const rowsOf = (change: StructuralTree) => {
-  const found: readonly FoundRow[] = foundRows(change);
-  return {
-    changes: found.map(({ row }) => row),
-    rows: found.map(({ element }) => element),
-  };
+type Rows = {
+  readonly changes: FoundRow["row"][];
+  readonly rows: FoundRow["element"][];
 };
 
 /** The ref the Visit's latest snapshot gives an element known by its first
@@ -304,6 +300,10 @@ export class Timeline {
     { readonly written: Written; readonly interaction: RecordedInteraction }
   >();
   private readonly warned: RecorderWarning[] = [];
+  /** The rows of each Change Tree, named once as it is made: the page
+   * before it, and the indexes its labels are worked out with, are needed
+   * only then. */
+  private readonly named = new WeakMap<StructuralTree, Rows>();
 
   /** What a person should know about how this recording was made. */
   warnings(): readonly RecorderWarning[] {
@@ -675,8 +675,8 @@ export class Timeline {
   }
 
   /** What changed on `from`'s page from one tree to another, under the
-   * elements' first refs, with the page before it kept beside it: a removed
-   * element is named by its place there. */
+   * elements' first refs, with its rows: a removed element is named by its
+   * place in the page before it, built only to name one. */
   private async reconciled(
     from: Kept,
     fromTree: StructuralTree,
@@ -691,10 +691,21 @@ export class Timeline {
             ledger.sameIdentity(beforeRef, afterRef),
         })
     );
-    return withPageBefore(
-      this.underFirstRefs(change, firstRefs),
+    const tree = this.underFirstRefs(change, firstRefs);
+    const found = foundRows(tree, () =>
       this.underFirstRefs(fromTree, firstRefs)
     );
+    this.named.set(tree, {
+      changes: found.map(({ row }) => row),
+      rows: found.map(({ element }) => element),
+    });
+    return tree;
+  }
+
+  /** The rows of a Change Tree as an entry tells them, and their elements,
+   * as it was named when it was made. */
+  private rowsOf(change: StructuralTree): Rows {
+    return this.named.get(change)!;
   }
 
   /**
@@ -876,7 +887,7 @@ export class Timeline {
       pictured,
       new Map([...from.firstRefs, ...to.firstRefs])
     );
-    const { changes, rows } = rowsOf(before);
+    const { changes, rows } = this.rowsOf(before);
     visit.entries[index] = {
       ...kept,
       entry: { ...kept.entry, kind: "change", changes },
@@ -953,7 +964,7 @@ export class Timeline {
     written.target = target;
     written.named = named;
     const changed = change && changedSomething(change) ? change : null;
-    const told = changed && rowsOf(changed);
+    const told = changed && this.rowsOf(changed);
     return {
       entry: {
         kind: "interaction",
@@ -1125,7 +1136,7 @@ export class Timeline {
     change: StructuralTree
   ): EntryId {
     const id = `change_${++this.changes}` as EntryId;
-    const { changes, rows } = rowsOf(change);
+    const { changes, rows } = this.rowsOf(change);
     visit.entries.push({
       entry: { kind: "change", id, timestamp: at, changes },
       change,

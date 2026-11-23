@@ -6,26 +6,34 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
+  ElementNames,
   labelNear,
-  labelOf,
   ordinal,
   selectorWords,
-  withPageBefore,
   type PageView,
 } from "./elementNames";
 
-/** A Change Tree, with the page before beside it, as the timeline keeps
- * it. */
+/** The names of a Change Tree, with the page before it, as the timeline
+ * names its rows. */
 function changeOf(before: StructuralTree, after: StructuralTree) {
-  return withPageBefore(StructuralTree.reconcile(before, after), before);
+  return new ElementNames(
+    StructuralTree.reconcile(before, after),
+    () => before
+  );
 }
 
 const read = (yaml: string, refs = new SyntheticAriaRefFactory()) =>
   StructuralTree.fromAriaSnapshotYaml(yaml, refs);
 
-/** An element's label and selector, by its ref. */
-function label(tree: StructuralTree, ref: string, view: PageView = "after") {
-  const named = labelOf(tree, tree.getNode(ref as AriaRef)!, view);
+/** An element's label and selector, by its ref, in a tree or in the names
+ * of one. */
+function label(
+  of: StructuralTree | ElementNames,
+  ref: string,
+  view: PageView = "after"
+) {
+  const names = of instanceof ElementNames ? of : new ElementNames(of);
+  const named = names.labelOf(names.tree.getNode(ref as AriaRef)!, view);
   return named && { label: named.label, selector: named.selector };
 }
 
@@ -211,6 +219,19 @@ describe("the label of an element", () => {
     );
     // Before, the first one was the only one.
     expect(label(change, "e4", "before")?.label).toBe('listitem "buy milk"');
+  });
+
+  it("is counted against the tree itself when it has no page before, whichever page is asked", () => {
+    const tree = read(
+      [
+        `- generic [ref=e1]:`,
+        `  - button "Undo" [ref=e2]`,
+        `  - button "Undo" [ref=e3]`,
+      ].join("\n")
+    );
+
+    expect(label(tree, "e3", "before")).toEqual(label(tree, "e3", "after"));
+    expect(label(tree, "e3", "before")?.label).toBe('button "Undo" (2nd of 2)');
   });
 
   it("is of the text a changed element had before, on the page before", () => {
@@ -514,12 +535,7 @@ describe("the label of an element, in the details of how it is read", () => {
       ].join("\n"),
       refs
     );
-    const change = withPageBefore(
-      StructuralTree.reconcile(before, after),
-      before
-    );
-
-    expect(label(change, "e2")?.label).toBe('listitem "x"');
+    expect(label(changeOf(before, after), "e2")?.label).toBe('listitem "x"');
   });
 
   it("counts each element of a role, nested ones too, for a role alone", () => {
