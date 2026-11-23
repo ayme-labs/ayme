@@ -30,7 +30,9 @@ export const state = (v) => {
       return "Saving the package";
     case "saved":
     case "empty":
-      return "Ended: the package, or 'empty' when no step was recorded";
+      return v.storage === "asked"
+        ? "Saving the storage state (--save-storage)"
+        : "Ended: the package, or 'empty' when no step was recorded";
     default:
       return v.phase;
   }
@@ -55,6 +57,8 @@ export const step = (action, from, to) => {
     return "Playwright reports and the page holds inputs back: Record or Continue is answered";
   if (from.phase === "saving" && to.phase !== "saving")
     return "the package is written, or there was nothing to write";
+  if (action === "StorageLands")
+    return "the storage state is saved, or a warning says it could not be";
   switch (action) {
     case "YouPressRecord":
       return "you press Record";
@@ -83,7 +87,10 @@ export const step = (action, from, to) => {
 export const group = (v) =>
   v.phase === "recording" && v.boot === "none"
     ? "Recording"
-    : v.phase === "wrap" || v.phase === "saving" || v.phase === "recording"
+    : v.phase === "wrap" ||
+        v.phase === "saving" ||
+        v.phase === "recording" ||
+        v.storage === "asked"
       ? "Busy, the buttons wait"
       : v.phase === "paused"
         ? "Paused"

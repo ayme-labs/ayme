@@ -6,7 +6,7 @@ description: >
   the rules the recorder must keep. Use when a change under
   packages/recorder/src alters the order of events, what the recorder waits
   for, or a promise it makes: the gate, Playwright's reports, the reads of
-  the page, the wrap-up after Stop, Finish, Clear or Ctrl+C, or typed text in
+  the page, the wrap-up after Stop, Finish, Clear or Ctrl+C, the storage save at the end, or typed text in
   the window. Use it before showing such a change to the user.
 ---
 
@@ -39,7 +39,8 @@ each function named in a comment beside the operator that models it (search
 
 - `session/domain/lifecycle.ts`: all of `step`, from `record`, `resume`,
   `wrapUp`, `goOnWrappingUp`, `giveUp`, `wrappedUp`, `endFromOutside`,
-  `clearPaused`, `traceGone` and `saved`, through `proceed`, `startNext`,
+  `clearPaused`, `traceGone`, `saved`, `ending` and `ended` (the storage
+  save, with `failed` for `saveStorage`), through `proceed`, `startNext`,
   `inputHeld`, `inputPassedOn`, `pageSettled`, `snapshotTaken`,
   `giveSnapshot`, `interactionReported`, `reportOfHeld` (with `buttonOf`,
   `reportsClickOf`, `asHeld`), `knownFromReport`,
@@ -51,7 +52,8 @@ each function named in a comment beside the operator that models it (search
   `keepRead`, `atRecord`, `causeOf`, to `shown` and `offered`.
 - `playwright/infrastructure/live/stockBrowser.ts`: `passOnHeld`, `passOn`,
   `holdInputs`, `letInputsThrough`, `reportInteractions`,
-  `everyReportDelivered`, `pick` (Playwright's mode first, then the gates),
+  `everyReportDelivered`, `saveStorage`, `pick` (Playwright's mode first,
+  then the gates),
   `inModeOrder`, `takeSnapshot`, `settle`, `letGo`, the page opened blank to
   start recording (`opening`, which goes to its address in `holdInputs`), and
   the order of reports (`inReportOrder`, `reportFrom`, `withAncestors`,
@@ -130,7 +132,7 @@ a shared machine run one at a time.
      mechanism in a scratch copy of `Recorder.tla` (remove the new check,
      reorder the new step) and confirm the rule breaks. A check you never saw
      fail proves nothing.
-   - Every probe (P1 to P23) must still break: each shows the model still
+   - Every probe (P1 to P26) must still break: each shows the model still
      reaches a situation.
 
 5. **Update the README and this skill**: the rules and their outcomes, the

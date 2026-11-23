@@ -95,6 +95,10 @@ VARIABLES
   gateOffAsked,   \* wrap only: the pages are asked to hold no more (L gateOffAsked)
   gateOff, finals, switchingOff, traceStarting, discarding,  \* L wrappingUp fields
   stopping, savedTold,                                       \* L saving
+  storage,        \* L ending: the recorder's end waits for the storage state
+                  \*   to be saved (--save-storage): none (no end yet) |
+                  \*   asked (L ending) | saved | failed (a warning); the end
+                  \*   is told once it is saved or failed (L ended)
   gen,            \* how many times the recording was thrown away
   pgHold, pgLatest,  \* L PageGate: the engine's note that the page holds what
                      \* follows; the page's latest snapshot (0 = none)
@@ -160,7 +164,7 @@ VARIABLES
   stops, rounds, finishAgain, asserts
 
 engVars == <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
-             traceStarting, discarding, stopping, savedTold, gen, pgHold, pgLatest,
+             traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest,
              pgReported, pgLastFill, els, pic,
              lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
              passReq, gateQ, modeQ, traceQ, tl, tlAtPause, dis, kept, revLost,
@@ -183,6 +187,7 @@ Eng == [phase |-> phase, boot |-> boot, resumed |-> resumed, picking |-> picking
         goal |-> goal, gateOffAsked |-> gateOffAsked, gateOff |-> gateOff, finals |-> finals,
         switchingOff |-> switchingOff, traceStarting |-> traceStarting,
         discarding |-> discarding, stopping |-> stopping, savedTold |-> savedTold,
+        storage |-> storage,
         gen |-> gen, pgHold |-> pgHold, pgLatest |-> pgLatest, lst |-> lst,
         pgReported |-> pgReported, pgLastFill |-> pgLastFill, els |-> els, pic |-> pic,
         ent |-> ent, stage |-> stage, rep |-> rep, repOf |-> repOf,
@@ -203,6 +208,7 @@ Commit(t) ==   \* t is computed once (TLC passes arguments unevaluated)
     /\ finals' = s.finals /\ switchingOff' = s.switchingOff
     /\ traceStarting' = s.traceStarting /\ discarding' = s.discarding
     /\ stopping' = s.stopping /\ savedTold' = s.savedTold /\ gen' = s.gen
+    /\ storage' = s.storage
     /\ pgHold' = s.pgHold /\ pgLatest' = s.pgLatest /\ lst' = s.lst
     /\ pgReported' = s.pgReported /\ pgLastFill' = s.pgLastFill /\ els' = s.els /\ pic' = s.pic
     /\ ent' = s.ent /\ stage' = s.stage /\ rep' = s.rep /\ repOf' = s.repOf
@@ -611,6 +617,7 @@ ClearPaused(s) ==
 TraceGone(s) ==
   IF ~(s.phase = "wrap" /\ s.discarding) THEN s
   ELSE [s EXCEPT !.phase = IF s.goal = "quit" THEN "empty" ELSE "off",
+                 !.storage = IF s.goal = "quit" THEN "asked" ELSE @,   \* L ending
                  !.goal = "none", !.discarding = FALSE, !.lst = <<>>, !.pend = <<>>,
                  !.tl = {}, !.dis = {}, !.kept = {}, !.gen = @ + 1,
                  !.keptSn = {}, !.newT = NoTL,
@@ -634,7 +641,7 @@ WritePackage(s) ==
 
 \* L endFromOutside
 EndFromOutside(s) ==
-  CASE s.phase = "off" -> [s EXCEPT !.phase = "empty"]
+  CASE s.phase = "off" -> [s EXCEPT !.phase = "empty", !.storage = "asked"]   \* L ending
     [] s.phase = "recording" -> WrapUp(s, "save")
     [] s.phase = "wrap" ->
          [s EXCEPT !.goal = IF @ = "pause" THEN "save" ELSE IF @ = "clear" THEN "quit" ELSE @]
@@ -867,6 +874,9 @@ View ==
     [] phase = "recording" -> "recording"
     [] phase = "wrap" -> IF goal = "pause" THEN "wrapPause"
                          ELSE IF goal = "save" THEN "wrapSave" ELSE "wrapClear"
+    \* L shown: the recorder that ends shows "saving" until the storage state
+    \* is saved (L ending)
+    [] storage = "asked" -> "saving"
     [] OTHER -> phase
 Views == {"off", "bootOff", "bootPaused", "picking", "assertPressed", "recording",
           "wrapPause", "wrapSave", "wrapClear", "paused", "saving", "saved", "empty"}
@@ -974,7 +984,7 @@ Init ==
   /\ phase = "off" /\ boot = "none" /\ resumed = FALSE /\ picking = "off"
   /\ goal = "none" /\ gateOffAsked = FALSE /\ gateOff = FALSE /\ finals = "no" /\ switchingOff = FALSE
   /\ traceStarting = FALSE /\ discarding = FALSE /\ stopping = FALSE
-  /\ savedTold = FALSE /\ gen = 0 /\ pgHold = FALSE /\ pgLatest = 0 /\ lst = <<>>
+  /\ savedTold = FALSE /\ storage = "none" /\ gen = 0 /\ pgHold = FALSE /\ pgLatest = 0 /\ lst = <<>>
   /\ ent = [e \in Ids |-> "none"] /\ stage = [e \in Ids |-> "none"]
   /\ rep = [e \in Ids |-> FALSE] /\ repOf = [e \in Ids |-> 0]
   /\ unrep = [e \in Ids |-> FALSE] /\ revised = [e \in Ids |-> FALSE]
@@ -1069,7 +1079,7 @@ YouDiscard(e) ==
   /\ PersonMayAct /\ phase = "paused" /\ Pressable("discard") /\ e \in tl \ dis
   /\ dis' = dis \cup {e}
   /\ UNCHANGED <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
-                 traceStarting, discarding, stopping, savedTold, gen, pgHold, pgLatest,
+                 traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest,
                  lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
                  passReq, gateQ, modeQ, traceQ, tl, tlAtPause, kept, revLost,
                  pkg, saves, pkgHas, pkgDis, holdPg, keptSn, newT, pkgNew,
@@ -1082,7 +1092,7 @@ YouRestore(e) ==
   /\ PersonMayAct /\ phase = "paused" /\ Pressable("discard") /\ e \in dis
   /\ dis' = dis \ {e}
   /\ UNCHANGED <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
-                 traceStarting, discarding, stopping, savedTold, gen, pgHold, pgLatest,
+                 traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest,
                  lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
                  passReq, gateQ, modeQ, traceQ, tl, tlAtPause, kept, revLost,
                  pkg, saves, pkgHas, pkgDis, holdPg, keptSn, newT, pkgNew,
@@ -1455,13 +1465,35 @@ TraceLands ==
                  docOf, readFly, seen, personVars, surfVars, miscVars>>
   /\ Publish
 
-\* L saved: the package is written, or there was nothing to write.
+\* L saved: the package is written, or there was nothing to write. The
+\* outcome is decided, and the storage state is asked to be saved (L ending).
 SavedArrives ==
   /\ savedTold /\ phase = "saving"
   /\ phase' = IF pkg = "complete" THEN "saved" ELSE "empty"
   /\ savedTold' = FALSE
+  /\ storage' = "asked"
   /\ UNCHANGED <<boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
                  traceStarting, discarding, stopping, gen, pgHold, pgLatest, lst, ent,
+                 stage, rep, repOf, unrep, revised, bsnap, asnap, pend, passReq, gateQ,
+                 modeQ, traceQ, tl, tlAtPause, dis, kept, revLost, pkg, saves, pkgHas,
+                 pkgDis, holdPg, keptSn, newT, pkgNew, shown, txt, fin, pos,
+                 pgReported, pgLastFill, els, pic,
+                 pageVars, personVars, surfVars, miscVars>>
+  /\ Publish
+
+\* SB saveStorage, then L storageSaved, or L failed for saveStorage: once the
+\* outcome is decided, the package written and the trace over, the recorded
+\* context's storage state is written to the --save-storage file (Playwright's
+\* context.storageState; with no file, nothing is written). Playwright opens a
+\* page of its own for an origin no page is open at, which it tells no
+\* listener of and runs none of the context's scripts in. A save that fails,
+\* or takes longer than its time (L STORAGE_SAVE_LIMIT_MS), is a warning. The
+\* recorder's end is then told (L ended): the outcome is the one decided.
+StorageLands ==
+  /\ storage = "asked"
+  /\ storage' \in {"saved", "failed"}
+  /\ UNCHANGED <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
+                 traceStarting, discarding, stopping, savedTold, gen, pgHold, pgLatest, lst, ent,
                  stage, rep, repOf, unrep, revised, bsnap, asnap, pend, passReq, gateQ,
                  modeQ, traceQ, tl, tlAtPause, dis, kept, revLost, pkg, saves, pkgHas,
                  pkgDis, holdPg, keptSn, newT, pkgNew, shown, txt, fin, pos,
@@ -1585,8 +1617,9 @@ YouReloadWindow ==
   /\ win' = "loading" /\ winBehind' = TRUE
   /\ UNCHANGED <<engVars, pageVars, personVars, tbFresh, ansFresh, tb, tbAns, miscVars>>
 
-\* The recorder has ended. Nothing more happens on its side.
-Ended == ~Alive /\ UNCHANGED vars
+\* The recorder has ended, its end told once the storage state is saved or
+\* the save failed (L ended). Nothing more happens on its side.
+Ended == ~Alive /\ storage \in {"saved", "failed"} /\ UNCHANGED vars
 
 -----------------------------------------------------------------------------
 EngineNext ==
@@ -1600,7 +1633,7 @@ EngineNext ==
   \/ SnapshotTaken \/ SnapshotFails
   \/ \E e \in Ids : PageSettles(e)
   \/ \E i \in Inputs : ReportArrives(i) \/ RevisionArrives(i) \/ ReportArrivesAsRevision(i)
-  \/ GateSwitchLands \/ ModeLands \/ TraceLands \/ SavedArrives
+  \/ GateSwitchLands \/ ModeLands \/ TraceLands \/ SavedArrives \/ StorageLands
   \/ TimeLimitPasses \/ TerminalStop
 
 SurfaceNext == BridgeAnswers \/ AnswerLands \/ WindowCatchesUp \/ YouReloadWindow
@@ -1623,7 +1656,7 @@ OnItsOwn ==
   \/ SnapshotTaken \/ SnapshotFails
   \/ \E e \in Ids : PageSettles(e)
   \/ \E i \in Inputs : ReportArrives(i) \/ RevisionArrives(i)
-  \/ GateSwitchLands \/ ModeLands \/ TraceLands \/ SavedArrives \/ GatesUnpick
+  \/ GateSwitchLands \/ ModeLands \/ TraceLands \/ SavedArrives \/ StorageLands \/ GatesUnpick
   \/ \E i \in Inputs : HeldMessageArrives(i)
 
 -----------------------------------------------------------------------------
@@ -1703,6 +1736,22 @@ R09_NeverHalfWritten ==
 
 \* 10. Pressing Finish twice saves once.
 R10_SavesOnce == saves <= 1
+
+\* --save-storage (#1356). The storage state is saved once the recording and
+\* its trace are over: the outcome is decided, the package written or found
+\* empty, and no trace runs or is asked for, so nothing the save does is
+\* recorded or traced.
+S1_StorageSavedOnceTheTraceIsOver ==
+  storage # "none" => (~Alive /\ tracing # "on" /\ traceQ = <<>> /\ ~savedTold)
+\* The save leaves the recording as it is, whether it works or fails: no
+\* Visit, entry, decision or package changes, and the outcome stays.
+S2_StorageSaveAddsNothing ==
+  [][storage = "asked" /\ storage' # "asked"
+     => UNCHANGED <<phase, tl, dis, kept, keptSn, newT, pkg, saves, pkgHas, pkgDis, pkgNew,
+                    shown, fin, pos>>]_vars
+\* Every end saves the storage state, however the recorder ends, with
+\* nothing recorded too: no end is told without it (L ending).
+S3_EveryEndSavesTheStorage == ~Alive => storage # "none"
 
 \* 11. Input reaches the page in the order the person gave it.
 X1_NothingOvertakesAHeldClick == ~overtook
@@ -1991,6 +2040,11 @@ P21_NeverWaitsToShow ==
   ~(page = "open" /\ \E e \in Elems(lst) : IsFillEntry(e) /\ rep[e] /\ ~shown[e])
 P22_NeverStartsAFillFromARevision == ~\E i \in Inputs : IsFillEntry(N + i)
 P23_NeverSetsAFinalFillsText == ~\E e \in Ids : stage[e] = "textSet"
+\* --save-storage: the save is reached with nothing recorded, with a package,
+\* and fails (a warning).
+P24_NeverSavesStorageWithNothingRecorded == ~(storage = "saved" /\ phase = "empty")
+P25_NeverSavesStorageWithAPackage == ~(storage = "saved" /\ phase = "saved")
+P26_NeverWarnsOfTheStorage == storage # "failed"
 
 -----------------------------------------------------------------------------
 \* Narrower versions of rule 12, each to get its own shortest path.
@@ -2082,7 +2136,7 @@ LifeNext ==
   \/ \E i \in Inputs : ClickPicked(i)
   \/ SnapshotTaken \/ SnapshotFails
   \/ \E i \in Inputs : ReportArrives(i) \/ PassGone(i)
-  \/ GateSwitchLands \/ ModeLands \/ TraceLands \/ SavedArrives \/ GatesUnpick
+  \/ GateSwitchLands \/ ModeLands \/ TraceLands \/ SavedArrives \/ StorageLands \/ GatesUnpick
   \/ TerminalStop \/ PageCloses
   \/ Ended
 
@@ -2092,7 +2146,7 @@ StartedRecording ==
   /\ phase = "recording" /\ boot = "none" /\ resumed = FALSE /\ picking = "off"
   /\ goal = "none" /\ gateOffAsked = FALSE /\ gateOff = FALSE /\ finals = "no" /\ switchingOff = FALSE
   /\ traceStarting = FALSE /\ discarding = FALSE /\ stopping = FALSE
-  /\ savedTold = FALSE /\ gen = 0 /\ pgHold = TRUE /\ pgLatest = 0 /\ lst = <<>>
+  /\ savedTold = FALSE /\ storage = "none" /\ gen = 0 /\ pgHold = TRUE /\ pgLatest = 0 /\ lst = <<>>
   /\ ent = [e \in Ids |-> "none"] /\ stage = [e \in Ids |-> "none"]
   /\ rep = [e \in Ids |-> FALSE] /\ repOf = [e \in Ids |-> 0]
   /\ unrep = [e \in Ids |-> FALSE] /\ revised = [e \in Ids |-> FALSE]
