@@ -170,6 +170,13 @@ type Matches = {
   readonly place: ReadonlyMap<AriaRef, number>;
 };
 
+/** One reading of the elements' texts, in lower case, and for each list of
+ * elements a text is looked for in, which of them hold one. */
+type Reading = {
+  readonly texts: ReadonlyMap<AriaRef, string>;
+  readonly lists: Map<readonly StructuralNode[], TextsHolding>;
+};
+
 /** Roles whose name Playwright takes from the text inside: an element of
  * one with no text of its own in the snapshot holds its name as text. */
 const NAMED_BY_CONTENT = new Set([
@@ -213,8 +220,14 @@ class PageLabels {
    * aria-label, which is no text, so where the two differ, which one
    * Playwright reads cannot be told. */
   private readonly certainTexts = new Map<AriaRef, string>();
-  /** The elements whose text may or may not hold a name, in order. */
-  private readonly unsure: StructuralNode[] = [];
+  /** The elements whose text may or may not hold a name, in order: of
+   * each role, and under null of every role; and by each of their two
+   * texts. The text certainly inside each, in lower case. */
+  private readonly unsureByRole = new Map<string | null, StructuralNode[]>();
+  private readonly unsureByText = new Map<string, StructuralNode[]>();
+  private readonly lowerCertainTexts = new Map<AriaRef, string>();
+  /** Whether each text selector may match otherwise, as `unsureOf` says. */
+  private readonly unsureBy = new Map<string, boolean>();
   /** The frame each element is in; null for the page's own document. */
   private readonly frameByRef = new Map<AriaRef, StructuralNode | null>();
   /** The elements by their whole text, in order. */
@@ -228,6 +241,15 @@ class PageLabels {
   >();
   /** What each selector matches, by its document and its words. */
   private readonly matched = new Map<string, Matches>();
+  /** The two readings of an element's text a text is looked for in. */
+  private readonly wholeReading: Reading = {
+    texts: this.lowerTexts,
+    lists: new Map(),
+  };
+  private readonly certainReading: Reading = {
+    texts: this.lowerCertainTexts,
+    lists: new Map(),
+  };
   private readonly labels = new Map<AriaRef, NamedElement | null>();
 
   /** The labels of a page: a read, or a Change Tree with the page after
@@ -272,33 +294,124 @@ class PageLabels {
       const full = fullText(node, pieces);
       const certain = normal(certainPieces.join(" "));
       this.certainTexts.set(node.ref, certain);
-      if (certain !== full) this.unsure.push(node);
       this.ends.set(node.ref, this.order.size);
       this.texts.set(node.ref, shortened(longest));
       this.ownTexts.set(node.ref, shortened(longestOwn(node)));
       this.fullTexts.set(node.ref, full);
-      add(this.byFullText, full, node);
       this.lowerTexts.set(node.ref, full.toLowerCase());
       return { longest, full, certain };
     };
     for (const root of tree.getRootNodes()) visit(root, null);
+    // An element's text is known only after its descendants': the lists by
+    // text are made after, in the order of the page.
+    for (const node of this.all) {
+      const full = this.fullTexts.get(node.ref)!;
+      const certain = this.certainTexts.get(node.ref)!;
+      add(this.byFullText, full, node);
+      if (certain === full) continue;
+      add(this.unsureByRole, node.role, node);
+      add(this.unsureByRole, null, node);
+      add(this.unsureByText, full, node);
+      add(this.unsureByText, certain, node);
+      this.lowerCertainTexts.set(node.ref, certain.toLowerCase());
+    }
   }
 
-  /** Whether a text selector of the document `frame`, which `fits` an
-   * element by its text, may match otherwise in the page: an element whose
-   * text may hold a name fits it by one reading of its text and not by the
-   * other. `role` limits it to the elements of a role. */
+  /** Whether a text selector of the document `frame` may match otherwise
+   * in the page: an element whose text may hold a name fits it by one
+   * reading of its text and not by the other. `role` limits it to the
+   * elements of a role. A selector by a `whole` text fits a text that is
+   * `text`; any other, a text that holds `text`, which is in lower case, in
+   * any case. Worked out once per selector. */
   private unsureOf(
     frame: StructuralNode | null,
     role: string | null,
-    fits: (text: string) => boolean
+    text: string,
+    whole: boolean
   ): boolean {
-    return this.unsure.some(
-      (node) =>
-        (role === null || node.role === role) &&
-        this.frameOf(node) === frame &&
-        fits(this.fullTexts.get(node.ref)!) !==
-          fits(this.certainTexts.get(node.ref)!)
+    const key = JSON.stringify([frame?.ref, role, whole, text]);
+    const known = this.unsureBy.get(key);
+    // Stryker disable next-line ConditionalExpression: a cache; working it out again gives the same answer
+    if (known !== undefined) return known;
+    const unsure = whole
+      ? this.unsureWhole(frame, role, text)
+      : this.unsureHolding(frame, role, text);
+    // Stryker disable next-line all: a cache; working it out again gives the same answer
+    this.unsureBy.set(key, unsure);
+    return unsure;
+  }
+
+  /** Whether an element of `role`, or of any role for null, in the
+   * document `frame`, has `text` as its whole text by one reading and not
+   * by the other: any element listed under `text`, as its two texts
+   * differ. */
+  private unsureWhole(
+    frame: StructuralNode | null,
+    role: string | null,
+    text: string
+  ): boolean {
+    return (
+      this.unsureByText
+        .get(text)
+        ?.some(
+          (node) =>
+            (role === null || node.role === role) &&
+            this.frameOf(node) === frame
+        ) ?? false
+    );
+  }
+
+  /** Whether an element of `role`, or of any role for null, in the
+   * document `frame`, holds `lower` by one reading of its text and not by
+   * the other. */
+  private unsureHolding(
+    frame: StructuralNode | null,
+    role: string | null,
+    lower: string
+  ): boolean {
+    const among = this.unsureByRole.get(role);
+    if (!among) return false;
+    const byWhole = new Set(this.holding(among, lower));
+    const byCertainAlone = this.holding(
+      among,
+      lower,
+      this.certainReading
+    ).filter((node) => !byWhole.delete(node));
+    return [...byWhole, ...byCertainAlone].some(
+      (node) => this.frameOf(node) === frame
+    );
+  }
+
+  /** The elements of `nodes` whose text holds `lower`, in order. Their
+   * text is their whole text in lower case, or as `reading` has it. */
+  private holding(
+    nodes: readonly StructuralNode[],
+    lower: string,
+    reading = this.wholeReading
+  ): StructuralNode[] {
+    let texts = reading.lists.get(nodes);
+    // Stryker disable next-line ConditionalExpression: a cache; listing the texts again finds the same elements
+    if (!texts)
+      reading.lists.set(
+        nodes,
+        (texts = new TextsHolding(
+          nodes.map((node) => reading.texts.get(node.ref)!)
+        ))
+      );
+    return texts
+      .holding(lower, (outer, inner) =>
+        this.holdsAll(nodes[outer]!, nodes[inner]!)
+      )
+      .map((at) => nodes[at]!);
+  }
+
+  /** Whether an element's text holds all of another's placed after it,
+   * both read the same way: the other is inside it, in the same document.
+   * Each list a text is looked for in is in the order of the page. */
+  private holdsAll(outer: StructuralNode, inner: StructuralNode): boolean {
+    return (
+      this.order.get(inner.ref)! < this.ends.get(outer.ref)! &&
+      this.frameOf(inner) === this.frameOf(outer)
     );
   }
 
@@ -312,21 +425,18 @@ class PageLabels {
   }
 
   /** What a selector matches in the document `frame`, worked out once: the
-   * elements of `candidates` that `fits`, and with `innermost`, only those
-   * none of whose descendants fits too, as Playwright's text lookup. */
+   * elements `matching` gives, and with `innermost`, only those none of
+   * whose descendants fits too, as Playwright's text lookup. */
   private matchesOf(
     selector: string,
     frame: StructuralNode | null,
-    candidates: readonly StructuralNode[],
-    fits: (node: StructuralNode) => boolean,
+    matching: () => readonly StructuralNode[],
     innermost = false
   ): Matches {
     const key = `${frame?.ref ?? ""}\u0000${selector}`;
     const known = this.matched.get(key);
     if (known) return known;
-    let nodes = candidates.filter(
-      (node) => this.frameOf(node) === frame && fits(node)
-    );
+    let nodes = matching().filter((node) => this.frameOf(node) === frame);
     if (innermost)
       nodes = nodes.filter((node, at) => {
         const next = nodes[at + 1];
@@ -352,11 +462,8 @@ class PageLabels {
         {
           words: words(own!),
           selector: "iframe",
-          matches: this.matchesOf(
-            "iframe",
-            frame,
-            this.byRole.get("iframe")!,
-            () => true
+          matches: this.matchesOf("iframe", frame, () =>
+            this.byRole.get("iframe")!
           ),
         },
       ];
@@ -367,25 +474,29 @@ class PageLabels {
     if (!text || text === own?.name) return forms;
     const kept = text.replace(/…$/, "");
     const lower = kept.toLowerCase();
-    const holds = (one: StructuralNode) =>
-      this.lowerTexts.get(one.ref)!.includes(lower);
     // A text that may be a name alone, or not, says nothing certain.
     const role = own && !NO_ROLE.has(own.role) ? own.role : null;
-    if (this.unsureOf(frame, role, (one) => one.toLowerCase().includes(lower)))
-      return forms;
+    if (this.unsureOf(frame, role, lower, false)) return forms;
     if (first) {
       const selector = `${first.selector} >> internal:has-text=${JSON.stringify(kept)}i`;
       forms.push({
         words: `${first.words} ${quotedWords(text)}`,
         selector,
-        matches: this.matchesOf(selector, frame, first.matches.nodes, holds),
+        matches: this.matchesOf(selector, frame, () =>
+          this.holding(first.matches.nodes, lower)
+        ),
       });
     } else {
       const selector = `internal:text=${JSON.stringify(kept)}i`;
       forms.push({
         words: quotedWords(text),
         selector,
-        matches: this.matchesOf(selector, frame, this.all, holds, true),
+        matches: this.matchesOf(
+          selector,
+          frame,
+          () => this.holding(this.all, lower),
+          true
+        ),
       });
     }
     return forms;
@@ -399,7 +510,6 @@ class PageLabels {
     const { role, name } = own;
     const ofRole = this.byRole.get(role)!;
     const quoted = JSON.stringify(name);
-    const every = () => true;
     if (!own.byText) {
       const selector = name
         ? `internal:role=${role}[name="${escaped(name)}"s]`
@@ -410,7 +520,7 @@ class PageLabels {
       return {
         words: words(own),
         selector,
-        matches: this.matchesOf(selector, frame, candidates, every),
+        matches: this.matchesOf(selector, frame, () => candidates),
       };
     }
     // A text that may be a name alone, or not, says nothing certain: an
@@ -418,7 +528,8 @@ class PageLabels {
     const unsure = this.unsureOf(
       frame,
       NO_ROLE.has(role) ? null : role,
-      (text) => text === name
+      name,
+      true
     );
     if (unsure && NO_ROLE.has(role)) return null;
     if (unsure) {
@@ -426,7 +537,7 @@ class PageLabels {
       return {
         words: role,
         selector,
-        matches: this.matchesOf(selector, frame, ofRole, every),
+        matches: this.matchesOf(selector, frame, () => ofRole),
       };
     }
     if (NO_ROLE.has(role)) {
@@ -437,8 +548,7 @@ class PageLabels {
         matches: this.matchesOf(
           selector,
           frame,
-          this.byFullText.get(name)!,
-          every,
+          () => this.byFullText.get(name)!,
           true
         ),
       };
@@ -450,7 +560,7 @@ class PageLabels {
     return {
       words: words(own),
       selector,
-      matches: this.matchesOf(selector, frame, candidates, every),
+      matches: this.matchesOf(selector, frame, () => candidates),
     };
   }
 
@@ -542,6 +652,87 @@ class PageLabels {
       `${last.words} (${ordinal(at + 1)} of ${last.matches.nodes.length})`,
       `${last.selector} >> nth=${at}`
     );
+  }
+}
+
+/** How many letters a piece of text `TextsHolding` lists is. */
+const PIECE = 3;
+
+/** No places. */
+const NO_PLACES: readonly number[] = [];
+
+/** A text's pieces of `PIECE` letters, one from each letter on. */
+function piecesOf(text: string): string[] {
+  const pieces: string[] = [];
+  for (let from = 0; from + PIECE <= text.length; from++)
+    pieces.push(text.slice(from, from + PIECE));
+  return pieces;
+}
+
+/**
+ * Which of some texts hold a text. From the second text looked for, each
+ * text's pieces are listed, once, and a text is looked for only in the
+ * texts that have the rarest of its own pieces, which every text holding
+ * it has. A page's texts mostly differ, so that is a few texts, not all:
+ * a list of items with texts of their own is labelled in a time that grows
+ * about as the list does. Texts that all share every piece, as texts of
+ * `a` and `b` that each start with `aaababbbaa`, are each searched for
+ * every text, in a time that grows with the square of their number. The
+ * first text looked for, and one shorter than a piece, is looked for in
+ * every text: one search is quicker than the listing.
+ */
+class TextsHolding {
+  /** The places of the texts that have each piece, in order, once
+   * listed. */
+  private withPiece: Map<string, number[]> | undefined;
+  private searches = 0;
+
+  constructor(private readonly texts: readonly string[]) {}
+
+  /** The places of the texts that hold `text`, in order. A text that holds
+   * all of a later one that holds `text`, as `holdsAll` says, holds it too,
+   * and is not searched: the long text of an element around others is
+   * searched only when none of theirs holds `text`. */
+  holding(
+    text: string,
+    holdsAll: (outer: number, inner: number) => boolean
+  ): number[] {
+    const found: number[] = [];
+    for (const at of [...this.near(text)].reverse()) {
+      const inner = found.at(-1);
+      const around = inner !== undefined && holdsAll(at, inner);
+      if (around || this.texts[at]!.includes(text)) found.push(at);
+    }
+    return found.reverse();
+  }
+
+  /** The places of the texts that may hold `text`, in order: those that
+   * have the rarest of its pieces, or every text. */
+  private near(text: string): Iterable<number> {
+    const pieces = piecesOf(text);
+    // Stryker disable next-line all: which texts are searched only; each that may hold the text is checked
+    if (!pieces.length || this.searches++ === 0) return this.texts.keys();
+    const withPiece = (this.withPiece ??= this.listPieces());
+    let fewest: readonly number[] | undefined;
+    for (const piece of pieces) {
+      const places = withPiece.get(piece) ?? NO_PLACES;
+      // Stryker disable next-line all: which texts are searched only; each that may hold the text is checked
+      if (!fewest || places.length < fewest.length) fewest = places;
+    }
+    // Stryker disable next-line all: which texts are searched only; each that may hold the text is checked
+    return fewest ?? this.texts.keys();
+  }
+
+  private listPieces(): Map<string, number[]> {
+    const withPiece = new Map<string, number[]>();
+    this.texts.forEach((text, at) => {
+      for (const piece of piecesOf(text)) {
+        const places = withPiece.get(piece);
+        if (!places) withPiece.set(piece, [at]);
+        else if (places.at(-1) !== at) places.push(at);
+      }
+    });
+    return withPiece;
   }
 }
 
