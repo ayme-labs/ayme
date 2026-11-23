@@ -541,20 +541,28 @@ describe("the storage state (--save-storage)", () => {
   const firstAsked = (browser: ScriptedBrowser, kind: string) =>
     browser.asked.findIndex((request) => request.kind === kind);
 
-  it("is saved once, after the package is written and its trace stopped", async () => {
+  it("is saved once, only after the trace is answered and the package is on the disk", async () => {
     const { recorder, browser } = await start();
     await recorder.send({ type: "record" });
     await clickOnce(browser, "input_1");
+    browser.holdTraceAnswers();
+    // What is on the disk when the save is asked.
+    const atSave = browser
+      .asks({ kind: "saveStorage" })
+      .then(() => readdir(recordings()));
 
     await recorder.send({ type: "finish" });
+    await browser.asks({ kind: "stopTrace", keep: true });
+    // The trace is not answered yet: nothing is written, nothing saved.
+    await expect(readdir(recordings())).rejects.toThrow(/ENOENT/);
+    expect(firstAsked(browser, "saveStorage")).toBe(-1);
+    browser.releaseTraceAnswers();
 
+    expect(await atSave).toContainEqual(expect.stringMatching(/^rec_/));
     await expect(recorder.done).resolves.toMatchObject({ kind: "saved" });
     expect(
       browser.asked.filter((request) => request.kind === "saveStorage")
     ).toHaveLength(1);
-    expect(firstAsked(browser, "saveStorage")).toBeGreaterThan(
-      firstAsked(browser, "stopTrace")
-    );
   });
 
   it("is saved when nothing was recorded, so that a person can open the recorder only to log in", async () => {

@@ -21,6 +21,7 @@ import type {
   InputId,
   Written,
 } from "../session/domain";
+import { STORAGE_SAVE_LIMIT_MS } from "../session/domain";
 import {
   type ElementLookup,
   type InteractionReport,
@@ -284,6 +285,19 @@ export async function startScriptedRecorder(
     }
   };
 
+  /** Resolves once the engine has asked exactly this. */
+  const asks = (request: unknown) =>
+    new Promise<void>((resolve) => {
+      const wanted = JSON.stringify(request);
+      const check = () => {
+        if (!asked.some((item) => JSON.stringify(item) === wanted)) return;
+        waiting.splice(waiting.indexOf(check), 1);
+        resolve();
+      };
+      waiting.push(check);
+      check();
+    });
+
   const toolbar = toolbarBridge();
   const recorder = await startRecorderOn(
     Layer.effect(
@@ -327,22 +341,20 @@ export async function startScriptedRecorder(
       void recorder.done.then((ended) => {
         outcome = ended;
       });
-      let phase = "";
-      const unsubscribe = recorder.subscribe((update) => {
-        phase = update.state.phase;
-      });
       recorder.end();
       /** Lets what the clock set off run, the package's write included. */
       const turn = (wait: number) =>
         new Promise((resolve) => setTimeout(resolve, wait));
+      const saveAsked = asks({ kind: "saveStorage" });
       for (let passed = 0; passed < ms && !outcome; passed += 1_000) {
-        // While saving, the package is written on the disk, and what comes
-        // after it, the storage state, waits on the clock: the disk is
-        // given some real time with each second of the clock.
-        await turn(phase === "saving" ? 10 : 0);
+        await turn(0);
+        // The storage state's time is the last of the budget, and runs from
+        // when its save is asked, once the package is on the disk: the
+        // clock waits for that, a couple of seconds at most.
+        if (ms - passed <= STORAGE_SAVE_LIMIT_MS)
+          await Promise.race([saveAsked, recorder.done, turn(2_000)]);
         await Effect.runPromise(clock!.adjust(Math.min(1_000, ms - passed)));
       }
-      unsubscribe();
       // The clock has done its part: what is left is the disk's.
       for (let waited = 0; waited < 100 && !outcome; waited += 1)
         await turn(20);
@@ -369,17 +381,7 @@ export async function startScriptedRecorder(
       },
       asked,
       traces,
-      asks: (request) =>
-        new Promise((resolve) => {
-          const wanted = JSON.stringify(request);
-          const check = () => {
-            if (!asked.some((item) => JSON.stringify(item) === wanted)) return;
-            waiting.splice(waiting.indexOf(check), 1);
-            resolve();
-          };
-          waiting.push(check);
-          check();
-        }),
+      asks,
       showPage: (next) => {
         tree = next;
       },

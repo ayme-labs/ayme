@@ -12,9 +12,8 @@ import { startScriptedRecorder } from "./testing";
 // 9). The scripted browser plays a browser that hangs: it goes silent.
 
 /** The wrap-up's time limit, the trace's after it, and the storage state's
- * after that, with ten seconds for the package, which is written on the disk
- * while the test's clock runs on. */
-const BOUND_MS = 5_000 + 60_000 + 30_000 + 10_000;
+ * after that. */
+const BOUND_MS = 5_000 + 60_000 + 30_000;
 
 let projectDir: string;
 beforeEach(async () => {
@@ -190,16 +189,8 @@ describe("an end from outside, with a browser that answers nothing any more", ()
         await scripted.browser.asks({ kind: "stopTrace", keep: true });
         scripted.browser.goSilent();
         scripted.browser.releaseTraceAnswers();
-        await expect
-          .poll(
-            () =>
-              scripted.browser.asked.some(
-                (request) => request.kind === "saveStorage"
-              ),
-            // The package is written on the disk first.
-            { timeout: 10_000 }
-          )
-          .toBe(true);
+        // The package is written on the disk first.
+        await scripted.browser.asks({ kind: "saveStorage" });
       },
       ends: "saved",
     },
@@ -313,13 +304,8 @@ describe("the time a storage state's save is given", () => {
     // The browser answers nothing more once the package can be written.
     browser.goSilent();
     browser.releaseTraceAnswers();
-    await expect
-      .poll(
-        () => browser.asked.some((request) => request.kind === "saveStorage"),
-        // The package is written on the disk first.
-        { timeout: 10_000 }
-      )
-      .toBe(true);
+    // The package is written on the disk first.
+    await browser.asks({ kind: "saveStorage" });
 
     await browser.advanceTime(29_999);
     await expect(recorder.send({ type: "stop" })).resolves.toBe("ignored");
