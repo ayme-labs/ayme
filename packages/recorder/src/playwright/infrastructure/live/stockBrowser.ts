@@ -435,6 +435,26 @@ async function openPage(
   /** The held clicks each page was sent while Playwright's recorder
    * reported, whose reports can still come (`sentOn`). */
   const awaited = new Map<Page, readonly AwaitedClick[]>();
+  /** Awaits the report of a held click sent on while Playwright's recorder
+   * reports: the page's note of this click is the one that names its
+   * target. */
+  const awaitReport = (page: Page, sent: HeldByPage) => {
+    if (sent.kind !== "click" || recorderMode?.mode() !== "recording") return;
+    const click: AwaitedClick = {
+      document: sent.document,
+      seq: sent.seq,
+      count: Math.max(1, sent.detail),
+      button: sent.button ?? "left",
+    };
+    awaited.set(page, sentOn(awaited.get(page) ?? [], click));
+    return click;
+  };
+  /** A click that never reached its page: no report of it will come. */
+  const reportNotAwaited = (page: Page, click: AwaitedClick | undefined) =>
+    awaited.set(
+      page,
+      (awaited.get(page) ?? []).filter((at) => at !== click)
+    );
   /** The held click a report of a page is of, if any: it is awaited no
    * more, nor are the clicks before it (`reportedClick`). */
   const clickReported = (
@@ -645,6 +665,7 @@ async function openPage(
         Promise.all([
           frame.evaluate(installGate, heldBinding),
           frame.evaluate(installActivityWatch, changedBinding),
+          frame.evaluate(installTargetWatch, chainBinding),
           frame.evaluate(hidePlaywrightOverlay),
           frame.evaluate(keepCursorsAsTheyAre),
           // It shows only in the top document, and leaves the others be.
@@ -791,22 +812,12 @@ async function openPage(
     const input = held.get(id);
     held.delete(id);
     if (!input) return;
-    // Its report is awaited from now on: the page's note of this click is
-    // the one that names its target.
-    const sent = input.input;
-    if (sent.kind === "click" && recorderMode?.mode() === "recording") {
-      const page = input.frame.page();
-      awaited.set(
-        page,
-        sentOn(awaited.get(page) ?? [], {
-          document: sent.document,
-          seq: sent.seq,
-          count: Math.max(1, sent.detail),
-        })
-      );
-    }
-    if (!(await passOn(input.frame, input.input)))
+    const page = input.frame.page();
+    const click = awaitReport(page, input.input);
+    if (!(await passOn(input.frame, input.input))) {
+      reportNotAwaited(page, click);
       return tell({ kind: "inputGone", input: id });
+    }
     tell({ kind: "inputPassedOn", input: id, at: now() });
   }
 

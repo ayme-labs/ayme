@@ -13,8 +13,11 @@ export type InputNote = {
 };
 
 /** A held click sent on to its page whose report has not come: which it is,
- * and its count. */
-export type AwaitedClick = HeldClick & { readonly count: number };
+ * its count and its button. */
+export type AwaitedClick = HeldClick & {
+  readonly count: number;
+  readonly button: "left" | "right" | "middle";
+};
 
 /** The reports of an input of the mouse: the element under the pointer can
  * be inside the one it acted on. */
@@ -44,34 +47,68 @@ export function sentOn(
   return [...awaited.slice(-1), click];
 }
 
+/** Whether a report can be of a click: a click's report names its button
+ * and its count. A check's and an uncheck's name neither: they are of a
+ * single left or middle click (the lifecycle's `reportsClickOf`). */
+const reportsClick = (
+  action: {
+    readonly name: string;
+    readonly button?: unknown;
+    readonly clickCount?: unknown;
+  },
+  click: AwaitedClick
+) =>
+  action.name === "click"
+    ? click.button === (action.button ?? "left") &&
+      click.count === action.clickCount
+    : click.button !== "right" && click.count === 1;
+
 /**
  * Which held click a report is of, and the clicks still awaited after it.
  * Reports come in the order of the inputs: a report of the mouse is of the
- * oldest awaited click of its count. A double click is reported once, in
+ * oldest awaited click it can be of. A double click is reported once, in
  * place of its first click, which Playwright held back: the report is of
  * its second click, and the first is reported by it. A report of no awaited
  * click, as of a click no page held, or of the keyboard, is of none.
  */
 export function reportedClick(
   awaited: readonly AwaitedClick[],
-  action: { readonly name: string; readonly clickCount?: unknown }
+  action: {
+    readonly name: string;
+    readonly button?: unknown;
+    readonly clickCount?: unknown;
+  }
 ): { of: HeldClick | null; awaited: readonly AwaitedClick[] } {
   if (!MOUSE_REPORTS.has(action.name)) return { of: null, awaited };
-  // A check and an uncheck name no count: Playwright reports them of a
-  // single click.
-  const count = action.clickCount ?? 1;
-  const at = awaited.findIndex((click) => click.count === count);
+  const at = awaited.findIndex((click) => reportsClick(action, click));
   if (at === -1) return { of: null, awaited };
   const { document, seq } = awaited[at]!;
   return { of: { document, seq }, awaited: awaited.slice(at + 1) };
 }
 
-/** Whether a note is of the held click a report is of: a report of no held
- * click takes only a note of no held click. */
-const noteOf = (note: InputNote, of: HeldClick | null) =>
-  of === null
-    ? note.held === null
-    : note.held?.document === of.document && note.held.seq === of.seq;
+/** The note of a held click: the one made as it reached the page, whatever
+ * its event and whatever ref Playwright's report gives. */
+const heldNote = (notes: readonly InputNote[], of: HeldClick) =>
+  notes.findLast(
+    ({ held }) => held?.document === of.document && held.seq === of.seq
+  );
+
+/** The note of an input no page held: the latest of an event a report of
+ * its kind is of, whose element under the pointer is the one Playwright's
+ * ref names. */
+const unheldNote = (
+  notes: readonly InputNote[],
+  action: { readonly name: string; readonly ref?: string | null | undefined }
+) => {
+  if (!action.ref) return undefined;
+  const types = CHAIN_TYPES[action.name] ?? [];
+  return notes.findLast(
+    (note) =>
+      note.held === null &&
+      types.includes(note.type) &&
+      note.under === action.ref
+  );
+};
 
 /** Whether a report's picture lists a ref. */
 export const listedIn = (tree: string, ref: string | null): ref is string =>
@@ -99,12 +136,12 @@ export function namedIn(
 
 /**
  * What a report of Playwright's names as the element its input acted on, from
- * the page's notes of its inputs. The note that is the input's own is the
- * one whose element under the pointer is the one Playwright's ref names,
- * and, for a report of a held click (`of`, from `reportedClick`), the note
- * of that click: an earlier click's note can name the same element under
- * the pointer, inside another element by then, and a report can come before
- * its own note. Without it, a mouse input is read through its selector
+ * the page's notes of its inputs. For a report of a held click (`of`, from
+ * `reportedClick`), the input's own note is the one of that click: an
+ * earlier click's note can name the same element under the pointer, inside
+ * another element by then, and a report can come before its own note. For
+ * any other report, it is the one whose element under the pointer is the
+ * one Playwright's ref names. Without it, a mouse input is read through its selector
  * (`fromSelector`), with Playwright's ref standing if it cannot be; a field
  * and a focused element are what typing and keys act on, so their ref is
  * Playwright's. A report whose picture does not list the element under the
@@ -123,13 +160,7 @@ export function reportTarget(
 ): { target?: InteractionReport["target"]; fromSelector: boolean } {
   const tree = action.ariaSnapshot;
   if (!tree) return { fromSelector: false };
-  const types = CHAIN_TYPES[action.name] ?? [];
-  const told = notes.filter(
-    (note) => types.includes(note.type) && noteOf(note, of)
-  );
-  const own = action.ref
-    ? told.findLast((note) => note.under === action.ref)
-    : undefined;
+  const own = of ? heldNote(notes, of) : unheldNote(notes, action);
   if (listedIn(tree, action.ref ?? null)) {
     if (own) return { target: namedIn(tree, own.chain), fromSelector: false };
     return { fromSelector: MOUSE_REPORTS.has(action.name) };

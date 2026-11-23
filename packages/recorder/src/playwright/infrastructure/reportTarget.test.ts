@@ -172,6 +172,42 @@ describe("the element a held click's report names", () => {
     });
   });
 
+  it("is its own click's note for a click on an element the picture does not list, which Playwright's report gives no ref", () => {
+    const own: InputNote = {
+      type: "click",
+      chain: ["e9", "e4", "e1"],
+      under: null,
+      held: held(2),
+    };
+
+    expect(
+      reportTarget({ name: "click", ariaSnapshot: moved }, [inA, own], held(2))
+    ).toEqual({
+      target: {
+        ref: null,
+        tree: moved,
+        ancestors: [pictureRef("e4"), pictureRef("e1")],
+      },
+      fromSelector: true,
+    });
+  });
+
+  it("is its own click's note for a middle click Playwright reports as a check", () => {
+    const own: InputNote = {
+      type: "auxclick",
+      chain: ["e4", "e1"],
+      under: "e3",
+      held: held(2),
+    };
+
+    expect(
+      reportTarget({ ...rightClick, name: "check" }, [own], held(2))
+    ).toEqual({
+      target: { ref: pictureRef("e4"), tree: moved },
+      fromSelector: false,
+    });
+  });
+
   it("is no held click's note for a click no page held", () => {
     expect(reportTarget(rightClick, [inA], null)).toEqual({
       fromSelector: true,
@@ -180,36 +216,49 @@ describe("the element a held click's report names", () => {
 });
 
 describe("the held click a report is of", () => {
-  const sent = (seq: number, count = 1): AwaitedClick => ({
-    ...held(seq),
-    count,
-  });
+  const sent = (
+    seq: number,
+    count = 1,
+    button: AwaitedClick["button"] = "left"
+  ): AwaitedClick => ({ ...held(seq), count, button });
+  const left = { name: "click", button: "left", clickCount: 1 };
 
   it("awaits, of the clicks sent on before, only the last: Playwright holds back at most one click's report", () => {
     expect(sentOn([sent(1), sent(2)], sent(3))).toEqual([sent(2), sent(3)]);
   });
 
-  it("is the oldest awaited click of its count: Playwright gives a click it held back with the next click's report", () => {
-    expect(
-      reportedClick([sent(1), sent(2)], { name: "click", clickCount: 1 })
-    ).toEqual({ of: held(1), awaited: [sent(2)] });
+  it("is the oldest awaited click it can be of: Playwright gives a click it held back with the next click's report", () => {
+    expect(reportedClick([sent(1), sent(2)], left)).toEqual({
+      of: held(1),
+      awaited: [sent(2)],
+    });
   });
 
   it("is a double click's second click, for the one report Playwright gives of both, and the first is awaited no more", () => {
     expect(
-      reportedClick([sent(1, 1), sent(2, 2)], { name: "click", clickCount: 2 })
+      reportedClick([sent(1, 1), sent(2, 2)], { ...left, clickCount: 2 })
     ).toEqual({ of: held(2), awaited: [] });
   });
 
-  it("counts one for a check and an uncheck, which name no count", () => {
-    expect(reportedClick([sent(1)], { name: "check" })).toEqual({
-      of: held(1),
-      awaited: [],
-    });
+  it("is a click of the report's button: a right-click's report is no left click's", () => {
+    expect(
+      reportedClick([sent(1), sent(2, 1, "right")], {
+        ...left,
+        button: "right",
+      })
+    ).toEqual({ of: held(2), awaited: [] });
+  });
+
+  it("is a single left or middle click for a check or an uncheck, which name no button and no count, never a right-click", () => {
+    expect(
+      reportedClick([sent(1, 1, "right"), sent(2, 1, "middle")], {
+        name: "check",
+      })
+    ).toEqual({ of: held(2), awaited: [] });
   });
 
   it("is none, and leaves every click awaited, for a report of no awaited click", () => {
-    expect(reportedClick([sent(1)], { name: "click", clickCount: 2 })).toEqual({
+    expect(reportedClick([sent(1)], { ...left, clickCount: 2 })).toEqual({
       of: null,
       awaited: [sent(1)],
     });

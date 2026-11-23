@@ -86,8 +86,13 @@ type Harness = {
   /** The address of the served page. */
   readonly url: string;
   /** A person at the recorded browser: raw input over that connection, so
-   * that it is no call of the Playwright under test. */
-  click(target: Locator, button?: "left" | "right" | "middle"): Promise<void>;
+   * that it is no call of the Playwright under test. A count of 2 is the
+   * second click of a double click. */
+  click(
+    target: Locator,
+    button?: "left" | "right" | "middle",
+    count?: number
+  ): Promise<void>;
   /** Closes the layer's scope, as the end of a recorder does. */
   letGo(): Promise<void>;
 };
@@ -182,7 +187,8 @@ async function onStockPlaywright(
     type: string,
     at: { x: number; y: number },
     buttons: number,
-    button: "left" | "right" | "middle" = "left"
+    button: "left" | "right" | "middle" = "left",
+    clickCount = 1
   ) =>
     session.send("Input.dispatchMouseEvent", {
       type: type as "mouseMoved",
@@ -190,7 +196,7 @@ async function onStockPlaywright(
       y: at.y,
       button: type === "mouseMoved" ? "none" : button,
       buttons,
-      clickCount: 1,
+      clickCount,
       pointerType: "mouse",
     });
 
@@ -209,13 +215,13 @@ async function onStockPlaywright(
       return found()!;
     },
     page,
-    async click(target, button = "left") {
+    async click(target, button = "left", count = 1) {
       const box = (await target.boundingBox())!;
       const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
       await mouse("mouseMoved", at, 0);
       const pressed = { left: 1, right: 2, middle: 4 }[button];
-      await mouse("mousePressed", at, pressed, button);
-      await mouse("mouseReleased", at, 0, button);
+      await mouse("mousePressed", at, pressed, button, count);
+      await mouse("mouseReleased", at, 0, button, count);
     },
     letGo: () => runtime.dispose(),
   };
@@ -232,6 +238,19 @@ async function reporting(browser: Harness) {
   await browser.ask({ kind: "reportInteractions", on: true });
   await browser.toldOf("reportingInteractions");
 }
+
+/** The line of a report's picture that names its target. */
+const namedLine = ({
+  target,
+}: Extract<BrowserSignal, { kind: "interactionReported" }>["report"]) => {
+  const ref = target!.ref ?? target!.ancestors?.[0];
+  return target!.tree.split("\n").find((line) => line.includes(`[ref=${ref}]`));
+};
+
+/** A link that a click removes: its selector matches nothing by the time a
+ * report could be read through it, so only the page's note of the click
+ * names the link. */
+const REMOVED_LINK = `<a href="#a" onclick="event.preventDefault(); this.remove()"><span id="inner" style="display:inline-block">Pull requests</span></a>`;
 
 it("starts Playwright's recorder, which reports a person's click with its target in its own snapshot", async () => {
   const browser = await onStockPlaywright(BUTTONS);
@@ -589,6 +608,25 @@ it("tells of a held click whose document is gone, and never sends it to the next
   await browser.toldOf("inputGone", (gone) => gone.input === input);
   expect(browser.told.map(({ kind }) => kind)).not.toContain("inputPassedOn");
   expect(await browser.page.evaluate("window.clicks")).toBe(0);
+
+  // No report of it is awaited: the next click's report is named from that
+  // click's own note.
+  await browser.page.evaluate(
+    (link) => document.body.insertAdjacentHTML("beforeend", link),
+    REMOVED_LINK
+  );
+  await browser.click(browser.page.locator("#inner"));
+  const next = await browser.toldOf(
+    "inputHeld",
+    (told) => told.input !== input
+  );
+  await browser.ask({ kind: "passOn", input: next.input });
+  // Playwright reported the page going to `?next` before it.
+  const { report } = await browser.toldOf(
+    "interactionReported",
+    (told) => told.report.type === "click"
+  );
+  expect(namedLine(report)).toMatch(/link "Pull requests"/);
 });
 
 it("holds a right-click by its context menu event until it is sent on: the page then gets it once, and Playwright reports a click of the right button", async () => {
@@ -1789,6 +1827,57 @@ it("names a click on an element inside a link by the link, as Playwright's selec
   }
 });
 
+// The page's note of a click names the element it acted on however soon the
+// page changes, in a page an attached recorder found open too.
+it("names a click inside a link that the click removes by the link, from the page's note of the click", async () => {
+  const browser = await onStockPlaywright(REMOVED_LINK);
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+
+  await browser.click(browser.page.locator("#inner"));
+  const { input } = await browser.toldOf("inputHeld");
+  await browser.ask({ kind: "passOn", input });
+
+  const { report } = await browser.toldOf("interactionReported");
+  expect(namedLine(report)).toMatch(/link "Pull requests"/);
+});
+
+// Playwright holds a left click's report back to see whether a double click
+// follows (1.63 and later), and then reports the double click once, by its
+// second click; 1.62 reports each click. The second click is sent on while
+// the first one's report may still be held back.
+it("names a double click from the page's note of the click Playwright reports it by", async () => {
+  const browser = await onStockPlaywright(
+    REMOVED_LINK.replace(
+      "this.remove()",
+      "if (event.detail === 2) this.remove()"
+    )
+  );
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+
+  const inner = browser.page.locator("#inner");
+  await browser.click(inner);
+  await browser.click(inner, "left", 2);
+  await expect
+    .poll(() => browser.told.filter(({ kind }) => kind === "inputHeld"))
+    .toHaveLength(2);
+  const [first, second] = browser.told.filter(
+    (told) => told.kind === "inputHeld"
+  ) as Extract<BrowserSignal, { kind: "inputHeld" }>[];
+  await browser.ask({ kind: "passOn", input: first!.input });
+  await browser.toldOf("inputPassedOn", (told) => told.input === first!.input);
+  await browser.ask({ kind: "passOn", input: second!.input });
+
+  const { report } = await browser.toldOf(
+    "interactionReported",
+    (told) => told.report.values["clickCount"] === 2
+  );
+  expect(namedLine(report)).toMatch(/link "Pull requests"/);
+});
+
 // Playwright reports a right-click and a middle click before the page's
 // note of it is told. A note of an earlier input can name the same element
 // under the pointer: the note of the click before it, made when the element
@@ -1837,10 +1926,7 @@ it("names a click on an element the page moved into another button by the button
       const { report } = browser.told.filter(
         (told) => told.kind === "interactionReported"
       )[count - 1] as Extract<BrowserSignal, { kind: "interactionReported" }>;
-      const ref = report.target!.ref ?? report.target!.ancestors?.[0];
-      return report
-        .target!.tree.split("\n")
-        .find((line) => line.includes(`[ref=${ref}]`));
+      return namedLine(report);
     };
 
     await browser.click(browser.page.locator("#child"));

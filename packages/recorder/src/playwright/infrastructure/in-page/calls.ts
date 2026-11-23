@@ -1,5 +1,7 @@
 /// <reference lib="dom" />
 
+import type { Gate } from "./gate";
+
 // The calls the stock adapter makes into a recorded page, one function each.
 // Each is sent to the page as its own text, so it uses nothing from outside
 // itself but its argument (docs/testing.md#code-a-real-browser-runs).
@@ -46,15 +48,7 @@ export function pickedAmong(elements: Element[]): number {
 /** Opens the document's gate for a held input on its way; false when the
  * document has no gate, or it was held in another document. */
 export function openGate(input: {
-  at:
-    | {
-        x: number;
-        y: number;
-        detail: number;
-        button?: "right" | "middle";
-        seq: number;
-      }
-    | { code: string };
+  at: Parameters<Gate["open"]>[0];
   document: string;
 }): Promise<boolean> | boolean {
   return window.__aymeRecorderGate?.open(input.at, input.document) ?? false;
@@ -94,11 +88,12 @@ export function boxesIn(
     .map(({ x, y, width, height }) => ({ x, y, width, height }));
 }
 
-/** Switches the gate and the activity watch off, for a browser the adapter
- * lets go of. */
+/** Switches the gate, the activity watch and the target watch off, for a
+ * browser the adapter lets go of. */
 export function stopGateAndWatch(): void {
   window.__aymeRecorderGate?.set(false);
   window.__aymeRecorderActivity?.watch(false);
+  window.__aymeRecorderTargetWatch?.stop();
 }
 
 /** Takes the recorder's own highlight away, and tells its toolbar, by the
