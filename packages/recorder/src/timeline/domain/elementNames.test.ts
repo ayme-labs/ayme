@@ -490,6 +490,22 @@ describe("the label of an element, in the details of how it is read", () => {
     });
   });
 
+  it("names an element with nothing but text inside it by that text when only an element of another document has it only if a name inside is no text", () => {
+    const tree = page(
+      `- paragraph [ref=e2]: Read me`,
+      `- iframe [ref=e3]:`,
+      `  - paragraph [ref=f1e1]:`,
+      `    - text: Read`,
+      `    - button "Docs" [ref=f1e2]`,
+      `    - text: me`
+    );
+
+    expect(label(tree, "e2")).toEqual({
+      label: 'paragraph "Read me"',
+      selector: 'internal:role=paragraph >> internal:has-text="Read me"s',
+    });
+  });
+
   it("keeps the text inside in a label when an element of its role holds it by either reading of its text", () => {
     const tree = page(
       `- listitem [ref=e2]:`,
