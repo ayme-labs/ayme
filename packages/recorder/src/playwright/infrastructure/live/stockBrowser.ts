@@ -792,7 +792,7 @@ async function openPage(
     await context.tracing.start({
       name: "ayme-recording",
       snapshots: true,
-      screenshots: true,
+      screenshots: false,
     });
     tell({ kind: "traceStarted" });
   }

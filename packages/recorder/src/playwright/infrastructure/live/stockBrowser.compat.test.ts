@@ -40,6 +40,7 @@ import { startGate } from "../in-page/gate";
 import { installGate, startPickingIn } from "./pageFunctions";
 import { stockBrowser } from "./stockBrowser";
 import { snapshotId } from "../../../test-utils/ids";
+import { zipText } from "../../../test-utils/zip";
 
 // The compatibility suite: the stock adapter on each supported Playwright.
 // Each private detail of Playwright the adapter uses has its test here
@@ -475,6 +476,40 @@ it("traces the recording, marks each snapshot, and numbers each mark as the stoc
       title
     )
   ).toBe("Two");
+  await rm(dirname(trace.file), { recursive: true, force: true });
+});
+
+it("keeps no screenshot in the trace, while its DOM snapshots and network log are there", async () => {
+  const browser = await onStockPlaywright(BUTTONS);
+  await browser.ask({ kind: "startTrace" });
+  await browser.toldOf("traceStarted");
+  await browser.page.reload();
+  await browser.page.locator("#first").waitFor();
+  await browser.ask({
+    kind: "takeSnapshot",
+    snapshot: "snapshot_1",
+    page: "page_1",
+  });
+  await browser.toldOf("snapshotTaken");
+  // Screenshots are on only for a trace started with them: a page that
+  // paints and changes gives the trace frames to keep.
+  await browser.page.evaluate(() => {
+    document.querySelector("h1")!.textContent = "Changed";
+  });
+  await browser.page.waitForTimeout(500);
+  await browser.ask({ kind: "stopTrace", keep: true });
+  const { trace } = await browser.toldOf("traceStopped");
+
+  const events = await zipText(trace.file, "trace.trace");
+  // A screenshot is a frame of the page's screencast: the trace names each
+  // one it keeps among its events.
+  expect(events).not.toContain("screencast-frame");
+  // The DOM snapshots and the network log are still there.
+  expect(events).toContain("frame-snapshot");
+  const { host } = new URL(browser.url);
+  expect(await stockToolRequests(trace.file)).toMatch(
+    new RegExp(`GET\\s+200\\s+${host.replaceAll(".", "\\.")}\\s`)
+  );
   await rm(dirname(trace.file), { recursive: true, force: true });
 });
 
