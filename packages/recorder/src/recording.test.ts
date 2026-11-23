@@ -166,7 +166,7 @@ describe("a recording", () => {
         clickCount: 1,
       },
       targetElement: 'button "Save"',
-      changes: [{ kind: "added", element: 'status "Saved"' }],
+      changes: [{ kind: "added", element: 'status "Saved"', role: "status" }],
     };
     await expect.poll(() => entriesOf(updates.at(-1)!)).toEqual([interaction]);
     expect(updates.at(-1)!.state.phase).toBe("recording");
@@ -182,7 +182,9 @@ describe("a recording", () => {
         kind: "change",
         id: "change_1",
         timestamp: 4,
-        changes: [{ kind: "removed", element: 'status "Saved"' }],
+        changes: [
+          { kind: "removed", element: 'status "Saved"', role: "status" },
+        ],
       },
     ]);
     const revisions = updates.map((update) => update.revision);

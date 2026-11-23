@@ -53,8 +53,8 @@ describe("the change rows of a Change Tree", () => {
     );
 
     expect(rows).toEqual([
-      { kind: "added", element: 'list "Cart"' },
-      { kind: "removed", element: 'list "Old"' },
+      { kind: "added", element: 'list "Cart"', role: "list" },
+      { kind: "removed", element: 'list "Old"', role: "list" },
     ]);
   });
 
@@ -298,7 +298,11 @@ describe("the change rows of a Change Tree", () => {
       )
     ).toEqual(
       expect.arrayContaining([
-        { kind: "removed", element: 'listitem "feed the cat"' },
+        {
+          kind: "removed",
+          element: 'listitem "feed the cat"',
+          role: "listitem",
+        },
       ])
     );
   });
@@ -321,9 +325,9 @@ describe("the change rows of a Change Tree", () => {
     );
 
     expect(rows).toEqual([
-      { kind: "removed", element: 'button "Open Menu"' },
-      { kind: "removed", element: 'heading "Menu"' },
-      { kind: "removed", element: 'link "About"' },
+      { kind: "removed", element: 'button "Open Menu"', role: "button" },
+      { kind: "removed", element: 'heading "Menu"', role: "heading" },
+      { kind: "removed", element: 'link "About"', role: "link" },
     ]);
   });
 
@@ -350,7 +354,55 @@ describe("the change rows of a Change Tree", () => {
         element: 'navigation "Main"',
         changed: [{ property: "cursor", to: "pointer" }],
       },
-      { kind: "added", element: 'navigation "Main"' },
+      // Named by its ancestor, it says that ancestor's role.
+      { kind: "added", element: 'navigation "Main"', role: "navigation" },
+    ]);
+  });
+
+  it("say of an element that appeared or was removed its role and its nearest ancestor that has a name, which element that is and its name", () => {
+    const rows = changeRows(
+      changeFrom(
+        page(
+          `- list "Issues" [ref=e2]:`,
+          `  - listitem [ref=e3]: Old`,
+          `- region "Pinned" [ref=e4]:`,
+          `  - generic [ref=e5]:`,
+          `    - list "Issues" [ref=e6]`
+        ),
+        page(
+          `- list "Issues" [ref=e2]:`,
+          `  - listitem [ref=e7]: New`,
+          `- region "Pinned" [ref=e4]:`,
+          `  - generic [ref=e5]:`,
+          `    - list "Issues" [ref=e6]:`,
+          `      - listitem [ref=e8]: Pinned`,
+          // Nothing around it has a name.
+          `- button "Top" [ref=e9]`
+        )
+      )
+    );
+
+    expect(rows).toEqual([
+      {
+        kind: "added",
+        element: 'listitem "New"',
+        role: "listitem",
+        parent: { ref: "e2", name: "Issues" },
+      },
+      {
+        kind: "removed",
+        element: 'listitem "Old"',
+        role: "listitem",
+        parent: { ref: "e2", name: "Issues" },
+      },
+      // A list of the same name is another parent.
+      {
+        kind: "added",
+        element: 'listitem "Pinned"',
+        role: "listitem",
+        parent: { ref: "e6", name: "Issues" },
+      },
+      { kind: "added", element: 'button "Top"', role: "button" },
     ]);
   });
 

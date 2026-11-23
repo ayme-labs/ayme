@@ -43,7 +43,8 @@ export type FoundRow = {
  * removed is named by the named elements that went with it, a row each;
  * otherwise, as one that changed, by its nearest named ancestor. A changed
  * element says how each of its own properties stood before and after: the
- * tree keeps how each node stood before.
+ * tree keeps how each node stood before. One that appeared or was removed
+ * says its role and the named ancestor it went in or out of (`placeOf`).
  */
 export function foundRows(
   change: StructuralTree,
@@ -66,7 +67,14 @@ export function foundRows(
           ? inside.map((one) => names.labelOf(one, view))
           : [names.labelNear(node, view)];
       for (const element of named)
-        rows.push({ row: { kind, element: wordsOf(element) }, element });
+        rows.push({
+          row: {
+            kind,
+            element: wordsOf(element),
+            ...placeOf(change, element),
+          },
+          element,
+        });
       return;
     }
     // Core records how every node it marks as changed stood before; a tree
@@ -84,6 +92,22 @@ export function foundRows(
   };
   for (const root of change.getRootNodes()) visit(root);
   return rows;
+}
+
+/** An element's role, and its nearest ancestor that has a name, by its ref
+ * and that name: whoever shows a recorder can tell which elements went in
+ * or out of the same one. Nothing for a row that names no element. */
+function placeOf(
+  change: StructuralTree,
+  element: NamedElement | null
+): Pick<ChangeRow, "role" | "parent"> {
+  const node = element && change.getNode(element.ref);
+  if (!node) return {};
+  const parent = change.getAncestorsOf(node.ref).find((one) => one.name);
+  return {
+    role: node.role,
+    ...(parent ? { parent: { ref: parent.ref, name: parent.name } } : {}),
+  };
 }
 
 /** A value as the package's trees write it; none for one absent or empty. */
