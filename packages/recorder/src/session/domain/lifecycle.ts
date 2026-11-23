@@ -672,7 +672,11 @@ function browserTold(state: LifecycleState, happening: BrowserSignal): Step {
     case "browserWarned":
       return { state, todo: [{ kind: "warn", warning: happening.warning }] };
     case "requestFailed":
-      return failed(state, happening.request, happening.reason);
+      // The storage state is saved once the recording is over: its failure
+      // is no failure of a recording's request.
+      return happening.request.kind === "saveStorage"
+        ? storageNotSaved(state, happening.reason)
+        : failed(state, happening.request, happening.reason);
     case "traceStopped":
       return writePackage(state, happening.trace);
     case "traceDiscarded":
@@ -823,6 +827,20 @@ function ending(
     ],
   };
 }
+
+/** The storage state could not be saved, or not in time: the recording is
+ * saved all the same, and a person is told that the storage state is not.
+ * An answer when no end waits for it changes nothing (`ended`). */
+const storageNotSaved = (state: LifecycleState, reason: string): Step =>
+  ended(state, [
+    {
+      kind: "warn",
+      warning: {
+        kind: "storageNotSaved",
+        message: `The storage state could not be saved. ${reason}`,
+      },
+    },
+  ]);
 
 /** The storage state is saved, or could not be: the recorder has ended,
  * with the outcome decided before. */
@@ -2384,7 +2402,7 @@ function release(inputs: readonly Input[]): ToDo[] {
  */
 function failed(
   state: LifecycleState,
-  request: BrowserRequest,
+  request: Exclude<BrowserRequest, { kind: "saveStorage" }>,
   reason: string
 ): Step {
   switch (request.kind) {
@@ -2410,20 +2428,6 @@ function failed(
       return request.keep ? writePackage(state, null) : traceGone(state);
     case "startTrace":
       return traceNotStarted(state, request, reason);
-    case "saveStorage":
-      // The recording is saved all the same: a person is told that the
-      // storage state is not.
-      return state.phase === "ending"
-        ? ended(state, [
-            {
-              kind: "warn",
-              warning: {
-                kind: "storageNotSaved",
-                message: `The storage state could not be saved. ${reason}`,
-              },
-            },
-          ])
-        : stay(state);
     // Every kind of input.
     // Stryker disable next-line ConditionalExpression: without its own line it falls to the next case, which asks nothing either
     case "letInputsThrough":

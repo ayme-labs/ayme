@@ -1481,7 +1481,7 @@ SavedArrives ==
                  pageVars, personVars, surfVars, miscVars>>
   /\ Publish
 
-\* SB saveStorage, then L storageSaved, or L failed for saveStorage: once the
+\* SB saveStorage, then L storageSaved, or L storageNotSaved: once the
 \* outcome is decided, the package written and the trace over, the recorded
 \* context's storage state is written to the --save-storage file (Playwright's
 \* context.storageState; with no file, nothing is written). Playwright opens a

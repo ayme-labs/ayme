@@ -104,8 +104,8 @@ export function stockOptionsOf(
     headless,
     debugPort,
     ...(startRecording ? { startRecording } : {}),
-    ...(loadStorage === undefined ? {} : { loadStorage }),
-    ...(saveStorage === undefined ? {} : { saveStorage }),
+    loadStorage,
+    saveStorage,
     windowUrl,
     toolbar: shown,
   };

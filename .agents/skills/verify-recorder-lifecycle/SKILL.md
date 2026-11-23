@@ -40,7 +40,7 @@ each function named in a comment beside the operator that models it (search
 - `session/domain/lifecycle.ts`: all of `step`, from `record`, `resume`,
   `wrapUp`, `goOnWrappingUp`, `giveUp`, `wrappedUp`, `endFromOutside`,
   `clearPaused`, `traceGone`, `saved`, `ending` and `ended` (the storage
-  save, with `failed` for `saveStorage`), through `proceed`, `startNext`,
+  save, with `storageNotSaved`), through `proceed`, `startNext`,
   `inputHeld`, `inputPassedOn`, `pageSettled`, `snapshotTaken`,
   `giveSnapshot`, `interactionReported`, `reportOfHeld` (with `buttonOf`,
   `reportsClickOf`, `asHeld`), `knownFromReport`,
