@@ -746,6 +746,28 @@ describe("the timeline", () => {
       );
     });
 
+    it("keeps a read in the Visit of its own page when another page opened later at the same address", async () => {
+      const timeline = await timelineOf([
+        visit,
+        { kind: "visit", page: pageId("page_2"), url, cause: "openPage" },
+        snapshot(snapshotId("snapshot_1"), 10, idle),
+        snapshot(snapshotId("snapshot_2"), 20, savedPage),
+        click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+          ref: pictureRef("e2"),
+          tree: idle,
+        }),
+      ]);
+
+      expect(
+        timeline
+          .visits()
+          .map(({ visitId, entries }) => [visitId, entries.map(({ id }) => id)])
+      ).toEqual([
+        ["visit_1", ["interaction_1"]],
+        ["visit_2", []],
+      ]);
+    });
+
     it("stays in the Visit when only the part of the address after '?' or '#' changes, as core decides", async () => {
       const text = await packageOf([
         visit,
