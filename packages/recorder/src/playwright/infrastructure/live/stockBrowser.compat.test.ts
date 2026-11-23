@@ -1789,6 +1789,71 @@ it("names a click on an element inside a link by the link, as Playwright's selec
   }
 });
 
+// Playwright reports a right-click and a middle click before the page's
+// note of it is told. A note of an earlier input can name the same element
+// under the pointer: the note of the click before it, made when the element
+// was inside another button, or the note of the right-click's own release,
+// which reaches the page before the click is sent on.
+it("names a click on an element the page moved into another button by the button it is in now, never by an earlier input's note", async () => {
+  for (const { button, page, before, after } of [
+    // Each button keeps its name, and its ref, when the star moves: the
+    // note of the click before names button A.
+    {
+      button: "middle",
+      page: `<button id="a" aria-label="Alpha"><span id="child" style="display:inline-block">Star</span></button>
+             <button id="b" aria-label="Beta"></button>`,
+      before: /button "Alpha"/,
+      after: /button "Beta"/,
+    },
+    // Named by their text, both buttons are renamed when the star moves:
+    // a note made before names refs the report's picture no longer lists.
+    {
+      button: "right",
+      page: `<button id="a">Alpha <span id="child" style="display:inline-block">Star</span></button>
+             <button id="b" oncontextmenu="event.preventDefault()">Beta</button>`,
+      before: /button "Alpha Star"/,
+      after: /button "Beta Star"/,
+    },
+  ] as const) {
+    const browser = await onStockPlaywright(page);
+    await reporting(browser);
+    await browser.ask({ kind: "holdInputs", on: true });
+    await browser.toldOf("inputsHeld");
+    /** Sends the `count`th held click on, and gives the line of its
+     * report's picture that names its target. */
+    const named = async (count: number) => {
+      await expect
+        .poll(() => browser.told.filter(({ kind }) => kind === "inputHeld"))
+        .toHaveLength(count);
+      const { input } = browser.told.filter(
+        (told) => told.kind === "inputHeld"
+      )[count - 1] as Extract<BrowserSignal, { kind: "inputHeld" }>;
+      await browser.ask({ kind: "passOn", input });
+      await expect
+        .poll(() =>
+          browser.told.filter(({ kind }) => kind === "interactionReported")
+        )
+        .toHaveLength(count);
+      const { report } = browser.told.filter(
+        (told) => told.kind === "interactionReported"
+      )[count - 1] as Extract<BrowserSignal, { kind: "interactionReported" }>;
+      const ref = report.target!.ref ?? report.target!.ancestors?.[0];
+      return report
+        .target!.tree.split("\n")
+        .find((line) => line.includes(`[ref=${ref}]`));
+    };
+
+    await browser.click(browser.page.locator("#child"));
+    expect(await named(1)).toMatch(before);
+
+    await browser.page.evaluate(() =>
+      document.querySelector("#b")!.append(document.querySelector("#child")!)
+    );
+    await browser.click(browser.page.locator("#child"), button);
+    expect(await named(2)).toMatch(after);
+  }
+});
+
 // Playwright holds a left click back to see whether a double click follows
 // (1.63 and later; 1.62 holds nothing back), and reports it when its
 // recorder is switched off. The click's report can still be on its way from

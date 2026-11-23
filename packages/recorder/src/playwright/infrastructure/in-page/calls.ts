@@ -46,7 +46,15 @@ export function pickedAmong(elements: Element[]): number {
 /** Opens the document's gate for a held input on its way; false when the
  * document has no gate, or it was held in another document. */
 export function openGate(input: {
-  at: { x: number; y: number; detail: number } | { code: string };
+  at:
+    | {
+        x: number;
+        y: number;
+        detail: number;
+        button?: "right" | "middle";
+        seq: number;
+      }
+    | { code: string };
   document: string;
 }): Promise<boolean> | boolean {
   return window.__aymeRecorderGate?.open(input.at, input.document) ?? false;
