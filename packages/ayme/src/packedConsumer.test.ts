@@ -499,10 +499,10 @@ console.log("ok");
   }
 );
 
-it("only the shared ayme package has a Playwright peer, and it is optional", () => {
-  // Its `./playwright` entry takes the project's own Playwright. No other
-  // package names Playwright outside its test support, which is not
-  // published (ADR-0057).
+it("the Playwright peer is optional in ayme and required by the inspector", () => {
+  // ayme's types name Playwright's, and the Inspector requires the peer, so
+  // a project with the Inspector has them installed. No other package names
+  // Playwright outside its test support, which is not published (ADR-0057).
   for (const name of [
     "ayme",
     "vue",
@@ -516,7 +516,7 @@ it("only the shared ayme package has a Playwright peer, and it is optional", () 
   ]) {
     const manifest = readManifest(path.join(packagesRoot, name));
     expect(manifest.peerDependencies?.["@playwright/test"], name).toBe(
-      name === "ayme" ? playwrightPeerRange : undefined
+      ["ayme", "inspector"].includes(name) ? playwrightPeerRange : undefined
     );
     expect(
       (
