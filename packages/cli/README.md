@@ -36,7 +36,6 @@ npx @ayme-dev/cli codegen http://localhost:3000
 
 The terminal prints the address of the recorder window, such as `Recorder UI: http://127.0.0.1:52011/`. When the recording is saved it prints `Recording package: <path>`, or `Recording was empty; no recording package was created.` when there was nothing to save.
 
-- `--headed`: open Chromium with a visible window. This is the default.
 - `--headless`: open Chromium without a window. Open the printed window address in a browser to control the recording.
 - `--start-recording`: open the recorder already recording, so that the recording and its trace hold the first page load, its network requests included. The recording's first Visit starts as soon as the browser commits to the page's document, before the page has finished loading: if you press **Stop** before that, the load is not in the recording, though its network requests can still be in the trace, which runs from the start. A click on the blank page before it loads, or an element picked there for **Assert visibility**, is not recorded. The page opens blank, the recorder starts recording, and only then does the page go to `<url>`. **Stop**, **Continue recording**, **Clear** and **Finish** work as they do after pressing **Record**; after **Clear**, the next recording starts from the page as it is then.
 
@@ -57,7 +56,7 @@ npx @ayme-dev/cli codegen --cdp-endpoint http://127.0.0.1:9222
 - Input given by another automation client in that browser is recorded like a person's.
 - When the recorder ends, it takes its toolbar off the page and leaves the browser open. Close the page or press Ctrl+C to end; either saves what was recorded, as Finish does.
 - The recorder window does not open by itself: open the printed address in any browser.
-- `--headless`, `--headed` and `--start-recording` do not apply here, and you cannot give a URL as well.
+- `--headless` and `--start-recording` do not apply here, and you cannot give a URL as well.
 
 ### `trace`
 
