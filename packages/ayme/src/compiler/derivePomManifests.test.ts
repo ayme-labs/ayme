@@ -10,6 +10,7 @@ import {
 import { diagnosticsOf, positionOf } from "./pomCompileError.testSupport";
 import { createPomProgram } from "./pomProgram";
 import { version } from "../../package.json";
+import type { PomManifest } from "../shared";
 
 // Each test builds TypeScript Programs, which run several times slower on CI
 // while the browser suites and the packed-consumer test run beside them.
@@ -1383,24 +1384,28 @@ describe("derivePomManifests", () => {
   });
 
   describe("parameter shapes", () => {
-    function parametersOf(
-      methodName: string,
-      manifest = manifestFor("parameterShapesPom")
+    function parametersIn(
+      manifest: PomManifest | undefined,
+      methodName: string
     ) {
       return manifest?.tools.find((tool) => tool.methodName === methodName)
         ?.parameters;
     }
 
+    function parametersOf(methodName: string) {
+      return parametersIn(manifestFor("parameterShapesPom"), methodName);
+    }
+
     it("schemas an array and a readonly array by their items", () => {
       const manifest = manifestFor("parameterShapesPom");
-      expect(parametersOf("array", manifest)).toEqual([
+      expect(parametersIn(manifest, "array")).toEqual([
         {
           name: "tags",
           optional: false,
           schema: { type: "array", items: { type: "string" } },
         },
       ]);
-      expect(parametersOf("readonlyArray", manifest)).toEqual([
+      expect(parametersIn(manifest, "readonlyArray")).toEqual([
         {
           name: "sizes",
           optional: false,
@@ -1600,17 +1605,16 @@ describe("derivePomManifests", () => {
     });
 
     describe("a destructured parameter", () => {
-      function destructuredParametersOf(
-        methodName: string,
-        manifest = manifestFor("destructuredParametersPom")
-      ) {
-        return manifest?.tools.find((tool) => tool.methodName === methodName)
-          ?.parameters;
+      function destructuredParametersOf(methodName: string) {
+        return parametersIn(
+          manifestFor("destructuredParametersPom"),
+          methodName
+        );
       }
 
       it("takes an object pattern's fields from its type, keyed by property name", () => {
         const manifest = manifestFor("destructuredParametersPom");
-        expect(destructuredParametersOf("signIn", manifest)).toStrictEqual([
+        expect(parametersIn(manifest, "signIn")).toStrictEqual([
           {
             destructured: "object",
             optional: false,
@@ -1621,7 +1625,7 @@ describe("derivePomManifests", () => {
           },
         ]);
         // Every property of the type, whatever the pattern binds or renames.
-        expect(destructuredParametersOf("signInAs", manifest)).toStrictEqual([
+        expect(parametersIn(manifest, "signInAs")).toStrictEqual([
           {
             destructured: "object",
             optional: false,
@@ -1812,7 +1816,7 @@ describe("derivePomManifests", () => {
 
       it("binds a tuple's remaining fixed elements, or leaves its variadic ones, to a rest element", () => {
         const manifest = manifestFor("destructuredParametersPom");
-        expect(destructuredParametersOf("tail", manifest)).toStrictEqual([
+        expect(parametersIn(manifest, "tail")).toStrictEqual([
           {
             destructured: "array",
             optional: false,
@@ -1832,7 +1836,7 @@ describe("derivePomManifests", () => {
             ],
           },
         ]);
-        expect(destructuredParametersOf("first", manifest)).toStrictEqual([
+        expect(parametersIn(manifest, "first")).toStrictEqual([
           {
             destructured: "array",
             optional: false,
