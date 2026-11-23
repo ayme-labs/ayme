@@ -247,10 +247,24 @@ const namedLine = ({
   return target!.tree.split("\n").find((line) => line.includes(`[ref=${ref}]`));
 };
 
-/** A link that a click removes: its selector matches nothing by the time a
- * report could be read through it, so only the page's note of the click
- * names the link. */
-const REMOVED_LINK = `<a href="#a" onclick="event.preventDefault(); this.remove()"><span id="inner" style="display:inline-block">Pull requests</span></a>`;
+/** Whether the Playwright under test holds a left click's report back, to
+ * see whether a double click follows (1.63 and later): the page's note of
+ * the click then comes before the report. 1.62 reports a click at once,
+ * before the page's note of it, and a double click as a revision of its
+ * first click's report. */
+const holdsClickReports = (() => {
+  const [major = 0, minor = 0] = underTest.version.split(".").map(Number);
+  return major > 1 || minor >= 63;
+})();
+
+/** A link that a click removes when `condition` holds, where Playwright
+ * holds the click's report back: its selector then matches nothing by the
+ * time the report could be read through it, so only the page's note of the
+ * click names the link. On 1.62, whose report comes before the note, the
+ * link stays, and its selector names it. */
+const linkRemovedOn = (condition: string) =>
+  `<a href="#a" onclick="event.preventDefault(); if (${holdsClickReports} && ${condition}) this.remove()"><span id="inner" style="display:inline-block">Pull requests</span></a>`;
+const REMOVED_LINK = linkRemovedOn("true");
 
 it("starts Playwright's recorder, which reports a person's click with its target in its own snapshot", async () => {
   const browser = await onStockPlaywright(BUTTONS);
@@ -610,7 +624,7 @@ it("tells of a held click whose document is gone, and never sends it to the next
   expect(await browser.page.evaluate("window.clicks")).toBe(0);
 
   // No report of it is awaited: the next click's report is named from that
-  // click's own note.
+  // click's own note, where Playwright holds the report back.
   await browser.page.evaluate(
     (link) => document.body.insertAdjacentHTML("beforeend", link),
     REMOVED_LINK
@@ -1829,7 +1843,7 @@ it("names a click on an element inside a link by the link, as Playwright's selec
 
 // The page's note of a click names the element it acted on however soon the
 // page changes, in a page an attached recorder found open too.
-it("names a click inside a link that the click removes by the link, from the page's note of the click", async () => {
+it(`names a click inside a link by the link ${holdsClickReports ? "from the page's note of the click, when the click removes the link" : "through its selector: Playwright reports the click before the page's note of it"} (Playwright ${underTest.version})`, async () => {
   const browser = await onStockPlaywright(REMOVED_LINK);
   await reporting(browser);
   await browser.ask({ kind: "holdInputs", on: true });
@@ -1845,15 +1859,11 @@ it("names a click inside a link that the click removes by the link, from the pag
 
 // Playwright holds a left click's report back to see whether a double click
 // follows (1.63 and later), and then reports the double click once, by its
-// second click; 1.62 reports each click. The second click is sent on while
-// the first one's report may still be held back.
-it("names a double click from the page's note of the click Playwright reports it by", async () => {
-  const browser = await onStockPlaywright(
-    REMOVED_LINK.replace(
-      "this.remove()",
-      "if (event.detail === 2) this.remove()"
-    )
-  );
+// second click. The second click is sent on while the first one's report may
+// still be held back. 1.62 reports the first click, and revises that report
+// with the second.
+it(`names a double click by the link ${holdsClickReports ? "from the page's note of its second click, which Playwright reports it by" : "in the report of its first click, which Playwright revises with the second"} (Playwright ${underTest.version})`, async () => {
+  const browser = await onStockPlaywright(linkRemovedOn("event.detail === 2"));
   await reporting(browser);
   await browser.ask({ kind: "holdInputs", on: true });
   await browser.toldOf("inputsHeld");
@@ -1873,7 +1883,7 @@ it("names a double click from the page's note of the click Playwright reports it
 
   const { report } = await browser.toldOf(
     "interactionReported",
-    (told) => told.report.values["clickCount"] === 2
+    (told) => told.report.values["clickCount"] === (holdsClickReports ? 2 : 1)
   );
   expect(namedLine(report)).toMatch(/link "Pull requests"/);
 });
