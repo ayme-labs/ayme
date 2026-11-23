@@ -61,8 +61,8 @@ each function named in a comment beside the operator that models it (search
   `drawing.ts` (`startPicking`), and `pageRules.ts` (`mouseRoute`,
   `keyRoute`, `keyHeld`, `clickHeld`, `heldButton`, `arrivingEvent`): which
   buttons the gate holds, and which clicks picking leaves to Playwright.
-- `timeline/domain/timeline.ts` (`add`, `replace`, `retext`, `produce`,
-  `writeInteraction`, `pressedAfter`, `beforeItsPress`, `measure`,
+- `timeline/domain/timeline.ts` (`add`, `keepRead`, `replace`, `retext`,
+  `produce`, `writeInteraction`, `pressedAfter`, `beforeItsPress`, `measure`,
   `changedBefore`, `tell`, `package`) and
   `recorded.ts` (`TimelineAddition`).
 - `session/application/recorderSession.ts` (`publishEntries`, the time
@@ -70,12 +70,12 @@ each function named in a comment beside the operator that models it (search
   `--start-recording`), `server/infrastructure/toolbarBridge.ts`,
   `server/infrastructure/windowChannelRouter.ts`.
 
-**Sync commit: `b2af1120`** (`feat/recorder-rebuild`). To see what changed in
+**Sync commit: `0b1e6b9f`** (`fix/recorder-input-read-across-navigation`). To see what changed in
 covered code since, from any folder of the repository (the procedure below
 runs in the model's):
 
 ```sh
-git log --oneline b2af1120..HEAD -- ':(top)packages/recorder/src'
+git log --oneline 0b1e6b9f..HEAD -- ':(top)packages/recorder/src'
 ```
 
 A change touches the model when it adds, removes or reorders a step of the

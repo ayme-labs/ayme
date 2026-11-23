@@ -129,6 +129,58 @@ describe("Assert visibility", () => {
     );
   });
 
+  it("keeps an element picked as its page goes elsewhere in the Visit of the page it was picked on, with the read taken for it (rule 13a)", async () => {
+    const { recorder, browser, latest } = await recording();
+    browser.showPage(saved);
+    await recorder.send({ type: "assertVisibility" });
+    await expect.poll(() => pickingOf(latest())).toBe(true);
+    // The page is read for the element picked, and its next document
+    // commits before that read is in: the read is of the page it was
+    // picked on.
+    browser.holdSnapshots();
+    browser.pick(assertVisible);
+    await browser.asks({
+      kind: "takeSnapshot",
+      snapshot: "snapshot_1",
+      page: "page_1",
+    });
+    browser.goTo("http://shop.test/cart");
+    browser.releaseSnapshots();
+
+    await expect
+      .poll(() =>
+        latest().visits.map((visit) => visit.entries.map((entry) => entry.id))
+      )
+      .toEqual([["interaction_1"], []]);
+    browser.showPage(`- heading "Cart" [level=1] [ref=f1e1]`);
+    await recorder.send({ type: "finish" });
+    expect(await packageOf(await recorder.done)).toContain(
+      [
+        `  - visitId: visit_1`,
+        `    url: http://shop.test/`,
+        `    cause: initial`,
+        `    baselineTree:`,
+        `      - [ref=e1]:`,
+        `        - [ref=e2] button "Save"`,
+        `        - [ref=e3] status: Saved`,
+        `    timelineEntries:`,
+        `      - kind: interaction`,
+        `        timestamp: 1`,
+        `        interaction:`,
+        `          id: interaction_1`,
+        `          type: assertVisible`,
+        `          targetRef: e3`,
+        `          targetSelector: internal:role=status >> internal:has-text="Saved"i`,
+        `  - visitId: visit_2`,
+        `    url: http://shop.test/cart`,
+        `    cause: navigate`,
+        `    baselineTree:`,
+        `      - [ref=f1e1] heading "Cart" [level=1]`,
+        `    timelineEntries: []`,
+      ].join("\n")
+    );
+  });
+
   it("leaves picking when the recording is stopped", async () => {
     const { recorder, browser, latest } = await recording();
     await recorder.send({ type: "assertVisibility" });

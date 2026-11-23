@@ -79,7 +79,9 @@ export interface ScriptedBrowser {
   settle(): void;
   /** Playwright reports an Interaction. */
   report(report: Written<InteractionReport>): void;
-  /** From now on a snapshot the engine asks for is not answered... */
+  /** From now on a snapshot the engine asks for is not answered... It
+   * carries the address the page was at when it was asked, so one held
+   * across `goTo` is a read of the document the page left. */
   holdSnapshots(): void;
   /** ...until now. */
   releaseSnapshots(): void;
@@ -200,6 +202,10 @@ export async function startScriptedRecorder(
         return;
       }
       case "takeSnapshot": {
+        // The address the page is at as the read starts, as the stock
+        // adapter tells it: a read the page goes elsewhere during is of the
+        // document it left.
+        const address = url;
         const take = () => {
           taken.push(request.snapshot);
           tell({
@@ -207,7 +213,7 @@ export async function startScriptedRecorder(
             snapshot: {
               id: request.snapshot,
               page: request.page,
-              url,
+              url: address,
               at: ++now,
               tree,
             },

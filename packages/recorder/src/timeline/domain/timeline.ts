@@ -376,15 +376,22 @@ export class Timeline {
     this.tell();
   }
 
-  /** A read of a page, kept in the Visit the page is in. */
+  /** A read of a page, kept in the Visit of the document it is of: the
+   * latest Visit of its page at the address it was read at. */
   private async keepRead(
     addition: Extract<TimelineAddition, { kind: "snapshot" }>
   ) {
     this.readAt.set(addition.snapshot.id, addition.snapshot.at);
+    const { page, url } = addition.snapshot;
     // A read of a document the page has left, as one a navigation overtook,
-    // or of the blank page, is none of the Visit of where the page went.
-    const visit = this.current.get(addition.snapshot.page);
-    if (visit && sameDocument(visit.url, addition.snapshot.url))
+    // is of the Visit it left, never of where the page went, so that what
+    // starts from it is kept there; one of the blank page is of no Visit.
+    // A document is known by its address alone: a read the page left, came
+    // back to its address and left again during is taken for the later Visit.
+    const visit = this.all.findLast(
+      (started) => started.page === page && sameDocument(started.url, url)
+    );
+    if (visit)
       visit.snapshots.push({
         ...(await this.keep(visit, addition.snapshot)),
         resumes: addition.resumes === true,

@@ -116,7 +116,8 @@ mk Rule7-AssertThenType "$IN" 2 1 1  2   1    0     $F     $F   $F   $F    $T   
 mk Path-NavigationThenType "$IN" 2 2 1 1 1  0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X10_FillStartsInItsDocument F1_ShowsOnceItHasItsPlace F6_WindowIsWhatIsSaved" $F $F "$LR" $F $F $F $F $T $T
 # A read taken before a navigation and heard after it (5ecea373).
 mk Path-ReadAcrossNavigation "$IN" 2 2 1 1 0 0   $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X11_LatestReadIsOfThisDocument X10_FillStartsInItsDocument" $F $F "$LR" $F $F $F $F $T $T $T $T
-# An input whose read a navigation overtook (5ecea373).
+# An input whose read a navigation overtook (5ecea373): kept, with that read,
+# in the Visit of the page it was done in (0b1e6b9f).
 mk Input-ReadAcrossNavigation "$IN" 2 2 1 1 0 0  $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X3_NothingYouDidIsDropped R04_FinishSavesEverything" $F $F "$LR" $F $F $F $F $T $T $T $T
 # Typing after a navigation that Playwright reports as a revision of the last
 # fill: a fill of its own in the new document (8d1c4656).

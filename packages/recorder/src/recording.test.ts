@@ -378,6 +378,77 @@ describe("a recording", () => {
     expect(text.match(/kind: interaction/g)).toHaveLength(1);
   });
 
+  it("keeps typing whose read its page's next document overtook in the Visit of the page it was typed in, with that read (rule 13a)", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(
+      [`- generic [ref=e1]:`, `  - textbox "Item" [ref=e2]`].join("\n")
+    );
+    await recorder.send({ type: "record" });
+    // The page is read for the typing, and its next document commits
+    // before that read is in: the read is of the page it was typed in.
+    browser.holdSnapshots();
+    browser.report({
+      type: "fill",
+      selector: 'internal:role=textbox[name="Item"i]',
+      target: {
+        ref: "e2",
+        tree: [`- generic [ref=e1]:`, `  - textbox "Item" [ref=e2]: milk`].join(
+          "\n"
+        ),
+      },
+      values: { text: "milk" },
+    });
+    await browser.asks({
+      kind: "takeSnapshot",
+      snapshot: "snapshot_1",
+      page: "page_1",
+    });
+    browser.goTo("http://shop.test/cart");
+    browser.releaseSnapshots();
+    await browser.asks({
+      kind: "waitForSettled",
+      page: "page_1",
+      input: "reported_1",
+    });
+    browser.showPage(`- heading "Cart" [level=1] [ref=f1e1]`);
+    browser.settle();
+
+    await recorder.send({ type: "finish" });
+    const outcome = await recorder.done;
+    // The typing is the recording's one Interaction: it is saved.
+    expect(outcome.kind).toBe("saved");
+    expect(
+      await readFile(
+        join((outcome as { folder: string }).folder, "package.yaml"),
+        "utf8"
+      )
+    ).toContain(
+      [
+        `  - visitId: visit_1`,
+        `    url: http://shop.test/`,
+        `    cause: initial`,
+        `    baselineTree:`,
+        `      - [ref=e1]:`,
+        `        - [ref=e2] textbox "Item"`,
+        `    timelineEntries:`,
+        `      - kind: interaction`,
+        `        timestamp: 1`,
+        `        interaction:`,
+        `          id: interaction_1`,
+        `          type: fill`,
+        `          targetRef: e2`,
+        `          targetSelector: internal:role=textbox[name="Item"i]`,
+        `          text: milk`,
+        `  - visitId: visit_2`,
+        `    url: http://shop.test/cart`,
+        `    cause: navigate`,
+        `    baselineTree:`,
+        `      - [ref=f1e1] heading "Cart" [level=1]`,
+        `    timelineEntries: []`,
+      ].join("\n")
+    );
+  });
+
   it("takes Finish while a click's 'before' snapshot is outstanding: it wraps up, and the time limit runs", async () => {
     const { recorder, browser } = await start();
     await recorder.send({ type: "record" });

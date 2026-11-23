@@ -1450,7 +1450,8 @@ function keepRead(
   });
   // A read of a document the page has left, as one a navigation overtook,
   // is no read of the page as it is: not of the blank page once the page is
-  // at an address, nor of an address it went on from.
+  // at an address, nor of an address it went on from. The timeline keeps it
+  // in the Visit of the document it is of, with the input that waited for it.
   const stale = state.pages.some(
     (page) => page.id === snapshot.page && !sameDocument(page.url, snapshot.url)
   );
