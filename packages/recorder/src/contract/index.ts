@@ -69,8 +69,9 @@ export type ChangeRow = {
   /** For a changed element: each of its own properties that changed, in a
    * fixed order. Empty when what changed is none of these. */
   readonly changed?: readonly PropertyChange[];
-  /** For an element that appeared or was removed: its role. Absent when the
-   * row names no element. */
+  /** For an element that appeared or was removed: its own role, even when
+   * `element` names it by an ancestor. Absent when the row names no
+   * element. */
   readonly role?: string;
   /** For an element that appeared or was removed: its nearest ancestor that
    * has a name, by its Structural Ref, which tells one such ancestor from

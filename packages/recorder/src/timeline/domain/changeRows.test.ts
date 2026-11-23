@@ -354,8 +354,13 @@ describe("the change rows of a Change Tree", () => {
         element: 'navigation "Main"',
         changed: [{ property: "cursor", to: "pointer" }],
       },
-      // Named by its ancestor, it says that ancestor's role.
-      { kind: "added", element: 'navigation "Main"', role: "navigation" },
+      // Named by its ancestor, it says its own role and its own parent.
+      {
+        kind: "added",
+        element: 'navigation "Main"',
+        role: "generic",
+        parent: { ref: "e2", name: "Main" },
+      },
     ]);
   });
 
@@ -435,6 +440,126 @@ describe("the change rows of a Change Tree", () => {
       )
     );
     expect(built).toBe(1);
+  });
+
+  it("say of elements named by their ancestor their own role and their own parent, whether they appeared or were removed", () => {
+    const site = (...inside: string[]) =>
+      page(
+        `- region "Site" [ref=e2]:`,
+        `  - navigation "Main" [ref=e3]:`,
+        ...inside.map((line) => `    ${line}`)
+      );
+    const placed = (kind: "added" | "removed") => ({
+      kind,
+      element: 'navigation "Main"',
+      role: "generic",
+      parent: { ref: "e3", name: "Main" },
+    });
+
+    expect(
+      changeRows(
+        changeFrom(
+          site(`- generic [ref=e4]`),
+          site(
+            `- generic [ref=e4]`,
+            `- generic [ref=e5]`,
+            `- generic [ref=e6]`,
+            `- generic [ref=e7]`
+          )
+        )
+      )
+    ).toEqual([placed("added"), placed("added"), placed("added")]);
+    expect(
+      changeRows(
+        changeFrom(
+          site(
+            `- generic [ref=e4]`,
+            `- generic [ref=e5]`,
+            `- generic [ref=e6]`,
+            `- generic [ref=e7]`
+          ),
+          site(`- generic [ref=e4]`)
+        )
+      )
+    ).toEqual([placed("removed"), placed("removed"), placed("removed")]);
+  });
+
+  it("list what changed inside an element whose only change of its own is the cursor, after its row", () => {
+    const rows = changeRows(
+      changeFrom(
+        page(`- list "Issues" [ref=e2]:`, `  - listitem [ref=e3]: A`),
+        page(
+          `- list "Issues" [ref=e2] [cursor=pointer]:`,
+          `  - listitem [ref=e3]: A`,
+          `  - listitem [ref=e4]: B`,
+          `  - listitem [ref=e5]: C`,
+          `  - listitem [ref=e6]: D`
+        )
+      )
+    );
+    const item = (name: string) => ({
+      kind: "added",
+      element: `listitem "${name}"`,
+      role: "listitem",
+      parent: { ref: "e2", name: "Issues" },
+    });
+
+    expect(rows).toEqual([
+      {
+        kind: "changed",
+        element: 'list "Issues"',
+        changed: [{ property: "cursor", to: "pointer" }],
+      },
+      item("B"),
+      item("C"),
+      item("D"),
+    ]);
+  });
+
+  it("list nothing inside an element that changed itself in another way too, its cursor or not", () => {
+    const rows = changeRows(
+      changeFrom(
+        page(`- list "Issues" [ref=e2]:`, `  - listitem [ref=e3]: A`),
+        page(
+          `- list "Closed issues" [ref=e2] [cursor=pointer]:`,
+          `  - listitem [ref=e3]: A`,
+          `  - listitem [ref=e4]: B`
+        )
+      )
+    );
+
+    expect(rows).toEqual([
+      {
+        kind: "changed",
+        element: 'list "Closed issues"',
+        changed: [
+          { property: "name", from: "Issues", to: "Closed issues" },
+          { property: "cursor", to: "pointer" },
+        ],
+      },
+    ]);
+  });
+
+  it("list nothing inside an element that changed itself in a way no property names", () => {
+    const rows = changeRows(
+      changeFrom(
+        page(
+          `- paragraph [ref=e2]:`,
+          `  - text: Total`,
+          `  - strong [ref=e3]: "5"`
+        ),
+        page(
+          `- paragraph [ref=e2]:`,
+          `  - strong [ref=e3]: "5"`,
+          `  - text: Total`,
+          `  - button "Undo" [ref=e4]`
+        )
+      )
+    );
+
+    expect(rows).toEqual([
+      { kind: "changed", element: "paragraph", changed: [] },
+    ]);
   });
 
   it("name an element by the word 'element' only when nothing around it has a role or a name", () => {

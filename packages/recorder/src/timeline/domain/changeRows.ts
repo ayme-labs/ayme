@@ -43,8 +43,11 @@ export type FoundRow = {
  * removed is named by the named elements that went with it, a row each;
  * otherwise, as one that changed, by its nearest named ancestor. A changed
  * element says how each of its own properties stood before and after: the
- * tree keeps how each node stood before. One that appeared or was removed
- * says its role and the named ancestor it went in or out of (`placeOf`).
+ * tree keeps how each node stood before. One whose only change of its own
+ * is the cursor, which whoever shows a recorder may leave out, has what
+ * changed inside it listed after it. One that appeared or was removed says
+ * its own role and the named ancestor it went in or out of (`placeOf`),
+ * even when it is named by an ancestor.
  */
 export function foundRows(
   change: StructuralTree,
@@ -53,56 +56,59 @@ export function foundRows(
   const names = new ElementNames(change, pageBefore);
   const rows: FoundRow[] = [];
   const visit = (node: StructuralNode) => {
-    if (!changedItself(node)) {
-      for (const child of node.children)
-        if (typeof child !== "string") visit(child);
-      return;
-    }
+    if (changedItself(node) && listed(node)) return;
+    for (const child of node.children)
+      if (typeof child !== "string") visit(child);
+  };
+  /** Lists the rows of a node that changed itself; whether they say what
+   * changed inside it too. */
+  const listed = (node: StructuralNode): boolean => {
     const { kind } = node.status!;
     if (kind === "added" || kind === "removed") {
       const view = kind === "added" ? "after" : "before";
       const inside = ownName(node) ? [] : namedInside(node);
       const named =
         inside.length > 0
-          ? inside.map((one) => names.labelOf(one, view))
-          : [names.labelNear(node, view)];
-      for (const element of named)
+          ? inside.map((one) => ({ one, element: names.labelOf(one, view) }))
+          : [{ one: node, element: names.labelNear(node, view) }];
+      for (const { one, element } of named)
         rows.push({
           row: {
             kind,
             element: wordsOf(element),
-            ...placeOf(change, element),
+            ...(element ? placeOf(change, one) : {}),
           },
           element,
         });
-      return;
+      return true;
     }
     // Core records how every node it marks as changed stood before; a tree
     // without that record names no property.
     const before = change.getBeforeNode(node.ref) ?? node;
     const element = names.labelNear(node, "after");
+    const changed = changedProperties(before, node);
     rows.push({
-      row: {
-        kind: "changed",
-        element: wordsOf(element),
-        changed: changedProperties(before, node),
-      },
+      row: { kind: "changed", element: wordsOf(element), changed },
       element,
     });
+    return !cursorOnly(changed);
   };
   for (const root of change.getRootNodes()) visit(root);
   return rows;
 }
 
-/** An element's role, and its nearest ancestor that has a name, by its ref
- * and that name: whoever shows a recorder can tell which elements went in
- * or out of the same one. Nothing for a row that names no element. */
+/** Whether the only property of its own an element changed is the
+ * cursor. */
+const cursorOnly = (changed: readonly PropertyChange[]) =>
+  changed.length > 0 && changed.every((one) => one.property === "cursor");
+
+/** An element's own role, and its nearest ancestor that has a name, by its
+ * ref and that name: whoever shows a recorder can tell which elements went
+ * in or out of the same one. */
 function placeOf(
   change: StructuralTree,
-  element: NamedElement | null
+  node: StructuralNode
 ): Pick<ChangeRow, "role" | "parent"> {
-  const node = element && change.getNode(element.ref);
-  if (!node) return {};
   const parent = change.getAncestorsOf(node.ref).find((one) => one.name);
   return {
     role: node.role,
