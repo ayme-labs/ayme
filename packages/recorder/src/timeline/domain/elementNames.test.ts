@@ -6,26 +6,34 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
+  ElementNames,
   labelNear,
-  labelOf,
   ordinal,
   selectorWords,
-  withPageBefore,
   type PageView,
 } from "./elementNames";
 
-/** A Change Tree, with the page before beside it, as the timeline keeps
- * it. */
+/** The names of a Change Tree, with the page before it, as the timeline
+ * names its rows. */
 function changeOf(before: StructuralTree, after: StructuralTree) {
-  return withPageBefore(StructuralTree.reconcile(before, after), before);
+  return new ElementNames(
+    StructuralTree.reconcile(before, after),
+    () => before
+  );
 }
 
 const read = (yaml: string, refs = new SyntheticAriaRefFactory()) =>
   StructuralTree.fromAriaSnapshotYaml(yaml, refs);
 
-/** An element's label and selector, by its ref. */
-function label(tree: StructuralTree, ref: string, view: PageView = "after") {
-  const named = labelOf(tree, tree.getNode(ref as AriaRef)!, view);
+/** An element's label and selector, by its ref, in a tree or in the names
+ * of one. */
+function label(
+  of: StructuralTree | ElementNames,
+  ref: string,
+  view: PageView = "after"
+) {
+  const names = of instanceof ElementNames ? of : new ElementNames(of);
+  const named = names.labelOf(names.tree.getNode(ref as AriaRef)!, view);
   return named && { label: named.label, selector: named.selector };
 }
 
@@ -213,6 +221,19 @@ describe("the label of an element", () => {
     expect(label(change, "e4", "before")?.label).toBe('listitem "buy milk"');
   });
 
+  it("is counted against the tree itself when it has no page before, whichever page is asked", () => {
+    const tree = read(
+      [
+        `- generic [ref=e1]:`,
+        `  - button "Undo" [ref=e2]`,
+        `  - button "Undo" [ref=e3]`,
+      ].join("\n")
+    );
+
+    expect(label(tree, "e3", "before")).toEqual(label(tree, "e3", "after"));
+    expect(label(tree, "e3", "before")?.label).toBe('button "Undo" (2nd of 2)');
+  });
+
   it("is of the text a changed element had before, on the page before", () => {
     const refs = new SyntheticAriaRefFactory();
     const count = (left: string) =>
@@ -263,6 +284,43 @@ describe("the label of an element, as its selector matches", () => {
     });
   });
 
+  it("counts every element whose text holds the text inside for each text looked for among the same elements, the first and every later one", () => {
+    // "plu lum" has every three-letter piece of "plum", and does not hold it.
+    const items = [
+      "kiwi",
+      "plum",
+      "ripe plum",
+      "plump",
+      "plu lum",
+      "banana",
+      "ana",
+    ];
+    const tree = read(
+      [
+        `- list [ref=e1]:`,
+        ...items.flatMap((item, at) => [
+          `  - listitem [ref=e${10 + 2 * at}]:`,
+          `    - checkbox "Done" [ref=e${11 + 2 * at}]`,
+          `    - text: ${item}`,
+        ]),
+      ].join("\n")
+    );
+
+    // Each item is looked for among all of them, in turn, in one naming.
+    const names = new ElementNames(tree);
+    expect(
+      items.map((_, at) => label(names, `e${10 + 2 * at}`)?.label)
+    ).toEqual([
+      'listitem "kiwi"',
+      'listitem "plum" (1st of 3)',
+      'listitem "ripe plum"',
+      'listitem "plump"',
+      'listitem "plu lum"',
+      'listitem "banana"',
+      'listitem "ana" (2nd of 2)',
+    ]);
+  });
+
   it("counts every element of a role for a role alone, named or not", () => {
     const tree = read(
       [
@@ -294,6 +352,41 @@ describe("the label of an element, as its selector matches", () => {
     expect(label(tree, "e3")).toEqual({
       label: '"Draft"',
       selector: 'internal:text="Draft"s',
+    });
+  });
+
+  it("gives an element with no role its place among the innermost elements of its text in the order of the page, inside a wrapper too", () => {
+    const tree = read(
+      [
+        `- generic [ref=e1]:`,
+        `  - generic [ref=e2]: Draft`,
+        `  - generic [ref=e3]:`,
+        `    - generic [ref=e4]: Draft`,
+      ].join("\n")
+    );
+
+    expect(label(tree, "e4")).toEqual({
+      label: '"Draft" (2nd of 2)',
+      selector: 'internal:text="Draft"s >> nth=1',
+    });
+  });
+
+  it("counts an element with no role by the text inside it only where that text is, not in the element just before it", () => {
+    const tree = read(
+      [
+        `- generic [ref=e1]:`,
+        `  - generic [ref=e2]:`,
+        `    - strong [ref=e3]: "1"`,
+        `    - text: Card`,
+        `  - generic [ref=e4]:`,
+        `    - strong [ref=e5]: "2"`,
+        `    - text: Cards left`,
+      ].join("\n")
+    );
+
+    expect(label(tree, "e4")).toEqual({
+      label: '"Cards left"',
+      selector: 'internal:text="Cards left"i',
     });
   });
 });
@@ -370,6 +463,93 @@ describe("the label of an element, in the details of how it is read", () => {
     });
   });
 
+  it("names no element with no role by a text inside it that may be a button's name alone", () => {
+    const tree = page(
+      `- generic [ref=e2]:`,
+      `  - strong [ref=e3]: "2"`,
+      `  - text: Docs`,
+      `- listitem [ref=e4]:`,
+      `  - button "Docs" [ref=e5]`
+    );
+
+    expect(label(tree, "e2")).toBeNull();
+  });
+
+  it("names an element with nothing but text inside it by its role and place when an element of its role has that text only if a name inside it is no text", () => {
+    const tree = page(
+      `- paragraph [ref=e2]: Read me`,
+      `- paragraph [ref=e3]:`,
+      `  - text: Read`,
+      `  - button "Docs" [ref=e4]`,
+      `  - text: me`
+    );
+
+    expect(label(tree, "e2")).toEqual({
+      label: "paragraph (1st of 2)",
+      selector: "internal:role=paragraph >> nth=0",
+    });
+  });
+
+  it("names an element with nothing but text inside it by that text when only an element of another document has it only if a name inside is no text", () => {
+    const tree = page(
+      `- paragraph [ref=e2]: Read me`,
+      `- iframe [ref=e3]:`,
+      `  - paragraph [ref=f1e1]:`,
+      `    - text: Read`,
+      `    - button "Docs" [ref=f1e2]`,
+      `    - text: me`
+    );
+
+    expect(label(tree, "e2")).toEqual({
+      label: 'paragraph "Read me"',
+      selector: 'internal:role=paragraph >> internal:has-text="Read me"s',
+    });
+  });
+
+  it("keeps the text inside in a label when an element of its role holds it by either reading of its text", () => {
+    const tree = page(
+      `- listitem [ref=e2]:`,
+      `  - checkbox "Done" [ref=e3]`,
+      `  - text: Docs`,
+      `- listitem [ref=e4]:`,
+      `  - heading "Guide" [level=3] [ref=e5]`,
+      `  - text: Docs`
+    );
+
+    expect(label(tree, "e2")).toEqual({
+      label: 'listitem "Docs" (1st of 2)',
+      selector: 'internal:role=listitem >> internal:has-text="Docs"i >> nth=0',
+    });
+  });
+
+  it("works out for each role and each document apart whether an element of it may hold a text as a name alone", () => {
+    const tree = page(
+      `- listitem [ref=e2]:`,
+      `  - checkbox "Done" [ref=e3]`,
+      `  - text: Docs`,
+      `- listitem [ref=e4]:`,
+      `  - checkbox "Done" [ref=e5]`,
+      `  - text: Other`,
+      `- row [ref=e6]:`,
+      `  - checkbox "Done" [ref=e7]`,
+      `  - text: Docs`,
+      `- row [ref=e8]:`,
+      `  - button "Docs" [ref=e9]`,
+      `- iframe [ref=e10]:`,
+      `  - listitem [ref=f1e1]:`,
+      `    - checkbox "Done" [ref=f1e2]`,
+      `    - text: Docs`,
+      `  - listitem [ref=f1e3]:`,
+      `    - button "Docs" [ref=f1e4]`
+    );
+
+    // In one naming, which works each selector out once.
+    const names = new ElementNames(tree);
+    expect(["e2", "e6", "f1e1"].map((ref) => label(names, ref)?.label)).toEqual(
+      ['listitem "Docs"', "row (1st of 2)", "listitem (1st of 2)"]
+    );
+  });
+
   it("names no element with no role by a text that may be a button's name alone: nothing certain is left to name it by", () => {
     const tree = page(`- generic [ref=e2]: Docs`, `- button "Docs" [ref=e3]`);
 
@@ -410,6 +590,25 @@ describe("the label of an element, in the details of how it is read", () => {
     expect(label(tree, "e2")).toEqual({
       label: 'listitem "Docs"',
       selector: 'internal:role=listitem >> internal:has-text="Docs"i',
+    });
+  });
+
+  it("drops the text inside from a label when an element of its role holds it only if a name between its texts is no text", () => {
+    const tree = page(
+      `- listitem [ref=e2]:`,
+      `  - checkbox "Done" [ref=e3]`,
+      `  - text: Read me`,
+      `- listitem [ref=e4]:`,
+      `  - text: Read`,
+      `  - button "Docs" [ref=e5]`,
+      `  - text: me`
+    );
+
+    // An icon-only button's aria-label is no text: the second item's text
+    // may then be "Read me" too.
+    expect(label(tree, "e2")).toEqual({
+      label: "listitem (1st of 2)",
+      selector: "internal:role=listitem >> nth=0",
     });
   });
 
@@ -459,6 +658,23 @@ describe("the label of an element, in the details of how it is read", () => {
     expect(label(tree, "e2")).toEqual({
       label: 'listitem "Card"',
       selector: 'internal:role=listitem >> internal:has-text="Card"i',
+    });
+  });
+
+  it("reads no text of a frame's document into the text of an element that holds the frame, when an element with no role is looked for by its text", () => {
+    const tree = page(
+      `- generic [ref=e2]:`,
+      `  - strong [ref=e3]: "2"`,
+      `  - text: Cards left`,
+      `- generic [ref=e4]:`,
+      `  - text: Card`,
+      `  - iframe [ref=e5]:`,
+      `    - generic [ref=f1e1]: Cards left today`
+    );
+
+    expect(label(tree, "e2")).toEqual({
+      label: '"Cards left"',
+      selector: 'internal:text="Cards left"i',
     });
   });
 
@@ -514,12 +730,7 @@ describe("the label of an element, in the details of how it is read", () => {
       ].join("\n"),
       refs
     );
-    const change = withPageBefore(
-      StructuralTree.reconcile(before, after),
-      before
-    );
-
-    expect(label(change, "e2")?.label).toBe('listitem "x"');
+    expect(label(changeOf(before, after), "e2")?.label).toBe('listitem "x"');
   });
 
   it("counts each element of a role, nested ones too, for a role alone", () => {

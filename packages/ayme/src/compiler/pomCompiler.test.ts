@@ -158,6 +158,19 @@ describe("createPomCompiler", () => {
     ]);
   });
 
+  it("compiles a Page Object Model whose Child's action takes a type no schema describes to its stand-in in a build without ayme", () => {
+    const page = fixture("importedUnsupportedChild/page");
+    const compiled = createPomCompiler({ tsconfigPath }).compile(
+      page,
+      source(page),
+      { emit: "ts" }
+    );
+
+    expect(compiled?.code).toContain(
+      'export class CalendarPage extends absentPageObject("CalendarPage", {"actions":[],"properties":["scheduler"],"methods":[]}) {}'
+    );
+  });
+
   it("locates a syntax error where it is in the source, not in the compiled module", () => {
     const fileName = fixture("twoPagesPom");
     const broken = source(fileName).replace(

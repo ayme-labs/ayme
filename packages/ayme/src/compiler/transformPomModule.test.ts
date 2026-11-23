@@ -67,7 +67,11 @@ describe("with a Program cache", () => {
 
   it("drops the cached Program when a transform fails", () => {
     const programs: PomPrograms = new Map();
-    const transform = createPomTransform({}, undefined, programs);
+    const transform = createPomTransform(
+      { include: true },
+      undefined,
+      programs
+    );
 
     expect(transform(...fixture("annotatedChildrenPom"))).not.toBeNull();
     expect(programs.size).toBe(1);
@@ -401,6 +405,22 @@ describe("a build without ayme", () => {
     expect(code).not.toContain("opened");
   });
 
+  it.each([
+    ["unset", {}],
+    ["false", { include: false }],
+  ] as const)(
+    "compiles a Page Object Model whose action takes a type no schema describes to its stand-in, with include %s",
+    (_, options) => {
+      const code = createPomTransform(options)(
+        ...fixture("unsupportedShapes/typedArrayPom")
+      )?.code;
+
+      expect(code).toContain(
+        'export class TypedArrayPom extends absentPageObject("TypedArrayPom", {"actions":["attach"],"properties":[],"methods":[]}) {}'
+      );
+    }
+  );
+
   it("leaves a module without a Page Object Model alone", () => {
     expect(transform("export const x = 1;", "/app/x.ts")).toBeNull();
   });
@@ -414,6 +434,17 @@ describe("a build without ayme", () => {
     expect(code).toContain("Add an item to the list.");
     expect(code).toContain("The dialog that adds an item.");
     expect(code).not.toContain("@ayme-dev/ayme/absent");
+  });
+
+  it("fails on an action's type no schema describes once include is true", () => {
+    expect(() =>
+      createPomTransform({ include: true })(
+        ...fixture("unsupportedShapes/typedArrayPom")
+      )
+    ).toThrow(
+      // TypeScript 5.7 and later name the type Uint8Array<ArrayBufferLike>.
+      "Unsupported Page Object Tool input type for TypedArrayPom.attach(contents): Uint8Array"
+    );
   });
 });
 

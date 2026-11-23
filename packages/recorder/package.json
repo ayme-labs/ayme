@@ -24,6 +24,7 @@
     "lint": "eslint src testing --max-warnings 0",
     "test": "vitest run",
     "test:compat": "vitest run --config vitest.compat.config.ts",
+    "test:timing": "vitest run --config vitest.timing.config.ts",
     "typecheck": "tsc --noEmit",
     "test:crap": "vitest run --config vitest.crap.config.ts --coverage",
     "test:mutation": "stryker run"

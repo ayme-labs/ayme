@@ -5,8 +5,7 @@ import type {
 
 import type { ChangeRow, PropertyChange } from "../../contract";
 import {
-  labelNear,
-  labelOf,
+  ElementNames,
   namedInside,
   ownName,
   wordsOf,
@@ -40,13 +39,17 @@ export type FoundRow = {
  * The topmost elements a Change Tree marks as added, removed or changed
  * themselves, in the order of the page, each named by its label
  * (`elementNames.ts`), counted against the page after the change, or before
- * it for a removed one. One with no role and no name that appeared or was
+ * it, which `pageBefore` builds, for a removed one. One with no role and no name that appeared or was
  * removed is named by the named elements that went with it, a row each;
  * otherwise, as one that changed, by its nearest named ancestor. A changed
  * element says how each of its own properties stood before and after: the
  * tree keeps how each node stood before.
  */
-export function foundRows(change: StructuralTree): FoundRow[] {
+export function foundRows(
+  change: StructuralTree,
+  pageBefore?: () => StructuralTree
+): FoundRow[] {
+  const names = new ElementNames(change, pageBefore);
   const rows: FoundRow[] = [];
   const visit = (node: StructuralNode) => {
     if (!changedItself(node)) {
@@ -60,8 +63,8 @@ export function foundRows(change: StructuralTree): FoundRow[] {
       const inside = ownName(node) ? [] : namedInside(node);
       const named =
         inside.length > 0
-          ? inside.map((one) => labelOf(change, one, view))
-          : [labelNear(change, node, view)];
+          ? inside.map((one) => names.labelOf(one, view))
+          : [names.labelNear(node, view)];
       for (const element of named)
         rows.push({ row: { kind, element: wordsOf(element) }, element });
       return;
@@ -69,7 +72,7 @@ export function foundRows(change: StructuralTree): FoundRow[] {
     // Core records how every node it marks as changed stood before; a tree
     // without that record names no property.
     const before = change.getBeforeNode(node.ref) ?? node;
-    const element = labelNear(change, node);
+    const element = names.labelNear(node, "after");
     rows.push({
       row: {
         kind: "changed",
