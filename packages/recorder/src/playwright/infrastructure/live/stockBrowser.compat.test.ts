@@ -1662,10 +1662,10 @@ const LABELLED = `
   <button>Twin</button>
   <iframe srcdoc="<button>Pay</button><button>Twin</button>"></iframe>`;
 
-it("finds by the selector of each element's label, built from the page's own snapshot, that element alone, in a frame too", async () => {
-  const browser = await onStockPlaywright(LABELLED);
-  const page = browser.page;
-  await page.frameLocator("iframe").getByText("Pay").waitFor();
+/** Each label of the page's own snapshot, and every one whose selector
+ * the highlight finds other than the element its ref names: nothing, more
+ * than it, or another. */
+async function labelsFound(browser: Harness) {
   await browser.ask({ kind: "takeSnapshot", snapshot: "s1", page: "page_1" });
   const { snapshot } = await browser.toldOf("snapshotTaken");
   const tree = StructuralTree.fromAriaSnapshotYaml(
@@ -1686,19 +1686,41 @@ it("finds by the selector of each element's label, built from the page's own sna
       "highlighted",
       (told) => told.highlight === highlight
     );
-    return found ? await drawnBoxes(page) : [];
+    return found ? await drawnBoxes(browser.page) : [];
   };
-  const labels: string[] = [];
-  const missed: unknown[] = [];
-  for (const node of tree.getAllNodes()) {
-    const named = labelOf(tree, node);
-    if (!named || isSyntheticRef(node.ref)) continue;
-    labels.push(named.label);
+  const named = tree.getAllNodes().flatMap((node) => {
+    const label = labelOf(tree, node);
+    return label && !isSyntheticRef(node.ref) ? [{ node, label }] : [];
+  });
+  const key = (boxes: readonly unknown[]) => JSON.stringify(boxes);
+  // Each element by its ref, and whose label each box is.
+  const owns: unknown[][] = [];
+  const atBox = new Map<string, string>();
+  for (const { node, label } of named) {
     const own = await drawnFor({ by: "ref", ref: snapshotRef(node.ref) });
-    const found = await drawnFor({ by: "selector", selector: named.selector });
-    if (own.length !== 1 || JSON.stringify(found) !== JSON.stringify(own))
-      missed.push({ label: named.label, selector: named.selector, own, found });
+    owns.push(own);
+    atBox.set(key(own), label.label);
   }
+  const missed: unknown[] = [];
+  for (const [at, { label }] of named.entries()) {
+    const own = owns[at]!;
+    const found = await drawnFor({ by: "selector", selector: label.selector });
+    if (own.length !== 1 || key(found) !== key(own))
+      missed.push({
+        label: label.label,
+        // What its selector lights up, by the label of the element there.
+        finds: found.map((box) => atBox.get(key([box])) ?? box),
+        ...(own.length === 1 ? {} : { byItsRef: own }),
+      });
+  }
+  return { labels: named.map(({ label }) => label.label), missed };
+}
+
+it("finds by the selector of each element's label, built from the page's own snapshot, that element alone, in a frame too", async () => {
+  const browser = await onStockPlaywright(LABELLED);
+  await browser.page.frameLocator("iframe").getByText("Pay").waitFor();
+
+  const { labels, missed } = await labelsFound(browser);
 
   expect(missed).toEqual([]);
   expect(labels).toEqual(
@@ -1724,6 +1746,40 @@ it("finds by the selector of each element's label, built from the page's own sna
       'button "Pay"',
     ])
   );
+});
+
+/** Items that hold text the page's snapshot leaves out, as hidden, and
+ * Playwright's text matching reads: one named by its text alone, ones
+ * among look-alikes, and one an item's hidden text makes a look-alike. */
+const HIDDEN_TEXT = `
+  <ul>
+    <li>Buy milk</li>
+    <li>Buy <span hidden>oat </span>milk</li>
+  </ul>
+  <ol>
+    <li><input type="checkbox" aria-label="Toggle Todo">Feed the cat</li>
+    <li><input type="checkbox" aria-label="Toggle Todo">Eggs<span hidden> feed the cat</span></li>
+    <li><input type="checkbox" aria-label="Toggle Todo">Feed the cat</li>
+  </ol>
+  <p>Only <span style="display: none">one </span>item</p>`;
+
+// A known limit, in the CLI's README. Once a label here finds its element,
+// the limit is gone: take it out of the README, and expect no misses.
+it("finds by the selector of a label nothing, or a look-alike, when hidden text is in the element or in a look-alike", async () => {
+  const browser = await onStockPlaywright(HIDDEN_TEXT);
+
+  const { missed } = await labelsFound(browser);
+
+  expect(missed).toEqual([
+    // Playwright reads "Buy oat milk".
+    { label: 'listitem "Buy milk" (2nd of 2)', finds: [] },
+    // Playwright reads the Eggs item as one with "feed the cat" in it.
+    {
+      label: 'listitem "Feed the cat" (2nd of 2)',
+      finds: ['listitem "Eggs"'],
+    },
+    { label: 'paragraph "Only item"', finds: [] },
+  ]);
 });
 
 it("draws nothing for a highlight that a clear replaced while the element was still looked up", async () => {
