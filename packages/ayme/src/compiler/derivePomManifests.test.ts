@@ -15,16 +15,22 @@ import { version } from "../../package.json";
 // while the browser suites and the packed-consumer test run beside them.
 vi.setConfig({ testTimeout: 15_000 });
 
-function manifestFor(fixture: string) {
+// A test that reads several classes or tools of one fixture derives it once,
+// as each derivation builds a TypeScript Program.
+function manifestsOf(fixture: string) {
   return derivePomManifests(
     path.resolve(`src/compiler/fixtures/${fixture}.ts`)
-  )[0];
+  );
+}
+
+function manifestFor(fixture: string) {
+  return manifestsOf(fixture)[0];
 }
 
 function manifestForClass(fixture: string, className: string) {
-  return derivePomManifests(
-    path.resolve(`src/compiler/fixtures/${fixture}.ts`)
-  ).find((manifest) => manifest.className === className);
+  return manifestsOf(fixture).find(
+    (manifest) => manifest.className === className
+  );
 }
 
 describe("derivePomManifests", () => {
@@ -148,10 +154,11 @@ describe("derivePomManifests", () => {
 
   describe("the destructive option", () => {
     it("marks the actions whose @ayme.action sets destructive: true, and an inherited one in the subclass", () => {
+      const manifests = manifestsOf("destructiveActionsPom");
+      const toolsOf = (className: string) =>
+        manifests.find((manifest) => manifest.className === className)?.tools;
       const tools = (className: string) =>
-        manifestForClass("destructiveActionsPom", className)?.tools.map(
-          (tool) => [tool.methodName, tool.destructive]
-        );
+        toolsOf(className)?.map((tool) => [tool.methodName, tool.destructive]);
 
       const expected = [
         ["submit", true],
@@ -162,10 +169,9 @@ describe("derivePomManifests", () => {
       ];
       expect(tools("DestructiveActionsPom")).toEqual(expected);
       expect(tools("InheritedDestructivePom")).toEqual(expected);
-      expect(
-        manifestForClass("destructiveActionsPom", "DestructiveActionsPom")
-          ?.tools[2]
-      ).not.toHaveProperty("destructive");
+      expect(toolsOf("DestructiveActionsPom")?.[2]).not.toHaveProperty(
+        "destructive"
+      );
     });
 
     it("reads options written in parentheses", () => {
@@ -1095,12 +1101,6 @@ describe("derivePomManifests", () => {
   });
 
   describe("inherited @ayme recognition", () => {
-    function manifestsOf(fixture: string) {
-      return derivePomManifests(
-        path.resolve(`src/compiler/fixtures/${fixture}.ts`)
-      );
-    }
-
     function expectNames(names: readonly string[], expected: string[]) {
       expect(new Set(names)).toEqual(new Set(expected));
       expect(names).toHaveLength(expected.length);
@@ -1113,7 +1113,9 @@ describe("derivePomManifests", () => {
         ["BaseMenu", "UserMenu"]
       );
 
-      const userMenu = manifestForClass("decoratedBasePom", "UserMenu");
+      const userMenu = manifests.find(
+        (manifest) => manifest.className === "UserMenu"
+      );
       if (!userMenu) throw new Error("UserMenu was not recognised.");
       expectNames(
         userMenu.members.map((member) => member.memberName),
@@ -1156,16 +1158,14 @@ describe("derivePomManifests", () => {
     );
 
     it("recognises every class below a decorator three levels up", () => {
+      const manifests = manifestsOf("threeLevelDecoratedBasePom");
       expectNames(
-        manifestsOf("threeLevelDecoratedBasePom").map(
-          (manifest) => manifest.className
-        ),
+        manifests.map((manifest) => manifest.className),
         ["TopPom", "MiddlePom", "BottomPom"]
       );
 
-      const bottom = manifestForClass(
-        "threeLevelDecoratedBasePom",
-        "BottomPom"
+      const bottom = manifests.find(
+        (manifest) => manifest.className === "BottomPom"
       );
       if (!bottom) throw new Error("BottomPom was not recognised.");
       expectNames(
@@ -1383,21 +1383,24 @@ describe("derivePomManifests", () => {
   });
 
   describe("parameter shapes", () => {
-    function parametersOf(methodName: string) {
-      return manifestFor("parameterShapesPom")?.tools.find(
-        (tool) => tool.methodName === methodName
-      )?.parameters;
+    function parametersOf(
+      methodName: string,
+      manifest = manifestFor("parameterShapesPom")
+    ) {
+      return manifest?.tools.find((tool) => tool.methodName === methodName)
+        ?.parameters;
     }
 
     it("schemas an array and a readonly array by their items", () => {
-      expect(parametersOf("array")).toEqual([
+      const manifest = manifestFor("parameterShapesPom");
+      expect(parametersOf("array", manifest)).toEqual([
         {
           name: "tags",
           optional: false,
           schema: { type: "array", items: { type: "string" } },
         },
       ]);
-      expect(parametersOf("readonlyArray")).toEqual([
+      expect(parametersOf("readonlyArray", manifest)).toEqual([
         {
           name: "sizes",
           optional: false,
@@ -1597,14 +1600,17 @@ describe("derivePomManifests", () => {
     });
 
     describe("a destructured parameter", () => {
-      function destructuredParametersOf(methodName: string) {
-        return manifestFor("destructuredParametersPom")?.tools.find(
-          (tool) => tool.methodName === methodName
-        )?.parameters;
+      function destructuredParametersOf(
+        methodName: string,
+        manifest = manifestFor("destructuredParametersPom")
+      ) {
+        return manifest?.tools.find((tool) => tool.methodName === methodName)
+          ?.parameters;
       }
 
       it("takes an object pattern's fields from its type, keyed by property name", () => {
-        expect(destructuredParametersOf("signIn")).toStrictEqual([
+        const manifest = manifestFor("destructuredParametersPom");
+        expect(destructuredParametersOf("signIn", manifest)).toStrictEqual([
           {
             destructured: "object",
             optional: false,
@@ -1615,7 +1621,7 @@ describe("derivePomManifests", () => {
           },
         ]);
         // Every property of the type, whatever the pattern binds or renames.
-        expect(destructuredParametersOf("signInAs")).toStrictEqual([
+        expect(destructuredParametersOf("signInAs", manifest)).toStrictEqual([
           {
             destructured: "object",
             optional: false,
@@ -1805,7 +1811,8 @@ describe("derivePomManifests", () => {
       });
 
       it("binds a tuple's remaining fixed elements, or leaves its variadic ones, to a rest element", () => {
-        expect(destructuredParametersOf("tail")).toStrictEqual([
+        const manifest = manifestFor("destructuredParametersPom");
+        expect(destructuredParametersOf("tail", manifest)).toStrictEqual([
           {
             destructured: "array",
             optional: false,
@@ -1825,7 +1832,7 @@ describe("derivePomManifests", () => {
             ],
           },
         ]);
-        expect(destructuredParametersOf("first")).toStrictEqual([
+        expect(destructuredParametersOf("first", manifest)).toStrictEqual([
           {
             destructured: "array",
             optional: false,
