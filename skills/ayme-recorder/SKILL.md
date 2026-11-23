@@ -355,9 +355,9 @@ again. When the page was slower to leave, as an app that loads the next page
 in the background is, the click has an `afterSnapshotId`: that snapshot is of
 the page it was on, not of where it led. An `assert*`
 interaction has the same number in both. A pause is still part of the trace:
-the trace has screenshots of the page throughout, also of what was on screen
+the trace has DOM snapshots of the page throughout, also of what was on the page
 while recording was stopped, and what the user did then, typing included, can
-show in them and in later snapshots.
+show in them. The trace has no screenshots.
 
 ## Packages from the 0.1 recorder
 
