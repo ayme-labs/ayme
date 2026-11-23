@@ -428,6 +428,32 @@ test("passes when the page lists every flag a published package's usage text mar
   );
 });
 
+test("reads a usage text with CRLF line endings", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/src/cli.ts": usage.replaceAll("\n", "\r\n"),
+        ...experimentalPage(
+          "- `--entry <file>` of `tool serve` in `lib`: the entry.\n- `--watch` of `tool serve` in `lib`: rebuilds.\n"
+        ),
+      })
+    ),
+    []
+  );
+});
+
+test("ignores experimental marks in a published package's test files", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/src/cli.test.ts": usage,
+        "packages/lib/src/index.test.ts": tagged,
+      })
+    ),
+    []
+  );
+});
+
 test("fails on a flag the usage text marks experimental that the page does not list", () => {
   assertOneProblem(
     {

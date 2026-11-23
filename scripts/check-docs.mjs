@@ -165,7 +165,7 @@ function markKind(name) {
  * or the description on the next line. A short form such as `-f, ` may come first.
  */
 const EXPERIMENTAL_FLAG =
-  /^[ \t]+(?:-\w,[ \t]+)?(--[a-z][\w-]*)(?:[ \t]+<[^>\n]*>)?(?:[ \t]{2,}|[ \t]*\n[ \t]+)Experimental:/gm;
+  /^[ \t]+(?:-\w,[ \t]+)?(--[a-z][\w-]*)(?:[ \t]+<[^>\n]*>)?(?:[ \t]{2,}|[ \t]*\r?\n[ \t]+)Experimental:/gm;
 
 /** Each API a published package's source marks experimental, by name and package. */
 function experimentalMarks(root) {
@@ -174,7 +174,13 @@ function experimentalMarks(root) {
     const src = path.join(root, dir, "src");
     if (!fs.existsSync(src)) continue;
     for (const entry of fs.readdirSync(src, { recursive: true })) {
-      if (!/\.tsx?$/.test(entry) || entry.includes("node_modules")) continue;
+      // A test's copy of a mark is not the mark: it would hide one the source dropped.
+      if (
+        !/\.tsx?$/.test(entry) ||
+        /\.test\.tsx?$/.test(entry) ||
+        entry.includes("node_modules")
+      )
+        continue;
       const file = path.posix.join(dir, "src", entry.split(path.sep).join("/"));
       if (!fs.statSync(path.join(root, file)).isFile()) continue;
       const text = fs.readFileSync(path.join(root, file), "utf8");

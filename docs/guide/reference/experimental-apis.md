@@ -2,7 +2,7 @@
 
 The APIs whose shape is not settled yet, and what that means for code that uses them.
 
-An experimental API belongs to a feature ayme keeps but whose shape is not settled yet: its names, options and behaviour may change in any release, without a migration note. Its declaration carries the TSDoc `@experimental` tag, which your editor shows; an experimental CLI flag's description in its command's usage text opens with "Experimental:" instead. Its documentation opens with a note that links here.
+An experimental API belongs to a feature ayme keeps but whose shape is not settled yet: its names, options and behaviour may change in any release, without a migration note. Its declaration carries the TSDoc `@experimental` tag, which your editor shows; an experimental CLI flag is marked in its command's usage text instead. Its documentation opens with a note that links here.
 
 ## Peeks
 
@@ -19,7 +19,7 @@ An experimental API belongs to a feature ayme keeps but whose shape is not settl
 
 ## Page Objects that `ayme mcp` serves
 
-- `--page-objects <file>` of `ayme mcp` in `@ayme-dev/mcp`: names the entry the server builds and serves, `.ayme/page-objects.ts` when no flag names one, in [Page Objects on a page without ayme](../guides/page-objects-without-ayme.md).
+- `--page-objects <file>` of `ayme mcp` in `@ayme-dev/mcp`: names the entry the server builds and serves, in [Page Objects on a page without ayme](../guides/page-objects-without-ayme.md).
 
 `ayme mcp` in `@ayme-dev/mcp` can serve your Page Object Models to a page that doesn't ship ayme. The entry is a module whose default export lists the classes, as `createAyme`'s `pageObjects` option takes them:
 
