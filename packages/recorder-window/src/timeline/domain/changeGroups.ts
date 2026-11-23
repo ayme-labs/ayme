@@ -9,8 +9,11 @@ import type { ChangeRow } from "@ayme-dev/recorder/contract";
 export type PlacedRow = { readonly row: ChangeRow; readonly index: number };
 
 /** Elements of one role that appeared in or were removed from one named
- * parent, folded into one row: the role, the parent's name and the rows. */
+ * parent, folded into one row: what they fold with (`key`), which stays the
+ * same as the rows around it come and go, the role, the parent's name and
+ * the rows. */
 export type FoldedRows = {
+  readonly key: string;
   readonly role: string;
   readonly parent: string;
   readonly rows: readonly PlacedRow[];
@@ -43,13 +46,9 @@ export function shownRows(
   const placed = rows
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => !cursorOnly(row));
-  // The rows by what they fold with. Those that fold with nothing are kept
-  // under no key, and never read.
-  const together = new Map<string | null, PlacedRow[]>();
-  for (const one of placed) {
-    const key = foldKey(one.row);
-    together.set(key, [...(together.get(key) ?? []), one]);
-  }
+  // The rows by what they fold with, in order. Those that fold with nothing
+  // are kept under no key, and never read.
+  const together = Map.groupBy(placed, ({ row }) => foldKey(row));
   const shown: (PlacedRow | FoldedRows)[] = [];
   for (const one of placed) {
     const key = foldKey(one.row);
@@ -57,6 +56,7 @@ export function shownRows(
     if (folded.length < FOLDS_FROM) shown.push(one);
     else if (folded[0] === one)
       shown.push({
+        key: key!,
         role: one.row.role!,
         parent: one.row.parent!.name,
         rows: folded,

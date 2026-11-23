@@ -33,11 +33,15 @@ export type Chip = {
 export type ChangeLine = { readonly chip: Chip; readonly effect: string };
 
 /** A row as the window lists it: one element's, or one that folds elements
- * of one role (`folded`), listed when it is expanded. A folded row's chip
+ * of one role (`folded`), listed when it is expanded, and known by what they
+ * fold with (`key`) as the rows around it come and go. A folded row's chip
  * highlights nothing; each row it folds highlights its own element. */
-export type ChangeItem = ChangeLine & {
-  readonly folded?: readonly ChangeLine[];
-};
+export type ChangeItem =
+  | ChangeLine
+  | (ChangeLine & {
+      readonly key: string;
+      readonly folded: readonly ChangeLine[];
+    });
 
 /** One entry as the window shows it. */
 export type EntryCard = {
@@ -154,6 +158,7 @@ export function entryCardOf(
       : shownRows(entry.changes ?? []).map((shown) =>
           "rows" in shown
             ? {
+                key: shown.key,
                 chip: {
                   text: groupText(shown.role, shown.rows.length),
                   highlight: null,

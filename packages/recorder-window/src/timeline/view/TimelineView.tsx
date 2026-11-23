@@ -269,9 +269,11 @@ function Changes({ card, onCommand }: { card: Card; onCommand: OnCommand }) {
       className="mt-2 flex flex-col gap-1.5 border-t pt-2"
     >
       {card.changes.map((change, index) =>
-        change.folded ? (
+        // A folded row holds whether it is expanded: it keeps it by what it
+        // folds, as rows before it come and go.
+        "folded" in change ? (
           <FoldedRow
-            key={index}
+            key={change.key}
             change={change}
             leave={card.leave}
             onCommand={onCommand}
@@ -320,7 +322,7 @@ function FoldedRow({
   leave,
   onCommand,
 }: {
-  change: ChangeItem;
+  change: Extract<ChangeItem, { folded: unknown }>;
   leave: RecorderCommand | null;
   onCommand: OnCommand;
 }) {
@@ -349,7 +351,7 @@ function FoldedRow({
           aria-label={change.chip.text}
           className="ml-1.5 flex w-full flex-col gap-1.5 border-l pl-3"
         >
-          {change.folded!.map((row, index) => (
+          {change.folded.map((row, index) => (
             <ChangeRow
               key={index}
               change={row}

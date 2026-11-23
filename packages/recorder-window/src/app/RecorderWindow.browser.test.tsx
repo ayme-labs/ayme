@@ -454,6 +454,49 @@ it("folds three or more elements of one role that went in or out of one named pa
   ]);
 });
 
+it("keeps the same row expanded when a later update puts another folded row before it", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  tell({ phase: "recording", visits: [listed], commands: ["stop"] });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [issuesRow] = await (
+    await (await visits())[0]!.entries()
+  )[0]!.changes();
+  await issuesRow!.expand();
+
+  // The step is still live: its rows come again, with a toolbar's buttons
+  // first.
+  const [click, change] = listed.entries;
+  const toolbar = { ref: "e20", name: "Toolbar" };
+  const buttons = ["Bold", "Italic", "Link"].map((name) => ({
+    kind: "added" as const,
+    element: `button "${name}"`,
+    role: "button",
+    parent: toolbar,
+  }));
+  tell({
+    phase: "recording",
+    visits: [
+      {
+        ...listed,
+        entries: [
+          { ...click!, changes: [...buttons, ...click!.changes!] },
+          change!,
+        ],
+      },
+    ],
+    commands: ["stop"],
+  });
+
+  const [entry] = await (await visits())[0]!.entries();
+  await expect
+    .poll(async () => (await entry!.whatChanged())[0]!.element)
+    .toBe("3 buttons");
+  const [buttonsRow, listRow] = await entry!.changes();
+  expect(await buttonsRow!.isExpanded()).toBe(false);
+  expect(await listRow!.isExpanded()).toBe(true);
+});
+
 it("highlights the element of each row an expanded row folds while it is hovered, by its place among the entry's rows", async () => {
   const { channel, sent, tell } = scriptedChannel();
   mount(channel);

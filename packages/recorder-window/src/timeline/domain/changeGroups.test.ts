@@ -38,6 +38,7 @@ describe("the rows the window lists", () => {
     expect(shownRows(rows)).toEqual([
       { row: heading, index: 0 },
       {
+        key: "listitem\u0000e2",
         role: "listitem",
         parent: "Issues",
         rows: [

@@ -231,6 +231,7 @@ describe("an entry's card", () => {
         effect: "appeared",
       },
       {
+        key: "listitem\u0000e2",
         chip: { text: "3 listitems", highlight: null },
         effect: "removed from “Issues”",
         folded: ["A", "B", "C"].map((name, at) => ({
