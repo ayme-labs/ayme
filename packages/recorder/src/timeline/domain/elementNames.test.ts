@@ -263,6 +263,32 @@ describe("the label of an element, as its selector matches", () => {
     });
   });
 
+  it("counts every element whose text holds the text inside for each text looked for among the same elements, the first and every later one", () => {
+    const items = ["kiwi", "plum", "ripe plum", "plump", "banana", "ana"];
+    const tree = read(
+      [
+        `- list [ref=e1]:`,
+        ...items.flatMap((item, at) => [
+          `  - listitem [ref=e${10 + 2 * at}]:`,
+          `    - checkbox "Done" [ref=e${11 + 2 * at}]`,
+          `    - text: ${item}`,
+        ]),
+      ].join("\n")
+    );
+
+    // Each item is looked for among all of them, in turn.
+    expect(items.map((_, at) => label(tree, `e${10 + 2 * at}`)?.label)).toEqual(
+      [
+        'listitem "kiwi"',
+        'listitem "plum" (1st of 3)',
+        'listitem "ripe plum"',
+        'listitem "plump"',
+        'listitem "banana"',
+        'listitem "ana" (2nd of 2)',
+      ]
+    );
+  });
+
   it("counts every element of a role for a role alone, named or not", () => {
     const tree = read(
       [
@@ -413,6 +439,25 @@ describe("the label of an element, in the details of how it is read", () => {
     });
   });
 
+  it("drops the text inside from a label when an element of its role holds it only if a name between its texts is no text", () => {
+    const tree = page(
+      `- listitem [ref=e2]:`,
+      `  - checkbox "Done" [ref=e3]`,
+      `  - text: Read me`,
+      `- listitem [ref=e4]:`,
+      `  - text: Read`,
+      `  - button "Docs" [ref=e5]`,
+      `  - text: me`
+    );
+
+    // An icon-only button's aria-label is no text: the second item's text
+    // may then be "Read me" too.
+    expect(label(tree, "e2")).toEqual({
+      label: "listitem (1st of 2)",
+      selector: "internal:role=listitem >> nth=0",
+    });
+  });
+
   it("names an element by a text no name of another element could be", () => {
     const tree = page(
       `- listitem [ref=e2]:`,
@@ -459,6 +504,23 @@ describe("the label of an element, in the details of how it is read", () => {
     expect(label(tree, "e2")).toEqual({
       label: 'listitem "Card"',
       selector: 'internal:role=listitem >> internal:has-text="Card"i',
+    });
+  });
+
+  it("reads no text of a frame's document into the text of an element that holds the frame, when an element with no role is looked for by its text", () => {
+    const tree = page(
+      `- generic [ref=e2]:`,
+      `  - strong [ref=e3]: "2"`,
+      `  - text: Cards left`,
+      `- generic [ref=e4]:`,
+      `  - text: Card`,
+      `  - iframe [ref=e5]:`,
+      `    - generic [ref=f1e1]: Cards left today`
+    );
+
+    expect(label(tree, "e2")).toEqual({
+      label: '"Cards left"',
+      selector: 'internal:text="Cards left"i',
     });
   });
 
