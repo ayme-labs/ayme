@@ -59,8 +59,6 @@ type Kept = {
   readonly tree: StructuralTree;
   /** From each ref the browser used here to the first ref its element had. */
   readonly firstRefs: ReadonlyMap<SnapshotRef, FirstRef>;
-  /** The tree under first refs: what the package shows. */
-  readonly stable: StructuralTree;
   /** Recording resumes here after a pause: what changed from the snapshot
    * before it is not the recording's. */
   readonly resumes: boolean;
@@ -610,7 +608,6 @@ export class Timeline {
       observation,
       tree,
       firstRefs,
-      stable: this.underFirstRefs(tree, firstRefs),
     };
   }
 
@@ -1174,7 +1171,9 @@ export class Timeline {
         url: visit.url,
         cause: visit.cause,
         entries: visit.entries,
-        baselineTree: wholeTreeText(first.stable),
+        baselineTree: wholeTreeText(
+          this.underFirstRefs(first.tree, first.firstRefs)
+        ),
       });
     }
     return renderPackage(header, visits, this.tracePoints(positions));
