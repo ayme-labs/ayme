@@ -4,7 +4,14 @@ import type {
   TimelineEntry,
 } from "@ayme-dev/recorder/contract";
 
-import { changeTitle, chipText, effectOf } from "./changeWording";
+import { shownRows, type PlacedRow } from "./changeGroups";
+import {
+  changeTitle,
+  chipText,
+  effectOf,
+  groupEffect,
+  groupText,
+} from "./changeWording";
 import { interactionTitle } from "./entryText";
 
 /** The kinds of entry the window has an icon for. */
@@ -19,6 +26,17 @@ export type Chip = {
   /** What hovering it asks: a highlight of its element on the page, while
    * that applies, whichever Visit it is of; none otherwise. */
   readonly highlight: RecorderCommand | null;
+};
+
+/** A row of what an entry changed: an element's chip, and what happened
+ * to it. */
+export type ChangeLine = { readonly chip: Chip; readonly effect: string };
+
+/** A row as the window lists it: one element's, or one that folds elements
+ * of one role (`folded`), listed when it is expanded. A folded row's chip
+ * highlights nothing; each row it folds highlights its own element. */
+export type ChangeItem = ChangeLine & {
+  readonly folded?: readonly ChangeLine[];
 };
 
 /** One entry as the window shows it. */
@@ -37,8 +55,9 @@ export type EntryCard = {
   readonly discard: RecorderCommand | null;
   /** Restore, when it applies now to an entry that is discarded. */
   readonly restore: RecorderCommand | null;
-  /** The roots of what it changed; none shown while it is discarded. */
-  readonly changes: readonly { chip: Chip; effect: string }[];
+  /** The roots of what it changed, folded as the window lists them
+   * (`shownRows`); none shown while it is discarded. */
+  readonly changes: readonly ChangeItem[];
 };
 
 const ICONS: Partial<Record<string, EntryIcon>> = {
@@ -95,6 +114,11 @@ function reviewOf(
   };
 }
 
+/** Whether the window lists an entry: every Interaction, and a change no
+ * Interaction made while it has a row to show. */
+export const entryShows = (entry: TimelineEntry): boolean =>
+  entry.kind !== "change" || shownRows(entry.changes).length > 0;
+
 /**
  * Reads how an entry shows from the entry and the commands that apply. The
  * chips of every Visit can highlight their elements: the engine looks for an
@@ -115,6 +139,11 @@ export function entryCardOf(
         }
       : null;
   const review = reviewOf(entry, applies);
+  // A row highlights its element by its place among the entry's rows.
+  const line = ({ row, index }: PlacedRow): ChangeLine => ({
+    chip: { text: chipText(row.element), highlight: highlight(index) },
+    effect: effectOf(row),
+  });
   return {
     ...headingOf(entry),
     target: entry.kind === "interaction" ? targetOf(entry, highlight()) : null,
@@ -122,9 +151,20 @@ export function entryCardOf(
     ...review,
     changes: review.discarded
       ? []
-      : (entry.changes ?? []).map((row, index) => ({
-          chip: { text: chipText(row.element), highlight: highlight(index) },
-          effect: effectOf(row),
-        })),
+      : shownRows(entry.changes ?? []).map((shown) =>
+          "rows" in shown
+            ? {
+                chip: {
+                  text: groupText(shown.role, shown.rows.length),
+                  highlight: null,
+                },
+                effect: groupEffect(
+                  shown.rows.map(({ row }) => row),
+                  shown.parent
+                ),
+                folded: shown.rows.map(line),
+              }
+            : line(shown)
+        ),
   };
 }

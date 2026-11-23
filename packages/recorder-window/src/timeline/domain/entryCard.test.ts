@@ -4,7 +4,7 @@ import type {
 } from "@ayme-dev/recorder/contract";
 import { describe, expect, it } from "vitest";
 
-import { entryCardOf } from "./entryCard";
+import { entryCardOf, entryShows } from "./entryCard";
 import { entryId } from "../../test-utils/ids";
 
 // How one entry of a Visit shows in the window: read from the entry, from
@@ -203,6 +203,84 @@ describe("an entry's card", () => {
       discard: null,
       restore: null,
     });
+  });
+
+  it("folds three or more elements of one role that went in or out of one named parent into one row, which lists each of them, each highlighting its own element", () => {
+    const issues = { ref: "e2", name: "Issues" };
+    const listed: TimelineEntry = {
+      ...click,
+      changes: [
+        { kind: "added", element: 'heading "Open"' },
+        ...["A", "B", "C"].map((name) => ({
+          kind: "removed" as const,
+          element: `listitem "${name}"`,
+          role: "listitem",
+          parent: issues,
+        })),
+      ],
+    };
+    const highlight = (row: number) => ({
+      type: "highlight",
+      entry: entryId("interaction_1"),
+      row,
+    });
+
+    expect(entryCardOf(listed, recording).changes).toEqual([
+      {
+        chip: { text: "heading “Open”", highlight: highlight(0) },
+        effect: "appeared",
+      },
+      {
+        chip: { text: "3 listitems", highlight: null },
+        effect: "removed from “Issues”",
+        folded: ["A", "B", "C"].map((name, at) => ({
+          chip: { text: `listitem “${name}”`, highlight: highlight(at + 1) },
+          effect: "was removed",
+        })),
+      },
+    ]);
+  });
+
+  it("lists no row for an element whose only change is the cursor, and highlights each other row's element by its place among the entry's rows", () => {
+    const pointed: TimelineEntry = {
+      ...click,
+      changes: [
+        {
+          kind: "changed",
+          element: 'link "Cart"',
+          changed: [{ property: "cursor", to: "pointer" }],
+        },
+        { kind: "added", element: 'button "Remove"' },
+      ],
+    };
+
+    expect(entryCardOf(pointed, recording).changes).toEqual([
+      {
+        chip: {
+          text: "button “Remove”",
+          highlight: {
+            type: "highlight",
+            entry: entryId("interaction_1"),
+            row: 1,
+          },
+        },
+        effect: "appeared",
+      },
+    ]);
+  });
+
+  it("shows a change no Interaction made only while it has a row to show, and every Interaction", () => {
+    const pointed = [
+      {
+        kind: "changed" as const,
+        element: 'link "Cart"',
+        changed: [{ property: "cursor", to: "pointer" }],
+      },
+    ];
+    expect(entryShows(change)).toBe(true);
+    expect(entryShows({ ...change, changes: pointed })).toBe(false);
+    expect(entryShows({ ...click, changes: pointed })).toBe(true);
+    expect(entryShows({ ...click, changes: null })).toBe(true);
   });
 
   it("lists no changes for an Interaction that changed nothing", () => {

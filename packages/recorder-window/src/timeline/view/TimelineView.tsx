@@ -7,6 +7,7 @@ import type {
 } from "@ayme-dev/recorder/contract";
 import { Button } from "@ayme-dev/design-system/components/button";
 import {
+  ChevronRight,
   Eye,
   Globe,
   Keyboard,
@@ -21,6 +22,9 @@ import { useId, useState } from "react";
 
 import {
   entryCardOf,
+  entryShows,
+  type ChangeItem,
+  type ChangeLine,
   type Chip,
   type EntryCard as Card,
   type EntryIcon,
@@ -88,7 +92,9 @@ function VisitSection({
   onCommand: OnCommand;
 }) {
   const heading = useId();
-  const last = visit.entries.length - 1;
+  // A change no Interaction made that has no row to show is not listed.
+  const entries = visit.entries.filter(entryShows);
+  const last = entries.length - 1;
   return (
     <section aria-labelledby={heading} className="flex flex-col gap-2.5">
       <h2
@@ -105,7 +111,7 @@ function VisitSection({
           {visit.cause === "openPage" ? "Opened" : "Navigated to"} {visit.url}
         </p>
       </EntryFrame>
-      {visit.entries.map((entry, index) => (
+      {entries.map((entry, index) => (
         <EntryCard
           key={entry.id}
           entry={entry}
@@ -254,7 +260,7 @@ function Restore({
 }
 
 /** The roots of what the entry changed: each element, and what happened to
- * it. */
+ * it, with elements of one role in one parent folded into one row. */
 function Changes({ card, onCommand }: { card: Card; onCommand: OnCommand }) {
   if (card.changes.length === 0) return null;
   return (
@@ -262,23 +268,110 @@ function Changes({ card, onCommand }: { card: Card; onCommand: OnCommand }) {
       aria-label="What changed"
       className="mt-2 flex flex-col gap-1.5 border-t pt-2"
     >
-      {card.changes.map((change, index) => (
-        <li key={index} className="flex flex-wrap items-center gap-2">
-          <ChipView
-            chip={change.chip}
+      {card.changes.map((change, index) =>
+        change.folded ? (
+          <FoldedRow
+            key={index}
+            change={change}
             leave={card.leave}
             onCommand={onCommand}
-            testId="change-element"
           />
-          <span
-            data-testid="change-effect"
-            className="text-[13px] text-muted-foreground"
-          >
-            {change.effect}
-          </span>
-        </li>
-      ))}
+        ) : (
+          <ChangeRow
+            key={index}
+            change={change}
+            leave={card.leave}
+            onCommand={onCommand}
+          />
+        )
+      )}
     </ul>
+  );
+}
+
+/** One element's row: its chip, and what happened to it. */
+function ChangeRow({
+  change,
+  leave,
+  onCommand,
+}: {
+  change: ChangeLine;
+  leave: RecorderCommand | null;
+  onCommand: OnCommand;
+}) {
+  return (
+    <li className="flex flex-wrap items-center gap-2">
+      <ChipView
+        chip={change.chip}
+        leave={leave}
+        onCommand={onCommand}
+        testId="change-element"
+      />
+      <Effect text={change.effect} />
+    </li>
+  );
+}
+
+/** A row that folds elements of one role: collapsed at first, its chip
+ * expands it to the rows it folds, each of which highlights its own
+ * element. */
+function FoldedRow({
+  change,
+  leave,
+  onCommand,
+}: {
+  change: ChangeItem;
+  leave: RecorderCommand | null;
+  onCommand: OnCommand;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const list = useId();
+  return (
+    <li className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        data-testid="change-element"
+        aria-expanded={expanded}
+        aria-controls={list}
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 rounded border border-border bg-muted py-0.5 pr-1.5 pl-1 text-[13px] font-semibold"
+      >
+        <ChevronRight
+          aria-hidden
+          className="size-3.5 transition-transform in-aria-expanded:rotate-90"
+        />
+        {change.chip.text}
+      </button>
+      <Effect text={change.effect} />
+      {expanded && (
+        <ul
+          id={list}
+          aria-label={change.chip.text}
+          className="ml-1.5 flex w-full flex-col gap-1.5 border-l pl-3"
+        >
+          {change.folded!.map((row, index) => (
+            <ChangeRow
+              key={index}
+              change={row}
+              leave={leave}
+              onCommand={onCommand}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+/** What happened to a row's element. */
+function Effect({ text }: { text: string }) {
+  return (
+    <span
+      data-testid="change-effect"
+      className="text-[13px] text-muted-foreground"
+    >
+      {text}
+    </span>
   );
 }
 
