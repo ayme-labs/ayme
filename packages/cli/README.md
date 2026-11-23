@@ -129,18 +129,18 @@ When the recorder cannot start, it prints one sentence saying why, and exits wit
 
 ## Known limits
 
-- **A pause is still traced.** The trace runs from the first Record to Finish, with screenshots of the page throughout, including what was on screen while paused. What you type while paused can show in those screenshots and in the snapshots, so do not type a secret while paused and expect it to be left out.
+- **A pause is still traced.** The trace runs from the first Record to Finish, with DOM snapshots and network requests throughout, including what was on the page while paused. What you type while paused can show in those snapshots, so do not type a secret while paused and expect it to be left out. The trace holds no screenshots.
 - **Closing the page right after your last click can lose that click.** The recorder holds each click back for a moment to take a snapshot first; if the page is gone by then, the click is dropped. If the click reached the page but Playwright had not reported it yet, the recorder then takes about five seconds to end: it waits for that report until its time limit.
 - **A double click can reach the page as a single click.** It happens when the recorder sends your first click on at the very moment you press the button the second time, which a page that is slow to snapshot or a busy machine makes more likely.
 - **The first key after Record is held back and sent again,** as is anything typed while an earlier input is held back. Sending again is less faithful for paste and for input methods that compose text.
 - **An upload whose file input is gone when it is read keeps only its first file name,** with a warning.
 - **An element the page structure does not list, which becomes two identical siblings, can be matched to the wrong one** in the next steps.
 - **Cross-origin iframes and transformed iframes were not tested.** Same-origin iframes and open shadow roots are.
-- **The toolbar is part of the trace.** Its element stays in the trace's page snapshots, empty, and the toolbar can show in the trace's screenshots.
+- **The toolbar is part of the trace.** Its element stays in the trace's page snapshots, empty.
 - **Highlighting an element from the window, and picking one for Assert visibility, add actions to the trace.** The position numbers in the package stay right.
 - **Highlighting a step of a page you have left lights up every element of the page, as it is now, that matches.** Its element is looked for by its selector, and a change row's element by its name, which Playwright looks up as a locator of the same words, in a frame too; so is an element the page you are on no longer lists. Every element either matches lights up: a name that fit one element when it was read can match more on the page as it is now. A page that was closed highlights nothing.
 - **Highlighting a change row can light up nothing, or a look-alike, when the page holds hidden text** and the row's element is looked up by its name, as on a page you have left. A list item or a paragraph is named by the text inside it as the page structure reads it, which leaves out hidden text, such as a span with `hidden` or `display: none`. Playwright matches that name against all of each element's text, so hidden text in the element, or in one like it, changes what matches.
-- **The outline drawn while Assert visibility is on is part of the trace** while it shows, like the toolbar.
+- **The outline drawn while Assert visibility is on is part of the trace** while it shows, as its element in the page snapshots, like the toolbar.
 - **The recorded page's own scripts can reach the toolbar's function** on the page, as any script the page runs can.
 - **A click that Playwright reports as caused by a key press,** such as Enter on a button, is not recorded as its own step: the key press is.
 - **When the recorder stops waiting, inputs it still held back are sent on together** and can reach the page out of order. This happens only when ending or pausing runs out of time, after about five seconds, with several inputs held.

@@ -113,8 +113,7 @@ target; read any other locator from the trace, as
 A ref, such as `e5`, names a node within this package. Refs link an
 interaction to its target and a change to the node it changed. They never go
 into code, and the trace does not carry them. Refs are per visit: the same ref
-in another visit is another element. A ref can carry a frame prefix, such as
-`f1e4`. Copy refs exactly as they are written.
+in another visit is another element. Copy refs exactly as they are written.
 
 An element keeps its ref for the whole visit while the page keeps it, also
 when its name, text or state changes. When the page re-creates an element in
@@ -269,12 +268,11 @@ shows its full URL.
 
 `traceActionPoints` says where each interaction is in the trace. Its
 `beforeSnapshotId` and `afterSnapshotId` are position numbers, the numbers the
-tool's `trace actions` list prints. Find the interaction's `interactionId`
-there and pass the number to `trace snapshot`. Open both with the `after`
-phase: each number points at a small step the recorder made just after
-reading the page, so its `after` is the page at that moment. The flag that
-picks the phase is `--phase` from Playwright 1.63 and `--name` on 1.62; check
-the version with `npx playwright --version`.
+tool's `trace actions` list prints. Pass them to `trace snapshot`. Open both
+with the `after` phase: each number points at a small step the recorder made
+just after reading the page, so its `after` is the page at that moment. The
+flag that picks the phase is `--phase` from Playwright 1.63 and `--name`
+on 1.62; check the version with `npx playwright --version`.
 
 Do not look for the user's steps by name in `trace actions`. The list shows
 the recorder's own calls: its reads of the page (`Aria snapshot`, then a
@@ -357,9 +355,9 @@ again. When the page was slower to leave, as an app that loads the next page
 in the background is, the click has an `afterSnapshotId`: that snapshot is of
 the page it was on, not of where it led. An `assert*`
 interaction has the same number in both. A pause is still part of the trace:
-the trace has screenshots of the page throughout, also of what was on screen
+the trace has DOM snapshots of the page throughout, also of what was on the page
 while recording was stopped, and what the user did then, typing included, can
-show in them and in later snapshots.
+show in them. The trace has no screenshots.
 
 ## Packages from the 0.1 recorder
 

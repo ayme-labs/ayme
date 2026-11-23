@@ -121,7 +121,10 @@ export function createPomTransform(
       manifests = derivePomManifestsFromProgram(
         fileName,
         program,
-        onSkipped && ((methods) => onSkipped(fileName, methods))
+        onSkipped && ((methods) => onSkipped(fileName, methods)),
+        // A stand-in reads no tool input, so a build without ayme neither
+        // derives nor checks one.
+        { parameters: include }
       );
     } catch (error) {
       // A bundler may watch this module's dependencies only after a transform
