@@ -101,6 +101,8 @@ describe("a recording", () => {
           "finish",
           "stop",
           "clear",
+          "discard",
+          "restore",
           "assertVisibility",
           "highlight",
           "clearHighlight",

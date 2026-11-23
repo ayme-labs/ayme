@@ -2090,6 +2090,21 @@ describe("the timeline, for discard and restore", () => {
     expect(timeline.visits()[0]!.entries[0]).not.toHaveProperty("discarded");
   });
 
+  it("keeps a change of its own that shows after a discarded step: no other entry follows a decision", async () => {
+    // Discarded while recording: the change after it is not produced yet.
+    const timeline = await timelineOf([
+      ...flow.slice(0, 4),
+      discard(entryId("interaction_1")),
+      ...flow.slice(4),
+    ]);
+
+    const [first, change, second] = timeline.visits()[0]!.entries;
+    expect(first).toMatchObject({ discarded: true });
+    expect(change).toMatchObject({ kind: "change", id: entryId("change_1") });
+    expect(change).not.toHaveProperty("discarded");
+    expect(second).not.toHaveProperty("discarded");
+  });
+
   it("discards a change of its own as well as an Interaction", async () => {
     const timeline = await timelineOf(flow);
 

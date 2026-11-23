@@ -201,11 +201,11 @@ export type RecorderCommand =
   | { readonly type: "continue" }
   /** Throws away everything recorded so far. */
   | { readonly type: "clear" }
-  /** While paused: leaves the entry out of the recording. It stays in the
-   * timeline, marked, and Finish saves it as a stub. `entry` is the entry's
-   * `id`. */
+  /** Until Finish or Clear is pressed: leaves the entry out of the
+   * recording. It stays in the timeline, marked, also as it changes, and
+   * Finish saves it as a stub. `entry` is the entry's `id`. */
   | { readonly type: "discard"; readonly entry: EntryId }
-  /** While paused: puts a discarded entry back. */
+  /** Until Finish or Clear is pressed: puts a discarded entry back. */
   | { readonly type: "restore"; readonly entry: EntryId }
   // Assert visibility.
   /** While recording: the next element the person clicks is recorded as

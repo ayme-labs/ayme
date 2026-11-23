@@ -2014,25 +2014,45 @@ describe("what the lifecycle shows", () => {
       offered: ["record"],
     },
     {
-      name: "recording: Finish, Stop, Clear, Assert visibility and the highlight",
+      name: "recording: Finish, Stop, Clear, Discard, Restore, Assert visibility and the highlight",
       happened: [opened, ...started],
       offered: [
         "finish",
         "stop",
         "clear",
+        "discard",
+        "restore",
         "assertVisibility",
         "highlight",
         "clearHighlight",
       ],
     },
     {
-      name: "while Record waits for the pages: Finish, Stop, Clear and the highlight",
+      name: "while Record waits for the pages: Finish, Stop, Clear, Discard, Restore and the highlight",
       happened: [opened, record],
-      offered: ["finish", "stop", "clear", "highlight", "clearHighlight"],
+      offered: [
+        "finish",
+        "stop",
+        "clear",
+        "discard",
+        "restore",
+        "highlight",
+        "clearHighlight",
+      ],
     },
     {
-      name: "wrapping up: nothing applies",
+      name: "wrapping up towards a pause: Discard and Restore",
       happened: [opened, ...started, stop],
+      offered: ["discard", "restore"],
+    },
+    {
+      name: "wrapping up towards a save: nothing applies",
+      happened: [opened, ...started, finish],
+      offered: [],
+    },
+    {
+      name: "wrapping up towards a clear: nothing applies",
+      happened: [opened, ...started, clear],
       offered: [],
     },
     {
@@ -2602,26 +2622,50 @@ describe("the lifecycle, for discard and restore", () => {
       state: { phase: "paused" },
     },
     {
-      name: "Discard with nothing recorded is ignored: no recording is paused",
+      name: "Discard with nothing recorded is ignored: there is no recording",
       happened: [opened, discard(interaction1)],
       todo: [reply("ignored")],
       state: { phase: "notRecording" },
     },
     {
-      name: "Discard while recording is ignored (rule 6)",
+      name: "Discard while recording is applied, with no Stop (rule 6)",
       happened: [opened, ...started, discard(interaction1)],
-      todo: [reply("ignored")],
+      todo: [timelineDiscards(interaction1), reply("applied")],
       state: { phase: "recording" },
     },
     {
-      name: "Restore while recording is ignored (rule 6)",
+      name: "Restore while recording is applied (rule 6)",
       happened: [opened, ...started, restore(interaction1)],
-      todo: [reply("ignored")],
+      todo: [timelineRestores(interaction1), reply("applied")],
       state: { phase: "recording" },
     },
     {
-      name: "Discard while the recorder wraps up for a pause is ignored: it is not paused yet",
+      name: "Discard while the recorder wraps up for a pause is applied: the buttons do not leave between Stop and Paused (rule 6)",
       happened: [opened, ...started, stop, discard(interaction1)],
+      todo: [timelineDiscards(interaction1), reply("applied")],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "Discard while Continue waits for the pages is applied: it still shows paused (rule 6)",
+      happened: [...stopped, resume, discard(interaction1)],
+      todo: [timelineDiscards(interaction1), reply("applied")],
+      state: { phase: "paused" },
+    },
+    {
+      name: "Discard after Finish, while the recorder wraps up for the save, is ignored: the decisions stand as they stood at Finish (rule 6)",
+      happened: [opened, ...started, finish, discard(interaction1)],
+      todo: [reply("ignored")],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "Discard after Clear, while the recorder wraps up, is ignored (rule 6)",
+      happened: [opened, ...started, clear, discard(interaction1)],
+      todo: [reply("ignored")],
+      state: { phase: "wrappingUp" },
+    },
+    {
+      name: "Discard after an end from outside turned a pause's wrap-up into a save is ignored (rule 6)",
+      happened: [opened, ...started, stop, outsideEnd, discard(interaction1)],
       todo: [reply("ignored")],
       state: { phase: "wrappingUp" },
     },
@@ -2667,7 +2711,7 @@ describe("the lifecycle, for discard and restore", () => {
     expect(result.state).toMatchObject(state);
   });
 
-  it("offers Discard and Restore while paused, and in no other state", () => {
+  it("offers Discard and Restore from Record until Finish or Clear", () => {
     const after = (happened: readonly Happening[]) => {
       let state = initialState;
       for (const happening of happened) state = step(state, happening).state;
@@ -2682,8 +2726,9 @@ describe("the lifecycle, for discard and restore", () => {
       "highlight",
       "clearHighlight",
     ]);
-    expect(after([opened, ...started])).not.toContain("discard");
-    expect(after([opened, ...started, stop])).not.toContain("restore");
+    expect(after([opened, ...started])).toContain("discard");
+    expect(after([opened, ...started, stop])).toContain("restore");
+    expect(after([opened])).not.toContain("discard");
     expect(after([...stopped, finish])).toEqual([]);
   });
 });
@@ -3856,7 +3901,7 @@ describe("the lifecycle, for the highlight", () => {
       expect.arrayContaining(["highlight", "clearHighlight"])
     );
     expect(after([opened])).toEqual(["record"]);
-    expect(after([...recording, stop])).toEqual([]);
+    expect(after([...recording, stop])).toEqual(["discard", "restore"]);
   });
 });
 

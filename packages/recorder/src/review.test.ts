@@ -7,8 +7,8 @@ import type { RecorderUpdate, RecordingOutcome } from "./index";
 import { startScriptedRecorder, type ScriptedBrowser } from "./testing";
 import { entryId, inputId, pageId } from "./test-utils/ids";
 
-// Ticket #1279: leaving an entry out of the recording while paused, and
-// putting it back, on the scripted browser: what the handle answers and
+// Tickets #1279 and #1372: leaving an entry out of the recording, while it
+// records or while paused, and putting it back, on the scripted browser: what the handle answers and
 // shows, and what the package says.
 
 let projectDir: string;
@@ -76,7 +76,7 @@ const packageOf = async (outcome: RecordingOutcome) => {
 };
 
 describe("discard and restore", () => {
-  it("are offered while paused and in no other phase, and answered 'ignored' elsewhere", async () => {
+  it("are offered from Record until Finish or Clear, and answered 'ignored' before", async () => {
     const { recorder, browser } = await start();
     browser.showPage(idle);
     const updates: RecorderUpdate[] = [];
@@ -88,13 +88,14 @@ describe("discard and restore", () => {
     await recorder.send({ type: "record" });
     await clickOnce(browser, inputId("input_1"), saved);
     await expect.poll(() => entriesOf(updates.at(-1)!).length).toBe(1);
-    expect(updates.at(-1)!.state.commands).not.toContain("discard");
+    expect(updates.at(-1)!.state.commands).toContain("discard");
     await expect(
       recorder.send({ type: "discard", entry: entryId("interaction_1") })
-    ).resolves.toBe("ignored");
+    ).resolves.toBe("applied");
+    expect(shownAs(updates.at(-1)!)).toEqual(["interaction_1 (discarded)"]);
     await expect(
       recorder.send({ type: "restore", entry: entryId("interaction_1") })
-    ).resolves.toBe("ignored");
+    ).resolves.toBe("applied");
     expect(shownAs(updates.at(-1)!)).toEqual([entryId("interaction_1")]);
 
     await recorder.send({ type: "stop" });
@@ -149,11 +150,6 @@ describe("discard and restore", () => {
       entryId("interaction_1"),
       "interaction_2 (discarded)",
     ]);
-    // Nothing can be decided while recording.
-    await expect(
-      recorder.send({ type: "restore", entry: entryId("interaction_2") })
-    ).resolves.toBe("ignored");
-
     await clickOnce(browser, inputId("input_3"), saved);
     await recorder.send({ type: "stop" });
     await expect.poll(() => latest().state.phase).toBe("paused");
@@ -232,6 +228,139 @@ describe("discard and restore", () => {
     await nothing.recorder.send({ type: "record" });
     await nothing.recorder.send({ type: "finish" });
     await expect(nothing.recorder.done).resolves.toEqual({ kind: "empty" });
+  });
+
+  /** A recorder that records, with one click recorded: `interaction_1`. */
+  async function recordingWithOneClick() {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, inputId("input_1"), saved);
+    await expect.poll(() => entriesOf(updates.at(-1)!).length).toBe(1);
+    const latest = () => updates.at(-1)!;
+    return { recorder, browser, latest };
+  }
+
+  it("leave a step discarded while recording, with no Stop, as a stub in the package", async () => {
+    const { recorder, browser, latest } = await recordingWithOneClick();
+
+    await expect(
+      recorder.send({ type: "discard", entry: entryId("interaction_1") })
+    ).resolves.toBe("applied");
+    expect(latest().state.phase).toBe("recording");
+    // The recording goes on, from the page as the discarded step left it.
+    await clickOnce(browser, inputId("input_2"), saved);
+    await expect.poll(() => entriesOf(latest()).length).toBe(2);
+    expect(shownAs(latest())).toEqual([
+      "interaction_1 (discarded)",
+      entryId("interaction_2"),
+    ]);
+
+    await recorder.send({ type: "finish" });
+    const text = await packageOf(await recorder.done);
+    expect(text).toContain(
+      [
+        `        discarded: true`,
+        `        interaction:`,
+        `          id: interaction_1`,
+        `          type: click`,
+      ].join("\n")
+    );
+    expect(text.match(/discarded: true/g)).toHaveLength(1);
+  });
+
+  it("put a step back while recording: the package holds it whole", async () => {
+    const { recorder, latest } = await recordingWithOneClick();
+    await recorder.send({ type: "discard", entry: entryId("interaction_1") });
+
+    await expect(
+      recorder.send({ type: "restore", entry: entryId("interaction_1") })
+    ).resolves.toBe("applied");
+    expect(shownAs(latest())).toEqual([entryId("interaction_1")]);
+
+    await recorder.send({ type: "finish" });
+    const text = await packageOf(await recorder.done);
+    expect(text).not.toContain("discarded");
+    expect(text).toContain(`          targetSelector: internal:role=button`);
+  });
+
+  it("leave a typed step discarded while it still shows as typed: the package holds its stub", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+    await recorder.send({ type: "record" });
+    // Typing shows as soon as it is reported, while it can still change.
+    browser.report({
+      type: "fill",
+      selector: 'internal:role=button[name="Save"i]',
+      target: { ref: "e2", tree: idle },
+      values: { text: "milk" },
+    });
+    await expect.poll(() => entriesOf(updates.at(-1)!).length).toBe(1);
+
+    await expect(
+      recorder.send({ type: "discard", entry: entryId("interaction_1") })
+    ).resolves.toBe("applied");
+    expect(shownAs(updates.at(-1)!)).toEqual(["interaction_1 (discarded)"]);
+    // The page goes quiet, and what the step changed is read again.
+    browser.showPage(saved);
+    browser.settle();
+    await recorder.send({ type: "finish" });
+
+    const text = await packageOf(await recorder.done);
+    expect(text).toContain(
+      [
+        `        discarded: true`,
+        `        interaction:`,
+        `          id: interaction_1`,
+        `          type: fill`,
+      ].join("\n")
+    );
+  });
+
+  it("are taken through Stop's wrap-up, and no longer once Finish is pressed", async () => {
+    const { recorder, browser, latest } = await recordingWithOneClick();
+    // The wrap-up waits for the pages to confirm that they hold no more.
+    browser.holdConfirmations();
+    await recorder.send({ type: "stop" });
+    expect(latest().state.phase).toBe("wrappingUp");
+    expect(latest().state.commands).toEqual(["discard", "restore"]);
+    await expect(
+      recorder.send({ type: "discard", entry: entryId("interaction_1") })
+    ).resolves.toBe("applied");
+    browser.releaseConfirmations();
+    await expect.poll(() => latest().state.phase).toBe("paused");
+    expect(shownAs(latest())).toEqual(["interaction_1 (discarded)"]);
+
+    await recorder.send({ type: "continue" });
+    await expect.poll(() => latest().state.phase).toBe("recording");
+    browser.holdConfirmations();
+    await recorder.send({ type: "finish" });
+    await expect(
+      recorder.send({ type: "restore", entry: entryId("interaction_1") })
+    ).resolves.toBe("ignored");
+    browser.releaseConfirmations();
+    expect(
+      (await packageOf(await recorder.done)).match(/discarded: true/g)
+    ).toHaveLength(1);
+  });
+
+  it("are not taken once Clear is pressed", async () => {
+    const { recorder, browser, latest } = await recordingWithOneClick();
+    browser.holdConfirmations();
+    await recorder.send({ type: "clear" });
+
+    await expect(
+      recorder.send({ type: "discard", entry: entryId("interaction_1") })
+    ).resolves.toBe("ignored");
+    expect(shownAs(latest())).toEqual([entryId("interaction_1")]);
+    browser.releaseConfirmations();
+    await expect.poll(() => latest().state.phase).toBe("notRecording");
+    recorder.end();
+    await recorder.done;
   });
 
   it("are saved when the recorder is ended from outside while paused", async () => {

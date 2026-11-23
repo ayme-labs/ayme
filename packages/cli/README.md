@@ -98,7 +98,7 @@ The window's title names the page that is open. The window lists each Visit (one
 
 ### Leaving steps out
 
-While paused, every step and every change row has a **Discard** button. A discarded row stays in place, dimmed, and the saved package keeps only a stub of it, which tells the agent to leave it out. **Restore** brings it back. Your choices survive Continue recording, are saved by Finish, and are dropped by Clear. Discarding a click that left the page keeps the next page's Visit. A recording in which you discarded everything still saves.
+From Record until you press Finish or Clear, every step, and every change no step of yours explains, has a **Discard** button, so a wrong click costs one press and no Stop. A discarded row stays in place, dimmed, and the saved package keeps only a stub of it, which tells the agent to leave it out. **Restore** brings it back. Discarding a step does not put the page back: what you do next is recorded from the page as it is. A step you discard while you still type it stays discarded, and its text goes on following your keys. Your choices survive Stop and Continue recording, are saved by Finish, and are dropped by Clear. Discarding a click that left the page keeps the next page's Visit. A recording in which you discarded everything still saves.
 
 ## Where recordings are stored
 

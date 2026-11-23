@@ -109,7 +109,7 @@ export class Entry extends RecorderPart {
    * hovered. The entry stays in the timeline, struck through. */
   @ayme.action({
     description:
-      "Leaves the entry out of the recording, while it is paused: it stays in place, struck through.",
+      "Leaves the entry out of the recording, while it records or is paused: it stays in place, struck through.",
   })
   async discard(): Promise<this> {
     await this.title.hover();
