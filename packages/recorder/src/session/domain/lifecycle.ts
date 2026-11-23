@@ -119,7 +119,11 @@ export type BrowserSignal =
   /** The trace is started, as "startTrace" asked: snapshots may be marked. */
   | { readonly kind: "traceStarted" }
   /** The trace is thrown away, as "stopTrace" without `keep` asked. */
-  | { readonly kind: "traceDiscarded" };
+  | { readonly kind: "traceDiscarded" }
+  // The storage state.
+  /** The storage state is saved, as "saveStorage" asked, or there was no
+   * file to save it to. */
+  | { readonly kind: "storageSaved" };
 
 /** The element a highlight is drawn on: the page it is on, and how the
  * page as it is now is asked for it. */
@@ -192,6 +196,14 @@ export type BrowserRequest =
    * of its own: the lifecycle asks for the next one when the last is
    * answered. */
   | { readonly kind: "stopTrace"; readonly keep: boolean }
+  /** Save the recorded context's storage state, its cookies and local
+   * storage, to the file the recorder was asked to save it to
+   * (`--save-storage`), as Playwright's own codegen does. Answered by
+   * "storageSaved", at once when no file was named. Asked only once the
+   * outcome is decided and the trace is over, so that nothing it does, as
+   * the page Playwright opens to read an origin no page is at, is recorded
+   * or traced. */
+  | { readonly kind: "saveStorage" }
   // Assert visibility.
   /** Have Playwright's recorder pick the element whose visibility is
    * asserted, or stop picking, and have every page leave the picking click
@@ -305,6 +317,14 @@ export const WRAP_UP_LIMIT_MS = 5_000;
 export const TRACE_STOP_LIMIT_MS = 60_000;
 
 /**
+ * How long saving the storage state may take: Playwright writes the file,
+ * and reads the local storage of an origin no page is at from a page of its
+ * own. It is there for a browser that never answers: the recorder then ends
+ * with a warning.
+ */
+export const STORAGE_SAVE_LIMIT_MS = 30_000;
+
+/**
  * Whether the state still waits for the answer to a request that was given
  * a time for it (`within`). The worker ends the time of a request that is no
  * longer waited for, so that it cannot pass for a later one of its kind.
@@ -313,6 +333,7 @@ export function awaitsAnswer(
   state: LifecycleState,
   request: BrowserRequest
 ): boolean {
+  if (request.kind === "saveStorage") return state.phase === "ending";
   if (request.kind !== "stopTrace") return false;
   return Boolean(
     request.keep ? savingOf(state)?.stoppingTrace : discarding(state)
@@ -480,6 +501,9 @@ export type LifecycleState = {
       /** The trace is asked to stop: the package is written once it has. */
       readonly stoppingTrace: boolean;
     }
+  /** The outcome is decided, and the storage state is being saved: the
+   * recorder ends once it is, or once that could not be done. */
+  | { readonly phase: "ending"; readonly outcome: RecordingOutcome }
   | { readonly phase: "ended"; readonly outcome: RecordingOutcome }
   /** Nothing is under way. The count of snapshots goes on after Continue:
    * the timeline is the same one. */
@@ -519,6 +543,10 @@ export function shown(state: LifecycleState): RecorderPhase {
   switch (state.phase) {
     case "ended":
       return { phase: "ended", outcome: state.outcome };
+    // The storage state is saved after the package: the recorder is still
+    // saving.
+    case "ending":
+      return { phase: "saving" };
     case "wrappingUp":
       // A recorder that clears and then ends is shown clearing: what it
       // ends with is told when it has ended.
@@ -649,6 +677,8 @@ function browserTold(state: LifecycleState, happening: BrowserSignal): Step {
       return writePackage(state, happening.trace);
     case "traceDiscarded":
       return traceGone(state);
+    case "storageSaved":
+      return ended(state, []);
     case "picking":
       return pickingChanged(state, happening.on);
     case "highlighted":
@@ -751,6 +781,9 @@ function pageClosed(
  * ends here, and says why. */
 function brokeDown(state: LifecycleState, reason: string): Step {
   if (state.phase === "ended") return stay(state);
+  // The outcome is decided and saved: it ends with it now, as nothing would
+  // hear the storage state's answer.
+  if (state.phase === "ending") return ended(state, []);
   const outcome: RecordingOutcome = { kind: "failed", reason };
   return {
     state: { phase: "ended", pages: state.pages, outcome },
@@ -764,9 +797,41 @@ function saved(state: LifecycleState, folder: string | null): Step {
   if (state.phase !== "saving") return stay(state);
   const outcome: RecordingOutcome =
     folder === null ? { kind: "empty" } : { kind: "saved", folder };
+  return ending(state, outcome, []);
+}
+
+/**
+ * The outcome is decided, and the recording and its trace are over: the
+ * storage state is saved before the recorder ends, whatever ended it and
+ * whether anything was recorded, or not. A browser that never answers keeps
+ * no end waiting: the save is given a time.
+ */
+function ending(
+  state: LifecycleState,
+  outcome: RecordingOutcome,
+  todo: readonly ToDo[]
+): Step {
+  return {
+    state: { phase: "ending", pages: state.pages, outcome },
+    todo: [
+      ...todo,
+      {
+        kind: "browser",
+        ask: { kind: "saveStorage" },
+        within: STORAGE_SAVE_LIMIT_MS,
+      },
+    ],
+  };
+}
+
+/** The storage state is saved, or could not be: the recorder has ended,
+ * with the outcome decided before. */
+function ended(state: LifecycleState, todo: readonly ToDo[]): Step {
+  if (state.phase !== "ending") return stay(state);
+  const { outcome } = state;
   return {
     state: { phase: "ended", pages: state.pages, outcome },
-    todo: [{ kind: "end", outcome }],
+    todo: [...todo, { kind: "end", outcome }],
   };
 }
 
@@ -989,13 +1054,8 @@ function clearPaused(
  */
 function endFromOutside(state: LifecycleState): Step {
   switch (state.phase) {
-    case "notRecording": {
-      const outcome: RecordingOutcome = { kind: "empty" };
-      return {
-        state: { phase: "ended", pages: state.pages, outcome },
-        todo: [{ kind: "end", outcome }],
-      };
-    }
+    case "notRecording":
+      return ending(state, { kind: "empty" }, []);
     case "recording":
       return wrapUp(state, "save");
     case "wrappingUp":
@@ -1104,13 +1164,8 @@ function traceGone(state: LifecycleState): Step {
   const clearing = wrappingUpOf(state);
   if (!clearing?.discardingTrace) return stay(state);
   const { pages } = clearing;
-  if (clearing.then === "clearAndEnd") {
-    const outcome: RecordingOutcome = { kind: "empty" };
-    return {
-      state: { phase: "ended", pages, outcome },
-      todo: [{ kind: "clear" }, { kind: "end", outcome }],
-    };
-  }
+  if (clearing.then === "clearAndEnd")
+    return ending(clearing, { kind: "empty" }, [{ kind: "clear" }]);
   return {
     state: { phase: "notRecording", pages },
     todo: [{ kind: "clear" }],
@@ -2355,6 +2410,20 @@ function failed(
       return request.keep ? writePackage(state, null) : traceGone(state);
     case "startTrace":
       return traceNotStarted(state, request, reason);
+    case "saveStorage":
+      // The recording is saved all the same: a person is told that the
+      // storage state is not.
+      return state.phase === "ending"
+        ? ended(state, [
+            {
+              kind: "warn",
+              warning: {
+                kind: "storageNotSaved",
+                message: `The storage state could not be saved. ${reason}`,
+              },
+            },
+          ])
+        : stay(state);
     // Every kind of input.
     // Stryker disable next-line ConditionalExpression: without its own line it falls to the next case, which asks nothing either
     case "letInputsThrough":
@@ -2425,10 +2494,7 @@ function cannotStart(
       kind: "failed",
       reason: `Recording could not start. ${reason}`,
     };
-    return {
-      state: { phase: "ended", pages: recording.pages, outcome },
-      todo: [ignored, { kind: "end", outcome }],
-    };
+    return ending(recording, outcome, [ignored]);
   }
   return {
     state: {

@@ -11,8 +11,10 @@ import { startScriptedRecorder } from "./testing";
 // answers. It leaves a complete Recording Package or a clear "empty" (rule
 // 9). The scripted browser plays a browser that hangs: it goes silent.
 
-/** The wrap-up's time limit, and the trace's after it. */
-const BOUND_MS = 5_000 + 60_000;
+/** The wrap-up's time limit, the trace's after it, and the storage state's
+ * after that, with a few seconds for the package, which is written on the
+ * disk while the test's clock runs on. */
+const BOUND_MS = 5_000 + 60_000 + 30_000 + 5_000;
 
 let projectDir: string;
 beforeEach(async () => {
@@ -180,6 +182,28 @@ describe("an end from outside, with a browser that answers nothing any more", ()
       ends: "empty",
     },
     {
+      name: "while the storage state is saved",
+      reach: async (scripted) => {
+        await recorded(scripted);
+        scripted.browser.holdTraceAnswers();
+        await scripted.recorder.send({ type: "finish" });
+        await scripted.browser.asks({ kind: "stopTrace", keep: true });
+        scripted.browser.goSilent();
+        scripted.browser.releaseTraceAnswers();
+        await expect
+          .poll(
+            () =>
+              scripted.browser.asked.some(
+                (request) => request.kind === "saveStorage"
+              ),
+            // The package is written on the disk first.
+            { timeout: 10_000 }
+          )
+          .toBe(true);
+      },
+      ends: "saved",
+    },
+    {
       name: "while a save waits for its trace to be stopped",
       reach: async (scripted) => {
         await recorded(scripted);
@@ -267,5 +291,44 @@ describe("the time a trace's stop is given", () => {
     browser.releaseTraceAnswers();
     await expect.poll(scripted.phase).toBe("notRecording");
     await scripted.endWithin(BOUND_MS);
+  });
+});
+
+describe("the time a storage state's save is given", () => {
+  it("is half a minute: then the recorder ends with a warning, and the recording is saved all the same", async () => {
+    const scripted = await start();
+    const { recorder, browser } = scripted;
+    const warnings: string[] = [];
+    recorder.subscribe((update) => {
+      warnings.splice(
+        0,
+        warnings.length,
+        ...update.state.warnings.map((warning) => warning.kind)
+      );
+    });
+    await recorded(scripted);
+    browser.holdTraceAnswers();
+    await recorder.send({ type: "finish" });
+    await browser.asks({ kind: "stopTrace", keep: true });
+    // The browser answers nothing more once the package can be written.
+    browser.goSilent();
+    browser.releaseTraceAnswers();
+    await expect
+      .poll(
+        () => browser.asked.some((request) => request.kind === "saveStorage"),
+        // The package is written on the disk first.
+        { timeout: 10_000 }
+      )
+      .toBe(true);
+
+    await browser.advanceTime(29_999);
+    await expect(recorder.send({ type: "stop" })).resolves.toBe("ignored");
+    expect(scripted.phase()).toBe("saving");
+    await browser.advanceTime(1);
+
+    const outcome = await recorder.done;
+    expect(outcome.kind).toBe("saved");
+    expect(await saved(outcome)).toContain("id: interaction_1");
+    expect(warnings).toEqual(["storageNotSaved"]);
   });
 });

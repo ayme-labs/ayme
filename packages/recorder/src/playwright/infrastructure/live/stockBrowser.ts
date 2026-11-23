@@ -6,13 +6,14 @@ import {
   waitForSettled,
   type PageActivitySource,
 } from "@ayme-dev/core/structural-observation";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Layer, Queue } from "effect";
 import type {
   Browser,
   BrowserContext,
+  BrowserContextOptions,
   CDPSession,
   Frame,
   Locator,
@@ -112,7 +113,36 @@ type Launch = {
    * launched browser; none when no window is served. */
   readonly windowUrl?: string;
   readonly toolbar?: Toolbar;
+  /** A storage state file, as Playwright writes it: the recorded context
+   * starts with its cookies and local storage. */
+  readonly loadStorage?: string;
+  /** Where "saveStorage" writes the recorded context's storage state. */
+  readonly saveStorage?: string;
 };
+
+/** A storage state, as a storage state file holds it. */
+type StorageState = Exclude<
+  NonNullable<BrowserContextOptions["storageState"]>,
+  string
+>;
+
+/**
+ * The storage state file to load, read before the browser opens, as
+ * Playwright's own codegen reads it: one that cannot be read keeps the
+ * recorder from starting.
+ */
+const loadedStorage = (file: string | undefined) =>
+  file === undefined
+    ? Effect.succeed(undefined)
+    : Effect.tryPromise({
+        try: async () =>
+          JSON.parse(await readFile(file, "utf8")) as StorageState,
+        catch: (cause) =>
+          new RecorderStartError(
+            "storage-unreadable",
+            `The storage state in ${file} could not be read: ${cause instanceof Error ? cause.message : String(cause)}`
+          ),
+      });
 
 /** A Chromium that is already running, reached at the address of its
  * DevTools protocol. Its page is recorded as it is: never navigated. */
@@ -155,6 +185,8 @@ export const stockBrowser = (
       const { playwright, version } = yield* loadProjectPlaywright(
         options.projectDir
       );
+      const launch = attach ? undefined : (options as Launch);
+      const storageState = yield* loadedStorage(launch?.loadStorage);
       const signals = yield* Queue.unbounded<BrowserSignal>();
       const unavailable = (cause: unknown) =>
         new RecorderStartError(
@@ -187,8 +219,10 @@ export const stockBrowser = (
             attach
               ? { attached: true }
               : {
-                  url: (options as Launch).url,
-                  afterRecord: (options as Launch).startRecording === true,
+                  url: launch!.url,
+                  afterRecord: launch!.startRecording === true,
+                  storageState,
+                  saveStorage: launch!.saveStorage,
                 },
             options.projectDir,
             (signal) => Queue.offerUnsafe(signals, signal),
@@ -342,7 +376,12 @@ async function recorderModeOf(
 async function openPage(
   browser: Browser,
   start:
-    | { readonly url: string; readonly afterRecord: boolean }
+    | {
+        readonly url: string;
+        readonly afterRecord: boolean;
+        readonly storageState: StorageState | undefined;
+        readonly saveStorage: string | undefined;
+      }
     | { readonly attached: true },
   projectDir: string,
   tell: (signal: BrowserSignal) => void,
@@ -352,8 +391,14 @@ async function openPage(
   const context =
     "url" in start
       ? // No fixed viewport: the page has the size of its window.
-        await browser.newContext({ viewport: null })
+        await browser.newContext({
+          viewport: null,
+          ...(start.storageState ? { storageState: start.storageState } : {}),
+        })
       : theOnePage(browser).context();
+  // An attached browser's context is its own: no file is loaded into it,
+  // nor saved from it.
+  const savedTo = "url" in start ? start.saveStorage : undefined;
   const startRecording = playwrightRecorderOf(context);
   if (!startRecording) throw new NoPlaywrightRecorder();
 
@@ -763,6 +808,8 @@ async function openPage(
         return startTrace();
       case "stopTrace":
         return stopTrace(request.keep);
+      case "saveStorage":
+        return saveStorage();
       // Assert visibility.
       case "pick":
         return pick(request.on);
@@ -772,6 +819,21 @@ async function openPage(
       case "waitForSettled":
         return settle(request);
     }
+  }
+
+  /** The recorded context's storage state, written to the file asked for
+   * as Playwright's own codegen writes it: cookies and local storage. To
+   * read an origin no page is at, Playwright opens a page of its own, which
+   * it tells of to no listener. Nothing is written when no file was asked
+   * for. */
+  async function saveStorage() {
+    if (savedTo !== undefined)
+      await context.storageState({ path: savedTo }).catch((cause: unknown) => {
+        throw new Error(
+          `Playwright could not write it to ${savedTo}: ${cause instanceof Error ? cause.message : String(cause)}`
+        );
+      });
+    tell({ kind: "storageSaved" });
   }
 
   async function holdInputs(on: boolean) {

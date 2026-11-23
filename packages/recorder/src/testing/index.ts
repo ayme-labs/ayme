@@ -125,6 +125,9 @@ export interface ScriptedBrowser {
    * by itself: a browser that hangs. What a test plays by hand is still
    * told. */
   goSilent(): void;
+  /** From now on saving the storage state fails, for this reason, as when
+   * its file cannot be written. Until then it is saved at once. */
+  failStorageSave(reason: string): void;
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -168,6 +171,7 @@ export async function startScriptedRecorder(
   let snapshotsHeld: (() => void)[] | undefined;
   let traceAnswersHeld: (() => void)[] | undefined;
   let silent = false;
+  let storageFails: string | undefined;
   let confirmationsHeld: (() => void)[] | undefined;
   const asked: BrowserRequest[] = [];
   const traces: string[] = [];
@@ -256,6 +260,12 @@ export async function startScriptedRecorder(
       case "letInputsThrough":
         // Nothing answers it.
         return;
+      case "saveStorage":
+        return tell(
+          storageFails === undefined
+            ? { kind: "storageSaved" }
+            : { kind: "requestFailed", request, reason: storageFails }
+        );
       // Assert visibility.
       case "pick":
         // Playwright tells of its mode only when it changes.
@@ -337,6 +347,9 @@ export async function startScriptedRecorder(
     browser: {
       goSilent: () => {
         silent = true;
+      },
+      failStorageSave: (reason) => {
+        storageFails = reason;
       },
       closePage: ({ pagesLeft }) =>
         tell({ kind: "pageClosed", page, pagesLeft }),

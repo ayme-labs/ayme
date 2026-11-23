@@ -15,6 +15,7 @@ import {
   openAddress,
   shown,
   step,
+  STORAGE_SAVE_LIMIT_MS,
   TRACE_STOP_LIMIT_MS,
   WRAP_UP_LIMIT_MS,
   type Happening,
@@ -176,6 +177,15 @@ const discardTrace: ToDo = {
 const traceStopped: Happening = { kind: "traceStopped", trace };
 const traceDiscarded: Happening = { kind: "traceDiscarded" };
 const save: ToDo = { kind: "save", trace };
+// Ticket #1356: once the outcome is decided, the storage state is saved, with
+// a time for it, and the recorder ends when that is answered.
+const saveStorage: ToDo = {
+  kind: "browser",
+  ask: { kind: "saveStorage" },
+  within: STORAGE_SAVE_LIMIT_MS,
+};
+const storageSaved: Happening = { kind: "storageSaved" };
+const endEmpty: ToDo = { kind: "end", outcome: { kind: "empty" } };
 
 // Ticket #1273: the commands, and Playwright's recorder switched off.
 const stop: Happening = { kind: "command", command: { type: "stop" } };
@@ -306,14 +316,18 @@ describe("the lifecycle", () => {
     // Before anything is recorded.
     {
       name: "an outside end before anything was recorded ends with 'empty'",
-      happened: [outsideEnd],
-      todo: [[{ kind: "end", outcome: { kind: "empty" } }]],
+      happened: [outsideEnd, storageSaved],
+      todo: [[saveStorage], [endEmpty]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
     {
       name: "closing the last page is an outside end",
-      happened: [opened, { kind: "pageClosed", page: page1, pagesLeft: 0 }],
-      todo: [[{ kind: "end", outcome: { kind: "empty" } }]],
+      happened: [
+        opened,
+        { kind: "pageClosed", page: page1, pagesLeft: 0 },
+        storageSaved,
+      ],
+      todo: [[saveStorage], [endEmpty]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
     {
@@ -328,19 +342,19 @@ describe("the lifecycle", () => {
     },
     {
       name: "a browser that disappears is an outside end",
-      happened: [{ kind: "browserGone" }],
-      todo: [[{ kind: "end", outcome: { kind: "empty" } }]],
+      happened: [{ kind: "browserGone" }, storageSaved],
+      todo: [[saveStorage], [endEmpty]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
     {
       name: "a second outside end does nothing",
-      happened: [outsideEnd, outsideEnd],
-      todo: [[]],
+      happened: [outsideEnd, outsideEnd, storageSaved],
+      todo: [[], [endEmpty]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
     {
       name: "the browser going away after the end does nothing",
-      happened: [outsideEnd, { kind: "browserGone" }],
+      happened: [outsideEnd, storageSaved, { kind: "browserGone" }],
       todo: [[]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
@@ -352,7 +366,7 @@ describe("the lifecycle", () => {
     },
     {
       name: "a command after the end is ignored",
-      happened: [outsideEnd, record],
+      happened: [outsideEnd, storageSaved, record],
       todo: [[reply("ignored")]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
@@ -672,10 +686,12 @@ describe("the lifecycle", () => {
         taken(snapshot1),
         traceStopped,
         saved,
+        storageSaved,
       ],
       todo: [
         [keep(snapshot1), stopTrace],
         [save],
+        [saveStorage],
         [{ kind: "end", outcome: { kind: "saved", folder: "/project/rec_1" } }],
       ],
       state: {
@@ -885,6 +901,7 @@ describe("the lifecycle", () => {
         taken(snapshot1),
         traceStopped,
         saved,
+        storageSaved,
         finish,
       ],
       todo: [[reply("ignored")]],
@@ -903,8 +920,9 @@ describe("the lifecycle", () => {
         taken(snapshot1),
         traceStopped,
         { kind: "saved", folder: null },
+        storageSaved,
       ],
-      todo: [[{ kind: "end", outcome: { kind: "empty" } }]],
+      todo: [[saveStorage], [endEmpty]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
 
@@ -1079,8 +1097,9 @@ describe("the lifecycle", () => {
         reportingOff,
         outsideEnd,
         traceDiscarded,
+        storageSaved,
       ],
-      todo: [[{ kind: "clear" }, { kind: "end", outcome: { kind: "empty" } }]],
+      todo: [[{ kind: "clear" }, saveStorage], [endEmpty]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
 
@@ -1113,7 +1132,11 @@ describe("the lifecycle", () => {
     },
     {
       name: "a breakdown after the end changes nothing",
-      happened: [outsideEnd, { kind: "brokeDown", reason: "too late" }],
+      happened: [
+        outsideEnd,
+        storageSaved,
+        { kind: "brokeDown", reason: "too late" },
+      ],
       todo: [[]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
@@ -1699,27 +1722,38 @@ describe("the lifecycle", () => {
         gateOff,
         taken(snapshot1),
         traceDiscarded,
+        storageSaved,
       ],
       todo: [
         [],
         [takeSnapshot(snapshot1)],
         [keep(snapshot1), discardTrace],
-        [{ kind: "clear" }, { kind: "end", outcome: { kind: "empty" } }],
+        [{ kind: "clear" }, saveStorage],
+        [endEmpty],
       ],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
     {
       name: "an outside end after Clear ends with 'empty'",
-      happened: [...stopped, clear, outsideEnd, traceDiscarded],
-      todo: [[{ kind: "clear" }, { kind: "end", outcome: { kind: "empty" } }]],
+      happened: [...stopped, clear, outsideEnd, traceDiscarded, storageSaved],
+      todo: [[{ kind: "clear" }, saveStorage], [endEmpty]],
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
 
     // A request the browser could not carry out: nothing waits for ever.
     {
       name: "Record is answered 'ignored' and the recorder ends 'failed' when Playwright's recorder cannot be started",
-      happened: [opened, record, traceStarted, failed(reportInteractions)],
-      todo: [[{ kind: "replyDeferred", result: "ignored" }, cannotStart]],
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        failed(reportInteractions),
+        storageSaved,
+      ],
+      todo: [
+        [{ kind: "replyDeferred", result: "ignored" }, saveStorage],
+        [cannotStart],
+      ],
       state: {
         phase: "ended",
         outcome: {
@@ -1730,8 +1764,11 @@ describe("the lifecycle", () => {
     },
     {
       name: "Record is answered 'ignored' and the recorder ends 'failed' when the trace cannot be started",
-      happened: [opened, record, failed(startTrace)],
-      todo: [[{ kind: "replyDeferred", result: "ignored" }, cannotStart]],
+      happened: [opened, record, failed(startTrace), storageSaved],
+      todo: [
+        [{ kind: "replyDeferred", result: "ignored" }, saveStorage],
+        [cannotStart],
+      ],
       state: {
         phase: "ended",
         outcome: {
@@ -1742,8 +1779,18 @@ describe("the lifecycle", () => {
     },
     {
       name: "Record is answered 'ignored' and the recorder ends 'failed' when the pages cannot hold inputs back",
-      happened: [opened, record, traceStarted, reporting, failed(holdInputs)],
-      todo: [[{ kind: "replyDeferred", result: "ignored" }, cannotStart]],
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        reporting,
+        failed(holdInputs),
+        storageSaved,
+      ],
+      todo: [
+        [{ kind: "replyDeferred", result: "ignored" }, saveStorage],
+        [cannotStart],
+      ],
       state: {
         phase: "ended",
         outcome: {
@@ -1935,10 +1982,151 @@ describe("the lifecycle", () => {
       traceStopped,
       saved,
       finish,
+      storageSaved,
+      finish,
     ]);
 
     expect(todo.flat().filter((item) => item.kind === "save")).toHaveLength(1);
     expect(todo.flat().filter((item) => item.kind === "end")).toHaveLength(1);
+  });
+});
+
+// Ticket #1356: --save-storage. Once the outcome is decided, and the package
+// is written with its trace over, the recorded context's storage state is
+// saved; the recorder ends when that is answered. Nothing it does is
+// recorded: the recording is over.
+describe("the lifecycle, for the storage state", () => {
+  const savedPackage = [
+    opened,
+    ...started,
+    finish,
+    gateOff,
+    taken(snapshot1),
+    traceStopped,
+    saved,
+  ];
+  const endSaved: ToDo = {
+    kind: "end",
+    outcome: { kind: "saved", folder: "/project/rec_1" },
+  };
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[][];
+    state: Partial<RecorderPhase>;
+  }>([
+    {
+      name: "the storage state is saved once the package is written, and the recorder shows that it is saving meanwhile",
+      happened: savedPackage,
+      todo: [[saveStorage]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "the recorder ends with the package once the storage state is saved",
+      happened: [...savedPackage, storageSaved],
+      todo: [[endSaved]],
+      state: {
+        phase: "ended",
+        outcome: { kind: "saved", folder: "/project/rec_1" },
+      },
+    },
+    {
+      name: "a storage state that cannot be saved is one warning, and the recording is saved all the same",
+      happened: [...savedPackage, failed(saveStorage)],
+      todo: [
+        [
+          {
+            kind: "warn",
+            warning: {
+              kind: "storageNotSaved",
+              message: "The storage state could not be saved. It broke.",
+            },
+          },
+          endSaved,
+        ],
+      ],
+      state: {
+        phase: "ended",
+        outcome: { kind: "saved", folder: "/project/rec_1" },
+      },
+    },
+    {
+      name: "the storage state is saved with nothing recorded too",
+      happened: [opened, outsideEnd],
+      todo: [[saveStorage]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a command while the storage state is saved is ignored",
+      happened: [...savedPackage, finish],
+      todo: [[reply("ignored")]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "an outside end while the storage state is saved changes nothing",
+      happened: [...savedPackage, outsideEnd],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "closing the last page while the storage state is saved changes nothing",
+      happened: [
+        ...savedPackage,
+        { kind: "pageClosed", page: page1, pagesLeft: 0 },
+      ],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a click a page holds back while the storage state is saved is passed on, and nothing is recorded",
+      happened: [...savedPackage, clickHeld(input1)],
+      todo: [[passOn(input1)]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a report while the storage state is saved is ignored",
+      happened: [...savedPackage, reported],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a storage state told saved when no end waits for it changes nothing",
+      happened: [opened, storageSaved],
+      todo: [[]],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "a storage state told saved a second time changes nothing",
+      happened: [outsideEnd, storageSaved, storageSaved],
+      todo: [[]],
+      state: { phase: "ended", outcome: { kind: "empty" } },
+    },
+    {
+      name: "a failure to save the storage state when no end waits for it changes nothing",
+      happened: [outsideEnd, storageSaved, failed(saveStorage)],
+      todo: [[]],
+      state: { phase: "ended", outcome: { kind: "empty" } },
+    },
+    {
+      name: "a breakdown while the storage state is saved ends at once, with the outcome decided: nothing would hear the answer",
+      happened: [...savedPackage, { kind: "brokeDown", reason: "It broke." }],
+      todo: [[endSaved]],
+      state: {
+        phase: "ended",
+        outcome: { kind: "saved", folder: "/project/rec_1" },
+      },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened);
+    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(result.state).toMatchObject(state);
+  });
+
+  it("offers no command while the storage state is saved", () => {
+    let state = initialState;
+    for (const happening of savedPackage) state = step(state, happening).state;
+    expect(offered(state)).toEqual([]);
   });
 });
 
@@ -2638,6 +2826,7 @@ describe("the lifecycle, for discard and restore", () => {
         finish,
         traceStopped,
         saved,
+        storageSaved,
         restore(entryId("a")),
       ],
       todo: [reply("ignored")],
@@ -4472,6 +4661,24 @@ describe("the lifecycle, for the time an answer is given", () => {
       of: stopTrace,
       awaited: false,
     },
+    {
+      name: "an end waits for the storage state to be saved",
+      happened: [outsideEnd],
+      of: saveStorage,
+      awaited: true,
+    },
+    {
+      name: "an end whose storage state is saved waits for it no more",
+      happened: [outsideEnd, storageSaved],
+      of: saveStorage,
+      awaited: false,
+    },
+    {
+      name: "a save does not wait for the storage state before the package is written",
+      happened: saving,
+      of: saveStorage,
+      awaited: false,
+    },
   ])("$name", ({ happened, of, awaited }) => {
     expect(awaitsAnswer(after(happened), askOf(of))).toBe(awaited);
   });
@@ -4997,7 +5204,7 @@ describe("the lifecycle, with more than one page", () => {
     },
     {
       name: "a click a page held back once the recorder has ended is asked of nobody: its browser is let go",
-      happened: [outsideEnd, clickHeld(input1)],
+      happened: [outsideEnd, storageSaved, clickHeld(input1)],
       todo: [[]],
       state: { phase: "ended" },
     },

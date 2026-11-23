@@ -15,7 +15,10 @@ beforeEach(async () => {
 });
 afterEach(() => rm(folder, { recursive: true }));
 
-const start = (projectDir: string, launch: { debugPort?: number } = {}) =>
+const start = (
+  projectDir: string,
+  launch: { debugPort?: number; loadStorage?: string } = {}
+) =>
   startRecorder({
     projectDir,
     browser: { launch: { url: "about:blank", ...launch } },
@@ -104,6 +107,31 @@ it("opens the browser's DevTools protocol on the debug port it is given", async 
     args: ["--remote-debugging-port=9333"],
   });
 });
+
+it.each([
+  {
+    name: "is not there",
+    content: undefined,
+    reason: /^ENOENT: no such file or directory/,
+  },
+  { name: "is not JSON", content: "cookies", reason: /JSON/ },
+])(
+  "fails to start, before Chromium is launched, when the storage state file to load $name",
+  async ({ content, reason }) => {
+    await installPlaywrightWithoutChromium(folder, "playwright");
+    const file = join(folder, "state.json");
+    if (content !== undefined) await writeFile(file, content);
+
+    const failure = await start(folder, { loadStorage: file });
+
+    expect(failure).toBeInstanceOf(RecorderStartError);
+    expect(failure).toMatchObject({ reason: "storage-unreadable" });
+    const { message } = failure as RecorderStartError;
+    const prefix = `The storage state in ${file} could not be read: `;
+    expect(message.startsWith(prefix)).toBe(true);
+    expect(message.slice(prefix.length)).toMatch(reason);
+  }
+);
 
 const attach = (projectDir: string, cdpEndpoint: string) =>
   startRecorder({ projectDir, browser: { attach: { cdpEndpoint } } }).catch(

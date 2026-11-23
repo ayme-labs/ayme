@@ -28,6 +28,16 @@ export type RecorderOptions = {
            * so that a test can act in the recorded browser over a
            * connection of its own. */
           readonly debugPort?: number;
+          /** A storage state file, as Playwright writes it: the recorded
+           * page's context starts with its cookies and local storage, as
+           * Playwright's codegen `--load-storage` does. One that cannot be
+           * read keeps the recorder from starting. */
+          readonly loadStorage?: string;
+          /** Where the recorded context's storage state is saved when the
+           * recorder ends, however it ends, as Playwright's codegen
+           * `--save-storage` does: after the recording and its trace. One
+           * that cannot be saved is a warning. */
+          readonly saveStorage?: string;
         };
       }
     | {
@@ -85,6 +95,8 @@ export function stockOptionsOf(
     headless = false,
     debugPort,
     startRecording,
+    loadStorage,
+    saveStorage,
   } = options.browser.launch;
   return {
     projectDir,
@@ -92,6 +104,8 @@ export function stockOptionsOf(
     headless,
     debugPort,
     ...(startRecording ? { startRecording } : {}),
+    ...(loadStorage === undefined ? {} : { loadStorage }),
+    ...(saveStorage === undefined ? {} : { saveStorage }),
     windowUrl,
     toolbar: shown,
   };

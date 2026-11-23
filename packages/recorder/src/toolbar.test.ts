@@ -125,7 +125,13 @@ describe("the toolbar's way to the recorder", () => {
     recorder.end();
     await recorder.done;
 
-    const last = (await waiting) as RecorderUpdate;
+    // The storage state is saved before the recorder ends (#1356).
+    const saving = (await waiting) as RecorderUpdate;
+    expect(saving.state).toMatchObject({ phase: "saving" });
+    const last = (await toolbar({
+      kind: "update",
+      after: saving.revision,
+    })) as RecorderUpdate;
     expect(last.state).toMatchObject({
       phase: "ended",
       outcome: { kind: "empty" },
