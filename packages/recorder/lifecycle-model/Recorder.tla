@@ -145,8 +145,8 @@ VARIABLES
                   \* clicks to picking (SB pick(false): Playwright's mode first)
   mode,           \* Playwright's recorder: none | rec | pick
   tracing,        \* off | on | kept
-  clock, docOf,   \* snapshots read so far; the document each was read in (0: one a
-                  \* navigation overtook, which no Visit holds)
+  clock, docOf,   \* snapshots read so far; the document each was read in: the
+                  \* one the page was at as the read started (SB takeSnapshot)
   readFly,        \* a read the page took that the engine has not heard yet: its
                   \* id (0 = none), the request it answers, and the round and
                   \* recording it was asked in (ReadHeardLate)
@@ -245,9 +245,9 @@ DocAt(t) == IF t >= 1 /\ t <= Len(docOf) THEN docOf[t] ELSE doc
 \* The blank page a recording started on has no Visit (L atRecord,
 \* "blankAtRecord"): the timeline keeps no read of it, and drops an
 \* Interaction that starts there (TL add "interaction": no Visit holds its
-\* "before"). So does a read a navigation overtook (document 0; L keepRead,
-\* TL add "snapshot", 5ecea373).
-NoVisit(d) == (StartBlank /\ d = 1) \/ d = 0
+\* "before"). A read a navigation overtook is of the document it was read in,
+\* whose Visit keeps it (TL keepRead, #1365).
+NoVisit(d) == StartBlank /\ d = 1
 Row(k, e, d, a, b, t) == [k |-> k, e |-> e, d |-> d, a |-> a, b |-> b, t |-> t, p |-> 0, f |-> FALSE]
 EntryRow(T, e, d, a, b, t) == [Row("entry", e, d, a, b, t) EXCEPT !.f = b \in T.pf]
 \* A held click's "before" is read: it shows the focus the press moved.
@@ -377,12 +377,16 @@ GiveAll(s, os, t) ==
 
 \* L snapshotTaken
 \* A read of a document the page has left, as one a navigation overtook
-\* (DocAt = 0), is still given to whoever asked for it, but it is neither the
-\* page's latest read nor kept in any Visit (L keepRead, 5ecea373).
+\* (read in another document than the page is at), is still given to whoever
+\* asked for it, but it is not the page's latest read (L keepRead, 5ecea373).
+\* The timeline keeps it in the Visit of the document it was read in, the one
+\* the page left, so that the input that waited for it is kept there with it
+\* (TL keepRead, #1365); in the model a document is a Visit, and DocAt says
+\* whose a kept read is.
 SnapIn(s, r, t) ==
-  LET stale == DocAt(t) = 0
+  LET stale == DocAt(t) # doc
       s1 == [s EXCEPT !.pend = Tail(@), !.pgLatest = IF stale THEN @ ELSE t,
-                      !.keptSn = IF stale THEN @ ELSE @ \cup {t}]
+                      !.keptSn = @ \cup {t}]
       s2 == GiveAll(s1, {o \in r : o[1] # 0}, t)
   IN IF <<0, "final">> \in r THEN [s2 EXCEPT !.finals = "in"] ELSE s2
 
@@ -1507,12 +1511,12 @@ NavCommits ==
   /\ Commit(IF Active(Eng)
             THEN Proceed(LeftDocument([Eng EXCEPT !.holdPg = gateStart]), FALSE)
             ELSE [Eng EXCEPT !.holdPg = gateStart])
-  \* a read taken of the document the page left, not heard yet, is of none
-  /\ docOf' = IF readFly.t # 0 THEN [docOf EXCEPT ![readFly.t] = 0] ELSE docOf
+  \* a read taken of the document the page left, not heard yet, stays a read
+  \* of that document (SB takeSnapshot tags it with the address it started at)
   /\ tb' = IF Surfaces THEN "loading" ELSE tb
   /\ tbAns' = "none"
   /\ PageGone
-  /\ UNCHANGED <<page, gateStart, mode, tracing, clock, readFly, seen,
+  /\ UNCHANGED <<page, gateStart, mode, tracing, clock, docOf, readFly, seen,
                  personVars, win, miscVars>>
 
 \* The page changes its address within its document (AddressChanges), as
@@ -1801,12 +1805,13 @@ X10_FillStartsInItsDocument ==
     (IsFillEntry(e) /\ bsnap[e] # 0) => DocAt(bsnap[e]) = TypedDoc(e)
 
 \* A read the page took of a document it has since left is never the page's
-\* latest read while recording or wrapping up, and no Visit keeps it (L
-\* keepRead, 5ecea373; config Path-ReadAcrossNavigation).
+\* latest read while recording or wrapping up (L keepRead, 5ecea373; config
+\* Path-ReadAcrossNavigation). The Visit of the document it was read in keeps
+\* it; X3 checks that what starts from it is kept (TL keepRead, #1365;
+\* config Input-ReadAcrossNavigation).
 X11_LatestReadIsOfThisDocument ==
-  /\ ((phase = "recording" \/ (phase = "wrap" /\ goal # "clear")) /\ page = "open" /\ pgLatest # 0)
-       => DocAt(pgLatest) = doc
-  /\ \A t \in keptSn : DocAt(t) # 0
+  ((phase = "recording" \/ (phase = "wrap" /\ goal # "clear")) /\ page = "open" /\ pgLatest # 0)
+    => DocAt(pgLatest) = doc
 WRows == newT.rows
 \* The next row of the same Visit after row k, or 0.
 NextInDoc(k) ==
