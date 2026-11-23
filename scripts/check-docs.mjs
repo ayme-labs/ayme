@@ -18,12 +18,18 @@
  * - the README of a published package (one under `packages/` that is not
  *   private) contains a bare issue reference, a relative link or a banned
  *   phrase, since npm shows it without the repository around it,
- * - a published package's source marks an API `@experimental` that the
+ * - a published package's source marks an API experimental that the
  *   Experimental APIs page does not list, or the page lists one that no
- *   published package marks (ADR-0037). The page lists an API as a list item
- *   that opens with a code span, by its last name, in each package the item
- *   names in a later code span: ``- `ayme.peek(...)` in `@ayme-dev/ayme` ``
- *   lists `peek` in `@ayme-dev/ayme`. An item that names no package fails.
+ *   published package marks (ADR-0037). A declaration is marked by the TSDoc
+ *   `@experimental` tag, a CLI flag by a usage-text line that opens with the
+ *   flag, after any short form and argument, and whose description, on that
+ *   line or the next, opens with `Experimental:`. The page lists an API as a
+ *   list item that opens with a code span, by its last name, or a flag by the
+ *   flag without its argument, in each package the item names in a later code
+ *   span: ``- `ayme.peek(...)` in `@ayme-dev/ayme` `` lists `peek` in
+ *   `@ayme-dev/ayme`, and ``- `--page-objects <file>` of `ayme mcp` in
+ *   `@ayme-dev/mcp` `` lists `--page-objects` in `@ayme-dev/mcp`. An item
+ *   that names no package fails.
  * - a skill under `skills/` lacks a copy of a shared reference in
  *   `skills/shared/` in its `references/`, or a skill's copy of a guide page
  *   in `GUIDE_COPIES` is missing, or a copy differs from its source. A skill is
@@ -147,14 +153,34 @@ function publishedPackages(root) {
   });
 }
 
-/** Each API a published package's source marks `@experimental`, by name and package. */
+/** How a mark is described: a CLI flag is marked in its usage text, an API by its TSDoc tag. */
+function markKind(name) {
+  return name.startsWith("--")
+    ? "experimental in its usage text"
+    : "@experimental";
+}
+
+/**
+ * A usage-text line of an experimental flag: `  --flag <arg>  Experimental: …`,
+ * or the description on the next line. A short form such as `-f, ` may come first.
+ */
+const EXPERIMENTAL_FLAG =
+  /^[ \t]+(?:-\w,[ \t]+)?(--[a-z][\w-]*)(?:[ \t]+<[^>\n]*>)?(?:[ \t]+|[ \t]*\r?\n[ \t]+)Experimental:/gm;
+
+/** Each API a published package's source marks experimental, by name and package. */
 function experimentalMarks(root) {
   const marks = [];
   for (const { dir, name: pkg } of publishedPackages(root)) {
     const src = path.join(root, dir, "src");
     if (!fs.existsSync(src)) continue;
     for (const entry of fs.readdirSync(src, { recursive: true })) {
-      if (!/\.tsx?$/.test(entry) || entry.includes("node_modules")) continue;
+      // A test's copy of a mark is not the mark: it would hide one the source dropped.
+      if (
+        !/\.tsx?$/.test(entry) ||
+        /\.test\.tsx?$/.test(entry) ||
+        entry.includes("node_modules")
+      )
+        continue;
       const file = path.posix.join(dir, "src", entry.split(path.sep).join("/"));
       if (!fs.statSync(path.join(root, file)).isFile()) continue;
       const text = fs.readFileSync(path.join(root, file), "utf8");
@@ -173,6 +199,13 @@ function experimentalMarks(root) {
             line: lineOf(text, declaration.lastIndex),
           });
       }
+      for (const flag of text.matchAll(EXPERIMENTAL_FLAG))
+        marks.push({
+          name: flag[1],
+          pkg,
+          file,
+          line: lineOf(text, flag.index),
+        });
     }
   }
   return marks;
@@ -191,7 +224,9 @@ function experimentalListing(root) {
       const [span, ...rest] = [...text.matchAll(/`([^`]+)`/g)].map(
         (match) => match[1]
       );
-      const name = span.replace(/\(.*$/s, "").split(".").pop().trim();
+      const name = span.startsWith("--")
+        ? span.split(/\s/)[0]
+        : span.replace(/\(.*$/s, "").split(".").pop().trim();
       // A subpath export such as `@ayme-dev/ayme/server` is its package.
       const packages = published.filter((pkg) =>
         rest.some((other) => other === pkg || other.startsWith(`${pkg}/`))
@@ -793,7 +828,7 @@ export function checkDocs(root) {
       report(
         file,
         line,
-        `\`${name}\` in ${pkg} is marked @experimental but not listed in ${EXPERIMENTAL_PAGE}`
+        `\`${name}\` in ${pkg} is marked ${markKind(name)} but not listed in ${EXPERIMENTAL_PAGE}`
       );
   for (const { name, packages, line } of listing) {
     if (packages.length === 0)
@@ -807,7 +842,7 @@ export function checkDocs(root) {
         report(
           EXPERIMENTAL_PAGE,
           line,
-          `lists \`${name}\` in ${pkg}, which does not mark it @experimental`
+          `lists \`${name}\` in ${pkg}, which does not mark it ${markKind(name)}`
         );
   }
 
