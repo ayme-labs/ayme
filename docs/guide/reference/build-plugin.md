@@ -236,7 +236,7 @@ Each field resolves on its own. `use` wins over the selected project, then the t
 
 ## Errors
 
-These fail the build or the dev server. An error the Page Object compiler reports names its file and, when the compiler knows them, its line and column. These are positions in your source file, not in the code the compiler generates from it. Some errors have a file only, such as `Could not find a tsconfig.json for this module.`
+These fail the build or the dev server. The four about an action's parameters, from `Unsupported Page Object Tool input type …` to `… have no type`, do not fail a [build without ayme](#include-ayme-in-a-build), which compiles each Page Object Model to a stand-in and derives no input schemas. An error the Page Object compiler reports names its file and, when the compiler knows them, its line and column. These are positions in your source file, not in the code the compiler generates from it. Some errors have a file only, such as `Could not find a tsconfig.json for this module.`
 
 How the position appears depends on what runs the compiler:
 
