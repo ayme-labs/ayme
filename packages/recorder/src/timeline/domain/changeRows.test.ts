@@ -23,7 +23,7 @@ function changeFrom(before: string, after: string): StructuralTree {
       page,
       StructuralTree.fromAriaSnapshotYaml(after, refs)
     ),
-    page
+    () => page
   );
 }
 const page = (...elements: string[]) =>
@@ -348,6 +348,45 @@ describe("the change rows of a Change Tree", () => {
       },
       { kind: "added", element: 'navigation "Main"' },
     ]);
+  });
+
+  it("build the page before the change only to name a removed element, once for all of them", () => {
+    let built = 0;
+    /** A Change Tree whose page before counts each time it is built. */
+    const counted = (before: string, after: string) => {
+      const refs = new SyntheticAriaRefFactory();
+      const earlier = StructuralTree.fromAriaSnapshotYaml(before, refs);
+      return withPageBefore(
+        StructuralTree.reconcile(
+          earlier,
+          StructuralTree.fromAriaSnapshotYaml(after, refs)
+        ),
+        () => {
+          built += 1;
+          return earlier;
+        }
+      );
+    };
+
+    changeRows(
+      counted(
+        page(`- paragraph [ref=e2]: Empty`),
+        page(`- paragraph [ref=e2]: One item`, `- button "Remove" [ref=e3]`)
+      )
+    );
+    expect(built).toBe(0);
+
+    changeRows(
+      counted(
+        page(
+          `- button "Undo" [ref=e2]`,
+          `- button "Redo" [ref=e3]`,
+          `- paragraph [ref=e4]: Saved`
+        ),
+        page(`- paragraph [ref=e4]: Saved`)
+      )
+    );
+    expect(built).toBe(1);
   });
 
   it("name an element by the word 'element' only when nothing around it has a role or a name", () => {

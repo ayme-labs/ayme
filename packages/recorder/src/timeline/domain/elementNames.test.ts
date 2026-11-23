@@ -17,7 +17,7 @@ import {
 /** A Change Tree, with the page before beside it, as the timeline keeps
  * it. */
 function changeOf(before: StructuralTree, after: StructuralTree) {
-  return withPageBefore(StructuralTree.reconcile(before, after), before);
+  return withPageBefore(StructuralTree.reconcile(before, after), () => before);
 }
 
 const read = (yaml: string, refs = new SyntheticAriaRefFactory()) =>
@@ -516,7 +516,7 @@ describe("the label of an element, in the details of how it is read", () => {
     );
     const change = withPageBefore(
       StructuralTree.reconcile(before, after),
-      before
+      () => before
     );
 
     expect(label(change, "e2")?.label).toBe('listitem "x"');

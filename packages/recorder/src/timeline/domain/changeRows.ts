@@ -5,8 +5,7 @@ import type {
 
 import type { ChangeRow, PropertyChange } from "../../contract";
 import {
-  labelNear,
-  labelOf,
+  ElementNames,
   namedInside,
   ownName,
   wordsOf,
@@ -47,6 +46,7 @@ export type FoundRow = {
  * tree keeps how each node stood before.
  */
 export function foundRows(change: StructuralTree): FoundRow[] {
+  const names = new ElementNames(change);
   const rows: FoundRow[] = [];
   const visit = (node: StructuralNode) => {
     if (!changedItself(node)) {
@@ -60,8 +60,8 @@ export function foundRows(change: StructuralTree): FoundRow[] {
       const inside = ownName(node) ? [] : namedInside(node);
       const named =
         inside.length > 0
-          ? inside.map((one) => labelOf(change, one, view))
-          : [labelNear(change, node, view)];
+          ? inside.map((one) => names.labelOf(one, view))
+          : [names.labelNear(node, view)];
       for (const element of named)
         rows.push({ row: { kind, element: wordsOf(element) }, element });
       return;
@@ -69,7 +69,7 @@ export function foundRows(change: StructuralTree): FoundRow[] {
     // Core records how every node it marks as changed stood before; a tree
     // without that record names no property.
     const before = change.getBeforeNode(node.ref) ?? node;
-    const element = labelNear(change, node);
+    const element = names.labelNear(node);
     rows.push({
       row: {
         kind: "changed",

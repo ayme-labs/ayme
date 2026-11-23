@@ -675,8 +675,8 @@ export class Timeline {
   }
 
   /** What changed on `from`'s page from one tree to another, under the
-   * elements' first refs, with the page before it kept beside it: a removed
-   * element is named by its place there. */
+   * elements' first refs, with the way to the page before it kept beside it:
+   * a removed element is named by its place there. */
   private async reconciled(
     from: Kept,
     fromTree: StructuralTree,
@@ -691,8 +691,7 @@ export class Timeline {
             ledger.sameIdentity(beforeRef, afterRef),
         })
     );
-    return withPageBefore(
-      this.underFirstRefs(change, firstRefs),
+    return withPageBefore(this.underFirstRefs(change, firstRefs), () =>
       this.underFirstRefs(fromTree, firstRefs)
     );
   }
