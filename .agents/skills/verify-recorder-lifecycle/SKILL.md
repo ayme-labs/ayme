@@ -39,7 +39,8 @@ each function named in a comment beside the operator that models it (search
 
 - `session/domain/lifecycle.ts`: all of `step`, from `record`, `resume`,
   `wrapUp`, `goOnWrappingUp`, `giveUp`, `wrappedUp`, `endFromOutside`,
-  `clearPaused`, `traceGone`, `saved`, `ending` and `ended` (the storage
+  `clearPaused`, `traceGone`, `saved`, `cannotStart` (after Record),
+  `brokeDown` (while the storage state is saved), `ending` and `ended` (the storage
   save, with `storageNotSaved`), through `proceed`, `startNext`,
   `inputHeld`, `inputPassedOn`, `pageSettled`, `snapshotTaken`,
   `giveSnapshot`, `interactionReported`, `reportOfHeld` (with `buttonOf`,
@@ -72,12 +73,12 @@ each function named in a comment beside the operator that models it (search
   `--start-recording`), `server/infrastructure/toolbarBridge.ts`,
   `server/infrastructure/windowChannelRouter.ts`.
 
-**Sync commit: `0b1e6b9f`** (`fix/recorder-input-read-across-navigation`). To see what changed in
+**Sync commit: `58509a40`** (`recorder/1356-storage-flags`). To see what changed in
 covered code since, from any folder of the repository (the procedure below
 runs in the model's):
 
 ```sh
-git log --oneline 0b1e6b9f..HEAD -- ':(top)packages/recorder/src'
+git log --oneline 58509a40..HEAD -- ':(top)packages/recorder/src'
 ```
 
 A change touches the model when it adds, removes or reorders a step of the
@@ -132,7 +133,7 @@ a shared machine run one at a time.
      mechanism in a scratch copy of `Recorder.tla` (remove the new check,
      reorder the new step) and confirm the rule breaks. A check you never saw
      fail proves nothing.
-   - Every probe (P1 to P26) must still break: each shows the model still
+   - Every probe (P1 to P28) must still break: each shows the model still
      reaches a situation.
 
 5. **Update the README and this skill**: the rules and their outcomes, the

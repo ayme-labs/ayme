@@ -3,7 +3,7 @@
 # Constants, in order:
 #   N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick
 #   LateRevisions LeaveOutB2 LateTypingReport, then after what to check, when
-#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges
+#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges StartFails
 # LeaveOutB2 leaves a known limit out, to check every other path of the same
 # rule; it is not a fix. LateRevisions, LateTypingReport, SlowFlush,
 # SlowPickEnd and SlowHeldMessage allow five races. Buttons is what the person
@@ -30,10 +30,10 @@ MIX='{"left", "right", "middle", "leftOnCheckbox", "middleOnCheckbox"}'
 RULES="$HOLD X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 PROBES="P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten"
 WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow"
-mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges]
+mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges StartFails]
   name=$1; head=$2; shift 2
   laterev=${12}; lob2=${13}; latetype=${14}; what=${15}
-  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}; pagenavigates=${23:-FALSE}; navafterreports=${24:-TRUE}; typeafterstop=${25:-TRUE}; readlate=${26:-FALSE}; samefield=${27:-FALSE}; addrchanges=${28:-FALSE}
+  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}; pagenavigates=${23:-FALSE}; navafterreports=${24:-TRUE}; typeafterstop=${25:-TRUE}; readlate=${26:-FALSE}; samefield=${27:-FALSE}; addrchanges=${28:-FALSE}; startfails=${29:-FALSE}
   {
     printf '%s\n' "$head"
     cat <<CFG
@@ -64,6 +64,7 @@ CONSTANTS
   ReadHeardLate = $readlate
   SameFieldElsewhere = $samefield
   AddressChanges = $addrchanges
+  StartFails = $startfails
   Buttons = $buttons
 CHECK_DEADLOCK FALSE
 CFG
@@ -80,8 +81,9 @@ mk Rules-Pages      "$IN" 2 2   1   1   1    0     $F     $F   $F   $F    $T    
 $PROPS"
 mk Rules-Rounds     "$IN" 2 1   1   2   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS X5_StopWindowIsRecorded
 $PROPS"
+# Rules-Ends also has a Record that cannot start (StartFails).
 mk Rules-Ends       "$IN" 2 1   1   1   1    2     $T     $F   $F   $T    $T    $F      $F $F "INVARIANTS $HOLD $FILLS F7_MeasuredFromFirstKey
-$PROPS"
+$PROPS" $F $F "$LR" $F $F $F $F $F $T $T $F $F $F $T
 mk Surfaces         "$IN" 1 1   1   2   1    0     $F     $T   $F   $F    $T    $F      $F $F "INVARIANTS R08_SurfacesAgree $HOLD $FILLS X5_StopWindowIsRecorded" $F $F "$LEFT"
 mk TimeLimit        "$IN" 2 1   1   1   1    0     $F     $F   $T   $F    $T    $F      $F $F "INVARIANTS $RULES $FILLS
 $PROPS"
@@ -178,7 +180,7 @@ mk Probes-Continue  "$IN" 1 1   1   2   1    0     $F     $F   $F   $F    $T    
 mk Probes-LateRevision "$IN" 2 1 1   1   1    0     $F     $F   $F   $F    $T    $T      $F $F "INVARIANT P23_NeverSetsAFinalFillsText"
 # --save-storage: the save is reached with nothing recorded, with a package,
 # and fails.
-mk Probes-Storage   "$IN" 1 1   1   1   0    1     $T     $F   $F   $F    $T    $F      $F $F "INVARIANTS P24_NeverSavesStorageWithNothingRecorded P25_NeverSavesStorageWithAPackage P26_NeverWarnsOfTheStorage"
+mk Probes-Storage   "$IN" 1 1   1   1   0    1     $T     $F   $F   $F    $T    $F      $F $F "INVARIANTS P24_NeverSavesStorageWithNothingRecorded P25_NeverSavesStorageWithAPackage P26_NeverWarnsOfTheStorage P27_NeverSavesStorageAfterTheTraceFailedToStart P28_NeverSavesStorageAfterAFailedStartsTraceIsGone" $F $F "$LR" $F $F $F $F $F $T $T $F $F $F $T
 # The three charts.
 mk Chart-Lifecycle  "INIT Init
 NEXT LifeNext" 0 1 1 2 0 1 $T $F $F $F $T $F $F $F "INVARIANTS $HOLD" $F $F "$LEFT"

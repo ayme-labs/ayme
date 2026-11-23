@@ -30,6 +30,7 @@ export const state = (v) => {
       return "Saving the package";
     case "saved":
     case "empty":
+    case "failed":
       return v.storage === "asked"
         ? "Saving the storage state (--save-storage)"
         : "Ended: the package, or 'empty' when no step was recorded";
