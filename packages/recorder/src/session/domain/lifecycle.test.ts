@@ -3306,7 +3306,7 @@ describe("the lifecycle, for Assert visibility", () => {
       state: { phase: "recording", picking: true },
     },
     {
-      name: "an assertion whose read comes once the page went to another document is written at that read all the same, and the timeline is told the read, which it keeps in the Visit the element was picked in (rule 13a; config Input-ReadAcrossNavigation)",
+      name: "an assertion whose read comes once the page went to another document is written at that read, which the timeline is told (rule 13a; config Input-ReadAcrossNavigation)",
       happened: [
         ...pickingOn,
         assertionReported,

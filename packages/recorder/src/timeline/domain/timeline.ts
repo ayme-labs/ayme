@@ -388,6 +388,8 @@ export class Timeline {
     // A read of a document the page has left, as one a navigation overtook,
     // is of the Visit it left, never of where the page went, so that what
     // starts from it is kept there; one of the blank page is of no Visit.
+    // A document is known by its address alone: a read the page left, came
+    // back to its address and left again during is taken for the later Visit.
     const visit = this.all.findLast(
       (started) => started.page === page && sameDocument(started.url, url)
     );
