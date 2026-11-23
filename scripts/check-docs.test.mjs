@@ -442,6 +442,16 @@ test("reads a usage text with CRLF line endings", () => {
   );
 });
 
+test("reads a description one space after the flag", () => {
+  assertOneProblem(
+    {
+      "packages/lib/src/cli.ts":
+        "export const USAGE = `\n  --watch Experimental: rebuild on change.\n`;\n",
+    },
+    /^packages\/lib\/src\/cli\.ts:2: `--watch` in lib is marked experimental in its usage text but not listed in docs\/guide\/reference\/experimental-apis\.md$/
+  );
+});
+
 test("ignores experimental marks in a published package's test files", () => {
   assert.deepEqual(
     checkDocs(

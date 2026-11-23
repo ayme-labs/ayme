@@ -165,7 +165,7 @@ function markKind(name) {
  * or the description on the next line. A short form such as `-f, ` may come first.
  */
 const EXPERIMENTAL_FLAG =
-  /^[ \t]+(?:-\w,[ \t]+)?(--[a-z][\w-]*)(?:[ \t]+<[^>\n]*>)?(?:[ \t]{2,}|[ \t]*\r?\n[ \t]+)Experimental:/gm;
+  /^[ \t]+(?:-\w,[ \t]+)?(--[a-z][\w-]*)(?:[ \t]+<[^>\n]*>)?(?:[ \t]+|[ \t]*\r?\n[ \t]+)Experimental:/gm;
 
 /** Each API a published package's source marks experimental, by name and package. */
 function experimentalMarks(root) {
