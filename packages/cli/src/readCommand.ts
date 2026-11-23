@@ -26,10 +26,11 @@ export const USAGE = `Usage: ayme-recorder codegen <url> [--headless] [--start-r
                  another, and its own flags, such as --with-deps, as they
                  are.
   -h, --help     Print this usage text.
+  --version      Print the installed version.
 `;
 
 /**
- * What `ayme-recorder` was asked to do: record a page, print help, or fail
+ * What `ayme-recorder` was asked to do: record a page, print help or the version, or fail
  * with a message.
  */
 export type Command =
@@ -42,11 +43,14 @@ export type Command =
   | { kind: "trace"; args: string[] }
   | { kind: "install"; args: string[] }
   | { kind: "help"; text: string }
+  | { kind: "version" }
   | { kind: "error"; text: string }
   | { kind: "attach"; cdpEndpoint: string };
 
 /** The command the arguments (without the node and script paths) ask for. */
 export function readCommand(args: string[]): Command {
+  // By itself only: beside a command it is an option the command lacks.
+  if (args.length === 1 && args[0] === "--version") return { kind: "version" };
   // The stock tool's own words and flags: none of them is read here.
   if (args[0] === "trace") return { kind: "trace", args: args.slice(1) };
   if (args[0] === "install") return readInstall(args.slice(1));
