@@ -3,6 +3,21 @@ import { describe, expect, it } from "vitest";
 import { readCommand, USAGE } from "./readCommand";
 
 describe("readCommand", () => {
+  it("reads --version as a request for the installed version", () => {
+    expect(readCommand(["--version"])).toEqual({ kind: "version" });
+  });
+
+  it("lists --version in its usage text", () => {
+    expect(USAGE).toContain("--version");
+  });
+
+  it.each([["-v"], ["version"]])(
+    "has no short form or command for the version: `%s`",
+    (word) => {
+      expect(readCommand([word]).kind).toBe("error");
+    }
+  );
+
   it("lists the trace command in its usage text", () => {
     expect(USAGE).toContain("trace");
   });

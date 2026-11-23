@@ -26,10 +26,11 @@ export const USAGE = `Usage: ayme-recorder codegen <url> [--headless] [--start-r
                  another, and its own flags, such as --with-deps, as they
                  are.
   -h, --help     Print this usage text.
+  --version      Print the installed version.
 `;
 
 /**
- * What `ayme-recorder` was asked to do: record a page, print help, or fail
+ * What `ayme-recorder` was asked to do: record a page, print help or the version, or fail
  * with a message.
  */
 export type Command =
@@ -42,6 +43,7 @@ export type Command =
   | { kind: "trace"; args: string[] }
   | { kind: "install"; args: string[] }
   | { kind: "help"; text: string }
+  | { kind: "version" }
   | { kind: "error"; text: string }
   | { kind: "attach"; cdpEndpoint: string };
 
@@ -62,6 +64,7 @@ function readInstall(args: string[]): Command {
 /** What `parseArgs` reads of the options `codegen` knows. */
 type Flags = {
   help?: boolean;
+  version?: boolean;
   headless?: boolean;
   "start-recording"?: boolean;
   "cdp-endpoint"?: string;
@@ -82,6 +85,7 @@ function readCodegen(args: string[]): Command {
       allowPositionals: true,
       options: {
         help: { type: "boolean", short: "h" },
+        version: { type: "boolean" },
         headless: { type: "boolean" },
         "start-recording": { type: "boolean" },
         "cdp-endpoint": { type: "string" },
@@ -91,6 +95,7 @@ function readCodegen(args: string[]): Command {
     return fail((error as Error).message);
   }
   if (values.help) return { kind: "help", text: USAGE };
+  if (values.version) return { kind: "version" };
   return flagConflict(values) ?? codegenCommand(positionals, values);
 }
 

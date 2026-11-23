@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { version } from "../package.json";
 import { planOf } from "./plan";
 
 // What the command line does for each command it has read: print and stop,
@@ -11,6 +12,15 @@ describe("what the command line does for a command", () => {
       kind: "print",
       stream: "stdout",
       text: "Usage: x\n",
+      exitCode: 0,
+    });
+  });
+
+  it("prints the package's version alone on stdout, and exits with 0", () => {
+    expect(planOf({ kind: "version" })).toEqual({
+      kind: "print",
+      stream: "stdout",
+      text: `${version}\n`,
       exitCode: 0,
     });
   });

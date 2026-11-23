@@ -26,6 +26,8 @@ The range is stated in [`playwright-range.json`](https://github.com/ayme-labs/ay
 
 ## Commands
 
+`npx ayme-recorder --version` prints the installed version.
+
 ### `codegen <url>`
 
 Opens `<url>` in Chromium, with a recorder window beside it and a small toolbar on the page. Recording is off at first, so you can log in or reach your starting point. Press **Record** to start.
