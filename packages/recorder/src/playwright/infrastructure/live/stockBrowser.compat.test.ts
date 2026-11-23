@@ -1575,10 +1575,10 @@ const LABELLED = `
   <button>Twin</button>
   <iframe srcdoc="<button>Pay</button><button>Twin</button>"></iframe>`;
 
-it("finds by the selector of each element's label, built from the page's own snapshot, that element alone, in a frame too", async () => {
-  const browser = await onStockPlaywright(LABELLED);
-  const page = browser.page;
-  await page.frameLocator("iframe").getByText("Pay").waitFor();
+/** Each label of the page's own snapshot, and every one whose selector
+ * the highlight finds other than the element its ref names: nothing, more
+ * than it, or another. */
+async function labelsFound(browser: Harness) {
   await browser.ask({ kind: "takeSnapshot", snapshot: "s1", page: "page_1" });
   const { snapshot } = await browser.toldOf("snapshotTaken");
   const tree = StructuralTree.fromAriaSnapshotYaml(
@@ -1599,7 +1599,7 @@ it("finds by the selector of each element's label, built from the page's own sna
       "highlighted",
       (told) => told.highlight === highlight
     );
-    return found ? await drawnBoxes(page) : [];
+    return found ? await drawnBoxes(browser.page) : [];
   };
   const labels: string[] = [];
   const missed: unknown[] = [];
@@ -1612,6 +1612,14 @@ it("finds by the selector of each element's label, built from the page's own sna
     if (own.length !== 1 || JSON.stringify(found) !== JSON.stringify(own))
       missed.push({ label: named.label, selector: named.selector, own, found });
   }
+  return { labels, missed };
+}
+
+it("finds by the selector of each element's label, built from the page's own snapshot, that element alone, in a frame too", async () => {
+  const browser = await onStockPlaywright(LABELLED);
+  await browser.page.frameLocator("iframe").getByText("Pay").waitFor();
+
+  const { labels, missed } = await labelsFound(browser);
 
   expect(missed).toEqual([]);
   expect(labels).toEqual(
@@ -1638,6 +1646,35 @@ it("finds by the selector of each element's label, built from the page's own sna
     ])
   );
 });
+
+/** Items that hold text the page's snapshot leaves out, as hidden, and
+ * Playwright's text matching reads: one named by its text alone, ones
+ * among look-alikes, and one an item's hidden text makes a look-alike. */
+const HIDDEN_TEXT = `
+  <ul>
+    <li>Buy milk</li>
+    <li>Buy <span hidden>oat </span>milk</li>
+  </ul>
+  <ol>
+    <li><input type="checkbox" aria-label="Toggle Todo">Feed the cat</li>
+    <li><input type="checkbox" aria-label="Toggle Todo">Eggs<span hidden> feed the cat</span></li>
+    <li><input type="checkbox" aria-label="Toggle Todo">Feed the cat</li>
+  </ol>
+  <p>Only <span style="display: none">one </span>item</p>`;
+
+// A known limit, in the CLI's README: the selector of such an element's
+// label finds nothing, or a look-alike. Once this passes, the limit is gone:
+// take `fails` off and the limit out of the README.
+it.fails(
+  "finds by the selector of each element's label that element alone, when the element holds hidden text",
+  async () => {
+    const browser = await onStockPlaywright(HIDDEN_TEXT);
+
+    const { missed } = await labelsFound(browser);
+
+    expect(missed).toEqual([]);
+  }
+);
 
 it("draws nothing for a highlight that a clear replaced while the element was still looked up", async () => {
   const browser = await onStockPlaywright(PLACES);
