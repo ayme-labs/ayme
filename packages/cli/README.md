@@ -26,7 +26,7 @@ The range is stated in [`playwright-range.json`](https://github.com/ayme-labs/ay
 
 ## Commands
 
-`npx ayme-recorder --version` prints the installed version.
+`npx @ayme-dev/cli --version` prints the installed version.
 
 ### `codegen <url>`
 

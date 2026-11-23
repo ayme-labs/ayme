@@ -7,6 +7,14 @@ describe("readCommand", () => {
     expect(readCommand(["--version"])).toEqual({ kind: "version" });
   });
 
+  it.each([
+    [["codgen", "--version"]],
+    [["codegen", "http://localhost", "--version"]],
+    [["--version", "codegen", "http://localhost"]],
+  ])("reads --version only by itself, not beside a command: `%s`", (args) => {
+    expect(readCommand(args).kind).toBe("error");
+  });
+
   it("lists --version in its usage text", () => {
     expect(USAGE).toContain("--version");
   });

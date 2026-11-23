@@ -49,6 +49,8 @@ export type Command =
 
 /** The command the arguments (without the node and script paths) ask for. */
 export function readCommand(args: string[]): Command {
+  // By itself only: beside a command it is an option the command lacks.
+  if (args.length === 1 && args[0] === "--version") return { kind: "version" };
   // The stock tool's own words and flags: none of them is read here.
   if (args[0] === "trace") return { kind: "trace", args: args.slice(1) };
   if (args[0] === "install") return readInstall(args.slice(1));
@@ -64,7 +66,6 @@ function readInstall(args: string[]): Command {
 /** What `parseArgs` reads of the options `codegen` knows. */
 type Flags = {
   help?: boolean;
-  version?: boolean;
   headless?: boolean;
   "start-recording"?: boolean;
   "cdp-endpoint"?: string;
@@ -85,7 +86,6 @@ function readCodegen(args: string[]): Command {
       allowPositionals: true,
       options: {
         help: { type: "boolean", short: "h" },
-        version: { type: "boolean" },
         headless: { type: "boolean" },
         "start-recording": { type: "boolean" },
         "cdp-endpoint": { type: "string" },
@@ -95,7 +95,6 @@ function readCodegen(args: string[]): Command {
     return fail((error as Error).message);
   }
   if (values.help) return { kind: "help", text: USAGE };
-  if (values.version) return { kind: "version" };
   return flagConflict(values) ?? codegenCommand(positionals, values);
 }
 
