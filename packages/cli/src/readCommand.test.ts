@@ -67,19 +67,25 @@ describe("readCommand", () => {
     expect(USAGE).toContain("install");
   });
 
-  it.each([
-    { flags: ["--headless"], headless: true },
-    { flags: ["--headed"], headless: false },
-  ])(
-    "records without a window or with one for `codegen <url> $flags`",
-    ({ flags, headless }) => {
-      expect(readCommand(["codegen", "http://localhost", ...flags])).toEqual({
-        kind: "codegen",
-        url: "http://localhost",
-        headless,
-      });
-    }
-  );
+  it("records without a window for `codegen <url> --headless`", () => {
+    expect(readCommand(["codegen", "http://localhost", "--headless"])).toEqual({
+      kind: "codegen",
+      url: "http://localhost",
+      headless: true,
+    });
+  });
+
+  it("refuses --headed as any unknown option, and no longer lists it", () => {
+    const command = readCommand(["codegen", "http://localhost", "--headed"]);
+
+    expect(command.kind).toBe("error");
+    expect(command).toHaveProperty(
+      "text",
+      expect.stringMatching(/^Unknown option '--headed'/)
+    );
+    expect(command).toHaveProperty("text", expect.stringContaining(USAGE));
+    expect(USAGE).not.toContain("--headed");
+  });
 
   it.each([
     { flags: ["--start-recording"], expected: {} },
@@ -103,16 +109,7 @@ describe("readCommand", () => {
     expect(USAGE).toContain("--start-recording");
   });
 
-  it("fails when it is told to be both headless and headed", () => {
-    expect(
-      readCommand(["codegen", "http://localhost", "--headless", "--headed"])
-    ).toEqual({
-      kind: "error",
-      text: `Give either --headless or --headed, not both.\n\n${USAGE}`,
-    });
-  });
-
-  it.each([["--headless"], ["--headed"], ["--start-recording"]])(
+  it.each([["--headless"], ["--start-recording"]])(
     "fails when a running browser is given %s: it applies only to a browser launched here",
     (flag) => {
       expect(
@@ -124,7 +121,7 @@ describe("readCommand", () => {
         ])
       ).toEqual({
         kind: "error",
-        text: `--headless, --headed and --start-recording apply when the recorder opens the browser, not with --cdp-endpoint.\n\n${USAGE}`,
+        text: `--headless and --start-recording apply when the recorder opens the browser, not with --cdp-endpoint.\n\n${USAGE}`,
       });
     }
   );

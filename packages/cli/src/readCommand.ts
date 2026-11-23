@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 
-export const USAGE = `Usage: ayme-recorder codegen <url> [--headless | --headed] [--start-recording]
+export const USAGE = `Usage: ayme-recorder codegen <url> [--headless] [--start-recording]
        ayme-recorder codegen --cdp-endpoint <address>
        ayme-recorder trace <target>
        ayme-recorder install [browser]
@@ -8,7 +8,6 @@ export const USAGE = `Usage: ayme-recorder codegen <url> [--headless | --headed]
   codegen <url>  Open the page in Chromium, with the Playwright installed in
                  the project this runs in.
   --headless     Open Chromium without a visible window.
-  --headed       Open Chromium with a window. This is the default.
   --start-recording
                  Open the recorder already recording, so that the recording
                  and its trace hold the first page load.
@@ -64,7 +63,6 @@ function readInstall(args: string[]): Command {
 type Flags = {
   help?: boolean;
   headless?: boolean;
-  headed?: boolean;
   "start-recording"?: boolean;
   "cdp-endpoint"?: string;
 };
@@ -85,7 +83,6 @@ function readCodegen(args: string[]): Command {
       options: {
         help: { type: "boolean", short: "h" },
         headless: { type: "boolean" },
-        headed: { type: "boolean" },
         "start-recording": { type: "boolean" },
         "cdp-endpoint": { type: "string" },
       },
@@ -99,14 +96,12 @@ function readCodegen(args: string[]): Command {
 
 /** The error for options that cannot go together, if any do. */
 function flagConflict(values: Flags): Command | undefined {
-  if (values.headless && values.headed)
-    return fail("Give either --headless or --headed, not both.");
   if (
     values["cdp-endpoint"] !== undefined &&
-    (values.headless || values.headed || values["start-recording"])
+    (values.headless || values["start-recording"])
   )
     return fail(
-      "--headless, --headed and --start-recording apply when the recorder opens the browser, not with --cdp-endpoint."
+      "--headless and --start-recording apply when the recorder opens the browser, not with --cdp-endpoint."
     );
   return undefined;
 }
@@ -129,9 +124,7 @@ function codegenCommand(positionals: string[], values: Flags): Command {
   return {
     kind: "codegen",
     url,
-    ...(values.headless || values.headed
-      ? { headless: values.headless === true }
-      : {}),
+    ...(values.headless ? { headless: true } : {}),
     ...(values["start-recording"] ? { startRecording: true as const } : {}),
   };
 }
