@@ -1143,7 +1143,10 @@ const PICKING_MODE = "assertingVisibility";
  * lights each of them up. A ref names one element, and is taken only when
  * it does. A selector's matches are read in one call in each frame they
  * are in: its part before each frame it enters may match more than one
- * frame, and every match in each lights up.
+ * frame, and every match in each lights up. A selector that starts in any
+ * frame starts in every frame of the page: Playwright's locator would
+ * read it in the one frame it matches in without moving it by that
+ * frame's place, and read nothing when it matches in two.
  */
 async function boxesOf(
   page: Page,
@@ -1157,9 +1160,12 @@ async function boxesOf(
       .catch(() => null);
     return box ? [box] : [];
   }
-  const parts = find.selector.split(ENTER_FRAME);
+  const anyFrame = find.selector.startsWith(ANY_FRAME);
+  const parts = find.selector
+    .slice(anyFrame ? ANY_FRAME.length : 0)
+    .split(ENTER_FRAME);
   const last = parts.pop()!;
-  let frames = [page.mainFrame()];
+  let frames = anyFrame ? page.frames() : [page.mainFrame()];
   for (const part of parts) frames = await framesIn(frames, part);
   const found = await Promise.all(
     frames.map(async (frame) => {
@@ -1177,6 +1183,9 @@ async function boxesOf(
 
 /** How a selector enters the frame the part before it names. */
 const ENTER_FRAME = " >> internal:control=enter-frame >> ";
+/** How a selector starts that is looked for in every frame: Playwright
+ * 1.63 and later write one so for a target in a frame inside a frame. */
+const ANY_FRAME = "internal:control=any-frame >> ";
 
 /** The frames of the frame elements a selector names in each of `frames`. */
 async function framesIn(

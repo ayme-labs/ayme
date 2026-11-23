@@ -1507,6 +1507,73 @@ it("draws the highlight on every element a selector names in each frame its fram
   await expect.poll(() => drawnCount(browser.page)).toBe(3);
 });
 
+/** A frame inside a frame, each moved away from its parent's corner, with
+ * a look-alike in each. */
+const OFFSET_FRAMES = `
+  <h1>Orders</h1>
+  <iframe id="outer" style="margin: 30px 0 0 60px; width: 400px; height: 200px"></iframe>
+  <script>
+    document.getElementById("outer").srcdoc =
+      '<button>Pay</button><iframe id="inner" style="margin-left: 50px; height: 80px"></iframe>' +
+      '<script>document.getElementById("inner").srcdoc = "<button>Pay</button><button>Deep</button>";<\\/script>';
+  </script>`;
+
+// From Playwright 1.63 the recorder starts the selector of a target in a
+// frame inside a frame with "any frame" (`shortensFramePaths` below): a
+// step of a Visit already left is looked up by it. The adapter finds the
+// frames itself, so that each is moved by its own place in the page.
+it("draws the highlight in its place in the page on every element a selector that starts in any frame names: in a frame inside a frame, and in each frame it matches in", async () => {
+  const browser = await onStockPlaywright(OFFSET_FRAMES);
+  const outer = browser.page.frameLocator("#outer");
+  const inner = outer.frameLocator("#inner");
+  await inner.getByRole("button", { name: "Deep" }).waitFor();
+  const boxOf = async (element: Locator) => (await element.boundingBox())!;
+  const deep = await boxOf(inner.getByRole("button", { name: "Deep" }));
+  const pays = await Promise.all(
+    [outer, inner].map((frame) =>
+      boxOf(frame.getByRole("button", { name: "Pay" }))
+    )
+  );
+  const lookups = [
+    [
+      `internal:control=any-frame >> internal:role=button[name="Deep"s]`,
+      [deep],
+    ],
+    [
+      `internal:control=any-frame >> iframe >> internal:control=enter-frame >> internal:role=button[name="Deep"s]`,
+      [deep],
+    ],
+    // Two frames have a look-alike: each lights up.
+    [`internal:control=any-frame >> internal:role=button[name="Pay"s]`, pays],
+  ] as const;
+  /** Boxes to the pixel, in order on the page. */
+  const placed = (boxes: readonly (typeof deep)[]) =>
+    boxes
+      .map((box) => ({
+        x: Math.round(box.x),
+        y: Math.round(box.y),
+        width: Math.round(box.width),
+        height: Math.round(box.height),
+      }))
+      .sort((a, b) => a.y - b.y || a.x - b.x);
+
+  for (const [index, [selector, boxes]] of lookups.entries()) {
+    await browser.ask({
+      kind: "highlight",
+      highlight: index + 1,
+      target: { page: "page_1", find: { by: "selector", selector } },
+    });
+    const { found } = await browser.toldOf(
+      "highlighted",
+      (told) => told.highlight === index + 1
+    );
+    expect([selector, found]).toEqual([selector, true]);
+    await expect
+      .poll(async () => [selector, placed(await drawnBoxes(browser.page))])
+      .toEqual([selector, placed(boxes)]);
+  }
+});
+
 it("reads the boxes of every element a selector names in one call per frame, not one per element", async () => {
   // Two frames of ten look-alikes each: one selector names all twenty.
   const buttons = Array.from(
