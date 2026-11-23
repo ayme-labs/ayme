@@ -525,6 +525,83 @@ it("highlights the element of each row an expanded row folds while it is hovered
   ]);
 });
 
+it("shows what appeared inside an element whose only change is the cursor, folded, without a row for the cursor", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  const list = { ref: "e2", name: "Issues" };
+  const pointed: RecordedVisit = {
+    ...listed,
+    entries: [
+      {
+        kind: "change",
+        id: entryId("change_2"),
+        timestamp: 30,
+        changes: [
+          {
+            kind: "changed",
+            element: 'list "Issues"',
+            changed: [{ property: "cursor", to: "pointer" }],
+          },
+          ...["B", "C", "D"].map((name) => ({
+            kind: "added" as const,
+            element: `listitem "${name}"`,
+            role: "listitem",
+            parent: list,
+          })),
+        ],
+      },
+    ],
+  };
+  tell({ phase: "recording", visits: [pointed], commands: ["stop"] });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+
+  const [change] = await (await visits())[0]!.entries();
+  expect(await change!.title.textContent()).toBe("3 elements appeared");
+  expect(await change!.whatChanged()).toEqual([
+    { element: "3 listitems", effect: "appeared in “Issues”" },
+  ]);
+});
+
+it("clears the highlight when a row is collapsed while one it folds is hovered", async () => {
+  const { channel, sent, tell } = scriptedChannel();
+  mount(channel);
+  tell({
+    phase: "recording",
+    visits: [listed],
+    commands: ["stop", "highlight", "clearHighlight"],
+  });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [click] = await (await visits())[0]!.entries();
+  const [folded] = await click!.changes();
+  await folded!.expand();
+  const [first] = await folded!.folded();
+
+  await first!.element.hover();
+  // By the keyboard, the mouse still on the row it folds.
+  await folded!.element.press("Enter");
+
+  await expect.poll(() => folded!.isExpanded()).toBe(false);
+  expect(sent).toEqual([
+    { type: "highlight", entry: entryId("interaction_1"), row: 1 },
+    { type: "clearHighlight" },
+  ]);
+});
+
+it("asks nothing when a row is collapsed while highlighting does not apply", async () => {
+  const { channel, sent, tell } = scriptedChannel();
+  mount(channel);
+  tell({ phase: "paused", visits: [listed], commands: ["continue"] });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [click] = await (await visits())[0]!.entries();
+  const [folded] = await click!.changes();
+  await folded!.expand();
+
+  await folded!.element.press("Enter");
+
+  await expect.poll(() => folded!.isExpanded()).toBe(false);
+  expect(sent).toEqual([]);
+});
+
 it("lists no row for an element whose only change is the cursor, and does not show a change no Interaction made that is left with no rows", async () => {
   const { channel, tell } = scriptedChannel();
   mount(channel);

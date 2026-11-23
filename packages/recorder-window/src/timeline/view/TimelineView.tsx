@@ -316,7 +316,8 @@ function ChangeRow({
 
 /** A row that folds elements of one role: collapsed at first, its chip
  * expands it to the rows it folds, each of which highlights its own
- * element. */
+ * element. Collapsing it clears the highlight, as leaving a chip does: the
+ * chip that was hovered goes without a mouse-leave. */
 function FoldedRow({
   change,
   leave,
@@ -335,7 +336,10 @@ function FoldedRow({
         data-testid="change-element"
         aria-expanded={expanded}
         aria-controls={list}
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => {
+          if (expanded && leave) void onCommand(leave);
+          setExpanded(!expanded);
+        }}
         className="flex items-center gap-1 rounded border border-border bg-muted py-0.5 pr-1.5 pl-1 text-[13px] font-semibold"
       >
         <ChevronRight
