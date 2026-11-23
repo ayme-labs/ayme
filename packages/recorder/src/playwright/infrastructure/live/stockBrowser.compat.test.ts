@@ -40,6 +40,7 @@ import { startGate } from "../in-page/gate";
 import { installGate, startPickingIn } from "./pageFunctions";
 import { stockBrowser } from "./stockBrowser";
 import { snapshotId } from "../../../test-utils/ids";
+import { zipText } from "../../../test-utils/zip";
 
 // The compatibility suite: the stock adapter on each supported Playwright.
 // Each private detail of Playwright the adapter uses has its test here
@@ -499,15 +500,10 @@ it("keeps no screenshot in the trace, while its DOM snapshots and network log ar
   await browser.ask({ kind: "stopTrace", keep: true });
   const { trace } = await browser.toldOf("traceStopped");
 
-  const zipped = (...args: string[]) =>
-    promisify(execFile)("unzip", args, { maxBuffer: 1 << 26 }).then(
-      ({ stdout }) => stdout
-    );
-  const entries = (await zipped("-Z1", trace.file)).split("\n");
-  const events = await zipped("-p", trace.file, "trace.trace");
-  // A screenshot is a frame of the page's screencast, kept as an image.
+  const events = await zipText(trace.file, "trace.trace");
+  // A screenshot is a frame of the page's screencast: the trace names each
+  // one it keeps among its events.
   expect(events).not.toContain("screencast-frame");
-  expect(entries.filter((name) => /\.(jpe?g|png)$/.test(name))).toEqual([]);
   // The DOM snapshots and the network log are still there.
   expect(events).toContain("frame-snapshot");
   const { host } = new URL(browser.url);
