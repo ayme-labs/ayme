@@ -1807,7 +1807,7 @@ X10_FillStartsInItsDocument ==
 \* A read the page took of a document it has since left is never the page's
 \* latest read while recording or wrapping up (L keepRead, 5ecea373; config
 \* Path-ReadAcrossNavigation). The Visit of the document it was read in keeps
-\* it; X3 checks that what starts from it is kept there (TL keepRead, #1365;
+\* it; X3 checks that what starts from it is kept (TL keepRead, #1365;
 \* config Input-ReadAcrossNavigation).
 X11_LatestReadIsOfThisDocument ==
   ((phase = "recording" \/ (phase = "wrap" /\ goal # "clear")) /\ page = "open" /\ pgLatest # 0)
