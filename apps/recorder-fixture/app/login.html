@@ -6,9 +6,10 @@
   </head>
   <body>
     <h1>Log in</h1>
-    <!-- A stand-in for a login, never a real one: "Log in" sets a cookie and
-         a local storage entry, and the page says who is logged in once it
-         has both. -->
+    <!-- A stand-in for a login, never a real one: "Log in" sets a cookie, a
+         local storage entry and an IndexedDB entry, and the page says who
+         is logged in once it has the first two, after the third is
+         written. -->
     <p id="who">Not logged in</p>
     <button id="login">Log in</button>
     <!-- The cart on another origin of the same server: 127.0.0.1 and
@@ -28,7 +29,14 @@
       document.getElementById("login").addEventListener("click", () => {
         document.cookie = "session=s3cret; path=/; max-age=3600";
         localStorage.setItem("user", "ada");
-        show();
+        const opening = indexedDB.open("shop", 1);
+        opening.onupgradeneeded = () =>
+          opening.result.createObjectStore("cart", { keyPath: "id" });
+        opening.onsuccess = () => {
+          const writing = opening.result.transaction("cart", "readwrite");
+          writing.objectStore("cart").put({ id: 1, item: "tea" });
+          writing.oncomplete = show;
+        };
       });
       const elsewhere = new URL("/cart.html", location.href);
       elsewhere.hostname =

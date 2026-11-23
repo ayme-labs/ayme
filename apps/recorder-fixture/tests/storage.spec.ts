@@ -35,6 +35,7 @@ type StorageState = {
   origins: {
     origin: string;
     localStorage: { name: string; value: string }[];
+    indexedDB?: unknown[];
   }[];
 };
 const readState = async (file: string) =>
@@ -97,7 +98,10 @@ test.describe("codegen <url> --save-storage <file>", () => {
     }
 
     expect(run.stderr()).toBe("");
-    expect(await readState(file)).toEqual(loggedIn(new URL(url).origin));
+    const state = await readState(file);
+    expect(state).toEqual(loggedIn(new URL(url).origin));
+    // As Playwright's codegen saves it: without the page's IndexedDB.
+    expect(state.origins[0]!.indexedDB ?? []).toEqual([]);
     // The recording holds the person's two Visits and two clicks, and
     // nothing of the page the save opened.
     const saved = /^Recording package: (.*)$/m.exec(run.stdout())?.[1];
