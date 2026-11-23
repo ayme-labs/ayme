@@ -6,25 +6,29 @@ import { describe, expect, it } from "vitest";
 
 import type { ChangeRow } from "../../contract";
 import { foundRows } from "./changeRows";
-import { withPageBefore } from "./elementNames";
+
+/** A Change Tree and the page before it. */
+type Change = {
+  readonly change: StructuralTree;
+  readonly before: StructuralTree;
+};
 
 /** The rows of a Change Tree, as whoever shows a recorder is told them. */
-const changeRows = (change: StructuralTree): ChangeRow[] =>
-  foundRows(change).map(({ row }) => row);
+const changeRows = ({ change, before }: Change): ChangeRow[] =>
+  foundRows(change, () => before).map(({ row }) => row);
 
 /** Core's Change Tree from one page to another, as Playwright's AI-mode
- * snapshot writes each. */
-function changeFrom(before: string, after: string): StructuralTree {
+ * snapshot writes each, with the page before it. */
+function changeFrom(before: string, after: string): Change {
   const refs = new SyntheticAriaRefFactory();
   const page = StructuralTree.fromAriaSnapshotYaml(before, refs);
-  // As the timeline keeps it: with the page before beside it.
-  return withPageBefore(
-    StructuralTree.reconcile(
+  return {
+    change: StructuralTree.reconcile(
       page,
       StructuralTree.fromAriaSnapshotYaml(after, refs)
     ),
-    () => page
-  );
+    before: page,
+  };
 }
 const page = (...elements: string[]) =>
   [`- generic [ref=e1]:`, ...elements.map((line) => `  ${line}`)].join("\n");
@@ -352,32 +356,24 @@ describe("the change rows of a Change Tree", () => {
 
   it("build the page before the change only to name a removed element, once for all of them", () => {
     let built = 0;
-    /** A Change Tree whose page before counts each time it is built. */
-    const counted = (before: string, after: string) => {
-      const refs = new SyntheticAriaRefFactory();
-      const earlier = StructuralTree.fromAriaSnapshotYaml(before, refs);
-      return withPageBefore(
-        StructuralTree.reconcile(
-          earlier,
-          StructuralTree.fromAriaSnapshotYaml(after, refs)
-        ),
-        () => {
-          built += 1;
-          return earlier;
-        }
-      );
-    };
+    /** The rows of a Change Tree whose page before counts each time it is
+     * built. */
+    const counted = ({ change, before }: Change) =>
+      foundRows(change, () => {
+        built += 1;
+        return before;
+      });
 
-    changeRows(
-      counted(
+    counted(
+      changeFrom(
         page(`- paragraph [ref=e2]: Empty`),
         page(`- paragraph [ref=e2]: One item`, `- button "Remove" [ref=e3]`)
       )
     );
     expect(built).toBe(0);
 
-    changeRows(
-      counted(
+    counted(
+      changeFrom(
         page(
           `- button "Undo" [ref=e2]`,
           `- button "Redo" [ref=e3]`,
