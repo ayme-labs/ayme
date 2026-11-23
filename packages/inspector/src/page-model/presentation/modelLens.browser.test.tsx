@@ -17,12 +17,12 @@ import {
   component,
   page as pageObject,
   type Contents,
-} from "../test-utils/pageModel";
-import { renderPart } from "../../testing/renderPart";
+} from "../../../testing/page-model/pageModel";
+import { renderPart } from "../../../testing/renderPart";
 import {
   DetailPane as DetailPanePart,
   Navigator as NavigatorPart,
-} from "../../testing";
+} from "../../../testing";
 import { modelLens } from "./modelLens";
 import type { ObjectTree } from "../domain/objectTree";
 

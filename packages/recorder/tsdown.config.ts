@@ -11,8 +11,6 @@ export default defineConfig({
     // The plain data shared with the window, which imports nothing else of
     // the engine.
     contract: "src/contract/index.ts",
-    // Test-only helpers (ADR-0026): a recorder on a scripted browser.
-    testing: "src/testing/index.ts",
   },
   format: ["esm"],
   platform: "node",

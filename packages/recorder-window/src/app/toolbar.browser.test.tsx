@@ -10,7 +10,7 @@ import { userEvent } from "vitest/browser";
 // The Playwright provider takes Playwright's own click options.
 import type {} from "@vitest/browser-playwright";
 
-import { RecorderToolbar } from "../testing";
+import { RecorderToolbar } from "../../testing";
 import {
   bindingIn,
   mountToolbar,

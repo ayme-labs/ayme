@@ -1,7 +1,7 @@
-import { elementOfRef } from "../test-utils/elementRefs.testSupport";
+import { elementOfRef } from "../../testing/elementRefs.testSupport";
 import { describe, expect, it } from "vitest";
 
-import { ayme } from "../test-utils/agentCalls.testSupport";
+import { ayme } from "../../testing/agentCalls.testSupport";
 import { RefResolutionError } from "../index";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage as createPlaywrightLitePage } from "@ayme-dev/playwright-lite";

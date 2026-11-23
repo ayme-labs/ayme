@@ -10,8 +10,8 @@ import {
 const packageRoot = import.meta.dirname;
 
 // The slices of src/, and the slices each may use: only those listed before
-// it here. engine is the composition root and the front door. testing is the
-// `./testing` entry, which only tests may use (ADR-0026).
+// it here. engine is the composition root and the front door. Test support
+// lives in testing/ beside src/ (ADR-0057).
 const allowedSlices = {
   contract: [],
   timeline: ["contract"],
@@ -19,10 +19,9 @@ const allowedSlices = {
   playwright: ["session", "timeline", "contract"],
   server: ["session", "timeline", "contract"],
   engine: ["server", "playwright", "session", "timeline", "contract"],
-  testing: ["engine", "session", "timeline", "contract"],
 };
 const slices = Object.keys(allowedSlices);
-// contract, engine and testing aren't layered.
+// contract and engine aren't layered.
 const layeredSlices = ["timeline", "session", "playwright", "server"];
 const sourceFiles = "src/**/*.ts";
 const testFiles = ["src/**/*.test.ts"];
@@ -36,7 +35,10 @@ const layers = ["domain", "application", "infrastructure"];
 const index = String.raw`index(\.[jt]s)?`;
 
 /** Relative imports beneath another slice, past its front doors. Only
- * relative paths: a package such as `playwright-core/...` is no slice. */
+ * relative paths: a package such as `playwright-core/...` is no slice. A
+ * path through testing/ is test support, which has no front door for the
+ * package's own tests: its folders are named after the slices they serve. */
+const notTestSupport = String.raw`(?!(.*/)?testing/)`;
 function frontDoors(slice) {
   const others = (list) => list.filter((other) => other !== slice).join("|");
   const unlayered = others(slices.filter((s) => !layeredSlices.includes(s)));
@@ -44,15 +46,15 @@ function frontDoors(slice) {
   return [
     {
       regex: [
-        String.raw`^\.\.?/(.*/)?(${unlayered})/(?!${index}$)`,
-        String.raw`^\.\.?/(.*/)?(${layered})/(?!(${layers.join("|")})(/${index})?$|${index}$)`,
+        String.raw`^\.\.?/${notTestSupport}(.*/)?(${unlayered})/(?!${index}$)`,
+        String.raw`^\.\.?/${notTestSupport}(.*/)?(${layered})/(?!(${layers.join("|")})(/${index})?$|${index}$)`,
       ].join("|"),
       message:
         "Import another slice through its front door: the index.ts of the layer you use in a layered slice, such as ../session/domain, or else the slice's index.ts.",
     },
     {
       // Another slice's: inside a slice, a module may be named as a slice is.
-      regex: String.raw`^\.\.?/(.*/)?(${layered})(/${index})?$`,
+      regex: String.raw`^\.\.?/${notTestSupport}(.*/)?(${layered})(/${index})?$`,
       message:
         "A layered slice has no index.ts: import the front door of the layer you use, such as ../session/domain.",
     },
@@ -115,8 +117,7 @@ function restrictedImports(files, patterns, { ignores } = {}) {
 }
 
 /** What the files of one slice (or, without one, of src/ itself) may not
- * import. Tests may use any Effect package; the testing slice is test-only
- * code, so it may too. */
+ * import. Tests may use any Effect package. */
 function sliceRestrictions(slice) {
   const folder = slice ? `src/${slice}` : "src";
   const depth = slice ? "**/" : "";
@@ -127,10 +128,7 @@ function sliceRestrictions(slice) {
   // Effect-free: the contract, the timeline's pure rules and the package's
   // front door (src/index.ts); and every slice's domain layer.
   const effectFree = [undefined, "contract", "timeline"].includes(slice);
-  const production =
-    slice === "testing"
-      ? always
-      : [...always, effectFree ? anyEffect : otherEffectPackages];
+  const production = [...always, effectFree ? anyEffect : otherEffectPackages];
   return [
     restrictedImports([`${folder}/${depth}*.ts`], production, {
       ignores: testFiles,
@@ -148,7 +146,7 @@ function sliceRestrictions(slice) {
           ),
         ]
       : []),
-    ...(slice && !effectFree && slice !== "testing"
+    ...(slice && !effectFree
       ? [
           restrictedImports(
             [`${folder}/domain/**/*.ts`],
@@ -228,4 +226,21 @@ export default [
   },
   // The package's entry and its tests, which use the slices' front doors.
   ...sliceRestrictions(undefined),
+  // Test support (ADR-0057): a folder of testing/ named after a slice belongs
+  // to that slice, so it may use the slice's own files, and other slices
+  // through their front doors. The rest of testing/ uses front doors only.
+  // It is test-only code, so it may use any Effect package.
+  ...slices.map((slice) =>
+    restrictedImports(
+      [`testing/${slice}/**/*.ts`],
+      [...frontDoors(slice), playwright]
+    )
+  ),
+  restrictedImports(
+    ["testing/**/*.ts"],
+    [...frontDoors(undefined), playwright],
+    {
+      ignores: slices.map((slice) => `testing/${slice}/**`),
+    }
+  ),
 ];

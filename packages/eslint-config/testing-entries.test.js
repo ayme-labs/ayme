@@ -7,7 +7,7 @@ import { message as adrMessage, plugin } from "./testing-entries.js";
 const linter = new Linter();
 
 /** What `base` reports under the testing-entries policy for `code` in
- *  `filename`: "refused" for each refusal that cites ADR-0026. */
+ *  `filename`: "refused" for each refusal that cites ADR-0057. */
 function lint(code, filename) {
   return linter
     .verify(code, base, { filename })
@@ -20,16 +20,16 @@ function lint(code, filename) {
 const staticImport =
   'import { recordPublishedTools } from "@ayme-dev/webmcp/testing";\nexport { recordPublishedTools };\n';
 
-test("the refusal cites ADR-0026", () => {
+test("the refusal cites ADR-0057", () => {
   assert.match(
     adrMessage,
-    /docs\/adr\/0026-test-seams-behind-a-testing-entry\.md/
+    /docs\/adr\/0057-test-support-lives-beside-src-and-is-never-published\.md/
   );
 });
 
-test("a test file may import a testing entry", () => {
+test("a test file may import test support", () => {
   const deepImport =
-    'import { renderPart } from "../testing/renderPart";\nexport { renderPart };\n';
+    'import { renderPart } from "../../testing/renderPart";\nexport { renderPart };\n';
   assert.deepEqual(lint(deepImport, "src/runs/Runs.browser.test.tsx"), []);
   for (const filename of [
     "src/runtime.test.ts",
@@ -40,32 +40,31 @@ test("a test file may import a testing entry", () => {
     assert.deepEqual(lint(staticImport, filename), [], filename);
 });
 
-test("a testing entry may import its own parts", () => {
+test("test support may import its own parts and another package's", () => {
   const part =
-    'import { Inspector } from "./testing/pom/Inspector";\nexport { Inspector };\n';
-  assert.deepEqual(lint(part, "src/testing.ts"), []);
-  assert.deepEqual(lint(part, "src/testing/index.ts"), []);
+    'import { Inspector } from "../testing/pom/Inspector";\nexport { Inspector };\n';
+  assert.deepEqual(lint(part, "testing/tools/startedSession.ts"), []);
+  assert.deepEqual(lint(staticImport, "testing/index.ts"), []);
 });
 
-test("source may not import a testing entry", () => {
+test("source may not import test support", () => {
   for (const code of [
     staticImport,
     'import type { RecordingDriver } from "@ayme-dev/webmcp/testing";\nexport type { RecordingDriver };\n',
-    'import "@ayme-dev/core/structural-observation/testing";\n',
     'export * from "@ayme-dev/webmcp/testing";\n',
-    'export { StructuralTreeMockFactory } from "./testing";\n',
-    'import "../src/testing.js";\n',
-    'import { Inspector } from "./testing/pom/Inspector";\nexport { Inspector };\n',
+    'export { startAgent } from "../testing";\n',
+    'import "../testing/index.js";\n',
+    'import { Inspector } from "../testing/pom/Inspector";\nexport { Inspector };\n',
     'import "../../testing/renderPart";\n',
   ])
     assert.deepEqual(lint(code, "src/index.ts"), ["refused"], code);
 });
 
-test("source may not load a testing entry dynamically", () => {
+test("source may not load test support dynamically", () => {
   for (const code of [
     'export const testing = import("@ayme-dev/webmcp/testing");\n',
-    'export const testing = import("./testing");\n',
-    'export const testing = import("./testing/pom/Inspector");\n',
+    'export const testing = import("../testing");\n',
+    'export const testing = import("../testing/pom/Inspector");\n',
     'export const testing = require("@ayme-dev/webmcp/testing");\n',
   ])
     assert.deepEqual(lint(code, "src/index.ts"), ["refused"], code);

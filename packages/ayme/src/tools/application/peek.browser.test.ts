@@ -1,4 +1,4 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootRef } from "../../../testing/agentCalls.testSupport";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DecisionRequest } from "../../goal-loop/domain";
@@ -8,7 +8,7 @@ import { ayme as model } from "../../page-objects/domain";
 import { createPage } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
 import { RuntimeStateError, ToolInputError } from "../../shared";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
 import { createAyme, type Ayme, type AymeOptions } from "../../runtime";
 
 // Runtime object seam: an app adds Peeks with `ayme.peek` and reads them as

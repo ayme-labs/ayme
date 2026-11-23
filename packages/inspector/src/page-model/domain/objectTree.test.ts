@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { component, page } from "../test-utils/pageModel";
+import { component, page } from "../../../testing/page-model/pageModel";
 import { objectRows, type ObjectTree, revealSelection } from "./objectTree";
 
 // Unit tests: which objects the Model tree shows open, and the objects it

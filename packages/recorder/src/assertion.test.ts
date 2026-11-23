@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { RecorderState, RecorderUpdate, RecordingOutcome } from "./index";
-import { startScriptedRecorder } from "./testing";
+import { startScriptedRecorder } from "../testing";
 
 // Ticket #1278: Assert visibility through the handle, on the scripted
 // browser: what the handle answers and shows, what it asks of the browser,

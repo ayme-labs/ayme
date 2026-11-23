@@ -1,4 +1,4 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootRef } from "../../../testing/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
@@ -12,12 +12,12 @@ import {
 import { registerCompiledPom } from "../../page-objects/application";
 import { configureGoalLoop } from "../../goal-loop/infrastructure";
 import { type GoalLoopDecisionFunction } from "../../goal-loop/application";
-import { refsOfSelectors } from "../../test-utils/elementRefs.testSupport";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { refsOfSelectors } from "../../../testing/elementRefs.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
 import {
   agentTools,
   firstChoices,
-} from "../../test-utils/publication.testSupport";
+} from "../../../testing/publication.testSupport";
 import { createAyme } from "../../runtime";
 
 type ActionResultShape = {

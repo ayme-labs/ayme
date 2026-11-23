@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { forest, node } from "../../structure/test-utils/projected";
+import { forest, node } from "../../../testing/structure/projected";
 import { buildStructureTree } from "../../structure";
 import { refTreeRows, type RefTreeRow } from "./refTree";
 

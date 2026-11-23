@@ -7,7 +7,7 @@ import {
   type Ayme,
 } from "../index";
 import { errorText } from "./errors";
-import { agentTools } from "../test-utils/publication.testSupport";
+import { agentTools } from "../../testing/publication.testSupport";
 
 // Runtime object seam: an agent's call through WebMCP is a `webmcp` Run,
 // made here through the publication harness.

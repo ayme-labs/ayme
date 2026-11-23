@@ -1,12 +1,12 @@
 import { afterEach, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
-import { agentCursor } from "../../test-utils/agentCalls.testSupport";
+import { agentCursor } from "../../../testing/agentCalls.testSupport";
 import { getInteractionHistory, lookAtPageStateForDocument } from "./pageState";
 import {
   refsIn,
   startAgentSession,
-} from "../test-utils/lookAtPageState.testSupport";
+} from "../../../testing/page-state/lookAtPageState.testSupport";
 
 let stop = () => {};
 afterEach(() => {

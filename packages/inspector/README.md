@@ -27,7 +27,7 @@ To run it outside the page instead, pass `inspector: { placement: "external" }` 
 
 ## Supported versions
 
-Any framework ayme supports; the Inspector bundles its own React. `@playwright/test` 1.29 to 1.64 for the types.
+Any framework ayme supports; the Inspector bundles its own React.
 
 ## License
 

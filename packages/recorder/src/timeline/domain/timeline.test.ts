@@ -12,14 +12,14 @@ import {
   timelineOf,
   url,
   visit,
-} from "./test-utils/timelineBuilders";
+} from "../../../testing/timeline/timelineBuilders";
 import {
   entryId,
   pageId,
   snapshotId,
   snapshotRefOf,
   tracePositions,
-} from "../../test-utils/ids";
+} from "../../../testing/ids";
 
 const fixture = (name: string) =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");

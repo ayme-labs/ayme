@@ -3,10 +3,10 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
-import { forest, node } from "../structure/test-utils/projected";
+import { forest, node } from "../../testing/structure/projected";
 import { renderInspector } from "./renderInspector";
-import { startedAyme, type PageFixture } from "../tools/test-utils/startedAyme";
-import { Inspector } from "../testing";
+import { startedAyme, type PageFixture } from "../../testing/tools/startedAyme";
+import { Inspector } from "../../testing";
 
 // Component tests: a rooted action's Runs by any Caller are on the item
 // their ref named, so an item's scope lists them. The runtime is replaced by

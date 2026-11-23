@@ -15,7 +15,7 @@ vi.mock("./pomProgram", async (importOriginal) => {
   return { ...actual, createPomProgram };
 });
 
-import { diagnosticsOf } from "./pomCompileError.testSupport";
+import { diagnosticsOf } from "../../testing/compiler/pomCompileError.testSupport";
 import {
   absentEntryFor,
   createPomTransform,

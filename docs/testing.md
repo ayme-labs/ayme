@@ -75,17 +75,16 @@ The exception is checking survivors from a CI run: scope Stryker to their files 
 
 ## Test-only code
 
-Fakes, test doubles and page objects for tests ship from the package's `testing` entry, `@ayme-dev/<package>/testing`, built from its `src/testing.ts` or `src/testing/index.ts`. Only test files may import one; lint enforces it ([`testing-entries.js`](../packages/eslint-config/testing-entries.js)). Why, and the options we rejected: [ADR-0026](adr/0026-test-seams-behind-a-testing-entry.md).
+A package's test support, the fakes, test doubles, page objects, builders and harnesses only tests may use, lives in its `testing/` folder beside `src/`. It is never built and never published. Only test files may import it; lint enforces it ([`testing-entries.js`](../packages/eslint-config/testing-entries.js)). Why, and the options we rejected: [ADR-0057](adr/0057-test-support-lives-beside-src-and-is-never-published.md).
 
-| Entry                                           | Holds                                                                                                                                                                                    |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ayme-dev/webmcp/testing`                      | The recording WebMCP driver: `recordPublishedTools`, `recordPublishedToolsLate`, `waitForPublishedTool`, `executePublishedTool` and its queries                                          |
-| `@ayme-dev/inspector/testing`                   | The Inspector's page objects, for its own tests, its e2e tests and the example apps' smoke tests                                                                                         |
-| `@ayme-dev/core/structural-observation/testing` | `StructuralTreeMockFactory` and `MockLiveAriaSnapshotSource`, for structural trees without a browser                                                                                     |
-| `@ayme-dev/mcp/testing`                         | A coding agent for e2e tests: `startAgent` runs `ayme mcp` over stdio, `connectPage` pairs a Playwright page by link, and `ignoreAutoPairScan` keeps a context's pages from auto-pairing |
-| `@ayme-dev/recorder/testing`                    | `startScriptedRecorder`: a real recorder on a scripted browser that a test plays by hand, for the engine's tests and the recorder window's e2e tests                                     |
-| `@ayme-dev/recorder-window/testing`             | The recorder window's and the in-page toolbar's page objects, for the window package's own browser tests and the recorder fixture's e2e tests                                            |
+Other workspaces import what the folder's `index.ts` exports, from source, as `@ayme-dev/<package>/testing`. The rest of the folder is for the package's own tests: a folder named after a slice holds that slice's test support, which may use the slice's own files, and other slices through their front doors.
 
-Consumers may use these entries to test their own integration.
+| Import                              | Holds                                                                                                                                                                                    |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ayme-dev/webmcp/testing`          | The recording WebMCP driver: `recordPublishedTools`, `recordPublishedToolsLate`, `waitForPublishedTool`, `executePublishedTool` and its queries                                          |
+| `@ayme-dev/inspector/testing`       | The Inspector's page objects, for its own tests, its e2e tests and the example apps' smoke tests                                                                                         |
+| `@ayme-dev/mcp/testing`             | A coding agent for e2e tests: `startAgent` runs `ayme mcp` over stdio, `connectPage` pairs a Playwright page by link, and `ignoreAutoPairScan` keeps a context's pages from auto-pairing |
+| `@ayme-dev/recorder/testing`        | `startScriptedRecorder`: a real recorder on a scripted browser that a test plays by hand, for the engine's tests and the recorder window's e2e tests                                     |
+| `@ayme-dev/recorder-window/testing` | The recorder window's and the in-page toolbar's page objects, for the window package's own browser tests and the recorder fixture's e2e tests                                            |
 
-Test data a package keeps to itself, such as builders, stays out of the `testing` entry. In the Inspector it lives in the `test-utils/` folder of the slice that owns the type, which only tests may import ([`packages/inspector/AGENTS.md`](../packages/inspector/AGENTS.md)).
+`@ayme-dev/ayme` has test support for its own tests only. Another workspace compiles what it imports from source, and ayme's source needs ayme's own build, so what other workspaces' tests need of ayme comes from its built `@ayme-dev/ayme/internal` entry: the runtime side of the Inspector contract for the Inspector's tests, and the Goal Loop's run result and bars for the playground's goal lane.

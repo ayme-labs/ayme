@@ -29,27 +29,25 @@ function statedRanges(file: string, leadIn: string): string[] {
 }
 
 describe(`the supported @playwright/test range (${peerRange})`, () => {
-  it.each(["ayme", "mcp", "inspector", "webmcp"])(
-    "is the peer range of packages/%s",
-    (name) => {
-      const file = `packages/${name}/package.json`;
-      const manifest = JSON.parse(read(file)) as {
-        peerDependencies?: Record<string, string>;
-      };
-      expect(manifest.peerDependencies?.["@playwright/test"], file).toBe(
-        peerRange
-      );
+  // The one package with a Playwright peer: the others name Playwright only
+  // in their test support, which is not published (ADR-0057).
+  it.each(["ayme"])("is the peer range of packages/%s", (name) => {
+    const file = `packages/${name}/package.json`;
+    const manifest = JSON.parse(read(file)) as {
+      peerDependencies?: Record<string, string>;
+    };
+    expect(manifest.peerDependencies?.["@playwright/test"], file).toBe(
+      peerRange
+    );
+  });
+
+  it.each(["docs/guide/start/install.md", "packages/ayme/README.md"])(
+    "is spelled out in %s",
+    (file) => {
+      for (const stated of statedRanges(file, "`@playwright/test`"))
+        expect.soft(stated, file).toBe(`${typesFloor} to ${lastSupported}`);
     }
   );
-
-  it.each([
-    "docs/guide/start/install.md",
-    "packages/ayme/README.md",
-    "packages/inspector/README.md",
-  ])("is spelled out in %s", (file) => {
-    for (const stated of statedRanges(file, "`@playwright/test`"))
-      expect.soft(stated, file).toBe(`${typesFloor} to ${lastSupported}`);
-  });
 
   it.each([
     "packages/unplugin-ayme/README.md",

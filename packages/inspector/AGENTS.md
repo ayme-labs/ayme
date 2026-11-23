@@ -12,9 +12,9 @@ Slices, from the bottom up:
 - `runs`: running a tool, and Runs: the page's Run log, child Runs nested under their parent, and each Run's Interactions named by member.
 - `tools`: the tool list, the run card and its fields, and ref picking.
 - `app`: the composition root: mounting (in the page, or filling the window of the external build), the stylesheet and the wiring of every slice.
-- `testing`: the Inspector POM; its `index.ts` is the `./testing` entry.
+- `testing/`, beside `src/`: the package's test support ([ADR-0057](../../docs/adr/0057-test-support-lives-beside-src-and-is-never-published.md)). Its `index.ts` exports the Inspector POM, which other workspaces import from source as `@ayme-dev/inspector/testing`; a folder named after a slice holds that slice's test-only data and harnesses.
 
-Layers, only where a slice has that kind of code: `domain` (pure rules and types), `application` (interaction policy), `infrastructure` (the runtime, the host document, storage), `presentation` (UI-logic hooks and containers), `view` (components that take props and callbacks), `test-utils` (test-only data and harnesses).
+Layers, only where a slice has that kind of code: `domain` (pure rules and types), `application` (interaction policy), `infrastructure` (the runtime, the host document, storage), `presentation` (UI-logic hooks and containers), `view` (components that take props and callbacks).
 
 - Every file of a layered slice sits in a layer folder, except its `index.ts`.
 - The layer rule holds inside a slice. Another slice is reached through its `index.ts`, which lint can't see past, so import only from the layers yours may use.
@@ -55,13 +55,13 @@ Layers, only where a slice has that kind of code: `domain` (pure rules and types
 
 The `./external` build (`src/external.ts`, a second tsdown build that bundles React and ayme's contract entry into one script with no static import of another file; the server serves that file alone) is what `ayme mcp` serves to a window of its own, at `/inspector`; it mounts the same app filling the window (`panel`'s `WindowShell`, no dock, drag or collapse) over the channel transport. `ayme mcp` also puts the script inside the page an Agent App shows in its chat as an MCP App, with an element naming the socket to connect to (the page's own address is the Agent App's); finding it, the build talks to the Agent App through the MCP Apps SDK, which only it imports (`app`'s `connectAgentApp`): it asks for its height, and the header offers fullscreen while the Agent App does. The window shows the page's host as "page": the contract does not carry its address.
 
-The Inspector reads ayme only through `@ayme-dev/ayme/inspector`. Lint enforces this for all source except `src/testing/`, test files and test-utils, which may use ayme's public API and `@ayme-dev/ayme/testing`.
+The Inspector reads ayme only through `@ayme-dev/ayme/inspector`. Lint enforces this for all source except test files; they and the test support in `testing/` may use ayme's public API and, for the runtime side of the Inspector contract, `@ayme-dev/ayme/internal`.
 
 ## Testing
 
 The Inspector is tested the way ayme asks its users to test: through a Page
 Object Model of the panel. `@ayme-dev/inspector/testing` exports it
-(ADR-0026: only tests may import a testing entry). `Inspector` takes a
+(ADR-0057: only tests may import test support). `Inspector` takes a
 Playwright `Page` and is built from one page object per part of the panel,
 each rooted at a `Locator`. The same classes run on Playwright and on
 playwright-lite's `createPage()`. They carry `@ayme` marks, but an app never
@@ -95,7 +95,7 @@ Run from this directory inside the repository's Devbox shell:
 - `pnpm test` runs the unit tests in jsdom (`*.test.ts`) and the component
   tests in Chromium through vitest browser (`*.browser.test.tsx`). A
   component test renders one part with fixture props into an open shadow
-  root it owns (`src/testing/renderPart.tsx`), with the Inspector's
+  root it owns (`testing/renderPart.tsx`), with the Inspector's
   stylesheet and themed root, and drives it through the page objects on
   playwright-lite.
 - The end-to-end tests, which run the built package on fixture pages, live in

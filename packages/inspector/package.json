@@ -23,7 +23,18 @@
     "directory": "packages/inspector"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs",
+        "default": "./dist/index.mjs"
+      },
+      "./external": {
+        "import": "./dist/external.mjs",
+        "default": "./dist/external.mjs"
+      }
+    }
   },
   "type": "module",
   "files": [
@@ -39,15 +50,11 @@
       "import": "./dist/external.mjs",
       "default": "./dist/external.mjs"
     },
-    "./testing": {
-      "types": "./dist/testing.d.mts",
-      "import": "./dist/testing.mjs",
-      "default": "./dist/testing.mjs"
-    }
+    "./testing": "./testing/index.ts"
   },
   "scripts": {
     "build": "tsdown",
-    "lint": "eslint src --max-warnings 0",
+    "lint": "eslint src testing --max-warnings 0",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "test:crap": "vitest run --config vitest.fast.config.ts --coverage",
@@ -58,9 +65,6 @@
     "radix-ui": "^1.6.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
-  },
-  "peerDependencies": {
-    "@playwright/test": ">=1.29 <1.65"
   },
   "devDependencies": {
     "@ayme-dev/design-system": "workspace:*",

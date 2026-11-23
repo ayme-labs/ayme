@@ -26,7 +26,6 @@ export default defineConfig([
     dts: true,
     entry: {
       index: "src/index.ts",
-      testing: "src/testing/index.ts",
     },
     deps: {
       // The Inspector brings its own React: a host app may run another React

@@ -4,7 +4,9 @@ import { dirname, join, resolve } from "node:path";
 import { Effect } from "effect";
 import type * as PlaywrightCore from "playwright-core";
 
-import range from "../../../playwright-range.json";
+// The attribute lets Node load this file from source, as tests that import
+// the package's test support do (ADR-0057).
+import range from "../../../playwright-range.json" with { type: "json" };
 import { RecorderStartError } from "../../session/domain";
 
 /** What the adapter uses of Playwright's module. */
