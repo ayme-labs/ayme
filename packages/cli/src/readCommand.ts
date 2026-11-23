@@ -153,19 +153,8 @@ function codegenCommand(positionals: string[], values: Flags): Command {
     url,
     ...(values.headless ? { headless: true } : {}),
     ...(values["start-recording"] ? { startRecording: true as const } : {}),
-    ...storageOf(values),
-  };
-}
-
-/** The storage state files `codegen <url>` was given, as Playwright's
- * codegen takes them. */
-function storageOf(values: Flags) {
-  return {
-    ...(values["load-storage"] === undefined
-      ? {}
-      : { loadStorage: values["load-storage"] }),
-    ...(values["save-storage"] === undefined
-      ? {}
-      : { saveStorage: values["save-storage"] }),
+    // Playwright's codegen files; undefined when not given.
+    loadStorage: values["load-storage"],
+    saveStorage: values["save-storage"],
   };
 }

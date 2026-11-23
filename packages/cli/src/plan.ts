@@ -60,12 +60,8 @@ export function planOf(command: Command): Plan {
           url: command.url,
           headless: command.headless,
           ...(command.startRecording ? { startRecording: true as const } : {}),
-          ...(command.loadStorage === undefined
-            ? {}
-            : { loadStorage: command.loadStorage }),
-          ...(command.saveStorage === undefined
-            ? {}
-            : { saveStorage: command.saveStorage }),
+          loadStorage: command.loadStorage,
+          saveStorage: command.saveStorage,
         },
       };
     case "install":

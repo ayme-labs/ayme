@@ -58,13 +58,9 @@ export function browserOf(
             target.startRecording
           ),
           // Playwright's codegen files: the recorder opens the context, so it
-          // loads and saves them itself.
-          ...(target.loadStorage === undefined
-            ? {}
-            : { loadStorage: target.loadStorage }),
-          ...(target.saveStorage === undefined
-            ? {}
-            : { saveStorage: target.saveStorage }),
+          // loads and saves them itself. Absent, they are undefined.
+          loadStorage: target.loadStorage,
+          saveStorage: target.saveStorage,
         },
       }
     : { attach: { cdpEndpoint: target.cdpEndpoint } };
