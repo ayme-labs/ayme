@@ -235,9 +235,9 @@ until a tab pairs again.
 A call for the page that comes while its tab is loading a new document waits
 for the new page instead of failing: from when the page says it started
 loading, through the wait for its tab to reconnect, until the new page has
-reported its tools. It then runs on the new page, so a `snapshot` sent right
-after a full-load answer reads the new page. When no page comes back, the call
-fails without running, and its text says how the page left: it started
+reported its tools. It then runs on the new page, so a `page_objects` sent
+right after a full-load answer reads the new page. When no page comes back, the
+call fails without running, and its text says how the page left: it started
 loading a URL and no page reconnected in its place, as when the tab closed or
 the new page does not run the Agent Connection, or its connection closed
 without a word. When another tab pairs in its place, the held calls fail

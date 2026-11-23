@@ -18,9 +18,9 @@ read [Onboarding](references/onboarding.md).
 To connect yourself to the app's page with `ayme_connect`, when the page's tools
 are missing from your tool list, or after a call the page didn't answer because
 it reloaded, navigated or closed, or to give a page that doesn't ship ayme
-the project's Page Objects through Playwright MCP or Playwright CLI, read
-[Browser setup](references/browser-setup.md). A connected page with its tools
-listed needs no Browser setup.
+the project's Page Objects through Playwright MCP, Playwright CLI or
+agent-browser, read [Browser setup](references/browser-setup.md). A connected
+page with its tools listed needs no Browser setup.
 
 When you use the page's tools, or a tool answers that it is unavailable or
 gone, read [Page tools](references/page-tools.md).

@@ -49,5 +49,6 @@ When your agent drives the browser with Playwright MCP, Playwright CLI or agent-
 - Playwright MCP and Playwright CLI refuse to start while the init script is missing, so start `ayme mcp` first in a fresh clone.
 - The browser reads the init script when it starts. If it can start before `ayme mcp`, or outlive a restart on another port, add `--port <port>` to the `ayme mcp` registration so every start writes the same init script, then restart the browser once.
 - After an edit, `ayme mcp` rebuilds and the open page swaps in the new Page Objects. A failed build is logged to `ayme mcp`'s standard error, and the page keeps the last good one.
+- Chromium-based browsers only.
 - Navigating to another origin needs a new `ayme_connect` link.
 - On a page whose app already ships ayme, the app's own tools win over the served ones.
