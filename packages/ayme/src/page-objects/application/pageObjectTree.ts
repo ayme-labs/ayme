@@ -150,14 +150,21 @@ function readNode(
     }
     const component = read.components.get(member.componentClassName);
     if (!component) continue;
-    const objects: PageObjectTreeNode[] = [];
-    for (const child of childInstances(read, path, member.collection === true))
-      objects.push(...readNodes(read, child, component));
-    if (member.collection)
+    const instances = childInstances(read, path, member.collection === true);
+    const objects = instances.flatMap((child) =>
+      readNodes(read, child, component)
+    );
+    const [only] = instances;
+    if (!member.collection && only?.present && objects[0])
+      children.push({
+        kind: "object",
+        name: member.memberName,
+        object: objects[0],
+      });
+    // An absent single member shows the present Page Objects inside it as
+    // a list, which a change matches by id, however many there are.
+    else if (member.collection || objects.length > 0)
       children.push({ kind: "objects", name: member.memberName, objects });
-    else
-      for (const object of objects)
-        children.push({ kind: "object", name: member.memberName, object });
   }
   return node;
 }

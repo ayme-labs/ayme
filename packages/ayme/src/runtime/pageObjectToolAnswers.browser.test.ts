@@ -330,6 +330,103 @@ describe("a Page Object Tool's answer through both agent channels", () => {
     });
   });
 
+  it("lists the present Page Objects inside an absent one, and marks the one that went away by its id", async () => {
+    // The shell is gone; the two panels it holds, portaled to the body, are not.
+    document.body.innerHTML = ["A", "B"]
+      .map(
+        (name) =>
+          `<div role="dialog" aria-label="${name}"><h2>${name}</h2></div>`
+      )
+      .join("");
+    const page = createPage();
+    const panel = (name: string) => {
+      const root = page.getByRole("dialog", { name });
+      return rooted(root, {
+        heading: root.getByRole("heading"),
+        close: async () =>
+          document.querySelector(`[aria-label="${name}"]`)!.remove(),
+      });
+    };
+    class ShellPage {
+      shell = rooted(page.locator("main"), {
+        first: panel("A"),
+        second: panel("B"),
+      });
+    }
+    const panelMember = (memberName: string) => ({
+      memberName,
+      kind: "component" as const,
+      access: "field" as const,
+      componentClassName: "Panel",
+      collection: false,
+    });
+    const locatorMember = (memberName: string) => ({
+      memberName,
+      kind: "locator" as const,
+      access: "field" as const,
+      collection: false,
+    });
+    registerCompiledPom(ShellPage, {
+      className: "ShellPage",
+      tools: [],
+      members: [
+        {
+          memberName: "shell",
+          kind: "component",
+          access: "field",
+          componentClassName: "Shell",
+          collection: false,
+        },
+      ],
+      components: [
+        {
+          className: "Shell",
+          members: [
+            locatorMember("root"),
+            panelMember("first"),
+            panelMember("second"),
+          ],
+          tools: [],
+        },
+        {
+          className: "Panel",
+          members: [locatorMember("root"), locatorMember("heading")],
+          tools: [action("Panel.close")],
+        },
+      ],
+    });
+    const ayme = createAyme({
+      pageFactory: () => page,
+      webMCP: { enabled: true },
+      agentConnection: true,
+      pageObjects: [ShellPage],
+    });
+    stop = ayme.start();
+    await vi.waitFor(() => expect(handed.aymeMcp).toBeDefined());
+    await vi.waitFor(() =>
+      expect(
+        ayme.tools.list().find(({ name }) => name === "Panel.close")?.available
+      ).toBe(true)
+    );
+    const tree = (await ayme.tools.run("page_objects", {})) as string;
+    const [a, b] = [...tree.matchAll(/Panel (po\d+)/g)].map(([, id]) => id!);
+
+    expect(tree).toBe(
+      [
+        "ShellPage",
+        "  shell:",
+        `    - Panel ${a}`,
+        '        heading: heading "A" [level=2]',
+        `    - Panel ${b}`,
+        '        heading: heading "B" [level=2]',
+      ].join("\n")
+    );
+    expect(await handed.aymeMcp!.run("Panel.close", { id: b })).toEqual({
+      settled: true,
+      changes: `ShellPage\n  shell:\n    - Panel ${b} (removed)`,
+    });
+  });
+
   it("leaves ayme.tools.run's full record as it is", async () => {
     const { ayme } = await shoppingList("Milk");
 
