@@ -119,7 +119,23 @@ export default [
   // front doors.
   frontDoors(undefined, ["src/*.ts"], { tests: false }),
   frontDoors(undefined, ["src/*.test.ts"], { tests: true }),
-  // Test support (ADR-0057) uses the slices' front doors, as a test of the
-  // package does.
-  frontDoors(undefined, ["testing/**/*.ts"], { tests: true }),
+  // Test support (ADR-0057) drives the built command from outside, so it
+  // imports nothing of src/.
+  {
+    files: ["testing/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: String.raw`^\.\.?/(.*/)?src(/|$)`,
+              message:
+                "The MCP package's test support uses no slice: it drives the built ayme command.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

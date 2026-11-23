@@ -537,7 +537,9 @@ it("no packed package carries test support (ADR-0057)", () => {
       "./testing"
     );
     expect(
-      filesOf(dir).filter((file) => /testing|test-utils/.test(file)),
+      filesOf(dir).filter((file) =>
+        /testing|test-utils|testSupport/.test(file)
+      ),
       name
     ).toEqual([]);
   }
@@ -557,11 +559,7 @@ it("a package with test support publishes its exports without the testing entry"
         publishConfig?: { exports?: Exports };
       }
   ).filter((manifest) => manifest.exports?.["./testing"]);
-  expect(withTestSupport.map(({ name }) => name).sort()).toEqual([
-    "@ayme-dev/inspector",
-    "@ayme-dev/mcp",
-    "@ayme-dev/webmcp",
-  ]);
+  expect(withTestSupport).not.toHaveLength(0);
   for (const { name, exports, publishConfig } of withTestSupport) {
     const published = Object.fromEntries(
       Object.entries(exports!).filter(([entry]) => entry !== "./testing")

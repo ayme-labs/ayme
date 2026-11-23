@@ -23,13 +23,15 @@ const slices = Object.keys(allowedSlices);
 const unlayered = ["app"];
 const sourceFiles = "src/**/*.{ts,tsx}";
 
+/** A relative import beneath one of `others`, past its front door. A path
+ * through testing/ is test support, which has no front door. */
+const frontDoor = (others) => ({
+  regex: `^\\.\\.?/(?!(.*/)?testing/)(.*/)?(${others.join("|")})/(?!index(\\.[jt]sx?)?$)`,
+  message: "Import another slice through its index.ts.",
+});
+
 const patterns = [
-  {
-    // A relative import beneath another slice, past its front door. A path
-    // through testing/ is test support, which has no front door.
-    regex: `^\\.\\.?/(?!(.*/)?testing/)(.*/)?(${slices.join("|")})/(?!index(\\.[jt]sx?)?$)`,
-    message: "Import another slice through its index.ts.",
-  },
+  frontDoor(slices),
   {
     regex: "^@ayme-dev/recorder(/(?!contract$).*)?$",
     message:
@@ -103,7 +105,7 @@ function sliceBoundaries(files, { ignores } = {}) {
 }
 
 // The page objects take Playwright's types, as a test does.
-const pageObjects = ["testing/**/*.ts"];
+const pageObjects = ["testing/**/*.{ts,tsx}"];
 const playwrightPattern = patterns[2];
 
 export default [
@@ -117,5 +119,16 @@ export default [
   restricted(
     pageObjects,
     patterns.filter((pattern) => pattern !== playwrightPattern)
+  ),
+  // A folder of testing/ named after a slice belongs to that slice, so it
+  // may use the slice's own files (ADR-0057).
+  ...slices.map((slice) =>
+    restricted(
+      [`testing/${slice}/**/*.{ts,tsx}`],
+      [
+        frontDoor(slices.filter((other) => other !== slice)),
+        ...patterns.slice(1).filter((pattern) => pattern !== playwrightPattern),
+      ]
+    )
   ),
 ];

@@ -77,7 +77,7 @@ The exception is checking survivors from a CI run: scope Stryker to their files 
 
 A package's test support, the fakes, test doubles, page objects, builders and harnesses only tests may use, lives in its `testing/` folder beside `src/`. It is never built and never published. Only test files may import it; lint enforces it ([`testing-entries.js`](../packages/eslint-config/testing-entries.js)). Why, and the options we rejected: [ADR-0057](adr/0057-test-support-lives-beside-src-and-is-never-published.md).
 
-Other workspaces import what the folder's `index.ts` exports, from source, as `@ayme-dev/<package>/testing`. The rest of the folder is for the package's own tests: a folder named after a slice holds that slice's test support, which may use the slice's own files, and other slices through their front doors.
+Other workspaces import what the folder's `index.ts` exports, from source, as `@ayme-dev/<package>/testing`. The rest of the folder is for the package's own tests, and a folder named after a slice holds that slice's test support. What test support may import from `src/` is in each package's lint config, such as the Inspector's [`eslint.config.js`](../packages/inspector/eslint.config.js).
 
 | Import                              | Holds                                                                                                                                                                                    |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

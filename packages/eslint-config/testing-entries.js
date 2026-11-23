@@ -50,6 +50,11 @@ export default [
       [`${plugin}/no-restricted-syntax`]: [
         "error",
         { selector: `ImportExpression[source.value=${specifier}]`, message },
+        // A type written as `import("../testing").T`.
+        {
+          selector: `TSImportType Literal[value=${specifier}]`,
+          message,
+        },
         {
           selector: `CallExpression[callee.name='require'][arguments.0.value=${specifier}]`,
           message,

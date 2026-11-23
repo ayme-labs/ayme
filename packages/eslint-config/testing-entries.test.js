@@ -64,6 +64,7 @@ test("source may not load test support dynamically", () => {
   for (const code of [
     'export const testing = import("@ayme-dev/webmcp/testing");\n',
     'export const testing = import("../testing");\n',
+    'export type Agent = import("../testing").Agent;\n',
     'export const testing = import("../testing/pom/Inspector");\n',
     'export const testing = require("@ayme-dev/webmcp/testing");\n',
   ])

@@ -19,8 +19,9 @@ export default defineConfig([
     // The recorder window: index.html and one script, which the engine
     // serves from the folder it is handed. Everything the script needs is
     // inside it, React and the channel's client included: nothing is left to
-    // resolve where it is served.
-    clean: true,
+    // resolve where it is served. The whole of dist is cleaned, not only
+    // this build's folder.
+    clean: ["dist"],
     inputOptions,
     dts: false,
     entry: { window: "src/app/main.tsx" },
