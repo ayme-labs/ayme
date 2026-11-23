@@ -115,6 +115,11 @@ it.each([
     reason: /^ENOENT: no such file or directory/,
   },
   { name: "is not JSON", content: "cookies", reason: /JSON/ },
+  {
+    name: "holds no storage state object",
+    content: '"other.json"',
+    reason: /^it holds a string, not a storage state object\.$/,
+  },
 ])(
   "fails to start, before Chromium is launched, when the storage state file to load $name",
   async ({ content, reason }) => {

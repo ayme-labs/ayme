@@ -90,6 +90,7 @@ import {
   rangeText,
   type Playwright,
 } from "../projectPlaywright";
+import { storageStateIn } from "../storageFile";
 import { snapshotPositions } from "../traceTool";
 import {
   namedIn,
@@ -136,7 +137,7 @@ const loadedStorage = (file: string | undefined) =>
     ? Effect.succeed(undefined)
     : Effect.tryPromise({
         try: async () =>
-          JSON.parse(await readFile(file, "utf8")) as StorageState,
+          storageStateIn(await readFile(file, "utf8")) as StorageState,
         catch: (cause) =>
           new RecorderStartError(
             "storage-unreadable",
