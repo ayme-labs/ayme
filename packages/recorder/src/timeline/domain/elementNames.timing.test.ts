@@ -6,13 +6,13 @@ import {
 import { writeFileSync } from "node:fs";
 import { it } from "vitest";
 
-import { labelOf } from "./elementNames";
+import { ElementNames } from "./elementNames";
 
 /**
  * How long labelling every element of a large list takes, by the shape of
  * its items. Each run reads the list afresh and labels each of its
- * elements once, as the rows of a page that shows the whole list at once
- * are labelled.
+ * elements once, in one naming, as the timeline names the rows of a page
+ * that shows the whole list at once.
  *
  * `pnpm test` leaves it out (`timingTests` in vitest.config.ts). Run it by
  * hand from this package's directory, with `AYME_LABEL_TIMING` set to the
@@ -82,7 +82,8 @@ function labelEvery(yaml: string): number {
   const nodes: StructuralNode[] = [];
   tree.walk((node) => nodes.push(node));
   const start = performance.now();
-  for (const node of nodes) labelOf(tree, node);
+  const names = new ElementNames(tree);
+  for (const node of nodes) names.labelOf(node, "after");
   return performance.now() - start;
 }
 

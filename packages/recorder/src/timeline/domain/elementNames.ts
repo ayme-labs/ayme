@@ -61,32 +61,76 @@ export function namedInside(node: StructuralNode): StructuralNode[] {
   });
 }
 
-/** An element by its label; null for one with no role, no name and no text
- * inside it. */
-export function labelOf(
-  tree: StructuralTree,
-  node: StructuralNode,
-  view: PageView = "after"
-): NamedElement | null {
-  const place = placeOf(tree, node, view);
-  return labelsOf(place.tree).of(place.node);
+/**
+ * Names the elements of one tree: a read, or a Change Tree, whose removed
+ * elements are counted against the page before the change, which
+ * `pageBefore` builds under the tree's refs, in its own order. Each page,
+ * and its labels, is worked out when first asked and kept only as long as
+ * this is: a label is plain data that outlives them. Name the elements of
+ * one naming, as a Change Tree's rows, through one instance.
+ */
+export class ElementNames {
+  private after: PageLabels | undefined;
+  /** The page before the change, with its labels once asked; null when
+   * there is none. */
+  private before:
+    { readonly tree: StructuralTree; labels?: PageLabels } | null | undefined;
+
+  constructor(
+    readonly tree: StructuralTree,
+    private readonly pageBefore?: () => StructuralTree
+  ) {}
+
+  /** An element by its label, counted against the page `view` says; null
+   * for one with no role, no name and no text inside it. */
+  labelOf(node: StructuralNode, view: PageView): NamedElement | null {
+    const place = this.placeOf(node, view);
+    return place.labels.of(place.node);
+  }
+
+  /** An element by its label when it has a role or a name, or else its
+   * nearest ancestor that has one; with none, the element by the text
+   * inside it. Null when it has no text inside either. */
+  labelNear(node: StructuralNode, view: PageView): NamedElement | null {
+    const place = this.placeOf(node, view);
+    const named = [
+      place.node,
+      ...place.tree.getAncestorsOf(place.node.ref),
+    ].find((one) => ownName(one) !== null);
+    return place.labels.of(named ?? place.node);
+  }
+
+  /** The page an element is labelled on, its labels, and the element
+   * there: the page before the change, for one counted against it. */
+  private placeOf(node: StructuralNode, view: PageView) {
+    const page = view === "before" ? this.builtBefore() : null;
+    const there = page?.tree.getNode(node.ref);
+    if (page && there) {
+      page.labels ??= new PageLabels(page.tree);
+      return { tree: page.tree, node: there, labels: page.labels };
+    }
+    this.after ??= new PageLabels(this.tree);
+    return { tree: this.tree, node, labels: this.after };
+  }
+
+  private builtBefore() {
+    if (this.before === undefined) {
+      const tree = this.pageBefore?.();
+      this.before = tree ? { tree } : null;
+    }
+    return this.before;
+  }
 }
 
-/** An element by its label when it has a role or a name, or else its
- * nearest ancestor that has one; with none, the element by the text inside
- * it. Null when it has no text inside either. */
-export function labelNear(
-  tree: StructuralTree,
-  node: StructuralNode,
-  view: PageView = "after"
-): NamedElement | null {
-  const place = placeOf(tree, node, view);
-  const labels = labelsOf(place.tree);
-  const named = [place.node, ...place.tree.getAncestorsOf(place.node.ref)].find(
-    (one) => ownName(one) !== null
-  );
-  return labels.of(named ?? place.node);
-}
+/** An element of a read by its label, a naming of its own:
+ * `ElementNames.labelOf`. */
+export const labelOf = (tree: StructuralTree, node: StructuralNode) =>
+  new ElementNames(tree).labelOf(node, "after");
+
+/** An element of a read by its label, or its nearest named ancestor's, a
+ * naming of its own: `ElementNames.labelNear`. */
+export const labelNear = (tree: StructuralTree, node: StructuralNode) =>
+  new ElementNames(tree).labelNear(node, "after");
 
 /**
  * A step's element in words when no snapshot names it, from its selector: a
@@ -110,39 +154,6 @@ export function selectorWords(
 /** An element in words: its label; "element" for none. */
 export const wordsOf = (named: NamedElement | null): string =>
   named ? named.label : "element";
-
-/** The labels of each tree, built once: every row and step of a read asks
- * the one index. */
-const built = new WeakMap<StructuralTree, PageLabels>();
-
-/** The page before each Change Tree, under the Change Tree's refs: a removed
- * element is counted against it, in its own order. */
-const pagesBefore = new WeakMap<StructuralTree, StructuralTree>();
-
-/** Has the labels of a Change Tree's removed elements counted against the
- * page as it was before the change, `before`, under the tree's refs. */
-export function withPageBefore(
-  change: StructuralTree,
-  before: StructuralTree
-): StructuralTree {
-  pagesBefore.set(change, before);
-  return change;
-}
-
-function labelsOf(tree: StructuralTree): PageLabels {
-  let labels = built.get(tree);
-  // Stryker disable next-line ConditionalExpression: a cache; building it again gives the same labels
-  if (!labels) built.set(tree, (labels = new PageLabels(tree)));
-  return labels;
-}
-
-/** The page an element of a Change Tree is labelled on, and the element
- * there: the page before the change, for one counted against it. */
-function placeOf(tree: StructuralTree, node: StructuralNode, view: PageView) {
-  const page = view === "before" ? pagesBefore.get(tree) : undefined;
-  const there = page?.getNode(node.ref);
-  return page && there ? { tree: page, node: there } : { tree, node };
-}
 
 /** One way to name an element: its words, Playwright's selector for them,
  * and the elements of its document that selector matches, in order. */
