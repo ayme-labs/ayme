@@ -130,6 +130,8 @@ function flagConflict(values: Flags): Command | undefined {
     return fail(
       "--load-storage and --save-storage apply when the recorder opens the browser, not with --cdp-endpoint: the running browser's storage is its own, and saving it would open a page in it."
     );
+  if (values["load-storage"] === "" || values["save-storage"] === "")
+    return fail("Give --load-storage and --save-storage the name of a file.");
   return undefined;
 }
 

@@ -40,12 +40,12 @@ The terminal prints the address of the recorder window, such as `Recorder UI: ht
 
 - `--headless`: open Chromium without a window. Open the printed window address in a browser to control the recording.
 - `--start-recording`: open the recorder already recording, so that the recording and its trace hold the first page load, its network requests included. The recording's first Visit starts as soon as the browser commits to the page's document, before the page has finished loading: if you press **Stop** before that, the load is not in the recording, though its network requests can still be in the trace, which runs from the start. A click on the blank page before it loads, or an element picked there for **Assert visibility**, is not recorded. The page opens blank, the recorder starts recording, and only then does the page go to `<url>`. **Stop**, **Continue recording**, **Clear** and **Finish** work as they do after pressing **Record**; after **Clear**, the next recording starts from the page as it is then.
-- `--load-storage <file>`: open the page with the cookies and local storage in `<file>`, a storage state file as Playwright writes it: one saved by `npx playwright codegen --save-storage`, by `--save-storage` here, or by your project's own login setup with `context.storageState()`. The recorder window gets none of it. If the file cannot be read, the recorder does not start.
-- `--save-storage <file>`: when the recorder ends, however it ends, save the browser's cookies and local storage to `<file>`, in the same format, as `npx playwright codegen --save-storage` does. It is saved also when nothing was recorded, so you can open the recorder only to log in and end it. It is saved after the recording and its trace have ended, so nothing it does is recorded: to read the local storage of a site no page is open at, Playwright opens a page of its own for a moment. If the file cannot be written, the recorder prints a warning, and the recording is saved all the same.
+- `--load-storage <file>`: open the page with the cookies and local storage in `<file>`, a storage state file as Playwright writes it: one saved by `npx playwright codegen --save-storage`, by `--save-storage` here, or by your project's own login setup with `context.storageState()`. The recorder window gets none of it. If the file cannot be read, or holds no storage state object, the recorder does not start.
+- `--save-storage <file>`: when the recorder ends, however it ends, save the browser's cookies and local storage to `<file>`, in the same format, as `npx playwright codegen --save-storage` does. It is saved also when nothing was recorded, so you can open the recorder only to log in and end it. It is saved once the recording is over and its trace is stopped, thrown away or given up on, so nothing it does is recorded: to read the local storage of a site no page is open at, Playwright opens a page of its own for a moment. If it cannot be saved, the recorder prints [a warning](#warnings).
 
 To end, press **Finish**, close the browser, or press Ctrl+C in the terminal. Closing the browser or pressing Ctrl+C while recording or paused saves what was recorded so far, as Finish does; before you press Record there is nothing to save. Pressing Ctrl+C a second time does not cut the save short.
 
-Ending always finishes. If the browser stops answering, the recorder waits a few seconds for the steps still under way and leaves out those that are not complete, then saves the rest. If the trace cannot be written either, it gives up waiting after a minute and saves the package without its trace. If nothing was recorded, it ends with nothing saved. With `--save-storage`, it then waits at most half a minute for the storage state, and warns if it was not saved.
+Ending always finishes. If the browser stops answering, the recorder waits a few seconds for the steps still under way and leaves out those that are not complete, then saves the rest. If the trace cannot be written either, it gives up waiting after a minute and saves the package without its trace. If nothing was recorded, it ends with nothing saved. With `--save-storage`, it then waits at most half a minute for the storage state.
 
 ### `codegen --cdp-endpoint <address>`
 
@@ -87,7 +87,7 @@ npx @ayme-dev/cli install
 
 ## Recording a logged-in app
 
-The recorder keeps no login of its own: each `codegen <url>` opens a browser with no cookies and no local storage, and nothing of it is kept when the recorder ends. To record an app you must be logged in to, do one of these:
+The recorder keeps no login of its own: each `codegen <url>` opens a browser with no cookies and no local storage unless you load some with `--load-storage`, and nothing of it is kept when the recorder ends unless you save it with `--save-storage`. To record an app you must be logged in to, do one of these:
 
 - Log in in the recorded page before you press **Record**: recording is off at first, and nothing you do before Record is recorded.
 - Load a login saved before with `--load-storage <file>`. Save one with `--save-storage <file>`, by logging in and ending the recorder, or with `npx playwright codegen --save-storage <file>`, or use the file your project's login setup writes.
@@ -136,9 +136,9 @@ The command prints these as `Warning: …` while it records. The recording goes 
 - **Playwright's report of an input does not have the shape of a snapshot.** That typing, select or upload is recorded with what changed up to its end only, not with what changed before it.
 - **The names of the files chosen could not all be read.** The upload is recorded with the first file name only. This happens when the file input is gone by the time the recorder reads it.
 - **The project's `playwright trace` could not number the trace's snapshots.** The package has its trace, but not the position numbers that open the snapshot of each step.
-- **The storage state could not be saved.** `--save-storage` could not write its file, or the browser did not answer in time. The recording is saved all the same. This one comes as the recorder ends.
+- **The storage state could not be saved.** `--save-storage` could not write its file, the browser did not answer within half a minute, or the recorder broke down while it saved. The recording is saved all the same. This one comes as the recorder ends.
 
-When the recorder cannot start, it prints one sentence saying why, and exits with code 1: no Playwright installed, Playwright too old, no Playwright recorder found in that version, Chromium could not be opened or reached, the `--cdp-endpoint` address is not on this machine, the running browser has no page or more than one, the `--load-storage` file cannot be read, or the recorder window could not be served.
+When the recorder cannot start, it prints one sentence saying why, and exits with code 1: no Playwright installed, Playwright too old, no Playwright recorder found in that version, Chromium could not be opened or reached, the `--cdp-endpoint` address is not on this machine, the running browser has no page or more than one, the `--load-storage` file cannot be read or holds no storage state object, or the recorder window could not be served.
 
 ## Known limits
 

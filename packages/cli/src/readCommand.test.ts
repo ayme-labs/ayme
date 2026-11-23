@@ -172,6 +172,16 @@ describe("readCommand", () => {
     });
   });
 
+  it.each([["--load-storage="], ["--save-storage="]])(
+    "fails when %s is given no file name",
+    (flag) => {
+      expect(readCommand(["codegen", "http://localhost", flag])).toEqual({
+        kind: "error",
+        text: `Give --load-storage and --save-storage the name of a file.\n\n${USAGE}`,
+      });
+    }
+  );
+
   it.each([["--load-storage"], ["--save-storage"]])(
     "fails when a running browser is given %s: its storage is the browser's own",
     (flag) => {
