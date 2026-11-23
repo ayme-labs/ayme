@@ -66,6 +66,13 @@ const edits: Edit[] = [
     count: 1,
   },
   {
+    why: "a declared Page Object child the capture is asked to keep stays a node of its own, though its role is presentation or none",
+    find: "const role = (_a = getAriaRole(element)) != null ? _a : defaultRole;",
+    replace:
+      'const ariaRole = (_a = getAriaRole(element)) != null ? _a : defaultRole;\n  const role = options.aymeRefs?.kept?.has(element) && (!ariaRole || ariaRole === "presentation" || ariaRole === "none") ? "generic" : ariaRole;',
+    count: 1,
+  },
+  {
     why: "refs counted once per document, in its slot",
     find: '"e" + ++lastRef',
     replace: '"e" + options.aymeRefs.next()',

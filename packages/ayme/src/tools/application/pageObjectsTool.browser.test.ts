@@ -232,6 +232,48 @@ describe("page_objects on a real page", () => {
     }
   });
 
+  it("reads a declared span of text whose parent took in its text, and one whose role is presentation or none", async () => {
+    document.body.innerHTML = `
+      <h1>Account</h1>
+      <div><span class="note">Milk</span></div>
+      <div><span class="note" role="presentation">Eggs</span></div>
+      <div><span class="note" role="none">Tea</span></div>`;
+    const page = createPage();
+    const session = startSession(page);
+    class AccountPage {
+      notes = page.locator(".note");
+    }
+    registerCompiledPom(AccountPage, {
+      className: "AccountPage",
+      tools: [],
+      members: [
+        {
+          memberName: "notes",
+          kind: "locator",
+          access: "field",
+          collection: true,
+        },
+      ],
+      components: [],
+    });
+    session.register(AccountPage);
+    try {
+      const text = (await session.ayme.tools.run("page_objects", {})) as string;
+
+      expect(text).toBe(
+        [
+          "AccountPage",
+          "  notes:",
+          "    - text: Milk",
+          "    - text: Eggs",
+          "    - text: Tea",
+        ].join("\n")
+      );
+    } finally {
+      session.stop();
+    }
+  });
+
   it("leaves out a declared child's element in an excluded subtree", async () => {
     document.body.innerHTML = `
       <h1>Account</h1>

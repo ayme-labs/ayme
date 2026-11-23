@@ -87,7 +87,11 @@ export function structureCapture(
     tree = placeCapturedRoots(
       tree,
       fullTree,
-      capture.kept.map((ref) => ({ kind: "referenced", ref: parseRef(ref) })),
+      capture.kept.map((ref) => ({
+        kind: "referenced",
+        ref: parseRef(ref),
+        withText: true,
+      })),
       refFactory
     ).tree;
   return { tree, pomRootMarks: marksByRef };
