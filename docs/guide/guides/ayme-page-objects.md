@@ -99,6 +99,22 @@ An action can return a Page Object, as `openNewProjectDialog` returns a `NewProj
 
 The method's parameters are the tool's inputs. Plain data works: strings, numbers, booleans, unions of literals, arrays, tuples and plain objects. A function, a class instance such as `Date`, an object with methods, `any`, `unknown` or an open generic fails the build, which names the parameter.
 
+Take two or more parameters as one destructured object, and keep a single parameter positional, as in `pick(name: string)`. A call then names each value, two values of the same type cannot be swapped, and an optional input is added without reordering every caller's arguments.
+
+```ts
+export class NewProjectDialog extends AppComponent {
+  @ayme.action
+  async fillProjectForm({ name, owner }: { name: string; owner: string }) {
+    await this.root.getByLabel("Name").fill(name);
+    await this.root.getByLabel("Owner").fill(owner);
+    return this;
+  }
+}
+
+// In a spec:
+await dialog.fillProjectForm({ name: "Q3 launch", owner: "Ada" });
+```
+
 **`description`** tells an agent what it needs to use the action well that its name and parameters cannot: what it causes, who may do it, and how to use it. An action whose description would only restate its name needs none.
 
 ```ts

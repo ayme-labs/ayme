@@ -218,7 +218,8 @@ async openNewProjectDialog() {
 
 // On NewProjectDialog:
 // ✅ An action: one goal, several interactions.
-async fillProjectForm(name: string, owner: string) {
+// Two or more inputs come as one object; a single input stays positional.
+async fillProjectForm({ name, owner }: { name: string; owner: string }) {
   await this.nameInput.fill(name);
   await this.owner.select(owner);
   return this;
