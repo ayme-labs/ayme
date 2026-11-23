@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 
 export const USAGE = `Usage: ayme-recorder codegen <url> [--headless] [--start-recording]
+                     [--load-storage <file>] [--save-storage <file>]
        ayme-recorder codegen --cdp-endpoint <address>
        ayme-recorder trace <target>
        ayme-recorder install [browser]
@@ -11,6 +12,14 @@ export const USAGE = `Usage: ayme-recorder codegen <url> [--headless] [--start-r
   --start-recording
                  Open the recorder already recording, so that the recording
                  and its trace hold the first page load.
+  --load-storage <file>
+                 Open the page with the cookies and local storage in <file>,
+                 a storage state as Playwright writes it, such as one saved
+                 with npx playwright codegen --save-storage.
+  --save-storage <file>
+                 When the recorder ends, however it ends, save the browser's
+                 cookies and local storage to <file>, in the same format,
+                 also when nothing was recorded.
   --cdp-endpoint <address>
                  Record the page of a Chromium that is already running, at
                  the address of its DevTools protocol on this machine, such
@@ -39,6 +48,8 @@ export type Command =
       url: string;
       headless?: boolean;
       startRecording?: true;
+      loadStorage?: string;
+      saveStorage?: string;
     }
   | { kind: "trace"; args: string[] }
   | { kind: "install"; args: string[] }
@@ -69,6 +80,8 @@ type Flags = {
   headless?: boolean;
   "start-recording"?: boolean;
   "cdp-endpoint"?: string;
+  "load-storage"?: string;
+  "save-storage"?: string;
 };
 
 const fail = (message: string): Command => ({
@@ -89,6 +102,8 @@ function readCodegen(args: string[]): Command {
         headless: { type: "boolean" },
         "start-recording": { type: "boolean" },
         "cdp-endpoint": { type: "string" },
+        "load-storage": { type: "string" },
+        "save-storage": { type: "string" },
       },
     }));
   } catch (error) {
@@ -106,6 +121,14 @@ function flagConflict(values: Flags): Command | undefined {
   )
     return fail(
       "--headless and --start-recording apply when the recorder opens the browser, not with --cdp-endpoint."
+    );
+  if (
+    values["cdp-endpoint"] !== undefined &&
+    (values["load-storage"] !== undefined ||
+      values["save-storage"] !== undefined)
+  )
+    return fail(
+      "--load-storage and --save-storage apply when the recorder opens the browser, not with --cdp-endpoint: the running browser's storage is its own, and saving it would open a page in it."
     );
   return undefined;
 }
@@ -130,5 +153,19 @@ function codegenCommand(positionals: string[], values: Flags): Command {
     url,
     ...(values.headless ? { headless: true } : {}),
     ...(values["start-recording"] ? { startRecording: true as const } : {}),
+    ...storageOf(values),
+  };
+}
+
+/** The storage state files `codegen <url>` was given, as Playwright's
+ * codegen takes them. */
+function storageOf(values: Flags) {
+  return {
+    ...(values["load-storage"] === undefined
+      ? {}
+      : { loadStorage: values["load-storage"] }),
+    ...(values["save-storage"] === undefined
+      ? {}
+      : { saveStorage: values["save-storage"] }),
   };
 }

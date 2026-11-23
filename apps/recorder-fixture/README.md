@@ -106,6 +106,16 @@ latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
   `windowReview.spec.ts` does it in the recorder window, through its page
   objects, on the scripted browser.
 
+- `storage.spec.ts` runs the command with `--load-storage` and
+  `--save-storage` on `app/login.html`, a stand-in for a login whose "Log
+  in" sets a cookie and a local storage entry, never a real login. It reads
+  the storage state file the command saved, opens it with the test's own
+  Playwright, and gives the command one Playwright saved. The login page
+  links to the cart on another origin of the same server (`localhost` for
+  `127.0.0.1`), so that the save reads the login page's local storage from a
+  page Playwright opens for it, which leaves nothing in the package or the
+  trace.
+
 Two environment variables exist for these tests, and `runRecorder` sets both:
 
 - `AYME_RECORDER_HEADLESS=1` launches the browser without a window, since the

@@ -161,6 +161,26 @@ describe("which browser a target asks for", () => {
     });
   });
 
+  it("launches with the storage state files it is given", () => {
+    expect(
+      browserOf(
+        {
+          url: "http://localhost:3000",
+          loadStorage: "auth.json",
+          saveStorage: "saved.json",
+        },
+        {}
+      )
+    ).toEqual({
+      launch: {
+        url: "http://localhost:3000",
+        headless: false,
+        loadStorage: "auth.json",
+        saveStorage: "saved.json",
+      },
+    });
+  });
+
   it("attaches to the running browser at an address", () => {
     expect(
       browserOf(

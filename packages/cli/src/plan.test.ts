@@ -57,6 +57,25 @@ describe("what the command line does for a command", () => {
     });
   });
 
+  it("records a URL with the storage state files it was given", () => {
+    expect(
+      planOf({
+        kind: "codegen",
+        url: "http://localhost",
+        loadStorage: "auth.json",
+        saveStorage: "saved.json",
+      })
+    ).toEqual({
+      kind: "codegen",
+      target: {
+        url: "http://localhost",
+        headless: undefined,
+        loadStorage: "auth.json",
+        saveStorage: "saved.json",
+      },
+    });
+  });
+
   it("records a running browser at its address", () => {
     expect(
       planOf({ kind: "attach", cdpEndpoint: "http://127.0.0.1:9222" })
