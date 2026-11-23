@@ -327,14 +327,22 @@ export async function startScriptedRecorder(
       void recorder.done.then((ended) => {
         outcome = ended;
       });
+      let phase = "";
+      const unsubscribe = recorder.subscribe((update) => {
+        phase = update.state.phase;
+      });
       recorder.end();
       /** Lets what the clock set off run, the package's write included. */
       const turn = (wait: number) =>
         new Promise((resolve) => setTimeout(resolve, wait));
       for (let passed = 0; passed < ms && !outcome; passed += 1_000) {
-        await turn(0);
+        // While saving, the package is written on the disk, and what comes
+        // after it, the storage state, waits on the clock: the disk is
+        // given some real time with each second of the clock.
+        await turn(phase === "saving" ? 10 : 0);
         await Effect.runPromise(clock!.adjust(Math.min(1_000, ms - passed)));
       }
+      unsubscribe();
       // The clock has done its part: what is left is the disk's.
       for (let waited = 0; waited < 100 && !outcome; waited += 1)
         await turn(20);

@@ -12,9 +12,9 @@ import { startScriptedRecorder } from "./testing";
 // 9). The scripted browser plays a browser that hangs: it goes silent.
 
 /** The wrap-up's time limit, the trace's after it, and the storage state's
- * after that, with a few seconds for the package, which is written on the
- * disk while the test's clock runs on. */
-const BOUND_MS = 5_000 + 60_000 + 30_000 + 5_000;
+ * after that, with ten seconds for the package, which is written on the disk
+ * while the test's clock runs on. */
+const BOUND_MS = 5_000 + 60_000 + 30_000 + 10_000;
 
 let projectDir: string;
 beforeEach(async () => {
