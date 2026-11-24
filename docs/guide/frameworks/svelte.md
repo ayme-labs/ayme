@@ -188,7 +188,7 @@ A build includes ayme only with the plugin's `include: true`. The config above k
 
 - Call `useAyme(options)` only in the root `+layout.svelte` or `App.svelte`. SvelteKit creates the next layout before it destroys the previous one, so an owner in a route-group layout becomes a second active owner on navigation and throws.
 - Decorators inside `.svelte` scripts are not compiled.
-- Page Object Models in `ayme/pom/` compile with `ayme/tsconfig.json`, which extends your `tsconfig.json` and, through it, SvelteKit's generated one. Models in another folder outside `src`, such as a `playwright/` folder, need their own tsconfig with `experimentalDecorators`, passed to the plugin as `ayme({ tsconfigPath })`.
+- Page Object Models in `ayme/pom/` compile with `ayme/tsconfig.json`, which extends your `tsconfig.json` and, through it, SvelteKit's generated one.
 - The supported Svelte versions are on [Install](../start/install.md#supported-versions). The [SvelteKit example](https://github.com/ayme-labs/ayme/blob/main/apps/example-sveltekit/README.md) runs SvelteKit 2.
 
 ## Troubleshooting
