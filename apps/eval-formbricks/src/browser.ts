@@ -44,6 +44,7 @@ export type BrowserContext = {
     cookies: { name: string; value: string; url: string }[]
   ): Promise<void>;
   cookies(): Promise<{ name: string }[]>;
+  addInitScript(script: { path: string }): Promise<void>;
   close(): Promise<void>;
   browser(): { version(): string } | null;
 };
@@ -56,6 +57,8 @@ type Chromium = {
       headless: boolean;
       viewport: { width: number; height: number };
       args?: string[];
+      bypassCSP?: boolean;
+      permissions?: string[];
     }
   ): Promise<BrowserContext>;
 };

@@ -16,6 +16,8 @@ export type Plan =
             url: string;
             headless: boolean | undefined;
             startRecording?: true;
+            loadStorage?: string;
+            saveStorage?: string;
           }
         | { cdpEndpoint: string };
     }
@@ -58,6 +60,8 @@ export function planOf(command: Command): Plan {
           url: command.url,
           headless: command.headless,
           ...(command.startRecording ? { startRecording: true as const } : {}),
+          loadStorage: command.loadStorage,
+          saveStorage: command.saveStorage,
         },
       };
     case "install":

@@ -1,20 +1,16 @@
 import type { Page } from "@playwright/test";
-import { executePublishedTool } from "@ayme-dev/webmcp/testing";
-
+import { AppView } from "./appView";
 import { expect, openFixture, outline, test } from "./fixtures";
 
 // E2E: the Model lens on a fixture page whose Page Object has child Page
 // Objects, a collection, and a child that is not on the page, with the ayme
-// runtime and a recording WebMCP driver.
+// runtime.
 
 test.use({ fixturePath: "/models.html" });
 
-/**
- * The Page Object Models snapshot describes, called over WebMCP the
- * way an agent calls it.
- */
-async function modelsAnAgentIsTold(page: Page) {
-  const { pomDefinitions } = (await executePublishedTool(page, "snapshot")) as {
+/** The Page Object Models snapshot describes, run by the page's runtime. */
+async function modelsSnapshotDescribes(page: Page) {
+  const { pomDefinitions } = (await new AppView(page).run("snapshot")) as {
     pomDefinitions: string;
   };
   const names = [...pomDefinitions.matchAll(/^(\S+)/gm)].map(
@@ -31,11 +27,11 @@ async function modelsAnAgentIsTold(page: Page) {
   return names;
 }
 
-test("the model list shows every Page Object Model an agent is told about, including those not on the page", async ({
+test("the model list shows every Page Object Model snapshot describes, including those not on the page", async ({
   page,
   inspector,
 }) => {
-  const described = await modelsAnAgentIsTold(page);
+  const described = await modelsSnapshotDescribes(page);
 
   await expect
     .poll(() => inspector.navigator.model.modelNames())

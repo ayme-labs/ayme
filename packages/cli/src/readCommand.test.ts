@@ -149,6 +149,57 @@ describe("readCommand", () => {
     }
   );
 
+  it("lists --load-storage and --save-storage in its usage text", () => {
+    expect(USAGE).toContain("--load-storage <file>");
+    expect(USAGE).toContain("--save-storage <file>");
+  });
+
+  it("records with the storage state files it is given, as Playwright's codegen takes them", () => {
+    expect(
+      readCommand([
+        "codegen",
+        "http://localhost",
+        "--load-storage",
+        "auth.json",
+        "--save-storage",
+        "saved.json",
+      ])
+    ).toEqual({
+      kind: "codegen",
+      url: "http://localhost",
+      loadStorage: "auth.json",
+      saveStorage: "saved.json",
+    });
+  });
+
+  it.each([["--load-storage="], ["--save-storage="]])(
+    "fails when %s is given no file name",
+    (flag) => {
+      expect(readCommand(["codegen", "http://localhost", flag])).toEqual({
+        kind: "error",
+        text: `Give --load-storage and --save-storage the name of a file.\n\n${USAGE}`,
+      });
+    }
+  );
+
+  it.each([["--load-storage"], ["--save-storage"]])(
+    "fails when a running browser is given %s: its storage is the browser's own",
+    (flag) => {
+      expect(
+        readCommand([
+          "codegen",
+          "--cdp-endpoint",
+          "http://127.0.0.1:9222",
+          flag,
+          "auth.json",
+        ])
+      ).toEqual({
+        kind: "error",
+        text: `--load-storage and --save-storage apply when the recorder opens the browser, not with --cdp-endpoint: the running browser's storage is its own, and saving it would open a page in it.\n\n${USAGE}`,
+      });
+    }
+  );
+
   it.each([["--help"], ["-h"], ["codegen", "--help"]])(
     "prints the usage text for %j",
     (...args) => {

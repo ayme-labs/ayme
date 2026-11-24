@@ -1,8 +1,8 @@
 /**
  * The mark of an excluded subtree: an element that carries it, and everything
  * under it, is no part of the page ayme reads and acts on. Capture leaves it
- * out, Reach looks through it, picking and Demo Mode's pass-through let it be,
- * and screenshots hide it. Any client sets it on its own DOM, as the inline
+ * out, Reach looks through it, and picking and Demo Mode's pass-through let it
+ * be. Any client sets it on its own DOM, as the inline
  * Inspector does on its host.
  */
 export const EXCLUDE_ATTRIBUTE = "data-ayme-exclude";

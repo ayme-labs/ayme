@@ -25,7 +25,13 @@ import {
   listRegisteredPomTargets,
   getPomDefinitions,
   createPage,
+  listRootedToolInstances,
+  browserRegistry,
 } from "../src/page-objects/infrastructure";
+import {
+  renderPageObjectTree,
+  type PageObjectId,
+} from "../src/page-objects/domain";
 import { resolveTools, sessionReach } from "../src/runtime";
 import { callers } from "../src/shared";
 import type { RunContext } from "../src/runs/application";
@@ -75,6 +81,16 @@ export function runContext(
     navigation: documentNavigation(globalThis.document),
     ...(routerNavigate() ? { routerNavigate: routerNavigate() } : {}),
     pomDefinitions: getPomDefinitions,
+    pageObjectTree: async () =>
+      renderPageObjectTree(
+        (
+          await browserRegistry().readPageObjectTree(() =>
+            (
+              pageStateSession ?? getPageStateSession(globalThis.document)
+            ).look()
+          )
+        ).objects
+      ),
     get pageStateSession() {
       return pageStateSession ?? getPageStateSession(globalThis.document);
     },
@@ -127,4 +143,15 @@ export async function rootRef(label: string): Promise<string> {
     : [];
   if (!ref) throw new Error(`No root ref for ${label}.`);
   return ref;
+}
+
+/** A rooted test caller reads its instance's Page Object id without moving its cursor. */
+export async function rootId(label: string): Promise<PageObjectId> {
+  const ref = await rootRef(label);
+  // The id a rooted tool of the instance's class lists for that root.
+  const id = [...(await listRootedToolInstances()).values()]
+    .flat()
+    .find((instance) => instance.ref === ref)?.id;
+  if (!id) throw new Error(`No Page Object id for ${label}.`);
+  return id;
 }

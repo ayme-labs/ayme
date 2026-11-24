@@ -9,7 +9,6 @@ import {
 } from "../application/browserTools";
 import type { PublishedElementTool } from "../application/elementTools";
 import { pressKeyTool } from "../application/pressKeyTool";
-import { screenshotTool } from "../application/screenshotTool";
 import { generateLocatorTool } from "./generateLocator";
 import { NAVIGATION_TOOLS } from "./navigationTools";
 
@@ -32,7 +31,6 @@ const PUBLISHED_BROWSER_TOOLS: readonly PublishedElementTool[] = [
   withActionResultNote(fillFormTool),
   withActionResultNote(pressKeyTool),
   generateLocatorTool,
-  screenshotTool,
   ...NAVIGATION_TOOLS.map(withActionResultNote),
 ];
 

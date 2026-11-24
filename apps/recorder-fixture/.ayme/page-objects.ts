@@ -12,6 +12,7 @@ import { InputsPage } from "./pom/InputsPage";
 import { LargePage } from "./pom/LargePage";
 import { LatePage } from "./pom/LatePage";
 import { LeavingPage } from "./pom/LeavingPage";
+import { LoginPage } from "./pom/LoginPage";
 import { NestedPage } from "./pom/NestedPage";
 import { SettlingPage } from "./pom/SettlingPage";
 import { ShopPage } from "./pom/ShopPage";
@@ -31,6 +32,7 @@ export default [
   LargePage,
   LatePage,
   LeavingPage,
+  LoginPage,
   NestedPage,
   SettlingPage,
   ShopPage,

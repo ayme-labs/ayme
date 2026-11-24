@@ -19,7 +19,7 @@ const mission: Mission = {
     id: "survey-1",
     questionId: "question-1",
     initial: {
-      surveyName: "Onboarding draft run-1",
+      surveyName: "Onboarding survey run-1",
       questionHeadline: "What brought you here today? (run-1)",
     },
     editorUrl:

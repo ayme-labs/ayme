@@ -5,7 +5,6 @@ export { inlineInspectorContract, mergeInspectorState } from "./shared";
 export type {
   AgentConnectionStatus,
   AppProcessTool,
-  InspectorAgentImageRun,
   InspectorCommandResult,
   InspectorContract,
   InspectorEvent,

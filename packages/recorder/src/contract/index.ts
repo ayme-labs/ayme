@@ -181,13 +181,16 @@ export type RecorderWarning = {
    *   only, as the names of the others could not be read.
    * - notRecorded: an assertion, typing, a choice or an upload is left out
    *   of the recording, as its page could not be read.
+   * - storageNotSaved: the storage state could not be saved to the file the
+   *   recorder was asked to save it to; the recording is saved all the same.
    */
   readonly kind:
     | "reportShape"
     | "playwrightUnverified"
     | "traceWithoutPositions"
     | "uploadNamesUnknown"
-    | "notRecorded";
+    | "notRecorded"
+    | "storageNotSaved";
   /** A sentence for a person. */
   readonly message: string;
 };

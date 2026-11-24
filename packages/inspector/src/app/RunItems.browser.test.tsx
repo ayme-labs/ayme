@@ -106,6 +106,12 @@ beforeEach(() => {
         locator: "locator('li').nth(1)",
       },
     ],
+    rootedInstances: {
+      [archive.name]: [
+        { id: "po2", element: milk!, available: true },
+        { id: "po3", element: eggs!, available: true },
+      ],
+    },
   };
   startedAyme.setPage(fixture);
   startedAyme.setRegistry({ pageObjects: [listPage] });
@@ -137,7 +143,7 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-it("scopes an agent's collection Run to the item its ref named when it started", async () => {
+it("scopes an agent's collection Run to the item its id named when it started", async () => {
   // A Run's item is read from the latest look at the page when the Run
   // appears, so the first look has to land before the Run starts.
   await inspector.navigator.showLens("Structure");
@@ -147,7 +153,7 @@ it("scopes an agent's collection Run to the item its ref named when it started",
   await expect.poll(() => model.object("ListPage.items[1]").count()).toBe(1);
 
   startedAyme.runs
-    .start("ListItem.archive", { ref: "e3", args: {} }, "webmcp")
+    .start("ListItem.archive", { id: "po3", args: {} }, "webmcp")
     .succeed();
 
   await model.object("ListPage.items[1]").click();
@@ -171,7 +177,7 @@ it("offers one instance when two class members resolve to the same root", async 
   expect(await card.items.getAttribute("aria-checked")).toBe("true");
   await card.run();
   expect(startedAyme.tools.run).toHaveBeenCalledWith("ListItem.archive", {
-    ref: "e2",
+    id: "po2",
     args: {},
   });
 });
@@ -179,7 +185,7 @@ it("offers one instance when two class members resolve to the same root", async 
 it("does not assign a class instance to a custom tool sharing its namespace", async () => {
   await inspector.navigator.showLens("Structure");
   await expect.poll(() => inspector.structure.node("e3").count()).toBe(1);
-  startedAyme.runs.start("ListItem.inspect", { ref: "e3" }, "webmcp").succeed();
+  startedAyme.runs.start("ListItem.inspect", { id: "po3" }, "webmcp").succeed();
   await inspector.navigator.showLens("Model");
   await inspector.navigator.model.object("ListPage.items[1]").click();
   await expect.poll(() => inspector.runs.runs.count()).toBe(0);
@@ -212,8 +218,10 @@ it("shows a refused class run after its last instance has disappeared", async ()
     .poll(() => inspector.navigator.model.object("ListPage.items[1]").count())
     .toBe(0);
   startedAyme.runs
-    .start("ListItem.archive", { ref: "e3", args: {} }, "webmcp")
-    .fail("Not a root of ListItem");
+    .start("ListItem.archive", { id: "po3", args: {} }, "webmcp")
+    .fail(
+      'Cannot call ListItem.archive on Page Object "po3": it is not on the page.'
+    );
   await expect.poll(() => inspector.runs.header.textContent()).toBe("Runs · 1");
   if ((await inspector.runs.header.getAttribute("aria-expanded")) === "false")
     await inspector.runs.header.click();

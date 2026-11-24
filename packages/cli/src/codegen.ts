@@ -37,6 +37,8 @@ type Target =
       readonly url: string;
       readonly headless?: boolean | undefined;
       readonly startRecording?: true;
+      readonly loadStorage?: string;
+      readonly saveStorage?: string;
     }
   | { readonly cdpEndpoint: string };
 
@@ -48,12 +50,18 @@ export function browserOf(
 ): RecorderOptions["browser"] {
   return "url" in target
     ? {
-        launch: launchOptions(
-          target.url,
-          env,
-          target.headless,
-          target.startRecording
-        ),
+        launch: {
+          ...launchOptions(
+            target.url,
+            env,
+            target.headless,
+            target.startRecording
+          ),
+          // Playwright's codegen files: the recorder opens the context, so it
+          // loads and saves them itself. Absent, they are undefined.
+          loadStorage: target.loadStorage,
+          saveStorage: target.saveStorage,
+        },
       }
     : { attach: { cdpEndpoint: target.cdpEndpoint } };
 }

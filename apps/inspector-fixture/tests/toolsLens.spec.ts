@@ -1,18 +1,15 @@
-import { AgentView, panelDescription } from "./agentView";
-import { expect, openFixture, test } from "./fixtures";
+import { AppView } from "./appView";
+import { callOverMcp, expect, test } from "./fixtures";
 
-// E2E: the panel shows exactly what an agent gets over WebMCP, but for a bare
-// action's description, which it shows as ayme MCP does. The expected values
-// come from the page's WebMCP tool list and snapshot, never from the panel.
+// E2E: the panel shows the page's live tools as the runtime lists them, and a
+// Page Object Tool as an agent gets it over ayme MCP. The expected values
+// come from the page's runtime and the agent, never from the panel.
 
-// Live, but never published to WebMCP: its result is an image.
-const NOT_ON_WEBMCP = ["screenshot"];
-
-test("the Tools lens lists exactly the tools an agent gets", async ({
+test("the Tools lens lists every live tool of the page", async ({
   page,
   inspector,
 }) => {
-  const agentTools = await new AgentView(page).tools();
+  const liveTools = await new AppView(page).tools();
 
   await inspector.navigator.showLens("Tools");
 
@@ -22,47 +19,91 @@ test("the Tools lens lists exactly the tools an agent gets", async ({
         .flat()
         .sort()
     )
-    .toEqual([...agentTools.map(({ name }) => name), ...NOT_ON_WEBMCP].sort());
+    .toEqual(liveTools.map(({ name }) => name).sort());
 });
 
-test("each tool's page shows the description, schema and destructive mark an agent gets", async ({
-  page,
-  inspector,
-}) => {
-  const agentTools = await new AgentView(page).tools();
-  const { toolPage } = inspector.detail;
-  await inspector.navigator.showLens("Tools");
+test.describe("connected to an agent", () => {
+  test.use({ connected: true });
 
-  for (const tool of agentTools) {
-    await inspector.navigator.tools.tool(tool.name).click();
-    await expect(toolPage.title).toHaveText(tool.name);
-    await toolPage.modelSees.open();
+  test("each tool's page shows the description, schema and destructive mark an agent gets", async ({
+    page,
+    inspector,
+    agent,
+  }) => {
+    const liveTools = await new AppView(page).tools();
+    // The Page Object Tools reach the agent as the runtime lists them.
+    const { tools: agentTools } = await agent!.client.listTools();
+    const pageObjectTools = liveTools.filter(({ name }) =>
+      name.startsWith("ListPage.")
+    );
+    expect(
+      agentTools.filter(({ name }) => name.startsWith("ListPage."))
+    ).toEqual(
+      pageObjectTools.map(
+        ({ name, agentDescription, inputSchema, destructive }) => ({
+          name,
+          ...(agentDescription && { description: agentDescription }),
+          inputSchema,
+          ...(destructive && { annotations: { destructiveHint: true } }),
+        })
+      )
+    );
+    const { toolPage } = inspector.detail;
+    await inspector.navigator.showLens("Tools");
 
-    await expect
-      .poll(() => toolPage.descriptionText())
-      .toBe(panelDescription(tool));
-    expect(await toolPage.modelSees.schemaValue(tool.name)).toEqual(
-      tool.inputSchema
-    );
-    const destructive = tool.annotations?.consequentialHint === true;
-    expect(await toolPage.destructiveMark.count()).toBe(destructive ? 1 : 0);
-    expect(await inspector.navigator.tools.markedDestructive(tool.name)).toBe(
-      destructive
-    );
-  }
-  // The fixture's ListPage.clear is the one marked.
-  expect(
-    agentTools
-      .filter(({ annotations }) => annotations?.consequentialHint)
-      .map(({ name }) => name)
-  ).toEqual(["ListPage.clear"]);
+    for (const tool of liveTools) {
+      await inspector.navigator.tools.tool(tool.name).click();
+      await expect(toolPage.title).toHaveText(tool.name);
+      await toolPage.modelSees.open();
+
+      await expect
+        .poll(() => toolPage.descriptionText())
+        .toBe(tool.agentDescription ?? "");
+      expect(await toolPage.modelSees.schemaValue(tool.name)).toEqual(
+        tool.inputSchema
+      );
+      const destructive = tool.destructive === true;
+      expect(await toolPage.destructiveMark.count()).toBe(destructive ? 1 : 0);
+      expect(await inspector.navigator.tools.markedDestructive(tool.name)).toBe(
+        destructive
+      );
+    }
+    // The fixture's ListPage.clear is the one marked.
+    expect(
+      liveTools.filter(({ destructive }) => destructive).map(({ name }) => name)
+    ).toEqual(["ListPage.clear"]);
+  });
+
+  test("reading What the model sees leaves the agent's view of the page alone", async ({
+    page,
+    inspector,
+    agent,
+  }) => {
+    const { modelSees } = inspector.detail.toolPage;
+    await inspector.tool("ListPage.addItem");
+    await modelSees.open();
+    await expect(modelSees.definitions).toHaveText(/^ListPage\b/);
+
+    // A toast appears, then the agent's first action changes nothing. Had
+    // the panel's read been recorded as a page observation, it would be the
+    // agent's "before" and the toast would count as the action's change.
+    await page.evaluate(() => {
+      const toast = document.createElement("p");
+      toast.setAttribute("role", "status");
+      toast.textContent = "Saved";
+      document.body.append(toast);
+    });
+    const result = await callOverMcp(agent!, "ListPage.countItems");
+
+    expect(result).not.toHaveProperty("changes");
+  });
 });
 
 test("a Page Object tool's page shows its model's definition as snapshot returns it", async ({
   page,
   inspector,
 }) => {
-  const definition = await new AgentView(page).pomDefinitions("ListPage");
+  const definition = await new AppView(page).pomDefinitions("ListPage");
   const { toolPage } = inspector.detail;
 
   await inspector.tool("ListPage.addItem");
@@ -73,45 +114,23 @@ test("a Page Object tool's page shows its model's definition as snapshot returns
     .toBe(definition);
 });
 
-test("reading What the model sees leaves the agent's view of the page alone", async ({
-  page,
-  inspector,
-}) => {
-  const { modelSees } = inspector.detail.toolPage;
-  await inspector.tool("ListPage.addItem");
-  await modelSees.open();
-  await expect(modelSees.definitions).toHaveText(/^ListPage\b/);
+test.describe("with WebMCP publication off", () => {
+  test.use({ fixturePath: "/unpublished.html" });
 
-  // A toast appears, then the agent's first action changes nothing. Had the
-  // panel's read been recorded as a page observation, it would be the
-  // agent's "before" and the toast would count as the action's change.
-  await page.evaluate(() => {
-    const toast = document.createElement("p");
-    toast.setAttribute("role", "status");
-    toast.textContent = "Saved";
-    document.body.append(toast);
+  test("the Tools lens still lists the live tools", async ({
+    page,
+    inspector,
+  }) => {
+    const liveTools = await new AppView(page).tools();
+
+    await inspector.navigator.showLens("Tools");
+
+    await expect
+      .poll(async () =>
+        Object.values(await inspector.navigator.tools.listed())
+          .flat()
+          .sort()
+      )
+      .toEqual(liveTools.map(({ name }) => name).sort());
   });
-  const result = await new AgentView(page).call("ListPage.countItems", {});
-
-  expect(result).toMatchObject({ page_changed: false });
-});
-
-test("with publication off, the Tools lens still lists the live tools", async ({
-  page,
-}) => {
-  // The same list app with publication on: every live tool but screenshot is
-  // published, so its WebMCP tool list and screenshot are the live set.
-  await openFixture(page, "/");
-  const liveTools = (await new AgentView(page).tools()).map(({ name }) => name);
-
-  const { inspector } = await openFixture(page, "/unpublished.html");
-  await inspector.navigator.showLens("Tools");
-
-  await expect
-    .poll(async () =>
-      Object.values(await inspector.navigator.tools.listed())
-        .flat()
-        .sort()
-    )
-    .toEqual([...liveTools, ...NOT_ON_WEBMCP].sort());
 });

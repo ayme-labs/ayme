@@ -36,6 +36,7 @@ import {
   type PageStateCapture,
   type RefResolution,
 } from "../domain/structuralPageState";
+import type { PomRootIds } from "../domain/pomRootMarks";
 import { resolveRequestedRef } from "./refResolution";
 
 /**
@@ -43,12 +44,20 @@ import { resolveRequestedRef } from "./refResolution";
  * plain data from the document's in-page module, whose refs, synthetic ones
  * included, are the document's own, whoever captures.
  */
-export type CapturePage = (accepts?: readonly Predicate[]) => Promise<Capture>;
+export type CapturePage = (
+  accepts?: readonly Predicate[],
+  keep?: readonly string[]
+) => Promise<Capture>;
 
 /** What a reader of a capture asks of it besides its tree. */
 export type CaptureAsk = {
   /** The predicates whose accepted refs the capture carries. */
   accepts?: readonly Predicate[];
+  /**
+   * The refs of elements the capture keeps as nodes of their own, such as
+   * a Page Object's declared span of text; a look alone asks for them.
+   */
+  keep?: readonly string[];
 };
 
 /**
@@ -60,6 +69,14 @@ export type CaptureAsk = {
 export type ActionPage = {
   begin(): Promise<PageAction>;
 };
+
+/**
+ * The id of each Page Object `roots` name by its class and the Structural
+ * Ref of its root, in the order given.
+ */
+export type RootIds = (
+  roots: readonly { className: string; ref: string }[]
+) => Promise<(string | undefined)[]>;
 
 /** An action begun on the page: the page right before it, and the action. */
 export type PageAction = {
@@ -86,7 +103,6 @@ export class PageStateSession {
         renamed?: ReadonlyMap<string, string>;
       }
     | undefined;
-  private readonly recordedListeners = new Set<() => void>();
   // The synthetic refs this session's trees mint for themselves.
   private refFactory = treeRefAllocator();
   private current: InteractionHistory;
@@ -104,12 +120,18 @@ export class PageStateSession {
    * loaded. Each document has its own history, identity ledger and refs, as
    * the browser runtime's has by starting over at a full load. Without it,
    * the session keeps one document's.
+   *
+   * `rootIds`: what the page state text a reader receives prints on each
+   * Page Object Root beside its marks, by the root's Structural Ref, in the
+   * order asked; undefined for a root that has none. Without it, the text
+   * prints none.
    */
   constructor(
     history: InteractionHistory,
     private readonly captureDocument: CapturePage,
     private readonly actionPage: ActionPage,
-    private readonly restart?: (url: string) => InteractionHistory
+    private readonly restart?: (url: string) => InteractionHistory,
+    private readonly rootIds?: RootIds
   ) {
     this.current = history;
   }
@@ -140,8 +162,9 @@ export class PageStateSession {
   /** A capture of the page as the session reads it: its tree and marks. */
   private async capturePage({
     accepts,
+    keep,
   }: CaptureAsk = {}): Promise<PageCapture> {
-    const capture = await this.captureDocument(accepts);
+    const capture = await this.captureDocument(accepts, keep);
     this.enter(capture);
     return this.read(capture);
   }
@@ -160,7 +183,36 @@ export class PageStateSession {
   }
 
   async getPageState(cursor?: Cursor): Promise<PageState> {
-    return this.pageStateFor(await this.capture(cursor));
+    const capture = await this.capture(cursor);
+    return this.pageStateFor(capture, await this.rootIdsOf(capture));
+  }
+
+  /**
+   * The id of each Page Object rooted in `capture` that has one, by its
+   * root's ref and its class.
+   */
+  private async rootIdsOf(capture: PageCapture): Promise<PomRootIds> {
+    // In the order the tree shows the roots, and a root's classes in the
+    // order its marks print, which is the order a Page Object new to the
+    // page gets its id in.
+    const roots = capture.tree
+      .getAllRefs()
+      .flatMap((ref) =>
+        [...(capture.pomRootMarks.get(ref) ?? [])]
+          .sort()
+          .map((className) => ({ className, ref }))
+      );
+    if (!this.rootIds || roots.length === 0) return new Map();
+    const ids = await this.rootIds(roots);
+    const byRef = new Map<AriaRef, Map<string, string>>();
+    roots.forEach(({ className, ref }, index) => {
+      const id = ids[index];
+      if (id === undefined) return;
+      const classes = byRef.get(ref) ?? new Map<string, string>();
+      classes.set(className, id);
+      byRef.set(ref, classes);
+    });
+    return byRef;
   }
 
   async getPageStateCapture(
@@ -495,18 +547,6 @@ export class PageStateSession {
       tree,
       ...(renamed ? { renamed } : {}),
     };
-    for (const listener of this.recordedListeners) listener();
-  }
-
-  /**
-   * Calls `listener` each time a page state is recorded, until the returned
-   * function is called.
-   */
-  onRecorded(listener: () => void): () => void {
-    this.recordedListeners.add(listener);
-    return () => {
-      this.recordedListeners.delete(listener);
-    };
   }
 
   /**
@@ -558,9 +598,9 @@ export class PageStateSession {
     }
   }
 
-  private pageStateFor(capture: PageCapture): PageState {
+  private pageStateFor(capture: PageCapture, rootIds: PomRootIds): PageState {
     return Object.freeze({
-      text: renderPageState(capture).text,
+      text: renderPageState(capture, rootIds).text,
       resolve: async (...refs: AriaRef[]) => this.resolveRefs(refs),
     });
   }

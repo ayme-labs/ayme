@@ -9,7 +9,7 @@ it("tells the agent that the call's outcome is unknown", () => {
   });
 });
 
-it("gives the reconnected page's tools with a call its page left by reloading", () => {
+it("gives the reloaded page's URL with a call its page left by reloading", () => {
   expect(
     JSON.parse(
       unansweredCallText({ type: "reloaded", url: "http://x/", tools: ["a"] })
@@ -18,7 +18,6 @@ it("gives the reconnected page's tools with a call its page left by reloading", 
     error:
       "The page reloaded before it answered, so the call's outcome is unknown.",
     settled: false,
-    loading: "http://x/",
-    tools: ["a"],
+    url: "http://x/",
   });
 });

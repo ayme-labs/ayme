@@ -67,7 +67,7 @@ describe("Page Object Root by option", () => {
     vi.restoreAllMocks();
   });
 
-  it("requires each rooted page and single child's own ref, and offers both as Goal Loop items", async () => {
+  it("requires each rooted page and single child's own id, and offers both as Goal Loop items", async () => {
     document.body.innerHTML =
       '<main id="shell"><button id="child">Open</button></main>';
     const opened: string[] = [];
@@ -109,12 +109,12 @@ describe("Page Object Root by option", () => {
     await probeRegisteredPomMembers();
     for (const name of ["Shell.open", "Child.open"])
       expect(listed(name)?.inputSchema).toMatchObject({
-        required: expect.arrayContaining(["ref"]),
-        properties: { ref: { type: "string" } },
+        properties: { id: { type: "string" } },
+        required: ["id"],
       });
     const state = await agent.getPageState();
-    const shellRef = state.text.match(/(\w+) Shell\b/)![1]!;
-    const childRef = state.text.match(/(\w+) Child\b/)![1]!;
+    const shellId = state.text.match(/ Shell (po\d+)/)![1]!;
+    const childId = state.text.match(/ Child (po\d+)/)![1]!;
     const { toolOptionsOf } =
       await import("../../../testing/toolOptions.testSupport");
     const options = await toolOptionsOf(page);
@@ -129,11 +129,70 @@ describe("Page Object Root by option", () => {
           }),
         ],
       });
-    await session.tools.run("Shell.open", { ref: shellRef }, { by: "webmcp" });
-    await session.tools.run("Child.open", { ref: childRef }, { by: "webmcp" });
+    await session.tools.run("Shell.open", { id: shellId }, { by: "webmcp" });
+    await session.tools.run("Child.open", { id: childId }, { by: "webmcp" });
     await expect(
-      session.tools.run("Child.open", { ref: shellRef }, { by: "webmcp" })
-    ).rejects.toThrow(`ref "${shellRef}": it is not a root of Child`);
+      session.tools.run("Child.open", { id: shellId }, { by: "webmcp" })
+    ).rejects.toThrow(
+      `Page Object "${shellId}": it is not a Child on the page.`
+    );
+    expect(opened).toEqual(["shell", "child"]);
+  });
+
+  it("gives each class rooted at one element an id of its own, and takes each only for its own class", async () => {
+    document.body.innerHTML = '<main id="shell"><button>Open</button></main>';
+    const opened: string[] = [];
+    class Child {
+      root = page.locator("#shell");
+      open() {
+        opened.push("child");
+      }
+    }
+    ayme({ root: (self: Child) => self.root })(Child);
+    const childManifest = pageManifest("Child", [locator("root")]);
+    registerCompiledPom(Child, childManifest);
+    class Shell {
+      root = page.locator("#shell");
+      child = new Child();
+      open() {
+        opened.push("shell");
+      }
+    }
+    ayme({ root: (self: Shell) => self.root })(Shell);
+    registerCompiledPom(Shell, {
+      ...pageManifest("Shell", [
+        locator("root"),
+        {
+          memberName: "child",
+          kind: "component",
+          access: "field",
+          componentClassName: "Child",
+          collection: false,
+        },
+      ]),
+      components: [childManifest],
+    });
+    session.pom.register(Shell);
+    await probeRegisteredPomMembers();
+
+    const state = await agent.getPageState();
+    const [, childId, shellId] = state.text.match(
+      /\/id: \["(po\d+)","(po\d+)"\]/
+    )!;
+    expect(state.text).toContain('/pom: ["Child","Shell"]');
+    expect(childId).not.toBe(shellId);
+    await session.tools.run("Shell.open", { id: shellId }, { by: "webmcp" });
+    await session.tools.run("Child.open", { id: childId }, { by: "webmcp" });
+    await expect(
+      session.tools.run("Child.open", { id: shellId }, { by: "webmcp" })
+    ).rejects.toThrow(
+      `Page Object "${shellId}": it is not a Child on the page.`
+    );
+    await expect(
+      session.tools.run("Shell.open", { id: childId }, { by: "webmcp" })
+    ).rejects.toThrow(
+      `Page Object "${childId}": it is not a Shell on the page.`
+    );
     expect(opened).toEqual(["shell", "child"]);
   });
 
@@ -166,7 +225,7 @@ describe("Page Object Root by option", () => {
     });
     expect(
       listed("Announcer.announce")?.inputSchema.properties
-    ).not.toHaveProperty("ref");
+    ).not.toHaveProperty("id");
     const { toolOptionsOf } =
       await import("../../../testing/toolOptions.testSupport");
     const offered = (await toolOptionsOf(page)).find(
@@ -183,7 +242,7 @@ describe("Page Object Root by option", () => {
     expect(document.querySelector("output")?.textContent).toBe("Hello");
   });
 
-  it("runs a rooted instance inside an open shadow root by its own ref", async () => {
+  it("marks a root inside an open shadow root in the page state and runs its instance by the id shown there", async () => {
     const host = document.createElement("div");
     document.body.append(host);
     const shadow = host.attachShadow({ mode: "open" });
@@ -204,11 +263,11 @@ describe("Page Object Root by option", () => {
     );
     session.pom.register(ShadowPanel);
     await probeRegisteredPomMembers();
-    const ref = (await agent.getPageState()).text.match(
-      /(e\d+) region "Panel"/
+    const id = (await agent.getPageState()).text.match(
+      /e\d+ ShadowPanel (po\d+) "Panel"/
     )?.[1];
-    expect(ref).toBeDefined();
-    await session.tools.run("ShadowPanel.open", { ref }, { by: "webmcp" });
+    expect(id).toBeDefined();
+    await session.tools.run("ShadowPanel.open", { id }, { by: "webmcp" });
     expect(shadow.querySelector("button")?.textContent).toBe("Opened");
   });
 
@@ -262,8 +321,8 @@ describe("Page Object Root by option", () => {
       roots: [{}, {}],
     });
     const state = await agent.getPageState();
-    const ref = [...state.text.matchAll(/(e\d+) Row\b/g)][1]![1]!;
-    await session.tools.run("Row.open", { ref }, { by: "webmcp" });
+    const id = [...state.text.matchAll(/ Row (po\d+)/g)][1]![1]!;
+    await session.tools.run("Row.open", { id }, { by: "webmcp" });
     expect(opened).toEqual(["second"]);
     document.getElementById("first")!.remove();
     // No probe follows the removal: the Goal Loop must leave out a stale root.
@@ -273,7 +332,7 @@ describe("Page Object Root by option", () => {
     });
   });
 
-  it("refuses a ref when its instance's locator now holds another connected root", async () => {
+  it("refuses an id when its instance's locator now holds another connected root", async () => {
     document.body.innerHTML =
       '<section id="panel" aria-label="Old">Old</section><section id="other" aria-label="New">New</section>';
     const open = vi.fn();
@@ -290,15 +349,15 @@ describe("Page Object Root by option", () => {
     );
     session.pom.register(MovingPanel);
     await probeRegisteredPomMembers();
-    const ref = (await agent.getPageState()).text.match(
-      /(e\d+) MovingPanel\b/
+    const id = (await agent.getPageState()).text.match(
+      / MovingPanel (po\d+)/
     )![1]!;
     document.getElementById("panel")!.id = "old";
     document.getElementById("other")!.id = "panel";
     await expect(
-      session.tools.run("MovingPanel.open", { ref }, { by: "webmcp" })
+      session.tools.run("MovingPanel.open", { id }, { by: "webmcp" })
     ).rejects.toThrow(
-      `Cannot call MovingPanel.open on ref "${ref}": it is not a root of MovingPanel`
+      `Cannot call MovingPanel.open on Page Object "${id}": it is not a MovingPanel on the page.`
     );
     expect(open).not.toHaveBeenCalled();
   });
@@ -405,10 +464,10 @@ describe("Page Object Root by option", () => {
     ]);
     const { text } = await agent.getPageState();
     const refOf = (index: number) =>
-      [...text.matchAll(/(e\d+) Item\b/g)][index]?.[1];
+      [...text.matchAll(/ Item (po\d+)/g)][index]?.[1];
     const sent = refOf(1);
     if (!refOf(0) || !sent) throw new Error("Expected refs for both items.");
-    await session.tools.run("Item.send", { ref: sent });
+    await session.tools.run("Item.send", { id: sent });
     expect(outbox.items.map((item) => item.sent)).toEqual([false, true]);
   });
 
@@ -500,10 +559,10 @@ describe("Page Object Root by option", () => {
       ({ name }) => name === "SideDrawer.open"
     );
     if (!tool) throw new Error("Expected SideDrawer.open to be available.");
-    const ref = (await agent.getPageState()).text.match(
-      /(\w+) SideDrawer\b/
+    const id = (await agent.getPageState()).text.match(
+      / SideDrawer (po\d+)/
     )![1]!;
-    await tool.execute({ ref }, runContext());
+    await tool.execute({ id }, runContext());
     expect(drawer.opened).toBe(1);
 
     document.body.insertAdjacentHTML(
@@ -515,15 +574,15 @@ describe("Page Object Root by option", () => {
     // would run unmeasured: the call measures at the root the observation
     // found, under the overlay.
     anchor = page.locator("#nowhere");
-    await expect(tool.execute({ ref }, runContext())).rejects.toThrow(
-      `SideDrawer on ref "${ref}" is unavailable: a click would not reach it.`
+    await expect(tool.execute({ id }, runContext())).rejects.toThrow(
+      `SideDrawer "${id}" is unavailable: a click would not reach it.`
     );
     expect(drawer.opened).toBe(1);
 
     // The root the observation found left the page: no call runs on it.
     document.getElementById("drawer")!.remove();
-    await expect(tool.execute({ ref }, runContext())).rejects.toThrow(
-      `Cannot call SideDrawer.open on ref "${ref}": it is no longer on the page.`
+    await expect(tool.execute({ id }, runContext())).rejects.toThrow(
+      `Cannot call SideDrawer.open on Page Object "${id}": it is not on the page.`
     );
     expect(drawer.opened).toBe(1);
   });
@@ -548,7 +607,7 @@ describe("Page Object Root by option", () => {
     session.pom.register(SideDrawer);
     await probeRegisteredPomMembers();
     expect(names()).toEqual(["SideDrawer.open"]);
-    expect((await agent.getPageState()).text).toContain("SideDrawer: Menu");
+    expect((await agent.getPageState()).text).toMatch(/SideDrawer po\d+: Menu/);
     expect(observedMembers()).toEqual(["root"]);
 
     document.getElementById("drawer")!.remove();
@@ -1214,14 +1273,14 @@ describe("Page Object Root by option", () => {
 
     expect(names()).toEqual(["TreeItem.expand"]);
     const { text } = await agent.getPageState();
-    const util = [...text.matchAll(/(e\d+) TreeItem\b/g)][2]?.[1];
+    const util = [...text.matchAll(/ TreeItem (po\d+)/g)][2]?.[1];
     if (!util) throw new Error("Expected a ref for the deepest item.");
     const tool = listAvailablePomTools().find(
       ({ name }) => name === "TreeItem.expand"
     );
     if (!tool) throw new Error("Expected TreeItem.expand to be available.");
 
-    await tool.execute({ ref: util, args: {} }, runContext());
+    await tool.execute({ id: util, args: {} }, runContext());
 
     expect(expanded).toEqual(["util"]);
   });

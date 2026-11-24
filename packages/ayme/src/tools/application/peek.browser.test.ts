@@ -1,4 +1,4 @@
-import { rootRef } from "../../../testing/agentCalls.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DecisionRequest } from "../../goal-loop/domain";
@@ -517,7 +517,7 @@ describe("calling a Peek Tool", () => {
 
     // An action's call resolves once the tools reflect the page it changed.
     await ayme.tools.run("Toolbar.reveal", {
-      ref: await rootRef("Toolbar"),
+      id: await rootId("Toolbar"),
       args: {},
     });
     expect(toolNames(ayme)).toContain("Editor.save");

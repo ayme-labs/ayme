@@ -61,8 +61,8 @@ export class ListPage {
 
   // Available only while the list has items (ADR-0035): on an empty list
   // the tool is listed, and a call is refused with this reason. Marked
-  // destructive, so the Inspector marks it and WebMCP calls it
-  // consequential.
+  // destructive, so the Inspector marks it and an agent's ayme MCP server
+  // gives it `destructiveHint`.
   @ayme.action({
     description: "Remove every item from the list.",
     available: async (self: ListPage) =>

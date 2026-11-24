@@ -72,13 +72,13 @@ it("shows a keyboard input's key once without inventing a target", () => {
   ).toEqual({ primary: interaction, value: "Enter", arguments: {} });
 });
 
-it("removes an item's redundant ref only when the displayed item actually identifies it", () => {
+it("removes an item's redundant id only when the displayed item actually identifies it", () => {
   const run = aRun({
-    item: anItem("ListPage.items[1]", { ref: "e7", label: "Milk" }),
-    arguments: { ref: "e7", args: { done: true } },
+    item: anItem("ListPage.items[1]", { id: "po7", ref: "e7", label: "Milk" }),
+    arguments: { id: "po7", args: { done: true } },
   });
   expect(runPresentation(run).arguments).toEqual({ args: { done: true } });
-  expect(run.arguments.ref).toBe("e7");
+  expect(run.arguments.id).toBe("po7");
   expect(
     runPresentation({ ...run, arguments: { ref: "e8" } }).arguments
   ).toEqual({ ref: "e8" });

@@ -3,7 +3,6 @@ export { browserInPage } from "./browserInPage";
 export {
   assertLocatorReachable,
   assertReachable,
-  inTheWayOf,
   refsOfLocator,
 } from "./elementReach";
 export type { ElementInput } from "./elementReach";
@@ -23,9 +22,8 @@ export {
   getPageStateSession,
   latestPageStateCapture,
   latestPageStateRefOf,
-  latestPageStateRefNamed,
   lookAtPageStateForDocument,
-  onPageStateRecorded,
+  providePageObjectIds,
   providePageObjectProbe,
 } from "./pageState";
 export {
@@ -36,6 +34,7 @@ export {
   latestRefOfLocator,
   pageObjectsProbed,
   pageStateOf,
+  providePageObjectIdsOf,
   providePageObjectProbeOf,
 } from "./pageStates";
 export type { PageStateHost, PageStateStore } from "./pageStates";

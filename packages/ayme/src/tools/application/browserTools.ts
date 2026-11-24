@@ -259,8 +259,7 @@ async function fillField(
     page,
     "fill_form",
     target.elementRef,
-    field.type === "checkbox" || field.type === "radio" ? "click" : "focus",
-    (ref) => pageStateSession.latestRefOfNamed(ref)
+    field.type === "checkbox" || field.type === "radio" ? "click" : "focus"
   );
   switch (field.type) {
     case "textbox":

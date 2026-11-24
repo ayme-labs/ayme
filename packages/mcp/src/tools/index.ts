@@ -11,10 +11,6 @@ export type {
 export type { ToolResult } from "./domain/toolResult";
 export { createMcpToolServer } from "./infrastructure/mcpToolServer";
 export {
-  saveToScreenshotFolder,
-  screenshotFolder,
-} from "./infrastructure/screenshotFolder";
-export {
   answerToolCalls,
   publishPageTools,
 } from "./application/pageToolBehaviours";

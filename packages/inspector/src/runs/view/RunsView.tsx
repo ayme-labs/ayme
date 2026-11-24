@@ -36,7 +36,6 @@ import { formatDuration } from "../domain/duration";
 import { readableResult } from "../domain/readableResult";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";
 import { runPresentation } from "../domain/runPresentation";
-import { RunImageView } from "./RunImageView";
 
 export type RunsViewProps = {
   /** The runs to show, newest first. */
@@ -67,8 +66,6 @@ export type RunsViewProps = {
   copyResult: (id: string, text: string) => void;
   /** The run whose result was just copied, whose Copy says so. */
   copiedResult: string | undefined;
-  /** Opens a run's image, given its data URL, full size. */
-  openImage: (src: string) => void;
   /** When the timeline last opened: a run that starts after it fades in. */
   shownAt: number;
 };
@@ -179,7 +176,6 @@ type RowProps = Pick<
   | "toggleResult"
   | "copyResult"
   | "copiedResult"
-  | "openImage"
   | "onHover"
   | "canHighlight"
 >;
@@ -248,7 +244,6 @@ function RunRow({
   toggleResult,
   copyResult,
   copiedResult,
-  openImage,
   onHover,
   canHighlight,
 }: RowProps & {
@@ -300,7 +295,6 @@ function RunRow({
           onToggleResult={() => toggleResult(run.id)}
           onCopyResult={(text) => copyResult(run.id, text)}
           resultCopied={run.id === copiedResult}
-          onOpenImage={openImage}
           onHover={earlierDocument ? () => {} : onHover}
           canHighlight={earlierDocument ? () => false : canHighlight}
         />
@@ -319,7 +313,6 @@ function RunRow({
                 toggleResult={toggleResult}
                 copyResult={copyResult}
                 copiedResult={copiedResult}
-                openImage={openImage}
                 onHover={onHover}
                 canHighlight={canHighlight}
               />
@@ -341,7 +334,6 @@ function RunEntryCard({
   onToggleResult,
   onCopyResult,
   resultCopied,
-  onOpenImage,
   onHover,
   canHighlight,
 }: {
@@ -355,7 +347,6 @@ function RunEntryCard({
   onCopyResult: (text: string) => void;
   /** Whether its result was just copied. */
   resultCopied: boolean;
-  onOpenImage: (src: string) => void;
   onHover: OnHover;
   canHighlight: RunsViewProps["canHighlight"];
 }) {
@@ -420,11 +411,6 @@ function RunEntryCard({
             >
               {JSON.stringify(args)}
             </figure>
-          )}
-          {run.status === "succeeded" && run.image && (
-            <div className="mx-2.5 mb-2">
-              <RunImageView image={run.image} onOpen={onOpenImage} />
-            </div>
           )}
           {run.error && (
             <p

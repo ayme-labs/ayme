@@ -38,7 +38,7 @@ for c in Rules Rules-Pages Rules-Rounds Rules-Ends Surfaces TimeLimit TimeLimit-
          Race-ClickLostAfterStop Race-ClickAfterPicking Race-HeldMessageAfterStop \
          Race-NavigationBeforeTypingReport \
          Clicks-Middle Clicks-Middle-Fill Clicks-MiddleOnCheckbox Clicks-Mixed \
-         Probes Probes-Discard Probes-Clear Probes-Window Probes-Window-Navigation Probes-Continue Probes-LateRevision; do
+         Probes Probes-Discard Probes-Clear Probes-Window Probes-Window-Navigation Probes-Continue Probes-LateRevision Probes-Storage; do
   one "$c"
 done
 # Progress.cfg checks L1 and L2 with fairness. It is left out: TLC evaluates

@@ -32,6 +32,7 @@ export type {
   AymeActionOptions,
   AymeChildOptions,
   AymeModelOptions,
+  PageObjectId,
   PresencePredicate,
   RootPredicate,
 } from "./page-objects/domain";

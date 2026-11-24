@@ -1,11 +1,11 @@
-import type { Page } from "@playwright/test";
-import { executePublishedTool } from "@ayme-dev/webmcp/testing";
+import type { Agent } from "@ayme-dev/mcp/testing";
 
-import { AgentView } from "./agentView";
-import { expect, INSPECTOR, openFixture, outline, test } from "./fixtures";
+import { AppView } from "./appView";
+import { expect, INSPECTOR, outline, test } from "./fixtures";
 
 // E2E: running tools from the panel, on the fixture page with the real
-// ListPage Page Object, the ayme runtime and a recording WebMCP driver.
+// ListPage Page Object and the ayme runtime. The app runs Browser Tools
+// through its runtime, and an agent calls Page Object Tools over ayme MCP.
 
 test("a non-POM target keeps its accessible name after clicking removes it and after reload", async ({
   page,
@@ -17,10 +17,10 @@ test("a non-POM target keeps its accessible name after clicking removes it and a
     button.addEventListener("click", () => button.remove());
     document.querySelector("main")!.append(button);
   });
-  const agent = new AgentView(page);
-  const ref = await agent.ref('button "Dismiss notice"');
+  const app = new AppView(page);
+  const ref = await app.ref('button "Dismiss notice"');
   await inspector.runs.showAll();
-  await agent.call("click", { target: ref });
+  await app.run("click", { target: ref });
   const run = inspector.runs.latest("click");
   await expect
     .poll(() => run.toggle.textContent())
@@ -59,11 +59,11 @@ test("form fields keep their names and values without repeating their refs", asy
   page,
   inspector,
 }) => {
-  const agent = new AgentView(page);
-  const text = await agent.ref('textbox "New item"');
-  const urgent = await agent.ref('checkbox "Urgent"');
+  const app = new AppView(page);
+  const text = await app.ref('textbox "New item"');
+  const urgent = await app.ref('checkbox "Urgent"');
   await inspector.runs.showAll();
-  await agent.call("fill_form", {
+  await app.run("fill_form", {
     fields: [
       { name: "New item", type: "textbox", target: text, value: "Milk" },
       { name: "Urgent", type: "checkbox", target: urgent, value: "true" },
@@ -99,34 +99,14 @@ test("a selection's chosen values show beside its readable target", async ({
     }
     document.querySelector("main")!.append(select);
   });
-  const agent = new AgentView(page);
-  const target = await agent.ref('combobox "Size"');
+  const app = new AppView(page);
+  const target = await app.ref('combobox "Size"');
   await inspector.runs.showAll();
-  await agent.call("select_option", { target, values: ["Large"] });
+  await app.run("select_option", { target, values: ["Large"] });
   const run = inspector.runs.latest("select_option");
   await expect.poll(() => run.toggle.textContent()).toContain('["Large"]');
   expect(await run.toggle.textContent()).toContain('combobox "Size"');
   await expect(run.arguments).toHaveCount(0);
-});
-
-test("an agent's call over WebMCP shows in Runs as the agent's", async ({
-  page,
-  inspector,
-}) => {
-  await executePublishedTool(page, "ListPage.addItem", { text: "Milk" });
-
-  const run = inspector.runs.latest("ListPage.addItem");
-  await expect.poll(() => run.status()).toBe("Succeeded");
-  expect(await run.caller()).toEqual({
-    icon: "Run by an agent through WebMCP",
-  });
-  expect(await run.arguments.textContent()).toBe('{"text":"Milk"}');
-  await expect
-    .poll(() => run.interactionList())
-    .toEqual([
-      { operation: "fill", target: "ListPage.newItemInput", value: '"Milk"' },
-      { operation: "click", target: "ListPage.addItemButton" },
-    ]);
 });
 
 test("hovering a run's Interaction highlights its element on the page", async ({
@@ -147,25 +127,51 @@ test("hovering a run's Interaction highlights its element on the page", async ({
   await expect.poll(outline(listPage.addItemButton)).toBe("dashed");
 });
 
-test("a tool that fails on the page shows its error", async ({
-  page,
-  inspector,
-  listPage,
-}) => {
-  // The tool's target is gone: the page no longer has its Add item button.
-  await listPage.addItemButton.evaluate((button) => button.remove());
-  const agentError = await agentFailure(page, "ListPage.addItem", {
-    text: "Milk",
+test.describe("connected to an agent", () => {
+  test.use({ connected: true });
+
+  test("an agent's call over ayme MCP shows in Runs as the agent's", async ({
+    agent,
+    inspector,
+  }) => {
+    await agent!.call("ListPage.addItem", { text: "Milk" });
+
+    const run = inspector.runs.latest("ListPage.addItem");
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(await run.caller()).toEqual({
+      icon: "Run by an agent through ayme MCP",
+    });
+    expect(await run.arguments.textContent()).toBe('{"text":"Milk"}');
+    await expect
+      .poll(() => run.interactionList())
+      .toEqual([
+        { operation: "fill", target: "ListPage.newItemInput", value: '"Milk"' },
+        { operation: "click", target: "ListPage.addItemButton" },
+      ]);
   });
 
-  const addItem = await inspector.tool("ListPage.addItem");
-  await addItem.run({ text: "Milk" });
+  test("a tool that fails on the page shows its error", async ({
+    agent,
+    inspector,
+    listPage,
+  }) => {
+    // The tool's target is gone: the page no longer has its Add item button.
+    await listPage.addItemButton.evaluate((button) => button.remove());
+    const agentError = await agentFailure(agent!, "ListPage.addItem", {
+      text: "Milk",
+    });
 
-  const run = inspector.runs.latest("ListPage.addItem");
-  await expect.poll(() => run.status()).toBe("Failed");
-  // The panel shows the error an agent gets for the same call. Its call log
-  // varies with timing, so the first line is compared.
-  expect(firstLine(await run.error.textContent())).toBe(firstLine(agentError));
+    const addItem = await inspector.tool("ListPage.addItem");
+    await addItem.run({ text: "Milk" });
+
+    const run = inspector.runs.latest("ListPage.addItem");
+    await expect.poll(() => run.status()).toBe("Failed");
+    // The panel shows the error an agent gets for the same call. Its call
+    // log varies with timing, so the first line is compared.
+    expect(firstLine(await run.error.textContent())).toBe(
+      firstLine(agentError)
+    );
+  });
 });
 
 test("a Custom Tool runs from the panel and shows in Runs", async ({
@@ -173,8 +179,8 @@ test("a Custom Tool runs from the panel and shows in Runs", async ({
   inspector,
   listPage,
 }) => {
-  // The Add item button's ref, as an agent reads it from snapshot.
-  const ref = await new AgentView(page).ref('button "Add item"');
+  // The Add item button's ref, as snapshot gives it.
+  const ref = await new AppView(page).ref('button "Add item"');
 
   await (await inspector.tool("mark_element")).run({ ref });
 
@@ -252,31 +258,28 @@ test("goal runs from the panel and shows in Runs with the Runs its steps execute
 test.describe("with WebMCP publication off", () => {
   test.use({ fixturePath: "/unpublished.html" });
 
-  test("a Page Object tool that fails gives the text an agent gets for the same call", async ({
-    page,
-  }) => {
-    // What an agent gets on the published page: the Add item button is gone.
-    const published = await openFixture(page, "/");
-    await published.listPage.addItemButton.evaluate((button) =>
-      button.remove()
-    );
-    const agentError = await agentFailure(page, "ListPage.addItem", {
-      text: "Milk",
+  test.describe("connected to an agent", () => {
+    test.use({ connected: true });
+
+    test("a Page Object tool that fails gives the text an agent gets for the same call", async ({
+      agent,
+      inspector,
+      listPage,
+    }) => {
+      await listPage.addItemButton.evaluate((button) => button.remove());
+      const agentError = await agentFailure(agent!, "ListPage.addItem", {
+        text: "Milk",
+      });
+
+      await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+
+      const run = inspector.runs.latest("ListPage.addItem");
+      await expect.poll(() => run.earlierPage.count()).toBe(0);
+      await expect.poll(() => run.status()).toBe("Failed");
+      expect(firstLine(await run.error.textContent())).toBe(
+        firstLine(agentError)
+      );
     });
-
-    const { inspector, listPage } = await openFixture(
-      page,
-      "/unpublished.html"
-    );
-    await listPage.addItemButton.evaluate((button) => button.remove());
-    await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
-
-    const run = inspector.runs.latest("ListPage.addItem");
-    await expect.poll(() => run.earlierPage.count()).toBe(0);
-    await expect.poll(() => run.status()).toBe("Failed");
-    expect(firstLine(await run.error.textContent())).toBe(
-      firstLine(agentError)
-    );
   });
 
   test("a Page Object tool runs from the panel", async ({
@@ -292,8 +295,7 @@ test.describe("with WebMCP publication off", () => {
   });
 
   test("a Custom Tool runs from the panel", async ({ inspector, listPage }) => {
-    // The Add item button's ref, from snapshot run in the panel:
-    // with publication off, no agent can call it.
+    // The Add item button's ref, from snapshot run in the panel.
     const getPageContext = await inspector.tool("snapshot");
     await getPageContext.runButton.click();
     const run = inspector.runs.latest("snapshot");
@@ -323,17 +325,12 @@ test.describe("with WebMCP publication off", () => {
   });
 });
 
-/** The failure text an agent gets calling a tool over WebMCP. */
-async function agentFailure(page: Page, name: string, input: object) {
-  const failure = (await executePublishedTool(page, name, input)) as {
-    isError?: boolean;
-    content?: { text: string }[];
-  } | null;
-  if (!failure?.isError)
-    throw new Error(
-      `Expected ${name} to fail over WebMCP: ${JSON.stringify(failure)}`
-    );
-  return failure.content![0]!.text;
+/** The failure text an agent gets calling a tool over ayme MCP. */
+async function agentFailure(agent: Agent, name: string, input: object) {
+  const { text, isError } = await agent.call(name, { ...input });
+  if (!isError)
+    throw new Error(`Expected ${name} to fail over ayme MCP: ${text}`);
+  return text;
 }
 
 function firstLine(text: string | null) {
