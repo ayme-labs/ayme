@@ -4,7 +4,7 @@ A model of the Recorder's lifecycle in TLA+, checked with the TLC model checker 
 
 A test checks the orders someone thought to write. The model checks every order of these steps within its bounds, and gives the shortest sequence of steps to each rule that breaks.
 
-**Last compared with the engine at commit `58509a40`.**
+**Last compared with the engine at commit `33ce414f`.**
 
 ## Words
 
@@ -121,15 +121,14 @@ stateDiagram-v2
   class lg3 tan
   class lg4 purple
   s0: Not recording
-  s1: Saving the storage state (--save-storage)
+  s1: Ended: the package, or 'empty' when no step was recorded
   s2: Still shows Not recording: Record waits for the trace, Playwright and the page
-  s3: Ended: the package, or 'empty' when no step was recorded
-  s4: Wrapping up, then save
-  s5: Wrapping up, then clear
-  s6: Saving the package
-  s7: Wrapping up, then clear and end
-  state "Recording" as s8 {
-    s9: Listening
+  s3: Wrapping up, then save
+  s4: Wrapping up, then clear
+  s5: Saving the package
+  s6: Wrapping up, then clear and end
+  state "Recording" as s7 {
+    s8: Listening
   }
   s9: Wrapping up, then pause
   s10: Paused
@@ -137,38 +136,36 @@ stateDiagram-v2
   [*] --> s0
   s0 --> s1: you close the last page, or stop the recorder from the terminal
   s0 --> s2: you press Record
-  s1 --> s3: the storage state is saved, or a warning says it could not be
-  s2 --> s4: you close the last page, or stop the recorder from the terminal or you press Finish
-  s2 --> s5: you press Clear
-  s4 --> s6: the wrap-up is done
-  s2 --> s9: Playwright reports and the page holds inputs back: Record or Continue is answered
-  s5 --> s7: you close the last page, or stop the recorder from the terminal
-  s9 --> s4: you close the last page, or stop the recorder from the terminal or you press Finish
-  s9 --> s5: you press Clear
-  s9 --> s10: you press Stop
-  s6 --> s1: the package is written, or there was nothing to write
-  s7 --> s1: the old trace is thrown away
-  s5 --> s0: the old trace is thrown away
-  s10 --> s11: the wrap-up is done
-  s11 --> s6: you press Finish or you close the last page, or stop the recorder from the terminal
-  s11 --> s5: you press Clear
-  s11 --> s12: you press Continue
-  s12 --> s9: Playwright reports and the page holds inputs back: Record or Continue is answered
+  s2 --> s3: you close the last page, or stop the recorder from the terminal or you press Finish
+  s2 --> s4: you press Clear
+  s3 --> s5: the wrap-up is done
+  s2 --> s8: Playwright reports and the page holds inputs back: Record or Continue is answered
+  s4 --> s6: you close the last page, or stop the recorder from the terminal
+  s8 --> s3: you close the last page, or stop the recorder from the terminal or you press Finish
+  s8 --> s4: you press Clear
+  s8 --> s9: you press Stop
+  s5 --> s1: the package is written, or there was nothing to write
+  s6 --> s1: the old trace is thrown away
+  s4 --> s0: the old trace is thrown away
+  s9 --> s10: the wrap-up is done
+  s10 --> s5: you press Finish or you close the last page, or stop the recorder from the terminal
+  s10 --> s4: you press Clear
+  s10 --> s11: you press Continue
+  s11 --> s8: Playwright reports and the page holds inputs back: Record or Continue is answered
   class s0 tan
-  class s1 yellow
+  class s1 purple
   class s2 yellow
-  class s3 purple
+  class s3 yellow
   class s4 yellow
   class s5 yellow
   class s6 yellow
-  class s7 yellow
-  class s9 teal
-  class s10 yellow
-  class s11 blue
-  class s12 yellow
+  class s8 teal
+  class s9 yellow
+  class s10 blue
+  class s11 yellow
 ```
 
-Not drawn: the steps inside one box (the trace starting, Playwright switched on and off, the gate, the last read), the window showing "Saving" while the storage state is saved, a second press of Finish (ignored), discard and restore (inside Recording, "Wrapping up, then pause" and Paused, and while Continue waits), and closing the page or pressing Ctrl+C while a pause wraps up with nothing under way: with Quick, that wrap-up is over before you can act; the engine still takes the end and saves (L `endFromOutside`).
+Not drawn: the steps inside one box (the trace starting, Playwright switched on and off, the gate, the last read), the storage save (drawn without `--save-storage`; with it, every arrow into "Ended" goes through "Saving the storage state" first), a second press of Finish (ignored), discard and restore (inside Recording, "Wrapping up, then pause" and Paused, and while Continue waits), and closing the page or pressing Ctrl+C while a pause wraps up with nothing under way: with Quick, that wrap-up is over before you can act; the engine still takes the end and saves (L `endFromOutside`).
 
 ### One click through the gate
 
@@ -311,11 +308,11 @@ Every config runs with one TLC worker. An input is a click, with the left or rig
 | `Rules`                                                                                                                                             | 2 inputs, one more key                                                                                                                                  | 191,713          | the holding rules, F1 to F6, F3's property, X5 and D1 hold                                                                                       |
 | `Rules-Pages`                                                                                                                                       | + a navigation                                                                                                                                          | 572,360          | the same, without D1                                                                                                                             |
 | `Rules-Rounds`                                                                                                                                      | + 2 rounds (pause, Continue, Clear)                                                                                                                     | 1,427,751        | the same                                                                                                                                         |
-| `Rules-Ends`                                                                                                                                        | + 2 terminal stops, page close, Finish twice, a Record that cannot start                                                                                | 1,353,531        | the holding rules, F1 to F7 and F3's property                                                                                                    |
-| `Surfaces`                                                                                                                                          | 1 input (left clicks), one more key, 2 rounds, toolbar and window                                                                                       | 3,884,678        | R08, the holding rules, F1 to F6 and X5                                                                                                          |
+| `Rules-Ends`                                                                                                                                        | + 2 terminal stops, page close, Finish twice, a Record that cannot start                                                                                | 2,482,485        | the holding rules, F1 to F7 and F3's property                                                                                                    |
+| `Surfaces`                                                                                                                                          | 1 input (left clicks), one more key, 2 rounds, toolbar and window                                                                                       | 4,795,138        | R08, the holding rules, F1 to F6 and X5                                                                                                          |
 | `TimeLimit`                                                                                                                                         | as `Rules`, the time limit on                                                                                                                           | stops at a break | R03a, R04, X1, X3, X5 break: the time limit; X2, X8: the known limit B2 in a wrap-up                                                             |
-| `TimeLimit-Holds`                                                                                                                                   | the same                                                                                                                                                | 786,550          | every other rule of `TimeLimit` holds, F1 to F6 and F3's property among them                                                                     |
-| `Rules-StartRecording`                                                                                                                              | `--start-recording`: 2 inputs, one more key, 2 rounds, a terminal stop, page close; the person acts once the page is at its address                     | 4,829,416        | the holding rules, F1 to F6 and F3's property hold, with Stop, Finish, Clear, Ctrl+C or a page close before or after the first page load         |
+| `TimeLimit-Holds`                                                                                                                                   | the same                                                                                                                                                | 999,842          | every other rule of `TimeLimit` holds, F1 to F6 and F3's property among them                                                                     |
+| `Rules-StartRecording`                                                                                                                              | `--start-recording`: 2 inputs, one more key, 2 rounds, a terminal stop, page close; the person acts once the page is at its address                     | 6,371,326        | the holding rules, F1 to F6 and F3's property hold, with Stop, Finish, Clear, Ctrl+C or a page close before or after the first page load         |
 | `Rule7-StartRecording`                                                                                                                              | the same, 1 round                                                                                                                                       | 528,929          | F7 holds, with page closes                                                                                                                       |
 | `Path-StartRecording-Stop`                                                                                                                          | the same, 1 round, no page close, B2 left out                                                                                                           | 155,489          | X4, X5, N1, X2, X8 and F7 hold                                                                                                                   |
 | `Path-StartRecording-BlankPage`                                                                                                                     | as `Path-StartRecording-Stop`, B2 in, acting on the blank page                                                                                          | 756,901          | X3v, R04v and F1v hold: nothing done on the loaded page is lost after acting on the blank page                                                   |
@@ -337,6 +334,8 @@ Every config runs with one TLC worker. An input is a click, with the left or rig
 | `Path-PickOnNewPage-NextClick`                                                                                                                      | 3 inputs (left clicks), a navigation                                                                                                                    | 10,997,417       | X7 holds: the same, and the next click                                                                                                           |
 | `Path-TypingAfterContinue`                                                                                                                          | 1 input, one more key, 2 rounds                                                                                                                         | 15,952           | X6, F4 hold: typing more into a field after Continue                                                                                             |
 | `Path-NavigationThenType`                                                                                                                           | 2 inputs, one more key, a navigation no held input made, B2 left out                                                                                    | 1,361,034        | X10, F1 and F6 hold: a fill typed after the page went elsewhere starts from a read of the new document                                           |
+| `Path-ReadAcrossNavigation`                                                                                                                         | as `Path-NavigationThenType`, one key fewer, with a read heard after the page went elsewhere                                                            | 1,076,793        | X11 and X10 hold: a read of a document the page left is never its latest read                                                                    |
+| `Input-ReadAcrossNavigation`                                                                                                                        | the same                                                                                                                                                | 1,076,793        | X3 and R04 hold: an input whose read a navigation overtook is kept, with that read                                                               |
 | `Path-TypingAfterNavigation`                                                                                                                        | 2 inputs, one more key, a terminal stop, a navigation no held input made, typing in the new page reported as a revision of the fill before, B2 left out | 2,238,968        | X10, F4n, X3, F1 to F6 and F3's property hold: such typing is a fill of its own in the new document, and the fill before keeps its text          |
 | `Path-AddressChangeWhileTyping`                                                                                                                     | 1 input, one more key, the page changing its address within its document                                                                                | 2,739            | F1 to F7 and F3's property hold: the fill goes on                                                                                                |
 | `Races`                                                                                                                                             | 1 input, 2 rounds, stop, close, `Quick` off                                                                                                             | stops at a break | R01 (R1), R04 and X3 (R2), X4 (R3), X5 and X8 (R4) break                                                                                         |
@@ -355,7 +354,7 @@ Every config runs with one TLC worker. An input is a click, with the left or rig
 | `Probes`, `Probes-Discard`, `Probes-Clear`, `Probes-Window`, `Probes-Window-Navigation`, `Probes-Continue`, `Probes-LateRevision`, `Probes-Storage` |                                                                                                                                                         | stops at a break | every probe breaks, as it must                                                                                                                   |
 | `Chart-Lifecycle`, `Chart-Gate`, `Chart-Fill`                                                                                                       | left clicks                                                                                                                                             | 288, 33, 189     | the three charts; their rules hold                                                                                                               |
 
-"Stops at a break": after the first rule that breaks, the statechart tool stops each later run at 100,000 states, so such a config cannot say the rest hold; the rules that break have configs of their own for that reason. `Progress.cfg` checks L1 and L2 with fairness and is not run (above). The path of `12c8bf83` with an earlier read input instead of Continue needs three inputs: there, B2 (three fills in a row) breaks F7 first, and leaving B2 out also keeps typing out while an assertion is read, so no config shows that path alone. X8 is checked with one round only: after Continue, typing more into a field makes a fill of its own, and X8 compares its start with the field's first key before the pause, which says nothing of the engine. `./run-all.sh` takes about an hour on one worker (52 minutes for #1356); `Surfaces`, `Path-PickOnNewPage-NextClick`, `Rules-StartRecording` and `TimeLimit-Holds` take most of it.
+"Stops at a break": after the first rule that breaks, the statechart tool stops each later run at 100,000 states, so such a config cannot say the rest hold; the rules that break have configs of their own for that reason. `Progress.cfg` checks L1 and L2 with fairness and is not run (above). The path of `12c8bf83` with an earlier read input instead of Continue needs three inputs: there, B2 (three fills in a row) breaks F7 first, and leaving B2 out also keeps typing out while an assertion is read, so no config shows that path alone. X8 is checked with one round only: after Continue, typing more into a field makes a fill of its own, and X8 compares its start with the field's first key before the pause, which says nothing of the engine. `./run-all.sh` takes about three hours on one worker since discard and restore while recording (#1388); for #1356 it ran in parts, as one background command may run two hours; `Surfaces`, `Path-PickOnNewPage-NextClick`, `Rules-StartRecording` and `TimeLimit-Holds` take most of it.
 
 `gen-configs.sh` writes every `.cfg` from one table; change the table, not the files.
 

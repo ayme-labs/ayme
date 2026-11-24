@@ -2138,12 +2138,14 @@ P27_NeverSavesStorageWithAPackage == ~(storage = "saved" /\ phase = "saved")
 P28_NeverWarnsOfTheStorage == storage # "failed"
 \* --save-storage after a Record that could not start (StartFails): the save
 \* is reached when the trace never started, and once a started one is gone.
+\* No package was saved on either path (saves = 0): a package that could not
+\* be written (P31) is no failed start.
 P29_NeverSavesStorageAfterTheTraceFailedToStart ==
   ~(phase = "failed" /\ storage = "saved" /\ traceStarting)
 P31_NeverSavesStorageAfterAFailedWrite ==
   ~(phase = "failed" /\ storage = "saved" /\ saves = 1)
 P30_NeverSavesStorageAfterAFailedStartsTraceIsGone ==
-  ~(phase = "failed" /\ storage = "saved" /\ ~traceStarting)
+  ~(phase = "failed" /\ storage = "saved" /\ ~traceStarting /\ saves = 0)
 
 -----------------------------------------------------------------------------
 \* Narrower versions of rule 12, each to get its own shortest path.

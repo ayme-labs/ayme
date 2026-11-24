@@ -74,12 +74,12 @@ each function named in a comment beside the operator that models it (search
   `--start-recording`), `server/infrastructure/toolbarBridge.ts`,
   `server/infrastructure/windowChannelRouter.ts`.
 
-**Sync commit: `58509a40`** (`recorder/1356-storage-flags`). To see what changed in
+**Sync commit: `33ce414f`** (`recorder/1356-storage-flags`). To see what changed in
 covered code since, from any folder of the repository (the procedure below
 runs in the model's):
 
 ```sh
-git log --oneline 58509a40..HEAD -- ':(top)packages/recorder/src'
+git log --oneline 33ce414f..HEAD -- ':(top)packages/recorder/src'
 ```
 
 A change touches the model when it adds, removes or reorders a step of the
