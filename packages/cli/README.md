@@ -136,7 +136,7 @@ The command prints these as `Warning: …` while it records. The recording goes 
 - **Playwright's report of an input does not have the shape of a snapshot.** That typing, select or upload is recorded with what changed up to its end only, not with what changed before it.
 - **The names of the files chosen could not all be read.** The upload is recorded with the first file name only. This happens when the file input is gone by the time the recorder reads it.
 - **The project's `playwright trace` could not number the trace's snapshots.** The package has its trace, but not the position numbers that open the snapshot of each step.
-- **The storage state could not be saved.** `--save-storage` could not write its file, the browser was quit or did not answer within half a minute, or the recorder broke down while it saved. The recording is saved all the same. This one comes as the recorder ends.
+- **The storage state could not be saved.** `--save-storage` could not write its file, the browser was quit or did not answer within half a minute, or the recorder broke down while it saved. The recording ends as it would have without the save: saved, empty, or failed. This one comes as the recorder ends.
 
 When the recorder cannot start, it prints one sentence saying why, and exits with code 1: no Playwright installed, Playwright too old, no Playwright recorder found in that version, Chromium could not be opened or reached, the `--cdp-endpoint` address is not on this machine, the running browser has no page or more than one, the `--load-storage` file cannot be read or holds no storage state object, or the recorder window could not be served.
 
