@@ -16,7 +16,7 @@ Sets up ayme in your project: the agent follows the quickstart for your framewor
 
 ## `ayme-recorder`
 
-Records a flow while you drive your app, then turns the recording into Playwright page objects and a test that replays the flow. It can also write an automation that does the flow with new data and asks you before each step that can't be undone. To make those page objects ayme tools too, use the `ayme` skill. [Read the `ayme-recorder` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-recorder/SKILL.md).
+Records a flow while you drive your app, then turns the recording into Playwright page objects and a test that replays the flow. It can also write an automation that does the flow with new data and asks you before each step that can't be undone. To make those page objects ayme tools too, use the `ayme` skill. [Recorder](recorder.md) covers the recorder itself. [Read the `ayme-recorder` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-recorder/SKILL.md).
 
 ## `product-surfaces`
 
