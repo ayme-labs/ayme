@@ -33,6 +33,13 @@ export function startAgentProcess(options: {
   /** Called with each line of the agent's output; a line it returns `false` for stays out of the transcript. */
   onLine: (line: string) => boolean;
 }) {
+  // Before the logs: an agent that cannot be spawned at all throws here, with nothing opened yet.
+  const child = spawn(options.command, options.args, {
+    cwd: options.cwd,
+    env: options.environment,
+    detached: true,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
   const transcript = createWriteStream(options.transcriptPath);
   const stderr = createWriteStream(options.stderrPath);
   // A log that cannot be written, a full disk for one, fails the run, not the harness:
@@ -50,12 +57,6 @@ export function startAgentProcess(options: {
       (log) => new Promise<void>((resolve) => log.once("close", resolve))
     )
   );
-  const child = spawn(options.command, options.args, {
-    cwd: options.cwd,
-    env: options.environment,
-    detached: true,
-    stdio: ["pipe", "pipe", "pipe"],
-  });
   child.stderr.pipe(stderr);
   // A message sent to an agent that has already exited must not take the harness down.
   child.stdin.on("error", (error) =>

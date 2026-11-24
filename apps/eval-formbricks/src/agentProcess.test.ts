@@ -88,4 +88,21 @@ describe("startAgentProcess", () => {
       agent.dispose();
     }
   });
+
+  it("opens no log for an agent that cannot be spawned, so no log can fail afterwards", async () => {
+    expect(() =>
+      startAgentProcess({
+        command: process.execPath,
+        // A null byte in an argument: Node refuses to spawn it at all.
+        args: ["\0"],
+        cwd: directory,
+        environment: process.env,
+        transcriptPath: path.join(directory, "no-such-folder", "t.jsonl"),
+        stderrPath: path.join(directory, "no-such-folder", "stderr.log"),
+        onLine: () => true,
+      })
+    ).toThrow();
+    // Long enough for a log opened in the missing folder to fail; an unhandled error fails the test run.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  });
 });
