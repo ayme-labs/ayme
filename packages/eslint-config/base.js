@@ -13,7 +13,12 @@ export default [
     rules: {
       "no-warning-comments": [
         "error",
-        { terms: ["todo", "fixme", "hack", "xxx"], location: "start" },
+        {
+          terms: ["todo", "fixme", "hack", "xxx"],
+          location: "start",
+          // A doc comment opens with `*`: `/** TODO: later */` counts too.
+          decoration: ["*"],
+        },
       ],
     },
   },
