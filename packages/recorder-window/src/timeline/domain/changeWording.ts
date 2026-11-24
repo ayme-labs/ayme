@@ -29,7 +29,6 @@ const fromTo = (
   read: (value: string | undefined) => string
 ) => `${what} changed from ${read(from)} to ${read(to)}`;
 
-/** One property's change, in words. */
 function wordOf(change: PropertyChange): string {
   const { property, to } = change;
   if (STATES.has(property)) {
@@ -46,7 +45,6 @@ function wordOf(change: PropertyChange): string {
   return fromTo(property.replace(/^\//, ""), change, quoted);
 }
 
-/** What a change row says happened to its element. */
 export function effectOf(row: ChangeRow): string {
   if (row.kind === "added") return "appeared";
   if (row.kind === "removed") return "was removed";

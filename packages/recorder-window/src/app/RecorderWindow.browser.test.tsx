@@ -105,7 +105,6 @@ function scheme(dark: boolean) {
       matches = next;
       for (const listener of listeners) listener();
     },
-    /** Whether anything still follows the scheme. */
     followed: () => listeners.size > 0,
   };
 }
