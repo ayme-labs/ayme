@@ -65,4 +65,44 @@ describe("startAgentProcess", () => {
       .poll(() => alive(stubbornChild ?? 0), { timeout: 2_000 })
       .toBe(false);
   });
+
+  it("fails the run, not the harness, when the transcript cannot be written", async () => {
+    const agent = startAgentProcess({
+      command: process.execPath,
+      args: ["-e", "process.stdin.on('end', () => process.exit(0)).resume()"],
+      cwd: directory,
+      environment: process.env,
+      transcriptPath: path.join(
+        directory,
+        "no-such-folder",
+        "transcript.jsonl"
+      ),
+      stderrPath: path.join(directory, "stderr-2.log"),
+      onLine: () => true,
+    });
+    try {
+      await expect(agent.finish(5_000)).rejects.toThrow(
+        /Writing the run's transcript or the agent's stderr failed: ENOENT/
+      );
+    } finally {
+      agent.dispose();
+    }
+  });
+
+  it("opens no log for an agent that cannot be spawned, so no log can fail afterwards", async () => {
+    expect(() =>
+      startAgentProcess({
+        command: process.execPath,
+        // A null byte in an argument: Node refuses to spawn it at all.
+        args: ["\0"],
+        cwd: directory,
+        environment: process.env,
+        transcriptPath: path.join(directory, "no-such-folder", "t.jsonl"),
+        stderrPath: path.join(directory, "no-such-folder", "stderr.log"),
+        onLine: () => true,
+      })
+    ).toThrow();
+    // Long enough for a log opened in the missing folder to fail; an unhandled error fails the test run.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  });
 });

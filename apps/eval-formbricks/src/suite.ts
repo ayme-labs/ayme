@@ -25,7 +25,7 @@ import {
   type AgentId,
 } from "./agents.ts";
 import { armIds, arms, isArmId, type ArmId } from "./arms.ts";
-import { parseFlags } from "./cli.ts";
+import { parseFlags, runMain } from "./cli.ts";
 import { ensureDatabaseBuilt } from "./formbricks/database.ts";
 import {
   defaultMissionId,
@@ -183,11 +183,4 @@ async function main() {
   log(`Summary written to ${written.join(", ")}.`);
 }
 
-if (import.meta.main) {
-  main().catch((error: unknown) => {
-    process.stderr.write(
-      `${error instanceof Error ? error.message : String(error)}\n`
-    );
-    process.exitCode = 2;
-  });
-}
+if (import.meta.main) runMain(main);
