@@ -11,6 +11,7 @@ import { randomBytes } from "node:crypto";
 import { cp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { agentAccess } from "./agents.ts";
 import {
   aymeServerName,
   aymeSkillDirectory,
@@ -20,7 +21,6 @@ import {
 import { parseFlags, runMain } from "./cli.ts";
 import {
   agentEffort,
-  claudeEnvironment,
   runClaude,
   setupTimeoutMs,
   type ClaudeRun,
@@ -32,10 +32,7 @@ import {
   type LoginName,
 } from "./login.ts";
 import { evalRoot, labRoot, repoRoot, runsRoot } from "./paths.ts";
-import {
-  checkPreconditions,
-  claudeTokenPrecondition,
-} from "./preconditions.ts";
+import { checkPreconditions } from "./preconditions.ts";
 import { readyLine } from "./prompt.ts";
 import { defaultModel, gitOutput, log, writeJson } from "./run.ts";
 import {
@@ -184,22 +181,15 @@ async function runStartupOn(
   const runDir = path.join(runsRoot, runId);
   // A fresh, empty Claude Code configuration for this run alone, deleted after it.
   const claudeConfigDir = path.join(runDir, "claude-config");
-  const environment =
-    login.token === undefined
-      ? undefined
-      : claudeEnvironment({
-          configDir: claudeConfigDir,
-          oauthToken: login.token,
-        });
+  const { environment, preconditions } = agentAccess({
+    agent: "claude",
+    configDir: claudeConfigDir,
+    envDirectory: evalRoot,
+    login,
+  });
 
   log("Checking preconditions.");
-  await checkPreconditions([
-    claudeTokenPrecondition({
-      environment,
-      envDirectory: evalRoot,
-      variable: login.variable,
-    }),
-  ]);
+  await checkPreconditions(preconditions);
   if (environment === undefined) throw new Error("unreachable: no environment");
   log(`Run ${runId}: ${runDir}`);
 
@@ -236,10 +226,7 @@ async function runStartupOn(
       stderrPath: path.join(runDir, "stderr.log"),
     });
     const limited = usageLimitError(run, login, runDir);
-    if (limited !== null) {
-      log(`The ${login.name} login is at its usage limit.`);
-      throw limited;
-    }
+    if (limited !== null) throw limited;
     // An error says nothing about routing: as for a mission, the run could not complete and the transcript stays.
     if (run.setupFailure !== null && !run.setup.timedOut)
       throw new Error(

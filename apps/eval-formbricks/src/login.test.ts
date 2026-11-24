@@ -1,16 +1,16 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
-import { UsageLimitError, withFallbackLogin, type Login } from "./login.ts";
+import { usageLimitError, withFallbackLogin } from "./login.ts";
 import { runsRoot } from "./paths.ts";
 import { defaultScenarioId, startupScenarios } from "./scenarios.ts";
 import { runStartup, type StartupResult } from "./startup.ts";
-import { isUsageLimitText } from "./transcript.ts";
+import { resultEvent } from "./transcript.ts";
 
 const firstToken = "first-token-for-the-test";
 const fallbackToken = "fallback-token-for-the-test";
@@ -19,7 +19,11 @@ const fixturesDir = path.join(
   "fixtures"
 );
 
-describe("isUsageLimitText", () => {
+describe("a result event's usage limit", () => {
+  const usageLimit = (result: string, isError = true) =>
+    resultEvent(JSON.stringify({ type: "result", is_error: isError, result }))
+      ?.usageLimit;
+
   it("matches each text Claude Code gives for an exhausted login", () => {
     for (const text of [
       "You've hit your weekly limit · resets Nov 20, 9am (UTC)",
@@ -36,7 +40,7 @@ describe("isUsageLimitText", () => {
       "Sonnet 5.5 requires usage credits. Switch to another model, or manage usage credits at claude.ai/settings/usage, to continue.",
       "API Error: Usage credits required for 1M context · run /usage-credits to turn them on (they take effect in a new session), or /model sonnet to switch to standard context",
     ])
-      expect(isUsageLimitText(text), text).toBe(true);
+      expect(usageLimit(text), text).toBe(true);
   });
 
   it("leaves overload, other errors and quoted texts alone", () => {
@@ -48,72 +52,41 @@ describe("isUsageLimitText", () => {
       "Fast mode requires usage credits. Run /usage-credits to continue.",
       "Your account is on hold and can't sign in to Claude Code. View details or appeal: https://claude.ai/appeal",
     ])
-      expect(isUsageLimitText(text), text).toBe(false);
+      expect(usageLimit(text), text).toBe(false);
+    // The same text in a result that is not an error is the model's, not the CLI's.
+    expect(usageLimit("You've hit your weekly limit", false)).toBe(false);
   });
 });
 
-describe("withFallbackLogin", () => {
-  const directories: string[] = [];
-  afterAll(async () => {
-    for (const directory of directories)
-      await rm(directory, { recursive: true });
-  });
-  /** Runs the attempts over an env file of its own, so nothing of the maintainer's shell or `.env.local` is read. */
-  async function attempts(
-    envFile: string,
-    attempt: (login: Login) => Promise<unknown>
-  ) {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "eval-login-"));
-    directories.push(directory);
-    await writeFile(path.join(directory, ".env.local"), envFile);
-    const made: Login[] = [];
+describe("withFallbackLogin without a second token", () => {
+  const exported = { CLAUDE_CODE_OAUTH_TOKEN: firstToken };
+  let directory: string;
+  afterEach(() => rm(directory, { recursive: true }));
+
+  it("lets a limited run stand, as before there was a second login", async () => {
+    directory = await mkdtemp(path.join(os.tmpdir(), "eval-login-"));
     const outcome = await withFallbackLogin(
       directory,
-      (login) => {
-        made.push(login);
-        return attempt(login);
-      },
+      (login) =>
+        Promise.resolve(usageLimitError({ usageLimited: true }, login, "x")),
       () => undefined,
-      { CLAUDE_CODE_OAUTH_TOKEN: firstToken }
-    ).catch((error: unknown) => error);
-    return { made, outcome };
-  }
-  const limitedOnFirst = (login: Login) =>
-    login.name === "first"
-      ? Promise.reject(new UsageLimitError("limited"))
-      : Promise.resolve(login.name);
-  const bothTokens = `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK=${fallbackToken}\n`;
-
-  it("repeats the attempt on the fallback login after a usage limit on the first", async () => {
-    const { made, outcome } = await attempts(bothTokens, limitedOnFirst);
-    expect(outcome).toBe("fallback");
-    expect(made).toEqual([
-      {
-        name: "first",
-        variable: "CLAUDE_CODE_OAUTH_TOKEN",
-        token: firstToken,
-        hasFallback: true,
-      },
-      {
-        name: "fallback",
-        variable: "CLAUDE_CODE_OAUTH_TOKEN_FALLBACK",
-        token: fallbackToken,
-        hasFallback: false,
-      },
-    ]);
-  });
-
-  it("tells the first login it has no fallback when no second token is configured", async () => {
-    const { made } = await attempts("", () => Promise.resolve());
-    expect(made.map((login) => login.hasFallback)).toEqual([false]);
-  });
-
-  it("does not repeat an attempt that ended on anything else, a failed cleanup included", async () => {
-    const { made, outcome } = await attempts(bothTokens, () =>
-      Promise.reject(new Error("could not delete the browser profile"))
+      exported
     );
-    expect(made).toHaveLength(1);
-    expect(outcome).toEqual(new Error("could not delete the browser profile"));
+    expect(outcome).toBeNull();
+  });
+
+  it("does not look for one before the first login is limited", async () => {
+    directory = await mkdtemp(path.join(os.tmpdir(), "eval-login-"));
+    // An env file that cannot be read: a folder in its place.
+    await mkdir(path.join(directory, ".env.local"));
+    await expect(
+      withFallbackLogin(
+        directory,
+        () => Promise.resolve("served"),
+        () => undefined,
+        exported
+      )
+    ).resolves.toBe("served");
   });
 });
 

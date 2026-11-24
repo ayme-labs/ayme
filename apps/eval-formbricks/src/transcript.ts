@@ -116,10 +116,6 @@ const usageLimitTexts = [
   /^API Error: Usage credits required for 1M context\b/,
 ];
 
-export function isUsageLimitText(text: string) {
-  return usageLimitTexts.some((pattern) => pattern.test(text));
-}
-
 /** Whether one transcript line is a `result` event, whether it reports an error, and whether that error is a usage limit; read while the agent runs. */
 export function resultEvent(
   line: string
@@ -128,12 +124,11 @@ export function resultEvent(
     const event: unknown = JSON.parse(line);
     if (!isRecord(event) || event.type !== "result") return null;
     const isError = event.is_error === true;
+    const text = typeof event.result === "string" ? event.result : "";
     return {
       isError,
       usageLimit:
-        isError &&
-        typeof event.result === "string" &&
-        isUsageLimitText(event.result),
+        isError && usageLimitTexts.some((pattern) => pattern.test(text)),
     };
   } catch {
     return null;

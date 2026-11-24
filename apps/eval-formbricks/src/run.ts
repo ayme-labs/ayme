@@ -298,7 +298,6 @@ async function runOnceOn(
     // A limit ends the attempt: half a run is no measurement. The repeat must not find what this one left behind.
     const limited = login === null ? null : usageLimitError(run, login, runDir);
     if (limited !== null) {
-      log(`The ${login?.name} login is at its usage limit.`);
       await moveFiles(
         readLabChanges().untracked,
         path.join(runDir, "agent-files")

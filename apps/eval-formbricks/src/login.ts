@@ -19,8 +19,8 @@ export type Login = {
   variable: string;
   /** `undefined` only for a first login that is not configured; the token precondition reports that. */
   token: string | undefined;
-  /** A second login is configured, so a limit on this one is repeated instead of handled here. */
-  hasFallback: boolean;
+  /** Whether a limit on this login is repeated on another instead of handled here; asked only after a limit. */
+  hasFallback: () => boolean;
 };
 
 /** The attempt ended on the first login's usage limit and the run is to be repeated on the second. */
@@ -40,7 +40,7 @@ export function usageLimitError(
     return new Error(
       `Both Claude Code logins are at their usage limit, so the run cannot complete. The transcript is in ${where}.`
     );
-  return login.hasFallback
+  return login.hasFallback()
     ? new UsageLimitError("The first login is at its usage limit.")
     : null;
 }
@@ -56,22 +56,26 @@ export async function withFallbackLogin<T>(
   log: (line: string) => void,
   parent: NodeJS.ProcessEnv = process.env
 ): Promise<T> {
-  const fallback = readEnvVariable(fallbackTokenVariable, directory, parent);
+  // Read only after a limit: a run the first login serves does not depend on the second token's source.
+  const fallback = () =>
+    readEnvVariable(fallbackTokenVariable, directory, parent);
   try {
     return await attempt({
       name: "first",
       variable: tokenVariable,
       token: readOauthToken(directory, parent),
-      hasFallback: fallback !== undefined,
+      hasFallback: () => fallback() !== undefined,
     });
   } catch (error) {
     if (!(error instanceof UsageLimitError)) throw error;
   }
-  log("Repeating the run from the start on the fallback login.");
+  log(
+    "The first login is at its usage limit; repeating the run from the start on the fallback login."
+  );
   return attempt({
     name: "fallback",
     variable: fallbackTokenVariable,
-    token: fallback,
-    hasFallback: false,
+    token: fallback(),
+    hasFallback: () => false,
   });
 }
