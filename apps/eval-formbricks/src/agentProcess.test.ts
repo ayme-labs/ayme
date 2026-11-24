@@ -65,4 +65,27 @@ describe("startAgentProcess", () => {
       .poll(() => alive(stubbornChild ?? 0), { timeout: 2_000 })
       .toBe(false);
   });
+
+  it("fails the run, not the harness, when the transcript cannot be written", async () => {
+    const agent = startAgentProcess({
+      command: process.execPath,
+      args: ["-e", "process.stdin.on('end', () => process.exit(0)).resume()"],
+      cwd: directory,
+      environment: process.env,
+      transcriptPath: path.join(
+        directory,
+        "no-such-folder",
+        "transcript.jsonl"
+      ),
+      stderrPath: path.join(directory, "stderr-2.log"),
+      onLine: () => true,
+    });
+    try {
+      await expect(agent.finish(5_000)).rejects.toThrow(
+        /Writing the run's transcript or the agent's stderr failed: ENOENT/
+      );
+    } finally {
+      agent.dispose();
+    }
+  });
 });

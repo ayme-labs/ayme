@@ -5,7 +5,7 @@
  * run ends. What an agent is sent and what its output means is its driver's.
  */
 import { spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
+import { createWriteStream, type WriteStream } from "node:fs";
 import { createInterface } from "node:readline";
 
 import { processGroups, signalGroups } from "./processGroups.ts";
@@ -21,11 +21,12 @@ export type Turn = {
 
 export type TurnResult = { isError: boolean };
 
-function closeStream(stream: NodeJS.WritableStream & { closed?: boolean }) {
-  return new Promise<void>((resolve, reject) => {
-    if (stream.closed) return resolve();
-    stream.once("error", reject);
-    stream.end(() => resolve());
+/** Ends the stream and waits until it has closed; one that failed has closed already. */
+function closeStream(stream: WriteStream) {
+  return new Promise<void>((resolve) => {
+    if (stream.closed || stream.destroyed) return resolve();
+    stream.once("close", resolve);
+    stream.end();
   });
 }
 
@@ -43,6 +44,14 @@ export function startAgentProcess(options: {
 }) {
   const transcript = createWriteStream(options.transcriptPath);
   const stderr = createWriteStream(options.stderrPath);
+  // A log that cannot be written, a full disk for one, fails the run, not the harness:
+  // the agent is stopped and `finish` reports it, so a suite records the failure and cleans up.
+  let logFailure: Error | null = null;
+  for (const log of [transcript, stderr])
+    log.on("error", (error) => {
+      logFailure ??= error;
+      stop();
+    });
   const child = spawn(options.command, options.args, {
     cwd: options.cwd,
     env: options.environment,
@@ -162,6 +171,8 @@ export function startAgentProcess(options: {
      * Ends the agent's input and waits for it to exit, stopping one that
      * lingers past `exitGraceMs`. Throws when the run was interrupted: an
      * interrupted run is not a result, so nothing is stored and a suite stops.
+     * Throws too when the transcript or the agent's stderr could not be
+     * written: a run without them is not a result either.
      */
     finish: async (exitGraceMs: number) => {
       findGroups();
@@ -173,6 +184,10 @@ export function startAgentProcess(options: {
       await Promise.all([closeStream(transcript), closeStream(stderr)]);
       if (interruptedBy)
         throw new Error(`The run was interrupted by ${interruptedBy}.`);
+      if (logFailure !== null)
+        throw new Error(
+          `Writing the run's transcript or the agent's stderr failed: ${(logFailure as Error).message}`
+        );
       return exit;
     },
     /** Always called when the run ends, however it ends. */
@@ -182,6 +197,9 @@ export function startAgentProcess(options: {
       process.off("SIGINT", onInterrupt);
       process.off("SIGTERM", onInterrupt);
       killLeftovers();
+      // A run that failed before `finish` closed them, an agent that could not be spawned for one.
+      transcript.destroy();
+      stderr.destroy();
     },
   };
 }

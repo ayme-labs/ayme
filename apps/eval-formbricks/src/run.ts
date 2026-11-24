@@ -27,6 +27,7 @@ import {
   type ArmSetup,
 } from "./arms.ts";
 import { initPageScript, openStartPage } from "./browser.ts";
+import { runMain } from "./cli.ts";
 import { agentEffort, claudeVersion, runClaude } from "./claude.ts";
 import { codexConfig, codexVersion, runCodex } from "./codex.ts";
 import { moveFiles, readLabChanges } from "./labCheckout.ts";
@@ -339,11 +340,4 @@ async function main() {
   process.exitCode = result.pass ? 0 : 1;
 }
 
-if (import.meta.main) {
-  main().catch((error: unknown) => {
-    process.stderr.write(
-      `${error instanceof Error ? error.message : String(error)}\n`
-    );
-    process.exitCode = 2;
-  });
-}
+if (import.meta.main) runMain(main);
