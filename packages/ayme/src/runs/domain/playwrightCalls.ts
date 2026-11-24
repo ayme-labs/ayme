@@ -278,6 +278,7 @@ export function elementsOf(
   args: readonly unknown[]
 ): Locator[] {
   if (subject === "locator") {
+    // dragTo's first argument is the drop target's locator.
     const dropTarget = method === "dragTo" ? (args[0] as Locator) : undefined;
     return dropTarget ? [target as Locator, dropTarget] : [target as Locator];
   }

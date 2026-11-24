@@ -53,6 +53,7 @@ type InFlight = {
   /** The inputs of its before capture, for a capture when a load starts. */
   inputs: ElementInputs;
   loading?: { url: string; after?: Capture };
+  /** Ends its Settled Page wait early. */
   stopWaiting?: () => void;
 };
 

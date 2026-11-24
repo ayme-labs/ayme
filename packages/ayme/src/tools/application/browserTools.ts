@@ -194,6 +194,8 @@ export const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
   registerElementTool(selectOptionDefinition, { predicate: "select" }),
 ];
 
+// --- Browser Tools that are published only ---
+
 const FILL_FORM_FIELD_TYPES = [
   "textbox",
   "checkbox",

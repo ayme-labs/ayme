@@ -80,6 +80,8 @@ describe("Change Record baseline in Chromium", () => {
     return (await agentTools().call(name, input)) as ActionResultShape;
   }
 
+  // --- A change between the caller's read and its next action ---
+
   it("reports a change made after snapshot in the click's Change Record", async () => {
     document.body.innerHTML = '<button id="act">Act</button>';
     startRuntime();
@@ -155,6 +157,8 @@ describe("Change Record baseline in Chromium", () => {
     expect(second.changes_before).toContain("Background toast");
     expect(second.changes_before).not.toContain("Result of the first action");
   });
+
+  // --- A capture ayme makes for itself must not consume the change ---
 
   it("keeps the Change Record complete when the inspector captures in between", async () => {
     document.body.innerHTML = '<button id="act">Act</button>';

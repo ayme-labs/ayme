@@ -215,6 +215,7 @@ const stores = new WeakMap<Page, PageStateStore>();
 const hosts = new WeakMap<Page, PageStateHost>();
 let documentCount = 0;
 
+/** The page's store, if its Page State Session was created. */
 export function existingPageState(page: Page): PageStateStore | undefined {
   return stores.get(page);
 }
