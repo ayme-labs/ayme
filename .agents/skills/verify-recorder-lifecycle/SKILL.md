@@ -101,11 +101,13 @@ a shared machine run one at a time.
 
    For each config it checked, it writes `out/<config>/report.md`, with each
    rule that breaks told as its path in plain words, and
-   `out/Chart-*/chart.mmd`. A config the tool could not check has no report:
-   `run-all.sh` names it, with its log in `out-<config>.log`, and exits
-   non-zero. Read every report with the `statechart` skill. Compare each config with the
-   table in the README, "Running it": the states it reaches and what it must
-   give. To check one config with TLC alone, set `TLA2TOOLS` (README,
+   `out/Chart-*/chart.mmd`. It compares the rules that break in each config
+   with `expected.txt`, and a config that gives others, or that the tool could
+   not check (no report), is named with its log in `out-<config>.log`, and
+   the run exits non-zero. Read every report with the `statechart` skill. The
+   README's table, "Running it", says why each config gives what it does and
+   how many states it reaches. `./run.sh <config>` checks one config the same
+   way. To check one config with TLC alone, set `TLA2TOOLS` (README,
    "Running it") and run `./tlc.sh Rules`.
 
 2. **Read the change against the model.** For each covered function the
@@ -138,7 +140,8 @@ a shared machine run one at a time.
      reaches a situation.
 
 5. **Update the README and this skill**: the rules and their outcomes, the
-   known limits and races, the table of configs with the states they reach,
+   known limits and races, the table of configs with the states they reach
+   and `expected.txt`,
    the charts (from `out/Chart-*/chart.mmd`), the coverage above, and the
    engine commit the model was last compared with, in both places. Move the
    sync commit only after the model describes the code at the new commit.
