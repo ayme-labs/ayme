@@ -34,7 +34,7 @@ Keep SvelteKit's generated tsconfig as the base and enable decorators:
 }
 ```
 
-SvelteKit 3 and plain Svelte apps differ only in this step; see [Svelte](../frameworks/svelte.md).
+On SvelteKit 3, or Svelte without SvelteKit, this step and the `dev` import in step 4 differ; see [Svelte](../frameworks/svelte.md#setup).
 
 ## 3. Write a Page Object Model
 
