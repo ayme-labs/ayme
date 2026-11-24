@@ -4,7 +4,6 @@ import {
   type ToolAvailability,
 } from "../../page-state/domain";
 
-/** What an action's availability predicate answered. */
 export type PredicateAnswer = { available: boolean; reason?: string };
 
 /**

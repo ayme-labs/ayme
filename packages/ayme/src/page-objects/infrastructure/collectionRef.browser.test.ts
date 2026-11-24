@@ -204,7 +204,6 @@ describe("collection instances targeted by Page Object id", () => {
       const archiveTool = tools.find((t) => t.name === "Item.archive");
       if (!archiveTool) throw new Error("Expected archive tool.");
 
-      // Capture state and get the id of item-1.
       const { getPageStateForDocument } =
         await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
@@ -274,13 +273,11 @@ describe("collection instances targeted by Page Object id", () => {
       const archiveTool = tools.find((t) => t.name === "Item.archive");
       if (!archiveTool) throw new Error("Expected archive tool.");
 
-      // Capture state and get the id of item-1.
       const { getPageStateForDocument } =
         await import("../../page-state/infrastructure");
       const state = await getPageStateForDocument(document);
       const id = idInPageState(state.text, "Item", 1);
 
-      // Remove item-1 entirely from the DOM.
       document.querySelector("#item-1")?.remove();
 
       await expect(
