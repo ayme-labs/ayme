@@ -72,18 +72,18 @@ Five kinds of project need one thing more:
 - **Angular.** `ng add` points the build plugin at `tsconfig.app.json`, so the build reads that file, not the folder's. Keep options your Page Objects need, such as `paths`, in the root `tsconfig.json`, which both extend.
 - **Next.js.** Its tsconfig turns `incremental` on, and without `"incremental": false` the type check writes `ayme/tsconfig.tsbuildinfo`. Point the Turbopack loader's `tsconfigPath` at `ayme/tsconfig.json`.
 - **Nuxt and SvelteKit.** They generate the tsconfig this chain ends in: Nuxt in `.nuxt/`, SvelteKit 2 in `.svelte-kit/` and SvelteKit 3 in `node_modules/$app/`. Their dev server and build write it, and so do `nuxt prepare` and `svelte-kit sync`. In a fresh clone, run one of those before `ayme mcp` or the type check: without the generated file, neither can read the folder's tsconfig. SvelteKit 3's template runs `svelte-kit sync` on `npm install` already.
-- **A tsconfig with `composite` on.** Add `"ayme"` to its `include`: `tsc -b` fails with TS6307 on a Page Object the app imports from outside that list. Then turn `composite` off in `ayme/tsconfig.json`:
+- **A tsconfig with `composite` on.** Add `"ayme"` to its `include`: `tsc -b` fails with TS6307 on a Page Object the app imports from outside that list. Then turn `composite` and `incremental` off in `ayme/tsconfig.json`:
 
   ```jsonc
   // ayme/tsconfig.json
   {
     "extends": "../tsconfig.app.json",
-    "compilerOptions": { "composite": false },
+    "compilerOptions": { "composite": false, "incremental": false },
     "include": ["**/*.ts"],
   }
   ```
 
-  With `composite` on, `tsc --noEmit -p ayme` overwrites the app's build info, and the next `tsc -b` then passes without checking the app's own files again.
+  With either on, `tsc --noEmit -p ayme` overwrites the app's build info, and the next `tsc -b` then passes without checking the app's own files again.
 
 - **A project with no tsconfig to extend**, such as one that only drives a site it doesn't build. Put the compiler options in `ayme/tsconfig.json` itself:
 

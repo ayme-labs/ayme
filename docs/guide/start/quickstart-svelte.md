@@ -48,6 +48,8 @@ Page Objects live in `ayme/pom/`, at your project's root. Give the folder a tsco
 }
 ```
 
+Without SvelteKit, extend `../tsconfig.app.json` instead, where Vite's Svelte template keeps its options.
+
 Add the `#pom/*` alias to your `package.json`, so app code and tests import the Page Objects the same way from any folder:
 
 ```json
