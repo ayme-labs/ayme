@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Late</title>
+  </head>
+  <body>
+    <h1>Orders</h1>
+    <button id="refresh" autofocus>Refresh</button>
+    <p id="state">Never refreshed</p>
+    <script>
+      // The page goes on rendering by itself after it has loaded: a test
+      // calls this when it wants the late part to appear.
+      window.showOffer = () => {
+        const offer = document.createElement("p");
+        offer.id = "offer";
+        offer.textContent = "Free delivery today";
+        document.body.append(offer);
+      };
+      // A refresh takes its time, in steps less than a quiet window apart:
+      // the page is a Settled Page only after the last one.
+      document.getElementById("refresh").addEventListener("click", () => {
+        const state = document.getElementById("state");
+        state.textContent = "Refreshing";
+        setTimeout(() => {
+          state.textContent = "Still refreshing";
+          setTimeout(() => {
+            state.textContent = "Refreshed";
+          }, 200);
+        }, 200);
+      });
+    </script>
+  </body>
+</html>

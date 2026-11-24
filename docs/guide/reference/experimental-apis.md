@@ -2,7 +2,7 @@
 
 The APIs whose shape is not settled yet, and what that means for code that uses them.
 
-An experimental API belongs to a feature ayme keeps but whose shape is not settled yet: its names, options and behaviour may change in any release, without a migration note. Its declaration carries the TSDoc `@experimental` tag, which your editor shows, and its documentation opens with a note that links here.
+An experimental API belongs to a feature ayme keeps but whose shape is not settled yet: its names, options and behaviour may change in any release, without a migration note. Its declaration carries the TSDoc `@experimental` tag, which your editor shows; an experimental CLI flag is marked in its command's usage text instead. Its documentation opens with a note that links here.
 
 ## Peeks
 
@@ -23,6 +23,8 @@ An experimental API belongs to a feature ayme keeps but whose shape is not settl
 
 ## Page Objects that `ayme mcp` serves
 
+- `--page-objects <file>` of `ayme mcp` in `@ayme-dev/mcp`: names the entry the server builds and serves, in [Page Objects on a page without ayme](../guides/page-objects-without-ayme.md).
+
 `ayme mcp` in `@ayme-dev/mcp` can serve your Page Object Models to a page that doesn't ship ayme. The entry is a module whose default export lists the classes, as `createAyme`'s `pageObjects` option takes them:
 
 ```ts
@@ -34,4 +36,4 @@ export default [ProjectsPage];
 
 Without `--page-objects`, `ayme mcp` serves `.ayme/page-objects.ts` if the project has one. `--page-objects <file>` names another entry. The server builds the entry and serves it. It also writes `.ayme/init-script.js`, which your browser automation loads into the page as an init script. The script starts ayme in the page, with the Agent Connection on, and registers the classes.
 
-The usage text of `ayme mcp` marks `--page-objects` experimental. See [Page Objects on a page without ayme](../guides/page-objects-without-ayme.md).
+`.ayme/page-objects.ts` and `.ayme/init-script.js` are experimental with the flag: a release may rename or move them, as it may the flag.

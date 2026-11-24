@@ -27,6 +27,9 @@ apps/example-vue/tests/vue-webmcp.spec.ts-snapshots/
 
 # Vendored repo-local agent skills, kept byte-for-byte with upstream
 /.agents/skills/typesafe-ai/
+/.agents/skills/statechart/
+/.agents/skills/create-formal-verification-skill/
+/.agents/skills/maintain-formal-verification-skill/
 
 apps/example-angular/.angular/
 

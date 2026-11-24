@@ -53,7 +53,7 @@ At the end of a `vite build`, the plugin prints the public methods of your Page 
   SchedulePage.row: no @ayme.action mark
 ```
 
-With the default `"unsupported"`, it lists only the methods that could not become tools as they are, because a parameter has no schema or a destructured parameter cannot be published. `"all"` also lists unmarked methods whose parameters have one, and `"none"` prints nothing. A method declared `@ayme.collection` is never listed; an undeclared one is an ordinary method, also when it returns Page Objects. Fields and getters are never listed, declared or not. An action with such a parameter fails the build instead.
+With the default `"unsupported"`, it lists only the methods that could not become tools as they are, because a parameter has no schema or a destructured parameter cannot be published. `"all"` also lists unmarked methods whose parameters have one, and `"none"` prints nothing. A method declared `@ayme.collection` is never listed; an undeclared one is an ordinary method, also when it returns Page Objects. Fields and getters are never listed, declared or not. An action with such a parameter fails the build instead. A [build without ayme](#errors) does not check it.
 
 ## Angular
 
@@ -236,7 +236,7 @@ Each field resolves on its own. `use` wins over the selected project, then the t
 
 ## Errors
 
-These fail the build or the dev server. An error the Page Object compiler reports names its file and, when the compiler knows them, its line and column. These are positions in your source file, not in the code the compiler generates from it. Some errors have a file only, such as `Could not find a tsconfig.json for this module.`
+These fail the build or the dev server. The four about an action's parameters, from `Unsupported Page Object Tool input type …` to `… have no type`, do not fail a [build without ayme](#include-ayme-in-a-build), which compiles each Page Object Model to a stand-in without deriving its actions' input schemas. An error the Page Object compiler reports names its file and, when the compiler knows them, its line and column. These are positions in your source file, not in the code the compiler generates from it. Some errors have a file only, such as `Could not find a tsconfig.json for this module.`
 
 How the position appears depends on what runs the compiler:
 

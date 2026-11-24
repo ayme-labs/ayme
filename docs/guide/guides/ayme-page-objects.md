@@ -97,7 +97,23 @@ Leave helper methods that only read the page unmarked, such as ones that return 
 
 An action can return a Page Object, as `openNewProjectDialog` returns a `NewProjectDialog`. An agent is told what it returns: that tool's description reads `Shows NewProjectDialog.` Returning a Page Object does not make its actions tools. Only a Page Object a model declares, as [`@ayme.child`](#aymechild) shows, has its actions listed.
 
-The method's parameters are the tool's inputs. Plain data works: strings, numbers, booleans, unions of literals, arrays, tuples and plain objects. A function, a class instance such as `Date`, an object with methods, `any`, `unknown` or an open generic fails the build, which names the parameter.
+The method's parameters are the tool's inputs. Plain data works: strings, numbers, booleans, unions of literals, arrays, tuples and plain objects. A function, a class instance such as `Date`, an object with methods, `any`, `unknown` or an open generic fails the build, which names the parameter. A [build without ayme](../reference/build-plugin.md#errors) does not check them.
+
+Take two or more parameters as one destructured object, and keep a single parameter positional, as in `pick(name: string)`. A call then names each value, two values of the same type cannot be swapped, and an optional input is added without reordering every caller's arguments.
+
+```ts
+export class NewProjectDialog extends AppComponent {
+  @ayme.action
+  async fillProjectForm({ name, owner }: { name: string; owner: string }) {
+    await this.root.getByLabel("Name").fill(name);
+    await this.root.getByLabel("Owner").fill(owner);
+    return this;
+  }
+}
+
+// In a spec:
+await dialog.fillProjectForm({ name: "Q3 launch", owner: "Ada" });
+```
 
 **`description`** tells an agent what its name and parameters cannot: what the action causes and who may do it. It states facts about the action and leaves the next step to the agent. An action whose description would only restate its name needs none.
 

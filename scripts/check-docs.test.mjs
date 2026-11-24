@@ -411,9 +411,89 @@ test("fails on a listed API that names no published package", () => {
   );
 });
 
+const usage =
+  "export const USAGE = `Usage: tool serve [--port <port>] [--entry <file>]\n\n  --port <port>  Listen on this port.\n  -e, --entry <file>\n                 Experimental: serve this entry.\n  --watch        Experimental: rebuild on change.\n  -h, --help     Print this usage text.\n`;\n";
+
+test("passes when the page lists every flag a published package's usage text marks experimental", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/src/cli.ts": usage,
+        ...experimentalPage(
+          "- `--entry <file>` of `tool serve` in `lib`: the entry.\n- `--watch` of `tool serve` in `lib`: rebuilds.\n"
+        ),
+      })
+    ),
+    []
+  );
+});
+
+test("reads a usage text with CRLF line endings", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/src/cli.ts": usage.replaceAll("\n", "\r\n"),
+        ...experimentalPage(
+          "- `--entry <file>` of `tool serve` in `lib`: the entry.\n- `--watch` of `tool serve` in `lib`: rebuilds.\n"
+        ),
+      })
+    ),
+    []
+  );
+});
+
+test("reads a description one space after the flag", () => {
+  assertOneProblem(
+    {
+      "packages/lib/src/cli.ts":
+        "export const USAGE = `\n  --watch Experimental: rebuild on change.\n`;\n",
+    },
+    /^packages\/lib\/src\/cli\.ts:2: `--watch` in lib is marked experimental in its usage text but not listed in docs\/guide\/reference\/experimental-apis\.md$/
+  );
+});
+
+test("ignores experimental marks in a published package's test files", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/src/cli.test.ts": usage,
+        "packages/lib/src/index.test.ts": tagged,
+      })
+    ),
+    []
+  );
+});
+
+test("fails on a flag the usage text marks experimental that the page does not list", () => {
+  assertOneProblem(
+    {
+      "packages/lib/src/cli.ts": usage,
+      ...experimentalPage("- `--watch` of `tool serve` in `lib`: rebuilds.\n"),
+    },
+    /^packages\/lib\/src\/cli\.ts:4: `--entry` in lib is marked experimental in its usage text but not listed in docs\/guide\/reference\/experimental-apis\.md$/
+  );
+});
+
+test("fails on a listed flag that no published package's usage text marks experimental", () => {
+  assertOneProblem(
+    {
+      "packages/lib/src/cli.ts": usage,
+      ...experimentalPage(
+        "- `--entry <file>` of `tool serve` in `lib`: the entry.\n- `--watch` of `tool serve` in `lib`: rebuilds.\n- `--port <port>` of `tool serve` in `lib`: settled.\n"
+      ),
+    },
+    /^docs\/guide\/reference\/experimental-apis\.md:7: lists `--port` in lib, which does not mark it experimental in its usage text$/
+  );
+});
+
 test("ignores the experimental mark in a private package", () => {
   assert.deepEqual(
-    checkDocs(fixture({ "packages/internal/src/index.ts": tagged })),
+    checkDocs(
+      fixture({
+        "packages/internal/src/index.ts": tagged,
+        "packages/internal/src/cli.ts": usage,
+      })
+    ),
     []
   );
 });

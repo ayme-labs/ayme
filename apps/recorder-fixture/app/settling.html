@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Settling</title>
+  </head>
+  <body>
+    <h1>Settling</h1>
+    <!-- Its click changes the page at once, and only here. Above the
+         results, so that they do not move it while they come. -->
+    <button id="mark">Mark</button>
+    <p id="mark-state">Not marked</p>
+    <!-- Its click keeps changing the page for about a second: one result
+         every 100 ms, so the page is not quiet for 250 ms until the last. -->
+    <button id="load">Load results</button>
+    <ul id="results" aria-label="Results"></ul>
+    <script>
+      const results = document.getElementById("results");
+      document.getElementById("load").addEventListener("click", () => {
+        for (let n = 1; n <= 10; n += 1)
+          setTimeout(() => {
+            const item = document.createElement("li");
+            item.textContent = `Result ${n}`;
+            results.append(item);
+          }, n * 100);
+      });
+      document.getElementById("mark").addEventListener("click", () => {
+        document.getElementById("mark-state").textContent = "Marked";
+      });
+    </script>
+  </body>
+</html>
