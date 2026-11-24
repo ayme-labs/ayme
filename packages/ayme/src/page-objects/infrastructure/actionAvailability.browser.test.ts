@@ -1,18 +1,18 @@
-import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { elementOfRef } from "../../../testing/elementRefs.testSupport";
+import { rootRef } from "../../../testing/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
 
 import {
   ayme as agent,
   runContext,
-} from "../../test-utils/agentCalls.testSupport";
+} from "../../../testing/agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "../../shared";
 import { ayme } from "../domain/decorators";
 import { createPage } from "./browserPage";
-import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
+import { toolOptionsOf } from "../../../testing/toolOptions.testSupport";
 import { configurePageStateIgnore } from "../../page-state/infrastructure";
-import { rootOf, rooted } from "../../test-utils/pomRoot.testSupport";
+import { rootOf, rooted } from "../../../testing/pomRoot.testSupport";
 import { createAyme, listTools, type Ayme } from "../../runtime";
 import {
   listAvailablePomTools,

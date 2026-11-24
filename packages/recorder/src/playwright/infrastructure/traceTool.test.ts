@@ -11,7 +11,7 @@ import {
   runTraceTool,
   snapshotPositions,
 } from "./traceTool";
-import { snapshotId } from "../../test-utils/ids";
+import { snapshotId } from "../../../testing/ids";
 
 // What the stock `playwright trace actions` prints, as run on Playwright 1.62
 // and 1.64 for a trace of one page with two snapshot markers: the markers

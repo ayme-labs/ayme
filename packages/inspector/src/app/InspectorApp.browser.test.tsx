@@ -12,9 +12,9 @@ import {
 import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
 import { renderInspector } from "./renderInspector";
-import { forest, node } from "../structure/test-utils/projected";
-import { startedAyme } from "../tools/test-utils/startedAyme";
-import { Inspector } from "../testing";
+import { forest, node } from "../../testing/structure/projected";
+import { startedAyme } from "../../testing/tools/startedAyme";
+import { Inspector } from "../../testing";
 
 // Component tests of the whole panel, driven through the Inspector POM on
 // playwright-lite. The runtime's

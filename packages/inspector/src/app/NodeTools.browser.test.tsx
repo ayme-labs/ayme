@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { forest, node } from "../structure/test-utils/projected";
-import { startedAyme } from "../tools/test-utils/startedAyme";
+import { forest, node } from "../../testing/structure/projected";
+import { startedAyme } from "../../testing/tools/startedAyme";
 import { renderInspector } from "./renderInspector";
-import { Inspector } from "../testing";
+import { Inspector } from "../../testing";
 
 // Component tests: a node's single-element tools while WebMCP publishes nothing. The
 // runtime is replaced by a look at the host page, live single-element tools that are

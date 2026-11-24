@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { RecorderUpdate } from "./index";
-import { startScriptedRecorder } from "./testing";
+import { startScriptedRecorder } from "../testing";
 
 describe("a recorder", () => {
   it("ends with 'empty' when it is ended from outside before anything was recorded", async () => {
@@ -75,6 +75,8 @@ describe("a recorder", () => {
           "finish",
           "stop",
           "clear",
+          "discard",
+          "restore",
           "assertVisibility",
           "highlight",
           "clearHighlight",
@@ -84,7 +86,7 @@ describe("a recorder", () => {
       expect.objectContaining({
         phase: "wrappingUp",
         then: "pause",
-        commands: [],
+        commands: ["discard", "restore"],
         warnings: [],
       }),
       expect.objectContaining({ phase: "wrappingUp", then: "save" }),

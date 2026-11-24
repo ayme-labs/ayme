@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { RecorderUpdate } from "./index";
-import { startScriptedRecorder, type ScriptedBrowser } from "./testing";
+import { startScriptedRecorder, type ScriptedBrowser } from "../testing";
 
 // Stop, Continue, Clear and the ways a recorder ends, on the scripted
 // browser with a test clock: what the handle answers and shows, what it asks
@@ -338,7 +338,10 @@ describe("Continue", () => {
       entriesOf(updates.at(-1)!).map((entry) => [entry.kind, entry.changes])
     ).toEqual([
       ["interaction", null],
-      ["change", [{ kind: "added", element: 'status "Later"' }]],
+      [
+        "change",
+        [{ kind: "added", element: 'status "Later"', role: "status" }],
+      ],
       ["interaction", null],
     ]);
     await recorder.send({ type: "finish" });

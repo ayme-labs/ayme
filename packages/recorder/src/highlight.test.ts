@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { RecorderUpdate } from "./index";
-import { startScriptedRecorder } from "./testing";
-import { entryId, inputId, pageId } from "./test-utils/ids";
+import { startScriptedRecorder } from "../testing";
+import { entryId, inputId, pageId } from "../testing/ids";
 
 // Ticket #1278: the hover highlight through the handle, on the scripted
 // browser: what the handle answers, and what it asks the browser to draw.

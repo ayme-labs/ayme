@@ -592,6 +592,9 @@ WrapUp(s, g) ==
   Proceed([s EXCEPT !.phase = "wrap", !.goal = g, !.gateOff = FALSE, !.finals = "no",
                     !.switchingOff = FALSE, !.discarding = FALSE, !.boot = "none",
                     !.picking = "off", !.gateOffAsked = idle,
+                    \* Finish, Clear or an end from outside: the decisions stand
+                    \* as they are (L whileWrappingUp takes them only towards a pause)
+                    !.kept = IF g = "pause" THEN @ ELSE s.dis,
                     !.modeQ = IF s.picking \in {"asked", "on"} THEN Append(@, "pickOff") ELSE @,
                     !.gateQ = IF idle THEN Append(@, FALSE) ELSE @], FALSE)
 
@@ -607,7 +610,6 @@ Resume(s) ==
   [s EXCEPT !.phase = "recording", !.boot = "report", !.resumed = TRUE,
             !.picking = "off", !.traceStarting = FALSE, !.lst = <<>>, !.pend = <<>>,
             !.pgHold = TRUE, !.pgLatest = 0, !.pgReported = FALSE, !.pgLastFill = 0, !.els = {},
-            !.kept = s.dis,
             !.modeQ = Append(@, "on")]
 
 \* L clearPaused
@@ -651,7 +653,8 @@ EndFromOutside(s) ==
   CASE s.phase = "off" -> [s EXCEPT !.phase = "empty", !.storage = "asked"]   \* L ending
     [] s.phase = "recording" -> WrapUp(s, "save")
     [] s.phase = "wrap" ->
-         [s EXCEPT !.goal = IF @ = "pause" THEN "save" ELSE IF @ = "clear" THEN "quit" ELSE @]
+         [s EXCEPT !.goal = IF @ = "pause" THEN "save" ELSE IF @ = "clear" THEN "quit" ELSE @,
+                   !.kept = IF s.goal = "pause" THEN s.dis ELSE @]
     [] s.phase = "paused" -> Save([s EXCEPT !.kept = s.dis])
     [] OTHER -> s
 
@@ -893,9 +896,10 @@ ShownRec == {"recording", "assertPressed", "picking"}
 
 Offered(v) ==
   CASE v = "off" -> {"record"}
-    [] v \in {"bootOff", "bootPaused"} -> {"finish", "stop", "clear"}
-    [] v = "recording" -> {"finish", "stop", "clear", "assert"}
-    [] v \in {"assertPressed", "picking"} -> {"finish", "stop", "clear", "leave"}
+    [] v \in {"bootOff", "bootPaused"} -> {"finish", "stop", "clear", "discard"}
+    [] v = "recording" -> {"finish", "stop", "clear", "assert", "discard"}
+    [] v \in {"assertPressed", "picking"} -> {"finish", "stop", "clear", "leave", "discard"}
+    [] v = "wrapPause" -> {"discard"}
     [] v = "paused" -> {"continue", "clear", "finish", "discard"}
     [] OTHER -> {}
 \* The one button that records, stops or continues (recorder-window controls.ts).
@@ -1084,8 +1088,17 @@ YouLeaveAssert ==
   /\ UNCHANGED <<pageVars, personVars, surfVars, miscVars>>
   /\ Publish
 
+\* L review: a decision is taken until Finish or Clear is pressed, while
+\* recording, wrapping up towards a pause, or paused.
+Reviewable == phase \in {"recording", "paused"} \/ (phase = "wrap" /\ goal = "pause")
+
+\* What the window lists: the entries written, a fill that shows while it
+\* can still change, and one a wrap-up that gave up kept as it showed (TL
+\* decide finds each by its id).
+Listed == tl \cup {f \in Ids : shown[f] \/ fin[f]}
+
 YouDiscard(e) ==
-  /\ PersonMayAct /\ phase = "paused" /\ Pressable("discard") /\ e \in tl \ dis
+  /\ PersonMayAct /\ Reviewable /\ Pressable("discard") /\ e \in Listed \ dis
   /\ dis' = dis \cup {e}
   /\ UNCHANGED <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
                  traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest,
@@ -1098,7 +1111,7 @@ YouDiscard(e) ==
   /\ Publish
 
 YouRestore(e) ==
-  /\ PersonMayAct /\ phase = "paused" /\ Pressable("discard") /\ e \in dis
+  /\ PersonMayAct /\ Reviewable /\ Pressable("discard") /\ e \in dis
   /\ dis' = dis \ {e}
   /\ UNCHANGED <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
                  traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest,
@@ -1742,16 +1755,28 @@ R04_FinishSavesEverything ==
 \* 5. Clear leaves no entry and no discard decision behind.
 R05_ClearLeavesNothing ==
   /\ \A e \in tl : made[In(e)].gen = gen
-  /\ dis \subseteq tl
+  /\ dis \subseteq Listed
   /\ phase = "off" => (tl = {} /\ dis = {} /\ tracing # "on")
 
-\* 6. Discard and restore work only while paused, and survive Continue.
-R06_ReviewOnlyWhilePaused ==
-  /\ phase # "paused" => dis = kept
+\* 6. Discard and restore apply until Finish or Clear is pressed; a decision
+\*    stays on its entry while the entry changes and survives Stop and
+\*    Continue; the package holds the decisions as they stood at Finish.
+\*    `kept` is the decisions at Finish, Clear or an end from outside.
+R06_ReviewUntilFinishOrClear ==
+  /\ ~Reviewable => dis = kept
   /\ pkg # "none" => pkgDis = kept
 
 \* 7. An assertion never carries changes: whatever changed since the last
 \*    snapshot counts as changed before it.
+\*    Its property: the decisions change only by a press while they are
+\*    taken, one entry at a time, or go with a cleared timeline. So Stop,
+\*    Continue, a revision of a fill and a save leave them as they are.
+R06_DecisionsChangeOnlyByAPress ==
+  [][dis' # dis =>
+       \/ /\ Reviewable
+          /\ \E e \in Ids : dis' = dis \cup {e} \/ dis' = dis \ {e}
+       \/ dis' = {} /\ tl' = {}]_vars
+
 R07_AssertionCarriesNoChanges ==
   \A e \in tl : ent[e] = "assert" =>
     /\ bsnap[e] = asnap[e]
@@ -2081,14 +2106,14 @@ P22_NeverStartsAFillFromARevision == ~\E i \in Inputs : IsFillEntry(N + i)
 P23_NeverSetsAFinalFillsText == ~\E e \in Ids : stage[e] = "textSet"
 \* --save-storage: the save is reached with nothing recorded, with a package,
 \* and fails (a warning).
-P24_NeverSavesStorageWithNothingRecorded == ~(storage = "saved" /\ phase = "empty")
-P25_NeverSavesStorageWithAPackage == ~(storage = "saved" /\ phase = "saved")
-P26_NeverWarnsOfTheStorage == storage # "failed"
+P26_NeverSavesStorageWithNothingRecorded == ~(storage = "saved" /\ phase = "empty")
+P27_NeverSavesStorageWithAPackage == ~(storage = "saved" /\ phase = "saved")
+P28_NeverWarnsOfTheStorage == storage # "failed"
 \* --save-storage after a Record that could not start (StartFails): the save
 \* is reached when the trace never started, and once a started one is gone.
-P27_NeverSavesStorageAfterTheTraceFailedToStart ==
+P29_NeverSavesStorageAfterTheTraceFailedToStart ==
   ~(phase = "failed" /\ storage = "saved" /\ traceStarting)
-P28_NeverSavesStorageAfterAFailedStartsTraceIsGone ==
+P30_NeverSavesStorageAfterAFailedStartsTraceIsGone ==
   ~(phase = "failed" /\ storage = "saved" /\ ~traceStarting)
 
 -----------------------------------------------------------------------------
@@ -2132,6 +2157,10 @@ N6_RecordingStartsInTime ==
 \* Probes: each must BREAK, which shows the model can reach that situation.
 P1_NeverSavesTwoEntries == ~(pkg = "complete" /\ Cardinality(pkgHas) = 2)
 P2_NeverSavesADiscard == ~(pkg = "complete" /\ pkgDis # {})
+\* A decision taken while recording, with no Stop before it.
+\* A fill discarded while it is typed, and typed on.
+P25_NeverTypesOnInADiscardedFill == ~(\E e \in Ids : e \in dis /\ shown[e] /\ txt[e] > 1)
+P24_NeverDiscardsWhileRecording == ~(phase = "recording" /\ boot = "none" /\ dis # {})
 P3_NeverRecordsAnAssertionAfterAClick ==
   ~(\E e \in tl : \E f \in tl : In(f) < In(e) /\ ent[e] = "assert" /\ ent[f] = "click")
 P4_NeverRecordsANavigation ==

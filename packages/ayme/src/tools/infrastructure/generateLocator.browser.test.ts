@@ -6,11 +6,11 @@ import { createPage } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
 import type { PomManifest } from "../../shared";
 import { RuntimeStateError, ToolInputError } from "../../shared";
-import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
+import { toolOptionsOf } from "../../../testing/toolOptions.testSupport";
 import { getInteractionHistory } from "../../page-state/infrastructure";
-import { shapeOf } from "../test-utils/playwrightMcp.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
-import { rooted } from "../../test-utils/pomRoot.testSupport";
+import { shapeOf } from "../../../testing/tools/playwrightMcp.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
+import { rooted } from "../../../testing/pomRoot.testSupport";
 import { createAyme, type Ayme } from "../../runtime";
 import type { ToolInput, ToolResult } from "../domain/toolTypes";
 

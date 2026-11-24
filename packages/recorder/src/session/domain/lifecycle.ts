@@ -924,6 +924,8 @@ function command(state: LifecycleState, asked: RecorderCommand): Step {
 function commandIn(state: LifecycleState, asked: RecorderCommand): Step | null {
   if (asked.type === "highlight" || asked.type === "clearHighlight")
     return reviewable(state) ? highlight(state, asked) : null;
+  if (asked.type === "discard" || asked.type === "restore")
+    return decidable(state) ? decide(state, asked) : null;
   switch (state.phase) {
     case "notRecording":
       return asked.type === "record" && state.pages.length > 0
@@ -1010,20 +1012,35 @@ function whilePaused(
       // Answered first: the worker comes back from a save only when the
       // package is written.
       return save(state, [reply("applied")]);
-    // The only time an entry may be left out or put back: nothing is under
-    // way, and Continue and Finish keep the decision with the timeline.
-    case "discard":
-    case "restore":
-      return {
-        state,
-        todo: [
-          { kind: "timeline", add: { kind: asked.type, entry: asked.entry } },
-          reply("applied"),
-        ],
-      };
     default:
       return null;
   }
+}
+
+/**
+ * Whether an entry may be left out or put back now: from Record until
+ * Finish or Clear is pressed, so while recording, while a wrap-up leads to
+ * a pause, and while paused (rule 6). Once Finish, Clear or an end from
+ * outside is taken, the decisions stand as they are.
+ */
+const decidable = (state: LifecycleState) =>
+  state.phase === "recording" ||
+  state.phase === "paused" ||
+  wrappingUpOf(state)?.then === "pause";
+
+/** Discard or Restore: the timeline keeps the decision on the entry, as
+ * the entry changes too, and nothing else of the recording is touched. */
+function decide(
+  state: LifecycleState,
+  asked: Extract<RecorderCommand, { type: "discard" | "restore" }>
+): Step {
+  return {
+    state,
+    todo: [
+      { kind: "timeline", add: { kind: asked.type, entry: asked.entry } },
+      reply("applied"),
+    ],
+  };
 }
 
 /** Continue: it starts as Record does, into the timeline that is there. */

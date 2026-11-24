@@ -6,7 +6,7 @@ import type { Ayme, ToolInfo } from "@ayme-dev/ayme";
 import {
   createInspectorContract,
   type InspectorSession,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/ayme/internal";
 
 import { createInspectorClient } from "../../shared";
 import { useLiveTools, type LiveTools } from "./liveTools";
@@ -15,7 +15,7 @@ import {
   appProcessToolsOf,
   asStartedAyme,
   startedAyme,
-} from "../test-utils/startedAyme";
+} from "../../../testing/tools/startedAyme";
 
 // Unit tests: the Inspector's one source of the tools the panel can run, read
 // through the contract client over a stand-in started session that the test

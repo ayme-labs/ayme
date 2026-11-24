@@ -50,10 +50,19 @@ test.describe("discarding and restoring entries", () => {
     await expect
       .poll(() => seen.entries.map((entry) => entry.id))
       .toEqual(["interaction_1", "interaction_2"]);
-    // Nothing is decided while recording.
+    // A decision is taken while recording, with no Stop, and taken back.
     expect(
-      await recorder.send({ type: "discard", entry: entryId("interaction_1") })
-    ).toBe("ignored");
+      await recorder.send({ type: "discard", entry: entryId("interaction_2") })
+    ).toBe("applied");
+    await expect
+      .poll(() => seen.entries)
+      .toEqual([
+        { id: "interaction_1", discarded: false },
+        { id: "interaction_2", discarded: true },
+      ]);
+    expect(
+      await recorder.send({ type: "restore", entry: entryId("interaction_2") })
+    ).toBe("applied");
 
     await recorder.send({ type: "stop" });
     await expect.poll(() => seen.phase).toBe("paused");

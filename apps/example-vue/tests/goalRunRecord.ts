@@ -1,12 +1,28 @@
 import type { Page, Request, TestInfo } from "@playwright/test";
 
 import {
-  readLastGoalLoopRunResult,
+  goalLoopRunResultKey,
+  type GoalLoopRunResult,
+  type GoalLoopRunResultStore,
   type GoalLoopStepScore,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/ayme/internal";
 
 import { goalRunsVariable } from "../scripts/appEnvironment";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
+
+/** The last Goal Loop run's result in the page's document. */
+function readLastGoalLoopRunResult(
+  page: Page
+): Promise<GoalLoopRunResult | undefined> {
+  type WithStore = typeof globalThis & {
+    [goalLoopRunResultKey]?: GoalLoopRunResultStore;
+  };
+  // Runs in the browser, so it gets the key as an argument.
+  return page.evaluate<
+    GoalLoopRunResult | undefined,
+    typeof goalLoopRunResultKey
+  >((key) => (globalThis as WithStore)[key]?.last, goalLoopRunResultKey);
+}
 
 /** One step of a Goal Loop run, as the run harness records it. */
 export type GoalRunStep = {

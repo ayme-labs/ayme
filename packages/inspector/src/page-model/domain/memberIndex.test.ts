@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
 import { indexMembers, pathBelowPage } from "./memberIndex";
-import { collection, component, model, page } from "../test-utils/pageModel";
+import {
+  collection,
+  component,
+  model,
+  page,
+} from "../../../testing/page-model/pageModel";
 
 // Unit tests: the page model indexed by member path, for what a path stands
 // for on the page. The page model is hand-written: a list page with two

@@ -5,7 +5,7 @@ import {
   type WebMcpPublicationStatus,
   type WebMcpTool,
 } from "./index";
-import type { PublishedTool } from "./testing";
+import type { PublishedTool } from "../testing";
 
 /** A driver that keeps what is registered, as `document.modelContext` would. */
 function recordingDriver() {

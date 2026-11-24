@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { RecorderUpdate } from "./index";
-import { startScriptedRecorder } from "./testing";
+import { startScriptedRecorder } from "../testing";
 
 // The in-page toolbar's way to the recorder: the one function a recorded
 // page calls with a message, which the stock adapter exposes to every page.

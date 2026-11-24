@@ -1,5 +1,7 @@
 import type { ChangeRow, PropertyChange } from "@ayme-dev/recorder/contract";
 
+import { cursorOnly } from "./changeGroups";
+
 // How the window says what changed. The released recorder's wording is the
 // baseline: "appeared", "was removed", "became active", "active state was
 // cleared", "text changed from empty to “x”". A property it has no wording
@@ -60,11 +62,38 @@ export const chipText = (element: string) =>
     (_, name: string) => `“${name.replace(/\\(.)/g, "$1")}”`
   );
 
+/** A row that folds elements of one role: how many, and the role, as
+ * "30 listitems". Elements with no role of their own are "3 elements". */
+export const groupText = (role: string, count: number) =>
+  role === "generic"
+    ? `${count} elements`
+    : `${count} ${role}${/(s|x|ch|sh)$/.test(role) ? "es" : "s"}`;
+
+/**
+ * What happened to the elements a row folds, in their parent: "removed
+ * from “Issues”" or "appeared in “Issues”" when all went the same way, and
+ * "25 removed from, 5 appeared in “Issues”" otherwise, as the released
+ * window says it.
+ */
+export function groupEffect(
+  rows: readonly ChangeRow[],
+  parent: string
+): string {
+  const removed = rows.filter((row) => row.kind === "removed").length;
+  const appeared = rows.length - removed;
+  const where = `“${parent}”`;
+  if (appeared === 0) return `removed from ${where}`;
+  if (removed === 0) return `appeared in ${where}`;
+  return `${removed} removed from, ${appeared} appeared in ${where}`;
+}
+
 /**
  * The title of a change no Interaction made: how many elements appeared,
- * or were removed, when that is all it is; "UI Changed" otherwise.
+ * or were removed, when that is all it is; "UI Changed" otherwise. Every
+ * element counts, folded or not, but none whose only change is the cursor.
  */
-export function changeTitle(rows: readonly ChangeRow[]): string {
+export function changeTitle(listed: readonly ChangeRow[]): string {
+  const rows = listed.filter((row) => !cursorOnly(row));
   const count = rows.length;
   const all = (kind: ChangeRow["kind"]) =>
     count > 0 && rows.every((row) => row.kind === kind);

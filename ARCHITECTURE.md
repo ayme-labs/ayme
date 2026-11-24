@@ -161,7 +161,7 @@ in-browser agents and the app's own code call on the running page.
   and records the input given on the page as Interactions with what each changed. It
   serves the recorder window at a local address it prints, which shows the recording live
   and holds Record, Stop, Continue, Assert visibility, Clear and Finish, discard and
-  restore of an entry while paused, and a highlight on the page of an entry's element
+  restore of an entry while it records or is paused, and a highlight on the page of an entry's element
   while its target is hovered, or of a change row's element while the row's element is
   hovered; when it launched the browser, it opens the window there as a second window,
   apart from what it records. Every recorded page also gets an in-page toolbar with
@@ -488,7 +488,7 @@ hosting its playground.
     - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
   - **ayme MCP server**: started over stdio by the test's MCP client
     - Deployment node: a Playwright container on a GitHub Actions runner
-    - Evidence: verified: [packages/mcp/src/testing/](packages/mcp/src/testing/), [apps/mcp-fixture/](apps/mcp-fixture/)
+    - Evidence: verified: [packages/mcp/testing/](packages/mcp/testing/), [apps/mcp-fixture/](apps/mcp-fixture/)
   - **App Process runtime**: the example dev servers paired in the certification tests
     - Deployment node: a Playwright container on a GitHub Actions runner
     - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
@@ -515,7 +515,7 @@ hosting its playground.
   - **Decision model provider**: the live API in the live goal lane, skipped without a key
     - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
   - **WebMCP driver**: a recording driver from `@ayme-dev/webmcp/testing`
-    - Evidence: verified: [packages/webmcp/src/testing.ts](packages/webmcp/src/testing.ts)
+    - Evidence: verified: [packages/webmcp/testing/index.ts](packages/webmcp/testing/index.ts)
   - **Browser automation**: the Playwright context of the served Page Objects specs, which
     loads the `.ayme/init-script.js` the test's `ayme mcp` wrote
     - Evidence: verified: [apps/mcp-fixture/README.md](apps/mcp-fixture/README.md), [apps/mcp-fixture/tests/servedPageObjects.spec.ts](apps/mcp-fixture/tests/servedPageObjects.spec.ts)

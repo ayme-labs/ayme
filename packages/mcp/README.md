@@ -29,17 +29,6 @@ when it is on. While it is on, the session loads the page client from
 when it stops. With the option off, the page requests none of its code. It
 works whether WebMCP publication is on or off.
 
-For your own end-to-end tests, `@ayme-dev/mcp/testing` starts this package's
-`ayme mcp` with an MCP client (`startAgent`, in another folder with a leading
-`{ cwd }`, and opening with MCP revision 2026-07-28 rather than 2025-11-25
-with a leading `{ revision: "2026-07-28" }`) and pairs a Playwright page through
-a connect link (`connectPage`); `Agent.call` returns the tool's own text and
-the change note apart. `freePort` picks a port outside the range a page scans,
-for `startAgent("--port", ...)` when no page should auto-pair with the server,
-and `ignoreAutoPairScan(context)` keeps a Playwright context's pages from
-auto-pairing with any server on the machine. `aymeCommand` is the command's
-file. Only test files may import it.
-
 ## Connecting a tab
 
 The agent calls `ayme_connect` with the URL of the app page and gets back that

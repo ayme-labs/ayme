@@ -6,11 +6,7 @@
   "license": "FSL-1.1-ALv2",
   "type": "module",
   "exports": {
-    "./testing": {
-      "types": "./dist/testing.d.mts",
-      "import": "./dist/testing.mjs",
-      "default": "./dist/testing.mjs"
-    },
+    "./testing": "./testing/index.ts",
     "./window/index.html": "./dist/window/index.html",
     "./toolbar.js": "./dist/toolbar/toolbar.js",
     "./bundled-packages.json": "./dist/bundled-packages.json",
@@ -18,7 +14,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "lint": "eslint src --max-warnings 0",
+    "lint": "eslint src testing --max-warnings 0",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "test:crap": "vitest run --config vitest.fast.config.ts --coverage",

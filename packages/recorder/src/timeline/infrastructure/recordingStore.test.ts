@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { Timeline } from "../domain/timeline";
 import { findTrace, saveRecording } from "./recordingStore";
-import { pageId, snapshotId } from "../../test-utils/ids";
+import { pageId, snapshotId } from "../../../testing/ids";
 
 // The store of Recording Packages, on a real folder: what a save leaves
 // there when it cannot be completed, and what is found of a recording's

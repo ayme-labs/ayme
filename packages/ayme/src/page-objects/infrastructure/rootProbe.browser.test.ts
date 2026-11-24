@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { inPage } from "../../in-page";
-import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
+import { elementOfRef } from "../../../testing/elementRefs.testSupport";
 import { createPage } from "./browserPage";
 
 import type { Locator } from "@playwright/test";

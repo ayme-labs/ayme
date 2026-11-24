@@ -96,7 +96,7 @@ async function pausedWithTwoClicks({
 }
 
 test.describe("reviewing the recording in the recorder window", () => {
-  test("offers Discard and Restore on entries only while paused", async ({
+  test("offers Discard and Restore on entries while recording and while paused, with no gap between", async ({
     recording: { browser, window },
   }) => {
     browser.showPage(idle);
@@ -105,20 +105,31 @@ test.describe("reviewing the recording in the recorder window", () => {
     await clickAddItem(browser, "input_1");
     const [entry] = await entriesOf(window, 1);
     await expect(entry!.title).toHaveText("Click");
-    await expect(entry!.discardButton).toHaveCount(0);
-
-    await window.controls.stopButton.click();
-    await expect(window.controls.continueButton).toBeEnabled();
+    // While recording, with no Stop: quiet until the entry is hovered.
     await expect(entry!.discardButton).toHaveCount(1);
     await expect(entry!.restoreButton).toHaveCount(0);
-    // It is quiet until the entry is hovered.
     await expect(entry!.discardButton).toHaveCSS("opacity", "0");
     await entry!.title.hover();
     await expect(entry!.discardButton).toHaveCSS("opacity", "1");
 
+    await entry!.discard();
+    await expect.poll(() => entry!.looksDiscarded()).toBe(true);
+    await expect(window.controls.stopButton).toBeEnabled();
+    await entry!.restoreButton.click();
+    await expect.poll(() => entry!.looksDiscarded()).toBe(false);
+
+    // Through Stop's wrap-up, which waits here for the pages' confirmation.
+    browser.holdConfirmations();
+    await window.controls.stopButton.click();
+    await expect(window.controls.stopButton).toBeDisabled();
+    await expect(entry!.discardButton).toHaveCount(1);
+    browser.releaseConfirmations();
+    await expect(window.controls.continueButton).toBeEnabled();
+    await expect(entry!.discardButton).toHaveCount(1);
+
     await window.controls.continueButton.click();
     await expect(window.controls.stopButton).toBeEnabled();
-    await expect(entry!.discardButton).toHaveCount(0);
+    await expect(entry!.discardButton).toHaveCount(1);
   });
 
   test("strikes a discarded entry through in its place, hides its changes, and offers to put it back", async ({

@@ -499,9 +499,10 @@ console.log("ok");
   }
 );
 
-it("the Playwright peer is optional in core and WebMCP and required by the inspector", () => {
-  // Core and WebMCP declare the optional peer, WebMCP for its testing entry;
-  // the inspector requires it.
+it("the Playwright peer is optional in ayme and required by the inspector", () => {
+  // ayme's types name Playwright's, and the Inspector requires the peer, so
+  // a project with the Inspector has them installed. No other package names
+  // Playwright outside its test support, which is not published (ADR-0057).
   for (const name of [
     "ayme",
     "vue",
@@ -509,14 +510,13 @@ it("the Playwright peer is optional in core and WebMCP and required by the inspe
     "svelte",
     "angular",
     "inspector",
+    "mcp",
     "unplugin-ayme",
     "webmcp",
   ]) {
     const manifest = readManifest(path.join(packagesRoot, name));
-    expect(manifest.peerDependencies?.["@playwright/test"]).toBe(
-      ["ayme", "inspector", "webmcp"].includes(name)
-        ? playwrightPeerRange
-        : undefined
+    expect(manifest.peerDependencies?.["@playwright/test"], name).toBe(
+      ["ayme", "inspector"].includes(name) ? playwrightPeerRange : undefined
     );
     expect(
       (
@@ -524,7 +524,51 @@ it("the Playwright peer is optional in core and WebMCP and required by the inspe
           peerDependenciesMeta?: Record<string, { optional?: boolean }>;
         }
       ).peerDependenciesMeta?.["@playwright/test"]?.optional
-    ).toBe(["ayme", "webmcp"].includes(name) ? true : undefined);
+    ).toBe(name === "ayme" ? true : undefined);
+  }
+});
+
+it("no packed package carries test support (ADR-0057)", () => {
+  for (const [name, { dir }] of Object.entries(packed)) {
+    const manifest = readManifest(dir) as Manifest & {
+      exports?: Record<string, unknown>;
+    };
+    expect(Object.keys(manifest.exports ?? {}), name).not.toContain(
+      "./testing"
+    );
+    expect(
+      filesOf(dir).filter((file) =>
+        /testing|test-utils|testSupport/.test(file)
+      ),
+      name
+    ).toEqual([]);
+  }
+  expect(
+    readManifest(packed["@ayme-dev/mcp"]!.dir).dependencies
+  ).not.toHaveProperty("@modelcontextprotocol/client");
+});
+
+it("a package with test support publishes its exports without the testing entry", () => {
+  // pnpm replaces `exports` whole with `publishConfig.exports` when it
+  // packs, so the manifest states the map twice: the two must agree.
+  type Exports = Record<string, unknown>;
+  const withTestSupport = PACKED_PACKAGES.map(
+    (name) =>
+      readManifest(path.join(packagesRoot, name)) as Manifest & {
+        exports?: Exports;
+        publishConfig?: { exports?: Exports };
+      }
+  ).filter((manifest) => manifest.exports?.["./testing"]);
+  expect(withTestSupport).not.toHaveLength(0);
+  for (const { name, exports, publishConfig } of withTestSupport) {
+    const published = Object.fromEntries(
+      Object.entries(exports!).filter(([entry]) => entry !== "./testing")
+    );
+    expect(publishConfig?.exports, name).toEqual(published);
+    expect(
+      (readManifest(packed[name]!.dir) as { exports?: Exports }).exports,
+      name
+    ).toEqual(published);
   }
 });
 
@@ -625,7 +669,7 @@ void [DescribedPom, BarePom];
 ${
   version
     ? `
-import type { BrowserContext, Page, Locator } from '@playwright/test';
+import type { Page, Locator } from '@playwright/test';
 import { createAyme, type ActionResult } from '@ayme-dev/ayme';
 import type { PageObjectConstructor } from '@ayme-dev/ayme/internal';
 import { usePageObject } from '@ayme-dev/vue';
@@ -673,24 +717,6 @@ const session = createAyme();
 const registered: Pom = session.pom.register(ctor);
 const clicked: Promise<ActionResult> = session.tools.run('click', { target: 'e1' });
 void [instance, svelteInstance, registered, clicked];
-import {
-  executePublishedTool,
-  publishedToolNames,
-  publishedToolSchema,
-  recordPublishedTools,
-  waitForPublishedTool,
-  type PublishedTool,
-  type RecordingDriver,
-} from '@ayme-dev/webmcp/testing';
-export async function recordAndRun(context: BrowserContext, page: Page): Promise<unknown> {
-  await recordPublishedTools(context);
-  await waitForPublishedTool(page, 'Pom.act', { timeout: 10 });
-  const names: string[] = await publishedToolNames(page);
-  const schema = await publishedToolSchema(page, names[0]!);
-  const driver: RecordingDriver = { tools: [] as PublishedTool[] };
-  void [schema?.inputSchema, driver];
-  return executePublishedTool(page, 'Pom.act', { value: 'x' });
-}
 `
     : ""
 }
@@ -1252,10 +1278,9 @@ it(
         'if ("createAyme" in internal) throw new Error("createAyme must not be on /internal");',
         'const webmcp = await import("@ayme-dev/webmcp");',
         'if (JSON.stringify(Object.keys(webmcp)) !== JSON.stringify(["startWebMcpPublication"])) throw new Error("unexpected @ayme-dev/webmcp exports: " + Object.keys(webmcp));',
-        'const testing = await import("@ayme-dev/webmcp/testing");',
-        'const testingExports = ["executePublishedTool", "publishedToolNames", "publishedToolSchema", "recordPublishedTools", "recordPublishedToolsLate", "waitForPublishedTool"];',
-        'if (JSON.stringify(Object.keys(testing).sort()) !== JSON.stringify(testingExports)) throw new Error("unexpected /testing exports: " + Object.keys(testing));',
-        'if ([main, internal, webmcp].some((entry) => "recordPublishedTools" in entry)) throw new Error("the recording driver must stay on /testing");',
+        'const testing = await import("@ayme-dev/webmcp/testing").catch((error) => error.code);',
+        'if (testing !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw new Error("test support must not be published: " + testing);',
+        'if ([main, internal, webmcp].some((entry) => "recordPublishedTools" in entry)) throw new Error("the recording driver is test support, which is not published");',
         'console.log("ok");',
       ].join("\n")
     );

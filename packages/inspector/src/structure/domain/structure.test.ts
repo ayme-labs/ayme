@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
 import { indexMembers } from "../../page-model";
-import { forest, node } from "../test-utils/projected";
+import { forest, node } from "../../../testing/structure/projected";
 import {
   collection,
   component,
   model,
   page,
   type Contents,
-} from "../../page-model/test-utils/pageModel";
+} from "../../../testing/page-model/pageModel";
 import { mapTargetsToRefs } from "../../shared";
 import { buildStructureTree } from "../infrastructure/structureTree";
 import { type StructureNode } from "./structure";

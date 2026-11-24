@@ -69,6 +69,14 @@ export type ChangeRow = {
   /** For a changed element: each of its own properties that changed, in a
    * fixed order. Empty when what changed is none of these. */
   readonly changed?: readonly PropertyChange[];
+  /** For an element that appeared or was removed: its own role, even when
+   * `element` names it by an ancestor. Absent when the row names no
+   * element. */
+  readonly role?: string;
+  /** For an element that appeared or was removed: its nearest ancestor that
+   * has a name, by its Structural Ref, which tells one such ancestor from
+   * another of the same name, and by that name. Absent when it has none. */
+  readonly parent?: { readonly ref: string; readonly name: string };
 };
 
 /**
@@ -204,11 +212,11 @@ export type RecorderCommand =
   | { readonly type: "continue" }
   /** Throws away everything recorded so far. */
   | { readonly type: "clear" }
-  /** While paused: leaves the entry out of the recording. It stays in the
-   * timeline, marked, and Finish saves it as a stub. `entry` is the entry's
-   * `id`. */
+  /** Until Finish or Clear is pressed: leaves the entry out of the
+   * recording. It stays in the timeline, marked, also as it changes, and
+   * Finish saves it as a stub. `entry` is the entry's `id`. */
   | { readonly type: "discard"; readonly entry: EntryId }
-  /** While paused: puts a discarded entry back. */
+  /** Until Finish or Clear is pressed: puts a discarded entry back. */
   | { readonly type: "restore"; readonly entry: EntryId }
   // Assert visibility.
   /** While recording: the next element the person clicks is recorded as

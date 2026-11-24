@@ -12,14 +12,14 @@ import {
   timelineOf,
   url,
   visit,
-} from "./test-utils/timelineBuilders";
+} from "../../../testing/timeline/timelineBuilders";
 import {
   entryId,
   pageId,
   snapshotId,
   snapshotRefOf,
   tracePositions,
-} from "../../test-utils/ids";
+} from "../../../testing/ids";
 
 const fixture = (name: string) =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
@@ -582,7 +582,9 @@ describe("the timeline", () => {
         kind: "change",
         id: entryId("change_1"),
         timestamp: 30,
-        changes: [{ kind: "added", element: 'alert "Offer ends soon"' }],
+        changes: [
+          { kind: "added", element: 'alert "Offer ends soon"', role: "alert" },
+        ],
       };
       const secondClick = {
         kind: "interaction",
@@ -934,7 +936,9 @@ describe("the timeline, for an input known from its report", () => {
           kind: "change",
           id: entryId("change_1"),
           timestamp: 10,
-          changes: [{ kind: "added", element: 'alert "Welcome back"' }],
+          changes: [
+            { kind: "added", element: 'alert "Welcome back"', role: "alert" },
+          ],
         },
         expect.objectContaining({
           kind: "interaction",
@@ -1125,7 +1129,9 @@ describe("the timeline, for an input known from its report", () => {
         }),
         expect.objectContaining({
           id: entryId("change_1"),
-          changes: [{ kind: "added", element: 'alert "Welcome back"' }],
+          changes: [
+            { kind: "added", element: 'alert "Welcome back"', role: "alert" },
+          ],
         }),
         expect.objectContaining({ id: entryId("interaction_2") }),
       ]);
@@ -2112,6 +2118,21 @@ describe("the timeline, for discard and restore", () => {
     await timeline.add(restore(entryId("interaction_1")));
     expect(timeline.visits()).toEqual(before);
     expect(timeline.visits()[0]!.entries[0]).not.toHaveProperty("discarded");
+  });
+
+  it("keeps a change of its own that shows after a discarded step: no other entry follows a decision", async () => {
+    // Discarded while recording: the change after it is not produced yet.
+    const timeline = await timelineOf([
+      ...flow.slice(0, 4),
+      discard(entryId("interaction_1")),
+      ...flow.slice(4),
+    ]);
+
+    const [first, change, second] = timeline.visits()[0]!.entries;
+    expect(first).toMatchObject({ discarded: true });
+    expect(change).toMatchObject({ kind: "change", id: entryId("change_1") });
+    expect(change).not.toHaveProperty("discarded");
+    expect(second).not.toHaveProperty("discarded");
   });
 
   it("discards a change of its own as well as an Interaction", async () => {

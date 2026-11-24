@@ -2,20 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PomManifest, ToolManifest } from "../../shared";
 import type { AymePage } from "../../runtime";
-import type { TestSession } from "../../test-utils/session.testSupport";
+import type { TestSession } from "../../../testing/session.testSupport";
 
 vi.mock(
   "../../page-state/infrastructure/browserInPage",
   async (importOriginal) => ({
     ...(await importOriginal<object>()),
     ...(
-      await import("../../test-utils/pageOfDocument.testSupport")
+      await import("../../../testing/pageOfDocument.testSupport")
     ).standInPageOfDocument(),
   })
 );
 vi.mock("./inPageDriver", async () =>
   (
-    await import("../../test-utils/pageDriver.testSupport")
+    await import("../../../testing/pageDriver.testSupport")
   ).standInDriverModule()
 );
 
@@ -50,7 +50,7 @@ async function setup() {
   vi.resetModules();
   const registry = await import("./registry");
   const definitions = await import("./registeredPomDefinitions");
-  const { startSession } = await import("../../test-utils/session.testSupport");
+  const { startSession } = await import("../../../testing/session.testSupport");
   const session = startSession({} as AymePage);
   started = session;
   return { registry, definitions, session };

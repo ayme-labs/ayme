@@ -1,10 +1,10 @@
-import { readRef } from "../../test-utils/elementRefs.testSupport";
+import { readRef } from "../../../testing/elementRefs.testSupport";
 import type { Locator } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 import { createPage } from "../../page-objects/infrastructure";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 import { createAyme } from "../../runtime";
 import {
   browserInPage,
