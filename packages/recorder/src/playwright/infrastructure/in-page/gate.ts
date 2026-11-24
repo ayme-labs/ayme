@@ -157,6 +157,14 @@ export function gateIn(held: string, rules: GateRules): void {
       }
       // A click sent on while the person holds the button down would end
       // their press: it waits for the release, a second at most.
+      // The button is checked once, on purpose. A press that comes after
+      // this check, before the click's own press and release, is ended by
+      // the re-sent release, so a double click can reach the page as a
+      // single click: the second click and the `dblclick` never happen. Two
+      // fixes were rejected: holding each single click for the person's
+      // double-click interval, which would slow every click, now on the
+      // page in about 15 ms; and holding the person's press while a click
+      // waits, which would hold presses and drags, never held now.
       if (pressed)
         await new Promise<void>((resolve) => {
           released = resolve;
