@@ -1,4 +1,4 @@
-import type { Turn } from "./claude.ts";
+import type { Turn } from "./agentProcess.ts";
 import { summarizeCodexTranscript } from "./codexTranscript.ts";
 import {
   summarizeTranscript,

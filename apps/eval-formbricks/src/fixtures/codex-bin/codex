@@ -6,8 +6,9 @@
  * an MCP tool twice, one call failing. FAKE_CODEX_HANG_TURN names a turn (1
  * or 2) that never completes, FAKE_CODEX_FAIL_TURN one that ends failed, and
  * FAKE_CODEX_DELAY_MS delays each turn's end. FAKE_CODEX_SILENT answers
- * nothing at all, and FAKE_CODEX_REFUSE_TURN names a turn `turn/start` is
- * answered with an error for.
+ * nothing at all, FAKE_CODEX_REFUSE_TURN names a turn `turn/start` is
+ * answered with an error for, and FAKE_CODEX_SLOW_START_MS ignores SIGTERM
+ * and answers `thread/start` that late.
  */
 import { createInterface } from "node:readline";
 
@@ -28,7 +29,16 @@ createInterface({ input: process.stdin }).on("line", (line) => {
   const { id, method, params } = JSON.parse(line);
   if (process.env.FAKE_CODEX_SILENT) return;
   if (method === "initialize") send({ id, result: { userAgent: "fake" } });
-  if (method === "thread/start") {
+  if (method === "thread/start") startThread(id);
+  if (method !== "turn/start") return;
+  startTurn(id, params);
+});
+
+const slowStart = Number(process.env.FAKE_CODEX_SLOW_START_MS ?? 0);
+if (slowStart > 0) process.on("SIGTERM", () => {});
+
+function startThread(id) {
+  setTimeout(() => {
     send({
       id,
       result: {
@@ -45,8 +55,10 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       name: "playwright",
       status: "ready",
     });
-  }
-  if (method !== "turn/start") return;
+  }, slowStart);
+}
+
+function startTurn(id, params) {
   turns += 1;
   const turn = turns;
   if (String(turn) === process.env.FAKE_CODEX_REFUSE_TURN) {
@@ -90,4 +102,4 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       }),
     delay
   );
-});
+}
