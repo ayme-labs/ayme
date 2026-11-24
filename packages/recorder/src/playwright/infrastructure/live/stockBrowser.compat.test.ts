@@ -717,17 +717,6 @@ it.skipIf(attaching)(
   }
 );
 
-it("tells that the storage state is saved at once when no file was asked for", async () => {
-  const browser = await onStockPlaywright(BUTTONS);
-
-  await browser.ask({ kind: "saveStorage" });
-
-  await browser.toldOf("storageSaved");
-  expect(browser.told.some((signal) => signal.kind === "requestFailed")).toBe(
-    false
-  );
-});
-
 it.skipIf(attaching)(
   "tells that the storage state could not be saved, naming its file, when the file cannot be written",
   async () => {

@@ -136,19 +136,8 @@ describe("a recorder", () => {
           url: "http://scripted.test/",
         },
       },
-      // The storage state is saved before the recorder ends (#1356).
       {
         revision: 2,
-        state: {
-          phase: "saving",
-          visits: [],
-          commands: [],
-          warnings: [],
-          url: "http://scripted.test/",
-        },
-      },
-      {
-        revision: 3,
         state: {
           phase: "ended",
           outcome: { kind: "empty" },
@@ -184,7 +173,7 @@ describe("a recorder", () => {
 
     expect(updates).toEqual([
       {
-        revision: 3,
+        revision: 2,
         state: {
           phase: "ended",
           outcome: { kind: "empty" },

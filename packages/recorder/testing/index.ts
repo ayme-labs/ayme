@@ -143,6 +143,10 @@ export async function startScriptedRecorder(
     /** Serve the recorder window, whose built files are in `folder`, as
      * the CLI has the engine do. */
     readonly window?: { readonly folder: string };
+    /** The browser has a file to save its storage state to, as
+     * `--save-storage` gives one: the recorder asks for that save as it
+     * ends. Off unless set. */
+    readonly saveStorage?: boolean;
   } = {}
 ): Promise<{
   recorder: Recorder;
@@ -298,6 +302,30 @@ export async function startScriptedRecorder(
       check();
     });
 
+  /** Resolves once the storage state's save is asked, or the recorder has
+   * ended; rejects when neither came within ten seconds. */
+  const storageSaveAsked = (ms: number) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const missed = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `The recorder asked for no storage save within the first ${ms - STORAGE_SAVE_LIMIT_MS} ms of its clock.`
+            )
+          ),
+        10_000
+      );
+    });
+    const asked = Promise.race([
+      asks({ kind: "saveStorage" }),
+      recorder.done,
+      missed,
+    ]).finally(() => clearTimeout(timer));
+    asked.catch(() => {});
+    return asked;
+  };
+
   const toolbar = toolbarBridge();
   const recorder = await startRecorderOn(
     Layer.effect(
@@ -314,6 +342,7 @@ export async function startScriptedRecorder(
         tell({ kind: "pageOpened", page, url });
         return RecordedBrowser.of({
           signals: queue,
+          savesStorage: options.saveStorage === true,
           ask: (request) =>
             Effect.sync(() => {
               asked.push(request);
@@ -345,14 +374,14 @@ export async function startScriptedRecorder(
       /** Lets what the clock set off run, the package's write included. */
       const turn = (wait: number) =>
         new Promise((resolve) => setTimeout(resolve, wait));
-      const saveAsked = asks({ kind: "saveStorage" });
+      // With --save-storage, the storage state's save is the last of the
+      // budget: its time runs from when it is asked, which may wait on the
+      // disk, so the clock never moves into it before the ask, or the end.
+      // A recorder that asks nothing for ten seconds fails the test.
+      const saveAsked = options.saveStorage ? storageSaveAsked(ms) : null;
       for (let passed = 0; passed < ms && !outcome; passed += 1_000) {
         await turn(0);
-        // The storage state's time is the last of the budget, and runs from
-        // when its save is asked, once the package is on the disk: the
-        // clock waits for that, a couple of seconds at most.
-        if (ms - passed <= STORAGE_SAVE_LIMIT_MS)
-          await Promise.race([saveAsked, recorder.done, turn(2_000)]);
+        if (saveAsked && ms - passed <= STORAGE_SAVE_LIMIT_MS) await saveAsked;
         await Effect.runPromise(clock!.adjust(Math.min(1_000, ms - passed)));
       }
       // The clock has done its part: what is left is the disk's.

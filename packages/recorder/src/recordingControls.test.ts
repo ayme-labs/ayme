@@ -24,8 +24,8 @@ beforeEach(async () => {
 });
 afterEach(() => rm(projectDir, { recursive: true }));
 
-const start = () =>
-  startScriptedRecorder({ projectDir, url: "http://shop.test/" });
+const start = (options: { saveStorage?: boolean } = {}) =>
+  startScriptedRecorder({ projectDir, url: "http://shop.test/", ...options });
 
 const idle = [`- generic [ref=e1]:`, `  - button "Save" [ref=e2]`].join("\n");
 const saved = [
@@ -218,11 +218,9 @@ describe("a paused recorder", () => {
     const outcome = await recorder.done;
 
     expect(phases.slice(-3)).toEqual(["paused", "saving", "ended"]);
-    // Only the trace, and then the storage state, were asked for: the page
-    // was not read again.
+    // Only the trace was asked for: the page was not read again.
     expect(browser.asked.slice(askedWhenPaused)).toEqual([
       { kind: "stopTrace", keep: true },
-      { kind: "saveStorage" },
     ]);
     const text = await readFile(
       join((outcome as { folder: string }).folder, "package.yaml"),
@@ -545,7 +543,7 @@ describe("the storage state (--save-storage)", () => {
     browser.asked.findIndex((request) => request.kind === kind);
 
   it("is saved once, only after the trace is answered and the package is on the disk", async () => {
-    const { recorder, browser } = await start();
+    const { recorder, browser } = await start({ saveStorage: true });
     await recorder.send({ type: "record" });
     await clickOnce(browser, "input_1");
     browser.holdTraceAnswers();
@@ -568,8 +566,35 @@ describe("the storage state (--save-storage)", () => {
     ).toHaveLength(1);
   });
 
-  it("is saved when nothing was recorded, so that a person can open the recorder only to log in", async () => {
+  it("is never asked for without --save-storage", async () => {
     const { recorder, browser } = await start();
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+
+    await recorder.send({ type: "finish" });
+
+    await expect(recorder.done).resolves.toMatchObject({ kind: "saved" });
+    expect(firstAsked(browser, "saveStorage")).toBe(-1);
+  });
+
+  it("is saved when the package cannot be written, and the recorder ends 'failed' all the same", async () => {
+    // "latest" cannot be replaced: a folder with something in it is there.
+    await mkdir(join(recordings(), "latest.yaml"), { recursive: true });
+    await writeFile(join(recordings(), "latest.yaml", "kept"), "");
+    const { recorder, browser } = await start({ saveStorage: true });
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+
+    await recorder.send({ type: "finish" });
+
+    await expect(recorder.done).resolves.toMatchObject({ kind: "failed" });
+    expect(
+      browser.asked.filter((request) => request.kind === "saveStorage")
+    ).toHaveLength(1);
+  });
+
+  it("is saved when nothing was recorded, so that a person can open the recorder only to log in", async () => {
+    const { recorder, browser } = await start({ saveStorage: true });
 
     recorder.end();
 
@@ -578,7 +603,7 @@ describe("the storage state (--save-storage)", () => {
   });
 
   it("that cannot be saved is one warning, and the recording is saved all the same", async () => {
-    const { recorder, browser } = await start();
+    const { recorder, browser } = await start({ saveStorage: true });
     const warnings: { kind: string; message: string }[] = [];
     recorder.subscribe((update) => {
       warnings.splice(0, warnings.length, ...update.state.warnings);

@@ -24,5 +24,8 @@ export class RecordedBrowser extends Context.Service<
      * page that is gone, is answered by nothing.
      */
     readonly ask: (request: BrowserRequest) => Effect.Effect<void>;
+    /** The browser was given a file to save its storage state to
+     * (`--save-storage`): the recorder asks for that save as it ends. */
+    readonly savesStorage: boolean;
   }
 >()("@ayme-dev/recorder/session/RecordedBrowser") {}

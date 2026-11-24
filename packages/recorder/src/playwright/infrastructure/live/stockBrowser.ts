@@ -254,6 +254,7 @@ export const stockBrowser = (
         openWindow(browser, (options as Launch).windowUrl!);
       return RecordedBrowser.of({
         signals,
+        savesStorage: launch?.saveStorage !== undefined,
         // Handed over, never waited on: the answer is told as a signal, and
         // so is a request that broke while it was carried out. One for a
         // page that is gone is answered by nothing: the page's closing was
@@ -825,15 +826,13 @@ async function openPage(
   /** The recorded context's storage state, written to the file asked for
    * as Playwright's own codegen writes it: cookies and local storage. To
    * read an origin no page is at, Playwright opens a page of its own, which
-   * it tells of to no listener. Nothing is written when no file was asked
-   * for. */
+   * it tells of to no listener. Asked only when a file was given. */
   async function saveStorage() {
-    if (savedTo !== undefined)
-      await context.storageState({ path: savedTo }).catch((cause: unknown) => {
-        throw new Error(
-          `Playwright could not write it to ${savedTo}: ${cause instanceof Error ? cause.message : String(cause)}`
-        );
-      });
+    await context.storageState({ path: savedTo }).catch((cause: unknown) => {
+      throw new Error(
+        `Playwright could not write it to ${savedTo}: ${cause instanceof Error ? cause.message : String(cause)}`
+      );
+    });
     tell({ kind: "storageSaved" });
   }
 

@@ -26,6 +26,7 @@ import {
   step,
   type BrowserRequest,
   type Happening,
+  type LifecycleState,
   type ToDo,
 } from "../domain/lifecycle";
 import { RecordedBrowser } from "./recordedBrowser";
@@ -82,7 +83,12 @@ export class RecorderSession extends Context.Service<
         const done = yield* Deferred.make<RecordingOutcome>();
         const listeners = new Set<(update: RecorderUpdate) => void>();
         let timeline = new Timeline();
-        let state = initialState;
+        // The lifecycle saves the storage state as it ends only when the
+        // browser has a file for it.
+        let state: LifecycleState = {
+          ...initialState,
+          savesStorage: browser.savesStorage,
+        };
         let visits = timeline.visits();
         /** What shows of the lifecycle from outside: the phase, the
          * commands that apply, and the address of the page that is open. */
@@ -242,12 +248,25 @@ export class RecorderSession extends Context.Service<
               return;
             case "save": {
               const createdAt = new Date(yield* Clock.currentTimeMillis);
-              const folder = yield* Effect.promise(() =>
-                options.save(timeline, createdAt, item.trace ?? null)
+              // A package that cannot be written ends the recorder "failed",
+              // once the storage state is saved, as at any other end: the
+              // worker goes on.
+              return yield* Effect.matchEffect(
+                Effect.tryPromise({
+                  try: () =>
+                    options.save(timeline, createdAt, item.trace ?? null),
+                  catch: (cause) =>
+                    cause instanceof Error ? cause.message : String(cause),
+                }),
+                {
+                  onFailure: (reason) => tell({ kind: "saveFailed", reason }),
+                  onSuccess: (folder) =>
+                    // What changed after the last Interaction is an entry now.
+                    publishEntries.pipe(
+                      Effect.andThen(tell({ kind: "saved", folder }))
+                    ),
+                }
               );
-              // What changed after the last Interaction is an entry now.
-              yield* publishEntries;
-              return yield* tell({ kind: "saved", folder });
             }
             case "end":
               return yield* Deferred.succeed(done, item.outcome);
