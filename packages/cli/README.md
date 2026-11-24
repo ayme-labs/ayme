@@ -124,7 +124,7 @@ The agent reads the recording, proposes the page objects and the test, and write
 A coding agent wrote Playwright page objects and a passing test for the same flow in two ways:
 
 - **ayme recorder:** the flow was recorded once, and the agent worked from the recording with the `ayme-recorder` skill. The recording was made by a script that gave the steps as input events, not by a person.
-- **Playwright MCP:** the agent worked through Playwright MCP.
+- **Playwright MCP:** the agent got the flow as written steps and explored the pages itself.
 
 |                | Time to a passing test | Mean | Runs with a failed test run | Cost                  |
 | -------------- | ---------------------- | ---- | --------------------------- | --------------------- |
@@ -135,7 +135,7 @@ Time and cost show the median of five runs, with the lowest and highest in paren
 
 A failed test run is a run of the test that failed before its first pass; a command that started no test does not count. In one recorder run, the test failed twice after that first pass, on a locator that matched two links, and the agent fixed it before the run ended. When each of the ten tests was run three more times afterwards, all ten passed 3 of 3.
 
-The flow is one flow on a GitHub repository page, through its pull requests, its releases and the Code menu.
+The flow has nine steps on a GitHub repository page: through its pull requests, its releases and the Code menu.
 
 **How it was measured**
 
