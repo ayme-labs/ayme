@@ -716,7 +716,7 @@ describe("the .gitignore of .ayme", () => {
     );
   });
 
-  it.each(["recordings/", "/recordings", " recordings \r\n", "!recordings/"])(
+  it.each(["recordings/", "/recordings", "recordings \r\n", "!recordings/"])(
     "is left as it is when its line %j already decides about the folder",
     async (line) => {
       await mkdir(join(projectDir, ".ayme"), { recursive: true });
@@ -727,6 +727,28 @@ describe("the .gitignore of .ayme", () => {
       expect(await readFile(ignoreFile(), "utf8")).toBe(`# mine\n${line}`);
     }
   );
+
+  it("gets the line when its only line about the folder starts with a space, which git reads as part of a name", async () => {
+    await mkdir(join(projectDir, ".ayme"), { recursive: true });
+    await writeFile(ignoreFile(), " recordings/\n");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe(
+      " recordings/\nrecordings/\n"
+    );
+  });
+
+  it("gets the line with the line ends the file already has", async () => {
+    await mkdir(join(projectDir, ".ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "init-script.js\r\n# mine");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe(
+      "init-script.js\r\n# mine\r\nrecordings/\r\n"
+    );
+  });
 
   it("gets the line alone when the project's file is empty", async () => {
     await mkdir(join(projectDir, ".ayme"), { recursive: true });

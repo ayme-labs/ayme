@@ -129,12 +129,15 @@ async function ignoreWhatIsKept(ayme: string): Promise<void> {
   );
   if (created) return;
   const before = await readFile(file, "utf8");
+  // As git reads a line: spaces at its end do not count, one at its start
+  // is part of the name.
   const decided = before
     .split(/\r?\n/)
-    .some((line) => /^!?\/?recordings\/?$/.test(line.trim()));
+    .some((line) => /^!?\/?recordings\/?$/.test(line.trimEnd()));
   if (decided) return;
-  const separator = before === "" || before.endsWith("\n") ? "" : "\n";
-  await appendFile(file, `${separator}recordings/\n`);
+  const lineEnd = before.includes("\r\n") ? "\r\n" : "\n";
+  const separator = before === "" || before.endsWith("\n") ? "" : lineEnd;
+  await appendFile(file, `${separator}recordings/${lineEnd}`);
 }
 
 /** Where the trace of a recording is, or why it cannot be had. */
