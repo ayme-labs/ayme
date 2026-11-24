@@ -727,18 +727,19 @@ test("leaves out the paths the repository does not hold, by file", () => {
   assert.deepEqual(
     checkDocs(
       agentsFixture({
-        "AGENTS.md": "Follow `docs/fork/SYNC.md` in the fork.\n",
+        "packages/recorder-window/AGENTS.md":
+          "The window's page is `./window/index.html`.\n",
       })
     ),
     []
   );
   const problems = checkDocs(
     agentsFixture({
-      "packages/lib/AGENTS.md": "Follow `docs/fork/SYNC.md` in the fork.\n",
+      "packages/lib/AGENTS.md": "The window's page is `./window/index.html`.\n",
     })
   );
   assert.equal(problems.length, 1, problems.join("\n"));
-  assert.match(problems[0], /`docs\/fork\/SYNC\.md` names no file/);
+  assert.match(problems[0], /`\.\/window\/index\.html` names no file/);
 });
 
 test("fails an AGENTS.md over its word budget and says how to proceed", () => {
