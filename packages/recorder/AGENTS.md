@@ -92,7 +92,7 @@ Run from this directory inside the repository's Devbox shell. `pnpm test` needs 
 
 ## Known limits
 
-Users read the recorder's known limits in [the CLI's README](../cli/README.md#known-limits), and a coding agent reads what a package holds in [the `ayme-recorder` skill](../../skills/ayme-recorder/SKILL.md). Why some of them are so, for whoever changes the engine:
+Users read the limits they can hit in [the Recorder guide](../../docs/guide/guides/recorder.md#limits), and a coding agent reads what a package holds in [the `ayme-recorder` skill](../../skills/ayme-recorder/SKILL.md). Why some of them are so, for whoever changes the engine:
 
 - A fill is measured from the page before its first key, except when it follows an input known from its report only before the page went quiet, with no held input between: typing into another field the page moved the focus to by itself, or typing right after a choice in a dropdown or an upload. Its first key is not held, as the page lets inputs through, and the earlier input is still open: the fill starts where that one ends, at a read taken after its first key, so that key's change is listed under the earlier input.
 - A page's first click can leave out the focus its press moved: the page is first read for that click, after its press moved the focus, and no read shows where the focus was before. Telling it would take the gate noting the focused element at the press, a datum the adapter and the lifecycle would carry.
