@@ -1,7 +1,7 @@
 ---
 status: accepted
 amends: ADR-0042
-amended-by: ADR-0052
+amended-by: ADR-0057
 ---
 
 # Page Object Tools are published per class, and a root's ref picks the instance
