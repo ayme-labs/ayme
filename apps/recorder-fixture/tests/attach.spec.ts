@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { RecorderWindow } from "@ayme-dev/recorder-window/testing";
 
-import { CartPage } from "../ayme/pom/CartPage";
+import { CartPage } from "#pom/CartPage";
 import { expect, test } from "./fixtures";
 
 test.describe("recording a running browser", () => {

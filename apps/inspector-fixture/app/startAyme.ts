@@ -11,7 +11,7 @@ import {
   mountInspector,
 } from "@ayme-dev/inspector";
 
-import { ListPage } from "../pom/ListPage";
+import { ListPage } from "#pom/ListPage";
 
 /** A Custom Tool: it marks the element it's given. */
 const markElement: CustomTool = {

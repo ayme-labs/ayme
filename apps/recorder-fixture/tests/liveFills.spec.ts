@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { TimelineEntry } from "@ayme-dev/recorder/contract";
 
-import { InputsPage } from "../ayme/pom/InputsPage";
-import { LargePage } from "../ayme/pom/LargePage";
+import { InputsPage } from "#pom/InputsPage";
+import { LargePage } from "#pom/LargePage";
 import { expect, test, type Recording } from "./fixtures";
 
 /** The recorder's phase, and every list of entries it was shown, in order. */

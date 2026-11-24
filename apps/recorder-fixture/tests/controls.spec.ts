@@ -1,9 +1,9 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { CartPage } from "../ayme/pom/CartPage";
-import { SettlingPage } from "../ayme/pom/SettlingPage";
-import { TickingPage } from "../ayme/pom/TickingPage";
+import { CartPage } from "#pom/CartPage";
+import { SettlingPage } from "#pom/SettlingPage";
+import { TickingPage } from "#pom/TickingPage";
 import { expect, test, type Recording } from "./fixtures";
 
 /** The recorder's phase and Visits, as a subscriber is told them. */

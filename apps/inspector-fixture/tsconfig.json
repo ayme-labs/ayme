@@ -13,5 +13,5 @@
       ]
     }
   },
-  "include": ["app", "pom", "tests", "*.ts"]
+  "include": ["app", "tests", "*.ts"]
 }
