@@ -8,7 +8,6 @@ import { normalizeRun } from "./normalize.ts";
 import { parseStoredRun, parseSuiteManifest } from "./store.ts";
 import {
   buildSummary,
-  loginNote,
   renderSummaryMarkdown,
   spread,
   type SummarizedRun,
@@ -318,7 +317,6 @@ describe("the versions a rerun must match", () => {
 describe("reading stored files", () => {
   const stored = normalizeRun({
     runId: "stored-1",
-    login: "first",
     arm: "playwright-mcp",
     missionId: "rename-survey-and-question",
     requestedModel: "sonnet",
@@ -419,19 +417,5 @@ describe("reading stored files", () => {
     expect(() => parseSuiteManifest({ ...manifest, runIds: [1] })).toThrow(
       "expected a list of strings runIds"
     );
-  });
-});
-
-describe("loginNote", () => {
-  it("says so when both logins served a suite", () => {
-    expect(loginNote(["first", "fallback", "fallback"])).toBe(
-      "The runs used different Claude Code logins: 1 the first, 2 the fallback, after the first reached its usage limit."
-    );
-  });
-
-  it("is silent when one login served every run, or none is recorded", () => {
-    expect(loginNote(["fallback", "fallback"])).toBeNull();
-    expect(loginNote(["first", undefined])).toBeNull();
-    expect(loginNote([])).toBeNull();
   });
 });

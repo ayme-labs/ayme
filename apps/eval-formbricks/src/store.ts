@@ -9,7 +9,6 @@ import { createRequire } from "node:module";
 import path from "node:path";
 
 import { repoRoot, runsRoot, suitesRoot } from "./paths.ts";
-import type { LoginName } from "./login.ts";
 import type { SummarizedStartupRun } from "./startupSummary.ts";
 import type { SummarizedRun } from "./summary.ts";
 
@@ -112,13 +111,6 @@ function tokenUsage(run: Json, what: string) {
   };
 }
 
-/** Results stored before the fallback existed have no login. */
-function storedLogin(run: Record<string, unknown>): LoginName | undefined {
-  return run.login === "first" || run.login === "fallback"
-    ? run.login
-    : undefined;
-}
-
 /** Reads the part of a stored `result.json` the summary needs. */
 export function parseStoredRun(value: unknown, what: string): SummarizedRun {
   const run = record(value, what);
@@ -130,7 +122,6 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
   );
   return {
     runId: string(run, "runId", what),
-    login: storedLogin(run),
     arm: string(run, "arm", what),
     mission: string(run, "mission", what),
     pass: boolean(run, "pass", what),
@@ -187,7 +178,6 @@ export function parseStartupRun(
   const model = record(versions.model, `${what} model`);
   return {
     runId: string(run, "runId", what),
-    login: storedLogin(run),
     scenario: string(run, "scenario", what),
     pass: boolean(run, "pass", what),
     wallTimeMs: nullableNumber(run, "wallTimeMs", what),

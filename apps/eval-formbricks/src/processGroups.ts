@@ -35,8 +35,6 @@ export function groupsBelow(pid: number, processTable: string): number[] {
 export function processGroups(pid: number): number[] {
   const table = spawnSync("ps", ["-axo", "pid=,ppid=,pgid="], {
     encoding: "utf8",
-    // Nothing of the eval's environment but where to find `ps`, so no token reaches it.
-    env: { PATH: process.env.PATH },
   });
   return groupsBelow(pid, table.status === 0 ? table.stdout : "");
 }

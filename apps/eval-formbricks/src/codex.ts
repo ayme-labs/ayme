@@ -26,12 +26,7 @@ import {
   type Turn,
 } from "./agentProcess.ts";
 import type { Arm, McpServer } from "./arms.ts";
-import {
-  agentEffort,
-  setupTimeoutMs,
-  withoutClaudeVariables,
-  type ClaudeRun,
-} from "./claude.ts";
+import { agentEffort, setupTimeoutMs, type ClaudeRun } from "./claude.ts";
 import { turnCompleted } from "./codexTranscript.ts";
 import { envFileName } from "./environment.ts";
 import type { Precondition } from "./preconditions.ts";
@@ -249,7 +244,6 @@ export function removeSignInOnExit(file: string) {
 export function codexVersion(): string | null {
   const result = spawnSync("codex", ["--version"], {
     encoding: "utf8",
-    env: withoutClaudeVariables(process.env),
     timeout: commandTimeoutMs,
   });
   if (result.status !== 0) return null;

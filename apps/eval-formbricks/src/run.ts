@@ -28,12 +28,7 @@ import {
 } from "./arms.ts";
 import { initPageScript, openStartPage } from "./browser.ts";
 import { runMain } from "./cli.ts";
-import {
-  agentEffort,
-  claudeVersion,
-  runClaude,
-  withoutClaudeVariables,
-} from "./claude.ts";
+import { agentEffort, claudeVersion, runClaude } from "./claude.ts";
 import { codexConfig, codexRules, codexVersion, runCodex } from "./codex.ts";
 import { moveFiles, readLabChanges } from "./labCheckout.ts";
 import { usageLimitError, withFallbackLogin, type Login } from "./login.ts";
@@ -124,34 +119,8 @@ export function log(line: string) {
   process.stderr.write(`[${new Date().toISOString()}] ${line}\n`);
 }
 
-/**
- * One step of a run's teardown or of cleaning up a discarded attempt. As on
- * `main`, a step that fails stops the suite when the run itself succeeded. When
- * an error is already being reported (the refusal that triggers the repeat on the
- * second login, the message that both logins are at their limit, or any other run
- * error) the failure is logged instead and that error stays what the run ends with.
- */
-export async function tearDown(
-  step: string,
-  action: () => Promise<unknown>,
-  errorInFlight: boolean
-) {
-  try {
-    await action();
-  } catch (error) {
-    if (!errorInFlight) throw error;
-    log(
-      `Could not ${step}: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-}
-
 export function gitOutput(cwd: string, args: string[]) {
-  const result = spawnSync("git", args, {
-    cwd,
-    encoding: "utf8",
-    env: withoutClaudeVariables(process.env),
-  });
+  const result = spawnSync("git", args, { cwd, encoding: "utf8" });
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
@@ -171,7 +140,6 @@ export async function writeJson(filePath: string, value: unknown) {
 export async function runOnce(
   options: RunOptions
 ): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
-  // Codex signs in its own way: it has no second login to fall back to.
   if ((options.agent ?? "claude") !== "claude") return runOnceOn(options, null);
   return withFallbackLogin(evalRoot, (login) => runOnceOn(options, login), log);
 }
@@ -229,7 +197,6 @@ async function runOnceOn(
     throw error;
   }
   let armSetup: ArmSetup | undefined;
-  let errorInFlight = false;
   try {
     log("Seeding the mission.");
     const mission = await seedMission(database, options.mission, runId, labUrl);
@@ -327,21 +294,14 @@ async function runOnceOn(
             arm: options.arm,
             mcpConfigPath,
             readableDirectories: armSetup?.readableDirectories,
-            secrets: login?.secrets,
           });
-    // Only Claude Code has a second login. A limit on the first ends the attempt: half a run is no measurement.
-    // It is cleaned up as after any run: untracked files move to this attempt's agent-files/; tracked changes
-    // stay, and stop the repeat at the clean-checkout check.
+    // A limit ends the attempt: half a run is no measurement. The repeat must not find what this one left behind.
     const limited = login === null ? null : usageLimitError(run, login, runDir);
     if (limited !== null) {
-      await tearDown(
-        "move what the agent left in the lab app folder",
-        () =>
-          moveFiles(
-            readLabChanges().untracked,
-            path.join(runDir, "agent-files")
-          ),
-        true
+      log(`The ${login?.name} login is at its usage limit.`);
+      await moveFiles(
+        readLabChanges().untracked,
+        path.join(runDir, "agent-files")
       );
       throw limited;
     }
@@ -405,34 +365,13 @@ async function runOnceOn(
         "Warning: the agent changed the lab app checkout. Files it created are in agent-files/; tracked files it modified are still there. Inspect them before the next run."
       );
     return { runId, runDir, result };
-  } catch (error) {
-    errorInFlight = true;
-    throw error;
   } finally {
     try {
-      await tearDown(
-        "close what the arm's setup started",
-        async () => {
-          await armSetup?.dispose();
-        },
-        errorInFlight
-      );
-      await tearDown(
-        "close the database",
-        () => database.close(),
-        errorInFlight
-      );
+      await armSetup?.dispose();
+      await database.close();
     } finally {
-      await tearDown(
-        "delete the agent's configuration folder",
-        removeAgentConfig,
-        errorInFlight
-      );
-      await tearDown(
-        "delete the browser profile",
-        () => rm(profileDir, { recursive: true, force: true }),
-        errorInFlight
-      );
+      await removeAgentConfig();
+      await rm(profileDir, { recursive: true, force: true });
     }
   }
 }

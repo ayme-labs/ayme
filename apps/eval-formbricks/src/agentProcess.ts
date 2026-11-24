@@ -32,15 +32,7 @@ export function startAgentProcess(options: {
   stderrPath: string;
   /** Called with each line of the agent's output; a line it returns `false` for stays out of the transcript. */
   onLine: (line: string) => boolean;
-  /**
-   * Scrubs what is kept of the agent's output, never what `onLine` reads: each
-   * transcript line, and stderr as a whole once it is complete, since free text
-   * such as JSON printed over several lines holds a secret on no single line.
-   * Without it, stderr is written as it arrives.
-   */
-  redact?: (text: string) => string;
 }) {
-  const { redact } = options;
   // Before the logs: an agent that cannot be spawned at all throws here, with nothing opened yet.
   const child = spawn(options.command, options.args, {
     cwd: options.cwd,
@@ -65,27 +57,18 @@ export function startAgentProcess(options: {
       (log) => new Promise<void>((resolve) => log.once("close", resolve))
     )
   );
-  // Held until the agent has ended when it is to be scrubbed, so it is scrubbed as a whole.
-  let heldStderr = "";
-  if (redact === undefined) child.stderr.pipe(stderr);
-  else {
-    child.stderr.setEncoding("utf8");
-    child.stderr.on("data", (chunk: string) => (heldStderr += chunk));
-  }
+  child.stderr.pipe(stderr);
   // A message sent to an agent that has already exited must not take the harness down.
-  child.stdin.on("error", (error) => {
-    const message = `harness: writing to the agent failed: ${error.message}\n`;
-    if (redact === undefined) stderr.write(message);
-    else heldStderr += message;
-  });
+  child.stdin.on("error", (error) =>
+    stderr.write(`harness: writing to the agent failed: ${error.message}\n`)
+  );
 
   const lines: string[] = [];
   const reader = createInterface({ input: child.stdout });
   reader.on("line", (line) => {
     if (!options.onLine(line)) return;
-    const kept = redact?.(line) ?? line;
-    lines.push(kept);
-    transcript.write(`${kept}\n`);
+    lines.push(line);
+    transcript.write(`${line}\n`);
   });
   // Registered before the child can close: readline closes with stdout, ahead of the child's own close.
   const readerClosed = new Promise<void>((resolve) =>
@@ -197,9 +180,6 @@ export function startAgentProcess(options: {
       const exit = await closed;
       killLeftovers();
       await readerClosed;
-      // The agent's stderr has closed with the agent, so what is held is all of it.
-      if (redact !== undefined && !stderr.destroyed)
-        stderr.write(redact(heldStderr));
       for (const log of [transcript, stderr]) if (!log.destroyed) log.end();
       await logsClosed;
       if (interruptedBy)

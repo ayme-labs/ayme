@@ -46,8 +46,6 @@ export type ClaudeInvocation = {
   setupTimeoutMs?: number;
   transcriptPath: string;
   stderrPath: string;
-  /** Every token value to scrub from the agent's output before it is kept: the one in `environment` and any other login's. */
-  secrets?: string[];
 } & (
   | {
       /** The second message: the task. */
@@ -163,49 +161,8 @@ export function claudeEnvironment(
   return environment;
 }
 
-/**
- * One character of a secret as it may be printed: itself, or its JSON escape
- * (`\u0073`, in either case of hex digit), the only escape JSON has for the
- * letters, digits and dashes of a token.
- */
-function printedCharacter(character: string) {
-  const hex = character
-    .charCodeAt(0)
-    .toString(16)
-    .padStart(4, "0")
-    .replace(/[a-f]/g, (digit) => `[${digit}${digit.toUpperCase()}]`);
-  return `(?:${character.replace(/[\\^$.*+?()[\]{}|/-]/g, "\\$&")}|\\\\u${hex})`;
-}
-
-/**
- * Builds the function that replaces every secret in a text, whether it is written out
- * or spelled with JSON escapes (`\u0073k-ant-...`), in a string, a key or
- * anywhere else in the text, so it holds for a stream-json line as for the
- * whole of stderr, indented JSON over several lines included. What is not a
- * secret stays byte for byte. The patterns are built once, here, not per line.
- * The longest secret is replaced first, so one that begins with another is
- * replaced whole and leaves no tail behind.
- */
-export function secretRedactor(secrets: string[]): (text: string) => string {
-  const patterns = secrets
-    .filter((secret) => secret !== "")
-    .sort((one, other) => other.length - one.length)
-    .map(
-      (secret) =>
-        new RegExp(secret.split("").map(printedCharacter).join(""), "g")
-    );
-  return (text) =>
-    patterns.reduce(
-      (redacted, pattern) => redacted.replace(pattern, "[redacted]"),
-      text
-    );
-}
-
 export function claudeVersion(): string | null {
-  const result = spawnSync("claude", ["--version"], {
-    encoding: "utf8",
-    env: withoutClaudeVariables(process.env),
-  });
+  const result = spawnSync("claude", ["--version"], { encoding: "utf8" });
   if (result.status !== 0) return null;
   return result.stdout.trim().replace(/\s*\(Claude Code\)\s*$/, "") || null;
 }
@@ -268,9 +225,6 @@ export async function runClaude(
     environment: invocation.environment,
     transcriptPath: invocation.transcriptPath,
     stderrPath: invocation.stderrPath,
-    // Neither the transcript nor stderr keeps a token: the output is public once the results folder is uploaded.
-    redact: secretRedactor(invocation.secrets ?? []),
-    // The event is read as the agent wrote it; only what is kept is scrubbed.
     onLine: (line) => {
       const result = resultEvent(line);
       if (result !== null) {

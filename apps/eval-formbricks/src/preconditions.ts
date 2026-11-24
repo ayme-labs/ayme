@@ -6,11 +6,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import {
-  claudeAuthStatus,
-  claudeVersion,
-  withoutClaudeVariables,
-} from "./claude.ts";
+import { claudeAuthStatus, claudeVersion } from "./claude.ts";
 import { envFileName, tokenVariable } from "./environment.ts";
 import type { LabChanges } from "./labCheckout.ts";
 
@@ -22,7 +18,6 @@ export type Precondition = {
 /**
  * The eval's long-lived Claude Code token must be present, and Claude Code must
  * accept it in the agent's environment. The token itself is never repeated.
- * Messages name the variable of the login in use, the second one included.
  */
 export function claudeTokenPrecondition(options: {
   /** The agent's environment, or `undefined` when there is no token to build it from. */
@@ -54,10 +49,7 @@ export function claudeTokenPrecondition(options: {
 export const dockerPrecondition: Precondition = {
   name: "Docker",
   check: () => {
-    const result = spawnSync("docker", ["info"], {
-      encoding: "utf8",
-      env: withoutClaudeVariables(process.env),
-    });
+    const result = spawnSync("docker", ["info"], { encoding: "utf8" });
     if (result.error || result.status !== 0)
       return "Docker is not running. Start Docker Desktop.";
     return null;

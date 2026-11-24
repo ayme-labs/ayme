@@ -8,10 +8,8 @@
 // run's folder names; FAKE_CLAUDE_RESULT_DELAY_MS delays each turn's result event.
 // FAKE_CLAUDE_BY_TOKEN, a JSON object from an OAuth token to a fixture, makes the
 // answer depend on the CLAUDE_CODE_OAUTH_TOKEN it receives, as a login does: a
-// token not in it is not logged in and runs nothing. With FAKE_CLAUDE_ECHO_TOKEN
-// it also echoes that token on both streams, as a careless agent might, and once
-// on stdout with every character written as a JSON escape, and on stderr inside
-// indented JSON over several lines.
+// token not in it is not logged in and runs nothing. It refuses to start when it
+// is handed the fallback login's variable, which only the harness may hold.
 // Each user message's text goes to stderr, so a test can see what was sent,
 // as do the arguments and the skills in its configuration folder. The fixture
 // writes that folder, which differs per run, as $CLAUDE_CONFIG_DIR.
@@ -22,6 +20,10 @@ import { createInterface } from "node:readline";
 if (process.argv[2] === "--version") {
   process.stdout.write("2.1.281 (Claude Code)\n");
   process.exit(0);
+}
+if (process.env.CLAUDE_CODE_OAUTH_TOKEN_FALLBACK !== undefined) {
+  process.stderr.write("fake claude: handed the fallback login's variable\n");
+  process.exit(1);
 }
 const token = process.env.CLAUDE_CODE_OAUTH_TOKEN ?? "";
 const byToken = process.env.FAKE_CLAUDE_BY_TOKEN
@@ -70,22 +72,6 @@ createInterface({ input: process.stdin }).on("line", (line) => {
   const message = JSON.parse(line);
   const text = message.message.content.map((block) => block.text).join("");
   process.stderr.write(`fake claude: user message ${replayed + 1}: ${text}\n`);
-  if (replayed === 0 && process.env.FAKE_CLAUDE_ECHO_TOKEN) {
-    process.stderr.write(`fake claude: my token is ${token}\n`);
-    process.stdout.write(
-      `${JSON.stringify({ type: "system", subtype: "debug", message: `my token is ${token}` })}\n`
-    );
-    const escaped = [...token]
-      .map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)
-      .join("");
-    process.stdout.write(
-      `{"type":"system","subtype":"debug","message":"my escaped token is ${escaped}"}\n`
-    );
-    // In indented JSON over several lines, with the token as a value and as a key.
-    process.stderr.write(
-      `fake claude: config {\n  "nested": {\n    "value": "${escaped}",\n    "${escaped}": 1\n  }\n}\n`
-    );
-  }
   const turn = turns[replayed];
   replayed += 1;
   if (turn === undefined) return;

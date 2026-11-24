@@ -532,7 +532,6 @@ export async function launchStartPage(
       channel: "chrome",
       headless: true,
       viewport,
-      env: withoutClaudeVariables(process.env),
       args: options.browserArgs ?? [],
       ...(options.initScript === undefined ? {} : servedPageContextOptions),
     }

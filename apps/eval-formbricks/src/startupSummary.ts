@@ -11,7 +11,6 @@ import {
   count,
   distinct,
   list,
-  loginNote,
   range,
   seconds,
   spread,
@@ -30,9 +29,7 @@ export type SummarizedStartupRun = Pick<
   | "filesRead"
   | "timeoutSeconds"
   | "versions"
-> &
-  /** Absent in results stored before the fallback existed. */
-  Partial<Pick<StartupResult, "login">>;
+>;
 
 export type ScenarioSummary = {
   scenario: string;
@@ -129,8 +126,6 @@ export function buildStartupSummary(input: {
       ({ scenario, runs, requestedRuns }) =>
         `${scenario}: ${runs} of ${requestedRuns} requested runs were stored.`
     );
-  const logins = loginNote(results.map((run) => run.login));
-  if (logins !== null) notes.push(logins);
   const mixed = [
     ["Claude Code versions", versions.claudeCode],
     ["models", versions.modelUsed],

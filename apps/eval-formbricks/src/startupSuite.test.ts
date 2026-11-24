@@ -37,10 +37,7 @@ describe("runStartupSuite", () => {
         path.delimiter
       )
     );
-    vi.stubEnv(
-      "CLAUDE_CODE_OAUTH_TOKEN",
-      "sk-ant-oat01-dummyTokenForTheTest0123456789"
-    );
+    vi.stubEnv("CLAUDE_CODE_OAUTH_TOKEN", "token-for-the-test");
     vi.stubEnv(
       "FAKE_CLAUDE_TRANSCRIPT",
       path.join(fixturesDir, "{scenario}.jsonl")

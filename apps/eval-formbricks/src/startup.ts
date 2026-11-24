@@ -37,7 +37,7 @@ import {
   claudeTokenPrecondition,
 } from "./preconditions.ts";
 import { readyLine } from "./prompt.ts";
-import { defaultModel, gitOutput, log, tearDown, writeJson } from "./run.ts";
+import { defaultModel, gitOutput, log, writeJson } from "./run.ts";
 import {
   defaultScenarioId,
   startupScenarios,
@@ -203,7 +203,6 @@ async function runStartupOn(
   if (environment === undefined) throw new Error("unreachable: no environment");
   log(`Run ${runId}: ${runDir}`);
 
-  let errorInFlight = false;
   try {
     const skillDir = aymeSkillDirectory(claudeConfigDir);
     await cp(aymeSkillSource, skillDir, { recursive: true });
@@ -235,10 +234,12 @@ async function runStartupOn(
       setupTimeoutMs: timeoutMs,
       transcriptPath: path.join(runDir, "transcript.jsonl"),
       stderrPath: path.join(runDir, "stderr.log"),
-      secrets: login.secrets,
     });
     const limited = usageLimitError(run, login, runDir);
-    if (limited !== null) throw limited;
+    if (limited !== null) {
+      log(`The ${login.name} login is at its usage limit.`);
+      throw limited;
+    }
     // An error says nothing about routing: as for a mission, the run could not complete and the transcript stays.
     if (run.setupFailure !== null && !run.setup.timedOut)
       throw new Error(
@@ -269,15 +270,8 @@ async function runStartupOn(
     };
     await writeJson(path.join(runDir, "result.json"), result);
     return { runDir, result };
-  } catch (error) {
-    errorInFlight = true;
-    throw error;
   } finally {
-    await tearDown(
-      "delete the Claude Code configuration folder",
-      () => rm(claudeConfigDir, { recursive: true, force: true }),
-      errorInFlight
-    );
+    await rm(claudeConfigDir, { recursive: true, force: true });
   }
 }
 

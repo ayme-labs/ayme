@@ -19,7 +19,6 @@ import {
   signInThroughApi,
   viewport,
 } from "./browser.ts";
-import { withoutClaudeVariables } from "./claude.ts";
 import {
   openFormbricksDatabase,
   seededIds,
@@ -60,12 +59,7 @@ export async function warmLabApp(options: {
     });
     const context = await playwright().chromium.launchPersistentContext(
       profileDir,
-      {
-        channel: "chrome",
-        headless: true,
-        viewport,
-        env: withoutClaudeVariables(process.env),
-      }
+      { channel: "chrome", headless: true, viewport }
     );
     try {
       const page = context.pages()[0] ?? (await context.newPage());

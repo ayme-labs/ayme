@@ -10,8 +10,12 @@ import {
   codexTokenVariable,
   codexSignInPrecondition,
 } from "./codex.ts";
-import { readEnvVariable, tokenVariable } from "./environment.ts";
-import { readLoginTokens, type Login } from "./login.ts";
+import {
+  readEnvVariable,
+  readOauthToken,
+  tokenVariable,
+} from "./environment.ts";
+import type { Login } from "./login.ts";
 import { claudeTokenPrecondition, type Precondition } from "./preconditions.ts";
 
 export const agentIds = ["claude", "codex"] as const;
@@ -37,10 +41,7 @@ export function agentAccess(options: {
   configDir: string;
   /** The directory holding the env file. */
   envDirectory: string;
-  /**
-   * The Claude Code login to sign in with. By default the first, read after
-   * both configured tokens are checked for their shape.
-   */
+  /** The Claude Code login to sign in with; the first by default. */
   login?: Pick<Login, "token" | "variable">;
 }): {
   environment: NodeJS.ProcessEnv | undefined;
@@ -49,7 +50,7 @@ export function agentAccess(options: {
   const { configDir, envDirectory } = options;
   if (options.agent === "claude") {
     const { token, variable } = options.login ?? {
-      token: readLoginTokens(envDirectory).first,
+      token: readOauthToken(envDirectory),
       variable: tokenVariable,
     };
     const environment =
