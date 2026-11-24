@@ -27,7 +27,6 @@ afterAll(async () => {
   await browser?.close();
 });
 
-/** A page of its own context showing `body`. */
 async function pageShowing(body: string): Promise<Page> {
   const page = await browser.newPage();
   await page.setContent(`<!doctype html><title>ayme</title>${body}`);
