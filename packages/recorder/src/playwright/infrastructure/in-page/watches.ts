@@ -4,6 +4,7 @@ import type {
   actedOnIndex,
   ancestorChain,
   controlsSelector,
+  HeldClick,
 } from "../pageRules";
 
 // The watches the adapter installs in a recorded page. Each function is sent
@@ -21,6 +22,9 @@ export type TargetChain = {
   /** The ref of the element under the pointer, which Playwright's report
    * names as its ref: it says which report this is the note of. */
   readonly under: string | null;
+  /** The held click the event is, as the gate sent it on; null for an event
+   * that is no held click's, as the release of a right-click. */
+  readonly held: HeldClick | null;
 };
 
 /** The element above an element, through an open shadow root to its host;
@@ -81,6 +85,18 @@ export function actedOn(element: Element, rules: TargetRules): Element {
   return path[index]!;
 }
 
+/** The target watch of one document, as the adapter reaches it. */
+export type TargetWatch = {
+  /** Notes no input any more, for a browser the adapter lets go of. */
+  stop(): void;
+};
+
+declare global {
+  interface Window {
+    __aymeRecorderTargetWatch?: TargetWatch;
+  }
+}
+
 /**
  * Installs the target watch in a document. Playwright's recorder takes its
  * picture of the page while it handles an input, and leaves each element it
@@ -90,18 +106,24 @@ export function actedOn(element: Element, rules: TargetRules): Element {
  * called `tell`: an element the picture does not list is then known by its
  * nearest ancestor that it does. The element under the pointer can be one
  * inside a link or a button: its ref, which Playwright's report names, goes
- * along only to say which report the note is of.
+ * along only to say which report the note is of, and so does the held click
+ * the event is, as the gate tells it (`heldClickOf`): it runs before this,
+ * on `window`.
  */
 export function targetWatchIn(tell: string, rules: TargetRules): void {
+  if (window.__aymeRecorderTargetWatch) return;
   const told = (seen: TargetChain) =>
     void (
       window as unknown as Record<string, (seen: TargetChain) => Promise<void>>
     )[tell]!(seen);
+  const heldClickOf = (event: Event) =>
+    window.__aymeRecorderGate?.heldClickOf(event) ?? null;
   const read = (event: Event) => {
     if (!event.isTrusted) return;
     const target = event.composedPath()[0];
+    const held = heldClickOf(event);
     if (!(target instanceof Element))
-      return told({ type: event.type, chain: [], under: null });
+      return told({ type: event.type, chain: [], under: null, held });
     told({
       type: event.type,
       chain: rules.ancestorChain(
@@ -110,21 +132,30 @@ export function targetWatchIn(tell: string, rules: TargetRules): void {
         rules.ariaRefOf
       ),
       under: rules.ariaRefOf(target),
+      held,
     });
   };
   // Playwright's recorder listens on the document as the event goes down;
   // a listener on the root element runs right after it.
+  const types = ["click", "contextmenu", "auxclick", "keydown", "input"];
   const install = () => {
-    for (const type of ["click", "contextmenu", "auxclick", "keydown", "input"])
+    for (const type of types)
       document.documentElement.addEventListener(type, read, true);
   };
+  const waiting = new MutationObserver(() => {
+    if (!document.documentElement) return;
+    waiting.disconnect();
+    install();
+  });
   if (document.documentElement) install();
-  else
-    new MutationObserver((_, observer) => {
-      if (!document.documentElement) return;
-      observer.disconnect();
-      install();
-    }).observe(document, { childList: true });
+  else waiting.observe(document, { childList: true });
+  window.__aymeRecorderTargetWatch = {
+    stop: () => {
+      waiting.disconnect();
+      for (const type of types)
+        document.documentElement?.removeEventListener(type, read, true);
+    },
+  };
 }
 
 /** The refs of an element and its ancestors, nearest first, as the target

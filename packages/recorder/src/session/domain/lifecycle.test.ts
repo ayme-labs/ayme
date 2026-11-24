@@ -3350,6 +3350,20 @@ describe("the lifecycle, for Assert visibility", () => {
       todo: [keep(snapshot1), assertion(snapshot1), letThrough(null)],
       state: { phase: "recording", picking: true },
     },
+    {
+      name: "an assertion whose read comes once the page went to another document is written at that read, which the timeline is told (rule 13a; config Input-ReadAcrossNavigation)",
+      happened: [
+        ...pickingOn,
+        assertionReported,
+        navigated("http://shop.test/cart"),
+        // Read before the page went: its address is the one it left.
+        taken(snapshot1),
+      ],
+      // The new document is not let through on a read of the one it left:
+      // what is done there waits for a read of it.
+      todo: [keep(snapshot1), assertion(snapshot1)],
+      state: { phase: "recording", picking: true },
+    },
   ])("$name", ({ happened, todo, state }) => {
     const result = run(happened);
     expect(writes(result).at(-1)).toEqual(todo);

@@ -40,6 +40,7 @@ import { startGate } from "../in-page/gate";
 import { installGate, startPickingIn } from "./pageFunctions";
 import { stockBrowser } from "./stockBrowser";
 import { snapshotId } from "../../../test-utils/ids";
+import { zipText } from "../../../test-utils/zip";
 
 // The compatibility suite: the stock adapter on each supported Playwright.
 // Each private detail of Playwright the adapter uses has its test here
@@ -86,8 +87,13 @@ type Harness = {
   /** The address of the served page. */
   readonly url: string;
   /** A person at the recorded browser: raw input over that connection, so
-   * that it is no call of the Playwright under test. */
-  click(target: Locator, button?: "left" | "right" | "middle"): Promise<void>;
+   * that it is no call of the Playwright under test. A count of 2 is the
+   * second click of a double click. */
+  click(
+    target: Locator,
+    button?: "left" | "right" | "middle",
+    count?: number
+  ): Promise<void>;
   /** Closes the layer's scope, as the end of a recorder does. */
   letGo(): Promise<void>;
 };
@@ -182,7 +188,8 @@ async function onStockPlaywright(
     type: string,
     at: { x: number; y: number },
     buttons: number,
-    button: "left" | "right" | "middle" = "left"
+    button: "left" | "right" | "middle" = "left",
+    clickCount = 1
   ) =>
     session.send("Input.dispatchMouseEvent", {
       type: type as "mouseMoved",
@@ -190,7 +197,7 @@ async function onStockPlaywright(
       y: at.y,
       button: type === "mouseMoved" ? "none" : button,
       buttons,
-      clickCount: 1,
+      clickCount,
       pointerType: "mouse",
     });
 
@@ -209,13 +216,13 @@ async function onStockPlaywright(
       return found()!;
     },
     page,
-    async click(target, button = "left") {
+    async click(target, button = "left", count = 1) {
       const box = (await target.boundingBox())!;
       const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
       await mouse("mouseMoved", at, 0);
       const pressed = { left: 1, right: 2, middle: 4 }[button];
-      await mouse("mousePressed", at, pressed, button);
-      await mouse("mouseReleased", at, 0, button);
+      await mouse("mousePressed", at, pressed, button, count);
+      await mouse("mouseReleased", at, 0, button, count);
     },
     letGo: () => runtime.dispose(),
   };
@@ -232,6 +239,33 @@ async function reporting(browser: Harness) {
   await browser.ask({ kind: "reportInteractions", on: true });
   await browser.toldOf("reportingInteractions");
 }
+
+/** The line of a report's picture that names its target. */
+const namedLine = ({
+  target,
+}: Extract<BrowserSignal, { kind: "interactionReported" }>["report"]) => {
+  const ref = target!.ref ?? target!.ancestors?.[0];
+  return target!.tree.split("\n").find((line) => line.includes(`[ref=${ref}]`));
+};
+
+/** Whether the Playwright under test holds a left click's report back, to
+ * see whether a double click follows (1.63 and later): the page's note of
+ * the click then comes before the report. 1.62 reports a click at once,
+ * before the page's note of it, and a double click as a revision of its
+ * first click's report. */
+const holdsClickReports = (() => {
+  const [major = 0, minor = 0] = underTest.version.split(".").map(Number);
+  return major > 1 || minor >= 63;
+})();
+
+/** A link that a click removes when `condition` holds, where Playwright
+ * holds the click's report back: its selector then matches nothing by the
+ * time the report could be read through it, so only the page's note of the
+ * click names the link. On 1.62, whose report comes before the note, the
+ * link stays, and its selector names it. */
+const linkRemovedOn = (condition: string) =>
+  `<a href="#a" onclick="event.preventDefault(); if (${holdsClickReports} && ${condition}) this.remove()"><span id="inner" style="display:inline-block">Pull requests</span></a>`;
+const REMOVED_LINK = linkRemovedOn("true");
 
 it("starts Playwright's recorder, which reports a person's click with its target in its own snapshot", async () => {
   const browser = await onStockPlaywright(BUTTONS);
@@ -478,6 +512,40 @@ it("traces the recording, marks each snapshot, and numbers each mark as the stoc
   await rm(dirname(trace.file), { recursive: true, force: true });
 });
 
+it("keeps no screenshot in the trace, while its DOM snapshots and network log are there", async () => {
+  const browser = await onStockPlaywright(BUTTONS);
+  await browser.ask({ kind: "startTrace" });
+  await browser.toldOf("traceStarted");
+  await browser.page.reload();
+  await browser.page.locator("#first").waitFor();
+  await browser.ask({
+    kind: "takeSnapshot",
+    snapshot: "snapshot_1",
+    page: "page_1",
+  });
+  await browser.toldOf("snapshotTaken");
+  // Screenshots are on only for a trace started with them: a page that
+  // paints and changes gives the trace frames to keep.
+  await browser.page.evaluate(() => {
+    document.querySelector("h1")!.textContent = "Changed";
+  });
+  await browser.page.waitForTimeout(500);
+  await browser.ask({ kind: "stopTrace", keep: true });
+  const { trace } = await browser.toldOf("traceStopped");
+
+  const events = await zipText(trace.file, "trace.trace");
+  // A screenshot is a frame of the page's screencast: the trace names each
+  // one it keeps among its events.
+  expect(events).not.toContain("screencast-frame");
+  // The DOM snapshots and the network log are still there.
+  expect(events).toContain("frame-snapshot");
+  const { host } = new URL(browser.url);
+  expect(await stockToolRequests(trace.file)).toMatch(
+    new RegExp(`GET\\s+200\\s+${host.replaceAll(".", "\\.")}\\s`)
+  );
+  await rm(dirname(trace.file), { recursive: true, force: true });
+});
+
 it.runIf(!attaching)(
   "opens a blank page to start recording, and goes to the URL only once Record holds inputs back, so that the trace holds the first page load",
   async () => {
@@ -589,6 +657,25 @@ it("tells of a held click whose document is gone, and never sends it to the next
   await browser.toldOf("inputGone", (gone) => gone.input === input);
   expect(browser.told.map(({ kind }) => kind)).not.toContain("inputPassedOn");
   expect(await browser.page.evaluate("window.clicks")).toBe(0);
+
+  // No report of it is awaited: the next click's report is named from that
+  // click's own note, where Playwright holds the report back.
+  await browser.page.evaluate(
+    (link) => document.body.insertAdjacentHTML("beforeend", link),
+    REMOVED_LINK
+  );
+  await browser.click(browser.page.locator("#inner"));
+  const next = await browser.toldOf(
+    "inputHeld",
+    (told) => told.input !== input
+  );
+  await browser.ask({ kind: "passOn", input: next.input });
+  // Playwright reported the page going to `?next` before it.
+  const { report } = await browser.toldOf(
+    "interactionReported",
+    (told) => told.report.type === "click"
+  );
+  expect(namedLine(report)).toMatch(/link "Pull requests"/);
 });
 
 it("holds a right-click by its context menu event until it is sent on: the page then gets it once, and Playwright reports a click of the right button", async () => {
@@ -1575,10 +1662,10 @@ const LABELLED = `
   <button>Twin</button>
   <iframe srcdoc="<button>Pay</button><button>Twin</button>"></iframe>`;
 
-it("finds by the selector of each element's label, built from the page's own snapshot, that element alone, in a frame too", async () => {
-  const browser = await onStockPlaywright(LABELLED);
-  const page = browser.page;
-  await page.frameLocator("iframe").getByText("Pay").waitFor();
+/** Each label of the page's own snapshot, and every one whose selector
+ * the highlight finds other than the element its ref names: nothing, more
+ * than it, or another. */
+async function labelsFound(browser: Harness) {
   await browser.ask({ kind: "takeSnapshot", snapshot: "s1", page: "page_1" });
   const { snapshot } = await browser.toldOf("snapshotTaken");
   const tree = StructuralTree.fromAriaSnapshotYaml(
@@ -1599,19 +1686,41 @@ it("finds by the selector of each element's label, built from the page's own sna
       "highlighted",
       (told) => told.highlight === highlight
     );
-    return found ? await drawnBoxes(page) : [];
+    return found ? await drawnBoxes(browser.page) : [];
   };
-  const labels: string[] = [];
-  const missed: unknown[] = [];
-  for (const node of tree.getAllNodes()) {
-    const named = labelOf(tree, node);
-    if (!named || isSyntheticRef(node.ref)) continue;
-    labels.push(named.label);
+  const named = tree.getAllNodes().flatMap((node) => {
+    const label = labelOf(tree, node);
+    return label && !isSyntheticRef(node.ref) ? [{ node, label }] : [];
+  });
+  const key = (boxes: readonly unknown[]) => JSON.stringify(boxes);
+  // Each element by its ref, and whose label each box is.
+  const owns: unknown[][] = [];
+  const atBox = new Map<string, string>();
+  for (const { node, label } of named) {
     const own = await drawnFor({ by: "ref", ref: snapshotRef(node.ref) });
-    const found = await drawnFor({ by: "selector", selector: named.selector });
-    if (own.length !== 1 || JSON.stringify(found) !== JSON.stringify(own))
-      missed.push({ label: named.label, selector: named.selector, own, found });
+    owns.push(own);
+    atBox.set(key(own), label.label);
   }
+  const missed: unknown[] = [];
+  for (const [at, { label }] of named.entries()) {
+    const own = owns[at]!;
+    const found = await drawnFor({ by: "selector", selector: label.selector });
+    if (own.length !== 1 || key(found) !== key(own))
+      missed.push({
+        label: label.label,
+        // What its selector lights up, by the label of the element there.
+        finds: found.map((box) => atBox.get(key([box])) ?? box),
+        ...(own.length === 1 ? {} : { byItsRef: own }),
+      });
+  }
+  return { labels: named.map(({ label }) => label.label), missed };
+}
+
+it("finds by the selector of each element's label, built from the page's own snapshot, that element alone, in a frame too", async () => {
+  const browser = await onStockPlaywright(LABELLED);
+  await browser.page.frameLocator("iframe").getByText("Pay").waitFor();
+
+  const { labels, missed } = await labelsFound(browser);
 
   expect(missed).toEqual([]);
   expect(labels).toEqual(
@@ -1637,6 +1746,40 @@ it("finds by the selector of each element's label, built from the page's own sna
       'button "Pay"',
     ])
   );
+});
+
+/** Items that hold text the page's snapshot leaves out, as hidden, and
+ * Playwright's text matching reads: one named by its text alone, ones
+ * among look-alikes, and one an item's hidden text makes a look-alike. */
+const HIDDEN_TEXT = `
+  <ul>
+    <li>Buy milk</li>
+    <li>Buy <span hidden>oat </span>milk</li>
+  </ul>
+  <ol>
+    <li><input type="checkbox" aria-label="Toggle Todo">Feed the cat</li>
+    <li><input type="checkbox" aria-label="Toggle Todo">Eggs<span hidden> feed the cat</span></li>
+    <li><input type="checkbox" aria-label="Toggle Todo">Feed the cat</li>
+  </ol>
+  <p>Only <span style="display: none">one </span>item</p>`;
+
+// A known limit, in the CLI's README. Once a label here finds its element,
+// the limit is gone: take it out of the README, and expect no misses.
+it("finds by the selector of a label nothing, or a look-alike, when hidden text is in the element or in a look-alike", async () => {
+  const browser = await onStockPlaywright(HIDDEN_TEXT);
+
+  const { missed } = await labelsFound(browser);
+
+  expect(missed).toEqual([
+    // Playwright reads "Buy oat milk".
+    { label: 'listitem "Buy milk" (2nd of 2)', finds: [] },
+    // Playwright reads the Eggs item as one with "feed the cat" in it.
+    {
+      label: 'listitem "Feed the cat" (2nd of 2)',
+      finds: ['listitem "Eggs"'],
+    },
+    { label: 'paragraph "Only item"', finds: [] },
+  ]);
 });
 
 it("draws nothing for a highlight that a clear replaced while the element was still looked up", async () => {
@@ -1786,6 +1929,115 @@ it("names a click on an element inside a link by the link, as Playwright's selec
     expect(report.target!.tree).toMatch(
       new RegExp(`${link}[^\\n]*\\[ref=${named}\\]`)
     );
+  }
+});
+
+// The page's note of a click names the element it acted on however soon the
+// page changes, in a page an attached recorder found open too.
+it(`names a click inside a link by the link ${holdsClickReports ? "from the page's note of the click, when the click removes the link" : "through its selector: Playwright reports the click before the page's note of it"} (Playwright ${underTest.version})`, async () => {
+  const browser = await onStockPlaywright(REMOVED_LINK);
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+
+  await browser.click(browser.page.locator("#inner"));
+  const { input } = await browser.toldOf("inputHeld");
+  await browser.ask({ kind: "passOn", input });
+
+  const { report } = await browser.toldOf("interactionReported");
+  expect(namedLine(report)).toMatch(/link "Pull requests"/);
+});
+
+// Playwright holds a left click's report back to see whether a double click
+// follows (1.63 and later), and then reports the double click once, by its
+// second click. The second click is sent on while the first one's report may
+// still be held back. 1.62 reports the first click, and revises that report
+// with the second.
+it(`names a double click by the link ${holdsClickReports ? "from the page's note of its second click, which Playwright reports it by" : "in the report of its first click, which Playwright revises with the second"} (Playwright ${underTest.version})`, async () => {
+  const browser = await onStockPlaywright(linkRemovedOn("event.detail === 2"));
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+
+  const inner = browser.page.locator("#inner");
+  await browser.click(inner);
+  await browser.click(inner, "left", 2);
+  await expect
+    .poll(() => browser.told.filter(({ kind }) => kind === "inputHeld"))
+    .toHaveLength(2);
+  const [first, second] = browser.told.filter(
+    (told) => told.kind === "inputHeld"
+  ) as Extract<BrowserSignal, { kind: "inputHeld" }>[];
+  await browser.ask({ kind: "passOn", input: first!.input });
+  await browser.toldOf("inputPassedOn", (told) => told.input === first!.input);
+  await browser.ask({ kind: "passOn", input: second!.input });
+
+  const { report } = await browser.toldOf(
+    "interactionReported",
+    (told) => told.report.values["clickCount"] === (holdsClickReports ? 2 : 1)
+  );
+  expect(namedLine(report)).toMatch(/link "Pull requests"/);
+});
+
+// Playwright reports a right-click and a middle click before the page's
+// note of it is told. A note of an earlier input can name the same element
+// under the pointer: the note of the click before it, made when the element
+// was inside another button, or the note of the right-click's own release,
+// which reaches the page before the click is sent on.
+it("names a click on an element the page moved into another button by the button it is in now, never by an earlier input's note", async () => {
+  for (const { button, page, before, after } of [
+    // Each button keeps its name, and its ref, when the star moves: the
+    // note of the click before names button A.
+    {
+      button: "middle",
+      page: `<button id="a" aria-label="Alpha"><span id="child" style="display:inline-block">Star</span></button>
+             <button id="b" aria-label="Beta"></button>`,
+      before: /button "Alpha"/,
+      after: /button "Beta"/,
+    },
+    // Named by their text, both buttons are renamed when the star moves:
+    // a note made before names refs the report's picture no longer lists.
+    {
+      button: "right",
+      page: `<button id="a">Alpha <span id="child" style="display:inline-block">Star</span></button>
+             <button id="b" oncontextmenu="event.preventDefault()">Beta</button>`,
+      before: /button "Alpha Star"/,
+      after: /button "Beta Star"/,
+    },
+  ] as const) {
+    const browser = await onStockPlaywright(page);
+    await reporting(browser);
+    await browser.ask({ kind: "holdInputs", on: true });
+    await browser.toldOf("inputsHeld");
+    /** Sends the `count`th held click on, and gives the line of its
+     * report's picture that names its target. */
+    const named = async (count: number) => {
+      await expect
+        .poll(() => browser.told.filter(({ kind }) => kind === "inputHeld"))
+        .toHaveLength(count);
+      const { input } = browser.told.filter(
+        (told) => told.kind === "inputHeld"
+      )[count - 1] as Extract<BrowserSignal, { kind: "inputHeld" }>;
+      await browser.ask({ kind: "passOn", input });
+      await expect
+        .poll(() =>
+          browser.told.filter(({ kind }) => kind === "interactionReported")
+        )
+        .toHaveLength(count);
+      const { report } = browser.told.filter(
+        (told) => told.kind === "interactionReported"
+      )[count - 1] as Extract<BrowserSignal, { kind: "interactionReported" }>;
+      return namedLine(report);
+    };
+
+    await browser.click(browser.page.locator("#child"));
+    expect(await named(1)).toMatch(before);
+
+    await browser.page.evaluate(() =>
+      document.querySelector("#b")!.append(document.querySelector("#child")!)
+    );
+    await browser.click(browser.page.locator("#child"), button);
+    expect(await named(2)).toMatch(after);
   }
 });
 

@@ -1,3 +1,4 @@
+import { version } from "../package.json";
 import type { Command } from "./readCommand";
 
 /** What the command line does for a command it has read. */
@@ -32,6 +33,13 @@ export function planOf(command: Command): Plan {
         kind: "print",
         stream: "stdout",
         text: command.text,
+        exitCode: 0,
+      };
+    case "version":
+      return {
+        kind: "print",
+        stream: "stdout",
+        text: `${version}\n`,
         exitCode: 0,
       };
     case "error":

@@ -8,6 +8,10 @@
 /** The modifier keys held with an input. */
 export type Modifier = "Alt" | "Control" | "Meta" | "Shift";
 
+/** Which held click an event is: the document that held it, and its number
+ * there (`seq` of `HeldByPage`). */
+export type HeldClick = { readonly document: string; readonly seq: number };
+
 /** What a page tells of an input it held back. `seq` numbers the inputs a
  * document held, from 1. */
 export type HeldByPage =

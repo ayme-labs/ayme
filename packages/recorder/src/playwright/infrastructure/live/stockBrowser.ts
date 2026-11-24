@@ -59,7 +59,12 @@ import {
 } from "../in-page/drawing";
 import { startGate } from "../in-page/gate";
 import { installActivityWatch, type TargetChain } from "../in-page/watches";
-import { letThroughUpTo, ownRefOf, type HeldByPage } from "../pageRules";
+import {
+  letThroughUpTo,
+  ownRefOf,
+  type HeldByPage,
+  type HeldClick,
+} from "../pageRules";
 import {
   ancestorRefs,
   followPickingIn,
@@ -85,7 +90,13 @@ import {
   type Playwright,
 } from "../projectPlaywright";
 import { snapshotPositions } from "../traceTool";
-import { namedIn, reportTarget } from "../reportTarget";
+import {
+  namedIn,
+  reportedClick,
+  reportTarget,
+  sentOn,
+  type AwaitedClick,
+} from "../reportTarget";
 
 /** Chromium launched by the project's own Playwright on a URL. */
 type Launch = {
@@ -421,21 +432,59 @@ async function openPage(
   await context.exposeBinding(chainBinding, ({ page }, seen: TargetChain) => {
     chains.set(page, [...(chains.get(page) ?? []).slice(-9), seen]);
   });
+  /** The held clicks each page was sent while Playwright's recorder
+   * reported, whose reports can still come (`sentOn`). */
+  const awaited = new Map<Page, readonly AwaitedClick[]>();
+  /** Awaits the report of a held click sent on while Playwright's recorder
+   * reports: the page's note of this click is the one that names its
+   * target. */
+  const awaitReport = (page: Page, sent: HeldByPage) => {
+    if (sent.kind !== "click" || recorderMode?.mode() !== "recording") return;
+    const click: AwaitedClick = {
+      document: sent.document,
+      seq: sent.seq,
+      count: Math.max(1, sent.detail),
+      button: sent.button ?? "left",
+    };
+    awaited.set(page, sentOn(awaited.get(page) ?? [], click));
+    return click;
+  };
+  /** A click that never reached its page: no report of it will come. */
+  const reportNotAwaited = (page: Page, click: AwaitedClick | undefined) =>
+    awaited.set(
+      page,
+      (awaited.get(page) ?? []).filter((at) => at !== click)
+    );
+  /** The held click a report of a page is of, if any: it is awaited no
+   * more, nor are the clicks before it (`reportedClick`). */
+  const clickReported = (
+    page: Page,
+    action: PlaywrightAction
+  ): HeldClick | null => {
+    const { of, awaited: left } = reportedClick(
+      awaited.get(page) ?? [],
+      action
+    );
+    awaited.set(page, left);
+    return of;
+  };
   /**
    * A report, with the element the input acted on, as Playwright's selector
    * names it: a link or a button rather than the element inside it that
    * was under the pointer, whose ref is the one Playwright's report gives.
-   * The page's note of the input says which element that is
-   * (`reportTarget`).
+   * The page's note of the input says which element that is: for a held
+   * click, the note of that click (`reportTarget`).
    */
   const reportFrom = (
     page: Page,
-    action: PlaywrightAction
+    action: PlaywrightAction,
+    of: HeldClick | null
   ): { report: InteractionReport; fromSelector: boolean } => {
     const report = withLocator(reportOf(action), page);
     const { target, fromSelector } = reportTarget(
       action,
-      chains.get(page) ?? []
+      chains.get(page) ?? [],
+      of
     );
     return {
       report: target === undefined ? report : { ...report, target },
@@ -616,6 +665,7 @@ async function openPage(
         Promise.all([
           frame.evaluate(installGate, heldBinding),
           frame.evaluate(installActivityWatch, changedBinding),
+          frame.evaluate(installTargetWatch, chainBinding),
           frame.evaluate(hidePlaywrightOverlay),
           frame.evaluate(keepCursorsAsTheyAre),
           // It shows only in the top document, and leaves the others be.
@@ -762,8 +812,12 @@ async function openPage(
     const input = held.get(id);
     held.delete(id);
     if (!input) return;
-    if (!(await passOn(input.frame, input.input)))
+    const page = input.frame.page();
+    const click = awaitReport(page, input.input);
+    if (!(await passOn(input.frame, input.input))) {
+      reportNotAwaited(page, click);
       return tell({ kind: "inputGone", input: id });
+    }
     tell({ kind: "inputPassedOn", input: id, at: now() });
   }
 
@@ -792,7 +846,7 @@ async function openPage(
     await context.tracing.start({
       name: "ayme-recording",
       snapshots: true,
-      screenshots: true,
+      screenshots: false,
     });
     tell({ kind: "traceStarted" });
   }
@@ -832,6 +886,9 @@ async function openPage(
       // A report that is still being read, as through its selector, is
       // told before the answer too.
       if (!on) await reports;
+      // Every click sent on before has been reported, and none sent on
+      // while it is off will be.
+      if (!on) awaited.clear();
     } else if (on) {
       await startPlaywrightRecorder();
       recorderMode = await recorderModeOf(context);
@@ -982,7 +1039,11 @@ async function openPage(
         const pageId = idOf.get(reported);
         if (!pageId) return;
         // What it names is read now, before anything else happens.
-        const { report, fromSelector } = reportFrom(reported, action);
+        const { report, fromSelector } = reportFrom(
+          reported,
+          action,
+          clickReported(reported, action)
+        );
         inReportOrder(async () => ({
           kind: "interactionReported",
           page: pageId,
@@ -1000,7 +1061,7 @@ async function openPage(
       actionUpdated: (reported, action) => {
         const pageId = idOf.get(reported);
         if (!pageId) return;
-        const { report } = reportFrom(reported, action);
+        const { report } = reportFrom(reported, action, null);
         inReportOrder(async () => ({
           kind: "interactionRevised",
           page: pageId,
@@ -1242,6 +1303,7 @@ async function passOn(frame: Frame, input: HeldByPage): Promise<boolean> {
               y: input.y,
               detail: Math.max(1, input.detail),
               ...(input.button ? { button: input.button } : {}),
+              seq: input.seq,
             }
           : { code: input.code },
       document: input.document,

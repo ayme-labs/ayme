@@ -163,7 +163,7 @@ describe("the timeline", () => {
             url: `${url}cart`,
             cause: "navigate",
           },
-          snapshot(snapshotId("snapshot_2"), 20, savedPage),
+          snapshot(snapshotId("snapshot_2"), 20, savedPage, `${url}cart`),
           click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
             ref: pictureRef("e2"),
             tree: idle,
@@ -746,6 +746,28 @@ describe("the timeline", () => {
       );
     });
 
+    it("keeps a read in the Visit of its own page when another page opened later at the same address", async () => {
+      const timeline = await timelineOf([
+        visit,
+        { kind: "visit", page: pageId("page_2"), url, cause: "openPage" },
+        snapshot(snapshotId("snapshot_1"), 10, idle),
+        snapshot(snapshotId("snapshot_2"), 20, savedPage),
+        click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+          ref: pictureRef("e2"),
+          tree: idle,
+        }),
+      ]);
+
+      expect(
+        timeline
+          .visits()
+          .map(({ visitId, entries }) => [visitId, entries.map(({ id }) => id)])
+      ).toEqual([
+        ["visit_1", ["interaction_1"]],
+        ["visit_2", []],
+      ]);
+    });
+
     it("stays in the Visit when only the part of the address after '?' or '#' changes, as core decides", async () => {
       const text = await packageOf([
         visit,
@@ -878,6 +900,8 @@ describe("the timeline, for an input known from its report", () => {
   });
 
   describe("while it is typed, added under a key", () => {
+    /** Where the page goes when typing submits its form. */
+    const nextUrl = "http://shop.test/next";
     /** The typing, added under its key, with its text and latest read. */
     const typed = (
       text: string,
@@ -1043,10 +1067,10 @@ describe("the timeline, for an input known from its report", () => {
         {
           kind: "visit",
           page: pageId("page_1"),
-          url: "http://shop.test/next",
+          url: nextUrl,
           cause: "navigate",
         } as TimelineAddition,
-        snapshot(snapshotId("snapshot_3"), 30, draftEmpty),
+        snapshot(snapshotId("snapshot_3"), 30, draftEmpty, nextUrl),
         typed("milk!", snapshotId("snapshot_3")),
       ])
         await timeline.add(addition);
@@ -1066,10 +1090,10 @@ describe("the timeline, for an input known from its report", () => {
         {
           kind: "visit",
           page: pageId("page_1"),
-          url: "http://shop.test/next",
+          url: nextUrl,
           cause: "navigate",
         },
-        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved, nextUrl),
         typed("milk", snapshotId("snapshot_2")),
       ]);
 
@@ -1221,10 +1245,10 @@ describe("the timeline, for an input known from its report", () => {
         {
           kind: "visit",
           page: pageId("page_1"),
-          url: "http://shop.test/next",
+          url: nextUrl,
           cause: "navigate",
         },
-        snapshot(snapshotId("snapshot_3"), 30, draftEmpty),
+        snapshot(snapshotId("snapshot_3"), 30, draftEmpty, nextUrl),
         typed("milk!", snapshotId("snapshot_3")),
       ]);
 
@@ -1245,10 +1269,10 @@ describe("the timeline, for an input known from its report", () => {
         {
           kind: "visit",
           page: pageId("page_1"),
-          url: "http://shop.test/next",
+          url: nextUrl,
           cause: "navigate",
         },
-        snapshot(snapshotId("snapshot_2"), 20, draftSaved),
+        snapshot(snapshotId("snapshot_2"), 20, draftSaved, nextUrl),
         typed("milk", snapshotId("snapshot_2")),
       ]);
 
@@ -2434,6 +2458,85 @@ describe("the timeline, for an assertion", () => {
       },
       targetElement: 'link "chore: release main"',
     });
+  });
+
+  it("keeps an assertion whose read the page's next document overtook in the Visit it was picked in, with that read, after the entries that Visit has (rule 13a)", async () => {
+    const cartUrl = "http://shop.test/cart";
+    const offered = [
+      `- generic [ref=e1]:`,
+      `  - button "Save" [ref=e2]`,
+      `  - paragraph [ref=e3]: Saved`,
+      `  - paragraph [ref=e4]: Free delivery`,
+    ].join("\n");
+    const text = await packageOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, idle),
+      snapshot(snapshotId("snapshot_2"), 20, savedPage),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), {
+        ref: pictureRef("e2"),
+        tree: idle,
+      }),
+      {
+        kind: "visit",
+        page: pageId("page_1"),
+        url: cartUrl,
+        cause: "navigate",
+      },
+      // Read at the address the page was at as the read started: the page
+      // went on to the cart while it was read.
+      snapshot(snapshotId("snapshot_3"), 30, offered),
+      assertion(snapshotId("snapshot_3"), 30, "e3"),
+      snapshot(
+        snapshotId("snapshot_4"),
+        40,
+        `- heading "Cart" [level=1] [ref=f1e1]`,
+        cartUrl
+      ),
+    ]);
+
+    expect(text).toContain(
+      [
+        `  - visitId: visit_1`,
+        `    url: http://shop.test/`,
+        `    cause: initial`,
+        `    baselineTree:`,
+        `      - [ref=e1]:`,
+        `        - [ref=e2] button "Save"`,
+        `        - [ref=e3] paragraph: Not saved`,
+        `    timelineEntries:`,
+        `      - kind: interaction`,
+        `        timestamp: 15`,
+        `        interaction:`,
+        `          id: interaction_1`,
+        `          type: click`,
+        `          targetRef: e2`,
+        `          targetSelector: internal:role=button[name="Save"i]`,
+        `          button: left`,
+        `          modifiers: 0`,
+        `          clickCount: 1`,
+        `        changeTree:`,
+        `          - [ref=e1]:`,
+        `            - <changed> [ref=e3] paragraph: Saved`,
+        `      - kind: change`,
+        `        timestamp: 30`,
+        `        changeTree:`,
+        `          - [ref=e1]:`,
+        `            - <added> [ref=e4] paragraph: Free delivery`,
+        `      - kind: interaction`,
+        `        timestamp: 30`,
+        `        interaction:`,
+        `          id: interaction_2`,
+        `          type: assertVisible`,
+        `          targetRef: e3`,
+        `          targetSelector: internal:role=paragraph >> internal:has-text="Saved"i`,
+        `  - visitId: visit_2`,
+        `    url: http://shop.test/cart`,
+        `    cause: navigate`,
+        `    baselineTree:`,
+        `      - [ref=f1e1] heading "Cart" [level=1]`,
+        `    timelineEntries: []`,
+      ].join("\n")
+    );
   });
 
   it("starts a Visit whose first entry is an assertion with the page as it stood at the assertion", async () => {
