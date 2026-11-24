@@ -97,13 +97,13 @@ A reference layout, for a flow named `contract`. Follow the project's own
 layout where it has one:
 
 ```text
-pages/                             page objects
 contract.ts                        runContract(page, params, { confirm })
 confirm.ts                         the agreed confirm
 run-contract.ts                    the entry script
 tests/contract.replay.spec.ts      the replay test
 tests/replay.ts                    copy of assets/replay.ts, with match() for the site
 ayme/
+  pom/                             page objects, one class per file
   CONVENTIONS.md                   what holds for every flow in the repository
   recordings/rec_…/                the recording, written by the recorder
   params/contract.recorded.json    what the recording entered and showed
@@ -115,8 +115,11 @@ ayme/
 Write plain Playwright page objects by
 [Page object design](../references/page-object-design.md) and
 [Write page objects from the recording](../SKILL.md#write-page-objects-from-the-recording),
-with no ayme decorators. Each irreversible step is its own page object
-action, and the wait for its result can also be called on its own.
+with no ayme decorators. They go in `ayme/pom/`, set up as
+[The `ayme` folder](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/ayme-folder.md#set-the-folder-up-for-page-objects)
+shows, and the flow and the tests import them as `#pom/…`. Each irreversible
+step is its own page object action, and the wait for its result can also be
+called on its own.
 
 The flow is one function, `run<Flow>(page, params, { confirm })`. Before each
 irreversible step it reads the agreed values back from the page through the
