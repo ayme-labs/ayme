@@ -76,7 +76,6 @@ const KEPT_RUNS = 200;
 const NO_RUNS: readonly Run[] = Object.freeze([]);
 const NO_INTERACTIONS: readonly Interaction[] = Object.freeze([]);
 
-/** A Page's Run log. */
 export type RunLog = ReturnType<typeof createRunLog>;
 
 const runLogs = new WeakMap<Page, RunLog>();
