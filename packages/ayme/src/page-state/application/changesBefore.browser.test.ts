@@ -13,7 +13,7 @@ import { ACTION_RESULT_NOTE } from "../domain/actionResult";
 import { listElementTools } from "../../tools/infrastructure";
 import { renderChangeRecord } from "../domain/changeRecord";
 import { getInteractionHistory } from "../infrastructure/pageState";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 
 // Runtime object seam: an action's result reports what changed on the page
 // before it, since its Caller last received the page, apart from what the

@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 
 import type { RecorderUpdate } from "./index";
-import { startScriptedRecorder } from "./testing";
+import { startScriptedRecorder } from "../testing";
 
 // The window's server: the engine serves the window's built files and a
 // tRPC channel over a WebSocket, at a local address.

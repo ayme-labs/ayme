@@ -5,5 +5,5 @@
     // The page objects carry ayme's decorators, as the Inspector's do.
     "experimentalDecorators": true
   },
-  "include": ["src"]
+  "include": ["src", "testing"]
 }

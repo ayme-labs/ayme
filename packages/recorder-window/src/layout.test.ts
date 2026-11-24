@@ -59,13 +59,10 @@ it(
   slow,
   async () => {
     const code =
-      'import { RecorderWindow } from "../testing";\nexport const Used = RecorderWindow;\n';
+      'import { RecorderWindow } from "../../testing";\nexport const Used = RecorderWindow;\n';
     expect(await lint("src/app/placed.browser.test.tsx", code)).toEqual([]);
     expect(await lint("src/app/misplaced.tsx", code)).toEqual([
-      expect.stringContaining("Only test files may import a testing entry"),
-      expect.stringContaining(
-        "app may only use controls, timeline, channel, itself."
-      ),
+      expect.stringContaining("Only test files may import test support"),
     ]);
   }
 );
@@ -76,10 +73,25 @@ it(
   async () => {
     expect(
       await lint(
-        "src/testing/pom/Placed.ts",
+        "testing/pom/Placed.ts",
         'import type { Page } from "@playwright/test";\nexport type Placed = Page;\n'
       )
     ).toEqual([]);
+  }
+);
+
+it(
+  "lint has test support use a slice through its front door (ADR-0057)",
+  slow,
+  async () => {
+    expect(
+      await lint(
+        "testing/pom/Misplaced.ts",
+        'export * from "../../src/timeline/view/Timeline";\n'
+      )
+    ).toEqual([
+      expect.stringContaining("Import another slice through its index.ts"),
+    ]);
   }
 );
 

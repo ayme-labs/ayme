@@ -4,16 +4,16 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
 
-import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
+import { elementOfRef } from "../../../testing/elementRefs.testSupport";
 import { ayme } from "../domain/decorators";
-import { alwaysReaches } from "../../test-utils/reach.testSupport";
-import { rooted, rootOf } from "../../test-utils/pomRoot.testSupport";
+import { alwaysReaches } from "../../../testing/reach.testSupport";
+import { rooted, rootOf } from "../../../testing/pomRoot.testSupport";
 import { rootTargetPath } from "../domain/pomTree";
 import { listRegisteredPomTargets, registerCompiledPom } from "./registry";
 import {
   startSession,
   type TestSession,
-} from "../../test-utils/session.testSupport";
+} from "../../../testing/session.testSupport";
 
 describe("registered Page Object targets", () => {
   let page: ReturnType<typeof createPage>;

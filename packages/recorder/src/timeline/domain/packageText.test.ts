@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { TimelineAddition } from "./recorded";
 import { Timeline, type PackageHeader } from "./timeline";
-import { entryId, pageId, snapshotId } from "../../test-utils/ids";
+import { entryId, pageId, snapshotId } from "../../../testing/ids";
 
 // How a recording is written: the released layout of the Recording Package,
 // where the fixture of three clicks does not reach.

@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { RunnableTool } from "../domain/runnableTools";
-import { renderPart } from "../../testing/renderPart";
-import { RunCard as RunCardPart } from "../../testing";
+import { renderPart } from "../../../testing/renderPart";
+import { RunCard as RunCardPart } from "../../../testing";
 import { schemaText } from "../infrastructure/schemaText";
 import { RunCard } from "./RunCard";
 

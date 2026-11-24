@@ -11,7 +11,6 @@ export const horizontalLayerElementTypes = [
   "infrastructure",
   "presentation",
   "view",
-  "test-utils",
 ];
 const allowedLayerDependencies = {
   domain: ["domain"],
@@ -19,7 +18,6 @@ const allowedLayerDependencies = {
   infrastructure: ["infrastructure", "application", "domain"],
   presentation: ["presentation", "view", "application", "domain"],
   view: ["view", "domain"],
-  "test-utils": horizontalLayerElementTypes,
 };
 
 const sourceExtensions = "{js,mjs,cjs,ts,tsx}";

@@ -15,7 +15,7 @@ Slices, from the bottom up:
 - `server`: the composition root of `ayme mcp`. Its index is what `src/cli.ts` starts.
 - `client`: the composition root of the `./client` entry.
 - `process`: the composition root of the `./process` entry, an App Process's side of the Agent Connection.
-- `testing`: the `./testing` entry (ADR-0026), a coding agent's side for e2e tests: it starts the built `ayme` command over stdio with the MCP SDK client and pairs a Playwright page. It uses no slice; nothing uses it.
+- `testing/`, beside `src/`: the package's test support (ADR-0057), which other workspaces import from source as `@ayme-dev/mcp/testing`, a coding agent's side for e2e tests: it starts the built `ayme` command over stdio with the MCP SDK client and pairs a Playwright page. It uses no slice; nothing uses it.
 
 Layers: `domain` (pure rules and types), `application` (the flows and the ports they use), `infrastructure` (the MCP SDK over stdio, the WebSocket server, tRPC, sessionStorage, the address bar). `contract`, `server`, `client`, `process` and `testing` aren't layered.
 

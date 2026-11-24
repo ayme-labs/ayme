@@ -30,7 +30,7 @@ import {
   pageId,
   snapshotId,
   snapshotRefOf,
-} from "../../test-utils/ids";
+} from "../../../testing/ids";
 
 // The ids these rows name, as the browser and the lifecycle make them.
 const change1 = entryId("change_1");

@@ -20,7 +20,7 @@ import {
   noul,
   refArg,
   toolWithNodes,
-} from "../test-utils/stepDecision.testSupport";
+} from "../../../testing/goal-loop/stepDecision.testSupport";
 
 /**
  * The two seams of the questions that `decideStep` cannot reach on its own

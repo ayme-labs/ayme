@@ -11,8 +11,8 @@ const packageRoot = import.meta.dirname;
 
 // The slices of src/, and the slices each may use: only those listed before
 // it here. server, client and process are the composition roots: nothing
-// uses them, and none uses another. testing is the `./testing` entry, which
-// drives the built command from outside and uses no slice.
+// uses them, and none uses another. Test support lives in testing/ beside
+// src/ (ADR-0057): it drives the built command from outside and uses no slice.
 const allowedSlices = {
   contract: [],
   pairing: ["contract"],
@@ -30,7 +30,6 @@ const allowedSlices = {
   ],
   client: ["tools", "inspector", "connection", "pairing", "contract"],
   process: ["tools", "connection", "pairing", "contract"],
-  testing: [],
 };
 const slices = Object.keys(allowedSlices);
 const sourceFiles = "src/**/*.ts";
@@ -72,7 +71,7 @@ export default [
   ...config,
   ...horizontalBoundaries({
     packageRoot,
-    // contract, the composition roots and testing aren't layered.
+    // contract and the composition roots aren't layered.
     enforcedSlices: [
       "pairing",
       "connection",
@@ -120,4 +119,23 @@ export default [
   // front doors.
   frontDoors(undefined, ["src/*.ts"], { tests: false }),
   frontDoors(undefined, ["src/*.test.ts"], { tests: true }),
+  // Test support (ADR-0057) drives the built command from outside, so it
+  // imports nothing of src/.
+  {
+    files: ["testing/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: String.raw`^\.\.?/(.*/)?src(/|$)`,
+              message:
+                "The MCP package's test support uses no slice: it drives the built ayme command.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

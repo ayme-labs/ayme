@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { RecorderUpdate } from "./index";
-import { startScriptedRecorder } from "./testing";
+import { startScriptedRecorder } from "../testing";
 
 describe("a recorder", () => {
   it("ends with 'empty' when it is ended from outside before anything was recorded", async () => {

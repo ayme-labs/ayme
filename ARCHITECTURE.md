@@ -488,7 +488,7 @@ hosting its playground.
     - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
   - **ayme MCP server**: started over stdio by the test's MCP client
     - Deployment node: a Playwright container on a GitHub Actions runner
-    - Evidence: verified: [packages/mcp/src/testing/](packages/mcp/src/testing/), [apps/mcp-fixture/](apps/mcp-fixture/)
+    - Evidence: verified: [packages/mcp/testing/](packages/mcp/testing/), [apps/mcp-fixture/](apps/mcp-fixture/)
   - **App Process runtime**: the example dev servers paired in the certification tests
     - Deployment node: a Playwright container on a GitHub Actions runner
     - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
@@ -515,7 +515,7 @@ hosting its playground.
   - **Decision model provider**: the live API in the live goal lane, skipped without a key
     - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
   - **WebMCP driver**: a recording driver from `@ayme-dev/webmcp/testing`
-    - Evidence: verified: [packages/webmcp/src/testing.ts](packages/webmcp/src/testing.ts)
+    - Evidence: verified: [packages/webmcp/testing/index.ts](packages/webmcp/testing/index.ts)
   - **Browser automation**: the Playwright context of the served Page Objects specs, which
     loads the `.ayme/init-script.js` the test's `ayme mcp` wrote
     - Evidence: verified: [apps/mcp-fixture/README.md](apps/mcp-fixture/README.md), [apps/mcp-fixture/tests/servedPageObjects.spec.ts](apps/mcp-fixture/tests/servedPageObjects.spec.ts)

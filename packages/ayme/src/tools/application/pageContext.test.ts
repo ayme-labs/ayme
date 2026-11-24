@@ -27,7 +27,7 @@ import { getPageContextTool } from "./pageContext";
 import {
   agentCursor,
   runContext,
-} from "../../test-utils/agentCalls.testSupport";
+} from "../../../testing/agentCalls.testSupport";
 import type { PageStateSession } from "../../page-state/application";
 
 /** The Run context of a snapshot: its Page State Session reads `getPageState`. */

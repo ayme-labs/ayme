@@ -8,13 +8,13 @@ import { createPage } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { configureGoalLoop } from "../infrastructure/goalLoopStore";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
 import {
   agentTools,
   firstChoices,
-} from "../../test-utils/publication.testSupport";
+} from "../../../testing/publication.testSupport";
 import { createAyme } from "../../runtime";
-import { getLastGoalLoopRunResult } from "../../testing";
+import { getLastGoalLoopRunResult } from "../../../testing";
 
 type ActionResultShape = {
   page_changed: boolean;

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { DONE_BAR, LOWER_BAR } from "@ayme-dev/ayme/testing";
+import { DONE_BAR, LOWER_BAR } from "@ayme-dev/ayme/internal";
 import { expect, it } from "vitest";
 
 import type { GoalRun } from "../scripts/goalRunReport";

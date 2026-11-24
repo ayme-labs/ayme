@@ -31,8 +31,6 @@ export default defineConfig({
     // What a Build without ayme resolves the two entries above to.
     "src/absent.ts",
     "src/server.ts",
-    // The last Goal Loop run's result, for tests only (ADR-0026).
-    "src/testing.ts",
     // ayme over a real Playwright Page, for a Node host (ADR-0049).
     "src/playwright.ts",
     // The Page Object compiler, for Node: the bundler integrations and
