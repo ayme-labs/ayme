@@ -17,7 +17,6 @@ export default defineConfig({
         },
       },
       {
-        // Client tests mount the owner and consumers in Chromium.
         extends: true,
         test: {
           name: "browser",
