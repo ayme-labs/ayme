@@ -109,4 +109,4 @@ The steps are the same from any folder, such as `src/pom/`, `playwright/pom/` or
 3. Remove the old folder from the `include` and the `paths` of your other tsconfigs.
 4. Look at the build plugin's `tsconfigPath`, if it has one. In Angular, keep the one `ng add` wrote, which names your app's tsconfig. In Next.js, point the loader's at `ayme/tsconfig.json`. Anywhere else, remove one that names a tsconfig made for the old folder: without the option, the plugin reads `ayme/tsconfig.json`.
 
-From `.ayme/`, leave `recordings/` behind and record again. A recording names its trace by the path it was saved under, so the Recorder does not find the trace of a moved one.
+From `.ayme/`, move the folder's other files to `ayme/` as they are, `page-objects.ts` among them, but leave `recordings/` behind and record again. A recording names its trace by the path it was saved under, so the Recorder does not find the trace of a moved one.
