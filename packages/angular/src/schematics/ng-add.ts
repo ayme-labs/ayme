@@ -210,7 +210,6 @@ function angularMajor(tree: Tree) {
   return major;
 }
 
-/** Whether a TypeScript file under the project's source already calls provideAyme(). */
 function providesAyme(tree: Tree, sourceRoot: string) {
   let found = false;
   tree.getDir(sourceRoot).visit((path) => {
