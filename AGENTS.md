@@ -7,7 +7,7 @@
 ## Repository map
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): what ayme is made of above any one package: the containers, who talks to whom, and what each environment runs. Read it before adding a package, a process boundary or a connection between them, and update it when a change moves one.
-- [packages/](packages/): the ayme WebMCP product. Each package README is its npm entry point; the consumer docs in [docs/guide/](docs/guide/) own its API and setup.
+- [packages/](packages/): the ayme WebMCP product. A published package's README is its npm entry point; the consumer docs in [docs/guide/](docs/guide/) own its API and setup.
 - Before adding or moving a source file in a package, read that package's AGENTS.md: [ayme](packages/ayme/AGENTS.md), [inspector](packages/inspector/AGENTS.md), [mcp](packages/mcp/AGENTS.md), [recorder](packages/recorder/AGENTS.md), [recorder-window](packages/recorder-window/AGENTS.md).
 - [skills/](skills/): skills shipped to consumers for use in their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
 - [apps/example-vue/](apps/example-vue/): the hosted playground where visitors try ayme before integrating it. A visitor installs only ayme's MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
@@ -27,19 +27,19 @@ Skills for agents working on this repository live in [.agents/skills/](.agents/s
 - [inspector-dogfood](.agents/skills/inspector-dogfood/SKILL.md): verify a change under `packages/inspector` by driving the Inspector itself through `ayme mcp`, before showing the change to the user.
 - [verify-recorder-lifecycle](.agents/skills/verify-recorder-lifecycle/SKILL.md): check a change under `packages/recorder/src` against the Recorder's TLA+ lifecycle model when it alters the order of events, what the recorder waits for, or a promise it makes, before showing the change to the user.
 - [update-playwright-lite](.agents/skills/update-playwright-lite/SKILL.md): repin the Playwright Lite fork, or decide whether a Lite change goes upstream or into the fork.
-- Change the vendored skills, those [skills-lock.json](skills-lock.json) lists, only with `npx skills update -p`, and review the change: it reinstalls them from their source, so a hand edit would be lost. Keep [LICENSE-pstack](.agents/skills/LICENSE-pstack) in step with pstack's licence.
+- Refresh the vendored skills, those [skills-lock.json](skills-lock.json) lists, with `npx skills update -p` and review the change; leave them unedited otherwise, because a refresh can replace a hand edit. Keep [LICENSE-pstack](.agents/skills/LICENSE-pstack) in step with pstack's licence.
 
 ### Issue tracker
 
-Issues and specs live as GitHub issues in `ayme-labs/ayme`, managed with the `gh` CLI. See [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
+Before reading, filing or changing an issue, read [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
 
 ### Triage labels
 
-Use the default triage label vocabulary. See [docs/agents/triage-labels.md](docs/agents/triage-labels.md).
+Before labelling an issue, read [docs/agents/triage-labels.md](docs/agents/triage-labels.md) for this tracker's label names.
 
 ### Domain docs
 
-This repository uses a single-context domain-doc layout. See [docs/agents/domain.md](docs/agents/domain.md).
+Before exploring an area of the codebase, read [docs/agents/domain.md](docs/agents/domain.md): it names the glossary and the ADRs to read first.
 
 Before adding or renaming a term in [GLOSSARY.md](GLOSSARY.md), show the user the wording and wait for their explicit approval: a term becomes the name in code, docs and ADRs, so the owner chooses it.
 
@@ -53,6 +53,6 @@ Commit messages follow Conventional Commits. [commitlint.config.ts](commitlint.c
 
 ## Development environment
 
-- Run every project command inside Devbox, which supplies the Node and pnpm the scripts and hooks expect. A persistent Devbox shell starts it once; `devbox run -- <cmd>` starts it for each command and runs from the repository root, whatever the current directory, so reach a package with `pnpm -C <dir> <script>` or `devbox run -- sh -c 'cd <dir> && <cmd>'`.
-- If Devbox is unavailable, stop and tell the user: tools from outside it may be other versions, so their results would mislead.
+- Start a persistent Devbox shell and run every project command inside it: Devbox supplies the Node and pnpm the scripts and hooks expect. `devbox run -- <cmd>` runs from the repository root, whatever the current directory, so reach a package with `pnpm -C <dir> <script>` or `devbox run -- sh -c 'cd <dir> && <cmd>'`.
+- If Devbox is unavailable, report that as a blocker instead of running project commands outside it: other tools may be other versions, so their results would mislead.
 - In a Claude Code cloud container, run [prepare-cloud-checkout.sh](scripts/prepare-cloud-checkout.sh) from a checkout or worktree before its first commit, so its pre-commit hook passes; it also gives Playwright the Chromium build it expects. The session start hook runs it only in a session opened on this repository alone. A `pnpm install` that changes `node_modules` links the browser too, but an up-to-date one skips it.

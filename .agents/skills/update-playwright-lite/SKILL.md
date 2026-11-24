@@ -22,12 +22,13 @@ records why ayme pins tags.
 
 - Send every fix that makes Lite behave as Playwright does to upstream Playwright Lite, whether you found the difference there or in the fork: a difference from Playwright is a Lite bug, not something ayme alone needs.
 - Split each fork change into its upstream part and its ayme part, and keep only the ayme part in the fork's patch queue: every sync rebases that queue onto upstream, so each patch costs work on every sync.
-- Build behaviour ayme needs that differs from Playwright's in ayme, on top of Lite, and keep Lite behaving as Playwright does: Page Objects written for Playwright tests run on Lite only while it does.
+- Build behaviour ayme needs that differs from Playwright's in ayme, on top of Lite, and keep Lite behaving as Playwright does: a Page Object written for Playwright tests runs on Lite, for the APIs Lite supports, only while it does.
 
 ## Pinning
 
 Pin only the commit SHA of an `ayme-<date>` tag, never a branch or a `main`
-commit: a sync rebases the fork's patches, so only tags stay reachable
+commit: a sync rebases the fork's patch queue, so a commit taken from a branch
+can disappear, while the fork's ruleset keeps `ayme-*` tags immutable
 (ADR-0021).
 
 ## Steps
@@ -60,5 +61,5 @@ commit: a sync rebases the fork's patches, so only tags stay reachable
    [pinnedAriaSnapshot.ts](../../../packages/ayme/build/pinnedAriaSnapshot.ts)
    to the printed values. Done when both values match the printed ones.
 4. **Read the upstream changelog** between the old tag and the new one for
-   behaviour changes that affect Page Objects, and name each one in the pull
-   request. CI checks the affected packages.
+   behaviour changes that affect Page Objects, then open the pull request. CI
+   checks the affected packages.
