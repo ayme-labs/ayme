@@ -9,7 +9,7 @@
   "scripts": {
     "build": "turbo run build",
     "boundaries": "turbo boundaries",
-    "cycles": "node scripts/check-cycles.mjs packages/*/src apps/*/src",
+    "cycles": "node scripts/check-cycles.mjs packages/*/src apps/*/src apps/example-*/ayme",
     "check": "pnpm run boundaries && pnpm run cycles && pnpm run name:check && pnpm run docs:check && pnpm run test:scripts && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
     "prepare": "lefthook install && scripts/link-cloud-browsers.sh",
     "hooks:install": "lefthook install",
