@@ -113,7 +113,7 @@ Put the owner at the application root, not in a route component or a layout that
 | `useAyme(options)` without an owner above | Starts and owns a session with those options.                         |
 | `useAyme(options)` beneath an owner       | Throws; configure the options on the owner.                           |
 
-In the browser, the standalone owner starts at once in its Vue scope and provides its session to descendant components. The owner's own setup can use Page Objects too:
+In the browser, the standalone owner starts at once in its Vue scope and provides its session to descendant components. The owner's own setup can use Page Objects too. The `#pom/*` import is the alias that [The `.ayme` folder](../guides/ayme-folder.md#set-the-folder-up-for-page-objects) sets up:
 
 ```ts
 // src/App.vue, <script setup>

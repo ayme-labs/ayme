@@ -153,7 +153,7 @@ Put `provideAyme` in the application config, not in route providers. The router 
 
 Page Object Models are marked with `@ayme` and `@ayme.action`, as [Page Object Models](../guides/ayme-page-objects.md) shows. Keep each in its own `.ts` file in `.ayme/pom/`, as [The `.ayme` folder](../guides/ayme-folder.md) shows; new Angular workspaces already enable `experimentalDecorators`. Import them through the `#pom/*` alias, and share them with your Playwright tests. A Page Object Model inside `node_modules` is not compiled. A model the plugin did not compile fails at `injectPageObject` in the browser.
 
-During `ng serve`, editing a type a Page Object Model imports updates its tool schema after a reload, without restarting the server. Angular's dev server watches no folder whose name starts with a dot, so the plugin watches the files in `.ayme/` itself and has Angular rebuild after an edit.
+During `ng serve`, editing a type a Page Object Model imports updates its tool schema after a reload, without restarting the server. Angular's dev server is set to ignore folders whose name starts with a dot, and before 22.2 and with `ng serve --poll` it does. So the plugin watches the files in `.ayme/` itself and has Angular rebuild after an edit.
 
 ## Server rendering
 
