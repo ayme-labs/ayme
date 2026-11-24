@@ -18,8 +18,6 @@ import {
   type RegisteredElementTool,
 } from "./elementTools";
 
-// --- Input schemas ---
-
 const BUTTON: JsonSchema = {
   type: "string",
   enum: ["left", "right", "middle"],
@@ -47,8 +45,6 @@ function elementInput(
     additionalProperties: false,
   };
 }
-
-// --- Single-element Browser Tools ---
 
 type Fields = Record<string, unknown>;
 
@@ -197,8 +193,6 @@ export const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
   registerElementTool(uncheckDefinition, { predicate: "uncheckable" }),
   registerElementTool(selectOptionDefinition, { predicate: "select" }),
 ];
-
-// --- Browser Tools that are published only ---
 
 const FILL_FORM_FIELD_TYPES = [
   "textbox",
