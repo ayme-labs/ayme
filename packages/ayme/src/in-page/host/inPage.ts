@@ -289,18 +289,16 @@ export type CaptureOptions = {
   filters?: readonly NamedFilter[];
   /** The refs of elements the capture keeps as nodes of their own (`Capture.kept`). */
   keep?: readonly string[];
-  /**
-   * The host's inputs, plain data (`ElementInputs`). Transitional: the
-   * browser runtime gives a handle to them, for Playwright Lite's page
-   * function (#1177).
-   */
-  elements?: JSHandle<ElementInputs> | ElementInputs;
+  /** The host's inputs, plain data (`ElementInputs`). */
+  elements?: ElementInputs;
 };
 
 export type ActionOptions = {
   /**
-   * As `CaptureOptions.elements`; a handle may hold a function, which the
-   * module reads again before each of the action's captures.
+   * As `CaptureOptions.elements`, or a handle that holds them as a function,
+   * which the module calls when the action begins and again when it settles.
+   * The browser runtime hands the function; the Node host hands plain data it
+   * read once.
    */
   elements?: JSHandle<ActionInputs> | ElementInputs;
 };
