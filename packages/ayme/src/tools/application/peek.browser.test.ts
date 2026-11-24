@@ -60,7 +60,6 @@ function peek(ayme: Ayme, ...args: Parameters<Ayme["peek"]>) {
   return remove;
 }
 
-/** The names of the tools `ayme` can run now. */
 const toolNames = (ayme: Ayme) =>
   ayme.tools.list().flatMap(({ name, available }) => (available ? [name] : []));
 

@@ -100,7 +100,6 @@ function isSelectElement(element: Element): boolean {
   return element instanceof HTMLSelectElement && !isDisabled(element);
 }
 
-/** The five predicates, by name. */
 export const predicates: Record<Predicate, (element: Element) => boolean> = {
   clickable: isClickableElement,
   fillable: isFillableElement,

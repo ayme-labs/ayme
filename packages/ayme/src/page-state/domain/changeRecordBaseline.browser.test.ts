@@ -130,8 +130,6 @@ describe("Change Record baseline in Chromium", () => {
     expect(result.changes).toBeUndefined();
   });
 
-  // --- Two actions in a row ---
-
   it("starts the second Change Record from the first action's Settled Page", async () => {
     document.body.innerHTML = `
       <button id="first">First</button>
@@ -176,8 +174,6 @@ describe("Change Record baseline in Chromium", () => {
     expect(result.changes_before).toContain("Background toast");
   });
 
-  // --- No change at all ---
-
   it("reports page_changed false when neither the action nor the page changed anything", async () => {
     document.body.innerHTML = '<button id="act">Act</button>';
     // Focus first: the click would otherwise move focus, a change of its own.
@@ -191,8 +187,6 @@ describe("Change Record baseline in Chromium", () => {
     expect(result.page_changed).toBe(false);
     expect(result.changes).toBeUndefined();
   });
-
-  // --- Goal Loop ---
 
   it("counts a change made while the decision function is pending into that step's page_changed", async () => {
     let step = 0;

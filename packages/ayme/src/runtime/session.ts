@@ -485,7 +485,6 @@ export type SessionTarget = {
   navigation(): PageNavigation;
   /** The Peeks the session keeps; none for a session that offers none. */
   peeks(): ReturnType<typeof peeksOf> | undefined;
-  /** Where the session's tools come from. */
   readonly toolSources: ToolSources;
   /** Makes the session the registry's owner; throws while another is. */
   claim(page: Page): { dispose(): void };

@@ -7,7 +7,6 @@ import {
   type CallSubject,
 } from "../domain/playwrightCalls";
 
-/** How long demo mode pauses before each action. */
 export const DEMO_PAUSE_MS = 500;
 
 /**

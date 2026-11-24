@@ -46,7 +46,6 @@ export const PLAYWRIGHT_MCP_COUNTERPARTS = {
   reload: "browser_reload",
 } as const;
 
-/** The input schema of each Playwright MCP counterpart. */
 export const PLAYWRIGHT_MCP_SCHEMAS: Record<
   (typeof PLAYWRIGHT_MCP_COUNTERPARTS)[keyof typeof PLAYWRIGHT_MCP_COUNTERPARTS],
   Shape

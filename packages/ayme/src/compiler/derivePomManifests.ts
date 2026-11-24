@@ -478,7 +478,6 @@ function isUnresolvedType(type: ts.Type) {
   return (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) !== 0;
 }
 
-/** The value a `Promise` resolves to, or the type itself. */
 function awaitedType(checker: ts.TypeChecker, type: ts.Type) {
   if (!isNamedType(type, "Promise")) return type;
   return checker.getTypeArguments(type as ts.TypeReference)[0] ?? type;
@@ -1170,7 +1169,6 @@ function wrapped(expression: ts.Expression): ts.Expression | undefined {
     : undefined;
 }
 
-/** The value of `true` or `false`, if `expression` is one. */
 function constantBoolean(expression: ts.Expression): boolean | undefined {
   const inner = unwrapped(expression);
   if (inner.kind === ts.SyntaxKind.TrueKeyword) return true;
@@ -1707,7 +1705,6 @@ class UnsupportedParameterError extends PomCompileError {
   }
 }
 
-/** Thrown for a parameter type no schema describes. */
 class UnsupportedInputTypeError extends UnsupportedParameterError {}
 
 /**
