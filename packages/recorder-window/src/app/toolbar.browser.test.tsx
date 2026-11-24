@@ -350,9 +350,9 @@ describe("a person's input on the toolbar", () => {
     expect(errors).toEqual([]);
   });
 
-  /** Every input of the person's own the page hears, on its document. A
-   * click the toolbar gives its own button is untrusted: the page's
-   * listeners and Playwright's recorder take it for no person's. */
+  /** Every input the page hears on its document, trusted or not: the
+   * click the toolbar gives its own button included, which a page that
+   * closes a panel on a click elsewhere would take for one. */
   function pageListens() {
     const heard: string[] = [];
     const types = [
@@ -365,9 +365,7 @@ describe("a person's input on the toolbar", () => {
       "dblclick",
       "contextmenu",
     ];
-    const listener = (event: Event) => {
-      if (event.isTrusted) heard.push(event.type);
-    };
+    const listener = (event: Event) => heard.push(event.type);
     for (const type of types) document.addEventListener(type, listener, true);
     removals.push(() => {
       for (const type of types)
