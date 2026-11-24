@@ -9,7 +9,8 @@
 # takes TLA2TOOLS and JAVA as tlc.sh does.
 # Then it compares the rules that break with the ones expected.txt lists for
 # the config. Exit 0: they are the same. Exit 1: they differ (it says which).
-# Exit 2: the config could not be checked, or has no line in expected.txt.
+# Exit 2: the config could not be checked, in whole or in part, or has no
+# line in expected.txt.
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../../.." && pwd)
 tool=${STATECHART:-$repo/.agents/skills/statechart/scripts/statechart}
@@ -49,6 +50,12 @@ code=$?
 # Exit 1 is a rule that breaks, a result; exit 2 or more, or no report, is not.
 if [ "$code" -gt 1 ] || [ ! -f "$here/$out/report.md" ]; then
   echo "$cfg: NOT CHECKED (the statechart tool exited $code)." >&2
+  exit 2
+fi
+# The tool exits as its first TLC run did. A later run that TLC could not
+# finish leaves its rules unchecked, which the report says, and the exit not.
+if grep -q '^TLC stopped with exit' "$here/$out/report.md"; then
+  echo "$cfg: NOT CHECKED (TLC stopped before it checked every rule; out/$cfg/report.md)." >&2
   exit 2
 fi
 got=$(sed -n 's/^## \(.*\) breaks$/\1/p' "$here/$out/report.md" | sort | tr '\n' ' ')

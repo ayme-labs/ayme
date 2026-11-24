@@ -21,16 +21,20 @@ for f in *.cfg; do
     failed=1
   }
 done
-for c in $(sed -n 's/^\([A-Za-z0-9-]*\):.*/\1/p' expected.txt); do
+for c in $(sed -n 's/^\([A-Za-z0-9][A-Za-z0-9-]*\):.*/\1/p' expected.txt); do
   case $c in
     Chart-Lifecycle) view=view-lifecycle.mjs ;;
     Chart-Gate) view=view-gate.mjs ;;
     Chart-Fill) view=view-fill.mjs ;;
     *) view=view-paths.mjs ;;
   esac
+  # run.sh empties out/$c only once it has found its tool, view and
+  # expectation: without this, a run that stops before then would be summed
+  # up from an older report.
+  rm -rf "out/$c"
   ./run.sh "$c" "$view" > "out-$c.log" 2>&1
   code=$?
-  echo "$c: exit $code. $(grep -m1 '^TLC reached' "out/$c/report.md" 2>/dev/null) $(tail -n1 "out-$c.log")"
+  echo "$c: exit $code. $(awk '/^TLC reached/ { print; exit }' "out/$c/report.md" 2>/dev/null) $(tail -n1 "out-$c.log")"
   [ "$code" -eq 0 ] || failed=1
 done
 exit $failed

@@ -15,8 +15,7 @@ Rules-Pages:
 Rules-Rounds:
 Rules-Ends:
 Surfaces:
-# The time limit: R03a, R04, X1, X3 and X5 break; X2 and X8 break on the known
-# limit B2 in a wrap-up. TimeLimit-Holds checks every other rule.
+# The time limit.
 TimeLimit: R03a_StoppedClicksAreUntouched R04_FinishSavesEverything X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X5_StopWindowIsRecorded X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput
 TimeLimit-Holds:
 Rules-StartRecording:

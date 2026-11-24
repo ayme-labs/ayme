@@ -103,7 +103,7 @@ a shared machine run one at a time.
    rule that breaks told as its path in plain words, and
    `out/Chart-*/chart.mmd`. It compares the rules that break in each config
    with `expected.txt`, and a config that gives others, or that the tool could
-   not check (no report), is named with its log in `out-<config>.log`, and
+   not check in full (no report, or TLC stopped with an error), is named with its log in `out-<config>.log`, and
    the run exits non-zero. Read every report with the `statechart` skill. The
    README's table, "Running it", says why each config gives what it does and
    how many states it reaches. `./run.sh <config>` checks one config the same
