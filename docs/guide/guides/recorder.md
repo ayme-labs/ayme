@@ -16,10 +16,10 @@ The commands are written `npx ayme-recorder`, for a project that has `@ayme-dev/
 
 ### Supported Playwright versions
 
-[`playwright-range.json`](https://github.com/ayme-labs/ayme/blob/main/packages/recorder/playwright-range.json) states the range: `floor` is the oldest version the recorder starts on, and `lastVerified` is the newest one its tests have passed on.
+The recorder needs Playwright 1.62 or newer, and is verified on 1.62 to 1.65.
 
-- **Older than `floor`:** the recorder does not start, and tells you the range.
-- **Newer than `lastVerified`:** it records, and warns that it may miss or misread an input.
+- **Older than 1.62:** the recorder does not start, and tells you the range.
+- **Newer than 1.65:** it records, and warns that it may miss or misread an input.
 - **No Playwright installed:** it does not start, and tells you how to install it.
 
 ## Hand a flow to your coding agent
@@ -106,6 +106,10 @@ npx ayme-recorder install chromium --with-deps
 
 The recorder window has every control. The toolbar on the page has two: the button that records, stops and continues, and **Assert visibility**. Both always show the same state, so use whichever is closer.
 
+![The recorder window's controls: Stop, Assert visibility (the eye), Clear and Finish](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-controls.png)
+
+The pictures on this page are from an earlier version: the settings button beside **Finish** is gone.
+
 - **Record** starts recording. Wait until the button reads **Stop** before your first step. What you do before that is not recorded.
 - **Stop** pauses. While paused you can use the page freely: nothing you do is recorded, and neither is anything the page changes in the meantime. Wait until the button reads **Continue recording**. A click you make before that is still recorded.
 - **Continue recording** resumes the same recording.
@@ -118,6 +122,8 @@ After **Stop**, **Clear** or **Finish**, the recorder may need a moment to finis
 ### What the window shows
 
 The window lists what you record as you go.
+
+![The recorder window during a recording: a page heading, the navigation, and each step with what it changed](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-timeline.png)
 
 - **Pages.** A heading with the page's address starts each Visit. A Visit starts when you press **Record**, when a new tab or window opens, and when a page goes to another site or another path. A reload, or a change of only the address's query or hash, stays in the same Visit.
 - **Steps.** Each click, typed text, key press, dropdown choice and upload, with the element it acted on. Typed text shows while you type.
@@ -133,6 +139,10 @@ Hover an element in the window to highlight it on the page. Hovering the element
 ### Leave steps out
 
 To leave a step out of the recording, hover it and press **Discard**. You can do this at any time between **Record** and **Finish**, without pressing **Stop** first. A change without a step can be discarded the same way.
+
+![A step hovered in the window, with Discard at its right](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-entry-before-discard.png)
+
+![The same step after Discard: struck through, its change hidden, with the undo icon at its right](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-entry-discarded.png)
 
 - A discarded step stays in the list, struck through, with its changes hidden. Its undo icon, **Restore**, brings it back.
 - Discarding does not undo anything on the page. What you do next is recorded from the page as it is.
