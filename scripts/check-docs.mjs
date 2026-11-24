@@ -42,6 +42,23 @@
  *   templates set `erasableSyntaxOnly`, which rejects that syntax. Declare the
  *   field on the class and assign it in the constructor.
  *
+ * It also holds every tracked `AGENTS.md`, and the `SKILL.md` of each skill in
+ * `.agents/skills/` that `skills-lock.json` does not list (a vendored skill is
+ * not ours to edit), to the same link rules and to two more:
+ * - a code span that looks like a repository path (it has a `/`, no space and
+ *   ends in a source or doc extension) names no file, relative to the file's
+ *   folder, to that folder's `src/` or to the repository root, and ends no path
+ *   in the repository. A path under
+ *   `node_modules/`, `dist/`, `out/` or `.ayme/`, which the repository does not
+ *   hold, a span with a placeholder or glob, and the paths in
+ *   `PATHS_NOT_IN_THE_REPOSITORY` are left out. A span also resolves when it
+ *   ends a path in the repository, since the files write `infrastructure/x.ts`
+ *   for `src/page-state/infrastructure/x.ts` and name files of other packages
+ *   and apps.
+ * - an `AGENTS.md` is over its word budget in `scripts/agents-word-budgets.json`,
+ *   has none, or has one more than `BUDGET_SLACK` words above its count, so a
+ *   cut lowers the budget in the same pull request.
+ *
  * Links inside code spans and fenced code blocks are ignored. Uses only
  * `node:` modules.
  */
@@ -60,6 +77,23 @@ const GUIDE_COPIES = [
     copy: "skills/ayme/references/ayme-page-objects.md",
   },
 ];
+const WORD_BUDGETS = "scripts/agents-word-budgets.json";
+/** How many words a budget may stand above its file's count before the check asks for it to be lowered. */
+const BUDGET_SLACK = 50;
+const LOCAL_SKILLS_DIR = ".agents/skills";
+const SKILLS_LOCK = "skills-lock.json";
+const SOURCE_PATH = /\.(?:[cm]?[jt]sx?|json|mdx?|html|css|ya?ml|sh|txt|mmd)$/;
+/** Folders a repository path names only in a consumer's project or in build output. */
+const ABSENT_SEGMENTS = new Set(["node_modules", "dist", "out", ".ayme"]);
+/**
+ * Paths a file names that the repository does not hold, though they are not
+ * under one of those folders, by file. An exact path
+ * in one file, so a real path anywhere else is still checked.
+ */
+const PATHS_NOT_IN_THE_REPOSITORY = {
+  "AGENTS.md": new Set(["docs/fork/SYNC.md"]), // in the playwright-lite fork
+  "packages/recorder-window/AGENTS.md": new Set(["./window/index.html"]), // built into `dist/window/`
+};
 const EXPERIMENTAL_PAGE = `${GUIDE_DIR}/reference/experimental-apis.md`;
 const SKIPPED_DIRS = new Set(["node_modules", "dist", "build", "build-spa"]);
 const REPOSITORY_URL =
@@ -240,15 +274,139 @@ function publishedReadmes(root) {
   return new Set(publishedPackages(root).map(({ dir }) => `${dir}/README.md`));
 }
 
-/** The text with code blocks, code spans and comments blanked, lines kept. */
-function prose(text) {
+/** The text with code blocks and comments blanked, lines kept. */
+function withoutBlocks(text) {
   return text
     .replace(
       /^ {0,3}((`)\2{2,}|(~)\3{2,})[^\n]*\n[\s\S]*?(?:^ {0,3}\1(?:\2|\3)*[ \t]*$|(?![\s\S]))/gm,
       (block) => block.replace(/[^\n]/g, "")
     )
-    .replace(/<!--[\s\S]*?-->/g, (comment) => comment.replace(/[^\n]/g, ""))
-    .replace(/(`+)[^\n]*?\1/g, "code");
+    .replace(/<!--[\s\S]*?-->/g, (comment) => comment.replace(/[^\n]/g, ""));
+}
+
+/** The text with code blocks, code spans and comments blanked, lines kept. */
+function prose(text) {
+  return withoutBlocks(text).replace(/(`+)[^\n]*?\1/g, "code");
+}
+
+/** Every `AGENTS.md` under `root`, as paths relative to it. */
+function agentsFiles(root) {
+  return markdownFiles(root).filter(
+    (file) => path.posix.basename(file) === "AGENTS.md"
+  );
+}
+
+/** The `SKILL.md` of each skill in `.agents/skills/` that `skills-lock.json` does not list. */
+function localSkillFiles(root) {
+  const skills = path.join(root, LOCAL_SKILLS_DIR);
+  if (!fs.existsSync(skills)) return [];
+  const lock = path.join(root, SKILLS_LOCK);
+  const vendored = new Set(
+    fs.existsSync(lock)
+      ? Object.keys(JSON.parse(fs.readFileSync(lock, "utf8")).skills ?? {})
+      : []
+  );
+  return fs
+    .readdirSync(skills, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        !vendored.has(entry.name) &&
+        fs.existsSync(path.join(skills, entry.name, "SKILL.md"))
+    )
+    .map((entry) => `${LOCAL_SKILLS_DIR}/${entry.name}/SKILL.md`);
+}
+
+/** Code spans in `text` that look like a repository path, with their 1-based line. */
+function pathSpans(text) {
+  const spans = [];
+  for (const match of withoutBlocks(text).matchAll(/(`+)([^\n]*?)\1/g)) {
+    const span = match[2].trim();
+    if (
+      span.includes("/") &&
+      SOURCE_PATH.test(span) &&
+      !/[\s<>{}*$…@:]/.test(span) &&
+      !span.split("/").some((segment) => ABSENT_SEGMENTS.has(segment))
+    )
+      spans.push({ span, line: lineOf(text, match.index) });
+  }
+  return spans;
+}
+
+/** Every file under `root` a docs check may name, as paths relative to it. */
+function repositoryFiles(root, dir = "") {
+  const files = [];
+  for (const entry of fs.readdirSync(path.join(root, dir), {
+    withFileTypes: true,
+  })) {
+    const relative = path.posix.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (
+        !entry.name.startsWith(".") &&
+        !SKIPPED_DIRS.has(entry.name) &&
+        !fs.existsSync(path.join(root, relative, ".git"))
+      )
+        files.push(...repositoryFiles(root, relative));
+    } else files.push(relative);
+  }
+  return files;
+}
+
+/**
+ * Whether a path a span names is a file: relative to the file's folder, to its
+ * `src/` or to `root`, or the end of the path of a file in the repository.
+ */
+function repositoryFileExists(root, file, span, files) {
+  const folder = path.join(root, path.dirname(file));
+  const direct = [folder, path.join(folder, "src"), root].some((base) => {
+    try {
+      return fs.statSync(path.join(base, span)).isFile();
+    } catch {
+      return false;
+    }
+  });
+  const tail = `/${span.replace(/^\.?\//, "")}`;
+  return direct || files().some((known) => `/${known}`.endsWith(tail));
+}
+
+/** The words in a file, as `wc -w` counts them. */
+function wordCount(text) {
+  return text.match(/\S+/g)?.length ?? 0;
+}
+
+/** Problems with the word budgets of the `AGENTS.md` files `files`, as `[file, message]`. */
+function budgetProblems(root, files) {
+  const budgetFile = path.join(root, WORD_BUDGETS);
+  const budgets = fs.existsSync(budgetFile)
+    ? JSON.parse(fs.readFileSync(budgetFile, "utf8"))
+    : {};
+  const problems = [];
+  for (const file of files) {
+    const words = wordCount(fs.readFileSync(path.join(root, file), "utf8"));
+    const budget = budgets[file];
+    if (budget === undefined)
+      problems.push([
+        file,
+        `has no word budget; add "${file}": ${words} to ${WORD_BUDGETS}`,
+      ]);
+    else if (words > budget)
+      problems.push([
+        file,
+        `has ${words} words, over its budget of ${budget} in ${WORD_BUDGETS}; cut the file, or raise the budget in the same pull request and say in it why the file needs the words`,
+      ]);
+    else if (budget > words + BUDGET_SLACK)
+      problems.push([
+        file,
+        `has ${words} words, ${budget - words} under its budget of ${budget} in ${WORD_BUDGETS}; lower the budget to ${words} in the same pull request, so a cut stays cut`,
+      ]);
+  }
+  for (const file of Object.keys(budgets))
+    if (!files.includes(file))
+      problems.push([
+        WORD_BUDGETS,
+        `budgets ${file}, which is not an AGENTS.md in the repository; remove the entry`,
+      ]);
+  return problems;
 }
 
 const LINK_PATTERNS = [
@@ -727,6 +885,13 @@ export function checkDocs(root) {
       file.startsWith("skills/") ||
       pages.includes(file)
   );
+  const agents = agentsFiles(root);
+  const agentsOrSkills = new Set([...agents, ...localSkillFiles(root)]);
+  checked.push(
+    ...[...agentsOrSkills].filter((file) => !checked.includes(file))
+  );
+  let known;
+  const files = () => (known ??= repositoryFiles(root));
   const indexed = new Set();
   const anchorsOf = new Map();
   const hasAnchor = (linked, fragment) => {
@@ -753,6 +918,17 @@ export function checkDocs(root) {
           );
       }
     }
+    if (agentsOrSkills.has(file))
+      for (const { span, line } of pathSpans(raw))
+        if (
+          !PATHS_NOT_IN_THE_REPOSITORY[file]?.has(span) &&
+          !repositoryFileExists(root, file, span, files)
+        )
+          report(
+            file,
+            line,
+            `\`${span}\` names no file, relative to this folder, its src/ or the repository root`
+          );
     for (const { target, line } of links(text)) {
       const linked = linkedPath(root, file, target);
       if (linked !== undefined && !fs.existsSync(linked))
@@ -810,6 +986,9 @@ export function checkDocs(root) {
       }
     }
   }
+
+  for (const [file, message] of budgetProblems(root, agents))
+    report(file, 1, message);
 
   for (const page of pages)
     if (page !== `${GUIDE_DIR}/README.md` && !indexed.has(page))
