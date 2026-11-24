@@ -4,7 +4,7 @@ How to give the assistant inside your app, such as an onboarding helper, your Pa
 
 ## Your Page Objects are its tools
 
-An assistant in your app needs two things: actions it can take on the page, and a way to see what the page shows. Your Page Object Models already provide the first, and ayme provides the second. The assistant works on the same page the user is looking at, so the user watches it act.
+An assistant in your app needs two things: actions it can take on the page, and a way to see what the page shows. Your Page Object Models already provide the first, and ayme provides the second. The assistant works on the same page the user is looking at, so the user watches it act. The `#pom/*` import below is the alias that [The `.ayme` folder](ayme-folder.md#set-the-folder-up-for-page-objects) sets up.
 
 ```tsx
 // OnboardingAssistant.tsx

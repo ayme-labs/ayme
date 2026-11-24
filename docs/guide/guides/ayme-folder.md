@@ -36,7 +36,7 @@ An app that ships ayme needs only `tsconfig.json` and `pom/`. Each other entry a
    }
    ```
 
-   `extends` names the tsconfig that holds your app's compiler options, which depends on the project:
+   `extends` names the tsconfig that holds your app's compiler options. The table shows where each framework's template keeps them. If yours are in another file, such as `paths` you added to `tsconfig.app.json`, extend that file:
 
    | Project                        | `extends`                                                              |
    | ------------------------------ | ---------------------------------------------------------------------- |
@@ -70,7 +70,7 @@ An app that ships ayme needs only `tsconfig.json` and `pom/`. Each other entry a
 Three kinds of project need one thing more:
 
 - **Next.js.** Its tsconfig turns `incremental` on, and without `"incremental": false` the type check writes `.ayme/tsconfig.tsbuildinfo`. Point the Turbopack loader's `tsconfigPath` at `.ayme/tsconfig.json`.
-- **Nuxt and SvelteKit.** They generate the tsconfig this chain ends in, in `.nuxt/` and `.svelte-kit/`, when their dev server or build runs, and with `nuxt prepare` or `svelte-kit sync`. In a fresh clone, run one of those before `ayme mcp` or the type check: without the generated file, neither can read the folder's tsconfig.
+- **Nuxt and SvelteKit.** They generate the tsconfig this chain ends in, in `.nuxt/` and, on SvelteKit 2, `.svelte-kit/`, when their dev server or build runs, and with `nuxt prepare` or `svelte-kit sync`. In a fresh clone, run one of those before `ayme mcp` or the type check: without the generated file, neither can read the folder's tsconfig.
 - **A project with no tsconfig to extend**, such as one that only drives a site it doesn't build. Put the compiler options in `.ayme/tsconfig.json` itself:
 
   ```json
@@ -97,11 +97,11 @@ init-script.js
 recordings/
 ```
 
-`ayme mcp` adds `init-script.js` to that file by itself. The recorder creates the file only when there is none, so write `recordings/` yourself.
+`ayme mcp` and the recorder each add their own line to that file. When the recorder writes the file first, it adds a `.gitignore` line too, which hides the file from git: remove that line to commit the file.
 
 ## Move Page Objects from another folder
 
 1. Move the files to `.ayme/pom/` and add `.ayme/tsconfig.json`, as above.
-2. Add the `#pom/*` alias, as above, and change every import of them to it. Search for the old folder's name as well. Another alias, such as `$lib/pom/…` or `@pom/…`, and a path in a string, such as `new URL("../playwright/pom/…", import.meta.url)`, still point at it.
+2. Add the `#pom/*` alias, as above, and change every import of them in app code and tests to it. Imports between the files in `.ayme/` stay relative. Search for the old folder's name as well. Another alias, such as `$lib/pom/…` or `@pom/…`, and a path in a string, such as `new URL("../playwright/pom/…", import.meta.url)`, still point at it.
 3. Remove the old folder from the `include` and the `paths` of your other tsconfigs.
-4. Look at the build plugin's `tsconfigPath`, if it has one. Keep one that names your app's tsconfig, as `ng add` writes it. Remove one that names a tsconfig made for the old folder: without the option, the plugin reads `.ayme/tsconfig.json`.
+4. Look at the build plugin's `tsconfigPath`, if it has one. In Angular, keep the one `ng add` wrote, which names your app's tsconfig. In Next.js, point the loader's at `.ayme/tsconfig.json`. Anywhere else, remove one that names a tsconfig made for the old folder: without the option, the plugin reads `.ayme/tsconfig.json`.
