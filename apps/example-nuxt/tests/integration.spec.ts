@@ -4,7 +4,7 @@ import {
   devRebuildTests,
   serverRenderTests,
 } from "@ayme-dev/example-certification/tests";
-import { CounterPage } from "../playwright/pom/CounterPage";
+import { CounterPage } from "#pom/CounterPage";
 
 // The shared certification, against nuxt dev and the built Nitro server.
 serverRenderTests();
@@ -19,5 +19,5 @@ counterTests({
 });
 // Last: it edits a source file, and the dev server rebuilds after it.
 devRebuildTests({
-  counterModePath: new URL("../playwright/pom/CounterMode.ts", import.meta.url),
+  counterModePath: new URL("../ayme/pom/CounterMode.ts", import.meta.url),
 });

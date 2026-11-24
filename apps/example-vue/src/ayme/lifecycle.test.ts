@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import "urlpattern-polyfill";
 
 // The compiler plugin in vitest.config.ts registers this POM's manifest.
-import { ListPage } from "../../playwright/pom/ListPage";
+import { ListPage } from "#pom/ListPage";
 import { useAyme } from "@ayme-dev/vue";
 import App from "../App.vue";
 
