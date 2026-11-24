@@ -21,12 +21,12 @@ import {
   agentEffort,
   closeStream,
   setupTimeoutMs,
-  signalProcessGroup,
   type ClaudeRun,
   type Turn,
 } from "./claude.ts";
 import { turnCompleted } from "./codexTranscript.ts";
 import { envFileName } from "./environment.ts";
+import { processGroups, signalGroups } from "./processGroups.ts";
 import type { Precondition } from "./preconditions.ts";
 
 export const codexDefaultModel = "gpt-6-luna";
@@ -341,13 +341,18 @@ export async function runCodex(
       void ended.then(() => resolve(null));
     });
 
+  // Codex starts an MCP server in a process group of its own, so the groups to stop are
+  // looked up while the app server still runs: once it is gone, they can no longer be found.
+  const groups = new Set<number>();
+  const findGroups = () => {
+    if (child.pid && child.exitCode === null)
+      for (const group of processGroups(child.pid)) groups.add(group);
+  };
   let forceKill: NodeJS.Timeout | undefined;
   const stopChild = () => {
-    if (!child.pid) return;
-    signalProcessGroup(child.pid, "SIGTERM");
-    forceKill ??= setTimeout(() => {
-      if (child.pid) signalProcessGroup(child.pid, "SIGKILL");
-    }, 10_000);
+    findGroups();
+    signalGroups(groups, "SIGTERM");
+    forceKill ??= setTimeout(() => signalGroups(groups, "SIGKILL"), 10_000);
   };
   // The child runs in its own process group so a timeout can take the MCP server and browser with it;
   // an interrupted harness must do the same instead of leaving them behind.
@@ -448,6 +453,7 @@ export async function runCodex(
       setupFailure === null
         ? (await turn(invocation.prompt, invocation.timeoutMs)).turn
         : null;
+    findGroups();
     child.stdin.end();
     // The app server is stopped when it does not exit on its own once its input ends.
     linger = setTimeout(stopChild, exitGraceMs);
@@ -473,13 +479,10 @@ export async function runCodex(
   } finally {
     if (linger) clearTimeout(linger);
     if (forceKill) clearTimeout(forceKill);
-    // The app server is gone, or the run failed: whatever is left of its process group,
+    // The app server is gone, or the run failed: whatever is left of its process groups,
     // an MCP server or a browser that ignored the first signal, goes with it.
-    try {
-      if (child.pid) signalProcessGroup(child.pid, "SIGKILL");
-    } catch {
-      // Nothing this process may signal is left: the run's outcome stands.
-    }
+    findGroups();
+    signalGroups(groups, "SIGKILL");
     process.off("SIGINT", onInterrupt);
     process.off("SIGTERM", onInterrupt);
   }

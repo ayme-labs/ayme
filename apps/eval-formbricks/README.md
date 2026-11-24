@@ -109,7 +109,7 @@ What differs from a Claude Code run:
 - Codex counts cached tokens inside its input tokens; the result takes them out, so the token columns mean the same for both agents.
 - The result records the Codex version and the MCP servers that started, not the tools the agent listed. Codex still lists a few tools of its own, such as `apply_patch`, under a read-only sandbox.
 - The agent has no file tools, where the Claude Code arms keep the read-only ones.
-- A timeout or an interrupt stops the app server's process group. With Codex 0.169.0 the MCP server and the browser are in it; a Codex that started them in a group of their own would leave stopping them to its own shutdown.
+- Codex starts an MCP server in a process group of its own. A timeout, an interrupt and the end of a run stop the app server's group and the group of every process below it, the MCP server's and the browser's among them.
 
 Compare arms within one agent, not one agent with the other.
 
