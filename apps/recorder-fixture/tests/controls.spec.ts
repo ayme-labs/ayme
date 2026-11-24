@@ -1,9 +1,9 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { CartPage } from "../.ayme/pom/CartPage";
-import { SettlingPage } from "../.ayme/pom/SettlingPage";
-import { TickingPage } from "../.ayme/pom/TickingPage";
+import { CartPage } from "../ayme/pom/CartPage";
+import { SettlingPage } from "../ayme/pom/SettlingPage";
+import { TickingPage } from "../ayme/pom/TickingPage";
 import { expect, test, type Recording } from "./fixtures";
 
 /** The recorder's phase and Visits, as a subscriber is told them. */
@@ -111,7 +111,7 @@ test.describe("the recorder's controls", () => {
       `targetSelector: internal:role=button[name="Redraw"i]`
     );
     expect(
-      (await readdir(join(projectDir, ".ayme", "recordings"))).sort()
+      (await readdir(join(projectDir, "ayme", "recordings"))).sort()
     ).toEqual(["latest.yaml", outcome.folder.split("/").at(-1)]);
   });
 
@@ -141,7 +141,7 @@ test.describe("the recorder's controls", () => {
     expect(late).toEqual(first);
     expect(await recorder.done).toEqual(first);
     // Saved once.
-    const recordings = await readdir(join(projectDir, ".ayme", "recordings"));
+    const recordings = await readdir(join(projectDir, "ayme", "recordings"));
     expect(recordings.filter((name) => name.startsWith("rec_"))).toHaveLength(
       1
     );
@@ -157,7 +157,7 @@ test.describe("the recorder's controls", () => {
     expect(await recorder.send({ type: "finish" })).toBe("applied");
 
     expect(await recorder.done).toEqual({ kind: "empty" });
-    await expect(readdir(join(projectDir, ".ayme"))).rejects.toThrow(/ENOENT/);
+    await expect(readdir(join(projectDir, "ayme"))).rejects.toThrow(/ENOENT/);
   });
 
   test("a click made after Stop, while an earlier click's page still changes, is recorded with its own change and not credited to the earlier click", async ({

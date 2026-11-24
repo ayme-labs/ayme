@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { RecorderWindow } from "@ayme-dev/recorder-window/testing";
 
-import { CartPage } from "../.ayme/pom/CartPage";
+import { CartPage } from "../ayme/pom/CartPage";
 import { expect, test } from "./fixtures";
 
 test.describe("recording a running browser", () => {
@@ -77,7 +77,7 @@ test.describe("recording a running browser", () => {
     expect(await run.exit).toEqual({ code: 0, signal: null });
     const [, packagePath] = /^Recording package: (.*)$/m.exec(run.stdout())!;
     expect(packagePath).toMatch(/\/rec_[0-9TZ]+\/package\.yaml$/);
-    expect(packagePath!.startsWith(join(project, ".ayme", "recordings"))).toBe(
+    expect(packagePath!.startsWith(join(project, "ayme", "recordings"))).toBe(
       true
     );
     const text = await readFile(packagePath!, "utf8");

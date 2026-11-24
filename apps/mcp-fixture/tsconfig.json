@@ -5,5 +5,5 @@
     "experimentalDecorators": true,
     "types": ["node"]
   },
-  "include": ["app", "outside/.ayme/**/*.ts", "tests", "*.ts"]
+  "include": ["app", "outside/ayme/**/*.ts", "tests", "*.ts"]
 }

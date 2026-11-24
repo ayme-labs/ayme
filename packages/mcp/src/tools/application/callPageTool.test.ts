@@ -44,8 +44,8 @@ it("answers that no page is connected while nothing is paired", async () => {
 
 it("answers that no page is connected and that the served Page Objects did not build, while no build has succeeded", async () => {
   const failed = {
-    entry: "/work/.ayme/page-objects.ts",
-    error: "/work/.ayme/pom/PlainPage.ts:3:0: Unexpected end of file",
+    entry: "/work/ayme/page-objects.ts",
+    error: "/work/ayme/pom/PlainPage.ts:3:0: Unexpected end of file",
     watching: true,
   };
 
@@ -62,7 +62,7 @@ it("answers that no page is connected and that the served Page Objects did not b
     {
       type: "text",
       text: expect.stringMatching(
-        /^No page is connected\. The Page Objects entry \/work\/\.ayme\/page-objects\.ts did not build.*The first error: \/work\/\.ayme\/pom\/PlainPage\.ts:3:0: Unexpected end of file\nThe server is watching for changes: it rebuilds the entry when a file it read changes\.$/s
+        /^No page is connected\. The Page Objects entry \/work\/ayme\/page-objects\.ts did not build.*The first error: \/work\/ayme\/pom\/PlainPage\.ts:3:0: Unexpected end of file\nThe server is watching for changes: it rebuilds the entry when a file it read changes\.$/s
       ),
     },
   ]);

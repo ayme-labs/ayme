@@ -12,7 +12,7 @@ beforeEach(async () => {
 });
 afterEach(() => rm(folder, { recursive: true, force: true }));
 
-const read = (name: string) => readFile(join(folder, ".ayme", name), "utf8");
+const read = (name: string) => readFile(join(folder, "ayme", name), "utf8");
 
 it("writes an init script that loads the served code from the port of the server that wrote it", async () => {
   await writeInitScript({ folder, port: 9411 });
@@ -38,8 +38,8 @@ it("creates a .gitignore that ignores the init script", async () => {
 });
 
 it("adds the init script to a .gitignore without replacing the user's lines", async () => {
-  await mkdir(join(folder, ".ayme"));
-  await writeFile(join(folder, ".ayme", ".gitignore"), "notes/\n# mine\n*.log");
+  await mkdir(join(folder, "ayme"));
+  await writeFile(join(folder, "ayme", ".gitignore"), "notes/\n# mine\n*.log");
 
   await writeInitScript({ folder, port: 9411 });
 
@@ -49,9 +49,9 @@ it("adds the init script to a .gitignore without replacing the user's lines", as
 });
 
 it("leaves a .gitignore that already ignores the init script as it is", async () => {
-  await mkdir(join(folder, ".ayme"));
+  await mkdir(join(folder, "ayme"));
   await writeFile(
-    join(folder, ".ayme", ".gitignore"),
+    join(folder, "ayme", ".gitignore"),
     "/init-script.js\nnotes/\n"
   );
 

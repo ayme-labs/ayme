@@ -2,8 +2,8 @@
 // Copied from the product-surfaces skill, which updates it. Edit surfaces.ts, not this file.
 //
 // Checks the list in surfaces.ts, beside this file:
-//   node .ayme/product-surfaces/check.mjs          report every problem, exit 1 when there is one
-//   node .ayme/product-surfaces/check.mjs --json   also print the list as JSON
+//   node ayme/product-surfaces/check.mjs          report every problem, exit 1 when there is one
+//   node ayme/product-surfaces/check.mjs --json   also print the list as JSON
 //
 // A source passes when git tracks it, as a file or a folder, at that path from the repository
 // root. URLs are listed as not checked.

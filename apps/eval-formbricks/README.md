@@ -2,7 +2,7 @@
 
 Runs a mission on the [Formbricks lab app](../lab-formbricks/README.md) through a coding agent and measures it: pass or fail from the database, wall time, tokens and cost from Claude Code's own output. The same mission runs through different browser interfaces, called arms, so the interface is the only variable.
 
-This package is separate from the lab app on purpose. The agent's working root is the Formbricks source, `apps/lab-formbricks/formbricks`, and nothing else; missions, results, transcripts and the lab app's Page Objects in `apps/lab-formbricks/.ayme/` stay outside it, where the agent cannot read them.
+This package is separate from the lab app on purpose. The agent's working root is the Formbricks source, `apps/lab-formbricks/formbricks`, and nothing else; missions, results, transcripts and the lab app's Page Objects in `apps/lab-formbricks/ayme/` stay outside it, where the agent cannot read them.
 
 It runs by hand, on a Mac or [on a hosted runner](#on-a-hosted-runner). It is never part of CI or `pnpm check`; only its unit tests are.
 
@@ -195,7 +195,7 @@ The agent keeps its browser automation, its skill and its permissions, and gets 
 
 Set up outside the measured window:
 
-- **The server.** The harness starts `ayme mcp` from the workspace's `@ayme-dev/mcp` in `apps/lab-formbricks`, with the command the reference gives, `mcp`, on the first port of the range a page scans, 9350 to 9365, with `--port`. It builds the lab app's Page Objects in `.ayme/` and writes `.ayme/init-script.js`. The run refuses to start while anything listens in that range, such as another coding agent's `ayme mcp`, because the page would then find two servers and pair with neither. Claude Code starts a small proxy over a Unix socket, written into the run folder, so the agent's first tool list already holds the paired page's tools. The server's standard error is kept in the run folder; the server and its process group are stopped after the run.
+- **The server.** The harness starts `ayme mcp` from the workspace's `@ayme-dev/mcp` in `apps/lab-formbricks`, with the command the reference gives, `mcp`, on the first port of the range a page scans, 9350 to 9365, with `--port`. It builds the lab app's Page Objects in `ayme/` and writes `ayme/init-script.js`. The run refuses to start while anything listens in that range, such as another coding agent's `ayme mcp`, because the page would then find two servers and pair with neither. Claude Code starts a small proxy over a Unix socket, written into the run folder, so the agent's first tool list already holds the paired page's tools. The server's standard error is kept in the run folder; the server and its process group are stopped after the run.
 - **The page.** A headless system Chrome on the profile the harness prepared, launched with a remote-debugging port, with the init script on every document and the content security policy bypassed so the served modules and the loopback WebSocket load. The setup waits until the page has paired with the server and the server lists the start screen's Page Object Tool and `page_objects`, and nothing of ayme's own browser driving (`snapshot`, `goal`, Browser Tools). What it saw is recorded in the result's `setup`.
 - **The browser automation.** Attached over CDP to that browser instead of launching its own: Playwright MCP with `--cdp-endpoint`, Playwright CLI with `attach --cdp`, agent-browser through `AGENT_BROWSER_CDP`.
 

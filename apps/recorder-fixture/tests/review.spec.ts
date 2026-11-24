@@ -2,9 +2,9 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { EntryId } from "@ayme-dev/recorder/contract";
 
-import { CartPage } from "../.ayme/pom/CartPage";
-import { CheckoutPage } from "../.ayme/pom/CheckoutPage";
-import { ShopPage } from "../.ayme/pom/ShopPage";
+import { CartPage } from "../ayme/pom/CartPage";
+import { CheckoutPage } from "../ayme/pom/CheckoutPage";
+import { ShopPage } from "../ayme/pom/ShopPage";
 import { expect, test, type Recording } from "./fixtures";
 
 /** An entry's id, as a test writes it by hand. */
