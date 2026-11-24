@@ -432,13 +432,9 @@ describe("Action Availability", () => {
     const archived = vi.spyOn(inbox.rows[1]!, "archive");
     await probeRegisteredPomMembers();
     const { text } = await agent.getPageState();
-    const refOf = (pattern: string) =>
-      text.match(new RegExp(`(e\\d+) ${pattern}`))?.[1];
     const covered = [...text.matchAll(/e\d+ Row (po\d+)/g)][1]?.[1];
-    const busy = refOf('dialog "Busy"');
-    if (!covered || !busy)
-      throw new Error("Expected refs for the row and the dialog.");
-    const reason = `a click would not reach it; ${busy} is in the way`;
+    if (!covered) throw new Error("Expected an id for the row.");
+    const reason = 'a click would not reach it; dialog "Busy" is in the way';
 
     expect(published("Row.archive")).toMatchObject({ available: true });
     await expect(
@@ -507,10 +503,6 @@ describe("Action Availability", () => {
     } satisfies PomManifest);
     session.pom.register(Inbox);
     await probeRegisteredPomMembers();
-    const { text } = await agent.getPageState();
-    const busy = text.match(/(e\d+) dialog "Busy"/)?.[1];
-    if (!busy) throw new Error("Expected a ref for the dialog.");
-
     expect(asked).toContain("open");
     expect(asked).not.toContain("covered");
     expect(
@@ -521,7 +513,7 @@ describe("Action Availability", () => {
       { available: false, reason: "open is read-only" },
       {
         available: false,
-        reason: `a click would not reach it; ${busy} is in the way`,
+        reason: 'a click would not reach it; dialog "Busy" is in the way',
       },
     ]);
   });
@@ -613,10 +605,10 @@ describe("Action Availability", () => {
     ).toBe(false);
   });
 
-  it("names the Structural Ref of what is in the way: an overlay, a native modal, an inert ancestor", async () => {
-    // The overlay's pane and the holder's cover have no ref of their own: the
-    // reason names the overlay, the nearest ancestor with one, and nothing
-    // for the cover, whose only such ancestor holds the root.
+  it("names what is in the way by its role and name: an overlay, a native modal, an inert ancestor", async () => {
+    // The overlay's pane and the holder's cover have no role but generic:
+    // the reason names the overlay, the nearest ancestor with one, and
+    // nothing for the cover, whose only such ancestor holds the root.
     document.body.innerHTML = `
       <div id="wrapper"><section id="covered" style="height:40px">Covered</section></div>
       <div id="inertWrapper" role="group" aria-label="Frozen"><section id="frozen" style="height:40px">Frozen</section></div>
@@ -659,19 +651,6 @@ describe("Action Availability", () => {
     session.pom.register(Shell);
     document.querySelector("#inertWrapper")!.setAttribute("inert", "");
     await probeRegisteredPomMembers();
-    // The agent's page state gives the elements in the way their refs, which
-    // changes the listing, so the registry's subscribers hear of it.
-    const changes = vi.fn();
-    const unsubscribe = subscribeToRegisteredPoms(changes);
-    const { text } = await agent.getPageState();
-    expect(changes).toHaveBeenCalled();
-    unsubscribe();
-    const refOf = (pattern: string) =>
-      text.match(new RegExp(`(e\\d+) ${pattern}`))?.[1];
-    const overlay = refOf('dialog "Cookie settings"');
-    const frozen = refOf('group "Frozen"');
-    expect(overlay).toBeDefined();
-    expect(frozen).toBeDefined();
 
     const instance = async (id: string) => {
       const instances = (await listRootedToolInstances()).get("Panel.close");
@@ -682,11 +661,12 @@ describe("Action Availability", () => {
     expect(published("Panel.close")).toMatchObject({ available: true });
     expect(await instance("covered")).toMatchObject({
       available: false,
-      reason: `a click would not reach it; ${overlay} is in the way`,
+      reason:
+        'a click would not reach it; dialog "Cookie settings" is in the way',
     });
     expect(await instance("frozen")).toMatchObject({
       available: false,
-      reason: `a click would not reach it; ${frozen} is in the way`,
+      reason: 'a click would not reach it; group "Frozen" is in the way',
     });
     expect(await instance("held")).toMatchObject({
       available: false,
@@ -694,37 +674,27 @@ describe("Action Availability", () => {
     });
     expect(await instance("blocked")).toMatchObject({ available: true });
 
+    // The modal is named as soon as the probe finds it, whatever page state
+    // the agent read.
     document.querySelector<HTMLDialogElement>("#modal")!.showModal();
-    // Until the agent's page state shows the modal, nothing names it: the
-    // reason never falls back to an element around it.
     await probeRegisteredPomMembers();
     expect(await instance("blocked")).toMatchObject({
       available: false,
-      reason: "a click would not reach it",
-    });
-    const after = await agent.getPageState();
-    const modal = after.text.match(/(e\d+) dialog "Archive item"/)?.[1];
-    expect(modal).toBeDefined();
-    expect(await instance("blocked")).toMatchObject({
-      available: false,
-      reason: `a click would not reach it; ${modal} is in the way`,
+      reason: 'a click would not reach it; dialog "Archive item" is in the way',
     });
 
-    // A modal the page state leaves out is named by its own ref only, never
-    // by the region around it.
+    // A modal hidden from the accessibility tree, which no snapshot shows,
+    // is not named, and neither is the region around it.
     document.querySelector<HTMLDialogElement>("#modal")!.close();
     document.querySelector<HTMLDialogElement>("#quiet")!.showModal();
-    configurePageStateIgnore({ selector: "#quiet" });
-    const { text: quiet } = await agent.getPageState();
-    expect(quiet).toMatch(/e\d+ region "Dialogs"/);
-    expect(quiet).not.toContain('dialog "Confirm"');
+    await probeRegisteredPomMembers();
     expect(await instance("blocked")).toMatchObject({
       available: false,
       reason: "a click would not reach it",
     });
   });
 
-  it("gives the reason without a ref when nothing in the way has one", async () => {
+  it("gives the reason without naming anything when nothing in the way has a role", async () => {
     document.body.innerHTML =
       '<section id="panel" aria-label="Panel" style="height:40px"><button>Act</button></section>';
     document.body.style.pointerEvents = "none";
@@ -769,13 +739,11 @@ describe("Action Availability", () => {
       components: [],
     });
     session.pom.register(Panel);
-    const { text } = await agent.getPageState();
-    const middle = text.match(/(e\d+) dialog "Middle"/)?.[1];
-    expect(middle).toBeDefined();
+    await agent.getPageState();
 
     expect(published("Panel.act")).toMatchObject({
       available: false,
-      reason: `a click would not reach it; ${middle} is in the way`,
+      reason: 'a click would not reach it; dialog "Middle" is in the way',
     });
   });
 
@@ -1118,16 +1086,14 @@ describe("Action Availability", () => {
       components: [],
     });
     session.pom.register(Panel);
-    const { text } = await agent.getPageState();
-    const cover = text.match(/(e\d+) dialog "Saving"/)?.[1];
-    expect(cover).toBeDefined();
+    await agent.getPageState();
 
     expect(published("Panel.act")).toMatchObject({ available: true });
     const id = await rootId("Panel");
     await expect(
       session.tools.run("Panel.act", { id, args: {} })
     ).rejects.toThrow(
-      `Panel "${id}" is unavailable: a click would not reach it; ${cover} is in the way.`
+      `Panel "${id}" is unavailable: a click would not reach it; dialog "Saving" is in the way.`
     );
     expect(acted).not.toHaveBeenCalled();
     expect(window.scrollY).toBeGreaterThan(0);

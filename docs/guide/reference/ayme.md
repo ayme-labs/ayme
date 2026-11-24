@@ -518,17 +518,17 @@ A `reason` comes from one of two places.
     - e17 button "Cancel"
 ```
 
-The dialog covers both rows. So `ayme.tools.list()` has `{ name: "ProjectRow.remove", available: false, reason: "a click would not reach it; e14 is in the way", … }`. A call on Launch plan is refused with `ProjectRow "po1" is unavailable: a click would not reach it; e14 is in the way.`
+The dialog covers both rows. So `ayme.tools.list()` has `{ name: "ProjectRow.remove", available: false, reason: 'a click would not reach it; dialog "New project" is in the way', … }`. A call on Launch plan is refused with `ProjectRow "po1" is unavailable: a click would not reach it; dialog "New project" is in the way.`
 
-The ref names what the click would hit instead:
+The reason names what the click would hit instead, by its role and accessible name, as a Playwright snapshot of the page shows them:
 
-| What blocks the root   | The ref names                                                               |
-| ---------------------- | --------------------------------------------------------------------------- |
-| An element covering it | The covering element, or its nearest ancestor with a ref: here, the dialog. |
-| An open native modal   | The modal.                                                                  |
-| An `inert` ancestor    | That ancestor.                                                              |
+| What blocks the root   | The reason names                                                             |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| An element covering it | The covering element, or its nearest ancestor with a role: here, the dialog. |
+| An open native modal   | The modal.                                                                   |
+| An `inert` ancestor    | That ancestor.                                                               |
 
-The ref comes from the agent's latest page state. Sometimes no page state has shown that element yet, or nothing in the way has a ref, such as with `pointer-events: none` on `body`. Then the reason is just `a click would not reach it`. The reason never names a kind of widget, such as a modal, popover or banner.
+An element with no accessible name is named by its role alone, such as `dialog`. A role of `generic`, `none` or `presentation` names nothing, and neither does an element hidden from the accessibility tree. When nothing in the way can be named, such as a plain `div` overlay or `pointer-events: none` on `body`, the reason is just `a click would not reach it`. The role is the element's own: the runtime never infers a kind of widget, such as a modal or popover, from what it measured.
 
 **Your predicate** produces every other reason: the string the action's [availability predicate](#action-availability) returned, or the text of an error it threw.
 

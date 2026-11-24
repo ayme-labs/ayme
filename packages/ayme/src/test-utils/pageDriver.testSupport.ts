@@ -31,7 +31,7 @@ export function nameElement(element: Element, ref: string): void {
 export type StandInMeasure = (element: Element) => {
   present: boolean;
   available: boolean;
-  inTheWay?: string[];
+  inTheWay?: string;
 };
 
 export type StandInPageDriver = PageDriver & {
@@ -97,15 +97,14 @@ export function standInPageDriver(deps: {
           count: refs.length,
           present: false,
           available: false,
-          inTheWay: [],
         };
-      const { present, available, inTheWay = [] } = measure(element);
+      const { present, available, inTheWay } = measure(element);
       return {
         count: 1,
         present,
         available: present && available,
         ref: refs[0],
-        inTheWay,
+        ...(inTheWay !== undefined ? { inTheWay } : {}),
       };
     },
     refs: refsOf,
@@ -166,7 +165,6 @@ export function standInPageDriver(deps: {
         else return;
       }
     },
-    latestPageStateRef: () => undefined,
     trigger: () => watching?.schedule(),
   };
   (globalThis as { [latest]?: StandInPageDriver })[latest] = driver;

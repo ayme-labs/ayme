@@ -147,17 +147,6 @@ export function getInteractionHistory(
 }
 
 /**
- * Package-internal: calls `listener` each time a page state of
- * `currentDocument` is recorded, until the returned function is called.
- */
-export function onPageStateRecorded(
-  currentDocument: Document,
-  listener: () => void
-): () => void {
-  return getPageStateSession(currentDocument).onRecorded(listener);
-}
-
-/**
  * Package-internal: the Structural Ref the agent's latest recorded page
  * state of this document gave the one element `locator` matches, read in
  * the page through its in-page module; undefined for none or several, or
@@ -170,16 +159,6 @@ export async function latestPageStateRefOf(
     pageOfDocument(document),
     inPage(locator.page()),
     locator
-  );
-}
-
-/**
- * Package-internal: the Structural Ref the agent's latest recorded page
- * state gave what the in-page ref `ref` names, when it gave it one.
- */
-export function latestPageStateRefNamed(ref: string): AriaRef | undefined {
-  return existingPageState(pageOfDocument(document))?.session.latestRefOfNamed(
-    ref
   );
 }
 

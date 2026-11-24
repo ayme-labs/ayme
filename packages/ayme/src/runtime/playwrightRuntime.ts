@@ -118,10 +118,7 @@ function playwrightTarget(
   const pageState = () => pageStateOf(page, host);
   const registry = () =>
     pomRegistryOf(page, {
-      latestPageStateRef: (ref) => pageState().session.latestRefOfNamed(ref),
       pageStates: {
-        onPageStateRecorded: (listener) =>
-          pageState().session.onRecorded(listener),
         providePageObjectProbe: (probe) =>
           providePageObjectProbeOf(page, probe),
         providePageObjectIds: (idsOf) => providePageObjectIdsOf(page, idsOf),

@@ -121,15 +121,10 @@ export type RootedToolInstance = {
 
 /**
  * What a runtime session adds to the registry of its page, which reads the
- * page by Structural Ref and Locator alone: how it hears of the session's
- * page states and tells its captures to wait for the probe.
+ * page by Structural Ref and Locator alone: how it tells the session's
+ * captures to wait for the probe and to read the Page Object ids.
  */
 export type PomPageStates = {
-  /**
-   * Calls `listener` each time a page state is recorded, until the returned
-   * function is called.
-   */
-  onPageStateRecorded(listener: () => void): () => void;
   /**
    * What the page's captures wait for before they read it, set while the
    * registry observes it; cleared when it stops.
@@ -148,7 +143,6 @@ export type PomPageStates = {
 };
 
 const noPageStates: PomPageStates = {
-  onPageStateRecorded: () => () => {},
   providePageObjectProbe: () => {},
   providePageObjectIds: () => {},
 };
@@ -168,7 +162,6 @@ export function createPomRegistry(
   let refusedClasses = new Map<string, RuntimeStateError>();
   const subscribers = new Set<() => void>();
   let stopWatchingPage: (() => void) | undefined;
-  let stopWatchingPageStates: (() => void) | undefined;
   // The ids of this page's Page Objects, which outlive a registration: an id
   // is never given to another Page Object.
   const pageObjectIds = createPageObjectIds(driver);
@@ -274,11 +267,6 @@ export function createPomRegistry(
 
   function startObservingPage() {
     stopWatchingPage = driver.watch(probeRegistrations);
-    // An Availability Reason names the ref a recorded page state may have
-    // just given the element in the way, so the tools are read again.
-    stopWatchingPageStates = pageStates.onPageStateRecorded(
-      announceObstructedRoots
-    );
     // A capture waits for the roots of a completed probe run.
     pageStates.providePageObjectProbe(probeRegisteredPomMembers);
     pageStates.providePageObjectIds(pageObjectIdsOf);
@@ -287,8 +275,6 @@ export function createPomRegistry(
   function stopObservingPage() {
     stopWatchingPage?.();
     stopWatchingPage = undefined;
-    stopWatchingPageStates?.();
-    stopWatchingPageStates = undefined;
     pageStates.providePageObjectProbe(undefined);
     pageStates.providePageObjectIds(undefined);
   }
@@ -506,7 +492,7 @@ export function createPomRegistry(
         tool,
         ...combinedAvailability(
           instancesOf(tool).map((instance) =>
-            availabilityNow(driver, instance, tool.methodName)
+            availabilityOf(instance, tool.methodName)
           )
         ),
       }));
@@ -538,7 +524,7 @@ export function createPomRegistry(
         ? [
             {
               tool,
-              instances: rootedInstancesOf(driver, instancesOf(tool), tool),
+              instances: rootedInstancesOf(instancesOf(tool), tool),
             },
           ]
         : []
@@ -569,18 +555,6 @@ export function createPomRegistry(
 
   function notifySubscribers() {
     for (const subscriber of subscribers) subscriber();
-  }
-
-  /**
-   * Tells the subscribers to read the tools again although no observation
-   * changed, as when a recorded page state gave the element in an
-   * unavailable root's way its ref.
-   */
-  function announceObstructedRoots() {
-    const obstructed = [...registeredPoms].some((registration) =>
-      registration.instances?.some((instance) => instance.root?.inTheWay.length)
-    );
-    if (obstructed) notifySubscribers();
   }
 
   // The one runtime session that owns this registry.
@@ -626,15 +600,6 @@ export function createPomRegistry(
 /** A Page's Page Object registry. */
 export type PomRegistry = ReturnType<typeof createPomRegistry>;
 
-/** `instance`'s availability for `methodName`, as the last observation read it. */
-function availabilityNow(
-  driver: PageDriver,
-  instance: PomInstanceObservation,
-  methodName: string
-): ToolAvailability {
-  return availabilityOf(instance, methodName, driver.latestPageStateRef);
-}
-
 /**
  * The present items `tool` of `registration` goes through, as last observed,
  * each with the tool's verdict on it and the ref its root had in that
@@ -642,7 +607,6 @@ function availabilityNow(
  * refused by.
  */
 function rootedInstancesOf(
-  driver: PageDriver,
   instances: readonly PomInstanceObservation[],
   tool: RegisteredPomTool
 ): { className: string; instance: Omit<RootedToolInstance, "id"> }[] {
@@ -654,7 +618,7 @@ function rootedInstancesOf(
             className: instance.className,
             instance: {
               ref: root.ref,
-              ...availabilityNow(driver, instance, tool.methodName),
+              ...availabilityOf(instance, tool.methodName),
             },
           },
         ]
@@ -753,10 +717,7 @@ function createTool(
             )
           );
         targetName = `${tool.className} "${id}"`;
-        assertAvailable(
-          targetName,
-          availabilityNow(driver, observed, tool.methodName)
-        );
+        assertAvailable(targetName, availabilityOf(observed, tool.methodName));
       }
       const target = await callTarget(driver, targetName, observed);
       return performPageObjectAction(target, action, args, context, targetName);
@@ -888,8 +849,7 @@ async function performPageObjectAction(
       page,
       targetName,
       root.locator,
-      "click",
-      (ref) => pageStateSession.latestRefOfNamed(ref)
+      "click"
     );
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.

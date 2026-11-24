@@ -642,13 +642,13 @@ export function inPageContract(lane: InPageLane) {
       });
     });
 
-    it("a button covered by an overlay is unavailable, and the overlay's ref names what is in the way", async () => {
+    it("a button covered by an overlay is unavailable, and the overlay's role and name say what is in the way", async () => {
       const { inPageOf, ref } = await reachPage(covered);
 
       expect(await inPageOf.measureReach(ref('"Save"'))).toEqual({
         present: true,
         available: false,
-        hit: [ref("dialog")],
+        inTheWay: 'dialog "Cover"',
       });
     });
 
@@ -664,22 +664,42 @@ export function inPageContract(lane: InPageLane) {
       });
     });
 
-    it("what is in the way is named from the hit up to what holds the element, whether or not it has a node", async () => {
-      const { page, inPageOf, ref } = await reachPage(
-        '<button>Save</button><div id="plain" style="position:fixed;inset:0"><span id="inner" style="display:block;height:100%"></span></div>'
+    it("what is in the way is the nearest from the hit up to what holds the element with a role, by its role and name", async () => {
+      const { inPageOf, ref } = await reachPage(
+        '<button>Save</button><nav aria-label="Menu" style="position:fixed;inset:0"><div style="height:100%"><span style="display:block;height:100%"></span></div></nav>'
       );
 
-      const { hit } = await inPageOf.measureReach(ref('"Save"'));
-      const named = await Promise.all(
-        (hit ?? []).map((ref) =>
-          page.locator(`ayme-ref=${ref}`).evaluate((element) => element.id)
-        )
-      );
-
-      expect(named).toEqual(["inner", "plain"]);
+      expect(await inPageOf.measureReach(ref('"Save"'))).toEqual({
+        present: true,
+        available: false,
+        inTheWay: 'navigation "Menu"',
+      });
     });
 
-    it("an open native modal blocks an element outside it, by the modal's ref", async () => {
+    it("what is in the way goes unnamed when nothing from the hit up has a role but generic", async () => {
+      const { inPageOf, ref } = await reachPage(
+        '<button>Save</button><div style="position:fixed;inset:0"><span style="display:block;height:100%"></span></div>'
+      );
+
+      expect(await inPageOf.measureReach(ref('"Save"'))).toEqual({
+        present: true,
+        available: false,
+      });
+    });
+
+    it("what is in the way with no name is named by its role alone", async () => {
+      const { inPageOf, ref } = await reachPage(
+        '<button>Save</button><div role="dialog" style="position:fixed;inset:0"></div>'
+      );
+
+      expect(await inPageOf.measureReach(ref('"Save"'))).toEqual({
+        present: true,
+        available: false,
+        inTheWay: "dialog",
+      });
+    });
+
+    it("an open native modal blocks an element outside it, named by its role and name", async () => {
       const { page, inPageOf, ref } = await reachPage(
         '<button>Behind</button><dialog aria-label="Modal"><button>Inside</button></dialog>'
       );
@@ -689,17 +709,17 @@ export function inPageContract(lane: InPageLane) {
       expect(await inPageOf.measureReach(ref('"Behind"'))).toEqual({
         present: true,
         available: false,
-        blocker: refOf(fullText, 'dialog "Modal"'),
+        inTheWay: 'dialog "Modal"',
       });
-      expect(await inPageOf.blockingAncestor(ref('"Behind"'))).toBe(
-        refOf(fullText, 'dialog "Modal"')
-      );
+      expect(await inPageOf.blockingAncestor(ref('"Behind"'))).toEqual({
+        inTheWay: 'dialog "Modal"',
+      });
       expect(
         await inPageOf.blockingAncestor(refOf(fullText, '"Inside"'))
       ).toBeUndefined();
     });
 
-    it("an inert ancestor blocks its content, by its own ref", async () => {
+    it("an inert ancestor blocks its content, named by its role and name", async () => {
       const { inPageOf, ref } = await reachPage(
         '<section inert aria-label="Frozen"><button>Stuck</button></section>'
       );
@@ -707,20 +727,20 @@ export function inPageContract(lane: InPageLane) {
       expect(await inPageOf.measureReach(ref('"Stuck"'))).toEqual({
         present: true,
         available: false,
-        blocker: ref('region "Frozen"'),
+        inTheWay: 'region "Frozen"',
       });
     });
 
-    it("a blocker with no node of its own is named by a ref the ayme-ref engine resolves", async () => {
-      const { page, inPageOf, ref } = await reachPage(
-        '<div id="frozen" inert><button>Stuck</button></div>'
+    it("a blocker with no role but generic still blocks, unnamed", async () => {
+      const { inPageOf, ref } = await reachPage(
+        "<div inert><button>Stuck</button></div>"
       );
 
-      const { blocker } = await inPageOf.measureReach(ref('"Stuck"'));
-
-      expect(await page.locator(`ayme-ref=${blocker}`).getAttribute("id")).toBe(
-        "frozen"
-      );
+      expect(await inPageOf.measureReach(ref('"Stuck"'))).toEqual({
+        present: true,
+        available: false,
+      });
+      expect(await inPageOf.blockingAncestor(ref('"Stuck"'))).toEqual({});
     });
 
     it("at call time the element is scrolled into view first, and an overlay over the place it lands is found", async () => {
@@ -730,7 +750,11 @@ export function inPageContract(lane: InPageLane) {
 
       expect(
         await inPageOf.measureReach(ref('"Far"'), { atCall: true })
-      ).toEqual({ present: true, available: false, hit: [ref("dialog")] });
+      ).toEqual({
+        present: true,
+        available: false,
+        inTheWay: 'dialog "Cover"',
+      });
     });
   });
   describe("highlights", () => {
@@ -1113,7 +1137,6 @@ export function inPageContract(lane: InPageLane) {
         present: true,
         available: true,
         ref: expect.any(String),
-        inTheWay: [],
       });
       expect(
         await page.locator(`ayme-ref=${state.ref}`).getAttribute("id")
@@ -1129,13 +1152,11 @@ export function inPageContract(lane: InPageLane) {
         count: 0,
         present: false,
         available: false,
-        inTheWay: [],
       });
       expect(await inPageOf.probe(page.locator("p"), "A")).toEqual({
         count: 2,
         present: false,
         available: false,
-        inTheWay: [],
       });
     });
 
@@ -1150,8 +1171,8 @@ export function inPageContract(lane: InPageLane) {
         count: 1,
         present: false,
         available: false,
-        inTheWay: [],
       });
+      expect(state.inTheWay).toBeUndefined();
       expect(
         await page.locator(`ayme-ref=${state.ref}`).getAttribute("id")
       ).toBe("hidden");
@@ -1167,11 +1188,11 @@ export function inPageContract(lane: InPageLane) {
 
       const state = await inPageOf.probe(page.locator("#save"), "SavePage");
 
-      expect(state).toMatchObject({ present: true, available: false });
-      expect(state.inTheWay).toHaveLength(1);
-      expect(
-        await page.locator(`ayme-ref=${state.inTheWay[0]}`).getAttribute("id")
-      ).toBe("cover");
+      expect(state).toMatchObject({
+        present: true,
+        available: false,
+        inTheWay: 'dialog "Cover"',
+      });
     });
 
     it("probing installs the module in a document that has none, and measures nothing it scrolls", async () => {
@@ -1605,12 +1626,7 @@ export function inPageContract(lane: InPageLane) {
       const { ayme, createPomRegistry, inPageDriver, registerCompiledPom } =
         lane.pageObjects;
       const inPageOf = lane.createHost(page).inPage(page);
-      const registry = createPomRegistry(
-        inPageDriver(
-          () => inPageOf,
-          () => undefined
-        )
-      );
+      const registry = createPomRegistry(inPageDriver(() => inPageOf));
       class SettingsPage {
         get root() {
           return page.locator("#settings");

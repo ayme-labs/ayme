@@ -103,7 +103,6 @@ export class PageStateSession {
         renamed?: ReadonlyMap<string, string>;
       }
     | undefined;
-  private readonly recordedListeners = new Set<() => void>();
   // The synthetic refs this session's trees mint for themselves.
   private refFactory = treeRefAllocator();
   private current: InteractionHistory;
@@ -547,18 +546,6 @@ export class PageStateSession {
       observation: this.history.latestObservation!,
       tree,
       ...(renamed ? { renamed } : {}),
-    };
-    for (const listener of this.recordedListeners) listener();
-  }
-
-  /**
-   * Calls `listener` each time a page state is recorded, until the returned
-   * function is called.
-   */
-  onRecorded(listener: () => void): () => void {
-    this.recordedListeners.add(listener);
-    return () => {
-      this.recordedListeners.delete(listener);
     };
   }
 

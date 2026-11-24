@@ -26,7 +26,6 @@ import {
   configurePageStateIgnore,
   getPageStateForDocument,
   getPageStateSession,
-  latestPageStateRefNamed,
   latestPageStateCapture,
   lookAtPageStateForDocument,
 } from "./pageState";
@@ -491,7 +490,7 @@ describe("the page state", () => {
       createCursors().of("app"),
       { tool: "click", args: {} },
       () => {
-        named = latestPageStateRefNamed("s_1");
+        named = getPageStateSession(document).latestRefOfNamed("s_1");
       }
     );
 

@@ -148,9 +148,10 @@ describe("a collection whose items are all behind a modal layer", () => {
         .execute({ id: ids[2], args: {} }, runContext())
         .then(() => "no error", errorText);
 
-      // In the way is the page's content the layer hid, as for an inert one.
+      // In the way is the page's content the layer hid, as for an inert
+      // one: a div hidden from the accessibility tree, with no role to name.
       expect(error).toMatch(
-        /^RuntimeStateError: Row "po\d+" is unavailable: a click would not reach it; e\d+ is in the way\.$/
+        /^RuntimeStateError: Row "po\d+" is unavailable: a click would not reach it\.$/
       );
       expect(scrolled()).toEqual({ page: 0, list: 0 });
       expect(opened[2]).not.toHaveBeenCalled();
@@ -169,7 +170,7 @@ describe("a collection whose items are all behind a modal layer", () => {
         .then(() => "no error", errorText);
 
       expect(error).toMatch(
-        /^RuntimeStateError: Row "po\d+" is unavailable: a click would not reach it(; e\d+ is in the way)?\.$/
+        /^RuntimeStateError: Row "po\d+" is unavailable: a click would not reach it\.$/
       );
       expect(opened[0]).not.toHaveBeenCalled();
     } finally {

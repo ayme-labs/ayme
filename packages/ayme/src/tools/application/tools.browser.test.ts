@@ -614,11 +614,7 @@ describe("the session's tools in Chromium", () => {
 
     document.querySelector<HTMLDialogElement>("#confirm")!.showModal();
     await expect.poll(archive).toMatchObject({ available: false });
-    const { structure } = (await agentTools().call("snapshot", {})) as {
-      structure: string;
-    };
-    const dialog = structure.match(/(e\d+) dialog "Archive item"/)?.[1];
-    if (!dialog) throw new Error("Expected a ref for the dialog.");
+    const dialog = 'dialog "Archive item"';
 
     expect(archive()).toMatchObject({
       available: false,

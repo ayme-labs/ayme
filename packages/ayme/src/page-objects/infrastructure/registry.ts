@@ -1,7 +1,5 @@
 import type { Page } from "@playwright/test";
 import {
-  latestPageStateRefNamed,
-  onPageStateRecorded,
   pageOfDocument,
   providePageObjectIds,
   providePageObjectProbe,
@@ -36,10 +34,7 @@ export function browserRegistry(): PomRegistry {
   return pomRegistryOf(
     typeof document === "undefined" ? serverPage : pageOfDocument(document),
     {
-      latestPageStateRef: latestPageStateRefNamed,
       pageStates: {
-        onPageStateRecorded: (listener) =>
-          onPageStateRecorded(document, listener),
         providePageObjectProbe,
         providePageObjectIds,
       },

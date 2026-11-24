@@ -93,8 +93,8 @@ export type InPage = {
   forget(keys: readonly string[]): Promise<void>;
   /**
    * Reach (ADR-0041) of the element `ref` names, measured in the page: what
-   * a click would reach, and what blocks or takes it, named by Structural
-   * Ref. An element that is gone is absent. With `atCall`, the element is
+   * a click would reach, and what blocks or takes it, named by its role
+   * and name. An element that is gone is absent. With `atCall`, the element is
    * scrolled into view first, as the call that clicks it scrolls, and the
    * hit test is where the click lands.
    */
@@ -103,10 +103,12 @@ export type InPage = {
     options?: { atCall?: boolean }
   ): Promise<ReachMeasurement>;
   /**
-   * The ref of what blocks every click on the element `ref` names and its
-   * focus: the last opened native modal it is not in, else its inert ancestor.
+   * What blocks every click on the element `ref` names and its focus, when
+   * anything does: the last opened native modal it is not in, else its inert
+   * ancestor, with `inTheWay`, its role and name, when it has a role to name
+   * it by (see `ReachMeasurement`).
    */
-  blockingAncestor(ref: string): Promise<string | undefined>;
+  blockingAncestor(ref: string): Promise<{ inTheWay?: string } | undefined>;
   /**
    * Page Object Root `root`: how many elements its Locator matches, and
    * whether it is on the page (Page Object Presence) and a click would reach

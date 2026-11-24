@@ -8,27 +8,21 @@ import {
 import { checkedToolInput } from "../../shared";
 import type { PageStateSession, Reach } from "../../page-state/application";
 
-const {
-  locatorElements,
-  testLocators,
-  pageStateRecordedListeners,
-  pageObjectProbe,
-  rootMeasure,
-} = vi.hoisted(() => ({
-  pageObjectProbe: { source: undefined as unknown },
-  rootMeasure: {
-    current: undefined as
-      | undefined
-      | (() => {
-          present: boolean;
-          available: boolean;
-          inTheWay?: string[];
-        }),
-  },
-  locatorElements: new WeakMap<object, Element[]>(),
-  testLocators: new WeakSet<object>(),
-  pageStateRecordedListeners: new Set<() => void>(),
-}));
+const { locatorElements, testLocators, pageObjectProbe, rootMeasure } =
+  vi.hoisted(() => ({
+    pageObjectProbe: { source: undefined as unknown },
+    rootMeasure: {
+      current: undefined as
+        | undefined
+        | (() => {
+            present: boolean;
+            available: boolean;
+            inTheWay?: string;
+          }),
+    },
+    locatorElements: new WeakMap<object, Element[]>(),
+    testLocators: new WeakSet<object>(),
+  }));
 // A jsdom test has no in-page module: it stands in a page driver whose refs
 // name the elements its locators hold.
 vi.mock(
@@ -60,10 +54,6 @@ vi.mock(
   "../../page-state/infrastructure/pageState",
   async (importOriginal) => ({
     ...(await importOriginal<object>()),
-    onPageStateRecorded: (_doc: unknown, listener: () => void) => {
-      pageStateRecordedListeners.add(listener);
-      return () => pageStateRecordedListeners.delete(listener);
-    },
     providePageObjectProbe: (source: unknown) => {
       pageObjectProbe.source = source;
     },
@@ -1259,11 +1249,11 @@ describe("live Page Object registry", () => {
     expect(subscriber).toHaveBeenCalledOnce();
   });
 
-  it("lists an obstructed root's tools unavailable, and reads them again when a page state may name what is in the way", async () => {
+  it("lists an obstructed root's tools unavailable, naming what is in the way by its role and name", async () => {
     rootMeasure.current = () => ({
       present: true,
       available: false,
-      inTheWay: ["e1"],
+      inTheWay: 'dialog "Delete"',
     });
     const { registry, session, ayme, rootOf } = await setup();
 
@@ -1278,20 +1268,15 @@ describe("live Page Object registry", () => {
       tools: [action("save")],
     });
     session.register(CoveredPage);
-    const subscriber = vi.fn();
-    registry.subscribeToRegisteredPoms(subscriber);
     await vi.runOnlyPendingTimersAsync();
 
     expect(registry.listRegisteredPomTools()).toEqual([
       expect.objectContaining({
         present: true,
         available: false,
-        reason: "a click would not reach it",
+        reason: 'a click would not reach it; dialog "Delete" is in the way',
       }),
     ]);
-    subscriber.mockClear();
-    for (const listener of pageStateRecordedListeners) listener();
-    expect(subscriber).toHaveBeenCalledOnce();
   });
 
   it("bounds recursive component manifests to the current component path", async () => {

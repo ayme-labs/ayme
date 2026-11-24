@@ -53,7 +53,7 @@ it("carries each item's verdict and reason from the registry", () => {
       ref: "e2",
       present: true,
       available: false,
-      reason: "a click would not reach it; e9 is in the way",
+      reason: 'a click would not reach it; dialog "Confirm" is in the way',
     },
   ];
 
@@ -75,7 +75,7 @@ it("carries each item's verdict and reason from the registry", () => {
       ref: "e2",
       label: "Bread",
       available: false,
-      reason: "a click would not reach it; e9 is in the way",
+      reason: 'a click would not reach it; dialog "Confirm" is in the way',
     },
   ]);
 });

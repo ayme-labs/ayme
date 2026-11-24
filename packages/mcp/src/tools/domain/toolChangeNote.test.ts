@@ -62,13 +62,13 @@ it("names the tools that became available or unavailable, with the reason when t
         "Panel.duplicate",
         unavailable(
           "Dialog.close",
-          "a click would not reach it; e7 is in the way"
+          'a click would not reach it; dialog "Unsaved changes" is in the way'
         ),
         unavailable("Dialog.submit"),
       ])
     )
   ).toBe(
-    "The connected tools changed since your previous call. Became available: Panel.remove, Panel.duplicate. Became unavailable: Dialog.close (a click would not reach it; e7 is in the way), Dialog.submit. ayme_list_tools lists the current tools; ayme_call runs any of them."
+    'The connected tools changed since your previous call. Became available: Panel.remove, Panel.duplicate. Became unavailable: Dialog.close (a click would not reach it; dialog "Unsaved changes" is in the way), Dialog.submit. ayme_list_tools lists the current tools; ayme_call runs any of them.'
   );
   expect(
     toolChangeNote(

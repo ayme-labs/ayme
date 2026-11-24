@@ -16,7 +16,7 @@ export type RootState = {
   ref?: string;
   /**
    * For a present root a click would not reach, what an Availability Reason
-   * may name as in the way, by Structural Ref, nearest first.
+   * names as in the way, by role and name (see `ReachMeasurement`).
    */
-  inTheWay: string[];
+  inTheWay?: string;
 };

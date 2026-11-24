@@ -1,5 +1,4 @@
 import type { Locator } from "@playwright/test";
-import type { LatestRefByRef } from "../../page-state/domain";
 import type { RootState } from "../../shared";
 
 /**
@@ -51,9 +50,4 @@ export type PageDriver = {
   refresh(): void;
   /** Resolves once no probe run is due, as a capture needs the roots. */
   probed(): Promise<void>;
-  /**
-   * The Structural Ref the agent's latest recorded page state gave what
-   * `ref` names, when it gave it one: what names an element in the way.
-   */
-  latestPageStateRef: LatestRefByRef;
 };

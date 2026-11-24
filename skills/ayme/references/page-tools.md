@@ -79,11 +79,12 @@ inconclusive, read `page_objects`, or the page with your browser automation.
 ## Refused and failed calls
 
 - A refused call answers with its reason alone. A runtime reason,
-  `a click would not reach it; e42 is in the way`, names the element in the
-  way, such as an open dialog to close first. Any other reason is the app's
-  own, such as `No item is selected`. A Page Object Tool stays listed while
-  it is unavailable: `ayme_list_tools` shows whether each tool is available
-  and why not.
+  `a click would not reach it; dialog "Delete" is in the way`, names the
+  element in the way by its role and name, as your browser automation's
+  snapshot shows it, such as an open dialog to close first. Any other
+  reason is the app's own, such as `No item is selected`. A Page Object
+  Tool stays listed while it is unavailable: `ayme_list_tools` shows
+  whether each tool is available and why not.
 - A failed call answers with what failed, followed by `changes:` when the
   Page Object tree changed while it ran. It shows how far the action got
   before you call it again.

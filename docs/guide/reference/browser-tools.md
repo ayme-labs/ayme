@@ -28,12 +28,12 @@ They reach an agent that runs in the page through [WebMCP publication](experimen
 - `fill_form` fills its fields in order and stops at the first that fails. Its `result` names the fields filled (`filled`) and the one that failed (`failed`, with its error). Fields filled before it stay filled.
 - Some tools are refused before anything runs when their input could not reach the element:
 
-  | Tools                                                                          | Refused when                                                             | Message                                                                |
-  | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-  | `click`, `hover`, `check`, `uncheck`; checkbox and radio fields of `fill_form` | A click would not reach the element.                                     | `click is unavailable: a click would not reach it; e42 is in the way.` |
-  | `type`, `fill`, `select_option`; other fields of `fill_form`                   | An open native modal it is not in, or an `inert` ancestor, blocks focus. | `fill is unavailable: it cannot take focus; e42 is in the way.`        |
+  | Tools                                                                          | Refused when                                                             | Message                                                                            |
+  | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+  | `click`, `hover`, `check`, `uncheck`; checkbox and radio fields of `fill_form` | A click would not reach the element.                                     | `click is unavailable: a click would not reach it; dialog "Delete" is in the way.` |
+  | `type`, `fill`, `select_option`; other fields of `fill_form`                   | An open native modal it is not in, or an `inert` ancestor, blocks focus. | `fill is unavailable: it cannot take focus; dialog "Delete" is in the way.`        |
 
-  `e42` is the Structural Ref of the element in the way. When that element has no ref, the message ends before `; e42 is in the way`. An element covering a text field does not stop typing. A `fill_form` field refused this way is the one in `failed`.
+  `dialog "Delete"` is the role and accessible name of the element in the way, as [Availability Reasons](ayme.md#availability-reasons) describes. When nothing in the way has a role to name it by, the message ends before `; dialog "Delete" is in the way`. An element covering a text field does not stop typing. A `fill_form` field refused this way is the one in `failed`.
 
 - `generate_locator` turns targets into Playwright locator strings for your Page Object Model code. A Structural Ref belongs to one capture, so it does not belong in code. The tool never acts on the page. Take the projects page from [Page Object root](ayme.md#page-object-root). Its page state shows a New project button, `e4`, and a row, `e6`, that holds a Remove button, `e9`. You call:
 

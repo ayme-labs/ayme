@@ -107,7 +107,7 @@ export type ReachRequest = {
 /** The module's answer to a `ReachRequest`; `gone` when the ref names no connected element. */
 export type ReachAnswer =
   | { kind: "measured"; measurement: ReachMeasurement | "scroll" }
-  | { kind: "blocking"; blocker?: string }
+  | { kind: "blocking"; blocker?: { inTheWay?: string } }
   | { kind: "gone" };
 
 /** What a host asks of the module for the Locator Recommendation of elements. */
@@ -292,7 +292,7 @@ function createSlot(version: string, installedBy: HostKey): Slot {
     element?.isConnected && element.ownerDocument === document
       ? refs.lastRefOf(element)
       : undefined;
-  const reach = createReach(refs.nameOf);
+  const reach = createReach();
   // Each host's picking that is on, to end it.
   const pickings = new Map<string, () => void>();
   // Pickings cancelled before they started: the cancel can arrive first.

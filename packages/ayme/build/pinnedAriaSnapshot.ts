@@ -89,7 +89,9 @@ const edits: Edit[] = [
  * { testIdAttributeName, root })` over an `InjectedScript` of the module's.
  * Playwright Lite's and stock Playwright's copies keep their own; this one
  * never reads or writes theirs. It also exports Playwright's `isElementVisible`,
- * the visibility `locator.isVisible()` reads.
+ * the visibility `locator.isVisible()` reads, and the role, accessible name
+ * and hiddenness its capture reads of an element, with the whitespace
+ * normalized as it does.
  */
 export function pinnedAriaSnapshotModule(): string {
   let source = readPinnedSource();
@@ -109,8 +111,12 @@ export {
   asLocator,
   captureAriaSnapshot,
   generateSelector,
+  getAriaRole,
+  getElementAccessibleName,
   InjectedScript,
+  isElementHiddenForAria,
   isElementVisible,
+  normalizeWhiteSpace,
 };
 `;
 }
