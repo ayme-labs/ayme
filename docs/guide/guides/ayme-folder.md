@@ -121,3 +121,5 @@ The steps are the same from any folder, such as `src/pom/`, `playwright/pom/` or
 2. Add the `#pom/*` alias, as above, and change every import of them in app code and tests to it. Imports between the files in `ayme/` stay relative. Search for the old folder's name as well. Another alias, such as `$lib/pom/…` or `@pom/…`, and a path in a string, such as `new URL("../playwright/pom/…", import.meta.url)`, still point at it.
 3. Remove the old folder from the `include` and the `paths` of your other tsconfigs.
 4. Look at the build plugin's `tsconfigPath`, if it has one. In Angular, keep the one `ng add` wrote, which names your app's tsconfig. In Next.js, point the loader's at `ayme/tsconfig.json`. Anywhere else, remove one that names a tsconfig made for the old folder: without the option, the plugin reads `ayme/tsconfig.json`.
+
+From `.ayme/`, move the folder's other files to `ayme/` as they are, `page-objects.ts` among them, but leave `recordings/` behind and record again. A recording names its trace by the path it was saved under, so the Recorder does not find the trace of a moved one.

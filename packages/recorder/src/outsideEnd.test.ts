@@ -242,7 +242,7 @@ describe.each([
         if (ends === "saved") expect(text).toContain("id: interaction_1");
         else
           await expect(
-            readdir(join(projectDir, ".ayme", "recordings"))
+            readdir(join(projectDir, "ayme", "recordings"))
           ).rejects.toThrow(/ENOENT/);
         expect(scripted.browser.released).toBe(true);
       }

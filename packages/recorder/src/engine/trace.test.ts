@@ -15,7 +15,7 @@ beforeEach(async () => {
 });
 afterEach(() => rm(project, { recursive: true }));
 
-const recordings = () => join(project, ".ayme", "recordings");
+const recordings = () => join(project, "ayme", "recordings");
 
 /** A recording as the recorder leaves it. */
 async function recording(id: string, tracePath: string | null) {
@@ -33,7 +33,7 @@ async function recording(id: string, tracePath: string | null) {
   if (tracePath) await writeFile(join(project, tracePath), "a trace");
   return join(project, tracePath ?? "");
 }
-const traceOf = (id: string) => `.ayme/recordings/${id}/trace.zip`;
+const traceOf = (id: string) => `ayme/recordings/${id}/trace.zip`;
 
 describe("the trace command", () => {
   it("opens the trace of the latest recording for `latest`", async () => {
@@ -136,7 +136,7 @@ describe("the trace command", () => {
   it("says that there is no recording to open when there is none", async () => {
     expect(await traceInvocation(project, ["latest"])).toEqual({
       kind: "error",
-      message: expect.stringContaining(".ayme/recordings"),
+      message: expect.stringContaining("ayme/recordings"),
     });
   });
 
@@ -236,7 +236,7 @@ process.exit(${exitCode});\n`
     });
 
     expect(code).toBe(1);
-    expect(told).toBe('No recording "rec_other" found in .ayme/recordings.\n');
+    expect(told).toBe('No recording "rec_other" found in ayme/recordings.\n');
     await expect(readFile(join(project, "ran.json"), "utf8")).rejects.toThrow(
       /ENOENT/
     );

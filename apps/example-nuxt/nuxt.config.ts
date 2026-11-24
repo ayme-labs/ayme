@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import { defineNuxtConfig } from "nuxt/config";
 import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 
@@ -42,10 +41,6 @@ export default defineNuxtConfig({
       ayme({
         // ayme stays in every build: the Playwright suite runs against the production build.
         include: true,
-        // POMs live outside Nuxt's generated app TypeScript project.
-        tsconfigPath: fileURLToPath(
-          new URL("./tsconfig.pom.json", import.meta.url)
-        ),
       }),
     ],
   },

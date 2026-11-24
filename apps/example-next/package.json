@@ -3,12 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#pom/*": "./ayme/pom/*.ts"
+  },
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1 --port 4192",
     "build": "next build && pnpm run build:without-ayme && node scripts/verify-browser-output.mjs",
     "build:without-ayme": "AYME_INCLUDE=false next build",
     "start": "next start --hostname 127.0.0.1 --port 4192",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p ayme",
     "lint": "eslint . --max-warnings 0",
     "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
     "test:e2e:dev": "playwright test",

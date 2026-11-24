@@ -104,10 +104,10 @@ describe("what the terminal is told at the end", () => {
     expect(
       outcomeLine({
         kind: "saved",
-        folder: "/project/.ayme/recordings/rec_20261112T145047604Z",
+        folder: "/project/ayme/recordings/rec_20261112T145047604Z",
       })
     ).toBe(
-      "Recording package: /project/.ayme/recordings/rec_20261112T145047604Z/package.yaml\n"
+      "Recording package: /project/ayme/recordings/rec_20261112T145047604Z/package.yaml\n"
     );
   });
 });

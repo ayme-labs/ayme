@@ -3,11 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#pom/*": "./ayme/pom/*.ts"
+  },
   "scripts": {
     "dev": "vite --config app/vite.config.ts",
     "lint": "eslint . --max-warnings 0",
     "test:e2e": "playwright test --reporter=list",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p ayme"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",

@@ -25,7 +25,7 @@ import {
   watchPageObjects,
 } from "./pageObjectsBuild";
 
-const entry = "/project/.ayme/page-objects.ts";
+const entry = "/project/ayme/page-objects.ts";
 
 /** The diagnostics of a compile error, as `ayme mcp` reads them. */
 type PomDiagnostics = Parameters<typeof pageObjectModels>[1] extends new (
@@ -60,7 +60,7 @@ it("gives the first error of a build of the entry that has never succeeded", asy
         {
           text: "Unexpected end of file",
           location: {
-            file: "/project/.ayme/pom/PlainPage.ts",
+            file: "/project/ayme/pom/PlainPage.ts",
             line: 22,
             column: 0,
           },
@@ -72,7 +72,7 @@ it("gives the first error of a build of the entry that has never succeeded", asy
 
   expect(await failedPageObjects(entry, failing)).toEqual({
     entry,
-    error: "/project/.ayme/pom/PlainPage.ts:22:1: Unexpected end of file",
+    error: "/project/ayme/pom/PlainPage.ts:22:1: Unexpected end of file",
     watching: true,
   });
 });
@@ -115,7 +115,7 @@ async function aymeProject() {
   const project = await realpath(
     await mkdtemp(join(tmpdir(), "ayme-install-"))
   );
-  const entry = join(project, ".ayme", "page-objects.ts");
+  const entry = join(project, "ayme", "page-objects.ts");
   await mkdir(dirname(entry), { recursive: true });
   await writeFile(entry, "export default {};\n");
   await writeFile(join(project, "package.json"), "{}");
@@ -580,8 +580,8 @@ it("rejects with each error of a failed first build, its file resolved from the 
   const log = vi.fn();
   const outcomes = buildOutcomes({
     entry,
-    folder: "/project/.ayme",
-    outdir: "/project/.ayme/ayme-served",
+    folder: "/project/ayme",
+    outdir: "/project/ayme/ayme-served",
     log,
   });
   const { onEnd } = setUp(outcomes.plugin);
@@ -602,7 +602,7 @@ it("rejects with each error of a failed first build, its file resolved from the 
     {
       text: "Unexpected end of file",
       location: {
-        file: "/project/.ayme/pom/PlainPage.ts",
+        file: "/project/ayme/pom/PlainPage.ts",
         line: 22,
         column: 0,
       },
@@ -619,8 +619,8 @@ it("keeps the last good build after a later build fails, and says so in the log"
   const log = vi.fn();
   const outcomes = buildOutcomes({
     entry,
-    folder: "/project/.ayme",
-    outdir: "/project/.ayme/ayme-served",
+    folder: "/project/ayme",
+    outdir: "/project/ayme/ayme-served",
     log,
   });
   const { onEnd } = setUp(outcomes.plugin);
@@ -628,7 +628,7 @@ it("keeps the last good build after a later build fails, and says so in the log"
   onEnd({
     errors: [],
     outputFiles: [
-      { path: "/project/.ayme/ayme-served/entry.js", text: "good" },
+      { path: "/project/ayme/ayme-served/entry.js", text: "good" },
     ] as esbuild.OutputFile[],
   });
   onEnd({
@@ -769,7 +769,7 @@ it.each(["Page.ts", "Child.ts"])(
 it("omits generated positions when the working directory is a symlink", async () => {
   const root = await mkdtemp(join(tmpdir(), "ayme-pom-link-"));
   const folder = join(root, "actual");
-  const linked = join(root, ".ayme");
+  const linked = join(root, "ayme");
   await mkdir(folder);
   await symlink(folder, linked, "dir");
   await writeFile(join(folder, "Page.ts"), "class Page {}");
@@ -1145,7 +1145,7 @@ export const createPomCompiler = () => ({ compile: () => null, invalidate() {} }
     );
   await writeFile(join(project, "package.json"), "{}");
   for (const file of files) await writeFile(join(project, file), "");
-  const entry = join(project, ".ayme", "page-objects.ts");
+  const entry = join(project, "ayme", "page-objects.ts");
   await mkdir(dirname(entry));
   await writeFile(entry, "export default [];");
   return { project, entry };

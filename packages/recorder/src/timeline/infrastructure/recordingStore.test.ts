@@ -1,4 +1,5 @@
 import {
+  appendFile,
   mkdir,
   mkdtemp,
   readdir,
@@ -9,7 +10,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Timeline } from "../domain/timeline";
 import { findTrace, saveRecording } from "./recordingStore";
@@ -19,13 +20,38 @@ import { pageId, snapshotId } from "../../../testing/ids";
 // there when it cannot be completed, and what is found of a recording's
 // trace.
 
+// The real file system, but for one moment no test can otherwise reach:
+// between the creation of a file and the first write to it, where another
+// tool may write to the same file.
+const betweenCreationAndFirstWrite = vi.hoisted(() => ({
+  run: undefined as (() => Promise<void>) | undefined,
+}));
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const real = await importOriginal<typeof import("node:fs/promises")>();
+  const writeFile: typeof real.writeFile = async (file, data, options) => {
+    const { run } = betweenCreationAndFirstWrite;
+    const flag = typeof options === "object" ? options?.flag : undefined;
+    if (run === undefined || flag === undefined || typeof file !== "string")
+      return real.writeFile(file, data, options);
+    betweenCreationAndFirstWrite.run = undefined;
+    const handle = await real.open(file, flag);
+    try {
+      await run();
+      await handle.writeFile(data);
+    } finally {
+      await handle.close();
+    }
+  };
+  return { ...real, writeFile };
+});
+
 let project: string;
 beforeEach(async () => {
   project = await mkdtemp(join(tmpdir(), "ayme-recorder-store-"));
 });
 afterEach(() => rm(project, { recursive: true }));
 
-const recordings = () => join(project, ".ayme", "recordings");
+const recordings = () => join(project, "ayme", "recordings");
 const createdAt = new Date("2026-11-12T14:50:47.604Z");
 const recordingId = "rec_20261112T145047604Z";
 const exists = (path: string) =>
@@ -68,6 +94,24 @@ async function recorded() {
   return timeline;
 }
 
+describe("the .gitignore of ayme/", () => {
+  it("keeps the line `ayme mcp` adds between the file's creation and its first write", async () => {
+    const file = join(project, "ayme", ".gitignore");
+    betweenCreationAndFirstWrite.run = () =>
+      appendFile(file, "init-script.js\n");
+
+    await saveRecording(await recorded(), {
+      projectDir: project,
+      createdAt,
+      trace: null,
+    });
+
+    expect((await readFile(file, "utf8")).split("\n")).toEqual(
+      expect.arrayContaining(["init-script.js", "recordings/"])
+    );
+  });
+});
+
 describe("saving a recording", () => {
   it("removes the trace's own file when there is nothing to write, and minds none that is already gone", async () => {
     const file = join(project, "trace-in-the-making.zip");
@@ -90,7 +134,7 @@ describe("saving a recording", () => {
         trace: { file, positions: {} },
       })
     ).resolves.toBeNull();
-    expect(await exists(join(project, ".ayme"))).toBe(false);
+    expect(await exists(join(project, "ayme"))).toBe(false);
   });
 
   it("leaves nothing behind when it cannot be completed, and an earlier recording as it was", async () => {
@@ -132,7 +176,7 @@ describe("finding a recording's trace", () => {
   }
   const packageOf = (...head: string[]) =>
     [...head, `visits: []`, ``].join("\n");
-  const tracePath = `.ayme/recordings/rec_1/trace.zip`;
+  const tracePath = `ayme/recordings/rec_1/trace.zip`;
 
   it("finds the file the package names, for `latest` and for the recording's id", async () => {
     await recording(
@@ -182,11 +226,11 @@ describe("finding a recording's trace", () => {
   it("says that there is no recording, or which one it could not find", async () => {
     expect(await findTrace(project, "latest")).toEqual({
       kind: "missing",
-      reason: "No recording found in .ayme/recordings. Record a flow first.",
+      reason: "No recording found in ayme/recordings. Record a flow first.",
     });
     expect(await findTrace(project, "rec_9")).toEqual({
       kind: "missing",
-      reason: 'No recording "rec_9" found in .ayme/recordings.',
+      reason: 'No recording "rec_9" found in ayme/recordings.',
     });
   });
 

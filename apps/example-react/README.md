@@ -1,6 +1,6 @@
 # React integration smoke app
 
-A counter with one compiled Page Object, running beneath `AymeProvider` in React Strict Mode. It checks the integration without duplicating the Vue inspector demo.
+A counter with one compiled Page Object, running beneath `AymeProvider` in React Strict Mode. It checks the integration without duplicating the Vue inspector demo. Its Page Object Models are in `ayme/pom`, imported through `#pom/*`, the alias in the `imports` of `package.json`.
 
 From the workspace root:
 

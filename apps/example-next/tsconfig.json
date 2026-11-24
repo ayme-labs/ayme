@@ -15,7 +15,6 @@
   "include": [
     "next-env.d.ts",
     "app/**/*.tsx",
-    "playwright/**/*.ts",
     "tests/**/*.ts",
     "*.ts",
     ".next/types/**/*.ts",

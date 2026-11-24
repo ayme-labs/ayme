@@ -1326,9 +1326,15 @@ it(
       consumer
     );
     // The quickstart's app, with its Page Object Model in `ayme/pom/`, the
-    // folder's tsconfig, the `#pom/*` alias and AymeProvider.
+    // folder's tsconfig, the `#pom/*` alias and AymeProvider. The tsconfigs
+    // are split as Vite's template splits them: the options are in
+    // `tsconfig.app.json`, which the folder's tsconfig extends.
     const files: Record<string, string> = {
       "tsconfig.json": JSON.stringify({
+        files: [],
+        references: [{ path: "./tsconfig.app.json" }],
+      }),
+      "tsconfig.app.json": JSON.stringify({
         compilerOptions: {
           experimentalDecorators: true,
           target: "ES2022",
@@ -1339,7 +1345,7 @@ it(
         include: ["src"],
       }),
       "ayme/tsconfig.json": JSON.stringify({
-        extends: "../tsconfig.json",
+        extends: "../tsconfig.app.json",
         include: ["**/*.ts"],
       }),
       "vite.config.ts": `
