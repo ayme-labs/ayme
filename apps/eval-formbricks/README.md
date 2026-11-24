@@ -97,7 +97,16 @@ A runner is not a Mac, so its timings are not comparable with a Mac's: compare r
 
 ## The Codex agent
 
-`--agent codex` runs a mission through Codex instead of Claude Code, on `gpt-6-luna` unless `--model` names another. It runs the `playwright-mcp` arm alone for now: Codex has no permission rules like Claude Code's, so the arms that need a command line or a skill are refused before the run starts.
+`--agent codex` runs a mission through Codex instead of Claude Code, on `gpt-6-luna` unless `--model` names another. It runs every arm, set up as for Claude Code: the same task, the same skills in the same place, the same MCP servers. Codex has no per-tool permission rules, so the arm's are carried over in Codex's own terms:
+
+| The arm, for Claude Code                                            | The same arm on Codex                                                                                                                                 |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The read-only file tools                                            | A shell whose commands read only the agent's working root, the arm's skills and the folders the arm's setup names, write nothing and reach no network |
+| A command the arm allows, such as `playwright-cli`                  | Runs outside that sandbox, as it must to reach its browser                                                                                            |
+| A command the arm denies, such as `npx` or `playwright-cli install` | Refused, also when it starts with an allowed one                                                                                                      |
+| The Skill tool                                                      | None: the agent reads the skill's `SKILL.md` with its shell, so the setup message tells it to do that                                                 |
+
+The setup message differs in that one instruction; the task is word for word the same.
 
 The run is the same two messages in one session. Codex runs as `codex app-server`, which keeps one process and one thread for both turns, so the arm's MCP servers start in the setup turn. Its configuration folder is fresh, inside the run folder: the arm's MCP servers with every tool approved, no approval question, no project instructions, no web search, and Codex's own extras switched off, the apps connected to the signed-in account and the skills Codex ships with among them. That folder is also the agent's home folder, because Codex reads your own skills from `~/.agents/skills` wherever its configuration is; the MCP servers keep your real home folder. The one skill left is the lab app's own, in the agent's working root.
 
@@ -108,7 +117,7 @@ What differs from a Claude Code run:
 - Cost is unknown: Codex reports tokens only.
 - Codex counts cached tokens inside its input tokens; the result takes them out, so the token columns mean the same for both agents.
 - The result records the Codex version and the MCP servers that started, not the tools the agent listed. Codex still lists a few tools of its own, such as `apply_patch`, under a read-only sandbox.
-- The agent has no file tools, where the Claude Code arms keep the read-only ones.
+- The agent reads files and loads a skill with shell commands, where Claude Code has tools for both. A command counts as a `Bash` tool call, so the two agents' tool-call counts are not the same measure.
 - Codex starts an MCP server in a process group of its own. A timeout, an interrupt and the end of a run stop the app server's group and the group of every process below it, the MCP server's and the browser's among them.
 
 Compare arms within one agent, not one agent with the other.

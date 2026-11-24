@@ -4,11 +4,16 @@
  * Code, so the arm's MCP servers start once, before the measured turn.
  * `codex exec resume` would start them again inside it.
  *
- * Codex has no per-tool permission rules like Claude Code's, so an arm's
- * `tools` and `allowedTools` do not carry over. The configuration below
- * gives the agent the arm's MCP servers and switches off what Codex adds on
- * its own. Only arms that need neither a command line nor a skill run on it
- * for now; `codexArmProblem` names the others.
+ * Every arm runs on it, set up as for Claude Code. Codex has no per-tool
+ * permission rules, so an arm's are carried over in Codex's own terms:
+ * - the read-only file tools become a shell whose commands read only the
+ *   agent's working root, the arm's skills and the folders the arm names,
+ *   write nothing and reach no network;
+ * - a command the arm allows, its browser automation's command line, runs
+ *   outside that sandbox, and one the arm denies is refused;
+ * - a skill is a folder the agent reads with that shell, where Claude Code
+ *   has a Skill tool; the arm installs it in the same place for both.
+ * What Codex adds on its own is switched off.
  */
 import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, rmSync } from "node:fs";
@@ -36,13 +41,11 @@ const exitGraceMs = 5_000;
 /**
  * What Codex gives an agent beyond the arm's interface, each switched off:
  * the apps connected to the signed-in account, which arrive even in a fresh
- * configuration folder, plugins, the shell, subagents, and the rest.
+ * configuration folder, plugins, subagents, and the rest.
  */
 const featuresOff = [
   "apps",
   "plugins",
-  "shell_tool",
-  "unified_exec",
   "multi_agent_v2",
   "image_generation",
   "goals",
@@ -54,20 +57,27 @@ const featuresOff = [
   "memories",
 ];
 
+/** The permission profile of the run's configuration. */
+const permissionProfile = "eval";
+
 /** A TOML basic string; JSON's escapes are TOML's. */
 const toml = (value: string) => JSON.stringify(value);
 
 /**
  * The run's `config.toml`: the model and effort, no approval question ever
  * asked, no project instructions read from the agent's working root, no web
- * search, none of the skills Codex ships with, and the arm's MCP servers with
- * every tool of theirs approved. An MCP server keeps the user's real home
- * folder, which the agent itself does not get (see `codexEnvironment`).
+ * search, none of the skills Codex ships with, a shell that reads only the
+ * folders in `readable`, and the arm's MCP servers with every tool of theirs
+ * approved. A command and an MCP server keep the user's real home folder,
+ * which the agent itself does not get (see `codexEnvironment`): the arm's
+ * command line finds the session the harness opened for it there.
  */
 export function codexConfig(options: {
   model: string;
   mcpServers: Record<string, McpServer>;
-  /** The home folder the MCP servers run with; the user's own by default. */
+  /** The folders the agent's commands may read: its working root, the arm's skills, and what the arm's setup names. */
+  readable: string[];
+  /** The home folder commands and MCP servers run with; the user's own by default. */
   home?: string;
 }) {
   const home = options.home ?? os.homedir();
@@ -75,7 +85,7 @@ export function codexConfig(options: {
     `model = ${toml(options.model)}`,
     `model_reasoning_effort = ${toml(agentEffort)}`,
     'approval_policy = "never"',
-    'sandbox_mode = "read-only"',
+    `default_permissions = ${toml(permissionProfile)}`,
     "project_doc_max_bytes = 0",
     'web_search = "disabled"',
     "",
@@ -84,6 +94,14 @@ export function codexConfig(options: {
     "",
     "[skills.bundled]",
     "enabled = false",
+    "",
+    "[shell_environment_policy]",
+    `set = { HOME = ${toml(home)} }`,
+    "",
+    // Nothing is writable and no network is granted; `:minimal` is what a command needs to start at all.
+    `[permissions.${permissionProfile}.filesystem]`,
+    '":minimal" = "read"',
+    ...options.readable.map((folder) => `${toml(folder)} = "read"`),
     "",
     "[features]",
     ...featuresOff.map((feature) => `${feature} = false`),
@@ -100,13 +118,39 @@ export function codexConfig(options: {
   ].join("\n");
 }
 
-/** Why Codex cannot run the arm yet, or `null` when it can. */
-export function codexArmProblem(
-  arm: Pick<Arm, "id" | "skill" | "withAyme" | "tools">
-): string | null {
-  if (arm.skill === undefined && !arm.withAyme && !arm.tools.includes("Bash"))
-    return null;
-  return `The Codex agent does not run the ${arm.id} arm yet: it runs only arms that need no skill and no command line.`;
+/** The words of the command a `Bash(...)` permission rule names, or `null` for a rule of another tool. */
+function ruleCommand(rule: string): string[] | null {
+  const command = /^Bash\((.+?)(:\*)?\)$/.exec(rule)?.[1];
+  return command === undefined ? null : command.split(/\s+/);
+}
+
+/**
+ * The arm's command-line permissions as Codex's rules file: a command the
+ * arm allows runs outside the sandbox, as it must to reach its browser, and
+ * one it denies is refused, also when it starts with an allowed one. Every
+ * other command runs in the sandbox. Rules for a skill or an MCP server need
+ * none: the skill is a folder the agent may read, and the configuration
+ * approves the arm's MCP servers.
+ */
+export function codexRules(
+  arm: Pick<Arm, "allowedTools" | "disallowedTools">
+): string {
+  const rules = (permissions: string[], decision: string) => [
+    ...new Set(
+      permissions
+        .map(ruleCommand)
+        .filter((command) => command !== null)
+        .map(
+          (command) =>
+            `prefix_rule(pattern=[${command.map(toml).join(", ")}], decision=${toml(decision)})`
+        )
+    ),
+  ];
+  return [
+    ...rules(arm.allowedTools, "allow"),
+    ...rules(arm.disallowedTools ?? [], "forbidden"),
+    "",
+  ].join("\n");
 }
 
 /**

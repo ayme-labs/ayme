@@ -28,7 +28,7 @@ import {
 } from "./arms.ts";
 import { initPageScript, openStartPage } from "./browser.ts";
 import { agentEffort, claudeVersion, runClaude } from "./claude.ts";
-import { codexConfig, codexVersion, runCodex } from "./codex.ts";
+import { codexConfig, codexRules, codexVersion, runCodex } from "./codex.ts";
 import { moveFiles, readLabChanges } from "./labCheckout.ts";
 import {
   ensureDatabaseBuilt,
@@ -154,7 +154,6 @@ export async function runOnce(
     agent,
     configDir: claudeConfigDir,
     envDirectory: evalRoot,
-    arms: [options.arm],
   });
 
   log("Checking preconditions.");
@@ -223,7 +222,7 @@ export async function runOnce(
       log,
     };
     const prompt = createPrompt(mission, options.arm, labUrl);
-    const setup = setupPrompt(options.arm);
+    const setup = setupPrompt(options.arm, agent);
     await writeFile(path.join(runDir, "setup-prompt.txt"), setup);
     await writeFile(path.join(runDir, "prompt.txt"), prompt);
     await writeFile(initPagePath, initPageScript(mission.start.url));
@@ -235,11 +234,28 @@ export async function runOnce(
       ...armSetup?.mcpServers,
     };
     await writeJson(mcpConfigPath, { mcpServers });
-    if (agent === "codex")
+    if (agent === "codex") {
+      // The arm's skills are where its setup installed them, for either agent.
+      const skillsDir = path.join(claudeConfigDir, "skills");
+      await mkdir(path.join(claudeConfigDir, "rules"), { recursive: true });
+      await mkdir(skillsDir, { recursive: true });
+      await writeFile(
+        path.join(claudeConfigDir, "rules", "eval.rules"),
+        codexRules(options.arm)
+      );
       await writeFile(
         path.join(claudeConfigDir, "config.toml"),
-        codexConfig({ model: options.model, mcpServers })
+        codexConfig({
+          model: options.model,
+          mcpServers,
+          readable: [
+            agentRoot,
+            skillsDir,
+            ...(armSetup?.readableDirectories ?? []),
+          ],
+        })
       );
+    }
 
     log(
       `Starting the agent (${agent}, ${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`

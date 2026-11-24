@@ -9,9 +9,9 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { arms } from "./arms.ts";
 import {
-  codexArmProblem,
   codexConfig,
   codexEnvironment,
+  codexRules,
   runCodex,
   signedInWithApiKey,
 } from "./codex.ts";
@@ -64,6 +64,7 @@ describe("codexConfig", () => {
     mcpServers: {
       playwright: { command: "/usr/bin/node", args: ["cli.js", '--a="b"'] },
     },
+    readable: ["/lab/formbricks", "/run/codex-config/skills"],
     home: "/Users/someone",
   });
 
@@ -74,9 +75,25 @@ describe("codexConfig", () => {
     expect(config).toContain('web_search = "disabled"');
   });
 
-  it("switches off the account's apps, the shell and subagents", () => {
+  it("gives commands a sandbox that reads the listed folders alone, and the user's home folder", () => {
+    expect(config).toContain('default_permissions = "eval"');
+    expect(config).not.toContain("sandbox_mode");
+    expect(config).toContain(
+      [
+        "[permissions.eval.filesystem]",
+        '":minimal" = "read"',
+        '"/lab/formbricks" = "read"',
+        '"/run/codex-config/skills" = "read"',
+      ].join("\n")
+    );
+    expect(config).toContain(
+      '[shell_environment_policy]\nset = { HOME = "/Users/someone" }'
+    );
+  });
+
+  it("switches off the account's apps and subagents, and keeps the shell", () => {
     expect(config).toContain("[features]\napps = false");
-    expect(config).toContain("shell_tool = false");
+    expect(config).not.toContain("shell_tool");
     expect(config).toContain("[agents]\nenabled = false");
   });
 
@@ -97,16 +114,21 @@ describe("codexConfig", () => {
   });
 });
 
-describe("codexArmProblem", () => {
-  it("accepts the arm that needs MCP servers alone", () => {
-    expect(codexArmProblem(arms["playwright-mcp"])).toBeNull();
+describe("codexRules", () => {
+  it("lets the arm's command line out of the sandbox and refuses what the arm denies", () => {
+    expect(codexRules(arms["agent-browser-with-ayme"]).split("\n")).toEqual([
+      'prefix_rule(pattern=["agent-browser"], decision="allow")',
+      'prefix_rule(pattern=["npx"], decision="forbidden")',
+      'prefix_rule(pattern=["agent-browser", "install"], decision="forbidden")',
+      'prefix_rule(pattern=["agent-browser", "upgrade"], decision="forbidden")',
+      'prefix_rule(pattern=["agent-browser", "doctor", "--fix"], decision="forbidden")',
+      'prefix_rule(pattern=["agent-browser", "close", "--all"], decision="forbidden")',
+      "",
+    ]);
   });
 
-  it("names an arm that needs a command line or a skill", () => {
-    expect(codexArmProblem(arms["playwright-cli"])).toContain("playwright-cli");
-    expect(codexArmProblem(arms["playwright-mcp-with-ayme"])).toContain(
-      "playwright-mcp-with-ayme"
-    );
+  it("has no rule for an arm without a command line: every command stays in the sandbox", () => {
+    expect(codexRules(arms["playwright-mcp-with-ayme"])).toBe("");
   });
 });
 
