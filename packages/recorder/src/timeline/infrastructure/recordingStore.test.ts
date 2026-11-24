@@ -1,4 +1,5 @@
 import {
+  appendFile,
   mkdir,
   mkdtemp,
   readdir,
@@ -9,7 +10,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Timeline } from "../domain/timeline";
 import { findTrace, saveRecording } from "./recordingStore";
@@ -18,6 +19,31 @@ import { pageId, snapshotId } from "../../../testing/ids";
 // The store of Recording Packages, on a real folder: what a save leaves
 // there when it cannot be completed, and what is found of a recording's
 // trace.
+
+// The real file system, but for one moment no test can otherwise reach:
+// between the creation of a file and the first write to it, where another
+// tool may write to the same file.
+const betweenCreationAndFirstWrite = vi.hoisted(() => ({
+  run: undefined as (() => Promise<void>) | undefined,
+}));
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const real = await importOriginal<typeof import("node:fs/promises")>();
+  const writeFile: typeof real.writeFile = async (file, data, options) => {
+    const { run } = betweenCreationAndFirstWrite;
+    const flag = typeof options === "object" ? options?.flag : undefined;
+    if (run === undefined || flag === undefined || typeof file !== "string")
+      return real.writeFile(file, data, options);
+    betweenCreationAndFirstWrite.run = undefined;
+    const handle = await real.open(file, flag);
+    try {
+      await run();
+      await handle.writeFile(data);
+    } finally {
+      await handle.close();
+    }
+  };
+  return { ...real, writeFile };
+});
 
 let project: string;
 beforeEach(async () => {
@@ -67,6 +93,24 @@ async function recorded() {
   });
   return timeline;
 }
+
+describe("the .gitignore of ayme/", () => {
+  it("keeps the line `ayme mcp` adds between the file's creation and its first write", async () => {
+    const file = join(project, "ayme", ".gitignore");
+    betweenCreationAndFirstWrite.run = () =>
+      appendFile(file, "init-script.js\n");
+
+    await saveRecording(await recorded(), {
+      projectDir: project,
+      createdAt,
+      trace: null,
+    });
+
+    expect((await readFile(file, "utf8")).split("\n")).toEqual(
+      expect.arrayContaining(["init-script.js", "recordings/"])
+    );
+  });
+});
 
 describe("saving a recording", () => {
   it("removes the trace's own file when there is nothing to write, and minds none that is already gone", async () => {

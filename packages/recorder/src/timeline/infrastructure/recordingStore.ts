@@ -70,7 +70,9 @@ async function write(
     trace?.positions
   );
   if (text === null) return null;
-  await ignoreWhatIsKept(join(options.projectDir, "ayme"));
+  // A `.gitignore` that cannot be read or added to, a read-only one for
+  // one, does not stand in the way of the save.
+  await ignoreWhatIsKept(join(options.projectDir, "ayme")).catch(() => {});
   const recordings = join(options.projectDir, "ayme", "recordings");
   const folder = join(recordings, recordingId);
   const temporaryFolder = join(recordings, `.${recordingId}.tmp`);
@@ -111,15 +113,16 @@ async function write(
  * `ayme mcp` wrote, keeps its text and gets the folder's line, unless a line
  * of its own already ignores the folder or takes it back in.
  *
- * The file is created only when it is not there, and the line is added at
- * its end. It is never written anew from what was read, which would drop a
- * line `ayme mcp` adds at the same moment.
+ * The file is created only when it is not there, and every write, the
+ * first one too, adds at its end. It is never written anew from what was
+ * read, nor from its start, which would drop a line `ayme mcp` adds at the
+ * same moment.
  */
 async function ignoreWhatIsKept(ayme: string): Promise<void> {
   await mkdir(ayme, { recursive: true });
   const file = join(ayme, ".gitignore");
   const created = await writeFile(file, "recordings/\n.gitignore\n", {
-    flag: "wx",
+    flag: "ax",
   }).then(
     () => true,
     (error: NodeJS.ErrnoException) => {
@@ -129,11 +132,11 @@ async function ignoreWhatIsKept(ayme: string): Promise<void> {
   );
   if (created) return;
   const before = await readFile(file, "utf8");
-  // As git reads a line: spaces at its end do not count, one at its start
-  // is part of the name.
+  // As git reads a line: spaces at its end do not count; a tab there, or a
+  // space at its start, is part of the name.
   const decided = before
     .split(/\r?\n/)
-    .some((line) => /^!?\/?recordings\/?$/.test(line.trimEnd()));
+    .some((line) => /^!?\/?recordings\/? *$/.test(line));
   if (decided) return;
   const lineEnd = before.includes("\r\n") ? "\r\n" : "\n";
   const separator = before === "" || before.endsWith("\n") ? "" : lineEnd;

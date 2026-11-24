@@ -739,6 +739,25 @@ describe("the .gitignore of ayme/", () => {
     );
   });
 
+  it("gets the line when its only line about the folder ends with a tab, which git reads as part of a name", async () => {
+    await mkdir(join(projectDir, "ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "recordings/\t\n");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe(
+      "recordings/\t\nrecordings/\n"
+    );
+  });
+
+  it("does not stand in the way of the save when it cannot be read, as a folder of its name cannot", async () => {
+    await mkdir(ignoreFile(), { recursive: true });
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readdir(recordings())).toContain("latest.yaml");
+  });
+
   it("gets the line with the line ends the file already has", async () => {
     await mkdir(join(projectDir, "ayme"), { recursive: true });
     await writeFile(ignoreFile(), "init-script.js\r\n# mine");
