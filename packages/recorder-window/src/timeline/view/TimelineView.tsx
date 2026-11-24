@@ -124,7 +124,7 @@ function VisitSection({
   );
 }
 
-/** One entry. While paused, a quiet Discard shows on its header's right
+/** One entry. While the engine offers it, a quiet Discard shows on its header's right
  * when it is hovered or has focus, and a discarded entry, struck through,
  * offers to come back. How it shows is read from it (`entryCardOf`): the
  * view only lays it out. */

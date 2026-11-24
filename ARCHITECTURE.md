@@ -161,7 +161,7 @@ in-browser agents and the app's own code call on the running page.
   and records the input given on the page as Interactions with what each changed. It
   serves the recorder window at a local address it prints, which shows the recording live
   and holds Record, Stop, Continue, Assert visibility, Clear and Finish, discard and
-  restore of an entry while paused, and a highlight on the page of an entry's element
+  restore of an entry while it records or is paused, and a highlight on the page of an entry's element
   while its target is hovered, or of a change row's element while the row's element is
   hovered; when it launched the browser, it opens the window there as a second window,
   apart from what it records. Every recorded page also gets an in-page toolbar with

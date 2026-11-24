@@ -75,6 +75,8 @@ describe("a recorder", () => {
           "finish",
           "stop",
           "clear",
+          "discard",
+          "restore",
           "assertVisibility",
           "highlight",
           "clearHighlight",
@@ -84,7 +86,7 @@ describe("a recorder", () => {
       expect.objectContaining({
         phase: "wrappingUp",
         then: "pause",
-        commands: [],
+        commands: ["discard", "restore"],
         warnings: [],
       }),
       expect.objectContaining({ phase: "wrappingUp", then: "save" }),

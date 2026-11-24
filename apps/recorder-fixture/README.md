@@ -101,7 +101,7 @@ latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
   led to another page (`catalog.html`, to `basket.html` with one match and
   to `wishlist.html` with two): the highlight is read off the recorded page.
 
-- `review.spec.ts` discards and restores entries while paused, through the
+- `review.spec.ts` discards and restores entries while recording and while paused, through the
   engine's handle on real Chromium, and reads the package from disk.
   `windowReview.spec.ts` does it in the recorder window, through its page
   objects, on the scripted browser.
