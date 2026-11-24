@@ -21,7 +21,7 @@ A project keeps everything ayme in one folder, `ayme/`, at its root, beside `pac
 
 ## Considered and rejected
 
-- `.ayme/` as a package of its own, imported by package name. The Angular dev server still ignores it, and a subclass outside the folder silently gets no tools.
+- `.ayme/` as a package of its own, imported by package name. It breaks Angular's dev server, and a subclass outside the folder silently gets no tools.
 - `.ayme/` with a watcher in ayme's Angular plugin. Rebuilds worked, but Angular's own type check could not be reached, and the plugin would depend on Angular's internals.
 - Page Object Models in `pom/` beside `.ayme/`. It works, and splits the home in two.
 
