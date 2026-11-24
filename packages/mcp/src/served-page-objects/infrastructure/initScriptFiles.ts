@@ -10,12 +10,13 @@ import {
 
 /**
  * Creates the `.gitignore` only when it is not there, and adds the init
- * script's line at its end. The file is never written anew from what was
- * read, which would drop a line the recorder adds at the same moment.
+ * script's line at its end, with the first write too. The file is never
+ * written anew from what was read, nor from its start, which would drop a
+ * line the recorder adds at the same moment.
  */
 async function ignoreInitScript(gitignore: string): Promise<void> {
   const created = await writeFile(gitignore, ignoringInitScript(undefined), {
-    flag: "wx",
+    flag: "ax",
   }).then(
     () => true,
     (error: NodeJS.ErrnoException) => {
@@ -46,6 +47,8 @@ export async function writeInitScript({
   await mkdir(aymeFolder, { recursive: true });
   const script = join(aymeFolder, INIT_SCRIPT_FILE);
   await writeFile(script, initScript(port));
-  await ignoreInitScript(join(aymeFolder, ".gitignore"));
+  // The init script is written and usable, whatever becomes of the
+  // `.gitignore`, a read-only one for one.
+  await ignoreInitScript(join(aymeFolder, ".gitignore")).catch(() => {});
   return script;
 }
