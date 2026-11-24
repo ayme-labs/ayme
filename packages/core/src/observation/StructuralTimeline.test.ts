@@ -1117,7 +1117,7 @@ describe("StructuralTimeline", () => {
         pageId: PAGE,
         actionId: id,
       });
-      // Destination visit shares the action-start timestamp; only entry position keeps the action in v1.
+      // Destination visit shares the action-start timestamp; only entry position keeps the action in the first visit.
       startVisit(timeline, { visitId: visit(2), at: 10, yaml: loginYaml });
       timeline.recordActionCompleted({
         kind: "action-completed",
