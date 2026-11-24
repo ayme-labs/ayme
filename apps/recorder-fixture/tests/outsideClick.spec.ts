@@ -15,6 +15,9 @@ const panels: {
   readonly heard: string;
   /** The name of the button inside the panel, as the package names it. */
   readonly inside: string;
+  /** The panel closes when the focus leaves it, so it must hold the focus
+   * before the press for the case to mean anything. */
+  readonly holdsFocus?: true;
   readonly of: (page: OutsideClickPage) => {
     open: Locator;
     panel: Locator;
@@ -51,6 +54,7 @@ const panels: {
   {
     heard: "the focus leaving it",
     inside: "Inside focusout panel",
+    holdsFocus: true,
     of: (page) => ({
       open: page.openFocusoutPanelButton,
       panel: page.focusoutPanel,
@@ -59,7 +63,7 @@ const panels: {
   },
 ];
 
-for (const { heard, inside: name, of } of panels) {
+for (const { heard, inside: name, holdsFocus, of } of panels) {
   test(`a panel closed by ${heard} stays open on Assert visibility in the toolbar, and what is inside it can be asserted`, async ({
     startRecording,
   }) => {
@@ -73,6 +77,7 @@ for (const { heard, inside: name, of } of panels) {
     await person.click(open);
     await expect(panel).toBeVisible();
     await person.pause();
+    if (holdsFocus) await expect(panel).toBeFocused();
 
     await person.click(toolbar.assertVisibility);
     await expect.poll(() => toolbar.picking()).toBe(true);
