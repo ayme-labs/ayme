@@ -1,8 +1,0 @@
-{
-  "extends": "@ayme-dev/typescript-config/library.json",
-  "compilerOptions": {
-    "experimentalDecorators": true,
-    "noEmit": true
-  },
-  "include": ["playwright/**/*.ts", "tests/**/*.ts", "playwright*.config.ts"]
-}

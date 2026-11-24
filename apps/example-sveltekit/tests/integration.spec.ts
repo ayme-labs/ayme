@@ -7,7 +7,7 @@ import {
   test,
 } from "@ayme-dev/example-certification/tests";
 import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
-import { CounterPage } from "../src/lib/pom/CounterPage";
+import { CounterPage } from "../.ayme/pom/CounterPage";
 
 // The shared certification, against vite dev and the built adapter-node
 // server, with server rendering and in SPA mode.
@@ -35,5 +35,5 @@ test("starts the runtime before the counter mounts", async ({
 
 // Last: it edits a source file, and the dev server rebuilds after it.
 devRebuildTests({
-  counterModePath: new URL("../src/lib/pom/CounterMode.ts", import.meta.url),
+  counterModePath: new URL("../.ayme/pom/CounterMode.ts", import.meta.url),
 });

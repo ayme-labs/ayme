@@ -9,7 +9,7 @@
     "build": "ng build && ng build --configuration production,spa",
     "start": "node dist/example-angular/server/server.mjs",
     "start:spa": "node scripts/serve-spa.mjs",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.pom.json",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p .ayme && tsc --noEmit -p tsconfig.tests.json",
     "lint": "eslint . --max-warnings 0",
     "test": "node --test scripts/serve-spa.test.mjs",
     "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod && pnpm run test:e2e:spa:dev && pnpm run test:e2e:spa:prod",

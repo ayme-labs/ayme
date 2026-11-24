@@ -32,7 +32,7 @@ HOST=127.0.0.1 PORT=4194 pnpm --filter @ayme-dev/example-sveltekit start:spa
 ## Setup
 
 - `vite.config.ts` adds `ayme()` next to `sveltekit()`.
-- `tsconfig.json` extends SvelteKit's generated config and enables `experimentalDecorators`. The compiler follows that chain, so the POM in `src/lib/pom` needs no separate tsconfig.
+- `tsconfig.json` extends SvelteKit's generated config and enables `experimentalDecorators`. The POM is in `.ayme/pom`, and `.ayme/tsconfig.json` extends that file, so the compiler follows the same chain.
 - Publication is enabled in the root layout. The initial status is `waiting` on the server and in the browser. A browser with a WebMCP driver activates publication; without one it becomes unavailable and local Page Object calls still work.
 
 ## Verify

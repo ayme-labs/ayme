@@ -3,11 +3,11 @@ import {
   devRebuildTests,
   serverRenderTests,
 } from "@ayme-dev/example-certification/tests";
-import { CounterPage } from "../playwright/pom/CounterPage";
+import { CounterPage } from "../.ayme/pom/CounterPage";
 
 // The shared certification, against next dev and the next build/next start app.
 serverRenderTests();
 counterTests({ CounterPage });
 devRebuildTests({
-  counterModePath: new URL("../playwright/pom/CounterMode.ts", import.meta.url),
+  counterModePath: new URL("../.ayme/pom/CounterMode.ts", import.meta.url),
 });

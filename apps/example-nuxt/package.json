@@ -7,7 +7,7 @@
     "dev": "node scripts/dev.mjs --host 127.0.0.1 --port 4193",
     "build": "nuxt build",
     "start": "node .output/server/index.mjs",
-    "typecheck": "nuxt typecheck && tsc --noEmit -p tsconfig.pom.json",
+    "typecheck": "nuxt typecheck && tsc --noEmit -p .ayme && tsc --noEmit -p tsconfig.tests.json",
     "lint": "eslint . --max-warnings 0",
     "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
     "test:e2e:dev": "playwright test",

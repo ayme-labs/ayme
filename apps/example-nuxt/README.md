@@ -42,9 +42,9 @@ Custom browser Pages must also be created only in the browser.
 The Vite plugin skips the POM source transform for SSR, while retaining shared
 Playwright build settings. The example transpiles the ayme
 runtime packages in both graphs so those settings reach server-rendered code.
-It uses built package exports, not workspace source aliases. A separate
-`tsconfig.pom.json` gives the compiler explicit POM and test roots instead of
-relying on Nuxt's generated TypeScript project references.
+It uses built package exports, not workspace source aliases. The POM is in
+`.ayme/pom`, and `.ayme/tsconfig.json` extends Nuxt's generated app tsconfig, so
+the compiler reads Nuxt's own options. `tsconfig.tests.json` covers the tests.
 
 Publication is enabled. The initial status is `waiting` on both the server and
 browser. A browser with a WebMCP driver activates publication. Without a driver,

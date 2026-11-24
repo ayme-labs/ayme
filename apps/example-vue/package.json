@@ -13,7 +13,7 @@
     "test:e2e:dev": "AYME_E2E_RENDER=spa playwright test && playwright test --config playwright.benchScripted.config.ts",
     "test:e2e:prod": "AYME_E2E_SERVER=production AYME_E2E_RENDER=spa playwright test",
     "test:goals": "playwright test --config playwright.goals.config.ts --reporter=list",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p .ayme"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",

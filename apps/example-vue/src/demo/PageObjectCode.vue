@@ -2,11 +2,11 @@
 import { ref, watchEffect } from "vue";
 import { createHighlighterCore } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
-import listPage from "../../playwright/pom/ListPage.ts?raw";
-import listItem from "../../playwright/pom/ListItem.ts?raw";
-import archiveDialog from "../../playwright/pom/ArchiveDialog.ts?raw";
-import appComponent from "../../playwright/pom/AppComponent.ts?raw";
-import appPage from "../../playwright/pom/AppPage.ts?raw";
+import listPage from "../../.ayme/pom/ListPage.ts?raw";
+import listItem from "../../.ayme/pom/ListItem.ts?raw";
+import archiveDialog from "../../.ayme/pom/ArchiveDialog.ts?raw";
+import appComponent from "../../.ayme/pom/AppComponent.ts?raw";
+import appPage from "../../.ayme/pom/AppPage.ts?raw";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // The Page Object files are shown as they are in the repository; the
@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // block at it.
 const wiring = `<script setup lang="ts">
 import { useAyme } from "@ayme-dev/vue";
-import { ListPage } from "../playwright/pom/ListPage";
+import { ListPage } from "../.ayme/pom/ListPage";
 
 useAyme({
   pageObjects: [ListPage],

@@ -8,7 +8,7 @@ import {
   publishedToolNames,
   recordPublishedTools,
 } from "@ayme-dev/webmcp/testing";
-import { CounterPage } from "../playwright/pom/CounterPage";
+import { CounterPage } from "../.ayme/pom/CounterPage";
 
 // The shared certification, against the dev server and the production build.
 // The app is a single-page app with no router, so it has no client navigation
@@ -36,5 +36,5 @@ test("publishes each tool once under StrictMode", async ({ context, page }) => {
 
 // Last: it edits a source file, and the dev server rebuilds after it.
 devRebuildTests({
-  counterModePath: new URL("../playwright/pom/CounterMode.ts", import.meta.url),
+  counterModePath: new URL("../.ayme/pom/CounterMode.ts", import.meta.url),
 });

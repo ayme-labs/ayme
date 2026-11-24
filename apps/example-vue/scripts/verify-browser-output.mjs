@@ -16,9 +16,7 @@ const shownSources = [
   "ArchiveDialog.ts",
   "AppComponent.ts",
   "AppPage.ts",
-].map((file) =>
-  fs.readFileSync(path.join(appRoot, "playwright/pom", file), "utf8")
-);
+].map((file) => fs.readFileSync(path.join(appRoot, ".ayme/pom", file), "utf8"));
 
 // What a Build without ayme leaves out: the runtime's own text, the compiled
 // Page Object Model manifest, the models' action descriptions and locator

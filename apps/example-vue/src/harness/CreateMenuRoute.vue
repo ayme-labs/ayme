@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { decisionEndpoint } from "@ayme-dev/ayme";
 import { useAyme } from "@ayme-dev/vue";
-import { TopBar } from "../../playwright/pom/TopBar";
+import { TopBar } from "../../.ayme/pom/TopBar";
 import { decisionEndpointPath } from "../../vite/decisionEndpointPath";
 
 /**
