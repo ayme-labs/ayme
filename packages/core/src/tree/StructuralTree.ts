@@ -164,6 +164,7 @@ export class StructuralTree {
     return this._reconciliation.ambiguousBeforeRefs.has(ref);
   }
 
+  /** Reports whether a node with the given ref exists in the tree. */
   hasNode(ref: AriaRef): boolean {
     return this._nav().byRef.has(ref);
   }

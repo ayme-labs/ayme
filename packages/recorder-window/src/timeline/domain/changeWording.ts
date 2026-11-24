@@ -22,7 +22,6 @@ const STATES = new Set([
 const quoted = (value: string | undefined) =>
   value === undefined || value === "" ? "empty" : `“${value}”`;
 
-/** "<what> changed from … to …", with the values read by `read`. */
 const fromTo = (
   what: string,
   { from, to }: PropertyChange,

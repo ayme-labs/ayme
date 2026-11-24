@@ -26,6 +26,8 @@ export type Chip = {
   readonly highlight: RecorderCommand | null;
 };
 
+/** A row of what an entry changed: an element's chip, and what happened
+ * to it. */
 export type ChangeLine = { readonly chip: Chip; readonly effect: string };
 
 /** A row as the window lists it: one element's, or one that folds elements

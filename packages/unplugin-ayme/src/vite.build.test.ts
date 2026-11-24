@@ -61,6 +61,8 @@ it("keeps the compiler's Programs for the length of a build", async () => {
     });
   compilerCalls.splice(0);
 
+  // Both modules compile with the Programs kept, and the build's end drops
+  // them.
   const oneBuild = () => {
     const calls = compilerCalls.splice(0);
     expect(calls.at(-1)).toBe("invalidate");
