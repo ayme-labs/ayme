@@ -11,20 +11,19 @@ export type WhatChanged = { readonly element: string; readonly effect: string };
  * folds elements of one role, as "4 listitems", expands from its chip to
  * the rows it folds, and highlights nothing of its own. */
 export class ChangeRow extends RecorderPart {
+  // Its own, not those of the rows it folds.
   @ayme.child
-  readonly element: Locator;
+  get element(): Locator {
+    return this.root.locator(":scope > [data-testid=change-element]");
+  }
   @ayme.child
-  readonly effect: Locator;
+  get effect(): Locator {
+    return this.root.locator(":scope > [data-testid=change-effect]");
+  }
   /** The rows a row of elements of one role folds, while it is expanded. */
   @ayme.child
-  readonly foldedList: Locator;
-
-  constructor(root: Locator) {
-    super(root);
-    // Its own, not those of the rows it folds.
-    this.element = root.locator(":scope > [data-testid=change-element]");
-    this.effect = root.locator(":scope > [data-testid=change-effect]");
-    this.foldedList = root.getByRole("list");
+  get foldedList(): Locator {
+    return this.root.getByRole("list");
   }
 
   /** The row as a person reads it. */
@@ -78,34 +77,29 @@ export type EntryLook = {
 /** One entry of a Visit: an Interaction, or a change no Interaction made. */
 export class Entry extends RecorderPart {
   @ayme.child
-  readonly title: Locator;
+  get title(): Locator {
+    return this.root.getByRole("heading");
+  }
   /** The Interaction's target; none on a change no Interaction made.
    * Hovering it highlights its element on the page. */
   @ayme.child
-  readonly target: Locator;
+  get target(): Locator {
+    return this.root.getByTestId("entry-target");
+  }
   @ayme.child
-  readonly whatChangedList: Locator;
+  get whatChangedList(): Locator {
+    return this.root.getByRole("list", { name: "What changed" });
+  }
   /** Leaves the entry out of the recording. It shows while the entry is
    * hovered or has focus, while the recording is paused. */
   @ayme.child
-  readonly discardButton: Locator;
+  get discardButton(): Locator {
+    return this.root.getByRole("button", { name: "Discard", exact: true });
+  }
   /** Puts a discarded entry back, while the recording is paused. */
   @ayme.child
-  readonly restoreButton: Locator;
-
-  constructor(root: Locator) {
-    super(root);
-    this.title = root.getByRole("heading");
-    this.target = root.getByTestId("entry-target");
-    this.whatChangedList = root.getByRole("list", { name: "What changed" });
-    this.discardButton = root.getByRole("button", {
-      name: "Discard",
-      exact: true,
-    });
-    this.restoreButton = root.getByRole("button", {
-      name: "Restore",
-      exact: true,
-    });
+  get restoreButton(): Locator {
+    return this.root.getByRole("button", { name: "Restore", exact: true });
   }
 
   /** The rows of what it changed, in the order shown: a row that folds
@@ -163,25 +157,23 @@ export class Entry extends RecorderPart {
 /** One Visit: a page of the flow, with its entries. */
 export class Visit extends RecorderPart {
   @ayme.child
-  readonly heading: Locator;
+  get heading(): Locator {
+    return this.root.getByRole("heading", { level: 2 });
+  }
   /** How the Visit started, such as "Navigated to http://shop.test/". */
   @ayme.child
-  readonly start: Locator;
+  get start(): Locator {
+    return this.root.getByTestId("visit-start");
+  }
   @ayme.collection
-  readonly entryCards: Locator;
+  get entryCards(): Locator {
+    return this.root.getByRole("article");
+  }
   /** The entries of Interactions, the steps, without the changes no
    * Interaction made. */
   @ayme.collection
-  readonly stepCards: Locator;
-
-  constructor(root: Locator) {
-    super(root);
-    this.heading = root.getByRole("heading", { level: 2 });
-    this.start = root.getByTestId("visit-start");
-    this.entryCards = root.getByRole("article");
-    this.stepCards = this.entryCards.and(
-      root.locator('[data-kind="interaction"]')
-    );
+  get stepCards(): Locator {
+    return this.entryCards.and(this.root.locator('[data-kind="interaction"]'));
   }
 
   async entries(): Promise<Entry[]> {
@@ -197,19 +189,18 @@ export class Visit extends RecorderPart {
 /** The recording as the window lists it: one section per Visit. */
 export class Timeline extends RecorderPart {
   @ayme.collection
-  readonly visitSections: Locator;
+  get visitSections(): Locator {
+    return this.root.getByRole("region");
+  }
   /** What the window says while there is no Visit. */
   @ayme.child
-  readonly empty: Locator;
+  get empty(): Locator {
+    return this.root.getByTestId("timeline-empty");
+  }
   /** The lines that join an entry's icon to the next one's. */
   @ayme.collection
-  readonly lines: Locator;
-
-  constructor(root: Locator) {
-    super(root);
-    this.visitSections = root.getByRole("region");
-    this.empty = root.getByTestId("timeline-empty");
-    this.lines = root.getByTestId("timeline-line");
+  get lines(): Locator {
+    return this.root.getByTestId("timeline-line");
   }
 
   async visits(): Promise<Visit[]> {
