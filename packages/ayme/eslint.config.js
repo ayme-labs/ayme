@@ -49,7 +49,7 @@ const allowedSlices = {
     "in-page",
     "shared",
   ],
-  // The Page Object compiler, for Node. Only the compiler entry uses it.
+  // The Page Object compiler, for Node.
   compiler: ["page-objects", "shared"],
 };
 const slices = Object.keys(allowedSlices);
@@ -274,7 +274,8 @@ const allowlistedEntries = liteInternalExceptions
   .filter((file) => /^src\/[^/]+\.ts$/.test(file));
 
 /** Relative imports of the in-page module, which domain and application may not use. */
-/** Packages the in-page module may use: core, and Playwright's types on its host side. */
+/** Packages the in-page module may use: core, and @playwright/test. Its host
+ * side takes only Playwright's types, which the pattern does not check. */
 const inPageDependencies = {
   regex:
     "^(?![./]|@ayme-dev/core(/.*)?$|@playwright/test$|virtual:ayme-(in-page|aria-snapshot)$)",
