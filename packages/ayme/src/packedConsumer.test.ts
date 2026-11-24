@@ -1295,7 +1295,8 @@ it(
   { timeout: 180_000 },
   async () => {
     const consumer = path.join(tmp, "vite-dev-consumer");
-    fs.mkdirSync(path.join(consumer, "src", "pom"), { recursive: true });
+    fs.mkdirSync(path.join(consumer, "src"), { recursive: true });
+    fs.mkdirSync(path.join(consumer, "ayme", "pom"), { recursive: true });
     const { tarballs, workspaceYaml } = tarballDependencies([
       "@ayme-dev/ayme",
       "@ayme-dev/react",
@@ -1309,6 +1310,7 @@ it(
         name: "ayme-vite-dev-consumer",
         private: true,
         type: "module",
+        imports: { "#pom/*": "./ayme/pom/*.ts" },
         dependencies: { ...tarballs, react: "19.2.8", "react-dom": "19.2.8" },
         devDependencies: {
           "@playwright/test": lastPlaywright,
@@ -1323,7 +1325,8 @@ it(
       ["install", "--ignore-scripts", "--no-lockfile"],
       consumer
     );
-    // The quickstart's app, with its Page Object Model and AymeProvider.
+    // The quickstart's app, with its Page Object Model in `ayme/pom/`, the
+    // folder's tsconfig, the `#pom/*` alias and AymeProvider.
     const files: Record<string, string> = {
       "tsconfig.json": JSON.stringify({
         compilerOptions: {
@@ -1335,6 +1338,10 @@ it(
         },
         include: ["src"],
       }),
+      "ayme/tsconfig.json": JSON.stringify({
+        extends: "../tsconfig.json",
+        include: ["**/*.ts"],
+      }),
       "vite.config.ts": `
 import react from '@vitejs/plugin-react';
 import { ayme } from '@ayme-dev/unplugin-ayme/vite';
@@ -1344,7 +1351,7 @@ export default defineConfig(({ command }) => ({ plugins: [react(), ayme({ includ
       "index.html": `<!doctype html>
 <html><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>
 `,
-      "src/pom/ProjectsPage.ts": `
+      "ayme/pom/ProjectsPage.ts": `
 import { ayme } from '@ayme-dev/ayme';
 import type { Page } from '@playwright/test';
 @ayme
@@ -1360,7 +1367,7 @@ export class ProjectsPage {
       "src/main.tsx": `
 import { createRoot } from 'react-dom/client';
 import { AymeProvider, usePageObject } from '@ayme-dev/react';
-import { ProjectsPage } from './pom/ProjectsPage';
+import { ProjectsPage } from '#pom/ProjectsPage';
 function Projects() {
   const pom = usePageObject(ProjectsPage);
   return <button onClick={() => void pom.createProject('x')}>New project</button>;
@@ -1442,7 +1449,7 @@ it(
   async () => {
     const consumer = path.join(tmp, "next-consumer");
     fs.mkdirSync(path.join(consumer, "app"), { recursive: true });
-    fs.mkdirSync(path.join(consumer, "pom"));
+    fs.mkdirSync(path.join(consumer, "ayme", "pom"), { recursive: true });
     const { tarballs, workspaceYaml } = tarballDependencies([
       "@ayme-dev/ayme",
       "@ayme-dev/react",
@@ -1454,6 +1461,7 @@ it(
         name: "ayme-next-consumer",
         private: true,
         type: "module",
+        imports: { "#pom/*": "./ayme/pom/*.ts" },
         dependencies: {
           ...tarballs,
           next: "16.3.4",
@@ -1474,7 +1482,8 @@ it(
       ["install", "--ignore-scripts", "--no-lockfile"],
       consumer
     );
-    // create-next-app's tsconfig with decorators, and the build plugin
+    // create-next-app's tsconfig with decorators, the `ayme` folder's
+    // tsconfig as its guide page shows for Next.js, and the build plugin
     // reference's Next.js config as written there.
     const files: Record<string, string> = {
       "tsconfig.json": JSON.stringify({
@@ -1497,6 +1506,11 @@ it(
         include: ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
         exclude: ["node_modules"],
       }),
+      "ayme/tsconfig.json": JSON.stringify({
+        extends: "../tsconfig.json",
+        compilerOptions: { incremental: false },
+        include: ["**/*.ts"],
+      }),
       "next.config.mjs": `
 import { fileURLToPath } from "node:url";
 
@@ -1513,7 +1527,7 @@ export default {
             options: {
               include: true,
               tsconfigPath: fileURLToPath(
-                new URL("./tsconfig.json", import.meta.url)
+                new URL("./ayme/tsconfig.json", import.meta.url)
               ),
             },
           },
@@ -1524,7 +1538,7 @@ export default {
   },
 };
 `,
-      "pom/CounterPage.ts": `
+      "ayme/pom/CounterPage.ts": `
 import { ayme } from '@ayme-dev/ayme';
 import type { Page } from '@playwright/test';
 @ayme
@@ -1556,7 +1570,7 @@ export default function Runtime({ children }: { children: ReactNode }) {
 'use client';
 import { useState } from 'react';
 import { usePageObject } from '@ayme-dev/react';
-import { CounterPage } from '../pom/CounterPage';
+import { CounterPage } from '#pom/CounterPage';
 export default function Counter() {
   const [count, setCount] = useState(0);
   const pom = usePageObject(CounterPage);

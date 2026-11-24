@@ -113,12 +113,12 @@ Put the owner at the application root, not in a route component or a layout that
 | `useAyme(options)` without an owner above | Starts and owns a session with those options.                         |
 | `useAyme(options)` beneath an owner       | Throws; configure the options on the owner.                           |
 
-In the browser, the standalone owner starts at once in its Vue scope and provides its session to descendant components. The owner's own setup can use Page Objects too:
+In the browser, the standalone owner starts at once in its Vue scope and provides its session to descendant components. The owner's own setup can use Page Objects too. The `#pom/*` import is the alias that [The `ayme` folder](../guides/ayme-folder.md#set-the-folder-up-for-page-objects) sets up:
 
 ```ts
 // src/App.vue, <script setup>
 import { useAyme, usePageObject } from "@ayme-dev/vue";
-import { ProjectsPage } from "./pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 useAyme({
   inspector: import.meta.env.DEV,
@@ -135,8 +135,8 @@ Registering a page doesn't tie it to a route. Give each page a `present` that ch
 
 ```ts
 import { useAyme } from "@ayme-dev/vue";
-import { ProjectsPage } from "./pom/ProjectsPage";
-import { SettingsPage } from "./pom/SettingsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
+import { SettingsPage } from "#pom/SettingsPage";
 
 useAyme({
   pageObjects: [ProjectsPage, SettingsPage],
@@ -149,7 +149,7 @@ A component that calls an action gets the session's instance from `usePageObject
 
 ```ts
 import { usePageObject } from "@ayme-dev/vue";
-import { ProjectsPage } from "./pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 const pom = usePageObject(ProjectsPage);
 
