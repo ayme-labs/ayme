@@ -3,7 +3,7 @@
 # Constants, in order:
 #   N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick
 #   LateRevisions LeaveOutB2 LateTypingReport, then after what to check, when
-#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges
+#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges StartFails
 # LeaveOutB2 leaves a known limit out, to check every other path of the same
 # rule; it is not a fix. LateRevisions, LateTypingReport, SlowFlush,
 # SlowPickEnd and SlowHeldMessage allow five races. Buttons is what the person
@@ -17,9 +17,11 @@ cd "$(dirname "$0")" || exit 2
 # in configs of their own (Limit-*, Race-*), one shortest path each, so that a
 # break does not cut the other rules' runs short (the statechart tool bounds
 # every run after the first break).
-HOLD="R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter R03a_StoppedClicksAreUntouched R03b_StoppedAddsNothing R03c_TracingRunsThroughPause R04_FinishSavesEverything R05_ClearLeavesNothing R06_ReviewUntilFinishOrClear R07_AssertionCarriesNoChanges R09_NeverHalfWritten R10_SavesOnce X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X6_TypingWrittenWhole X7_EntryHasItsOwnReport"
+HOLD="R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter R03a_StoppedClicksAreUntouched R03b_StoppedAddsNothing R03c_TracingRunsThroughPause R04_FinishSavesEverything R05_ClearLeavesNothing R06_ReviewUntilFinishOrClear R07_AssertionCarriesNoChanges R09_NeverHalfWritten R10_SavesOnce X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X6_TypingWrittenWhole X7_EntryHasItsOwnReport S1_StorageSavedOnceTheTraceIsOver S3_EveryEndSavesTheStorage S4_NoStorageWithoutTheFlag"
 FILLS="F1_ShowsOnceItHasItsPlace F2_StaysInPlace F3_NextActionMakesItFinal F4_StopAndFinishKeepLastText F5_ClearRemovesForGood F6_WindowIsWhatIsSaved"
-F3P="PROPERTIES F3_FinalKeepsItsChanges R06_DecisionsChangeOnlyByAPress"
+# The rules over a step: F3's, that decisions change only by a press,
+# and that saving the storage state adds nothing to the recording.
+PROPS="PROPERTIES F3_FinalKeepsItsChanges R06_DecisionsChangeOnlyByAPress S2_StorageSaveAddsNothing"
 ALLB='{"left", "right", "middle"}'
 LR='{"left", "right"}'
 LEFT='{"left"}'
@@ -28,10 +30,17 @@ MIX='{"left", "right", "middle", "leftOnCheckbox", "middleOnCheckbox"}'
 RULES="$HOLD X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 PROBES="P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten"
 WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow"
-mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges]
+# The configs with --save-storage given (SaveStorage), which check the
+# storage save at the end; every other one ends as with no such step. And
+# those in which the package cannot be written (WriteFails).
+SAVES=" Rules-Ends Rules-StartRecording Surfaces TimeLimit-Holds Races Probes-Storage "
+WRITEFAILS=" Rules-Ends Probes-Storage "
+mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges StartFails]
   name=$1; head=$2; shift 2
   laterev=${12}; lob2=${13}; latetype=${14}; what=${15}
-  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}; pagenavigates=${23:-FALSE}; navafterreports=${24:-TRUE}; typeafterstop=${25:-TRUE}; readlate=${26:-FALSE}; samefield=${27:-FALSE}; addrchanges=${28:-FALSE}
+  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}; pagenavigates=${23:-FALSE}; navafterreports=${24:-TRUE}; typeafterstop=${25:-TRUE}; readlate=${26:-FALSE}; samefield=${27:-FALSE}; addrchanges=${28:-FALSE}; startfails=${29:-FALSE}
+  case $SAVES in *" $name "*) savestorage=TRUE ;; *) savestorage=FALSE ;; esac
+  case $WRITEFAILS in *" $name "*) writefails=TRUE ;; *) writefails=FALSE ;; esac
   {
     printf '%s\n' "$head"
     cat <<CFG
@@ -62,6 +71,9 @@ CONSTANTS
   ReadHeardLate = $readlate
   SameFieldElsewhere = $samefield
   AddressChanges = $addrchanges
+  StartFails = $startfails
+  SaveStorage = $savestorage
+  WriteFails = $writefails
   Buttons = $buttons
 CHECK_DEADLOCK FALSE
 CFG
@@ -73,19 +85,20 @@ NEXT Next"
 T=TRUE; F=FALSE
 #  name             head  N Doc Gen Rnd Keys Stops Closes Surf Time Twice Quick LateRev B2 LateType
 mk Rules            "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS X5_StopWindowIsRecorded D1_TypingWaitsForSomethingNewer
-$F3P"
+$PROPS"
 mk Rules-Pages      "$IN" 2 2   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS X5_StopWindowIsRecorded
-$F3P"
+$PROPS"
 mk Rules-Rounds     "$IN" 2 1   1   2   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS X5_StopWindowIsRecorded
-$F3P"
+$PROPS"
+# Rules-Ends also has a Record that cannot start (StartFails).
 mk Rules-Ends       "$IN" 2 1   1   1   1    2     $T     $F   $F   $T    $T    $F      $F $F "INVARIANTS $HOLD $FILLS F7_MeasuredFromFirstKey
-$F3P"
+$PROPS" $F $F "$LR" $F $F $F $F $F $T $T $F $F $F $T
 mk Surfaces         "$IN" 1 1   1   2   1    0     $F     $T   $F   $F    $T    $F      $F $F "INVARIANTS R08_SurfacesAgree $HOLD $FILLS X5_StopWindowIsRecorded" $F $F "$LEFT"
 mk TimeLimit        "$IN" 2 1   1   1   1    0     $F     $F   $T   $F    $T    $F      $F $F "INVARIANTS $RULES $FILLS
-$F3P"
+$PROPS"
 # The rules TimeLimit cannot check past the tool's bound after its first break.
-mk TimeLimit-Holds  "$IN" 2 1   1   1   1    0     $F     $F   $T   $F    $T    $F      $F $F "INVARIANTS R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter R03b_StoppedAddsNothing R03c_TracingRunsThroughPause R05_ClearLeavesNothing R06_ReviewUntilFinishOrClear R07_AssertionCarriesNoChanges R09_NeverHalfWritten R10_SavesOnce X6_TypingWrittenWhole X7_EntryHasItsOwnReport X4_WrapUpNeverGetsStuck $FILLS
-$F3P"
+mk TimeLimit-Holds  "$IN" 2 1   1   1   1    0     $F     $F   $T   $F    $T    $F      $F $F "INVARIANTS R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter R03b_StoppedAddsNothing R03c_TracingRunsThroughPause R05_ClearLeavesNothing R06_ReviewUntilFinishOrClear R07_AssertionCarriesNoChanges R09_NeverHalfWritten R10_SavesOnce X6_TypingWrittenWhole X7_EntryHasItsOwnReport X4_WrapUpNeverGetsStuck S1_StorageSavedOnceTheTraceIsOver S3_EveryEndSavesTheStorage $FILLS
+$PROPS"
 # Rules 7 and 12: rule 7 with its exception for the known limit B2; without
 # it; and with B2 left out.
 mk Rule7            "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
@@ -93,14 +106,14 @@ mk Rule7-Strict     "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    
 # Rule 3 where the next click's press moved the focus: its focus rows go
 # from the fill to the click once it is written (TL pressedAfter).
 mk Fold-AfterStep   "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS F3_NextActionMakesItFinal F6_WindowIsWhatIsSaved
-$F3P"
+$PROPS"
 # codegen --start-recording: the page opens blank, Record is the first step,
 # and the page goes to its address once the pages hold inputs back. The
 # person acts on the page once it is at its address, and presses Continue
 # once it is there; acting on the blank page, and Continue while it is still
 # blank, have configs of their own.
 mk Rules-StartRecording "$IN" 2 2 1  2   1    1     $T     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS
-$F3P" $F $F "$LR" $F $T
+$PROPS" $F $F "$LR" $F $T
 mk Rule7-StartRecording "$IN" 2 2 1  1   1    1     $T     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey" $F $F "$LR" $F $T
 mk Path-StartRecording-Stop "$IN" 2 2 1 1 1   1     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded N1_AfterStopInTimeOrder X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput F7_MeasuredFromFirstKey" $F $F "$LR" $F $T
 mk Path-StartRecording-BlankPage "$IN" 2 2 1 1 1 1   $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X3v_NothingDroppedOffTheBlankPage R04v_FinishSavesAllOffTheBlankPage F1v_ShowsOffTheBlankPage" $F $F "$LR" $F $T $T
@@ -122,11 +135,11 @@ mk Input-ReadAcrossNavigation "$IN" 2 2 1 1 0 0  $F     $F   $F   $F    $T    $F
 # Typing after a navigation that Playwright reports as a revision of the last
 # fill: a fill of its own in the new document (8d1c4656).
 mk Path-TypingAfterNavigation "$IN" 2 2 1 1 1 1  $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS X10_FillStartsInItsDocument F4n_KeyElsewhereIsNotTheFillsText X3_NothingYouDidIsDropped $FILLS
-$F3P" $F $F "$LR" $F $F $F $F $T $T $T $F $T
+$PROPS" $F $F "$LR" $F $F $F $F $T $T $T $F $T
 # Typing while the page changes its address within its document: the fill
 # goes on (b2af1120).
 mk Path-AddressChangeWhileTyping "$IN" 1 1 1 1 1 0 $F    $F   $F   $F    $T    $F      $F $F "INVARIANTS $FILLS F7_MeasuredFromFirstKey
-$F3P" $F $F "$LR" $F $F $F $F $F $T $T $F $F $T
+$PROPS" $F $F "$LR" $F $F $F $F $F $T $T $F $F $T
 # The same, with a navigation that commits before the report of a key typed
 # in the document it leaves.
 mk Race-NavigationBeforeTypingReport "$IN" 2 2 1 1 0 0 $F  $F   $F   $F    $T    $F      $T $F "INVARIANT X10_FillStartsInItsDocument" $F $F "$LR" $F $F $F $F $T $F
@@ -148,7 +161,7 @@ mk Path-TypingAfterContinue "$IN" 1 1 1 2  1    0     $F     $F   $F   $F    $T 
 # Races: actions within a few milliseconds.
 mk Races            "$IN" 1 1   1   2   0    1     $T     $F   $F   $F    $F    $F      $F $F "INVARIANTS $RULES"
 mk Race-LateRevision "$IN" 2 1  1   1   1    0     $F     $F   $F   $F    $T    $T      $F $F "INVARIANTS $HOLD $FILLS
-$F3P"
+$PROPS"
 mk Race-LateRevision-Stop "$IN" 2 1 1 1   1    0     $F     $F   $F   $F    $T    $T      $F $F "INVARIANT F7_MeasuredFromFirstKey"
 mk Race-LateTypingReport "$IN" 2 1 1 1   0    1     $F     $F   $F   $F    $T    $F      $T $T "INVARIANTS N1_AfterStopInTimeOrder X5_StopWindowIsRecorded"
 mk Race-LastText    "$IN" 1 1   1   1   1    1     $T     $F   $F   $F    $F    $F      $F $F "INVARIANT F4_StopAndFinishKeepLastText"
@@ -158,7 +171,7 @@ mk Race-HeldMessageAfterStop "$IN" 2 1 1 1 0  0     $F     $F   $F   $F    $T   
 # Middle clicks: held and matched by their button, as right-clicks.
 mk Clicks-Middle    "$IN" 2 1   1   1   0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X7_EntryHasItsOwnReport X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X5_StopWindowIsRecorded R04_FinishSavesEverything" $F $F "$ALLB"
 mk Clicks-Middle-Fill "$IN" 2 1 1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS F7_MeasuredFromFirstKey $FILLS
-$F3P" $F $F "$ALLB"
+$PROPS" $F $F "$ALLB"
 # A middle click on a checkbox: Playwright reports a check, with no button.
 mk Clicks-MiddleOnCheckbox "$IN" 2 1 1 1  0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X3_NothingYouDidIsDropped X4_WrapUpNeverGetsStuck X7_EntryHasItsOwnReport X5_StopWindowIsRecorded R04_FinishSavesEverything" $F $F "$BOX"
 # Left, right and middle clicks, on checkboxes and not, mixed; B2 left out.
@@ -174,6 +187,9 @@ mk Probes-Window    "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    
 mk Probes-Window-Navigation "$IN" 2 2 1 1 1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT P19_NeverNavigatesUnderALiveFill"
 mk Probes-Continue  "$IN" 1 1   1   2   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT P22_NeverStartsAFillFromARevision"
 mk Probes-LateRevision "$IN" 2 1 1   1   1    0     $F     $F   $F   $F    $T    $T      $F $F "INVARIANT P23_NeverSetsAFinalFillsText"
+# --save-storage: the save is reached with nothing recorded, with a package,
+# and fails.
+mk Probes-Storage   "$IN" 1 1   1   1   0    1     $T     $F   $F   $F    $T    $F      $F $F "INVARIANTS P26_NeverSavesStorageWithNothingRecorded P27_NeverSavesStorageWithAPackage P28_NeverWarnsOfTheStorage P29_NeverSavesStorageAfterTheTraceFailedToStart P30_NeverSavesStorageAfterAFailedStartsTraceIsGone P31_NeverSavesStorageAfterAFailedWrite" $F $F "$LR" $F $F $F $F $F $T $T $F $F $F $T
 # The three charts.
 mk Chart-Lifecycle  "INIT Init
 NEXT LifeNext" 0 1 1 2 0 1 $T $F $F $F $T $F $F $F "INVARIANTS $HOLD" $F $F "$LEFT"

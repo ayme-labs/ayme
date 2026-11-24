@@ -7,6 +7,7 @@ const PHASE = {
   saving: "Saving",
   saved: "Ended: package saved",
   empty: "Ended: 'empty'",
+  failed: "Ended: 'failed'",
 };
 const GOAL = {
   pause: "to pause",
@@ -105,6 +106,8 @@ export const state = (v) => {
     p += ` (${BOOT[v.boot]}; shows ${v.resumed ? "Paused" : "Not recording"})`;
   if (v.phase === "recording" && v.picking !== "off")
     p += v.picking === "on" ? ", picking" : ", Assert visibility pressed";
+  if (v.storage === "asked") p += ", the storage state being saved";
+  if (v.storage === "failed") p += ", the storage state not saved (a warning)";
   parts.push(p);
   if (v.page === "closed") parts.push("page closed");
   else {
@@ -219,7 +222,15 @@ export const step = (action, from, to) => {
         off: "the trace is thrown away",
       }[to.tracing];
     case "SavedArrives":
-      return "the recorder ends";
+      return "the package is written, or there was nothing to write";
+    case "PackageWriteFails":
+      return "the package cannot be written: the recorder fails";
+    case "StartRequestFails":
+      return "the browser cannot do what Record waits for: Record is answered 'ignored', and the recorder fails";
+    case "StorageLands":
+      return to.storage === "saved"
+        ? "the storage state is saved: the recorder ends"
+        : "saving the storage state fails: a warning, and the recorder ends";
     case "TimeLimitPasses":
       return "five seconds pass: the wrap-up gives up waiting";
     case "NavCommits":

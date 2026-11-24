@@ -24,8 +24,8 @@ beforeEach(async () => {
 });
 afterEach(() => rm(projectDir, { recursive: true }));
 
-const start = () =>
-  startScriptedRecorder({ projectDir, url: "http://shop.test/" });
+const start = (options: { saveStorage?: boolean } = {}) =>
+  startScriptedRecorder({ projectDir, url: "http://shop.test/", ...options });
 
 const idle = [`- generic [ref=e1]:`, `  - button "Save" [ref=e2]`].join("\n");
 const saved = [
@@ -534,6 +534,101 @@ describe("a started recording with no Interactions", () => {
     await browser.advanceTime(5_000);
 
     await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+  });
+});
+
+describe("the storage state (--save-storage)", () => {
+  /** Where each kind of request was asked first, in the browser's list. */
+  const firstAsked = (browser: ScriptedBrowser, kind: string) =>
+    browser.asked.findIndex((request) => request.kind === kind);
+
+  it("is saved once, only after the trace is answered and the package is on the disk", async () => {
+    const { recorder, browser } = await start({ saveStorage: true });
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+    browser.holdTraceAnswers();
+    // What is on the disk when the save is asked.
+    const atSave = browser
+      .asks({ kind: "saveStorage" })
+      .then(() => readdir(recordings()));
+
+    await recorder.send({ type: "finish" });
+    await browser.asks({ kind: "stopTrace", keep: true });
+    // The trace is not answered yet: nothing is written, nothing saved.
+    await expect(readdir(recordings())).rejects.toThrow(/ENOENT/);
+    expect(firstAsked(browser, "saveStorage")).toBe(-1);
+    browser.releaseTraceAnswers();
+
+    expect(await atSave).toContainEqual(expect.stringMatching(/^rec_/));
+    await expect(recorder.done).resolves.toMatchObject({ kind: "saved" });
+    expect(
+      browser.asked.filter((request) => request.kind === "saveStorage")
+    ).toHaveLength(1);
+  });
+
+  it("is never asked for without --save-storage", async () => {
+    const { recorder, browser } = await start();
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+
+    await recorder.send({ type: "finish" });
+
+    await expect(recorder.done).resolves.toMatchObject({ kind: "saved" });
+    expect(firstAsked(browser, "saveStorage")).toBe(-1);
+  });
+
+  it("is saved when the package cannot be written, and the recorder ends 'failed' all the same", async () => {
+    // "latest" cannot be replaced: a folder with something in it is there.
+    await mkdir(join(recordings(), "latest.yaml"), { recursive: true });
+    await writeFile(join(recordings(), "latest.yaml", "kept"), "");
+    const { recorder, browser } = await start({ saveStorage: true });
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+
+    await recorder.send({ type: "finish" });
+
+    await expect(recorder.done).resolves.toMatchObject({ kind: "failed" });
+    expect(
+      browser.asked.filter((request) => request.kind === "saveStorage")
+    ).toHaveLength(1);
+  });
+
+  it("is saved when nothing was recorded, so that a person can open the recorder only to log in", async () => {
+    const { recorder, browser } = await start({ saveStorage: true });
+
+    recorder.end();
+
+    await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+    expect(browser.asked).toEqual([{ kind: "saveStorage" }]);
+  });
+
+  it("that cannot be saved is one warning, and the recording is saved all the same", async () => {
+    const { recorder, browser } = await start({ saveStorage: true });
+    const warnings: { kind: string; message: string }[] = [];
+    recorder.subscribe((update) => {
+      warnings.splice(0, warnings.length, ...update.state.warnings);
+    });
+    browser.failStorageSave("ENOTDIR: not a directory");
+    await recorder.send({ type: "record" });
+    await clickOnce(browser, "input_1");
+
+    await recorder.send({ type: "finish" });
+
+    const outcome = await recorder.done;
+    expect(outcome.kind).toBe("saved");
+    expect(
+      await readFile(
+        join((outcome as { folder: string }).folder, "package.yaml"),
+        "utf8"
+      )
+    ).toContain("id: interaction_1");
+    expect(warnings).toEqual([
+      {
+        kind: "storageNotSaved",
+        message:
+          "The storage state could not be saved. ENOTDIR: not a directory",
+      },
+    ]);
   });
 });
 

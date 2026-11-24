@@ -34,7 +34,7 @@ describe("what the command line does for a command", () => {
     });
   });
 
-  it("records a URL, with the window setting when it was given", () => {
+  it("records a URL, with the window setting and the storage state files when they were given", () => {
     expect(planOf({ kind: "codegen", url: "http://localhost" })).toEqual({
       kind: "codegen",
       target: { url: "http://localhost", headless: undefined },
@@ -46,13 +46,21 @@ describe("what the command line does for a command", () => {
       target: { url: "http://localhost", headless: true },
     });
     expect(
-      planOf({ kind: "codegen", url: "http://localhost", startRecording: true })
+      planOf({
+        kind: "codegen",
+        url: "http://localhost",
+        startRecording: true,
+        loadStorage: "auth.json",
+        saveStorage: "saved.json",
+      })
     ).toEqual({
       kind: "codegen",
       target: {
         url: "http://localhost",
         headless: undefined,
         startRecording: true,
+        loadStorage: "auth.json",
+        saveStorage: "saved.json",
       },
     });
   });

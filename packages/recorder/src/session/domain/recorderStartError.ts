@@ -9,7 +9,9 @@ export type RecorderStartReason =
   /** The project's Playwright has no recorder the engine knows how to start. */
   | "playwright-recorder-not-found"
   /** The recorder window's server could not listen on a local port. */
-  | "port-in-use";
+  | "port-in-use"
+  /** The storage state file to load cannot be read. */
+  | "storage-unreadable";
 
 /**
  * The one way starting a recorder fails. Its message is a sentence for the
