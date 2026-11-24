@@ -5,7 +5,7 @@
  * run ends. What an agent is sent and what its output means is its driver's.
  */
 import { spawn } from "node:child_process";
-import { createWriteStream, type WriteStream } from "node:fs";
+import { createWriteStream } from "node:fs";
 import { createInterface } from "node:readline";
 
 import { processGroups, signalGroups } from "./processGroups.ts";
@@ -20,15 +20,6 @@ export type Turn = {
 };
 
 export type TurnResult = { isError: boolean };
-
-/** Ends the stream and waits until it has closed; one that failed has closed already. */
-function closeStream(stream: WriteStream) {
-  return new Promise<void>((resolve) => {
-    if (stream.closed || stream.destroyed) return resolve();
-    stream.once("close", resolve);
-    stream.end();
-  });
-}
 
 export type AgentProcess = ReturnType<typeof startAgentProcess>;
 
@@ -52,6 +43,13 @@ export function startAgentProcess(options: {
       logFailure ??= error;
       stop();
     });
+  // Watched from the start: a log that fails emits its error and then closes, at any time,
+  // and only its close says that every error it had has been reported.
+  const logsClosed = Promise.all(
+    [transcript, stderr].map(
+      (log) => new Promise<void>((resolve) => log.once("close", resolve))
+    )
+  );
   const child = spawn(options.command, options.args, {
     cwd: options.cwd,
     env: options.environment,
@@ -181,7 +179,8 @@ export function startAgentProcess(options: {
       const exit = await closed;
       killLeftovers();
       await readerClosed;
-      await Promise.all([closeStream(transcript), closeStream(stderr)]);
+      for (const log of [transcript, stderr]) if (!log.destroyed) log.end();
+      await logsClosed;
       if (interruptedBy)
         throw new Error(`The run was interrupted by ${interruptedBy}.`);
       if (logFailure !== null)
