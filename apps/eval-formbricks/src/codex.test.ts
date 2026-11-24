@@ -16,7 +16,7 @@ import {
 import { summarizeCodexTranscript } from "./codexTranscript.ts";
 
 describe("codexEnvironment", () => {
-  it("drops every agent and Ayme variable of the launcher and adds the run's configuration folder alone", () => {
+  it("drops every agent and ayme variable of the launcher and adds the run's configuration folder alone", () => {
     expect(
       codexEnvironment(
         { configDir: "/run/codex-config" },
@@ -102,9 +102,9 @@ describe("codexArmProblem", () => {
 
   it("names an arm that needs a command line or a skill", () => {
     expect(codexArmProblem(arms["playwright-cli"])).toContain("playwright-cli");
-    expect(
-      codexArmProblem(arms["playwright-mcp-with-ayme-page-objects"])
-    ).toContain("playwright-mcp-with-ayme-page-objects");
+    expect(codexArmProblem(arms["playwright-mcp-with-ayme"])).toContain(
+      "playwright-mcp-with-ayme"
+    );
   });
 });
 

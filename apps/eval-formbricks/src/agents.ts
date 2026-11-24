@@ -38,7 +38,7 @@ export function agentAccess(options: {
   configDir: string;
   /** The directory holding the env file. */
   envDirectory: string;
-  arms: Pick<Arm, "id" | "skill" | "ayme" | "tools">[];
+  arms: Pick<Arm, "id" | "skill" | "withAyme" | "tools">[];
 }): {
   environment: NodeJS.ProcessEnv | undefined;
   preconditions: Precondition[];

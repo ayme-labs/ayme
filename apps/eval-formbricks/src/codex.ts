@@ -105,20 +105,16 @@ export function codexConfig(options: {
 
 /** Why Codex cannot run the arm yet, or `null` when it can. */
 export function codexArmProblem(
-  arm: Pick<Arm, "id" | "skill" | "ayme" | "tools">
+  arm: Pick<Arm, "id" | "skill" | "withAyme" | "tools">
 ): string | null {
-  if (
-    arm.skill === undefined &&
-    arm.ayme === undefined &&
-    !arm.tools.includes("Bash")
-  )
+  if (arm.skill === undefined && !arm.withAyme && !arm.tools.includes("Bash"))
     return null;
   return `The Codex agent does not run the ${arm.id} arm yet: it runs only arms that need no skill and no command line.`;
 }
 
 /**
  * The environment the agent runs in: the parent's, minus every variable of
- * an agent or of Ayme the launcher may carry, plus the run's own fresh
+ * an agent or of ayme the launcher may carry, plus the run's own fresh
  * configuration folder, where the sign-in lives. That folder is the agent's
  * home folder too: Codex reads the user's own skills from `~/.agents/skills`
  * whatever its configuration folder is, and the agent must not get them.
@@ -374,7 +370,7 @@ export async function runCodex(
       stopChild();
     }, setupTimeout);
     await request("initialize", {
-      clientInfo: { name: "ayme-eval", title: "Ayme eval", version: "0.0.0" },
+      clientInfo: { name: "ayme-eval", title: "ayme eval", version: "0.0.0" },
     });
     send({ method: "initialized" });
     const thread = await request("thread/start", { cwd: invocation.cwd });
