@@ -9,9 +9,9 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { arms } from "./arms.ts";
 import {
-  codexArmProblem,
   codexConfig,
   codexEnvironment,
+  codexRules,
   runCodex,
   signedInWithApiKey,
 } from "./codex.ts";
@@ -64,6 +64,7 @@ describe("codexConfig", () => {
     mcpServers: {
       playwright: { command: "/usr/bin/node", args: ["cli.js", '--a="b"'] },
     },
+    readable: ["/lab/formbricks", "/run/codex-config/skills"],
     home: "/Users/someone",
   });
 
@@ -74,9 +75,27 @@ describe("codexConfig", () => {
     expect(config).toContain('web_search = "disabled"');
   });
 
-  it("switches off the account's apps, the shell and subagents", () => {
+  it("gives commands a sandbox that reads the listed folders alone, and the user's home folder", () => {
+    expect(config).toContain('default_permissions = "eval"');
+    expect(config).not.toContain("sandbox_mode");
+    // A denied folder would put the arm's own command in the sandbox too.
+    expect(config).not.toContain('"deny"');
+    expect(config).toContain(
+      [
+        "[permissions.eval.filesystem]",
+        '":minimal" = "read"',
+        '"/lab/formbricks" = "read"',
+        '"/run/codex-config/skills" = "read"',
+      ].join("\n")
+    );
+    expect(config).toContain(
+      '[shell_environment_policy]\nset = { HOME = "/Users/someone" }'
+    );
+  });
+
+  it("switches off the account's apps and subagents, and keeps the shell", () => {
     expect(config).toContain("[features]\napps = false");
-    expect(config).toContain("shell_tool = false");
+    expect(config).not.toContain("shell_tool");
     expect(config).toContain("[agents]\nenabled = false");
   });
 
@@ -97,16 +116,42 @@ describe("codexConfig", () => {
   });
 });
 
-describe("codexArmProblem", () => {
-  it("accepts the arm that needs MCP servers alone", () => {
-    expect(codexArmProblem(arms["playwright-mcp"])).toBeNull();
+describe("codexRules", () => {
+  /** A search path whose first folder holds a file of that name. */
+  async function pathWith(name: string) {
+    const folder = await mkdtemp(path.join(os.tmpdir(), "codex-rules-"));
+    writeFileSync(path.join(folder, name), "");
+    return { folder, searchPath: `${folder}${path.delimiter}/usr/bin` };
+  }
+
+  it("lets the arm's command line out of the sandbox, as the file on the agent's PATH alone, and refuses what the arm denies", async () => {
+    const { folder, searchPath } = await pathWith("agent-browser");
+    try {
+      expect(
+        codexRules(arms["agent-browser-with-ayme"], searchPath).split("\n")
+      ).toEqual([
+        `host_executable(name="agent-browser", paths=["${folder}/agent-browser"])`,
+        'prefix_rule(pattern=["agent-browser"], decision="allow")',
+        'prefix_rule(pattern=["npx"], decision="forbidden")',
+        'prefix_rule(pattern=["agent-browser", "install"], decision="forbidden")',
+        'prefix_rule(pattern=["agent-browser", "upgrade"], decision="forbidden")',
+        'prefix_rule(pattern=["agent-browser", "doctor", "--fix"], decision="forbidden")',
+        'prefix_rule(pattern=["agent-browser", "close", "--all"], decision="forbidden")',
+        "",
+      ]);
+    } finally {
+      await rm(folder, { recursive: true, force: true });
+    }
   });
 
-  it("names an arm that needs a command line or a skill", () => {
-    expect(codexArmProblem(arms["playwright-cli"])).toContain("playwright-cli");
-    expect(codexArmProblem(arms["playwright-mcp-with-ayme"])).toContain(
-      "playwright-mcp-with-ayme"
+  it("refuses an arm whose allowed command is not on the agent's PATH", () => {
+    expect(() => codexRules(arms["playwright-cli"], "/no/such/folder")).toThrow(
+      "The arm allows the `playwright-cli` command, which is not on the agent's PATH."
     );
+  });
+
+  it("has no rule for an arm without a command line: every command stays in the sandbox", () => {
+    expect(codexRules(arms["playwright-mcp-with-ayme"], "")).toBe("");
   });
 });
 
