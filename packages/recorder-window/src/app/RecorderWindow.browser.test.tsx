@@ -918,7 +918,7 @@ it("strikes a discarded entry through, hides what it changed, and restores it fr
   expect(sent).toEqual([{ type: "restore", entry: entryId("interaction_2") }]);
 });
 
-it("offers neither Discard nor Restore while recording", async () => {
+it("offers neither Discard nor Restore when the state offers neither", async () => {
   const { channel, tell } = scriptedChannel();
   mount(channel);
 
