@@ -24,6 +24,14 @@
       "skillPath": "skills/statechart/SKILL.md",
       "computedHash": "86a313f26b3e8b539ba560a45e37d185e7d59530e40b7576d3873b185d50e1f9",
       "installMode": "copy"
+    },
+    "typesafe-ai": {
+      "source": "typesafe-ai/skills",
+      "commit": "302eea662c54bca6730873fe245bec1d69ebc23d",
+      "sourceType": "github",
+      "skillPath": "skills/typesafe-ai/SKILL.md",
+      "computedHash": "a6d55f954bdee91ffcb208c42fe31cfba71594bc4d6bf63c0fed22bdb81df3d9",
+      "installMode": "copy"
     }
   }
 }
