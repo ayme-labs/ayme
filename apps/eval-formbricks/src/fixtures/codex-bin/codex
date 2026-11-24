@@ -6,7 +6,8 @@
  * an MCP tool twice, one call failing. FAKE_CODEX_HANG_TURN names a turn (1
  * or 2) that never completes, FAKE_CODEX_FAIL_TURN one that ends failed, and
  * FAKE_CODEX_DELAY_MS delays each turn's end. FAKE_CODEX_SILENT answers
- * nothing at all.
+ * nothing at all, and FAKE_CODEX_REFUSE_TURN names a turn `turn/start` is
+ * answered with an error for.
  */
 import { createInterface } from "node:readline";
 
@@ -48,6 +49,10 @@ createInterface({ input: process.stdin }).on("line", (line) => {
   if (method !== "turn/start") return;
   turns += 1;
   const turn = turns;
+  if (String(turn) === process.env.FAKE_CODEX_REFUSE_TURN) {
+    send({ id, error: { code: -32600, message: "no" } });
+    return;
+  }
   process.stderr.write(`user message ${turn}: ${params.input[0].text}\n`);
   send({ id, result: { turn: { id: `turn-${turn}`, status: "inProgress" } } });
   notify("turn/started", { turn: { id: `turn-${turn}` } });

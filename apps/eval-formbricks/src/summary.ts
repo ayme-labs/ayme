@@ -273,9 +273,12 @@ export function renderSummaryMarkdown(summary: SuiteSummary) {
     "## Versions a rerun must match",
     "",
     `- Date: ${summary.date}`,
-    versions.codex === undefined
-      ? `- Claude Code: ${list(versions.claudeCode)}`
-      : `- Codex: ${list(versions.codex)}`,
+    ...(versions.codex === undefined || versions.claudeCode.length > 0
+      ? [`- Claude Code: ${list(versions.claudeCode)}`]
+      : []),
+    ...(versions.codex === undefined
+      ? []
+      : [`- Codex: ${list(versions.codex)}`]),
     `- Model: ${list(versions.modelUsed)} (requested ${list(versions.modelRequested)}, effort ${list(versions.effort)})`,
     ...versions.browserInterfaces.map(
       ({ arm, name, version }) => `- ${name} ${version} (${arm})`

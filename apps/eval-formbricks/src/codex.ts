@@ -141,8 +141,40 @@ export function signedInWithApiKey(loginStatus: string) {
   return /api key/i.test(loginStatus);
 }
 
+/** How long one of Codex's own commands may take before the sign-in check gives up on it. */
+const commandTimeoutMs = 30_000;
+
+const signInFiles = new Set<string>();
+/**
+ * The sign-in in a run's configuration folder never outlives the harness:
+ * it is removed when the process exits, also on an error nothing caught, and
+ * on an interrupt. When nothing else handles the interrupt, an agent's
+ * driver does while it runs, the harness then ends by the same signal.
+ */
+export function removeSignInOnExit(file: string) {
+  const first = signInFiles.size === 0;
+  signInFiles.add(file);
+  if (!first) return;
+  const removeAll = () => {
+    for (const signInFile of signInFiles) rmSync(signInFile, { force: true });
+  };
+  process.on("exit", removeAll);
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    const onSignal = () => {
+      removeAll();
+      if (process.listenerCount(signal) > 1) return;
+      process.off(signal, onSignal);
+      process.kill(process.pid, signal);
+    };
+    process.on(signal, onSignal);
+  }
+}
+
 export function codexVersion(): string | null {
-  const result = spawnSync("codex", ["--version"], { encoding: "utf8" });
+  const result = spawnSync("codex", ["--version"], {
+    encoding: "utf8",
+    timeout: commandTimeoutMs,
+  });
   if (result.status !== 0) return null;
   return result.stdout.trim().replace(/^codex-cli\s+/, "") || null;
 }
@@ -173,11 +205,13 @@ export function codexSignInPrecondition(options: {
         options.userCodexHome ?? path.join(os.homedir(), ".codex"),
         "auth.json"
       );
+      removeSignInOnExit(path.join(options.configDir, "auth.json"));
       if (options.accessToken !== undefined) {
         const login = spawnSync("codex", ["login", "--with-access-token"], {
           env: options.environment,
           input: options.accessToken,
           encoding: "utf8",
+          timeout: commandTimeoutMs,
         });
         if (login.status !== 0)
           return `Codex does not accept the ${codexTokenVariable}. Create a new access token in the ChatGPT admin console.`;
@@ -189,6 +223,7 @@ export function codexSignInPrecondition(options: {
       const status = spawnSync("codex", ["login", "status"], {
         env: options.environment,
         encoding: "utf8",
+        timeout: commandTimeoutMs,
       });
       const problem =
         status.status !== 0
@@ -326,6 +361,7 @@ export async function runCodex(
   process.once("SIGTERM", onInterrupt);
 
   let threadId: string | null = null;
+  let turnRefused = false;
   /** Sends one message as a turn and waits for its end, the turn's timeout or the agent's end. */
   const turn = async (text: string, timeoutMs: number) => {
     const sentAt = Date.now();
@@ -344,8 +380,10 @@ export async function runCodex(
         input: [{ type: "text", text }],
       }).then((answer) => {
         // A turn the server refused to start never completes.
-        if (answer !== null && answer.error !== undefined)
+        if (answer !== null && answer.error !== undefined) {
+          turnRefused = true;
           resolve({ isError: true });
+        }
       });
     });
     clearTimeout(timer);
@@ -423,8 +461,11 @@ export async function runCodex(
       exitCode,
       signal,
       setup,
-      setupFailure,
-      task,
+      // A task Codex refused to start was never measured, so the run has no result.
+      setupFailure:
+        setupFailure ??
+        (turnRefused ? "Codex refused to start the task turn" : null),
+      task: turnRefused ? null : task,
       startedAt: startedAt.toISOString(),
       finishedAt: new Date().toISOString(),
       lines,

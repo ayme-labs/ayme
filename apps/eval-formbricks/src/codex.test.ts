@@ -1,3 +1,5 @@
+import { spawnSync } from "node:child_process";
+import { existsSync, writeFileSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -209,6 +211,12 @@ describe("runCodex", () => {
     expect(run.stderr).not.toContain("user message 2:");
   });
 
+  it("has no measured turn when Codex refuses to start the task", async () => {
+    const run = await drive({ FAKE_CODEX_REFUSE_TURN: "2" });
+    expect(run.setupFailure).toBe("Codex refused to start the task turn");
+    expect(run.task).toBeNull();
+  });
+
   it("stops a setup turn that runs out of its own timeout", async () => {
     const run = await drive(
       { FAKE_CODEX_HANG_TURN: "1" },
@@ -272,4 +280,50 @@ describe("summarizeCodexTranscript", () => {
       byTool: { mcp__playwright__browser_click: { total: 2, failed: 0 } },
     });
   });
+});
+
+describe("removeSignInOnExit", () => {
+  const codexModule = fileURLToPath(new URL("./codex.ts", import.meta.url));
+  /** Runs a harness that guards `file` and then ends as `ending` says. */
+  const endHarness = (file: string, ending: string) =>
+    spawnSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "-e",
+        `const { removeSignInOnExit } = await import(${JSON.stringify(codexModule)});
+         removeSignInOnExit(${JSON.stringify(file)});
+         ${ending}`,
+      ],
+      { encoding: "utf8" }
+    );
+
+  it.each([
+    [
+      "is interrupted",
+      "process.kill(process.pid, 'SIGINT'); setTimeout(() => {}, 5000);",
+      "SIGINT",
+    ],
+    [
+      "is terminated",
+      "process.kill(process.pid, 'SIGTERM'); setTimeout(() => {}, 5000);",
+      "SIGTERM",
+    ],
+    ["dies of an error nothing caught", "throw new Error('boom');", null],
+  ])(
+    "removes the sign-in when the harness %s",
+    async (_name, ending, signal) => {
+      const directory = await mkdtemp(path.join(os.tmpdir(), "codex-sign-in-"));
+      const file = path.join(directory, "auth.json");
+      writeFileSync(file, "{}");
+      try {
+        const harness = endHarness(file, ending);
+        expect(existsSync(file)).toBe(false);
+        // An interrupt still ends the harness as that signal, as before.
+        expect(harness.signal).toBe(signal);
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    }
+  );
 });
