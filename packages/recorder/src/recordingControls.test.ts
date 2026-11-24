@@ -336,7 +336,10 @@ describe("Continue", () => {
       entriesOf(updates.at(-1)!).map((entry) => [entry.kind, entry.changes])
     ).toEqual([
       ["interaction", null],
-      ["change", [{ kind: "added", element: 'status "Later"' }]],
+      [
+        "change",
+        [{ kind: "added", element: 'status "Later"', role: "status" }],
+      ],
       ["interaction", null],
     ]);
     await recorder.send({ type: "finish" });

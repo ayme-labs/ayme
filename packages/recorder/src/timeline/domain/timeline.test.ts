@@ -582,7 +582,9 @@ describe("the timeline", () => {
         kind: "change",
         id: entryId("change_1"),
         timestamp: 30,
-        changes: [{ kind: "added", element: 'alert "Offer ends soon"' }],
+        changes: [
+          { kind: "added", element: 'alert "Offer ends soon"', role: "alert" },
+        ],
       };
       const secondClick = {
         kind: "interaction",
@@ -934,7 +936,9 @@ describe("the timeline, for an input known from its report", () => {
           kind: "change",
           id: entryId("change_1"),
           timestamp: 10,
-          changes: [{ kind: "added", element: 'alert "Welcome back"' }],
+          changes: [
+            { kind: "added", element: 'alert "Welcome back"', role: "alert" },
+          ],
         },
         expect.objectContaining({
           kind: "interaction",
@@ -1125,7 +1129,9 @@ describe("the timeline, for an input known from its report", () => {
         }),
         expect.objectContaining({
           id: entryId("change_1"),
-          changes: [{ kind: "added", element: 'alert "Welcome back"' }],
+          changes: [
+            { kind: "added", element: 'alert "Welcome back"', role: "alert" },
+          ],
         }),
         expect.objectContaining({ id: entryId("interaction_2") }),
       ]);

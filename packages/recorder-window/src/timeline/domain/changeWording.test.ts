@@ -1,7 +1,13 @@
 import type { ChangeRow } from "@ayme-dev/recorder/contract";
 import { describe, expect, it } from "vitest";
 
-import { chipText, changeTitle, effectOf } from "./changeWording";
+import {
+  chipText,
+  changeTitle,
+  effectOf,
+  groupEffect,
+  groupText,
+} from "./changeWording";
 
 // How the window says what changed: the released recorder's wording is the
 // baseline. A property it has no wording for still says something true.
@@ -145,6 +151,41 @@ describe("an element chip", () => {
   });
 });
 
+describe("a row that folds elements of one role", () => {
+  const into = (kind: "added" | "removed"): ChangeRow => ({
+    kind,
+    element: 'listitem "x"',
+  });
+
+  it("names how many elements of which role it folds", () => {
+    expect(groupText("listitem", 30)).toBe("30 listitems");
+    expect(groupText("textbox", 3)).toBe("3 textboxes");
+  });
+
+  it("calls elements with no role of their own elements", () => {
+    expect(groupText("generic", 3)).toBe("3 elements");
+  });
+
+  it("says how many were removed from and how many appeared in their parent, removed first, as the released window does", () => {
+    const rows = [
+      ...Array.from({ length: 5 }, () => into("added")),
+      ...Array.from({ length: 25 }, () => into("removed")),
+    ];
+    expect(groupEffect(rows, "Issues")).toBe(
+      "25 removed from, 5 appeared in “Issues”"
+    );
+  });
+
+  it("says only where they went when they all went the same way", () => {
+    expect(groupEffect([into("removed"), into("removed")], "Issues")).toBe(
+      "removed from “Issues”"
+    );
+    expect(groupEffect([into("added"), into("added")], "Issues")).toBe(
+      "appeared in “Issues”"
+    );
+  });
+});
+
 describe("the title of a change no Interaction made", () => {
   const added: ChangeRow = { kind: "added", element: "dialog" };
   const removed: ChangeRow = { kind: "removed", element: "alert" };
@@ -154,6 +195,17 @@ describe("the title of a change no Interaction made", () => {
     expect(changeTitle([added, added, added])).toBe("3 elements appeared");
     expect(changeTitle([removed])).toBe("Element removed");
     expect(changeTitle([removed, removed])).toBe("2 elements removed");
+  });
+
+  it("counts every element, folded or not, and none whose only change is the cursor", () => {
+    const cursor: ChangeRow = {
+      kind: "changed",
+      element: 'button "Pay"',
+      changed: [{ property: "cursor", to: "pointer" }],
+    };
+    expect(changeTitle([added, cursor, added, added])).toBe(
+      "3 elements appeared"
+    );
   });
 
   it("says the UI changed otherwise", () => {
