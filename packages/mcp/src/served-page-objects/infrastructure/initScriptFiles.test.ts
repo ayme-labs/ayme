@@ -17,19 +17,19 @@ import { writeInitScript } from "./initScriptFiles";
 // between the creation of a file and the first write to it, where another
 // tool may write to the same file.
 const betweenCreationAndFirstWrite = vi.hoisted(() => ({
-  run: undefined as (() => Promise<void>) | undefined,
+  of: undefined as { file: string; run: () => Promise<void> } | undefined,
 }));
 vi.mock("node:fs/promises", async (importOriginal) => {
   const real = await importOriginal<typeof import("node:fs/promises")>();
   const writeFile: typeof real.writeFile = async (file, data, options) => {
-    const { run } = betweenCreationAndFirstWrite;
+    const { of } = betweenCreationAndFirstWrite;
     const flag = typeof options === "object" ? options?.flag : undefined;
-    if (run === undefined || flag === undefined || typeof file !== "string")
+    if (of === undefined || flag === undefined || file !== of.file)
       return real.writeFile(file, data, options);
-    betweenCreationAndFirstWrite.run = undefined;
-    const handle = await real.open(file, flag);
+    betweenCreationAndFirstWrite.of = undefined;
+    const handle = await real.open(of.file, flag);
     try {
-      await run();
+      await of.run();
       await handle.writeFile(data);
     } finally {
       await handle.close();
@@ -94,13 +94,17 @@ it("leaves a .gitignore that already ignores the init script as it is", async ()
 });
 
 it("keeps the line the recorder adds between the creation of the .gitignore and its first write", async () => {
-  betweenCreationAndFirstWrite.run = () =>
-    appendFile(join(folder, "ayme", ".gitignore"), "recordings/\n");
+  const file = join(folder, "ayme", ".gitignore");
+  betweenCreationAndFirstWrite.of = {
+    file,
+    run: () => appendFile(file, "recordings/\n"),
+  };
 
   await writeInitScript({ folder, port: 9411 });
 
-  expect((await read(".gitignore")).split("\n")).toEqual(
-    expect.arrayContaining(["recordings/", "init-script.js"])
+  // The other tool's line first, then the whole of this one's file.
+  expect(await read(".gitignore")).toMatch(
+    /^recordings\/\n# .*\ninit-script\.js\n$/
   );
 });
 
