@@ -916,7 +916,7 @@ function whilePaused(
 const decidable = (state: LifecycleState) =>
   state.phase === "recording" ||
   state.phase === "paused" ||
-  (state.phase === "wrappingUp" && state.then === "pause");
+  wrappingUpOf(state)?.then === "pause";
 
 /** Discard or Restore: the timeline keeps the decision on the entry, as
  * the entry changes too, and nothing else of the recording is touched. */
