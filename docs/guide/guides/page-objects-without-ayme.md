@@ -8,7 +8,7 @@ When your agent drives the browser with Playwright MCP, Playwright CLI or agent-
 
 ## Set it up
 
-1. In the folder `ayme mcp` starts in, export your [Page Object](ayme-page-objects.md) classes from `.ayme/page-objects.ts`, and keep their files in `.ayme/pom/`. Install `@ayme-dev/ayme`, `@ayme-dev/mcp`, TypeScript and `@playwright/test` there, `@ayme-dev/ayme` at the same version as `@ayme-dev/mcp`, with a `tsconfig.json` whose `include` covers `.ayme/`, such as `".ayme/**/*.ts"`; plain `".ayme"` fails with TS18003, no inputs found. No build plugin is needed. `--page-objects <file>` after `mcp` names another entry.
+1. In the folder `ayme mcp` starts in, export your [Page Object](ayme-page-objects.md) classes from `ayme/page-objects.ts`, and keep their files in `ayme/pom/`. Install `@ayme-dev/ayme`, `@ayme-dev/mcp`, TypeScript and `@playwright/test` there, `@ayme-dev/ayme` at the same version as `@ayme-dev/mcp`. Give the folder its `tsconfig.json`, as [The `ayme` folder](ayme-folder.md#set-the-folder-up-for-page-objects) shows. No build plugin is needed. `--page-objects <file>` after `mcp` names another entry.
 
    ```ts
    import type { AymeOptions } from "@ayme-dev/ayme";
@@ -18,13 +18,13 @@ When your agent drives the browser with Playwright MCP, Playwright CLI or agent-
    export default [SignInPage] satisfies AymeOptions["pageObjects"];
    ```
 
-2. Start `ayme mcp`, by restarting your agent. It writes `.ayme/init-script.js`, which names its port, and adds it to `.ayme/.gitignore`.
+2. Start `ayme mcp`, by restarting your agent. It writes `ayme/init-script.js`, which names its port, and adds it to `ayme/.gitignore`.
 3. Point your browser tool at the init script in its config file. A path in the file is relative to the file's folder.
 
    ```json
    {
      "browser": {
-       "initScript": [".ayme/init-script.js"],
+       "initScript": ["ayme/init-script.js"],
        "launchOptions": { "channel": "chrome" },
        "contextOptions": {
          "bypassCSP": true,
@@ -34,11 +34,11 @@ When your agent drives the browser with Playwright MCP, Playwright CLI or agent-
    }
    ```
 
-   Pass it to Playwright MCP in its registration, such as `npx -y @playwright/mcp@<version> --config=<file>`, or to Playwright CLI with `playwright-cli open --config <file> <url>`. Playwright CLI reads `.playwright/cli.config.json` by default, without `--config`; from that file, the init script is `../.ayme/init-script.js`.
+   Pass it to Playwright MCP in its registration, such as `npx -y @playwright/mcp@<version> --config=<file>`, or to Playwright CLI with `playwright-cli open --config <file> <url>`. Playwright CLI reads `.playwright/cli.config.json` by default, without `--config`; from that file, the init script is `../ayme/init-script.js`.
 
    `"channel": "chrome"` runs the Chrome installed on the machine. With `"browserName": "chromium"` and no channel, the browser tool runs Playwright's own Chromium, which it downloads first.
 
-   agent-browser takes no config file for this. Start it with the init script instead: `agent-browser --init-script .ayme/init-script.js open <url>`.
+   agent-browser takes no config file for this. Start it with the init script instead: `agent-browser --init-script ayme/init-script.js open <url>`.
 
 4. Ask the agent to call `ayme_connect` with the page's URL and open the link. The answer adds a line naming the init script, and your Page Objects' tools become the agent's tools. While no build of the entry has succeeded, that line, and the answer to a page tool while no page is connected, give the build's first error instead. When the project's `@ayme-dev/ayme` is another version than `ayme mcp`'s, the build does not start, and that error names the command that installs the matching version.
 
