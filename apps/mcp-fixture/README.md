@@ -5,6 +5,7 @@ It is private and never published.
 
 ```
 app/         the fixture page, its startup code and the Vite config
+ayme/pom/    the page's own Page Objects, which `app/main.ts` registers
 outside/     the ayme folder of a project that keeps its Page Objects outside
              the app: the entry and the Page Object of plain.html it lists
 tests/       the shared fixtures (fixtures.ts), one spec per concern, and
