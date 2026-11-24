@@ -5,7 +5,7 @@ import { createPage } from "../../page-objects/infrastructure";
 import {
   agentTools,
   operations,
-} from "../../test-utils/publication.testSupport";
+} from "../../../testing/publication.testSupport";
 import { createAyme, type Ayme } from "../../runtime";
 
 // The test document's first history entry: no test can go back from it.

@@ -4,7 +4,7 @@ import type { PomManifest } from "../../shared";
 import { lookAtPageStateForDocument } from "./pageState";
 import { probeRegisteredPomMembers } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
-import { startAgentSession } from "../test-utils/lookAtPageState.testSupport";
+import { startAgentSession } from "../../../testing/page-state/lookAtPageState.testSupport";
 
 // Its own file: the agent's first action must be the document's first
 // recorded observation, and each browser test file gets its own document.

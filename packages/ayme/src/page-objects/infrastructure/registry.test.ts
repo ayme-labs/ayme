@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { runContext } from "../../test-utils/agentCalls.testSupport";
-import { alwaysReaches } from "../../test-utils/reach.testSupport";
+import { runContext } from "../../../testing/agentCalls.testSupport";
+import { alwaysReaches } from "../../../testing/reach.testSupport";
 import {
   latestStandIn,
   nameElement,
-} from "../../test-utils/pageDriver.testSupport";
+} from "../../../testing/pageDriver.testSupport";
 import { checkedToolInput } from "../../shared";
 import type { PageStateSession, Reach } from "../../page-state/application";
 
@@ -38,13 +38,13 @@ vi.mock(
   async (importOriginal) => ({
     ...(await importOriginal<object>()),
     ...(
-      await import("../../test-utils/pageOfDocument.testSupport")
+      await import("../../../testing/pageOfDocument.testSupport")
     ).standInPageOfDocument(),
   })
 );
 vi.mock("./inPageDriver", async () => {
   const { standInPageDriver } =
-    await import("../../test-utils/pageDriver.testSupport");
+    await import("../../../testing/pageDriver.testSupport");
   return {
     inPageDriver: () =>
       standInPageDriver({
@@ -74,7 +74,7 @@ vi.mock(
 import type { Locator, Page } from "@playwright/test";
 import type { PomManifest } from "../../shared";
 import type { AymePage } from "../../runtime";
-import type { TestSession } from "../../test-utils/session.testSupport";
+import type { TestSession } from "../../../testing/session.testSupport";
 
 /**
  * The Page State Session a Run hands these tools: a ref resolves to its
@@ -152,11 +152,11 @@ let started: TestSession | undefined;
  */
 async function setup(reach: Reach = alwaysReaches()) {
   const registry = await import("./registry");
-  const { startSession } = await import("../../test-utils/session.testSupport");
+  const { startSession } = await import("../../../testing/session.testSupport");
   // The decorators the registry reads: the module reset makes them fresh too.
   const { ayme } = await import("../domain/decorators");
   const { rootOf, rooted } =
-    await import("../../test-utils/pomRoot.testSupport");
+    await import("../../../testing/pomRoot.testSupport");
   const session = startSession({} as AymePage, { reach });
   started = session;
   return { registry, session, ayme, rootOf, rooted };
@@ -449,7 +449,7 @@ describe("live Page Object registry", () => {
     expect(logged).toHaveBeenCalledOnce();
     session.stop();
     const { startSession } =
-      await import("../../test-utils/session.testSupport");
+      await import("../../../testing/session.testSupport");
     const restarted = startSession({} as AymePage, {
       reach: alwaysReaches(),
     });

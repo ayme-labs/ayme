@@ -4,16 +4,16 @@ import {
   type DecisionRequest,
   type DecisionResponse,
 } from "../domain/decisionWire";
-import { agentCursor } from "../../test-utils/agentCalls.testSupport";
+import { agentCursor } from "../../../testing/agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "../../shared";
 import { ayme } from "../../page-objects/domain";
 import { createPage } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
 import { errorText } from "../../shared";
-import { rootOf, rooted } from "../../test-utils/pomRoot.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { rootOf, rooted } from "../../../testing/pomRoot.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 import { createAyme, type Ayme } from "../../runtime";
-import { getLastGoalLoopRunResult } from "../../testing";
+import { getLastGoalLoopRunResult } from "../../../testing";
 import {
   CHANGES_CUT_MARKER,
   MAX_STEP_CHANGES,

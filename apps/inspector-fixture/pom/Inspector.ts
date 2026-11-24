@@ -1,5 +1,5 @@
 // The dogfood page registers the Inspector's Page Object with the runtime,
-// which only a test or a dogfooding page does (ADR-0026 keeps apps out).
+// which only a test or a dogfooding page does (ADR-0057 keeps apps out).
 // eslint-disable-next-line testing-entries/no-restricted-imports
 import { Inspector as InspectorPom } from "@ayme-dev/inspector/testing";
 import type { Page } from "@playwright/test";

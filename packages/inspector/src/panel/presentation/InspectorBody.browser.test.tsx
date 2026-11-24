@@ -2,8 +2,8 @@ import { useState } from "react";
 import { afterEach, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { renderPart } from "../../testing/renderPart";
-import { dragBy } from "../../testing/pom/pointerDrag";
+import { renderPart } from "../../../testing/renderPart";
+import { dragBy } from "../../../testing/pom/pointerDrag";
 import type { Layout, RegionSizes } from "../domain/preferences";
 import { DetailPane, RunsRegion } from "../view/InspectorBody";
 import { InspectorBody } from "./InspectorBody";

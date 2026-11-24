@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { diagnosticsOf } from "./pomCompileError.testSupport";
+import { diagnosticsOf } from "../../testing/compiler/pomCompileError.testSupport";
 import { transpilePomModule } from "./transpilePomModule";
 
 describe("transpilePomModule", () => {

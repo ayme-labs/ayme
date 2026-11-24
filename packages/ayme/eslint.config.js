@@ -72,12 +72,9 @@ const inPageHost = "src/in-page/host/**/*.ts";
 // that lets it go. src/layout.test.ts fails while the list is not empty.
 const inPageHostGlobalsExceptions = [];
 // Test code may use any slice, so a test stays beside the module it is
-// about even when it starts a whole runtime.
-const testCode = [
-  "src/**/*.test.ts",
-  "src/**/*.testSupport.ts",
-  "src/**/test-utils/**",
-];
+// about even when it starts a whole runtime. Test support lives in testing/
+// beside src/ (ADR-0057).
+const testCode = ["src/**/*.test.ts"];
 
 // A layered slice has a front door, an index.ts, in each layer folder that
 // other code uses, so the layer rule judges an import through it by its
@@ -86,25 +83,27 @@ const layers = ["domain", "application", "infrastructure"];
 const index = String.raw`index(\.[jt]s)?`;
 
 /**
- * Relative imports beneath another slice, past its front doors. A slice's
- * root `*.testSupport.ts` is its test front door: test code may import it, and
- * testCodeImport keeps production code from it.
+ * Relative imports beneath another slice, past its front doors. A path
+ * through testing/ is test support, which has no front door for the
+ * package's own tests: its folders are named after the slices they serve.
  */
+const notTestSupport = String.raw`(?!(.*/)?testing/)`;
 function deepImport(slice) {
   const others = (list) => list.filter((other) => other !== slice).join("|");
   const unlayered = others(slices.filter((s) => !layeredSlices.includes(s)));
   const layered = others(layeredSlices);
   return [
-    String.raw`^\.\.?/(.*/)?(${unlayered})/(?!${index}$|[^/]+\.testSupport(\.[jt]s)?$)`,
-    String.raw`^\.\.?/(.*/)?(${layered})/(?!(${layers.join("|")})(/${index})?$|${index}$)`,
+    String.raw`^\.\.?/${notTestSupport}(.*/)?(${unlayered})/(?!${index}$)`,
+    String.raw`^\.\.?/${notTestSupport}(.*/)?(${layered})/(?!(${layers.join("|")})(/${index})?$|${index}$)`,
   ].join("|");
 }
 
 /** Relative imports of a layered slice's own index.ts, which it does not have. */
-const layeredSliceIndex = String.raw`^\.\.?/(.*/)?(${layeredSlices.join("|")})(/${index})?$`;
+const layeredSliceIndex = String.raw`^\.\.?/${notTestSupport}(.*/)?(${layeredSlices.join("|")})(/${index})?$`;
 
-/** Relative imports of test code: a test-utils folder, a test or a harness. */
-const testCodeImport = String.raw`^\.\.?/(.*/)?(test-utils(/.*)?|[^/]+\.(test|testSupport)(\.[jt]s)?)$`;
+/** Relative imports of a test. The shared policy keeps production code from
+ * the test support in testing/. */
+const testCodeImport = String.raw`^\.\.?/(.*/)?[^/]+\.test(\.[jt]s)?$`;
 
 /** esquery reads `/` as the end of a regex, so selectors match it as `\x2F`. */
 function selectorRegex(regex) {
@@ -380,15 +379,7 @@ export default [
       tests: false,
       restricted: slice === "in-page" ? [inPageDependencies] : [],
     }),
-    frontDoors(
-      slice,
-      [
-        `src/${slice}/**/*.test.ts`,
-        `src/${slice}/**/*.testSupport.ts`,
-        `src/${slice}/**/test-utils/**/*.ts`,
-      ],
-      { tests: true }
-    ),
+    frontDoors(slice, [`src/${slice}/**/*.test.ts`], { tests: true }),
   ]),
   // A layered slice reaches the browser through its infrastructure: its
   // domain and application act on the page and Document their Run hands
@@ -481,7 +472,15 @@ export default [
   ...(allowlistedEntries.length > 0
     ? [frontDoors(undefined, allowlistedEntries, { tests: false })]
     : []),
-  frontDoors(undefined, ["src/*.test.ts", "src/test-utils/**/*.ts"], {
+  frontDoors(undefined, ["src/*.test.ts"], { tests: true }),
+  // Test support (ADR-0057): a folder of testing/ named after a slice belongs
+  // to that slice, so it may use the slice's own files, and other slices
+  // through their front doors. The rest of testing/ uses front doors only.
+  ...slices.map((slice) =>
+    frontDoors(slice, [`testing/${slice}/**/*.ts`], { tests: true })
+  ),
+  frontDoors(undefined, ["testing/**/*.ts"], {
     tests: true,
+    ignores: slices.map((slice) => `testing/${slice}/**`),
   }),
 ];

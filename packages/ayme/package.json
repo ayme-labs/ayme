@@ -62,17 +62,12 @@
       "types": "./dist/compiler.d.mts",
       "import": "./dist/compiler.mjs",
       "default": "./dist/compiler.mjs"
-    },
-    "./testing": {
-      "types": "./dist/testing.d.mts",
-      "import": "./dist/testing.mjs",
-      "default": "./dist/testing.mjs"
     }
   },
   "scripts": {
     "build": "tsdown",
     "sync:injected": "node scripts/syncInjectedScript.mjs",
-    "lint": "eslint src --max-warnings 0",
+    "lint": "eslint src testing --max-warnings 0",
     "test": "vitest run --passWithNoTests && vitest run --config vitest.typescript-floor.config.ts",
     "test:e2e": "vitest run --config vitest.browser.config.ts",
     "test:package": "vitest run src/packedConsumer.test.ts",

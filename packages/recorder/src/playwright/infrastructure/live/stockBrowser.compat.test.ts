@@ -39,8 +39,8 @@ import {
 import { startGate } from "../in-page/gate";
 import { installGate, startPickingIn } from "./pageFunctions";
 import { stockBrowser } from "./stockBrowser";
-import { snapshotId } from "../../../test-utils/ids";
-import { zipText } from "../../../test-utils/zip";
+import { snapshotId } from "../../../../testing/ids";
+import { zipText } from "../../../../testing/zip";
 
 // The compatibility suite: the stock adapter on each supported Playwright.
 // Each private detail of Playwright the adapter uses has its test here

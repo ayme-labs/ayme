@@ -16,28 +16,12 @@ const inputOptions = { experimental: { attachDebugInfo: "none" as const } };
 
 export default defineConfig([
   {
-    // Test-only page objects (ADR-0026).
-    clean: true,
-    inputOptions,
-    dts: true,
-    entry: { testing: "src/testing/index.ts" },
-    format: ["esm"],
-    // Playwright is the test's own: the page objects only name its types.
-    // ayme, whose decorators they carry, is the test's own too.
-    deps: {
-      neverBundle: [
-        /^@playwright\//,
-        /^playwright(-core)?(\/|$)/,
-        /^@ayme-dev\/ayme(\/|$)/,
-      ],
-    },
-  },
-  {
     // The recorder window: index.html and one script, which the engine
     // serves from the folder it is handed. Everything the script needs is
     // inside it, React and the channel's client included: nothing is left to
-    // resolve where it is served.
-    clean: false,
+    // resolve where it is served. The whole of dist is cleaned, not only
+    // this build's folder.
+    clean: ["dist"],
     inputOptions,
     dts: false,
     entry: { window: "src/app/main.tsx" },

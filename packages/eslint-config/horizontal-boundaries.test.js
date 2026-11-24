@@ -28,7 +28,6 @@ const files = {
   "src/runs/infrastructure/useRuns.ts": "export const useRuns = 1;\n",
   "src/runs/presentation/useRunList.ts": "export const useRunList = 1;\n",
   "src/runs/view/RunList.ts": "export const RunList = 1;\n",
-  "src/runs/test-utils/aRun.ts": "export const aRun = 1;\n",
   "src/tools/view/ToolList.ts": "export const ToolList = 1;\n",
   "src/app/main.ts": "export const main = 1;\n",
 };
@@ -91,14 +90,6 @@ const allowed = {
   infrastructure: ["infrastructure", "application", "domain"],
   presentation: ["presentation", "view", "application", "domain"],
   view: ["view", "domain"],
-  "test-utils": [
-    "domain",
-    "application",
-    "infrastructure",
-    "presentation",
-    "view",
-    "test-utils",
-  ],
 };
 const target = {
   domain: "../domain/run",
@@ -106,7 +97,6 @@ const target = {
   infrastructure: "../infrastructure/useRuns",
   presentation: "../presentation/useRunList",
   view: "../view/RunList",
-  "test-utils": "../test-utils/aRun",
 };
 
 for (const [from, uses] of Object.entries(allowed))
