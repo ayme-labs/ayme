@@ -548,7 +548,6 @@ describe("StructuralObservationSession readChange", () => {
       cause: "initial",
     });
     observe('- button "Save" [ref=e1]');
-    // A host starts the action, then captures its before.
     const actionId = startAction("interaction_1");
     const before = observe(
       '- button "Save" [ref=e1]\n- status "Draft" [ref=e2]',

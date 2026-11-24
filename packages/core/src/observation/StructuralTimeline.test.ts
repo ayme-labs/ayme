@@ -173,7 +173,6 @@ function observe(
   return evidence;
 }
 
-/** Records a visit start whose bootstrap observation resolves to an empty/unparseable snapshot. */
 function startVisitWithUnresolvableTree(
   timeline: StructuralTimeline,
   options: { visitId: VisitId; at: number; pageId?: PageId }
@@ -196,7 +195,6 @@ function startVisitWithUnresolvableTree(
   return entry;
 }
 
-/** Records an observation whose lazy tree handle rejects on resolve. */
 function observeUnresolvable(
   timeline: StructuralTimeline,
   options: {

@@ -34,7 +34,6 @@ export interface TreeRendering<Source, Projected, Rendered> {
   readonly renderer: Renderer<Projected, Rendered>;
 }
 
-/** What `source` renders to: its projection, rendered. */
 export function renderTree<Source, Projected, Rendered>(
   rendering: TreeRendering<Source, Projected, Rendered>,
   source: Source

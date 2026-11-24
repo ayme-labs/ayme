@@ -211,7 +211,6 @@ export class StructuralNode {
     this._ariaNode = StructuralNode._toAriaNode(this);
   }
 
-  /** Creates a structural node from ARIA-shaped evidence with an allocated structural ref. */
   static fromAriaNode(
     ariaNode: AriaNode,
     syntheticRef: AriaRef
