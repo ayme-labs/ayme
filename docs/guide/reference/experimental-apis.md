@@ -25,7 +25,7 @@ An experimental API belongs to a feature ayme keeps but whose shape is not settl
 
 ```ts
 // .ayme/page-objects.ts
-import { ProjectsPage } from "../src/pages/ProjectsPage";
+import { ProjectsPage } from "./pom/ProjectsPage";
 
 export default [ProjectsPage];
 ```

@@ -8,7 +8,7 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme 
 
 ## Set it up
 
-1. In the folder `ayme mcp` starts in, export your [Page Object](ayme-page-objects.md) classes from `.ayme/page-objects.ts`, and keep their files in `.ayme/pom/`. Install `@ayme-dev/ayme`, `@ayme-dev/mcp`, TypeScript and `@playwright/test` there, `@ayme-dev/ayme` at the same version as `@ayme-dev/mcp`, with a `tsconfig.json` whose `include` covers `.ayme/`, such as `".ayme/**/*.ts"`; plain `".ayme"` fails with TS18003, no inputs found. No build plugin is needed. `--page-objects <file>` after `mcp` names another entry.
+1. In the folder `ayme mcp` starts in, export your [Page Object](ayme-page-objects.md) classes from `.ayme/page-objects.ts`, and keep their files in `.ayme/pom/`. Install `@ayme-dev/ayme`, `@ayme-dev/mcp`, TypeScript and `@playwright/test` there, `@ayme-dev/ayme` at the same version as `@ayme-dev/mcp`. Give the folder its `tsconfig.json`, as [The `.ayme` folder](ayme-folder.md#set-the-folder-up-for-page-objects) shows. No build plugin is needed. `--page-objects <file>` after `mcp` names another entry.
 
    ```ts
    import type { AymeOptions } from "@ayme-dev/ayme";

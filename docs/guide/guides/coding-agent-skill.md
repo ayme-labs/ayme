@@ -24,4 +24,4 @@ Lists who uses your product and where they meet it, such as a UI, an API, a CLI 
 
 ## `.ayme/CONVENTIONS.md`
 
-What you settled for how ayme and its skills work in your repository. Each skill reads it first, and it overrides the skill's defaults. The opening part holds for every skill, and each skill has a section of its own, `ayme`, `Recorder` or `Product surfaces`, where it writes what you settle for later runs. It never holds credentials or real data.
+What you settled for how ayme and its skills work in your repository. Each skill reads it first, and it overrides the skill's defaults. The opening part holds for every skill, and each skill has a section of its own, `ayme`, `Recorder` or `Product surfaces`, where it writes what you settle for later runs. It never holds credentials or real data. [The `.ayme` folder](ayme-folder.md) lists what else the folder holds.

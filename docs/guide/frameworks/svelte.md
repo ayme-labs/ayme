@@ -36,7 +36,7 @@ Enable `experimentalDecorators` in the tsconfig, keeping SvelteKit's generated b
 }
 ```
 
-On SvelteKit 3, which reads its configuration from the `sveltekit()` call, extend `$app/tsconfig` instead and import Page Object Models with their `.ts` extension, such as `#lib/pom/ProjectsPage.ts`. Keep `svelte.config.js` and its adapter as they are. Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows, in `.ts` modules.
+On SvelteKit 3, which reads its configuration from the `sveltekit()` call, extend `$app/tsconfig` instead and import Page Object Models with their `.ts` extension, such as `../../.ayme/pom/ProjectsPage.ts`. Keep `svelte.config.js` and its adapter as they are. Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows, in `.ts` modules in `.ayme/pom/`, with the tsconfig that [The `.ayme` folder](../guides/ayme-folder.md) shows.
 
 ## Start ayme at the root
 
@@ -89,8 +89,8 @@ Registering a page doesn't tie it to a route. Give each page a `present` that ch
   import type { Snippet } from "svelte";
   import { dev } from "$app/environment";
   import { useAyme } from "@ayme-dev/svelte";
-  import { ProjectsPage } from "$lib/pom/ProjectsPage";
-  import { SettingsPage } from "$lib/pom/SettingsPage";
+  import { ProjectsPage } from "../../.ayme/pom/ProjectsPage";
+  import { SettingsPage } from "../../.ayme/pom/SettingsPage";
 
   let { children }: { children: Snippet } = $props();
   useAyme({
@@ -108,7 +108,7 @@ A component that calls an action gets the session's instance from `usePageObject
 ```svelte
 <script lang="ts">
   import { usePageObject } from "@ayme-dev/svelte";
-  import { ProjectsPage } from "$lib/pom/ProjectsPage";
+  import { ProjectsPage } from "../../.ayme/pom/ProjectsPage";
 
   const pom = usePageObject(ProjectsPage);
 </script>
@@ -186,7 +186,7 @@ A build includes ayme only with the plugin's `include: true`. The config above k
 
 - Call `useAyme(options)` only in the root `+layout.svelte` or `App.svelte`. SvelteKit creates the next layout before it destroys the previous one, so an owner in a route-group layout becomes a second active owner on navigation and throws.
 - Decorators inside `.svelte` scripts are not compiled.
-- The compiler follows SvelteKit's generated tsconfig, so Page Object Models under `src` need nothing more. Models outside `src`, such as a `playwright/` folder, need their own tsconfig with `experimentalDecorators`, passed to the plugin as `ayme({ tsconfigPath })`.
+- Page Object Models in `.ayme/pom/` compile with `.ayme/tsconfig.json`, which extends your `tsconfig.json` and, through it, SvelteKit's generated one. Models in another folder outside `src`, such as a `playwright/` folder, need their own tsconfig with `experimentalDecorators`, passed to the plugin as `ayme({ tsconfigPath })`.
 - The supported Svelte versions are on [Install](../start/install.md#supported-versions). The [SvelteKit example](https://github.com/ayme-labs/ayme/blob/main/apps/example-sveltekit/README.md) runs SvelteKit 2.
 
 ## Troubleshooting

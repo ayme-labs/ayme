@@ -100,7 +100,7 @@ export default {
             options: {
               include: true,
               tsconfigPath: fileURLToPath(
-                new URL("./tsconfig.json", import.meta.url)
+                new URL("./.ayme/tsconfig.json", import.meta.url)
               ),
             },
           },
@@ -195,7 +195,7 @@ export default function nextConfig(phase) {
               options: {
                 include,
                 tsconfigPath: fileURLToPath(
-                  new URL("./tsconfig.json", import.meta.url)
+                  new URL("./.ayme/tsconfig.json", import.meta.url)
                 ),
               },
             },

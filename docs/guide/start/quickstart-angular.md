@@ -20,8 +20,20 @@ New Angular workspaces already enable `experimentalDecorators`. [Angular](../fra
 
 ## 2. Write a Page Object Model
 
+Page Objects live in `.ayme/pom/`, at your project's root. Give the folder a tsconfig that extends your app's, so it compiles with the app's options:
+
+```jsonc
+// .ayme/tsconfig.json
+{
+  "extends": "../tsconfig.json",
+  "include": ["**/*.ts"],
+}
+```
+
+[The `.ayme` folder](../guides/ayme-folder.md) describes the rest of the folder. Then write the model:
+
 ```ts
-// playwright/pom/ProjectsPage.ts
+// .ayme/pom/ProjectsPage.ts
 import { ayme } from "@ayme-dev/ayme";
 import type { Page } from "@playwright/test";
 
@@ -66,7 +78,7 @@ Use the Page Object in a component, and render `<app-projects />` in your app:
 // src/app/projects.ts
 import { Component, signal } from "@angular/core";
 import { injectPageObject } from "@ayme-dev/angular";
-import { ProjectsPage } from "../../playwright/pom/ProjectsPage";
+import { ProjectsPage } from "../../.ayme/pom/ProjectsPage";
 
 @Component({
   selector: "app-projects",
