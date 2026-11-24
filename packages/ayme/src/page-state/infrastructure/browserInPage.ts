@@ -64,20 +64,12 @@ export async function captureDocument(
     keep?: readonly string[];
   } = {}
 ): Promise<Capture> {
-  const page = browserPageOf(currentDocument);
-  // The inputs are plain data, which the module reads in the page
-  // (ADR-0049); the handle carries them to Playwright Lite's page function.
-  const elements = await page.evaluateHandle(() => inputs);
-  try {
-    return await inPage(page).capture({
-      elements,
-      ...(ask.accepts ? { accepts: ask.accepts } : {}),
-      ...(ask.filters?.length ? { filters: ask.filters } : {}),
-      ...(ask.keep ? { keep: ask.keep } : {}),
-    });
-  } finally {
-    void elements.dispose();
-  }
+  return inPage(browserPageOf(currentDocument)).capture({
+    elements: inputs,
+    ...(ask.accepts ? { accepts: ask.accepts } : {}),
+    ...(ask.filters?.length ? { filters: ask.filters } : {}),
+    ...(ask.keep ? { keep: ask.keep } : {}),
+  });
 }
 
 /**
@@ -110,8 +102,11 @@ export async function beginDocumentAction(
   inputs: () => Promise<ElementInputs>
 ): Promise<PageAction> {
   const page = browserPageOf(currentDocument);
-  // Playwright Lite calls the page function as it is, so the handle holds
-  // the function itself (transitional: #1175, #1177).
+  // The handle holds the function itself, which the module calls before each
+  // capture of the action, so the action needs no second capture to see the
+  // roots the registry probes. Playwright Lite runs in the page's own realm
+  // and calls the page function as it is; a Node host cannot hand a function
+  // in, so `playwrightHost.ts` reads the inputs once and captures again.
   const elements = await page.evaluateHandle<ActionInputs>(() => inputs);
   try {
     const action = await inPage(page).begin({ elements });

@@ -18,9 +18,11 @@ import type { ElementInputs } from "./capture";
 type HostKey = string;
 
 /**
- * What a host hands an action's captures, transitionally as live values in
- * the page (`ElementInputs`): given as a function, it is read again before
- * each capture, as the browser runtime's registry probes its roots then.
+ * What a host hands an action's captures (`ElementInputs`): given as a
+ * function, it is read again before each capture, as the browser runtime's
+ * registry probes its roots then. Only a host in the page's own realm can
+ * hand a function; it saves the second capture a Node host takes after the
+ * action.
  */
 export type ActionInputs =
   ElementInputs | (() => ElementInputs | Promise<ElementInputs>);
