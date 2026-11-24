@@ -122,8 +122,6 @@ describe("Interaction history in Chromium", () => {
     );
   }
 
-  // --- Visits ---
-
   it("records a Visit at document load and one per route change", async () => {
     startRuntime();
     const visits = () => history().observations.getVisits();
@@ -159,8 +157,6 @@ describe("Interaction history in Chromium", () => {
     window.history.replaceState(null, "", "/customers");
     await expect.poll(() => visits()).toHaveLength(3);
   });
-
-  // --- Actions ---
 
   it("records one action with before, change and after evidence per single-element tool call", async () => {
     document.body.innerHTML = '<main><button id="add">Add</button></main>';
@@ -322,8 +318,6 @@ describe("Interaction history in Chromium", () => {
     expect(history().observations.getVisits()).toHaveLength(visitsBefore + 1);
     expect(result.changes).toContain("Orders page");
   });
-
-  // --- Goal Loop ---
 
   it("records one action per executed Goal Loop step and keeps the agent's cursor until the Handover", async () => {
     let step = 0;

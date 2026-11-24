@@ -59,7 +59,6 @@ export type PageStateHost = {
       cause: "initial" | "navigate";
     }) => void
   ): void;
-  /** A capture of the page with these exclusions and asks. */
   capture(
     inputs: ElementInputs,
     ask: {
@@ -216,7 +215,6 @@ const stores = new WeakMap<Page, PageStateStore>();
 const hosts = new WeakMap<Page, PageStateHost>();
 let documentCount = 0;
 
-/** The page's store, if its Page State Session was created. */
 export function existingPageState(page: Page): PageStateStore | undefined {
   return stores.get(page);
 }
