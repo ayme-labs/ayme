@@ -48,3 +48,4 @@ A replaced ADR lives in [retired/](retired/), its text unchanged.
 - [ADR-0057: Test support lives beside src and is never published](0057-test-support-lives-beside-src-and-is-never-published.md)
 - [ADR-0058: An Availability Reason names what is in the way by its role and name](0058-an-availability-reason-names-what-is-in-the-way-by-its-role-and-name.md)
 - [ADR-0059: A Page Object has an id of its own](0059-a-page-object-has-an-id-of-its-own.md)
+- [ADR-0060: A project keeps everything ayme in one `ayme` folder, without a dot](0060-a-project-keeps-everything-ayme-in-one-ayme-folder-without-a-dot.md)

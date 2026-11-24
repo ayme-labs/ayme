@@ -1,6 +1,6 @@
 ---
 name: product-surfaces
-description: List a product's consumers and the surfaces where they meet it in `.ayme/product-surfaces/`, keep that list current, or review a set of changes by the surfaces they change and what each consumer will notice, with before and after evidence from the running product.
+description: List a product's consumers and the surfaces where they meet it in `ayme/product-surfaces/`, keep that list current, or review a set of changes by the surfaces they change and what each consumer will notice, with before and after evidence from the running product.
 ---
 
 # Product surfaces
@@ -8,7 +8,7 @@ description: List a product's consumers and the surfaces where they meet it in `
 Look at a product from the outside: who consumes it, where they meet it, and what a change looks
 like from there.
 
-Read `.ayme/CONVENTIONS.md` first, when it exists: what the user settled for how ayme and its
+Read `ayme/CONVENTIONS.md` first, when it exists: what the user settled for how ayme and its
 skills work in this repository. Read its opening part, which holds for every skill, and its
 `Product surfaces` section, and follow a line that points to another file. It overrides this skill's
 defaults. When the user settles something for every later run, write it under `Product surfaces`,
@@ -36,7 +36,7 @@ A file or folder the repository tracks, or a URL outside it, that shows a consum
 exists. Every entry of the list names its sources, and the check verifies the paths.
 
 **The list**:
-`.ayme/product-surfaces/surfaces.ts`, the product's confirmed consumers and surfaces.
+`ayme/product-surfaces/surfaces.ts`, the product's confirmed consumers and surfaces.
 
 ## What to read
 

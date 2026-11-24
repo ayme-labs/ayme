@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { RecorderWindow } from "@ayme-dev/recorder-window/testing";
 import { chromium, type Browser } from "@playwright/test";
 
-import { CartPage } from "../.ayme/pom/CartPage";
-import { LoginPage } from "../.ayme/pom/LoginPage";
+import { CartPage } from "../ayme/pom/CartPage";
+import { LoginPage } from "../ayme/pom/LoginPage";
 import { expect, personAt, test } from "./fixtures";
 import { stockTraceTool } from "./stockTrace";
 

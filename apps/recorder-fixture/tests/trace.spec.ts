@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { CartPage } from "../.ayme/pom/CartPage";
+import { CartPage } from "../ayme/pom/CartPage";
 import { expect, test, type Recording } from "./fixtures";
 import { stockTraceTool } from "./stockTrace";
 
@@ -55,9 +55,7 @@ test.describe("the trace of a recording", () => {
       "interaction_2",
     ]);
     // The trace is beside the package, where the package says it is.
-    expect(text).toMatch(
-      /^tracePath: .ayme\/recordings\/rec_\w+\/trace\.zip$/m
-    );
+    expect(text).toMatch(/^tracePath: ayme\/recordings\/rec_\w+\/trace\.zip$/m);
     const stock = await stockTraceTool();
     try {
       await stock.open(join(folder, "trace.zip"));

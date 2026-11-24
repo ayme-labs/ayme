@@ -7,8 +7,8 @@ import {
 } from "@ayme-dev/recorder-window/testing";
 import { selectors } from "@playwright/test";
 
-import { CartPage } from "../.ayme/pom/CartPage";
-import { ShopPage } from "../.ayme/pom/ShopPage";
+import { CartPage } from "../ayme/pom/CartPage";
+import { ShopPage } from "../ayme/pom/ShopPage";
 import { expect, test, toolbarScript, type Recording } from "./fixtures";
 
 // The toolbar in every recorded page. A person presses its buttons and the

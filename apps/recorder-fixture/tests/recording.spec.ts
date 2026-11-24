@@ -1,13 +1,13 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { CartPage } from "../.ayme/pom/CartPage";
-import { CheckoutPage } from "../.ayme/pom/CheckoutPage";
-import { GesturesPage } from "../.ayme/pom/GesturesPage";
-import { HelpPage } from "../.ayme/pom/HelpPage";
-import { LatePage } from "../.ayme/pom/LatePage";
-import { LeavingPage } from "../.ayme/pom/LeavingPage";
-import { ShopPage } from "../.ayme/pom/ShopPage";
+import { CartPage } from "../ayme/pom/CartPage";
+import { CheckoutPage } from "../ayme/pom/CheckoutPage";
+import { GesturesPage } from "../ayme/pom/GesturesPage";
+import { HelpPage } from "../ayme/pom/HelpPage";
+import { LatePage } from "../ayme/pom/LatePage";
+import { LeavingPage } from "../ayme/pom/LeavingPage";
+import { ShopPage } from "../ayme/pom/ShopPage";
 import { expect, test, type Recording } from "./fixtures";
 
 const expected = (name: string) =>
@@ -28,7 +28,7 @@ async function finish({ recorder, projectDir }: Recording) {
   expect(await recorder.send({ type: "finish" })).toBe("applied");
   const outcome = await recorder.done;
   if (outcome.kind !== "saved") throw new Error("Nothing was saved.");
-  const recordings = join(projectDir, ".ayme", "recordings");
+  const recordings = join(projectDir, "ayme", "recordings");
   return {
     recordings,
     folder: outcome.folder,

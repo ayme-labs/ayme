@@ -3,7 +3,7 @@
 The list lives in one folder of the repository:
 
 ```text
-.ayme/product-surfaces/
+ayme/product-surfaces/
 ├── surfaces.ts    # the list: `consumers` and `surfaces`. People and agents edit this.
 ├── types.ts       # the contract, copied from this skill's assets
 ├── check.mjs      # the check, copied from this skill's assets
@@ -11,7 +11,7 @@ The list lives in one folder of the repository:
 ```
 
 ```ts
-// .ayme/product-surfaces/surfaces.ts
+// ayme/product-surfaces/surfaces.ts
 import type { Consumers, Surfaces } from "./types";
 
 export const consumers = {
@@ -69,7 +69,7 @@ For a product with no list yet. Start from the repositories the user names, or t
    [check.mjs](../assets/check.mjs) and [package.json](../assets/package.json) beside it,
    unchanged. When the product spans several
    repositories, the user picks the one that holds the list.
-7. Run `node .ayme/product-surfaces/check.mjs` and the project's type check, and fix what they
+7. Run `node ayme/product-surfaces/check.mjs` and the project's type check, and fix what they
    report.
 8. Propose the [setup](#setup) the repository lacks, and write each part once the user agrees.
 
@@ -98,12 +98,12 @@ Each part is proposed to the user and written once they agree. Skip a part that 
   file that holds the content), with the list's path:
 
   > The product's consumers and the surfaces where they meet it are listed in
-  > `.ayme/product-surfaces/surfaces.ts`. When a change adds, removes or reshapes a consumer or a
+  > `ayme/product-surfaces/surfaces.ts`. When a change adds, removes or reshapes a consumer or a
   > surface, propose the update to the user and edit the file once they agree. After editing it,
-  > run `node .ayme/product-surfaces/check.mjs`.
+  > run `node ayme/product-surfaces/check.mjs`.
 
 - **Type check.** The project's type check must cover the folder, or a surface can name a consumer
-  that does not exist. When no `tsconfig.json` includes it, propose adding `".ayme/**/*.ts"` to the
+  that does not exist. When no `tsconfig.json` includes it, propose adding `"ayme/**/*.ts"` to the
   `include` of the one that fits. In a project without TypeScript, say so: the check script still
   verifies the consumer names and the sources.
 

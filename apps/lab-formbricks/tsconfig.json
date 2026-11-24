@@ -6,5 +6,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": [".ayme/**/*.ts", "tests", "*.ts"]
+  "include": ["ayme/**/*.ts", "tests", "*.ts"]
 }

@@ -10,7 +10,7 @@ The changed files that made no change on any surface.
 
 ## Steps
 
-1. Read [the list](list.md) at `.ayme/product-surfaces/surfaces.ts`, in the after state. Without a
+1. Read [the list](list.md) at `ayme/product-surfaces/surfaces.ts`, in the after state. Without a
    list, say so, find the surfaces from the changes alone by the definitions in the skill, and offer
    to write the list afterwards.
 2. Read the changes between the two states and find the surfaces they affect. Use the list's names

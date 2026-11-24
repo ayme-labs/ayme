@@ -5,7 +5,7 @@ import { transpilePomModule } from "./transpilePomModule";
 
 describe("transpilePomModule", () => {
   it("names the line and column of each syntax error", () => {
-    const fileName = "/work/.ayme/pom/PlainPage.ts";
+    const fileName = "/work/ayme/pom/PlainPage.ts";
 
     expect(
       diagnosticsOf(() => transpilePomModule("const { = 1 } = {};\n", fileName))
@@ -28,7 +28,7 @@ describe("transpilePomModule", () => {
   });
 
   it("leaves a byte order mark out of a syntax error's line and column, as TypeScript does reading the file", () => {
-    const fileName = "/work/.ayme/pom/PlainPage.ts";
+    const fileName = "/work/ayme/pom/PlainPage.ts";
 
     expect(
       diagnosticsOf(() =>

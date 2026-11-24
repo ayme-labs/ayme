@@ -52,9 +52,9 @@ const log = (message: string) =>
  * function builds once: the Agent Connection, the page channel and its
  * port, the tokens, the Page Objects build and the agent's name.
  *
- * With a Page Objects entry, `pageObjects` or else `.ayme/page-objects.ts`
+ * With a Page Objects entry, `pageObjects` or else `ayme/page-objects.ts`
  * in the working folder, it also builds the entry in watch mode, serves its
- * last good build on the same server, and writes `.ayme/init-script.js`,
+ * last good build on the same server, and writes `ayme/init-script.js`,
  * which loads it into a page that doesn't ship ayme. Experimental (ADR-0037).
  *
  * It lists none of ayme's own browser driving of the paired page, whether

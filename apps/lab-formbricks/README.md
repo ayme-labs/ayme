@@ -3,7 +3,7 @@
 [Formbricks](https://github.com/formbricks/formbricks) as a lab app: a real product with hard UI to measure agents on. The app itself ships no ayme. It is unmodified Formbricks, a git submodule at [`formbricks/`](./formbricks) pinned to an exact upstream commit. ayme's Page Objects for it live in this folder, and an `ayme mcp` server builds them and loads them into the page from outside, as in [Page Objects on a page without ayme](../../docs/guide/guides/page-objects-without-ayme.md).
 
 ```
-.ayme/                 what ayme mcp serves when it starts in this folder
+ayme/                  what ayme mcp serves when it starts in this folder
   page-objects.ts      the entry: the Page Objects of the screens
   pom/                 the Page Objects
 formbricks/            the Formbricks submodule
@@ -71,8 +71,8 @@ pnpm lab:stop
 
 Formbricks runs as its upstream wrote it, at `8abe0b42`, the `main` of the `ayme-labs/formbricks` fork as of 2026-10-03. Everything of ayme is in this folder and reaches the page from outside:
 
-1. `ayme mcp`, started in this folder, finds [`.ayme/page-objects.ts`](./.ayme/page-objects.ts), builds it with the `@ayme-dev/ayme` of this checkout, and serves the build on its own loopback port. It rebuilds after each edit, and an open page swaps the new Page Objects in. Run `lab:prepare` again after changing ayme itself, then restart `ayme mcp`.
-2. As it starts it writes `.ayme/init-script.js`, which names its port. Git ignores the file.
+1. `ayme mcp`, started in this folder, finds [`ayme/page-objects.ts`](./ayme/page-objects.ts), builds it with the `@ayme-dev/ayme` of this checkout, and serves the build on its own loopback port. It rebuilds after each edit, and an open page swaps the new Page Objects in. Run `lab:prepare` again after changing ayme itself, then restart `ayme mcp`.
+2. As it starts it writes `ayme/init-script.js`, which names its port. Git ignores the file.
 3. The browser tool that opens the lab app runs that init script in every page, with `bypassCSP` on and the `local-network-access` permission granted. Formbricks's content security policy allows neither the served modules nor the server's loopback WebSocket, which is why `bypassCSP` is needed. With Playwright:
 
    ```ts
@@ -80,7 +80,7 @@ Formbricks runs as its upstream wrote it, at `8abe0b42`, the `main` of the `ayme
      bypassCSP: true,
      permissions: ["local-network-access"],
    });
-   await context.addInitScript({ path: ".ayme/init-script.js" });
+   await context.addInitScript({ path: "ayme/init-script.js" });
    ```
 
    Playwright MCP and Playwright CLI take the same three settings in their config file, as [the guide](../../docs/guide/guides/page-objects-without-ayme.md#set-it-up) shows.
@@ -89,7 +89,7 @@ Formbricks runs as its upstream wrote it, at `8abe0b42`, the `main` of the `ayme
 
 ### Page Objects
 
-The Page Objects cover the screens the eval's missions touch, in [`.ayme/pom/`](./.ayme/pom), written to ayme's [Page Object design rules](../../skills/ayme/references/page-object-design.md): `SignInPage`, `SurveyNavigationPage`, `SurveyEditorPage` and `SurveySummaryPage`, with the summary's `EditActiveSurveyDialog` and `ShareSurveyDialog`, which composes a generic `Modal`. Each page extends `AppPage`, which makes it present on its own path, so the entry lists all of them and the page offers only the current screen's Page Object Tools. A Page Object knows itself and its own declared children, and nothing of another screen. So an action waits only for what its own page shows of the outcome and then returns: `Modal.close` for its dialog to go, `SurveyEditorPage.save` and `saveAsDraft` for their button to show its name again, `SignInPage.logIn` for its own error message. An action that leads to another screen clicks and returns that screen's Page Object without waiting for it, so its tool description still names the Page Object the page shows next; whatever drives the browser waits for the page to load. The editor has three save actions, and Formbricks shows the button of each only in some states:
+The Page Objects cover the screens the eval's missions touch, in [`ayme/pom/`](./ayme/pom), written to ayme's [Page Object design rules](../../skills/ayme/references/page-object-design.md): `SignInPage`, `SurveyNavigationPage`, `SurveyEditorPage` and `SurveySummaryPage`, with the summary's `EditActiveSurveyDialog` and `ShareSurveyDialog`, which composes a generic `Modal`. Each page extends `AppPage`, which makes it present on its own path, so the entry lists all of them and the page offers only the current screen's Page Object Tools. A Page Object knows itself and its own declared children, and nothing of another screen. So an action waits only for what its own page shows of the outcome and then returns: `Modal.close` for its dialog to go, `SurveyEditorPage.save` and `saveAsDraft` for their button to show its name again, `SignInPage.logIn` for its own error message. An action that leads to another screen clicks and returns that screen's Page Object without waiting for it, so its tool description still names the Page Object the page shows next; whatever drives the browser waits for the page to load. The editor has three save actions, and Formbricks shows the button of each only in some states:
 
 | Editor                                                      | `save`                    | `saveAndClose`                     | `saveAsDraft`           |
 | ----------------------------------------------------------- | ------------------------- | ---------------------------------- | ----------------------- |
@@ -117,7 +117,7 @@ The submodule pins an upstream Formbricks commit, with nothing of ayme on top, s
 1. Run `pnpm lab:prepare` if `formbricks/` is not checked out. In `formbricks/`, fetch and check out the new commit: `git fetch origin && git checkout <new-commit>`.
 2. In this repository, stage the submodule at that commit (`git add formbricks`) and update the revision named in [ayme in the lab app](#ayme-in-the-lab-app).
 3. Run `pnpm lab:prepare`, start `pnpm lab:dev`, which applies Formbricks's new database migrations, and run `pnpm lab:qualify`.
-4. Fix what the qualification reports, here: a Page Object locator in `.ayme/pom/`, or the seed in [`tests/seed.ts`](./tests/seed.ts), which writes a user, an organization and a workspace straight into Formbricks's database and so follows its schema.
+4. Fix what the qualification reports, here: a Page Object locator in `ayme/pom/`, or the seed in [`tests/seed.ts`](./tests/seed.ts), which writes a user, an organization and a workspace straight into Formbricks's database and so follows its schema.
 5. Commit the submodule, the README and the fixes together.
 
 The fork's `ayme-overlay` branch, which held ayme inside Formbricks up to `51ceaa4`, is no longer used.

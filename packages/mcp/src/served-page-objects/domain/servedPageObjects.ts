@@ -1,5 +1,5 @@
 /** The folder of a project that holds what `ayme mcp` serves and writes. */
-export const AYME_FOLDER = ".ayme";
+export const AYME_FOLDER = "ayme";
 
 /**
  * The entry `ayme mcp` looks for in the folder it starts in: a module whose

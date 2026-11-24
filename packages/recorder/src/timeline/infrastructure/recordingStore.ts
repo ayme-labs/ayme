@@ -1,4 +1,5 @@
 import {
+  appendFile,
   copyFile,
   mkdir,
   readFile,
@@ -16,10 +17,10 @@ import type { Timeline } from "../domain/timeline";
  * Writes a timeline as a Recording Package where the released recorder
  * keeps its recordings, in the project:
  *
- *     .ayme/recordings/<recordingId>/package.yaml
- *     .ayme/recordings/<recordingId>/trace.zip   when the recording has one
- *     .ayme/recordings/latest.yaml      the same text as the package
- *     .ayme/.gitignore                  when the project has none
+ *     ayme/recordings/<recordingId>/package.yaml
+ *     ayme/recordings/<recordingId>/trace.zip   when the recording has one
+ *     ayme/recordings/latest.yaml      the same text as the package
+ *     ayme/.gitignore                  with the recordings folder ignored
  *
  * Resolves with the package's folder, or with null when the timeline has
  * nothing to write: nothing is written then.
@@ -64,13 +65,13 @@ async function write(
       createdAt,
       // Relative to the project, with forward slashes, as the released
       // recorder writes it.
-      tracePath: trace ? `.ayme/recordings/${recordingId}/trace.zip` : null,
+      tracePath: trace ? `ayme/recordings/${recordingId}/trace.zip` : null,
     },
     trace?.positions
   );
   if (text === null) return null;
-  await ignoreWhatIsKept(join(options.projectDir, ".ayme"));
-  const recordings = join(options.projectDir, ".ayme", "recordings");
+  await ignoreWhatIsKept(join(options.projectDir, "ayme"));
+  const recordings = join(options.projectDir, "ayme", "recordings");
   const folder = join(recordings, recordingId);
   const temporaryFolder = join(recordings, `.${recordingId}.tmp`);
   const temporaryLatest = join(recordings, `.${recordingId}.latest.tmp`);
@@ -103,18 +104,40 @@ async function write(
 }
 
 /**
- * Keeps `.ayme` out of the project's commits, as the released recorder does:
- * a `.gitignore` there lists the recordings folder, where the recorder also
- * keeps its temporary files, and itself. A project's own file is never
- * overwritten, nor added to.
+ * Keeps the recordings out of the project's commits: the `.gitignore` of
+ * `ayme/` lists the recordings folder, where the recorder also keeps its
+ * temporary files. A new file lists itself too, as the released recorder's
+ * does. A file that is there already, the project's own or the one
+ * `ayme mcp` wrote, keeps its text and gets the folder's line, unless a line
+ * of its own already ignores the folder or takes it back in.
+ *
+ * The file is created only when it is not there, and the line is added at
+ * its end. It is never written anew from what was read, which would drop a
+ * line `ayme mcp` adds at the same moment.
  */
 async function ignoreWhatIsKept(ayme: string): Promise<void> {
   await mkdir(ayme, { recursive: true });
-  await writeFile(join(ayme, ".gitignore"), "recordings/\n.gitignore\n", {
+  const file = join(ayme, ".gitignore");
+  const created = await writeFile(file, "recordings/\n.gitignore\n", {
     flag: "wx",
-  }).catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== "EEXIST") throw error;
-  });
+  }).then(
+    () => true,
+    (error: NodeJS.ErrnoException) => {
+      if (error.code !== "EEXIST") throw error;
+      return false;
+    }
+  );
+  if (created) return;
+  const before = await readFile(file, "utf8");
+  // As git reads a line: spaces at its end do not count, one at its start
+  // is part of the name.
+  const decided = before
+    .split(/\r?\n/)
+    .some((line) => /^!?\/?recordings\/?$/.test(line.trimEnd()));
+  if (decided) return;
+  const lineEnd = before.includes("\r\n") ? "\r\n" : "\n";
+  const separator = before === "" || before.endsWith("\n") ? "" : lineEnd;
+  await appendFile(file, `${separator}recordings/${lineEnd}`);
 }
 
 /** Where the trace of a recording is, or why it cannot be had. */
@@ -130,7 +153,7 @@ export async function findTrace(
   projectDir: string,
   recording: string
 ): Promise<TraceLookup> {
-  const recordings = join(projectDir, ".ayme", "recordings");
+  const recordings = join(projectDir, "ayme", "recordings");
   const latest = recording === "latest";
   const text = await readFile(
     join(recordings, latest ? "latest.yaml" : join(recording, "package.yaml")),
@@ -141,8 +164,8 @@ export async function findTrace(
     return {
       kind: "missing",
       reason: latest
-        ? "No recording found in .ayme/recordings. Record a flow first."
-        : `No recording "${recording}" found in .ayme/recordings.`,
+        ? "No recording found in ayme/recordings. Record a flow first."
+        : `No recording "${recording}" found in ayme/recordings.`,
     };
   /** A field of the package's head; undefined when it has no such line. */
   const field = (name: string) => {

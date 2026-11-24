@@ -25,7 +25,7 @@ beforeEach(async () => {
 });
 afterEach(() => rm(project, { recursive: true }));
 
-const recordings = () => join(project, ".ayme", "recordings");
+const recordings = () => join(project, "ayme", "recordings");
 const createdAt = new Date("2026-11-12T14:50:47.604Z");
 const recordingId = "rec_20261112T145047604Z";
 const exists = (path: string) =>
@@ -90,7 +90,7 @@ describe("saving a recording", () => {
         trace: { file, positions: {} },
       })
     ).resolves.toBeNull();
-    expect(await exists(join(project, ".ayme"))).toBe(false);
+    expect(await exists(join(project, "ayme"))).toBe(false);
   });
 
   it("leaves nothing behind when it cannot be completed, and an earlier recording as it was", async () => {
@@ -132,7 +132,7 @@ describe("finding a recording's trace", () => {
   }
   const packageOf = (...head: string[]) =>
     [...head, `visits: []`, ``].join("\n");
-  const tracePath = `.ayme/recordings/rec_1/trace.zip`;
+  const tracePath = `ayme/recordings/rec_1/trace.zip`;
 
   it("finds the file the package names, for `latest` and for the recording's id", async () => {
     await recording(
@@ -182,11 +182,11 @@ describe("finding a recording's trace", () => {
   it("says that there is no recording, or which one it could not find", async () => {
     expect(await findTrace(project, "latest")).toEqual({
       kind: "missing",
-      reason: "No recording found in .ayme/recordings. Record a flow first.",
+      reason: "No recording found in ayme/recordings. Record a flow first.",
     });
     expect(await findTrace(project, "rec_9")).toEqual({
       kind: "missing",
-      reason: 'No recording "rec_9" found in .ayme/recordings.',
+      reason: 'No recording "rec_9" found in ayme/recordings.',
     });
   });
 

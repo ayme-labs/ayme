@@ -20,7 +20,7 @@ final "Confirm" can create a real contract. Only the user approves one.
    flow makes is classified, and you have kept the permanent changes, each
    with its method and URL, for the audit in step 5.
 2. **Align** with the user before you write code. Take what
-   `.ayme/CONVENTIONS.md` already settles, and settle the rest:
+   `ayme/CONVENTIONS.md` already settles, and settle the rest:
    - the steps of the flow;
    - the page objects;
    - the irreversible steps: propose those the permanent changes from step 1
@@ -32,7 +32,7 @@ final "Confirm" can create a real contract. Only the user approves one.
    - the `confirm` the entry script uses, as [Confirm](#confirm) says;
    - on a site with a login, where a run gets its credentials: a saved login
      state, environment variables or the team's secret store. They never go
-     into code, a parameter file or `.ayme/CONVENTIONS.md`. Tell the user
+     into code, a parameter file or `ayme/CONVENTIONS.md`. Tell the user
      that the recording holds any password it captured;
    - the replay test logs the values of request fields that differ from the
      recording: ask whether any fields should be masked in that log, and if so
@@ -42,7 +42,7 @@ final "Confirm" can create a real contract. Only the user approves one.
 
    Done when the user has confirmed each, and you have written what they
    settled for every flow in the repository to the `Recorder` section of
-   `.ayme/CONVENTIONS.md`, creating the file or the section when it is
+   `ayme/CONVENTIONS.md`, creating the file or the section when it is
    missing: never real data. What holds for one site
    or one flow goes next to its code: in the code where code can say it,
    otherwise in a notes file beside it. The conventions file says where such
@@ -103,7 +103,7 @@ confirm.ts                         the agreed confirm
 run-contract.ts                    the entry script
 tests/contract.replay.spec.ts      the replay test
 tests/replay.ts                    copy of assets/replay.ts, with match() for the site
-.ayme/
+ayme/
   CONVENTIONS.md                   what holds for every flow in the repository
   recordings/rec_…/                the recording, written by the recorder
   params/contract.recorded.json    what the recording entered and showed
@@ -159,7 +159,7 @@ export async function runContract(
 The entry script is what the user runs. It opens a headed browser, reads a
 parameters file, records a trace for diagnosis, calls the flow with the
 agreed `confirm` and prints the result. Start it the way the project runs
-TypeScript, such as `npx tsx run-contract.ts .ayme/params/<file>.json`. With
+TypeScript, such as `npx tsx run-contract.ts ayme/params/<file>.json`. With
 `--no-submit` it prints the summary and stops before the first irreversible
 step: use it for any live run the user does not watch.
 
@@ -176,13 +176,13 @@ async function main() {
     ? async ({ name, summary }) => (console.log(name, summary), "stop")
     : askInTerminal;
   const browser = await chromium.launch({ headless: false });
-  const context = await browser.newContext({ storageState: ".ayme/auth.json" });
+  const context = await browser.newContext({ storageState: "ayme/auth.json" });
   await context.tracing.start({ screenshots: true, snapshots: true });
   try {
     const page = await context.newPage();
     console.log(await runContract(page, params, { confirm }));
   } finally {
-    await context.tracing.stop({ path: `.ayme/runs/${Date.now()}/trace.zip` });
+    await context.tracing.stop({ path: `ayme/runs/${Date.now()}/trace.zip` });
     await browser.close();
   }
 }
@@ -190,7 +190,7 @@ void main();
 ```
 
 On a site with a login, one way to get one: the user saves a login state
-with `npx playwright codegen --save-storage=.ayme/auth.json <url>`, logging
+with `npx playwright codegen --save-storage=ayme/auth.json <url>`, logging
 in in the window it opens; the entry script and the replay test load it.
 
 ### Confirm
@@ -253,7 +253,7 @@ the project already has a copy: keep that one, with its `match()` and any
 masking. Its header says what loads live and what the recording answers. Write the
 recorded parameter values, and the summary the recording's page showed before
 each irreversible step, read from the snapshot of the interaction before
-it, to `.ayme/params/<flow>.recorded.json` as `{ params, summaries }`, with
+it, to `ayme/params/<flow>.recorded.json` as `{ params, summaries }`, with
 a placeholder in place of any password the recording captured. The test
 calls the same flow, never a copy of its steps, with a `confirm` that always
 approves and keeps each summary, so the test checks what a person would:
@@ -265,13 +265,13 @@ import { expect, test } from "@playwright/test";
 import { runContract } from "../contract.js";
 import { installReplay } from "./replay.js";
 
-test.use({ serviceWorkers: "block", storageState: ".ayme/auth.json" });
+test.use({ serviceWorkers: "block", storageState: "ayme/auth.json" });
 
 test("contract flow replays", async ({ context }) => {
-  await installReplay(context, ".ayme/recordings/rec_…/trace.zip");
+  await installReplay(context, "ayme/recordings/rec_…/trace.zip");
   const page = await context.newPage();
   const { params, summaries } = JSON.parse(
-    readFileSync(".ayme/params/contract.recorded.json", "utf8")
+    readFileSync("ayme/params/contract.recorded.json", "utf8")
   );
   const seen: Record<string, Record<string, string>> = {};
   const result = await runContract(page, params, {

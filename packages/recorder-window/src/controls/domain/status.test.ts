@@ -47,13 +47,13 @@ describe("what the window says the recorder is doing", () => {
     expect(
       statusText({
         phase: "ended",
-        outcome: { kind: "saved", folder: "/project/.ayme/recordings/rec_1" },
+        outcome: { kind: "saved", folder: "/project/ayme/recordings/rec_1" },
         visits: [],
         commands: [],
         warnings: [],
         url: null,
       })
-    ).toBe("Saved /project/.ayme/recordings/rec_1/package.yaml");
+    ).toBe("Saved /project/ayme/recordings/rec_1/package.yaml");
     expect(
       statusText({
         phase: "ended",
