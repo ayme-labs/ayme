@@ -2,10 +2,15 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { aChildRun, anInteraction, anItem, aRun } from "../test-utils/runs";
+import {
+  aChildRun,
+  anInteraction,
+  anItem,
+  aRun,
+} from "../../../testing/runs/runs";
 import { RunsRegion } from "../../panel";
-import { renderPart } from "../../testing/renderPart";
-import { RunsView } from "../../testing";
+import { renderPart } from "../../../testing/renderPart";
+import { RunsView } from "../../../testing";
 import type { Run, RunFocus } from "../domain/run";
 import { Runs, type RunsProps } from "./Runs";
 

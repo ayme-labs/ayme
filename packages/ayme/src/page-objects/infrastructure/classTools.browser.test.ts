@@ -2,9 +2,9 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import { registerCompiledPom, probeRegisteredPomMembers } from "./registry";
 import { createPage } from "./browserPage";
-import { rooted, RootedComponent } from "../../test-utils/pomRoot.testSupport";
-import { rootId } from "../../test-utils/agentCalls.testSupport";
-import { startSession } from "../../test-utils/session.testSupport";
+import { rooted, RootedComponent } from "../../../testing/pomRoot.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
+import { startSession } from "../../../testing/session.testSupport";
 import { callers, type PomManifest } from "../../shared";
 import { ayme } from "../domain/decorators";
 
@@ -214,7 +214,7 @@ it("offers and calls every recursive instance, coalescing members on the same ro
     session.register(TreePage);
     await probeRegisteredPomMembers();
     const { toolOptionsOf } =
-      await import("../../test-utils/toolOptions.testSupport");
+      await import("../../../testing/toolOptions.testSupport");
     const offered = (await toolOptionsOf(page)).find(
       ({ key }) => key === "Node.open"
     )!.tool.args[0]!.closedSet;

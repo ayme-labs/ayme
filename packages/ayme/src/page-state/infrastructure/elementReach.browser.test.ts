@@ -1,14 +1,14 @@
-import { readRef } from "../../test-utils/elementRefs.testSupport";
+import { readRef } from "../../../testing/elementRefs.testSupport";
 import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "../../page-objects/infrastructure";
 import { assertReachable, refsOfLocator } from "./elementReach";
 import { errorText } from "../../shared";
-import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
+import { toolOptionsOf } from "../../../testing/toolOptions.testSupport";
 import { planArguments } from "../../goal-loop/domain";
 import { lookAtPageStateForDocument } from "./pageState";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 import { createAyme, listElementToolTargets } from "../../runtime";
 import { geometryReach } from "./reachMeasurement";
 

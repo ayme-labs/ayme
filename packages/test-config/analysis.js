@@ -6,18 +6,17 @@
  */
 import picomatch from "picomatch";
 
-/** Source under `src/` that is not production code, so it gets no score. */
+/**
+ * Source under `src/` that is not production code, so it gets no score. Test
+ * support lives in `testing/` beside `src/` (ADR-0057), so no pattern names it.
+ */
 export const nonProductionPatterns = Object.freeze([
   "**/*.d.ts",
   "**/*.test.{ts,tsx}",
-  "**/*.testSupport.{ts,tsx}",
   "**/*.scenario.{ts,tsx}",
   "**/*.setup.{ts,tsx}",
   "**/__tests__/**",
   "**/fixtures/**",
-  "**/test-utils/**",
-  "**/testing.ts",
-  "**/testing/**",
 ]);
 
 /**

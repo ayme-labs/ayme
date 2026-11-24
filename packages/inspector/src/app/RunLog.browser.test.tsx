@@ -4,14 +4,14 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { Interaction, RegisteredPomTool } from "@ayme-dev/ayme";
 import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
-import { forest, node } from "../structure/test-utils/projected";
+import { forest, node } from "../../testing/structure/projected";
 import {
   lookOf,
   startedAyme,
   type PageFixture,
-} from "../tools/test-utils/startedAyme";
+} from "../../testing/tools/startedAyme";
 import { renderInspector } from "./renderInspector";
-import { Inspector } from "../testing";
+import { Inspector } from "../../testing";
 
 // Component tests: Runs reading the page's Run log, with fixture Runs by
 // several Callers, driven through the Inspector POM on playwright-lite. The

@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import type { Run as LogRun } from "@ayme-dev/ayme";
 
-import { anInteraction, aRun } from "../test-utils/runs";
+import { anInteraction, aRun } from "../../../testing/runs/runs";
 import { shownRuns } from "./logRuns";
 
 it("keeps a captured target when the Inspector remounts after the element disappeared", () => {

@@ -9,7 +9,7 @@ const { captureAriaSnapshot, pageObjectRoots } = vi.hoisted(() => ({
 
 vi.mock("./browserInPage", async () =>
   (
-    await import("../../in-page/inPageStandIn.testSupport")
+    await import("../../../testing/in-page/inPageStandIn.testSupport")
   ).standInBrowserInPage(captureAriaSnapshot, async () => ({
     roots: await pageObjectRoots(),
     absentElements: [],
@@ -31,7 +31,7 @@ import {
 } from "./pageState";
 import { createCursors } from "../domain/cursors";
 import { pageStateNodeEntry } from "../domain/structuralPageState";
-import { ayme } from "../../test-utils/agentCalls.testSupport";
+import { ayme } from "../../../testing/agentCalls.testSupport";
 
 const ref = AriaRefSchema.parse;
 

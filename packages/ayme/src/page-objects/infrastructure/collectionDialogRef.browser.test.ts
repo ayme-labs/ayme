@@ -5,9 +5,9 @@ import { createPage } from "./browserPage";
 import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
 import { ayme } from "../domain/decorators";
 import { callers, type PomManifest } from "../../shared";
-import { ayme as agent, rootId } from "../../test-utils/agentCalls.testSupport";
-import { RootedComponent } from "../../test-utils/pomRoot.testSupport";
-import { startSession } from "../../test-utils/session.testSupport";
+import { ayme as agent, rootId } from "../../../testing/agentCalls.testSupport";
+import { RootedComponent } from "../../../testing/pomRoot.testSupport";
+import { startSession } from "../../../testing/session.testSupport";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -162,7 +162,7 @@ it("#966 targets a shared portaled collection child's own root and refuses a row
 
     // Five separate children resolve to one dialog instance.
     const { toolOptionsOf } =
-      await import("../../test-utils/toolOptions.testSupport");
+      await import("../../../testing/toolOptions.testSupport");
     const offered = (await toolOptionsOf(page)).find(
       ({ key }) => key === "RenameDialog.confirm"
     )!;

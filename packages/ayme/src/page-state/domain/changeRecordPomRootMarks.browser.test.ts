@@ -1,16 +1,16 @@
-import { rootId } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { PomManifest, ToolManifest } from "../../shared";
 import { ayme as model } from "../../page-objects/domain";
 import { createPage } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 import {
   startSession,
   type TestSession,
-} from "../../test-utils/session.testSupport";
+} from "../../../testing/session.testSupport";
 
 // Runtime object seam: a Change Record names a Page Object Root the way the
 // snapshot does, so an agent reading only the diff can tell which Page Object

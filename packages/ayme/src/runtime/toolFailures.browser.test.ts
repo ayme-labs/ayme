@@ -11,8 +11,8 @@ import { errorText } from "../shared";
 import {
   agentTools,
   saveButtonRef,
-} from "../test-utils/publication.testSupport";
-import { rooted } from "../test-utils/pomRoot.testSupport";
+} from "../../testing/publication.testSupport";
+import { rooted } from "../../testing/pomRoot.testSupport";
 import { createAyme } from "./runtime";
 
 // Runtime object seam: a failing call an agent makes rejects with the error,

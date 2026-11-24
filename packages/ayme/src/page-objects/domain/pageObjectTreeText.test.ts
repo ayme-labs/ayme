@@ -4,7 +4,7 @@ import {
   SyntheticAriaRefFactory,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
-import { treeRead } from "../../test-utils/pageObjectTree.testSupport";
+import { treeRead } from "../../../testing/pageObjectTree.testSupport";
 import { elementText } from "./elementText";
 import { pageObjectIdOf } from "./pageObjectId";
 import {

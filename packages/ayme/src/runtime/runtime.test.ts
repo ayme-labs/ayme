@@ -21,7 +21,7 @@ import {
   sessionReach,
   type AymePage,
 } from "./runtime";
-import { alwaysReaches } from "../test-utils/reach.testSupport";
+import { alwaysReaches } from "../../testing/reach.testSupport";
 import * as registryModule from "../page-objects/infrastructure";
 import { loadWebMcpPublication } from "./webMcp";
 import { listElementToolTargets } from "./publishedTools";
@@ -31,7 +31,7 @@ vi.mock(
   async (importOriginal) => ({
     ...(await importOriginal<object>()),
     ...(
-      await import("../test-utils/pageOfDocument.testSupport")
+      await import("../../testing/pageOfDocument.testSupport")
     ).standInPageOfDocument(),
   })
 );
@@ -42,7 +42,7 @@ vi.mock("./agentConnection", () => ({
   loadProcessConnection: vi.fn(),
 }));
 vi.mock("../page-objects/infrastructure/inPageDriver", async () =>
-  (await import("../test-utils/pageDriver.testSupport")).standInDriverModule()
+  (await import("../../testing/pageDriver.testSupport")).standInDriverModule()
 );
 vi.mock("../page-objects/infrastructure/browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),

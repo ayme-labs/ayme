@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
 import { indexMembers } from "../page-model";
-import { collection, page } from "../page-model/test-utils/pageModel";
+import { collection, page } from "../../testing/page-model/pageModel";
 import type { StructureNode } from "../structure";
 import { itemsOf } from "./collectionItems";
 

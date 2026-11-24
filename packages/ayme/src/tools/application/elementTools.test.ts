@@ -10,7 +10,7 @@ const { captureAriaSnapshot, pageObjectStructure } = vi.hoisted(() => ({
 
 vi.mock("../../page-state/infrastructure/browserInPage", async () =>
   (
-    await import("../../in-page/inPageStandIn.testSupport")
+    await import("../../../testing/in-page/inPageStandIn.testSupport")
   ).standInBrowserInPage(captureAriaSnapshot, () => pageObjectStructure())
 );
 
@@ -34,8 +34,8 @@ import {
   getPageStateSession,
 } from "../../page-state/infrastructure";
 import { listPublishedBrowserTools } from "../infrastructure/publishedBrowserTools";
-import { ayme, runContext } from "../../test-utils/agentCalls.testSupport";
-import { alwaysReaches } from "../../test-utils/reach.testSupport";
+import { ayme, runContext } from "../../../testing/agentCalls.testSupport";
+import { alwaysReaches } from "../../../testing/reach.testSupport";
 import type { AriaRef } from "../../page-state/domain";
 
 const ref = AriaRefSchema.parse;

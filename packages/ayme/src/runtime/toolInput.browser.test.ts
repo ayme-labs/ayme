@@ -1,4 +1,4 @@
-import { rootId } from "../test-utils/agentCalls.testSupport";
+import { rootId } from "../../testing/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
 
@@ -9,7 +9,7 @@ import {
 import { registerCompiledPom } from "../page-objects/application";
 import type { PomManifest } from "../shared";
 import { callers, errorText } from "../shared";
-import { rooted } from "../test-utils/pomRoot.testSupport";
+import { rooted } from "../../testing/pomRoot.testSupport";
 import { createAyme } from "./runtime";
 
 // One input check per Run (#895): before any tool runs, the runtime checks

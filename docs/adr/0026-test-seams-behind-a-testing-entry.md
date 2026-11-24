@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0057
 ---
 
 # Test seams live behind a package's testing entry

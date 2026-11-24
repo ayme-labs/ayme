@@ -2,16 +2,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import { listRunnableTools, type RunnableTool } from "../domain/runnableTools";
-import { forest, node } from "../../structure/test-utils/projected";
+import { forest, node } from "../../../testing/structure/projected";
 import { buildStructureTree } from "../../structure";
 import {
   aChildRun,
   anInteraction,
   anItem,
   aRun,
-} from "../../runs/test-utils/runs";
-import { renderPart } from "../../testing/renderPart";
-import { RunCard as RunCardPart } from "../../testing";
+} from "../../../testing/runs/runs";
+import { renderPart } from "../../../testing/renderPart";
+import { RunCard as RunCardPart } from "../../../testing";
 import { argumentViolationsOf } from "../infrastructure/argumentViolations";
 import { schemaText } from "../infrastructure/schemaText";
 import { RunCard, type RunCardProps } from "./RunCard";

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { registerCompiledPom } from "../page-objects/application";
 import { createPage } from "../page-objects/infrastructure";
-import { rooted } from "../test-utils/pomRoot.testSupport";
+import { rooted } from "../../testing/pomRoot.testSupport";
 import { callers, errorText, type ToolInfo } from "../shared";
 import { createAyme } from "./runtime";
 

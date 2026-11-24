@@ -1,11 +1,11 @@
-import { rootId } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   AriaRefSchema,
   type StructuralActionId,
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
-import { agentCursor } from "../../test-utils/agentCalls.testSupport";
+import { agentCursor } from "../../../testing/agentCalls.testSupport";
 
 import type { PomManifest, ToolManifest } from "../../shared";
 import type { DecisionResponse } from "../../goal-loop/domain";
@@ -21,13 +21,13 @@ import {
   getInteractionHistory,
   getPageStateSession,
 } from "../infrastructure/pageState";
-import { refsOfSelectors } from "../../test-utils/elementRefs.testSupport";
+import { refsOfSelectors } from "../../../testing/elementRefs.testSupport";
 import { pageOfDocument } from "../infrastructure";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
 import {
   agentTools,
   firstChoices,
-} from "../../test-utils/publication.testSupport";
+} from "../../../testing/publication.testSupport";
 import { createAyme } from "../../runtime";
 
 type ActionResultShape = {

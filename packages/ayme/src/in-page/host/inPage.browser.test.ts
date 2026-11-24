@@ -9,11 +9,14 @@ import {
   registerCompiledPom,
 } from "../../page-objects/application";
 import { inPageDriver } from "../../page-objects/infrastructure";
-import { inPageContract } from "./inPageContract.testSupport";
-import type { LiteFrame } from "./liteFrame.testSupport";
+import { inPageContract } from "../../../testing/in-page/inPageContract.testSupport";
+import type { LiteFrame } from "../../../testing/in-page/liteFrame.testSupport";
 
 const frames = new Map<Page, HTMLIFrameElement>();
-const runtime = new URL("./liteFrame.testSupport.ts", import.meta.url).href;
+const runtime = new URL(
+  "../../../testing/in-page/liteFrame.testSupport.ts",
+  import.meta.url
+).href;
 
 /** Loads `frame`'s document, or its next one, and answers its Lite frame. */
 async function loaded(frame: HTMLIFrameElement, load: () => void) {

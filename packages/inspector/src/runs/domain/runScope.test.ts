@@ -2,8 +2,13 @@ import { expect, it } from "vitest";
 import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
 import { indexMembers } from "../../page-model";
-import { collection, page } from "../../page-model/test-utils/pageModel";
-import { aChildRun, anInteraction, anItem, aRun } from "../test-utils/runs";
+import { collection, page } from "../../../testing/page-model/pageModel";
+import {
+  aChildRun,
+  anInteraction,
+  anItem,
+  aRun,
+} from "../../../testing/runs/runs";
 import { runScope as scopeOf } from "./runScope";
 
 // Unit tests: which runs Runs shows for the selection. The runs are one on

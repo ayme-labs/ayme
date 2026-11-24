@@ -1,4 +1,4 @@
-import { readRef } from "../../test-utils/elementRefs.testSupport";
+import { readRef } from "../../../testing/elementRefs.testSupport";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Page } from "@playwright/test";
 
@@ -13,7 +13,7 @@ import {
 import type { PomManifest } from "../../shared";
 import type { CustomTool } from "./elementTools";
 import { AymeError, ToolInputError } from "../../shared";
-import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
+import { toolOptionsOf } from "../../../testing/toolOptions.testSupport";
 import { planArguments } from "../../goal-loop/domain";
 import { getPomDefinitionText } from "../infrastructure/documentPageContext";
 import { type AriaRef } from "../../page-state/domain";
@@ -21,11 +21,11 @@ import {
   getInteractionHistory,
   lookAtPageStateForDocument,
 } from "../../page-state/infrastructure";
-import { rooted } from "../../test-utils/pomRoot.testSupport";
+import { rooted } from "../../../testing/pomRoot.testSupport";
 import {
   agentTools,
   saveButtonRef,
-} from "../../test-utils/publication.testSupport";
+} from "../../../testing/publication.testSupport";
 import {
   createAyme,
   listElementToolTargets,

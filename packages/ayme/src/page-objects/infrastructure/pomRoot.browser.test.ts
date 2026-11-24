@@ -4,7 +4,7 @@ import type { Locator, Page } from "@playwright/test";
 import {
   ayme as agent,
   runContext,
-} from "../../test-utils/agentCalls.testSupport";
+} from "../../../testing/agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "../../shared";
 import { ayme } from "../domain/decorators";
 import { createPage } from "./browserPage";
@@ -116,7 +116,7 @@ describe("Page Object Root by option", () => {
     const shellId = state.text.match(/ Shell (po\d+)/)![1]!;
     const childId = state.text.match(/ Child (po\d+)/)![1]!;
     const { toolOptionsOf } =
-      await import("../../test-utils/toolOptions.testSupport");
+      await import("../../../testing/toolOptions.testSupport");
     const options = await toolOptionsOf(page);
     for (const name of ["Shell.open", "Child.open"])
       expect(
@@ -227,7 +227,7 @@ describe("Page Object Root by option", () => {
       listed("Announcer.announce")?.inputSchema.properties
     ).not.toHaveProperty("id");
     const { toolOptionsOf } =
-      await import("../../test-utils/toolOptions.testSupport");
+      await import("../../../testing/toolOptions.testSupport");
     const offered = (await toolOptionsOf(page)).find(
       ({ key }) => key === "Announcer.announce"
     )!;
@@ -312,7 +312,7 @@ describe("Page Object Root by option", () => {
     session.pom.register(RowsPage);
     await probeRegisteredPomMembers();
     const { toolOptionsOf } =
-      await import("../../test-utils/toolOptions.testSupport");
+      await import("../../../testing/toolOptions.testSupport");
     const offered = async () =>
       (await toolOptionsOf(page)).find(({ key }) => key === "Row.open")!.tool
         .args[0]!.closedSet;

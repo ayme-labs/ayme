@@ -4,11 +4,11 @@ import { cdp } from "vitest/browser";
 import type {} from "@vitest/browser-playwright";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { renderPart } from "../../testing/renderPart";
-import { Inspector } from "../../testing";
+import { renderPart } from "../../../testing/renderPart";
+import { Inspector } from "../../../testing";
 import { spring, springEasing } from "../domain/motion";
 import type { Preferences } from "../domain/preferences";
-import { ShellHarness } from "../test-utils/ShellHarness";
+import { ShellHarness } from "../../../testing/panel/ShellHarness";
 
 // Component tests: the shell with fixture preferences, in a 1280×800
 // viewport, driven through the Inspector's page objects on playwright-lite.

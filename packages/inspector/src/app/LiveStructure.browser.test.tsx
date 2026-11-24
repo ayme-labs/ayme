@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { forest, node } from "../structure/test-utils/projected";
-import { lookOf, startedAyme } from "../tools/test-utils/startedAyme";
+import { forest, node } from "../../testing/structure/projected";
+import { lookOf, startedAyme } from "../../testing/tools/startedAyme";
 import { renderInspector } from "./renderInspector";
-import { Inspector } from "../testing";
+import { Inspector } from "../../testing";
 
 // Component tests: the Structure view keeps up with the page on its own,
 // with no registry change to prompt it: the mocked registry never reports

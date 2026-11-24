@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createPomCompiler } from "./index";
-import { diagnosticsOf, positionOf } from "./pomCompileError.testSupport";
+import {
+  diagnosticsOf,
+  positionOf,
+} from "../../testing/compiler/pomCompileError.testSupport";
 
 // Appended to what the transform generates, to fail its transpile alone.
 const generated = vi.hoisted(() => ({ suffix: "" }));

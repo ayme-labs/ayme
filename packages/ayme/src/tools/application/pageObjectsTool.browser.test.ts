@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { registerCompiledPom } from "../../page-objects/application";
 import { createPage } from "../../page-objects/infrastructure";
-import { rooted, rootOf } from "../../test-utils/pomRoot.testSupport";
+import { rooted, rootOf } from "../../../testing/pomRoot.testSupport";
 import { ayme as decorate } from "../../page-objects/domain";
-import { startSession } from "../../test-utils/session.testSupport";
+import { startSession } from "../../../testing/session.testSupport";
 
 const action = (toolName: string) => ({
   methodName: toolName.split(".").at(-1)!,

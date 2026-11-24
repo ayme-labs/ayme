@@ -1,4 +1,4 @@
-import { rootId } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Page } from "@playwright/test";
 import { expect as expectOnPage } from "@ayme-dev/playwright-lite";
@@ -14,8 +14,8 @@ import {
   type CustomTool,
   type Run,
 } from "../../index";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
-import { operations } from "../../test-utils/publication.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
+import { operations } from "../../../testing/publication.testSupport";
 
 // Runtime object seam: each Run in `ayme.runs` lists the Interactions it
 // performed itself on the runtime's Page.

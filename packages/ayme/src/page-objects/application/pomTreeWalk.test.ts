@@ -6,7 +6,7 @@ import type { Locator } from "@playwright/test";
 import { createPage } from "../infrastructure/browserPage";
 import type { PomComponentManifest, PomManifest } from "../../shared";
 import { ayme } from "../domain/decorators";
-import { rooted } from "../../test-utils/pomRoot.testSupport";
+import { rooted } from "../../../testing/pomRoot.testSupport";
 import { rootTargetPath } from "../domain/pomTree";
 import { observePageObject, resolveTargets } from "./pomTreeWalk";
 import { inPage } from "../../in-page";

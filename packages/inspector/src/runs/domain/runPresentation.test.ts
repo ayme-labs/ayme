@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { aRun, anInteraction, anItem } from "../test-utils/runs";
+import { aRun, anInteraction, anItem } from "../../../testing/runs/runs";
 import type { RunInteraction, ToolArguments } from "./run";
 import { runPresentation } from "./runPresentation";
 

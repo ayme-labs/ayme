@@ -3,10 +3,10 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
-import { startedAyme } from "../tools/test-utils/startedAyme";
-import { forest, node } from "../structure/test-utils/projected";
+import { startedAyme } from "../../testing/tools/startedAyme";
+import { forest, node } from "../../testing/structure/projected";
 import { renderInspector } from "./renderInspector";
-import { Inspector } from "../testing";
+import { Inspector } from "../../testing";
 
 // Component tests of the page's two highlights through the whole panel: the
 // dashed one follows the pointer in the panel, the solid one follows the

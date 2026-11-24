@@ -1,8 +1,8 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { renderPart } from "../../testing/renderPart";
-import { Connections as ConnectionsPart } from "../../testing";
+import { renderPart } from "../../../testing/renderPart";
+import { Connections as ConnectionsPart } from "../../../testing";
 import type {
   AgentConnectionStatus,
   PublicationStatus,

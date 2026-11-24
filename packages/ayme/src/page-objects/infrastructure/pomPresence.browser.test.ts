@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Locator, Page } from "@playwright/test";
 
-import { ayme as agent } from "../../test-utils/agentCalls.testSupport";
+import { ayme as agent } from "../../../testing/agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "../../shared";
 import { ayme } from "../domain/decorators";
 import { createPage } from "./browserPage";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
 import {
   listRegisteredPoms,
   probeRegisteredPomMembers,

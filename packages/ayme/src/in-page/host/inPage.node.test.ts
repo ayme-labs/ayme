@@ -17,7 +17,7 @@ import { Rolldown } from "tsdown";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type * as Playwright from "../../playwright";
-import { inPageContract } from "./inPageContract.testSupport";
+import { inPageContract } from "../../../testing/in-page/inPageContract.testSupport";
 
 // Playwright's overlay keeps its shadow root closed unless it runs under its own
 // tests; the contract reads the highlight boxes it draws.
@@ -82,7 +82,7 @@ async function bundlePageRuntime(): Promise<string> {
           id === entry
             ? [
                 `import { createAyme, createPage } from ${JSON.stringify(join(dist, "index.mjs"))};`,
-                `import { inPage } from ${JSON.stringify(join(dist, "testing.mjs"))};`,
+                `import { inPage } from ${JSON.stringify(join(dist, "internal.mjs"))};`,
                 "let ayme;",
                 "window.aymePageRuntime = {",
                 "  bound: () => inPage(createPage()).bound(),",

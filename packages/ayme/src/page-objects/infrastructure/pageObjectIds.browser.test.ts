@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createPage } from "./browserPage";
-import { rooted } from "../../test-utils/pomRoot.testSupport";
+import { rooted } from "../../../testing/pomRoot.testSupport";
 import {
   registerCompiledPom,
   listAvailablePomTools,
   probeRegisteredPomMembers,
 } from "./registry";
 import { getPageStateForDocument } from "../../page-state/infrastructure";
-import { runContext } from "../../test-utils/agentCalls.testSupport";
-import { startSession } from "../../test-utils/session.testSupport";
+import { runContext } from "../../../testing/agentCalls.testSupport";
+import { startSession } from "../../../testing/session.testSupport";
 
 const action = (methodName: string) => ({
   methodName: methodName.split(".").at(-1)!,

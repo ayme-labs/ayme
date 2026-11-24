@@ -39,8 +39,8 @@ import {
 import { startGate } from "../in-page/gate";
 import { installGate, startPickingIn } from "./pageFunctions";
 import { stockBrowser } from "./stockBrowser";
-import { snapshotId } from "../../../test-utils/ids";
-import { zipText } from "../../../test-utils/zip";
+import { snapshotId } from "../../../../testing/ids";
+import { zipText } from "../../../../testing/zip";
 
 // The compatibility suite: the stock adapter on each supported Playwright.
 // Each private detail of Playwright the adapter uses has its test here
@@ -1592,6 +1592,89 @@ it("draws the highlight on every element a selector names in each frame its fram
   const { found } = await browser.toldOf("highlighted");
   expect(found).toBe(true);
   await expect.poll(() => drawnCount(browser.page)).toBe(3);
+});
+
+/** A frame inside a frame, each moved away from its parent's corner, with
+ * a look-alike in each, and one more in a frame of a closed shadow root. */
+const OFFSET_FRAMES = `
+  <h1>Orders</h1>
+  <iframe id="outer" style="margin: 30px 0 0 60px; width: 400px; height: 200px"></iframe>
+  <closed-place></closed-place>
+  <script>
+    document.getElementById("outer").srcdoc =
+      '<button>Pay</button><iframe id="inner" style="margin-left: 50px; height: 80px"></iframe>' +
+      '<script>document.getElementById("inner").srcdoc = "<button>Pay</button><button>Deep</button>";<\\/script>';
+    customElements.define("closed-place", class extends HTMLElement {
+      constructor() {
+        super();
+        this.attachShadow({ mode: "closed" }).innerHTML =
+          '<iframe srcdoc="<button>Pay</button>"></iframe>';
+      }
+    });
+  </script>`;
+
+// From Playwright 1.63 the recorder may start the selector of a target in
+// a frame inside a frame with "any frame" (`shortensFramePaths` below), and
+// 1.62 enters each frame: a step of a Visit already left is looked up by
+// it. The adapter finds the frames itself, as Playwright's "any frame"
+// does, so that each is moved by its own place in the page.
+it("draws the highlight in its place in the page on every element a selector names in a frame inside a frame, entering each frame or starting in any frame, and in each frame it matches in, but in none a closed shadow root keeps from selectors", async () => {
+  const browser = await onStockPlaywright(OFFSET_FRAMES);
+  const outer = browser.page.frameLocator("#outer");
+  const inner = outer.frameLocator("#inner");
+  await inner.getByRole("button", { name: "Deep" }).waitFor();
+  // The look-alike in the closed shadow root's frame is on the page too.
+  await expect
+    .poll(async () => {
+      const counts = await Promise.all(
+        browser.page
+          .frames()
+          .map((frame) => frame.getByRole("button", { name: "Pay" }).count())
+      );
+      return counts.reduce((sum, count) => sum + count, 0);
+    })
+    .toBe(3);
+  const deep = await boxOf(inner.getByRole("button", { name: "Deep" }));
+  const pays = await Promise.all(
+    [outer, inner].map((frame) =>
+      boxOf(frame.getByRole("button", { name: "Pay" }))
+    )
+  );
+  const lookups = [
+    [
+      `#outer >> internal:control=enter-frame >> #inner >> internal:control=enter-frame >> internal:role=button[name="Deep"s]`,
+      [deep],
+    ],
+    [
+      `internal:control=any-frame >> internal:role=button[name="Deep"s]`,
+      [deep],
+    ],
+    [
+      `internal:control=any-frame >> iframe >> internal:control=enter-frame >> internal:role=button[name="Deep"s]`,
+      [deep],
+    ],
+    // Two frames have a look-alike: each lights up.
+    [`internal:control=any-frame >> internal:role=button[name="Pay"s]`, pays],
+  ] as const;
+
+  for (const [index, [selector, boxes]] of lookups.entries()) {
+    await browser.ask({
+      kind: "highlight",
+      highlight: index + 1,
+      target: { page: "page_1", find: { by: "selector", selector } },
+    });
+    const { found } = await browser.toldOf(
+      "highlighted",
+      (told) => told.highlight === index + 1
+    );
+    expect([selector, found]).toEqual([selector, true]);
+    await expect
+      .poll(async () => {
+        const drawn = await drawnBoxes(browser.page);
+        return [selector, drawn.length, drawn];
+      })
+      .toEqual([selector, boxes.length, expect.arrayContaining([...boxes])]);
+  }
 });
 
 it("reads the boxes of every element a selector names in one call per frame, not one per element", async () => {

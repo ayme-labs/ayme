@@ -23,7 +23,7 @@ import {
   scripted,
   stageOne,
   step,
-} from "../test-utils/stepDecision.testSupport";
+} from "../../../testing/goal-loop/stepDecision.testSupport";
 
 // --- Tests ---
 

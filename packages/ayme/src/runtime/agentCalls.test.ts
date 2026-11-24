@@ -11,19 +11,18 @@ const { captureAriaSnapshot, pageObjectRoots, listRegisteredPoms } = vi.hoisted(
 );
 
 vi.mock("../page-state/infrastructure/browserInPage", async () =>
-  (await import("../in-page/inPageStandIn.testSupport")).standInBrowserInPage(
-    captureAriaSnapshot,
-    async () => ({
-      roots: await pageObjectRoots(),
-      absentElements: [],
-    })
-  )
+  (
+    await import("../../testing/in-page/inPageStandIn.testSupport")
+  ).standInBrowserInPage(captureAriaSnapshot, async () => ({
+    roots: await pageObjectRoots(),
+    absentElements: [],
+  }))
 );
 vi.mock("../page-objects/infrastructure/registry", () => ({
   listRegisteredPoms,
 }));
 
-import { ayme } from "../test-utils/agentCalls.testSupport";
+import { ayme } from "../../testing/agentCalls.testSupport";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 const ref = AriaRefSchema.parse;

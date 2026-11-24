@@ -7,7 +7,10 @@ import {
   derivePomManifestsFromProgram,
   type SkippedPomMethod,
 } from "./derivePomManifests";
-import { diagnosticsOf, positionOf } from "./pomCompileError.testSupport";
+import {
+  diagnosticsOf,
+  positionOf,
+} from "../../testing/compiler/pomCompileError.testSupport";
 import { createPomProgram } from "./pomProgram";
 import { version } from "../../package.json";
 import type { PomManifest } from "../shared";

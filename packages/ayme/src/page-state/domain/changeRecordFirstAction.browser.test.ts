@@ -1,4 +1,4 @@
-import { rootId } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { PomManifest } from "../../shared";
@@ -8,8 +8,8 @@ import {
   probeRegisteredPomMembers,
 } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 import { createAyme } from "../../runtime";
 
 /**

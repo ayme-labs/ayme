@@ -34,7 +34,7 @@ import {
   stageOneWithValues,
   step,
   type Turn,
-} from "../test-utils/stepDecision.testSupport";
+} from "../../../testing/goal-loop/stepDecision.testSupport";
 
 /**
  * The arguments a Step Decision runs its operation with: asked in stage two

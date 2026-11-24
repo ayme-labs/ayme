@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { interactionTitle } from "./entryText";
-import { entryId } from "../../test-utils/ids";
+import { entryId } from "../../../testing/ids";
 
 const interaction = (details: Record<string, unknown>) => ({
   id: entryId("interaction_1"),

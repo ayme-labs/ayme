@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PageObjectId, PageObjectTreeRead } from "../page-objects/domain";
-import { treeRead } from "../test-utils/pageObjectTree.testSupport";
+import { treeRead } from "../../testing/pageObjectTree.testSupport";
 import type { ToolInfo } from "../shared";
 import {
   pageObjectToolSource,
