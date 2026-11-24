@@ -1,4 +1,5 @@
 import {
+  appendFile,
   copyFile,
   mkdir,
   readFile,
@@ -109,26 +110,31 @@ async function write(
  * does. A file that is there already, the project's own or the one
  * `ayme mcp` wrote, keeps its text and gets the folder's line, unless a line
  * of its own already ignores the folder or takes it back in.
+ *
+ * The file is created only when it is not there, and the line is added at
+ * its end. It is never written anew from what was read, which would drop a
+ * line `ayme mcp` adds at the same moment.
  */
 async function ignoreWhatIsKept(ayme: string): Promise<void> {
   await mkdir(ayme, { recursive: true });
   const file = join(ayme, ".gitignore");
-  const before = await readFile(file, "utf8").catch(
+  const created = await writeFile(file, "recordings/\n.gitignore\n", {
+    flag: "wx",
+  }).then(
+    () => true,
     (error: NodeJS.ErrnoException) => {
-      if (error.code !== "ENOENT") throw error;
-      return undefined;
+      if (error.code !== "EEXIST") throw error;
+      return false;
     }
   );
-  if (before === undefined) {
-    await writeFile(file, "recordings/\n.gitignore\n");
-    return;
-  }
+  if (created) return;
+  const before = await readFile(file, "utf8");
   const decided = before
     .split(/\r?\n/)
     .some((line) => /^!?\/?recordings\/?$/.test(line.trim()));
   if (decided) return;
   const separator = before === "" || before.endsWith("\n") ? "" : "\n";
-  await writeFile(file, `${before}${separator}recordings/\n`);
+  await appendFile(file, `${separator}recordings/\n`);
 }
 
 /** Where the trace of a recording is, or why it cannot be had. */
