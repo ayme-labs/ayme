@@ -338,6 +338,287 @@ it("asks for no highlight when it does not apply", async () => {
   expect(sent).toEqual([]);
 });
 
+/** A list page after a click on "Closed": three items of "Issues" went out
+ * and one came in, two came into another list of the same name, and a
+ * button's cursor alone changed. */
+const issues = { ref: "e2", name: "Issues" };
+const pinned = { ref: "e6", name: "Issues" };
+const listed: RecordedVisit = {
+  visitId: "visit_1",
+  url: "http://shop.test/issues",
+  cause: "initial",
+  entries: [
+    {
+      kind: "interaction",
+      id: entryId("interaction_1"),
+      timestamp: 10,
+      interaction: {
+        id: entryId("interaction_1"),
+        type: "click",
+        targetRef: "e9",
+        targetSelector: 'internal:role=tab[name="Closed"s]',
+      },
+      targetElement: 'tab "Closed"',
+      changes: [
+        {
+          kind: "changed",
+          element: 'button "New issue"',
+          changed: [{ property: "cursor", to: "pointer" }],
+        },
+        {
+          kind: "removed",
+          element: 'listitem "Open one"',
+          role: "listitem",
+          parent: issues,
+        },
+        {
+          kind: "changed",
+          element: 'tab "Closed"',
+          changed: [{ property: "selected", to: "true" }],
+        },
+        {
+          kind: "removed",
+          element: 'listitem "Open two"',
+          role: "listitem",
+          parent: issues,
+        },
+        {
+          kind: "added",
+          element: 'listitem "Closed one"',
+          role: "listitem",
+          parent: issues,
+        },
+        {
+          kind: "removed",
+          element: 'listitem "Open three"',
+          role: "listitem",
+          parent: issues,
+        },
+        {
+          kind: "added",
+          element: 'listitem "Pinned one"',
+          role: "listitem",
+          parent: pinned,
+        },
+        {
+          kind: "added",
+          element: 'listitem "Pinned two"',
+          role: "listitem",
+          parent: pinned,
+        },
+      ],
+    },
+    {
+      kind: "change",
+      id: entryId("change_1"),
+      timestamp: 20,
+      changes: [
+        {
+          kind: "changed",
+          element: 'link "Help"',
+          changed: [{ property: "cursor" }],
+        },
+      ],
+    },
+  ],
+};
+
+it("folds three or more elements of one role that went in or out of one named parent into one collapsed row, which expands to each of them, and keeps two such elements, and another parent's of the same name, as rows of their own", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  tell({ phase: "recording", visits: [listed], commands: ["stop"] });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [click] = await (await visits())[0]!.entries();
+
+  expect(await click!.whatChanged()).toEqual([
+    {
+      element: "4 listitems",
+      effect: "3 removed from, 1 appeared in “Issues”",
+    },
+    { element: "tab “Closed”", effect: "became selected" },
+    { element: "listitem “Pinned one”", effect: "appeared" },
+    { element: "listitem “Pinned two”", effect: "appeared" },
+  ]);
+  const [folded] = await click!.changes();
+  expect(await folded!.isExpanded()).toBe(false);
+  expect(await folded!.foldedList.count()).toBe(0);
+
+  await folded!.expand();
+
+  expect(await folded!.isExpanded()).toBe(true);
+  expect(await folded!.whatFolded()).toEqual([
+    { element: "listitem “Open one”", effect: "was removed" },
+    { element: "listitem “Open two”", effect: "was removed" },
+    { element: "listitem “Closed one”", effect: "appeared" },
+    { element: "listitem “Open three”", effect: "was removed" },
+  ]);
+});
+
+it("keeps the same row expanded when a later update puts another folded row before it", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  tell({ phase: "recording", visits: [listed], commands: ["stop"] });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [issuesRow] = await (
+    await (await visits())[0]!.entries()
+  )[0]!.changes();
+  await issuesRow!.expand();
+
+  // The step is still live: its rows come again, with a toolbar's buttons
+  // first.
+  const [click, change] = listed.entries;
+  const toolbar = { ref: "e20", name: "Toolbar" };
+  const buttons = ["Bold", "Italic", "Link"].map((name) => ({
+    kind: "added" as const,
+    element: `button "${name}"`,
+    role: "button",
+    parent: toolbar,
+  }));
+  tell({
+    phase: "recording",
+    visits: [
+      {
+        ...listed,
+        entries: [
+          { ...click!, changes: [...buttons, ...click!.changes!] },
+          change!,
+        ],
+      },
+    ],
+    commands: ["stop"],
+  });
+
+  const [entry] = await (await visits())[0]!.entries();
+  await expect
+    .poll(async () => (await entry!.whatChanged())[0]!.element)
+    .toBe("3 buttons");
+  const [buttonsRow, listRow] = await entry!.changes();
+  expect(await buttonsRow!.isExpanded()).toBe(false);
+  expect(await listRow!.isExpanded()).toBe(true);
+});
+
+it("highlights the element of each row an expanded row folds while it is hovered, by its place among the entry's rows", async () => {
+  const { channel, sent, tell } = scriptedChannel();
+  mount(channel);
+  tell({
+    phase: "recording",
+    visits: [listed],
+    commands: ["stop", "highlight", "clearHighlight"],
+  });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [click] = await (await visits())[0]!.entries();
+  const [folded] = await click!.changes();
+
+  // The row that folds them asks nothing of its own.
+  await folded!.element.hover();
+  await folded!.expand();
+  const [, second, third] = await folded!.folded();
+  await second!.element.hover();
+  await third!.element.hover();
+  await click!.title.hover();
+
+  expect(sent).toEqual([
+    { type: "highlight", entry: entryId("interaction_1"), row: 3 },
+    { type: "clearHighlight" },
+    { type: "highlight", entry: entryId("interaction_1"), row: 4 },
+    { type: "clearHighlight" },
+  ]);
+});
+
+it("shows what appeared inside an element whose only change is the cursor, folded, without a row for the cursor", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  const list = { ref: "e2", name: "Issues" };
+  const pointed: RecordedVisit = {
+    ...listed,
+    entries: [
+      {
+        kind: "change",
+        id: entryId("change_2"),
+        timestamp: 30,
+        changes: [
+          {
+            kind: "changed",
+            element: 'list "Issues"',
+            changed: [{ property: "cursor", to: "pointer" }],
+          },
+          ...["B", "C", "D"].map((name) => ({
+            kind: "added" as const,
+            element: `listitem "${name}"`,
+            role: "listitem",
+            parent: list,
+          })),
+        ],
+      },
+    ],
+  };
+  tell({ phase: "recording", visits: [pointed], commands: ["stop"] });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+
+  const [change] = await (await visits())[0]!.entries();
+  expect(await change!.title.textContent()).toBe("3 elements appeared");
+  expect(await change!.whatChanged()).toEqual([
+    { element: "3 listitems", effect: "appeared in “Issues”" },
+  ]);
+});
+
+it("clears the highlight when a row is collapsed while one it folds is hovered", async () => {
+  const { channel, sent, tell } = scriptedChannel();
+  mount(channel);
+  tell({
+    phase: "recording",
+    visits: [listed],
+    commands: ["stop", "highlight", "clearHighlight"],
+  });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [click] = await (await visits())[0]!.entries();
+  const [folded] = await click!.changes();
+  await folded!.expand();
+  const [first] = await folded!.folded();
+
+  await first!.element.hover();
+  // By the keyboard, the mouse still on the row it folds.
+  await folded!.element.press("Enter");
+
+  await expect.poll(() => folded!.isExpanded()).toBe(false);
+  expect(sent).toEqual([
+    { type: "highlight", entry: entryId("interaction_1"), row: 1 },
+    { type: "clearHighlight" },
+  ]);
+});
+
+it("asks nothing when a row is collapsed while highlighting does not apply", async () => {
+  const { channel, sent, tell } = scriptedChannel();
+  mount(channel);
+  tell({ phase: "paused", visits: [listed], commands: ["continue"] });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [click] = await (await visits())[0]!.entries();
+  const [folded] = await click!.changes();
+  await folded!.expand();
+
+  await folded!.element.press("Enter");
+
+  await expect.poll(() => folded!.isExpanded()).toBe(false);
+  expect(sent).toEqual([]);
+});
+
+it("lists no row for an element whose only change is the cursor, and does not show a change no Interaction made that is left with no rows", async () => {
+  const { channel, tell } = scriptedChannel();
+  mount(channel);
+  tell({ phase: "recording", visits: [listed], commands: ["stop"] });
+  await expect.poll(async () => (await visits()).length).toBe(1);
+  const [visit] = await visits();
+
+  const entries = await visit!.entries();
+  expect(entries).toHaveLength(1);
+  const elements = (await entries[0]!.whatChanged()).map(
+    ({ element }) => element
+  );
+  expect(elements).not.toContain("button “New issue”");
+  // Its icon joins nothing below it.
+  expect(await recorderWindow.timeline.lines.count()).toBe(1);
+});
+
 it("shows a chip that can highlight its element with a border and a crosshair, and one that cannot as before", async () => {
   const { channel, tell } = scriptedChannel();
   mount(channel);

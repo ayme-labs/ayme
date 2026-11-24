@@ -476,7 +476,11 @@ describe("a change row's element in words, for whoever shows the entry", () => {
 
     expect(timeline.visits()[0]!.entries[0]!).toMatchObject({
       changes: expect.arrayContaining([
-        { kind: "removed", element: 'listitem "Twin" (2nd of 2)' },
+        {
+          kind: "removed",
+          element: 'listitem "Twin" (2nd of 2)',
+          role: "listitem",
+        },
       ]),
     });
   });

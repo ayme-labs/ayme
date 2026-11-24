@@ -7,17 +7,61 @@ import { RecorderPart } from "./parts";
 export type WhatChanged = { readonly element: string; readonly effect: string };
 
 /** One row of what an entry changed: the element's chip, and what happened
- * to it. Hovering the chip highlights the element on the page. */
+ * to it. Hovering the chip highlights the element on the page. A row that
+ * folds elements of one role, as "4 listitems", expands from its chip to
+ * the rows it folds, and highlights nothing of its own. */
 export class ChangeRow extends RecorderPart {
   @ayme.child
   readonly element: Locator;
   @ayme.child
   readonly effect: Locator;
+  /** The rows a row of elements of one role folds, while it is expanded. */
+  @ayme.child
+  readonly foldedList: Locator;
 
   constructor(root: Locator) {
     super(root);
-    this.element = root.getByTestId("change-element");
-    this.effect = root.getByTestId("change-effect");
+    // Its own, not those of the rows it folds.
+    this.element = root.locator(":scope > [data-testid=change-element]");
+    this.effect = root.locator(":scope > [data-testid=change-effect]");
+    this.foldedList = root.getByRole("list");
+  }
+
+  /** The row as a person reads it. */
+  async read(): Promise<WhatChanged> {
+    return {
+      element: (await this.element.innerText()).trim(),
+      effect: (await this.effect.innerText()).trim(),
+    };
+  }
+
+  /** Whether a row of elements of one role shows the rows it folds. */
+  async isExpanded(): Promise<boolean> {
+    return (await this.element.getAttribute("aria-expanded")) === "true";
+  }
+
+  /** Shows the rows a row of elements of one role folds. */
+  @ayme.action({
+    description:
+      "Expands a row that folds elements of one role, to show each of them.",
+  })
+  async expand(): Promise<this> {
+    if (!(await this.isExpanded())) await this.element.click();
+    await this.foldedList.waitFor();
+    return this;
+  }
+
+  /** The rows it folds, in order, while it is expanded. */
+  async folded(): Promise<ChangeRow[]> {
+    const rows = await this.foldedList.getByRole("listitem").all();
+    return rows.map((row) => new ChangeRow(row));
+  }
+
+  /** The rows it folds, as a person reads each, while it is expanded. */
+  async whatFolded(): Promise<WhatChanged[]> {
+    const read: WhatChanged[] = [];
+    for (const row of await this.folded()) read.push(await row.read());
+    return read;
   }
 }
 
@@ -64,20 +108,17 @@ export class Entry extends RecorderPart {
     });
   }
 
-  /** The rows of what it changed, in the order shown. */
+  /** The rows of what it changed, in the order shown: a row that folds
+   * elements of one role is one of them. */
   async changes(): Promise<ChangeRow[]> {
-    const rows = await this.whatChangedList.getByRole("listitem").all();
+    const rows = await this.whatChangedList.locator(":scope > li").all();
     return rows.map((row) => new ChangeRow(row));
   }
 
   /** What it changed, as a person reads each row. */
   async whatChanged(): Promise<WhatChanged[]> {
     const read: WhatChanged[] = [];
-    for (const row of await this.changes())
-      read.push({
-        element: (await row.element.innerText()).trim(),
-        effect: (await row.effect.innerText()).trim(),
-      });
+    for (const row of await this.changes()) read.push(await row.read());
     return read;
   }
 
