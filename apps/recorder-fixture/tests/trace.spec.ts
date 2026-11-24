@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { CartPage } from "../ayme/pom/CartPage";
+import { CartPage } from "#pom/CartPage";
 import { expect, test, type Recording } from "./fixtures";
 import { stockTraceTool } from "./stockTrace";
 

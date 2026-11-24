@@ -10,10 +10,10 @@ import {
   test as base,
 } from "@playwright/test";
 
-import { SignInPage } from "../ayme/pom/SignInPage";
-import { SurveyEditorPage } from "../ayme/pom/SurveyEditorPage";
-import { SurveyNavigationPage } from "../ayme/pom/SurveyNavigationPage";
-import { SurveySummaryPage } from "../ayme/pom/SurveySummaryPage";
+import { SignInPage } from "#pom/SignInPage";
+import { SurveyEditorPage } from "#pom/SurveyEditorPage";
+import { SurveyNavigationPage } from "#pom/SurveyNavigationPage";
+import { SurveySummaryPage } from "#pom/SurveySummaryPage";
 import {
   disconnect,
   seedResponse,

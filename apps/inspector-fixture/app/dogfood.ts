@@ -1,4 +1,4 @@
-import { Inspector } from "../pom/Inspector";
+import { Inspector } from "#pom/Inspector";
 import { startListApp } from "./listApp";
 
 // Dogfooding: the list app with the Inspector in an open shadow root, the

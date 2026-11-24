@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { InputsPage } from "../ayme/pom/InputsPage";
+import { InputsPage } from "#pom/InputsPage";
 import { expect, test, type Recording } from "./fixtures";
 
 /** Presses Finish and reads the package the recorder says it saved. */

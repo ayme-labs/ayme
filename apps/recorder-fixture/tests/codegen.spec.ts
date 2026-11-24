@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { RecorderWindow } from "@ayme-dev/recorder-window/testing";
 import { chromium } from "@playwright/test";
 
-import { CartPage } from "../ayme/pom/CartPage";
+import { CartPage } from "#pom/CartPage";
 import { expect, personAt, test } from "./fixtures";
 import { stockTraceTool } from "./stockTrace";
 
