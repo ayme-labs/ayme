@@ -149,7 +149,6 @@ describe("which browser a target asks for", () => {
     ).toEqual({
       launch: { url: "http://localhost:3000", headless: true, debugPort: 9333 },
     });
-    // Opened already recording, with the storage state files given.
     expect(
       browserOf(
         {

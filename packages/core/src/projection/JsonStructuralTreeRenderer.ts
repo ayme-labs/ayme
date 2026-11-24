@@ -12,7 +12,6 @@ export type JsonStructuralNode = Readonly<{
   name: string;
   /** Only when some state is set. */
   state?: StructuralNode["state"];
-  /** Only when set. */
   cursorPointer?: true;
   /** The projected properties by key; only when there are any. */
   props?: Readonly<Record<string, string | readonly string[]>>;

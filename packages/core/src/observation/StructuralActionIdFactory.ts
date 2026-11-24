@@ -1,6 +1,5 @@
 import { StructuralActionIdSchema } from "./StructuralAction";
 
-/** Creates stable identifiers for structural actions. */
 export class StructuralActionIdFactory {
   private _next = 1;
 

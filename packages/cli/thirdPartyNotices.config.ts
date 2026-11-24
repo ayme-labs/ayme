@@ -8,7 +8,6 @@ import { Rolldown } from "tsdown";
 type BundledPackage = {
   readonly name: string;
   readonly version: string;
-  /** The package's folder. */
   readonly dir: string;
 };
 
