@@ -125,7 +125,6 @@ export function createRefWorld(
     return elementEverNamed(ref) === element;
   }
 
-  /** The element `ref` named at any time, if it is still there. */
   function elementEverNamed(ref: string): Element | undefined {
     return byRef.get(ref)?.deref();
   }

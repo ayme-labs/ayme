@@ -53,7 +53,6 @@ type InFlight = {
   /** The inputs of its before capture, for a capture when a load starts. */
   inputs: ElementInputs;
   loading?: { url: string; after?: Capture };
-  /** Ends its Settled Page wait early. */
   stopWaiting?: () => void;
 };
 
@@ -69,13 +68,11 @@ export function createActions({
 }: {
   activity: PageActivitySource;
   capture(host: HostKey, inputs: ElementInputs): Capture;
-  /** Tells `host` of a load that ended its action. */
   tell(host: HostKey, message: LoadStarted): void;
 }) {
   const actions = new Map<number, InFlight>();
   let lastAction = 0;
 
-  /** The answer of an action a full load ended, if one did. */
   const ended = ({ loading }: InFlight): Settled | undefined =>
     loading && {
       loading: loading.url,

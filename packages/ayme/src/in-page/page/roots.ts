@@ -10,7 +10,6 @@ import type { HostKey } from "./install";
 
 export type { RootState };
 
-/** What a host asks of a probe. */
 export type ProbeRequest = {
   /** The Page Object the root belongs to: what its captures mark the root with. */
   label: string;
