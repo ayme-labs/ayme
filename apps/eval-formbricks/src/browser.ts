@@ -45,6 +45,7 @@ export type BrowserContext = {
     cookies: { name: string; value: string; url: string }[]
   ): Promise<void>;
   cookies(): Promise<{ name: string }[]>;
+  addInitScript(script: { path: string }): Promise<void>;
   close(): Promise<void>;
   browser(): { version(): string } | null;
 };
@@ -59,6 +60,8 @@ type Chromium = {
       args?: string[];
       /** The browser's environment; Playwright's default is the whole of this process's. */
       env?: NodeJS.ProcessEnv;
+      bypassCSP?: boolean;
+      permissions?: string[];
     }
   ): Promise<BrowserContext>;
 };

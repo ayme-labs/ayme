@@ -1,5 +1,6 @@
 import {
   createAyme,
+  type Ayme,
   type DecisionRequest,
   type DecisionResponse,
   type CustomTool,
@@ -62,20 +63,39 @@ function clearTheList() {
  */
 const external = new URLSearchParams(location.search).has("external");
 
+/**
+ * Whether the page was opened through a connect link for the inline
+ * placement (`?agent`): its runtime turns the Agent Connection on, so the
+ * agent's ayme MCP server lists the page's tools.
+ */
+const connected = new URLSearchParams(location.search).has("agent");
+
+declare global {
+  interface Window {
+    /**
+     * The page's runtime, which the end-to-end tests read and run tools on
+     * as the app does: the Browser Tools and snapshot, which no agent's ayme
+     * MCP server lists, and the live tool list.
+     */
+    fixtureAyme?: Ayme;
+  }
+}
+
 const rendersThePage = `[${INSPECTOR_PAGE_RENDERING_ATTRIBUTE}]`;
 
 /**
  * Mounts the Inspector, then starts the runtime with a Page Object (the
- * ListPage by default), the way the Ayme integrations do. `mount: "after"`
+ * ListPage by default), the way the ayme integrations do. `mount: "after"`
  * mounts the Inspector once the runtime started with its Page Object, and
  * `mount: "session"` leaves it to the session's `inspector` option. `demo`
  * mounts it in demo mode. `dogfood` mounts it for dogfooding, turns the
  * Agent Connection on and registers `alsoRegister`, the Inspector's own
  * Page Object compiled by the plugin. With `?external` in its address, the page
  * mounts no Inspector and its session has the external placement, in demo mode
- * with `demo`. The page
- * reports its state on <html> so the e2e tests can tell a broken fixture or a
- * runtime that never published from a broken Inspector.
+ * with `demo`; with `?agent`, the Agent Connection is on. The page
+ * reports whether it started on <html>, and its runtime on `window`, so the
+ * e2e tests can tell a broken fixture or a runtime that never listed its
+ * tools from a broken Inspector.
  */
 export function startAyme({
   PageObject = ListPage,
@@ -105,29 +125,22 @@ export function startAyme({
       inspector: external
         ? { placement: "external", demo }
         : mount === "session" && (demo ? { demo } : true),
-      agentConnection: dogfood,
+      agentConnection: dogfood || connected,
       // The Structure lens and the search results render the page state; in
       // page state they would render themselves, over and over.
       ignore: dogfood ? rendersThePage : undefined,
     });
+    window.fixtureAyme = runtime;
     runtime.pom.register(PageObject);
     for (const Other of alsoRegister) runtime.pom.register(Other);
-    const reportRuntime = () => {
-      const { state, message } = runtime.webMCP.publicationStatus;
-      root.runtime = state;
-      root.runtimeMessage = message;
-    };
-    const unsubscribe = runtime.webMCP.subscribe(reportRuntime);
     const stop = runtime.start();
     if (mount === "after" && !external)
       inspector = mountInspector({ demo, dogfood });
-    reportRuntime();
     root.fixture = "ready";
     return () => {
       for (const Other of alsoRegister) runtime.pom.unregister(Other);
       runtime.pom.unregister(PageObject);
       stop();
-      unsubscribe();
       inspector?.dispose();
     };
   } catch (error) {

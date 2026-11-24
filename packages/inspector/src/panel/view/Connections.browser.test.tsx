@@ -1,8 +1,8 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { renderPart } from "../../testing/renderPart";
-import { Connections as ConnectionsPart } from "../../testing";
+import { renderPart } from "../../../testing/renderPart";
+import { Connections as ConnectionsPart } from "../../../testing";
 import type {
   AgentConnectionStatus,
   PublicationStatus,
@@ -165,7 +165,7 @@ it("says why the agent is not connected, and how to connect it", async () => {
   );
 });
 
-it("counts the tools WebMCP publishes, which leaves out Peek tools and screenshot", async () => {
+it("counts the tools WebMCP publishes, which leaves out Peek tools", async () => {
   renderConnections({
     agent: agents.off,
     webMCP: publications.active,
@@ -174,7 +174,6 @@ it("counts the tools WebMCP publishes, which leaves out Peek tools and screensho
       { name: "ListPage.clear", group: "pageObject" },
       { name: "snapshot", group: "agent" },
       { name: "click", group: "browser" },
-      { name: "screenshot", group: "agent" },
       { name: "peek.jobs", group: "peek" },
     ],
   });

@@ -25,7 +25,7 @@ const prompt = (wrapper: ReturnType<typeof mount>) =>
 enableAutoUnmount(afterEach);
 
 describe("The agent wizard", () => {
-  it("pins Ayme's MCP server to this repository's version", async () => {
+  it("pins ayme's MCP server to this repository's version", async () => {
     const wrapper = await openWizard();
 
     expect(prompt(wrapper)).toContain(`-y @ayme-dev/mcp@${mcpVersion} mcp`);

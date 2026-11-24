@@ -2,7 +2,6 @@ import { subscribeToRegisteredPoms } from "../page-objects/infrastructure";
 import { inPage } from "../in-page";
 import { requestDemoMode } from "../runs/infrastructure";
 import { pageOfDocument } from "../page-state/infrastructure";
-import { subscribeToAgentImageRuns } from "../tools/application";
 import { getPomDefinitionText } from "../tools/infrastructure";
 import type { InspectorContract } from "../shared";
 import type { AppProcessTools, Ayme } from "./runtime";
@@ -49,7 +48,6 @@ export function createDocumentInspectorContract({
     subscribeToStarted: (listener) => subscribeToStarted(() => listener()),
     appProcessTools,
     connectionStatus: getAgentConnectionStatus,
-    subscribeToAgentImageRuns,
     registry: {
       pageObjects: registeredPageObjects,
       pomDefinitions: registeredPomDefinitions,

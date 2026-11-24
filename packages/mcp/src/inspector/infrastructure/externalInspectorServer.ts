@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 
@@ -22,15 +23,22 @@ import type { InspectorRelay } from "../application/inspectorRelay";
  * reads the script from `@ayme-dev/inspector`, or resolves with nothing
  * when the optional package is not installed. Only a request whose `Host`
  * is the loopback server's is answered, so a page that rebinds a name to
- * 127.0.0.1 reads nothing; a window must come from the page the server
- * served.
+ * 127.0.0.1 reads nothing. A window must come from the page the server
+ * served, or bring `token` in its socket URL's `token` parameter, as the
+ * page an Agent App shows in its chat does: its origin is the Agent App's,
+ * and differs per app (ADR-0056). Each window admitted by token is logged.
  */
 export function externalInspectorServer({
   relay,
   readBuild,
+  token,
+  log,
 }: {
   relay: InspectorRelay;
   readBuild(): Promise<string | undefined>;
+  /** The token a window from another origin brings. */
+  token: string;
+  log(message: string): void;
 }): ServerExtension {
   const sockets = new WebSocketServer({ noServer: true });
   return {
@@ -55,10 +63,15 @@ export function externalInspectorServer({
     },
     upgrade(request, socket, head) {
       if (request.url?.split("?")[0] !== INSPECTOR_SOCKET_PATH) return false;
-      if (!fromThisServer(request)) {
+      const byToken = !fromThisServer(request);
+      if (byToken && !bringsToken(request, token)) {
         socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
         return true;
       }
+      if (byToken)
+        log(
+          `An Inspector window was admitted by its token (origin ${request.headers.origin}).`
+        );
       sockets.handleUpgrade(request, socket as Duplex, head, (ws) =>
         accept(relay, ws)
       );
@@ -77,6 +90,17 @@ function fromThisServer(request: IncomingMessage) {
   const { origin, host } = request.headers;
   if (!isLoopbackHostHeader(host)) return false;
   return origin === undefined || origin === `http://${host}`;
+}
+
+/** Whether the window brings the token, to a loopback server. */
+function bringsToken(request: IncomingMessage, token: string) {
+  if (!isLoopbackHostHeader(request.headers.host)) return false;
+  const given = new URL(request.url ?? "", "http://loopback").searchParams.get(
+    "token"
+  );
+  if (given === null) return false;
+  const [a, b] = [Buffer.from(given), Buffer.from(token)];
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 function send(

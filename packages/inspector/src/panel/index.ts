@@ -13,6 +13,7 @@ export { useDarkTheme } from "./presentation/useTheme";
 export { InspectorBody } from "./presentation/InspectorBody";
 export { DetailPane, RunsRegion } from "./view/InspectorBody";
 export { Connections } from "./view/Connections";
+export type { FullscreenState, WindowFullscreen } from "./domain/fullscreen";
 export type {
   AgentConnectionStatus,
   PublicationStatus,

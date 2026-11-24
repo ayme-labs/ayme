@@ -11,16 +11,18 @@ import { CreateMenu } from "./CreateMenu";
 export class TopBar extends AppPage {
   readonly path = "/harness/create-menu";
   @ayme.child
-  readonly createButton: Locator;
-  @ayme.child
   readonly createMenu: CreateMenu;
 
   constructor(page: Page) {
     super(page);
-    this.createButton = page.getByRole("button", { name: "Create" });
     this.createMenu = new CreateMenu(
       page.getByRole("menu", { name: "Create" })
     );
+  }
+
+  @ayme.child
+  get createButton(): Locator {
+    return this.page.getByRole("button", { name: "Create" });
   }
 
   @ayme.action({ description: "Open the create menu." })

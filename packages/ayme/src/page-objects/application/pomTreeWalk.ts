@@ -442,7 +442,7 @@ async function observeRoot(
     ref,
     present,
     available,
-    inTheWay,
+    ...(inTheWay !== undefined ? { inTheWay } : {}),
   };
   return { root, count, locator };
 }

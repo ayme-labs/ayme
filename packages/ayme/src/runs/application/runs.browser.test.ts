@@ -156,7 +156,7 @@ describe("The Run log, ayme.runs, in Chromium", () => {
     expect(reports).toContainEqual([expect.any(String), failure]);
   });
 
-  it("records a failed Run with its error text, and still throws the Ayme error", async () => {
+  it("records a failed Run with its error text, and still throws the ayme error", async () => {
     const before = ayme.runs.list();
     const missing = { target: "role=button[name='Delete']" };
 
@@ -215,7 +215,7 @@ describe("The Run log, ayme.runs, in Chromium", () => {
         by: callers.app,
         status: "failed",
         error:
-          'RuntimeStateError: Cannot run the tool "click": the Ayme runtime session is not started.',
+          'RuntimeStateError: Cannot run the tool "click": the ayme runtime session is not started.',
       }),
     ]);
   });

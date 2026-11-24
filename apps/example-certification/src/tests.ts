@@ -26,7 +26,7 @@ import { agentPort, counterPath, render, server } from "./config";
 
 /**
  * Whether a console error is Chromium reporting a refused probe of the Agent
- * Connection's auto-pair scan: with no Ayme MCP server running, a localhost
+ * Connection's auto-pair scan: with no ayme MCP server running, a localhost
  * page probes `ws://127.0.0.1:<port>/probe` on each port from 9350 to 9365,
  * and Chromium logs every refused connection, whatever the page does. An
  * example's own page-error checks use it too.
@@ -40,7 +40,7 @@ export function isRefusedAutoPairProbe(text: string) {
 }
 
 /**
- * Playwright's `test`, whose pages never pair by themselves with an Ayme MCP
+ * Playwright's `test`, whose pages never pair by themselves with an ayme MCP
  * server that runs on this machine, such as another suite's: it answers
  * their auto-pair scan as if none ran (`ignoreAutoPairScan`). Every example
  * spec uses it, or `test`, which builds on it.
@@ -108,9 +108,10 @@ const allCounterTools = [
   "SubCounterPage.setMode",
 ];
 
-/** Ayme's own tools, in publication order: every page that runs Ayme has them. */
+/** ayme's own tools, in publication order: every page that runs ayme has them. */
 const aymeTools = [
   "snapshot",
+  "page_objects",
   "click",
   "hover",
   "type",
@@ -300,7 +301,7 @@ export function counterTests({
           .toEqual(schema);
     });
 
-    test("publishes Ayme's own tools", async ({ page }) => {
+    test("publishes ayme's own tools", async ({ page }) => {
       await expect
         .poll(() => publishedToolNames(page))
         .toContain("CounterPage.increment");
@@ -529,19 +530,20 @@ function loadedScripts(page: Page) {
 /**
  * The Agent Connection, which the app turns on with its own flag. Where
  * `enabled()` holds, a coding agent's MCP client pairs with `/` through a
- * connect link and calls the page's `snapshot` tool, whose structure contains
- * `snapshotText`. Elsewhere, such as a production build, the page loads no
+ * connect link and calls the page's `page_objects` tool, whose tree shows the
+ * Page Object `pageObject`. Elsewhere, such as a production build, the page loads no
  * Agent Connection code and opens no WebSocket.
  */
 export function agentConnectionTests({
   enabled,
-  snapshotText,
+  pageObject,
   peek = false,
   appProcess,
 }: {
   /** Whether the run's app turns the option on; read inside each test. */
   enabled: () => boolean;
-  snapshotText: string;
+  /** The class of a Page Object the page at `/` shows. */
+  pageObject: string;
   /** Whether the counter adds the Peek `counter` with its `{ count }`. */
   peek?: boolean;
   /**
@@ -578,12 +580,10 @@ export function agentConnectionTests({
             )
           ).toBe(true);
 
-          const { text, isError } = await agent.call("snapshot");
+          const { text, isError } = await agent.call("page_objects");
 
           expect(isError, text).toBe(false);
-          expect(
-            (JSON.parse(text) as { structure: string }).structure
-          ).toContain(snapshotText);
+          expect(text).toContain(pageObject);
         } finally {
           await agent.close();
         }
@@ -614,15 +614,12 @@ export function agentConnectionTests({
               }, agentConnectionMarker);
             const tab = await storedTab();
 
-            const navigated = page.waitForEvent("load");
-            await agent.call("reload");
-            await navigated;
+            // The agent's own browser automation reloads the page.
+            await page.reload();
             // Wait for the new document to reconnect before reading its storage.
-            const { text, isError } = await agent.call("snapshot");
+            const { text, isError } = await agent.call("page_objects");
             expect(isError, text).toBe(false);
-            expect(
-              (JSON.parse(text) as { structure: string }).structure
-            ).toContain(snapshotText);
+            expect(text).toContain(pageObject);
             expect(await storedTab()).toBe(tab);
           } finally {
             await agent.close();

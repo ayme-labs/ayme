@@ -1,4 +1,4 @@
-import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
+import { elementOfRef } from "../../../testing/elementRefs.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
@@ -6,7 +6,7 @@ import { listRegisteredPomTargets, registerCompiledPom } from "./registry";
 import {
   startSession,
   type TestSession,
-} from "../../test-utils/session.testSupport";
+} from "../../../testing/session.testSupport";
 
 // What every consumer of the registry's targets reads of declared Locator
 // children, on a real page: each element of a Locator collection at its
@@ -34,9 +34,15 @@ describe("registered Locator children's targets in Chromium", () => {
       </main>
     `;
     class RunsTable {
-      readonly heading = page.locator("h1");
-      readonly rows = page.locator("tr");
-      readonly hint = page.locator(".hint");
+      get heading() {
+        return page.locator("h1");
+      }
+      get rows() {
+        return page.locator("tr");
+      }
+      get hint() {
+        return page.locator(".hint");
+      }
     }
     registerCompiledPom(RunsTable, {
       className: "RunsTable",
@@ -97,8 +103,12 @@ describe("registered Locator children's targets in Chromium", () => {
       <ul><li>first</li><li>second</li></ul>
     `;
     class RunsTable {
-      readonly rows = page.locator("tr");
-      readonly items = page.locator("li");
+      get rows() {
+        return page.locator("tr");
+      }
+      get items() {
+        return page.locator("li");
+      }
     }
     registerCompiledPom(RunsTable, {
       className: "RunsTable",

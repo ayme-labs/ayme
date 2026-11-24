@@ -3,21 +3,22 @@ import type { JsonSchema } from "@ayme-dev/core/tool-input";
 import type { AgentConnection } from "../../connection";
 import type { Pairing } from "../../pairing";
 import type { FailedPageObjects, ToolResult } from "../domain/toolResult";
-import type { SaveImage } from "./callPageTool";
 
 /** What a server tool may use. */
 export type ServerToolContext = {
   connection: AgentConnection;
   /** The address and token a page pairs with. */
   pairing: Pairing;
-  /** Where an image a page tool returns is saved. */
-  saveImage: SaveImage;
   /** The external Inspector this server serves. */
   inspector: {
     /** Its URL. */
     url: string;
     /** Whether the optional `@ayme-dev/inspector` package that holds it is installed. */
     installed(): Promise<boolean>;
+    /** The page an Agent App shows in its chat, which connects to `socketOrigin`. */
+    appPage(): Promise<string>;
+    /** The origin of the socket the Agent App's page connects to. */
+    socketOrigin: string;
   };
   /**
    * The init script that loads the Page Objects this server serves, when it
@@ -34,7 +35,7 @@ export type ServerToolContext = {
 };
 
 /**
- * A tool of the Ayme MCP server itself, as opposed to one the page offers.
+ * A tool of the ayme MCP server itself, as opposed to one the page offers.
  * It lives only in the server, so it is never published to the page's
  * WebMCP tools.
  */
@@ -44,6 +45,20 @@ export type ServerTool = {
   /** The server checks a call's input against it before `call` runs. */
   inputSchema: JsonSchema & { type: "object" };
   call(input: Record<string, unknown>): Promise<ToolResult>;
+  /** The page an Agent App that shows MCP Apps shows for the tool, if any. */
+  app?: AppPage;
+};
+
+/** A page an Agent App shows in its chat, as an MCP App. */
+export type AppPage = {
+  /** Its `ui://` address. */
+  uri: string;
+  /** Its name in the server's resources. */
+  name: string;
+  /** The origins it connects to, which the Agent App lets it reach. */
+  connectDomains: string[];
+  /** Its HTML document, read each time the Agent App reads the page. */
+  html(): Promise<string>;
 };
 
 /** Builds a server tool from what it may use. */

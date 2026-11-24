@@ -2,120 +2,92 @@
 
 ## Prefer the Page Object Tools
 
-Use the Page Object Tools first, reading each tool's schema: one call can do
-what several clicks and keystrokes would. Use Browser Tools for what no Page
-Object covers.
+Use a Page Object Tool whenever one does the step, reading its schema: one
+call can do what several clicks and keystrokes would. Each is named after its
+class and action, such as `ProjectRow.remove`, across all instances of the
+class. Your tool list may show the dot in a tool's name as an underscore, such
+as `ProjectRow_remove`. It's the same tool. Drive the rest of the page with your browser automation; when that is
+Playwright CLI, Playwright MCP or agent-browser, read
+[Browser automation tools](browser-automation-tools.md).
 
-Once the page is connected, its tools are the Browser Tools and the Page
-Object Tools it publishes. Each Page Object Tool is named after its class and action,
-such as `ProjectRow.remove`, across all instances of the class. [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md)
-lists every built-in tool with its input. To connect to the page, when its
-tools are missing, or when the page left before a call answered, read
-[Browser setup](browser-setup.md).
-
-When `goal` is among your tools, read [Goal](goal.md).
+`ayme mcp` lists none of ayme's own browser driving. To connect to the page,
+when its tools are missing, or when the page left before a call answered,
+read [Browser setup](browser-setup.md).
 
 ## The tools follow the screen
 
 Page Object Tools appear and disappear with their Page Objects, as the page
-moves between screens. When the tools changed since your previous call, the
-answer names those that appeared and disappeared. Plan with the tools of the
-screen you are on.
+moves between screens. Plan with the tools of the screen you are on.
 
 Call each tool directly, by its name in your tool list. When a call answers
-that the tool doesn't exist, use `ayme_list_tools` and `ayme_call`.
+that the tool doesn't exist, or your client doesn't update your tool list by
+itself, `ayme_list_tools` lists the current tools and `ayme_call` runs them.
 
-The page's tools change as the page does. If your client doesn't update your
-tool list by itself, `ayme_list_tools` lists the current tools and `ayme_call`
-runs them.
+## Name a Page Object by its id
+
+`page_objects` shows the Page Objects on the page now as a tree. Example:
+`ProjectsPage` holds a collection `projects()` of `ProjectRow`. `ProjectRow`
+declares its name and its Remove button, and has the actions `remove()` and
+`rename(name)`. `page_objects` shows:
+
+```
+ProjectsPage
+  projects:
+    - ProjectRow po1
+        name: text: Launch plan
+        removeButton: button "Remove"
+    - ProjectRow po2
+        name: text: Q4 survey
+        removeButton: button "Remove"
+```
+
+One tool serves every `ProjectRow`. Name the row by the id after its class.
+To remove Q4 survey, pass `po2`. To rename Launch plan, pass `po1`:
+
+```
+ProjectRow.remove({ id: "po2" })
+ProjectRow.rename({ id: "po1", args: { name: "Launch plan v2" } })
+```
+
+The action's own arguments go under `args`. Leave `args` out when the action
+takes none. Any class with an id is called this way, a page or single child
+included. `ProjectsPage` has no id, because it has no root, so its tools take
+the action's arguments directly, such as
+`ProjectsPage.openNewProjectDialog({})`.
+
+An id stays with its Page Object while the Page Object is on the page, and is
+never given to another. When a call answers that the Page Object is not on
+the page, read `page_objects` for the ids there are now.
 
 ## Read each answer
 
-Every action answers with `page_changed` and `settled`. `changes` holds what
-the action changed and `changes_before` what changed before it, each present
-only when it has a change, element refs included;
-[Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md#interaction-history)
-explains the two. A tool's own return value is in `result`.
+A Page Object Tool answers in a few fields:
 
-- When `changes` shows the effect you expected, move on.
-- `settled: false` means the page was still changing when the call answered,
-  so `changes` may not hold all the call did.
-- After an action, take a `snapshot` only when an answer is empty or
-  inconclusive about whether the call worked, after a full page load when its
-  `next` says to, or when you need a fresh ref.
+- `settled`: whether the page settled after the action. `false` means it was
+  still changing when the call answered, or a new document is still loading:
+  wait with your browser automation before you read the page.
+- `result`: what the action returned, when it returned something.
+- `url`: the new URL, when the action changed it.
+- `changes`: how the Page Object tree changed, in the tree `page_objects`
+  shows. A Page Object that appeared is shown in full, with its children and
+  its id; one that went away is marked removed; a value that changed reads
+  old → new.
 
-## Refs and refused calls
+When `changes` shows the effect you expected, move on. When the answer is
+inconclusive, read `page_objects`, or the page with your browser automation.
 
-- When a ref fails to resolve, call `snapshot` and use the ref it prints for
-  that node. If that ref fails the same way, use a Browser Tool with a
-  selector, such as `role=button[name="Save"]`. Pass a ref alone, such as
-  `e36`.
-  [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md#structural-refs)
-  says what each failure reason means.
-- A ref belongs to one document. After a full page load, call `snapshot`
-  before you use a ref. A ref printed before the load can name another
-  element on the new page.
-- The page state marks each Page Object Root with its class. Example:
-  `ProjectsPage` holds a collection `projects()` of `ProjectRow`.
-  `ProjectRow` has the actions `remove()` and `rename(name)`. `snapshot`
-  shows:
+## Refused and failed calls
 
-  ```
-  - e5 list:
-    - e6 ProjectRow:
-      - text: Launch plan
-      - e7 button "Archive"
-      - e8 button "Rename"
-      - e9 button "Remove"
-    - e10 ProjectRow:
-      - text: Q4 survey
-      - e11 button "Archive"
-      - e12 button "Rename"
-      - e13 button "Remove"
-  ```
-
-  One tool serves every `ProjectRow`. Name the row by the ref on its mark.
-  To remove Q4 survey, pass `e10`. To rename Launch plan, pass `e6`:
-
-  ```
-  ProjectRow.remove({ ref: "e10" })
-  ProjectRow.rename({ ref: "e6", args: { name: "Launch plan v2" } })
-  ```
-
-  The action's own arguments go under `args`. Leave `args` out when the
-  action takes none. Any class with a mark is called this way, a single
-  child included. The ref of the row's button, `e13`, is refused:
-  `Cannot call ProjectRow.remove on ref "e13": it is not a root of ProjectRow.`
-
-- A class with no root gets no mark. A page usually has none, since its base
-  class makes it present by its URL. Its tools take the action's arguments
-  directly, such as `ProjectsPage.openNewProjectDialog({})`.
-  [Page Object root](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#page-object-root)
-  has the rules.
-- When a tool answers that it is unavailable, read the reason. Example: the
-  New project dialog opened over the rows above.
-
-  ```
-  - e14 dialog "New project":
-    - e15 textbox "Project name"
-    - e16 button "Create"
-    - e17 button "Cancel"
-  ```
-
-  `ProjectRow.remove` is now unavailable, with the reason
-  `a click would not reach it; e14 is in the way`. A call on `e10` is refused
-  with that reason. `e14` is the open dialog. Close it, such as with `click`
-  on `e17`, then call again. When the element in the way has no ref, the
-  reason ends at `a click would not reach it`.
-
-- `type`, `fill`, `select_option` and the `fill_form` fields other than a
-  checkbox or radio give `it cannot take focus; e14 is in the way` instead.
-  They give it for a field outside an open native modal dialog, or inside an
-  `inert` region.
-- Any other reason comes from the app, such as `No item is selected`.
-- An unavailable Page Object Tool stays listed. `ayme_list_tools` shows
-  whether each tool is available, and why not. Each tool result says which
-  tools became available or unavailable since your previous call.
+- A refused call answers with its reason alone. A runtime reason,
+  `a click would not reach it; dialog "Delete" is in the way`, names the
+  element in the way by its role and name, as your browser automation's
+  snapshot shows it, such as an open dialog to close first. Any other
+  reason is the app's own, such as `No item is selected`. A Page Object
+  Tool stays listed while it is unavailable: `ayme_list_tools` shows
+  whether each tool is available and why not.
+- A failed call answers with what failed, followed by `changes:` when the
+  Page Object tree changed while it ran. It shows how far the action got
+  before you call it again.
 - When a tool answers that it is gone, what offered it is no longer there,
   such as a Page Object that is no longer present, a page that navigated or
   an App Process that stopped. Use one of the current tools instead.

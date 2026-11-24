@@ -47,12 +47,15 @@ export function derivePomManifests(
 /**
  * `onSkipped` receives the public methods of this file's Page Object Models
  * and their Page Object Children that are neither actions nor declared
- * Page Object Children.
+ * Page Object Children. With `parameters: false`, no tool's parameters are
+ * derived or checked and each tool lists none, for a stand-in, which never
+ * reads them.
  */
 export function derivePomManifestsFromProgram(
   fileName: string,
   program: ts.Program,
-  onSkipped?: (methods: SkippedPomMethod[]) => void
+  onSkipped?: (methods: SkippedPomMethod[]) => void,
+  { parameters = true }: { parameters?: boolean } = {}
 ): PomManifest[] {
   const absoluteFileName = path.resolve(fileName);
   const sourceFile = program.getSourceFile(absoluteFileName);
@@ -79,8 +82,15 @@ export function derivePomManifestsFromProgram(
       );
 
     const { manifest, components } = toolsCompiledWith(program, () => {
-      const { manifest, references } = classManifest(checker, declaration);
-      return { manifest, components: reachableComponents(checker, references) };
+      const { manifest, references } = classManifest(
+        checker,
+        declaration,
+        parameters
+      );
+      return {
+        manifest,
+        components: reachableComponents(checker, references, parameters),
+      };
     });
     rejectSameNamedClasses(declaration, components.keys());
     const compiled = { ...manifest, components: [...components.values()] };
@@ -123,7 +133,7 @@ type PomChild = {
 
 /**
  * The role of a Page Object member: a Page Object Child, a Page Object Action,
- * a public method that is neither, or nothing Ayme reads. Markers decide:
+ * a public method that is neither, or nothing ayme reads. Markers decide:
  * `@ayme.child` and `@ayme.collection` declare a child, `@ayme.action` an
  * action, and an unmarked member is neither, whatever its type.
  */
@@ -586,11 +596,12 @@ function skippedMethods(
 /**
  * A class's own members and tools, and the classes they reference: its
  * Page Object Children first, then the return POMs of its actions, each in
- * member order.
+ * member order. Without `withParameters`, each tool lists no parameters.
  */
 function classManifest(
   checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
+  declaration: ts.ClassDeclaration,
+  withParameters: boolean
 ): { manifest: PomComponentManifest; references: ts.ClassDeclaration[] } {
   const className = declaration.name!.text;
   const members: PomMemberManifest[] = [];
@@ -606,7 +617,9 @@ function classManifest(
       if (role.child.declaration) childReferences.push(role.child.declaration);
     } else if (role?.role === "action") {
       const { member, methodName, description } = role;
-      const parameters = toolParameters(checker, member, className, methodName);
+      const parameters = withParameters
+        ? toolParameters(checker, member, className, methodName)
+        : [];
       // An inherited action that returns its declaring class shows this one.
       const returnPoms = returnPomClassDeclarations(checker, member).map(
         (pom) => (pom === member.parent ? declaration : pom)
@@ -687,13 +700,18 @@ function namedPackage(dir: string): NamedPackage {
  */
 function reachableComponents(
   checker: ts.TypeChecker,
-  references: readonly ts.ClassDeclaration[]
+  references: readonly ts.ClassDeclaration[],
+  withParameters: boolean
 ) {
   const components = new Map<ts.ClassDeclaration, PomComponentManifest>();
   const visit = (declarations: readonly ts.ClassDeclaration[]) => {
     for (const declaration of declarations) {
       if (components.has(declaration)) continue;
-      const { manifest, references } = classManifest(checker, declaration);
+      const { manifest, references } = classManifest(
+        checker,
+        declaration,
+        withParameters
+      );
       components.set(declaration, manifest);
       visit(references);
     }
@@ -722,7 +740,7 @@ function rejectSameNamedClasses(
         [other, declaration].map((sameNamed) =>
           diagnosticAt(
             sameNamed,
-            `Page Object "${pageName}" reaches two different classes named "${name}". Ayme tells the classes of a Page Object apart by name.`
+            `Page Object "${pageName}" reaches two different classes named "${name}". ayme tells the classes of a Page Object apart by name.`
           )
         )
       );

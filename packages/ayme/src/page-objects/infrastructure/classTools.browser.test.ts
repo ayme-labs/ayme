@@ -2,9 +2,9 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import { registerCompiledPom, probeRegisteredPomMembers } from "./registry";
 import { createPage } from "./browserPage";
-import { rooted, RootedComponent } from "../../test-utils/pomRoot.testSupport";
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
-import { startSession } from "../../test-utils/session.testSupport";
+import { rooted, RootedComponent } from "../../../testing/pomRoot.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
+import { startSession } from "../../../testing/session.testSupport";
 import { callers, type PomManifest } from "../../shared";
 import { ayme } from "../domain/decorators";
 
@@ -17,7 +17,9 @@ it.each([false, true])(
       open() {}
     }
     class TreeItem {
-      element = page.locator("section");
+      get element() {
+        return page.locator("section");
+      }
       toolbar = new Toolbar();
       next = collection ? [] : undefined;
     }
@@ -135,7 +137,7 @@ it("publishes one class tool across member paths and registrations and calls eac
     ])
       await session.ayme.tools.run(
         "Item.open",
-        { ref: await rootRef(path) },
+        { id: await rootId(path) },
         { by: callers.webmcp }
       );
     expect(called).toEqual(["a", "b", "c"]);
@@ -146,7 +148,7 @@ it("publishes one class tool across member paths and registrations and calls eac
     ).toHaveLength(1);
     await session.ayme.tools.run(
       "Item.open",
-      { ref: await rootRef("SecondPage.third") },
+      { id: await rootId("SecondPage.third") },
       { by: callers.webmcp }
     );
     expect(called).toEqual(["a", "b", "c", "c"]);
@@ -212,7 +214,7 @@ it("offers and calls every recursive instance, coalescing members on the same ro
     session.register(TreePage);
     await probeRegisteredPomMembers();
     const { toolOptionsOf } =
-      await import("../../test-utils/toolOptions.testSupport");
+      await import("../../../testing/toolOptions.testSupport");
     const offered = (await toolOptionsOf(page)).find(
       ({ key }) => key === "Node.open"
     )!.tool.args[0]!.closedSet;
@@ -220,8 +222,8 @@ it("offers and calls every recursive instance, coalescing members on the same ro
       kind: "instance",
       roots: [{}, {}],
     });
-    const ref = await rootRef("TreePage.node.child");
-    await session.ayme.tools.run("Node.open", { ref }, { by: callers.webmcp });
+    const id = await rootId("TreePage.node.child");
+    await session.ayme.tools.run("Node.open", { id }, { by: callers.webmcp });
     expect(called).toEqual(["inner"]);
     document.querySelector("#inner")!.remove();
     await probeRegisteredPomMembers();
@@ -278,12 +280,14 @@ it("uses a class instance from a later registration when the first has none", as
     session.register(Second);
     await probeRegisteredPomMembers();
     expect(
-      session.ayme.tools.list().find(({ name }) => name === "LaterItem.open")
-        ?.inputSchema.required
-    ).toContain("ref");
+      Object.keys(
+        session.ayme.tools.list().find(({ name }) => name === "LaterItem.open")
+          ?.inputSchema.properties ?? {}
+      )
+    ).toContain("id");
     await session.ayme.tools.run(
       "LaterItem.open",
-      { ref: await rootRef("Second.items[0]") },
+      { id: await rootId("Second.items[0]") },
       { by: callers.webmcp }
     );
     expect(called).toHaveBeenCalledOnce();
@@ -356,7 +360,7 @@ it("keeps each live version's actions while shared classes remount after HMR", a
     ).toEqual(["HotItem.open", "HotItem.remove"]);
     await session.ayme.tools.run(
       "HotItem.remove",
-      { ref: await rootRef("SecondPage.item") },
+      { id: await rootId("SecondPage.item") },
       { by: callers.webmcp }
     );
     expect(removed).toHaveBeenCalledOnce();

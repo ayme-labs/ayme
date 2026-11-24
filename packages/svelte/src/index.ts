@@ -27,7 +27,7 @@ export type UseAymeResult = {
   }>;
 };
 
-const runtimeKey = Symbol("Ayme runtime");
+const runtimeKey = Symbol("ayme runtime");
 
 function ownRuntime(options: UseAymeOptions | undefined): UseAymeResult {
   const ayme = createAyme(options);

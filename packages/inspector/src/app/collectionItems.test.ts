@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
 import { indexMembers } from "../page-model";
-import { collection, page } from "../page-model/test-utils/pageModel";
+import { collection, page } from "../../testing/page-model/pageModel";
 import type { StructureNode } from "../structure";
 import { itemsOf } from "./collectionItems";
 
@@ -43,17 +43,17 @@ const structure = {
 it("carries each item's verdict and reason from the registry", () => {
   const verdicts = [
     {
-      label: "ListPage.items[0]",
+      id: "po1",
       ref: "e1",
       present: true,
       available: true,
     },
     {
-      label: "ListPage.items[1]",
+      id: "po2",
       ref: "e2",
       present: true,
       available: false,
-      reason: "a click would not reach it; e9 is in the way",
+      reason: 'a click would not reach it; dialog "Confirm" is in the way',
     },
   ];
 
@@ -62,6 +62,7 @@ it("carries each item's verdict and reason from the registry", () => {
       path: "ListPage.items[0]",
       name: "[0]",
       pathBelowPage: "items[0]",
+      id: "po1",
       ref: "e1",
       label: "Milk",
       available: true,
@@ -70,10 +71,11 @@ it("carries each item's verdict and reason from the registry", () => {
       path: "ListPage.items[1]",
       name: "[1]",
       pathBelowPage: "items[1]",
+      id: "po2",
       ref: "e2",
       label: "Bread",
       available: false,
-      reason: "a click would not reach it; e9 is in the way",
+      reason: 'a click would not reach it; dialog "Confirm" is in the way',
     },
   ]);
 });
@@ -83,14 +85,14 @@ it("keeps each item's own verdict when the registry saw the items swap first", (
   // first, under the refs it gave before the swap.
   const verdicts = [
     {
-      label: "ListPage.items[0]",
+      id: "po2",
       ref: "e2",
       present: true,
       available: false,
       reason: "Bread is locked",
     },
     {
-      label: "ListPage.items[1]",
+      id: "po1",
       ref: "e1",
       present: true,
       available: true,
@@ -107,10 +109,6 @@ it("keeps each item's own verdict when the registry saw the items swap first", (
   ]);
 });
 
-it("leaves the verdict out for an item the registry has not observed", () => {
-  expect(
-    itemsOf("ListItem.archive", members, structure).map(
-      (candidate) => "available" in candidate
-    )
-  ).toEqual([false, false]);
+it("leaves out an item the registry has not observed, which has no id to run on", () => {
+  expect(itemsOf("ListItem.archive", members, structure)).toEqual([]);
 });

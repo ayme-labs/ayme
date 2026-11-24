@@ -24,7 +24,6 @@ import {
 } from "../../shared";
 import {
   formatDuration,
-  RunImageView,
   type ChildRun,
   type CollectionItem,
   type Run,
@@ -43,7 +42,6 @@ export function RunCardView({
   items,
   onHover,
   onShowRun,
-  onOpenImage,
   signature,
   fields,
   json,
@@ -73,8 +71,6 @@ export function RunCardView({
   onHover?: OnHover;
   /** Shows a run in Runs. */
   onShowRun: (runId: string) => void;
-  /** Opens the last run's image, given its data URL, full size. */
-  onOpenImage: (src: string) => void;
   /** Its arguments, e.g. "(text: string)"; none when it takes no arguments. */
   signature?: string;
   fields: readonly (Field | FieldGroup)[];
@@ -281,7 +277,6 @@ export function RunCardView({
           run={last}
           lastSuccess={lastSuccess}
           onShowRun={onShowRun}
-          onOpenImage={onOpenImage}
         />
       )}
     </form>
@@ -420,19 +415,17 @@ const statusStyle = {
 
 /**
  * The last run's status, its duration, how many Interactions it and the
- * runs nested under it performed, and its error, or the image it returned.
+ * runs nested under it performed, and its error.
  * Its result shows in Runs, which the link opens.
  */
 function LastResult({
   run,
   lastSuccess,
   onShowRun,
-  onOpenImage,
 }: {
   run: Run;
   lastSuccess: Run | undefined;
   onShowRun: (runId: string) => void;
-  onOpenImage: (src: string) => void;
 }) {
   const count = interactionCount(run);
   const interactions = `${count} ${count === 1 ? "interaction" : "interactions"}`;
@@ -443,9 +436,7 @@ function LastResult({
     run.status === "running"
       ? "Running…"
       : run.status === "succeeded"
-        ? run.image
-          ? `Screenshot${duration}`
-          : `Succeeded${duration} · ${interactions}`
+        ? `Succeeded${duration} · ${interactions}`
         : `Failed${duration}`;
   return (
     <div
@@ -486,9 +477,6 @@ function LastResult({
         <p className="m-0 font-mono text-xs [overflow-wrap:anywhere]">
           {run.error}
         </p>
-      )}
-      {run.status === "succeeded" && run.image && (
-        <RunImageView image={run.image} onOpen={onOpenImage} />
       )}
     </div>
   );

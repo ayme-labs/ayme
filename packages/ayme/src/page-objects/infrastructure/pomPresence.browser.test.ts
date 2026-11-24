@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Locator, Page } from "@playwright/test";
 
-import { ayme as agent } from "../../test-utils/agentCalls.testSupport";
+import { ayme as agent } from "../../../testing/agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "../../shared";
 import { ayme } from "../domain/decorators";
 import { createPage } from "./browserPage";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
 import {
   listRegisteredPoms,
   probeRegisteredPomMembers,
@@ -219,7 +219,9 @@ describe("Page Object Presence by predicate", () => {
     document.body.innerHTML =
       '<aside id="drawer" style="width:200px;height:100px">Menu</aside>';
     class SideDrawer {
-      root = page.locator("#drawer");
+      get root() {
+        return page.locator("#drawer");
+      }
       isOpen = false;
       open() {}
     }
@@ -268,7 +270,9 @@ describe("Page Object Presence by predicate", () => {
     ayme({ root: rootOf })(Pin);
     class Panel {
       expanded = false;
-      frame = page.locator("#panel");
+      get frame() {
+        return page.locator("#panel");
+      }
       get pin() {
         reads += 1;
         return new Pin(this.frame.getByRole("button"));

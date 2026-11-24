@@ -10,6 +10,12 @@ import {
   parentElement,
   type ReachMeasurement,
 } from "../../shared";
+import {
+  getAriaRole,
+  getElementAccessibleName,
+  isElementHiddenForAria,
+  normalizeWhiteSpace,
+} from "virtual:ayme-aria-snapshot";
 import { hitTargetOf, type HitTarget } from "./hitTarget";
 
 /** `ReachMeasurement` before its elements are named. */
@@ -178,18 +184,45 @@ function takesPointerEvents(element: Element): boolean {
 }
 
 /**
- * The reach of this document's elements, which `nameOf` names by Structural
- * Ref. Each measurement takes an element as shown: a caller that needs it
- * visible checks that first.
+ * What an Availability Reason names `element` by when it is in the way: its
+ * role and accessible name as Playwright's snapshot prints them, or its role
+ * alone when the snapshot prints no name, as for one longer than 900
+ * characters; undefined for an element whose role is generic, none or
+ * presentation, which says nothing an agent could find it by, and for one no
+ * snapshot shows: one in an excluded subtree or hidden from the
+ * accessibility tree, or the document element, whose role is `document`.
  */
-export function createReach(nameOf: (element: Element) => string) {
+function describe(element: Element): string | undefined {
+  if (
+    element === element.ownerDocument.documentElement ||
+    excludedSubtreeOf(element) ||
+    isElementHiddenForAria(element)
+  )
+    return undefined;
+  const role = getAriaRole(element);
+  if (!role || role === "generic" || role === "none" || role === "presentation")
+    return undefined;
+  const name = normalizeWhiteSpace(
+    getElementAccessibleName(element, false).text
+  );
+  return name && name.length <= 900 ? `${role} ${JSON.stringify(name)}` : role;
+}
+
+/**
+ * The reach of this document's elements. Each measurement takes an element
+ * as shown: a caller that needs it visible checks that first.
+ */
+export function createReach() {
   const named = (measured: Measured, element: Element): ReachMeasurement => {
     const { present, available, blocker, hit } = measured;
+    // The blocker stands alone; else the nearest that can be named.
+    const inTheWay = blocker
+      ? describe(blocker)
+      : hit && firstDescribed(walkedUp(hit, element));
     return {
       present,
       available,
-      ...(blocker ? { blocker: nameOf(blocker) } : {}),
-      ...(hit ? { hit: walkedUp(hit, element).map(nameOf) } : {}),
+      ...(inTheWay !== undefined ? { inTheWay } : {}),
     };
   };
 
@@ -226,10 +259,16 @@ export function createReach(nameOf: (element: Element) => string) {
     measureAfterScroll(element: Element): ReachMeasurement {
       return named(inTheWay(element, hitTargetOf(element)), element);
     },
-    /** The ref of what blocks every click on `element` and its focus. */
-    blockingAncestor(element: Element): string | undefined {
+    /**
+     * What blocks every click on `element` and its focus, when anything
+     * does, with what an Availability Reason names it by, as `inTheWay` of
+     * a measurement.
+     */
+    blockingAncestor(element: Element): { inTheWay?: string } | undefined {
       const blocker = blockingAncestor(element);
-      return blocker && nameOf(blocker);
+      if (!blocker) return undefined;
+      const inTheWay = describe(blocker);
+      return inTheWay === undefined ? {} : { inTheWay };
     },
     inBatch: inReachBatch,
   };
@@ -281,6 +320,15 @@ function inTheWay(element: Element, target: HitTarget | undefined): Measured {
   const host = hit && excludedSubtreeOf(hit);
   if (host) hit = withoutHitTesting(host, () => hitTargetOf(element))?.hit;
   return hit ? { present: true, available: false, hit } : reached;
+}
+
+/** The description of the first of `elements` that has one. */
+function firstDescribed(elements: readonly Element[]): string | undefined {
+  for (const element of elements) {
+    const described = describe(element);
+    if (described !== undefined) return described;
+  }
+  return undefined;
 }
 
 /**

@@ -50,7 +50,7 @@ export type ServerExtension = {
  * connection on the path `/<token>`, or without a token from a page on
  * localhost or a local process (see `admit`), and each accepted connection
  * attaches to `connection` once it says hello: as the page, or as an App
- * Process beside it. A page whose Ayme speaks another pairing contract than
+ * Process beside it. A page whose ayme speaks another pairing contract than
  * `ayme`, this package's unless given, is refused (see `versionGap`). A `/probe` connection is closed at once and never
  * attaches. `extensions` let something else answer the HTTP requests and
  * WebSocket upgrades one of them claims, in order, such as the external
@@ -61,29 +61,26 @@ export type ServerExtension = {
 export function createPageChannelServer({
   connection,
   token,
-  imageFolder,
   agent,
   extensions = [],
   ayme = OUR_AYME,
 }: {
   connection: AgentConnection;
   token: string;
-  /** Where the server saves a tool's images, which a page's welcome names. */
-  imageFolder?: string;
   /**
    * The name the agent's MCP client introduced itself with, if it has,
    * read at each hello, which the page's welcome names.
    */
   agent: () => string | undefined;
   extensions?: readonly ServerExtension[];
-  /** The server's Ayme, which a page's must work with. */
+  /** The server's ayme, which a page's must work with. */
   ayme?: Required<AymeVersion>;
 }): { server: Server; close(): void } {
   const server = createServer((request, response) => {
     if (extensions.some((extension) => extension.request(request, response)))
       return;
     response.statusCode = 426;
-    response.end("The Ayme MCP server accepts WebSocket connections only.");
+    response.end("The ayme MCP server accepts WebSocket connections only.");
   });
   const sockets = new WebSocketServer({ noServer: true });
   const pages = new WeakMap<WebSocket, PageChannelContext["page"]>();
@@ -121,7 +118,7 @@ export function createPageChannelServer({
       sockets.handleUpgrade(request, socket, head, (ws) =>
         ws.close(
           UNKNOWN_PAIRING_CLOSE_CODE,
-          "This Ayme MCP server does not know this pairing."
+          "This ayme MCP server does not know this pairing."
         )
       );
       return;
@@ -134,7 +131,6 @@ export function createPageChannelServer({
         acceptPage(connection, ws, {
           handOver: tokenless ? token : undefined,
           fromProcess,
-          imageFolder,
           agent,
           ayme,
         })
@@ -162,8 +158,8 @@ export function createPageChannelServer({
  * connection `fromProcess`, which sent no `Origin`, may say hello as an App
  * Process, and the server is never too busy for it. One that connected
  * without a token gets `handOver`, the server's token, in reply to its
- * hello, and every one gets `imageFolder` and the agent's name. A page
- * whose Ayme can't work with the server's `ayme` is closed with
+ * hello, and every one gets the agent's name. A page
+ * whose ayme can't work with the server's `ayme` is closed with
  * `VERSION_GAP_CLOSE_CODE` and the gap as the reason, and `connection`
  * records the gap for the agent.
  */
@@ -173,13 +169,11 @@ function acceptPage(
   {
     handOver,
     fromProcess,
-    imageFolder,
     agent,
     ayme,
   }: {
     handOver: string | undefined;
     fromProcess: boolean;
-    imageFolder: string | undefined;
     agent: () => string | undefined;
     ayme: Required<AymeVersion>;
   }
@@ -198,7 +192,7 @@ function acceptPage(
   const disconnect = () =>
     ws.close(
       DISCONNECTED_CLOSE_CODE,
-      "Another tab connected to this Ayme MCP server."
+      "Another tab connected to this ayme MCP server."
     );
   ws.once("close", () => {
     if (page) connection.detach(page);
@@ -210,7 +204,6 @@ function acceptPage(
       if (page) return {};
       const welcome = pageWelcome({
         token: handOver,
-        imageFolder,
         agent: agent(),
       });
       if ("process" in hello) {
@@ -237,7 +230,7 @@ function acceptPage(
       ) {
         ws.close(
           DISCONNECTED_CLOSE_CODE,
-          "This Ayme MCP server works with another tab."
+          "This ayme MCP server works with another tab."
         );
         return {};
       }

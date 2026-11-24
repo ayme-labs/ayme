@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "skills": {
+    "create-formal-verification-skill": {
+      "source": "backnotprop/pstack",
+      "commit": "f2772d528dc1f9f24bfba17d4e9f280db86857ae",
+      "sourceType": "github",
+      "skillPath": "skills/create-formal-verification-skill/SKILL.md",
+      "computedHash": "c968cb41c00203d7818089ff9356126f0e25aa0d5cb35031206f2558208ddcee",
+      "installMode": "copy"
+    },
+    "maintain-formal-verification-skill": {
+      "source": "backnotprop/pstack",
+      "commit": "f2772d528dc1f9f24bfba17d4e9f280db86857ae",
+      "sourceType": "github",
+      "skillPath": "skills/maintain-formal-verification-skill/SKILL.md",
+      "computedHash": "10c850aa0b1db151e2b196428c0166bebbb0ae307032d71bf1cadc82eb93e669",
+      "installMode": "copy"
+    },
+    "statechart": {
+      "source": "backnotprop/pstack",
+      "commit": "f2772d528dc1f9f24bfba17d4e9f280db86857ae",
+      "sourceType": "github",
+      "skillPath": "skills/statechart/SKILL.md",
+      "computedHash": "86a313f26b3e8b539ba560a45e37d185e7d59530e40b7576d3873b185d50e1f9",
+      "installMode": "copy"
+    },
+    "typesafe-ai": {
+      "source": "typesafe-ai/skills",
+      "commit": "302eea662c54bca6730873fe245bec1d69ebc23d",
+      "sourceType": "github",
+      "skillPath": "skills/typesafe-ai/SKILL.md",
+      "computedHash": "a6d55f954bdee91ffcb208c42fe31cfba71594bc4d6bf63c0fed22bdb81df3d9",
+      "installMode": "copy"
+    }
+  }
+}

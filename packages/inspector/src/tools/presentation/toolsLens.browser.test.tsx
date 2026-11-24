@@ -9,8 +9,8 @@ import {
   type RenderRun,
   type Selection,
 } from "../../navigation";
-import { renderPart } from "../../testing/renderPart";
-import { DetailPane, Navigator } from "../../testing";
+import { renderPart } from "../../../testing/renderPart";
+import { DetailPane, Navigator } from "../../../testing";
 import type { LiveTool } from "../domain/toolGroups";
 import { toolsLens } from "./toolsLens";
 

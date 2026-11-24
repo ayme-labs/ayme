@@ -1,4 +1,4 @@
-import { readRef } from "../../test-utils/elementRefs.testSupport";
+import { readRef } from "../../../testing/elementRefs.testSupport";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Page } from "@playwright/test";
 
@@ -13,7 +13,7 @@ import {
 import type { PomManifest } from "../../shared";
 import type { CustomTool } from "./elementTools";
 import { AymeError, ToolInputError } from "../../shared";
-import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
+import { toolOptionsOf } from "../../../testing/toolOptions.testSupport";
 import { planArguments } from "../../goal-loop/domain";
 import { getPomDefinitionText } from "../infrastructure/documentPageContext";
 import { type AriaRef } from "../../page-state/domain";
@@ -21,11 +21,11 @@ import {
   getInteractionHistory,
   lookAtPageStateForDocument,
 } from "../../page-state/infrastructure";
-import { rooted } from "../../test-utils/pomRoot.testSupport";
+import { rooted } from "../../../testing/pomRoot.testSupport";
 import {
   agentTools,
   saveButtonRef,
-} from "../../test-utils/publication.testSupport";
+} from "../../../testing/publication.testSupport";
 import {
   createAyme,
   listElementToolTargets,
@@ -218,13 +218,15 @@ registerCompiledPom(ResponsesPage, {
 
 /** A page whose children are declared, two of them with a description. */
 class RunsTable {
-  readonly heading;
-  readonly rows;
   readonly toolbar = new RunsToolbar();
 
-  constructor(page: Page) {
-    this.heading = page.locator("h1");
-    this.rows = page.locator("tr");
+  constructor(private readonly page: Page) {}
+
+  get heading() {
+    return this.page.locator("h1");
+  }
+  get rows() {
+    return this.page.locator("tr");
   }
 
   refresh() {}
@@ -239,13 +241,13 @@ registerCompiledPom(RunsTable, {
     {
       memberName: "heading",
       kind: "locator",
-      access: "field",
+      access: "getter",
       collection: false,
     },
     {
       memberName: "rows",
       kind: "locator",
-      access: "field",
+      access: "getter",
       collection: true,
       description: "One row per run.",
     },
@@ -341,6 +343,7 @@ const highlight: CustomTool = {
 /** Every tool of the fixture session, in publication order, with its group. */
 const EXPECTED_TOOLS: [string, PublishedToolGroup][] = [
   ["snapshot", "agent"],
+  ["page_objects", "agent"],
   ["click", "browser"],
   ["hover", "browser"],
   ["type", "browser"],
@@ -351,7 +354,6 @@ const EXPECTED_TOOLS: [string, PublishedToolGroup][] = [
   ["fill_form", "browser"],
   ["press_key", "browser"],
   ["generate_locator", "browser"],
-  ["screenshot", "browser"],
   ["navigate", "browser"],
   ["navigate_back", "browser"],
   ["navigate_forward", "browser"],
@@ -486,14 +488,14 @@ describe("the session's tools in Chromium", () => {
     const { structure } = (await agentCall("snapshot", {})) as {
       structure: string;
     };
-    const ref = structure.match(/(e\d+) ListItem/)?.[1];
-    if (!ref) throw new Error("Expected a ref for ListItem.");
+    const id = structure.match(/ListItem (po\d+)/)?.[1];
+    if (!id) throw new Error("Expected an id for ListItem.");
     const heard: (readonly ToolInfo[])[] = [];
     cleanups.push(ayme.tools.subscribe((tools) => heard.push(tools)));
 
-    expect(
-      await agentCall("ListItem.archive", { ref, args: {} })
-    ).toMatchObject({ result: "archived" });
+    expect(await agentCall("ListItem.archive", { id, args: {} })).toMatchObject(
+      { result: "archived" }
+    );
 
     // Subscribers heard of the change before the call returned.
     expect(heard.at(-1)?.map(({ name }) => name)).not.toContain(
@@ -501,6 +503,74 @@ describe("the session's tools in Chromium", () => {
     );
     expect(heard.at(-1)).toBe(ayme.tools.list());
     expect(agentTools().names()).not.toContain("ListItem.archive");
+  });
+
+  it("prints each Page Object's id on its root in the snapshot, which a rooted tool takes, for an agent's call too", async () => {
+    document.body.innerHTML = `<ul><li id="item">Draft</li></ul>`;
+    await startSession();
+    cleanups.push(registered(ListPage));
+    await expect.poll(() => agentTools().names()).toContain("ListItem.archive");
+
+    const { structure } = (await agentCall("snapshot", {})) as {
+      structure: string;
+    };
+
+    const id = structure.match(/e\d+ ListItem (po\d+)/)?.[1];
+    if (!id) throw new Error(`Expected an id on ListItem in:\n${structure}`);
+    // A second read prints the same id.
+    expect((await ayme.tools.run("snapshot", {})).structure).toContain(
+      `ListItem ${id}`
+    );
+    expect(await agentCall("ListItem.archive", { id })).toMatchObject({
+      result: "archived",
+    });
+  });
+
+  it("refuses the Structural Ref of a Page Object Root as wrong input, for an agent's call too", async () => {
+    document.body.innerHTML = `<ul><li id="item">Draft</li></ul>`;
+    await startSession();
+    cleanups.push(registered(ListPage));
+    await expect.poll(() => agentTools().names()).toContain("ListItem.archive");
+    const { structure } = (await agentCall("snapshot", {})) as {
+      structure: string;
+    };
+    const ref = structure.match(/(e\d+) ListItem/)?.[1];
+    if (!ref) throw new Error("Expected a ref for ListItem.");
+    const refused = {
+      name: "ToolInputError",
+      message:
+        "Input property ref is not supported. Input property id is required.",
+    };
+
+    await expect(
+      ayme.tools.run("ListItem.archive", { ref, args: {} })
+    ).rejects.toMatchObject(refused);
+    await expect(
+      agentCall("ListItem.archive", { ref, args: {} })
+    ).rejects.toMatchObject(refused);
+    expect(document.querySelector("#item")).not.toBeNull();
+  });
+
+  it("refuses a malformed Page Object id as wrong input, and fails for one no Page Object has", async () => {
+    document.body.innerHTML = `<ul><li id="item">Draft</li></ul>`;
+    await startSession();
+    cleanups.push(registered(ListPage));
+    await expect.poll(() => agentTools().names()).toContain("ListItem.archive");
+
+    await expect(
+      ayme.tools.run("ListItem.archive", { id: "e1" })
+    ).rejects.toMatchObject({
+      name: "ToolInputError",
+      message:
+        'Input property id is not a Page Object id, written po<n>: "e1".',
+    });
+    await expect(
+      ayme.tools.run("ListItem.archive", { id: "po999999" })
+    ).rejects.toMatchObject({
+      name: "RefResolutionError",
+      message:
+        'Cannot call ListItem.archive on Page Object "po999999": it is not on the page.',
+    });
   });
 
   it("leaves out a Page Object Tool whose Page Object is not on the page, refuses to run it, and lists it once the Page Object is", async () => {
@@ -516,9 +586,9 @@ describe("the session's tools in Chromium", () => {
 
     expect(archive()).toBeUndefined();
     await expect(
-      ayme.tools.run("ListItem.archive", { ref: "e1", args: {} })
+      ayme.tools.run("ListItem.archive", { id: "po999999", args: {} })
     ).rejects.toThrow(
-      'Cannot call ListItem.archive on ref "e1": it is not a root of ListItem.'
+      'Cannot call ListItem.archive on Page Object "po999999": it is not on the page.'
     );
 
     document.querySelector("#item")!.removeAttribute("hidden");
@@ -539,16 +609,12 @@ describe("the session's tools in Chromium", () => {
     const ref = (await agentTools().call("snapshot", {})) as {
       structure: string;
     };
-    const item = ref.structure.match(/(e\d+) ListItem/)?.[1];
-    if (!item) throw new Error("Expected a ref for ListItem.");
+    const item = ref.structure.match(/ListItem (po\d+)/)?.[1];
+    if (!item) throw new Error("Expected an id for ListItem.");
 
     document.querySelector<HTMLDialogElement>("#confirm")!.showModal();
     await expect.poll(archive).toMatchObject({ available: false });
-    const { structure } = (await agentTools().call("snapshot", {})) as {
-      structure: string;
-    };
-    const dialog = structure.match(/(e\d+) dialog "Archive item"/)?.[1];
-    if (!dialog) throw new Error("Expected a ref for the dialog.");
+    const dialog = 'dialog "Archive item"';
 
     expect(archive()).toMatchObject({
       available: false,
@@ -556,9 +622,9 @@ describe("the session's tools in Chromium", () => {
     });
     expect(agentTools().names()).not.toContain("ListItem.archive");
     await expect(
-      ayme.tools.run("ListItem.archive", { ref: item, args: {} })
+      ayme.tools.run("ListItem.archive", { id: item, args: {} })
     ).rejects.toThrow(
-      `ListItem on ref "${item}" is unavailable: a click would not reach it; ${dialog} is in the way.`
+      `ListItem "${item}" is unavailable: a click would not reach it; ${dialog} is in the way.`
     );
     expect(document.querySelector("#item")!.hasAttribute("hidden")).toBe(false);
 

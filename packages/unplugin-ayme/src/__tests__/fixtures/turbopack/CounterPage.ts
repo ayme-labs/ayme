@@ -4,11 +4,11 @@ import type { CounterMode } from "./CounterMode";
 
 @ayme
 export class CounterPage {
-  @ayme.child
-  readonly incrementButton: Locator;
+  constructor(private readonly page: Page) {}
 
-  constructor(page: Page) {
-    this.incrementButton = page.getByRole("button", {
+  @ayme.child
+  get incrementButton(): Locator {
+    return this.page.getByRole("button", {
       name: "Increment",
       exact: true,
     });

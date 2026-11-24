@@ -1,5 +1,5 @@
 // Stryker disable all
-// The document's one ref world and Ayme's dual capture over it: Playwright's
+// The document's one ref world and ayme's dual capture over it: Playwright's
 // pinned snapshot code, with marks, a ref counter and a ref map that only
 // this module has, one set per document.
 import {
@@ -25,7 +25,12 @@ export type CaptureAriaSnapshot = (
   root: Element,
   options: {
     mode: "ai";
-    aymeRefs: { marks: WeakMap<Element, Mark>; next(): number };
+    aymeRefs: {
+      marks: WeakMap<Element, Mark>;
+      next(): number;
+      /** Elements kept as nodes of their own, though inline spans of text. */
+      kept?: ReadonlySet<Element>;
+    };
   }
 ) => {
   distilledText: string;
@@ -62,6 +67,12 @@ export type CaptureAsk = {
   accepts?: readonly Predicate[];
   /** The Custom Tools' filters whose accepted refs the capture carries, under each tool's name. */
   filters?: readonly NamedFilter[];
+  /**
+   * The refs of elements the capture keeps as nodes of their own, such as a
+   * Page Object's declared span of text, which it would show as its
+   * parent's text; it carries their refs (`Capture.kept`).
+   */
+  keep?: readonly string[];
 };
 
 /**
@@ -163,10 +174,16 @@ export function createRefWorld(
     const present = (inputs.roots ?? []).filter(
       ({ element }) =>
         element.ownerDocument === root.ownerDocument &&
-        root.contains(element) &&
+        holds(root, element) &&
         !ancestry(element).some(ignores)
     );
-    const snapshot = captureAriaSnapshot(root, { mode: "ai", aymeRefs });
+    const kept = new Set(
+      (ask.keep ?? []).flatMap((ref) => elementEverNamed(ref) ?? [])
+    );
+    const snapshot = captureAriaSnapshot(root, {
+      mode: "ai",
+      aymeRefs: kept.size > 0 ? { ...aymeRefs, kept } : aymeRefs,
+    });
     for (const [element, ref] of snapshot.refsByElement) alias(element, ref);
     // The map names every ref ever minted, so it drops the ones whose element
     // the page let go of, and a long session does not grow it without bound.
@@ -231,6 +248,13 @@ export function createRefWorld(
       roots,
       ...(ask.accepts || ask.filters
         ? { accepted: acceptedBy(ask, named, inputs.matched) }
+        : {}),
+      ...(ask.keep
+        ? {
+            kept: [...kept].flatMap(
+              (element) => snapshot.refsByElement.get(element) ?? []
+            ),
+          }
         : {}),
       ...(Object.keys(renamed).length > 0 ? { renamed } : {}),
     };

@@ -3,6 +3,8 @@ import {
   CheckIcon,
   ChevronDownIcon,
   GripVerticalIcon,
+  Maximize2Icon,
+  Minimize2Icon,
   MinusIcon,
   MonitorIcon,
   MoonIcon,
@@ -30,7 +32,8 @@ const iconButton = cn(
 
 /**
  * The panel's header: the ayme title, the status after it, the theme
- * switch, the layout menu and collapse. The panel drags by it.
+ * switch, the layout menu, collapse, and fullscreen where an Agent App
+ * offers it. The panel drags by it.
  */
 export function Header({
   status,
@@ -41,6 +44,7 @@ export function Header({
   onCollapse,
   onPointerDown,
   collapseRef,
+  fullscreen,
 }: {
   /** What follows the title, such as the Connections pill. */
   status?: ReactNode;
@@ -54,6 +58,8 @@ export function Header({
   /** A press on the header outside its controls: the start of a drag. */
   onPointerDown?: (event: PointerEvent<HTMLElement>) => void;
   collapseRef?: Ref<HTMLButtonElement>;
+  /** Without it, no fullscreen control: nothing offers fullscreen. */
+  fullscreen?: { active: boolean; onToggle: () => void };
 }) {
   return (
     <header
@@ -95,6 +101,20 @@ export function Header({
           onClick={onCollapse}
         >
           <MinusIcon className="size-3.5" />
+        </button>
+      )}
+      {fullscreen && (
+        <button
+          type="button"
+          aria-label={fullscreen.active ? "Exit fullscreen" : "Fullscreen"}
+          className={iconButton}
+          onClick={fullscreen.onToggle}
+        >
+          {fullscreen.active ? (
+            <Minimize2Icon className="size-3.5" />
+          ) : (
+            <Maximize2Icon className="size-3.5" />
+          )}
         </button>
       )}
     </header>

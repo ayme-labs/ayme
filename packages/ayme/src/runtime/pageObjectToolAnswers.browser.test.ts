@@ -1,0 +1,446 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { registerCompiledPom } from "../page-objects/application";
+import { createPage } from "../page-objects/infrastructure";
+import { rooted } from "../../testing/pomRoot.testSupport";
+import { callers, errorText, type ToolInfo } from "../shared";
+import { createAyme } from "./runtime";
+
+// Runtime seam: a Page Object Tool as an agent calls it through WebMCP
+// publication and through the ayme MCP server's page client, each reached
+// through the source the session hands that channel's package.
+
+type Source = {
+  list(): readonly ToolInfo[];
+  run(name: string, input: unknown): Promise<unknown>;
+};
+
+// The two packages load as stand-ins that keep the source they are handed.
+const handed = vi.hoisted(() => ({
+  webMcp: undefined as Source | undefined,
+  aymeMcp: undefined as Source | undefined,
+}));
+vi.mock("./webMcp", () => ({
+  loadWebMcpPublication: async () => ({
+    startWebMcpPublication: (tools: Source) => {
+      handed.webMcp = tools;
+      return { retry: async () => {} };
+    },
+  }),
+}));
+vi.mock("./agentConnection", () => ({
+  loadAgentConnection: async () => ({
+    startAgentConnection: ({ tools }: { tools: Source }) => {
+      handed.aymeMcp = tools;
+      return { dispose() {} };
+    },
+  }),
+  loadProcessConnection: async () => ({
+    startAgentConnection: () => ({ dispose() {} }),
+  }),
+}));
+
+const action = (toolName: string) => ({
+  methodName: toolName.split(".").at(-1)!,
+  toolName,
+  parameters: [],
+  returnPoms: [],
+});
+
+describe("a Page Object Tool's answer through both agent channels", () => {
+  let stop = () => {};
+  afterEach(() => {
+    stop();
+    handed.webMcp = handed.aymeMcp = undefined;
+    document.body.innerHTML = "";
+  });
+
+  /**
+   * A shopping list whose `add` adds a row, `archive` removes its own and
+   * `rename` fails, started with both channels, once each has its source.
+   */
+  async function shoppingList(...names: string[]) {
+    document.body.innerHTML = `<h1>Groceries</h1><ul>${names
+      .map((name) => `<li><span>${name}</span></li>`)
+      .join("")}</ul>`;
+    const rows = [...names];
+    const page = createPage();
+    class ShoppingListPage {
+      title = page.getByRole("heading");
+      get items() {
+        return rows.map((_, index) => {
+          const root = page.locator("li").nth(index);
+          return rooted(root, {
+            name: root.locator("span"),
+            archive: async () => {
+              rows.splice(index, 1);
+              document.querySelectorAll("li")[index]!.remove();
+            },
+          });
+        });
+      }
+      async add(name: string) {
+        rows.push(name);
+        document
+          .querySelector("ul")!
+          .insertAdjacentHTML("beforeend", `<li><span>${name}</span></li>`);
+        return rows.length;
+      }
+      async rename() {
+        document.querySelector("h1")!.textContent = "Errands";
+        throw new Error("The list cannot be renamed.");
+      }
+    }
+    registerCompiledPom(ShoppingListPage, {
+      className: "ShoppingListPage",
+      tools: [
+        {
+          ...action("ShoppingListPage.add"),
+          parameters: [
+            { name: "name", optional: false, schema: { type: "string" } },
+          ],
+        },
+        action("ShoppingListPage.rename"),
+      ],
+      members: [
+        {
+          memberName: "title",
+          kind: "locator",
+          access: "field",
+          collection: false,
+        },
+        {
+          memberName: "items",
+          kind: "component",
+          access: "getter",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      components: [
+        {
+          className: "Item",
+          members: [
+            {
+              memberName: "root",
+              kind: "locator",
+              access: "field",
+              collection: false,
+            },
+            {
+              memberName: "name",
+              kind: "locator",
+              access: "field",
+              collection: false,
+            },
+          ],
+          tools: [action("Item.archive")],
+        },
+      ],
+    });
+    const ayme = createAyme({
+      pageFactory: () => page,
+      webMCP: { enabled: true },
+      agentConnection: true,
+      pageObjects: [ShoppingListPage],
+    });
+    stop = ayme.start();
+    await vi.waitFor(() => {
+      expect(handed.webMcp).toBeDefined();
+      expect(handed.aymeMcp).toBeDefined();
+    });
+    await vi.waitFor(() =>
+      expect(ayme.tools.list().map(({ name }) => name)).toContain(
+        "ShoppingListPage.add"
+      )
+    );
+    return { ayme, webMcp: handed.webMcp!, aymeMcp: handed.aymeMcp! };
+  }
+
+  /** The id `page_objects` shows for the row named `name`. */
+  async function idOf(ayme: { tools: Source }, name: string) {
+    const tree = (await ayme.tools.run("page_objects", {})) as string;
+    const id = new RegExp(`Item (po\\d+)\\n +name: text: ${name}`).exec(
+      tree
+    )?.[1];
+    if (!id) throw new Error(`No id for ${name} in:\n${tree}`);
+    return id;
+  }
+
+  it("hands WebMCP publication every tool of the session, page_objects and the Page Object Tools among them", async () => {
+    const { ayme, webMcp } = await shoppingList("Milk");
+
+    const names = webMcp.list().map(({ name }) => name);
+    expect(names).toEqual(ayme.tools.list().map(({ name }) => name));
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "snapshot",
+        "page_objects",
+        "ShoppingListPage.add",
+        "Item.archive",
+      ])
+    );
+  });
+
+  it("is the same short answer through WebMCP and through ayme mcp: settled, the result, and the Page Object that appeared in full with its id", async () => {
+    const { ayme, webMcp, aymeMcp } = await shoppingList("Milk");
+
+    const throughWebMcp = await webMcp.run("ShoppingListPage.add", {
+      name: "Eggs",
+    });
+    const eggs = await idOf(ayme, "Eggs");
+    const throughAymeMcp = await aymeMcp.run("ShoppingListPage.add", {
+      name: "Bread",
+    });
+    const bread = await idOf(ayme, "Bread");
+
+    const added = (id: string, name: string, count: number) => ({
+      settled: true,
+      result: count,
+      changes: [
+        "ShoppingListPage",
+        "  items:",
+        `    + Item ${id}`,
+        `        name: text: ${name}`,
+      ].join("\n"),
+    });
+    expect(throughWebMcp).toEqual(added(eggs, "Eggs", 2));
+    expect(throughAymeMcp).toEqual(added(bread, "Bread", 3));
+  });
+
+  it("marks a Page Object that went away, and leaves out the URL and loading while neither changed", async () => {
+    const { ayme, webMcp, aymeMcp } = await shoppingList("Milk", "Eggs", "Tea");
+    const milk = await idOf(ayme, "Milk");
+    const eggs = await idOf(ayme, "Eggs");
+
+    const answers = [
+      await webMcp.run("Item.archive", { id: milk }),
+      await aymeMcp.run("Item.archive", { id: eggs }),
+    ];
+
+    expect(answers).toEqual([
+      {
+        settled: true,
+        changes: `ShoppingListPage\n  items:\n    - Item ${milk} (removed)`,
+      },
+      {
+        settled: true,
+        changes: `ShoppingListPage\n  items:\n    - Item ${eggs} (removed)`,
+      },
+    ]);
+  });
+
+  it("refuses with the reason alone, and fails with what failed and how the Page Object Tree changed while it ran, in both channels", async () => {
+    const { ayme, webMcp, aymeMcp } = await shoppingList("Milk", "Eggs");
+    const milk = await idOf(ayme, "Milk");
+    await ayme.tools.run("Item.archive", { id: milk });
+    const failureOf = (call: Promise<unknown>) =>
+      call.then(
+        () => {
+          throw new Error("Expected the call to fail.");
+        },
+        (error: unknown) => errorText(error)
+      );
+
+    for (const channel of [webMcp, aymeMcp]) {
+      const gone = await failureOf(channel.run("Item.archive", { id: milk }));
+      expect(gone).toMatch(new RegExp(`${milk}`));
+      expect(gone).not.toMatch(/changes|snapshot|page_objects|\n/);
+
+      document.querySelector("h1")!.textContent = "Groceries";
+      const failure: unknown = await channel
+        .run("ShoppingListPage.rename", {})
+        .then(
+          () => {
+            throw new Error("Expected the call to fail.");
+          },
+          (error: unknown) => error
+        );
+      expect(errorText(failure)).toBe("The list cannot be renamed.");
+      expect({ ...(failure as object) }).toEqual({
+        changes: [
+          "ShoppingListPage",
+          "  title:",
+          '    - heading "Groceries" [level=1] (removed)',
+          '    + - heading "Errands" [level=1]',
+        ].join("\n"),
+      });
+    }
+  });
+
+  it("shows only what an action changed inside an element child, by each node's identity", async () => {
+    document.body.innerHTML =
+      '<ul aria-label="Notes"><li>a</li><li>b</li><li>c</li></ul>';
+    const page = createPage();
+    class NotesPage {
+      notes = page.getByRole("list", { name: "Notes" });
+      async edit() {
+        const [, second, third] = document.querySelectorAll("li");
+        second!.textContent = "b2";
+        third!.remove();
+        document
+          .querySelector("ul")!
+          .insertAdjacentHTML("beforeend", "<li>d</li>");
+      }
+    }
+    registerCompiledPom(NotesPage, {
+      className: "NotesPage",
+      tools: [action("NotesPage.edit")],
+      members: [
+        {
+          memberName: "notes",
+          kind: "locator",
+          access: "field",
+          collection: false,
+        },
+      ],
+      components: [],
+    });
+    const ayme = createAyme({
+      pageFactory: () => page,
+      webMCP: { enabled: true },
+      pageObjects: [NotesPage],
+    });
+    stop = ayme.start();
+    await vi.waitFor(() => expect(handed.webMcp).toBeDefined());
+    await vi.waitFor(() =>
+      expect(ayme.tools.list().map(({ name }) => name)).toContain(
+        "NotesPage.edit"
+      )
+    );
+
+    expect(await handed.webMcp!.run("page_objects", {})).toBe(
+      [
+        "NotesPage",
+        '  notes: list "Notes":',
+        "    - listitem: a",
+        "    - listitem: b",
+        "    - listitem: c",
+      ].join("\n")
+    );
+    expect(await handed.webMcp!.run("NotesPage.edit", {})).toEqual({
+      settled: true,
+      changes: [
+        "NotesPage",
+        "  notes:",
+        "    - listitem: b → b2",
+        "    + - listitem: d",
+        "    - listitem: c (removed)",
+      ].join("\n"),
+    });
+  });
+
+  it("lists the present Page Objects inside an absent one, and marks the one that went away by its id", async () => {
+    // The shell is gone; the two panels it holds, portaled to the body, are not.
+    document.body.innerHTML = ["A", "B"]
+      .map(
+        (name) =>
+          `<div role="dialog" aria-label="${name}"><h2>${name}</h2></div>`
+      )
+      .join("");
+    const page = createPage();
+    const panel = (name: string) => {
+      const root = page.getByRole("dialog", { name });
+      return rooted(root, {
+        heading: root.getByRole("heading"),
+        close: async () =>
+          document.querySelector(`[aria-label="${name}"]`)!.remove(),
+      });
+    };
+    class ShellPage {
+      shell = rooted(page.locator("main"), {
+        first: panel("A"),
+        second: panel("B"),
+      });
+    }
+    const panelMember = (memberName: string) => ({
+      memberName,
+      kind: "component" as const,
+      access: "field" as const,
+      componentClassName: "Panel",
+      collection: false,
+    });
+    const locatorMember = (memberName: string) => ({
+      memberName,
+      kind: "locator" as const,
+      access: "field" as const,
+      collection: false,
+    });
+    registerCompiledPom(ShellPage, {
+      className: "ShellPage",
+      tools: [],
+      members: [
+        {
+          memberName: "shell",
+          kind: "component",
+          access: "field",
+          componentClassName: "Shell",
+          collection: false,
+        },
+      ],
+      components: [
+        {
+          className: "Shell",
+          members: [
+            locatorMember("root"),
+            panelMember("first"),
+            panelMember("second"),
+          ],
+          tools: [],
+        },
+        {
+          className: "Panel",
+          members: [locatorMember("root"), locatorMember("heading")],
+          tools: [action("Panel.close")],
+        },
+      ],
+    });
+    const ayme = createAyme({
+      pageFactory: () => page,
+      webMCP: { enabled: true },
+      agentConnection: true,
+      pageObjects: [ShellPage],
+    });
+    stop = ayme.start();
+    await vi.waitFor(() => expect(handed.aymeMcp).toBeDefined());
+    await vi.waitFor(() =>
+      expect(
+        ayme.tools.list().find(({ name }) => name === "Panel.close")?.available
+      ).toBe(true)
+    );
+    const tree = (await ayme.tools.run("page_objects", {})) as string;
+    const [a, b] = [...tree.matchAll(/Panel (po\d+)/g)].map(([, id]) => id!);
+
+    expect(tree).toBe(
+      [
+        "ShellPage",
+        "  shell:",
+        `    - Panel ${a}`,
+        '        heading: heading "A" [level=2]',
+        `    - Panel ${b}`,
+        '        heading: heading "B" [level=2]',
+      ].join("\n")
+    );
+    expect(await handed.aymeMcp!.run("Panel.close", { id: b })).toEqual({
+      settled: true,
+      changes: `ShellPage\n  shell:\n    - Panel ${b} (removed)`,
+    });
+  });
+
+  it("leaves ayme.tools.run's full record as it is", async () => {
+    const { ayme } = await shoppingList("Milk");
+
+    const record = await ayme.tools.run(
+      "ShoppingListPage.add",
+      { name: "Eggs" },
+      { by: callers.webmcp }
+    );
+
+    expect(record).toMatchObject({
+      settled: true,
+      page_changed: true,
+      result: 2,
+    });
+    expect(record).toHaveProperty("changes");
+  });
+});

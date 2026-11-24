@@ -5,7 +5,7 @@ import {
   type WebMcpPublicationStatus,
   type WebMcpTool,
 } from "./index";
-import type { PublishedTool } from "./testing";
+import type { PublishedTool } from "../testing";
 
 /** A driver that keeps what is registered, as `document.modelContext` would. */
 function recordingDriver() {
@@ -134,10 +134,9 @@ describe("startWebMcpPublication", () => {
     });
   });
 
-  it("publishes every listed tool but Peek Tools and screenshot", async () => {
+  it("publishes every listed tool but Peek Tools", async () => {
     const tools = toolSource([
       tool("snapshot", undefined, { group: "agent" }),
-      tool("screenshot", undefined, { group: "browser" }),
       tool("peek.cart", undefined, { group: "peek" }),
       tool("Dialog.close"),
     ]);

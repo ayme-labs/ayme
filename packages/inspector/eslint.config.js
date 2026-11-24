@@ -10,8 +10,8 @@ import {
 const packageRoot = import.meta.dirname;
 
 // The slices of src/, and the slices each may use: only those listed before
-// it here. app composes them, and nothing uses app. testing is the Inspector
-// POM entry, which only tests may use (ADR-0026).
+// it here. app composes them, and nothing uses app. Test support, the
+// Inspector POM included, lives in testing/ beside src/ (ADR-0057).
 const allowedSlices = {
   shared: [],
   panel: ["shared"],
@@ -29,39 +29,30 @@ const allowedSlices = {
     "panel",
     "shared",
   ],
-  testing: ["shared"],
 };
 const slices = Object.keys(allowedSlices);
 const sourceFiles = "src/**/*.{ts,tsx}";
 const testFiles = ["src/**/*.test.{ts,tsx}"];
+const testSupport = "testing/**/*.{ts,tsx}";
 
-/** Imports beneath another slice, past its front door (its index.ts). */
-function deepImport(slice, { tests }) {
-  const others = slices.filter(
-    (other) => other !== slice && !(tests && other === "testing")
-  );
-  // Tests may also use another slice's test-utils.
-  const allowed = tests
-    ? "index(\\.[jt]sx?)?$|test-utils/"
-    : "index(\\.[jt]sx?)?$";
-  return `(^|/)(${others.join("|")})/(?!${allowed})`;
+/** Imports beneath another slice, past its front door (its index.ts). A path
+ * through testing/ is test support, which has no front door for the
+ * package's own tests: its folders are named after the slices they serve. */
+function deepImport(slice) {
+  const others = slices.filter((other) => other !== slice);
+  return `^(?!(.*/)?testing/).*(^|/)(${others.join("|")})/(?!index(\\.[jt]sx?)?$)`;
 }
 
-function frontDoors(slice, files, { tests }) {
+function frontDoors(slice, files, { tests, ignores = [] }) {
   const patterns = [
     {
-      regex: deepImport(slice, { tests }),
+      regex: deepImport(slice),
       message: "Import another slice through its index.ts.",
     },
   ];
-  if (!tests)
-    patterns.push({
-      regex: "(^|/)test-utils(/|$)",
-      message: "Only tests may import test-utils.",
-    });
   return {
     files,
-    ...(tests ? {} : { ignores: testFiles }),
+    ignores: tests ? ignores : [...testFiles, ...ignores],
     rules: {
       "no-restricted-imports": ["error", { patterns }],
       // The same rules for a dynamic import(). esquery reads `/` as the end
@@ -81,10 +72,8 @@ export default [
   ...config,
   ...horizontalBoundaries({
     packageRoot,
-    // app and testing aren't layered.
-    enforcedSlices: slices.filter(
-      (slice) => !["app", "testing"].includes(slice)
-    ),
+    // app isn't layered.
+    enforcedSlices: slices.filter((slice) => slice !== "app"),
   }),
   {
     files: [sourceFiles],
@@ -105,7 +94,6 @@ export default [
                     slice: slices.filter(
                       (target) =>
                         target !== slice &&
-                        target !== "testing" &&
                         !allowedSlices[slice].includes(target)
                     ),
                   },
@@ -125,12 +113,21 @@ export default [
   // The package entry and its test, which use the slices' front doors.
   frontDoors(undefined, ["src/*.{ts,tsx}"], { tests: false }),
   frontDoors(undefined, ["src/*.test.{ts,tsx}"], { tests: true }),
+  // Test support (ADR-0057): a folder of testing/ named after a slice belongs
+  // to that slice, so it may use the slice's own files, and other slices
+  // through their front doors. The rest of testing/ uses front doors only.
+  ...slices.map((slice) =>
+    frontDoors(slice, [`testing/${slice}/**/*.{ts,tsx}`], { tests: true })
+  ),
+  frontDoors(undefined, [testSupport], {
+    tests: true,
+    ignores: slices.map((slice) => `testing/${slice}/**`),
+  }),
   {
-    // The Inspector reads Ayme only through its inspector entry (ADR-0049).
-    // Its own Page Object Models (src/testing/) use Ayme's public API, and
-    // tests and test-utils may also use ./testing.
+    // The Inspector reads ayme only through its inspector entry (ADR-0049).
+    // Tests, and the test support beside src/, may use ayme's public API.
     files: [sourceFiles],
-    ignores: ["src/testing/**", "src/**/test-utils/**", ...testFiles],
+    ignores: testFiles,
     rules: {
       "@typescript-eslint/no-restricted-imports": [
         "error",
@@ -138,7 +135,7 @@ export default [
           patterns: [
             {
               regex: "^@ayme-dev/ayme(/(?!inspector$).*)?$",
-              message: "Import Ayme only through @ayme-dev/ayme/inspector.",
+              message: "Import ayme only through @ayme-dev/ayme/inspector.",
             },
           ],
         },

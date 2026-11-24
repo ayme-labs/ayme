@@ -36,7 +36,7 @@ describe("claudeEnvironment", () => {
     parent
   );
 
-  it("drops every Claude Code, Anthropic and Ayme variable of the launcher", () => {
+  it("drops every Claude Code, Anthropic and ayme variable of the launcher", () => {
     expect(
       Object.keys(environment)
         .filter((key) => /^(CLAUDE|ANTHROPIC|AYME)/.test(key))

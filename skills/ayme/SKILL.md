@@ -1,24 +1,32 @@
 ---
 name: ayme
-description: Set up Ayme in a consumer project, expose existing Page Object Actions, design Page Object Models for Ayme, connect a coding agent to the app's page through Ayme's MCP server and use its tools, or read app state the page does not show through Peek Tools.
+description: Set up ayme in a consumer project, expose existing Page Object Actions, design Page Object Models for ayme, connect a coding agent to the app's page through ayme's MCP server and use its tools, or read app state the page does not show through Peek Tools.
 ---
 
-# Ayme
+# ayme
+
+Read `.ayme/CONVENTIONS.md` first, when it exists: what the user settled for
+how ayme and its skills work in this repository. Read its opening part, which
+holds for every skill, and its `ayme` section, and follow a line that points
+to another file. It overrides this skill's defaults. When the user settles
+something for every later run, write it under `ayme`, creating the file when
+it is missing: never credentials or real data.
 
 For package installation, application integration, or exposing an existing POM,
 read [Onboarding](references/onboarding.md).
 
 To connect yourself to the app's page with `ayme_connect`, when the page's tools
 are missing from your tool list, or after a call the page didn't answer because
-it reloaded, navigated or closed, or to give a page that doesn't ship Ayme
-the project's Page Objects through Playwright MCP or Playwright CLI, read
-[Browser setup](references/browser-setup.md). A connected page with its tools
-listed needs no Browser setup.
+it reloaded, navigated or closed, or to give a page that doesn't ship ayme
+the project's Page Objects through Playwright MCP, Playwright CLI or
+agent-browser, read [Browser setup](references/browser-setup.md). A connected
+page with its tools listed needs no Browser setup.
 
-When you use the page's tools, a ref fails to resolve, or a tool answers that it
-is unavailable, read [Page tools](references/page-tools.md).
+When you use the page's tools, or a tool answers that it is unavailable or
+gone, read [Page tools](references/page-tools.md).
 
-When `goal` is among your tools, read [Goal](references/goal.md).
+When Playwright CLI, Playwright MCP or agent-browser drives the browser, read
+[Browser automation tools](references/browser-automation-tools.md).
 
 For designing or restructuring Page Object Models, read
 [Page object design](references/page-object-design.md) and
@@ -26,7 +34,9 @@ For designing or restructuring Page Object Models, read
 the project's conventions, raise the conflict with the user.
 
 For mapping a user flow into a POM against the running app, read
-[Live mapping](references/live-mapping.md).
+[Live mapping](references/live-mapping.md). To record a flow the user drives
+and turn it into page objects and a Playwright test, use the `ayme-recorder`
+skill, which [Coding agent skills](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/coding-agent-skill.md#ayme-recorder) says how to install.
 
 For registering Page Objects, placing or configuring the runtime owner, or
 checking which tools are live, read
@@ -38,5 +48,5 @@ component state or server data, or to add a Peek, read
 source.
 
 Follow the consumer project's existing POM conventions. The
-[Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md) owns the APIs and the framework wiring;
+[ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md) owns the APIs and the framework wiring;
 read the page for the project's framework before editing that integration.

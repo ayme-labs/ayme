@@ -66,7 +66,7 @@ registerCompiledPom(Model, {
     },
   ],
 });
-// Never passed through the Ayme compiler, so it has no metadata.
+// Never passed through the ayme compiler, so it has no metadata.
 class UncompiledModel {
   constructor(readonly page: Page) {}
 }
@@ -196,7 +196,7 @@ it("C3: rejects a second owner while the first is active", () => {
     /^useAyme\(options\) already has an active owner\./
   );
   expect((error as Error).cause).toEqual(
-    new RuntimeStateError("The Ayme runtime already has an active owner.", {
+    new RuntimeStateError("The ayme runtime already has an active owner.", {
       code: "active-owner",
     })
   );
@@ -334,7 +334,7 @@ it("C8: throws for a model the compiler did not reach", () => {
       child: PageObjectUser,
       childProps: { model: UncompiledModel },
     })
-  ).toThrow("UncompiledModel has no compiler-derived Ayme metadata.");
+  ).toThrow("UncompiledModel has no compiler-derived ayme metadata.");
 });
 
 it("C11: runs a goal with the owner's goalLoop through the value every component gets", async () => {

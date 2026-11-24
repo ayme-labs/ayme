@@ -12,7 +12,7 @@
  */
 import { randomBytes } from "node:crypto";
 
-import { parseFlags } from "./cli.ts";
+import { parseFlags, runMain } from "./cli.ts";
 import { setupTimeoutMs } from "./claude.ts";
 import { reportSuite } from "./report.ts";
 import { defaultModel, log } from "./run.ts";
@@ -81,10 +81,7 @@ export async function runStartupSuite(options: StartupSuiteOptions) {
 
   manifest.finishedAt = new Date().toISOString();
   await writeManifest(manifest);
-  const report = await reportSuite(manifest.suiteId, {
-    publish: false,
-    openRouterApiKey: undefined,
-  });
+  const report = await reportSuite(manifest.suiteId, { publish: false });
   return { manifest, ...report };
 }
 
@@ -97,11 +94,4 @@ async function main() {
   process.exitCode = manifest.error === null ? 0 : 2;
 }
 
-if (import.meta.main) {
-  main().catch((error: unknown) => {
-    process.stderr.write(
-      `${error instanceof Error ? error.message : String(error)}\n`
-    );
-    process.exitCode = 2;
-  });
-}
+if (import.meta.main) runMain(main);

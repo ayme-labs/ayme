@@ -169,13 +169,13 @@ const refusals: [path: string, code: string, message: string][] = [
   ],
   [
     "src/tools/misplaced.ts",
-    'export { startSession } from "../test-utils/session.testSupport";',
-    "Only test code may use test code.",
+    'export { startSession } from "../../testing/session.testSupport";',
+    "Only test files may import test support",
   ],
   [
     "src/tools/misplaced.ts",
-    'export { startSession } from "../test-utils/session.testSupport.js";',
-    "Only test code may use test code.",
+    'export { startSession } from "../../testing/session.testSupport.js";',
+    "Only test files may import test support",
   ],
   [
     "src/tools/misplaced.ts",
@@ -310,83 +310,83 @@ const refusals: [path: string, code: string, message: string][] = [
     'export const title = () => document.title;\nexport { cursors } from "../../page-state/infrastructure/pageState";',
     "Import another slice through its front door",
   ],
-  // Ayme by its package name, which would pass every rule above.
+  // ayme by its package name, which would pass every rule above.
   [
     "src/goal-loop/domain/misplaced.ts",
     'export { listRegisteredPoms } from "@ayme-dev/ayme/internal";',
-    "Ayme's source never imports Ayme by its package name",
+    "ayme's source never imports ayme by its package name",
   ],
   [
     "src/tools/application/misplaced.ts",
     'export const load = () => import("@ayme-dev/ayme");',
-    "Ayme's source never imports Ayme by its package name",
+    "ayme's source never imports ayme by its package name",
   ],
   [
     "src/runtime/misplaced.ts",
     'import type { Ayme } from "@ayme-dev/ayme";\nexport type Session = Ayme;',
-    "Ayme's source never imports Ayme by its package name",
+    "ayme's source never imports ayme by its package name",
   ],
   [
     "src/page-state/domain/misplaced.test.ts",
-    'export type Session = import("@ayme-dev/ayme/testing").GoalLoopRunResult;',
-    "Ayme's source never imports Ayme by its package name",
+    'export type Session = import("@ayme-dev/ayme/internal").GoalLoopRunResult;',
+    "ayme's source never imports ayme by its package name",
   ],
   [
     "src/misplaced.ts",
     'export { createAyme } from "@ayme-dev/ayme";',
-    "Ayme's source never imports Ayme by its package name",
+    "ayme's source never imports ayme by its package name",
   ],
   // ...from any file under src/, inside a known slice or not.
   [
     "src/other/misplaced.ts",
     'export { listRegisteredPoms } from "@ayme-dev/ayme/internal";',
-    "Ayme's source never imports Ayme by its package name",
+    "ayme's source never imports ayme by its package name",
   ],
   [
     "src/other/misplaced.ts",
     'export const load = () => import("@ayme-dev/ayme");',
-    "Ayme's source never imports Ayme by its package name",
+    "ayme's source never imports ayme by its package name",
   ],
   [
     "src/other/misplaced.ts",
     'import type { Ayme } from "@ayme-dev/ayme";\nexport type Session = Ayme;',
-    "Ayme's source never imports Ayme by its package name",
+    "ayme's source never imports ayme by its package name",
   ],
   [
     "src/other/misplaced.test.ts",
-    'export type Session = import("@ayme-dev/ayme/testing").GoalLoopRunResult;',
-    "Ayme's source never imports Ayme by its package name",
+    'export type Session = import("@ayme-dev/ayme/internal").GoalLoopRunResult;',
+    "ayme's source never imports ayme by its package name",
   ],
-  // Ayme's own build output, which would pass every rule above too.
+  // ayme's own build output, which would pass every rule above too.
   [
     "src/goal-loop/domain/misplaced.ts",
     'export { listRegisteredPoms } from "../../../dist/internal.mjs";',
-    "Ayme's source never imports its own build output",
+    "ayme's source never imports its own build output",
   ],
   [
     "src/tools/application/misplaced.ts",
     'export const load = () => import("../../../dist/index.mjs");',
-    "Ayme's source never imports its own build output",
+    "ayme's source never imports its own build output",
   ],
   [
     "src/runtime/misplaced.ts",
     'import type { Ayme } from "../../dist/index.mjs";\nexport type Session = Ayme;',
-    "Ayme's source never imports its own build output",
+    "ayme's source never imports its own build output",
   ],
   [
     "src/page-state/domain/misplaced.test.ts",
     'export type Session = import("../../../dist/index.mjs").Ayme;',
-    "Ayme's source never imports its own build output",
+    "ayme's source never imports its own build output",
   ],
   [
     "src/misplaced.ts",
     'export { createDecisionEndpoint } from "../dist/server.mjs";',
-    "Ayme's source never imports its own build output",
+    "ayme's source never imports its own build output",
   ],
   [
     "src/other/misplaced.ts",
     'export { listRegisteredPoms } from "../../dist/internal.mjs";',
-    "Ayme's source never imports its own build output",
+    "ayme's source never imports its own build output",
   ],
 ];
 
@@ -412,12 +412,32 @@ it(
         'export { createAyme } from "../runtime";\n'
       )
     ).toEqual([]);
+  }
+);
+
+it(
+  "lint gives test support its slice's own files, and other slices through their front doors (ADR-0057)",
+  { timeout: 60_000 },
+  async () => {
+    const own =
+      'export { decisionWire } from "../../src/goal-loop/domain/decisionWire";\n';
+    const deep = 'export { run } from "../../src/runs/application/run";\n';
+    expect(await lint("testing/goal-loop/placed.ts", own)).toEqual([]);
     expect(
       await lint(
-        "src/goal-loop/test-utils/misplaced.ts",
-        'export { createAyme } from "../../runtime";\n'
+        "testing/goal-loop/placed.ts",
+        'export { createAyme } from "../../src/runtime";\n'
       )
     ).toEqual([]);
+    expect(await lint("testing/goal-loop/misplaced.ts", deep)).toEqual([
+      expect.stringContaining("Import another slice through its front door"),
+    ]);
+    // Outside a slice's folder, front doors only.
+    expect(
+      await lint("testing/misplaced.ts", own.replace("../../src", "../src"))
+    ).toEqual([
+      expect.stringContaining("Import another slice through its front door"),
+    ]);
   }
 );
 
@@ -649,7 +669,7 @@ it(
   { timeout: 60_000 },
   async () => {
     const files = readdirSync(join(packageRoot, "src/in-page/host")).filter(
-      (file) => file.endsWith(".ts") && !/\.(test|testSupport)\.ts$/.test(file)
+      (file) => file.endsWith(".ts") && !/\.test\.ts$/.test(file)
     );
     const allowed: string[] = [];
     for (const file of files) {

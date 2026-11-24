@@ -61,7 +61,6 @@ export function useRunsTimeline(
       setOpenResults((opened) => toggled(opened, id)),
     copiedResult: copied,
     copyResult: (id: string, text: string) => copy(text, id),
-    openImage: openImageFullSize,
     shownAt,
   };
 }
@@ -71,19 +70,4 @@ function toggled(set: ReadonlySet<string>, id: string) {
   const next = new Set(set);
   if (!next.delete(id)) next.add(id);
   return next;
-}
-
-/**
- * Opens an image, given its base64 data URL, full size in a new tab,
- * through a blob URL, as a tab won't open a data URL. Synchronous, so the
- * tab opens within the click and no popup blocker stops it.
- */
-export function openImageFullSize(src: string) {
-  const [header = "", data = ""] = src.split(",", 2);
-  const type = /^data:([^;]+)/.exec(header)?.[1] ?? "";
-  const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
-  const url = URL.createObjectURL(new Blob([bytes], { type }));
-  window.open(url, "_blank", "noopener");
-  // Long enough for the tab to load it.
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

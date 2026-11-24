@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   compatibilityDate: "2026-09-11",
   ssr: true,
   devtools: { enabled: false },
-  // Apply Ayme's build defines to its published modules in the SSR graph too.
+  // Apply ayme's build defines to its published modules in the SSR graph too.
   build: { transpile: ["@ayme-dev/ayme", "@ayme-dev/vue"] },
   nitro: {
     rollupConfig: {
@@ -40,7 +40,7 @@ export default defineNuxtConfig({
   vite: {
     plugins: [
       ayme({
-        // Ayme stays in every build: the Playwright suite runs against the production build.
+        // ayme stays in every build: the Playwright suite runs against the production build.
         include: true,
         // POMs live outside Nuxt's generated app TypeScript project.
         tsconfigPath: fileURLToPath(

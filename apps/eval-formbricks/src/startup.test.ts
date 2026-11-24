@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -84,7 +85,7 @@ describe("runStartup", () => {
   it("sends one message, which names the skill and no reference", async () => {
     const { stored } = await start("startup-exact.jsonl");
     const message =
-      "Get ready to drive the web page that is already open and connected through Ayme. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n";
+      "Get ready to drive the web page that is already open and connected through ayme. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n";
     expect(await stored("setup-prompt.txt")).toBe(message);
     const stderr = await stored("stderr.log");
     expect(stderr).toContain(`user message 1: ${message}`);
@@ -186,7 +187,7 @@ describe("runStartup", () => {
     const { result } = await start("startup-extra-reference.jsonl", {
       scenario: {
         ...scenario,
-        expected: ["references/goal.md"],
+        expected: ["references/live-mapping.md"],
         forbidden: [],
         allowed: ["references/page-tools.md"],
       },
@@ -194,7 +195,7 @@ describe("runStartup", () => {
     expect(result.failed).toEqual([
       {
         condition: "expected-files-read",
-        detail: "expected references/goal.md; read references/peeks.md",
+        detail: "expected references/live-mapping.md; read references/peeks.md",
       },
     ]);
   });
@@ -214,29 +215,6 @@ describe("runStartup", () => {
         condition: "no-forbidden-file",
         detail: "read references/page-tools.md",
       },
-    ]);
-  });
-
-  it("passes a drive run that reads goal when it is listed", async () => {
-    const { result } = await start("startup-drive-goal-listed.jsonl", {
-      scenario: startupScenarios["drive-the-open-page-with-goal"],
-    });
-    expect(result.pass).toBe(true);
-    expect(result.filesRead).toEqual([
-      "references/page-tools.md",
-      "references/goal.md",
-    ]);
-  });
-
-  it("fails a drive run that reads goal when it is not listed", async () => {
-    const { result } = await start("startup-drive-goal-not-listed.jsonl");
-    expect(result.failed).toEqual([
-      {
-        condition: "expected-files-read",
-        detail:
-          "expected references/page-tools.md; read references/page-tools.md, references/goal.md",
-      },
-      { condition: "no-forbidden-file", detail: "read references/goal.md" },
     ]);
   });
 
@@ -318,16 +296,23 @@ describe("runStartup", () => {
   });
 
   it("names Claude Code as the missing precondition, and nothing else", async () => {
-    vi.stubEnv("PATH", path.dirname(process.execPath));
+    // Node alone on PATH: its own folder may hold an installed `claude` too.
+    const nodeOnly = await mkdtemp(path.join(os.tmpdir(), "node-only-"));
+    await symlink(process.execPath, path.join(nodeOnly, "node"));
+    vi.stubEnv("PATH", nodeOnly);
     vi.stubEnv(
       "CLAUDE_CODE_OAUTH_TOKEN",
       "sk-ant-oat01-dummyTokenForTheTest0123456789"
     );
-    await expect(
-      runStartup({ scenario, model: "sonnet", timeoutMs: 10_000 })
-    ).rejects.toThrow(
-      "Cannot start the run:\n- Claude Code token: Claude Code is not installed: `claude --version` failed."
-    );
+    try {
+      await expect(
+        runStartup({ scenario, model: "sonnet", timeoutMs: 10_000 })
+      ).rejects.toThrow(
+        "Cannot start the run:\n- Claude Code token: Claude Code is not installed: `claude --version` failed."
+      );
+    } finally {
+      await rm(nodeOnly, { recursive: true, force: true });
+    }
   });
 });
 

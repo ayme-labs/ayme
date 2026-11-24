@@ -8,21 +8,27 @@ export class ListPage extends AppPage {
   // /playground or /ayme when deployed. ayme.dev drops the trailing slash.
   readonly path = "/{:base(playground|ayme)}?{/}?";
   @ayme.child
-  readonly newItemInput: Locator;
-  @ayme.child
-  readonly addItemButton: Locator;
-  @ayme.child
   readonly archiveDialog: ArchiveDialog;
-  private readonly itemRows: Locator;
 
   constructor(page: Page) {
     super(page);
-    this.newItemInput = page.getByRole("textbox", { name: "New item" });
-    this.addItemButton = page.getByRole("button", { name: "Add item" });
     this.archiveDialog = new ArchiveDialog(
       page.getByRole("dialog", { name: "Archive item" })
     );
-    this.itemRows = page
+  }
+
+  @ayme.child
+  get newItemInput(): Locator {
+    return this.page.getByRole("textbox", { name: "New item" });
+  }
+
+  @ayme.child
+  get addItemButton(): Locator {
+    return this.page.getByRole("button", { name: "Add item" });
+  }
+
+  private get itemRows(): Locator {
+    return this.page
       .getByRole("list", { name: "Active items" })
       .getByRole("listitem");
   }

@@ -1,8 +1,8 @@
 import { startAyme } from "./startAyme";
 
 /**
- * Sets up the list app on the fixture page, then starts Ayme on it. Returns
- * what stops Ayme.
+ * Sets up the list app on the fixture page, then starts ayme on it. Returns
+ * what stops ayme.
  */
 export function startListApp(options: Parameters<typeof startAyme>[0] = {}) {
   const input = document.querySelector("input")!;

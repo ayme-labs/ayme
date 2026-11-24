@@ -5,7 +5,7 @@ import { registerCompiledPom } from "../../page-objects/application";
 import {
   agentTools,
   operations,
-} from "../../test-utils/publication.testSupport";
+} from "../../../testing/publication.testSupport";
 import { createAyme, type Ayme } from "../../runtime";
 
 // The test server answers `/__no-content` with 204 and `/__redirect` with a

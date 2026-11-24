@@ -5,7 +5,6 @@
 // document's in-page module.
 import type { Page } from "@playwright/test";
 import { inPage } from "../../in-page";
-import type { LatestRefByRef } from "../../page-state/domain";
 import {
   createPomRegistry,
   type PomPageStates,
@@ -15,8 +14,6 @@ import { inPageDriver } from "./inPageDriver";
 
 /** What a runtime session adds to its page's registry. */
 export type PomRegistryHost = {
-  /** The Structural Ref the agent's latest page state gave what the in-page ref names. */
-  latestPageStateRef: LatestRefByRef;
   pageStates: PomPageStates;
 };
 
@@ -29,7 +26,7 @@ export function pomRegistryOf(page: Page, host: PomRegistryHost): PomRegistry {
     registries.set(
       page,
       (found = createPomRegistry(
-        inPageDriver(() => inPage(page), host.latestPageStateRef),
+        inPageDriver(() => inPage(page)),
         host.pageStates
       ))
     );

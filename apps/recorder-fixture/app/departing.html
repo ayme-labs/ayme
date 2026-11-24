@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Departing</title>
+  </head>
+  <body>
+    <h1>Departing</h1>
+    <!-- Goes to the next page by itself, a moment after the click: long
+         after the click's page has settled. -->
+    <button id="depart">Depart shortly</button>
+    <p id="state">Staying</p>
+    <script>
+      document.getElementById("depart").addEventListener("click", () => {
+        document.getElementById("state").textContent = "Departing";
+        setTimeout(() => (location.href = "/arrival.html"), 1500);
+      });
+    </script>
+  </body>
+</html>

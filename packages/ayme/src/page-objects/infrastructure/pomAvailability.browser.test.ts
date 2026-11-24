@@ -1,9 +1,9 @@
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createPage } from "./browserPage";
-import { ayme } from "../../test-utils/agentCalls.testSupport";
+import { ayme } from "../../../testing/agentCalls.testSupport";
 import { ayme as model } from "../domain/decorators";
-import { rootOf, rooted } from "../../test-utils/pomRoot.testSupport";
+import { rootOf, rooted } from "../../../testing/pomRoot.testSupport";
 import {
   listRegisteredPomRoots,
   listAvailablePomTools,
@@ -19,7 +19,7 @@ import type {
 import {
   startSession,
   type TestSession,
-} from "../../test-utils/session.testSupport";
+} from "../../../testing/session.testSupport";
 
 const action = (methodName: string, toolName = methodName): ToolManifest => ({
   methodName: methodName.split(".").at(-1)!,
@@ -152,7 +152,9 @@ describe("live Page Object availability", () => {
       <main style="flex:1">Main content</main>
     `;
     class Sidebar {
-      root = page.locator("#sidebar");
+      get root() {
+        return page.locator("#sidebar");
+      }
       open() {}
     }
     model({ root: rootOf })(Sidebar);
@@ -172,7 +174,9 @@ describe("live Page Object availability", () => {
   it("gates rooted page actions and preserves rootless actions", async () => {
     document.body.innerHTML = '<section id="root">Page</section>';
     class Rooted {
-      root = page.locator("#root");
+      get root() {
+        return page.locator("#root");
+      }
       close() {}
     }
     model({ root: rootOf })(Rooted);
@@ -304,7 +308,9 @@ describe("live Page Object availability", () => {
     session.stop();
     session = startSession(page);
     class FreshShell {
-      root = page.locator("#root");
+      get root() {
+        return page.locator("#root");
+      }
       close() {}
     }
     model({ root: rootOf })(FreshShell);
@@ -385,7 +391,9 @@ describe("live Page Object availability", () => {
     document.body.innerHTML =
       '<section id="root" style="position:fixed;left:0;top:0;width:200px;height:100px;clip-path:inset(100%)">CLIPPED CONTENT <button>Clipped action</button></section><main>MAIN CONTENT</main>';
     class Clipped {
-      root = page.locator("#root");
+      get root() {
+        return page.locator("#root");
+      }
       close() {}
     }
     model({ root: rootOf })(Clipped);
@@ -405,7 +413,9 @@ describe("live Page Object availability", () => {
     document.body.innerHTML =
       '<section id="root" style="clip-path:circle(0)">CLIPPED CONTENT</section><main>MAIN CONTENT</main>';
     class Clipped {
-      root = page.locator("#root");
+      get root() {
+        return page.locator("#root");
+      }
       close() {}
     }
     model({ root: rootOf })(Clipped);
@@ -462,7 +472,9 @@ describe("live Page Object availability", () => {
     document.body.innerHTML =
       '<div style="height:2000px"></div><section id="root">BELOW FOLD CONTENT</section>';
     class BelowFold {
-      root = page.locator("#root");
+      get root() {
+        return page.locator("#root");
+      }
       close() {}
     }
     model({ root: rootOf })(BelowFold);
@@ -482,7 +494,9 @@ describe("live Page Object availability", () => {
     document.body.innerHTML =
       '<div id="wrapper" inert><dialog id="modal"><button>Confirm</button></dialog></div>';
     class Shell {
-      root = page.locator("#wrapper");
+      get root() {
+        return page.locator("#wrapper");
+      }
       dialog = rooted(page.locator("#modal"), { close() {} });
     }
     model({ root: rootOf })(Shell);

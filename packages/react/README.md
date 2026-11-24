@@ -1,6 +1,6 @@
 # @ayme-dev/react
 
-The React package for [Ayme](https://github.com/ayme-labs/ayme): it starts Ayme at the root of your React app and gives components their Page Objects.
+The React package for [ayme](https://github.com/ayme-labs/ayme): it starts ayme at the root of your React app and gives components their Page Objects.
 
 ## Install
 
@@ -49,7 +49,7 @@ Each mounted component is one instance of the Peek, under the `id` you pass or o
 
 - [Quickstart: React](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/quickstart-react.md): from an empty app to your first Page Object Tool.
 - [React page](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/react.md): the provider, root ownership, hooks, server rendering with Next.js, limits and API.
-- [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
+- [ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 
 ## Supported versions
 

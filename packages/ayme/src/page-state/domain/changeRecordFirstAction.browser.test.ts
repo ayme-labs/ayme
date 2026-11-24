@@ -1,4 +1,4 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { PomManifest } from "../../shared";
@@ -8,8 +8,8 @@ import {
   probeRegisteredPomMembers,
 } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 import { createAyme } from "../../runtime";
 
 /**
@@ -31,7 +31,9 @@ describe("Change Record of the first action in Chromium", () => {
     const page = createPage();
 
     class App {
-      root = page.locator("main");
+      get root() {
+        return page.locator("main");
+      }
       announce() {
         document
           .querySelector("main")!
@@ -51,7 +53,7 @@ describe("Change Record of the first action in Chromium", () => {
     await probeRegisteredPomMembers();
 
     const result = (await agentTools().call("App.announce", {
-      ref: await rootRef("App"),
+      id: await rootId("App"),
       args: {},
     })) as {
       page_changed: boolean;

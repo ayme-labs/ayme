@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  AriaRefSchema,
-  type AriaRef,
-} from "@ayme-dev/core/structural-observation";
-import {
-  availabilityOf as availabilityWithRefs,
+  availabilityOf,
   combinedAvailability,
   type ObservedPomRoot,
   type PomInstanceObservation,
@@ -13,8 +9,7 @@ import {
 import { assertAvailable } from "../../page-state/domain";
 
 // Unit tests: one Page Object instance's Action Availability (ADR-0035),
-// from hand-written observations, without a page or a runtime. The agent's
-// latest page state is a fake ref lookup.
+// from hand-written observations, without a page or a runtime.
 
 let minted = 0;
 const element = () => `s_${++minted}`;
@@ -23,13 +18,8 @@ const root = (overrides: Partial<ObservedPomRoot> = {}): ObservedPomRoot => ({
   ref: element(),
   present: true,
   available: true,
-  inTheWay: [],
   ...overrides,
 });
-
-const noRefs = () => undefined;
-const availabilityOf = (observed: PomInstanceObservation, methodName: string) =>
-  availabilityWithRefs(observed, methodName, noRefs);
 
 const instance = (
   overrides: Partial<PomInstanceObservation> = {}
@@ -74,7 +64,7 @@ describe("one instance's availability", () => {
     expect(
       availabilityOf(
         instance({
-          root: root({ available: false, inTheWay: [element()] }),
+          root: root({ available: false }),
           predicates,
         }),
         "archive"
@@ -86,30 +76,15 @@ describe("one instance's availability", () => {
     });
   });
 
-  it("names the first element in the way the agent's latest page state gave a ref", () => {
-    const [hit, pane, overlay] = [element(), element(), element()];
-    const refs = new Map<string, AriaRef>([
-      [overlay, AriaRefSchema.parse("e2")],
-      [pane, AriaRefSchema.parse("e3")],
-    ]);
+  it("names what is in the way by the role and name the probe gave it", () => {
     const obstructed = instance({
-      root: root({ available: false, inTheWay: [hit, pane, overlay] }),
+      root: root({ available: false, inTheWay: 'dialog "Delete"' }),
     });
 
-    expect(
-      availabilityWithRefs(obstructed, "archive", (candidate) =>
-        refs.get(candidate)
-      )
-    ).toEqual({
-      present: true,
-      available: false,
-      reason: "a click would not reach it; e3 is in the way",
-    });
-    // Before the agent recorded a page state that shows it, nothing is named.
     expect(availabilityOf(obstructed, "archive")).toEqual({
       present: true,
       available: false,
-      reason: "a click would not reach it",
+      reason: 'a click would not reach it; dialog "Delete" is in the way',
     });
   });
 

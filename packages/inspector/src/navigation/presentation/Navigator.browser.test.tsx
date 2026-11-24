@@ -2,8 +2,8 @@ import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { renderPart } from "../../testing/renderPart";
-import { Navigator as NavigatorPart } from "../../testing";
+import { renderPart } from "../../../testing/renderPart";
+import { Navigator as NavigatorPart } from "../../../testing";
 import type { Lens, LensId } from "../domain/lens";
 import { Navigator } from "./Navigator";
 import type { Selection } from "../domain/selection";

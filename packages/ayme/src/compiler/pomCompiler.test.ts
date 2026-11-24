@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createPomCompiler } from "./index";
-import { diagnosticsOf, positionOf } from "./pomCompileError.testSupport";
+import {
+  diagnosticsOf,
+  positionOf,
+} from "../../testing/compiler/pomCompileError.testSupport";
 
 // Appended to what the transform generates, to fail its transpile alone.
 const generated = vi.hoisted(() => ({ suffix: "" }));
@@ -56,15 +59,15 @@ const tsconfigPath = fileURLToPath(
 );
 
 describe("createPomCompiler", () => {
-  it("says whether Ayme is in the build and why", () => {
+  it("says whether ayme is in the build and why", () => {
     expect(createPomCompiler().includeLine).toBe(
-      "[ayme] Ayme is not in this build: include is not set."
+      "[ayme] ayme is not in this build: include is not set."
     );
     expect(createPomCompiler({ include: false }).includeLine).toBe(
-      "[ayme] Ayme is not in this build: include is false."
+      "[ayme] ayme is not in this build: include is false."
     );
     expect(createPomCompiler({ include: true }).includeLine).toBe(
-      "[ayme] Ayme is in this build: include is true."
+      "[ayme] ayme is in this build: include is true."
     );
   });
 
@@ -102,7 +105,7 @@ describe("createPomCompiler", () => {
     expect(compiled?.code).not.toMatch(/^\s*@ayme/m);
   });
 
-  it("compiles a Page Object Model to its stand-in in a build without Ayme", () => {
+  it("compiles a Page Object Model to its stand-in in a build without ayme", () => {
     const fileName = fixture("twoPagesPom");
     const compiled = createPomCompiler({ tsconfigPath }).compile(
       fileName,
@@ -155,6 +158,19 @@ describe("createPomCompiler", () => {
     ]);
   });
 
+  it("compiles a Page Object Model whose Child's action takes a type no schema describes to its stand-in in a build without ayme", () => {
+    const page = fixture("importedUnsupportedChild/page");
+    const compiled = createPomCompiler({ tsconfigPath }).compile(
+      page,
+      source(page),
+      { emit: "ts" }
+    );
+
+    expect(compiled?.code).toContain(
+      'export class CalendarPage extends absentPageObject("CalendarPage", {"actions":[],"properties":["scheduler"],"methods":[]}) {}'
+    );
+  });
+
   it("locates a syntax error where it is in the source, not in the compiled module", () => {
     const fileName = fixture("twoPagesPom");
     const broken = source(fileName).replace(
@@ -176,6 +192,7 @@ describe("createPomCompiler", () => {
         file: fileName,
         line: 16,
         column: 28,
+        lineText: "    return new ResultsPage(;",
       },
     ]);
   });
@@ -233,7 +250,7 @@ describe("createPomCompiler", () => {
     ).toBe("export const page = 1;\n");
   });
 
-  it("names the absent entry a build without Ayme resolves a specifier to", () => {
+  it("names the absent entry a build without ayme resolves a specifier to", () => {
     const compiler = createPomCompiler();
     expect(compiler.absentEntry("@ayme-dev/ayme")).toBe(
       "@ayme-dev/ayme/absent"

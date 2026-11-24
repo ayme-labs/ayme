@@ -2,10 +2,15 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { aChildRun, anInteraction, anItem, aRun } from "../test-utils/runs";
+import {
+  aChildRun,
+  anInteraction,
+  anItem,
+  aRun,
+} from "../../../testing/runs/runs";
 import { RunsRegion } from "../../panel";
-import { renderPart } from "../../testing/renderPart";
-import { RunsView } from "../../testing";
+import { renderPart } from "../../../testing/renderPart";
+import { RunsView } from "../../../testing";
 import type { Run, RunFocus } from "../domain/run";
 import { Runs, type RunsProps } from "./Runs";
 
@@ -41,8 +46,8 @@ const addMilk = aRun({
 const archiveGone = aRun({
   toolName: "ListItem.archive",
   className: "ListItem",
-  item: anItem("ListPage.items[0]", { ref: "e3", label: "Milk" }),
-  arguments: { ref: "e3", args: {} },
+  item: anItem("ListPage.items[0]", { id: "po3", ref: "e3", label: "Milk" }),
+  arguments: { id: "po3", args: {} },
   status: "failed",
   error: 'Ref "e3" does not match a present instance.',
 });
@@ -136,7 +141,7 @@ describe("Runs", () => {
     );
   });
 
-  it("marks each run with its Caller: an icon for Ayme's own, the name for any other", async () => {
+  it("marks each run with its Caller: an icon for ayme's own, the name for any other", async () => {
     renderRuns({
       runs: [
         aRun({ by: "inspector" }),
@@ -155,7 +160,7 @@ describe("Runs", () => {
       { icon: "Run by you from the Inspector" },
       { icon: "Run by the app" },
       { icon: "Run by an agent through WebMCP" },
-      { icon: "Run by an agent through Ayme MCP" },
+      { icon: "Run by an agent through ayme MCP" },
       { text: "support-assistant" },
     ]);
   });
@@ -262,7 +267,7 @@ describe("Runs", () => {
     expect(await runsView.run(0).earlierPage.count()).toBe(0);
     expect(await runsView.run(1).earlierPage.count()).toBe(1);
     expect(await runsView.run(1).caller()).toEqual({
-      icon: "Run by an agent through Ayme MCP",
+      icon: "Run by an agent through ayme MCP",
     });
   });
 

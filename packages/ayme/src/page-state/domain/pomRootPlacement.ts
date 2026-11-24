@@ -10,6 +10,11 @@ type StructuralChild = StructuralNode | string;
 export type ReferencedCapturedRoot = {
   kind: "referenced";
   ref: AriaRef;
+  /**
+   * Whether the node takes its own text with it, which the distilled text
+   * may show as its parent's: an element the capture was asked to keep.
+   */
+  withText?: boolean;
 };
 
 export type OmittedCapturedRoot = {
@@ -63,7 +68,7 @@ export function placeCapturedRoots(
         continue;
       }
 
-      const boundary = capturedBoundary(fullNode, tree);
+      const boundary = capturedBoundary(fullNode, tree, root.withText);
       tree = insertBoundary(
         tree,
         ancestor.ref,
@@ -71,7 +76,8 @@ export function placeCapturedRoots(
         collectDescendantRefs(boundary),
         fullOrder.get(root.ref) ?? Number.MAX_SAFE_INTEGER,
         fullOrder,
-        refFactory
+        refFactory,
+        root.withText ? onlyText(boundary) : undefined
       );
       placedRefs.push(tree.hasNode(root.ref) ? root.ref : null);
       continue;
@@ -139,13 +145,32 @@ export function placeCapturedRoots(
 
 function capturedBoundary(
   node: StructuralNode,
-  tree: StructuralTree
+  tree: StructuralTree,
+  withText = false
 ): StructuralNode {
-  return node.copy({
-    children: node.children.flatMap((child) =>
-      typeof child === "string" ? [] : existingDescendants(child, tree)
-    ),
-  });
+  const children: StructuralChild[] = [];
+  let text = "";
+  const flush = () => {
+    const merged = text.replace(/\s+/g, " ").trim();
+    if (merged) children.push(merged);
+    text = "";
+  };
+  for (const child of node.children) {
+    if (typeof child === "string") {
+      if (withText) text += child;
+      continue;
+    }
+    flush();
+    children.push(...existingDescendants(child, tree));
+  }
+  flush();
+  return node.copy({ children });
+}
+
+/** `node`'s text when that is all it holds. */
+function onlyText(node: StructuralNode): string | undefined {
+  const [child, ...rest] = node.children;
+  return typeof child === "string" && rest.length === 0 ? child : undefined;
 }
 
 function existingDescendants(
@@ -174,7 +199,12 @@ function insertBoundary(
   movedRefs: ReadonlySet<AriaRef>,
   boundaryOrder: number,
   fullOrder: ReadonlyMap<AriaRef, number>,
-  refFactory: SyntheticAriaRefAllocator
+  refFactory: SyntheticAriaRefAllocator,
+  /**
+   * The boundary's text, which the parent shows as its own when the
+   * distilled text folded the boundary into it: the parent gives it up.
+   */
+  takenText?: string
 ): StructuralTree {
   let inserted = false;
   const rebuild = (node: StructuralNode): StructuralNode => {
@@ -185,6 +215,8 @@ function insertBoundary(
     }
 
     if (node.ref === parentRef) {
+      const folded = takenText === undefined ? -1 : children.indexOf(takenText);
+      if (folded !== -1) children.splice(folded, 1);
       const insertionIndex = children.findIndex(
         (child) =>
           typeof child !== "string" &&

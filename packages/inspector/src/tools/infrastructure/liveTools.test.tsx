@@ -6,7 +6,7 @@ import type { Ayme, ToolInfo } from "@ayme-dev/ayme";
 import {
   createInspectorContract,
   type InspectorSession,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/ayme/internal";
 
 import { createInspectorClient } from "../../shared";
 import { useLiveTools, type LiveTools } from "./liveTools";
@@ -15,7 +15,7 @@ import {
   appProcessToolsOf,
   asStartedAyme,
   startedAyme,
-} from "../test-utils/startedAyme";
+} from "../../../testing/tools/startedAyme";
 
 // Unit tests: the Inspector's one source of the tools the panel can run, read
 // through the contract client over a stand-in started session that the test
@@ -61,7 +61,6 @@ const client = createInspectorClient(
     },
     appProcessTools: appProcessToolsOf,
     connectionStatus: () => connection,
-    subscribeToAgentImageRuns: () => () => {},
     highlights: { set: async () => {} },
     pick: async () => undefined,
     registry: {
@@ -240,7 +239,7 @@ it("gives no tools while no session is started, and follows the next one", async
     appProcess: [],
     publication: {
       state: "disposed",
-      message: "No Ayme runtime session has started.",
+      message: "No ayme runtime session has started.",
     },
     agentConnection: { state: "off" },
   });

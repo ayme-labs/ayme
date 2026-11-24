@@ -4,38 +4,42 @@ import type { Locator, Page } from "@playwright/test";
 import { ListItem } from "./ListItem";
 
 /**
- * The fixture page's Page Object. The page registers it with the Ayme
+ * The fixture page's Page Object. The page registers it with the ayme
  * runtime, which constructs it on playwright-lite and publishes `addItem` as
  * a Page Object Tool; the e2e tests construct the same class on
  * Playwright to read the page.
  */
 @ayme
 export class ListPage {
+  constructor(private readonly page: Page) {}
+
   @ayme.child
-  readonly newItemInput: Locator;
+  get newItemInput(): Locator {
+    return this.page.getByRole("textbox", { name: "New item" });
+  }
+
   @ayme.child
-  readonly addItemButton: Locator;
+  get addItemButton(): Locator {
+    return this.page.getByRole("button", { name: "Add item" });
+  }
+
+  // The Inspector's Runs view has a "Clear" button too, inside an open
+  // shadow root on the dogfood page, so the page's own is the one in main.
   @ayme.child
-  readonly clearButton: Locator;
+  get clearButton(): Locator {
+    return this.page.getByRole("main").getByRole("button", { name: "Clear" });
+  }
+
   @ayme.collection
-  readonly items: Locator;
+  get items(): Locator {
+    return this.page.getByRole("list", { name: "Items" }).getByRole("listitem");
+  }
+
   @ayme.collection({
     description: "The new item's fields: its text and whether it is urgent.",
   })
-  readonly newItemFields: Locator;
-
-  constructor(page: Page) {
-    this.newItemInput = page.getByRole("textbox", { name: "New item" });
-    this.addItemButton = page.getByRole("button", { name: "Add item" });
-    // The Inspector's Runs view has a "Clear" button too, inside an open
-    // shadow root on the dogfood page, so the page's own is the one in main.
-    this.clearButton = page
-      .getByRole("main")
-      .getByRole("button", { name: "Clear" });
-    this.items = page
-      .getByRole("list", { name: "Items" })
-      .getByRole("listitem");
-    this.newItemFields = page.getByRole("main").locator("input");
+  get newItemFields(): Locator {
+    return this.page.getByRole("main").locator("input");
   }
 
   /** The items, as Page Objects a collection action runs on. */
@@ -57,8 +61,8 @@ export class ListPage {
 
   // Available only while the list has items (ADR-0035): on an empty list
   // the tool is listed, and a call is refused with this reason. Marked
-  // destructive, so the Inspector marks it and WebMCP calls it
-  // consequential.
+  // destructive, so the Inspector marks it and an agent's ayme MCP server
+  // gives it `destructiveHint`.
   @ayme.action({
     description: "Remove every item from the list.",
     available: async (self: ListPage) =>

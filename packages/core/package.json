@@ -9,11 +9,6 @@
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
     },
-    "./structural-observation/testing": {
-      "types": "./dist/testing.d.mts",
-      "import": "./dist/testing.mjs",
-      "default": "./dist/testing.mjs"
-    },
     "./tool-input": {
       "types": "./dist/toolInput.d.mts",
       "import": "./dist/toolInput.mjs",

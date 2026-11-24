@@ -4,13 +4,15 @@ Write each rule once, next to the config or code that enforces it. Other docs, t
 
 ## Repository map
 
-- `ARCHITECTURE.md`: what Ayme is made of above any one package: the containers, who talks to whom, and what each environment runs. Read it before adding a package, a process boundary or a connection between them, and update it when a change moves one. `ARCHITECTURE.html` is the same architecture as an interactive diagram, published at https://claude.ai/artifact/5YFUfE3seAb7iu2ffbZMMG: its data block mirrors `ARCHITECTURE.md`, so change both in the same pull request, and after it merges republish the page from `main` to that link.
-- `packages/`: the Ayme WebMCP product. Each package README is its npm entry point; the consumer docs in `docs/guide/` own its API and setup.
+- `ARCHITECTURE.md`: what ayme is made of above any one package: the containers, who talks to whom, and what each environment runs. Read it before adding a package, a process boundary or a connection between them, and update it when a change moves one. `ARCHITECTURE.html` is the same architecture as an interactive diagram, published at https://claude.ai/artifact/5YFUfE3seAb7iu2ffbZMMG: its data block mirrors `ARCHITECTURE.md`, so change both in the same pull request, and after it merges republish the page from `main` to that link.
+- `packages/`: the ayme WebMCP product. Each package README is its npm entry point; the consumer docs in `docs/guide/` own its API and setup.
 - `packages/ayme/`: read [its AGENTS.md](packages/ayme/AGENTS.md) before adding or moving a source file.
 - `packages/inspector/`: read [its AGENTS.md](packages/inspector/AGENTS.md) before adding or moving a source file.
 - `packages/mcp/`: read [its AGENTS.md](packages/mcp/AGENTS.md) before adding or moving a source file.
-- `skills/`: skills shipped to consumers for integrating Ayme into their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
-- `apps/example-vue/`: the hosted playground where visitors try Ayme before integrating it. A visitor installs only Ayme's MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
+- `packages/recorder/`: read [its AGENTS.md](packages/recorder/AGENTS.md) before adding or moving a source file.
+- `packages/recorder-window/`: read [its AGENTS.md](packages/recorder-window/AGENTS.md) before adding or moving a source file.
+- `skills/`: skills shipped to consumers for use in their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
+- `apps/example-vue/`: the hosted playground where visitors try ayme before integrating it. A visitor installs only ayme's MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
 - `docs/testing.md`: the test lanes and where test-only code lives. Read it before adding tests or test helpers, and read its [Local runs and CI](docs/testing.md#local-runs-and-ci) section before running anything beyond one package's tests.
 - Before a pull request goes ready, follow the [change-analysis guidance](docs/testing.md#change-analysis).
 - `docs/framework-integrations.md`: what a framework integration ships, its behaviour contract and the files a new framework touches. Read it before adding or changing a framework integration.
@@ -23,8 +25,10 @@ Write each rule once, next to the config or code that enforces it. Other docs, t
 
 Skills for agents working on this repository live in `.agents/skills/` (agent-agnostic; `.claude/skills` is a symlink to it). They are separate from `skills/`, which holds the skills ayme ships to consumers.
 
-- `typesafe-ai`: copied from [typesafe-ai/skills](https://github.com/typesafe-ai/skills) at tag v0.5.7 (`skills/typesafe-ai/`). To refresh it, copy `SKILL.md` and `LICENSE` from a newer tag and update the tag here.
+- `typesafe-ai`: installed with `npx skills add typesafe-ai/skills` from [typesafe-ai/skills](https://github.com/typesafe-ai/skills), at the commit `skills-lock.json` names. To refresh it, run `npx skills update -p` and review the change.
 - `inspector-dogfood`: verify a change to the Inspector by driving the Inspector itself through `ayme mcp`, on the inspector-fixture app's dogfood page. Use it for any change under `packages/inspector` before showing the change to the user.
+- `verify-recorder-lifecycle`: check a change to the Recorder's engine against its lifecycle model, a TLA+ model in `packages/recorder/lifecycle-model/` that TLC checks against the rules the recorder must keep. Use it when a change under `packages/recorder/src` alters the order of events, what the recorder waits for, or a promise it makes, before showing the change to the user.
+- `statechart`, `create-formal-verification-skill`, `maintain-formal-verification-skill`: installed with `npx skills add backnotprop/pstack` from [backnotprop/pstack](https://github.com/backnotprop/pstack), a mirror of the `pstack` folder of [cursor/plugins](https://github.com/cursor/plugins), at the commit `skills-lock.json` names. `statechart` checks a TLA+ model and tells each rule that breaks as its shortest path in plain words; the other two make and keep up a project skill that verifies code, such as `verify-recorder-lifecycle`. They are MIT-licensed, `.agents/skills/LICENSE-pstack`. To refresh them, run `npx skills update -p`, review the change, and update `LICENSE-pstack` if the licence changed.
 
 ### Issue tracker
 
@@ -44,13 +48,7 @@ Before adding or renaming a term in `GLOSSARY.md`, present the proposed wording 
 
 ### Architectural decisions
 
-Canonical ADRs live under `docs/adr/`. Use them for long-lived architectural decisions and keep their rationale there.
-
-ADRs record decisions and their rationale. Do not restate API names, options or signatures; the consumer docs in `docs/guide/` own those.
-
-Before creating or superseding an ADR, present the complete proposed ADR to the user and wait for explicit approval. Never infer ADR approval from general agreement with a plan.
-
-A single approval covers the complete supersession operation. Mark the old ADR as `superseded by ADR-NNNN`, keep the replacement ADR accepted and explicit about which ADR it supersedes, and keep the old ADR rationale intact.
+The rules for writing, replacing and retiring an ADR, and the list of those in force, are in [`docs/adr/AGENTS.md`](docs/adr/AGENTS.md).
 
 ## Commit types
 
@@ -58,7 +56,7 @@ Commit messages follow Conventional Commits. `commitlint.config.ts` defines the 
 
 ## Moving the supported Playwright range
 
-`playwright-range.json` at the repo root states the supported `@playwright/test` range: the types floor, the config loader's floor and the last supported minor. The build plugin's loader guard and the packed-consumer test read it. To move the range, edit that file and run `src/playwrightRange.test.ts` in `unplugin-ayme`: it names every peer range, doc, `ng add` pin and CI image that still states the old range.
+`playwright-range.json` at the repo root states the supported `@playwright/test` range: the types floor, the config loader's floor and the last supported minor. The build plugin's loader guard and the packed-consumer test read it. To move the range, edit that file and run `src/playwrightRange.test.ts` in `unplugin-ayme`: it names every peer range, doc, `ng add` pin and CI image that still states the old range. The Recorder's own range lives in `packages/recorder/playwright-range.json`.
 
 ## Updating the Playwright Lite fork
 
@@ -71,7 +69,7 @@ Playwright Lite matches Playwright's behaviour; the fork holds only what ayme ne
 - A fork change never makes Lite differ from Playwright. When ayme needs other behaviour than Playwright's, ayme provides it on top of Lite.
 
 1. To pick up upstream changes, first produce a new tag by following `docs/fork/SYNC.md` in the fork. Read it from the latest `ayme-*` [tag](https://github.com/ayme-labs/playwright-lite/tags); the fork's `main` mirrors upstream and does not contain it.
-2. Replace the old SHA with the new tag's SHA everywhere and reinstall: `git grep -l <old-sha> -- ':!pnpm-lock.yaml' | xargs perl -pi -e 's/<old-sha>/<new-sha>/g' && pnpm install`. This covers the three `package.json` files, `allowBuilds` in `pnpm-workspace.yaml`, the ledger link in `docs/guide/reference/playwright-in-the-browser.md`, and `packages/ayme/THIRD_PARTY_NOTICES.txt`. `git grep <old-sha>` must then find nothing. pnpm rewrites the lockfile unformatted, so run `pnpm exec prettier --write pnpm-lock.yaml`; the lockfile diff should be a few lines. Then run `pnpm --filter @ayme-dev/ayme sync:injected`, which copies the new tag's generated InjectedScript into `packages/ayme/build/generated/` for the in-page module's build, review it, and update the size and hash in `packages/ayme/build/pinnedAriaSnapshot.ts`.
+2. Replace the old SHA with the new tag's SHA everywhere and reinstall: `git grep -l <old-sha> -- ':!pnpm-lock.yaml' | xargs perl -pi -e 's/<old-sha>/<new-sha>/g' && pnpm install`. This covers the four `package.json` files, `allowBuilds` in `pnpm-workspace.yaml`, the ledger link in `docs/guide/reference/playwright-in-the-browser.md`, and `packages/ayme/THIRD_PARTY_NOTICES.txt`. `git grep <old-sha>` must then find nothing. pnpm rewrites the lockfile unformatted, so run `pnpm exec prettier --write pnpm-lock.yaml`; the lockfile diff should be a few lines. Then run `pnpm --filter @ayme-dev/ayme sync:injected`, which copies the new tag's generated InjectedScript into `packages/ayme/build/generated/` for the in-page module's build, review it, and update the size and hash in `packages/ayme/build/pinnedAriaSnapshot.ts`.
 3. Open the pull request; CI checks the affected packages. Review the upstream changelog for behaviour changes that affect POMs.
 
 ## Development environment

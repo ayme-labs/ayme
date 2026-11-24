@@ -10,11 +10,13 @@
  * its own, shorter timeout, and the task is sent only after it completed. A
  * run without a task ends after the setup turn.
  */
-import { spawn, spawnSync } from "node:child_process";
-import { createWriteStream } from "node:fs";
-import { writeFile } from "node:fs/promises";
-import { createInterface } from "node:readline";
+import { spawnSync } from "node:child_process";
 
+import {
+  setupTurnFailure,
+  startAgentProcess,
+  type Turn,
+} from "./agentProcess.ts";
 import type { Arm } from "./arms.ts";
 import { resultEvent } from "./transcript.ts";
 
@@ -56,24 +58,14 @@ export type ClaudeInvocation = {
   | { prompt?: undefined; timeoutMs?: undefined }
 );
 
-/** One user message and the agent's answer to it. */
-export type Turn = {
-  /** When the message was sent. */
-  sentAt: string;
-  /** Wall clock from sending the message to its `result` event; `null` when none arrived. */
-  wallTimeMs: number | null;
-  /** The turn ran out of its timeout and the agent was stopped. */
-  timedOut: boolean;
-};
-
 export type ClaudeRun = {
   exitCode: number | null;
   signal: NodeJS.Signals | null;
   setup: Turn;
   /** Why the setup turn did not complete; the task is sent only after a completed setup turn. */
   setupFailure: string | null;
-  /** A turn's `result` event said the login hit its usage limit. */
-  usageLimited: boolean;
+  /** A turn's `result` event said the Claude Code login hit its usage limit; Codex's driver does not report its limits. */
+  usageLimited?: boolean;
   /** The measured turn; `null` when the task was never sent. */
   task: Turn | null;
   /** When the agent was started. */
@@ -140,8 +132,8 @@ export function claudeArguments(invocation: {
 }
 
 /**
- * The environment without any Claude Code, Anthropic or Ayme variable of
- * whoever launched the eval. The Ayme variables hold the lab app's model key,
+ * The environment without any Claude Code, Anthropic or ayme variable of
+ * whoever launched the eval. The ayme variables hold the lab app's model key,
  * which the agent must never see.
  */
 export function withoutClaudeVariables(
@@ -156,7 +148,7 @@ export function withoutClaudeVariables(
 
 /**
  * The environment the agent runs in: the parent's, minus every Claude Code,
- * Anthropic and Ayme variable the launcher may carry (its own settings, base
+ * Anthropic and ayme variable the launcher may carry (its own settings, base
  * URL, session ids, the lab app's model key), plus a fresh configuration
  * directory and the eval's own token. Nothing else. The token is never written
  * anywhere; it lives only in this environment.
@@ -251,14 +243,6 @@ export function claudeAuthStatus(
   }
 }
 
-function signalProcessGroup(pid: number, signal: NodeJS.Signals) {
-  try {
-    process.kill(-pid, signal);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
-  }
-}
-
 /** A user message as one line of Claude Code's stream-json input. */
 export function userMessageLine(text: string) {
   return `${JSON.stringify({
@@ -275,161 +259,53 @@ export function userMessageLine(text: string) {
 export async function runClaude(
   invocation: ClaudeInvocation
 ): Promise<ClaudeRun> {
-  const transcript = createWriteStream(invocation.transcriptPath);
   const startedAt = new Date();
-  const child = spawn("claude", claudeArguments(invocation), {
-    cwd: invocation.cwd,
-    env: invocation.environment,
-    detached: true,
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-  // Neither stream keeps a token: the output is public once the results folder is uploaded.
-  const redact = secretRedactor(invocation.secrets ?? []);
-  // Stderr is free text, so it is scrubbed as a whole, once it is complete: a token in JSON printed
-  // over several lines is no secret on any one line. Stdout is stream-json, scrubbed line by line.
-  let stderr = "";
-  child.stderr.setEncoding("utf8");
-  child.stderr.on("data", (chunk: string) => (stderr += chunk));
-  const stderrClosed = new Promise<void>((resolve) =>
-    child.stderr.once("close", resolve)
-  );
-  // A message sent to an agent that has already exited must not take the harness down.
-  child.stdin.on("error", (error) => {
-    stderr += `harness: writing to the agent failed: ${error.message}\n`;
-  });
-
-  const lines: string[] = [];
   let usageLimited = false;
-  let onResult: ((event: { isError: boolean }) => void) | null = null;
-  const reader = createInterface({ input: child.stdout });
-  reader.on("line", (rawLine) => {
-    // The event is read as the agent wrote it; only what is stored is scrubbed.
-    const result = resultEvent(rawLine);
-    const line = redact(rawLine);
-    lines.push(line);
-    transcript.write(`${line}\n`);
-    if (result !== null) {
-      usageLimited ||= result.usageLimit;
-      onResult?.(result);
-    }
+  const agent = startAgentProcess({
+    command: "claude",
+    args: claudeArguments(invocation),
+    cwd: invocation.cwd,
+    environment: invocation.environment,
+    transcriptPath: invocation.transcriptPath,
+    stderrPath: invocation.stderrPath,
+    // Neither the transcript nor stderr keeps a token: the output is public once the results folder is uploaded.
+    redact: secretRedactor(invocation.secrets ?? []),
+    // The event is read as the agent wrote it; only what is kept is scrubbed.
+    onLine: (line) => {
+      const result = resultEvent(line);
+      if (result !== null) {
+        usageLimited ||= result.usageLimit;
+        agent.completeTurn(result);
+      }
+      return true;
+    },
   });
-  // Registered before the child can close: readline closes with stdout, ahead of the child's own close.
-  const readerClosed = new Promise<void>((resolve) =>
-    reader.once("close", resolve)
-  );
-  const closed = new Promise<{
-    exitCode: number | null;
-    signal: NodeJS.Signals | null;
-  }>((resolve, reject) => {
-    child.once("error", reject);
-    child.once("close", (code, closeSignal) =>
-      resolve({ exitCode: code, signal: closeSignal })
-    );
-  });
-  const ended = closed.then(
-    () => undefined,
-    () => undefined
-  );
-
-  let forceKill: NodeJS.Timeout | undefined;
-  const stopChild = () => {
-    if (!child.pid) return;
-    signalProcessGroup(child.pid, "SIGTERM");
-    forceKill ??= setTimeout(() => {
-      if (child.pid) signalProcessGroup(child.pid, "SIGKILL");
-    }, 10_000);
-  };
-  // The child runs in its own process group so a timeout can take the MCP server and browser with it;
-  // an interrupted harness must do the same instead of leaving them behind.
-  let interruptedBy: NodeJS.Signals | null = null;
-  const onInterrupt = (received: NodeJS.Signals) => {
-    interruptedBy = received;
-    stopChild();
-    process.once("exit", () => process.kill(process.pid, received));
-  };
-  process.once("SIGINT", onInterrupt);
-  process.once("SIGTERM", onInterrupt);
-
   /** Sends one message and waits for its result event, the turn's timeout or the agent's end. */
-  const turn = async (text: string, timeoutMs: number) => {
-    const sentAt = Date.now();
-    child.stdin.write(userMessageLine(text));
-    let timedOut = false;
-    let timer: NodeJS.Timeout | undefined;
-    const result = await new Promise<{ isError: boolean } | null>((resolve) => {
-      timer = setTimeout(() => {
-        timedOut = true;
-        stopChild();
-        resolve(null);
-      }, timeoutMs);
-      onResult = resolve;
-      void ended.then(() => resolve(null));
-    });
-    clearTimeout(timer);
-    onResult = null;
-    const timing: Turn = {
-      sentAt: new Date(sentAt).toISOString(),
-      wallTimeMs: result === null ? null : Date.now() - sentAt,
-      timedOut,
-    };
-    return { turn: timing, result };
-  };
+  const turn = (text: string, timeoutMs: number) =>
+    agent.turn(timeoutMs, () => agent.write(userMessageLine(text)));
 
-  let linger: NodeJS.Timeout | undefined;
   try {
     const setupTimeout = invocation.setupTimeoutMs ?? setupTimeoutMs;
-    const { turn: setup, result: setupResult } = await turn(
-      invocation.setupPrompt,
-      setupTimeout
-    );
-    const setupFailure = setup.timedOut
-      ? `the setup turn ran out of its ${setupTimeout / 1000} s timeout`
-      : setupResult === null
-        ? "the agent ended before answering the setup message"
-        : setupResult.isError
-          ? "the setup turn ended with an error"
-          : child.exitCode !== null
-            ? "the agent ended right after the setup turn"
-            : null;
+    const setup = await turn(invocation.setupPrompt, setupTimeout);
+    const setupFailure = setupTurnFailure(agent, setup, setupTimeout);
     const task =
       setupFailure === null && invocation.prompt !== undefined
         ? (await turn(invocation.prompt, invocation.timeoutMs)).turn
         : null;
-    child.stdin.end();
     // Claude Code exits once its input ends; one that lingers is stopped so the run can end.
-    linger = setTimeout(stopChild, exitGraceMs);
-    const { exitCode, signal } = await closed;
-    await Promise.all([readerClosed, stderrClosed]);
-    await Promise.all([
-      closeStream(transcript),
-      writeFile(invocation.stderrPath, redact(stderr)),
-    ]);
-    // An interrupted run is not a result: nothing is stored and a suite stops.
-    if (interruptedBy)
-      throw new Error(`The run was interrupted by ${interruptedBy}.`);
+    const { exitCode, signal } = await agent.finish(exitGraceMs);
     return {
       exitCode,
       signal,
-      setup,
+      setup: setup.turn,
       setupFailure,
       usageLimited,
       task,
       startedAt: startedAt.toISOString(),
       finishedAt: new Date().toISOString(),
-      lines,
+      lines: agent.lines,
     };
   } finally {
-    if (linger) clearTimeout(linger);
-    if (forceKill) clearTimeout(forceKill);
-    process.off("SIGINT", onInterrupt);
-    process.off("SIGTERM", onInterrupt);
+    agent.dispose();
   }
-}
-
-function closeStream(stream: NodeJS.WritableStream & { closed?: boolean }) {
-  return new Promise<void>((resolve, reject) => {
-    if (stream.closed) return resolve();
-    stream.once("error", reject);
-    stream.end(() => resolve());
-  });
 }

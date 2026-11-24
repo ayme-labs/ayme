@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Nested</title>
+    <style>
+      /* As a site's own styles often do, the label of the first link is a
+         box of its own: the page structure lists it inside the link. */
+      .label {
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Nested</h1>
+    <!-- Links and buttons whose text is in elements of their own, as on
+         github.com: a click lands on an element inside the link or the
+         button, while the step acts on the link or the button. -->
+    <ul aria-label="Tabs">
+      <li>
+        <a href="#pulls" id="pulls"
+          ><svg aria-hidden="true" width="12" height="12"></svg
+          ><span class="label">Pull requests</span> <span>12</span></a
+        >
+      </li>
+      <li>
+        <a href="#repo" id="repo"><span>ayme</span></a>
+      </li>
+    </ul>
+    <div>
+      <button id="code"><span>&lt;&gt;</span> <span>Code</span></button>
+    </div>
+    <!-- A middle click on a checkbox checks nothing, though Playwright
+         reports it as a check or an uncheck. -->
+    <label><input type="checkbox" id="done" /> Done</label>
+    <p id="said">Nothing yet</p>
+    <script>
+      const said = document.getElementById("said");
+      const tell = (what) => () => (said.textContent = what);
+      for (const link of document.querySelectorAll("a"))
+        link.addEventListener("click", (event) => event.preventDefault());
+      document
+        .getElementById("pulls")
+        .addEventListener("click", tell("Pull requests opened"));
+      document
+        .getElementById("repo")
+        .addEventListener("click", tell("Repository opened"));
+      const code = document.getElementById("code");
+      code.addEventListener("click", tell("Code opened"));
+      code.addEventListener("dblclick", tell("Code opened twice"));
+      code.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        said.textContent = "Code menu";
+      });
+      code.addEventListener("auxclick", (event) => {
+        if (event.button === 1) said.textContent = "Code in the background";
+      });
+      const done = document.getElementById("done");
+      done.addEventListener("change", () =>
+        tell(done.checked ? "Done checked" : "Done unchecked")()
+      );
+      done.addEventListener("auxclick", (event) => {
+        if (event.button === 1) said.textContent = "Done in the background";
+      });
+    </script>
+  </body>
+</html>

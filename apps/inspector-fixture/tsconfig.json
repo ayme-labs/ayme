@@ -3,12 +3,13 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "types": ["node"],
-    // The Inspector's Page Object from source, as the Vite config resolves
-    // it: the Ayme plugin reads its decorators, which the shipped
-    // declarations drop.
+    // The Inspector's Page Object, which the dogfood page registers, as a
+    // file of this project: the ayme plugin derives a Page Object's metadata
+    // only then, and reaching it by the package's name alone leaves it
+    // without (the dogfood page fails to start).
     "paths": {
       "@ayme-dev/inspector/testing": [
-        "../../packages/inspector/src/testing/index.ts"
+        "../../packages/inspector/testing/index.ts"
       ]
     }
   },

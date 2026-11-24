@@ -1,16 +1,8 @@
-import {
-  ImageResultSchema,
-  type ImageResult,
-  type PageTool,
-  type ToolCallOutcome,
-} from "../../contract";
+import type { PageTool, ToolCallOutcome } from "../../contract";
 
 /** An MCP tool result. */
 export type ToolResult = {
-  content: (
-    | { type: "text"; text: string }
-    | { type: "image"; data: string; mimeType: string }
-  )[];
+  content: { type: "text"; text: string }[];
   isError?: boolean;
 };
 
@@ -57,75 +49,21 @@ export function pageToolResult(outcome: ToolCallOutcome): ToolResult {
   return textResult(JSON.stringify(result));
 }
 
-/** The image a page tool returned, such as a screenshot, if it returned one. */
-export function imageOf(outcome: ToolCallOutcome): ImageResult | undefined {
-  if (!outcome.ok) return undefined;
-  const parsed = ImageResultSchema.safeParse(outcome.result);
-  return parsed.success ? parsed.data : undefined;
-}
-
-/** Where an image's file was written, or why it could not be. */
-export type SavedImage = { path: string } | { error: string };
-
-// Larger images are not returned inline, as agents' models refuse them.
-const MAX_INLINE_SIDE = 8000;
-const MAX_INLINE_BYTES = 5 * 1024 * 1024;
-
-/** How many bytes a base64 string decodes to. */
-function decodedBytes(base64: string): number {
-  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
-  return (base64.length / 4) * 3 - padding;
-}
-
-/** Why an image is too large to return inline, if it is. */
-function tooLargeToInline(image: ImageResult): string | undefined {
-  if (image.width > MAX_INLINE_SIDE || image.height > MAX_INLINE_SIDE)
-    return `it is over ${MAX_INLINE_SIDE} pixels on a side`;
-  if (decodedBytes(image.data) > MAX_INLINE_BYTES) return "it is over 5 MB";
-  return undefined;
-}
-
-/**
- * An image as an MCP result: the image, then a line naming what it shows and
- * the file it was saved to. An image too large to return inline comes back
- * as that line alone, saying why; it fails if its file could not be written
- * either.
- */
-export function imageToolResult(
-  image: ImageResult,
-  saved: SavedImage
-): ToolResult {
-  const format = image.mimeType === "image/png" ? "PNG" : "JPEG";
-  const shows = `Screenshot of ${image.subject}, ${image.width}×${image.height} ${format}`;
-  const line =
-    "path" in saved
-      ? `${shows}, saved to ${saved.path}.`
-      : `${shows}. It could not be saved to a file: ${saved.error}.`;
-  const tooLarge = tooLargeToInline(image);
-  if (tooLarge)
-    return {
-      content: [
-        { type: "text", text: `${line} Not returned inline: ${tooLarge}.` },
-      ],
-      ...("error" in saved ? { isError: true } : {}),
-    };
-  return {
-    content: [
-      { type: "image", data: image.data, mimeType: image.mimeType },
-      { type: "text", text: line },
-    ],
-  };
-}
-
 /**
  * The Page Objects entry this server serves, while no build of it has
- * succeeded, the first error of its last build, and whether its build
- * watches the entry's files, which it does unless it could not start.
+ * succeeded, the first error of its last build, and whether the server
+ * watches for changes: the entry's files once the build started, or,
+ * while it could not start, `installFiles`.
  */
 export type FailedPageObjects = {
   entry: string;
   error: string;
   watching: boolean;
+  /**
+   * While the build could not start: the project's `package.json` and
+   * lockfile, on whose change the server starts it again.
+   */
+  installFiles?: readonly string[];
 };
 
 /**
@@ -137,10 +75,13 @@ export function pageObjectsNotBuilt({
   entry,
   error,
   watching,
+  installFiles,
 }: FailedPageObjects) {
-  const state = watching
-    ? "The server is watching for changes: it rebuilds the entry when a file it read changes."
-    : "The server is not watching for changes: the build could not start, so no file is watched.";
+  const state = !watching
+    ? "The server is not watching for changes: the build could not start, so no file is watched."
+    : installFiles?.length
+      ? `The server is watching ${installFiles.join(" and ")} for changes: it starts the build again when ${installFiles.length === 1 ? "it changes" : "either changes"}.`
+      : "The server is watching for changes: it rebuilds the entry when a file it read changes.";
   return [
     `The Page Objects entry ${entry} did not build, and no build of it has succeeded, so this server serves no Page Objects. The first error: ${error}`,
     state,
@@ -180,7 +121,7 @@ export function goneToolResult(name: string): ToolResult {
  * schema, and `destructiveHint` when its author marked it destructive, but
  * not its availability, since that list changes on presence and not on
  * availability (ADR-0035). An unmarked tool gets no annotations: MCP then
- * takes it as possibly destructive, and Ayme never says otherwise.
+ * takes it as possibly destructive, and ayme never says otherwise.
  */
 export function mcpPageTool({
   name,

@@ -15,7 +15,7 @@
   });
 </script>
 
-<h1>Ayme SvelteKit example</h1>
+<h1>ayme SvelteKit example</h1>
 <nav>
   <a href="/">Home</a>
   <a href="/other">Other</a>

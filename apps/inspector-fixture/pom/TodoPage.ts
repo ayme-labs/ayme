@@ -12,18 +12,24 @@ import { AppComponent } from "./AppComponent";
 @ayme
 export class TodoPage {
   @ayme.child
-  readonly newItemInput: Locator;
-  @ayme.child
-  readonly addItemButton: Locator;
-  @ayme.child
   readonly archiveDialog: ArchiveDialog;
-  private readonly rows: Locator;
 
-  constructor(page: Page) {
-    this.newItemInput = page.locator("#todo-new");
-    this.addItemButton = page.locator("#todo-add");
-    this.rows = page.locator("#todo-items > li");
+  constructor(private readonly page: Page) {
     this.archiveDialog = new ArchiveDialog(page.locator("#todo-archive"));
+  }
+
+  @ayme.child
+  get newItemInput(): Locator {
+    return this.page.locator("#todo-new");
+  }
+
+  @ayme.child
+  get addItemButton(): Locator {
+    return this.page.locator("#todo-add");
+  }
+
+  private get rows(): Locator {
+    return this.page.locator("#todo-items > li");
   }
 
   @ayme.collection
@@ -39,12 +45,13 @@ export class TodoPage {
 }
 
 export class TodoItem extends AppComponent {
-  @ayme.child
-  readonly archiveButton: Locator;
-
   constructor(root: Locator) {
     super(root);
-    this.archiveButton = root.locator(".todo-archive");
+  }
+
+  @ayme.child
+  get archiveButton(): Locator {
+    return this.root.locator(".todo-archive");
   }
 
   @ayme.action
@@ -54,11 +61,12 @@ export class TodoItem extends AppComponent {
 }
 
 export class ArchiveDialog extends AppComponent {
-  @ayme.child
-  readonly confirmButton: Locator;
-
   constructor(root: Locator) {
     super(root);
-    this.confirmButton = root.locator(".todo-confirm");
+  }
+
+  @ayme.child
+  get confirmButton(): Locator {
+    return this.root.locator(".todo-confirm");
   }
 }

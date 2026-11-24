@@ -200,10 +200,10 @@ describe("webMcpRow", () => {
       "WebMCP publication failed: a name is taken.",
     ],
     [
-      { state: "disposed", message: "No Ayme runtime session has started." },
+      { state: "disposed", message: "No ayme runtime session has started." },
       "off",
       "Stopped",
-      "No Ayme runtime session is running, so nothing is published.",
+      "No ayme runtime session is running, so nothing is published.",
     ],
   ])("says %j as %s, %s", (status, tone, label, line) => {
     expect(webMcpRow(status, 3)).toMatchObject({ tone, label, lines: [line] });
@@ -223,12 +223,11 @@ describe("webMcpRow", () => {
 });
 
 describe("webMcpToolCount", () => {
-  it("counts the tools WebMCP publishes, leaving out Peek tools and screenshot", () => {
+  it("counts the tools WebMCP publishes, leaving out Peek tools", () => {
     expect(
       webMcpToolCount([
         { name: "ListPage.addItem", group: "pageObject" },
         { name: "snapshot", group: "agent" },
-        { name: "screenshot", group: "agent" },
         { name: "peek.jobs", group: "peek" },
       ])
     ).toBe(2);

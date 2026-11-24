@@ -78,7 +78,7 @@ export type PomComponentManifest = {
   className: string;
   /**
    * The file declaring the class, as its package's name and its path there.
-   * Ayme tells classes apart by name; this tells a recompiled class from a
+   * ayme tells classes apart by name; this tells a recompiled class from a
    * different one with the same name.
    */
   file?: string;

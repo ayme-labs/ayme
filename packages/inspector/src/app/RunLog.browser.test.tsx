@@ -2,19 +2,16 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { Interaction, RegisteredPomTool } from "@ayme-dev/ayme";
-import type {
-  InspectorAgentImageRun as AgentImageRun,
-  InspectorPageObject,
-} from "@ayme-dev/ayme/inspector";
+import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
-import { forest, node } from "../structure/test-utils/projected";
+import { forest, node } from "../../testing/structure/projected";
 import {
   lookOf,
   startedAyme,
   type PageFixture,
-} from "../tools/test-utils/startedAyme";
+} from "../../testing/tools/startedAyme";
 import { renderInspector } from "./renderInspector";
-import { Inspector } from "../testing";
+import { Inspector } from "../../testing";
 
 // Component tests: Runs reading the page's Run log, with fixture Runs by
 // several Callers, driven through the Inspector POM on playwright-lite. The
@@ -182,7 +179,7 @@ it("nests a goal Run's child Runs under it, each with its own Interactions", asy
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
   const run = inspector.runs.latest("goal");
   expect(await run.caller()).toEqual({
-    icon: "Run by an agent through Ayme MCP",
+    icon: "Run by an agent through ayme MCP",
   });
   expect(await run.interactions.count()).toBe(0);
   expect(await run.childTools()).toEqual(["fill", "click"]);
@@ -522,42 +519,6 @@ it("does not invent a generic name for an unnamed target", async () => {
   ).not.toContain("generic");
 });
 
-it("shows an image a Run returned as itself, with the file Ayme MCP saved it to", async () => {
-  const image = {
-    type: "image",
-    subject: "the viewport",
-    filename: "page-1.png",
-    mimeType: "image/png",
-    width: 2,
-    height: 1,
-    data: "iVBORw0KGgo=",
-  } as const;
-  const screenshot = startedAyme.runs.start("screenshot", {}, "ayme-mcp");
-  screenshot.succeed(image);
-  renderApp();
-
-  const run = inspector.runs.latest("screenshot");
-  await expect
-    .poll(() => run.image.textContent())
-    .toBe("Screenshot of the viewport, 2×1 PNG");
-  expect(await run.resultToggle.count()).toBe(0);
-
-  // `ayme mcp` reports the file it saved the image to once the Run ended.
-  startedAyme.reportAgentImageRun({
-    name: "screenshot",
-    input: {},
-    savedTo: "/tmp/ayme-screenshots/page-1.png",
-    startedAt: Date.now(),
-    durationMs: 1,
-  } satisfies AgentImageRun);
-
-  await expect
-    .poll(() => run.image.textContent())
-    .toBe(
-      "Screenshot of the viewport, 2×1 PNG, saved to /tmp/ayme-screenshots/page-1.png"
-    );
-});
-
 it("shows a tree of Runs in the selection's scope when a child Run is in it", async () => {
   registerEditor();
   const goal = startedAyme.runs.start("goal", { goal: "Save" }, "ayme-mcp");
@@ -632,7 +593,7 @@ it("keeps every Caller's rows it showed as earlier page rows after a reload", as
 
   await expect.poll(() => inspector.runs.runs.count()).toBe(3);
   expect(await callersShown()).toEqual([
-    { icon: "Run by an agent through Ayme MCP" },
+    { icon: "Run by an agent through ayme MCP" },
     { icon: "Run by you from the Inspector" },
     { icon: "Run by an agent through WebMCP" },
   ]);
@@ -652,7 +613,7 @@ it("scopes every Caller's Runs to the selection", async () => {
 
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
   expect(await inspector.runs.run(0).caller()).toEqual({
-    icon: "Run by an agent through Ayme MCP",
+    icon: "Run by an agent through ayme MCP",
   });
   await inspector.runs.showAll();
   await expect.poll(() => inspector.runs.runs.count()).toBe(2);

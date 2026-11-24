@@ -3,16 +3,13 @@ export { connectTool } from "./application/connectTool";
 export { inspectTool } from "./application/inspectTool";
 export { listToolsTool } from "./application/listToolsTool";
 export type {
+  AppPage,
   ServerTool,
   ServerToolContext,
   ServerToolFactory,
 } from "./application/serverTool";
 export type { ToolResult } from "./domain/toolResult";
 export { createMcpToolServer } from "./infrastructure/mcpToolServer";
-export {
-  saveToScreenshotFolder,
-  screenshotFolder,
-} from "./infrastructure/screenshotFolder";
 export {
   answerToolCalls,
   publishPageTools,

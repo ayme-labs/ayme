@@ -98,10 +98,9 @@ describe("inspectorChannelPort", () => {
     const heard: unknown[] = [];
     inspectorChannelPort(contract).subscribe((event) => heard.push(event));
     const event = {
-      type: "agent-image-run",
-      revision: 2,
-      run: { name: "screenshot", input: {}, startedAt: 1, durationMs: 2 },
-    } as const;
+      type: "state",
+      state: { revision: 2 },
+    } as unknown as InspectorEvent;
 
     emit(event);
 

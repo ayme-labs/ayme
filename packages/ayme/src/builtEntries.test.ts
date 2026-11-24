@@ -9,7 +9,7 @@ const LOCAL_IMPORT =
 // Text only the browser runtime carries: the runtime's own and Playwright
 // Lite's.
 const RUNTIME_MARKERS = [
-  "The Ayme browser runtime is not configured.",
+  "The ayme browser runtime is not configured.",
   "Target page, context or browser has been closed",
 ];
 
@@ -75,7 +75,6 @@ it("only the built ./compiler entry imports TypeScript", () => {
     "inspector.mjs",
     "absent.mjs",
     "server.mjs",
-    "testing.mjs",
     "playwright.mjs",
   ];
   expect(

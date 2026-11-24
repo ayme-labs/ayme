@@ -58,6 +58,19 @@ test("passes skills that ship identical copies of the shared references", () => 
   );
 });
 
+test("passes product-surfaces without a copy of the shared references", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "skills/shared/guide.md": "# Guide\n",
+        "skills/product-surfaces/SKILL.md":
+          "---\nname: product-surfaces\n---\n",
+      })
+    ),
+    []
+  );
+});
+
 test("fails a skill whose copy of a shared reference is missing or differs", () => {
   const problems = checkDocs(
     fixture({
@@ -398,9 +411,402 @@ test("fails on a listed API that names no published package", () => {
   );
 });
 
+const usage =
+  "export const USAGE = `Usage: tool serve [--port <port>] [--entry <file>]\n\n  --port <port>  Listen on this port.\n  -e, --entry <file>\n                 Experimental: serve this entry.\n  --watch        Experimental: rebuild on change.\n  -h, --help     Print this usage text.\n`;\n";
+
+test("passes when the page lists every flag a published package's usage text marks experimental", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/src/cli.ts": usage,
+        ...experimentalPage(
+          "- `--entry <file>` of `tool serve` in `lib`: the entry.\n- `--watch` of `tool serve` in `lib`: rebuilds.\n"
+        ),
+      })
+    ),
+    []
+  );
+});
+
+test("reads a usage text with CRLF line endings", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/src/cli.ts": usage.replaceAll("\n", "\r\n"),
+        ...experimentalPage(
+          "- `--entry <file>` of `tool serve` in `lib`: the entry.\n- `--watch` of `tool serve` in `lib`: rebuilds.\n"
+        ),
+      })
+    ),
+    []
+  );
+});
+
+test("reads a description one space after the flag", () => {
+  assertOneProblem(
+    {
+      "packages/lib/src/cli.ts":
+        "export const USAGE = `\n  --watch Experimental: rebuild on change.\n`;\n",
+    },
+    /^packages\/lib\/src\/cli\.ts:2: `--watch` in lib is marked experimental in its usage text but not listed in docs\/guide\/reference\/experimental-apis\.md$/
+  );
+});
+
+test("ignores experimental marks in a published package's test files", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/src/cli.test.ts": usage,
+        "packages/lib/src/index.test.ts": tagged,
+      })
+    ),
+    []
+  );
+});
+
+test("fails on a flag the usage text marks experimental that the page does not list", () => {
+  assertOneProblem(
+    {
+      "packages/lib/src/cli.ts": usage,
+      ...experimentalPage("- `--watch` of `tool serve` in `lib`: rebuilds.\n"),
+    },
+    /^packages\/lib\/src\/cli\.ts:4: `--entry` in lib is marked experimental in its usage text but not listed in docs\/guide\/reference\/experimental-apis\.md$/
+  );
+});
+
+test("fails on a listed flag that no published package's usage text marks experimental", () => {
+  assertOneProblem(
+    {
+      "packages/lib/src/cli.ts": usage,
+      ...experimentalPage(
+        "- `--entry <file>` of `tool serve` in `lib`: the entry.\n- `--watch` of `tool serve` in `lib`: rebuilds.\n- `--port <port>` of `tool serve` in `lib`: settled.\n"
+      ),
+    },
+    /^docs\/guide\/reference\/experimental-apis\.md:7: lists `--port` in lib, which does not mark it experimental in its usage text$/
+  );
+});
+
 test("ignores the experimental mark in a private package", () => {
   assert.deepEqual(
-    checkDocs(fixture({ "packages/internal/src/index.ts": tagged })),
+    checkDocs(
+      fixture({
+        "packages/internal/src/index.ts": tagged,
+        "packages/internal/src/cli.ts": usage,
+      })
+    ),
     []
+  );
+});
+
+const PARAMETER_PROPERTY =
+  "constructor parameter property, which erasableSyntaxOnly rejects; declare the field on the class and assign it in the constructor";
+
+test("fails on a constructor parameter property in a TypeScript example", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "docs/guide/start/page.md": `# A page\n\nWhat this page is for, in one sentence.\n\n\`\`\`ts\nclass AppPage {\n  constructor(readonly page: Page) {}\n}\n\`\`\`\n`,
+      })
+    ),
+    [`docs/guide/start/page.md:7: ${PARAMETER_PROPERTY}`]
+  );
+});
+
+test("reports each constructor parameter modifier on its own line", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "docs/guide/start/page.md": `# A page\n\nWhat this page is for, in one sentence.\n\n\`\`\`ts\nclass AppPage {\n  constructor(\n    private readonly page: Page,\n  ) {}\n}\n\`\`\`\n\n\`\`\`tsx title="widget"\nclass Widget {\n  constructor(protected page: Page, public readonly name: string) {}\n}\n\`\`\`\n\n\`\`\`typescript\nclass Sub {\n  constructor(override page: Page) {}\n}\n\`\`\`\n\n~~~ts\nclass Tilde {\n  constructor(@Inject(TOKEN) private page: Page) {}\n}\n~~~\n`,
+      })
+    ),
+    [
+      `docs/guide/start/page.md:8: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:15: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:15: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:21: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:27: ${PARAMETER_PROPERTY}`,
+    ]
+  );
+});
+
+test("passes a TypeScript example that declares the field and assigns it", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "docs/guide/start/page.md": `# A page\n\nWhat this page is for, in one sentence.\n\n\`\`\`ts\nclass AppPage {\n  readonly page: Page;\n  constructor(page: Page) {\n    this.page = page;\n  }\n}\nclass Row {\n  constructor(page: Readonly<Page>, options: { readonly id: string }) {}\n}\nconst sample = "constructor(readonly page: Page)";\n// constructor(readonly page: Page)\n\`\`\`\n\n\`constructor(readonly page: Page)\` in a span.\n\n\`\`\`text\nconstructor(private readonly page: Page) {}\n\`\`\`\n`,
+        "packages/lib/README.md": `# lib\n\n\`\`\`ts\nclass ProjectsPage {\n  private readonly page: Page;\n  constructor(page: Page) {\n    this.page = page;\n  }\n}\n\`\`\`\n\n## Usage\n`,
+        "skills/ayme/references/model.md":
+          '```ts\nclass LoginPage {\n  private readonly page: Page;\n  constructor(page: Page) {\n    this.page = page;\n  }\n  get submit() {\n    return this.page.getByRole("button");\n  }\n}\n```\n',
+      })
+    ),
+    []
+  );
+});
+
+test("fails on a constructor parameter property in a published README and the ayme skill", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/README.md": `# lib\n\n\`\`\`ts\nclass Page {\n  constructor(public page: Page) {}\n}\n\`\`\`\n\n## Usage\n`,
+        "skills/ayme/references/model.md":
+          "```ts\nclass LoginPage {\n  constructor(private readonly page: Page) {}\n}\n```\n",
+      })
+    ),
+    [
+      `packages/lib/README.md:5: ${PARAMETER_PROPERTY}`,
+      `skills/ayme/references/model.md:3: ${PARAMETER_PROPERTY}`,
+    ]
+  );
+});
+
+test("separates parameter properties from defaults and parameter names", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "docs/guide/start/page.md": `# A page\n\nWhat this page is for, in one sentence.\n\n\`\`\`ts\nclass App {\n  constructor(enabled = 1 < 2, private page: Page) {}\n  constructor(pattern = /[)]/, private root: Locator) {}\n  constructor(n = a / b, protected name: string) {}\n  constructor(page: Foo<Bar<Baz, Qux>>, override id: string) {}\n  constructor(cb: () => Foo<Bar, Baz>, readonly value: string) {}\n  constructor(n = ok ? 1 : x < y, private page: Page) {}\n  constructor(n = {} / 2, private page: Page) {}\n  constructor<T extends () => void>(readonly value: T) {}\n  constructor(cb: Map<() => void, readonly string[]>, page: Page) {}\n  constructor(value = new Map<string, readonly string[]>()) {}\n  constructor(readonly: boolean, override: string, readonly = true) {}\n}\n\`\`\`\n`,
+      })
+    ),
+    [
+      `docs/guide/start/page.md:7: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:8: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:9: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:10: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:11: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:12: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:13: ${PARAMETER_PROPERTY}`,
+      `docs/guide/start/page.md:14: ${PARAMETER_PROPERTY}`,
+    ]
+  );
+});
+
+test("ignores a constructor parameter property outside the checked docs", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "README.md":
+          "# Readme\n\n```ts\nconstructor(readonly page: Page) {}\n```\n",
+        "packages/internal/README.md":
+          "# internal\n\n```ts\nconstructor(readonly page: Page) {}\n```\n",
+        "skills/ayme-recorder/references/model.md":
+          "```ts\nconstructor(readonly page: Page) {}\n```\n",
+        "docs/notes.md":
+          "# Notes\n\n```ts\nconstructor(readonly page: Page) {}\n```\n",
+      })
+    ),
+    []
+  );
+});
+
+const WORD_BUDGETS = "scripts/agents-word-budgets.json";
+const words = (count) => Array(count).fill("word").join(" ");
+
+/** A repository whose `AGENTS.md` files each have a budget at their word count, unless `budgets` says otherwise. */
+function agentsFixture(changes, budgets = {}) {
+  const counts = {};
+  for (const [file, text] of Object.entries(changes))
+    if (file.endsWith("AGENTS.md") && text !== undefined)
+      counts[file] = text.match(/\S+/g)?.length ?? 0;
+  return fixture({
+    ...changes,
+    [WORD_BUDGETS]: JSON.stringify({ ...counts, ...budgets }),
+  });
+}
+
+test("checks the links in a package's AGENTS.md", () => {
+  assert.deepEqual(
+    checkDocs(
+      agentsFixture({
+        "packages/lib/AGENTS.md": "See [the license](../../LICENSE).\n",
+      })
+    ),
+    []
+  );
+  const problems = checkDocs(
+    agentsFixture({ "packages/lib/AGENTS.md": "See [gone](gone.md).\n" })
+  );
+  assert.equal(problems.length, 1, problems.join("\n"));
+  assert.match(
+    problems[0],
+    /packages\/lib\/AGENTS\.md:1: link does not resolve/
+  );
+});
+
+test("checks the SKILL.md of a repo-local skill and leaves a vendored one out", () => {
+  const skills = {
+    "skills-lock.json": JSON.stringify({ skills: { vendored: {} } }),
+    "package.json": "{}",
+  };
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        ...skills,
+        ".agents/skills/vendored/SKILL.md": "See [gone](gone.md).\n",
+        ".agents/skills/local/SKILL.md":
+          "See [the license](../../../LICENSE).\n",
+      })
+    ),
+    []
+  );
+  const problems = checkDocs(
+    fixture({
+      ...skills,
+      ".agents/skills/local/SKILL.md": "See [gone](gone.md).\n",
+    })
+  );
+  assert.equal(problems.length, 1, problems.join("\n"));
+  assert.match(
+    problems[0],
+    /\.agents\/skills\/local\/SKILL\.md:1: link does not resolve/
+  );
+});
+
+test("passes backticked paths that resolve from the file's folder, its src/, the root or the end of a path", () => {
+  assert.deepEqual(
+    checkDocs(
+      agentsFixture({
+        "packages/lib/src/a.ts": "",
+        "packages/lib/src/deep/layer/b.ts": "",
+        "packages/lib/notes/c.md": "",
+        "packages/other/d.json": "",
+        "packages/lib/AGENTS.md": [
+          "`notes/c.md`, `a.ts` is no path, `deep/layer/b.ts`, `./notes/c.md`,",
+          "`LICENSE.md` and `packages/other/d.json`; the end of a path: `layer/b.ts`.",
+          "Left out: `src/` and `packages/lib/` (folders), `node_modules/effect/AGENTS.md`,",
+          "`dist/x.js`, `packages/lib/out/y.js`, `.ayme/init-script.js`, `src/<name>/z.ts`,",
+          "`src/**/z.ts`, `src/z?.ts`, `{a,b}/z.ts`, `go run ./x/y.go`, `npm:pkg/file.json`,",
+          "`@scope/pkg/file.json`.",
+          "",
+          "```",
+          "`gone/in-a-block.ts`",
+          "```",
+        ].join("\n"),
+        "LICENSE.md": "",
+      })
+    ),
+    []
+  );
+});
+
+test("fails a backticked path that names no file", () => {
+  const problems = checkDocs(
+    agentsFixture({
+      "packages/lib/src/a.ts": "",
+      "packages/lib/AGENTS.md":
+        "Line one.\n\n```sh\npnpm lint\n```\n\nSee `src/gone.ts` and `src/a.ts`.\n",
+    })
+  );
+  assert.equal(problems.length, 1, problems.join("\n"));
+  assert.match(
+    problems[0],
+    /packages\/lib\/AGENTS\.md:7: `src\/gone\.ts` names no file/
+  );
+});
+
+test("fails a model, a component and a path that only passes through build output", () => {
+  const problems = checkDocs(
+    agentsFixture({
+      "packages/lib/AGENTS.md":
+        "See `model/Gone.tla`, `src/Gone.vue` and `dist/../src/gone.ts`.\n",
+    })
+  );
+  assert.equal(problems.length, 3, problems.join("\n"));
+  assert.match(problems[0], /`model\/Gone\.tla` names no file/);
+  assert.match(problems[1], /`src\/Gone\.vue` names no file/);
+  assert.match(problems[2], /`dist\/\.\.\/src\/gone\.ts` names no file/);
+});
+
+test("fails a backticked path in a repo-local skill that names no file", () => {
+  const problems = checkDocs(
+    fixture({ ".agents/skills/local/SKILL.md": "Read `docs/gone.md`.\n" })
+  );
+  assert.equal(problems.length, 1, problems.join("\n"));
+  assert.match(problems[0], /SKILL\.md:1: `docs\/gone\.md` names no file/);
+});
+
+test("leaves out the paths the repository does not hold, by file", () => {
+  assert.deepEqual(
+    checkDocs(
+      agentsFixture({
+        "AGENTS.md": "Follow `docs/fork/SYNC.md` in the fork.\n",
+      })
+    ),
+    []
+  );
+  const problems = checkDocs(
+    agentsFixture({
+      "packages/lib/AGENTS.md": "Follow `docs/fork/SYNC.md` in the fork.\n",
+    })
+  );
+  assert.equal(problems.length, 1, problems.join("\n"));
+  assert.match(problems[0], /`docs\/fork\/SYNC\.md` names no file/);
+});
+
+test("fails an AGENTS.md over its word budget and says how to proceed", () => {
+  const problems = checkDocs(
+    agentsFixture(
+      { "packages/lib/AGENTS.md": words(121) },
+      {
+        "packages/lib/AGENTS.md": 120,
+      }
+    )
+  );
+  assert.equal(problems.length, 1, problems.join("\n"));
+  assert.match(
+    problems[0],
+    /packages\/lib\/AGENTS\.md:1: has 121 words, over its budget of 120.*cut the file, or raise the budget in the same pull request and say in it why/
+  );
+});
+
+test("fails an AGENTS.md without a word budget", () => {
+  assertOneProblem(
+    {
+      "packages/lib/AGENTS.md": words(10),
+      [WORD_BUDGETS]: "{}",
+    },
+    /packages\/lib\/AGENTS\.md:1: has no word budget; add "packages\/lib\/AGENTS\.md": 10 to scripts\/agents-word-budgets\.json/
+  );
+});
+
+test("fails a word budget more than 50 words above the count, and passes one at 50", () => {
+  assert.deepEqual(
+    checkDocs(
+      agentsFixture(
+        { "packages/lib/AGENTS.md": words(100) },
+        {
+          "packages/lib/AGENTS.md": 150,
+        }
+      )
+    ),
+    []
+  );
+  const problems = checkDocs(
+    agentsFixture(
+      { "packages/lib/AGENTS.md": words(100) },
+      {
+        "packages/lib/AGENTS.md": 151,
+      }
+    )
+  );
+  assert.equal(problems.length, 1, problems.join("\n"));
+  assert.match(
+    problems[0],
+    /has 100 words, 51 under its budget of 151.*lower the budget to 100/
+  );
+});
+
+test("fails a word budget that is not a whole number", () => {
+  assertOneProblem(
+    {
+      "packages/lib/AGENTS.md": words(10),
+      [WORD_BUDGETS]: JSON.stringify({ "packages/lib/AGENTS.md": "1,258" }),
+    },
+    /packages\/lib\/AGENTS\.md:1: has the word budget "1,258".*not a whole number; write "packages\/lib\/AGENTS\.md": 10/
+  );
+});
+
+test("fails a word budget for a file that is not an AGENTS.md in the repository", () => {
+  assertOneProblem(
+    { [WORD_BUDGETS]: JSON.stringify({ "packages/gone/AGENTS.md": 10 }) },
+    /agents-word-budgets\.json:1: budgets packages\/gone\/AGENTS\.md, which is not an AGENTS\.md/
   );
 });

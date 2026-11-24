@@ -36,7 +36,7 @@ export class UsageLimitError extends Error {}
  * attempt stands: it did not hit one, or the first login has no fallback.
  */
 export function usageLimitError(
-  run: { usageLimited: boolean },
+  run: { usageLimited?: boolean },
   login: Login,
   where: string
 ): Error | null {

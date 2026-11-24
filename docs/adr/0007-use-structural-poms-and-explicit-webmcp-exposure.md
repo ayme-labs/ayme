@@ -4,17 +4,17 @@ status: accepted
 
 # Use structural POMs and explicit WebMCP exposure
 
-Consumers should be able to reuse ordinary TypeScript POMs with Playwright and WebMCP without adopting Ayme base classes or duplicating their method schemas.
+Consumers should be able to reuse ordinary TypeScript POMs with Playwright and WebMCP without adopting ayme base classes or duplicating their method schemas.
 
 ## Considered options
 
-- OC1: Require Ayme base classes or custom POM declarations.
+- OC1: Require ayme base classes or custom POM declarations.
 - OC2: Infer the production contract through runtime reflection.
 - OC3: Use the structural TypeScript contract for development-time discovery and decorators for production WebMCP exposure.
 
 ## Decision
 
-Treat ordinary TypeScript classes as POMs without requiring Ayme base classes.
+Treat ordinary TypeScript classes as POMs without requiring ayme base classes.
 
 Use TypeScript visibility and static types to derive the development-time POM contract.
 

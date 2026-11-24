@@ -22,7 +22,7 @@ const DEFAULT_NAVIGATION_TIMEOUT = 30_000;
 
 /**
  * Create the browser Page the runtime session drives by default. The compiler
- * settings are the defaults, over Ayme's own timeouts; an option the caller
+ * settings are the defaults, over ayme's own timeouts; an option the caller
  * gives wins for that option.
  * Resolve compiler settings at browser Page creation, never during SSR import.
  */

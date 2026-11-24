@@ -1,5 +1,5 @@
 // The `./playwright` entry in Node, over real Playwright Chromium and against
-// the built package: Ayme over a Page a Node host was handed (ADR-0049).
+// the built package: ayme over a Page a Node host was handed (ADR-0049).
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -30,18 +30,19 @@ afterAll(async () => {
 /** A page of its own context showing `body`. */
 async function pageShowing(body: string): Promise<Page> {
   const page = await browser.newPage();
-  await page.setContent(`<!doctype html><title>Ayme</title>${body}`);
+  await page.setContent(`<!doctype html><title>ayme</title>${body}`);
   return page;
 }
 
 /** A Page Object rooted at `selector`, with one action that clicks its button. */
 function pageObjectRootedAt(className: string, selector: string) {
   class Model {
-    readonly root: ReturnType<Page["locator"]>;
-    readonly button: ReturnType<Page["locator"]>;
-    constructor(page: Page) {
-      this.root = page.locator(selector);
-      this.button = this.root.getByRole("button");
+    constructor(private readonly page: Page) {}
+    get root(): ReturnType<Page["locator"]> {
+      return this.page.locator(selector);
+    }
+    get button(): ReturnType<Page["locator"]> {
+      return this.root.getByRole("button");
     }
     async press() {
       await this.button.click();
@@ -52,8 +53,8 @@ function pageObjectRootedAt(className: string, selector: string) {
   built.registerCompiledPom(Model, {
     className,
     members: [
-      { memberName: "root", kind: "locator", access: "field" },
-      { memberName: "button", kind: "locator", access: "field" },
+      { memberName: "root", kind: "locator", access: "getter" },
+      { memberName: "button", kind: "locator", access: "getter" },
     ],
     tools: [
       {
@@ -85,7 +86,7 @@ async function snapshot(ayme: Playwright.PlaywrightAyme): Promise<string> {
   return structure;
 }
 
-describe("Ayme over a Playwright Page", () => {
+describe("ayme over a Playwright Page", () => {
   it("runs a live Page Object Tool and reports what it changed", async () => {
     const page = await pageShowing(
       '<section id="counter"><output>0</output><button>Add</button></section>' +
@@ -96,9 +97,10 @@ describe("Ayme over a Playwright Page", () => {
     const { structure } = (await ayme.tools.run("snapshot", {})) as {
       structure: string;
     };
-    const ref = /(e\d+)[^\n]*Counter/.exec(structure)?.[1];
+    const id = /Counter (po\d+)/.exec(structure)?.[1];
+    expect(id, structure).toBeDefined();
 
-    const result = await ayme.tools.run("Counter.press", { ref } as never);
+    const result = await ayme.tools.run("Counter.press", { id } as never);
 
     expect(JSON.stringify(result)).toContain("1");
     expect(await page.locator("output").textContent()).toBe("1");
@@ -236,7 +238,7 @@ describe("Ayme over a Playwright Page", () => {
           contentType: "text/html",
           headers: { "content-security-policy": "script-src 'unsafe-inline'" },
           body:
-            "<!doctype html><title>Ayme</title>" +
+            "<!doctype html><title>ayme</title>" +
             panels +
             '<script>try { new Function("return 1"); window.evaluates = true } catch { window.evaluates = false }</script>',
         })
@@ -335,7 +337,7 @@ describe("Ayme over a Playwright Page", () => {
     await page.route("http://app.test/**", (route) =>
       route.fulfill({
         contentType: "text/html",
-        body: `<!doctype html><title>Ayme</title>${serve(new URL(route.request().url()))}`,
+        body: `<!doctype html><title>ayme</title>${serve(new URL(route.request().url()))}`,
       })
     );
     await page.goto(first);
@@ -384,21 +386,6 @@ describe("Ayme over a Playwright Page", () => {
 
     expect(result.loading).toBe("http://app.test/two");
     expect(JSON.stringify(result)).not.toContain("Second document");
-  });
-
-  it("takes a screenshot with its size", async () => {
-    const page = await pageShowing("<h1>Shot</h1>");
-    const ayme = await startedOn(page);
-
-    const result = (await ayme.tools.run("screenshot", {})) as {
-      width: number;
-      height: number;
-      mimeType: string;
-    };
-
-    expect(result).toMatchObject({ mimeType: "image/png" });
-    expect(result.width).toBe(page.viewportSize()!.width);
-    expect(result.height).toBe(page.viewportSize()!.height);
   });
 
   it("resolves a relative navigation against the document's base URL", async () => {

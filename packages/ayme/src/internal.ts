@@ -4,7 +4,14 @@
 // the runtime reads (both ship together, so it is no public contract), the
 // render-session marker and runtime-options check the framework packages use,
 // and the registry read model the framework tests check. The Inspector does
-// not come through here: it reads ./inspector.
+// not come through here: it reads ./inspector. Its tests do, for the runtime
+// side of the Inspector contract they stand a session in with, and for the
+// in-page module of the document their own runtime runs in: both must be the
+// built ones the Inspector under test talks to (ADR-0057). The Goal Loop's
+// run result, where a document keeps it and the bars the Step Decision stops
+// on are here for the playground's goal lane, which reads them from the
+// build it runs: ayme's source needs ayme's own build, so another workspace
+// cannot take them from it.
 export {
   getStartedAyme,
   markRenderSession,
@@ -26,3 +33,17 @@ export type {
 } from "./shared";
 // The build plugin's rule for a class with no root.
 export { rootlessClassRefusals } from "./page-objects/domain";
+export { DONE_BAR, LOWER_BAR } from "./goal-loop/application";
+export type {
+  GoalLoopRunResult,
+  GoalLoopRunResultStore,
+  GoalLoopStepScore,
+} from "./goal-loop/application";
+export { goalLoopRunResultKey } from "./goal-loop/domain";
+export { inPage } from "./in-page";
+export { createHighlights, createInspectorContract } from "./runtime";
+export type {
+  Highlightable,
+  InspectorContractPorts,
+  InspectorSession,
+} from "./runtime";

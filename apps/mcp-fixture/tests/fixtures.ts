@@ -3,6 +3,7 @@ import {
   connectPage,
   freePort,
   ignoreAutoPairScan,
+  type McpRevision,
   startAgent,
 } from "@ayme-dev/mcp/testing";
 import { spawn } from "node:child_process";
@@ -21,6 +22,7 @@ import {
 export { expect };
 export {
   Agent,
+  MCP_REVISIONS,
   SERVER_TOOLS,
   aymeCommand,
   connectPage,
@@ -65,13 +67,18 @@ export const test = base.extend<{
   /** Whether the `agent` fixture's server listens in the scanned range. */
   inScanRange: boolean;
   /**
+   * The MCP revision the `agent` fixture opens with: 2025-11-25 unless a
+   * spec sets it.
+   */
+  revision: McpRevision;
+  /**
    * Asks the agent's server for a connect link to `path` on the fixture app,
    * opens it in the page and waits until the page's tools are MCP tools.
    * Returns the link.
    */
   connect: (path?: string) => Promise<string>;
   /**
-   * The ports whose Ayme MCP server the page's auto-pair scan can find;
+   * The ports whose ayme MCP server the page's auto-pair scan can find;
    * none unless a test adds them. It keeps a page from auto-pairing with a
    * server of another test, or of another run on this machine.
    */
@@ -101,10 +108,11 @@ export const test = base.extend<{
     }
   },
   inScanRange: [false, { option: true }],
-  agent: async ({ inScanRange }, use) => {
+  revision: ["2025-11-25", { option: true }],
+  agent: async ({ inScanRange, revision }, use) => {
     const agent = await (inScanRange
-      ? startAgent()
-      : startAgent("--port", String(await freePort())));
+      ? startAgent({ revision })
+      : startAgent({ revision }, "--port", String(await freePort())));
     try {
       await use(agent);
     } finally {
@@ -120,7 +128,7 @@ export const test = base.extend<{
     async ({ context, limitScan }, use) => {
       const ports = new Set<number>();
       if (!limitScan) return use(ports);
-      // Answers every other probe of the scan as no Ayme MCP server would.
+      // Answers every other probe of the scan as no ayme MCP server would.
       await ignoreAutoPairScan(context, ports);
       await use(ports);
     },
@@ -143,11 +151,13 @@ export async function serverAddress(agent: Agent) {
  * whose `.ayme` is a copy of `outside/.ayme`, so it serves that entry's Page
  * Objects, and runs the init script it writes in every page of `context`.
  * Returns the agent and the origin of its server, where a page fetches the
- * served code from.
+ * served code from. The agent opens with `revision`, 2025-11-25 by
+ * default.
  */
 export async function startServingAgent(
   context: BrowserContext,
-  testInfo: TestInfo
+  testInfo: TestInfo,
+  revision?: McpRevision
 ) {
   // Beside the fixture's own packages, as a project's `.ayme` sits beside its
   // installed `@ayme-dev/ayme`.
@@ -158,21 +168,27 @@ export async function startServingAgent(
     { recursive: true }
   );
   const port = await freePort();
-  const agent = await startAgent({ cwd: project }, "--port", String(port));
+  const agent = await startAgent(
+    { cwd: project, revision },
+    "--port",
+    String(port)
+  );
   await context.addInitScript({
     path: join(project, ".ayme", "init-script.js"),
   });
   return { agent, server: `http://127.0.0.1:${port}` };
 }
 
-/** The ref of the page's "Add item" button, from its snapshot, as an agent finds one. */
-export async function addItemRef(agent: Agent) {
-  const { text: snapshot } = await agent.call("snapshot");
-  const ref = /(e\d+) button "Add item"/.exec(
-    JSON.parse(snapshot).structure
-  )?.[1];
-  expect(ref, snapshot).toBeDefined();
-  return ref!;
+/**
+ * The heading of the paired page, read with its own Page Object's
+ * `readHeading`: `GroceriesPage`'s, or `OtherPage`'s with `other`.
+ */
+export async function pageHeading(agent: Agent, other = false) {
+  const { text, isError } = await agent.call(
+    other ? "OtherPage.readHeading" : "GroceriesPage.readHeading"
+  );
+  expect(isError, text).toBe(false);
+  return (JSON.parse(text) as { result: string }).result;
 }
 
 /** The pairing `page`'s tab keeps in sessionStorage, as stored, or `null`. */
@@ -181,19 +197,19 @@ export function storedPairing(page: Page) {
 }
 
 /**
- * Calls the fixture's `hold` tool, which never answers, on the "Add item"
- * button of `page`, and waits until the page runs it. Returns the call's
- * pending result as `answer`.
+ * Calls `GroceriesPage.hold`, or `OtherPage.hold` with `other`, which never
+ * answers, and waits until `page` runs it. Returns the call's pending
+ * result as `answer`.
  */
 export async function holdCall(
   agent: Agent,
-  page: Page
+  page: Page,
+  other = false
 ): Promise<{ answer: ReturnType<Agent["call"]> }> {
-  const ref = await addItemRef(agent);
-  const answer = agent.call("hold", { ref });
+  const answer = agent.call(other ? "OtherPage.hold" : "GroceriesPage.hold");
   // A test may leave the call in flight; closing the agent then rejects it.
   answer.catch(() => {});
-  await expect(page.locator(`html[data-holding="${ref}"]`)).toBeAttached();
+  await expect(page.locator("html[data-holding]")).toBeAttached();
   return { answer };
 }
 
@@ -203,8 +219,7 @@ export function unanswered(answer: { text: string; isError: boolean }) {
   return JSON.parse(answer.text) as {
     error: string;
     settled?: false;
-    loading?: string;
-    tools?: string[];
+    url?: string;
   };
 }
 

@@ -4,9 +4,9 @@ supersedes: ADR-0005
 amended-by: ADR-0050
 ---
 
-# Use a shared Ayme package with separate framework and build integrations
+# Use a shared ayme package with separate framework and build integrations
 
-Browser and Node consumers already share Ayme's structural observation
+Browser and Node consumers already share ayme's structural observation
 engine. Package names should reflect this common ownership while keeping
 framework requirements and build tooling separate.
 
@@ -24,7 +24,7 @@ Publish these packages:
 - `@ayme-dev/unplugin-ayme`: compiler and bundler integration.
 - `@ayme-dev/webmcp`: WebMCP publication.
 - `@ayme-dev/inspector`: the Inspector.
-- `@ayme-dev/mcp`: the Ayme MCP server and its page client.
+- `@ayme-dev/mcp`: the ayme MCP server and its page client.
 
 Keep WebMCP publication, the Inspector and the MCP server in their own
 packages, as optional peers of `@ayme-dev/ayme`. Each carries dependencies

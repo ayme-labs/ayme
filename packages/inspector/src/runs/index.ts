@@ -3,7 +3,6 @@ export type {
   CollectionItem,
   Run,
   RunFocus,
-  RunImage,
   RunInteraction,
   ToolArguments,
 } from "./domain/run";
@@ -13,5 +12,3 @@ export { runScope } from "./domain/runScope";
 export { useRuns } from "./infrastructure/useRuns";
 export { interactionTarget } from "./domain/interactionTarget";
 export { Runs } from "./presentation/Runs";
-export { openImageFullSize } from "./presentation/useRunsTimeline";
-export { RunImageView } from "./view/RunImageView";

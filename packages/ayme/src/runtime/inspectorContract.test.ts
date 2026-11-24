@@ -110,7 +110,6 @@ function setup() {
       subscribe,
     } as unknown as InspectorSession["webMCP"],
   };
-  const imageListeners = new Set<(run: never) => void>();
   const highlighted: unknown[] = [];
   const registry = {
     poms: [cartPom] as readonly InspectorPageObject[],
@@ -140,10 +139,6 @@ function setup() {
       },
     }),
     connectionStatus: () => ({ get: () => current.connection, subscribe }),
-    subscribeToAgentImageRuns: (listener) => {
-      imageListeners.add(listener as never);
-      return () => void imageListeners.delete(listener as never);
-    },
     highlights: {
       set: async (layer, refs) => void highlighted.push([layer, refs]),
     },
@@ -162,7 +157,6 @@ function setup() {
     calls,
     demoRequests,
     highlighted,
-    image: (value: unknown) => imageListeners.forEach((l) => l(value as never)),
   };
 }
 
@@ -281,7 +275,7 @@ describe("the Inspector contract the runtime serves", () => {
   });
 
   it("answers every command result and pushes every event as plain JSON", async () => {
-    const { contract, current, announce, image } = setup();
+    const { contract, current, announce } = setup();
     current.processTools = [
       {
         name: "peek.node.x",
@@ -296,14 +290,6 @@ describe("the Inspector contract the runtime serves", () => {
       onError: () => {},
     });
     announce();
-    image({
-      name: "screenshot",
-      input: {},
-      result: { data: "x" },
-      savedTo: "/a.png",
-      startedAt: 1,
-      durationMs: 2,
-    });
     const results = [
       await contract.getState(),
       await contract.runTool({ name: "click", input: { target: "e3" } }),
@@ -316,32 +302,9 @@ describe("the Inspector contract the runtime serves", () => {
       await contract.recordedPageState(),
       await contract.pomDefinitionText({ names: ["Cart"] }),
     ];
-    expect(events.map((event) => event.type)).toContain("agent-image-run");
+    expect(events.map((event) => event.type)).toContain("state");
     for (const value of [...results, ...events])
       expect(roundTrip(value)).toStrictEqual(value);
-  });
-
-  it("leaves the image result's bytes out of its event", () => {
-    const { contract, image } = setup();
-    const events: InspectorEvent[] = [];
-    contract.subscribe({
-      onEvent: (event) => events.push(event),
-      onError: () => {},
-    });
-    image({
-      name: "screenshot",
-      input: {},
-      result: { data: "x" },
-      savedTo: undefined,
-      startedAt: 1,
-      durationMs: 2,
-    });
-    expect(events).toEqual([
-      expect.objectContaining({
-        type: "agent-image-run",
-        run: { name: "screenshot", input: {}, startedAt: 1, durationMs: 2 },
-      }),
-    ]);
   });
 
   it("answers an empty state while no session has started", async () => {
@@ -355,7 +318,6 @@ describe("the Inspector contract the runtime serves", () => {
       connectionStatus: () => {
         throw new Error("unused");
       },
-      subscribeToAgentImageRuns: () => () => {},
       highlights: { set: async () => {} },
       pick: async () => undefined,
       registry: {
@@ -372,7 +334,7 @@ describe("the Inspector contract the runtime serves", () => {
     });
     expect((await none.getState()).tools).toEqual([]);
     expect((await none.runTool({ name: "click" })).error).toMatch(
-      /not started|No Ayme/
+      /not started|No ayme/
     );
     void contract;
   });

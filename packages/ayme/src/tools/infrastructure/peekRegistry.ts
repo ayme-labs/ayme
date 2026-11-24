@@ -19,7 +19,7 @@ export function peeksOf(page: Page): Peeks {
 }
 
 // A Node process of the app (an App Process) has no Page. Its Peeks are the
-// process's, shared by every copy of the bundle that loads Ayme in it, so
+// process's, shared by every copy of the bundle that loads ayme in it, so
 // they live on `globalThis`, the one store outside the in-page module's slot.
 const processStore: PeekStore = ((
   globalThis as typeof globalThis & { __aymePeekRegistry?: PeekStore }

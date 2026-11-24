@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Outside click</title>
+    <style>
+      /* Clear of the recorder's toolbar at the top of the page. */
+      body {
+        font-family: sans-serif;
+        padding: 90px 20px 20px;
+      }
+      section {
+        margin: 8px 0;
+      }
+      [role="group"] {
+        border: 1px solid #888;
+        padding: 6px;
+        display: inline-block;
+      }
+      [role="group"][hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Outside click</h1>
+    <!-- Four panels, each closed when a press lands outside it, in one of
+         the ways pages listen for that. -->
+
+    <section>
+      <button id="open-click">Open click panel</button>
+      <div id="panel-click" role="group" aria-label="Click panel" hidden>
+        <button>Inside click panel</button>
+      </div>
+    </section>
+
+    <section>
+      <button id="open-pointerdown">Open pointerdown panel</button>
+      <div
+        id="panel-pointerdown"
+        role="group"
+        aria-label="Pointerdown panel"
+        hidden
+      >
+        <button>Inside pointerdown panel</button>
+      </div>
+    </section>
+
+    <section>
+      <button id="open-mousedown">Open mousedown panel</button>
+      <div
+        id="panel-mousedown"
+        role="group"
+        aria-label="Mousedown panel"
+        hidden
+      >
+        <button>Inside mousedown panel</button>
+      </div>
+    </section>
+
+    <section>
+      <button id="open-focusout">Open focusout panel</button>
+      <div
+        id="panel-focusout"
+        role="group"
+        aria-label="Focusout panel"
+        tabindex="-1"
+        hidden
+      >
+        <button>Inside focusout panel</button>
+      </div>
+    </section>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const outside = (name, event) =>
+        !$("panel-" + name).contains(event.target) &&
+        !$("open-" + name).contains(event.target);
+      // A click listener on the document, in the bubble phase. No check of
+      // event.isTrusted, as most pages do not check it.
+      $("open-click").addEventListener(
+        "click",
+        () => ($("panel-click").hidden = false)
+      );
+      document.addEventListener("click", (event) => {
+        if (outside("click", event)) $("panel-click").hidden = true;
+      });
+      // A pointerdown and a mousedown listener on the document, in the
+      // capture phase.
+      for (const type of ["pointerdown", "mousedown"]) {
+        $("open-" + type).addEventListener(
+          "click",
+          () => ($("panel-" + type).hidden = false)
+        );
+        document.addEventListener(
+          type,
+          (event) => {
+            if (outside(type, event)) $("panel-" + type).hidden = true;
+          },
+          true
+        );
+      }
+      // Closes when the focus leaves it.
+      $("open-focusout").addEventListener("click", () => {
+        $("panel-focusout").hidden = false;
+        $("panel-focusout").focus();
+      });
+      $("panel-focusout").addEventListener("focusout", (event) => {
+        if (!$("panel-focusout").contains(event.relatedTarget))
+          $("panel-focusout").hidden = true;
+      });
+    </script>
+  </body>
+</html>

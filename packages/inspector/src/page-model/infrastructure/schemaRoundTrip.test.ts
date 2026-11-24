@@ -22,7 +22,7 @@ import { actionSignature } from "./actionSignature";
 // the definition text gives agents.
 
 /**
- * The compiler's test fixtures, found through Ayme's package, so
+ * The compiler's test fixtures, found through ayme's package, so
  * they resolve from a copy of this test elsewhere too, such as Stryker's
  * sandbox.
  */

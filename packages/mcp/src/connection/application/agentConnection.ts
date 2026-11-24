@@ -6,6 +6,7 @@ import type {
   ToolCall,
   ToolCallOutcome,
 } from "../../contract";
+import { listsPageTool } from "../domain/listedPageTools";
 import * as tabLifecycle from "../domain/tabLifecycle";
 import { InspectorLink } from "./inspectorLink";
 import {
@@ -15,7 +16,7 @@ import {
   type PageExit,
 } from "../domain/unansweredCall";
 
-export { RECONNECT_WAIT_MS } from "../domain/tabLifecycle";
+export { PAIR_WAIT_MS, RECONNECT_WAIT_MS } from "../domain/tabLifecycle";
 
 /** What happened on the Agent Connection. */
 export type ConnectionEvent =
@@ -77,6 +78,11 @@ export class ChannelSession {
     resolve?.(outcome);
   }
 
+  /** Sends the other end no more of the calls it has not been sent. */
+  stopSending() {
+    this.#outbox.length = 0;
+  }
+
   /**
    * Takes the calls the other end has not answered, for the server to
    * answer; its later answers to them are ignored.
@@ -119,12 +125,21 @@ export class PageSession extends ChannelSession {
   /** The requests and events of an external Inspector, relayed to this page. */
   readonly inspector = new InspectorLink();
 
+  readonly #lists: (tool: PageTool) => boolean;
+
+  /** The page's tools are those it reports that `lists` keeps. */
   constructor(
     disconnect: () => void,
-    onToolsChanged: (tools: readonly PageTool[]) => void
+    onToolsChanged: (tools: readonly PageTool[]) => void,
+    lists: (tool: PageTool) => boolean = () => true
   ) {
     super(onToolsChanged);
     this.disconnect = disconnect;
+    this.#lists = lists;
+  }
+
+  override publishTools(tools: readonly PageTool[]) {
+    super.publishTools(tools.filter(this.#lists));
   }
 }
 
@@ -161,17 +176,34 @@ type ToolHolder = PageSession | ProcessSession;
  * Process that connected first among those that offer it, and each call
  * goes to that connection. Every call gets one answer: its connection's,
  * or the server's when the connection left first (see
- * `unansweredCallText`). While the page's tab is navigating, disconnected
- * or reconnected, a call for the page waits for the new page (see
- * `TabLifecycle`).
+ * `unansweredCallText`). A tab's earlier document keeps its calls while its
+ * channel is open, so an answer it sent as it left still counts after the
+ * tab's new page paired; the server answers what is left once that channel
+ * closed and the tab's lifecycle says how the document left. While the
+ * page's tab is navigating, disconnected or reconnected, a call for the
+ * page waits for the new page (see `TabLifecycle`).
+ *
+ * Of the page's tools it keeps only those the server lists: none of ayme's
+ * own browser driving (see `listsPageTool`).
+ * An App Process's tools it keeps all.
  */
 export class AgentConnection {
   #page: PageSession | undefined;
   /** In the order they connected, which decides who keeps a name. */
   readonly #processes = new Map<string, ProcessSession>();
   #lifecycle: tabLifecycle.TabLifecycle = tabLifecycle.unpaired;
-  /** The calls in flight of the tab's previous document; see `TabLifecycle`. */
+  /**
+   * The calls in flight of the tab's previous document, whose channel
+   * closed; see `TabLifecycle`.
+   */
   #leftCalls = new Map<string, Answer>();
+  /**
+   * The tab's earlier documents whose channels are still open, each with
+   * how it left once the lifecycle says so. Their calls stay theirs to
+   * answer until their channel closes, or a wait after how they left is
+   * known, as for a channel that never closes.
+   */
+  readonly #leaving = new Map<PageSession, PageExit | undefined>();
   /**
    * The calls held for the page: each goes out when called without an
    * exit, or is answered without running.
@@ -212,7 +244,7 @@ export class AgentConnection {
   }
 
   /**
-   * Why the server refused the last page that said hello, when its Ayme and
+   * Why the server refused the last page that said hello, when its ayme and
    * the server's can't work together (see `versionGap`), naming both
    * versions. A page that pairs clears it.
    */
@@ -220,7 +252,7 @@ export class AgentConnection {
     return this.#versionGap;
   }
 
-  /** The server refused a page whose Ayme it can't work with, as `gap` says. */
+  /** The server refused a page whose ayme it can't work with, as `gap` says. */
   refuseVersion(gap: string) {
     this.#versionGap = gap;
   }
@@ -246,7 +278,9 @@ export class AgentConnection {
    */
   get busyWith(): string | undefined {
     const lifecycle = this.#lifecycle;
-    return lifecycle.name === "unpaired" ? undefined : lifecycle.tab;
+    return lifecycle.name === "unpaired" || lifecycle.name === "linked"
+      ? undefined
+      : lifecycle.tab;
   }
 
   /**
@@ -271,24 +305,34 @@ export class AgentConnection {
       previous.inspector.close();
       // The earlier page is gone, whether or not its channel has closed yet;
       // the lifecycle says how its calls are answered.
-      for (const [callId, answer] of previous.takeUnanswered())
-        this.#leftCalls.set(callId, answer);
-      // The replaced exit is also the signal to disconnect the previous page.
-      if (transition.left?.type === "replaced") previous.disconnect();
+      if (transition.left?.type === "replaced") {
+        for (const [callId, answer] of previous.takeUnanswered())
+          this.#leftCalls.set(callId, answer);
+        // The replaced exit is also the signal to disconnect the previous page.
+        previous.disconnect();
+      } else {
+        // Its answers may still be on their way over its channel.
+        previous.stopSending();
+        this.#leaving.set(previous, undefined);
+      }
       this.#emit({ type: "unpaired" });
     }
 
     this.#versionGap = undefined;
-    const page = new PageSession(disconnect, (tools) => {
-      if (this.#page !== page) return;
-      this.#apply(
-        tabLifecycle.reported(
-          this.#lifecycle,
-          tools.map((tool) => tool.name)
-        )
-      );
-      this.#emit({ type: "toolsChanged", tools: this.tools });
-    });
+    const page = new PageSession(
+      disconnect,
+      (tools) => {
+        if (this.#page !== page) return;
+        this.#apply(
+          tabLifecycle.reported(
+            this.#lifecycle,
+            tools.map((tool) => tool.name)
+          )
+        );
+        this.#emit({ type: "toolsChanged", tools: this.tools });
+      },
+      listsPageTool
+    );
     this.#page = page;
     this.#apply(transition);
     this.#emit({ type: "paired" });
@@ -319,10 +363,13 @@ export class AgentConnection {
    * once, and its calls are answered. For a page, the server waits up to
    * `RECONNECT_WAIT_MS` for its tab to reconnect, calls in flight or not,
    * and stays busy with that tab meanwhile; the calls are answered when it
-   * reconnects or the wait ends.
+   * reconnects or the wait ends. For a tab's earlier document, which a new
+   * page of its tab followed, the calls it did not answer are answered as
+   * it left.
    */
   detach(session: PageSession | ProcessSession) {
     if (session instanceof ProcessSession) return this.#detachProcess(session);
+    if (this.#leaving.has(session)) return this.#settleLeaving(session);
     if (this.#page !== session) return;
     this.#page = undefined;
     session.inspector.close();
@@ -330,6 +377,29 @@ export class AgentConnection {
     for (const [callId, answer] of session.takeUnanswered())
       this.#leftCalls.set(callId, answer);
     this.#apply(tabLifecycle.disconnected(this.#lifecycle, Date.now()));
+  }
+
+  /**
+   * `ayme_connect` handed out a link: while no page is paired, a call for
+   * the page waits up to `PAIR_WAIT_MS` for the page the link opens.
+   */
+  linked() {
+    this.#apply(tabLifecycle.linked(this.#lifecycle, Date.now()));
+  }
+
+  /**
+   * Resolves once no link handed out while no page was paired is waiting
+   * for its page: at once, or when a page pairs or `PAIR_WAIT_MS` ends.
+   */
+  untilLinkFollowed(): Promise<void> {
+    if (this.#lifecycle.name !== "linked") return Promise.resolve();
+    return new Promise((resolve) => {
+      const release = () => {
+        this.#held.delete(release);
+        resolve();
+      };
+      this.#held.add(release);
+    });
   }
 
   /** The paired page said it started loading the document `to`. */
@@ -349,26 +419,30 @@ export class AgentConnection {
    * reconnect in time, another tab paired in its place or the server
    * stopped. A page that said it was navigating but stays, as when its
    * navigation was cancelled, gets the call after `RECONNECT_WAIT_MS`, and
-   * later calls at once.
+   * later calls at once. While no page is paired after `linked`, a call for
+   * the page waits for one to pair, up to `PAIR_WAIT_MS`.
    */
   call(name: string, input: unknown): Promise<ToolCallOutcome | undefined> {
     const callId = String(this.#nextCallId++);
-    const send = async () =>
-      this.#holderOf(name)?.call({ callId, name, input });
-    if (
+    const send = async () => {
+      const shown = this.#shown(name);
+      return shown?.holder.call({ callId, name, input });
+    };
+    const outcome =
       !tabLifecycle.holdsPageCalls(this.#lifecycle) ||
       this.#holderOf(name) instanceof ProcessSession
-    )
-      return send();
-    return new Promise<HeldCallExit | undefined>((resolve) => {
-      const release = (exit?: HeldCallExit) => {
-        this.#held.delete(release);
-        resolve(exit);
-      };
-      this.#held.add(release);
-    }).then((exit) =>
-      exit ? { callId, ok: false, error: heldCallText(exit) } : send()
-    );
+        ? send()
+        : new Promise<HeldCallExit | undefined>((resolve) => {
+            const release = (exit?: HeldCallExit) => {
+              this.#held.delete(release);
+              resolve(exit);
+            };
+            this.#held.add(release);
+          }).then(
+            (exit): Promise<ToolCallOutcome | undefined> | ToolCallOutcome =>
+              exit ? { callId, ok: false, error: heldCallText(exit) } : send()
+          );
+    return outcome;
   }
 
   /**
@@ -507,8 +581,28 @@ export class AgentConnection {
     return { shown, hidden };
   }
 
+  #shown(name: string): { tool: PageTool; holder: ToolHolder } | undefined {
+    return this.#merged().shown.find(({ tool }) => tool.name === name);
+  }
+
   #holderOf(name: string): ToolHolder | undefined {
-    return this.#merged().shown.find(({ tool }) => tool.name === name)?.holder;
+    return this.#shown(name)?.holder;
+  }
+
+  /**
+   * The tab's earlier document `session` is done with its calls, as its
+   * channel closed or the wait for that ended: the server answers those it
+   * did not as the document left, or, when the lifecycle does not say yet,
+   * once it does.
+   */
+  #settleLeaving(session: PageSession) {
+    if (!this.#leaving.has(session)) return;
+    const exit = this.#leaving.get(session);
+    this.#leaving.delete(session);
+    const calls = session.takeUnanswered();
+    if (exit) answerUnanswered(calls, exit);
+    else
+      for (const [callId, answer] of calls) this.#leftCalls.set(callId, answer);
   }
 
   /**
@@ -522,6 +616,22 @@ export class AgentConnection {
       const calls = this.#leftCalls;
       this.#leftCalls = new Map();
       answerUnanswered(calls, left);
+      for (const [session, exit] of this.#leaving) {
+        // Another tab or the server's stop ends the earlier document's
+        // calls at once.
+        const now = left.type === "replaced" || left.type === "stopped";
+        if (exit && !now) continue;
+        if (!exit) this.#leaving.set(session, left);
+        if (now) this.#settleLeaving(session);
+        else {
+          const timer = setTimeout(
+            () => this.#settleLeaving(session),
+            tabLifecycle.RECONNECT_WAIT_MS
+          );
+          // In Node, the wait never keeps a stopping server running.
+          (timer as { unref?: () => void }).unref?.();
+        }
+      }
     }
     if (held || !tabLifecycle.holdsPageCalls(lifecycle))
       for (const release of [...this.#held]) release(held);

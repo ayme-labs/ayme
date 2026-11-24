@@ -22,7 +22,7 @@ export default defineConfig(({ command }) => ({
 }));
 ```
 
-`include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
+`include` keeps ayme in the dev server and out of `vite build`; [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
 Enable decorators in the tsconfig that covers your Page Object Models, `tsconfig.app.json` in Vite's templates:
 
@@ -58,7 +58,7 @@ export class ProjectsPage {
 
 If your Playwright tests already have a Page Object Model for this page, mark that one instead.
 
-## 4. Start Ayme and use the Page Object
+## 4. Start ayme and use the Page Object
 
 Wrap the app in `AymeProvider` with the Inspector and the Agent Connection in development, and use the Page Object in a component:
 
@@ -122,7 +122,7 @@ createRoot(document.getElementById("root")!).render(
 
 Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-To call it from your coding agent, register Ayme's MCP server in the agent and connect it to the page, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
+To call it from your coding agent, register ayme's MCP server in the agent and connect it to the page, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
 
 ## Next
 

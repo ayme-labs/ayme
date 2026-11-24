@@ -17,7 +17,7 @@ import {
   aymeSkillName,
   aymeSkillSource,
 } from "./ayme.ts";
-import { parseFlags } from "./cli.ts";
+import { parseFlags, runMain } from "./cli.ts";
 import {
   agentEffort,
   claudeEnvironment,
@@ -300,11 +300,4 @@ async function main() {
   process.exitCode = result.pass ? 0 : 1;
 }
 
-if (import.meta.main) {
-  main().catch((error: unknown) => {
-    process.stderr.write(
-      `${error instanceof Error ? error.message : String(error)}\n`
-    );
-    process.exitCode = 2;
-  });
-}
+if (import.meta.main) runMain(main);

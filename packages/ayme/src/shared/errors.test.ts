@@ -10,7 +10,7 @@ import {
 import { DecisionEndpointError } from "../goal-loop/domain";
 import * as publicEntry from "../index";
 
-describe("Ayme errors", () => {
+describe("ayme errors", () => {
   it.each([
     [ToolInputError, "ToolInputError", "input"],
     [RefResolutionError, "RefResolutionError", "resolution"],

@@ -1,8 +1,8 @@
 # Next.js / Turbopack certification fixture
 
-This certification fixture runs Ayme's POM compiler and React integration in a
+This certification fixture runs ayme's POM compiler and React integration in a
 Next.js App Router app. Both development and production use Turbopack.
-The Ayme React subtree is server-rendered, then the browser runtime activates
+The ayme React subtree is server-rendered, then the browser runtime activates
 after hydration. It exercises the integration; it is not a consumer setup guide
 or general Next.js support.
 
@@ -28,11 +28,11 @@ Open http://127.0.0.1:4192. The counter supports a normal button click and a cal
 through `usePageObject(CounterPage)`. It can be removed and remounted.
 
 `pnpm build` runs `next build` twice: the production build the Playwright suite
-uses, with Ayme, and `AYME_INCLUDE=false next build`, the one Build without
-Ayme, written to `.next-without-ayme` with browser source maps. The build
+uses, with ayme, and `AYME_INCLUDE=false next build`, the one Build without
+ayme, written to `.next-without-ayme` with browser source maps. The build
 script then runs `scripts/verify-browser-output.mjs`, which checks that the
-browser chunks of the build without Ayme carry none of Ayme's markers, that
-its source maps carry no Page Object Model body, and that the build with Ayme
+browser chunks of the build without ayme carry none of ayme's markers, that
+its source maps carry no Page Object Model body, and that the build with ayme
 carries the markers, so the list proves something.
 
 ## How it works
@@ -52,12 +52,12 @@ The Next config applies the loader to `.ts` files on the browser graph whose tex
 contains `@ayme` or `extends`, so an undecorated subclass of a decorated Page
 Object Model reaches the compiler.
 Turbopack loads the built package entry, not a source-file alias. The workspace
-root is explicit so linked Ayme packages resolve. Dev and production outputs
+root is explicit so linked ayme packages resolve. Dev and production outputs
 use separate directories.
 
 The fixture imports only the public React integration. The E2E tests observe
 the compiler result and the registration lifetime through the tool schemas a
-WebMCP driver fixture receives, not through Ayme's internal registry.
+WebMCP driver fixture receives, not through ayme's internal registry.
 
 The React runtime session creates its default browser page lazily. During a
 server render, `usePageObject` returns an unconstructed object with the POM
@@ -70,14 +70,14 @@ activation still happens in the existing effect.
 
 The counter adds the Peek `counter` with `usePeek`, read as `peek.counter`.
 In development, `instrumentation.ts` starts an App Process (on the Node.js
-runtime only): the server pairs with the agent's Ayme MCP server beside the
+runtime only): the server pairs with the agent's ayme MCP server beside the
 tab. `app/server-peeks.ts`, which the root layout imports, offers the Peek
 `renders`, how often the server rendered the home page, read as
 `peek.node.renders`. It lives there, not in `instrumentation.ts`, so it reads
 the same `app/renders.ts` the page counts in, and after an edit the next
 request runs it with the new code. Neither offers anything under `next start`.
 `instrumentation.ts` looks for the agent's server on the port range, or only on the port in
-`AYME_EXAMPLE_AGENT_PORT` when set, which the e2e tests set; Ayme itself
+`AYME_EXAMPLE_AGENT_PORT` when set, which the e2e tests set; ayme itself
 reads no environment variable. `usePeek` registers in an effect, in the
 browser, so server rendering adds no `counter` instance to the App Process.
 
@@ -112,7 +112,7 @@ and boundary checks.
 
 ## Deliberate limits
 
-Server rendering is presentation-only for Ayme. Page Object constructors,
+Server rendering is presentation-only for ayme. Page Object constructors,
 locators, actions, DOM observation and WebMCP publication remain browser-only.
 Rendering code must not read Page Object locator fields or execute Page Object
 actions on the server. Prototype methods exist on the server placeholder so

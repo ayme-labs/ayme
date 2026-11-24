@@ -4,7 +4,7 @@ import {
   registerInspectorSelectors,
 } from "@ayme-dev/inspector/testing";
 
-import { addItemRef, expect, serverAddress, test } from "./fixtures";
+import { MCP_REVISIONS, expect, serverAddress, test } from "./fixtures";
 
 // The page's Inspector shows the App Processes' Peek tools in the Node
 // section of its Peek tools, and runs them through the agent's server. The
@@ -50,48 +50,49 @@ test("an App Process's Peek tool shows in the Inspector's Node section while it 
     .toEqual({ Browser: ["peek.cart"] });
 });
 
-test("an agent's call over the Ayme MCP server is an ayme-mcp Run in the page's Run log, which the Inspector shows", async ({
+test("an agent's call over the ayme MCP server is an ayme-mcp Run in the page's Run log, which the Inspector shows", async ({
   agent,
   connect,
   page,
 }) => {
   await connect("/?inspector");
-  const ref = await addItemRef(agent);
   const inspector = new Inspector(page);
   await inspector.open();
 
-  const { isError } = await agent.call("read_text", { ref });
+  const { isError } = await agent.call("GroceriesPage.readHeading");
 
   expect(isError).toBe(false);
-  const run = inspector.runs.latest("read_text");
+  const run = inspector.runs.latest("GroceriesPage.readHeading");
   await expect.poll(() => run.status()).toBe("Succeeded");
   expect(await run.caller()).toEqual({
-    icon: "Run by an agent through Ayme MCP",
-  });
-  expect(JSON.parse((await run.arguments.textContent()) ?? "")).toEqual({
-    ref,
+    icon: "Run by an agent through ayme MCP",
   });
 });
 
-test("with an agent connected through ayme mcp and WebMCP off, the Inspector's header names the agent and nothing says agents can't call the tools", async ({
-  connect,
-  page,
-}) => {
-  await connect("/?inspector");
-  const inspector = new Inspector(page);
-  await inspector.open();
-  const { connections } = inspector.header;
+for (const revision of MCP_REVISIONS)
+  test.describe(`under MCP revision ${revision}`, () => {
+    test.use({ revision });
 
-  // The e2e agent's MCP client introduces itself as ayme-e2e.
-  await expect(connections.pill).toHaveText("ayme-e2e");
-  await expect(connections.pill).toHaveAccessibleName(
-    "Connections: ayme-e2e connected"
-  );
-  await connections.open();
-  await expect(connections.agent.state).toHaveText("Connected");
-  await expect(connections.agent.root).toContainText(
-    "ayme-e2e is connected to this tab through ayme mcp."
-  );
-  await expect(connections.webMCP.state).toHaveText("Off");
-  await expect(inspector.container).not.toContainText("can't call");
-});
+    test("with an agent connected through ayme mcp and WebMCP off, the Inspector's header names the agent and nothing says agents can't call the tools", async ({
+      connect,
+      page,
+    }) => {
+      await connect("/?inspector");
+      const inspector = new Inspector(page);
+      await inspector.open();
+      const { connections } = inspector.header;
+
+      // The e2e agent's MCP client introduces itself as ayme-e2e.
+      await expect(connections.pill).toHaveText("ayme-e2e");
+      await expect(connections.pill).toHaveAccessibleName(
+        "Connections: ayme-e2e connected"
+      );
+      await connections.open();
+      await expect(connections.agent.state).toHaveText("Connected");
+      await expect(connections.agent.root).toContainText(
+        "ayme-e2e is connected to this tab through ayme mcp."
+      );
+      await expect(connections.webMCP.state).toHaveText("Off");
+      await expect(inspector.container).not.toContainText("can't call");
+    });
+  });

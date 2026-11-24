@@ -55,14 +55,13 @@ export function createRoots(deps: {
     const measurement = isElementVisible(element)
       ? deps.measure(element)
       : undefined;
-    if (!measurement?.present)
-      return { present: false, available: false, ref, inTheWay: [] };
-    const { available, blocker, hit } = measurement;
+    if (!measurement?.present) return { present: false, available: false, ref };
+    const { available, inTheWay } = measurement;
     return {
       present: true,
       available,
       ref,
-      inTheWay: available ? [] : blocker ? [blocker] : [...(hit ?? [])],
+      ...(!available && inTheWay !== undefined ? { inTheWay } : {}),
     };
   }
 
@@ -79,7 +78,6 @@ export function createRoots(deps: {
           count: elements.length,
           present: false,
           available: false,
-          inTheWay: [],
         };
       const state = observe(element);
       if (round !== undefined) {

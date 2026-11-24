@@ -106,14 +106,14 @@ it("C2: starts the session with the environment and stops it when the injector i
   expect(ayme.webMCP.publicationStatus.state).toBe("disposed");
   await expect(
     ayme.tools.run("goal", { goal: "goal", maxSteps: 1 })
-  ).rejects.toThrow("the Ayme runtime session is not started.");
+  ).rejects.toThrow("the ayme runtime session is not started.");
 });
 
 it("C3: rejects provideAyme beneath another provideAyme", () => {
   const root = environment([provideAyme({ pageFactory })]);
 
   expect(() => environment([provideAyme({ pageFactory })], root)).toThrow(
-    "provideAyme cannot be nested beneath another Ayme runtime owner."
+    "provideAyme cannot be nested beneath another ayme runtime owner."
   );
 });
 
@@ -121,7 +121,7 @@ it("C3: keeps one owner per document across root injectors, as two applications 
   const first = environment([provideAyme({ pageFactory })]);
 
   expect(() => environment([provideAyme({ pageFactory })])).toThrow(
-    "The Ayme runtime already has an active owner."
+    "The ayme runtime already has an active owner."
   );
   first.destroy();
   const second = environment([provideAyme({ pageFactory })]);
@@ -144,11 +144,15 @@ it("C5: returns { ayme, webMCP } whose publication status is a signal that follo
   expect(webMCP.retryPublication).toBe(ayme.webMCP.retryPublication);
   expect(webMCP.publicationStatus().state).toBe("waiting");
   // No WebMCP driver appears within the wait, once the session has loaded
-  // @ayme-dev/webmcp.
-  await vi.waitFor(async () => {
-    await vi.advanceTimersByTimeAsync(pastDriverWait);
-    expect(webMCP.publicationStatus().state).toBe("unavailable");
-  });
+  // @ayme-dev/webmcp. Loading it is real time, which a busy CI runner can
+  // stretch past waitFor's default second.
+  await vi.waitFor(
+    async () => {
+      await vi.advanceTimersByTimeAsync(pastDriverWait);
+      expect(webMCP.publicationStatus().state).toBe("unavailable");
+    },
+    { timeout: 10_000 }
+  );
   const retry = webMCP.retryPublication();
   expect(webMCP.publicationStatus().state).toBe("waiting");
   await vi.advanceTimersByTimeAsync(pastDriverWait);
@@ -202,7 +206,7 @@ it("C7: rejects injectAyme, injectPageObject and injectPeek without provideAyme 
     () => injectPeek({}, "peek"),
   ] as (() => unknown)[])
     expect(() => runInInjectionContext(root, inject)).toThrow(
-      "Ayme requires provideAyme() in an ancestor injector."
+      "ayme requires provideAyme() in an ancestor injector."
     );
 });
 
@@ -221,7 +225,7 @@ it("C8: rejects a Page Object Model the compiler did not reach", () => {
 
   expect(() =>
     runInInjectionContext(root, () => injectPageObject(Uncompiled))
-  ).toThrow("Uncompiled has no compiler-derived Ayme metadata.");
+  ).toThrow("Uncompiled has no compiler-derived ayme metadata.");
 });
 
 it("C11: returns the session as ayme, so a goal runs with the owner's goalLoop", async () => {

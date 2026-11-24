@@ -1,8 +1,8 @@
 Playwright browser runtime
 Source: https://github.com/ayme-labs/playwright/tree/b25d782e3fbdf21abdae60e974e49b78ca07e828
 
-Ayme Labs maintains this fork as the canonical source for the pinned runtime and compatibility corpus.
-This package includes browser runtime code from Playwright, adapted and bundled by Ayme.
+ayme labs maintains this fork as the canonical source for the pinned runtime and compatibility corpus.
+This package includes browser runtime code from Playwright, adapted and bundled by ayme.
 The upstream license and notice follow unchanged.
 
 Playwright
@@ -215,7 +215,7 @@ available under the Apache 2.0 license (https://github.com/puppeteer/puppeteer/b
    limitations under the License.
 
 
-=== Bundled Ayme Playwright Lite fork ===
+=== Bundled ayme Playwright Lite fork ===
 Source: https://github.com/ayme-labs/playwright-lite/tree/2b8849cfb31714353d94e6a33095ac3aa5b898bb
 
 --- LICENSE ---

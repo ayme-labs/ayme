@@ -1,7 +1,6 @@
 // Whether a call would run, and the refusal when it would not: shared by
 // Browser Tools that act on one element and by Page Object Tools.
 
-import type { AriaRef } from "@ayme-dev/core/structural-observation";
 import { asSentence, RuntimeStateError } from "../../shared";
 
 /**
@@ -15,18 +14,6 @@ export type ToolAvailability = {
   available: boolean;
   reason?: string;
 };
-
-/**
- * Package-internal: the Structural Ref the agent's latest page state gave
- * `element`, if any; how an Availability Reason names what is in the way.
- */
-export type LatestRefLookup = (element: Element) => AriaRef | undefined;
-
-/**
- * Package-internal: the same lookup for what is named by its in-page
- * Structural Ref, as the Page Object registry reads it.
- */
-export type LatestRefByRef = (ref: string) => AriaRef | undefined;
 
 /**
  * Package-internal: refuses a call of the tool `toolName` that `availability`
@@ -60,31 +47,23 @@ export function unavailableError(
 
 /**
  * Package-internal: the runtime's Availability Reason for a present element a
- * click would not reach: it names the Structural Ref of the first element in
- * the way the agent's latest page state gave one.
+ * click would not reach: it names `inTheWay`, what is in the way by its role
+ * and name, when the measurement gave it.
  */
-export function obstructionReason<InTheWay extends Element | string>(
-  inTheWay: readonly InTheWay[],
-  latestRefOf: (inTheWay: InTheWay) => AriaRef | undefined
-) {
-  const ref = inTheWay.map(latestRefOf).find((ref) => ref !== undefined);
-  return ref === undefined
+export function obstructionReason(inTheWay: string | undefined) {
+  return inTheWay === undefined
     ? "a click would not reach it"
-    : `a click would not reach it; ${ref} is in the way`;
+    : `a click would not reach it; ${inTheWay} is in the way`;
 }
 
 /**
  * Package-internal: the runtime's Availability Reason for an element a tool
- * types into or selects in that cannot take focus: it names the Structural
- * Ref of `blocker`, the open modal or inert ancestor in the way, when the
- * agent's latest page state gave it one.
+ * types into or selects in that cannot take focus: it names `inTheWay`, the
+ * open modal or inert ancestor in the way by its role and name, when the
+ * measurement gave it.
  */
-export function unfocusableReason<InTheWay extends Element | string>(
-  blocker: InTheWay,
-  latestRefOf: (inTheWay: InTheWay) => AriaRef | undefined
-) {
-  const ref = latestRefOf(blocker);
-  return ref === undefined
+export function unfocusableReason(inTheWay: string | undefined) {
+  return inTheWay === undefined
     ? "it cannot take focus"
-    : `it cannot take focus; ${ref} is in the way`;
+    : `it cannot take focus; ${inTheWay} is in the way`;
 }

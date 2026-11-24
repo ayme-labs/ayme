@@ -1,4 +1,4 @@
-// The entry a build without Ayme resolves `@ayme-dev/react` to: the names of
+// The entry a build without ayme resolves `@ayme-dev/react` to: the names of
 // the index, backed by the runtime's absent entry, so a component tree
 // renders as it does with the real package.
 import * as React from "react";
@@ -40,7 +40,7 @@ const act: typeof TestUtils.act =
 class Model {
   constructor() {
     throw new Error(
-      "Page Objects are not constructed in a build without Ayme."
+      "Page Objects are not constructed in a build without ayme."
     );
   }
 }
@@ -90,6 +90,6 @@ it("passes the provider's options to the absent runtime, which logs the publicat
   const logged = vi.spyOn(console, "error").mockImplementation(() => {});
   render(h(AymeProvider, { webMCP: { enabled: true } }, h("p")));
   expect(logged).toHaveBeenCalledWith(
-    "Ayme was removed from this build, but setup enables WebMCP publication."
+    "ayme was removed from this build, but setup enables WebMCP publication."
   );
 });

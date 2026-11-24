@@ -12,7 +12,7 @@ type LoaderContext = {
   addDependency?: (fileName: string) => void;
 };
 
-// The loader runs per module, so the line saying whether Ayme is in the
+// The loader runs per module, so the line saying whether ayme is in the
 // build is printed once per process.
 let announced = false;
 
@@ -32,7 +32,7 @@ export default function turbopackLoader(this: LoaderContext, source: string) {
       if (dependencies.length === 0) return;
       if (!this.addDependency)
         throw new Error(
-          "Ayme's Turbopack loader requires loader dependency tracking."
+          "ayme's Turbopack loader requires loader dependency tracking."
         );
       const resourcePath = path.resolve(this.resourcePath);
       for (const dependency of dependencies) {

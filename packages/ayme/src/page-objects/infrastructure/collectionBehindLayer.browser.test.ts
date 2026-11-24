@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createPage } from "./browserPage";
-import { rooted } from "../../test-utils/pomRoot.testSupport";
+import { rooted } from "../../../testing/pomRoot.testSupport";
 import {
   listRegisteredPomTools,
   probeRegisteredPomMembers,
   registerCompiledPom,
 } from "./registry";
 import type { PomManifest } from "../../shared";
-import { runContext } from "../../test-utils/agentCalls.testSupport";
+import { runContext } from "../../../testing/agentCalls.testSupport";
 import { errorText } from "../../shared";
 import { getPageStateForDocument } from "../../page-state/infrastructure";
-import { startSession } from "../../test-utils/session.testSupport";
+import { startSession } from "../../../testing/session.testSupport";
 
 // A modal menu as Radix opens one: the rest of the page is hidden from
 // assistive technology and takes no pointer events, while the menu, a
@@ -66,15 +66,12 @@ const manifest: PomManifest = {
   ],
 };
 
-function refOf(text: string, mark: string, index = 0): string {
-  const escaped = mark.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const ref = [
-    ...text.matchAll(
-      new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "gm")
-    ),
-  ][index]?.[1];
-  if (!ref) throw new Error(`No ref found for "${mark}" in page state.`);
-  return ref;
+function idOf(text: string, mark: string, index = 0): string {
+  const id = [...text.matchAll(new RegExp(` ${mark} (po\\d+)`, "g"))][
+    index
+  ]?.[1];
+  if (!id) throw new Error(`No id found for "${mark}" in page state.`);
+  return id;
 }
 
 const scrolled = () => ({
@@ -104,8 +101,8 @@ describe("a collection whose items are all behind a modal layer", () => {
     session.register(ListPage);
     await probeRegisteredPomMembers();
     const { text } = await getPageStateForDocument(document);
-    const refs = [0, 1, 2].map((i) => refOf(text, "Row", i));
-    return { session, opened, refs };
+    const ids = [0, 1, 2].map((i) => idOf(text, "Row", i));
+    return { session, opened, ids };
   }
 
   /** The collection's tool as the last observation listed it. */
@@ -142,18 +139,19 @@ describe("a collection whose items are all behind a modal layer", () => {
   // The menu opens after the observation that listed the tool, so the call
   // itself finds it.
   it("refuses a call on an item out of view without scrolling, naming the tool called", async () => {
-    const { session, opened, refs } = await setUp();
+    const { session, opened, ids } = await setUp();
     try {
       const { tool, available } = listedOpen();
       expect(available).toBe(true);
       openModalMenu();
       const error = await tool
-        .execute({ ref: refs[2], args: {} }, runContext())
+        .execute({ id: ids[2], args: {} }, runContext())
         .then(() => "no error", errorText);
 
-      // In the way is the page's content the layer hid, as for an inert one.
+      // In the way is the page's content the layer hid, as for an inert
+      // one: a div hidden from the accessibility tree, with no role to name.
       expect(error).toMatch(
-        /^RuntimeStateError: Row on ref "(?:e\d+|s_\w+)" is unavailable: a click would not reach it; e\d+ is in the way\.$/
+        /^RuntimeStateError: Row "po\d+" is unavailable: a click would not reach it\.$/
       );
       expect(scrolled()).toEqual({ page: 0, list: 0 });
       expect(opened[2]).not.toHaveBeenCalled();
@@ -163,16 +161,16 @@ describe("a collection whose items are all behind a modal layer", () => {
   });
 
   it("refuses a call on an item in view, naming the tool called", async () => {
-    const { session, opened, refs } = await setUp();
+    const { session, opened, ids } = await setUp();
     try {
       const { tool } = listedOpen();
       openModalMenu();
       const error = await tool
-        .execute({ ref: refs[0], args: {} }, runContext())
+        .execute({ id: ids[0], args: {} }, runContext())
         .then(() => "no error", errorText);
 
       expect(error).toMatch(
-        /^RuntimeStateError: Row on ref "(?:e\d+|s_\w+)" is unavailable: a click would not reach it(; e\d+ is in the way)?\.$/
+        /^RuntimeStateError: Row "po\d+" is unavailable: a click would not reach it\.$/
       );
       expect(opened[0]).not.toHaveBeenCalled();
     } finally {
@@ -184,7 +182,7 @@ describe("a collection whose items are all behind a modal layer", () => {
   // the call has scrolled to it (ADR-0041); a cover over the list's view then
   // refuses it there.
   it("refuses a call on an item covered where its scroll lands, naming the tool called", async () => {
-    const { session, opened, refs } = await setUp();
+    const { session, opened, ids } = await setUp();
     try {
       document.body.insertAdjacentHTML(
         "beforeend",
@@ -193,11 +191,11 @@ describe("a collection whose items are all behind a modal layer", () => {
       const { tool, available } = await observedOpen();
       expect(available).toBe(true);
       const error = await tool
-        .execute({ ref: refs[2], args: {} }, runContext())
+        .execute({ id: ids[2], args: {} }, runContext())
         .then(() => "no error", errorText);
 
       expect(error).toBe(
-        `RuntimeStateError: Row on ref "${refs[2]}" is unavailable: a click would not reach it.`
+        `RuntimeStateError: Row "${ids[2]}" is unavailable: a click would not reach it.`
       );
       expect(scrolled().list).toBeGreaterThan(0);
       expect(opened[2]).not.toHaveBeenCalled();

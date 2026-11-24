@@ -3,7 +3,6 @@ export {
   HIDDEN_BECAUSE,
   HelloSchema,
   HiddenToolListSchema,
-  ImageResultSchema,
   PAIRING_CONTRACT,
   InspectorRequestSchema,
   InspectorResponseSchema,
@@ -19,7 +18,6 @@ export {
 } from "./messages";
 export type {
   Hello,
-  ImageResult,
   InspectorRequest,
   InspectorResponse,
   PageHello,

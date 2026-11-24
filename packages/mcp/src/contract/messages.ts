@@ -1,7 +1,7 @@
 import * as z from "zod/mini";
 
 /**
- * The messages between the Ayme MCP server and the page client. Both sides
+ * The messages between the ayme MCP server and the page client. Both sides
  * validate what they receive against these schemas.
  */
 
@@ -11,7 +11,9 @@ import * as z from "zod/mini";
  * is on the page, and `reason` says why an unavailable one cannot run, when
  * the page knows (ADR-0035). A Page Object Tool whose action says nothing
  * beyond its name and schema has no description, and MCP lists it without
- * one.
+ * one. `group` is where the tool comes from, as ayme's runtime names it
+ * (`pageObject`, `browser`, `custom`, `peek` or `agent`); the server decides
+ * by it which tools it lists. A page from before it was sent sends none.
  */
 export const PageToolSchema = z.object({
   name: z.string().check(z.minLength(1)),
@@ -21,6 +23,7 @@ export const PageToolSchema = z.object({
   destructive: z.optional(z.boolean()),
   available: z.boolean(),
   reason: z.optional(z.string()),
+  group: z.optional(z.string()),
 });
 export type PageTool = z.infer<typeof PageToolSchema>;
 
@@ -64,23 +67,6 @@ export const ToolCallOutcomeSchema = z.discriminatedUnion("ok", [
   }),
 ]);
 export type ToolCallOutcome = z.infer<typeof ToolCallOutcomeSchema>;
-
-/**
- * A tool's result the agent gets as an image, such as a screenshot's: what it
- * shows, a bare file name for it, its format, its size in pixels and its
- * base64-encoded bytes. The server also writes it to a file under that name.
- * `@ayme-dev/ayme`'s `ImageResult` type has the same shape.
- */
-export const ImageResultSchema = z.object({
-  type: z.literal("image"),
-  subject: z.string(),
-  filename: z.string().check(z.minLength(1)),
-  mimeType: z.enum(["image/png", "image/jpeg"]),
-  width: z.number(),
-  height: z.number(),
-  data: z.string(),
-});
-export type ImageResult = z.infer<typeof ImageResultSchema>;
 
 /**
  * The page asks the server to run one of the App Processes' tools, as its
@@ -168,15 +154,11 @@ export type Hello = z.infer<typeof HelloSchema>;
 export const PageWelcomeSchema = z.object({
   token: z.optional(z.string().check(z.minLength(1))),
   /**
-   * The folder the server saves a tool's images to, ending in a path
-   * separator: an image named `filename` is saved as `imageFolder +
-   * filename`.
-   */
-  imageFolder: z.optional(z.string().check(z.minLength(1))),
-  /**
-   * The name the agent's MCP client gave the server when it started it,
-   * such as `claude-code`, for the Inspector to say which agent is
-   * connected. None while the client has not introduced itself.
+   * The name the agent's MCP client gives the server, such as
+   * `claude-code`, for the Inspector to say which agent is connected: in
+   * the `initialize` handshake under the older MCP revisions, and in each
+   * request under 2026-07-28. None while the client has not introduced
+   * itself.
    */
   agent: z.optional(z.string().check(z.minLength(1))),
 });

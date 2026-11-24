@@ -1,4 +1,4 @@
-import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
+import { elementOfRef } from "../../../testing/elementRefs.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { ayme as model } from "../../page-objects/domain";
@@ -8,9 +8,9 @@ import {
   probeRegisteredPomMembers,
 } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
-import { ayme } from "../../test-utils/agentCalls.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { ayme } from "../../../testing/agentCalls.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
 import { createAyme } from "../../runtime";
 import { browserInPage } from "./browserInPage";
 import {
@@ -94,7 +94,9 @@ describe("the ignore filter in page state capture", () => {
       <button id="main">Main action</button>
     `;
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       act() {}
     }
     model({ root: rootOf })(Panel);
@@ -120,7 +122,9 @@ describe("the ignore filter in page state capture", () => {
       </div>
     `;
     class Panel {
-      root = page.locator("#panel");
+      get root() {
+        return page.locator("#panel");
+      }
       act() {}
     }
     model({ root: rootOf })(Panel);

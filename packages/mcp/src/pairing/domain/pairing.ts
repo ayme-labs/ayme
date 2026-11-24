@@ -1,5 +1,5 @@
 /**
- * What pairs a page with one Ayme MCP server: the server's WebSocket address
+ * What pairs a page with one ayme MCP server: the server's WebSocket address
  * on the loopback interface, and the token the server accepts.
  */
 export type Pairing = Readonly<{
@@ -12,7 +12,7 @@ export type Pairing = Readonly<{
   token: string;
 }>;
 
-/** The ports an Ayme MCP server listens on: the first free one. */
+/** The ports an ayme MCP server listens on: the first free one. */
 export const SERVER_PORTS = Object.freeze({ first: 9350, last: 9365 });
 
 /** The loopback host the server listens on. */
@@ -72,7 +72,7 @@ export function pairingFromFragment(hash: string): Pairing | undefined {
  *   trying again;
  * - `no-answer`: the server it paired with stopped answering, and it keeps
  *   trying;
- * - `no-server`: its last look found no Ayme MCP server;
+ * - `no-server`: its last look found no ayme MCP server;
  * - `several-servers`: its last look found more than one, so it would not
  *   pick one;
  * - `other-tab`: the server works with another tab, which took it over or

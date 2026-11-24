@@ -18,6 +18,7 @@ import {
   useHostReservation,
   usePreferences,
   WindowShell,
+  type WindowFullscreen,
 } from "../panel";
 import {
   type Lens,
@@ -38,9 +39,15 @@ import { decodeViewState, viewStateKey, withSelection } from "./viewState";
  * the one selection the navigator, the detail pane and Runs share, and
  * keeps where the person was in it for the tab. `windowed` fills a window of
  * the Inspector's own, outside the page it shows, in place of the dockable
- * panel.
+ * panel; `fullscreen` is what an Agent App that shows that window offers.
  */
-export function InspectorApp({ windowed = false }: { windowed?: boolean }) {
+export function InspectorApp({
+  windowed = false,
+  fullscreen,
+}: {
+  windowed?: boolean;
+  fullscreen?: WindowFullscreen;
+}) {
   const [preferences, updatePreferences] = usePreferences();
   const reserveHost = useHostReservation();
   const [viewState, setViewState] = useTabState(viewStateKey, decodeViewState);
@@ -144,7 +151,7 @@ export function InspectorApp({ windowed = false }: { windowed?: boolean }) {
   const detail = unserved ? (
     <Empty>
       No page is serving the Inspector. Pair a page with this ayme mcp, and
-      start that page&apos;s Ayme session with{" "}
+      start that page&apos;s ayme session with{" "}
       <code>
         inspector: {"{"} placement: &quot;external&quot; {"}"}
       </code>
@@ -191,6 +198,7 @@ export function InspectorApp({ windowed = false }: { windowed?: boolean }) {
           theme={preferences.theme}
           onThemeChange={(theme) => updatePreferences({ theme })}
           status={status}
+          fullscreen={fullscreen}
         >
           {inspectorBody}
         </WindowShell>
