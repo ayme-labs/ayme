@@ -10,10 +10,11 @@ import {
 } from "@ayme-dev/recorder";
 
 /**
- * How `codegen <url>` launches the browser. `--headless` and `--headed` say
- * whether it has a window; `--start-recording` opens it already recording. The two environment variables are for the tests:
- * they run where there is no screen, and act in the recorded browser over a
- * connection of their own. The command line wins over them.
+ * How `codegen <url>` launches the browser: with a window by default, and
+ * without one for `--headless`; `--start-recording` opens it already
+ * recording. The two environment variables are for the tests: they run where
+ * there is no screen, so one of them opens the browser without a window too,
+ * and they act in the recorded browser over a connection of their own.
  */
 export function launchOptions(
   url: string,

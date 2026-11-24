@@ -26,6 +26,8 @@ The range is stated in [`playwright-range.json`](https://github.com/ayme-labs/ay
 
 ## Commands
 
+`npx @ayme-dev/cli --version` prints the installed version.
+
 ### `codegen <url>`
 
 Opens `<url>` in Chromium, with a recorder window beside it and a small toolbar on the page. Recording is off at first, so you can log in or reach your starting point. Press **Record** to start.
@@ -36,7 +38,6 @@ npx @ayme-dev/cli codegen http://localhost:3000
 
 The terminal prints the address of the recorder window, such as `Recorder UI: http://127.0.0.1:52011/`. When the recording is saved it prints `Recording package: <path>`, or `Recording was empty; no recording package was created.` when there was nothing to save.
 
-- `--headed`: open Chromium with a visible window. This is the default.
 - `--headless`: open Chromium without a window. Open the printed window address in a browser to control the recording.
 - `--start-recording`: open the recorder already recording, so that the recording and its trace hold the first page load, its network requests included. The recording's first Visit starts as soon as the browser commits to the page's document, before the page has finished loading: if you press **Stop** before that, the load is not in the recording, though its network requests can still be in the trace, which runs from the start. A click on the blank page before it loads, or an element picked there for **Assert visibility**, is not recorded. The page opens blank, the recorder starts recording, and only then does the page go to `<url>`. **Stop**, **Continue recording**, **Clear** and **Finish** work as they do after pressing **Record**; after **Clear**, the next recording starts from the page as it is then.
 
@@ -57,7 +58,7 @@ npx @ayme-dev/cli codegen --cdp-endpoint http://127.0.0.1:9222
 - Input given by another automation client in that browser is recorded like a person's.
 - When the recorder ends, it takes its toolbar off the page and leaves the browser open. Close the page or press Ctrl+C to end; either saves what was recorded, as Finish does.
 - The recorder window does not open by itself: open the printed address in any browser.
-- `--headless`, `--headed` and `--start-recording` do not apply here, and you cannot give a URL as well.
+- `--headless` and `--start-recording` do not apply here, and you cannot give a URL as well.
 
 ### `trace`
 
@@ -138,7 +139,8 @@ When the recorder cannot start, it prints one sentence saying why, and exits wit
 - **Cross-origin iframes and transformed iframes were not tested.** Same-origin iframes and open shadow roots are.
 - **The toolbar is part of the trace.** Its element stays in the trace's page snapshots, empty.
 - **Highlighting an element from the window, and picking one for Assert visibility, add actions to the trace.** The position numbers in the package stay right.
-- **Highlighting a step of a page you have left lights up every element of the page, as it is now, that matches.** Its element is looked for by its selector, and a change row's element by its name, which Playwright looks up as a locator of the same words, in a frame too; so is an element the page you are on no longer lists. Every element either matches lights up, the one you mean among them: a name that fit one element when it was read can match more on the page as it is now. A page that was closed highlights nothing.
+- **Highlighting a step of a page you have left lights up every element of the page, as it is now, that matches.** Its element is looked for by its selector, and a change row's element by its name, which Playwright looks up as a locator of the same words, in a frame too; so is an element the page you are on no longer lists. Every element either matches lights up: a name that fit one element when it was read can match more on the page as it is now. A page that was closed highlights nothing.
+- **Highlighting a change row can light up nothing, or a look-alike, when the page holds hidden text** and the row's element is looked up by its name, as on a page you have left. A list item or a paragraph is named by the text inside it as the page structure reads it, which leaves out hidden text, such as a span with `hidden` or `display: none`. Playwright matches that name against all of each element's text, so hidden text in the element, or in one like it, changes what matches.
 - **The outline drawn while Assert visibility is on is part of the trace** while it shows, as its element in the page snapshots, like the toolbar.
 - **The recorded page's own scripts can reach the toolbar's function** on the page, as any script the page runs can.
 - **A click that Playwright reports as caused by a key press,** such as Enter on a button, is not recorded as its own step: the key press is.

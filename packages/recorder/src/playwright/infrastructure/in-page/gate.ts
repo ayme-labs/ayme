@@ -1,6 +1,12 @@
 /// <reference lib="dom" />
 
-import type { GateRules, HeldByPage, KeyRoute, MouseRoute } from "../pageRules";
+import type {
+  GateRules,
+  HeldByPage,
+  HeldClick,
+  KeyRoute,
+  MouseRoute,
+} from "../pageRules";
 
 // The gate, as it runs inside a recorded page. Each function is sent to the
 // page as its own text, so it uses nothing from outside itself but what it
@@ -16,14 +22,21 @@ export type Gate = {
    * nothing it held waits to be passed on. Returns what it was set to. */
   set(on: boolean): boolean;
   /** A held input is on its way: the click of this count to this point of
-   * the viewport, or the key with this code. Lets it through; the gate
-   * closes again by itself when it has arrived. Resolves when the input may
-   * be sent, as a click waits while the person holds a mouse button down:
-   * to false, letting nothing through, when the input was held in another
-   * document: that one is gone. */
+   * the viewport, with the number the gate gave it, or the key with this
+   * code. Lets it through; the gate closes again by itself when it has
+   * arrived. Resolves when the input may be sent, as a click waits while
+   * the person holds a mouse button down: to false, letting nothing
+   * through, when the input was held in another document: that one is
+   * gone. */
   open(
     input:
-      | { x: number; y: number; detail: number; button?: "right" | "middle" }
+      | {
+          x: number;
+          y: number;
+          detail: number;
+          button?: "right" | "middle";
+          seq: number;
+        }
       | { code: string },
     document: string
   ): Promise<boolean>;
@@ -32,6 +45,9 @@ export type Gate = {
   /** Lets what follows through, unless the document held an input after
    * the `upTo`th. */
   letThrough(upTo: number): void;
+  /** The held click an event is, as it reached the page once sent on; null
+   * for an event that is no held click's. */
+  heldClickOf(event: Event): HeldClick | null;
   // Assert visibility.
   /** Leaves every input alone while Playwright's recorder picks an element,
    * or no longer: the picking click is Playwright's, and never reaches the
@@ -98,6 +114,8 @@ export function gateIn(held: string, rules: GateRules): void {
         x: number;
         y: number;
         detail: number;
+        /** The number the gate gave it. */
+        seq: number;
         seen: string[];
         arrives: string;
         /** Its event reached the page; what follows of it is stopped until
@@ -114,6 +132,9 @@ export function gateIn(held: string, rules: GateRules): void {
   let released: (() => void) | undefined;
   /** The codes of held keys whose release is the gate's too. */
   const swallowKeyUp = new Set<string>();
+  /** The events of held clicks that reached the page, with the number of
+   * each click. */
+  const arrivals = new WeakMap<Event, number>();
   /** Playwright's recorder picks an element: inputs are left to it. */
   // Picking started before this script ran, if the start did.
   let picking = rules.gateStartsOn(window.__aymeRecorderPickingStart);
@@ -146,6 +167,7 @@ export function gateIn(held: string, rules: GateRules): void {
         x: input.x,
         y: input.y,
         detail: input.detail,
+        seq: input.seq,
         seen: [],
         arrives: rules.arrivingEvent(input.button),
       };
@@ -161,6 +183,10 @@ export function gateIn(held: string, rules: GateRules): void {
     },
     pick: (on) => {
       picking = on;
+    },
+    heldClickOf: (event) => {
+      const seq = arrivals.get(event);
+      return seq === undefined ? null : { document: thisDocument, seq };
     },
   };
   const tell = (input: HeldByPage) =>
@@ -186,17 +212,15 @@ export function gateIn(held: string, rules: GateRules): void {
   const passOnEvent = (event: MouseEvent) => {
     passingOn!.seen.push(event.type);
     const effect = rules.replayedEffect(event.type, passingOn!.arrives);
-    if (effect === "swallow") swallow(event);
-    else if (effect === "stop") event.stopImmediatePropagation();
-    else if (passingOn!.arrives === "click") {
-      passingOn = undefined;
-      arrived();
-    } else {
-      // A right-click's context menu event can come on its press: its
-      // release is still to come, and is stopped too.
-      passingOn!.done = true;
-      arrived();
-    }
+    if (effect === "swallow") return swallow(event);
+    if (effect === "stop") return event.stopImmediatePropagation();
+    // It reaches the page: the target watch notes which held click it is.
+    arrivals.set(event, passingOn!.seq);
+    if (passingOn!.arrives === "click") passingOn = undefined;
+    // A right-click's context menu event can come on its press: its
+    // release is still to come, and is stopped too.
+    else passingOn!.done = true;
+    arrived();
   };
   /** Whether the person holds a mouse button down. */
   const notePress = (event: MouseEvent) => {
