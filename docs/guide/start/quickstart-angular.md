@@ -30,6 +30,12 @@ Page Objects live in `.ayme/pom/`, at your project's root. Give the folder a tsc
 }
 ```
 
+Add the `#pom/*` alias to your `package.json`, so app code and tests import the Page Objects the same way from any folder:
+
+```json
+{ "imports": { "#pom/*": "./.ayme/pom/*.ts" } }
+```
+
 [The `.ayme` folder](../guides/ayme-folder.md) describes the rest of the folder. Then write the model:
 
 ```ts
@@ -78,7 +84,7 @@ Use the Page Object in a component, and render `<app-projects />` in your app:
 // src/app/projects.ts
 import { Component, signal } from "@angular/core";
 import { injectPageObject } from "@ayme-dev/angular";
-import { ProjectsPage } from "../../.ayme/pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 @Component({
   selector: "app-projects",

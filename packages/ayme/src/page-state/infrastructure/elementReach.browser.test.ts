@@ -114,8 +114,8 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
   it("refuses a click behind the open modal at once, naming the dialog", async () => {
     openRenameDialog();
     const rename = await refOf("button", "Rename");
-    // The dialog has an accessible name, so the snapshot gives it a ref.
-    const dialog = await refOf("dialog", "Rename project");
+    // What is in the way is named by its role and accessible name.
+    const dialog = 'dialog "Rename project"';
 
     const { error, elapsed } = await refusal("click", rename);
 
@@ -140,7 +140,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
 
     expect((await listElementToolTargets()).get("click")).not.toContain(save);
     const { error, elapsed } = await refusal("click", save);
-    // The inert ancestor is a plain div: no ref to name.
+    // The inert ancestor is a plain div: no role to name it by.
     expect(error).toBe(
       "RuntimeStateError: click is unavailable: a click would not reach it."
     );
@@ -150,7 +150,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
 
   it.each([
     [
-      "a plain overlay, which has no ref",
+      "a plain overlay, which has no role",
       `<div id="overlay"></div>`,
       undefined,
     ],
@@ -173,7 +173,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
       const inTheWay =
         overlayLabel === undefined
           ? ""
-          : `; ${await refOf("dialog", overlayLabel)} is in the way`;
+          : `; dialog "${overlayLabel}" is in the way`;
 
       expect((await listElementToolTargets()).get("click")).not.toContain(save);
       const { error, elapsed } = await refusal("click", save);
@@ -197,7 +197,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
       <div id="badge" role="status" aria-label="Saving"></div>
     `;
     const save = await refOf("button", "Save");
-    const badge = await refOf("status", "Saving");
+    const badge = 'status "Saving"';
 
     expect((await listElementToolTargets()).get("click")).not.toContain(save);
     const { error, elapsed } = await refusal("click", save);
@@ -249,7 +249,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
       <div id="band" role="dialog" aria-label="Saving"></div>
     `;
     const save = await refOf("button", "Save");
-    const band = await refOf("dialog", "Saving");
+    const band = 'dialog "Saving"';
 
     // Nothing shows of it now, so there is no point to hit-test yet.
     expect((await listElementToolTargets()).get("click")).toContain(save);
@@ -278,7 +278,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
       <div id="band" role="dialog" aria-label="Saving"></div>
     `;
     const save = await refOf("button", "Save");
-    const band = await refOf("dialog", "Saving");
+    const band = 'dialog "Saving"';
 
     // The part shown now, its top 20px, is bare.
     expect((await listElementToolTargets()).get("click")).toContain(save);
@@ -314,7 +314,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
 
   it("fails fill_form at a field behind the open modal and keeps the fields filled before it", async () => {
     openRenameDialog();
-    const dialog = await refOf("dialog", "Rename project");
+    const dialog = 'dialog "Rename project"';
 
     const result = await call("fill_form", {
       fields: [
@@ -388,7 +388,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
       <div style="height: 3000px"></div>
     `;
     const ghost = await refOf("button", "Ghost");
-    const footer = await refOf("region", "Footer");
+    const footer = 'region "Footer"';
 
     expect((await listElementToolTargets()).get("click")).not.toContain(ghost);
     const { error, elapsed } = await refusal("click", ghost);
@@ -408,7 +408,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
       </div>
     `;
     const ghost = await refOf("button", "Ghost");
-    const footer = await refOf("region", "Footer");
+    const footer = 'region "Footer"';
 
     expect((await listElementToolTargets()).get("click")).toContain(ghost);
     const { error, elapsed } = await refusal("click", ghost);
@@ -456,7 +456,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
        <div style="position: fixed; inset: 0; pointer-events: auto; background: white"></div>`;
     expect(document.elementFromPoint(20, 10)).toBe(host);
     const save = await refOf("button", "Save");
-    const overlay = await refOf("dialog", "Saving");
+    const overlay = 'dialog "Saving"';
 
     expect((await listElementToolTargets()).get("click")).not.toContain(save);
     const { error, elapsed } = await refusal("click", save);
@@ -481,7 +481,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
       <button id="save" type="button">Save</button>
     `;
     const save = await refOf("button", "Save");
-    const under = await refOf("dialog", "Saving");
+    const under = 'dialog "Saving"';
 
     const { error, elapsed } = await refusal("click", save);
     expect(error).toBe(
@@ -698,8 +698,7 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
       page,
       "Row.open",
       await rowRef(page),
-      "click",
-      () => undefined
+      "click"
     ).then(() => "no error", errorText);
 
     expect(error).toBe(
@@ -718,8 +717,7 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
       page,
       "Row.open",
       await rowRef(page),
-      "click",
-      () => undefined
+      "click"
     );
     expect(window.scrollY).toBeGreaterThan(0);
   });
@@ -734,8 +732,7 @@ describe("a call on a Page Object Root out of view behind a modal layer, in Chro
       page,
       "Row.open",
       await rowRef(page),
-      "click",
-      () => undefined
+      "click"
     );
     expect(window.scrollY).toBeGreaterThan(0);
   });

@@ -25,17 +25,17 @@ Measured on 2026-10-23 and 2026-10-24 on GitHub-hosted Ubuntu runners, at [`8a9a
 
 ## What you can do with it
 
-- **Drive your app from your coding agent.** Claude Code, or any MCP client, calls your Page Object Actions on the page you have open, reads what is on the page and acts on it, while you develop.
-- **Hand the page a goal.** An agent says "invite Ada as an admin", and the Goal Loop works the page toward it in small steps, each one judged by Jev, TypeSafe's decision model, instead of the agent's own LLM.
+- **Drive your app from your coding agent.** Claude Code, or any MCP client, calls your Page Object Actions on the page you have open, beside the browser automation it already uses, such as Playwright MCP, Playwright CLI or agent-browser, while you develop.
+- **Hand the page a goal.** An agent in the page says "invite Ada as an admin", and the Goal Loop works the page toward it in small steps, each one judged by Jev, TypeSafe's decision model, instead of the agent's own LLM.
 - **Build an in-app assistant.** An onboarding assistant inside your app gets your Page Object Actions and the page state as its tools, so it works the page while the user watches. A checklist's "Show me how" button can run the same actions directly. See [Build an in-app assistant](docs/guide/guides/in-app-assistant.md).
 
 ## How it works
 
-You mark a Page Object Model and the actions to expose. The build plugin compiles them into your app, and when the app runs, ayme offers three kinds of tools to agents: to a coding agent through ayme's MCP server, and to agents in the browser through WebMCP, the browser's way of offering tools on a page:
+You mark a Page Object Model and the actions to expose. The build plugin compiles them into your app, and when the app runs, ayme offers tools to agents: to a coding agent through ayme's MCP server, and, as an experiment, to agents in the browser through WebMCP, the browser's way of offering tools on a page:
 
-- **Page Object Tools**: your marked actions, such as `ProjectsPage.createProject`.
-- **Browser Tools**: built-in operations on the page, such as `click` and `fill`, aimed at what `snapshot` shows.
-- **Custom Tools**: operations of your own on one element, such as highlighting it for the user.
+- **Page Object Tools**: your marked actions, such as `ProjectsPage.createProject`, with `page_objects`, which reads the Page Objects on the page. Both kinds of agent get them.
+- **Browser Tools**: built-in operations on the page, such as `click` and `fill`, aimed at what `snapshot` shows. Only agents in the browser get them: a coding agent drives the page with its own browser automation.
+- **Custom Tools**: operations of your own on one element, such as highlighting it for the user. Only agents in the browser get them too.
 
 While you develop, a coding agent also gets **Peek Tools**: they read app state the page does not show, such as a store or what your server holds, from the page and from your app's own Node processes. WebMCP never publishes them. See [`ayme.peek`](docs/guide/reference/ayme.md#aymepeek).
 

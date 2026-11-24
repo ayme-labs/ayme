@@ -21,6 +21,7 @@ import type {
   InputId,
   Written,
 } from "../src/session/domain";
+import { STORAGE_SAVE_LIMIT_MS } from "../src/session/domain";
 import {
   type ElementLookup,
   type InteractionReport,
@@ -125,6 +126,9 @@ export interface ScriptedBrowser {
    * by itself: a browser that hangs. What a test plays by hand is still
    * told. */
   goSilent(): void;
+  /** From now on saving the storage state fails, for this reason, as when
+   * its file cannot be written. Until then it is saved at once. */
+  failStorageSave(reason: string): void;
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -139,6 +143,10 @@ export async function startScriptedRecorder(
     /** Serve the recorder window, whose built files are in `folder`, as
      * the CLI has the engine do. */
     readonly window?: { readonly folder: string };
+    /** The browser has a file to save its storage state to, as
+     * `--save-storage` gives one: the recorder asks for that save as it
+     * ends. Off unless set. */
+    readonly saveStorage?: boolean;
   } = {}
 ): Promise<{
   recorder: Recorder;
@@ -168,6 +176,7 @@ export async function startScriptedRecorder(
   let snapshotsHeld: (() => void)[] | undefined;
   let traceAnswersHeld: (() => void)[] | undefined;
   let silent = false;
+  let storageFails: string | undefined;
   let confirmationsHeld: (() => void)[] | undefined;
   const asked: BrowserRequest[] = [];
   const traces: string[] = [];
@@ -256,6 +265,12 @@ export async function startScriptedRecorder(
       case "letInputsThrough":
         // Nothing answers it.
         return;
+      case "saveStorage":
+        return tell(
+          storageFails === undefined
+            ? { kind: "storageSaved" }
+            : { kind: "requestFailed", request, reason: storageFails }
+        );
       // Assert visibility.
       case "pick":
         // Playwright tells of its mode only when it changes.
@@ -274,6 +289,43 @@ export async function startScriptedRecorder(
     }
   };
 
+  /** Resolves once the engine has asked exactly this. */
+  const asks = (request: unknown) =>
+    new Promise<void>((resolve) => {
+      const wanted = JSON.stringify(request);
+      const check = () => {
+        if (!asked.some((item) => JSON.stringify(item) === wanted)) return;
+        waiting.splice(waiting.indexOf(check), 1);
+        resolve();
+      };
+      waiting.push(check);
+      check();
+    });
+
+  /** Resolves once the storage state's save is asked, or the recorder has
+   * ended; rejects when neither came within ten seconds. */
+  const storageSaveAsked = (ms: number) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const missed = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `The recorder asked for no storage save within the first ${ms - STORAGE_SAVE_LIMIT_MS} ms of its clock.`
+            )
+          ),
+        10_000
+      );
+    });
+    const asked = Promise.race([
+      asks({ kind: "saveStorage" }),
+      recorder.done,
+      missed,
+    ]).finally(() => clearTimeout(timer));
+    asked.catch(() => {});
+    return asked;
+  };
+
   const toolbar = toolbarBridge();
   const recorder = await startRecorderOn(
     Layer.effect(
@@ -290,6 +342,7 @@ export async function startScriptedRecorder(
         tell({ kind: "pageOpened", page, url });
         return RecordedBrowser.of({
           signals: queue,
+          savesStorage: options.saveStorage === true,
           ask: (request) =>
             Effect.sync(() => {
               asked.push(request);
@@ -321,8 +374,14 @@ export async function startScriptedRecorder(
       /** Lets what the clock set off run, the package's write included. */
       const turn = (wait: number) =>
         new Promise((resolve) => setTimeout(resolve, wait));
+      // With --save-storage, the storage state's save is the last of the
+      // budget: its time runs from when it is asked, which may wait on the
+      // disk, so the clock never moves into it before the ask, or the end.
+      // A recorder that asks nothing for ten seconds fails the test.
+      const saveAsked = options.saveStorage ? storageSaveAsked(ms) : null;
       for (let passed = 0; passed < ms && !outcome; passed += 1_000) {
         await turn(0);
+        if (saveAsked && ms - passed <= STORAGE_SAVE_LIMIT_MS) await saveAsked;
         await Effect.runPromise(clock!.adjust(Math.min(1_000, ms - passed)));
       }
       // The clock has done its part: what is left is the disk's.
@@ -338,6 +397,9 @@ export async function startScriptedRecorder(
       goSilent: () => {
         silent = true;
       },
+      failStorageSave: (reason) => {
+        storageFails = reason;
+      },
       closePage: ({ pagesLeft }) =>
         tell({ kind: "pageClosed", page, pagesLeft }),
       get released() {
@@ -348,17 +410,7 @@ export async function startScriptedRecorder(
       },
       asked,
       traces,
-      asks: (request) =>
-        new Promise((resolve) => {
-          const wanted = JSON.stringify(request);
-          const check = () => {
-            if (!asked.some((item) => JSON.stringify(item) === wanted)) return;
-            waiting.splice(waiting.indexOf(check), 1);
-            resolve();
-          };
-          waiting.push(check);
-          check();
-        }),
+      asks,
       showPage: (next) => {
         tree = next;
       },

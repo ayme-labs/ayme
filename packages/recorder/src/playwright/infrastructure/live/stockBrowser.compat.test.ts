@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createServer as createNetServer, type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -113,10 +113,19 @@ const freePort = () =>
 
 /** Serves one page of HTML, and opens the recorded browser on it, or, to
  * start recording, on a blank page that goes there once Record holds
- * inputs back. */
+ * inputs back. `storage` gives the storage state files of a launch, once
+ * the page's address is known. */
 async function onStockPlaywright(
   html: string,
-  { startRecording = false } = {}
+  {
+    startRecording = false,
+    storage,
+  }: {
+    startRecording?: boolean;
+    storage?: (
+      url: string
+    ) => Promise<{ loadStorage?: string; saveStorage?: string }>;
+  } = {}
 ): Promise<Harness> {
   const server = createServer((_, response) => {
     response.setHeader("content-type", "text/html; charset=utf-8");
@@ -132,6 +141,7 @@ async function onStockPlaywright(
   );
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
   const debugPort = await freePort();
+  const storageFiles = storage ? await storage(url) : {};
 
   let running: BrowserContext | undefined;
   if (attaching) {
@@ -156,6 +166,7 @@ async function onStockPlaywright(
           headless: true,
           debugPort,
           ...(startRecording ? { startRecording } : {}),
+          ...storageFiles,
         })
   );
   ends.push(() => runtime.dispose());
@@ -622,6 +633,109 @@ it("tells of a trace that is kept, and of none that is thrown away, and starts a
 });
 
 // Visits.
+
+// The storage state (ticket #1356): --load-storage and --save-storage make
+// the library calls Playwright's own codegen makes, on the recorded context.
+// Playwright reads the local storage of an origin no page is at from a page
+// of its own, which it tells of to no listener: no page is told opened.
+it.skipIf(attaching)(
+  "loads the storage state file into the recorded context, and saves the context's to the file asked for, with the local storage of an origin no page is at, telling of no page",
+  async () => {
+    const folder = await mkdtemp(join(tmpdir(), "ayme-recorder-storage-"));
+    ends.push(() => rm(folder, { recursive: true, force: true }));
+    const saved = join(folder, "saved.json");
+    const browser = await onStockPlaywright(BUTTONS, {
+      storage: async (url) => {
+        const loaded = join(folder, "loaded.json");
+        await writeFile(
+          loaded,
+          JSON.stringify({
+            cookies: [
+              {
+                name: "session",
+                value: "s3cret",
+                domain: "127.0.0.1",
+                path: "/",
+                expires: -1,
+                httpOnly: false,
+                secure: false,
+                sameSite: "Lax",
+              },
+            ],
+            origins: [
+              {
+                origin: new URL(url).origin,
+                localStorage: [{ name: "user", value: "ada" }],
+              },
+            ],
+          })
+        );
+        return { loadStorage: loaded, saveStorage: saved };
+      },
+    });
+    expect(
+      await browser.page.evaluate(() => [
+        document.cookie,
+        localStorage.getItem("user"),
+      ])
+    ).toEqual(["session=s3cret", "ada"]);
+    await browser.page.evaluate(() => localStorage.setItem("theme", "dark"));
+    // Another origin of the same server: no page is left at the first one.
+    const elsewhere = new URL(browser.url);
+    elsewhere.hostname = "localhost";
+    await browser.page.goto(elsewhere.href);
+    const pagesTold = () =>
+      browser.told.filter(
+        (signal) => signal.kind === "pageOpened" || signal.kind === "pageClosed"
+      ).length;
+    const before = pagesTold();
+
+    await browser.ask({ kind: "saveStorage" });
+    await browser.toldOf("storageSaved");
+
+    const state = JSON.parse(await readFile(saved, "utf8")) as {
+      cookies: unknown[];
+      origins: unknown[];
+    };
+    expect(state.cookies).toContainEqual(
+      expect.objectContaining({
+        name: "session",
+        value: "s3cret",
+        domain: "127.0.0.1",
+      })
+    );
+    expect(state.origins).toContainEqual(
+      expect.objectContaining({
+        origin: new URL(browser.url).origin,
+        localStorage: expect.arrayContaining([
+          { name: "user", value: "ada" },
+          { name: "theme", value: "dark" },
+        ]),
+      })
+    );
+    expect(pagesTold()).toBe(before);
+  }
+);
+
+it.skipIf(attaching)(
+  "tells that the storage state could not be saved, naming its file, when the file cannot be written",
+  async () => {
+    const folder = await mkdtemp(join(tmpdir(), "ayme-recorder-storage-"));
+    ends.push(() => rm(folder, { recursive: true, force: true }));
+    // A file where the storage file's folder would be.
+    await writeFile(join(folder, "not-a-folder"), "");
+    const saved = join(folder, "not-a-folder", "saved.json");
+    const browser = await onStockPlaywright(BUTTONS, {
+      storage: async () => ({ saveStorage: saved }),
+    });
+
+    await browser.ask({ kind: "saveStorage" });
+
+    const failed = await browser.toldOf("requestFailed");
+    expect(failed.request).toEqual({ kind: "saveStorage" });
+    expect(failed.reason).toContain(saved);
+  }
+);
 
 it("starts a document the page goes to with the gate as it was last set", async () => {
   const browser = await onStockPlaywright(BUTTONS);

@@ -5,7 +5,7 @@ import { agentConnectionTests } from "@ayme-dev/example-certification/tests";
 // and in the App Process `instrumentation.ts` starts.
 agentConnectionTests({
   enabled: () => server === "dev",
-  snapshotText: 'button "Increment"',
+  pageObject: "CounterPage",
   peek: true,
   appProcess: { peek: "renders" },
 });

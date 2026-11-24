@@ -10,7 +10,6 @@ import { callPageTool } from "./callPageTool";
 
 const unknown = (name: string) => errorResult(`Unknown tool "${name}".`);
 const noFailure = async () => undefined;
-const saveImage = vi.fn(async (filename: string) => `/tmp/shots/${filename}`);
 
 it("answers that a name is unknown while only an App Process is paired", async () => {
   const connection = new AgentConnection();
@@ -24,14 +23,7 @@ it("answers that a name is unknown while only an App Process is paired", async (
   ]);
 
   expect(
-    await callPageTool(
-      connection,
-      "peek.node.mail",
-      {},
-      unknown,
-      saveImage,
-      noFailure
-    )
+    await callPageTool(connection, "peek.node.mail", {}, unknown, noFailure)
   ).toEqual(unknown("peek.node.mail"));
 });
 
@@ -41,7 +33,6 @@ it("answers that no page is connected while nothing is paired", async () => {
     "peek.counter",
     {},
     unknown,
-    saveImage,
     noFailure
   );
 
@@ -63,7 +54,6 @@ it("answers that no page is connected and that the served Page Objects did not b
     "snapshot",
     {},
     unknown,
-    saveImage,
     async () => failed
   );
 
@@ -85,14 +75,7 @@ it("answers that no page is connected, and why, after the server refused a page 
   );
 
   expect(
-    await callPageTool(
-      connection,
-      "peek.counter",
-      {},
-      unknown,
-      saveImage,
-      noFailure
-    )
+    await callPageTool(connection, "peek.counter", {}, unknown, noFailure)
   ).toEqual(
     errorResult(
       "No page is connected: ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts."
@@ -108,63 +91,12 @@ it("answers why no page is connected while only an App Process is paired after t
   );
 
   expect(
-    await callPageTool(
-      connection,
-      "peek.counter",
-      {},
-      unknown,
-      saveImage,
-      noFailure
-    )
+    await callPageTool(connection, "peek.counter", {}, unknown, noFailure)
   ).toEqual(
     errorResult(
       "No page is connected: ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts."
     )
   );
-});
-
-it("saves the image a page tool returns and gives it to the agent with its path", async () => {
-  const connection = new AgentConnection();
-  const page = connection.attach(
-    { tab: "a", url: "http://127.0.0.1:5173/" },
-    () => {}
-  )!;
-  page.publishTools([
-    { name: "screenshot", description: "", inputSchema: {}, available: true },
-  ]);
-  const image = {
-    type: "image",
-    subject: "the viewport",
-    filename: "shot.png",
-    mimeType: "image/png",
-    width: 10,
-    height: 10,
-    data: "iVBORw0KGgo=",
-  };
-
-  const result = callPageTool(
-    connection,
-    "screenshot",
-    {},
-    unknown,
-    saveImage,
-    noFailure
-  );
-  for await (const call of page.calls(undefined)) {
-    page.answer({ callId: call.callId, ok: true, result: image });
-    break;
-  }
-
-  expect(await result).toEqual({
-    content: [
-      { type: "image", data: image.data, mimeType: "image/png" },
-      {
-        type: "text",
-        text: "Screenshot of the viewport, 10×10 PNG, saved to /tmp/shots/shot.png.",
-      },
-    ],
-  });
-  expect(saveImage).toHaveBeenCalledWith("shot.png", image.data);
 });
 
 const pageTool = (name: string) => ({
@@ -203,14 +135,7 @@ describe("a call while the tab loads a new document", () => {
   /** Calls `name`, and tells whether the call has been answered yet. */
   const call = (connection: AgentConnection, name = "snapshot") => {
     let answered = false;
-    const result = callPageTool(
-      connection,
-      name,
-      {},
-      unknown,
-      saveImage,
-      noFailure
-    );
+    const result = callPageTool(connection, name, {}, unknown, noFailure);
     void result.then(() => (answered = true));
     return { result, answered: () => answered };
   };

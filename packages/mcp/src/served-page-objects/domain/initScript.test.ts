@@ -18,7 +18,11 @@ type Pending = {
 function runInitScript({
   loading = false,
   slot,
-}: { loading?: boolean; slot?: { contract?: object } } = {}) {
+}: {
+  loading?: boolean;
+  slot?: { contract?: object };
+} = {}) {
+  const options: Record<string, unknown>[] = [];
   const imports: Pending[] = [];
   const registered: string[] = [];
   const sockets: { onmessage?: (event: { data: string }) => void }[] = [];
@@ -33,7 +37,9 @@ function runInitScript({
       registered.splice(registered.indexOf(model.name), 1);
     },
   };
-  const createAyme = ({ pageObjects }: { pageObjects: { name: string }[] }) => {
+  const createAyme = (given: { pageObjects: { name: string }[] }) => {
+    options.push(given);
+    const { pageObjects } = given;
     registered.push(...pageObjects.map((model) => model.name));
     return { start() {}, pom };
   };
@@ -91,6 +97,7 @@ function runInitScript({
       await settle();
     },
     createAyme,
+    options,
   };
 }
 
@@ -110,6 +117,15 @@ it("loads the build of the first stamp it is told of", async () => {
   const page = await started();
 
   expect(page.registered).toEqual(["A"]);
+});
+
+it("starts the runtime with its Agent Connection and WebMCP publication off", async () => {
+  const page = await started();
+
+  expect(page.options).toEqual([
+    expect.objectContaining({ agentConnection: true }),
+  ]);
+  expect(page.options[0]).not.toHaveProperty("webMCP");
 });
 
 it("swaps in the newest rebuild, not one that finishes loading after it", async () => {

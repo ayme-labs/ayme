@@ -70,8 +70,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { AymeProvider } from "@ayme-dev/react";
 import App from "./App";
-import { ProjectsPage } from "../.ayme/pom/ProjectsPage";
-import { SettingsPage } from "../.ayme/pom/SettingsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
+import { SettingsPage } from "#pom/SettingsPage";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -90,7 +90,7 @@ Call the hooks in descendants of the provider. A component that calls an action 
 
 ```tsx
 import { usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "../.ayme/pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 export default function Controls() {
   const pom = usePageObject(ProjectsPage);
@@ -200,7 +200,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 "use client";
 
 import { usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "../../.ayme/pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 export default function Projects() {
   const pom = usePageObject(ProjectsPage);

@@ -82,7 +82,6 @@ function mountHighlights(page = fakePage()) {
           connectionStatus: () => {
             throw new Error("No session.");
           },
-          subscribeToAgentImageRuns: () => () => {},
           highlights: createHighlights(page.locate),
           pick: async () => undefined,
           registry: {

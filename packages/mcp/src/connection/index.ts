@@ -3,11 +3,11 @@ export {
   ChannelSession,
   PageSession,
   ProcessSession,
+  PAIR_WAIT_MS,
   RECONNECT_WAIT_MS,
 } from "./application/agentConnection";
 export type { ConnectionEvent } from "./application/agentConnection";
 export type {
-  AgentImageRun,
   ClientBehaviour,
   ConnectionBehaviour,
   InspectorPort,

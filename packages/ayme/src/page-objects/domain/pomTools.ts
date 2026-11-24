@@ -10,12 +10,12 @@ export function pomToolFacts(
   const parameters = rooted
     ? [
         {
-          name: "ref",
+          name: "id",
           optional: false,
           schema: {
             type: "string",
             description:
-              "Structural Ref of the instance's Page Object Root, as marked in the page state.",
+              "The Page Object's id, written po<n>. The page state shows it on the Page Object Root.",
           } satisfies JsonSchema,
         },
         {

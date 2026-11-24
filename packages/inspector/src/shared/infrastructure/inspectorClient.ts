@@ -4,7 +4,6 @@ import {
   inlineInspectorContract,
   mergeInspectorState,
   type Caller,
-  type InspectorAgentImageRun,
   type InspectorCommandResult,
   type InspectorContract,
   type InspectorHighlightLayer,
@@ -51,8 +50,6 @@ export type InspectorClient = {
    * followed while anyone listens.
    */
   subscribe(listener: () => void): () => void;
-  /** Calls `listener` with each agent's image Run `ayme mcp` reports. */
-  onAgentImageRun(listener: (run: InspectorAgentImageRun) => void): () => void;
   runTool(request: {
     name: string;
     input?: JsonValue;
@@ -87,7 +84,6 @@ export function createInspectorClient(
 ): InspectorClient {
   let held = emptyInspectorState;
   const listeners = new Set<() => void>();
-  const imageListeners = new Set<(run: InspectorAgentImageRun) => void>();
   let stopTransport: (() => void) | undefined;
   // Windows on one `ayme mcp` share the page's pick ids, so each client's own.
   const pickPrefix = Math.random().toString(36).slice(2, 10);
@@ -105,7 +101,6 @@ export function createInspectorClient(
     const stop = transport.subscribe({
       onEvent(event) {
         if (event.type === "state") take(event.state);
-        else for (const listener of [...imageListeners]) listener(event.run);
       },
       onError: (error) => console.warn(error.message),
     });
@@ -133,10 +128,6 @@ export function createInspectorClient(
         stopTransport?.();
         stopTransport = undefined;
       };
-    },
-    onAgentImageRun(listener) {
-      imageListeners.add(listener);
-      return () => void imageListeners.delete(listener);
     },
     async runTool(request) {
       const result = await transport.runTool(request);

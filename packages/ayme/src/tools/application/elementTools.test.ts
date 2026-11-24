@@ -31,7 +31,7 @@ import {
 import { RefResolutionError } from "../../shared";
 import {
   getPageStateForDocument,
-  latestPageStateRefNamed,
+  getPageStateSession,
 } from "../../page-state/infrastructure";
 import { listPublishedBrowserTools } from "../infrastructure/publishedBrowserTools";
 import { ayme, runContext } from "../../../testing/agentCalls.testSupport";
@@ -182,7 +182,9 @@ describe("Structural Ref interactions", () => {
     const clicked: { selector?: string; named?: AriaRef } = {};
     const click = vi.fn(async (selector: string) => {
       clicked.selector = selector;
-      clicked.named = latestPageStateRefNamed(refFromSelector(selector)!);
+      clicked.named = getPageStateSession(document).latestRefOfNamed(
+        refFromSelector(selector)!
+      );
     });
     const page = fakePage({ click });
 

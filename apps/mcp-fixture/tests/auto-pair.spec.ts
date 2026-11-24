@@ -5,11 +5,11 @@ import type { Page } from "@playwright/test";
 import {
   expect,
   holdCall,
+  pageHeading,
   serverAddress,
   startAgent,
   test,
   unanswered,
-  type Agent,
   storedPairing,
 } from "./fixtures";
 
@@ -38,17 +38,11 @@ function scanAnswers(page: Page, ports: readonly number[]) {
   );
 }
 
-/** Sets the page's heading, to tell pages apart in a snapshot. */
+/** Sets the page's heading, to tell pages apart by `pageHeading`. */
 async function setHeading(page: Page, text: string) {
   await page.evaluate((text) => {
     document.querySelector("h1")!.textContent = text;
   }, text);
-}
-
-async function snapshotOf(agent: Agent) {
-  const { text, isError } = await agent.call("snapshot");
-  expect(isError, text).toBe(false);
-  return JSON.parse(text).structure as string;
 }
 
 test("a localhost page pairs by itself when exactly one server is running", async ({
@@ -63,9 +57,9 @@ test("a localhost page pairs by itself when exactly one server is running", asyn
 
   await expect
     .poll(() => agent.pageToolNames(), { message: agent.log })
-    .toContain("snapshot");
+    .toContain("page_objects");
   await setHeading(page, "Paired by itself");
-  expect(await snapshotOf(agent)).toContain('heading "Paired by itself"');
+  expect(await pageHeading(agent)).toBe("Paired by itself");
   const stored = await storedPairing(page);
   expect(JSON.parse(stored!)).toMatchObject({ address });
 });
@@ -117,9 +111,9 @@ test("a localhost tab opened before its server started pairs when it gains focus
 
     await expect
       .poll(() => agent.pageToolNames(), { message: agent.log })
-      .toContain("snapshot");
+      .toContain("page_objects");
     await setHeading(page, "Paired on focus");
-    expect(await snapshotOf(agent)).toContain('heading "Paired on focus"');
+    expect(await pageHeading(agent)).toBe("Paired on focus");
 
     probes.length = 0;
     await focusTab(page);
@@ -148,7 +142,7 @@ test("a tab paired by link does not scan when it gains focus", async ({
     expect(probes).toEqual([]);
     expect(await other.pageToolNames()).toEqual([]);
     await setHeading(page, "Still paired by link");
-    expect(await snapshotOf(agent)).toContain('heading "Still paired by link"');
+    expect(await pageHeading(agent)).toBe("Still paired by link");
   } finally {
     await other.close();
   }
@@ -164,20 +158,20 @@ test("an auto-paired tab reloads and reconnects to its own server, with or witho
   await page.goto("/");
   await expect
     .poll(() => agent.pageToolNames(), { message: agent.log })
-    .toContain("snapshot");
+    .toContain("page_objects");
   const { answer: call } = await holdCall(agent, page);
 
   await page.reload();
 
   const answer = unanswered(await call);
   expect(answer.error).toMatch(/^The page reloaded/);
-  expect(answer.tools).toContain("snapshot");
+  expect(answer).toMatchObject({ settled: false });
 
   await page.reload();
   await setHeading(page, "Reloaded twice");
   await expect
-    .poll(() => snapshotOf(agent).catch(() => ""), { message: agent.log })
-    .toContain('heading "Reloaded twice"');
+    .poll(() => pageHeading(agent).catch(() => ""), { message: agent.log })
+    .toBe("Reloaded twice");
   const stored = await storedPairing(page);
   // The server handed the tab its token, which the tab reconnects with.
   expect(JSON.parse(stored!).token).toMatch(/^[\w-]+$/);
@@ -193,7 +187,7 @@ test("an auto-paired tab whose server another one replaced on its port stays unp
   await page.goto("/");
   await expect
     .poll(() => agent.pageToolNames(), { message: agent.log })
-    .toContain("snapshot");
+    .toContain("page_objects");
   const second = await startAgent();
   await agent.close();
   const third = await startAgent("--port", String(port));
@@ -226,7 +220,7 @@ test("while an auto-paired tab reloads, another localhost tab that loads does no
   await page.goto("/");
   await expect
     .poll(() => agent.pageToolNames(), { message: agent.log })
-    .toContain("snapshot");
+    .toContain("page_objects");
   // Holds the reloaded document's startup, so the tab stays away while the
   // other tab loads and scans.
   let release!: () => void;
@@ -254,8 +248,8 @@ test("while an auto-paired tab reloads, another localhost tab that loads does no
   await setHeading(page, "Back after the reload");
 
   await expect
-    .poll(() => snapshotOf(agent).catch(() => ""), { message: agent.log })
-    .toContain('heading "Back after the reload"');
+    .poll(() => pageHeading(agent).catch(() => ""), { message: agent.log })
+    .toBe("Back after the reload");
   expect(pairingSockets).toEqual([]);
   expect(await storedPairing(other)).toBeNull();
 });
@@ -279,7 +273,7 @@ test("a server paired by link stays with its tab when another localhost tab load
   await other.waitForTimeout(500);
 
   expect(await storedPairing(other)).toBeNull();
-  expect(await snapshotOf(agent)).toContain('heading "Paired by link"');
+  expect(await pageHeading(agent)).toBe("Paired by link");
   expect(await storedPairing(page)).not.toBeNull();
 });
 
@@ -316,12 +310,12 @@ test("with two servers running, an open localhost page stays unpaired, and each 
     await otherPage.goto(otherLink);
     await expect
       .poll(() => other.pageToolNames(), { message: other.log })
-      .toContain("snapshot");
+      .toContain("page_objects");
 
     await setHeading(page, "First agent's page");
     await setHeading(otherPage, "Second agent's page");
-    expect(await snapshotOf(agent)).toContain("First agent's page");
-    expect(await snapshotOf(other)).toContain("Second agent's page");
+    expect(await pageHeading(agent)).toContain("First agent's page");
+    expect(await pageHeading(other)).toContain("Second agent's page");
   } finally {
     await other.close();
   }
@@ -366,7 +360,7 @@ test("a page not on localhost or 127.0.0.1 never auto-pairs", async ({
   await page.goto(link);
   await expect
     .poll(() => agent.pageToolNames(), { message: agent.log })
-    .toContain("snapshot");
+    .toContain("page_objects");
 });
 
 /** The status the server answers a WebSocket handshake on `path` with. */

@@ -137,7 +137,7 @@ describe("what the terminal is told of the window", () => {
 });
 
 describe("which browser a target asks for", () => {
-  it("launches a browser on a URL, with the window setting and the tests' variables", () => {
+  it("launches a browser on a URL, with the window setting, the storage state files and the tests' variables", () => {
     expect(
       browserOf({ url: "http://localhost:3000", headless: true }, {})
     ).toEqual({ launch: { url: "http://localhost:3000", headless: true } });
@@ -149,14 +149,24 @@ describe("which browser a target asks for", () => {
     ).toEqual({
       launch: { url: "http://localhost:3000", headless: true, debugPort: 9333 },
     });
-    // Opened already recording.
+    // Opened already recording, with the storage state files given.
     expect(
-      browserOf({ url: "http://localhost:3000", startRecording: true }, {})
+      browserOf(
+        {
+          url: "http://localhost:3000",
+          startRecording: true,
+          loadStorage: "auth.json",
+          saveStorage: "saved.json",
+        },
+        {}
+      )
     ).toEqual({
       launch: {
         url: "http://localhost:3000",
         headless: false,
         startRecording: true,
+        loadStorage: "auth.json",
+        saveStorage: "saved.json",
       },
     });
   });

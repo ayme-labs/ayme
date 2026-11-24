@@ -10,17 +10,23 @@ Your Page Object Models run in the browser on [playwright-lite](https://github.c
 
 ## What an agent gets
 
-A coding agent such as Claude Code, Codex or Cursor connects to the page through ayme's MCP server, which the agent starts; you turn the page side on when you start ayme, as [Connect an agent](../guides/connect-an-agent.md) shows. Agents that run in the browser get the same tools through WebMCP, the browser's standard for offering tools on a page to agents, when you turn publication on. An agent connected to the page sees:
+A coding agent such as Claude Code, Codex or Cursor connects to the page through ayme's MCP server, which the agent starts; you turn the page side on when you start ayme, as [Connect an agent](../guides/connect-an-agent.md) shows. It sees:
 
-- `snapshot`, which reads the page state;
 - the Page Object Tools of every Page Object currently on the page;
-- Browser Tools, built-in operations on the page itself, such as reading the page, clicking an element or filling a field;
-- Custom Tools your app registers for single elements;
-- `goal`, which runs the Goal Loop, when you configure one.
+- `page_objects`, which shows those Page Objects as a tree, with the id a rooted Page Object Tool takes.
+
+The agent keeps driving the browser with its own browser automation, such as Playwright MCP, and ayme adds your Page Objects to it. A Page Object Tool answers the agent with its result, whether the page settled, and how the Page Objects changed.
 
 While you develop, a coding agent can also read app state the page does not show, such as unsaved edits, a store or what your server holds, through the Peek Tools of the [Peeks](../reference/ayme.md#aymepeek) your app adds, in the page and in its own Node processes. WebMCP never publishes them.
 
-ayme also describes the page to the agent. The Structural Page State is a model-facing view of what the page presents and which Page Objects it holds, with Structural Refs the agent passes back to act on a node. After each action, the agent learns what changed.
+An agent that runs in the browser gets its tools through WebMCP, the browser's standard for offering tools on a page to agents, when you turn on publication, which is experimental. It has no browser automation of its own, so beside the Page Object Tools and `page_objects` it also sees:
+
+- `snapshot`, which reads the page state;
+- Browser Tools, built-in operations on the page itself, such as clicking an element or filling a field;
+- Custom Tools your app registers for single elements;
+- `goal`, which runs the Goal Loop, when you configure one.
+
+The Structural Page State `snapshot` reads is a model-facing view of what the page presents and which Page Objects it holds, with Structural Refs the agent passes back to act on a node. After each action, the agent learns what changed.
 
 ## The Goal Loop
 

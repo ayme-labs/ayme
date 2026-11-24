@@ -36,7 +36,7 @@ Enable `experimentalDecorators` in the tsconfig, keeping SvelteKit's generated b
 }
 ```
 
-On SvelteKit 3, which reads its configuration from the `sveltekit()` call, extend `$app/tsconfig` instead and import Page Object Models with their `.ts` extension, such as `../../.ayme/pom/ProjectsPage.ts`. Keep `svelte.config.js` and its adapter as they are. Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows, in `.ts` modules in `.ayme/pom/`, with the tsconfig that [The `.ayme` folder](../guides/ayme-folder.md) shows.
+On SvelteKit 3, which reads its configuration from the `sveltekit()` call, extend `$app/tsconfig` instead, and give a relative import of a Page Object Model its `.ts` extension, such as `./ProjectsPage.ts` from another file in `.ayme/pom/`. Keep `svelte.config.js` and its adapter as they are. Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows, in `.ts` modules in `.ayme/pom/`, with the tsconfig that [The `.ayme` folder](../guides/ayme-folder.md) shows.
 
 ## Start ayme at the root
 
@@ -89,8 +89,8 @@ Registering a page doesn't tie it to a route. Give each page a `present` that ch
   import type { Snippet } from "svelte";
   import { dev } from "$app/environment";
   import { useAyme } from "@ayme-dev/svelte";
-  import { ProjectsPage } from "../../.ayme/pom/ProjectsPage";
-  import { SettingsPage } from "../../.ayme/pom/SettingsPage";
+  import { ProjectsPage } from "#pom/ProjectsPage";
+  import { SettingsPage } from "#pom/SettingsPage";
 
   let { children }: { children: Snippet } = $props();
   useAyme({
@@ -108,7 +108,7 @@ A component that calls an action gets the session's instance from `usePageObject
 ```svelte
 <script lang="ts">
   import { usePageObject } from "@ayme-dev/svelte";
-  import { ProjectsPage } from "../../.ayme/pom/ProjectsPage";
+  import { ProjectsPage } from "#pom/ProjectsPage";
 
   const pom = usePageObject(ProjectsPage);
 </script>

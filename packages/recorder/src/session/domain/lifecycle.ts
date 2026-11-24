@@ -119,7 +119,11 @@ export type BrowserSignal =
   /** The trace is started, as "startTrace" asked: snapshots may be marked. */
   | { readonly kind: "traceStarted" }
   /** The trace is thrown away, as "stopTrace" without `keep` asked. */
-  | { readonly kind: "traceDiscarded" };
+  | { readonly kind: "traceDiscarded" }
+  // The storage state.
+  /** The storage state is saved, as "saveStorage" asked, or there was no
+   * file to save it to. */
+  | { readonly kind: "storageSaved" };
 
 /** The element a highlight is drawn on: the page it is on, and how the
  * page as it is now is asked for it. */
@@ -192,6 +196,14 @@ export type BrowserRequest =
    * of its own: the lifecycle asks for the next one when the last is
    * answered. */
   | { readonly kind: "stopTrace"; readonly keep: boolean }
+  /** Save the recorded context's storage state, its cookies and local
+   * storage, to the file the recorder was asked to save it to
+   * (`--save-storage`), as Playwright's own codegen does. Answered by
+   * "storageSaved", at once when no file was named. Asked only once the
+   * outcome is decided and the trace is stopped, thrown away or given up on,
+   * so that nothing it does, as the page Playwright opens to read an origin
+   * no page is at, is recorded or traced. */
+  | { readonly kind: "saveStorage" }
   // Assert visibility.
   /** Have Playwright's recorder pick the element whose visibility is
    * asserted, or stop picking, and have every page leave the picking click
@@ -221,6 +233,8 @@ export type Happening =
   /** A "save" is done. `folder` is the package's folder, or null when there
    * was nothing to save. */
   | { readonly kind: "saved"; readonly folder: string | null }
+  /** A "save" could not write the package; `reason` says why. */
+  | { readonly kind: "saveFailed"; readonly reason: string }
   /** The recorder cannot go on: something it was carrying out broke. */
   | { readonly kind: "brokeDown"; readonly reason: string }
   // Warnings.
@@ -305,6 +319,14 @@ export const WRAP_UP_LIMIT_MS = 5_000;
 export const TRACE_STOP_LIMIT_MS = 60_000;
 
 /**
+ * How long saving the storage state may take: Playwright writes the file,
+ * and reads the local storage of an origin no page is at from a page of its
+ * own. It is there for a browser that never answers: the recorder then ends
+ * with a warning.
+ */
+export const STORAGE_SAVE_LIMIT_MS = 30_000;
+
+/**
  * Whether the state still waits for the answer to a request that was given
  * a time for it (`within`). The worker ends the time of a request that is no
  * longer waited for, so that it cannot pass for a later one of its kind.
@@ -313,6 +335,8 @@ export function awaitsAnswer(
   state: LifecycleState,
   request: BrowserRequest
 ): boolean {
+  if (request.kind === "saveStorage")
+    return endingOf(state)?.discardingTrace === false;
   if (request.kind !== "stopTrace") return false;
   return Boolean(
     request.keep ? savingOf(state)?.stoppingTrace : discarding(state)
@@ -440,6 +464,10 @@ export type LifecycleState = {
   /** How many highlights were asked: the latest is the one drawn. It goes
    * from one phase to the next. */
   readonly highlights?: number;
+  /** The recorder was asked to save the storage state as it ends
+   * (`--save-storage`). Without it, the recorder ends with no such step. It
+   * goes from one phase to the next. */
+  readonly savesStorage?: boolean;
 } & (
   | { readonly phase: "notRecording" }
   | ({
@@ -480,6 +508,15 @@ export type LifecycleState = {
       /** The trace is asked to stop: the package is written once it has. */
       readonly stoppingTrace: boolean;
     }
+  /** The outcome is decided, and the storage state is being saved: the
+   * recorder ends once it is, or once that could not be done. */
+  | {
+      readonly phase: "ending";
+      readonly outcome: RecordingOutcome;
+      /** The trace of a Record that could not start is thrown away first:
+       * the storage state is asked for once it is gone. */
+      readonly discardingTrace: boolean;
+    }
   | { readonly phase: "ended"; readonly outcome: RecordingOutcome }
   /** Nothing is under way. The count of snapshots goes on after Continue:
    * the timeline is the same one. */
@@ -519,6 +556,10 @@ export function shown(state: LifecycleState): RecorderPhase {
   switch (state.phase) {
     case "ended":
       return { phase: "ended", outcome: state.outcome };
+    // The storage state is saved after the package: the recorder is still
+    // saving.
+    case "ending":
+      return { phase: "saving" };
     case "wrappingUp":
       // A recorder that clears and then ends is shown clearing: what it
       // ends with is told when it has ended.
@@ -583,10 +624,13 @@ const wrappingUpOf = (state: LifecycleState) =>
 const savingOf = (state: LifecycleState) =>
   // Stryker disable next-line ConditionalExpression: no other phase has what is read of a save, so it reads as absent either way; the check is for the type
   state.phase === "saving" ? state : null;
-/** A wrap-up whose recording is thrown away, and whose trace is asked to
- * stop: the recording is over when that is answered. */
+const endingOf = (state: LifecycleState) =>
+  state.phase === "ending" ? state : null;
+/** A wrap-up whose recording is thrown away, or the end of a Record that
+ * could not start, whose trace is asked to stop: the recording is over, or
+ * the storage state is asked for, when that is answered. */
 const discarding = (state: LifecycleState) =>
-  wrappingUpOf(state)?.discardingTrace;
+  wrappingUpOf(state)?.discardingTrace ?? endingOf(state)?.discardingTrace;
 
 export function step(state: LifecycleState, happening: Happening): Step {
   const next = stepOf(state, happening);
@@ -599,7 +643,11 @@ export function step(state: LifecycleState, happening: Happening): Step {
     !reviewable(next.state) &&
     next.state.phase !== "ended";
   return {
-    state: { ...next.state, highlights: leaves ? highlights + 1 : highlights },
+    state: {
+      ...next.state,
+      highlights: leaves ? highlights + 1 : highlights,
+      savesStorage: state.savesStorage,
+    },
     todo: leaves
       ? [...next.todo, drawHighlight(highlights + 1, null)]
       : next.todo,
@@ -623,6 +671,8 @@ function stepOf(state: LifecycleState, happening: Happening): Step {
       return located(state, happening.highlight, happening.target);
     case "saved":
       return saved(state, happening.folder);
+    case "saveFailed":
+      return saveFailed(state, happening.reason);
     default:
       return browserTold(state, happening);
   }
@@ -644,11 +694,17 @@ function browserTold(state: LifecycleState, happening: BrowserSignal): Step {
     case "browserWarned":
       return { state, todo: [{ kind: "warn", warning: happening.warning }] };
     case "requestFailed":
-      return failed(state, happening.request, happening.reason);
+      // The storage state is saved once the recording is over: its failure
+      // is no failure of a recording's request.
+      return happening.request.kind === "saveStorage"
+        ? storageNotSaved(state, happening.reason)
+        : failed(state, happening.request, happening.reason);
     case "traceStopped":
       return writePackage(state, happening.trace);
     case "traceDiscarded":
       return traceGone(state);
+    case "storageSaved":
+      return ended(state, []);
     case "picking":
       return pickingChanged(state, happening.on);
     case "highlighted":
@@ -751,6 +807,10 @@ function pageClosed(
  * ends here, and says why. */
 function brokeDown(state: LifecycleState, reason: string): Step {
   if (state.phase === "ended") return stay(state);
+  // The outcome is decided and saved: it ends with it now, as nothing would
+  // hear the storage state's answer, and a person is told that the storage
+  // state is not saved.
+  if (state.phase === "ending") return endWith(state, [storageWarning(reason)]);
   const outcome: RecordingOutcome = { kind: "failed", reason };
   return {
     state: { phase: "ended", pages: state.pages, outcome },
@@ -764,9 +824,84 @@ function saved(state: LifecycleState, folder: string | null): Step {
   if (state.phase !== "saving") return stay(state);
   const outcome: RecordingOutcome =
     folder === null ? { kind: "empty" } : { kind: "saved", folder };
+  return ending(state, outcome, []);
+}
+
+/** The package could not be written: the recorder ends "failed", with why,
+ * once the storage state is saved, as at any other end. */
+function saveFailed(state: LifecycleState, reason: string): Step {
+  if (state.phase !== "saving") return stay(state);
+  return ending(state, { kind: "failed", reason }, []);
+}
+
+/**
+ * The outcome is decided, the recording is over, and its trace is stopped,
+ * thrown away or given up on. With `--save-storage`, the storage state is
+ * saved before the recorder ends, whatever ended it and whether anything was
+ * recorded, or not; a browser that never answers keeps no end waiting: the
+ * save is given a time. Without it, the recorder ends now.
+ */
+function ending(
+  state: LifecycleState,
+  outcome: RecordingOutcome,
+  todo: readonly ToDo[]
+): Step {
+  if (!state.savesStorage)
+    return {
+      state: { phase: "ended", pages: state.pages, outcome },
+      todo: [...todo, { kind: "end", outcome }],
+    };
+  return {
+    state: {
+      phase: "ending",
+      pages: state.pages,
+      outcome,
+      discardingTrace: false,
+    },
+    todo: [
+      ...todo,
+      {
+        kind: "browser",
+        ask: { kind: "saveStorage" },
+        within: STORAGE_SAVE_LIMIT_MS,
+      },
+    ],
+  };
+}
+
+/** The storage state could not be saved, or not in time: the recording is
+ * saved all the same, and a person is told that the storage state is not.
+ * An answer when no end waits for it changes nothing (`ended`). */
+const storageNotSaved = (state: LifecycleState, reason: string): Step =>
+  ended(state, [storageWarning(reason)]);
+
+/** That the storage state is not saved, and why, for a person. */
+const storageWarning = (reason: string): ToDo => ({
+  kind: "warn",
+  warning: {
+    kind: "storageNotSaved",
+    message: `The storage state could not be saved. ${reason}`,
+  },
+});
+
+/** The storage state is saved, or could not be: the recorder has ended,
+ * with the outcome decided before. */
+function ended(state: LifecycleState, todo: readonly ToDo[]): Step {
+  const asked = endingOf(state);
+  // An answer when no save was asked changes nothing.
+  if (!asked || asked.discardingTrace) return stay(state);
+  return endWith(asked, todo);
+}
+
+/** The recorder has ended, with the outcome decided before. */
+function endWith(
+  state: Extract<LifecycleState, { phase: "ending" }>,
+  todo: readonly ToDo[]
+): Step {
+  const { outcome } = state;
   return {
     state: { phase: "ended", pages: state.pages, outcome },
-    todo: [{ kind: "end", outcome }],
+    todo: [...todo, { kind: "end", outcome }],
   };
 }
 
@@ -1006,13 +1141,8 @@ function clearPaused(
  */
 function endFromOutside(state: LifecycleState): Step {
   switch (state.phase) {
-    case "notRecording": {
-      const outcome: RecordingOutcome = { kind: "empty" };
-      return {
-        state: { phase: "ended", pages: state.pages, outcome },
-        todo: [{ kind: "end", outcome }],
-      };
-    }
+    case "notRecording":
+      return ending(state, { kind: "empty" }, []);
     case "recording":
       return wrapUp(state, "save");
     case "wrappingUp":
@@ -1118,16 +1248,15 @@ function writePackage(
  * stopped and nothing better can be had: the recording is thrown away, and
  * what the wrap-up led to is next. */
 function traceGone(state: LifecycleState): Step {
+  // A Record that could not start: its storage state is saved now.
+  const failedStart = endingOf(state);
+  if (failedStart?.discardingTrace)
+    return ending(failedStart, failedStart.outcome, []);
   const clearing = wrappingUpOf(state);
   if (!clearing?.discardingTrace) return stay(state);
   const { pages } = clearing;
-  if (clearing.then === "clearAndEnd") {
-    const outcome: RecordingOutcome = { kind: "empty" };
-    return {
-      state: { phase: "ended", pages, outcome },
-      todo: [{ kind: "clear" }, { kind: "end", outcome }],
-    };
-  }
+  if (clearing.then === "clearAndEnd")
+    return ending(clearing, { kind: "empty" }, [{ kind: "clear" }]);
   return {
     state: { phase: "notRecording", pages },
     todo: [{ kind: "clear" }],
@@ -2346,7 +2475,7 @@ function release(inputs: readonly Input[]): ToDo[] {
  */
 function failed(
   state: LifecycleState,
-  request: BrowserRequest,
+  request: Exclude<BrowserRequest, { kind: "saveStorage" }>,
   reason: string
 ): Step {
   switch (request.kind) {
@@ -2442,9 +2571,18 @@ function cannotStart(
       kind: "failed",
       reason: `Recording could not start. ${reason}`,
     };
+    // A trace that was started is thrown away first, as nothing was
+    // recorded: the storage state is saved once it is gone.
+    if (recording.traceStarting || !recording.savesStorage)
+      return ending(recording, outcome, [ignored]);
     return {
-      state: { phase: "ended", pages: recording.pages, outcome },
-      todo: [ignored, { kind: "end", outcome }],
+      state: {
+        phase: "ending",
+        pages: recording.pages,
+        outcome,
+        discardingTrace: true,
+      },
+      todo: [ignored, discardTrace],
     };
   }
   return {

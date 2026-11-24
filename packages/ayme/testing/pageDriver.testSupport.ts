@@ -31,7 +31,7 @@ export function nameElement(element: Element, ref: string): void {
 export type StandInMeasure = (element: Element) => {
   present: boolean;
   available: boolean;
-  inTheWay?: string[];
+  inTheWay?: string;
 };
 
 export type StandInPageDriver = PageDriver & {
@@ -97,20 +97,22 @@ export function standInPageDriver(deps: {
           count: refs.length,
           present: false,
           available: false,
-          inTheWay: [],
         };
-      const { present, available, inTheWay = [] } = measure(element);
+      const { present, available, inTheWay } = measure(element);
       return {
         count: 1,
         present,
         available: present && available,
         ref: refs[0],
-        inTheWay,
+        ...(inTheWay !== undefined ? { inTheWay } : {}),
       };
     },
     refs: refsOf,
     // A stand-in ref never changes name: a capture has marked nothing.
     currentRefs: async (refs) => [...refs],
+    // Nor does a stand-in element change ref: its ref is its key.
+    elementKeys: async (refs) => refs.map((ref) => ({ key: ref, ref })),
+    keyedRefs: async (keys) => [...keys],
     async names(locator, ref) {
       const refs = await refsOf(locator);
       return refs.length === 1 && refs[0] === ref;
@@ -163,7 +165,6 @@ export function standInPageDriver(deps: {
         else return;
       }
     },
-    latestPageStateRef: () => undefined,
     trigger: () => watching?.schedule(),
   };
   (globalThis as { [latest]?: StandInPageDriver })[latest] = driver;

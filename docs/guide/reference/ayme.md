@@ -109,7 +109,7 @@ An app with a typed router calls the router's matcher from the predicate instead
 
 - The Page Object is present while the Locator resolves to one rendered element.
 - The page state marks that element with the Page Object's class.
-- Every tool of the class takes that element's Structural Ref as `ref`.
+- The Page Object gets a [Page Object id](../guides/page-state.md#page-object-ids), and every tool of the class takes it as `id`.
 - Availability is measured at that element.
 
 Each action is published once per class, however many instances the page shows. Take a component base class, `AppComponent`, whose `root` is the element a component is built on. `ProjectRow` extends it, and `ProjectsPage` holds one `ProjectRow` per list item. A locator is a getter.
@@ -167,16 +167,16 @@ export class ProjectsPage extends AppPage {
 }
 ```
 
-The page state marks each row's root with its class, in place of its role:
+The page state marks each row's root with its class, in place of its role, and its Page Object id:
 
 ```text
 - e5 list:
-  - e6 ProjectRow:
+  - e6 ProjectRow po1:
     - text: Launch plan
     - e7 button "Archive"
     - e8 button "Rename"
     - e9 button "Remove"
-  - e10 ProjectRow:
+  - e10 ProjectRow po2:
     - text: Q4 survey
     - e11 button "Archive"
     - e12 button "Rename"
@@ -194,31 +194,33 @@ const ayme = createAyme({ pageObjects: [ProjectsPage] });
 ayme.start();
 ```
 
-A rooted class's tool takes two inputs. `ref` is the Structural Ref of the instance's root. `args` holds the action's arguments:
+A rooted class's tool takes two inputs. `id` is the instance's Page Object id, a `PageObjectId`. `args` holds the action's arguments:
 
 ```ts
-await ayme.tools.run("ProjectRow.remove", { ref: "e10" }); // removes Q4 survey
+await ayme.tools.run("ProjectRow.remove", { id: "po2" }); // removes Q4 survey
 await ayme.tools.run("ProjectRow.rename", {
-  ref: "e6",
+  id: "po1",
   args: { name: "Launch plan v2" },
 });
 ```
 
 Leave out `args` when the action takes no input. A rooted page or single child is called the same way as a collection item.
 
-A `ref` that is not a `ProjectRow` root is refused before anything runs:
+An `id` that is not a `ProjectRow` on the page is refused before anything runs:
 
 ```text
-RefResolutionError: Cannot call ProjectRow.remove on ref "e5": it is not a root of ProjectRow.
+RefResolutionError: Cannot call ProjectRow.remove on Page Object "po3": it is not a ProjectRow on the page.
 ```
 
-`ProjectsPage` declares no `root`, because `AppPage` gives it only `present`. A root-less class's tool takes the action's arguments directly, with no `ref`:
+An `id` that is not written `po<n>`, a Structural Ref included, is refused with a `ToolInputError`, as is a call that gives `ref`.
+
+`ProjectsPage` declares no `root`, because `AppPage` gives it only `present`. A root-less class's tool takes the action's arguments directly, with no `id`:
 
 ```ts
 await ayme.tools.run("ProjectsPage.search", { query: "web" });
 ```
 
-Two instances of one class whose roots are the same element count as one instance.
+Two instances of one class whose roots are the same element count as one instance, with one id.
 
 `AppComponent` declares the predicate as its own function to type `self`. A Locator declared `@ayme.child` that resolves to the root's element is the root, not a child. The model lists it once.
 
@@ -236,7 +238,7 @@ A root-less model has no mark in the page state. Its tools are never unavailable
 | A single Page Object Child, without `present` | The Page Object it is reached through is present. |
 | Either of the above, with `present`           | The presence predicate returns `true`.            |
 
-A root-less class has no `ref`, so it must be reached from exactly one declared member. A class two pages both declare needs a root. So does a collection item, and every Page Object Child below it. [Troubleshooting](../troubleshooting.md#a-page-object-has-no-tools) shows the error you get otherwise.
+A root-less class has no `id`, so it must be reached from exactly one declared member. A class two pages both declare needs a root. So does a collection item, and every Page Object Child below it. [Troubleshooting](../troubleshooting.md#a-page-object-has-no-tools) shows the error you get otherwise.
 
 ### Action availability
 
@@ -249,16 +251,17 @@ It runs once for each present instance. It is skipped for an instance whose root
 Give `remove` on `ProjectRow` from [Page Object root](#page-object-root) a predicate. A row shows its Remove button only to an admin of that project:
 
 ```ts
-const canRemove = async (self: ProjectRow) =>
-  (await self.removeButton.isVisible()) || "Only admins can remove projects";
-
 export class ProjectRow extends AppComponent {
   @ayme.child
   get removeButton() {
     return this.root.getByRole("button", { name: "Remove" });
   }
 
-  @ayme.action({ available: canRemove })
+  @ayme.action({
+    available: async (self: ProjectRow) =>
+      (await self.removeButton.isVisible()) ||
+      "Only admins can remove projects",
+  })
   async remove() {
     await this.removeButton.click();
     return this;
@@ -266,26 +269,43 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-Declaring the predicate as its own function types `self`. One predicate can be given to several actions.
+An inline predicate names the type of `self`, as `(self: ProjectRow)` does here; without it, `self` is `unknown`. When several actions share one predicate, declare it as its own function and pass it to each:
+
+```ts
+const isEditable = async (self: ProjectEditor) =>
+  (await self.archivedBadge.isHidden()) || "This project is archived";
+
+export class ProjectEditor extends AppComponent {
+  @ayme.action({ available: isEditable })
+  async save() {
+    // …
+  }
+
+  @ayme.action({ available: isEditable })
+  async rename(name: string) {
+    // …
+  }
+}
+```
 
 The user is an admin of Launch plan but not of Q4 survey, so only Launch plan's row has a Remove button:
 
 ```text
 - e5 list:
-  - e6 ProjectRow:
+  - e6 ProjectRow po1:
     - text: Launch plan
     - e7 button "Archive"
     - e8 button "Rename"
     - e9 button "Remove"
-  - e10 ProjectRow:
+  - e10 ProjectRow po2:
     - text: Q4 survey
     - e11 button "Archive"
     - e12 button "Rename"
 ```
 
 - `ayme.tools.list()` lists `ProjectRow.remove` with `available: true`, because Launch plan passes.
-- `ayme.tools.run("ProjectRow.remove", { ref: "e6" })` removes Launch plan.
-- `ayme.tools.run("ProjectRow.remove", { ref: "e10" })` is refused before anything runs, with Q4 survey's reason: `RuntimeStateError: ProjectRow on ref "e10" is unavailable: Only admins can remove projects.`
+- `ayme.tools.run("ProjectRow.remove", { id: "po1" })` removes Launch plan.
+- `ayme.tools.run("ProjectRow.remove", { id: "po2" })` is refused before anything runs, with Q4 survey's reason: `RuntimeStateError: ProjectRow "po2" is unavailable: Only admins can remove projects.`
 - If no row passed, the tool would be listed with `available: false` and the first failing row's reason.
 
 A predicate that throws makes the action unavailable. The error's text, such as `TypeError: store is undefined`, becomes the reason. Without `available`, an action is available while its Page Object is: its root is present and a click would reach it.
@@ -406,11 +426,11 @@ Presence decides whether a Page Object Tool is listed. It is listed while any in
 | Goal Loop                            | Not offered.                                  |
 | Inspector                            | Shown dimmed, with its reason.                |
 
-| Member                      | Behavior                                                                                                                                                                                                                                                                                                                                                               |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run(name, input, { by }?)` | Runs the tool as a Run for the Caller `by` names, `"app"` by default, the way an agent's call runs it. Browser Tools resolve with an `ActionResult`, except `generate_locator`, which resolves with its locators; `snapshot` with a `PageContextPayload`, `goal` with a `Handover`. Page Object Tools and Custom Tools resolve with an action result, typed `unknown`. |
-| `list()`                    | Every tool, in publication order, as [`ToolInfo`](#toolinfo) objects. Returns the same array until the list changes, and `[]` while the session is not started.                                                                                                                                                                                                        |
-| `subscribe(listener)`       | Calls `listener` with the new list after it changes: the session starts or stops, a class is registered for the first time or unregistered for the last, a Page Object appears on the page or leaves it, a tool becomes available or unavailable or its reason changes, or a Peek Tool appears or goes. Returns the function that unsubscribes.                        |
+| Member                      | Behavior                                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run(name, input, { by }?)` | Runs the tool as a Run for the Caller `by` names, `"app"` by default, the way an agent's call runs it. Browser Tools resolve with an `ActionResult`, except `generate_locator`, which resolves with its locators; `snapshot` with a `PageContextPayload`, `page_objects` with its text, `goal` with a `Handover`. Page Object Tools and Custom Tools resolve with an action result, typed `unknown`. |
+| `list()`                    | Every tool, in publication order, as [`ToolInfo`](#toolinfo) objects. Returns the same array until the list changes, and `[]` while the session is not started.                                                                                                                                                                                                                                      |
+| `subscribe(listener)`       | Calls `listener` with the new list after it changes: the session starts or stops, a class is registered for the first time or unregistered for the last, a Page Object appears on the page or leaves it, a tool becomes available or unavailable or its reason changes, or a Peek Tool appears or goes. Returns the function that unsubscribes.                                                      |
 
 `run` checks a call in this order. Nothing runs until every check passes. Child Runs are checked the same way.
 
@@ -419,8 +439,8 @@ Presence decides whether a Page Object Tool is listed. It is listed while any in
 | `by` is not empty, and the session is started.                                 | `RuntimeStateError`                                                       |
 | A tool has the name.                                                           | `RuntimeStateError`: `There is no tool "<name>".`                         |
 | The input matches the tool's input schema. Leaving `input` out counts as `{}`. | `ToolInputError`, naming every problem. See [Errors](errors.md#messages). |
-| A rooted tool's `ref` is a root of its class.                                  | `RefResolutionError`                                                      |
-| The tool, or the instance `ref` names, is available.                           | `RuntimeStateError`, with the reason.                                     |
+| A rooted tool's `id` names a Page Object of its class on the page.             | `RefResolutionError`                                                      |
+| The tool, or the instance `id` names, is available.                            | `RuntimeStateError`, with the reason.                                     |
 
 Errors from the browser Page pass through unchanged. `BuiltInTools` maps each built-in tool name to its input and result. `ToolInput<Name>` and `ToolResult<Name>` read them.
 
@@ -461,7 +481,7 @@ A child Run runs inside its parent's turn, so it doesn't wait behind other Runs.
 | `name`              | The unprefixed tool name.                                                                                                                                                                                                                                      |
 | `authorDescription` | What the tool's author wrote. Absent when there is none.                                                                                                                                                                                                       |
 | `agentDescription`  | The text ayme's own adapters give agents. Hand this one to an agent of your own. On a Page Object Tool it adds the Page Objects the page shows afterwards; see [Action descriptions](#action-descriptions). On every other tool it equals `authorDescription`. |
-| `inputSchema`       | The JSON Schema of the input. A rooted class's tools take `ref` and `args`; see [Page Object root](#page-object-root).                                                                                                                                         |
+| `inputSchema`       | The JSON Schema of the input. A rooted class's tools take `id` and `args`; see [Page Object root](#page-object-root).                                                                                                                                          |
 | `group`             | `"browser"`, `"custom"`, `"pageObject"`, `"peek"` or `"agent"`.                                                                                                                                                                                                |
 | `available`         | Whether `run` can run it now. Only a Page Object Tool can be `false`. That happens while its Page Object is unavailable, or while its [availability predicate](#action-availability) fails for every instance.                                                 |
 | `reason`            | The Availability Reason, when the tool is unavailable and has one. See [Availability Reasons](#availability-reasons).                                                                                                                                          |
@@ -483,12 +503,12 @@ A `reason` comes from one of two places.
     - e3 heading "Projects" [level=1]
     - e4 button "New project"
     - e5 list:
-      - e6 ProjectRow:
+      - e6 ProjectRow po1:
         - text: Launch plan
         - e7 button "Archive"
         - e8 button "Rename"
         - e9 button "Remove"
-      - e10 ProjectRow:
+      - e10 ProjectRow po2:
         - text: Q4 survey
         - e11 button "Archive"
         - e12 button "Rename"
@@ -498,17 +518,17 @@ A `reason` comes from one of two places.
     - e17 button "Cancel"
 ```
 
-The dialog covers both rows. So `ayme.tools.list()` has `{ name: "ProjectRow.remove", available: false, reason: "a click would not reach it; e14 is in the way", … }`. A call on Launch plan is refused with `ProjectRow on ref "e6" is unavailable: a click would not reach it; e14 is in the way.`
+The dialog covers both rows. So `ayme.tools.list()` has `{ name: "ProjectRow.remove", available: false, reason: 'a click would not reach it; dialog "New project" is in the way', … }`. A call on Launch plan is refused with `ProjectRow "po1" is unavailable: a click would not reach it; dialog "New project" is in the way.`
 
-The ref names what the click would hit instead:
+The reason names what the click would hit instead, by its role and accessible name, as a Playwright snapshot of the page shows them:
 
-| What blocks the root   | The ref names                                                               |
-| ---------------------- | --------------------------------------------------------------------------- |
-| An element covering it | The covering element, or its nearest ancestor with a ref: here, the dialog. |
-| An open native modal   | The modal.                                                                  |
-| An `inert` ancestor    | That ancestor.                                                              |
+| What blocks the root   | The reason names                                                             |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| An element covering it | The covering element, or its nearest ancestor with a role: here, the dialog. |
+| An open native modal   | The modal.                                                                   |
+| An `inert` ancestor    | That ancestor.                                                               |
 
-The ref comes from the agent's latest page state. Sometimes no page state has shown that element yet, or nothing in the way has a ref, such as with `pointer-events: none` on `body`. Then the reason is just `a click would not reach it`. The reason never names a kind of widget, such as a modal, popover or banner.
+An element with no accessible name is named by its role alone, such as `dialog`. A role of `generic`, `none` or `presentation` names nothing, and neither does an element hidden from the accessibility tree. When nothing in the way can be named, such as a plain `div` overlay or `pointer-events: none` on `body`, the reason is just `a click would not reach it`. The role is the element's own: the runtime never infers a kind of widget, such as a modal or popover, from what it measured.
 
 **Your predicate** produces every other reason: the string the action's [availability predicate](#action-availability) returned, or the text of an error it threw.
 
@@ -521,13 +541,13 @@ The ref comes from the agent's latest page state. Sometimes no page state has sh
 | `list()`              | The newest 200 top-level Runs with their child Runs, oldest first, as `Run` objects; an older top-level Run is dropped with its children. Returns the same array until a Run starts, gains an Interaction, or ends. A new document starts an empty log. |
 | `subscribe(listener)` | Calls `listener` with the new list when a Run starts, gains an Interaction, or ends. Returns the function that unsubscribes.                                                                                                                            |
 
-A `Run` is one tool call in the log. Say your code removes Launch plan from [Action availability](#action-availability) with `await ayme.tools.run("ProjectRow.remove", { ref: "e6" })`. The action clicks the Remove button, `e9`. The last entry of `ayme.runs.list()` is then:
+A `Run` is one tool call in the log. Say your code removes Launch plan from [Action availability](#action-availability) with `await ayme.tools.run("ProjectRow.remove", { id: "po1" })`. The action clicks the Remove button, `e9`. The last entry of `ayme.runs.list()` is then:
 
 ```ts
 {
   id: "1",
   tool: "ProjectRow.remove",
-  input: { ref: "e6" },
+  input: { id: "po1" },
   by: "app",
   status: "succeeded",
   result: { page_changed: true, settled: true, changes: "…" },

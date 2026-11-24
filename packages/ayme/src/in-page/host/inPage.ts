@@ -93,8 +93,8 @@ export type InPage = {
   forget(keys: readonly string[]): Promise<void>;
   /**
    * Reach (ADR-0041) of the element `ref` names, measured in the page: what
-   * a click would reach, and what blocks or takes it, named by Structural
-   * Ref. An element that is gone is absent. With `atCall`, the element is
+   * a click would reach, and what blocks or takes it, named by its role
+   * and name. An element that is gone is absent. With `atCall`, the element is
    * scrolled into view first, as the call that clicks it scrolls, and the
    * hit test is where the click lands.
    */
@@ -103,10 +103,12 @@ export type InPage = {
     options?: { atCall?: boolean }
   ): Promise<ReachMeasurement>;
   /**
-   * The ref of what blocks every click on the element `ref` names and its
-   * focus: the last opened native modal it is not in, else its inert ancestor.
+   * What blocks every click on the element `ref` names and its focus, when
+   * anything does: the last opened native modal it is not in, else its inert
+   * ancestor, with `inTheWay`, its role and name, when it has a role to name
+   * it by (see `ReachMeasurement`).
    */
-  blockingAncestor(ref: string): Promise<string | undefined>;
+  blockingAncestor(ref: string): Promise<{ inTheWay?: string } | undefined>;
   /**
    * Page Object Root `root`: how many elements its Locator matches, and
    * whether it is on the page (Page Object Presence) and a click would reach
@@ -145,6 +147,20 @@ export type InPage = {
    * the capture's. Undefined for a ref whose element left the document.
    */
   currentRefs(refs: readonly string[]): Promise<(string | undefined)[]>;
+  /**
+   * The key of the element each of `refs`, now or before, names, and the ref
+   * it has now, in the order given: a key names its element for as long as
+   * it lives, however often captures rename it, and never an element of
+   * another document. Undefined for a ref whose element left the document.
+   */
+  elementKeys(
+    refs: readonly string[]
+  ): Promise<({ key: string; ref: string } | undefined)[]>;
+  /**
+   * The ref the element each of `keys` names has now, in the order given.
+   * Undefined once it left the document, and for a key of another document.
+   */
+  keyedRefs(keys: readonly string[]): Promise<(string | undefined)[]>;
   /** The URL the document resolves relative URLs against: its `baseURI`. */
   baseURI(): Promise<string>;
   /** The key of the document's current history entry, or none without the Navigation API. */
@@ -271,6 +287,8 @@ export type CaptureOptions = {
   accepts?: readonly Predicate[];
   /** The Custom Tools' filters whose accepted refs the capture carries, under each name. */
   filters?: readonly NamedFilter[];
+  /** The refs of elements the capture keeps as nodes of their own (`Capture.kept`). */
+  keep?: readonly string[];
   /**
    * The host's inputs, plain data (`ElementInputs`). Transitional: the
    * browser runtime gives a handle to them, for Playwright Lite's page
@@ -544,10 +562,14 @@ export function createInPageHost(version = packageVersion): InPageHost {
 
     const inPage: InPage = {
       bound,
-      capture: ({ elements, accepts, filters } = {}) => {
+      capture: ({ elements, accepts, filters, keep } = {}) => {
         const ask =
-          accepts || filters
-            ? { ...(accepts && { accepts }), ...(filters && { filters }) }
+          accepts || filters || keep
+            ? {
+                ...(accepts && { accepts }),
+                ...(filters && { filters }),
+                ...(keep && { keep }),
+              }
             : undefined;
         return call<Capture>("capture", [elements, ask]);
       },
@@ -612,6 +634,17 @@ export function createInPageHost(version = packageVersion): InPageHost {
       async currentRefs(refs) {
         if (refs.length === 0) return [];
         return call<(string | undefined)[]>("currentRefs", [refs]);
+      },
+      async elementKeys(refs) {
+        if (refs.length === 0) return [];
+        return call<({ key: string; ref: string } | undefined)[]>(
+          "elementKeys",
+          [refs]
+        );
+      },
+      async keyedRefs(keys) {
+        if (keys.length === 0) return [];
+        return call<(string | undefined)[]>("keyedRefs", [keys]);
       },
       names: (target, ref) => callOn<boolean>(target, "names", ref),
       watch(probe) {

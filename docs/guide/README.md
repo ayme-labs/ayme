@@ -17,7 +17,7 @@ How to turn your app's Page Object Models into tools that coding agents and your
 - [The `.ayme` folder](guides/ayme-folder.md): where your Page Objects live, the folder's tsconfig, and which of its files you commit.
 - [Publish tools](guides/publish-tools.md): start ayme and turn WebMCP publication on for agents that run in the browser.
 - [Connect an agent](guides/connect-an-agent.md): let Claude Code, Codex, Cursor or another coding agent call your tools through ayme's MCP server.
-- [Page Objects on a page without ayme](guides/page-objects-without-ayme.md): let `ayme mcp` serve your Page Objects to a page that doesn't ship ayme, through Playwright MCP or Playwright CLI.
+- [Page Objects on a page without ayme](guides/page-objects-without-ayme.md): let `ayme mcp` serve your Page Objects to a page that doesn't ship ayme, through Playwright MCP, Playwright CLI or agent-browser.
 - [Page state](guides/page-state.md): the Structural Page State, Structural Refs and interaction history an agent works with.
 - [Custom Tools](guides/custom-tools.md): register operations of your own on one element.
 - [Build an in-app assistant](guides/in-app-assistant.md): give the assistant inside your app your Page Object Actions and the page state as its tools.

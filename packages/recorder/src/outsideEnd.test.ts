@@ -13,6 +13,8 @@ import { startScriptedRecorder } from "../testing";
 
 /** The wrap-up's time limit, and the trace's after it. */
 const BOUND_MS = 5_000 + 60_000;
+/** The same, and the storage state's save after it, with --save-storage. */
+const BOUND_WITH_STORAGE_MS = BOUND_MS + 30_000;
 
 let projectDir: string;
 beforeEach(async () => {
@@ -28,10 +30,11 @@ const click = {
   values: { button: "left" },
 };
 
-const start = async () => {
+const start = async (saveStorage = false) => {
   const scripted = await startScriptedRecorder({
     projectDir,
     url: "http://shop.test/",
+    saveStorage,
   });
   scripted.browser.showPage(idle);
   const seen = { phase: "", entries: 0 };
@@ -63,155 +66,189 @@ const saved = async (outcome: { kind: string; folder?: string }) =>
     ? readFile(join(outcome.folder!, "package.yaml"), "utf8")
     : null;
 
-describe("an end from outside, with a browser that answers nothing any more", () => {
-  it.each<{
-    name: string;
-    /** Brings the recorder to the state, and the browser to silence. */
-    reach: (scripted: Started) => Promise<void>;
-    ends: "empty" | "saved";
-  }>([
-    {
-      name: "before anything is recorded",
-      reach: async ({ browser }) => browser.goSilent(),
-      ends: "empty",
-    },
-    {
-      name: "while Record still waits for the trace to start",
-      reach: async ({ recorder, browser }) => {
-        browser.goSilent();
-        void recorder.send({ type: "record" });
-      },
-      ends: "empty",
-    },
-    {
-      name: "while Record still waits for the pages to hold inputs back",
-      reach: async ({ recorder, browser }) => {
-        browser.holdConfirmations();
-        void recorder.send({ type: "record" });
-        await browser.asks({ kind: "holdInputs", on: true });
-        browser.goSilent();
-      },
-      ends: "empty",
-    },
-    {
-      name: "while recording, with a click recorded",
-      reach: async (scripted) => {
-        await recorded(scripted);
-        scripted.browser.goSilent();
-      },
-      ends: "saved",
-    },
-    {
-      name: "while a click waits for its 'before'",
-      reach: async (scripted) => {
-        await recorded(scripted);
-        scripted.browser.goSilent();
-        scripted.browser.holdClick();
-        await scripted.browser.asks({
-          kind: "takeSnapshot",
-          snapshot: "snapshot_3",
-          page: "page_1",
-        });
-      },
-      ends: "saved",
-    },
-    {
-      name: "while a wrap-up after Stop waits for the pages",
-      reach: async (scripted) => {
-        await recorded(scripted);
-        scripted.browser.goSilent();
-        await scripted.recorder.send({ type: "stop" });
-      },
-      ends: "saved",
-    },
-    {
-      name: "while a wrap-up after Stop waits for Playwright's recorder to switch off",
-      reach: async (scripted) => {
-        await recorded(scripted);
-        void scripted.recorder.send({ type: "stop" });
-        await scripted.browser.asks({
-          kind: "takeSnapshot",
-          snapshot: "snapshot_3",
-          page: "page_1",
-        });
-        scripted.browser.goSilent();
-      },
-      ends: "saved",
-    },
-    {
-      name: "while paused",
-      reach: async (scripted) => {
-        await recorded(scripted);
-        await scripted.recorder.send({ type: "stop" });
-        await expect.poll(scripted.phase).toBe("paused");
-        scripted.browser.goSilent();
-      },
-      ends: "saved",
-    },
-    {
-      name: "while Continue still waits for the pages",
-      reach: async (scripted) => {
-        await recorded(scripted);
-        await scripted.recorder.send({ type: "stop" });
-        await expect.poll(scripted.phase).toBe("paused");
-        scripted.browser.goSilent();
-        void scripted.recorder.send({ type: "continue" });
-      },
-      ends: "saved",
-    },
-    {
-      name: "while a wrap-up after Clear waits for the pages",
-      reach: async (scripted) => {
-        await recorded(scripted);
-        scripted.browser.goSilent();
-        await scripted.recorder.send({ type: "clear" });
-      },
-      ends: "empty",
-    },
-    {
-      name: "while a Clear waits for its trace to be gone",
-      reach: async (scripted) => {
-        await recorded(scripted);
-        scripted.browser.holdTraceAnswers();
-        await scripted.recorder.send({ type: "clear" });
-        await scripted.browser.asks({ kind: "stopTrace", keep: false });
-        scripted.browser.goSilent();
-      },
-      ends: "empty",
-    },
-    {
-      name: "while a save waits for its trace to be stopped",
-      reach: async (scripted) => {
-        await recorded(scripted);
-        scripted.browser.holdTraceAnswers();
-        await scripted.recorder.send({ type: "finish" });
-        await scripted.browser.asks({ kind: "stopTrace", keep: true });
-        scripted.browser.goSilent();
-      },
-      ends: "saved",
-    },
-  ])(
-    "finishes within a bounded time $name",
-    { timeout: 15_000 },
-    async ({ reach, ends }) => {
-      const scripted = await start();
-      await reach(scripted);
+/** A state an end from outside is tried from. */
+type EndState = {
+  name: string;
+  /** Brings the recorder to the state, and the browser to silence. */
+  reach: (scripted: Started) => Promise<void>;
+  ends: "empty" | "saved";
+  /** A state only a recorder with --save-storage reaches. */
+  withStorageOnly?: true;
+};
 
-      const outcome = await scripted.endWithin(BOUND_MS);
+describe.each([
+  { flag: "without --save-storage", saveStorage: false, bound: BOUND_MS },
+  {
+    flag: "with --save-storage",
+    saveStorage: true,
+    bound: BOUND_WITH_STORAGE_MS,
+  },
+])(
+  "an end from outside, $flag, with a browser that answers nothing any more",
+  ({ saveStorage, bound }) => {
+    it.each<EndState>(
+      (
+        [
+          {
+            name: "before anything is recorded",
+            reach: async ({ browser }) => browser.goSilent(),
+            ends: "empty",
+          },
+          {
+            name: "while Record still waits for the trace to start",
+            reach: async ({ recorder, browser }) => {
+              browser.goSilent();
+              void recorder.send({ type: "record" });
+            },
+            ends: "empty",
+          },
+          {
+            name: "while Record still waits for the pages to hold inputs back",
+            reach: async ({ recorder, browser }) => {
+              browser.holdConfirmations();
+              void recorder.send({ type: "record" });
+              await browser.asks({ kind: "holdInputs", on: true });
+              browser.goSilent();
+            },
+            ends: "empty",
+          },
+          {
+            name: "while recording, with a click recorded",
+            reach: async (scripted) => {
+              await recorded(scripted);
+              scripted.browser.goSilent();
+            },
+            ends: "saved",
+          },
+          {
+            name: "while a click waits for its 'before'",
+            reach: async (scripted) => {
+              await recorded(scripted);
+              scripted.browser.goSilent();
+              scripted.browser.holdClick();
+              await scripted.browser.asks({
+                kind: "takeSnapshot",
+                snapshot: "snapshot_3",
+                page: "page_1",
+              });
+            },
+            ends: "saved",
+          },
+          {
+            name: "while a wrap-up after Stop waits for the pages",
+            reach: async (scripted) => {
+              await recorded(scripted);
+              scripted.browser.goSilent();
+              await scripted.recorder.send({ type: "stop" });
+            },
+            ends: "saved",
+          },
+          {
+            name: "while a wrap-up after Stop waits for Playwright's recorder to switch off",
+            reach: async (scripted) => {
+              await recorded(scripted);
+              void scripted.recorder.send({ type: "stop" });
+              await scripted.browser.asks({
+                kind: "takeSnapshot",
+                snapshot: "snapshot_3",
+                page: "page_1",
+              });
+              scripted.browser.goSilent();
+            },
+            ends: "saved",
+          },
+          {
+            name: "while paused",
+            reach: async (scripted) => {
+              await recorded(scripted);
+              await scripted.recorder.send({ type: "stop" });
+              await expect.poll(scripted.phase).toBe("paused");
+              scripted.browser.goSilent();
+            },
+            ends: "saved",
+          },
+          {
+            name: "while Continue still waits for the pages",
+            reach: async (scripted) => {
+              await recorded(scripted);
+              await scripted.recorder.send({ type: "stop" });
+              await expect.poll(scripted.phase).toBe("paused");
+              scripted.browser.goSilent();
+              void scripted.recorder.send({ type: "continue" });
+            },
+            ends: "saved",
+          },
+          {
+            name: "while a wrap-up after Clear waits for the pages",
+            reach: async (scripted) => {
+              await recorded(scripted);
+              scripted.browser.goSilent();
+              await scripted.recorder.send({ type: "clear" });
+            },
+            ends: "empty",
+          },
+          {
+            name: "while a Clear waits for its trace to be gone",
+            reach: async (scripted) => {
+              await recorded(scripted);
+              scripted.browser.holdTraceAnswers();
+              await scripted.recorder.send({ type: "clear" });
+              await scripted.browser.asks({ kind: "stopTrace", keep: false });
+              scripted.browser.goSilent();
+            },
+            ends: "empty",
+          },
+          {
+            name: "while the storage state is saved",
+            reach: async (scripted) => {
+              await recorded(scripted);
+              scripted.browser.holdTraceAnswers();
+              await scripted.recorder.send({ type: "finish" });
+              await scripted.browser.asks({ kind: "stopTrace", keep: true });
+              scripted.browser.goSilent();
+              scripted.browser.releaseTraceAnswers();
+              // The package is written on the disk first.
+              await scripted.browser.asks({ kind: "saveStorage" });
+            },
+            ends: "saved",
+            withStorageOnly: true,
+          },
+          {
+            name: "while a save waits for its trace to be stopped",
+            reach: async (scripted) => {
+              await recorded(scripted);
+              scripted.browser.holdTraceAnswers();
+              await scripted.recorder.send({ type: "finish" });
+              await scripted.browser.asks({ kind: "stopTrace", keep: true });
+              scripted.browser.goSilent();
+            },
+            ends: "saved",
+          },
+        ] satisfies EndState[]
+      ).filter((state) => saveStorage || !state.withStorageOnly)
+    )(
+      "finishes within a bounded time $name",
+      { timeout: 15_000 },
+      async ({ reach, ends }) => {
+        const scripted = await start(saveStorage);
+        await reach(scripted);
 
-      expect(outcome.kind).toBe(ends);
-      // A package that is there is complete: the click recorded before the
-      // browser went silent is in it.
-      const text = await saved(outcome);
-      if (ends === "saved") expect(text).toContain("id: interaction_1");
-      else
-        await expect(
-          readdir(join(projectDir, ".ayme", "recordings"))
-        ).rejects.toThrow(/ENOENT/);
-      expect(scripted.browser.released).toBe(true);
-    }
-  );
-});
+        const outcome = await scripted.endWithin(bound);
+
+        expect(outcome.kind).toBe(ends);
+        // A package that is there is complete: the click recorded before the
+        // browser went silent is in it.
+        const text = await saved(outcome);
+        if (ends === "saved") expect(text).toContain("id: interaction_1");
+        else
+          await expect(
+            readdir(join(projectDir, ".ayme", "recordings"))
+          ).rejects.toThrow(/ENOENT/);
+        expect(scripted.browser.released).toBe(true);
+      }
+    );
+  }
+);
 
 describe("the time a trace's stop is given", () => {
   it("is a minute: then the package is written without its trace, and not before", async () => {
@@ -267,5 +304,39 @@ describe("the time a trace's stop is given", () => {
     browser.releaseTraceAnswers();
     await expect.poll(scripted.phase).toBe("notRecording");
     await scripted.endWithin(BOUND_MS);
+  });
+});
+
+describe("the time a storage state's save is given", () => {
+  it("is half a minute: then the recorder ends with a warning, and the recording is saved all the same", async () => {
+    const scripted = await start(true);
+    const { recorder, browser } = scripted;
+    const warnings: string[] = [];
+    recorder.subscribe((update) => {
+      warnings.splice(
+        0,
+        warnings.length,
+        ...update.state.warnings.map((warning) => warning.kind)
+      );
+    });
+    await recorded(scripted);
+    browser.holdTraceAnswers();
+    await recorder.send({ type: "finish" });
+    await browser.asks({ kind: "stopTrace", keep: true });
+    // The browser answers nothing more once the package can be written.
+    browser.goSilent();
+    browser.releaseTraceAnswers();
+    // The package is written on the disk first.
+    await browser.asks({ kind: "saveStorage" });
+
+    await browser.advanceTime(29_999);
+    await expect(recorder.send({ type: "stop" })).resolves.toBe("ignored");
+    expect(scripted.phase()).toBe("saving");
+    await browser.advanceTime(1);
+
+    const outcome = await recorder.done;
+    expect(outcome.kind).toBe("saved");
+    expect(await saved(outcome)).toContain("id: interaction_1");
+    expect(warnings).toEqual(["storageNotSaved"]);
   });
 });

@@ -22,7 +22,6 @@ import {
   type AgentConnectionStatusSource,
   type AppProcessTool,
   type AppProcessTools,
-  type InspectorAgentImageRun as AgentImageRun,
   type InspectorLook,
   type InspectorPageObject,
   type InspectorRecordedPageState,
@@ -141,9 +140,6 @@ function fixtureRunLog() {
 
 const runLog = fixtureRunLog();
 
-// The agent's image Runs `ayme mcp` reports, as the runtime hears of them.
-const imageRunListeners = new Set<(run: AgentImageRun) => void>();
-
 /** A page as a test stands it in: elements by ref, and the registry's targets on them. */
 export type PageFixture = {
   projected: InspectorLook["projected"];
@@ -158,7 +154,12 @@ export type PageFixture = {
   rootedInstances?: Readonly<
     Record<
       string,
-      readonly { element: Element; available: boolean; reason?: string }[]
+      readonly {
+        id: string;
+        element: Element;
+        available: boolean;
+        reason?: string;
+      }[]
     >
   >;
 };
@@ -198,9 +199,10 @@ export function lookOf({
     rootedInstances: Object.fromEntries(
       Object.entries(rootedInstances).map(([name, instances]) => [
         name,
-        instances.map(({ element, available, reason }) => {
+        instances.map(({ id, element, available, reason }) => {
           const ref = refOf(element);
           return {
+            id,
             ...(ref === undefined ? {} : { ref }),
             available,
             ...(reason === undefined ? {} : { reason }),
@@ -307,10 +309,6 @@ export const startedAyme = {
    * the mocks see the tool's name and input.
    */
   runs: runLog,
-  /** Reports an agent's image Run, as the page client does. */
-  reportAgentImageRun(run: AgentImageRun) {
-    for (const listener of imageRunListeners) listener(run);
-  },
   /** The locator a highlight of `ref` asks for. */
   locate: (() => ({
     highlight: async () => ({ dispose: async () => {} }),
@@ -417,10 +415,6 @@ replaceInspectorTransport(
     subscribeToStarted: () => () => {},
     appProcessTools: () => sessionAppProcessTools,
     connectionStatus: () => sessionAgentConnection,
-    subscribeToAgentImageRuns: (listener) => {
-      imageRunListeners.add(listener as never);
-      return () => void imageRunListeners.delete(listener as never);
-    },
     highlights: createHighlights((ref) => startedAyme.locate(ref)),
     pick: async () => undefined,
   })

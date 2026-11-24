@@ -6,7 +6,11 @@ import {
   type ProjectedStructuralNodeForest,
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
-import { pomRootMarkProjection, type PomRootMarks } from "./pomRootMarks";
+import {
+  pomRootMarkProjection,
+  type PomRootIds,
+  type PomRootMarks,
+} from "./pomRootMarks";
 
 export type { AriaRef };
 
@@ -69,12 +73,15 @@ export type RenderedPageState = {
  */
 export type PageStateLook = PageStateCapture & RenderedPageState;
 
-/** The page state text of a capture, and the projected forest it renders. */
-export function renderPageState({
-  tree,
-  pomRootMarks,
-}: Pick<PageCapture, "tree" | "pomRootMarks">): RenderedPageState {
-  const marks = pomRootMarkProjection(pomRootMarks);
+/**
+ * The page state text of a capture, and the projected forest it renders,
+ * with the id in `rootIds` on each Page Object Root that has one.
+ */
+export function renderPageState(
+  { tree, pomRootMarks }: Pick<PageCapture, "tree" | "pomRootMarks">,
+  rootIds?: PomRootIds
+): RenderedPageState {
+  const marks = pomRootMarkProjection(pomRootMarks, rootIds);
   const projected = projectStructuralNodeForest(
     {
       roots: tree.getRootNodes(),

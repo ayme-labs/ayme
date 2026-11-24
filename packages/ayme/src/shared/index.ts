@@ -76,7 +76,6 @@ export {
 export type {
   AgentConnectionStatus,
   AppProcessTool,
-  InspectorAgentImageRun,
   InspectorCommandResult,
   InspectorContract,
   InspectorEvent,

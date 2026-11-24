@@ -79,9 +79,9 @@ test("every result notes the tools that appeared or disappeared since the previo
   expect((await agent.call(BASKET_TOOL)).note).toBeUndefined();
 
   await listChanged(() => hideBasket(page));
-  const called = await agent.call("ayme_call", { tool: "snapshot" });
+  const called = await agent.call("ayme_call", { tool: "page_objects" });
   expect(called.isError, called.text).toBe(false);
-  expect(JSON.parse(called.text).structure).toContain('heading "Groceries"');
+  expect(called.text).toContain("GroceriesPage");
   expect(called.note).toContain(`Disappeared: ${BASKET_TOOLS}.`);
   expect(called.note).not.toContain("Appeared");
 
@@ -130,17 +130,22 @@ test("a class tool appears with its first instance and disappears with its last"
   );
   await fill();
   await expect(page.getByRole("listitem")).toHaveCount(2);
-  expect((await agent.call("snapshot")).note).toBeUndefined();
+  expect((await agent.call("page_objects")).note).toBeUndefined();
   const removeFirst = async () => {
-    const snapshot = await agent.call("snapshot");
-    const ref = JSON.parse(snapshot.text).structure.match(
-      /((?:e|s_)\w+) BasketItem\b/
-    )?.[1];
-    expect(ref, snapshot.text).toBeDefined();
-    return agent.call("BasketItem.remove", { ref });
+    const tree = await agent.call("page_objects");
+    const id = / BasketItem (po\d+)/.exec(tree.text)?.[1];
+    expect(id, tree.text).toBeDefined();
+    return agent.call("BasketItem.remove", { id });
   };
+  const first = await removeFirst();
+  expect(first.note).toBeUndefined();
+  expect(JSON.parse(first.text).changes).toMatch(
+    /- BasketItem po\d+ \(removed\)/
+  );
+  // A Page Object Tool's answer carries no note of the tools that went; the
+  // next answer of another tool does.
   expect((await removeFirst()).note).toBeUndefined();
-  expect((await removeFirst()).note).toContain(
+  expect((await agent.call("ayme_list_tools")).note).toContain(
     "Disappeared: BasketItem.remove"
   );
 });

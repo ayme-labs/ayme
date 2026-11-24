@@ -15,6 +15,7 @@ import {
   openAddress,
   shown,
   step,
+  STORAGE_SAVE_LIMIT_MS,
   TRACE_STOP_LIMIT_MS,
   WRAP_UP_LIMIT_MS,
   type Happening,
@@ -176,6 +177,16 @@ const discardTrace: ToDo = {
 const traceStopped: Happening = { kind: "traceStopped", trace };
 const traceDiscarded: Happening = { kind: "traceDiscarded" };
 const save: ToDo = { kind: "save", trace };
+// Ticket #1356: with --save-storage, once the outcome is decided, the storage
+// state is saved, with a time for it, and the recorder ends when that is
+// answered.
+const saveStorage: ToDo = {
+  kind: "browser",
+  ask: { kind: "saveStorage" },
+  within: STORAGE_SAVE_LIMIT_MS,
+};
+const storageSaved: Happening = { kind: "storageSaved" };
+const endEmpty: ToDo = { kind: "end", outcome: { kind: "empty" } };
 
 // Ticket #1273: the commands, and Playwright's recorder switched off.
 const stop: Happening = { kind: "command", command: { type: "stop" } };
@@ -277,8 +288,8 @@ function showingIn(state: LifecycleState): ReadonlySet<string> {
 
 /** Everything the lifecycle asked for along the way, which fills show after
  * each step, and where it stands. */
-function run(happened: readonly Happening[]) {
-  let state = initialState;
+function run(happened: readonly Happening[], from = initialState) {
+  let state = from;
   const todo: ToDo[][] = [];
   const showing: ReadonlySet<string>[] = [];
   for (const happening of happened) {
@@ -1112,6 +1123,30 @@ describe("the lifecycle", () => {
       },
     },
     {
+      name: "a package that cannot be written ends 'failed' with why, asking nothing of the storage state without --save-storage",
+      happened: [
+        opened,
+        ...started,
+        finish,
+        gateOff,
+        taken(snapshot1),
+        traceStopped,
+        { kind: "saveFailed", reason: "EEXIST: file already exists" },
+      ],
+      todo: [
+        [
+          {
+            kind: "end",
+            outcome: { kind: "failed", reason: "EEXIST: file already exists" },
+          },
+        ],
+      ],
+      state: {
+        phase: "ended",
+        outcome: { kind: "failed", reason: "EEXIST: file already exists" },
+      },
+    },
+    {
       name: "a breakdown after the end changes nothing",
       happened: [outsideEnd, { kind: "brokeDown", reason: "too late" }],
       todo: [[]],
@@ -1939,6 +1974,352 @@ describe("the lifecycle", () => {
 
     expect(todo.flat().filter((item) => item.kind === "save")).toHaveLength(1);
     expect(todo.flat().filter((item) => item.kind === "end")).toHaveLength(1);
+  });
+});
+
+// Ticket #1356: --save-storage. Once the outcome is decided, and the package
+// is written with its trace over, the recorded context's storage state is
+// saved; the recorder ends when that is answered. Nothing it does is
+// recorded: the recording is over.
+describe("the lifecycle, for the storage state", () => {
+  /** A recorder started with --save-storage. */
+  const savingStorage: LifecycleState = { ...initialState, savesStorage: true };
+  const savedPackage = [
+    opened,
+    ...started,
+    finish,
+    gateOff,
+    taken(snapshot1),
+    traceStopped,
+    saved,
+  ];
+  const endSaved: ToDo = {
+    kind: "end",
+    outcome: { kind: "saved", folder: "/project/rec_1" },
+  };
+  const storageNotSaved: ToDo = {
+    kind: "warn",
+    warning: {
+      kind: "storageNotSaved",
+      message: "The storage state could not be saved. It broke.",
+    },
+  };
+
+  it.each<{
+    name: string;
+    happened: Happening[];
+    todo: ToDo[][];
+    state: Partial<RecorderPhase>;
+  }>([
+    {
+      name: "an outside end before anything was recorded saves the storage state, then ends 'empty'",
+      happened: [outsideEnd, storageSaved],
+      todo: [[saveStorage], [endEmpty]],
+      state: { phase: "ended", outcome: { kind: "empty" } },
+    },
+    {
+      name: "closing the last page saves the storage state, then ends 'empty'",
+      happened: [
+        opened,
+        { kind: "pageClosed", page: page1, pagesLeft: 0 },
+        storageSaved,
+      ],
+      todo: [[saveStorage], [endEmpty]],
+      state: { phase: "ended", outcome: { kind: "empty" } },
+    },
+    {
+      name: "an outside end while a recording is thrown away saves the storage state once its trace is gone",
+      happened: [...stopped, clear, outsideEnd, traceDiscarded, storageSaved],
+      todo: [[{ kind: "clear" }, saveStorage], [endEmpty]],
+      state: { phase: "ended", outcome: { kind: "empty" } },
+    },
+    {
+      name: "a Record whose trace cannot start saves the storage state at once, and ends 'failed'",
+      happened: [opened, record, failed(startTrace), storageSaved],
+      todo: [
+        [{ kind: "replyDeferred", result: "ignored" }, saveStorage],
+        [cannotStart],
+      ],
+      state: {
+        phase: "ended",
+        outcome: {
+          kind: "failed",
+          reason: "Recording could not start. It broke.",
+        },
+      },
+    },
+    {
+      name: "a Record that cannot start after its trace started throws the trace away, then saves the storage state, and ends 'failed'",
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        reporting,
+        failed(holdInputs),
+        traceDiscarded,
+        storageSaved,
+      ],
+      todo: [
+        [{ kind: "replyDeferred", result: "ignored" }, discardTrace],
+        [saveStorage],
+        [cannotStart],
+      ],
+      state: {
+        phase: "ended",
+        outcome: {
+          kind: "failed",
+          reason: "Recording could not start. It broke.",
+        },
+      },
+    },
+    {
+      name: "a package that cannot be written saves the storage state all the same, and ends 'failed' with why",
+      happened: [
+        ...savedPackage.slice(0, -1),
+        { kind: "saveFailed", reason: "EEXIST: file already exists" },
+        storageSaved,
+      ],
+      todo: [
+        [saveStorage],
+        [
+          {
+            kind: "end",
+            outcome: { kind: "failed", reason: "EEXIST: file already exists" },
+          },
+        ],
+      ],
+      state: {
+        phase: "ended",
+        outcome: { kind: "failed", reason: "EEXIST: file already exists" },
+      },
+    },
+    {
+      name: "a package told not written when no save is under way changes nothing",
+      happened: [opened, { kind: "saveFailed", reason: "too late" }],
+      todo: [[]],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "the storage state is saved once the package is written, and the recorder shows that it is saving meanwhile",
+      happened: savedPackage,
+      todo: [[saveStorage]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "the recorder ends with the package once the storage state is saved",
+      happened: [...savedPackage, storageSaved],
+      todo: [[endSaved]],
+      state: {
+        phase: "ended",
+        outcome: { kind: "saved", folder: "/project/rec_1" },
+      },
+    },
+    {
+      name: "a storage state that cannot be saved is one warning, and the recording is saved all the same",
+      happened: [...savedPackage, failed(saveStorage)],
+      todo: [
+        [
+          {
+            kind: "warn",
+            warning: {
+              kind: "storageNotSaved",
+              message: "The storage state could not be saved. It broke.",
+            },
+          },
+          endSaved,
+        ],
+      ],
+      state: {
+        phase: "ended",
+        outcome: { kind: "saved", folder: "/project/rec_1" },
+      },
+    },
+    {
+      name: "the storage state is saved with nothing recorded too",
+      happened: [opened, outsideEnd],
+      todo: [[saveStorage]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a command while the storage state is saved is ignored",
+      happened: [...savedPackage, finish],
+      todo: [[reply("ignored")]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "an outside end while the storage state is saved changes nothing",
+      happened: [...savedPackage, outsideEnd],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "closing the last page while the storage state is saved changes nothing",
+      happened: [
+        ...savedPackage,
+        { kind: "pageClosed", page: page1, pagesLeft: 0 },
+      ],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a click a page holds back while the storage state is saved is passed on, and nothing is recorded",
+      happened: [...savedPackage, clickHeld(input1)],
+      todo: [[passOn(input1)]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a report while the storage state is saved is ignored",
+      happened: [...savedPackage, reported],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a Record that cannot start, after its trace started, saves the storage state once the trace is gone, or could not be stopped in time",
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        failed(reportInteractions),
+        failed(discardTrace),
+      ],
+      todo: [[saveStorage]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a storage state told saved while a failed start's trace is thrown away changes nothing: the save was not asked",
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        failed(reportInteractions),
+        storageSaved,
+      ],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a failure to save the storage state while a failed start's trace is thrown away changes nothing: the save was not asked",
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        failed(reportInteractions),
+        failed(saveStorage),
+      ],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "an outside end while a failed start's trace is thrown away changes nothing",
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        failed(reportInteractions),
+        outsideEnd,
+      ],
+      todo: [[]],
+      state: { phase: "saving" },
+    },
+    {
+      name: "a breakdown while a failed start's trace is thrown away ends at once, with the outcome decided and one warning",
+      happened: [
+        opened,
+        record,
+        traceStarted,
+        failed(reportInteractions),
+        { kind: "brokeDown", reason: "It broke." },
+      ],
+      todo: [[storageNotSaved, cannotStart]],
+      state: {
+        phase: "ended",
+        outcome: {
+          kind: "failed",
+          reason: "Recording could not start. It broke.",
+        },
+      },
+    },
+    {
+      name: "a storage state told saved when no end waits for it changes nothing",
+      happened: [opened, storageSaved],
+      todo: [[]],
+      state: { phase: "notRecording" },
+    },
+    {
+      name: "a storage state told saved a second time changes nothing",
+      happened: [outsideEnd, storageSaved, storageSaved],
+      todo: [[]],
+      state: { phase: "ended", outcome: { kind: "empty" } },
+    },
+    {
+      name: "a failure to save the storage state when no end waits for it changes nothing",
+      happened: [outsideEnd, storageSaved, failed(saveStorage)],
+      todo: [[]],
+      state: { phase: "ended", outcome: { kind: "empty" } },
+    },
+    {
+      name: "a breakdown while the storage state is saved ends at once, with the outcome decided and one warning: nothing would hear the answer",
+      happened: [...savedPackage, { kind: "brokeDown", reason: "It broke." }],
+      todo: [[storageNotSaved, endSaved]],
+      state: {
+        phase: "ended",
+        outcome: { kind: "saved", folder: "/project/rec_1" },
+      },
+    },
+  ])("$name", ({ happened, todo, state }) => {
+    const result = run(happened, savingStorage);
+    expect(result.todo.slice(-todo.length)).toEqual(todo);
+    expect(result.state).toMatchObject(state);
+  });
+
+  it.each<{ name: string; happened: Happening[]; of: ToDo; awaited: boolean }>([
+    {
+      name: "a Record that cannot start waits for its trace to be thrown away",
+      happened: [opened, record, traceStarted, failed(reportInteractions)],
+      of: discardTrace,
+      awaited: true,
+    },
+    {
+      name: "a Record that cannot start waits for no trace that never started",
+      happened: [opened, record, failed(startTrace)],
+      of: discardTrace,
+      awaited: false,
+    },
+    {
+      name: "a Record that cannot start does not wait for the storage state while its trace is thrown away",
+      happened: [opened, record, traceStarted, failed(reportInteractions)],
+      of: saveStorage,
+      awaited: false,
+    },
+    {
+      name: "an end waits for the storage state to be saved",
+      happened: [outsideEnd],
+      of: saveStorage,
+      awaited: true,
+    },
+    {
+      name: "an end whose storage state is saved waits for it no more",
+      happened: [outsideEnd, storageSaved],
+      of: saveStorage,
+      awaited: false,
+    },
+    {
+      name: "a save does not wait for the storage state before the package is written",
+      happened: [...stopped, finish],
+      of: saveStorage,
+      awaited: false,
+    },
+  ])("$name", ({ happened, of, awaited }) => {
+    let state = savingStorage;
+    for (const happening of happened) state = step(state, happening).state;
+    if (of.kind !== "browser") throw new Error("Not a request.");
+    expect(awaitsAnswer(state, of.ask)).toBe(awaited);
+  });
+
+  it("offers no command while the storage state is saved", () => {
+    let state = savingStorage;
+    for (const happening of savedPackage) state = step(state, happening).state;
+    expect(offered(state)).toEqual([]);
   });
 });
 

@@ -1,6 +1,7 @@
 ---
 status: accepted
 amends: ADR-0035
+amended-by: ADR-0058
 ---
 
 # Browser Tools act only on elements their input would reach

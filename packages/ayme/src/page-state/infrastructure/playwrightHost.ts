@@ -29,12 +29,17 @@ export function playwrightPageHost(page: Page): PageStateHost {
 
   function capture(
     inputs: ElementInputs,
-    ask: { accepts?: readonly Predicate[]; filters?: readonly NamedFilter[] }
+    ask: {
+      accepts?: readonly Predicate[];
+      filters?: readonly NamedFilter[];
+      keep?: readonly string[];
+    }
   ): Promise<Capture> {
     return module.capture({
       elements: inputs,
       ...(ask.accepts ? { accepts: ask.accepts } : {}),
       ...(ask.filters?.length ? { filters: ask.filters } : {}),
+      ...(ask.keep ? { keep: ask.keep } : {}),
     });
   }
 

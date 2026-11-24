@@ -14,7 +14,7 @@ The Goal Loop can choose a Custom Tool too, so a goal like "show me where the bi
 
 ## Register a Custom Tool
 
-A Custom Tool is an operation your app registers for one element at a time. Pass it in `customTools` where ayme starts. One registration publishes it for the calling agent and makes it an operation the Goal Loop may choose, as the single-element Browser Tools are:
+A Custom Tool is an operation your app registers for one element at a time. Pass it in `customTools` where ayme starts. One registration publishes it through [WebMCP](publish-tools.md), which is experimental, and makes it an operation the Goal Loop may choose, as the single-element Browser Tools are. [`ayme mcp`](connect-an-agent.md) doesn't list it: a Custom Tool names its element by a Structural Ref, which only ayme's `snapshot` gives, and `ayme mcp` leaves browser driving to the agent's own browser automation. A registration looks like this:
 
 ```ts
 import type { CustomTool } from "@ayme-dev/ayme";
@@ -59,7 +59,7 @@ const deleteRow: CustomTool = {
 };
 ```
 
-The published tool says so in its annotations, `destructiveHint` over `ayme mcp` and `consequentialHint` over WebMCP, and ayme still runs it like any other tool. `false` is the same as leaving it out. [Destructive actions](../reference/ayme.md#destructive-actions) has the details, which Page Object Actions share.
+The tool WebMCP publishes says so in its annotations, `consequentialHint`, and ayme still runs it like any other tool. `false` is the same as leaving it out. [Destructive actions](../reference/ayme.md#destructive-actions) has the details, which Page Object Actions share.
 
 ## A Locator filter
 

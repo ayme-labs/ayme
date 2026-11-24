@@ -1310,6 +1310,7 @@ it(
         name: "ayme-vite-dev-consumer",
         private: true,
         type: "module",
+        imports: { "#pom/*": "./.ayme/pom/*.ts" },
         dependencies: { ...tarballs, react: "19.2.8", "react-dom": "19.2.8" },
         devDependencies: {
           "@playwright/test": lastPlaywright,
@@ -1325,7 +1326,7 @@ it(
       consumer
     );
     // The quickstart's app, with its Page Object Model in `.ayme/pom/`, the
-    // folder's tsconfig and AymeProvider.
+    // folder's tsconfig, the `#pom/*` alias and AymeProvider.
     const files: Record<string, string> = {
       "tsconfig.json": JSON.stringify({
         compilerOptions: {
@@ -1366,7 +1367,7 @@ export class ProjectsPage {
       "src/main.tsx": `
 import { createRoot } from 'react-dom/client';
 import { AymeProvider, usePageObject } from '@ayme-dev/react';
-import { ProjectsPage } from '../.ayme/pom/ProjectsPage';
+import { ProjectsPage } from '#pom/ProjectsPage';
 function Projects() {
   const pom = usePageObject(ProjectsPage);
   return <button onClick={() => void pom.createProject('x')}>New project</button>;
@@ -1460,6 +1461,7 @@ it(
         name: "ayme-next-consumer",
         private: true,
         type: "module",
+        imports: { "#pom/*": "./.ayme/pom/*.ts" },
         dependencies: {
           ...tarballs,
           next: "16.3.4",
@@ -1568,7 +1570,7 @@ export default function Runtime({ children }: { children: ReactNode }) {
 'use client';
 import { useState } from 'react';
 import { usePageObject } from '@ayme-dev/react';
-import { CounterPage } from '../.ayme/pom/CounterPage';
+import { CounterPage } from '#pom/CounterPage';
 export default function Counter() {
   const [count, setCount] = useState(0);
   const pom = usePageObject(CounterPage);

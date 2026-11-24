@@ -118,7 +118,7 @@ In the browser, the standalone owner starts at once in its Vue scope and provide
 ```ts
 // src/App.vue, <script setup>
 import { useAyme, usePageObject } from "@ayme-dev/vue";
-import { ProjectsPage } from "../.ayme/pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 useAyme({
   inspector: import.meta.env.DEV,
@@ -135,8 +135,8 @@ Registering a page doesn't tie it to a route. Give each page a `present` that ch
 
 ```ts
 import { useAyme } from "@ayme-dev/vue";
-import { ProjectsPage } from "../.ayme/pom/ProjectsPage";
-import { SettingsPage } from "../.ayme/pom/SettingsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
+import { SettingsPage } from "#pom/SettingsPage";
 
 useAyme({
   pageObjects: [ProjectsPage, SettingsPage],
@@ -149,7 +149,7 @@ A component that calls an action gets the session's instance from `usePageObject
 
 ```ts
 import { usePageObject } from "@ayme-dev/vue";
-import { ProjectsPage } from "../.ayme/pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 const pom = usePageObject(ProjectsPage);
 

@@ -6,7 +6,9 @@ import {
   disconnected,
   elapsed,
   holdsPageCalls,
+  linked,
   navigating,
+  PAIR_WAIT_MS,
   RECONNECT_WAIT_MS as WAIT,
   reported,
   stopped,
@@ -22,6 +24,26 @@ const paired = reported(attached(unpaired, "a", url, 0).lifecycle, [
 const name = (lifecycle: TabLifecycle) => lifecycle.name;
 
 describe("the tab's lifecycle", () => {
+  it("holds page calls after a link went out while no tab is paired, until a page connects and reports its tools or the wait ends", () => {
+    const waiting = linked(unpaired, 0).lifecycle;
+
+    expect(holdsPageCalls(waiting)).toBe(true);
+    expect(deadline(waiting)).toBe(PAIR_WAIT_MS);
+    const page = attached(waiting, "a", url, 100).lifecycle;
+    expect(name(page)).toBe("reconnected");
+    expect(name(reported(page, []).lifecycle)).toBe("paired");
+    expect(elapsed(waiting, PAIR_WAIT_MS - 1).lifecycle).toBe(waiting);
+    expect(elapsed(waiting, PAIR_WAIT_MS)).toEqual({ lifecycle: unpaired });
+  });
+
+  it("waits anew for each link, and ignores a link while a tab is paired", () => {
+    expect(linked(linked(unpaired, 0).lifecycle, 50).lifecycle).toEqual({
+      name: "linked",
+      until: 50 + PAIR_WAIT_MS,
+    });
+    expect(linked(paired, 0).lifecycle).toBe(paired);
+  });
+
   it("holds page calls from a new page's connecting until it reports its tools", () => {
     const connected = attached(unpaired, "a", url, 0).lifecycle;
 

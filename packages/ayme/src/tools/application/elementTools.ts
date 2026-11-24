@@ -208,8 +208,7 @@ function elementToolExecution(
         context.page,
         definition.name,
         target.elementRef,
-        definition.needsReach,
-        (ref) => context.pageStateSession.latestRefOfNamed(ref)
+        definition.needsReach
       );
     return context.pageStateSession.runAction(
       context.cursor,

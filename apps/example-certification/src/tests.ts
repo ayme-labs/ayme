@@ -111,6 +111,7 @@ const allCounterTools = [
 /** ayme's own tools, in publication order: every page that runs ayme has them. */
 const aymeTools = [
   "snapshot",
+  "page_objects",
   "click",
   "hover",
   "type",
@@ -529,19 +530,20 @@ function loadedScripts(page: Page) {
 /**
  * The Agent Connection, which the app turns on with its own flag. Where
  * `enabled()` holds, a coding agent's MCP client pairs with `/` through a
- * connect link and calls the page's `snapshot` tool, whose structure contains
- * `snapshotText`. Elsewhere, such as a production build, the page loads no
+ * connect link and calls the page's `page_objects` tool, whose tree shows the
+ * Page Object `pageObject`. Elsewhere, such as a production build, the page loads no
  * Agent Connection code and opens no WebSocket.
  */
 export function agentConnectionTests({
   enabled,
-  snapshotText,
+  pageObject,
   peek = false,
   appProcess,
 }: {
   /** Whether the run's app turns the option on; read inside each test. */
   enabled: () => boolean;
-  snapshotText: string;
+  /** The class of a Page Object the page at `/` shows. */
+  pageObject: string;
   /** Whether the counter adds the Peek `counter` with its `{ count }`. */
   peek?: boolean;
   /**
@@ -578,12 +580,10 @@ export function agentConnectionTests({
             )
           ).toBe(true);
 
-          const { text, isError } = await agent.call("snapshot");
+          const { text, isError } = await agent.call("page_objects");
 
           expect(isError, text).toBe(false);
-          expect(
-            (JSON.parse(text) as { structure: string }).structure
-          ).toContain(snapshotText);
+          expect(text).toContain(pageObject);
         } finally {
           await agent.close();
         }
@@ -614,15 +614,12 @@ export function agentConnectionTests({
               }, agentConnectionMarker);
             const tab = await storedTab();
 
-            const navigated = page.waitForEvent("load");
-            await agent.call("reload");
-            await navigated;
+            // The agent's own browser automation reloads the page.
+            await page.reload();
             // Wait for the new document to reconnect before reading its storage.
-            const { text, isError } = await agent.call("snapshot");
+            const { text, isError } = await agent.call("page_objects");
             expect(isError, text).toBe(false);
-            expect(
-              (JSON.parse(text) as { structure: string }).structure
-            ).toContain(snapshotText);
+            expect(text).toContain(pageObject);
             expect(await storedTab()).toBe(tab);
           } finally {
             await agent.close();
