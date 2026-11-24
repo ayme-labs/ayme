@@ -20,8 +20,8 @@ Records a flow while you drive your app, then turns the recording into Playwrigh
 
 ## `product-surfaces`
 
-Lists who uses your product and where they meet it, such as a UI, an API, a CLI or emails, in `.ayme/product-surfaces/`. It also reviews a branch or a pull request by what each of those users will notice, with before and after views. It works with or without ayme. [Read the `product-surfaces` skill](https://github.com/ayme-labs/ayme/blob/main/skills/product-surfaces/SKILL.md).
+Lists who uses your product and where they meet it, such as a UI, an API, a CLI or emails, in `ayme/product-surfaces/`. It also reviews a branch or a pull request by what each of those users will notice, with before and after views. It works with or without ayme. [Read the `product-surfaces` skill](https://github.com/ayme-labs/ayme/blob/main/skills/product-surfaces/SKILL.md).
 
-## `.ayme/CONVENTIONS.md`
+## `ayme/CONVENTIONS.md`
 
-What you settled for how ayme and its skills work in your repository. Each skill reads it first, and it overrides the skill's defaults. The opening part holds for every skill, and each skill has a section of its own, `ayme`, `Recorder` or `Product surfaces`, where it writes what you settle for later runs. It never holds credentials or real data.
+What you settled for how ayme and its skills work in your repository. Each skill reads it first, and it overrides the skill's defaults. The opening part holds for every skill, and each skill has a section of its own, `ayme`, `Recorder` or `Product surfaces`, where it writes what you settle for later runs. It never holds credentials or real data. [The `ayme` folder](ayme-folder.md) lists what else the folder holds.

@@ -28,12 +28,12 @@ An experimental API belongs to a feature ayme keeps but whose shape is not settl
 `ayme mcp` in `@ayme-dev/mcp` can serve your Page Object Models to a page that doesn't ship ayme. The entry is a module whose default export lists the classes, as `createAyme`'s `pageObjects` option takes them:
 
 ```ts
-// .ayme/page-objects.ts
-import { ProjectsPage } from "../src/pages/ProjectsPage";
+// ayme/page-objects.ts
+import { ProjectsPage } from "./pom/ProjectsPage";
 
 export default [ProjectsPage];
 ```
 
-Without `--page-objects`, `ayme mcp` serves `.ayme/page-objects.ts` if the project has one. `--page-objects <file>` names another entry. The server builds the entry and serves it. It also writes `.ayme/init-script.js`, which your browser automation loads into the page as an init script. The script starts ayme in the page, with the Agent Connection on, and registers the classes.
+Without `--page-objects`, `ayme mcp` serves `ayme/page-objects.ts` if the project has one. `--page-objects <file>` names another entry. The server builds the entry and serves it. It also writes `ayme/init-script.js`, which your browser automation loads into the page as an init script. The script starts ayme in the page, with the Agent Connection on, and registers the classes.
 
-`.ayme/page-objects.ts` and `.ayme/init-script.js` are experimental with the flag: a release may rename or move them, as it may the flag.
+`ayme/page-objects.ts` and `ayme/init-script.js` are experimental with the flag: a release may rename or move them, as it may the flag.
