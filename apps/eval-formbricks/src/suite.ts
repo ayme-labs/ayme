@@ -6,7 +6,7 @@
  * own mission. Writes the suite's manifest and summary under
  * `results/suites/<suite id>/`.
  *
- *   node src/suite.ts [--arms a,b] [--runs 3] [--model sonnet] [--timeout-seconds 600] [--mission <id>]
+ *   node src/suite.ts [--arms a,b] [--agent claude|codex] [--runs 3] [--model sonnet] [--timeout-seconds 600] [--mission <id>]
  *
  * Every run calls the model and costs money. The first run that cannot
  * complete ends the suite, since the lab app or the environment is then
@@ -17,10 +17,15 @@ import { randomBytes } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  agentAccess,
+  agentIds,
+  defaultModels,
+  isAgentId,
+  type AgentId,
+} from "./agents.ts";
 import { armIds, arms, isArmId, type ArmId } from "./arms.ts";
 import { parseFlags } from "./cli.ts";
-import { claudeEnvironment } from "./claude.ts";
-import { readOauthToken } from "./environment.ts";
 import { ensureDatabaseBuilt } from "./formbricks/database.ts";
 import {
   defaultMissionId,
@@ -30,19 +35,19 @@ import {
 import { evalRoot, formbricksRoot, labUrl } from "./paths.ts";
 import {
   checkPreconditions,
-  claudeTokenPrecondition,
   dockerPrecondition,
   formbricksPreparedPrecondition,
   labAppPrecondition,
 } from "./preconditions.ts";
 import { reportSuite } from "./report.ts";
-import { defaultModel, defaultTimeoutSeconds, log, runOnce } from "./run.ts";
+import { defaultTimeoutSeconds, log, runOnce } from "./run.ts";
 import { suiteDirectory, writeManifest, type SuiteManifest } from "./store.ts";
 import { warmLabApp } from "./warmup.ts";
 
 const defaultRunsPerArm = 3;
 
 type SuiteOptions = {
+  agent: AgentId;
   arms: ArmId[];
   runsPerArm: number;
   model: string;
@@ -51,13 +56,15 @@ type SuiteOptions = {
 };
 
 function usage() {
-  return `Usage: pnpm eval:suite -- [--arms <${armIds.join("|")}>[,...]] [--runs <count>] [--model <model>] [--timeout-seconds <seconds>] [--mission <${Object.keys(missionDefinitions).join("|")}>]`;
+  return `Usage: pnpm eval:suite -- [--arms <${armIds.join("|")}>[,...]] [--agent <${agentIds.join("|")}>] [--runs <count>] [--model <model>] [--timeout-seconds <seconds>] [--mission <${Object.keys(missionDefinitions).join("|")}>]`;
 }
 
 export function parseSuiteOptions(argv: string[]): SuiteOptions {
   const flags = parseFlags(argv, usage());
   const chosen = flags.get("arms")?.split(",") ?? armIds;
   if (chosen.length === 0 || !chosen.every(isArmId)) throw new Error(usage());
+  const agent = flags.get("agent") ?? "claude";
+  if (!isAgentId(agent)) throw new Error(usage());
   const runsPerArm = Number(flags.get("runs") ?? defaultRunsPerArm);
   const timeoutSeconds = Number(
     flags.get("timeout-seconds") ?? defaultTimeoutSeconds
@@ -72,9 +79,10 @@ export function parseSuiteOptions(argv: string[]): SuiteOptions {
   )
     throw new Error(usage());
   return {
+    agent,
     arms: [...new Set(chosen)],
     runsPerArm,
-    model: flags.get("model") ?? defaultModel,
+    model: flags.get("model") ?? defaultModels[agent],
     timeoutSeconds,
     mission,
   };
@@ -85,20 +93,18 @@ async function main() {
   const startedAt = new Date();
   const suiteId = `${startedAt.toISOString().replace(/[:.]/g, "-")}-suite-${randomBytes(3).toString("hex")}`;
   const suiteDir = suiteDirectory(suiteId);
-  const configCheckDir = path.join(suiteDir, "claude-config-check");
+  const configCheckDir = path.join(suiteDir, "agent-config-check");
   await mkdir(configCheckDir, { recursive: true });
 
   log("Checking preconditions.");
   try {
-    const oauthToken = readOauthToken(evalRoot);
     await checkPreconditions([
-      claudeTokenPrecondition({
-        environment:
-          oauthToken === undefined
-            ? undefined
-            : claudeEnvironment({ configDir: configCheckDir, oauthToken }),
+      ...agentAccess({
+        agent: options.agent,
+        configDir: configCheckDir,
         envDirectory: evalRoot,
-      }),
+        arms: options.arms.map((armId) => arms[armId]),
+      }).preconditions,
       dockerPrecondition,
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
@@ -143,7 +149,7 @@ async function main() {
   };
   await writeManifest(manifest);
   log(
-    `Suite ${suiteId}: ${options.arms.join(", ")}, ${options.runsPerArm} run(s) each, ${options.model}.`
+    `Suite ${suiteId}: ${options.agent}, ${options.arms.join(", ")}, ${options.runsPerArm} run(s) each, ${options.model}.`
   );
 
   try {
@@ -151,6 +157,7 @@ async function main() {
       for (const armId of options.arms) {
         log(`Run ${round} of ${options.runsPerArm}: ${armId}.`);
         const { runId, result } = await runOnce({
+          agent: options.agent,
           arm: arms[armId],
           mission: options.mission,
           model: options.model,
