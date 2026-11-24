@@ -78,7 +78,7 @@ These break a rule at a person's speed, and the engine keeps them on purpose.
 
 **Input on the blank page a `--start-recording` recording opens on** is not recorded (`X3`, `R04`, `F1`; config `Limit-BlankPageInput`). After Record is applied and before the page has gone to its address, a click on the blank page, or an element picked there with Assert visibility, is held, read and sent on, but the blank page has no Visit, so the timeline drops it: there is nothing on it to record. The cli README says so (`2875db0a`). `X3v`, `R04v` and `F1v` are rules 13a, 4 and F1 for what is done on a page with a Visit, and hold in `Path-StartRecording-BlankPage`.
 
-**The five-second time limit** gives up, as the cli README's Known limits say: a click with no "after" when time runs out is not recorded (R04, X3, X5); clicks still held are sent on together and can reach the page out of order (X1); a click made just after the pause, while one of those still waits, is held and sent on as well (R03a). A fill that showed is kept as it showed. Config `TimeLimit`.
+**The five-second time limit** gives up: a click with no "after" when time runs out is not recorded (R04, X3, X5); clicks still held are sent on together and can reach the page out of order (X1); a click made just after the pause, while one of those still waits, is held and sent on as well (R03a). A fill that showed is kept as it showed. Config `TimeLimit`.
 
 ## Races: actions within a few milliseconds
 
