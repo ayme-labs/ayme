@@ -97,7 +97,7 @@ init-script.js
 recordings/
 ```
 
-`ayme mcp` adds `init-script.js` to that file by itself. The recorder creates the file only when there is none, so write `recordings/` yourself.
+`ayme mcp` and the recorder each add their own line to that file. When the recorder writes the file first, it adds a `.gitignore` line too, which hides the file from git: remove that line to commit the file.
 
 ## Move Page Objects from another folder
 
