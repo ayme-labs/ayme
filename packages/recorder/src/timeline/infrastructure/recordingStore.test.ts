@@ -24,19 +24,19 @@ import { pageId, snapshotId } from "../../../testing/ids";
 // between the creation of a file and the first write to it, where another
 // tool may write to the same file.
 const betweenCreationAndFirstWrite = vi.hoisted(() => ({
-  run: undefined as (() => Promise<void>) | undefined,
+  of: undefined as { file: string; run: () => Promise<void> } | undefined,
 }));
 vi.mock("node:fs/promises", async (importOriginal) => {
   const real = await importOriginal<typeof import("node:fs/promises")>();
   const writeFile: typeof real.writeFile = async (file, data, options) => {
-    const { run } = betweenCreationAndFirstWrite;
+    const { of } = betweenCreationAndFirstWrite;
     const flag = typeof options === "object" ? options?.flag : undefined;
-    if (run === undefined || flag === undefined || typeof file !== "string")
+    if (of === undefined || flag === undefined || file !== of.file)
       return real.writeFile(file, data, options);
-    betweenCreationAndFirstWrite.run = undefined;
-    const handle = await real.open(file, flag);
+    betweenCreationAndFirstWrite.of = undefined;
+    const handle = await real.open(of.file, flag);
     try {
-      await run();
+      await of.run();
       await handle.writeFile(data);
     } finally {
       await handle.close();
@@ -97,8 +97,10 @@ async function recorded() {
 describe("the .gitignore of ayme/", () => {
   it("keeps the line `ayme mcp` adds between the file's creation and its first write", async () => {
     const file = join(project, "ayme", ".gitignore");
-    betweenCreationAndFirstWrite.run = () =>
-      appendFile(file, "init-script.js\n");
+    betweenCreationAndFirstWrite.of = {
+      file,
+      run: () => appendFile(file, "init-script.js\n"),
+    };
 
     await saveRecording(await recorded(), {
       projectDir: project,
@@ -106,8 +108,9 @@ describe("the .gitignore of ayme/", () => {
       trace: null,
     });
 
-    expect((await readFile(file, "utf8")).split("\n")).toEqual(
-      expect.arrayContaining(["init-script.js", "recordings/"])
+    // The other tool's line first, then the whole of this one's file.
+    expect(await readFile(file, "utf8")).toBe(
+      "init-script.js\nrecordings/\n.gitignore\n"
     );
   });
 });

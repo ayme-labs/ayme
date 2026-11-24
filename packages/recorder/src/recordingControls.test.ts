@@ -716,7 +716,13 @@ describe("the .gitignore of ayme/", () => {
     );
   });
 
-  it.each(["recordings/", "/recordings", "recordings \r\n", "!recordings/"])(
+  it.each([
+    "recordings/",
+    "/recordings",
+    "recordings \r\n",
+    "!recordings/",
+    "!recordings/\r",
+  ])(
     "is left as it is when its line %j already decides about the folder",
     async (line) => {
       await mkdir(join(projectDir, "ayme"), { recursive: true });

@@ -132,13 +132,13 @@ async function ignoreWhatIsKept(ayme: string): Promise<void> {
   );
   if (created) return;
   const before = await readFile(file, "utf8");
-  // As git reads the file: a byte order mark at its start and spaces at a
-  // line's end do not count; a tab there, or a space at the line's start, is
-  // part of the name.
+  // As git reads the file: a byte order mark at its start, a carriage
+  // return at a line's end and spaces before it do not count; a tab there,
+  // or a space at the line's start, is part of the name.
   const decided = before
     .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .some((line) => /^!?\/?recordings\/? *$/.test(line));
+    .split("\n")
+    .some((line) => /^!?\/?recordings\/? *\r?$/.test(line));
   if (decided) return;
   const lineEnd = before.includes("\r\n") ? "\r\n" : "\n";
   const separator = before === "" || before.endsWith("\n") ? "" : lineEnd;
