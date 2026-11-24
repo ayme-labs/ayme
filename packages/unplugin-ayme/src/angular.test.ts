@@ -332,6 +332,99 @@ it("stops watching when the build is disposed", async () => {
   }
 }, 30_000);
 
+const watchNote = "ayme watches this file and rebuilds when you save it.";
+
+it("names the signal file in the error of a Page Object Model module in a dot-folder that fails to compile, and watches the module", async () => {
+  const failing = `import { ayme } from "@ayme-dev/ayme";
+
+@ayme
+export class HiddenPage {
+  @ayme.action
+  async save(at: Date) {
+    void at;
+  }
+}
+`;
+  const root = await realpath(
+    await workspace({
+      "tsconfig.json": tsconfig,
+      "main.ts":
+        'import { HiddenPage } from "./.ayme/pom/HiddenPage";\nconsole.log(HiddenPage);\n',
+      ".ayme/pom/HiddenPage.ts": failing,
+    })
+  );
+  // A context, as Angular's: its plugins live on after a build that fails.
+  const builds = await context({
+    absWorkingDir: root,
+    entryPoints: ["main.ts"],
+    bundle: true,
+    write: false,
+    format: "esm",
+    external: ["@ayme-dev/ayme", "@ayme-dev/ayme/internal"],
+    plugins: [aymeAngularPlugin({ include: true })],
+    logLevel: "silent",
+  });
+  try {
+    // The first build fails, as `ng serve` may start.
+    const failure = (await builds
+      .rebuild()
+      .catch((error: unknown) => error)) as BuildFailure;
+
+    // Angular watches the files that an error's notes name.
+    expect(failure.errors).toHaveLength(1);
+    const note = failure.errors[0]!.notes.find(
+      ({ text }) => text === watchNote
+    );
+    const signal = path.resolve(root, note!.location!.file);
+    expect(path.basename(signal)).toBe("rebuild.js");
+    expect(path.relative(root, signal)).toMatch(/^\.\./);
+    const before = await readFile(signal, "utf8");
+
+    await writeFile(
+      path.join(root, ".ayme/pom/HiddenPage.ts"),
+      failing.replace("at: Date", "at: string")
+    );
+
+    await vi.waitFor(
+      async () => expect(await readFile(signal, "utf8")).not.toBe(before),
+      { timeout: 5_000 }
+    );
+  } finally {
+    await builds.dispose();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 30_000);
+
+it("adds no note to the error of a module outside dot-folders", async () => {
+  const root = await workspace({
+    "tsconfig.json": tsconfig,
+    "main.ts":
+      'import { SavePage } from "./SavePage";\nconsole.log(SavePage);\n',
+    "SavePage.ts": `import { ayme } from "@ayme-dev/ayme";
+
+@ayme
+export class SavePage {
+  @ayme.action
+  async save(at: Date) {
+    void at;
+  }
+}
+`,
+  });
+  try {
+    const failure = (await bundle("browser", root).catch(
+      (error: unknown) => error
+    )) as BuildFailure;
+
+    // esbuild adds a note of its own, on the import that led to the module.
+    expect(
+      failure.errors.flatMap(({ notes }) => notes.map(({ text }) => text))
+    ).not.toContain(watchNote);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 it("imports no signal file into a Page Object Model module outside dot-folders, which Angular watches", async () => {
   const { inputs } = await bundle("browser");
 

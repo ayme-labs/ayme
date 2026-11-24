@@ -101,10 +101,11 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         const source = await readFile(fileName, "utf8");
         const compiledPom = compiler.compile(fileName, source, { emit: "js" });
         if (!compiledPom) return null;
+        const signal = hidden.watch([fileName, ...compiledPom.dependencies]);
         return {
-          contents:
-            compiledPom.code +
-            hidden.watch([fileName, ...compiledPom.dependencies]),
+          contents: signal
+            ? `${compiledPom.code}\nimport ${JSON.stringify(signal)};\n`
+            : compiledPom.code,
           watchFiles: compiledPom.dependencies,
         };
       };
@@ -156,10 +157,25 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         } catch (error) {
           // Thrown, it would point at the compiler's own code.
           if (!(error instanceof PomCompileError)) throw error;
+          // A module that failed imports nothing. Angular watches the files
+          // an error's notes name, so the signal file reaches it that way.
+          const signal = hidden.watch([
+            resolved.path,
+            ...error.diagnostics.flatMap(({ file }) => file ?? []),
+          ]);
+          const notes = signal
+            ? [
+                {
+                  text: "ayme watches this file and rebuilds when you save it.",
+                  location: { file: path.relative(root, signal) },
+                },
+              ]
+            : [];
           return {
-            errors: error.diagnostics.map((diagnostic) =>
-              buildError(diagnostic, resolved.path)
-            ),
+            errors: error.diagnostics.map((diagnostic) => ({
+              ...buildError(diagnostic, resolved.path),
+              notes,
+            })),
           };
         }
         return { path: resolved.path + suffix, namespace };
@@ -189,8 +205,9 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
  * Angular's dev server ignores every folder under the workspace whose name
  * starts with a dot, so on its own it may never rebuild after an edit to a
  * Page Object Model in `.ayme/pom/`. The plugin watches those files itself.
- * After an edit it rewrites a signal file outside the workspace, which each
- * such module imports, and Angular rebuilds for that file.
+ * After an edit it rewrites a signal file outside the workspace, and Angular
+ * rebuilds for that file: each such module imports it, and the error of one
+ * that failed to compile names it.
  */
 function watchHiddenFiles(root: string) {
   const signal = path.join(
@@ -198,7 +215,6 @@ function watchHiddenFiles(root: string) {
     `ayme-angular-${createHash("sha256").update(root).digest("hex").slice(0, 16)}`,
     "rebuild.js"
   );
-  const importSignal = `\nimport ${JSON.stringify(signal)};\n`;
   // Each watched file: what stops its watch, and its version when the last
   // build started.
   const watched = new Map<string, { version: string; stop: () => void }>();
@@ -237,13 +253,13 @@ function watchHiddenFiles(root: string) {
 
   return {
     /**
-     * Watches those of `files` that Angular ignores. Returns the import a
-     * module compiled from them ends with, or nothing when Angular watches
+     * Watches those of `files` that Angular ignores. Returns the signal file
+     * for Angular to watch in their place, or nothing when Angular watches
      * them all.
      */
     watch(files: readonly string[]) {
       const hidden = files.filter(isHidden);
-      if (hidden.length === 0) return "";
+      if (hidden.length === 0) return undefined;
       if (watched.size === 0) {
         mkdirSync(path.dirname(signal), { recursive: true });
         writeFileSync(signal, "");
@@ -263,7 +279,7 @@ function watchHiddenFiles(root: string) {
           stop: () => unwatchFile(file, listener),
         });
       }
-      return importSignal;
+      return signal;
     },
     buildStarted() {
       building = true;
