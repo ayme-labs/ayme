@@ -42,7 +42,7 @@
  *   templates set `erasableSyntaxOnly`, which rejects that syntax. Declare the
  *   field on the class and assign it in the constructor.
  *
- * It also holds every tracked `AGENTS.md`, and the `SKILL.md` of each skill in
+ * It also holds every `AGENTS.md` it walks to, and the `SKILL.md` of each skill in
  * `.agents/skills/` that `skills-lock.json` does not list (a vendored skill is
  * not ours to edit), to the same link rules and to two more:
  * - a code span that looks like a repository path (it has a `/`, no space and
@@ -153,8 +153,8 @@ function sharedSkillReferences(root) {
     );
 }
 
-/** Markdown files under `dir`, as paths relative to `root`. */
-function markdownFiles(root, dir = "") {
+/** Every file under `dir`, as paths relative to `root`. */
+function repositoryFiles(root, dir = "") {
   const files = [];
   for (const entry of fs.readdirSync(path.join(root, dir), {
     withFileTypes: true,
@@ -167,8 +167,8 @@ function markdownFiles(root, dir = "") {
         !SKIPPED_DIRS.has(entry.name) &&
         !fs.existsSync(path.join(root, relative, ".git"))
       )
-        files.push(...markdownFiles(root, relative));
-    } else if (entry.name.endsWith(".md")) files.push(relative);
+        files.push(...repositoryFiles(root, relative));
+    } else files.push(relative);
   }
   return files;
 }
@@ -289,13 +289,6 @@ function prose(text) {
   return withoutBlocks(text).replace(/(`+)[^\n]*?\1/g, "code");
 }
 
-/** Every `AGENTS.md` under `root`, as paths relative to it. */
-function agentsFiles(root) {
-  return markdownFiles(root).filter(
-    (file) => path.posix.basename(file) === "AGENTS.md"
-  );
-}
-
 /** The `SKILL.md` of each skill in `.agents/skills/` that `skills-lock.json` does not list. */
 function localSkillFiles(root) {
   const skills = path.join(root, LOCAL_SKILLS_DIR);
@@ -320,7 +313,9 @@ function localSkillFiles(root) {
 /** Code spans in `text` that look like a repository path, with their 1-based line. */
 function pathSpans(text) {
   const spans = [];
-  for (const match of withoutBlocks(text).matchAll(/(`+)([^\n]*?)\1/g)) {
+  // Blanked blocks keep their line breaks only, so a line is counted in the same text the match is in.
+  const stripped = withoutBlocks(text);
+  for (const match of stripped.matchAll(/(`+)([^\n]*?)\1/g)) {
     const span = match[2].trim();
     if (
       span.includes("/") &&
@@ -328,28 +323,9 @@ function pathSpans(text) {
       !/[\s<>{}*$…@:]/.test(span) &&
       !span.split("/").some((segment) => ABSENT_SEGMENTS.has(segment))
     )
-      spans.push({ span, line: lineOf(text, match.index) });
+      spans.push({ span, line: lineOf(stripped, match.index) });
   }
   return spans;
-}
-
-/** Every file under `root` a docs check may name, as paths relative to it. */
-function repositoryFiles(root, dir = "") {
-  const files = [];
-  for (const entry of fs.readdirSync(path.join(root, dir), {
-    withFileTypes: true,
-  })) {
-    const relative = path.posix.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (
-        !entry.name.startsWith(".") &&
-        !SKIPPED_DIRS.has(entry.name) &&
-        !fs.existsSync(path.join(root, relative, ".git"))
-      )
-        files.push(...repositoryFiles(root, relative));
-    } else files.push(relative);
-  }
-  return files;
 }
 
 /**
@@ -366,7 +342,7 @@ function repositoryFileExists(root, file, span, files) {
     }
   });
   const tail = `/${span.replace(/^\.?\//, "")}`;
-  return direct || files().some((known) => `/${known}`.endsWith(tail));
+  return direct || files.some((known) => `/${known}`.endsWith(tail));
 }
 
 /** The words in a file, as `wc -w` counts them. */
@@ -388,6 +364,11 @@ function budgetProblems(root, files) {
       problems.push([
         file,
         `has no word budget; add "${file}": ${words} to ${WORD_BUDGETS}`,
+      ]);
+    else if (!Number.isInteger(budget) || budget < 0)
+      problems.push([
+        file,
+        `has the word budget ${JSON.stringify(budget)} in ${WORD_BUDGETS}, which is not a whole number; write "${file}": ${words}`,
       ]);
     else if (words > budget)
       problems.push([
@@ -876,7 +857,8 @@ export function checkDocs(root) {
   const report = (file, line, message) =>
     problems.push(`${file}:${line}: ${message}`);
   const published = publishedReadmes(root);
-  const all = markdownFiles(root);
+  const files = repositoryFiles(root);
+  const all = files.filter((file) => file.endsWith(".md"));
   const pages = all.filter((file) => file.startsWith(`${GUIDE_DIR}/`));
   const checked = all.filter(
     (file) =>
@@ -885,13 +867,13 @@ export function checkDocs(root) {
       file.startsWith("skills/") ||
       pages.includes(file)
   );
-  const agents = agentsFiles(root);
+  const agents = all.filter(
+    (file) => path.posix.basename(file) === "AGENTS.md"
+  );
   const agentsOrSkills = new Set([...agents, ...localSkillFiles(root)]);
   checked.push(
     ...[...agentsOrSkills].filter((file) => !checked.includes(file))
   );
-  let known;
-  const files = () => (known ??= repositoryFiles(root));
   const indexed = new Set();
   const anchorsOf = new Map();
   const hasAnchor = (linked, fragment) => {

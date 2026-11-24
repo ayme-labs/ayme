@@ -691,13 +691,13 @@ test("fails a backticked path that names no file", () => {
     agentsFixture({
       "packages/lib/src/a.ts": "",
       "packages/lib/AGENTS.md":
-        "Line one.\nSee `src/gone.ts` and `src/a.ts`.\n",
+        "Line one.\n\n```sh\npnpm lint\n```\n\nSee `src/gone.ts` and `src/a.ts`.\n",
     })
   );
   assert.equal(problems.length, 1, problems.join("\n"));
   assert.match(
     problems[0],
-    /packages\/lib\/AGENTS\.md:2: `src\/gone\.ts` names no file/
+    /packages\/lib\/AGENTS\.md:7: `src\/gone\.ts` names no file/
   );
 });
 
@@ -725,20 +725,6 @@ test("leaves out the paths the repository does not hold, by file", () => {
   );
   assert.equal(problems.length, 1, problems.join("\n"));
   assert.match(problems[0], /`docs\/fork\/SYNC\.md` names no file/);
-});
-
-test("passes an AGENTS.md within its word budget", () => {
-  assert.deepEqual(
-    checkDocs(
-      agentsFixture(
-        { "packages/lib/AGENTS.md": words(120) },
-        {
-          "packages/lib/AGENTS.md": 150,
-        }
-      )
-    ),
-    []
-  );
 });
 
 test("fails an AGENTS.md over its word budget and says how to proceed", () => {
@@ -791,6 +777,16 @@ test("fails a word budget more than 50 words above the count, and passes one at 
   assert.match(
     problems[0],
     /has 100 words, 51 under its budget of 151.*lower the budget to 100/
+  );
+});
+
+test("fails a word budget that is not a whole number", () => {
+  assertOneProblem(
+    {
+      "packages/lib/AGENTS.md": words(10),
+      [WORD_BUDGETS]: JSON.stringify({ "packages/lib/AGENTS.md": "1,258" }),
+    },
+    /packages\/lib\/AGENTS\.md:1: has the word budget "1,258".*not a whole number; write "packages\/lib\/AGENTS\.md": 10/
   );
 });
 
