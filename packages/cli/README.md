@@ -63,7 +63,7 @@ Recording is off when the recorder opens, so you can first get the page into the
 
 While recording, **Record** turns into **Stop**: press it to pause, and **Continue recording** to pick up again. The guide describes [every control](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#record-a-flow).
 
-**Finish**, closing the last recorded page and Ctrl+C in the terminal each save the recording. The terminal then prints its path as `Recording package: ...`.
+**Finish**, closing the last recorded page and Ctrl+C in the terminal each save the recording. The terminal then prints its path as `Recording package: ...`. If nothing was recorded, it prints `Recording was empty; no recording package was created.` instead.
 
 ### What the recorder shows
 
@@ -102,7 +102,7 @@ Your agent writes the test's checks from what the recording saw change, but some
 The recorder keeps its data in an `.ayme` folder in the folder you run it from:
 
 - `.ayme/recordings/<recording-id>/package.yaml`: the package's YAML file: the page at each Visit, the steps and the changes.
-- `.ayme/recordings/<recording-id>/trace.zip`: the Playwright trace of the recording, with DOM snapshots and network requests.
+- `.ayme/recordings/<recording-id>/trace.zip`: the Playwright trace of the recording, with DOM snapshots and network requests. When the trace cannot be written, for example because the browser stopped answering, the recording is saved without it.
 - `.ayme/recordings/latest.yaml`: a copy of the latest recording that was saved. A run that recorded nothing leaves it as it was, so use the path printed as `Recording package:` for the run you just made.
 
 The first save creates `.ayme/.gitignore`, which lists `recordings/` and itself, when the folder has none yet. It keeps new recordings out of what git picks up, but it cannot untrack files that are already committed. To look into a trace, run `npx ayme-recorder trace latest`; the guide explains [what the trace holds](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#trace).
