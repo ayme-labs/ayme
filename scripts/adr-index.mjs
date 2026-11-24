@@ -56,8 +56,8 @@ function allAdrs(root) {
 const superseded = (adr) => adr.status?.startsWith("superseded") ?? false;
 
 /** The text of `docs/adr/README.md`: every ADR in force, by number. */
-export function adrIndexText(root) {
-  const inForce = allAdrs(root).filter((adr) => !superseded(adr));
+export function adrIndexText(root, adrs = allAdrs(root)) {
+  const inForce = adrs.filter((adr) => !superseded(adr));
   const items = inForce.map(
     ({ file, number, title }) =>
       `- [ADR-${number}: ${title}](${path.posix.relative(ADR_DIR, file)})`
@@ -78,7 +78,8 @@ export function adrIndexText(root) {
 /** What is wrong with the ADR folder: a stale index, an ADR in the wrong folder. */
 export function checkAdrIndex(root) {
   const problems = [];
-  for (const adr of allAdrs(root)) {
+  const adrs = allAdrs(root);
+  for (const adr of adrs) {
     if (adr.status === undefined)
       problems.push(`${adr.file}: no \`status\` in the front matter`);
     else if (superseded(adr) && !adr.retired)
@@ -94,7 +95,7 @@ export function checkAdrIndex(root) {
   const current = fs.existsSync(indexFile)
     ? fs.readFileSync(indexFile, "utf8")
     : undefined;
-  if (current !== adrIndexText(root))
+  if (current !== adrIndexText(root, adrs))
     problems.push(`${INDEX}: out of date, run \`pnpm adr:index\``);
   return problems;
 }
