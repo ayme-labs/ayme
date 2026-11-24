@@ -693,15 +693,48 @@ describe("the .gitignore of .ayme", () => {
     );
   });
 
-  it("is never overwritten, nor added to, when the project already has one", async () => {
+  it("gets the recordings folder's line when the project already has one, such as the one `ayme mcp` wrote, and keeps its text", async () => {
     await mkdir(join(projectDir, ".ayme"), { recursive: true });
-    await writeFile(ignoreFile(), "# mine\nrecordings/old\n");
+    await writeFile(ignoreFile(), "# mine\nrecordings/old\ninit-script.js");
 
     await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
 
     expect(await readFile(ignoreFile(), "utf8")).toBe(
-      "# mine\nrecordings/old\n"
+      "# mine\nrecordings/old\ninit-script.js\nrecordings/\n"
     );
+  });
+
+  it("gets the line once, over two saves", async () => {
+    await mkdir(join(projectDir, ".ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "init-script.js\n");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe(
+      "init-script.js\nrecordings/\n"
+    );
+  });
+
+  it.each(["recordings/", "/recordings", " recordings \r\n", "!recordings/"])(
+    "is left as it is when its line %j already decides about the folder",
+    async (line) => {
+      await mkdir(join(projectDir, ".ayme"), { recursive: true });
+      await writeFile(ignoreFile(), `# mine\n${line}`);
+
+      await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+      expect(await readFile(ignoreFile(), "utf8")).toBe(`# mine\n${line}`);
+    }
+  );
+
+  it("gets the line alone when the project's file is empty", async () => {
+    await mkdir(join(projectDir, ".ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe("recordings/\n");
   });
 
   it("is not written when nothing is saved", async () => {

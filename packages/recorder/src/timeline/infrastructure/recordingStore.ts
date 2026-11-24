@@ -19,7 +19,7 @@ import type { Timeline } from "../domain/timeline";
  *     .ayme/recordings/<recordingId>/package.yaml
  *     .ayme/recordings/<recordingId>/trace.zip   when the recording has one
  *     .ayme/recordings/latest.yaml      the same text as the package
- *     .ayme/.gitignore                  when the project has none
+ *     .ayme/.gitignore                  with the recordings folder ignored
  *
  * Resolves with the package's folder, or with null when the timeline has
  * nothing to write: nothing is written then.
@@ -103,18 +103,32 @@ async function write(
 }
 
 /**
- * Keeps `.ayme` out of the project's commits, as the released recorder does:
- * a `.gitignore` there lists the recordings folder, where the recorder also
- * keeps its temporary files, and itself. A project's own file is never
- * overwritten, nor added to.
+ * Keeps the recordings out of the project's commits: the `.gitignore` of
+ * `.ayme` lists the recordings folder, where the recorder also keeps its
+ * temporary files. A new file lists itself too, as the released recorder's
+ * does. A file that is there already, the project's own or the one
+ * `ayme mcp` wrote, keeps its text and gets the folder's line, unless a line
+ * of its own already ignores the folder or takes it back in.
  */
 async function ignoreWhatIsKept(ayme: string): Promise<void> {
   await mkdir(ayme, { recursive: true });
-  await writeFile(join(ayme, ".gitignore"), "recordings/\n.gitignore\n", {
-    flag: "wx",
-  }).catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== "EEXIST") throw error;
-  });
+  const file = join(ayme, ".gitignore");
+  const before = await readFile(file, "utf8").catch(
+    (error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") throw error;
+      return undefined;
+    }
+  );
+  if (before === undefined) {
+    await writeFile(file, "recordings/\n.gitignore\n");
+    return;
+  }
+  const decided = before
+    .split(/\r?\n/)
+    .some((line) => /^!?\/?recordings\/?$/.test(line.trim()));
+  if (decided) return;
+  const separator = before === "" || before.endsWith("\n") ? "" : "\n";
+  await writeFile(file, `${before}${separator}recordings/\n`);
 }
 
 /** Where the trace of a recording is, or why it cannot be had. */
