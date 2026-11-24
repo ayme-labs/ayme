@@ -21,7 +21,5 @@ export default defineConfig({
     { from: "../recorder-window/dist/window", to: outDir },
     { from: "../recorder-window/dist/toolbar", to: outDir },
   ],
-  // The notices of the third-party code bundled into the command and the
-  // window.
   plugins: [thirdPartyNotices()],
 });

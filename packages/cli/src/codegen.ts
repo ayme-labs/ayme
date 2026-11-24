@@ -31,7 +31,6 @@ export function launchOptions(
   };
 }
 
-/** What `codegen` is given: a URL to open, or a running browser. */
 type Target =
   | {
       readonly url: string;
@@ -42,8 +41,6 @@ type Target =
     }
   | { readonly cdpEndpoint: string };
 
-/** The browser a target asks for: one launched on a URL, or the running one
- * at an address. */
 export function browserOf(
   target: Target,
   env: NodeJS.ProcessEnv
@@ -66,20 +63,16 @@ export function browserOf(
     : { attach: { cdpEndpoint: target.cdpEndpoint } };
 }
 
-/** What the terminal is told once the recorder has started. */
 export function startLine(browser: RecorderOptions["browser"]): string {
   return "attach" in browser
     ? `Attached to the browser at ${browser.attach.cdpEndpoint}. Close its page, or press Ctrl+C here, to end: the browser stays open.\n`
     : `Opened ${browser.launch.url}. Close the browser, or press Ctrl+C here, to end.\n`;
 }
 
-/** What the terminal is told of the recorder window: its address. */
 export function windowLine(url: string): string {
   return `Recorder UI: ${url}\n`;
 }
 
-/** What the terminal is told once the recorder has started: where it is, and
- * the address of its window when it serves one. */
 export function startLines(
   browser: RecorderOptions["browser"],
   windowUrl: string | null | undefined
@@ -100,7 +93,6 @@ export const windowFolder = (commandFile: string): string =>
 export const toolbarScript = (commandFile: string): string =>
   join(dirname(fileURLToPath(commandFile)), "toolbar", "toolbar.js");
 
-/** What the terminal is told when the recorder has ended. */
 export function outcomeLine(outcome: RecordingOutcome): string {
   switch (outcome.kind) {
     case "saved":
@@ -127,11 +119,9 @@ export function warningPrinter(
   };
 }
 
-/** The process's exit code for an outcome. */
 export const exitCode = (outcome: RecordingOutcome): number =>
   outcome.kind === "failed" ? 1 : 0;
 
-/** What to print for an outcome, on which stream, and the exit code. */
 export function outcomeReport(outcome: RecordingOutcome): {
   stream: "stdout" | "stderr";
   text: string;
