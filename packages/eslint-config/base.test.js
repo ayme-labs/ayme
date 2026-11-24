@@ -22,3 +22,10 @@ test("a TODO-style comment is an error, however it is cased", () => {
 test("a comment that names no such term passes", () => {
   assert.deepEqual(lint("// Explains why.\nexport const a = 1;\n"), []);
 });
+
+test("a term inside a sentence passes, as a tool named Todo.close does", () => {
+  assert.deepEqual(
+    lint("// Registering Todo.close waits.\nexport const a = 1;\n"),
+    []
+  );
+});

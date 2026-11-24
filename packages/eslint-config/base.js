@@ -8,10 +8,12 @@ export default [
   ...testingEntries,
   {
     // A TODO-style comment is a promise nothing tracks: open an issue instead.
+    // Only a comment that opens with the term: a name such as `Todo.close`
+    // inside a sentence is no promise.
     rules: {
       "no-warning-comments": [
         "error",
-        { terms: ["todo", "fixme", "hack", "xxx"], location: "anywhere" },
+        { terms: ["todo", "fixme", "hack", "xxx"], location: "start" },
       ],
     },
   },
