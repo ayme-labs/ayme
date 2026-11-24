@@ -21,8 +21,8 @@ const allowedSlices = {
   timeline: [],
   // The window's controls, its status and theme, and the toolbar's pill.
   controls: [],
-  // The window's and the toolbar's scripts, which mount them, with their
-  // pages and stylesheets.
+  // The window's and the toolbar's scripts, which mount them, the window's
+  // page, and their stylesheets.
   app: ["controls", "timeline", "channel"],
 };
 const slices = Object.keys(allowedSlices);
