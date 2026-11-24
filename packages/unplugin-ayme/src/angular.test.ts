@@ -17,7 +17,6 @@ import { expect, it, vi } from "vitest";
 // Programs, an invalidate drops them (ADR-0036).
 const { compilerCalls, compileFailure } = vi.hoisted(() => ({
   compilerCalls: [] as ("compile" | "invalidate")[],
-  // What `compile` throws instead of compiling, when set.
   compileFailure: { error: undefined as Error | undefined },
 }));
 
@@ -160,8 +159,6 @@ it("keeps the compiler's Programs for the length of a build, and a rebuild start
     const calls = compilerCalls.splice(0);
     expect(calls[0]).toBe("invalidate");
     expect(calls.at(-1)).toBe("invalidate");
-    // Three Page Object Model modules of one project, and the modules that
-    // declare none, compile with the Programs kept.
     expect(
       calls.slice(1, -1).filter((call) => call === "compile").length
     ).toBeGreaterThanOrEqual(3);
