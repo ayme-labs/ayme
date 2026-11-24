@@ -67,8 +67,9 @@ An app that ships ayme needs only `tsconfig.json` and `pom/`. Each other entry a
    { "scripts": { "typecheck": "tsc -b && tsc --noEmit -p .ayme" } }
    ```
 
-Three kinds of project need one thing more:
+Four kinds of project need one thing more:
 
+- **Angular.** `ng add` points the build plugin at `tsconfig.app.json`, so the build reads that file, not the folder's. Keep options your Page Objects need, such as `paths`, in the root `tsconfig.json`, which both extend.
 - **Next.js.** Its tsconfig turns `incremental` on, and without `"incremental": false` the type check writes `.ayme/tsconfig.tsbuildinfo`. Point the Turbopack loader's `tsconfigPath` at `.ayme/tsconfig.json`.
 - **Nuxt and SvelteKit.** They generate the tsconfig this chain ends in, in `.nuxt/` and, on SvelteKit 2, `.svelte-kit/`, when their dev server or build runs, and with `nuxt prepare` or `svelte-kit sync`. In a fresh clone, run one of those before `ayme mcp` or the type check: without the generated file, neither can read the folder's tsconfig.
 - **A project with no tsconfig to extend**, such as one that only drives a site it doesn't build. Put the compiler options in `.ayme/tsconfig.json` itself:
