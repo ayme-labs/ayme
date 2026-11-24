@@ -233,6 +233,111 @@ it("in watch mode, rebuilds after an edit to a Page Object Model module that its
   }
 }, 30_000);
 
+// Angular's dev server ignores a workspace's dot-folders, so it rebuilds for
+// a Page Object Model in `.ayme/pom/` only when the signal file changes. The
+// builds here are started by hand, as Angular starts them.
+async function hiddenPomBuilds() {
+  const root = await realpath(
+    await workspace({
+      "tsconfig.json": tsconfig,
+      "main.ts":
+        'import { HiddenPage } from "./.ayme/pom/HiddenPage";\nconsole.log(HiddenPage);\n',
+      ".ayme/pom/HiddenPage.ts": pomSource("HiddenPage"),
+    })
+  );
+  const builds = await context({
+    absWorkingDir: root,
+    entryPoints: ["main.ts"],
+    bundle: true,
+    write: false,
+    metafile: true,
+    format: "esm",
+    external: ["@ayme-dev/ayme", "@ayme-dev/ayme/internal"],
+    plugins: [aymeAngularPlugin({ include: true })],
+    logLevel: "silent",
+  });
+  const first = await builds.rebuild();
+  const signalInput = Object.keys(first.metafile.inputs).find((input) =>
+    input.endsWith("rebuild.js")
+  );
+  return {
+    root,
+    builds,
+    // The file Angular watches: an input of the bundle, outside the workspace.
+    signal: signalInput && path.resolve(root, signalInput),
+    edit: () =>
+      writeFile(
+        path.join(root, ".ayme/pom/HiddenPage.ts"),
+        pomSource("HiddenPage").replace(
+          "doIt() {}",
+          'doIt() {}\n\n  @ayme.action({ description: "Undo it." })\n  undoIt() {}'
+        )
+      ),
+    async dispose() {
+      await builds.dispose();
+      await rm(root, { recursive: true, force: true });
+    },
+  };
+}
+
+it("rewrites the signal file a Page Object Model module in a dot-folder imports, after an edit no build followed", async () => {
+  const { root, builds, signal, edit, dispose } = await hiddenPomBuilds();
+  try {
+    // Outside the workspace, where Angular ignores no folder.
+    expect(path.relative(root, signal!)).toMatch(/^\.\./);
+    const before = await readFile(signal!, "utf8");
+
+    await edit();
+
+    await vi.waitFor(
+      async () => expect(await readFile(signal!, "utf8")).not.toBe(before),
+      { timeout: 5_000 }
+    );
+    const rebuilt = await builds.rebuild();
+    expect(rebuilt.outputFiles[0]!.text).toContain('"undoIt"');
+  } finally {
+    await dispose();
+  }
+}, 30_000);
+
+it("leaves the signal file alone when a build started after the edit", async () => {
+  const { builds, signal, edit, dispose } = await hiddenPomBuilds();
+  try {
+    const before = await readFile(signal!, "utf8");
+
+    await edit();
+    // As Angular's own watcher starts it, where that watcher sees the edit.
+    await builds.rebuild();
+
+    // Longer than the plugin waits for Angular before it signals.
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    expect(await readFile(signal!, "utf8")).toBe(before);
+  } finally {
+    await dispose();
+  }
+}, 30_000);
+
+it("stops watching when the build is disposed", async () => {
+  const { signal, edit, dispose, builds } = await hiddenPomBuilds();
+  try {
+    const before = await readFile(signal!, "utf8");
+    await builds.dispose();
+
+    await edit();
+
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    expect(await readFile(signal!, "utf8")).toBe(before);
+  } finally {
+    await dispose();
+  }
+}, 30_000);
+
+it("imports no signal file into a Page Object Model module outside dot-folders, which Angular watches", async () => {
+  const { inputs } = await bundle("browser");
+
+  expect(inputs.filter((input) => input.endsWith("rebuild.js"))).toEqual([]);
+});
+
 it("resolves the runtime to its absent entry and compiles stand-ins in a build without ayme, the default", async () => {
   const result = await build({
     absWorkingDir: fixtures,

@@ -1,4 +1,13 @@
+import { createHash } from "node:crypto";
+import {
+  mkdirSync,
+  statSync,
+  unwatchFile,
+  watchFile,
+  writeFileSync,
+} from "node:fs";
 import { readFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import type { PartialMessage, Plugin } from "esbuild";
@@ -27,6 +36,14 @@ const namespace = "ayme-pom";
 const suffix = "?ayme-pom";
 
 type CompiledPom = { contents: string; watchFiles: readonly string[] };
+
+/** How often the plugin looks at the files Angular's watcher leaves out. */
+const hiddenFilePollMs = 250;
+/**
+ * How long Angular gets to start a rebuild by itself after an edit, which its
+ * default watcher does from 22.2 on.
+ */
+const ownRebuildMs = 750;
 
 /**
  * esbuild code plugin for Angular's application builder, which consumers
@@ -63,7 +80,10 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
       // One compilation per module and build; a rebuild starts afresh so an
       // edited dependency reaches the manifest.
       let compiled = new Map<string, Promise<CompiledPom | null>>();
+      const hidden = watchHiddenFiles(root);
+      build.onDispose(hidden.close);
       build.onStart(() => {
+        hidden.buildStarted();
         compiled = new Map();
         compiler.invalidate();
         // esbuild gives a plugin no logger, so the line goes to the console.
@@ -71,6 +91,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
       });
       build.onEnd(() => {
         compiler.invalidate();
+        hidden.buildEnded();
       });
 
       // The stand-in of a build without ayme is what `onLoad` hands esbuild
@@ -81,7 +102,9 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         const compiledPom = compiler.compile(fileName, source, { emit: "js" });
         if (!compiledPom) return null;
         return {
-          contents: compiledPom.code,
+          contents:
+            compiledPom.code +
+            hidden.watch([fileName, ...compiledPom.dependencies]),
           watchFiles: compiledPom.dependencies,
         };
       };
@@ -158,6 +181,102 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
           watchFiles: [fileName, ...pom.watchFiles],
         };
       });
+    },
+  };
+}
+
+/**
+ * Angular's dev server ignores every folder under the workspace whose name
+ * starts with a dot, so on its own it may never rebuild after an edit to a
+ * Page Object Model in `.ayme/pom/`. The plugin watches those files itself.
+ * After an edit it rewrites a signal file outside the workspace, which each
+ * such module imports, and Angular rebuilds for that file.
+ */
+function watchHiddenFiles(root: string) {
+  const signal = path.join(
+    os.tmpdir(),
+    `ayme-angular-${createHash("sha256").update(root).digest("hex").slice(0, 16)}`,
+    "rebuild.js"
+  );
+  const importSignal = `\nimport ${JSON.stringify(signal)};\n`;
+  // Each watched file: what stops its watch, and its version when the last
+  // build started.
+  const watched = new Map<string, { version: string; stop: () => void }>();
+  const changedWhileBuilding = new Set<string>();
+  let building = false;
+  // Angular is waited for until it has once left an edit without a rebuild.
+  let wait = ownRebuildMs;
+
+  const versionOf = (file: string) => {
+    const stat = statSync(file, { throwIfNoEntry: false });
+    return stat ? `${stat.mtimeMs}:${stat.size}` : "";
+  };
+  const isHidden = (file: string) => {
+    const folder = path.relative(root, path.dirname(file));
+    if (folder.startsWith("..") || path.isAbsolute(folder)) return false;
+    const segments = folder.split(path.sep);
+    return (
+      !segments.includes("node_modules") &&
+      segments.some((segment) => segment.startsWith("."))
+    );
+  };
+  // A build that started after the edit has compiled it already.
+  const rebuildIfUnseen = (file: string) => {
+    const entry = watched.get(file);
+    if (!entry) return;
+    if (building) changedWhileBuilding.add(file);
+    else if (versionOf(file) !== entry.version) {
+      wait = 0;
+      writeFileSync(signal, `// ${Date.now()}\n`);
+    }
+  };
+  const edited = (file: string) => {
+    if (wait === 0) rebuildIfUnseen(file);
+    else setTimeout(rebuildIfUnseen, wait, file).unref();
+  };
+
+  return {
+    /**
+     * Watches those of `files` that Angular ignores. Returns the import a
+     * module compiled from them ends with, or nothing when Angular watches
+     * them all.
+     */
+    watch(files: readonly string[]) {
+      const hidden = files.filter(isHidden);
+      if (hidden.length === 0) return "";
+      if (watched.size === 0) {
+        mkdirSync(path.dirname(signal), { recursive: true });
+        writeFileSync(signal, "");
+      }
+      for (const file of hidden) {
+        if (watched.has(file)) continue;
+        const listener = () => edited(file);
+        // Polled, as Angular's `--poll` is for file systems without change
+        // events. Not persistent: a build that only builds must still exit.
+        watchFile(
+          file,
+          { interval: hiddenFilePollMs, persistent: false },
+          listener
+        );
+        watched.set(file, {
+          version: versionOf(file),
+          stop: () => unwatchFile(file, listener),
+        });
+      }
+      return importSignal;
+    },
+    buildStarted() {
+      building = true;
+      for (const [file, entry] of watched) entry.version = versionOf(file);
+    },
+    buildEnded() {
+      building = false;
+      for (const file of changedWhileBuilding) edited(file);
+      changedWhileBuilding.clear();
+    },
+    close() {
+      for (const { stop } of watched.values()) stop();
+      watched.clear();
     },
   };
 }
