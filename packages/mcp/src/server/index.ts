@@ -31,11 +31,7 @@ import {
   startPageObjects,
   writeInitScript,
 } from "../served-page-objects";
-import {
-  createMcpToolServer,
-  saveToScreenshotFolder,
-  screenshotFolder,
-} from "../tools";
+import { createMcpToolServer } from "../tools";
 import { connectionBehaviours } from "./connectionBehaviours";
 import { serverTools } from "./serverTools";
 
@@ -60,6 +56,10 @@ const log = (message: string) =>
  * in the working folder, it also builds the entry in watch mode, serves its
  * last good build on the same server, and writes `.ayme/init-script.js`,
  * which loads it into a page that doesn't ship ayme. Experimental (ADR-0037).
+ *
+ * It lists none of ayme's own browser driving of the paired page, whether
+ * the page ships ayme or loads the served Page Objects (see
+ * `AgentConnection`).
  */
 export async function startMcpServer({
   port: pinnedPort,
@@ -84,7 +84,6 @@ export async function startMcpServer({
   const channel = createPageChannelServer({
     connection,
     token,
-    imageFolder: screenshotFolder,
     agent: () => agentName,
     extensions: [
       externalInspectorServer({
@@ -133,7 +132,6 @@ export async function startMcpServer({
   const context = {
     connection,
     pairing,
-    saveImage: saveToScreenshotFolder,
     initScript,
     failedPageObjects: async () =>
       entry === undefined || build === undefined

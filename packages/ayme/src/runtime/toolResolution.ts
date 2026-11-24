@@ -9,6 +9,7 @@ export type { PublishedToolGroup, PublishedToolInfo, ToolInfo };
 import { type GoalTool } from "../goal-loop/application";
 import {
   getPageContextTool,
+  pageObjectsTool,
   type PeekTool,
   type PublishedElementTool,
   type RegisteredElementTool,
@@ -27,6 +28,7 @@ import type { ToolAvailability } from "../page-state/domain";
 export type PublishedTool =
   | CallerAwarePomTool
   | typeof getPageContextTool
+  | typeof pageObjectsTool
   | PublishedElementTool
   | PeekTool
   | GoalTool;
@@ -68,6 +70,10 @@ function resolveRegisteredTools(
     [
       getPageContextTool.name,
       { tool: getPageContextTool, group: "agent", ...always() },
+    ],
+    [
+      pageObjectsTool.name,
+      { tool: pageObjectsTool, group: "agent", ...always() },
     ],
   ]);
   const takenElsewhere = new Set([

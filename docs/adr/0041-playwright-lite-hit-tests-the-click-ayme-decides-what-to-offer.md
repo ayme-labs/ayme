@@ -1,6 +1,7 @@
 ---
 status: accepted
 amends: ADR-0035, ADR-0039
+amended-by: ADR-0058
 ---
 
 # Playwright Lite hit-tests the click, and ayme decides what to offer

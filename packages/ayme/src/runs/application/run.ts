@@ -35,6 +35,11 @@ export type RunContext = {
   readonly routerNavigate?: (url: string) => unknown;
   /** The definitions of the Page Object classes the Run's page registered, for `names` or all. */
   pomDefinitions(...names: readonly string[]): PomDefinitionsResult;
+  /**
+   * The Page Object Tree of the Run's page now, as the text `page_objects`
+   * answers: its Page Objects, their declared children and their ids.
+   */
+  pageObjectTree(): Promise<string>;
   /** The Page State Session of the Run's page: its actions, captures and refs go through it. */
   readonly pageStateSession: PageStateSession;
   /** How the Run measures whether its input would reach an element: the runtime's Reach. */
@@ -89,7 +94,7 @@ export function createRunQueue(): RunQueue {
 /**
  * Package-internal: `execute` a top-level Run, then `settle` before
  * resolving, whether it succeeded or failed; a child Run adds no settle wait
- * of its own. A read (`snapshot`, a Peek Tool: the caller says which) skips
+ * of its own. A read (`snapshot`, `page_objects`, a Peek Tool: the caller says which) skips
  * the settle, and so does an answer saying a full page load started: it goes
  * out at once, before the document goes away.
  */

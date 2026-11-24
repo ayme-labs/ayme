@@ -26,7 +26,7 @@ test("on a page with a strict Content Security Policy, the tab does not pair wit
       url: `${baseURL}${STRICT_PAGE}`,
     });
 
-    await page.goto(link);
+    await page.goto(link.split("\n")[0]!);
     await refused;
 
     expect(await agent.pageToolNames()).toEqual([]);
@@ -50,7 +50,7 @@ test.describe("with bypassCSP", () => {
         url: `${baseURL}${STRICT_PAGE}`,
       });
 
-      await page.goto(link);
+      await page.goto(link.split("\n")[0]!);
       // The page's imports wait for the server's first build, which takes
       // a few seconds while the rest of the suite runs beside it.
       await expect

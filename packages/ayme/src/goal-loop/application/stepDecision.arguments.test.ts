@@ -108,7 +108,7 @@ describe("rooted instance choices", () => {
       }))
     );
     const { decide, requests } = scripted(stageOne(tool.name), {
-      answers: { ref: choice("e4") },
+      answers: { id: choice("e4") },
     });
 
     const verdict = await step(decide, {
@@ -117,11 +117,12 @@ describe("rooted instance choices", () => {
       toolOptions: [optionOf(tool)],
     });
 
-    expect(questionsOf(requests[1]).ref!.criteria).toMatchObject({
+    expect(questionsOf(requests[1]).id!.criteria).toMatchObject({
       e1: 'List on ref "e1" (listitem): Draft release notes · Archive',
       e4: 'List on ref "e4" (listitem): Review onboarding flow · Archive',
     });
-    expect(verdict).toMatchObject({ kind: "act", args: { ref: "e4" } });
+    // The model picks the item by the ref the page shows; the tool gets its id.
+    expect(verdict).toMatchObject({ kind: "act", args: { id: "po2" } });
   });
 });
 

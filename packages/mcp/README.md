@@ -8,11 +8,24 @@ it, and their tools become MCP tools the agent can call.
 ## Setup
 
 Register the server in your coding agent like any other stdio MCP server, with
-the command `ayme mcp` from this package, pinned to the version you install:
+the command `ayme mcp` from the copy of this package your app installed, so it
+matches the page client and nothing is downloaded again. The agent has to start
+it in the app's folder:
 
 ```sh
-npx -y @ayme-dev/mcp@<version> mcp
+npx --no -p @ayme-dev/mcp ayme mcp
 ```
+
+If your agent starts its servers in another folder, pin the version your app
+installed instead: `npx -y @ayme-dev/mcp@<version> mcp`.
+
+The server adds your Page Objects to the browser automation your agent already
+uses, such as Playwright MCP: it lists their Page Object Tools and
+`page_objects`, and your agent keeps driving the browser with its own tools.
+It lists none of ayme's own browser driving, so an agent without browser
+automation needs one first.
+
+`ayme mcp --help` lists every option.
 
 Install the package beside `@ayme-dev/ayme`, which declares it as an optional
 peer dependency, and turn the page side on with `agentConnection: true` where
@@ -50,9 +63,9 @@ another tab. The server hands an auto-paired tab its token, which the tab keeps
 and reconnects with like a link's. If another server has taken that port since,
 it does not know the token: the tab forgets the pairing and looks again.
 
-After pairing, the page's built-in tools and Custom Tools are MCP tools under
-the names the page gives them, and calling one runs it on the page and returns
-its result. The server's own tools stay in the server: the page never publishes
+After pairing, the page's Page Object Tools, `page_objects` and Peek Tools
+are MCP tools under the names the page gives them; calling one runs it on the
+page and returns its result. The server's own tools stay in the server: the page never publishes
 them through WebMCP.
 
 Page Object Tools appear and disappear as MCP tools while the page registers
@@ -67,15 +80,15 @@ churn. Calling an unavailable tool is refused before anything runs,
 with an error result that carries its reason, such as `RuntimeStateError:
 Panel.remove is unavailable: No item is selected.`
 
-A Page Object Tool or Custom Tool its author marked `destructive: true` is
+A Page Object Tool its author marked `destructive: true` is
 listed with `annotations: { destructiveHint: true }`, here and in
 `ayme_list_tools`. Every other page tool is listed without annotations, which
 MCP reads as possibly destructive. The server runs a marked tool like any
 other; what to do about the mark is the agent's or its harness's choice. See
 [Destructive actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#destructive-actions).
 
-When the page's tools changed since the agent's previous call, the result ends
-with a separate text item such as `The connected tools changed since your
+When the page's tools changed since the agent's previous call, the result of
+any tool but a Page Object Tool ends with a separate text item such as `The connected tools changed since your
 previous call. Appeared: Basket.readHeading. Became unavailable: Panel.remove
 (No item is selected). ayme_list_tools lists the current tools; ayme_call runs
 any of them.` It lists the tools that appeared or disappeared, the ones that
@@ -191,12 +204,12 @@ the cases apart like this:
 - **Reloaded or navigated:** the same tab reconnected. It reloaded when the
   page said it started a reload, or, without a word from the page, when the
   new document has the old one's URL; otherwise it navigated. The answer has
-  `settled: false`, the new document's URL in `loading` and its tools in
-  `tools`.
+  `settled: false` and the new document's URL in `url`, as a Page Object
+  Tool's own answer from a loading document has.
 - **Started loading, not reconnected yet:** the page said it started loading
   another document (the Navigation API's `navigate` event, for loads the page
   starts, such as a link click or `location.reload()`), and the tab has not
-  reconnected. The answer has `settled: false` and the URL in `loading`.
+  reconnected. The answer has `settled: false` and the URL in `url`.
 - **Closed:** the tab did not reconnect and the page said nothing, as when the
   tab closes or the browser itself loads a document without ayme.
 - **Another tab connected:** the newest tab wins. Pairing a second tab answers
@@ -211,9 +224,9 @@ until a tab pairs again.
 A call for the page that comes while its tab is loading a new document waits
 for the new page instead of failing: from when the page says it started
 loading, through the wait for its tab to reconnect, until the new page has
-reported its tools. It then runs on the new page, so a `snapshot` sent right
-after a full-load answer reads the new page. When no page comes back, the call
-fails without running, and its text says how the page left: it started
+reported its tools. It then runs on the new page, so a `page_objects` sent
+right after a full-load answer reads the new page. When no page comes back, the
+call fails without running, and its text says how the page left: it started
 loading a URL and no page reconnected in its place, as when the tab closed or
 the new page does not run the Agent Connection, or its connection closed
 without a word. When another tab pairs in its place, the held calls fail

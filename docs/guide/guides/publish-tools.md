@@ -41,6 +41,8 @@ A registration counts, so a class registered at setup and in a component stays r
 
 ## Turn publication on
 
+> **Experimental:** WebMCP publication may change in any release. See [Experimental APIs](../reference/experimental-apis.md). A coding agent that drives the browser from outside it connects through [ayme's MCP server](connect-an-agent.md) instead.
+
 Publication lives in its own package. Install it beside `@ayme-dev/ayme`, which declares it as an optional peer dependency:
 
 ```sh
@@ -50,7 +52,7 @@ npm install @ayme-dev/webmcp
 The call that starts ayme decides whether its tools are published through WebMCP.
 
 - `webMCP.enabled` turns publication on. With it off, the page loads none of WebMCP's code. It is off unless set. Page Objects, page state and the Goal Loop work either way.
-- `webMCP.toolNamePrefix` is prepended to every published tool name: `snapshot`, `goal`, the Browser Tools, Custom Tools and Page Object Tools. With `toolNamePrefix: "shop_"`, the agent sees `shop_snapshot` and `shop_ProjectsPage.openNewProjectDialog`. It is empty by default. It applies only at publication: `ayme.tools`, the Goal Loop and the Inspector use the unprefixed names.
+- `webMCP.toolNamePrefix` is prepended to every published tool name: `snapshot`, `page_objects`, `goal`, the Browser Tools, Custom Tools and Page Object Tools. With `toolNamePrefix: "shop_"`, the agent sees `shop_snapshot` and `shop_ProjectsPage.openNewProjectDialog`. It is empty by default. It applies only at publication: `ayme.tools`, the Goal Loop and the Inspector use the unprefixed names.
 
 ```ts
 createAyme({ webMCP: { enabled: true, toolNamePrefix: "shop_" } });
@@ -64,7 +66,7 @@ Chrome with the WebMCP flag supplies `document.modelContext` natively: open `chr
 
 ## What gets published
 
-With publication on, an agent sees `snapshot`, which returns the page state, the Browser Tools, your Custom Tools, the Page Object Tools of every registered Page Object on the page, and `goal` when the Goal Loop is configured. The set follows the page: a Page Object's tools appear when its class is registered and it is present, by its URL or its root, and disappear when it leaves. A tool whose action cannot run now stays published, and a call to it is refused with its reason. [`@ayme.action`](ayme-page-objects.md#aymeaction) shows one. The agent gets the refusal as an error result, as [Errors](../reference/errors.md#how-an-agent-sees-a-failure) shows. A tool marked [destructive](../reference/ayme.md#destructive-actions) is published with `annotations: { consequentialHint: true }`, and every other tool without annotations.
+With publication on, an agent sees `snapshot`, which returns the page state, `page_objects`, which returns the [Page Objects on the page as a tree](page-state.md#page-object-ids), the Browser Tools, your Custom Tools, the Page Object Tools of every registered Page Object on the page, and `goal` when the Goal Loop is configured. The set follows the page: a Page Object's tools appear when its class is registered and it is present, by its URL or its root, and disappear when it leaves. A tool whose action cannot run now stays published, and a call to it is refused with its reason. [`@ayme.action`](ayme-page-objects.md#aymeaction) shows one. The agent gets the refusal as an error result, as [Errors](../reference/errors.md#how-an-agent-sees-a-failure) shows. A tool marked [destructive](../reference/ayme.md#destructive-actions) is published with `annotations: { consequentialHint: true }`, and every other tool without annotations.
 
 ## Publication status
 

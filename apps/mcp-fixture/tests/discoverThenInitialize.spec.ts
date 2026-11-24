@@ -75,11 +75,11 @@ test("after server/discover and then initialize, the server serves the older rev
       name: "ayme_connect",
       arguments: { url: new URL("/", baseURL).href },
     })) as { result: { content: { text: string }[] } };
-    await page.goto(connected.result.content[0]!.text);
+    await page.goto(connected.result.content[0]!.text.split("\n")[0]!);
 
     await expect
       .poll(toolNames, { message: `The page never paired. Log:\n${log}` })
-      .toContain("snapshot");
+      .toContain("page_objects");
   } finally {
     // The process stops when the agent closes stdin.
     server.stdin.end();

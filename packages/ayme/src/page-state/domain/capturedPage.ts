@@ -30,7 +30,8 @@ export function treeRefAllocator(): SyntheticAriaRefAllocator {
  * The tree of a capture and the Page Object Root Marks of its roots: the
  * distilled text with excluded refs left out, each root placed and marked,
  * a root without a node of its own over the nodes inside it, under the
- * synthetic ref the module minted for it.
+ * synthetic ref the module minted for it, and each element the capture
+ * kept placed too.
  */
 export function structureCapture(
   capture: Capture,
@@ -80,6 +81,19 @@ export function structureCapture(
     const ref = omitted.refs[0] ?? null;
     if (ref !== null) marksByRef.set(ref, root.labels);
   }
+  // The elements the capture kept as nodes of their own, which the distilled
+  // text may show as their parent's text, placed from the full tree.
+  if (capture.kept?.length)
+    tree = placeCapturedRoots(
+      tree,
+      fullTree,
+      capture.kept.map((ref) => ({
+        kind: "referenced",
+        ref: parseRef(ref),
+        withText: true,
+      })),
+      refFactory
+    ).tree;
   return { tree, pomRootMarks: marksByRef };
 }
 

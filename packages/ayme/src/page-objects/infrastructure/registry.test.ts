@@ -8,29 +8,21 @@ import {
 import { checkedToolInput } from "../../shared";
 import type { PageStateSession, Reach } from "../../page-state/application";
 
-const {
-  locatorElements,
-  testLocators,
-  pageStateResolutions,
-  pageStateRecordedListeners,
-  pageObjectProbe,
-  rootMeasure,
-} = vi.hoisted(() => ({
-  pageObjectProbe: { source: undefined as unknown },
-  rootMeasure: {
-    current: undefined as
-      | undefined
-      | (() => {
-          present: boolean;
-          available: boolean;
-          inTheWay?: string[];
-        }),
-  },
-  locatorElements: new WeakMap<object, Element[]>(),
-  testLocators: new WeakSet<object>(),
-  pageStateRecordedListeners: new Set<() => void>(),
-  pageStateResolutions: new Map<string, { node: { ref: string } }>(),
-}));
+const { locatorElements, testLocators, pageObjectProbe, rootMeasure } =
+  vi.hoisted(() => ({
+    pageObjectProbe: { source: undefined as unknown },
+    rootMeasure: {
+      current: undefined as
+        | undefined
+        | (() => {
+            present: boolean;
+            available: boolean;
+            inTheWay?: string;
+          }),
+    },
+    locatorElements: new WeakMap<object, Element[]>(),
+    testLocators: new WeakSet<object>(),
+  }));
 // A jsdom test has no in-page module: it stands in a page driver whose refs
 // name the elements its locators hold.
 vi.mock(
@@ -62,10 +54,6 @@ vi.mock(
   "../../page-state/infrastructure/pageState",
   async (importOriginal) => ({
     ...(await importOriginal<object>()),
-    onPageStateRecorded: (_doc: unknown, listener: () => void) => {
-      pageStateRecordedListeners.add(listener);
-      return () => pageStateRecordedListeners.delete(listener);
-    },
     providePageObjectProbe: (source: unknown) => {
       pageObjectProbe.source = source;
     },
@@ -77,16 +65,11 @@ import type { AymePage } from "../../runtime";
 import type { TestSession } from "../../../testing/session.testSupport";
 
 /**
- * The Page State Session a Run hands these tools: a ref resolves to its
- * node in `pageStateResolutions`, and an action performs at once on a page
- * that never changes.
+ * The Page State Session a Run hands these tools: a capture reads nothing,
+ * and an action performs at once on a page that never changes.
  */
 const pageStateSession = {
-  resolveRef: async (requested: string) => {
-    const entry = pageStateResolutions.get(requested);
-    if (!entry) throw new Error(`No page state resolution for "${requested}".`);
-    return entry.node;
-  },
+  getPageStateCapture: async () => ({}),
   runAction: async (
     _cursor: unknown,
     _call: unknown,
@@ -120,11 +103,45 @@ function brandedLocator(
   return loc as unknown as Locator;
 }
 
-/** A ref the Run's page state resolves to `ref` itself, which the page names `element` by. */
+/** The page names `element` by `ref`. */
 function resolvesTo(ref: string, element: Element) {
   nameElement(element, ref);
-  pageStateResolutions.set(ref, { node: { ref } });
 }
+
+/** The Page Object id a rooted tool lists for the root the page names `ref`. */
+async function idOf(
+  registry: {
+    listRootedToolInstances(): Promise<
+      Map<string, { ref: string; id: string }[]>
+    >;
+  },
+  ref: string
+): Promise<string> {
+  const id = [...(await registry.listRootedToolInstances()).values()]
+    .flat()
+    .find((instance) => instance.ref === ref)?.id;
+  if (!id) throw new Error(`No Page Object id for "${ref}".`);
+  return id;
+}
+
+/** The id the page gives a `className` rooted where it names `ref`. */
+async function idAt(
+  registry: {
+    pageObjectIdsOf(
+      roots: { className: string; ref: string }[]
+    ): Promise<(string | undefined)[]>;
+  },
+  className: string,
+  ref: string
+): Promise<string> {
+  const [id] = await registry.pageObjectIdsOf([{ className, ref }]);
+  if (!id) throw new Error(`No Page Object id for ${className} "${ref}".`);
+  return id;
+}
+
+/** The roots of `Item`s the page names `refs`. */
+const items = (...refs: string[]) =>
+  refs.map((ref) => ({ className: "Item", ref }));
 
 /** Tells the registry's watch the page changed. */
 const pageChanges = () => latestStandIn()?.trigger();
@@ -1232,11 +1249,11 @@ describe("live Page Object registry", () => {
     expect(subscriber).toHaveBeenCalledOnce();
   });
 
-  it("lists an obstructed root's tools unavailable, and reads them again when a page state may name what is in the way", async () => {
+  it("lists an obstructed root's tools unavailable, naming what is in the way by its role and name", async () => {
     rootMeasure.current = () => ({
       present: true,
       available: false,
-      inTheWay: ["e1"],
+      inTheWay: 'dialog "Delete"',
     });
     const { registry, session, ayme, rootOf } = await setup();
 
@@ -1251,20 +1268,15 @@ describe("live Page Object registry", () => {
       tools: [action("save")],
     });
     session.register(CoveredPage);
-    const subscriber = vi.fn();
-    registry.subscribeToRegisteredPoms(subscriber);
     await vi.runOnlyPendingTimersAsync();
 
     expect(registry.listRegisteredPomTools()).toEqual([
       expect.objectContaining({
         present: true,
         available: false,
-        reason: "a click would not reach it",
+        reason: 'a click would not reach it; dialog "Delete" is in the way',
       }),
     ]);
-    subscriber.mockClear();
-    for (const listener of pageStateRecordedListeners) listener();
-    expect(subscriber).toHaveBeenCalledOnce();
   });
 
   it("bounds recursive component manifests to the current component path", async () => {
@@ -1380,7 +1392,10 @@ describe("live Page Object registry", () => {
     ]);
 
     const confirmTool = registry.listAvailablePomTools()[0];
-    await confirmTool?.execute({ ref: "e21" }, pomRunContext());
+    await confirmTool?.execute(
+      { id: await idOf(registry, "e21") },
+      pomRunContext()
+    );
     expect(confirm).toHaveBeenCalledOnce();
 
     panelRootCount = 1;
@@ -1392,7 +1407,10 @@ describe("live Page Object registry", () => {
     ]);
 
     const nestedTool = registry.listAvailablePomTools()[1];
-    await nestedTool?.execute({ ref: "e22" }, pomRunContext());
+    await nestedTool?.execute(
+      { id: await idOf(registry, "e22") },
+      pomRunContext()
+    );
     expect(save).toHaveBeenCalledOnce();
 
     dialogRootCount = 0;
@@ -1544,7 +1562,10 @@ describe("live Page Object registry", () => {
     if (!tool) throw new Error("Expected a collection tool.");
 
     await expect(
-      tool.execute({ ref: "e2", args: {} }, pomRunContext())
+      tool.execute(
+        { id: await idOf(registry, "e2"), args: {} },
+        pomRunContext()
+      )
     ).resolves.toEqual({
       page_changed: false,
       settled: true,
@@ -1557,7 +1578,10 @@ describe("live Page Object registry", () => {
     pageChanges();
     await registry.probeRegisteredPomMembers();
     await expect(
-      tool.execute({ ref: "e3", args: {} }, pomRunContext())
+      tool.execute(
+        { id: await idOf(registry, "e3"), args: {} },
+        pomRunContext()
+      )
     ).resolves.toEqual({
       page_changed: false,
       settled: true,
@@ -1566,8 +1590,6 @@ describe("live Page Object registry", () => {
     expect(replacementArchive).toHaveBeenCalledOnce();
     // Each observation read the collection once; the calls read nothing.
     expect(getItems).toHaveBeenCalledTimes(2);
-
-    pageStateResolutions.clear();
   });
 
   it("refuses a collection call on an item the last observation did not find, rather than running it", async () => {
@@ -1613,15 +1635,14 @@ describe("live Page Object registry", () => {
         archive: addedArchive,
       }) as never
     );
+    const addedId = await idAt(registry, "Item", "e2");
 
     await expect(
-      tool.execute({ ref: "e2", args: {} }, pomRunContext())
+      tool.execute({ id: addedId, args: {} }, pomRunContext())
     ).rejects.toThrow(
-      'Cannot call Item.archive on ref "e2": it is not a root of Item.'
+      `Cannot call Item.archive on Page Object "${addedId}": it is not an Item on the page.`
     );
     expect(addedArchive).not.toHaveBeenCalled();
-
-    pageStateResolutions.clear();
   });
 
   it("refuses a call whose root no longer resolves to the one element the observation found, rather than running it", async () => {
@@ -1649,6 +1670,7 @@ describe("live Page Object registry", () => {
     const tool = registry.listAvailablePomTools()[0];
     if (!tool) throw new Error("Expected the Page Object Tool.");
     resolvesTo("e5", rootElement);
+    const id = await idAt(registry, "RootedPage", "e5");
     // A second element now matches the root's locator, after the first.
     matches = 2;
     locatorElements.set(page.root, [
@@ -1657,13 +1679,11 @@ describe("live Page Object registry", () => {
     ]);
 
     await expect(
-      tool.execute({ ref: "e5", args: {} }, pomRunContext())
+      tool.execute({ id, args: {} }, pomRunContext())
     ).rejects.toThrow(
-      'Cannot call save on ref "e5": it is not a root of RootedPage'
+      `Cannot call save on Page Object "${id}": it is not a RootedPage on the page.`
     );
     expect(save).not.toHaveBeenCalled();
-
-    pageStateResolutions.clear();
   });
 
   it("lets an instance tool omit args only when its action needs no input", async () => {
@@ -1729,20 +1749,201 @@ describe("live Page Object registry", () => {
     const archiveTool = tool("Item.archive");
     const renameTool = tool("Item.rename");
 
-    expect(archiveTool.inputSchema.required).toEqual(["ref"]);
+    expect(archiveTool.inputSchema.required).toEqual(["id"]);
     await expect(
-      archiveTool.execute({ ref: "e2" }, pomRunContext())
+      archiveTool.execute({ id: await idOf(registry, "e2") }, pomRunContext())
     ).resolves.toMatchObject({ result: "archived" });
     expect(archive).toHaveBeenCalledOnce();
 
-    expect(tool("Item.pin").inputSchema.required).toEqual(["ref"]);
+    expect(tool("Item.pin").inputSchema.required).toEqual(["id"]);
 
-    expect(renameTool.inputSchema.required).toEqual(["ref", "args"]);
+    expect(renameTool.inputSchema.required).toEqual(["id", "args"]);
     // The runtime checks a Run's input against this schema before execute.
     expect(() =>
-      checkedToolInput(renameTool.inputSchema, { ref: "e2" })
+      checkedToolInput(renameTool.inputSchema, { id: "po1" })
     ).toThrow("Input property args is required.");
+  });
 
-    pageStateResolutions.clear();
+  describe("a rooted tool called by Page Object id", () => {
+    /** Two items on the page, named `e1` and `e2`, each with its own archive. */
+    async function twoItems() {
+      const { registry, session, rooted } = await setup();
+      const elements = [
+        { isConnected: true } as Element,
+        { isConnected: true } as Element,
+      ];
+      const archives = [vi.fn(() => "first"), vi.fn(() => "second")];
+      let present = [1, 1];
+      resolvesTo("e1", elements[0]!);
+      resolvesTo("e2", elements[1]!);
+      class ItemsPage {
+        readonly items = elements.map((element, index) =>
+          rooted(
+            brandedLocator({ count: async () => present[index]! }, element),
+            { archive: archives[index]! }
+          )
+        );
+      }
+      registry.registerCompiledPom(ItemsPage, {
+        className: "ItemsPage",
+        tools: [],
+        members: [
+          {
+            memberName: "items",
+            kind: "component",
+            access: "field",
+            componentClassName: "Item",
+            collection: true,
+          },
+        ],
+        components: [
+          {
+            className: "Item",
+            members: [{ memberName: "root", kind: "locator", access: "field" }],
+            tools: [action("Item.archive")],
+          },
+        ],
+      });
+      session.register(ItemsPage);
+      await vi.runOnlyPendingTimersAsync();
+      const tool = registry.listAvailablePomTools()[0];
+      if (!tool) throw new Error("Expected the collection tool.");
+      return {
+        registry,
+        tool,
+        archives,
+        /** The item at `index` leaves the page. */
+        async remove(index: number) {
+          present = present.map((count, at) => (at === index ? 0 : count));
+          pageChanges();
+          await vi.runOnlyPendingTimersAsync();
+        },
+      };
+    }
+
+    it("runs on the Page Object the id names", async () => {
+      const { registry, tool, archives } = await twoItems();
+      expect(await registry.pageObjectIdsOf(items("e1", "e2"))).toEqual([
+        "po1",
+        "po2",
+      ]);
+
+      await expect(
+        tool.execute({ id: "po2" }, pomRunContext())
+      ).resolves.toMatchObject({ result: "second" });
+      await expect(
+        tool.execute({ id: "po1", args: {} }, pomRunContext())
+      ).resolves.toMatchObject({ result: "first" });
+
+      expect(archives[0]).toHaveBeenCalledOnce();
+      expect(archives[1]).toHaveBeenCalledOnce();
+    });
+
+    it("takes the id and the action's arguments, and no Structural Ref", async () => {
+      const { tool } = await twoItems();
+
+      expect(tool.inputSchema).toMatchObject({
+        properties: { id: { type: "string" }, args: { type: "object" } },
+        required: ["id"],
+        additionalProperties: false,
+      });
+      expect(Object.keys(tool.inputSchema.properties ?? {})).toEqual([
+        "id",
+        "args",
+      ]);
+      expect(tool.parameters.map(({ name }) => name)).toEqual(["id", "args"]);
+    });
+
+    it("says where the id comes from, and tells the agent nothing to do", async () => {
+      const { tool } = await twoItems();
+
+      expect(tool.inputSchema.properties?.id?.description).toBe(
+        "The Page Object's id, written po<n>. The page state shows it on the Page Object Root."
+      );
+    });
+
+    it("refuses a Structural Ref of the root as wrong input", async () => {
+      const { tool, archives } = await twoItems();
+
+      // The runtime checks a Run's input against the schema before execute.
+      expect(() =>
+        checkedToolInput(tool.inputSchema, { ref: "e2", args: {} })
+      ).toThrow(
+        expect.objectContaining({
+          name: "ToolInputError",
+          message: expect.stringContaining("ref"),
+        })
+      );
+      await expect(
+        tool.execute({ ref: "e2", args: {} }, pomRunContext())
+      ).rejects.toMatchObject({
+        name: "ToolInputError",
+        message: "Input property id is required.",
+      });
+      expect(archives[1]).not.toHaveBeenCalled();
+    });
+
+    it.each(["e1", "po0", "PO1", "po1 ", ""])(
+      "refuses the malformed id %j as wrong input",
+      async (id) => {
+        const { registry, tool, archives } = await twoItems();
+        await registry.pageObjectIdsOf(items("e1", "e2"));
+
+        const call = tool.execute({ id }, pomRunContext());
+
+        await expect(call).rejects.toMatchObject({
+          name: "ToolInputError",
+          message: `Input property id is not a Page Object id, written po<n>: ${JSON.stringify(id)}.`,
+        });
+        expect(archives[0]).not.toHaveBeenCalled();
+      }
+    );
+
+    it("refuses an input without an id as wrong input", async () => {
+      const { registry, tool, archives } = await twoItems();
+      await registry.pageObjectIdsOf(items("e1", "e2"));
+
+      await expect(
+        tool.execute({ args: {} }, pomRunContext())
+      ).rejects.toMatchObject({
+        name: "ToolInputError",
+        message: "Input property id is required.",
+      });
+      expect(archives[0]).not.toHaveBeenCalled();
+    });
+
+    it("fails with the reason alone once the Page Object is gone", async () => {
+      const { registry, tool, archives, remove } = await twoItems();
+      await registry.pageObjectIdsOf(items("e1", "e2"));
+      await remove(0);
+      // The element left the page: nothing names it any more.
+      latestStandIn()!.keyedRefs = async (keys) =>
+        keys.map((key) => (key === "e1" ? undefined : key));
+
+      const call = tool.execute({ id: "po1" }, pomRunContext());
+
+      await expect(call).rejects.toMatchObject({
+        name: "RefResolutionError",
+        message:
+          'Cannot call Item.archive on Page Object "po1": it is not on the page.',
+      });
+      expect(archives[0]).not.toHaveBeenCalled();
+      // The Page Object that stayed keeps its id.
+      await expect(
+        tool.execute({ id: "po2" }, pomRunContext())
+      ).resolves.toMatchObject({ result: "second" });
+    });
+
+    it("fails with the reason alone for an id no Page Object was given", async () => {
+      const { tool } = await twoItems();
+
+      await expect(
+        tool.execute({ id: "po7" }, pomRunContext())
+      ).rejects.toMatchObject({
+        name: "RefResolutionError",
+        message:
+          'Cannot call Item.archive on Page Object "po7": it is not on the page.',
+      });
+    });
   });
 });

@@ -52,8 +52,12 @@ layout, host CSS, stacking, mounting, motion and dogfooding) run inline only.
 Run from this directory inside the repository's Devbox shell. `pnpm test:e2e`
 tests the built packages, so build first; Turbo's `test:e2e` task does. It runs
 Playwright on Chromium against the fixture pages, served on a free port
-(`AYME_E2E_PORT_INSPECTOR` overrides it). The runtime publishes to the
-recording WebMCP driver from `@ayme-dev/webmcp/testing`, and the tests call tools
-through it. They drive the panel through the Inspector's page objects from
-`@ayme-dev/inspector/testing`. A fixture page that fails to start or a runtime
-that never publishes fails before any test assertion, with its own message.
+(`AYME_E2E_PORT_INSPECTOR` overrides it). A test that calls Page Object Tools
+as a coding agent (`connected`) starts an `ayme mcp` server and opens the page
+through its connect link. The Browser Tools, which the server doesn't list,
+run on the page's own runtime, as the app runs them. The tests drive the panel
+through the Inspector's page objects from `@ayme-dev/inspector/testing`. A
+fixture page that fails to start or a runtime that never lists its tools fails
+before any test assertion, with its own message. WebMCP is experimental, so
+only the test of the Connections popover's WebMCP state installs a WebMCP
+driver, the recording one from `@ayme-dev/webmcp/testing`.

@@ -1,8 +1,7 @@
 /**
  * Rebuilds a suite's summary from its stored runs, a mission suite's or a
  * startup suite's. Launches no agent and needs neither the lab app nor a
- * Claude Code token. With the OpenRouter key at hand it first fills in the Goal
- * Loop costs OpenRouter has recorded since the runs ended.
+ * Claude Code token.
  *
  *   node src/report.ts [--suite <id>] [--publish]
  *
@@ -14,11 +13,9 @@
 import path from "node:path";
 
 import { parseFlags } from "./cli.ts";
-import { openRouterKeyVariable, readEnvVariable } from "./environment.ts";
 import { defaultMissionId } from "./missions.ts";
-import { evalRoot, summariesRoot } from "./paths.ts";
+import { summariesRoot } from "./paths.ts";
 import {
-  completeStoredCosts,
   latestSuiteId,
   parseStartupRun,
   parseStoredRun,
@@ -47,8 +44,6 @@ export function publishedFolder(summary: { date: string; missions: string[] }) {
     ? `${summary.date}-${mission}`
     : summary.date;
 }
-
-const log = (line: string) => process.stderr.write(`${line}\n`);
 
 /** Writes the summary beside the manifest and, when given a folder, there too. */
 async function writeSummaries(
@@ -88,24 +83,15 @@ async function reportStartupSuite(
 
 /**
  * Builds the summary from the suite's stored runs and writes it beside the
- * manifest, after completing the Goal Loop costs OpenRouter can now report.
- * A startup suite has no Goal Loop, and a summary of its own.
+ * manifest. A startup suite has a summary of its own.
  */
 export async function reportSuite(
   suiteId: string,
-  options: { publish: boolean; openRouterApiKey: string | undefined }
+  options: { publish: boolean }
 ): Promise<{ markdown: string; written: string[] }> {
   const manifest = await readManifest(suiteId);
   if ("lane" in manifest)
     return reportStartupSuite(suiteId, manifest, options.publish);
-  if (options.openRouterApiKey !== undefined) {
-    const completed = await completeStoredCosts(manifest.runIds, {
-      openRouterApiKey: options.openRouterApiKey,
-      log,
-    });
-    if (completed.length > 0)
-      log(`Filled in the Goal Loop cost of ${completed.join(", ")}.`);
-  }
   const summary = buildSummary({
     suiteId,
     date: manifest.startedAt.slice(0, 10),
@@ -129,7 +115,6 @@ async function main() {
     throw new Error("No stored suite. Run pnpm eval:suite first.");
   const { markdown, written } = await reportSuite(suiteId, {
     publish: flags.has("publish"),
-    openRouterApiKey: readEnvVariable(openRouterKeyVariable, evalRoot),
   });
   process.stdout.write(markdown);
   process.stderr.write(

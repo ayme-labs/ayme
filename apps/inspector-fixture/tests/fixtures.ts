@@ -1,11 +1,11 @@
 import {
+  expect,
   test as base,
   selectors,
   type BrowserContext,
   type Locator,
   type Page,
 } from "@playwright/test";
-import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
 import { freePort, startAgent, type Agent } from "@ayme-dev/mcp/testing";
 import {
   Inspector,
@@ -97,32 +97,30 @@ export type FixturePage =
 export type Placement = "inline" | "external";
 
 /**
- * The external placement's end of the run: the ayme MCP server the page
- * connects to, and the window it serves the Inspector in.
- */
-export type ExternalInspector = { agent: Agent; context: BrowserContext };
-
-/**
  * Opens a fixture page and fails with its own message, before any test
- * assertion, when the page's script broke or the runtime never published its
- * tools. With `external`, the page is opened for the external placement and
- * connected to its server, and the Inspector is the window that server
- * serves: `inspector` drives that window, and `page` stays the app's.
+ * assertion, when the page's script broke or the runtime never listed its
+ * tools. With `agent`, the page is opened through that agent's connect link
+ * and waits until the agent lists its tools. With `external` as well, the
+ * page is opened for the external placement, and the Inspector is the window
+ * the agent's server serves, opened in that context: `inspector` drives that
+ * window, and `page` stays the app's.
  */
 export async function openFixture(
   page: Page,
   path: FixturePage,
   {
     reload = false,
+    agent,
     external,
-  }: { reload?: boolean; external?: ExternalInspector } = {}
+  }: { reload?: boolean; agent?: Agent; external?: BrowserContext } = {}
 ) {
   await page.addInitScript(openHighlightOverlay);
   const pageErrors: string[] = [];
   const onPageError = (error: Error) => pageErrors.push(error.message);
   page.on("pageerror", onPageError);
   if (reload) await page.reload();
-  else if (external) await page.goto(await connectLink(external.agent, path));
+  else if (agent)
+    await page.goto(await connectLink(agent, path, external !== undefined));
   else await page.goto(path);
 
   const root = page.locator("html");
@@ -138,38 +136,44 @@ export async function openFixture(
       `The fixture page ${path} failed to start: ${await root.getAttribute("data-fixture-error")}`
     );
 
-  // Without publication the runtime stays "disabled"; otherwise it publishes.
-  // The first page of a cold CI container has reached "active" just after a
+  // The first page of a cold CI container has listed its tools just after a
   // 10 s wait gave up, so the runtime gets longer than the script did.
-  const runtimeState = path === "/unpublished.html" ? "disabled" : "active";
   try {
-    await root
-      .and(page.locator(`[data-runtime="${runtimeState}"]`))
-      .waitFor({ timeout: 30_000 });
-  } catch {
-    throw new Error(
-      `The ayme runtime did not reach "${runtimeState}": ${await root.getAttribute("data-runtime")}, ${await root.getAttribute("data-runtime-message")}`
+    await page.waitForFunction(
+      () => (window.fixtureAyme?.tools.list().length ?? 0) > 0,
+      undefined,
+      { timeout: 30_000 }
     );
+  } catch {
+    throw new Error(`The ayme runtime of ${path} never listed its tools.`);
   }
+  if (agent)
+    await expect.poll(() => agent.toolNames()).toContain("page_objects");
 
   page.off("pageerror", onPageError);
   return {
     inspector: new Inspector(
-      external ? await openInspectorWindow(page, external) : page
+      agent && external
+        ? await openInspectorWindow(page, agent, external)
+        : page
     ),
     listPage: new ListPage(page),
   };
 }
 
-/** The link that pairs the fixture page, opened for the external placement, with `agent`. */
-async function connectLink(agent: Agent, path: FixturePage) {
+/**
+ * The link that pairs the fixture page with `agent`, opened for the external
+ * placement or, with the Agent Connection on, for the inline one.
+ */
+async function connectLink(agent: Agent, path: FixturePage, external: boolean) {
   const url = new URL(path, baseURL());
-  url.searchParams.set("external", "");
+  url.searchParams.set(external ? "external" : "agent", "");
   const { text, isError } = await agent.call("ayme_connect", {
     url: url.href,
   });
   if (isError) throw new Error(`ayme_connect failed: ${text}`);
-  return text;
+  // The link is the answer's first line; a note may follow it.
+  return text.split("\n")[0]!;
 }
 
 /** The address the fixture pages are served on, which the config picked. */
@@ -183,7 +187,8 @@ function baseURL() {
  */
 async function openInspectorWindow(
   page: Page,
-  { agent, context }: ExternalInspector
+  agent: Agent,
+  context: BrowserContext
 ) {
   const { text: url, isError } = await agent.call("ayme_inspect");
   if (isError) throw new Error(`ayme_inspect failed: ${url}`);
@@ -194,11 +199,26 @@ async function openInspectorWindow(
   return window;
 }
 
+/**
+ * What a Page Object Tool's call over `agent` answers: its JSON, or its
+ * error text with `isError`.
+ */
+export async function callOverMcp(
+  agent: Agent,
+  name: string,
+  input: Record<string, unknown> = {}
+) {
+  const { text, isError } = await agent.call(name, input);
+  return isError
+    ? { isError, text }
+    : (JSON.parse(text) as Record<string, unknown>);
+}
+
 export const test = base.extend<
   {
-    publishedTools: void;
     fixturePath: FixturePage;
     placement: Placement;
+    connected: boolean;
     agent: Agent | undefined;
     opened: Awaited<ReturnType<typeof openFixture>>;
     inspector: Inspector;
@@ -217,30 +237,25 @@ export const test = base.extend<
     },
     { scope: "worker", auto: true },
   ],
-  // The runtime publishes to the recording WebMCP driver from
-  // `@ayme-dev/webmcp/testing`, which the tests call tools through.
-  publishedTools: [
-    async ({ context }, use) => {
-      await recordPublishedTools(context);
-      await use();
-    },
-    { auto: true },
-  ],
   fixturePath: ["/", { option: true }],
   placement: ["inline", { option: true }],
-  // The external placement's server: the ayme MCP server the fixture page
-  // connects to and that serves the Inspector. On a port of its own, outside
-  // the range pages scan, so no other test's page pairs with it.
-  agent: async ({ placement }, use) => {
-    if (placement !== "external") return use(undefined);
+  // Whether the inline placement's page is connected to an agent, which the
+  // tests then call its Page Object Tools through, as a coding agent does.
+  connected: [false, { option: true }],
+  // The agent's ayme MCP server, which the fixture page connects to and, in
+  // the external placement, serves the Inspector. On a port of its own,
+  // outside the range pages scan, so no other test's page pairs with it.
+  agent: async ({ placement, connected }, use) => {
+    if (placement !== "external" && !connected) return use(undefined);
     const agent = await startAgent("--port", String(await freePort()));
     await use(agent);
     await agent.close();
   },
-  opened: async ({ page, context, fixturePath, agent }, use) => {
+  opened: async ({ page, context, fixturePath, placement, agent }, use) => {
     await use(
       await openFixture(page, fixturePath, {
-        external: agent && { agent, context },
+        agent,
+        external: placement === "external" ? context : undefined,
       })
     );
   },

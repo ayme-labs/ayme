@@ -4,13 +4,7 @@ import {
   registerInspectorSelectors,
 } from "@ayme-dev/inspector/testing";
 
-import {
-  MCP_REVISIONS,
-  addItemRef,
-  expect,
-  serverAddress,
-  test,
-} from "./fixtures";
+import { MCP_REVISIONS, expect, serverAddress, test } from "./fixtures";
 
 // The page's Inspector shows the App Processes' Peek tools in the Node
 // section of its Peek tools, and runs them through the agent's server. The
@@ -62,20 +56,16 @@ test("an agent's call over the ayme MCP server is an ayme-mcp Run in the page's 
   page,
 }) => {
   await connect("/?inspector");
-  const ref = await addItemRef(agent);
   const inspector = new Inspector(page);
   await inspector.open();
 
-  const { isError } = await agent.call("read_text", { ref });
+  const { isError } = await agent.call("GroceriesPage.readHeading");
 
   expect(isError).toBe(false);
-  const run = inspector.runs.latest("read_text");
+  const run = inspector.runs.latest("GroceriesPage.readHeading");
   await expect.poll(() => run.status()).toBe("Succeeded");
   expect(await run.caller()).toEqual({
     icon: "Run by an agent through ayme MCP",
-  });
-  expect(JSON.parse((await run.arguments.textContent()) ?? "")).toEqual({
-    ref,
   });
 });
 

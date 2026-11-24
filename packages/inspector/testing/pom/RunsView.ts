@@ -64,12 +64,6 @@ export class RunEntry extends PanelPart {
     return this.card.getByRole("button", { name: "Copy", exact: true });
   }
 
-  /** The image it returned, such as a screenshot, with what it shows. */
-  @ayme.child
-  get image(): Locator {
-    return this.card.getByRole("figure", { name: "Image" });
-  }
-
   @ayme.child
   get error(): Locator {
     return this.card.getByRole("note", { name: "Error" });

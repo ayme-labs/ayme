@@ -11,10 +11,13 @@ tests/       the shared fixtures (fixtures.ts), one spec per concern, and
              appProcess.ts, a stand-in App Process
 ```
 
-The page starts the ayme runtime with `agentConnection: true` and two Custom
-Tools: `read_text` (`read_other` on `/other`, so a navigation changes the
-tools) and `hold`, which never answers, to keep a call in flight. Its Show
-basket and Hide basket buttons register and unregister the `Basket` Page
+The page starts the ayme runtime with `agentConnection: true` and registers
+its own Page Object, `GroceriesPage` (`OtherPage` on `/other`, so a
+navigation changes the tools). Their `readHeading` tells the tests which page
+is paired, and `hold` never answers, to keep a call in flight;
+`GroceriesPage` also has `fail`, which throws, and actions that load another
+document. The page's Custom Tool `read_text` shows that `ayme mcp` lists none
+of ayme's own browser driving. Its Show basket and Hide basket buttons register and unregister the `Basket` Page
 Object, so a Page Object Tool comes and goes on demand. `plain.html` is a
 document of the same origin without ayme. WebMCP publication is off unless the
 URL has `?webmcp`, so the tests show the Agent Connection works without it.
@@ -33,10 +36,8 @@ Add a spec file for a new concern and reuse `fixtures.ts`.
 `servedPageObjects.spec.ts` copies `outside/.ayme` into its test's output
 folder, starts `ayme mcp` there, and opens `plain.html` in a context whose
 init script is the `.ayme/init-script.js` the server wrote, so the page gets
-the runtime and the Page Objects the server serves. The other
-`servedPageObjects*.spec.ts` files do the same through `startServingAgent`:
-one opens `plain.html?strict-csp`, with and without `bypassCSP`, and one reads
-the requests the page makes to the server to show what loads on first use.
+the runtime and the Page Objects the server serves. `servedPageObjectsCsp.spec.ts` does the same through `startServingAgent`, and
+opens `plain.html?strict-csp`, with and without `bypassCSP`.
 
 `appProcess.ts` stands in for an App Process: a Node script that starts ayme
 with `createAyme({ agentConnection })` and adds one Peek with `ayme.peek`. The

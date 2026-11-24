@@ -26,12 +26,7 @@ import {
   claudeVersion,
   runClaude,
 } from "./claude.ts";
-import {
-  openRouterKeyVariable,
-  readEnvVariable,
-  readOauthToken,
-} from "./environment.ts";
-import { decisionUsageFile, measureGoalLoop } from "./goalLoop.ts";
+import { readOauthToken } from "./environment.ts";
 import { moveFiles, readLabChanges } from "./labCheckout.ts";
 import {
   ensureDatabaseBuilt,
@@ -52,9 +47,9 @@ import {
   type NormalizedResult,
 } from "./normalize.ts";
 import {
+  agentRoot,
   evalRoot,
   formbricksRoot,
-  labRoot,
   labUrl,
   repoRoot,
   runsRoot,
@@ -207,7 +202,7 @@ export async function runOnce(
       initPagePath,
       configDir: claudeConfigDir,
       start: mission.start,
-      cwd: labRoot,
+      cwd: agentRoot,
       log,
     };
     const prompt = createPrompt(mission, options.arm, labUrl);
@@ -215,17 +210,21 @@ export async function runOnce(
     await writeFile(path.join(runDir, "setup-prompt.txt"), setup);
     await writeFile(path.join(runDir, "prompt.txt"), prompt);
     await writeFile(initPagePath, initPageScript(mission.start.url));
-    await writeJson(mcpConfigPath, {
-      mcpServers: options.arm.mcpServers(armContext),
-    });
     // Whatever the arm's interface needs outside the measured window.
     armSetup = await options.arm.setup?.(armContext);
+    // After the setup, which may add a server only it can name, such as one attached to a port it chose.
+    await writeJson(mcpConfigPath, {
+      mcpServers: {
+        ...options.arm.mcpServers(armContext),
+        ...armSetup?.mcpServers,
+      },
+    });
 
     log(
       `Starting the agent (${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`
     );
     const run = await runClaude({
-      cwd: labRoot,
+      cwd: agentRoot,
       environment: { ...environment, ...armSetup?.environment },
       model: options.model,
       arm: options.arm,
@@ -257,19 +256,6 @@ export async function runOnce(
     );
     await writeJson(path.join(runDir, "verdict.json"), verdict);
 
-    // The lab app's Decision Endpoint records every Goal Loop call; this run's are the ones in its window.
-    // Calls the Goal Loop made before the task message would be the setup turn's; the window starts with the task.
-    const goalLoop = await measureGoalLoop({
-      usageFile: decisionUsageFile(formbricksRoot),
-      window: { startedAt: run.task.sentAt, finishedAt: run.finishedAt },
-      openRouterApiKey: readEnvVariable(openRouterKeyVariable, evalRoot),
-      log,
-    });
-    if (goalLoop.calls > 0)
-      log(
-        `The Goal Loop made ${goalLoop.calls} decision calls (${goalLoop.failedCalls} failed); cost ${goalLoop.costUsd === null ? "unknown" : `$${goalLoop.costUsd}`}.`
-      );
-
     const result = normalizeRun({
       runId,
       arm: options.arm.id,
@@ -290,7 +276,6 @@ export async function runOnce(
         formbricksCommit: gitOutput(formbricksRoot, ["rev-parse", "HEAD"]),
         aymeCommit: gitOutput(repoRoot, ["rev-parse", "HEAD"]),
       },
-      goalLoop,
       setup: armSetup?.evidence ?? null,
       labCheckout: {
         movedFiles: labChanges.untracked,

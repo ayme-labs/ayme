@@ -1,8 +1,7 @@
 import type { Page } from "@playwright/test";
 import {
-  latestPageStateRefNamed,
-  onPageStateRecorded,
   pageOfDocument,
+  providePageObjectIds,
   providePageObjectProbe,
 } from "../../page-state/infrastructure";
 import type { PomRegistry } from "../application/pomRegistry";
@@ -35,11 +34,9 @@ export function browserRegistry(): PomRegistry {
   return pomRegistryOf(
     typeof document === "undefined" ? serverPage : pageOfDocument(document),
     {
-      latestPageStateRef: latestPageStateRefNamed,
       pageStates: {
-        onPageStateRecorded: (listener) =>
-          onPageStateRecorded(document, listener),
         providePageObjectProbe,
+        providePageObjectIds,
       },
     }
   );
@@ -57,6 +54,8 @@ export const listRegisteredPomTools: PomRegistry["listRegisteredPomTools"] =
   () => browserRegistry().listRegisteredPomTools();
 export const listRegisteredPoms: PomRegistry["listRegisteredPoms"] = () =>
   browserRegistry().listRegisteredPoms();
+export const pageObjectIdsOf: PomRegistry["pageObjectIdsOf"] = (roots) =>
+  browserRegistry().pageObjectIdsOf(roots);
 export const probeRegisteredPomMembers: PomRegistry["probeRegisteredPomMembers"] =
   () => browserRegistry().probeRegisteredPomMembers();
 export const registerPageObject: PomRegistry["registerPageObject"] = (

@@ -29,10 +29,7 @@ const quiet = () => new Promise((resolve) => setTimeout(resolve, 300));
 
 it("a highlight's overlay does not make the registry's page driver probe", async () => {
   let runs = 0;
-  const driver = inPageDriver(
-    () => inPage(page),
-    () => undefined
-  );
+  const driver = inPageDriver(() => inPage(page));
   stop = driver.watch(async () => {
     runs += 1;
   });

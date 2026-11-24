@@ -2,10 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { Interaction, RegisteredPomTool } from "@ayme-dev/ayme";
-import type {
-  InspectorAgentImageRun as AgentImageRun,
-  InspectorPageObject,
-} from "@ayme-dev/ayme/inspector";
+import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
 import { forest, node } from "../../testing/structure/projected";
 import {
@@ -520,42 +517,6 @@ it("does not invent a generic name for an unnamed target", async () => {
   expect(
     await inspector.runs.latest("click").toggle.textContent()
   ).not.toContain("generic");
-});
-
-it("shows an image a Run returned as itself, with the file ayme MCP saved it to", async () => {
-  const image = {
-    type: "image",
-    subject: "the viewport",
-    filename: "page-1.png",
-    mimeType: "image/png",
-    width: 2,
-    height: 1,
-    data: "iVBORw0KGgo=",
-  } as const;
-  const screenshot = startedAyme.runs.start("screenshot", {}, "ayme-mcp");
-  screenshot.succeed(image);
-  renderApp();
-
-  const run = inspector.runs.latest("screenshot");
-  await expect
-    .poll(() => run.image.textContent())
-    .toBe("Screenshot of the viewport, 2×1 PNG");
-  expect(await run.resultToggle.count()).toBe(0);
-
-  // `ayme mcp` reports the file it saved the image to once the Run ended.
-  startedAyme.reportAgentImageRun({
-    name: "screenshot",
-    input: {},
-    savedTo: "/tmp/ayme-screenshots/page-1.png",
-    startedAt: Date.now(),
-    durationMs: 1,
-  } satisfies AgentImageRun);
-
-  await expect
-    .poll(() => run.image.textContent())
-    .toBe(
-      "Screenshot of the viewport, 2×1 PNG, saved to /tmp/ayme-screenshots/page-1.png"
-    );
 });
 
 it("shows a tree of Runs in the selection's scope when a child Run is in it", async () => {

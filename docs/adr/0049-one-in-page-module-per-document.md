@@ -1,6 +1,7 @@
 ---
 status: accepted
 amends: ADR-0045
+amended-by: ADR-0058
 ---
 
 # One in-page module per document

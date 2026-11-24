@@ -85,9 +85,17 @@ test("a page without ayme gets the Page Objects ayme mcp serves through the init
       .poll(() => agent.pageToolNames(), { message: agent.log })
       .toContain(PLAIN_PAGE_TOOL);
 
-    const { text, isError } = await agent.call(PLAIN_PAGE_TOOL);
+    // The short answer an agent gets from a Page Object Tool, and nothing
+    // of the server's.
+    const { text, isError, note } = await agent.call(PLAIN_PAGE_TOOL);
     expect(isError, text).toBe(false);
-    expect(text).toContain("does not run ayme");
+    const answer = JSON.parse(text) as Record<string, unknown>;
+    expect(answer).toMatchObject({
+      settled: true,
+      result: expect.stringContaining("does not run ayme"),
+    });
+    expect(Object.keys(answer)).toEqual(["settled", "result"]);
+    expect(note).toBeUndefined();
   } finally {
     await agent.close();
   }
@@ -117,7 +125,7 @@ test("an app that ships ayme keeps its own runtime, and ayme mcp's init script s
     await connectPage(agent, page, `${baseURL}/`);
     await expect
       .poll(() => agent.pageToolNames(), { message: agent.log })
-      .toContain("read_text");
+      .toContain("page_objects");
     // The init script decides once the page has loaded and gone idle; an
     // idle callback asked for after the load runs after its own.
     await page.waitForLoadState("load");
@@ -293,6 +301,9 @@ for (const [kind, edit, error] of [
   });
 }
 
+/** What `ayme_connect` says after its link, on the lines below it. */
+const noteOf = (text: string) => text.split("\n").slice(2).join("\n");
+
 test("while the entry has never built, ayme_connect and the no-page answers say why, until a fix builds it", async ({
   context,
   page,
@@ -319,18 +330,8 @@ test("while the entry has never built, ayme_connect and the no-page answers say 
     const initScript = join(project, ".ayme", "init-script.js");
     const url = `${baseURL}/plain.html`;
 
-    const failing = await agent.call("ayme_connect", { url });
-    expect(failing.isError, failing.text).toBe(false);
-    expect(failing.note).toContain(
-      `The Page Objects entry ${entry} did not build`
-    );
-    expect(failing.note).toContain("No inputs were found in config file");
-    expect(failing.note).toContain(
-      "The server is watching for changes: it rebuilds the entry when a file it read changes."
-    );
-    expect(failing.note).not.toContain("Fix it");
-    expect(failing.note).not.toContain("Make the");
-    expect(failing.note).not.toMatch(/^This server serves Page Objects/);
+    // Asked before ayme_connect, after which they would wait for the page
+    // its link opens.
     for (const tool of ["ayme_list_tools", "snapshot"]) {
       const { text, isError } = await agent.call(tool);
       expect(isError).toBe(true);
@@ -344,20 +345,33 @@ test("while the entry has never built, ayme_connect and the no-page answers say 
       expect(text).not.toContain("Fix it");
       expect(text).not.toContain("Make the");
     }
+    const failing = await agent.call("ayme_connect", { url });
+    expect(failing.isError, failing.text).toBe(false);
+    const failingNote = noteOf(failing.text);
+    expect(failingNote).toContain(
+      `The Page Objects entry ${entry} did not build`
+    );
+    expect(failingNote).toContain("No inputs were found in config file");
+    expect(failingNote).toContain(
+      "The server is watching for changes: it rebuilds the entry when a file it read changes."
+    );
+    expect(failingNote).not.toContain("Fix it");
+    expect(failingNote).not.toContain("Make the");
+    expect(failingNote).not.toMatch(/^This server serves Page Objects/);
 
     await writeFile(tsconfig, withInclude(".ayme/**/*.ts"));
     await expect
       .poll(() => agent.log, REBUILT_WITHIN)
       .toContain(`Built the Page Objects entry ${entry}.`);
 
-    const built = await agent.call("ayme_connect", { url });
-    expect(built.note).toBe(
-      `This server serves Page Objects to pages that load ${initScript}.`
-    );
     expect(await agent.call("ayme_list_tools")).toMatchObject({
       text: "No page is connected.",
       isError: true,
     });
+    const built = await agent.call("ayme_connect", { url });
+    expect(noteOf(built.text)).toBe(
+      `This server serves Page Objects to pages that load ${initScript}.`
+    );
     await context.addInitScript({ path: initScript });
     await connectPage(agent, page, url);
     await expect

@@ -37,6 +37,7 @@ import {
 import {
   PageStateSession,
   type PageAction,
+  type RootIds,
 } from "../application/pageStateSession";
 
 /**
@@ -61,7 +62,11 @@ export type PageStateHost = {
   /** A capture of the page with these exclusions and asks. */
   capture(
     inputs: ElementInputs,
-    ask: { accepts?: readonly Predicate[]; filters?: readonly NamedFilter[] }
+    ask: {
+      accepts?: readonly Predicate[];
+      filters?: readonly NamedFilter[];
+      keep?: readonly string[];
+    }
   ): Promise<Capture>;
   /**
    * Begins an action: the before capture, and the action, whose captures read
@@ -82,6 +87,8 @@ export type PageStateHost = {
 type CaptureSources = {
   /** What a capture waits for before it reads the page: a completed probe run. */
   probe?: () => Promise<void>;
+  /** The id of each Page Object Root, which the page state text prints on it. */
+  rootIds?: RootIds;
   /** The filter of the elements the app leaves out, and everything under them. */
   ignore?: SessionFilter;
   /** The Custom Tools' filters, whose accepted refs every capture carries. */
@@ -144,6 +151,18 @@ export function providePageObjectProbeOf(
   probe: (() => Promise<void>) | undefined
 ): void {
   sourcesOf(page).probe = probe;
+}
+
+/**
+ * Package-internal: what the page state text of `page` reads the id of each
+ * Page Object Root from, by Structural Ref, set while the registry observes
+ * it. Unset, the text prints no id.
+ */
+export function providePageObjectIdsOf(
+  page: Page,
+  rootIds: RootIds | undefined
+): void {
+  sourcesOf(page).rootIds = rootIds;
 }
 
 /**
@@ -245,7 +264,10 @@ function createStore(page: Page, host: PageStateHost): PageStateStore {
       ignores: read.ignore ? [await filterInput(read.ignore, IGNORE_KEY)] : [],
     };
   }
-  const captureWith = async (accepts?: readonly Predicate[]) => {
+  const captureWith = async (
+    accepts?: readonly Predicate[],
+    keep?: readonly string[]
+  ) => {
     const inputs = await elementInputs();
     const filters = await Promise.all(
       (read.filters ?? []).map(async ({ name, filter }) => ({
@@ -253,7 +275,7 @@ function createStore(page: Page, host: PageStateHost): PageStateStore {
         filter: await filterInput(filter, toolFilterKey(name)),
       }))
     );
-    return host.capture(inputs, { accepts, filters });
+    return host.capture(inputs, { accepts, filters, ...(keep && { keep }) });
   };
 
   let url = host.url();
@@ -271,7 +293,9 @@ function createStore(page: Page, host: PageStateHost): PageStateStore {
     newHistory(url),
     captureWith,
     { begin: () => host.begin(elementInputs) },
-    newHistory
+    newHistory,
+    async (rootRefs) =>
+      (await read.rootIds?.(rootRefs)) ?? rootRefs.map(() => undefined)
   );
   let bound: DocumentToken | undefined;
   host.bind((visit) => {

@@ -1,4 +1,4 @@
-import { rootRef } from "../../../testing/agentCalls.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
@@ -120,7 +120,7 @@ describe("Change Record baseline in Chromium", () => {
     document.body.insertAdjacentHTML("beforeend", TOAST);
 
     const result = await act("App.noop", {
-      ref: await rootRef("App"),
+      id: await rootId("App"),
       args: {},
     });
 

@@ -1,6 +1,5 @@
 import type { Page } from "@playwright/test";
 
-import { AgentView } from "./agentView";
 import { expect, test } from "./fixtures";
 
 // E2E: when the Inspector mounts relative to the runtime session, and what
@@ -72,16 +71,17 @@ test.describe("mounted by the session's inspector option", () => {
 });
 
 test.describe("with the inspector option on, without demo", () => {
-  test.use({ fixturePath: "/session.html" });
+  test.use({ fixturePath: "/session.html", connected: true });
 
   test("adds no click cue to an agent's call or a run, and records the run", async ({
     page,
+    agent,
     inspector,
     listPage,
   }) => {
     await countClickCues(page);
 
-    await new AgentView(page).call("ListPage.addItem", { text: "Eggs" });
+    await agent!.call("ListPage.addItem", { text: "Eggs" });
     await expect(listPage.items).toHaveText(["Eggs"]);
     await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
 
@@ -93,12 +93,16 @@ test.describe("with the inspector option on, without demo", () => {
 });
 
 test.describe("with the inspector option in demo mode", () => {
-  test.use({ fixturePath: "/session.html?demo" });
+  test.use({ fixturePath: "/session.html?demo", connected: true });
 
-  test("shows the click cue of an agent's call", async ({ page, listPage }) => {
+  test("shows the click cue of an agent's call", async ({
+    page,
+    agent,
+    listPage,
+  }) => {
     await countClickCues(page);
 
-    await new AgentView(page).call("ListPage.addItem", { text: "Eggs" });
+    await agent!.call("ListPage.addItem", { text: "Eggs" });
 
     await expect(listPage.items).toHaveText(["Eggs"]);
     await expect(page.locator("html")).toHaveAttribute("data-click-cues", "1");

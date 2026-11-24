@@ -77,11 +77,9 @@ const changeRecordText = (error: Error) =>
 
 /**
  * Whether WebMCP publishes a tool: every listed one but a Peek Tool, which
- * reads app state for a coding agent while developing, and `screenshot`,
- * whose image result WebMCP cannot carry.
+ * reads app state for a coding agent while developing.
  */
-const publishable = (tool: WebMcpTool) =>
-  tool.group !== "peek" && tool.name !== "screenshot";
+const publishable = (tool: WebMcpTool) => tool.group !== "peek";
 
 /** What makes a published tool stale: its description, schema or mark changed. */
 const versionOf = (tool: WebMcpTool) =>

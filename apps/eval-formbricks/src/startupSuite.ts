@@ -81,10 +81,7 @@ export async function runStartupSuite(options: StartupSuiteOptions) {
 
   manifest.finishedAt = new Date().toISOString();
   await writeManifest(manifest);
-  const report = await reportSuite(manifest.suiteId, {
-    publish: false,
-    openRouterApiKey: undefined,
-  });
+  const report = await reportSuite(manifest.suiteId, { publish: false });
   return { manifest, ...report };
 }
 

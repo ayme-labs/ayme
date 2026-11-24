@@ -192,7 +192,7 @@ Take `ProjectsPage` and `ProjectRow` from [Page Object Models](ayme-page-objects
     - e17 <removed> button "Cancel"`,
       did: 'click(button "Cancel")' },
     { operation: "ProjectRow.archive",
-      chosen: { ref: { key: "e10",
+      chosen: { id: { key: "e10",
         description: 'ProjectRow on ref "e10" (listitem): Q4 survey · Archive · Rename · Remove' } },
       result: "ok", page_changed: true,
       changes: `- e2 main:

@@ -20,7 +20,7 @@ for (const revision of MCP_REVISIONS)
           message: `No tool-list change on pairing. Server log:\n${agent.log}`,
         })
         .toBeGreaterThan(0);
-      await expect.poll(() => agent.pageToolNames()).toContain("snapshot");
+      await expect.poll(() => agent.pageToolNames()).toContain("page_objects");
 
       const beforeLeaving = agent.toolListChanges();
       await page.close();
