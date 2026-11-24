@@ -7,6 +7,15 @@ export default [
   ...tseslint.configs.recommended,
   ...testingEntries,
   {
+    // A TODO-style comment is a promise nothing tracks: open an issue instead.
+    rules: {
+      "no-warning-comments": [
+        "error",
+        { terms: ["todo", "fixme", "hack", "xxx"], location: "anywhere" },
+      ],
+    },
+  },
+  {
     ignores: [
       "dist/**",
       "coverage/**",
