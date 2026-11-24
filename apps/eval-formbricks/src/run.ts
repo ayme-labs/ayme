@@ -241,7 +241,10 @@ export async function runOnce(
       await mkdir(skillsDir, { recursive: true });
       await writeFile(
         path.join(claudeConfigDir, "rules", "eval.rules"),
-        codexRules(options.arm)
+        codexRules(
+          options.arm,
+          armSetup?.environment.PATH ?? environment.PATH ?? ""
+        )
       );
       await writeFile(
         path.join(claudeConfigDir, "config.toml"),

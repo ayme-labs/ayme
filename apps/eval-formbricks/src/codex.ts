@@ -98,7 +98,11 @@ export function codexConfig(options: {
     "[shell_environment_policy]",
     `set = { HOME = ${toml(home)} }`,
     "",
-    // Nothing is writable and no network is granted; `:minimal` is what a command needs to start at all.
+    // No folder of the run is writable and no network is granted; `:minimal` is what a command needs
+    // to start at all. On a Mac the sandbox opens the temporary folders, `/private/tmp` and
+    // `/private/var/tmp`, for reading and writing whatever is listed here. Denying them is no way
+    // out: with a denied folder Codex runs every command in the sandbox, the arm's own too.
+    // What a command leaves there cannot leave the sandbox: see `codexRules`.
     `[permissions.${permissionProfile}.filesystem]`,
     '":minimal" = "read"',
     ...options.readable.map((folder) => `${toml(folder)} = "read"`),
@@ -131,10 +135,35 @@ function ruleCommand(rule: string): string[] | null {
  * other command runs in the sandbox. Rules for a skill or an MCP server need
  * none: the skill is a folder the agent may read, and the configuration
  * approves the arm's MCP servers.
+ *
+ * An allowed command is the file of that name on the agent's `searchPath`
+ * and no other. Without that, Codex lets a file of the same name anywhere
+ * out of the sandbox when it is called by its path, and a sandboxed command
+ * can write one to the temporary folders. Throws when the arm allows a
+ * command that is not there.
  */
 export function codexRules(
-  arm: Pick<Arm, "allowedTools" | "disallowedTools">
+  arm: Pick<Arm, "allowedTools" | "disallowedTools">,
+  searchPath: string
 ): string {
+  const allowed = [
+    ...new Set(
+      arm.allowedTools
+        .map(ruleCommand)
+        .flatMap((command) => (command?.[0] === undefined ? [] : [command[0]]))
+    ),
+  ];
+  const executables = allowed.map((name) => {
+    const file = searchPath
+      .split(path.delimiter)
+      .map((folder) => path.join(folder, name))
+      .find((candidate) => existsSync(candidate));
+    if (file === undefined)
+      throw new Error(
+        `The arm allows the \`${name}\` command, which is not on the agent's PATH.`
+      );
+    return `host_executable(name=${toml(name)}, paths=[${toml(file)}])`;
+  });
   const rules = (permissions: string[], decision: string) => [
     ...new Set(
       permissions
@@ -147,6 +176,7 @@ export function codexRules(
     ),
   ];
   return [
+    ...executables,
     ...rules(arm.allowedTools, "allow"),
     ...rules(arm.disallowedTools ?? [], "forbidden"),
     "",
