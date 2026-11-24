@@ -37,6 +37,11 @@ const suffix = "?ayme-pom";
 
 type CompiledPom = { contents: string; watchFiles: readonly string[] };
 
+/**
+ * What a module with files Angular ignores imports. The plugin resolves it to
+ * the signal file, so the module's text names no path of this machine.
+ */
+const signalSpecifier = "ayme-angular:rebuild-signal";
 /** How often the plugin looks at the files Angular's watcher leaves out. */
 const hiddenFilePollMs = 250;
 /**
@@ -89,22 +94,33 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         // esbuild gives a plugin no logger, so the line goes to the console.
         console.info(includeLine);
       });
-      build.onEnd(() => {
+      build.onEnd((result) => {
         compiler.invalidate();
-        hidden.buildEnded();
+        hidden.buildEnded(result.errors.length === 0);
       });
+      build.onResolve({ filter: new RegExp(`^${signalSpecifier}$`) }, () => ({
+        path: hidden.signal,
+      }));
 
       // The stand-in of a build without ayme is what `onLoad` hands esbuild
       // as the module's contents, and esbuild maps a module to the contents
       // it loaded, so no source map carries the replaced model.
       const compile = async (fileName: string) => {
         const source = await readFile(fileName, "utf8");
-        const compiledPom = compiler.compile(fileName, source, { emit: "js" });
+        let watched = false;
+        const compiledPom = compiler.compile(fileName, source, {
+          emit: "js",
+          // Before the compile derives anything, so that the files of one
+          // that throws are watched too.
+          onDependencies: (dependencies) => {
+            watched = hidden.watch([fileName, ...dependencies]);
+          },
+        });
         if (!compiledPom) return null;
         return {
-          contents:
-            compiledPom.code +
-            hidden.watch([fileName, ...compiledPom.dependencies]),
+          contents: watched
+            ? `${compiledPom.code}\nimport "${signalSpecifier}";\n`
+            : compiledPom.code,
           watchFiles: compiledPom.dependencies,
         };
       };
@@ -156,10 +172,21 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         } catch (error) {
           // Thrown, it would point at the compiler's own code.
           if (!(error instanceof PomCompileError)) throw error;
+          // A module that failed imports nothing. Angular watches the files
+          // an error's notes name, so the signal file reaches it that way.
+          const notes = hidden.watch([resolved.path])
+            ? [
+                {
+                  text: "ayme watches this file and rebuilds when you save it.",
+                  location: { file: path.relative(root, hidden.signal) },
+                },
+              ]
+            : [];
           return {
-            errors: error.diagnostics.map((diagnostic) =>
-              buildError(diagnostic, resolved.path)
-            ),
+            errors: error.diagnostics.map((diagnostic) => ({
+              ...buildError(diagnostic, resolved.path),
+              notes,
+            })),
           };
         }
         return { path: resolved.path + suffix, namespace };
@@ -189,8 +216,9 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
  * Angular's dev server ignores every folder under the workspace whose name
  * starts with a dot, so on its own it may never rebuild after an edit to a
  * Page Object Model in `.ayme/pom/`. The plugin watches those files itself.
- * After an edit it rewrites a signal file outside the workspace, which each
- * such module imports, and Angular rebuilds for that file.
+ * After an edit it rewrites a signal file outside the workspace, and Angular
+ * rebuilds for that file: each such module imports it, and the error of one
+ * that failed to compile names it.
  */
 function watchHiddenFiles(root: string) {
   const signal = path.join(
@@ -198,83 +226,119 @@ function watchHiddenFiles(root: string) {
     `ayme-angular-${createHash("sha256").update(root).digest("hex").slice(0, 16)}`,
     "rebuild.js"
   );
-  const importSignal = `\nimport ${JSON.stringify(signal)};\n`;
   // Each watched file: what stops its watch, and its version when the last
   // build started.
   const watched = new Map<string, { version: string; stop: () => void }>();
-  const changedWhileBuilding = new Set<string>();
+  // The files the running build, or else the last one, has named.
+  let named = new Set<string>();
   let building = false;
+  let editedWhileBuilding = false;
+  let check: NodeJS.Timeout | undefined;
   // Angular is waited for until it has once left an edit without a rebuild.
   let wait = ownRebuildMs;
+  let signalIsThere: boolean | undefined;
 
+  // Whether the signal file is there afterwards. A temp folder that cannot
+  // be written leaves the build as it is without this watch.
+  const writeSignal = (contents: string, flag?: "wx") => {
+    try {
+      mkdirSync(path.dirname(signal), { recursive: true });
+      writeFileSync(signal, contents, { flag });
+      return true;
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code === "EEXIST";
+    }
+  };
   const versionOf = (file: string) => {
     const stat = statSync(file, { throwIfNoEntry: false });
-    return stat ? `${stat.mtimeMs}:${stat.size}` : "";
+    return stat
+      ? `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}:${stat.ino}`
+      : "";
   };
   const isHidden = (file: string) => {
     const folder = path.relative(root, path.dirname(file));
-    if (folder.startsWith("..") || path.isAbsolute(folder)) return false;
+    if (
+      folder === ".." ||
+      folder.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(folder)
+    )
+      return false;
     const segments = folder.split(path.sep);
     return (
       !segments.includes("node_modules") &&
       segments.some((segment) => segment.startsWith("."))
     );
   };
-  // A build that started after the edit has compiled it already.
-  const rebuildIfUnseen = (file: string) => {
-    const entry = watched.get(file);
-    if (!entry) return;
-    if (building) changedWhileBuilding.add(file);
-    else if (versionOf(file) !== entry.version) {
+  // A build that started after the edits has compiled them already.
+  const rebuildIfUnseen = () => {
+    check = undefined;
+    if (building) {
+      editedWhileBuilding = true;
+      return;
+    }
+    for (const [file, { version }] of watched) {
+      if (versionOf(file) === version) continue;
       wait = 0;
-      writeFileSync(signal, `// ${Date.now()}\n`);
+      writeSignal(`// ${Date.now()}\n`);
+      return;
     }
   };
-  const edited = (file: string) => {
-    if (wait === 0) rebuildIfUnseen(file);
-    else setTimeout(rebuildIfUnseen, wait, file).unref();
+  const edited = () => {
+    if (wait === 0) rebuildIfUnseen();
+    else check ??= setTimeout(rebuildIfUnseen, wait).unref();
   };
 
   return {
+    /** The file Angular watches in place of the files it ignores. */
+    signal,
     /**
-     * Watches those of `files` that Angular ignores. Returns the import a
-     * module compiled from them ends with, or nothing when Angular watches
-     * them all.
+     * Watches those of `files` that Angular ignores. Returns whether it
+     * watches any, which is when their module is to reach the signal file.
      */
     watch(files: readonly string[]) {
       const hidden = files.filter(isHidden);
-      if (hidden.length === 0) return "";
-      if (watched.size === 0) {
-        mkdirSync(path.dirname(signal), { recursive: true });
-        writeFileSync(signal, "");
-      }
+      if (hidden.length === 0) return false;
+      // Created once and never emptied: another build of this workspace may
+      // be watching it.
+      signalIsThere ??= writeSignal("", "wx");
+      if (!signalIsThere) return false;
       for (const file of hidden) {
+        named.add(file);
         if (watched.has(file)) continue;
-        const listener = () => edited(file);
         // Polled, as Angular's `--poll` is for file systems without change
         // events. Not persistent: a build that only builds must still exit.
         watchFile(
           file,
           { interval: hiddenFilePollMs, persistent: false },
-          listener
+          edited
         );
         watched.set(file, {
           version: versionOf(file),
-          stop: () => unwatchFile(file, listener),
+          stop: () => unwatchFile(file, edited),
         });
       }
-      return importSignal;
+      return true;
     },
     buildStarted() {
       building = true;
+      named = new Set();
       for (const [file, entry] of watched) entry.version = versionOf(file);
     },
-    buildEnded() {
+    /** A build that succeeded has named every file still in use. */
+    buildEnded(succeeded: boolean) {
       building = false;
-      for (const file of changedWhileBuilding) edited(file);
-      changedWhileBuilding.clear();
+      if (succeeded)
+        for (const [file, { stop }] of watched) {
+          if (named.has(file)) continue;
+          stop();
+          watched.delete(file);
+        }
+      if (!editedWhileBuilding) return;
+      editedWhileBuilding = false;
+      edited();
     },
     close() {
+      clearTimeout(check);
       for (const { stop } of watched.values()) stop();
       watched.clear();
     },
