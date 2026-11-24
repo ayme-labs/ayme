@@ -9,7 +9,7 @@ An assistant in your app needs two things: actions it can take on the page, and 
 ```tsx
 // OnboardingAssistant.tsx
 import { useAyme, usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "../.ayme/pom/ProjectsPage"; // the model from the quickstart
+import { ProjectsPage } from "#pom/ProjectsPage"; // the model from the quickstart
 
 export function OnboardingAssistant() {
   const { ayme } = useAyme();

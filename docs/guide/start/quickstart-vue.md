@@ -42,6 +42,12 @@ Page Objects live in `.ayme/pom/`, at your project's root. Give the folder a tsc
 }
 ```
 
+Add the `#pom/*` alias to your `package.json`, so app code and tests import the Page Objects the same way from any folder:
+
+```json
+{ "imports": { "#pom/*": "./.ayme/pom/*.ts" } }
+```
+
 [The `.ayme` folder](../guides/ayme-folder.md) describes the rest of the folder. Then write the model:
 
 ```ts
@@ -77,7 +83,7 @@ Start ayme in the root component with the Inspector and the Agent Connection in 
 <script setup lang="ts">
 import { ref } from "vue";
 import { useAyme, usePageObject } from "@ayme-dev/vue";
-import { ProjectsPage } from "../.ayme/pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 useAyme({
   inspector: import.meta.env.DEV,

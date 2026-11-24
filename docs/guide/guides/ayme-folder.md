@@ -48,11 +48,17 @@ An app that ships ayme needs only `tsconfig.json` and `pom/`. Each other entry a
 
    The tsconfig it extends must turn `experimentalDecorators` on. No other tsconfig needs to include `.ayme/`.
 
-3. Import the Page Objects into app code and tests by relative path:
+3. Add the `#pom/*` alias to your `package.json`:
+
+   ```json
+   { "imports": { "#pom/*": "./.ayme/pom/*.ts" } }
+   ```
+
+   App code and tests import the Page Objects through it, the same way from any folder:
 
    ```ts
    // src/main.tsx
-   import { ProjectsPage } from "../.ayme/pom/ProjectsPage";
+   import { ProjectsPage } from "#pom/ProjectsPage";
    ```
 
 4. Add `tsc --noEmit -p .ayme` after your type check command. Your app's own type check sees only the Page Objects the app imports; this one checks the whole folder.
@@ -96,6 +102,6 @@ recordings/
 ## Move Page Objects from another folder
 
 1. Move the files to `.ayme/pom/` and add `.ayme/tsconfig.json`, as above.
-2. Change every import of them to the new relative path. Search for the old folder's name as well. An alias, such as `$lib/pom/…` or `@pom/…`, and a path in a string, such as `new URL("../playwright/pom/…", import.meta.url)`, still point at it.
+2. Add the `#pom/*` alias, as above, and change every import of them to it. Search for the old folder's name as well. Another alias, such as `$lib/pom/…` or `@pom/…`, and a path in a string, such as `new URL("../playwright/pom/…", import.meta.url)`, still point at it.
 3. Remove the old folder from the `include` and the `paths` of your other tsconfigs.
 4. Look at the build plugin's `tsconfigPath`, if it has one. Keep one that names your app's tsconfig, as `ng add` writes it. Remove one that names a tsconfig made for the old folder: without the option, the plugin reads `.ayme/tsconfig.json`.

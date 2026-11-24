@@ -44,6 +44,12 @@ Page Objects live in `.ayme/pom/`, at your project's root. Give the folder a tsc
 }
 ```
 
+Add the `#pom/*` alias to your `package.json`, so app code and tests import the Page Objects the same way from any folder:
+
+```json
+{ "imports": { "#pom/*": "./.ayme/pom/*.ts" } }
+```
+
 [The `.ayme` folder](../guides/ayme-folder.md) describes the rest of the folder. Then write the model:
 
 ```ts
@@ -79,7 +85,7 @@ Wrap the app in `AymeProvider` with the Inspector and the Agent Connection in de
 import { StrictMode, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { AymeProvider, usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "../.ayme/pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 function Projects() {
   const pom = usePageObject(ProjectsPage);
