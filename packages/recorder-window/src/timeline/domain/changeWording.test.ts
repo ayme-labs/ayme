@@ -162,6 +162,10 @@ describe("a row that folds elements of one role", () => {
     expect(groupText("textbox", 3)).toBe("3 textboxes");
   });
 
+  it("calls elements with no role of their own elements", () => {
+    expect(groupText("generic", 3)).toBe("3 elements");
+  });
+
   it("says how many were removed from and how many appeared in their parent, removed first, as the released window does", () => {
     const rows = [
       ...Array.from({ length: 5 }, () => into("added")),

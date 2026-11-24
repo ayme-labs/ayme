@@ -63,9 +63,11 @@ export const chipText = (element: string) =>
   );
 
 /** A row that folds elements of one role: how many, and the role, as
- * "30 listitems". */
+ * "30 listitems". Elements with no role of their own are "3 elements". */
 export const groupText = (role: string, count: number) =>
-  `${count} ${role}${/(s|x|ch|sh)$/.test(role) ? "es" : "s"}`;
+  role === "generic"
+    ? `${count} elements`
+    : `${count} ${role}${/(s|x|ch|sh)$/.test(role) ? "es" : "s"}`;
 
 /**
  * What happened to the elements a row folds, in their parent: "removed
