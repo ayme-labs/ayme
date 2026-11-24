@@ -88,7 +88,6 @@ test.describe("codegen <url> --save-storage <file>", () => {
       // Playwright reads its local storage from a page of its own.
       await person.click(login.elsewhereLink);
       await expect(new CartPage(page).itemCount).toHaveText("Items: 0");
-      expect(new URL(page.url()).hostname).toBe("localhost");
       await person.pause();
 
       await window.controls.finishButton.click();
@@ -107,6 +106,8 @@ test.describe("codegen <url> --save-storage <file>", () => {
     const saved = /^Recording package: (.*)$/m.exec(run.stdout())?.[1];
     const text = await readFile(saved!, "utf8");
     expect(text.match(/^ {2}- visitId: /gm)).toHaveLength(2);
+    // The second Visit is on the other origin.
+    expect(text).toMatch(/url: http:\/\/localhost:\d+\/cart\.html\n/);
     expect(text.match(/kind: interaction$/gm)).toHaveLength(2);
     expect(text).not.toMatch(/url: http:\/\/127\.0\.0\.1:\d+\/\n/);
     // The trace holds the person's two page loads and no other. The save
