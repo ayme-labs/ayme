@@ -739,6 +739,15 @@ describe("the .gitignore of ayme/", () => {
     );
   });
 
+  it("is left as it is when its first line decides about the folder after a byte order mark, which git skips", async () => {
+    await mkdir(join(projectDir, "ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "\uFEFF!recordings/\n");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe("\uFEFF!recordings/\n");
+  });
+
   it("gets the line when its only line about the folder ends with a tab, which git reads as part of a name", async () => {
     await mkdir(join(projectDir, "ayme"), { recursive: true });
     await writeFile(ignoreFile(), "recordings/\t\n");
