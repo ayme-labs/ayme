@@ -296,9 +296,9 @@ export type CaptureOptions = {
 export type ActionOptions = {
   /**
    * As `CaptureOptions.elements`, or a handle that holds them as a function,
-   * which the module reads again before each of the action's captures. Only a
-   * host in the page's own realm can hand a function over, so only the
-   * browser runtime does; a Node host reads them once.
+   * which the module calls when the action begins and again when it settles.
+   * The browser runtime hands the function; the Node host hands plain data it
+   * read once.
    */
   elements?: JSHandle<ActionInputs> | ElementInputs;
 };

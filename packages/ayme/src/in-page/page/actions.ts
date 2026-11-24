@@ -19,10 +19,9 @@ type HostKey = string;
 
 /**
  * What a host hands an action's captures (`ElementInputs`): given as a
- * function, it is read again before each capture, as the browser runtime's
- * registry probes its roots then. Only a host in the page's own realm can
- * hand a function; it saves the second capture a Node host takes after the
- * action.
+ * function, it is read when the action begins and again when it settles, as
+ * the browser runtime's registry probes its roots before each. A full load
+ * that ends the action is captured with the inputs read at its start.
  */
 export type ActionInputs =
   ElementInputs | (() => ElementInputs | Promise<ElementInputs>);

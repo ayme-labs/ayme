@@ -102,11 +102,12 @@ export async function beginDocumentAction(
   inputs: () => Promise<ElementInputs>
 ): Promise<PageAction> {
   const page = browserPageOf(currentDocument);
-  // The handle holds the function itself, which the module calls before each
-  // capture of the action, so the action needs no second capture to see the
-  // roots the registry probes. Playwright Lite runs in the page's own realm
-  // and calls the page function as it is; a Node host cannot hand a function
-  // in, so `playwrightHost.ts` reads the inputs once and captures again.
+  // The handle holds the `inputs` function itself: Playwright Lite calls
+  // `() => inputs` as it is, so the function keeps its closure. The module
+  // calls it when the action begins and again when it settles, so the capture
+  // after the action places the roots the registry probed last.
+  // `playwrightHost.ts` hands plain data it read once, and captures again
+  // after the action when roots or a Locator `ignore` may have changed.
   const elements = await page.evaluateHandle<ActionInputs>(() => inputs);
   try {
     const action = await inPage(page).begin({ elements });
