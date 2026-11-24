@@ -185,15 +185,17 @@ function takesPointerEvents(element: Element): boolean {
 
 /**
  * What an Availability Reason names `element` by when it is in the way: its
- * role and accessible name, as Playwright's capture gives them, or its role
- * alone when it has no name; undefined for an element whose role is generic,
- * none or presentation, which says nothing an agent could find it by, and
- * for one no snapshot shows: one hidden from the accessibility tree, or the
- * document element, whose role is `document`.
+ * role and accessible name as Playwright's snapshot prints them, or its role
+ * alone when the snapshot prints no name, as for one longer than 900
+ * characters; undefined for an element whose role is generic, none or
+ * presentation, which says nothing an agent could find it by, and for one no
+ * snapshot shows: one in an excluded subtree or hidden from the
+ * accessibility tree, or the document element, whose role is `document`.
  */
 function describe(element: Element): string | undefined {
   if (
     element === element.ownerDocument.documentElement ||
+    excludedSubtreeOf(element) ||
     isElementHiddenForAria(element)
   )
     return undefined;
@@ -203,7 +205,7 @@ function describe(element: Element): string | undefined {
   const name = normalizeWhiteSpace(
     getElementAccessibleName(element, false).text
   );
-  return name ? `${role} "${name}"` : role;
+  return name && name.length <= 900 ? `${role} ${JSON.stringify(name)}` : role;
 }
 
 /**

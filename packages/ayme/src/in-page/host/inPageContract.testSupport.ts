@@ -687,6 +687,34 @@ export function inPageContract(lane: InPageLane) {
       });
     });
 
+    it("what is in the way is named as Playwright's snapshot prints it: its name quoted, and left out past 900 characters", async () => {
+      const { page, inPageOf, ref } = await reachPage(
+        `<button>Save</button><div id="cover" role="dialog" aria-label='Delete "Draft"' style="position:fixed;inset:0"></div>`
+      );
+
+      expect(await inPageOf.measureReach(ref('"Save"'))).toMatchObject({
+        inTheWay: 'dialog "Delete \\"Draft\\""',
+      });
+      await page.evaluate(
+        `document.querySelector("#cover").setAttribute("aria-label", "x".repeat(901))`
+      );
+      expect(await inPageOf.measureReach(ref('"Save"'))).toMatchObject({
+        inTheWay: "dialog",
+      });
+    });
+
+    it("an open native modal in an excluded subtree blocks, unnamed", async () => {
+      const { page, inPageOf, ref } = await reachPage(
+        '<button>Behind</button><dialog data-ayme-exclude aria-label="Private"><button>Inside</button></dialog>'
+      );
+      await page.evaluate(`document.querySelector("dialog").showModal()`);
+
+      expect(await inPageOf.measureReach(ref('"Behind"'))).toEqual({
+        present: true,
+        available: false,
+      });
+    });
+
     it("what is in the way with no name is named by its role alone", async () => {
       const { inPageOf, ref } = await reachPage(
         '<button>Save</button><div role="dialog" style="position:fixed;inset:0"></div>'

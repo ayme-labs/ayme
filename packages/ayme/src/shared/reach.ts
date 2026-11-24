@@ -12,10 +12,11 @@
  * ancestor a modal layer hid it behind, which blocks every click; else the
  * nearest of the element the click would hit instead and its ancestors up to
  * the first that holds the element. It is named by its role and accessible
- * name, as `dialog "Delete"`, or its role alone when it has no name; it is
- * left out when what is in the way has no role but generic, none or
- * presentation, or no snapshot shows it: the document element, or one
- * hidden from the accessibility tree.
+ * name as Playwright's snapshot prints them, as `dialog "Delete"`, or its
+ * role alone when the snapshot prints no name; it is left out when what is
+ * in the way has no role but generic, none or presentation, or no snapshot
+ * shows it: the document element, or one in an excluded subtree or hidden
+ * from the accessibility tree.
  */
 export type ReachMeasurement = {
   present: boolean;
