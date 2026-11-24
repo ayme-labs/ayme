@@ -82,7 +82,8 @@ const WORD_BUDGETS = "scripts/agents-word-budgets.json";
 const BUDGET_SLACK = 50;
 const LOCAL_SKILLS_DIR = ".agents/skills";
 const SKILLS_LOCK = "skills-lock.json";
-const SOURCE_PATH = /\.(?:[cm]?[jt]sx?|json|mdx?|html|css|ya?ml|sh|txt|mmd)$/;
+const SOURCE_PATH =
+  /\.(?:[cm]?[jt]sx?|vue|svelte|json|mdx?|html|css|ya?ml|sh|txt|mmd|tla|cfg)$/;
 /** Folders a repository path names only in a consumer's project or in build output. */
 const ABSENT_SEGMENTS = new Set(["node_modules", "dist", "out", ".ayme"]);
 /**
@@ -317,11 +318,17 @@ function pathSpans(text) {
   const stripped = withoutBlocks(text);
   for (const match of stripped.matchAll(/(`+)([^\n]*?)\1/g)) {
     const span = match[2].trim();
+    // A span that opens with `@` is a package, not a path. Normalized first,
+    // so `dist/../src/x.ts` is judged as the `src/x.ts` it names.
     if (
       span.includes("/") &&
       SOURCE_PATH.test(span) &&
-      !/[\s<>{}*$…@:]/.test(span) &&
-      !span.split("/").some((segment) => ABSENT_SEGMENTS.has(segment))
+      !/[\s<>{}*?$…:]/.test(span) &&
+      !span.startsWith("@") &&
+      !path.posix
+        .normalize(span)
+        .split("/")
+        .some((segment) => ABSENT_SEGMENTS.has(segment))
     )
       spans.push({ span, line: lineOf(stripped, match.index) });
   }
@@ -345,7 +352,7 @@ function repositoryFileExists(root, file, span, files) {
   return direct || files.some((known) => `/${known}`.endsWith(tail));
 }
 
-/** The words in a file, as `wc -w` counts them. */
+/** The words in a file: its runs of characters between white space, as `wc -w` counts them. */
 function wordCount(text) {
   return text.match(/\S+/g)?.length ?? 0;
 }

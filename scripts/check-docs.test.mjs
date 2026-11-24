@@ -673,7 +673,8 @@ test("passes backticked paths that resolve from the file's folder, its src/, the
           "`LICENSE.md` and `packages/other/d.json`; the end of a path: `layer/b.ts`.",
           "Left out: `src/` and `packages/lib/` (folders), `node_modules/effect/AGENTS.md`,",
           "`dist/x.js`, `packages/lib/out/y.js`, `.ayme/init-script.js`, `src/<name>/z.ts`,",
-          "`src/**/z.ts`, `{a,b}/z.ts`, `go run ./x/y.go`, `npm:pkg/file.json`.",
+          "`src/**/z.ts`, `src/z?.ts`, `{a,b}/z.ts`, `go run ./x/y.go`, `npm:pkg/file.json`,",
+          "`@scope/pkg/file.json`.",
           "",
           "```",
           "`gone/in-a-block.ts`",
@@ -699,6 +700,19 @@ test("fails a backticked path that names no file", () => {
     problems[0],
     /packages\/lib\/AGENTS\.md:7: `src\/gone\.ts` names no file/
   );
+});
+
+test("fails a model, a component and a path that only passes through build output", () => {
+  const problems = checkDocs(
+    agentsFixture({
+      "packages/lib/AGENTS.md":
+        "See `model/Gone.tla`, `src/Gone.vue` and `dist/../src/gone.ts`.\n",
+    })
+  );
+  assert.equal(problems.length, 3, problems.join("\n"));
+  assert.match(problems[0], /`model\/Gone\.tla` names no file/);
+  assert.match(problems[1], /`src\/Gone\.vue` names no file/);
+  assert.match(problems[2], /`dist\/\.\.\/src\/gone\.ts` names no file/);
 });
 
 test("fails a backticked path in a repo-local skill that names no file", () => {
