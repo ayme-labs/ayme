@@ -547,7 +547,8 @@ async function openPage(
    * comes. When the element is gone, Playwright's own ref stands.
    */
   /**
-   * For an assertion, which Playwright reports by a selector alone: the ref
+   * For an assertion, which Playwright reports by a selector alone, built
+   * when the element was hovered: the ref
    * the adapter's own snapshots give the picked element, or its nearest
    * ancestor they list, read off a public snapshot of each in turn. Its
    * snapshot names it as it names a click's target. The picked element is

@@ -137,14 +137,15 @@ a shared machine run one at a time.
      mechanism in a scratch copy of `Recorder.tla` (remove the new check,
      reorder the new step) and confirm the rule breaks. A check you never saw
      fail proves nothing.
-   - Every probe (P1 to P31) must still break: each shows the model still
-     reaches a situation.
+   - Every config must still break exactly the rules `expected.txt` lists for
+     it, its probes included.
 
 5. **Update what the change made stale**: the rule comments in
    `Recorder.tla`, `expected.txt`, the README's known limits, races,
    assumptions and what the model leaves out, the coverage above, and the
    sync commit above. Move the sync commit only after the model describes
-   the code at the new commit.
+   the code at the new commit. When this step changes a line of
+   `expected.txt`, run that config again with `./run.sh <config>`.
    Put the model's update in a commit of its own, apart from any engine fix.
 
 ## What a result means

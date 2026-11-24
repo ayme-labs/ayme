@@ -1746,6 +1746,9 @@ OnItsOwn ==
 \* to N6 are narrower versions of rule 12, each for its own shortest path.
 \* P1 to P31 are probes: each must break, which shows the model reaches that
 \* situation. L1 and L2 are progress, checked with fairness (Progress.cfg).
+\* Also checked: X4, X6, X7, X10, X11, X12a and D1, and the variants R03a to
+\* R03c, R04v, R06_DecisionsChangeOnlyByAPress, X3v, F1v, F3_FinalKeepsItsChanges,
+\* F4n, F7s and N1b; each is explained beside its check.
 
 EntOf(i) == {i, N + i}
 Recorded(i) == \E e \in EntOf(i) : e \in TLHas(Eng) \/ e \in pkgHas \/ InL(Eng, e)
@@ -1769,20 +1772,26 @@ R02_OneBeforeOneAfter ==
   \A e \in tl \cup pkgHas : bsnap[e] # 0 /\ (asnap[e] # 0 \/ page = "closed")
 
 \* 3. While stopped, nothing is added to the timeline and input reaches the
-\*    page untouched. Tracing keeps running. R03b is also rule 13b: nothing
-\*    done while not recording appears.
+\*    page untouched. Tracing keeps running.
+\* Input reaches the page untouched. Gives way once the five-second time
+\* limit passes (README, Known limits).
 R03a_StoppedClicksAreUntouched ==
   \A i \in Inputs : made[i].phase \in {"paused", "off"} => ~touched[i]
+\* Nothing is added; this is also rule 13b: nothing done while not recording
+\* appears.
 R03b_StoppedAddsNothing ==
   /\ phase = "paused" => tl = tlAtPause
   /\ \A e \in tl : made[In(e)].phase \notin {"paused", "off"}
+\* Tracing keeps running.
 R03c_TracingRunsThroughPause ==
   phase = "paused" => tracing = "on"
 
 \* 4. Finish saves everything recorded up to that moment, including an
 \*    Interaction that has not settled yet. Closing the page right after an
 \*    input can lose it (cli README, Known limits): its report never comes,
-\*    or its entry is cut short ("cut", L withoutPage).
+\*    or its entry is cut short ("cut", L withoutPage). Gives way once the
+\*    five-second time limit passes, and for input on the blank page a
+\*    --start-recording recording opens on (README, Known limits).
 R04_FinishSavesEverything ==
   pkg # "none" =>
     \A i \in Inputs :
@@ -1858,16 +1867,20 @@ S3_EveryEndSavesTheStorage ==
 \* ends as it does with no such step (L savesStorage).
 S4_NoStorageWithoutTheFlag == ~SaveStorage => storage = "none"
 
-\* 11. Input reaches the page in the order the person gave it.
+\* 11. Input reaches the page in the order the person gave it. Gives way once
+\*     the five-second time limit passes (README, Known limits).
 X1_NothingOvertakesAHeldClick == ~overtook
 
-\* 12. Each "after" is no later than the next "before".
+\* 12. Each "after" is no later than the next "before". Breaks on B2, typing
+\*     in a field the page moved the focus to by itself (README, Known
+\*     limits).
 X2_SnapshotsInTimeOrder ==
   \A e \in tl : \A f \in tl :
     (In(e) < In(f) /\ asnap[e] # 0 /\ DocAt(asnap[e]) = BefDoc(f)) => asnap[e] <= Bef(f)
 
 \* 12, for an input known from its report only: the snapshot it starts from
 \* (L startReported: its page's latest) is read no later than the input.
+\* Breaks on B2 (README, Known limits).
 X8_StartsNoLaterThanTheInput ==
   \A e \in tl : ent[e] = "rep" => bsnap[e] <= evStamp[In(e)]
 
@@ -1886,7 +1899,9 @@ X12a_AssertionReadsInTimeOrder ==
                                      /\ ~\E f \in tl : In(a) < In(f) /\ In(f) < In(e))
          => bsnap[e] <= evStamp[In(e)]
 
-\* 13a. Nothing done while recording is thrown away.
+\* 13a. Nothing done while recording is thrown away. Gives way once the
+\*      five-second time limit passes, and for input on the blank page a
+\*      --start-recording recording opens on (README, Known limits).
 X3_NothingYouDidIsDropped ==
   \A i \in Inputs : (ev[i] = "in" /\ Shown(i) /\ made[i].gen = gen /\ page = "open")
                       => Recorded(i)
@@ -1909,7 +1924,8 @@ R04v_FinishSavesAllOffTheBlankPage ==
 \* Wrapping up and saving never wait for something that cannot come: some
 \* step that needs nobody can still happen. MayGoOn is ENABLED OnItsOwn
 \* written out from the guards of those steps (TLC evaluates ENABLED of them
-\* far too slowly); L2 checks the same with fairness.
+\* far too slowly); L2 checks the same with fairness. Breaks when the page
+\* closes right after a click (README, Known limits).
 MayGoOn ==
   Alive /\
   \/ \E i \in Inputs : passReq[i] \/ ev[i] = "flying" \/ revFly[i]
@@ -1921,7 +1937,8 @@ X4_WrapUpNeverGetsStuck ==
   phase \in {"wrap", "saving"} => MayGoOn
 
 \* "Paused" on screen is the moment recording ends: what is done after Stop
-\* and before that is still recorded (spec, "What makes them hold").
+\* and before that is still recorded (spec, "What makes them hold"). Gives
+\* way once the five-second time limit passes (README, Known limits).
 X5_StopWindowIsRecorded ==
   \A i \in Inputs : (ev[i] = "in" /\ made[i].view = "wrapPause" /\ made[i].gen = gen
                      /\ page = "open") => Recorded(i)
@@ -2043,7 +2060,8 @@ F3_FinalKeepsItsChanges ==
 
 \* 4. Stop and Finish keep its last text: every key typed while recording
 \*    and while the page stayed at its document. A key typed once the page
-\*    went to another document is a fill of its own there (F4n).
+\*    went to another document is a fill of its own there (F4n). Breaks
+\*    when the page closes while a revision is on its way (README, Races).
 F4_StopAndFinishKeepLastText ==
   (phase = "paused" \/ pkg # "none") =>
     \A i \in Inputs :
