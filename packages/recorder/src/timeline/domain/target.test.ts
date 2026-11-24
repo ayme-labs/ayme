@@ -4,7 +4,7 @@ import type { TimelineAddition } from "./recorded";
 import { selectorSteps } from "./target";
 import { Timeline } from "./timeline";
 import { pictureRef } from "./refs";
-import { pageId, snapshotId } from "../../test-utils/ids";
+import { pageId, snapshotId } from "../../../testing/ids";
 
 // Which element of a snapshot a report's target is. Playwright's report names
 // the target in its own picture of the page; the timeline finds the node at

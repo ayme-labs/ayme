@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { RecorderUpdate, RecordingOutcome } from "./index";
-import { startScriptedRecorder, type ScriptedBrowser } from "./testing";
-import { entryId, inputId, pageId } from "./test-utils/ids";
+import { startScriptedRecorder, type ScriptedBrowser } from "../testing";
+import { entryId, inputId, pageId } from "../testing/ids";
 
 // Ticket #1279: leaving an entry out of the recording while paused, and
 // putting it back, on the scripted browser: what the handle answers and

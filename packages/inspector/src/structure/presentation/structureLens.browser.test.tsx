@@ -13,12 +13,12 @@ import {
   type RenderRun,
   type Selection,
 } from "../../navigation";
-import { renderPart } from "../../testing/renderPart";
+import { renderPart } from "../../../testing/renderPart";
 import {
   DetailPane as DetailPanePart,
   Navigator as NavigatorPart,
   StructureLens,
-} from "../../testing";
+} from "../../../testing";
 import { structureLens } from "./structureLens";
 
 // Component tests: the Structure lens in the navigator and the detail pane,

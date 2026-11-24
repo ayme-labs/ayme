@@ -5,18 +5,18 @@ import { createPage } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
 import type { PomManifest } from "../../shared";
 import { errorText } from "../../shared";
-import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
+import { toolOptionsOf } from "../../../testing/toolOptions.testSupport";
 import {
   FILL_SCHEMA,
   PLAYWRIGHT_MCP_COUNTERPARTS,
   PLAYWRIGHT_MCP_SCHEMAS,
   shapeOf,
   withoutElement,
-} from "../test-utils/playwrightMcp.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
+} from "../../../testing/tools/playwrightMcp.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 import { lookAtPageStateForDocument } from "../../page-state/infrastructure";
 import { createAyme, listElementToolTargets, type Ayme } from "../../runtime";
-import { rooted } from "../../test-utils/pomRoot.testSupport";
+import { rooted } from "../../../testing/pomRoot.testSupport";
 
 type Schema = {
   type?: string;

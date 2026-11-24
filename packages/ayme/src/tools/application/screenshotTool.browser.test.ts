@@ -3,12 +3,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "../../page-objects/infrastructure";
 import { EXCLUDE_ATTRIBUTE, ToolInputError } from "../../shared";
-import { toolOptionsOf } from "../../test-utils/toolOptions.testSupport";
+import { toolOptionsOf } from "../../../testing/toolOptions.testSupport";
 import {
   PLAYWRIGHT_MCP_SCREENSHOT_SCHEMA,
   shapeOf,
   withoutElement,
-} from "../test-utils/playwrightMcp.testSupport";
+} from "../../../testing/tools/playwrightMcp.testSupport";
 import { createAyme, type Ayme } from "../../runtime";
 import type { ToolInput } from "../domain/toolTypes";
 

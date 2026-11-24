@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { RecorderUpdate } from "./index";
-import { startScriptedRecorder } from "./testing";
+import { startScriptedRecorder } from "../testing";
 
 // An end from outside always finishes: from every state the recorder can be
 // in, within a bounded time on its clock, whatever the browser never

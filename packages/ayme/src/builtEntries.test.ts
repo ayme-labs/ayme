@@ -75,7 +75,6 @@ it("only the built ./compiler entry imports TypeScript", () => {
     "inspector.mjs",
     "absent.mjs",
     "server.mjs",
-    "testing.mjs",
     "playwright.mjs",
   ];
   expect(

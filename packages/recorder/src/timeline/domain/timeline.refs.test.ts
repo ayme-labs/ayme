@@ -8,11 +8,11 @@ import {
   snapshot,
   timelineOf,
   visit,
-} from "./test-utils/timelineBuilders";
+} from "../../../testing/timeline/timelineBuilders";
 import type { PackageHeader } from "./timeline";
 import type { SnapshotId } from "./recorded";
 import { pictureRef } from "./refs";
-import { entryId, pageId, snapshotId } from "../../test-utils/ids";
+import { entryId, pageId, snapshotId } from "../../../testing/ids";
 
 // One ref names one element in a tree, always. An element the page
 // re-creates keeps its first ref; that rule yields in one case only: when

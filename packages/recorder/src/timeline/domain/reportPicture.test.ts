@@ -6,11 +6,14 @@ import {
 import { describe, expect, it } from "vitest";
 
 import type { TimelineAddition } from "./recorded";
-import { changeTreesOf, header } from "./test-utils/timelineBuilders";
+import {
+  changeTreesOf,
+  header,
+} from "../../../testing/timeline/timelineBuilders";
 import { Timeline } from "./timeline";
 import { pictureRef } from "./refs";
 import { pictureBefore } from "./reportPicture";
-import { pageId, snapshotId } from "../../test-utils/ids";
+import { pageId, snapshotId } from "../../../testing/ids";
 
 // How the report's own picture of the page is matched to the snapshots
 // around an input the gate never holds, such as typing. The rules are read

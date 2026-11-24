@@ -109,15 +109,11 @@ test("changedLines marks where a deletion-only hunk cut lines", () => {
 test("changedLines drops every kind of non-production source", () => {
   const diff = [
     "packages/core/src/a.d.ts",
-    "packages/core/src/a.testSupport.tsx",
     "packages/core/src/a.scenario.ts",
     "packages/core/src/a.setup.ts",
     "packages/core/src/fixtures/a.ts",
     "packages/core/src/__tests__/a.ts",
-    "packages/core/src/test-utils/a.ts",
-    "packages/core/src/testing.ts",
-    "packages/core/src/testing/a.ts",
-    "packages/core/testing/src/a.ts",
+    "packages/core/testing/a.ts",
     "apps/example-vue/src/a.ts",
   ]
     .map((file) => `+++ b/${file}\n@@ -0,0 +1 @@\n+x\n`)

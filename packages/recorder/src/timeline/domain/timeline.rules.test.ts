@@ -7,7 +7,7 @@ import {
   snapshot,
   timelineOf,
   visit,
-} from "./test-utils/timelineBuilders";
+} from "../../../testing/timeline/timelineBuilders";
 import type { Timeline } from "./timeline";
 import type { SnapshotId } from "./recorded";
 import { pictureRef, type PictureRef } from "./refs";
@@ -16,7 +16,7 @@ import {
   pageId,
   snapshotId,
   tracePositions,
-} from "../../test-utils/ids";
+} from "../../../testing/ids";
 
 // Rules of the timeline that the change analysis found unpinned: what it
 // leaves out, when it tells an entry, and what it knows of a target.

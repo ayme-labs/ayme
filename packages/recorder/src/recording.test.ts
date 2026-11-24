@@ -8,7 +8,7 @@ import {
   SCRIPTED_TRACE,
   startScriptedRecorder,
   type ScriptedBrowser,
-} from "./testing";
+} from "../testing";
 
 // A recording on the scripted browser, with a test clock: what the handle
 // answers and shows, what it asks of the browser, and the package on disk.

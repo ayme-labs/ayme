@@ -5,7 +5,7 @@ import type {
 import { describe, expect, it } from "vitest";
 
 import { entryCardOf, entryShows } from "./entryCard";
-import { entryId } from "../../test-utils/ids";
+import { entryId } from "../../../testing/ids";
 
 // How one entry of a Visit shows in the window: read from the entry, from
 // the commands that apply now, and from whether its Visit is the page now

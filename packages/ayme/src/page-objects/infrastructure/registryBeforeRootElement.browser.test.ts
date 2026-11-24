@@ -6,11 +6,11 @@ import {
   probeRegisteredPomMembers,
   registerCompiledPom,
 } from "./registry";
-import { rooted } from "../../test-utils/pomRoot.testSupport";
+import { rooted } from "../../../testing/pomRoot.testSupport";
 import {
   startSession,
   type TestSession,
-} from "../../test-utils/session.testSupport";
+} from "../../../testing/session.testSupport";
 
 // A file of its own: its document's in-page module is installed by this
 // test, while the document has no root element, as an init script's is.

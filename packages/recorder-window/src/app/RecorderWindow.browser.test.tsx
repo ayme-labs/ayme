@@ -11,9 +11,9 @@ import { afterEach, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
 import type { RecorderChannel } from "../channel";
-import { RecorderWindow, type Entry } from "../testing";
+import { RecorderWindow, type Entry } from "../../testing";
 import { channelUrl, mountWindow } from "./mountWindow";
-import { entryId } from "../test-utils/ids";
+import { entryId } from "../../testing/ids";
 
 // Component tests: the recorder window, mounted as its script mounts it,
 // showing what a scripted channel tells, and read and pressed through its
