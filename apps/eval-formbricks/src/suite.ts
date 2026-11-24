@@ -103,7 +103,6 @@ async function main() {
         agent: options.agent,
         configDir: configCheckDir,
         envDirectory: evalRoot,
-        arms: options.arms.map((armId) => arms[armId]),
       }).preconditions,
       dockerPrecondition,
       labAppPrecondition(labUrl),

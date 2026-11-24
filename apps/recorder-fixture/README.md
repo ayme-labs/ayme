@@ -101,6 +101,12 @@ latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
   led to another page (`catalog.html`, to `basket.html` with one match and
   to `wishlist.html` with two): the highlight is read off the recorded page.
 
+- `outsideClick.spec.ts` presses Assert visibility on the toolbar with a
+  panel open on `app/outside-click.html`, which closes it on a press outside
+  in one of four ways: a click on the document, a pointerdown or a mousedown
+  on it in the capture phase, and the focus leaving it. The panel stays open
+  and what is inside it is asserted.
+
 - `review.spec.ts` discards and restores entries while recording and while paused, through the
   engine's handle on real Chromium, and reads the package from disk.
   `windowReview.spec.ts` does it in the recorder window, through its page

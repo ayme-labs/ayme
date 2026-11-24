@@ -3,10 +3,8 @@
  * before a run, and its own environment, built around a fresh configuration
  * folder that holds nothing of the launcher's.
  */
-import type { Arm } from "./arms.ts";
 import { claudeEnvironment } from "./claude.ts";
 import {
-  codexArmProblem,
   codexDefaultModel,
   codexEnvironment,
   codexTokenVariable,
@@ -29,7 +27,7 @@ export const defaultModels: Record<AgentId, string> = {
 
 /**
  * The agent's environment around `configDir`, and the preconditions that
- * its sign-in works there and that it can run the arms. The environment is
+ * its sign-in works there. The environment is
  * `undefined` when there is nothing to sign in with; the precondition then
  * says so.
  */
@@ -38,7 +36,6 @@ export function agentAccess(options: {
   configDir: string;
   /** The directory holding the env file. */
   envDirectory: string;
-  arms: Pick<Arm, "id" | "skill" | "withAyme" | "tools">[];
 }): {
   environment: NodeJS.ProcessEnv | undefined;
   preconditions: Precondition[];
@@ -65,14 +62,6 @@ export function agentAccess(options: {
         accessToken: readEnvVariable(codexTokenVariable, envDirectory),
         envDirectory,
       }),
-      {
-        name: "Codex arms",
-        check: () =>
-          options.arms
-            .map(codexArmProblem)
-            .filter((problem) => problem !== null)
-            .join(" ") || null,
-      },
     ],
   };
 }

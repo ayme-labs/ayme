@@ -1,3 +1,7 @@
+---
+status: accepted
+---
+
 # Keep framework integration APIs closely aligned
 
 ayme framework packages should expose equivalent capabilities with consistent terminology, option names, and Page Object contracts. Share framework-independent runtime behavior in core.

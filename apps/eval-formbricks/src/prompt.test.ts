@@ -296,6 +296,22 @@ describe("the setup message", () => {
     );
   });
 
+  it("tells Codex to read the skill's file, where Claude Code has a Skill tool", () => {
+    expect(setupPrompt(arms["playwright-cli"], "codex")).toContain(
+      "Load the `playwright-cli` skill now by reading its `SKILL.md` file. Read no other file and don't use the browser; just reply ready."
+    );
+    expect(setupPrompt(arms["playwright-cli-with-ayme"], "codex")).toContain(
+      "Load the `playwright-cli` skill and the `ayme` skill now by reading their `SKILL.md` files, and read"
+    );
+    expect(setupPrompt(arms["playwright-mcp-with-ayme"], "codex")).toContain(
+      "Load the `ayme` skill now by reading its `SKILL.md` file, and read"
+    );
+    // An arm without a skill is asked the same of either agent.
+    expect(setupPrompt(arms["playwright-mcp"], "codex")).toBe(
+      setupPrompt(arms["playwright-mcp"])
+    );
+  });
+
   it("tells an arm without a skill not to look for one, and to read no files", () => {
     const prompt = setupPrompt(arms["playwright-mcp"]);
     expect(prompt).toContain("Don't look for a skill.");

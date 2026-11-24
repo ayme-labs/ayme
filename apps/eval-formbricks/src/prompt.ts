@@ -3,22 +3,43 @@ import { aymeReference, aymeSkillName } from "./ayme.ts";
 import { missionDefinitions, type Mission } from "./missions.ts";
 
 /**
+ * How an agent loads a skill, as the setup message words it. Claude Code has
+ * a Skill tool. Codex has none and reads the skill's file, so it is told to,
+ * and not told to read no file: asked for a Skill tool, it loaded the skill
+ * in the measured turn instead.
+ */
+const skillLoading = {
+  claude: {
+    how: "now with the Skill tool",
+    otherFiles: "Don't read files",
+  },
+  codex: {
+    how: "now by reading its `SKILL.md` file",
+    otherFiles: "Read no other file",
+  },
+};
+export type SkillLoader = keyof typeof skillLoading;
+
+/**
  * What the setup turn asks of one skill, and that the agent stays off the
  * page. The startup lane asks the `ayme` skill's references this way.
  */
 export function readyLine({
   skill,
   readsSkillReferences,
+  agent = "claude",
 }: {
   skill?: string;
   readsSkillReferences?: boolean;
+  agent?: SkillLoader;
 }) {
   if (skill === undefined)
     return "Don't look for a skill. Don't read files and don't use the browser; just reply ready.";
-  const load = `Load the \`${skill}\` skill now with the Skill tool`;
+  const { how, otherFiles } = skillLoading[agent];
+  const load = `Load the \`${skill}\` skill ${how}`;
   return readsSkillReferences
     ? `${load} and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.`
-    : `${load}. Don't read files and don't use the browser; just reply ready.`;
+    : `${load}. ${otherFiles} and don't use the browser; just reply ready.`;
 }
 
 /**
@@ -27,12 +48,19 @@ export function readyLine({
  * skill's reference on browser automation tools, where the instruction on
  * what to read after a Page Object Tool lives.
  */
-export function aymeReadyLine({ skill }: Pick<Arm, "skill">) {
+export function aymeReadyLine(
+  { skill }: Pick<Arm, "skill">,
+  agent: SkillLoader = "claude"
+) {
   const skills =
     skill === undefined
       ? `the \`${aymeSkillName}\` skill`
       : `the \`${skill}\` skill and the \`${aymeSkillName}\` skill`;
-  return `Load ${skills} now with the Skill tool, and read \`${aymeReference}\` in the \`${aymeSkillName}\` skill's folder. Read no other file and don't use the browser; just reply ready.`;
+  const how =
+    agent === "claude"
+      ? skillLoading.claude.how
+      : `now by reading ${skill === undefined ? "its `SKILL.md` file" : "their `SKILL.md` files"}`;
+  return `Load ${skills} ${how}, and read \`${aymeReference}\` in the \`${aymeSkillName}\` skill's folder. Read no other file and don't use the browser; just reply ready.`;
 }
 
 /**
@@ -43,10 +71,13 @@ export function aymeReadyLine({ skill }: Pick<Arm, "skill">) {
  * and loading it in the measured turn instead. An arm with ayme reads the
  * skill reference here too.
  */
-export function setupPrompt(arm: Pick<Arm, "skill" | "withAyme">) {
+export function setupPrompt(
+  arm: Pick<Arm, "skill" | "withAyme">,
+  agent: SkillLoader = "claude"
+) {
   const ready = arm.withAyme
-    ? aymeReadyLine(arm)
-    : readyLine({ skill: arm.skill });
+    ? aymeReadyLine(arm, agent)
+    : readyLine({ skill: arm.skill, agent });
   return `Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. ${ready}
 `;
 }
