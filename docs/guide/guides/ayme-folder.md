@@ -91,7 +91,7 @@ Four kinds of project need one thing more:
 
 ## What you commit
 
-Commit what you and your coding agent's skills write in `ayme/`. Ignore what a tool generates there, with a `ayme/.gitignore` you commit:
+Commit what you and your coding agent's skills write in `ayme/`. Ignore what a tool generates there, with an `ayme/.gitignore` you commit:
 
 ```text
 init-script.js
