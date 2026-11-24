@@ -4,7 +4,7 @@ import {
   devRebuildTests,
   serverRenderTests,
 } from "@ayme-dev/example-certification/tests";
-import { CounterPage } from "../.ayme/pom/CounterPage";
+import { CounterPage } from "#pom/CounterPage";
 
 // The shared certification, against nuxt dev and the built Nitro server.
 serverRenderTests();

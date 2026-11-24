@@ -34,7 +34,7 @@ Call the lifecycle API once in the application root, with the pages it registers
 
 ```ts
 import { useAyme } from "@ayme-dev/vue";
-import { ListPage } from "../.ayme/pom/ListPage";
+import { ListPage } from "#pom/ListPage";
 
 useAyme({ pageObjects: [ListPage], webMCP: { enabled: true } });
 ```

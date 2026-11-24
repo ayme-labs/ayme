@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { peek, useAyme, usePageObject } from "@ayme-dev/svelte";
-  import { CounterPage } from "../../.ayme/pom/CounterPage";
-  import { SubCounterPage } from "../../.ayme/pom/SubCounterPage";
+  import { CounterPage } from "#pom/CounterPage";
+  import { SubCounterPage } from "#pom/SubCounterPage";
 
   const { ayme } = useAyme();
   // Registered here, not at setup: the counter's presence is this component's

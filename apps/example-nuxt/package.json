@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#pom/*": "./.ayme/pom/*.ts"
+  },
   "scripts": {
     "dev": "node scripts/dev.mjs --host 127.0.0.1 --port 4193",
     "build": "nuxt build",

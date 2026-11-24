@@ -3,7 +3,7 @@ import {
   devRebuildTests,
   serverRenderTests,
 } from "@ayme-dev/example-certification/tests";
-import { CounterPage } from "../.ayme/pom/CounterPage";
+import { CounterPage } from "#pom/CounterPage";
 
 // The shared certification, against next dev and the next build/next start app.
 serverRenderTests();

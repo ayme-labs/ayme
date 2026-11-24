@@ -5,7 +5,7 @@ import {
   serverRenderTests,
   test,
 } from "@ayme-dev/example-certification/tests";
-import { CounterPage } from "../.ayme/pom/CounterPage";
+import { CounterPage } from "#pom/CounterPage";
 
 // In development, Angular logs how many components it hydrated.
 test.use({ hydrationStatistics: /^Angular hydrated / });

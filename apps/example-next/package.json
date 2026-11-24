@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#pom/*": "./.ayme/pom/*.ts"
+  },
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1 --port 4192",
     "build": "next build && pnpm run build:without-ayme && node scripts/verify-browser-output.mjs",

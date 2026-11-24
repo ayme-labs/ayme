@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#pom/*": "./.ayme/pom/*.ts"
+  },
   "scripts": {
     "build": "vite build && vite build --mode without-ayme && node scripts/verify-browser-output.mjs",
     "dev": "vite --host 127.0.0.1 --port 4190 --strictPort",

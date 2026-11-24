@@ -8,7 +8,7 @@ import {
   publishedToolNames,
   recordPublishedTools,
 } from "@ayme-dev/webmcp/testing";
-import { CounterPage } from "../.ayme/pom/CounterPage";
+import { CounterPage } from "#pom/CounterPage";
 
 // The shared certification, against the dev server and the production build.
 // The app is a single-page app with no router, so it has no client navigation

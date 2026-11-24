@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#pom/*": "./.ayme/pom/*.ts"
+  },
   "scripts": {
     "dev": "ng serve --host 127.0.0.1 --port 4196",
     "dev:spa": "ng serve --host 127.0.0.1 --port 4196 --configuration spa",

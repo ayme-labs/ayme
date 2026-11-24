@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useAyme, usePageObject, usePeek } from "@ayme-dev/react";
-import { CounterPage } from "../.ayme/pom/CounterPage";
-import { SubCounterPage } from "../.ayme/pom/SubCounterPage";
+import { CounterPage } from "#pom/CounterPage";
+import { SubCounterPage } from "#pom/SubCounterPage";
 
 function Counter() {
   const [count, setCount] = useState(0);

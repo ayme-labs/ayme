@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // block at it.
 const wiring = `<script setup lang="ts">
 import { useAyme } from "@ayme-dev/vue";
-import { ListPage } from "../.ayme/pom/ListPage";
+import { ListPage } from "#pom/ListPage";
 
 useAyme({
   pageObjects: [ListPage],

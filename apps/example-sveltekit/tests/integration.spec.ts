@@ -7,7 +7,7 @@ import {
   test,
 } from "@ayme-dev/example-certification/tests";
 import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
-import { CounterPage } from "../.ayme/pom/CounterPage";
+import { CounterPage } from "#pom/CounterPage";
 
 // The shared certification, against vite dev and the built adapter-node
 // server, with server rendering and in SPA mode.
