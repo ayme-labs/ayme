@@ -48,13 +48,7 @@ Before adding or renaming a term in `GLOSSARY.md`, present the proposed wording 
 
 ### Architectural decisions
 
-Canonical ADRs live under `docs/adr/`. Use them for long-lived architectural decisions and keep their rationale there.
-
-ADRs record decisions and their rationale. Do not restate API names, options or signatures; the consumer docs in `docs/guide/` own those.
-
-Before creating or superseding an ADR, present the complete proposed ADR to the user and wait for explicit approval. Never infer ADR approval from general agreement with a plan.
-
-A single approval covers the complete supersession operation. Mark the old ADR as `superseded by ADR-NNNN`, keep the replacement ADR accepted and explicit about which ADR it supersedes, and keep the old ADR rationale intact.
+The rules for writing, replacing and retiring an ADR, and the list of those in force, are in [`docs/adr/AGENTS.md`](docs/adr/AGENTS.md).
 
 ## Commit types
 

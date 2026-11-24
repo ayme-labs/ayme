@@ -100,14 +100,17 @@ const buttonAt = (root: ShadowRoot, { clientX, clientY }: MouseEvent) => {
 
 /**
  * What stops a person's input on the toolbar at the window. A click is then
- * given to the button under it, as the toolbar's own, untrusted, click: the
- * page's listeners and Playwright's recorder do not take an untrusted click
- * for a person's.
+ * given to the button under it, as the toolbar's own click, which stays in
+ * the closed root: the page's listeners and Playwright's recorder hear none
+ * of it, so a panel the page closes on a click elsewhere stays open.
  */
 function stopperFor(host: HTMLElement, root: ShadowRoot) {
   const press = (event: MouseEvent) => {
     const button = buttonAt(root, event);
-    if (button && !button.disabled) button.click();
+    if (button && !button.disabled)
+      button.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, composed: false })
+      );
   };
   const afterStopping: Partial<Record<string, (event: Event) => void>> = {
     // The page keeps its focus.

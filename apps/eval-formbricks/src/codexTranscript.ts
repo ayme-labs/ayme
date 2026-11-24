@@ -47,10 +47,11 @@ const conversationItems = new Set([
   "contextCompaction",
 ]);
 
-/** An MCP tool under the name Claude Code gives it, so one summary reads both agents' runs. */
+/** A tool under the name Claude Code gives it, so one summary reads both agents' runs. */
 function toolName(item: Json) {
   if (item.type === "mcpToolCall")
     return `mcp__${String(item.server)}__${String(item.tool)}`;
+  if (item.type === "commandExecution") return "Bash";
   return String(item.type);
 }
 
