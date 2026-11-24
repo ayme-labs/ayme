@@ -71,6 +71,10 @@ CONSTANTS
               \* a key may be typed in a document the recorder has not read
               \* yet; not a fix: off, it leaves that path out (config
               \* Rule7-TypeAfterStopOnNewPage), to check every other one
+  SaveStorage,\* --save-storage was given: the recorder saves the storage
+              \* state as it ends (L savesStorage); off, it ends as with no
+              \* such step at all
+  WriteFails, \* the package cannot be written (L saveFailed)
   StartFails, \* a request Record waits for may fail: the trace's start,
               \* switching Playwright's reports on, or the pages' gate (L
               \* cannotStart, after Record, not after Continue)
@@ -86,6 +90,9 @@ Inputs == 1..N
 \* a revision starts after a pause (L interactionRevised).
 Ids == 1..(2 * N)
 In(e) == IF e > N THEN e - N ELSE e
+\* What an end asks of the storage state (L ending): its save with
+\* --save-storage, nothing without it.
+Asked == IF SaveStorage THEN "asked" ELSE "none"
 
 VARIABLES
   \* --- the engine (L LifecycleState) ---
@@ -626,7 +633,7 @@ TraceGone(s) ==
   IF s.phase = "failed" /\ s.discarding THEN [s EXCEPT !.discarding = FALSE, !.storage = "asked"]
   ELSE IF ~(s.phase = "wrap" /\ s.discarding) THEN s
   ELSE [s EXCEPT !.phase = IF s.goal = "quit" THEN "empty" ELSE "off",
-                 !.storage = IF s.goal = "quit" THEN "asked" ELSE @,   \* L ending
+                 !.storage = IF s.goal = "quit" THEN Asked ELSE @,   \* L ending
                  !.goal = "none", !.discarding = FALSE, !.lst = <<>>, !.pend = <<>>,
                  !.tl = {}, !.dis = {}, !.kept = {}, !.gen = @ + 1,
                  !.keptSn = {}, !.newT = NoTL,
@@ -650,7 +657,7 @@ WritePackage(s) ==
 
 \* L endFromOutside
 EndFromOutside(s) ==
-  CASE s.phase = "off" -> [s EXCEPT !.phase = "empty", !.storage = "asked"]   \* L ending
+  CASE s.phase = "off" -> [s EXCEPT !.phase = "empty", !.storage = Asked]   \* L ending
     [] s.phase = "recording" -> WrapUp(s, "save")
     [] s.phase = "wrap" ->
          [s EXCEPT !.goal = IF @ = "pause" THEN "save" ELSE IF @ = "clear" THEN "quit" ELSE @,
@@ -887,7 +894,7 @@ View ==
     \* L shown: the recorder that ends shows "saving" until the storage state
     \* is saved (L ending)
     [] storage = "asked" -> "saving"
-    [] phase = "failed" /\ storage = "none" -> "saving"
+    [] phase = "failed" /\ storage = "none" /\ SaveStorage -> "saving"
     [] OTHER -> phase
 Views == {"off", "bootOff", "bootPaused", "picking", "assertPressed", "recording",
           "wrapPause", "wrapSave", "wrapClear", "paused", "saving", "saved", "empty",
@@ -1493,7 +1500,7 @@ SavedArrives ==
   /\ savedTold /\ phase = "saving"
   /\ phase' = IF pkg = "complete" THEN "saved" ELSE "empty"
   /\ savedTold' = FALSE
-  /\ storage' = "asked"
+  /\ storage' = Asked
   /\ UNCHANGED <<boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
                  traceStarting, discarding, stopping, gen, pgHold, pgLatest, lst, ent,
                  stage, rep, repOf, unrep, revised, bsnap, asnap, pend, passReq, gateQ,
@@ -1511,9 +1518,26 @@ SavedArrives ==
 CannotStart(s) ==
   LET out == [s EXCEPT !.phase = "failed", !.boot = "none", !.picking = "off",
                        !.lst = <<>>, !.pend = <<>>]
-  IN IF s.traceStarting
-     THEN [out EXCEPT !.storage = "asked"]
+  IN IF s.traceStarting \/ ~SaveStorage
+     THEN [out EXCEPT !.storage = Asked]
      ELSE [out EXCEPT !.discarding = TRUE, !.traceQ = Append(@, "discard")]
+
+\* L saveFailed (WriteFails): the package could not be written, as when a
+\* file is in the recordings folder's place. The recorder ends "failed",
+\* with no package, and the storage state is saved first, with the trace
+\* already stopped (L ending).
+PackageWriteFails ==
+  /\ WriteFails /\ savedTold /\ phase = "saving"
+  /\ phase' = "failed" /\ savedTold' = FALSE /\ storage' = Asked
+  /\ pkg' = "none" /\ pkgHas' = {} /\ pkgDis' = {} /\ pkgNew' = <<>>
+  /\ UNCHANGED <<boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
+                 traceStarting, discarding, stopping, gen, pgHold, pgLatest, lst, ent,
+                 stage, rep, repOf, unrep, revised, bsnap, asnap, pend, passReq, gateQ,
+                 modeQ, traceQ, tl, tlAtPause, dis, kept, revLost, saves,
+                 holdPg, keptSn, newT, shown, txt, fin, pos,
+                 pgReported, pgLastFill, els, pic,
+                 pageVars, personVars, surfVars, miscVars>>
+  /\ Publish
 
 \* L failed for startTrace, reportInteractions or holdInputs while Record
 \* waits for it (StartFails): the browser cannot carry out the request Record
@@ -1667,7 +1691,7 @@ YouReloadWindow ==
 
 \* The recorder has ended, its end told once the storage state is saved or
 \* the save failed (L ended). Nothing more happens on its side.
-Ended == ~Alive /\ storage \in {"saved", "failed"} /\ UNCHANGED vars
+Ended == ~Alive /\ (~SaveStorage \/ storage \in {"saved", "failed"}) /\ UNCHANGED vars
 
 -----------------------------------------------------------------------------
 EngineNext ==
@@ -1682,7 +1706,7 @@ EngineNext ==
   \/ \E e \in Ids : PageSettles(e)
   \/ \E i \in Inputs : ReportArrives(i) \/ RevisionArrives(i) \/ ReportArrivesAsRevision(i)
   \/ GateSwitchLands \/ ModeLands \/ TraceLands \/ SavedArrives \/ StorageLands
-  \/ StartRequestFails \/ TimeLimitPasses \/ TerminalStop
+  \/ StartRequestFails \/ PackageWriteFails \/ TimeLimitPasses \/ TerminalStop
 
 SurfaceNext == BridgeAnswers \/ AnswerLands \/ WindowCatchesUp \/ YouReloadWindow
 
@@ -1815,7 +1839,10 @@ S2_StorageSaveAddsNothing ==
 \* told without it (L ending). Only a failed start's trace that is still
 \* being thrown away comes first.
 S3_EveryEndSavesTheStorage ==
-  ~Alive => (storage # "none" \/ (phase = "failed" /\ discarding))
+  (SaveStorage /\ ~Alive) => (storage # "none" \/ (phase = "failed" /\ discarding))
+\* Without --save-storage nothing of the storage state happens: the recorder
+\* ends as it does with no such step (L savesStorage).
+S4_NoStorageWithoutTheFlag == ~SaveStorage => storage = "none"
 
 \* 11. Input reaches the page in the order the person gave it.
 X1_NothingOvertakesAHeldClick == ~overtook
@@ -2113,6 +2140,8 @@ P28_NeverWarnsOfTheStorage == storage # "failed"
 \* is reached when the trace never started, and once a started one is gone.
 P29_NeverSavesStorageAfterTheTraceFailedToStart ==
   ~(phase = "failed" /\ storage = "saved" /\ traceStarting)
+P31_NeverSavesStorageAfterAFailedWrite ==
+  ~(phase = "failed" /\ storage = "saved" /\ saves = 1)
 P30_NeverSavesStorageAfterAFailedStartsTraceIsGone ==
   ~(phase = "failed" /\ storage = "saved" /\ ~traceStarting)
 

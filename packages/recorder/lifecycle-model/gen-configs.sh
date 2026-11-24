@@ -17,7 +17,7 @@ cd "$(dirname "$0")" || exit 2
 # in configs of their own (Limit-*, Race-*), one shortest path each, so that a
 # break does not cut the other rules' runs short (the statechart tool bounds
 # every run after the first break).
-HOLD="R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter R03a_StoppedClicksAreUntouched R03b_StoppedAddsNothing R03c_TracingRunsThroughPause R04_FinishSavesEverything R05_ClearLeavesNothing R06_ReviewUntilFinishOrClear R07_AssertionCarriesNoChanges R09_NeverHalfWritten R10_SavesOnce X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X6_TypingWrittenWhole X7_EntryHasItsOwnReport S1_StorageSavedOnceTheTraceIsOver S3_EveryEndSavesTheStorage"
+HOLD="R01_HeldClickReachesThePageOnce R02_OneBeforeOneAfter R03a_StoppedClicksAreUntouched R03b_StoppedAddsNothing R03c_TracingRunsThroughPause R04_FinishSavesEverything R05_ClearLeavesNothing R06_ReviewUntilFinishOrClear R07_AssertionCarriesNoChanges R09_NeverHalfWritten R10_SavesOnce X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X6_TypingWrittenWhole X7_EntryHasItsOwnReport S1_StorageSavedOnceTheTraceIsOver S3_EveryEndSavesTheStorage S4_NoStorageWithoutTheFlag"
 FILLS="F1_ShowsOnceItHasItsPlace F2_StaysInPlace F3_NextActionMakesItFinal F4_StopAndFinishKeepLastText F5_ClearRemovesForGood F6_WindowIsWhatIsSaved"
 # The rules over a step: F3's, that decisions change only by a press,
 # and that saving the storage state adds nothing to the recording.
@@ -30,10 +30,17 @@ MIX='{"left", "right", "middle", "leftOnCheckbox", "middleOnCheckbox"}'
 RULES="$HOLD X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 PROBES="P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten"
 WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow"
+# The configs with --save-storage given (SaveStorage), which check the
+# storage save at the end; every other one ends as with no such step. And
+# those in which the package cannot be written (WriteFails).
+SAVES=" Rules-Ends Rules-StartRecording Surfaces TimeLimit-Holds Races Probes-Storage "
+WRITEFAILS=" Rules-Ends Probes-Storage "
 mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges StartFails]
   name=$1; head=$2; shift 2
   laterev=${12}; lob2=${13}; latetype=${14}; what=${15}
   slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}; pagenavigates=${23:-FALSE}; navafterreports=${24:-TRUE}; typeafterstop=${25:-TRUE}; readlate=${26:-FALSE}; samefield=${27:-FALSE}; addrchanges=${28:-FALSE}; startfails=${29:-FALSE}
+  case $SAVES in *" $name "*) savestorage=TRUE ;; *) savestorage=FALSE ;; esac
+  case $WRITEFAILS in *" $name "*) writefails=TRUE ;; *) writefails=FALSE ;; esac
   {
     printf '%s\n' "$head"
     cat <<CFG
@@ -65,6 +72,8 @@ CONSTANTS
   SameFieldElsewhere = $samefield
   AddressChanges = $addrchanges
   StartFails = $startfails
+  SaveStorage = $savestorage
+  WriteFails = $writefails
   Buttons = $buttons
 CHECK_DEADLOCK FALSE
 CFG
@@ -180,7 +189,7 @@ mk Probes-Continue  "$IN" 1 1   1   2   1    0     $F     $F   $F   $F    $T    
 mk Probes-LateRevision "$IN" 2 1 1   1   1    0     $F     $F   $F   $F    $T    $T      $F $F "INVARIANT P23_NeverSetsAFinalFillsText"
 # --save-storage: the save is reached with nothing recorded, with a package,
 # and fails.
-mk Probes-Storage   "$IN" 1 1   1   1   0    1     $T     $F   $F   $F    $T    $F      $F $F "INVARIANTS P26_NeverSavesStorageWithNothingRecorded P27_NeverSavesStorageWithAPackage P28_NeverWarnsOfTheStorage P29_NeverSavesStorageAfterTheTraceFailedToStart P30_NeverSavesStorageAfterAFailedStartsTraceIsGone" $F $F "$LR" $F $F $F $F $F $T $T $F $F $F $T
+mk Probes-Storage   "$IN" 1 1   1   1   0    1     $T     $F   $F   $F    $T    $F      $F $F "INVARIANTS P26_NeverSavesStorageWithNothingRecorded P27_NeverSavesStorageWithAPackage P28_NeverWarnsOfTheStorage P29_NeverSavesStorageAfterTheTraceFailedToStart P30_NeverSavesStorageAfterAFailedStartsTraceIsGone P31_NeverSavesStorageAfterAFailedWrite" $F $F "$LR" $F $F $F $F $F $T $T $F $F $F $T
 # The three charts.
 mk Chart-Lifecycle  "INIT Init
 NEXT LifeNext" 0 1 1 2 0 1 $T $F $F $F $T $F $F $F "INVARIANTS $HOLD" $F $F "$LEFT"

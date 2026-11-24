@@ -7,7 +7,7 @@ const PHASE = {
   saving: "Saving",
   saved: "Ended: package saved",
   empty: "Ended: 'empty'",
-  failed: "Ended: 'failed', Record could not start",
+  failed: "Ended: 'failed'",
 };
 const GOAL = {
   pause: "to pause",
@@ -223,6 +223,8 @@ export const step = (action, from, to) => {
       }[to.tracing];
     case "SavedArrives":
       return "the package is written, or there was nothing to write";
+    case "PackageWriteFails":
+      return "the package cannot be written: the recorder fails";
     case "StartRequestFails":
       return "the browser cannot do what Record waits for: Record is answered 'ignored', and the recorder fails";
     case "StorageLands":

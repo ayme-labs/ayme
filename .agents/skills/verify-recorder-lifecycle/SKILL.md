@@ -40,7 +40,7 @@ each function named in a comment beside the operator that models it (search
 - `session/domain/lifecycle.ts`: all of `step`, from `record`, `resume`,
   `wrapUp`, `goOnWrappingUp`, `giveUp`, `wrappedUp`, `endFromOutside`,
   `clearPaused`, `traceGone`, `saved`, `cannotStart` (after Record),
-  `brokeDown` (while the storage state is saved), `ending` and `ended` (the storage
+  `brokeDown` (while the storage state is saved), `saveFailed`, `ending` and `ended` (the storage
   save, with `storageNotSaved`), through `proceed`, `startNext`,
   `inputHeld`, `inputPassedOn`, `pageSettled`, `snapshotTaken`,
   `giveSnapshot`, `interactionReported`, `reportOfHeld` (with `buttonOf`,
@@ -69,7 +69,7 @@ each function named in a comment beside the operator that models it (search
   `produce`, `writeInteraction`, `pressedAfter`, `beforeItsPress`, `measure`,
   `changedBefore`, `tell`, `package`) and
   `recorded.ts` (`TimelineAddition`).
-- `session/application/recorderSession.ts` (`publishEntries`, the time
+- `session/application/recorderSession.ts` (`publishEntries`, the package write telling `saveFailed`, the time
   limit), `engine/startRecorder.ts` (Record sent first, for
   `--start-recording`), `server/infrastructure/toolbarBridge.ts`,
   `server/infrastructure/windowChannelRouter.ts`.
@@ -134,7 +134,7 @@ a shared machine run one at a time.
      mechanism in a scratch copy of `Recorder.tla` (remove the new check,
      reorder the new step) and confirm the rule breaks. A check you never saw
      fail proves nothing.
-   - Every probe (P1 to P30) must still break: each shows the model still
+   - Every probe (P1 to P31) must still break: each shows the model still
      reaches a situation.
 
 5. **Update the README and this skill**: the rules and their outcomes, the
