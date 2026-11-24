@@ -1,3 +1,4 @@
+import { unwatchFile, watchFile } from "node:fs";
 import {
   mkdir,
   mkdtemp,
@@ -236,26 +237,37 @@ it("in watch mode, rebuilds after an edit to a Page Object Model module that its
 // Angular's dev server ignores a workspace's dot-folders, so it rebuilds for
 // a Page Object Model in `.ayme/pom/` only when the signal file changes. The
 // builds here are started by hand, as Angular starts them.
-async function hiddenPomBuilds() {
+async function hiddenPomBuilds({
+  folder = ".ayme/pom",
+  tmpdir: unwritable = false,
+} = {}) {
   const root = await realpath(
     await workspace({
       "tsconfig.json": tsconfig,
-      "main.ts":
-        'import { HiddenPage } from "./.ayme/pom/HiddenPage";\nconsole.log(HiddenPage);\n',
-      ".ayme/pom/HiddenPage.ts": pomSource("HiddenPage"),
+      "main.ts": `import { HiddenPage } from "./${folder}/HiddenPage";\nconsole.log(HiddenPage);\n`,
+      [`${folder}/HiddenPage.ts`]: pomSource("HiddenPage"),
     })
   );
+  const pom = path.join(root, folder, "HiddenPage.ts");
+  // The plugin asks for the temp folder when the build is set up. One below
+  // a file cannot be made.
+  const TMPDIR = process.env.TMPDIR;
+  if (unwritable) process.env.TMPDIR = path.join(root, "main.ts", "tmp");
   const builds = await context({
     absWorkingDir: root,
     entryPoints: ["main.ts"],
     bundle: true,
     write: false,
+    outdir: "out",
+    sourcemap: "external",
     metafile: true,
     format: "esm",
     external: ["@ayme-dev/ayme", "@ayme-dev/ayme/internal"],
     plugins: [aymeAngularPlugin({ include: true })],
     logLevel: "silent",
   });
+  if (TMPDIR === undefined) delete process.env.TMPDIR;
+  else process.env.TMPDIR = TMPDIR;
   const first = await builds.rebuild();
   const signalInput = Object.keys(first.metafile.inputs).find((input) =>
     input.endsWith("rebuild.js")
@@ -263,11 +275,22 @@ async function hiddenPomBuilds() {
   return {
     root,
     builds,
+    first,
     // The file Angular watches: an input of the bundle, outside the workspace.
     signal: signalInput && path.resolve(root, signalInput),
+    // How many listeners Node's poll of the Page Object Model's file has,
+    // counted by adding one and taking it away.
+    polls() {
+      const probe = () => {};
+      const others =
+        watchFile(pom, { persistent: false }, probe).listenerCount("change") -
+        1;
+      unwatchFile(pom, probe);
+      return others;
+    },
     edit: () =>
       writeFile(
-        path.join(root, ".ayme/pom/HiddenPage.ts"),
+        pom,
         pomSource("HiddenPage").replace(
           "doIt() {}",
           'doIt() {}\n\n  @ayme.action({ description: "Undo it." })\n  undoIt() {}'
@@ -294,7 +317,9 @@ it("rewrites the signal file a Page Object Model module in a dot-folder imports,
       { timeout: 5_000 }
     );
     const rebuilt = await builds.rebuild();
-    expect(rebuilt.outputFiles[0]!.text).toContain('"undoIt"');
+    expect(rebuilt.outputFiles.map(({ text }) => text).join()).toContain(
+      '"undoIt"'
+    );
   } finally {
     await dispose();
   }
@@ -318,15 +343,63 @@ it("leaves the signal file alone when a build started after the edit", async () 
 }, 30_000);
 
 it("stops watching when the build is disposed", async () => {
-  const { signal, edit, dispose, builds } = await hiddenPomBuilds();
+  const { polls, dispose, builds } = await hiddenPomBuilds();
   try {
-    const before = await readFile(signal!, "utf8");
+    expect(polls()).toBe(1);
+
     await builds.dispose();
 
-    await edit();
+    // esbuild calls a plugin back about the disposal a moment after it.
+    await vi.waitFor(() => expect(polls()).toBe(0));
+  } finally {
+    await dispose();
+  }
+}, 30_000);
 
-    await new Promise((resolve) => setTimeout(resolve, 2_000));
-    expect(await readFile(signal!, "utf8")).toBe(before);
+it("stops watching a file that a build which succeeded no longer names", async () => {
+  const { root, polls, dispose, builds } = await hiddenPomBuilds();
+  try {
+    await writeFile(path.join(root, "main.ts"), "console.log(1);\n");
+
+    await builds.rebuild();
+
+    expect(polls()).toBe(0);
+  } finally {
+    await dispose();
+  }
+}, 30_000);
+
+it("builds as before, without the watch, when the temp folder cannot be written", async () => {
+  const { first, signal, polls, dispose } = await hiddenPomBuilds({
+    tmpdir: true,
+  });
+  try {
+    expect(first.errors).toEqual([]);
+    expect(signal).toBeUndefined();
+    expect(polls()).toBe(0);
+  } finally {
+    await dispose();
+  }
+}, 30_000);
+
+it("watches a folder whose name starts with two dots, which Angular ignores too", async () => {
+  const { signal, polls, dispose } = await hiddenPomBuilds({
+    folder: "..shared",
+  });
+  try {
+    expect(signal).toBeDefined();
+    expect(polls()).toBe(1);
+  } finally {
+    await dispose();
+  }
+}, 30_000);
+
+it("keeps the temp folder's path out of the bundle and its source map", async () => {
+  const { first, signal, dispose } = await hiddenPomBuilds();
+  try {
+    const written = first.outputFiles.map(({ text }) => text).join();
+    expect(written).toContain("sourcesContent");
+    expect(written).not.toContain(path.basename(path.dirname(signal!)));
   } finally {
     await dispose();
   }
