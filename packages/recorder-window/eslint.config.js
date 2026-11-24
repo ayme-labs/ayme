@@ -4,8 +4,8 @@ import {
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
 
-// The source layout's rules. packages/recorder-window/AGENTS.md introduces
-// them; this file is the source of truth.
+// The source layout's rules; this file is the source of truth.
+// packages/recorder-window/AGENTS.md holds the rules lint cannot see.
 
 const packageRoot = import.meta.dirname;
 
@@ -13,9 +13,16 @@ const packageRoot = import.meta.dirname;
 // it here. app composes them, and nothing uses app. Test support, the
 // window's page objects included, lives in testing/ beside src/ (ADR-0057).
 const allowedSlices = {
+  // The window's and the toolbar's channel to the recorder, and the newest
+  // state heard on it.
   channel: [],
+  // The recording as the window lists it: its Visits, entries, chips and
+  // change rows, and the window's title.
   timeline: [],
+  // The window's controls, its status and theme, and the toolbar's pill.
   controls: [],
+  // The window's and the toolbar's scripts, which mount them, with their
+  // pages and stylesheets.
   app: ["controls", "timeline", "channel"],
 };
 const slices = Object.keys(allowedSlices);

@@ -4,22 +4,32 @@ import {
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
 
-// The source layout's rules. packages/ayme/AGENTS.md introduces them; this
-// file is the source of truth.
+// The source layout's rules; this file is the source of truth.
+// packages/ayme/AGENTS.md holds the rules lint cannot see.
 
 const packageRoot = import.meta.dirname;
 
 // The slices of src/, and the slices each may use: only those listed before
 // it here. runtime is the composition root: only the entries use it.
 const allowedSlices = {
+  // The JSON contracts, tool descriptors, errors, Caller names and small
+  // helpers every slice shares.
   shared: [],
-  // The in-page module (ADR-0049). Only a slice's infrastructure and runtime
-  // may use it, which the layered slices' block below enforces.
+  // The in-page module (ADR-0049): one per document, which captures, keeps
+  // its refs and runs actions there. Only a slice's infrastructure and
+  // runtime may use it, which the layered slices' block below enforces.
   "in-page": ["shared"],
+  // The Structural Page State, its session and history, Change Records,
+  // Structural Refs, acting on the page, and Reach.
   "page-state": ["in-page", "shared"],
+  // Runs: the queue, the Run log, Interactions, and the page instrumentation
+  // that records them and gives Demo Mode.
   runs: ["page-state", "in-page", "shared"],
+  // The @ayme marks, the Page Object registry and tree, and createPage.
   "page-objects": ["runs", "page-state", "in-page", "shared"],
+  // The Browser Tools, Custom Tools, Peek Tools and page context.
   tools: ["page-objects", "runs", "page-state", "in-page", "shared"],
+  // The Goal Loop and its Decision Endpoint.
   "goal-loop": [
     "tools",
     "page-objects",
@@ -28,6 +38,8 @@ const allowedSlices = {
     "in-page",
     "shared",
   ],
+  // createAyme and its options, WebMCP publication, the Inspector and the
+  // Agent Connection.
   runtime: [
     "goal-loop",
     "tools",
@@ -41,7 +53,7 @@ const allowedSlices = {
   compiler: ["page-objects", "shared"],
 };
 const slices = Object.keys(allowedSlices);
-// shared, runtime and compiler stay unlayered, as packages/ayme/AGENTS.md says.
+// The layered slices; the others stay unlayered.
 const layeredSlices = [
   "page-state",
   "runs",
@@ -188,10 +200,10 @@ function restrictedImports(files, ownPatterns, ignored = []) {
   };
 }
 
-// The layer order holds across slices as inside one, so a layer reaches
-// another slice only through the front doors of the layers it may use. These
-// files still break it: each may use one layer's front door, until the issues
-// named with it are done. src/layout.test.ts fails when one no longer needs
+// The layer order holds across slices as inside one (ADR-0046), so a layer
+// reaches another slice only through the front doors of the layers it may
+// use. These files still break it: each may use one layer's front door,
+// until the issues named with it are done. src/layout.test.ts fails when one no longer needs
 // to, so it leaves the list then. New code that needs an exception before its
 // issue is done adds one naming that issue. A "follow-up" has no issue yet.
 const layerOrderExceptions = [

@@ -4,8 +4,8 @@ import {
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
 
-// The source layout's rules. packages/inspector/AGENTS.md introduces them;
-// this file is the source of truth.
+// The source layout's rules; this file is the source of truth.
+// packages/inspector/AGENTS.md holds the rules lint cannot see.
 
 const packageRoot = import.meta.dirname;
 
@@ -13,13 +13,24 @@ const packageRoot = import.meta.dirname;
 // it here. app composes them, and nothing uses app. Test support, the
 // Inspector POM included, lives in testing/ beside src/ (ADR-0057).
 const allowedSlices = {
+  // The contract client and its two transports, rendering into the shadow
+  // root, and shared UI bits.
   shared: [],
+  // The dockable panel, its preferences and its body layout.
   panel: ["shared"],
+  // The selection, the Lens contract, the run slot, the navigator and the
+  // page highlights.
   navigation: ["shared"],
+  // The Page Object tree and the Model lens.
   "page-model": ["navigation", "panel", "shared"],
+  // The page state tree, member selection and the Structure lens.
   structure: ["page-model", "navigation", "panel", "shared"],
+  // Running a tool, and the Runs of the page's Run log.
   runs: ["structure", "page-model", "navigation", "panel", "shared"],
+  // The tool list, the run card and its fields, and ref picking.
   tools: ["runs", "structure", "page-model", "navigation", "panel", "shared"],
+  // Mounting, in the page or filling the external build's window, the
+  // stylesheet and the wiring of every slice.
   app: [
     "tools",
     "runs",
