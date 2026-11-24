@@ -36,7 +36,9 @@ Enable `experimentalDecorators` in the tsconfig, keeping SvelteKit's generated b
 }
 ```
 
-On SvelteKit 3, which reads its configuration from the `sveltekit()` call, extend `$app/tsconfig` instead, and give a relative import of a Page Object Model its `.ts` extension, such as `./ProjectsPage.ts` from another file in `ayme/pom/`. Keep `svelte.config.js` and its adapter as they are. Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows, in `.ts` modules in `ayme/pom/`, with the tsconfig that [The `ayme` folder](../guides/ayme-folder.md) shows.
+On SvelteKit 3, extend `$app/tsconfig` instead. SvelteKit 3 has no `svelte.config.js`: the adapter and the other options go in the `sveltekit()` call, and `ayme()` follows it as above. Without SvelteKit, as in Vite's Svelte template, turn `experimentalDecorators` on in `tsconfig.app.json`.
+
+Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows, in `.ts` modules in `ayme/pom/`, with the tsconfig that [The `ayme` folder](../guides/ayme-folder.md) shows.
 
 ## Start ayme at the root
 
@@ -55,7 +57,7 @@ Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without Sv
 {@render children()}
 ```
 
-Svelte 3 and 4, or Svelte 5 without runes, render `<slot />` instead; the `useAyme` call is the same. Without SvelteKit, use `import.meta.env.DEV` for `dev`.
+Svelte 3 and 4, or Svelte 5 without runes, render `<slot />` instead; the `useAyme` call is the same. On SvelteKit 3, import `dev` from `$app/env`. Without SvelteKit, use `import.meta.env.DEV` for `dev`.
 
 The options are the [`createAyme` options](../reference/ayme.md#createayme), passed through unchanged. To make the `navigate` tool move through SvelteKit's router, pass `goto`:
 

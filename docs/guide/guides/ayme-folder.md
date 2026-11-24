@@ -38,15 +38,15 @@ An app that ships ayme needs only `tsconfig.json` and `pom/`. Each other entry a
 
    `extends` names the tsconfig that holds your app's compiler options. The table shows where each framework's template keeps them. If yours are in another file, such as `paths` you added to `tsconfig.app.json`, extend that file:
 
-   | Project                        | `extends`                                                              |
-   | ------------------------------ | ---------------------------------------------------------------------- |
-   | Vite's React and Vue templates | `../tsconfig.app.json`                                                 |
-   | SvelteKit                      | `../tsconfig.json`                                                     |
-   | Angular                        | `../tsconfig.json`                                                     |
-   | Next.js                        | `../tsconfig.json`, with `"compilerOptions": { "incremental": false }` |
-   | Nuxt                           | `../.nuxt/tsconfig.app.json`                                           |
+   | Project                                | `extends`                                                              |
+   | -------------------------------------- | ---------------------------------------------------------------------- |
+   | Vite's React, Vue and Svelte templates | `../tsconfig.app.json`                                                 |
+   | SvelteKit                              | `../tsconfig.json`                                                     |
+   | Angular                                | `../tsconfig.json`                                                     |
+   | Next.js                                | `../tsconfig.json`, with `"compilerOptions": { "incremental": false }` |
+   | Nuxt                                   | `../.nuxt/tsconfig.app.json`                                           |
 
-   The tsconfig it extends must turn `experimentalDecorators` on. No other tsconfig needs to include `ayme/`.
+   The tsconfig it extends must turn `experimentalDecorators` on. No other tsconfig needs to include `ayme/`, unless it has `composite` on, as below.
 
 3. Add the `#pom/*` alias to your `package.json`:
 
@@ -67,11 +67,24 @@ An app that ships ayme needs only `tsconfig.json` and `pom/`. Each other entry a
    { "scripts": { "typecheck": "tsc -b && tsc --noEmit -p ayme" } }
    ```
 
-Four kinds of project need one thing more:
+Five kinds of project need one thing more:
 
 - **Angular.** `ng add` points the build plugin at `tsconfig.app.json`, so the build reads that file, not the folder's. Keep options your Page Objects need, such as `paths`, in the root `tsconfig.json`, which both extend.
 - **Next.js.** Its tsconfig turns `incremental` on, and without `"incremental": false` the type check writes `ayme/tsconfig.tsbuildinfo`. Point the Turbopack loader's `tsconfigPath` at `ayme/tsconfig.json`.
-- **Nuxt and SvelteKit.** They generate the tsconfig this chain ends in, in `.nuxt/` and, on SvelteKit 2, `.svelte-kit/`, when their dev server or build runs, and with `nuxt prepare` or `svelte-kit sync`. In a fresh clone, run one of those before `ayme mcp` or the type check: without the generated file, neither can read the folder's tsconfig.
+- **Nuxt and SvelteKit.** They generate the tsconfig this chain ends in: Nuxt in `.nuxt/`, SvelteKit 2 in `.svelte-kit/` and SvelteKit 3 in `node_modules/$app/`. Their dev server and build write it, and so do `nuxt prepare` and `svelte-kit sync`. In a fresh clone, run one of those before `ayme mcp` or the type check: without the generated file, neither can read the folder's tsconfig. SvelteKit 3's template runs `svelte-kit sync` on `npm install` already.
+- **A tsconfig with `composite` on.** Add `"ayme"` to its `include`: `tsc -b` fails with TS6307 on a Page Object the app imports from outside that list. Then turn `composite` off in `ayme/tsconfig.json`:
+
+  ```jsonc
+  // ayme/tsconfig.json
+  {
+    "extends": "../tsconfig.app.json",
+    "compilerOptions": { "composite": false },
+    "include": ["**/*.ts"],
+  }
+  ```
+
+  With `composite` on, `tsc --noEmit -p ayme` overwrites the app's build info, and the next `tsc -b` then passes without checking the app's own files again.
+
 - **A project with no tsconfig to extend**, such as one that only drives a site it doesn't build. Put the compiler options in `ayme/tsconfig.json` itself:
 
   ```json

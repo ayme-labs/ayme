@@ -233,6 +233,7 @@ A build includes ayme only with the plugin's `include: true`. The config above k
 
 - The supported React and Next.js versions are on [Install](../start/install.md#supported-versions).
 - Change the props or the model class only by remounting.
+- In the dev server, an edit to a Page Object Model or a type it imports re-runs the module that imports the model. In the [quickstart](../start/quickstart-react.md)'s layout, where that module calls `createRoot`, the console shows `The ayme runtime already has an active owner.` and Vite then reloads the page, which picks up the edit. When the component sits in a file of its own, Fast Refresh keeps it mounted, `usePageObject` throws `The Page Object model or provider changed while the component was mounted.`, and the page stays broken until you reload it.
 
 ## Troubleshooting
 
