@@ -5,7 +5,7 @@ import { server } from "@ayme-dev/example-certification/config";
 import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 
 import { readDecisionProvider } from "../scripts/appEnvironment";
-import { ListPage } from "../playwright/pom/ListPage";
+import { ListPage } from "#pom/ListPage";
 import { createPomCompiler } from "@ayme-dev/ayme/compiler";
 import {
   Inspector,
