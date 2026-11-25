@@ -20,7 +20,7 @@ import { focusRing, pressable, pressableIcon } from "../../shared";
 const DOCS =
   "https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md";
 
-// Stryker disable next-line ObjectLiteral: Tailwind classes are styling, which no test reads.
+// Stryker disable StringLiteral,ObjectLiteral: Tailwind classes are styling, which no test reads.
 const dotClass: Record<Tone, string> = {
   off: "border-[1.5px] border-muted-foreground",
   waiting: "border-2 border-warning",
@@ -29,7 +29,6 @@ const dotClass: Record<Tone, string> = {
   error: "bg-destructive",
 };
 
-// Stryker disable next-line ObjectLiteral: Tailwind classes are styling, which no test reads.
 const labelClass: Record<Tone, string> = {
   off: "text-muted-foreground",
   waiting: "text-warning",
@@ -37,6 +36,7 @@ const labelClass: Record<Tone, string> = {
   warning: "text-warning",
   error: "text-destructive",
 };
+// Stryker restore StringLiteral,ObjectLiteral
 
 /** A path's dot, whose `data-tone` tests read. */
 function Dot({ tone }: { tone: Tone }) {
@@ -44,6 +44,7 @@ function Dot({ tone }: { tone: Tone }) {
     <span
       aria-hidden
       data-tone={tone}
+      // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
       className={cn("size-2 flex-none rounded-full", dotClass[tone])}
     />
   );
@@ -155,7 +156,10 @@ function Row({
       <div className="flex items-center gap-2">
         <Dot tone={row.tone} />
         <h4 className="flex-1 text-xs font-semibold">{name}</h4>
-        <span className={cn("text-xs font-medium", labelClass[row.tone])}>
+        <span
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+          className={cn("text-xs font-medium", labelClass[row.tone])}
+        >
           {row.label}
         </span>
       </div>

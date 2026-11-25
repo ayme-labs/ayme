@@ -1,5 +1,6 @@
 // The panel's shared control states, so a state looks the same on every
 // control that has it.
+// Stryker disable StringLiteral: Tailwind classes are styling, which no test reads.
 
 /**
  * The focus ring: solid, so it reaches 3:1 against the panel, like the
@@ -44,3 +45,5 @@ export const chip = `inline-flex h-6 max-w-full min-w-0 items-center gap-1 round
  */
 export const rowPress =
   "active:bg-[color-mix(in_oklab,var(--muted),var(--foreground)_8%)]";
+
+// Stryker restore StringLiteral

@@ -135,6 +135,7 @@ export function FillFormFields({
           <button
             type="button"
             className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
               "h-5.5 rounded-sm border px-2 text-xs font-medium hover:border-ring",
               focusRing,
               pressable
@@ -270,6 +271,7 @@ function FieldRow({
             aria-label={`Undo the change to ${name}`}
             title="Undo: keep what the page shows"
             className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
               "grid size-5.5 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground",
               focusRing,
               pressableIcon
@@ -326,6 +328,7 @@ function FieldControl({
             role="radio"
             aria-checked={option.value === value}
             className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
               "rounded-sm px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground aria-checked:bg-card aria-checked:text-foreground aria-checked:shadow-xs dark:aria-checked:bg-neutral-700",
               focusRing,
               pressable

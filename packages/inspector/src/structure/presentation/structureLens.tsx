@@ -242,6 +242,7 @@ function StructureTreeView({
 const rowClass =
   "relative flex items-baseline gap-1.5 overflow-hidden rounded-md px-1.5 py-1 text-left font-mono text-xs whitespace-nowrap";
 const nameClass =
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "min-w-0 shrink-[1000] truncate text-green-700 dark:text-green-300";
 
 // The indent leaves a gutter for the fold toggle.
@@ -320,6 +321,7 @@ function NodeRow({
           aria-expanded={!outer}
           data-chain={toggle.ref}
           className={cn(
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "absolute top-1.5 rounded-sm text-muted-foreground hover:text-foreground",
             focusRing
           )}
@@ -339,7 +341,7 @@ function NodeRow({
           }}
         >
           <ChevronRightIcon
-            // Stryker disable next-line ConditionalExpression,LogicalOperator,BooleanLiteral: Tailwind classes are styling, which no test reads.
+            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator,BooleanLiteral: Tailwind classes are styling, which no test reads.
             className={cn("size-3", !outer && "rotate-90")}
             aria-hidden
           />
@@ -352,6 +354,7 @@ function NodeRow({
             aria-label={`${outer.ref} generic`}
             aria-pressed={outer.ref === selectedRef}
             className={cn(
+              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
               "shrink-0 rounded-sm text-primary hover:underline aria-pressed:bg-accent aria-pressed:underline",
               focusRing
             )}

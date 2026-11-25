@@ -204,6 +204,7 @@ function ToolPage({
             aria-label={`Open the ${className} page object model`}
             title={`Open the ${className} page object model`}
             onClick={() => onSelect({ kind: "model", className })}
+            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             className={cn(chip, "text-foreground")}
           >
             <BracesIcon className="size-3" aria-hidden />

@@ -24,6 +24,7 @@ import { AymeMark, focusRing, pressableIcon } from "../../shared";
 import type { Layout, ThemePreference } from "../domain/preferences";
 
 const iconButton = cn(
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "inline-grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground",
   focusRing,
   pressableIcon

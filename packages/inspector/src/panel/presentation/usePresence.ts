@@ -2,6 +2,8 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
+// Stryker disable StringLiteral: Tailwind classes are styling, which no test reads.
+
 // Closed, the element is faded out and, with motion, at 0.9 of its size.
 const closed =
   "data-[state=closed]:opacity-0 motion-safe:data-[state=closed]:scale-90";
@@ -9,6 +11,8 @@ const closed =
 // reduced motion it only fades in, and leaves at once.
 const motion =
   "transition-[opacity,scale] duration-(--duration-spring) ease-(--ease-spring) starting:opacity-0 motion-safe:starting:scale-90 motion-reduce:data-[state=closed]:transition-none";
+
+// Stryker restore StringLiteral
 
 /**
  * An element that enters and leaves on the spring, such as the panel and

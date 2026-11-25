@@ -26,11 +26,13 @@ export function QualifiedName({
   const parts = splitQualifiedName(name);
   if (!parts)
     return (
+      // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
       <span className={cn("min-w-0 truncate", className)} title={title}>
         {name}
       </span>
     );
   return (
+    // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
     <span className={cn("flex min-w-0", className)} title={title}>
       <span className="min-w-0 shrink-[1000] truncate text-muted-foreground">
         {parts[0]}

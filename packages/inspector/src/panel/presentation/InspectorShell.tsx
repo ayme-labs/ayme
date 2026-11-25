@@ -43,11 +43,11 @@ import { currentViewport, useViewport } from "./useViewport";
 // and are placed by offsets: a centring transform rounds them half a pixel off;
 // a corner arc sits 2px out, with the border's radius plus its stroke's
 // overhang.
+// Stryker disable StringLiteral,ObjectLiteral: the grips' Tailwind classes are styling, which no test reads.
 const edgeGrip = "after:rounded-full";
 const cornerGrip =
   "z-30 size-5 after:size-4 after:border-0 after:bg-transparent active:after:bg-transparent";
 
-// Stryker disable next-line ObjectLiteral: the grips' Tailwind classes are styling, which no test reads.
 const handleClass: Record<Handle, string> = {
   left: `${edgeGrip} inset-y-0 -left-[4.5px] w-2 cursor-ew-resize after:top-[calc(50%-20px)] after:left-[calc(50%-1.5px)] after:h-10 after:w-[3px] motion-safe:active:after:scale-y-125`,
   right: `${edgeGrip} inset-y-0 -right-[4.5px] w-2 cursor-ew-resize after:top-[calc(50%-20px)] after:left-[calc(50%-1.5px)] after:h-10 after:w-[3px] motion-safe:active:after:scale-y-125`,
@@ -58,6 +58,8 @@ const handleClass: Record<Handle, string> = {
   "bottom-left": `${cornerGrip} -bottom-2 -left-2 cursor-nesw-resize after:bottom-[6px] after:left-[6px] after:rounded-bl-[15px] after:border-b-3 after:border-l-3`,
   "bottom-right": `${cornerGrip} -right-2 -bottom-2 cursor-nwse-resize after:right-[6px] after:bottom-[6px] after:rounded-br-[15px] after:border-r-3 after:border-b-3`,
 };
+
+// Stryker restore StringLiteral,ObjectLiteral
 
 /** The handles each layout resizes from: a floating panel from every side. */
 const resizeHandles: Record<Layout, readonly Handle[]> = {
@@ -244,13 +246,14 @@ export function InspectorShell({
           aria-hidden={collapsed || undefined}
           className={cn(
             "@container pointer-events-auto absolute border bg-background",
-            // Stryker disable next-line ObjectLiteral: Tailwind classes are styling, which no test reads.
+            // Stryker disable StringLiteral,ObjectLiteral: Tailwind classes are styling, which no test reads.
             {
               float: "rounded-xl shadow-2xl",
               left: "border-y-0 border-l-0 shadow-lg",
               right: "border-y-0 border-r-0 shadow-lg",
               bottom: "border-x-0 border-b-0 shadow-lg",
             }[layout],
+            // Stryker restore StringLiteral,ObjectLiteral
             panel.className
           )}
           style={{
@@ -319,12 +322,13 @@ export function InspectorShell({
   );
 }
 
-// Stryker disable next-line ObjectLiteral: Tailwind classes are styling, which no test reads.
+// Stryker disable StringLiteral,ObjectLiteral: Tailwind classes are styling, which no test reads.
 const growsFrom: Record<Dock, string> = {
   left: "origin-left",
   right: "origin-right",
   bottom: "origin-bottom",
 };
+// Stryker restore StringLiteral,ObjectLiteral
 
 /** Where the panel docks if it's dropped now. */
 function SnapPreview({
@@ -339,6 +343,7 @@ function SnapPreview({
     <div
       // It grows from the edge it docks to.
       className={cn(
+        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
         "pointer-events-none absolute grid place-items-center rounded-xl border-2 border-dashed border-primary bg-accent/55 transition-[opacity,scale] duration-(--duration-fast) ease-(--ease-out) starting:opacity-0 motion-safe:starting:scale-[0.97]",
         growsFrom[dock]
       )}

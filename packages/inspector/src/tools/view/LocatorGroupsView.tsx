@@ -18,6 +18,7 @@ import { NodeDetail } from "../../shared";
 import { refText, RefTreeView } from "./RefTreeView";
 
 const smallButton =
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "flex h-6.5 items-center gap-1 rounded-md border px-2 text-xs font-medium hover:border-ring aria-expanded:border-ring aria-expanded:bg-primary/10 aria-expanded:text-primary aria-pressed:border-ring aria-pressed:bg-primary/10 aria-pressed:text-primary";
 
 /**
@@ -101,6 +102,7 @@ export function LocatorGroupsView({
                   <button
                     type="button"
                     className={cn(
+                      // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                       "h-5.5 rounded-sm px-1.5 text-xs text-muted-foreground hover:bg-muted",
                       focusRing,
                       pressable
@@ -115,6 +117,7 @@ export function LocatorGroupsView({
                     type="button"
                     aria-label={`Remove ${name}`}
                     className={cn(
+                      // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                       "rounded-sm p-0.5 text-muted-foreground hover:bg-muted",
                       focusRing,
                       pressableIcon
@@ -160,6 +163,7 @@ export function LocatorGroupsView({
                             type="button"
                             aria-label={`Remove ${ref}`}
                             className={cn(
+                              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                               "rounded-sm p-0.5 text-muted-foreground hover:bg-muted",
                               focusRing,
                               pressableIcon
@@ -183,6 +187,7 @@ export function LocatorGroupsView({
                               aria-label={`Copy the locator for ${ref}`}
                               title="Copy"
                               className={cn(
+                                // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                                 "rounded-sm p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground",
                                 focusRing,
                                 pressableIcon

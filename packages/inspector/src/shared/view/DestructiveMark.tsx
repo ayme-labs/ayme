@@ -8,6 +8,7 @@ export function DestructiveMark() {
   return (
     <span
       data-destructive-mark
+      // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
       className="inline-flex h-4.5 flex-none items-center gap-0.75 rounded-full bg-destructive/10 px-1.5 text-[10px] leading-none font-medium whitespace-nowrap text-destructive"
     >
       <TriangleAlertIcon className="size-2.5" aria-hidden />
