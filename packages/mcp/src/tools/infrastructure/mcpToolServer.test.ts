@@ -82,7 +82,7 @@ function serveProcess() {
         context: {
           connection,
           pairing: { address: "ws://x", token: "t" },
-          failedPageObjects: async () => undefined,
+          pageObjectsBuildState: async () => undefined,
           inspector: {
             url: "http://x/inspector",
             installed: async () => true,

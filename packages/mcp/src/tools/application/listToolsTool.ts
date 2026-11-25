@@ -12,7 +12,7 @@ import type { ServerToolFactory } from "./serverTool";
  */
 export const listToolsTool: ServerToolFactory = ({
   connection,
-  failedPageObjects,
+  pageObjectsBuildState,
 }) => ({
   name: "ayme_list_tools",
   description:
@@ -23,7 +23,7 @@ export const listToolsTool: ServerToolFactory = ({
     if (!connection.connected)
       return notConnectedResult(
         connection.versionGap,
-        await failedPageObjects()
+        await pageObjectsBuildState()
       );
     return textResult(JSON.stringify(connection.tools.map(listedPageTool)));
   },
