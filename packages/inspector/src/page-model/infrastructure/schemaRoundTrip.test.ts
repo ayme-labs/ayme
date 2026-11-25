@@ -48,6 +48,17 @@ const tools = [
 
 /** A call each action's schema must accept, by tool name. */
 const calls: Record<string, Record<string, JsonValue>> = {
+  "ParameterShapesPom.literals": { name: "Gamma", count: 3, optionalCount: 0 },
+  "ParameterShapesPom.nestedLiterals": {
+    names: ["Gamma"],
+    pair: ["Gamma", 3],
+    options: { name: "Gamma", count: 3 },
+  },
+  "ParameterShapesPom.otherLiterals": {
+    open: true,
+    closed: false,
+    status: "active",
+  },
   "ParameterShapesPom.array": { tags: ["a", "b"] },
   "ParameterShapesPom.readonlyArray": { sizes: [1, 2], labels: ["a"] },
   "ParameterShapesPom.tuple": {

@@ -1475,7 +1475,7 @@ describe("derivePomManifests", () => {
       ]);
     });
 
-    it("keeps single boolean literals and a declared enum as primitive schemas", () => {
+    it("keeps single boolean literals and a one-member declared enum as primitive schemas", () => {
       expect(parametersOf("otherLiterals")).toEqual([
         { name: "open", optional: false, schema: { type: "boolean" } },
         { name: "closed", optional: false, schema: { type: "boolean" } },
