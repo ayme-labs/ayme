@@ -83,7 +83,7 @@ Five kinds of project need one thing more:
   }
   ```
 
-  With either on, `tsc --noEmit -p ayme` overwrites the app's build info, and the next `tsc -b` then passes without checking the app's own files again.
+  With `composite` on, `tsc --noEmit -p ayme` overwrites the app's build info, and the next `tsc -b` then passes without checking the app's own files again. With `incremental` on, it still writes over that file.
 
 - **A project with no tsconfig to extend**, such as one that only drives a site it doesn't build. Put the compiler options in `ayme/tsconfig.json` itself:
 
