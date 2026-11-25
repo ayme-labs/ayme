@@ -72,7 +72,7 @@ function writePackage(root: string) {
   writeFileSync(join(root, "package.json"), "{}");
 }
 
-describe("ayme WebMCP transform", () => {
+describe("ayme transform", () => {
   it("types only the supported Playwright overrides", () => {
     const supported: AymeOptions = {
       playwright: {
