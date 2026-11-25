@@ -94,6 +94,15 @@ test("a superseded ADR outside retired/ fails", () => {
   ]);
 });
 
+test("a status that only starts with superseded still counts as superseded", () => {
+  const root = repo({
+    "docs/adr/0001-first.md": adr("superseded_pending", "First"),
+  });
+  assert.deepEqual(checkAdrIndex(root), [
+    "docs/adr/0001-first.md: superseded, so it belongs in docs/adr/retired/",
+  ]);
+});
+
 test("a deprecated ADR inside retired/ passes and leaves the index", () => {
   const root = repo({
     "docs/adr/0003-third.md": undefined,

@@ -53,7 +53,10 @@ function allAdrs(root) {
   ].map((file) => readAdr(root, file));
 }
 
-const outOfForce = (adr) => /^(superseded|deprecated)\b/.test(adr.status ?? "");
+/** How an ADR left force, by the start of its status, or undefined while in force. */
+const retiredAs = (adr) =>
+  ["superseded", "deprecated"].find((word) => adr.status?.startsWith(word));
+const outOfForce = (adr) => retiredAs(adr) !== undefined;
 
 /** The text of `docs/adr/README.md`: every ADR in force, by number. */
 export function adrIndexText(root, adrs = allAdrs(root)) {
@@ -84,7 +87,7 @@ export function checkAdrIndex(root) {
       problems.push(`${adr.file}: no \`status\` in the front matter`);
     else if (outOfForce(adr) && !adr.retired)
       problems.push(
-        `${adr.file}: ${adr.status.split(" ")[0]}, so it belongs in ${ADR_DIR}/${RETIRED_DIR}/`
+        `${adr.file}: ${retiredAs(adr)}, so it belongs in ${ADR_DIR}/${RETIRED_DIR}/`
       );
     else if (!outOfForce(adr) && adr.retired)
       problems.push(
