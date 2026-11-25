@@ -59,7 +59,6 @@ const groupOrder: readonly ToolGroup[] = [
   "agent",
 ];
 
-/** One group of the Tools lens. */
 export type ToolGroupListing = {
   group: ToolGroup;
   label: string;
