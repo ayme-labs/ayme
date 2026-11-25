@@ -9,7 +9,6 @@ export const PAIRING_STORAGE_KEY = "ayme:agent-connection";
  */
 export type StoredPairing = Pairing & Readonly<{ tab: string }>;
 
-/** The stored form of `pairing`. */
 export function serializePairing(pairing: StoredPairing): string {
   return JSON.stringify({
     address: pairing.address,
