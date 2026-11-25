@@ -27,4 +27,4 @@ A project keeps everything ayme in one folder, `ayme/`, at its root, beside `pac
 
 ## Cost
 
-A project that used `.ayme/` moves it.
+A project that used `.ayme/` moves it, and changes its imports and aliases with it.
