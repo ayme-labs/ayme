@@ -38,13 +38,13 @@ it("ayme_connect names the init script of the Page Objects the server serves, in
   expect(
     await connectTool({
       ...context(),
-      initScript: "/work/.ayme/init-script.js",
+      initScript: "/work/ayme/init-script.js",
     }).call({ url: "http://localhost:5173/" })
   ).toEqual({
     content: [
       {
         type: "text",
-        text: "http://localhost:5173/#ayme=ws://127.0.0.1:9351/f00d\n\nThis server serves Page Objects to pages that load /work/.ayme/init-script.js.",
+        text: "http://localhost:5173/#ayme=ws://127.0.0.1:9351/f00d\n\nThis server serves Page Objects to pages that load /work/ayme/init-script.js.",
       },
     ],
   });
@@ -62,7 +62,7 @@ const linkAndNote = ({ content }: { content: unknown[] }) => {
  */
 const failingBuild = () => {
   let failed: FailedPageObjects | undefined = {
-    entry: "/work/.ayme/page-objects.ts",
+    entry: "/work/ayme/page-objects.ts",
     error:
       "Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.",
     watching: true,
@@ -70,7 +70,7 @@ const failingBuild = () => {
   return {
     context: {
       ...context(),
-      initScript: "/work/.ayme/init-script.js",
+      initScript: "/work/ayme/init-script.js",
       failedPageObjects: async () => failed,
     },
     fix: () => (failed = undefined),
@@ -89,14 +89,14 @@ it("ayme_connect says the Page Objects did not build, with the first error, unti
   const { link, note } = linkAndNote({ content });
   expect(link).toBe("http://localhost:5173/#ayme=ws://127.0.0.1:9351/f00d");
   expect(note).toContain(
-    "The Page Objects entry /work/.ayme/page-objects.ts did not build"
+    "The Page Objects entry /work/ayme/page-objects.ts did not build"
   );
   expect(note).toContain("No inputs were found in config file.");
   expect(note).toContain(
     "The server is watching for changes: it rebuilds the entry when a file it read changes."
   );
   expect(note).toContain(
-    "Once it builds, this server serves Page Objects to pages that load /work/.ayme/init-script.js."
+    "Once it builds, this server serves Page Objects to pages that load /work/ayme/init-script.js."
   );
   expect(note).not.toContain("Fix it");
   expect(note).not.toContain("Make the");
@@ -106,7 +106,7 @@ it("ayme_connect says the Page Objects did not build, with the first error, unti
   expect(
     linkAndNote(await connect.call({ url: "http://localhost:5173/" })).note
   ).toBe(
-    "This server serves Page Objects to pages that load /work/.ayme/init-script.js."
+    "This server serves Page Objects to pages that load /work/ayme/init-script.js."
   );
 });
 
@@ -133,7 +133,7 @@ it("ayme_list_tools and ayme_call say the Page Objects did not build while no pa
     expect(result.content[0]).toEqual({
       type: "text",
       text: expect.stringMatching(
-        /^No page is connected\. The Page Objects entry \/work\/\.ayme\/page-objects\.ts did not build.*No inputs were found/
+        /^No page is connected\. The Page Objects entry \/work\/ayme\/page-objects\.ts did not build.*No inputs were found/
       ),
     });
   }

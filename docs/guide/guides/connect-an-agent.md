@@ -34,13 +34,13 @@ useAyme({
 
 ### The development flag per framework
 
-| Framework                | Development flag                         | Setup                                                                                                                                                                |
-| ------------------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vite: React, Vue, Svelte | `import.meta.env.DEV`                    | [React](../frameworks/react.md#start-ayme-at-the-root), [Vue](../frameworks/vue.md#start-ayme-at-the-root), [Svelte](../frameworks/svelte.md#start-ayme-at-the-root) |
-| Angular                  | `isDevMode()` from `@angular/core`       | [Angular](../frameworks/angular.md#start-ayme-in-the-application-config)                                                                                             |
-| SvelteKit                | `dev` from `$app/environment`            | [Svelte](../frameworks/svelte.md#start-ayme-at-the-root)                                                                                                             |
-| Next.js                  | `process.env.NODE_ENV === "development"` | [React: Server rendering](../frameworks/react.md#server-rendering)                                                                                                   |
-| Nuxt                     | `import.meta.dev`                        | [Vue: Server rendering](../frameworks/vue.md#server-rendering)                                                                                                       |
+| Framework                | Development flag                                            | Setup                                                                                                                                                                |
+| ------------------------ | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vite: React, Vue, Svelte | `import.meta.env.DEV`                                       | [React](../frameworks/react.md#start-ayme-at-the-root), [Vue](../frameworks/vue.md#start-ayme-at-the-root), [Svelte](../frameworks/svelte.md#start-ayme-at-the-root) |
+| Angular                  | `isDevMode()` from `@angular/core`                          | [Angular](../frameworks/angular.md#start-ayme-in-the-application-config)                                                                                             |
+| SvelteKit                | `dev` from `$app/environment`, or `$app/env` on SvelteKit 3 | [Svelte](../frameworks/svelte.md#start-ayme-at-the-root)                                                                                                             |
+| Next.js                  | `process.env.NODE_ENV === "development"`                    | [React: Server rendering](../frameworks/react.md#server-rendering)                                                                                                   |
+| Nuxt                     | `import.meta.dev`                                           | [Vue: Server rendering](../frameworks/vue.md#server-rendering)                                                                                                       |
 
 With Vite, a development build you serve without a dev server, such as static files, comes from `NODE_ENV=development vite build`. `vite build --mode development` alone still builds with `NODE_ENV=production`, so `import.meta.env.DEV` is `false` and both features stay off.
 

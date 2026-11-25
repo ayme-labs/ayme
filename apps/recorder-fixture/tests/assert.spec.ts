@@ -8,13 +8,13 @@ import {
 import type { EntryId } from "@ayme-dev/recorder/contract";
 import { selectors, type Locator } from "@playwright/test";
 
-import { ArrivalPage } from "../.ayme/pom/ArrivalPage";
-import { BasketPage } from "../.ayme/pom/BasketPage";
-import { CartPage } from "../.ayme/pom/CartPage";
-import { CatalogPage } from "../.ayme/pom/CatalogPage";
-import { DepartingPage } from "../.ayme/pom/DepartingPage";
-import { InputsPage } from "../.ayme/pom/InputsPage";
-import { WishlistPage } from "../.ayme/pom/WishlistPage";
+import { ArrivalPage } from "#pom/ArrivalPage";
+import { BasketPage } from "#pom/BasketPage";
+import { CartPage } from "#pom/CartPage";
+import { CatalogPage } from "#pom/CatalogPage";
+import { DepartingPage } from "#pom/DepartingPage";
+import { InputsPage } from "#pom/InputsPage";
+import { WishlistPage } from "#pom/WishlistPage";
 import { expect, test } from "./fixtures";
 
 // Ticket #1278: Assert visibility and the hover highlight, in pages a real

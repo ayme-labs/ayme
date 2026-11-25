@@ -6,7 +6,6 @@ import type { Gate } from "./gate";
 // Each is sent to the page as its own text, so it uses nothing from outside
 // itself but its argument (docs/testing.md#code-a-real-browser-runs).
 
-/** Switches the document's activity watch on or off. */
 export function watchActivity(on: boolean): void {
   window.__aymeRecorderActivity?.watch(on);
 }
@@ -16,7 +15,6 @@ export function markCall(): number {
   return 0;
 }
 
-/** Switches the document's gate on or off. */
 export function setGate(on: boolean): void {
   window.__aymeRecorderGate?.set(on);
 }

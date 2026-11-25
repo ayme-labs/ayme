@@ -9,7 +9,7 @@ The ayme recorder listens while the user drives their app in a browser, and
 writes what it saw to a Recording Package: the page structure at each visit,
 what changed and every interaction.
 
-Read `.ayme/CONVENTIONS.md` first, when it exists: what the user settled for
+Read `ayme/CONVENTIONS.md` first, when it exists: what the user settled for
 how ayme and its skills work in this repository. Read its opening part, which
 holds for every skill, and its `Recorder` section, and follow a line that
 points to another file. It overrides this skill's defaults.
@@ -20,7 +20,7 @@ points to another file. It overrides this skill's defaults.
    the project has installed. It opens the page in Chromium with a recorder
    window beside it and a small toolbar on the page. Recording is off until the
    user presses Record; they perform the flow and press Finish. The command
-   then prints `Recording package: <path>`. `.ayme/recordings/latest.yaml` is
+   then prints `Recording package: <path>`. `ayme/recordings/latest.yaml` is
    a copy of the newest package. To record a Chromium the user
    already has running, run `codegen --cdp-endpoint <address>` instead, with
    the address of its DevTools protocol, such as `http://127.0.0.1:9222`.
@@ -67,7 +67,7 @@ recordingId: rec_…
 mode: structural
 createdAt: 2026-…               # when the recording was stored
 url: https://…                  # where the recording started
-tracePath: .ayme/recordings/rec_…/trace.zip   # relative to where codegen ran
+tracePath: ayme/recordings/rec_…/trace.zip   # relative to where codegen ran
 visits:                         # one per page: where recording started, a tab that opened, or a navigation to another site or path
   - visitId, url, cause
     baselineTree:               # the page just before the first interaction; with none, the last read
@@ -285,7 +285,7 @@ user typed or pasted otherwise is not an action there. Go to a step by the
 package's position numbers.
 
 ```sh
-npx playwright trace open .ayme/recordings/rec_…/trace.zip   # the package's tracePath
+npx playwright trace open ayme/recordings/rec_…/trace.zip   # the package's tracePath
 npx playwright trace snapshot 44 --phase after \
   eval "Object.fromEntries(['#count', 'button#add', 'main [data-test=\"cart\"]'].map(selector => [selector, document.querySelector(selector)?.cloneNode(false).outerHTML ?? null]))" \
   | sed -n '/^### Result/,/^### Ran/{//!p;}'

@@ -21,7 +21,6 @@ export function keepCursorsAsTheyAre(): void {
   take();
 }
 
-/** Hides what Playwright's recorder draws over the page. */
 export function hidePlaywrightOverlay(): void {
   const sheet = new CSSStyleSheet();
   sheet.replaceSync("x-pw-glass { display: none !important; }");

@@ -63,15 +63,15 @@ Wrap the application root, not a route component or a layout that unmounts on na
 
 ## Hooks
 
-Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the provider's `pageObjects` prop:
+Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the provider's `pageObjects` prop. The `#pom/*` imports are the alias that [The `ayme` folder](../guides/ayme-folder.md#set-the-folder-up-for-page-objects) sets up:
 
 ```tsx
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { AymeProvider } from "@ayme-dev/react";
 import App from "./App";
-import { ProjectsPage } from "./pom/ProjectsPage";
-import { SettingsPage } from "./pom/SettingsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
+import { SettingsPage } from "#pom/SettingsPage";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -90,7 +90,7 @@ Call the hooks in descendants of the provider. A component that calls an action 
 
 ```tsx
 import { usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "./pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 export default function Controls() {
   const pom = usePageObject(ProjectsPage);
@@ -200,7 +200,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 "use client";
 
 import { usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "../../pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 export default function Projects() {
   const pom = usePageObject(ProjectsPage);
@@ -233,6 +233,7 @@ A build includes ayme only with the plugin's `include: true`. The config above k
 
 - The supported React and Next.js versions are on [Install](../start/install.md#supported-versions).
 - Change the props or the model class only by remounting.
+- In the dev server, an edit to a Page Object Model or a type it imports re-runs the module that imports the model. In the [quickstart](../start/quickstart-react.md)'s layout, where that module calls `createRoot`, the console shows `The ayme runtime already has an active owner.` and Vite then reloads the page, which picks up the edit. When the component sits in a file of its own, Fast Refresh keeps it mounted, `usePageObject` throws `The Page Object model or provider changed while the component was mounted.`, and the page stays broken until you reload it.
 
 ## Troubleshooting
 

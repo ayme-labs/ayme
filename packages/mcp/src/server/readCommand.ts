@@ -12,8 +12,8 @@ export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>]
   --page-objects <file>
                  Experimental: build and serve this entry, whose default
                  export lists Page Object classes, to pages that load
-                 .ayme/init-script.js, which the server writes. Without it,
-                 the server serves .ayme/page-objects.ts if there is one.
+                 ayme/init-script.js, which the server writes. Without it,
+                 the server serves ayme/page-objects.ts if there is one.
   -h, --help     Print this usage text.
 `;
 

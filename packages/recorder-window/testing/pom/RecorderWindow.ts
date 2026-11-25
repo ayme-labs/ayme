@@ -1,6 +1,4 @@
 import { ayme } from "@ayme-dev/ayme";
-import type { Page } from "@playwright/test";
-
 import { Controls } from "./Controls";
 import { RecorderPage } from "./parts";
 import { Timeline } from "./Timeline";
@@ -9,16 +7,14 @@ import { Timeline } from "./Timeline";
 @ayme
 export class RecorderWindow extends RecorderPage {
   @ayme.child
-  readonly controls: Controls;
-  @ayme.child
-  readonly timeline: Timeline;
-
-  constructor(page: Page) {
-    super(page);
-    this.controls = new Controls(
-      page.getByRole("toolbar", { name: "Recorder controls" })
+  get controls(): Controls {
+    return new Controls(
+      this.page.getByRole("toolbar", { name: "Recorder controls" })
     );
-    this.timeline = new Timeline(page.getByRole("main"));
+  }
+  @ayme.child
+  get timeline(): Timeline {
+    return new Timeline(this.page.getByRole("main"));
   }
 
   /** Opens the window at its address, and waits until it shows the

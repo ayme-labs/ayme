@@ -7,7 +7,7 @@
 ## Repository map
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): what ayme is made of above any one package: the containers, who talks to whom, and what each environment runs. Read it before adding a package, a process boundary or a connection between them, and update it when a change moves one.
-- [packages/](packages/): the ayme WebMCP product. A published package's README is its npm entry point; the consumer docs in [docs/guide/](docs/guide/) own its API and setup.
+- [packages/](packages/): the ayme product. A published package's README is its npm entry point; the consumer docs in [docs/guide/](docs/guide/) own its API and setup.
 - Before adding or moving a source file in a package, read that package's AGENTS.md: [ayme](packages/ayme/AGENTS.md), [inspector](packages/inspector/AGENTS.md), [mcp](packages/mcp/AGENTS.md), [recorder](packages/recorder/AGENTS.md), [recorder-window](packages/recorder-window/AGENTS.md).
 - [skills/](skills/): skills shipped to consumers for use in their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
 - [apps/example-vue/](apps/example-vue/): the hosted playground where visitors try ayme before integrating it. A visitor installs only ayme's MCP server. Read [its README](apps/example-vue/README.md) before changing the app.

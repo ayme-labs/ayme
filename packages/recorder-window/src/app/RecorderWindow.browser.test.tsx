@@ -960,12 +960,12 @@ it("says where an ended recorder saved its package, and offers nothing more", as
 
   tell({
     phase: "ended",
-    outcome: { kind: "saved", folder: "/project/.ayme/recordings/rec_1" },
+    outcome: { kind: "saved", folder: "/project/ayme/recordings/rec_1" },
   } as Partial<RecorderState>);
 
   await expect
     .poll(() => recorderWindow.controls.status.textContent())
-    .toBe("Saved /project/.ayme/recordings/rec_1/package.yaml");
+    .toBe("Saved /project/ayme/recordings/rec_1/package.yaml");
   expect(await recorderWindow.controls.offered()).toEqual([]);
   expect(await recorderWindow.controls.assertVisibility.isEnabled()).toBe(
     false

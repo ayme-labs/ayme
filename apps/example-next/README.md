@@ -40,7 +40,9 @@ carries the markers, so the list proves something.
 `@ayme-dev/unplugin-ayme/turbopack-loader` is an ESM loader using the webpack
 loader calling convention supported by Turbopack. It calls the same source
 transform as Vite, then transpiles the result with the package's existing
-TypeScript dependency. Its only configuration option is `tsconfigPath`.
+TypeScript dependency. Its only configuration option is `tsconfigPath`, which
+here names `ayme/tsconfig.json`: the POMs are in `ayme/pom`, imported through
+`#pom/*`, the alias in the `imports` of `package.json`.
 
 The loader reports the TypeScript configuration files and non-default-library
 source files used by the POM compiler through the loader dependency API. This

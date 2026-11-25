@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { RecorderToolbar } from "@ayme-dev/recorder-window/testing";
 import { selectors, type Locator } from "@playwright/test";
 
-import { OutsideClickPage } from "../.ayme/pom/OutsideClickPage";
+import { OutsideClickPage } from "#pom/OutsideClickPage";
 import { expect, test } from "./fixtures";
 
 // Issue #1396: a press on the page's toolbar is no press outside a panel the

@@ -236,7 +236,6 @@ export const sameDocument = (page: string, read: string) =>
  * holds it. */
 const PRESSED = new Set(["click", "check", "uncheck"]);
 
-/** Whether two reports say the same: the one object, or the same text. */
 const sameReport = (one: InteractionReport, other: InteractionReport) =>
   one === other || JSON.stringify(one) === JSON.stringify(other);
 
@@ -964,7 +963,6 @@ export class Timeline {
     };
   }
 
-  /** An Interaction's entry as measured. */
   private entryOf(
     written: Written,
     interaction: RecordedInteraction,
@@ -1132,7 +1130,6 @@ export class Timeline {
     const change = next.resumes
       ? null
       : await this.change(through, next, through.tree, pressed ?? next.tree);
-    // Nothing changed: there is nothing to tell.
     if (change && changedSomething(change))
       this.writeChange(visit, next.snapshot.at, change);
     visit.through += 1;

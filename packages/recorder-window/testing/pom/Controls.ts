@@ -13,38 +13,40 @@ export type ThemeChoice = "System" | "Light" | "Dark";
 /** The window's controls, in the bar above the recording. */
 export class Controls extends RecorderPart {
   @ayme.child
-  readonly recordButton: Locator;
+  get recordButton(): Locator {
+    return this.button("Record");
+  }
   @ayme.child
-  readonly stopButton: Locator;
+  get stopButton(): Locator {
+    return this.button("Stop");
+  }
   @ayme.child
-  readonly continueButton: Locator;
+  get continueButton(): Locator {
+    return this.button("Continue recording");
+  }
   /** Assert visibility: pressed, it enters picking, or leaves it. */
   @ayme.child
-  readonly assertVisibility: Locator;
+  get assertVisibility(): Locator {
+    return this.button("Assert visibility");
+  }
   @ayme.child
-  readonly clearButton: Locator;
+  get clearButton(): Locator {
+    return this.button("Clear");
+  }
   @ayme.child
-  readonly finishButton: Locator;
+  get finishButton(): Locator {
+    return this.button("Finish");
+  }
   /** The System / Light / Dark switch: each press moves to the next. */
   @ayme.child
-  readonly themeSwitch: Locator;
+  get themeSwitch(): Locator {
+    return this.root.getByRole("button", { name: /^Theme: / });
+  }
   /** What the recorder does, when the controls do not show it already:
    * connecting, wrapping up, saving, the end. Empty otherwise. */
   @ayme.child
-  readonly status: Locator;
-
-  constructor(root: Locator) {
-    super(root);
-    const button = (name: string) =>
-      root.getByRole("button", { name, exact: true });
-    this.recordButton = button("Record");
-    this.stopButton = button("Stop");
-    this.continueButton = button("Continue recording");
-    this.assertVisibility = button("Assert visibility");
-    this.clearButton = button("Clear");
-    this.finishButton = button("Finish");
-    this.themeSwitch = root.getByRole("button", { name: /^Theme: / });
-    this.status = root.getByRole("status");
+  get status(): Locator {
+    return this.root.getByRole("status");
   }
 
   /** The controls that can be pressed now, in the order the window shows
@@ -87,5 +89,9 @@ export class Controls extends RecorderPart {
       await this.themeSwitch.click();
     }
     throw new Error(`The theme switch never reached ${choice}.`);
+  }
+
+  private button(name: string): Locator {
+    return this.root.getByRole("button", { name, exact: true });
   }
 }

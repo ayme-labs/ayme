@@ -174,7 +174,7 @@ in-browser agents and the app's own code call on the running page.
   structure. It ends when Finish is
   pressed, the last page is closed or it is stopped from the terminal. A recording that
   was started ends by writing a Recording Package, with its trace beside it, into the
-  project's `.ayme/recordings`; without one it ends with "empty". `ayme-recorder trace`
+  project's `ayme/recordings`; without one it ends with "empty". `ayme-recorder trace`
   opens a recording's trace with the project's own `playwright trace`, and
   `ayme-recorder install` installs a browser with the project's own Playwright
 - Technology: Node CLI (`ayme-recorder codegen <url>`, `codegen --cdp-endpoint <address>`,
@@ -309,7 +309,7 @@ in-browser agents and the app's own code call on the running page.
       every document, switching Playwright's own recorder into picking for Assert
       visibility, and drawing a highlight through a DevTools session of the page; tracing
       the recording, and writing the Recording Package with its trace into the project's
-      `.ayme/recordings`; running the project's own `playwright trace` as a separate
+      `ayme/recordings`; running the project's own `playwright trace` as a separate
       process
     - ← the opening, navigating and closing of a page, and the closing of the browser; a
       click or key press the page held back, the page's activity, the Interactions and
@@ -378,7 +378,7 @@ hosting its playground.
   - **WebMCP driver**: Chrome's flag or a polyfill the app loads before its entry module
     - Evidence: verified: [docs/guide/guides/publish-tools.md](docs/guide/guides/publish-tools.md)
   - **Browser automation**: Playwright MCP, Playwright CLI or a Playwright script pointed at
-    `.ayme/init-script.js`; optional, present only with served Page Objects
+    `ayme/init-script.js`; optional, present only with served Page Objects
     - Evidence: verified: [docs/guide/guides/page-objects-without-ayme.md](docs/guide/guides/page-objects-without-ayme.md)
 
 #### production
@@ -522,7 +522,7 @@ hosting its playground.
   - **WebMCP driver**: a recording driver from `@ayme-dev/webmcp/testing`
     - Evidence: verified: [packages/webmcp/testing/index.ts](packages/webmcp/testing/index.ts)
   - **Browser automation**: the Playwright context of the served Page Objects specs, which
-    loads the `.ayme/init-script.js` the test's `ayme mcp` wrote
+    loads the `ayme/init-script.js` the test's `ayme mcp` wrote
     - Evidence: verified: [apps/mcp-fixture/README.md](apps/mcp-fixture/README.md), [apps/mcp-fixture/tests/servedPageObjects.spec.ts](apps/mcp-fixture/tests/servedPageObjects.spec.ts)
 
 #### playground

@@ -44,7 +44,7 @@ export default function nextConfig(phase) {
               options: {
                 include,
                 tsconfigPath: fileURLToPath(
-                  new URL("./tsconfig.pom.json", import.meta.url)
+                  new URL("./ayme/tsconfig.json", import.meta.url)
                 ),
               },
             },

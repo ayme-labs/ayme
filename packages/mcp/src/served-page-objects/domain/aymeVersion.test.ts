@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 
 import { aymeVersionMismatch } from "./aymeVersion";
 
-const entry = "/project/.ayme/page-objects.ts";
+const entry = "/project/ayme/page-objects.ts";
 
 const install = (
   packageManager: "npm" | "pnpm" | "yarn" | "bun",

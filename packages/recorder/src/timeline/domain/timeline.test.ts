@@ -2824,7 +2824,6 @@ describe("the timeline, for the highlight", () => {
   });
 });
 
-// The review of the whole recorder against the spec.
 describe("the timeline, for what the review against the spec found", () => {
   it("leaves out what the page changed while paused: the snapshot where recording resumes is the new point to compare from (rule 13)", async () => {
     const withStatus = (text: string, status: string) =>

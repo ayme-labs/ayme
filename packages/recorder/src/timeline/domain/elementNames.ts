@@ -11,7 +11,6 @@ import type {
 // among its look-alikes. Each label has a Playwright selector of the same
 // words, which the page as it is now can be asked for.
 
-/** An element of a tree, as it is named. */
 export type NamedElement = {
   /** Its ref in the tree it was read from. */
   readonly ref: AriaRef;
@@ -658,7 +657,6 @@ class PageLabels {
 /** How many letters a piece of text `TextsHolding` lists is. */
 const PIECE = 3;
 
-/** No places. */
 const NO_PLACES: readonly number[] = [];
 
 /** A text's pieces of `PIECE` letters, one from each letter on. */

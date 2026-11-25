@@ -5,7 +5,7 @@ description: Set up ayme in a consumer project, expose existing Page Object Acti
 
 # ayme
 
-Read `.ayme/CONVENTIONS.md` first, when it exists: what the user settled for
+Read `ayme/CONVENTIONS.md` first, when it exists: what the user settled for
 how ayme and its skills work in this repository. Read its opening part, which
 holds for every skill, and its `ayme` section, and follow a line that points
 to another file. It overrides this skill's defaults. When the user settles

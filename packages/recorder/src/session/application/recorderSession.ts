@@ -70,7 +70,6 @@ export class RecorderSession extends Context.Service<
     readonly subscribe: (
       listener: (update: RecorderUpdate) => void
     ) => () => void;
-    /** Waits for the recorder's end. */
     readonly done: Effect.Effect<RecordingOutcome>;
   }
 >()("@ayme-dev/recorder/session/RecorderSession") {
@@ -100,14 +99,12 @@ export class RecorderSession extends Context.Service<
         /** The warnings told so far, and how many of the timeline's. */
         let warnings: readonly RecorderWarning[] = [];
         let fromTimeline = 0;
-        /** The recorder as it is now, under a revision. */
         const now = (revision: number): RecorderUpdate => ({
           revision,
           state: { ...told(), visits, warnings },
         });
         let update = now(0);
         let toldNow = JSON.stringify(told());
-        /** Tells the listeners the recorder as it is now, under a new revision. */
         const publish = () => {
           visits = timeline.visits();
           update = now(update.revision + 1);
@@ -140,7 +137,6 @@ export class RecorderSession extends Context.Service<
         let deferred: Queued["reply"];
         /** The answers the lifecycle keeps by a key of its own. */
         const kept = new Map<string, Queued["reply"]>();
-        /** Gives an answer to the command that waits for it. */
         const give = (to: Queued["reply"], result: CommandResult) =>
           // Every answer the lifecycle gives follows a command, which waits
           // for it: the check is for the type.
