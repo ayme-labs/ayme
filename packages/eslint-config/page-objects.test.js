@@ -27,12 +27,26 @@ test("the refusal cites the guide", () => {
   assert.match(guideMessage, /skills\/shared\/page-object-design\.md/);
 });
 
-test("a locator or child read from this in a field initializer is refused", () => {
+test("a locator or child in a field initializer is refused", () => {
   assert.deepEqual(lint(fieldLocator), ["refused"]);
   assert.deepEqual(
     lint(`export class ListPage {
-  constructor(readonly page) {}
-  readonly dialog = new Dialog(this.page.getByRole("dialog"));
+  readonly dialog = new Dialog();
+}
+`),
+    ["refused"]
+  );
+});
+
+test("a declared member is refused however it is assigned", () => {
+  assert.deepEqual(
+    lint(`export class ListPage {
+  @ayme.child
+  readonly submit;
+  constructor(page) {
+    const submit = page.getByRole("button");
+    this.submit = submit;
+  }
 }
 `),
     ["refused"]
@@ -58,11 +72,14 @@ test("a getter, a constructor input and plain data pass", () => {
   assert.deepEqual(
     lint(`export class ListPage {
   readonly path = "/list";
+  readonly editPath = this.path + "/edit";
+  readonly label = this.path.toUpperCase();
   readonly page;
-  private readonly label;
-  constructor(page, label) {
+  private readonly startedAt;
+  constructor(page, options) {
     this.page = page;
-    this.label = label;
+    this.label = options.label.trim();
+    this.startedAt = Date.now();
   }
   readonly onClose = () => this.page.close();
   get addButton() {

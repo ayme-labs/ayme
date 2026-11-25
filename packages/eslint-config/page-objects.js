@@ -4,13 +4,15 @@ import { builtinRules } from "eslint/use-at-your-own-risk";
 
 // ayme's own page objects follow the guide ayme ships to consumers: a locator,
 // or a child page object, is a getter, so it runs after `page` or `root` is
-// assigned. Syntax alone cannot tell a locator from plain data, so this
-// refuses what reads `this` in a field initializer, and anything but a
-// constructor input stored by a constructor.
+// assigned. Syntax alone tells a locator or child by a decorator, a `new`, or
+// a Playwright locator call; other data may stay a field.
 export const message =
   'Define a locator or child page object as a getter (skills/shared/page-object-design.md, "Define locators as getters").';
 
 export const plugin = "page-objects";
+
+const locatorCall =
+  "CallExpression[callee.property.name=/^(getBy[A-Za-z]+|locator|filter|first|last|nth|or|and)$/]";
 
 export default [
   {
@@ -18,7 +20,7 @@ export default [
     files: ["**/pom/**/*.{ts,tsx}"],
     // The compiler's and build plugin's fixtures declare fields on purpose, to
     // test how ayme reads them.
-    ignores: ["**/fixtures/**", "**/__tests__/**"],
+    ignores: ["**/fixtures/**"],
     plugins: {
       [plugin]: {
         rules: {
@@ -29,14 +31,14 @@ export default [
     rules: {
       [`${plugin}/no-restricted-syntax`]: [
         "error",
+        // A declared member, such as `@ayme.child`, however it is assigned.
+        { selector: "PropertyDefinition[decorators.0]", message },
         {
-          selector:
-            "PropertyDefinition[static=false]:not([value.type=/FunctionExpression$/]):has(ThisExpression)",
+          selector: `PropertyDefinition:not([decorators.0]) > :matches(NewExpression, ${locatorCall}).value`,
           message,
         },
         {
-          selector:
-            "MethodDefinition[kind='constructor'] AssignmentExpression[left.object.type='ThisExpression']:not([right.type='Identifier']):not([right.type='Literal'])",
+          selector: `MethodDefinition[kind='constructor'] AssignmentExpression[left.object.type='ThisExpression'] > :matches(NewExpression, ${locatorCall}).right`,
           message,
         },
       ],
