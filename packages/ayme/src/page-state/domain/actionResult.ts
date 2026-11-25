@@ -7,7 +7,7 @@ import type { InteractionHistory } from "./interactionHistory";
 
 export type ActionResult = {
   result?: JsonValue;
-  /** Whether either part of the Change Record has a change. */
+  /** Whether either part of the Change Record has a change, or the action started a full page load. */
   page_changed: boolean;
   settled: boolean;
   /**

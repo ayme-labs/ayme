@@ -151,7 +151,7 @@ Every action returns its Change Record: what changed on the page, in two parts. 
 
 - `changes_before` is what changed after your code last read the page and before its action ran. Here, that is the user's removal of Launch plan.
 - `changes` is what the action changed, up to the Settled Page after it. A change that lands while the page settles counts as the action's.
-- Each part is present only when it has a change. `page_changed` is true when either part is present.
+- Each part is present only when it has a change. `page_changed` is true when either part is present, and always when the action started a full page load.
 - `settled` says whether the page went quiet after the action.
 
 An agent's Page Object Tool call answers in [a shorter form](#a-page-object-tools-answer-to-an-agent). Its other tools answer with the full result.
@@ -171,7 +171,7 @@ An action that fails still reports what it changed. Its error keeps its own mess
 
 ## Full page loads
 
-A tool call whose action starts loading a new document, such as a click on a plain link or on a form's submit button, answers at once, before the old document goes away and ayme with it. The answer is the action result with `settled: false`, the Change Record up to that moment in `changes_before` and `changes`, the URL the navigation started for in `loading`, and in `next` a note that the page is loading and that `snapshot` is the next call. For a form submit, `loading` is the form's `action`: where the server redirects is not known yet when the answer goes out.
+A tool call whose action starts loading a new document, such as a click on a plain link or on a form's submit button, answers as soon as ayme sees the load start. The answer is the action result with `page_changed: true`, `settled: false`, the Change Record up to that moment in `changes_before` and `changes` when the old document's last capture arrived, the URL the navigation started for in `loading`, and in `next` a note that the page is loading and that `snapshot` is the next call. For a form submit, `loading` is the form's `action`: where the server redirects is not known yet when the answer goes out.
 
 ```ts
 {

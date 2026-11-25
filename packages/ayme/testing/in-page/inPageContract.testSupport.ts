@@ -1074,6 +1074,8 @@ export function inPageContract(lane: InPageLane) {
     const outcome = await action.perform(() => page.locator("button").click());
 
     const loading = { kind: "loading", url };
+    // Under load, Chromium can drop the old document's last message as it
+    // unloads, so `after` may be missing (#1433).
     if (outcome.kind === "loading" && outcome.after !== undefined) {
       expect(outcome).toEqual({
         ...loading,
@@ -1083,7 +1085,7 @@ export function inPageContract(lane: InPageLane) {
         }),
       });
     } else {
-      expect({ ...outcome }).toStrictEqual(loading);
+      expect(outcome).toEqual(loading);
     }
     const nextPage = await next;
     const capture = await lane.createHost(nextPage).inPage(nextPage).capture();
