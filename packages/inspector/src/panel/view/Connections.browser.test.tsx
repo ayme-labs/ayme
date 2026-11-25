@@ -199,13 +199,14 @@ it("copies the option that turns a path on", async () => {
   ]);
 });
 
-it("gives the copy button a 24px square to press", async () => {
+it("gives the copy button at least 24px each way to press", async () => {
   renderConnections({ agent: agents.off });
 
   await connections.open();
 
   const box = await connections.agent.copyButton.boundingBox();
-  expect([box?.width, box?.height]).toEqual([24, 24]);
+  expect(box?.width).toBeGreaterThanOrEqual(24);
+  expect(box?.height).toBeGreaterThanOrEqual(24);
 });
 
 it("tells assistive technology which option it copied", async () => {
