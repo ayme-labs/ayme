@@ -1,6 +1,6 @@
-# ayme WebMCP
+# ayme
 
-ayme WebMCP exposes selected Page Object behavior as WebMCP Tools while keeping the Page Object Model as the source of that behavior.
+ayme turns the Page Object Models of an app's Playwright tests into tools that coding agents, in-browser agents and the app's own code call on the running page.
 
 ## Language
 
