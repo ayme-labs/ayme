@@ -1,19 +1,35 @@
 ---
 status: accepted
-amends: ADR-0045
-amended-by: ADR-0058
+supersedes: ADR-0045
 ---
 
-# One in-page module per document
+# One In-page Module per document
 
-ADR-0045 says core prefers to reach the page through Playwright Lite, so it can run outside the browser, and enforces nothing. Core still holds `Element`s across its ports (`PageDriver`, `CapturePage`, `Reach`), keys the Page State Session by `Document`, and imports `@ayme-dev/playwright-lite/internal` from nine files. Two copies of ayme's capture code on one document hand the same ref to different elements and lock the page's own runtime out (tracer bullet 5, `research/node-live-pom-tracers`). This decision is ADR-0045's enforcement: `@ayme-dev/ayme` holds no DOM node, and it reaches a document only through Playwright's `Page` and one in-page module.
+## Why
 
-No DOM node crosses a module boundary. A target is a `Locator` or a Structural Ref, and no `ElementHandle` is held. Each document has one in-page module: the first host installs it in a frozen slot, and every later host binds to it. It owns capture, the root probe, the watchers, the Settled Page wait, the predicates, locator generation and pick. The host shape is design C (`begin()`/`perform()`, `capture()`, `watch(probe)`/`probe(root, label)`), and history, Visits and cursors stay on the host. Every ref is minted in the module, synthetic root refs included, so no two hosts ever name two elements with one ref. The module is one self-contained function run through `page.evaluate`, and it is heard through one ayme-prefixed `exposeFunction` binding per host.
+ayme needs the same behaviour in Node, against a real Playwright page, as in the browser: to offer Page Object Tools from a Node Host, and to generate locators under Node Playwright. Playwright Lite matches Playwright's Page and Locator (ADR-0021), so code that reaches the page only through them runs on either. Code that holds a DOM element it found itself, or reads a browser global, runs only where ayme shares the page's JavaScript world.
 
-ayme's capture stays ayme's: its marks are private, and refs resolve only through the `ayme-ref` engine (ADR-0038) on both runtimes. Lite's `ariaSnapshot` and `aria-ref` are never called. Stock Playwright snapshots in its utility world and shares nothing with us, which we accept. Reach (ADR-0041) is measured in the page and returns refs. Runtime state is keyed by `Page`, and no code outside the module uses `document`, `window` or `globalThis`. Nothing imports from `@ayme-dev/playwright-lite/internal`. `ignore` and Custom Tool filters take a CSS selector, which the module matches at each capture, or a function from the session's `Page` to a `Locator`, which the host matches before each capture, so no filter code is sent to the page.
+ayme reached the page partly through Playwright Lite and partly directly, held DOM elements across its own module boundaries, and keyed its session by the document. A preference for Page and Locator that nothing enforced left all of that in place. And two copies of ayme's capture code on one document handed the same ref to different elements and locked the page's own runtime out.
 
-The Inspector is a client over one plain-data contract, the runtime's front door, as `@ayme-dev/webmcp` already is, with two transports: direct in the page, and a channel outside it. `inspector: true` keeps it inline in the app, as a lazy chunk of the app's own bundle, so the dev server serves it in development and the app's hosting serves it in production (the playground). Out of the page, the `ayme` MCP process serves it under a URL and relays its contract over the Agent Connection it already holds; there is no new server. Highlight is Playwright's `locator.highlight({ style })`: the box takes our style, its locator tooltip stays (checked on Playwright 1.64; the fork does not diverge from Playwright), and the activity watcher ignores the overlay host it adds under `<html>`. Pick is the module's. The runtime knows no client by name: one generic excluded-subtree mark replaces `inspectorMarks`.
+## Decision
 
-The migration runs as ADR-0046's does: one lint rule, and an allowlist with an issue per file, retired one increment at a time (the module, capture, the registry, Reach, the element tools, filters, the stores, the Inspector, and closing the prototype PR #532).
+The ayme package holds no DOM node, and it reaches a document only through Playwright's Page and one In-page Module. Lint enforces it.
 
-The cost is a breaking change for apps: `ignore` and filters stop taking an `Element` predicate, while `inspector: true` keeps its meaning. Every probe is asynchronous; the browser pays nothing new, and Node pays one evaluate per read. The browser bundle carries the fork's snapshot code twice, about 300 to 400 KB of source, until we slim the module's copy. Lite's internal entry loses its last consumer. ADR-0029's sentence on WebMCP is superseded; PR #600 moved WebMCP out of the package.
+- No DOM node crosses a module boundary. A target is a Locator or a Structural Ref, and no element handle is held.
+- Each document has one In-page Module: the first Host installs it, and every later Host binds to it. It owns capture, the root probe, the watchers, the Settled Page wait, the predicates, locator generation and pick. History, Visits and cursors stay on the Host.
+- Every ref is minted in the module, synthetic root refs included, so no two Hosts ever name two elements with one ref.
+- The module is one self-contained function evaluated in the page, and each Host hears it through one binding of its own.
+- Runtime state is keyed by Page, and no code outside the module uses the document or the browser's globals. Reach is measured in the page and returns refs (ADR-0062).
+- ayme's capture stays ayme's: its marks are private, and refs resolve only through ayme's own selector engine (ADR-0038) on both runtimes. Playwright Lite's own snapshot and its refs are never used, and no production code imports Playwright Lite's internal entry, which exists only in the browser and is not Playwright's API. Stock Playwright snapshots in its own world and shares nothing with ayme, which we accept.
+- A filter, such as what a capture ignores or which elements a Custom Tool applies to, is a CSS selector, which the module matches at each capture, or a function from the session's Page to a Locator, which the Host matches before each capture. No filter code is sent to the page.
+- The Inspector is a client over one plain-data contract, the runtime's front door, with two transports: direct in the page, and a channel outside it. Inline, it is a lazy part of the app's own bundle, so whatever serves the app serves it. Out of the page, the ayme MCP server serves it and relays its contract over the Agent Connection it already holds; there is no new server.
+- Highlight is Playwright's locator highlight with ayme's style, and the activity watcher ignores the overlay it adds. Pick is the module's. The runtime knows no client by name: one generic mark keeps a subtree out of the capture.
+
+## Considered and rejected
+
+- Leaving ayme browser-only. The Node uses would need a second implementation of the same behaviour.
+- A preference that nothing enforces. Direct access stayed wherever it already was, and two copies of the capture code could still meet on one document.
+
+## Cost
+
+Reaching the page through Locators is asynchronous and indirect where reading an element is synchronous and direct: every probe is asynchronous, the browser pays nothing new, and Node pays one evaluation per read. Under Node Playwright a function evaluated in the page is serialized, so it cannot close over anything on the Node side. A filter cannot be a predicate over an element. The browser bundle carries Playwright Lite's snapshot code twice until the module's copy is slimmed.
