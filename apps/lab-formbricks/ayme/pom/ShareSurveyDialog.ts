@@ -2,10 +2,17 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 import { AppComponent } from "./AppComponent";
 import { Modal } from "./Modal";
-import { SurveySummaryPage } from "./SurveySummaryPage";
+import type { SurveySummaryPage } from "./SurveyPages";
 
 /** Opens over the summary when a survey is published for the first time. */
 export class ShareSurveyDialog extends AppComponent {
+  constructor(
+    root: Locator,
+    private readonly createSummaryPage: () => SurveySummaryPage
+  ) {
+    super(root);
+  }
+
   @ayme.child
   get closeButton(): Locator {
     return this.modal.closeButton;
@@ -18,6 +25,6 @@ export class ShareSurveyDialog extends AppComponent {
   @ayme.action
   async close(): Promise<SurveySummaryPage> {
     await this.modal.close();
-    return new SurveySummaryPage(this.root.page());
+    return this.createSummaryPage();
   }
 }
