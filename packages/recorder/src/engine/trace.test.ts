@@ -197,7 +197,6 @@ process.exit(${exitCode});\n`
         args: string[];
       }
     ).args;
-  /** What the command wrote to stderr while `run` ran. */
   async function stderrOf(run: () => Promise<unknown>) {
     const written: string[] = [];
     vi.spyOn(process.stderr, "write").mockImplementation((text) => {
