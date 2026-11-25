@@ -1,0 +1,580 @@
+import { createHash, randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { createReadStream } from 'node:fs';
+import {
+  open,
+  access,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { promisify } from 'node:util';
+import { gunzip } from 'node:zlib';
+
+const exec = (file, args, options = {}) =>
+  new Promise((resolve, reject) => {
+    execFile(
+      file,
+      args,
+      { encoding: 'utf8', windowsHide: true, ...options },
+      (error, stdout, stderr) => {
+        if (error) reject(Object.assign(error, { stdout, stderr }));
+        else resolve({ stdout, stderr });
+      },
+    );
+  });
+export const TLC_VERSION = '1.7.4';
+export const TLC_SHA256 =
+  '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88';
+export const PELE_VERSION = '1.9.0';
+export const PELE_SHA256 =
+  '7c40a25eeaf4370fb56c03d9d8f6780051c9c39b6c6ca36d53239075117097f5';
+/** Worker stderr lines with this prefix are forwarded to the user as progress. */
+export const PROGRESS_PREFIX = 'stately-progress: ';
+export const toolchainCache = () =>
+  resolve(
+    process.env.STATELY_CACHE_DIR ??
+      join(homedir(), '.cache', 'stately', 'check'),
+  );
+const tlcURL = `https://github.com/tlaplus/tlaplus/releases/download/v${TLC_VERSION}/tla2tools.jar`;
+const megabytes = (bytes) =>
+  Number.isFinite(bytes) && bytes > 0
+    ? ` (${Math.max(1, Math.round(bytes / 1_000_000))} MB)`
+    : '';
+const exists = (file) =>
+  access(file).then(
+    () => true,
+    () => false,
+  );
+const digest = async (file) => {
+  const hash = createHash('sha256');
+  for await (const bytes of createReadStream(file)) hash.update(bytes);
+  return hash.digest('hex');
+};
+/** A download that never reached a usable response: a network error or a non-2xx status. */
+class DownloadUnavailable extends Error {}
+const loopback = new Set(['localhost', '127.0.0.1', '[::1]']);
+const timed = (signal, ms) =>
+  signal
+    ? AbortSignal.any([signal, AbortSignal.timeout(ms)])
+    : AbortSignal.timeout(ms);
+async function request(url, signal) {
+  const { protocol, hostname } = new URL(url);
+  // Loopback HTTP serves the fallback tests; every file is checksum-verified either way.
+  if (protocol !== 'https:' && !(protocol === 'http:' && loopback.has(hostname)))
+    throw Error('Toolchain downloads require HTTPS.');
+  let response;
+  try {
+    response = await fetch(url, { signal: timed(signal, 120_000) });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new DownloadUnavailable(
+      `Toolchain download failed (${error.cause?.code ?? error.message}): ${url}`,
+    );
+  }
+  if (!response.ok || !response.body) {
+    await response.body?.cancel().catch(() => {});
+    throw new DownloadUnavailable(
+      `Toolchain download failed (${response.status}): ${url}`,
+    );
+  }
+  return response;
+}
+async function download(url, file, checksum, limit = 200_000_000, signal) {
+  const response = await request(url, signal);
+  const hash = createHash('sha256');
+  let size = 0;
+  const reader = response.body.getReader();
+  try {
+    const handle = await open(file, 'wx');
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > limit)
+          throw Error('Toolchain download exceeds the size limit.');
+        hash.update(value);
+        for (let offset = 0; offset < value.byteLength; ) {
+          const { bytesWritten } = await handle.write(
+            value,
+            offset,
+            value.byteLength - offset,
+            null,
+          );
+          if (!bytesWritten)
+            throw Error('Cannot write the downloaded toolchain.');
+          offset += bytesWritten;
+        }
+      }
+    } finally {
+      await handle.close();
+    }
+    if (hash.digest('hex') !== checksum)
+      throw Error('Toolchain checksum mismatch.');
+  } catch (error) {
+    await reader.cancel().catch(() => {});
+    await rm(file, { force: true });
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/** Package file hosts. `sources` overrides them in tests only. */
+const PACKAGE_SOURCES = {
+  cdn: 'https://cdn.jsdelivr.net/npm',
+  registry: 'https://registry.npmjs.org',
+};
+const TARBALL_LIMIT = 50_000_000;
+const UNPACKED_LIMIT = 200_000_000;
+async function readLimited(response, limit) {
+  const chunks = [];
+  let size = 0;
+  const reader = response.body.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) throw Error('Toolchain download exceeds the size limit.');
+      chunks.push(value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => {});
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks);
+}
+const tarText = (block, start, length) => {
+  const field = block.subarray(start, start + length);
+  const end = field.indexOf(0);
+  return field.subarray(0, end < 0 ? length : end).toString('utf8');
+};
+const tarSize = (block) => {
+  const field = block.subarray(124, 136);
+  // GNU base-256 sizes set the high bit of the first byte.
+  if (field[0] & 0x80) {
+    let size = 0;
+    for (let index = 1; index < field.length; index++)
+      size = size * 256 + field[index];
+    return size;
+  }
+  const text = tarText(block, 124, 12).trim();
+  if (!/^[0-7]*$/.test(text)) throw Error('Invalid npm tarball entry size.');
+  return text ? parseInt(text, 8) : 0;
+};
+/**
+ * Regular files in an uncompressed tar archive by path. Reads ustar prefixes,
+ * pax `path` records and GNU long names; other entry types are skipped.
+ */
+export function readTar(archive) {
+  const files = new Map();
+  let longName;
+  for (let offset = 0; offset + 512 <= archive.length; ) {
+    const block = archive.subarray(offset, offset + 512);
+    if (block.every((byte) => byte === 0)) break;
+    const size = tarSize(block);
+    const type = String.fromCharCode(block[156] || 48);
+    const body = offset + 512;
+    if (body + size > archive.length) throw Error('Truncated npm tarball.');
+    const data = archive.subarray(body, body + size);
+    offset = body + Math.ceil(size / 512) * 512;
+    if (type === 'x') {
+      for (const record of data.toString('utf8').matchAll(/\d+ path=([^\n]*)\n/g))
+        longName = record[1];
+      continue;
+    }
+    if (type === 'L') {
+      longName = tarText(data, 0, data.length);
+      continue;
+    }
+    const prefix = tarText(block, 345, 155);
+    const name =
+      longName ??
+      (prefix ? `${prefix}/${tarText(block, 0, 100)}` : tarText(block, 0, 100));
+    longName = undefined;
+    if (type === '0' || type === '7') files.set(name, data);
+  }
+  return files;
+}
+async function writeVerified(bytes, file, checksum) {
+  if (createHash('sha256').update(bytes).digest('hex') !== checksum)
+    throw Error('Toolchain checksum mismatch.');
+  await writeFile(file, bytes, { flag: 'wx' });
+}
+/**
+ * Downloads one published package file from jsDelivr. When jsDelivr is
+ * unreachable or answers non-2xx, reads the file from the npm registry tarball
+ * instead (fetched once per `tarball` memo). Both paths verify the same sha256.
+ */
+async function downloadPackageFile({
+  name,
+  version,
+  path,
+  file,
+  sha256,
+  limit,
+  signal,
+  sources = PACKAGE_SOURCES,
+  tarball,
+  progress,
+}) {
+  const { cdn, registry } = { ...PACKAGE_SOURCES, ...sources };
+  try {
+    await download(`${cdn}/${name}@${version}/${path}`, file, sha256, limit, signal);
+    return;
+  } catch (error) {
+    if (!(error instanceof DownloadUnavailable)) throw error;
+    if (!tarball.files) {
+      const url = `${registry}/${name}/-/${name.split('/').pop()}-${version}.tgz`;
+      progress(`jsDelivr is unavailable; downloading ${name} ${version} from the npm registry ...`);
+      tarball.files = request(url, signal)
+        .then((response) => readLimited(response, TARBALL_LIMIT))
+        .then((bytes) =>
+          promisify(gunzip)(bytes, { maxOutputLength: UNPACKED_LIMIT }),
+        )
+        .then(readTar)
+        .catch((cause) => {
+          throw Error(`${error.message}; npm registry fallback failed: ${cause.message}`, { cause });
+        });
+    }
+  }
+  const bytes = (await tarball.files).get(`package/${path}`);
+  if (!bytes) throw Error(`npm tarball for ${name}@${version} has no ${path}.`);
+  if (bytes.length > limit) throw Error('Toolchain download exceeds the size limit.');
+  await writeVerified(bytes, file, sha256);
+}
+
+async function javaVersion(java, signal) {
+  try {
+    const result = await exec(java, ['-version'], {
+      timeout: 15_000,
+      maxBuffer: 64_000,
+      signal,
+    });
+    const text = `${result.stderr}\n${result.stdout}`.trim();
+    const line = text
+      .split('\n')
+      .find((line) => /^(?:openjdk|java)(?:\s+version)?\s+"?\d/.test(line));
+    const major = Number(line?.match(/(?:version\s+"|openjdk\s+)(\d+)/)?.[1]);
+    return major >= 11 ? line : undefined;
+  } catch {
+    return undefined;
+  }
+}
+async function findJava(directory) {
+  const suffix = process.platform === 'win32' ? 'java.exe' : 'java';
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const file = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === 'bin' && (await exists(join(file, suffix))))
+        return join(file, suffix);
+      const found = await findJava(file);
+      if (found) return found;
+    }
+  }
+}
+async function installJava(cache, signal, installDirectory, progress) {
+  const os = { darwin: 'mac', linux: 'linux', win32: 'windows' }[
+    process.platform
+  ];
+  const architecture = { arm64: 'aarch64', x64: 'x64' }[process.arch];
+  if (!os || !architecture)
+    throw Error('Set JAVA to a Java 11+ binary on this platform.');
+  const response = await fetch(
+    `https://api.adoptium.net/v3/assets/latest/25/hotspot?architecture=${architecture}&image_type=jre&os=${os}&vendor=eclipse`,
+    {
+      signal: signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(30_000)])
+        : AbortSignal.timeout(30_000),
+    },
+  );
+  if (!response.ok)
+    throw Error(
+      `Cannot provision Java (${response.status}); set JAVA to an installed Java 11+ binary.`,
+    );
+  const assets = await response.json();
+  const asset = Array.isArray(assets) ? assets[0]?.binary?.package : undefined;
+  if (
+    !asset ||
+    typeof asset.link !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(asset.checksum)
+  )
+    throw Error('Invalid Adoptium package metadata.');
+  const destination = join(cache, `java-${asset.checksum}`);
+  if (await exists(destination)) {
+    const java = await findJava(destination);
+    if (java && (await javaVersion(java, signal))) return java;
+    throw Error(`Cached Java installation is incomplete: ${destination}`);
+  }
+  progress(
+    `Downloading Temurin JRE 25${megabytes(asset.size)} into ${cache} ...`,
+  );
+  const stage = installDirectory ?? join(cache, `java-stage-${randomUUID()}`);
+  await mkdir(stage);
+  const archive = join(
+    stage,
+    process.platform === 'win32' ? 'java.zip' : 'java.tar.gz',
+  );
+  const contents = join(stage, 'contents');
+  await mkdir(contents);
+  try {
+    await download(asset.link, archive, asset.checksum, 200_000_000, signal);
+    progress('Unpacking Temurin JRE 25 ...');
+    if (process.platform === 'win32') {
+      await exec(
+        'powershell',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          'Expand-Archive -LiteralPath $env:STATELY_JAVA_ARCHIVE -DestinationPath $env:STATELY_JAVA_DESTINATION',
+        ],
+        {
+          env: {
+            ...process.env,
+            STATELY_JAVA_ARCHIVE: archive,
+            STATELY_JAVA_DESTINATION: contents,
+          },
+          timeout: 120_000,
+          signal,
+        },
+      );
+    } else {
+      await exec('tar', ['-xzf', archive, '-C', contents], {
+        timeout: 120_000,
+        signal,
+      });
+    }
+    const java = await findJava(contents);
+    if (!java || !(await javaVersion(java, signal)))
+      throw Error('Downloaded archive has no usable Java 11+ binary.');
+    await writeFile(
+      join(contents, 'stately-install.json'),
+      JSON.stringify({ url: asset.link, sha256: asset.checksum }),
+    );
+    try {
+      await rename(contents, destination);
+    } catch (error) {
+      if (!(await exists(destination))) throw error;
+    }
+    return await findJava(destination);
+  } finally {
+    await rm(stage, { recursive: true, force: true });
+  }
+}
+
+/** Optional standalone renderer; no package-manager or workspace install required. */
+export async function ensureRenderer({
+  offline = false,
+  signal,
+  cache = toolchainCache(),
+  progress = () => {},
+  sources,
+} = {}) {
+  cache = resolve(cache);
+  await mkdir(cache, { recursive: true });
+  const file = join(cache, `pele-${PELE_VERSION}.mjs`);
+  if (!(await exists(file))) {
+    if (offline)
+      throw Error(
+        'Pele renderer is not cached; render once without --offline.',
+      );
+    progress(`Downloading Pele renderer ${PELE_VERSION} ...`);
+    const stage = `${file}.${randomUUID()}.tmp`;
+    try {
+      await downloadPackageFile({
+        name: 'pele',
+        version: PELE_VERSION,
+        path: 'dist/pele.js',
+        file: stage,
+        sha256: PELE_SHA256,
+        limit: 2_000_000,
+        signal,
+        sources,
+        tarball: {},
+        progress,
+      });
+      try {
+        await rename(stage, file);
+      } catch (error) {
+        if (!(await exists(file)) || (await digest(file)) !== PELE_SHA256)
+          throw error;
+      }
+    } finally {
+      await rm(stage, { force: true });
+    }
+    progress('Ready');
+  }
+  if ((await digest(file)) !== PELE_SHA256)
+    throw Error(
+      'Cached Pele checksum mismatch; remove the corrupt renderer and retry.',
+    );
+  return { file, version: PELE_VERSION, sha256: PELE_SHA256 };
+}
+
+export const XSTATE_VERSION = '6.0.0-beta.3';
+/** The ESM entry and the chunks it imports, from the published package. */
+export const XSTATE_FILES = {
+  'createActor-49ea55ba.esm.js':
+    'd3e4ab531790ffa45bf25748ffc9ef059b60b95983c36a0ef5e10a789073b886',
+  'effectDescriptor-72c62058.esm.js':
+    'c07db0cd9a14dae2190072cf8b515a9b729b32ade6f15a076c0cf88c313c93a7',
+  'legacySnapshot-fffe81a0.esm.js':
+    '0514c930459f98aa6458b68d289a8fbc51952dd29babb79ff3e86ac080427003',
+  'schema.types-0ecd17b8.esm.js':
+    '0367ede5890c4cbdd62fd5c6faac12095328ed252e587c485d2d45ba3ee55f54',
+  'validation-05f1d517.esm.js':
+    'a271f1d7426253f29cf32004ba2bd5232e85258c2acc9ef408f83198953b53cd',
+  'xstate-actors.esm.js':
+    '2395be15f562cd5c4acd0d692732f283470d36ea54b43fe4fd200d64990f3fbd',
+  'xstate.esm.js':
+    '396512f29621bbe3a524d9e37a7b32a0bcb3cb4a7b8ca28d1d81a5437378668f',
+};
+
+/**
+ * XState v6 for the native checker: a checksum-verified copy of the published ESM
+ * build in the Stately cache, no package manager or workspace install required.
+ * Returns the cached entry file to `import()`.
+ */
+export async function ensureXState({
+  offline = false,
+  signal,
+  cache = toolchainCache(),
+  progress = () => {},
+  sources,
+} = {}) {
+  cache = resolve(cache);
+  const tarball = {};
+  const directory = join(cache, `xstate-${XSTATE_VERSION}`);
+  await mkdir(directory, { recursive: true });
+  let announced = false;
+  for (const [name, sha256] of Object.entries(XSTATE_FILES)) {
+    const file = join(directory, name);
+    if ((await exists(file)) && (await digest(file)) === sha256) continue;
+    if (offline)
+      throw Error(
+        `XState ${XSTATE_VERSION} is not cached; run once without --offline.`,
+      );
+    if (!announced) progress(`Downloading XState ${XSTATE_VERSION} ...`);
+    announced = true;
+    await rm(file, { force: true });
+    const stage = `${file}.${randomUUID()}.tmp`;
+    try {
+      await downloadPackageFile({
+        name: 'xstate',
+        version: XSTATE_VERSION,
+        path: `dist/${name}`,
+        file: stage,
+        sha256,
+        limit: 2_000_000,
+        signal,
+        sources,
+        tarball,
+        progress,
+      });
+      try {
+        await rename(stage, file);
+      } catch (error) {
+        if (!(await exists(file)) || (await digest(file)) !== sha256)
+          throw error;
+      }
+    } finally {
+      await rm(stage, { force: true });
+    }
+  }
+  if (announced) progress('Ready');
+  return {
+    file: join(directory, 'xstate.esm.js'),
+    version: XSTATE_VERSION,
+    files: XSTATE_FILES,
+  };
+}
+
+/** Local, checksum-verified toolchain; no pstack or mise installation required. */
+export async function ensureToolchain({
+  offline = false,
+  signal,
+  cache = toolchainCache(),
+  installDirectory,
+  progress = () => {},
+} = {}) {
+  let downloaded = false;
+  cache = resolve(cache);
+  await mkdir(cache, { recursive: true });
+  const configuredJava = process.env.STATELY_TLC_JAVA ?? process.env.JAVA;
+  let java = configuredJava ?? 'java';
+  let version = await javaVersion(java, signal);
+  if (!version && !configuredJava) {
+    for (const entry of (await readdir(cache, { withFileTypes: true })).filter(
+      (item) => item.isDirectory() && /^java-[a-f0-9]{64}$/.test(item.name),
+    )) {
+      const candidate = await findJava(join(cache, entry.name));
+      if (candidate && (await javaVersion(candidate, signal))) {
+        java = candidate;
+        version = await javaVersion(java, signal);
+        break;
+      }
+    }
+  }
+  if (!version) {
+    if (configuredJava || offline)
+      throw Error(
+        'A usable Java 11+ binary was not found; set JAVA or permit automatic Java provisioning.',
+      );
+    java = await installJava(cache, signal, installDirectory, progress);
+    downloaded = true;
+    version = await javaVersion(java, signal);
+  }
+  const configuredJar = process.env.STATELY_TLC_JAR ?? process.env.TLA2TOOLS;
+  const jar = configuredJar
+    ? resolve(configuredJar)
+    : join(cache, `tla2tools-${TLC_VERSION}.jar`);
+  if (!(await exists(jar))) {
+    if (configuredJar || offline)
+      throw Error(
+        `TLC jar not found: ${jar}. Set TLA2TOOLS or run without --offline.`,
+      );
+    progress(`Downloading TLC ${TLC_VERSION} (2 MB) ...`);
+    downloaded = true;
+    const stage = `${jar}.${randomUUID()}.tmp`;
+    await download(tlcURL, stage, TLC_SHA256, 20_000_000, signal);
+    try {
+      await rename(stage, jar);
+    } finally {
+      await rm(stage, { force: true });
+    }
+  }
+  const sha256 = await digest(jar);
+  if (!configuredJar && sha256 !== TLC_SHA256)
+    throw Error(
+      'Cached TLC checksum mismatch; remove the corrupt cached jar and retry.',
+    );
+  const result = await exec(java, ['-cp', jar, 'tlc2.TLC', '-version'], {
+    timeout: 15_000,
+    maxBuffer: 128_000,
+    signal,
+  }).catch((error) => {
+    // TLC 1.7.4 prints its version before rejecting this option with exit 1.
+    if (
+      error.code === 1 &&
+      /TLC2 Version/.test(`${error.stdout}\n${error.stderr}`)
+    )
+      return error;
+    throw error;
+  });
+  const tlcVersion = `${result.stdout}\n${result.stderr}`.match(
+    /TLC2 Version[^\n]*/,
+  )?.[0];
+  if (!tlcVersion) throw Error('Cannot identify the configured TLC checker.');
+  if (downloaded) progress('Ready');
+  return { java, jar, javaVersion: version, version: tlcVersion, sha256 };
+}

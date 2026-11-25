@@ -25,6 +25,14 @@
       "computedHash": "86a313f26b3e8b539ba560a45e37d185e7d59530e40b7576d3873b185d50e1f9",
       "installMode": "copy"
     },
+    "stately": {
+      "source": "statelyai/skills",
+      "commit": "2c9e0fc021e086de2ba84b1bb5b2411efe36bd60",
+      "sourceType": "github",
+      "skillPath": "skills/stately/SKILL.md",
+      "computedHash": "5c6dc6fb22b15a579d484d976b53b8938b63618362db66036f500841cc77f0f0",
+      "installMode": "copy"
+    },
     "typesafe-ai": {
       "source": "typesafe-ai/skills",
       "commit": "302eea662c54bca6730873fe245bec1d69ebc23d",

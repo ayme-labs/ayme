@@ -30,6 +30,7 @@ apps/example-vue/tests/vue-webmcp.spec.ts-snapshots/
 /.agents/skills/statechart/
 /.agents/skills/create-formal-verification-skill/
 /.agents/skills/maintain-formal-verification-skill/
+/.agents/skills/stately/
 
 apps/example-angular/.angular/
 
