@@ -371,7 +371,9 @@ export class PageStateSession {
 
   /**
    * The answer to an action that started a full load of `url`, with the
-   * old document's last capture, when it could take one, as its after.
+   * old document's last capture, when it reached the host, as its after.
+   * Without one the answer says its changes could not be read, rather than
+   * that there were none.
    */
   private async loadingResult(
     actionId: StructuralActionId,
@@ -390,14 +392,13 @@ export class PageStateSession {
         cursor.move(after);
         return readChangeRecord(this.history, starts, after);
       })
-      .catch(
-        (): Pick<
-          ActionResult,
-          "page_changed" | "changes_before" | "changes"
-        > => ({
-          page_changed: false,
-        })
-      );
+      .catch(() => undefined);
+    if (!record)
+      return {
+        settled: false,
+        loading: url,
+        next: `The page is loading ${url}. What the action changed before the load could not be read. Call snapshot next to read the new page.`,
+      };
     return {
       page_changed: record.page_changed,
       settled: false,

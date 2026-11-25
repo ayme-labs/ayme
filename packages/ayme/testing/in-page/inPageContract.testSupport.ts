@@ -44,6 +44,15 @@ export type InPageLane = {
    * asked before the page starts the load itself.
    */
   nextDocument(page: Page): Promise<Page>;
+  /**
+   * Holds the response of the next document `page` loads until `until`
+   * settles, so the old document is not replaced before then. Real Chromium
+   * can drop what the old document sends once the next one has committed; a
+   * lane that loads where no message can be dropped holds nothing. Settle
+   * `until` before evaluating in the old document again: while its load is
+   * held, Chromium may not answer there, and the test would wait on itself.
+   */
+  holdNextLoad(page: Page, until: Promise<unknown>): Promise<void>;
   /** The Page Object registry this lane runs over the module. */
   pageObjects: PageObjectsKit;
   /** Whether a host outlives a full load of its page, as a Node host does and the page's own runtime does not. */
@@ -1069,9 +1078,17 @@ export function inPageContract(lane: InPageLane) {
     const url = page.url();
     const host = lane.createHost(page);
     const next = lane.nextDocument(page);
+    // The action answers the load before the next document commits; a load
+    // that commits at once can lose the old document's last capture.
+    let answered!: () => void;
+    await lane.holdNextLoad(
+      page,
+      new Promise<void>((resolve) => (answered = resolve))
+    );
 
     const action = await host.inPage(page).begin();
     const outcome = await action.perform(() => page.locator("button").click());
+    answered();
 
     expect(outcome).toEqual({
       kind: "loading",

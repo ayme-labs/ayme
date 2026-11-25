@@ -507,7 +507,7 @@ describe("runAction", () => {
     expect(reader.current()).toBe(session.history.latestObservation);
   });
 
-  it("still answers a full load when capturing the page as it goes away throws", async () => {
+  it("answers a full load whose old document left no capture without page_changed, saying its changes could not be read", async () => {
     const { session } = sessionOn(
       { loads: "https://app.test/next" },
       savePage,
@@ -516,12 +516,10 @@ describe("runAction", () => {
     );
     const reader = cursor();
 
-    await expect(
-      session.runAction(reader, call, () => {})
-    ).resolves.toMatchObject({
-      page_changed: false,
+    await expect(session.runAction(reader, call, () => {})).resolves.toEqual({
       settled: false,
       loading: "https://app.test/next",
+      next: "The page is loading https://app.test/next. What the action changed before the load could not be read. Call snapshot next to read the new page.",
     });
     expect(reader.current()).toBeUndefined();
   });

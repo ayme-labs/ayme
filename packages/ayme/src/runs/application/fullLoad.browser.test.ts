@@ -1,6 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createPage } from "../../page-objects/infrastructure";
+import { getPageStateSession } from "../../page-state/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
 import {
   agentTools,
@@ -78,6 +79,7 @@ describe("a tool call that starts a full page load, in Chromium", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     ayme.pom.unregister(Leaver);
     stop();
     history.replaceState(null, "", start);
@@ -148,6 +150,38 @@ describe("a tool call that starts a full page load, in Chromium", () => {
       ],
       loading: NO_CONTENT,
     });
+  });
+
+  it("ends a goal with a Handover whose step leaves page_changed out when the load's changes could not be read", async () => {
+    // Over Playwright in Node, the old document's last capture can be lost
+    // when the next document commits at once; the session then answers so.
+    const session = getPageStateSession(document);
+    const runAction = session.runAction.bind(session);
+    vi.spyOn(session, "runAction").mockImplementation(
+      (cursor, toolCall, perform) =>
+        toolCall.tool === "Leaver.leave"
+          ? Promise.resolve({
+              settled: false,
+              loading: NO_CONTENT,
+              next: `The page is loading ${NO_CONTENT}. What the action changed before the load could not be read. Call snapshot next to read the new page.`,
+            })
+          : runAction(cursor, toolCall, perform)
+    );
+
+    const handover = (await call("goal", {
+      goal: "leave the page",
+      maxSteps: 3,
+    })) as { reason: string; history: object[] };
+
+    expect(handover.reason).toBe("page_loading");
+    expect(handover.history).toEqual([
+      {
+        operation: "Leaver.leave",
+        chosen: {},
+        result: "ok",
+        did: "Leaver.leave()",
+      },
+    ]);
   });
 
   it("settles as before on a fragment navigation", async () => {
