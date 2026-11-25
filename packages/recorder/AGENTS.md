@@ -19,12 +19,13 @@ The checks:
 - [`eslint.config.js`](eslint.config.js), which [`src/layout.test.ts`](src/layout.test.ts) checks, in static and dynamic imports and a type written as `import("…")`:
   - which slices each slice may use, in every file of `src/`, tests included;
   - the layer order across slices ([ADR-0046](../../docs/adr/0046-the-layer-order-holds-across-slices-through-one-front-door-per-layer.md)), in production files only;
-  - inside a slice of `src/`, tests included, no import of the slice's own front doors;
-  - the front doors (except paths through `testing/`), Playwright only in the `playwright` slice, where Effect may be imported, and which files may reach `infrastructure/live/` and `infrastructure/in-page/`;
+  - no import of a slice's own front doors from inside it, tests and its folder of `testing/` included;
+  - the front doors (except paths through `testing/`), Playwright only in the `playwright` slice, and where Effect may be imported;
+  - which files of the `playwright` slice's `infrastructure/` may reach its `live/` and `in-page/`;
   - code in `in-page/` imports types only, so no dynamic `import()`;
   - no file of `src/` or `testing/` imports the window by its package name;
   - an `import()` whose module is in backticks with no substitution is refused.
-- [`src/layout.test.ts`](src/layout.test.ts) also checks that every file of a layered slice sits in a layer folder, so the slice has no `index.ts` of its own.
+- [`src/layout.test.ts`](src/layout.test.ts) also checks that every folder of `src/` is a listed slice, and every file of a layered slice sits in one of its listed layer folders, so the slice has no `index.ts` of its own.
 - [`src/publicTypes.test.ts`](src/publicTypes.test.ts): no type of another package is reachable from the built entry's declarations, and the built engine imports only the packages it lists.
 - [`src/outsideEnd.test.ts`](src/outsideEnd.test.ts): an end from outside finishes from every state it lists, on a browser gone silent.
 

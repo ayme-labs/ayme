@@ -400,6 +400,48 @@ const refusals: [path: string, code: string, message: string][] = [
     'export { step } from "./index";',
     ownDoor,
   ],
+  [
+    "testing/timeline/misplaced.ts",
+    'export { Timeline } from "../../src/timeline/domain";',
+    ownDoor,
+  ],
+  [
+    "testing/timeline/misplaced.ts",
+    'export type Misplaced = import("../../src/timeline/domain/index.js").Timeline;',
+    ownDoor,
+  ],
+  [
+    "testing/engine/misplaced.ts",
+    'export const load = () => import("../../src/engine");',
+    ownDoor,
+  ],
+  // Plain logic in any folder of the playwright slice's infrastructure, by
+  // any relative path.
+  [
+    "src/playwright/infrastructure/plain/misplaced.ts",
+    'export const load = () => import("../in-page/calls");',
+    plainLogic,
+  ],
+  [
+    "src/playwright/infrastructure/plain/misplaced.ts",
+    'export type Misplaced = typeof import("../live/stockBrowser").stockBrowser;',
+    plainLogic,
+  ],
+  [
+    "src/playwright/infrastructure/plain/misplaced.test.ts",
+    'export { setGate } from "../in-page/calls";',
+    plainLogic,
+  ],
+  [
+    "src/playwright/infrastructure/misplaced.ts",
+    'export { stockBrowser } from "../infrastructure/live/stockBrowser";',
+    plainLogic,
+  ],
+  [
+    "src/playwright/infrastructure/index.ts",
+    'export { setGate } from "./../in-page/calls";',
+    fromLiveOnly,
+  ],
   // The window, by its package name, in every file and form.
   ["src/engine/misplaced.ts", 'import "@ayme-dev/recorder-window";', noWindow],
   [
@@ -453,11 +495,20 @@ it(
         "src/session/domain/placed.test.ts",
         'export { step } from "./lifecycle";',
       ],
-      // Test support and the package's entry sit in no slice.
+      // Test support of a slice uses its modules, and other slices' doors.
       [
         "testing/timeline/placed.ts",
+        'export { Timeline } from "../../src/timeline/domain/timeline";',
+      ],
+      [
+        "testing/session/placed.ts",
         'export { Timeline } from "../../src/timeline/domain";',
       ],
+      [
+        "src/playwright/infrastructure/plain/placed.ts",
+        'export { withRules } from "../pageRules";',
+      ],
+      // The package's entry sits in no slice.
       ["src/placed.ts", 'export { startRecorderOn } from "./engine";'],
     ];
     for (const [path, code] of allowed)
@@ -469,7 +520,8 @@ const layerRule = "horizontal-boundaries/dependencies";
 type LayerPolicy = { from?: { element?: { types?: string } } };
 
 /** Every slice under src/ that lint holds to the layer order, and the layer
- * folders it knows, read from the layer rule's options. */
+ * folders the recorder has: of those the layer rule knows, the ones whose
+ * front door eslint.config.js lets another slice import. */
 async function layeredSlices() {
   const src = join(packageRoot, "src");
   const slices = readdirSync(src, { withFileTypes: true })
@@ -486,8 +538,16 @@ async function layeredSlices() {
     const options = config.rules?.[layerRule]?.[1];
     if (!options) continue;
     layered.push(slice);
-    for (const policy of options.policies)
-      if (policy.from?.element?.types) layers.add(policy.from.element.types);
+    for (const policy of options.policies) {
+      const layer = policy.from?.element?.types;
+      if (!layer) continue;
+      const messages = await lint(
+        "src/engine/probe.ts",
+        `export * from "../session/${layer}";\n`
+      );
+      if (!messages.some((message) => message.includes(frontDoor)))
+        layers.add(layer);
+    }
   }
   return { layered, layers };
 }
@@ -500,6 +560,7 @@ it(
     // The rule itself, so a lookup that finds nothing cannot pass.
     expect(layered).toContain("session");
     expect([...layers]).toContain("domain");
+    expect([...layers]).not.toContain("view");
     const outside = layered.flatMap((slice) =>
       readdirSync(join(packageRoot, "src", slice), {
         recursive: true,
@@ -519,3 +580,33 @@ it(
     expect(outside, "files outside a layer folder").toEqual([]);
   }
 );
+
+it("every folder of src/ is a slice eslint.config.js lists", slow, async () => {
+  const config = (await eslint.calculateConfigForFile(
+    join(packageRoot, "src/index.ts")
+  )) as {
+    rules?: Record<
+      string,
+      [
+        unknown,
+        {
+          policies: { from: { element: { captured: { slice: string } } } }[];
+        }?,
+      ]
+    >;
+  };
+  const listed = (
+    config.rules?.["slice-boundaries/dependencies"]?.[1]?.policies ?? []
+  ).map(({ from }) => from.element.captured.slice);
+  // The rule itself, so a lookup that finds nothing cannot pass.
+  expect(listed).toContain("engine");
+  const folders = readdirSync(join(packageRoot, "src"), {
+    withFileTypes: true,
+  })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+  expect(
+    folders.filter((folder) => !listed.includes(folder)),
+    "folders of src/ that are no slice: lint holds them to no slice's rules"
+  ).toEqual([]);
+});

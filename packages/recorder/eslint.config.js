@@ -10,8 +10,9 @@ import {
 const packageRoot = import.meta.dirname;
 
 // The slices of src/, and the slices each may use: only those listed before
-// it here. engine is the composition root and the front door. Test support
-// lives in testing/ beside src/ (ADR-0057).
+// it here. Every folder of src/ is a slice, which src/layout.test.ts checks.
+// engine is the composition root and the front door. Test support lives in
+// testing/ beside src/ (ADR-0057).
 const allowedSlices = {
   contract: [],
   timeline: ["contract"],
@@ -60,6 +61,18 @@ function frontDoors(slice) {
     },
   ];
 }
+/** From test support in testing/<slice>/, the slice's own front doors, as
+ * the slice-boundaries rule refuses them inside the slice in src/. */
+function ownFrontDoors(slice) {
+  const door = layeredSlices.includes(slice)
+    ? `/(${layers.join("|")})(/${index})?`
+    : `(/${index})?`;
+  return {
+    regex: String.raw`^\.\.?/(.*/)?src/${slice}${door}$`,
+    message:
+      "Inside a slice, import the module itself, not the slice's front doors.",
+  };
+}
 // Types included: no Playwright type leaves the slice either (ADR-0052).
 const playwright = {
   regex: "^(@playwright/|playwright(-core)?(/|$))",
@@ -80,17 +93,23 @@ const otherEffectPackages = {
 // How the playwright slice's infrastructure is measured decides where its
 // code may sit (docs/testing.md#code-a-real-browser-runs): `live/` drives a
 // real browser and `in-page/` runs in the page, while the plain logic beside
-// them stays testable without a browser. So plain logic reaches neither, the
-// layer's front door reaches `live/` to wire the stock adapter, and
-// `in-page/` is reached from `live/` only and imports nothing to run.
+// them stays testable without a browser. So plain logic, in any folder of
+// the layer but those two, reaches neither, the layer's front door reaches
+// `live/` to wire the stock adapter, and `in-page/` is reached from `live/`
+// only and imports nothing to run. Any relative path counts that goes
+// through a folder of either name.
 const infrastructure = "src/playwright/infrastructure";
+const liveAndInPage = [
+  `${infrastructure}/live/**`,
+  `${infrastructure}/in-page/**`,
+];
 const noLiveOrInPage = {
-  regex: String.raw`^\./(live|in-page)(/|$)`,
+  regex: String.raw`^\.\.?/(.*/)?(live|in-page)(/|$)`,
   message:
     "Plain logic stays testable without a browser: it may not import infrastructure/live or infrastructure/in-page (docs/testing.md#code-a-real-browser-runs).",
 };
 const noInPage = {
-  regex: String.raw`^\./in-page(/|$)`,
+  regex: String.raw`^\.\.?/(.*/)?in-page(/|$)`,
   message:
     "infrastructure/in-page is reached from infrastructure/live only (docs/testing.md#code-a-real-browser-runs).",
 };
@@ -168,9 +187,15 @@ function sliceRestrictions(slice) {
     ...(slice === "playwright"
       ? [
           restrictedImports(
-            [`${infrastructure}/*.ts`],
+            [`${infrastructure}/**/*.ts`],
             [...production, noLiveOrInPage],
-            { ignores: [...testFiles, `${infrastructure}/index.ts`] }
+            {
+              ignores: [
+                ...testFiles,
+                ...liveAndInPage,
+                `${infrastructure}/index.ts`,
+              ],
+            }
           ),
           restrictedImports(
             [`${infrastructure}/index.ts`],
@@ -195,8 +220,9 @@ function sliceRestrictions(slice) {
     ...(slice === "playwright"
       ? [
           restrictedImports(
-            [`${infrastructure}/*.test.ts`],
-            [...always, noLiveOrInPage]
+            [`${infrastructure}/**/*.test.ts`],
+            [...always, noLiveOrInPage],
+            { ignores: liveAndInPage }
           ),
           restrictedImports(
             [`${infrastructure}/in-page/**/*.test.ts`],
@@ -291,13 +317,13 @@ export default [
   // The package's entry and its tests, which use the slices' front doors.
   ...sliceRestrictions(undefined),
   // Test support (ADR-0057): a folder of testing/ named after a slice belongs
-  // to that slice, so it may use the slice's own files, and other slices
-  // through their front doors. The rest of testing/ uses front doors only.
-  // It is test-only code, so it may use any Effect package.
+  // to that slice, so it may use the slice's own files, not its front doors,
+  // and other slices through their front doors. The rest of testing/ uses
+  // front doors only. It is test-only code, so it may use any Effect package.
   ...slices.map((slice) =>
     restrictedImports(
       [`testing/${slice}/**/*.ts`],
-      [...frontDoors(slice), playwright]
+      [...frontDoors(slice), ownFrontDoors(slice), playwright]
     )
   ),
   restrictedImports(
