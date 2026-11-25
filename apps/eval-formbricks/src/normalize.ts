@@ -1,5 +1,6 @@
 import type { Turn } from "./agentProcess.ts";
 import { summarizeCodexTranscript } from "./codexTranscript.ts";
+import type { LoginName } from "./login.ts";
 import {
   summarizeTranscript,
   totalTokens,
@@ -12,6 +13,8 @@ import type { Verdict } from "./verdict.ts";
 /** What a run leaves behind, before it is turned into a result. */
 export type RunArtifacts = {
   runId: string;
+  /** Which Claude Code login served the run, never the token; absent for a Codex run. */
+  login?: LoginName;
   arm: string;
   missionId: string;
   /** The agent that ran: Claude Code unless named. Its transcript is read accordingly. */
@@ -54,6 +57,8 @@ export type RunArtifacts = {
 
 export type NormalizedResult = {
   runId: string;
+  /** Which Claude Code login served the run; Codex runs, and results stored before the fallback existed, have none. */
+  login?: LoginName;
   arm: string;
   mission: string;
   /** The verdict's outcome, from the database alone. */
@@ -160,6 +165,7 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     null;
   return {
     runId: artifacts.runId,
+    login: artifacts.login,
     arm: artifacts.arm,
     mission: artifacts.missionId,
     pass: artifacts.verdict.pass,
