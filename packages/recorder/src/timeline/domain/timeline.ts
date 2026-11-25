@@ -719,6 +719,12 @@ export class Timeline {
    * one clicked, or one around it, the focus stands where the read before
    * had it, so that the move is the click's own change. Null when the press
    * moved no focus.
+   *
+   * A page's first click can leave out the focus its press moved: the page
+   * is first read for that click, after the press, and no read shows where
+   * the focus was before. Telling it would take the gate noting
+   * the focused element at the press, a datum the adapter and the lifecycle
+   * would carry.
    */
   private beforeItsPress(
     previous: Kept,

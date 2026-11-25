@@ -28,12 +28,10 @@ import {
 import type { Arm, McpServer } from "./arms.ts";
 import { agentEffort, setupTimeoutMs, type ClaudeRun } from "./claude.ts";
 import { turnCompleted } from "./codexTranscript.ts";
-import { envFileName } from "./environment.ts";
+import { codexTokenVariable, envFileName } from "./environment.ts";
 import type { Precondition } from "./preconditions.ts";
 
 export const codexDefaultModel = "gpt-6-luna";
-/** A Codex access token, which runs on the ChatGPT workspace's plan, not on API billing. */
-export const codexTokenVariable = "CODEX_ACCESS_TOKEN";
 
 /** How long the app server may take to exit once its input is closed before it is stopped. */
 const exitGraceMs = 5_000;

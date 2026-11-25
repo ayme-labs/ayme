@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
+import { withholdTokens } from "./environment.ts";
 import { usageLimitError, withFallbackLogin } from "./login.ts";
 import { runsRoot } from "./paths.ts";
 import { defaultScenarioId, startupScenarios } from "./scenarios.ts";
@@ -109,12 +110,18 @@ describe("withFallbackLogin without a second token", () => {
 /**
  * The startup lane is a real caller of the retry. The stand-in `claude`
  * answers by the OAuth token it receives, so a harness that sent the same
- * token twice would fail these.
+ * token twice would fail these, and it logs the tokens each of its processes
+ * was handed.
  */
 describe("runStartup across two logins", () => {
   const id = `login-test-${Math.random().toString(16).slice(2, 8)}`;
   const scenario = { ...startupScenarios[defaultScenarioId], id };
-  afterEach(() => vi.unstubAllEnvs());
+  const tokenLog = path.join(os.tmpdir(), `eval-login-tokens-${id}.jsonl`);
+  afterEach(async () => {
+    vi.unstubAllEnvs();
+    withholdTokens({});
+    await rm(tokenLog, { force: true });
+  });
   afterAll(async () => {
     for (const name of await runFolders())
       await rm(path.join(runsRoot, name), { recursive: true, force: true });
@@ -147,6 +154,25 @@ describe("runStartup across two logins", () => {
         [fallbackToken]: fixture(fixtureOf.fallback),
       })
     );
+    vi.stubEnv("FAKE_CLAUDE_TOKEN_LOG", tokenLog);
+    // As `runMain` does before every command.
+    withholdTokens();
+  }
+
+  /** Each `claude` process the run started, in order, with the token variables it was handed. */
+  async function tokensHanded() {
+    return (await readFile(tokenLog, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => {
+        const { command, tokens } = JSON.parse(line) as {
+          command: string;
+          tokens: Record<string, string>;
+        };
+        const child =
+          command === "--version" || command === "auth" ? command : "agent";
+        return { child, tokens };
+      });
   }
 
   const start = () =>
@@ -158,6 +184,16 @@ describe("runStartup across two logins", () => {
     const { result, runDir } = await start();
     expect(result.login).toBe("fallback");
     expect(result.pass).toBe(true);
+    const first = { CLAUDE_CODE_OAUTH_TOKEN: firstToken };
+    const fallback = { CLAUDE_CODE_OAUTH_TOKEN: fallbackToken };
+    expect(await tokensHanded()).toEqual([
+      { child: "--version", tokens: {} },
+      { child: "auth", tokens: first },
+      { child: "agent", tokens: first },
+      { child: "--version", tokens: {} },
+      { child: "auth", tokens: fallback },
+      { child: "agent", tokens: fallback },
+    ]);
     // Both attempts leave their own folder; the discarded one keeps its transcript.
     const created = (await runFolders()).filter((name) => !known.has(name));
     expect(created).toHaveLength(2);

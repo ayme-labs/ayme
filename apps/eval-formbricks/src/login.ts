@@ -8,6 +8,7 @@ import {
   fallbackTokenVariable,
   readEnvVariable,
   readOauthToken,
+  shellEnvironment,
   tokenVariable,
 } from "./environment.ts";
 
@@ -54,7 +55,7 @@ export async function withFallbackLogin<T>(
   directory: string,
   attempt: (login: Login) => Promise<T>,
   log: (line: string) => void,
-  parent: NodeJS.ProcessEnv = process.env
+  parent: NodeJS.ProcessEnv = shellEnvironment()
 ): Promise<T> {
   // Read once, and only after a limit: a run the first login serves does not depend on the second token's source.
   let fallbackToken: { value: string | undefined } | undefined;

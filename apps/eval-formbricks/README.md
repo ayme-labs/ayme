@@ -19,7 +19,7 @@ The package also holds [the startup lane](#the-startup-lane), which checks that 
   CLAUDE_CODE_OAUTH_TOKEN=<the token>
   ```
 
-  A `CLAUDE_CODE_OAUTH_TOKEN` already exported in the shell wins over the file. The token reaches only the agent's environment; it is never written to a run's files.
+  A `CLAUDE_CODE_OAUTH_TOKEN` already exported in the shell wins over the file. The token reaches only the agent and its sign-in check: the harness takes exported tokens out of its own environment before it starts, so Docker, git, Chrome and the other processes it starts never inherit one. It is never written to a run's files.
 
   Optionally a second Claude Code login, from another account, as `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK` in the same file or the shell. [`src/login.ts`](src/login.ts) says when a run is repeated on it, and `usageLimitTexts` in [`src/transcript.ts`](src/transcript.ts) what counts as a usage limit. An attempt discarded for one keeps its run folder, with its transcript; a Claude Code run's `result.json` records which login served it as `login` (`first` or `fallback`).
 
