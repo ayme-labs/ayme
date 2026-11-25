@@ -94,12 +94,43 @@ function parseEvents(lines: string[]) {
   return { events, unparsedLines };
 }
 
-/** Whether one transcript line is a `result` event, and whether it reports an error; read while the agent runs. */
-export function resultEvent(line: string): { isError: boolean } | null {
+/**
+ * The texts Claude Code gives for a login that cannot take another request: its
+ * usage limit, or a refusal for lack of usage credits. Read from the published
+ * binaries of 2.1.281 and 2.1.326; only the weekly limit has been seen in a real
+ * transcript. Anchored at the start: the CLI writes these itself, so a model's
+ * text that quotes one does not count. Overload and server throttling are not
+ * the login's own limit and do not match.
+ */
+const usageLimitTexts = [
+  /^You've hit your [^\n]*\b(?:limit|budget)\b/,
+  /^You've reached your [^\n]*\blimit\b/,
+  /^You're out of (?:extra usage|usage credits)\b/,
+  /^Credit balance is too low\b/,
+  /^Your org is out of usage\b/,
+  /^Your seat type doesn't include (?:extra )?usage\b/,
+  /^Your usage allocation has been disabled by your admin/,
+  /^Your group's usage limit is set to \$0/,
+  /^This service is disabled for your org\b/,
+  /^(?:Fable|Haiku|Mythos|Opus|Sonnet)(?: [^\u00B7\n]{1,40})? requires usage credits\./,
+  /^Your model policy only allows [^\n]*, which requires usage credits\b/,
+  /^API Error: Usage credits required for 1M context\b/,
+];
+
+/** Whether one transcript line is a `result` event, whether it reports an error, and whether that error is a usage limit; read while the agent runs. */
+export function resultEvent(
+  line: string
+): { isError: boolean; usageLimit: boolean } | null {
   try {
     const event: unknown = JSON.parse(line);
     if (!isRecord(event) || event.type !== "result") return null;
-    return { isError: event.is_error === true };
+    const isError = event.is_error === true;
+    const text = typeof event.result === "string" ? event.result : "";
+    return {
+      isError,
+      usageLimit:
+        isError && usageLimitTexts.some((pattern) => pattern.test(text)),
+    };
   } catch {
     return null;
   }

@@ -18,8 +18,6 @@ import {
   type RegisteredElementTool,
 } from "./elementTools";
 
-// --- Input schemas ---
-
 const BUTTON: JsonSchema = {
   type: "string",
   enum: ["left", "right", "middle"],
@@ -47,8 +45,6 @@ function elementInput(
     additionalProperties: false,
   };
 }
-
-// --- Single-element Browser Tools ---
 
 type Fields = Record<string, unknown>;
 

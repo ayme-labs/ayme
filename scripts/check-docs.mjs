@@ -92,7 +92,6 @@ const ABSENT_SEGMENTS = new Set(["node_modules", "dist", "out", ".ayme"]);
  * in one file, so a real path anywhere else is still checked.
  */
 const PATHS_NOT_IN_THE_REPOSITORY = {
-  "AGENTS.md": new Set(["docs/fork/SYNC.md"]), // in the playwright-lite fork
   "packages/recorder-window/AGENTS.md": new Set(["./window/index.html"]), // built into `dist/window/`
 };
 const EXPERIMENTAL_PAGE = `${GUIDE_DIR}/reference/experimental-apis.md`;

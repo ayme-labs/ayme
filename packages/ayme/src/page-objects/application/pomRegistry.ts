@@ -741,7 +741,6 @@ function givenPageObjectId(id: unknown): PageObjectId {
   return parsed;
 }
 
-/** "a" or "an", as `name` reads after it. */
 const article = (name: string) => (/^[aeiou]/i.test(name) ? "an" : "a");
 
 /** The message for a Page Object a call cannot run on, with the reason alone. */

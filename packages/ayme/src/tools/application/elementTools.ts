@@ -183,8 +183,6 @@ const REF_INPUT_SCHEMA: JsonSchema = {
   additionalProperties: false,
 };
 
-// --- The shared mechanism ---
-
 /**
  * How a tool that acts on one element executes for a Run: resolve the
  * element (a ref through the identity ledger, ADR-0028) and hand `perform`
@@ -328,8 +326,6 @@ export async function resolveElementTarget(
     );
   return { elementRef: refs[0]!, selector };
 }
-
-// --- Registration ---
 
 /**
  * Package-internal: register a Custom Tool. It takes a Structural Ref as

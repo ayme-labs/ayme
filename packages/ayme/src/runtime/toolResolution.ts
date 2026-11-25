@@ -211,7 +211,6 @@ function descriptionsOf(
   };
 }
 
-/** Each tool's reading. */
 function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
   return Object.freeze(
     tools.map(({ tool, group, available, reason }) =>

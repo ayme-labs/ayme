@@ -38,9 +38,7 @@ export type PageObjectTreeChild =
   | { kind: "object"; name: string; object: PageObjectTreeNode }
   | { kind: "objects"; name: string; objects: readonly PageObjectTreeNode[] };
 
-/** How many lines one declared child shows at most. */
 export const MAX_CHILD_LINES = 40;
-/** How many characters one line shows at most. */
 export const MAX_LINE_LENGTH = 200;
 
 /**

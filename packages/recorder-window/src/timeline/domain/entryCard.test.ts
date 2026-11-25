@@ -179,7 +179,7 @@ describe("an entry's card", () => {
     expect(card.leave).toBeNull();
   });
 
-  it("offers Discard while paused", () => {
+  it("offers Discard when the state offers it", () => {
     expect(entryCardOf(click, paused)).toMatchObject({
       discard: { type: "discard", entry: entryId("interaction_1") },
       restore: null,
