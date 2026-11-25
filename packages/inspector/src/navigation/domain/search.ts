@@ -4,6 +4,7 @@ const MAX_RESULTS = 24;
 
 export type SearchResult = { lens: LensId; entry: SearchEntry };
 
+/** What the page highlights while an entry is hovered. */
 export function entryHighlight(entry: SearchEntry) {
   return (
     entry.highlight ??

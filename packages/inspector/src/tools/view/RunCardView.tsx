@@ -69,6 +69,7 @@ export function RunCardView({
   items: readonly CollectionItem[];
   /** Highlights an item on the page while it's hovered. */
   onHover?: OnHover;
+  /** Shows a run in Runs. */
   onShowRun: (runId: string) => void;
   /** Its arguments, e.g. "(text: string)"; none when it takes no arguments. */
   signature?: string;

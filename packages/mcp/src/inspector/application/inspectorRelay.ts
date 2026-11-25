@@ -90,6 +90,7 @@ export class InspectorRelay {
     };
   }
 
+  /** Stops following the page's events. */
   dispose() {
     this.#stopEvents?.();
     this.#stopEvents = undefined;

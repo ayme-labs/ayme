@@ -15,6 +15,7 @@ export type Pairing = Readonly<{
 /** The ports an ayme MCP server listens on: the first free one. */
 export const SERVER_PORTS = Object.freeze({ first: 9350, last: 9365 });
 
+/** The loopback host the server listens on. */
 export const SERVER_HOST = "127.0.0.1";
 
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);

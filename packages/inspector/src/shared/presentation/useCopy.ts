@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+/** How long a Copy button says it copied. */
 const COPIED_MS = 1200;
 
 /**
