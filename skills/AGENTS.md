@@ -2,7 +2,8 @@
 
 This directory contains consumer-facing agent skills distributed from this
 repository. Each skill is self-contained under `skills/<name>/` and is not an
-instruction source for work on this monorepo.
+instruction source for work on this monorepo, except `product-surfaces`, which
+this repository also uses on its own pull requests.
 
 Keep setup and API detail in the consumer docs, `docs/guide/`, and link to it. A change to a skill's
 behavior uses the `skills` commit scope.

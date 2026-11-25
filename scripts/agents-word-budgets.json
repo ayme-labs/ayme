@@ -1,5 +1,5 @@
 {
-  "AGENTS.md": 760,
+  "AGENTS.md": 790,
   "docs/adr/AGENTS.md": 79,
   "packages/ayme/AGENTS.md": 530,
   "packages/design-system/AGENTS.md": 520,
@@ -7,5 +7,5 @@
   "packages/mcp/AGENTS.md": 303,
   "packages/recorder-window/AGENTS.md": 246,
   "packages/recorder/AGENTS.md": 2053,
-  "skills/AGENTS.md": 140
+  "skills/AGENTS.md": 152
 }
