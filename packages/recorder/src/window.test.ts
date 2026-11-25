@@ -99,13 +99,11 @@ function raw(windowUrl: string, text: string) {
   });
 }
 
-/** A request for `target`, as raw text, with these headers. */
 const rawRequest = (target: string, headers: Record<string, string>) =>
   `GET ${target} HTTP/1.1\r\n${Object.entries(headers)
     .map(([name, value]) => `${name}: ${value}\r\n`)
     .join("")}Connection: close\r\n\r\n`;
 
-/** The same request, asking to become a WebSocket. */
 const rawUpgrade = (target: string, headers: Record<string, string>) =>
   rawRequest(target, {
     ...headers,

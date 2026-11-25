@@ -85,7 +85,6 @@ it("fails to start, naming the supported range, when the project's Playwright is
   });
 });
 
-/** What the project's Playwright was asked to launch Chromium with. */
 async function launchOptions(launch: { debugPort?: number } = {}) {
   await installPlaywrightWithoutChromium(folder, "playwright");
   const { message } = (await start(folder, launch)) as RecorderStartError;
