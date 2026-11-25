@@ -341,7 +341,6 @@ export function MemberDetail({
           <button
             type="button"
             aria-label={`Open its owner ${ownerLabel}`}
-            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             className={cn(chip, "font-mono")}
             onClick={() =>
               owner.kind === "object"
@@ -377,7 +376,6 @@ export function MemberDetail({
             <button
               type="button"
               aria-label={`Open ${member.objectPath}`}
-              // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
               className={cn(chip, "font-mono")}
               onClick={() => onOpenObject(member.objectPath!)}
             >
@@ -433,7 +431,6 @@ function DetailHead({
               <button
                 type="button"
                 aria-label={`Open the ${model} page object model`}
-                // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                 className={cn(chip, "text-foreground")}
                 onClick={() => onOpenModel?.(model)}
               >
@@ -562,7 +559,6 @@ function OffPageAction({ action }: { action: ObjectAction }) {
 }
 
 const rowClass = cn(
-  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "flex h-7.5 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-muted",
   rowFocusRing,
   rowPress

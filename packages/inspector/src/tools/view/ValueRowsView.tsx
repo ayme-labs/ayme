@@ -7,11 +7,9 @@ import { focusRing, pressable, pressableIcon } from "../../shared";
 import type { ValueRow, ValueType } from "../domain/valueRows";
 
 const inputClass =
-  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "h-7.5 w-full min-w-0 rounded-md border border-input bg-background px-2.25 font-mono text-xs outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-destructive";
 
 const columns =
-  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_1.625rem] gap-1";
 
 type Part = "label" | "value";
@@ -65,7 +63,6 @@ export function ValueRowsView({
           aria-hidden
           className={cn(
             columns,
-            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "font-mono text-[11px] font-medium tracking-wider text-muted-foreground uppercase"
           )}
         >
@@ -129,7 +126,6 @@ export function ValueRowsView({
                 type="button"
                 aria-label={`Remove ${name} ${n}`}
                 className={cn(
-                  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                   "grid size-6.5 place-items-center rounded-md text-muted-foreground hover:bg-muted",
                   focusRing,
                   pressableIcon
@@ -156,7 +152,6 @@ export function ValueRowsView({
           type="button"
           aria-label={`Add to ${name}`}
           className={cn(
-            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "h-6 rounded-md border border-dashed px-2 text-xs text-muted-foreground hover:border-ring hover:text-foreground",
             focusRing,
             pressable

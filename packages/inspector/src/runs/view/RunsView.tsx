@@ -88,7 +88,6 @@ export function RunsView({
         className={cn(
           // Narrower than its controls, as Runs' narrowest column, the scope
           // and Clear wrap below the title.
-          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           "flex min-h-region-header flex-none flex-wrap items-center gap-2 py-1 pr-2.5 pl-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase",
           open && "border-b"
         )}
@@ -97,14 +96,13 @@ export function RunsView({
           type="button"
           aria-expanded={open}
           className={cn(
-            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "inline-flex cursor-pointer items-center gap-1.5 rounded-sm uppercase",
             focusRing
           )}
           onClick={() => onOpenChange(!open)}
         >
           <ChevronRightIcon
-            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
+            // Stryker disable next-line ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
             className={cn("size-3", open && "rotate-90")}
             aria-hidden
           />
@@ -128,7 +126,6 @@ export function RunsView({
                   type="button"
                   aria-pressed={allRuns === all}
                   className={cn(
-                    // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                     "h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs dark:aria-pressed:bg-neutral-700",
                     focusRing,
                     pressable
@@ -263,7 +260,6 @@ function RunRow({
       aria-label={run.toolName}
       data-run-id={run.id}
       className={cn(
-        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
         "flex list-none gap-2.5",
         entering &&
           "transition-[opacity,translate] duration-(--duration-normal) ease-(--ease-out) starting:opacity-0 motion-safe:starting:-translate-y-1"
@@ -274,7 +270,6 @@ function RunRow({
           role="img"
           aria-label={status.label}
           className={cn(
-            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "mt-1 grid size-6.5 flex-none place-items-center rounded-full border bg-card",
             status.className
           )}
@@ -356,7 +351,6 @@ function RunEntryCard({
       data-run-card=""
       data-flashing={flashing}
       className={cn(
-        // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
         "overflow-hidden rounded-lg border bg-card transition-shadow duration-(--duration-normal) ease-(--ease-out)",
         flashing && "ring-2 ring-ring"
       )}
@@ -365,7 +359,6 @@ function RunEntryCard({
         type="button"
         aria-expanded={open}
         className={cn(
-          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           "flex min-h-8 w-full cursor-pointer flex-wrap items-center gap-x-2 gap-y-0.5 px-2.5 py-1.5 text-left hover:bg-muted/60",
           rowFocusRing,
           rowPress
@@ -549,7 +542,6 @@ function RunResult({
           type="button"
           aria-expanded={open}
           className={cn(
-            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "inline-flex cursor-pointer items-center gap-1 rounded-md px-1 py-px text-xs font-semibold hover:bg-muted",
             focusRing,
             pressable
@@ -557,7 +549,7 @@ function RunResult({
           onClick={onToggle}
         >
           <ChevronRightIcon
-            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
+            // Stryker disable next-line ConditionalExpression,LogicalOperator: Tailwind classes are styling, which no test reads.
             className={cn("size-3", open && "rotate-90")}
             aria-hidden
           />

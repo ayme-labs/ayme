@@ -11,7 +11,6 @@ import type { RefSource } from "../domain/refTree";
 import type { ValueType } from "../domain/valueRows";
 
 export const inputClass =
-  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "h-7.5 w-full min-w-0 rounded-md border border-input bg-background px-2.25 text-xs outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring";
 
 type Change = (path: readonly string[], value: JsonValue | undefined) => void;
@@ -56,7 +55,6 @@ export type FieldControls = {
 };
 
 const groupClass =
-  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "m-0 flex flex-col gap-2 rounded-lg border px-2.5 pt-2 pb-2.5";
 
 /**
@@ -279,7 +277,6 @@ function FieldRow({
               type="button"
               aria-label={`Remove ${name} ${index + 1}`}
               className={cn(
-                // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
                 "grid size-7.5 flex-none place-items-center rounded-md text-muted-foreground hover:bg-muted",
                 focusRing,
                 pressableIcon
@@ -294,7 +291,6 @@ function FieldRow({
           type="button"
           aria-label={`Add to ${name}`}
           className={cn(
-            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
             "h-6 self-start rounded-md border border-dashed px-2 text-xs text-muted-foreground hover:border-ring hover:text-foreground",
             focusRing,
             pressable
