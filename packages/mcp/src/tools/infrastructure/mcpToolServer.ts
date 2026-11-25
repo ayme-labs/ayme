@@ -175,7 +175,6 @@ export function createMcpToolServer({
   return mcpServer;
 }
 
-/** Registers `app` as an MCP App resource of `mcpServer`. */
 function registerAppPage(mcpServer: McpServer, app: AppPage) {
   const ui = { csp: { connectDomains: app.connectDomains } };
   registerAppResource(
