@@ -78,14 +78,13 @@ export function Connections({
       <Popover.Trigger
         aria-label={name}
         title={name}
-        // Stryker disable StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator: Tailwind classes are styling, which no test reads.
         className={cn(
           "relative ml-0.5 inline-flex h-6 min-w-0 items-center gap-1.5 rounded-full bg-muted pr-2.5 pl-2 text-xs font-medium hover:bg-accent aria-expanded:bg-accent",
           focusRing,
           pressable,
+          // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator: Tailwind classes are styling, which no test reads.
           agent.state === "off" && "text-muted-foreground"
         )}
-        // Stryker restore StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator
       >
         <Dot tone={pill.tone} />
         <span className="truncate">{pill.text}</span>
@@ -93,12 +92,11 @@ export function Connections({
           <span
             aria-hidden
             data-webmcp-mark={webMCP.state}
-            // Stryker disable StringLiteral,ConditionalExpression,EqualityOperator: Tailwind classes are styling, which no test reads.
             className={cn(
               "absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background",
+              // Stryker disable next-line StringLiteral,ConditionalExpression,EqualityOperator: Tailwind classes are styling, which no test reads.
               webMCP.state === "failed" ? "bg-destructive" : "bg-warning"
             )}
-            // Stryker restore StringLiteral,ConditionalExpression,EqualityOperator
           />
         )}
       </Popover.Trigger>
@@ -164,15 +162,14 @@ function Row({
       {row.lines.map((line, index) => (
         <p
           key={line}
-          // Stryker disable StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator: Tailwind classes are styling, which no test reads.
           className={cn(
             "text-xs break-words",
             // What went wrong reads stronger than its fix.
+            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator: Tailwind classes are styling, which no test reads.
             index === 0 && row.tone !== "off" && row.tone !== "ok"
               ? "text-foreground"
               : "text-muted-foreground"
           )}
-          // Stryker restore StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator
         >
           {line}
         </p>

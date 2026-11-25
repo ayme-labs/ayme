@@ -26,6 +26,15 @@ export class ConnectionRow extends PanelPart {
   get copyButton(): Locator {
     return this.root.getByRole("button", { name: /^Copy / });
   }
+
+  /**
+   * Whether the copy button shows a check, as it does just after a copy,
+   * rather than the copy icon. The copy icon draws a rectangle, a check does
+   * not.
+   */
+  async showsCheck(): Promise<boolean> {
+    return (await this.copyButton.locator("svg rect").count()) === 0;
+  }
 }
 
 /**
