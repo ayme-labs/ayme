@@ -268,7 +268,6 @@ function TreeRow({
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
 }) {
-  // The tree's keys: right opens an object, left closes it.
   const onKeyDown = (event: KeyboardEvent) => {
     const next = { ArrowRight: true, ArrowLeft: false }[event.key];
     if (open === undefined || next === undefined || next === open) return;
