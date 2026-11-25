@@ -11,6 +11,7 @@ import { randomBytes } from "node:crypto";
 import { cp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { agentAccess } from "./agents.ts";
 import {
   aymeServerName,
   aymeSkillDirectory,
@@ -20,17 +21,18 @@ import {
 import { parseFlags, runMain } from "./cli.ts";
 import {
   agentEffort,
-  claudeEnvironment,
   runClaude,
   setupTimeoutMs,
   type ClaudeRun,
 } from "./claude.ts";
-import { readOauthToken } from "./environment.ts";
-import { evalRoot, labRoot, repoRoot, runsRoot } from "./paths.ts";
 import {
-  checkPreconditions,
-  claudeTokenPrecondition,
-} from "./preconditions.ts";
+  usageLimitError,
+  withFallbackLogin,
+  type Login,
+  type LoginName,
+} from "./login.ts";
+import { evalRoot, labRoot, repoRoot, runsRoot } from "./paths.ts";
+import { checkPreconditions } from "./preconditions.ts";
 import { readyLine } from "./prompt.ts";
 import { defaultModel, gitOutput, log, writeJson } from "./run.ts";
 import {
@@ -60,6 +62,8 @@ export type StartupOptions = {
 
 export type StartupResult = {
   runId: string;
+  /** Which login served the run; never the token. */
+  login: LoginName;
   scenario: string;
   /** No condition failed. */
   pass: boolean;
@@ -155,26 +159,37 @@ function judge(scenario: StartupScenario, run: ClaudeRun, skillDir: string) {
 /**
  * Runs the scenario once and stores it under `results/runs/<run id>/`.
  * Throws when the run cannot complete; a failed verdict, a timed-out setup
- * turn included, is a result, not an error.
+ * turn included, is a result, not an error. A run whose first login hits its
+ * usage limit is done again from the start on the fallback login.
  */
 export async function runStartup(
   options: StartupOptions
+): Promise<{ runDir: string; result: StartupResult }> {
+  return withFallbackLogin(
+    evalRoot,
+    (login) => runStartupOn(options, login),
+    log
+  );
+}
+
+async function runStartupOn(
+  options: StartupOptions,
+  login: Login
 ): Promise<{ runDir: string; result: StartupResult }> {
   const { scenario, model, timeoutMs } = options;
   const runId = `${new Date().toISOString().replace(/[:.]/g, "-")}-startup-${scenario.id}-${randomBytes(3).toString("hex")}`;
   const runDir = path.join(runsRoot, runId);
   // A fresh, empty Claude Code configuration for this run alone, deleted after it.
   const claudeConfigDir = path.join(runDir, "claude-config");
-  const oauthToken = readOauthToken(evalRoot);
-  const environment =
-    oauthToken === undefined
-      ? undefined
-      : claudeEnvironment({ configDir: claudeConfigDir, oauthToken });
+  const { environment, preconditions } = agentAccess({
+    agent: "claude",
+    configDir: claudeConfigDir,
+    envDirectory: evalRoot,
+    login,
+  });
 
   log("Checking preconditions.");
-  await checkPreconditions([
-    claudeTokenPrecondition({ environment, envDirectory: evalRoot }),
-  ]);
+  await checkPreconditions(preconditions);
   if (environment === undefined) throw new Error("unreachable: no environment");
   log(`Run ${runId}: ${runDir}`);
 
@@ -210,6 +225,8 @@ export async function runStartup(
       transcriptPath: path.join(runDir, "transcript.jsonl"),
       stderrPath: path.join(runDir, "stderr.log"),
     });
+    const limited = usageLimitError(run, login, runDir);
+    if (limited !== null) throw limited;
     // An error says nothing about routing: as for a mission, the run could not complete and the transcript stays.
     if (run.setupFailure !== null && !run.setup.timedOut)
       throw new Error(
@@ -218,6 +235,7 @@ export async function runStartup(
     const { filesRead, failed, turn } = judge(scenario, run, skillDir);
     const result: StartupResult = {
       runId,
+      login: login.name,
       scenario: scenario.id,
       pass: failed.length === 0,
       failed,

@@ -59,7 +59,6 @@ export type PageStateHost = {
       cause: "initial" | "navigate";
     }) => void
   ): void;
-  /** A capture of the page with these exclusions and asks. */
   capture(
     inputs: ElementInputs,
     ask: {

@@ -91,4 +91,4 @@ Each rule the lifecycle must keep is the comment above its check in [`lifecycle-
 
 ## Known limits
 
-Users read the recorder's known limits in [the CLI's README](../cli/README.md#known-limits), and a coding agent reads what a package holds in [the `ayme-recorder` skill](../../skills/ayme-recorder/SKILL.md). Why one is so is a comment where the code makes it so, or, for one the model reproduces, under [the model's Known limits](lifecycle-model/README.md#known-limits).
+Users read the limits in [the Recorder guide](../../docs/guide/guides/recorder.md#limits), and a coding agent reads what a package holds in [the `ayme-recorder` skill](../../skills/ayme-recorder/SKILL.md). Why one is so is a comment where the code makes it so, or, for one the model reproduces, under [the model's Known limits](lifecycle-model/README.md#known-limits).

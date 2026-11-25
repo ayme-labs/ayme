@@ -781,12 +781,10 @@ export function createInPageHost(version = packageVersion): InPageHost {
 /** How often Locator Recommendation resolves a container the page keeps replacing. */
 const RECOMMEND_ATTEMPTS = 3;
 
-/** What a watcher needs of its Page. */
 type WatcherPage = {
   probe(signal: AbortSignal): Promise<void>;
   /** Whether the document tells this host of changes, and where they stand. */
   watching(on: boolean): Promise<ChangeState>;
-  /** Where the document's changes stand. */
   changes(): Promise<ChangeState>;
   endRound(round: number): Promise<void>;
   /** Calls `listener` when a document has loaded, until the returned function is called. */
@@ -858,7 +856,6 @@ function createWatcher() {
     get round() {
       return round;
     },
-    /** What the module tells this host about a document. */
     heard(document: DocumentToken, message: HostMessage): void {
       if (!watch || message.kind !== "change") return;
       note(watch, { document, seq: message.seq });
