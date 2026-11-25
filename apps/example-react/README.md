@@ -5,7 +5,7 @@ A counter with one compiled Page Object, running beneath `AymeProvider` in React
 From the workspace root:
 
 ```sh
-pnpm run build
+pnpm exec turbo run build --filter='@ayme-dev/example-react^...' --concurrency=50%
 pnpm --filter @ayme-dev/example-react dev
 pnpm --filter @ayme-dev/example-react test:e2e
 ```
