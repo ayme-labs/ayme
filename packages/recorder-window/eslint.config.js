@@ -38,13 +38,16 @@ const frontDoor = (others) => ({
 
 const patterns = [
   frontDoor(slices),
+  // The engine and stock Playwright, by package name or by a relative path
+  // into their folders, such as ../../../recorder/src or one through
+  // node_modules.
   {
-    regex: "^@ayme-dev/recorder(/(?!contract$).*)?$",
+    regex: String.raw`^(@ayme-dev/recorder(/(?!contract$).*)?$|\.\.?/(.*/)?recorder(/|$))`,
     message:
       "The window knows the engine only through @ayme-dev/recorder/contract, its plain data: it never imports engine code.",
   },
   {
-    regex: "^(@playwright/|playwright(-core)?(/|$))",
+    regex: String.raw`^(\.\.?/(.*/)?)?(@playwright/|playwright(-core)?(/|$))`,
     message:
       "Only the engine's playwright slice imports Playwright (docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md).",
   },
@@ -61,14 +64,18 @@ function restricted(files, patterns, { ignores } = {}) {
     ...(ignores ? { ignores } : {}),
     rules: {
       "no-restricted-imports": ["error", { patterns }],
-      // The same rules for a dynamic import(). esquery reads `/` as the end
-      // of a regex, so selectors match it as `\x2F`.
+      // The same rules for a dynamic import() and a type written as
+      // import("…"). esquery reads `/` as the end of a regex, so selectors
+      // match it as `\x2F`.
       "no-restricted-syntax": [
         "error",
-        ...patterns.map(({ regex, message }) => ({
-          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
-          message,
-        })),
+        ...patterns.flatMap(({ regex, message }) => {
+          const value = `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
+          return [
+            { selector: `ImportExpression[source.value=${value}]`, message },
+            { selector: `TSImportType[source.value=${value}]`, message },
+          ];
+        }),
       ],
     },
   };

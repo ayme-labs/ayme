@@ -1,11 +1,11 @@
 {
   "AGENTS.md": 760,
   "docs/adr/AGENTS.md": 257,
-  "packages/ayme/AGENTS.md": 554,
+  "packages/ayme/AGENTS.md": 477,
   "packages/design-system/AGENTS.md": 520,
-  "packages/inspector/AGENTS.md": 368,
-  "packages/mcp/AGENTS.md": 304,
-  "packages/recorder-window/AGENTS.md": 254,
+  "packages/inspector/AGENTS.md": 345,
+  "packages/mcp/AGENTS.md": 274,
+  "packages/recorder-window/AGENTS.md": 227,
   "packages/recorder/AGENTS.md": 7267,
   "skills/AGENTS.md": 140
 }

@@ -1,11 +1,10 @@
 # Inspector source layout and testing
 
-[`eslint.config.js`](eslint.config.js) says what each slice of `src/` holds and which slices each may use. `pnpm lint` refuses a static or dynamic import that skips another slice's [front door](eslint.config.js), its `index.ts`, and a static import of ayme other than `@ayme-dev/ayme/inspector`. The layers and what each may use are in [`horizontal-boundaries.js`](../eslint-config/horizontal-boundaries.js).
+[`eslint.config.js`](eslint.config.js) says what each slice of `src/` holds and which slices each may use. `pnpm lint` refuses an import of any kind, a type written as `import("…")` included, that skips another slice's [front door](eslint.config.js), its `index.ts`, or that takes ayme other than through `@ayme-dev/ayme/inspector` outside tests and [`testing/`](testing/index.ts). [`src/layout.test.ts`](src/layout.test.ts) checks that it does, and that every file of a layered slice but its front door sits in a layer folder. The layers and what each may use are in [`horizontal-boundaries.js`](../eslint-config/horizontal-boundaries.js).
 
 Lint cannot see the rules below:
 
-- Reach another slice through its front door in a type written as `import("…")` too, and ayme only through `@ayme-dev/ayme/inspector` in a dynamic import or such a type too, so the Inspector depends only on ayme's contract; lint checks neither. Tests and [`testing/`](testing/index.ts) may also use ayme's public API and `@ayme-dev/ayme/internal`.
-- Put every file of a layered slice in a layer folder, except its front door, since lint lets a file outside one use any layer.
+- In tests and [`testing/`](testing/index.ts), use ayme only through `@ayme-dev/ayme/inspector`, its public API and `@ayme-dev/ayme/internal`; lint checks ayme's entries only in production code.
 - Take from another slice's front door only what your layer may use, since lint cannot see past the door to the layer it re-exports from.
 - When a slice needs code from a later one, move that code down into the lower slice, since the slice order runs one way.
 - Split a component with state into three files: `useX` in `presentation/` holds the logic, `XView` in `view/` the markup, and the `X` container wires them, so a component test can render the view with fixture props.

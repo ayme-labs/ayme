@@ -58,25 +58,37 @@ function deepImport(slice) {
 }
 
 function frontDoors(slice, files, { tests }) {
-  const patterns = [
-    {
-      regex: deepImport(slice),
-      message: "Import another slice through its index.ts.",
-    },
-  ];
+  return restrictedImports(
+    files,
+    [
+      {
+        regex: deepImport(slice),
+        message: "Import another slice through its index.ts.",
+      },
+    ],
+    tests ? [] : testFiles
+  );
+}
+
+/** Refuses imports matching `patterns` in `files`: static, dynamic, and in a
+ * type written as `import("…")`. */
+function restrictedImports(files, patterns, ignores = []) {
   return {
     files,
-    ...(tests ? {} : { ignores: testFiles }),
+    ...(ignores.length ? { ignores } : {}),
     rules: {
       "no-restricted-imports": ["error", { patterns }],
-      // The same rules for a dynamic import(). esquery reads `/` as the end
-      // of a regex, so selectors match it as `\x2F`.
+      // esquery reads `/` as the end of a regex, so selectors match it as
+      // `\x2F`.
       "no-restricted-syntax": [
         "error",
-        ...patterns.map(({ regex, message }) => ({
-          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
-          message,
-        })),
+        ...patterns.flatMap(({ regex, message }) => {
+          const value = `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
+          return [
+            { selector: `ImportExpression[source.value=${value}]`, message },
+            { selector: `TSImportType[source.value=${value}]`, message },
+          ];
+        }),
       ],
     },
   };
@@ -136,21 +148,14 @@ export default [
   frontDoors(undefined, ["src/*.test.ts"], { tests: true }),
   // Test support (ADR-0057) drives the built command from outside, so it
   // imports nothing of src/.
-  {
-    files: ["testing/**/*.ts"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              regex: String.raw`^\.\.?/(.*/)?src(/|$)`,
-              message:
-                "The MCP package's test support uses no slice: it drives the built ayme command.",
-            },
-          ],
-        },
-      ],
-    },
-  },
+  restrictedImports(
+    ["testing/**/*.ts"],
+    [
+      {
+        regex: String.raw`^\.\.?/(.*/)?src(/|$)`,
+        message:
+          "The MCP package's test support uses no slice: it drives the built ayme command.",
+      },
+    ]
+  ),
 ];

@@ -111,3 +111,60 @@ it("lint keeps Playwright and Effect out of the window", slow, async () => {
     )
   ).toEqual([expect.stringContaining("No Effect in the window")]);
 });
+
+it(
+  "lint refuses the engine and stock Playwright in a type written as import(), and by a relative path",
+  slow,
+  async () => {
+    const engine =
+      "The window knows the engine only through @ayme-dev/recorder/contract";
+    const playwright = "Only the engine's playwright slice imports Playwright";
+    const refusals: [path: string, code: string, message: string][] = [
+      [
+        "src/app/misplaced.ts",
+        'export type Engine = import("@ayme-dev/recorder").Recorder;',
+        engine,
+      ],
+      [
+        "src/timeline/view/misplaced.ts",
+        'export * from "../../../../recorder/src/contract";',
+        engine,
+      ],
+      [
+        "src/app/misplaced.test.ts",
+        'export const load = () => import("../../node_modules/@ayme-dev/recorder/src/index");',
+        engine,
+      ],
+      [
+        "src/app/misplaced.ts",
+        'export type Engine = typeof import("../../../recorder/src/engine");',
+        engine,
+      ],
+      [
+        "src/app/misplaced.ts",
+        'export type Page = import("playwright-core").Page;',
+        playwright,
+      ],
+      [
+        "src/controls/view/misplaced.ts",
+        'import type { Page } from "../../../node_modules/@playwright/test";\nexport type Misplaced = Page;',
+        playwright,
+      ],
+      [
+        "src/app/misplaced.ts",
+        'export const load = () => import("../../node_modules/playwright/index.mjs");',
+        playwright,
+      ],
+    ];
+    for (const [path, code, message] of refusals)
+      expect(await lint(path, `${code}\n`), `${path}: ${code}`).toEqual([
+        expect.stringContaining(message),
+      ]);
+    expect(
+      await lint(
+        "src/app/placed.ts",
+        'export type Update = import("@ayme-dev/recorder/contract").RecorderUpdate;\n'
+      )
+    ).toEqual([]);
+  }
+);
