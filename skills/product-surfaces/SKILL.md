@@ -29,7 +29,8 @@ per interface the consumer relies on, such as a UI, an API, a CLI, each message 
 format or a set of docs. An interface is one specific thing the product exposes: two separate apps
 in a browser are two interfaces. Group by interface alone: places that share an interface are one
 surface, whatever their consumers, entry points or features. A third party's interface is a surface
-of its own when consumers meet it as a step in a user flow the product owns.
+of its own when consumers meet it as a step in a user flow the product owns, a change to the product
+can change what they do there, and no surface of the product already covers that step.
 
 **Source**:
 A file or folder the repository tracks, or a URL outside it, that shows a consumer or a surface
