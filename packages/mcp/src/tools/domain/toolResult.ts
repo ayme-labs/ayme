@@ -4,7 +4,6 @@ import {
   type SettledBuildState,
 } from "../../served-page-objects";
 
-/** An MCP tool result. */
 export type ToolResult = {
   content: { type: "text"; text: string }[];
   isError?: boolean;

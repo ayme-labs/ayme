@@ -62,7 +62,6 @@ const save: RegisteredPomTool = {
   parameters: [],
 };
 
-/** The editor, with its toolbar on the page or not. */
 function editor(toolbarOnPage: boolean): InspectorPageObject {
   return {
     id: "Editor",
@@ -107,7 +106,6 @@ function renderApp({
   live: ToolInfo[];
   registrations?: InspectorPageObject[];
 }) {
-  // WebMCP publication is off throughout.
   startedAyme.webMCP.publicationStatus = {
     state: "disabled",
     message: "WebMCP publication is disabled.",

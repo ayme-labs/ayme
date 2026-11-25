@@ -64,7 +64,6 @@ type NameOptions = {
  */
 export type RootTargetPath = (objectPath: string) => string;
 
-/** Indexes the page model, once per update. */
 export function indexMembers(
   { objects, models }: PageModel,
   rootTargetPath: RootTargetPath

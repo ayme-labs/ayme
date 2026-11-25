@@ -48,7 +48,6 @@ const editor: InspectorPageObject = {
   tools: [save],
 };
 
-/** The Editor Page Object on the page, with its available tool `Editor.save`. */
 function registerEditor() {
   startedAyme.setRegistry({ pageObjects: [editor] });
   startedAyme.tools.list.mockReturnValue([

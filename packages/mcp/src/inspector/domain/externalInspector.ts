@@ -10,7 +10,6 @@ export const INSPECTOR_SOCKET_PATH = "/inspector/ws";
 /** The package that holds the external Inspector's build, an optional peer. */
 export const INSPECTOR_PACKAGE = "@ayme-dev/inspector";
 
-/** The URL of the external Inspector the server on `port` serves. */
 export function inspectorUrl(host: string, port: number): string {
   return `http://${host}:${port}${INSPECTOR_PATH}`;
 }

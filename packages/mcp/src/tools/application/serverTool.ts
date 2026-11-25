@@ -8,11 +8,9 @@ import type { ToolResult } from "../domain/toolResult";
 /** What a server tool may use. */
 export type ServerToolContext = {
   connection: AgentConnection;
-  /** The address and token a page pairs with. */
   pairing: Pairing;
   /** The external Inspector this server serves. */
   inspector: {
-    /** Its URL. */
     url: string;
     /** Whether the optional `@ayme-dev/inspector` package that holds it is installed. */
     installed(): Promise<boolean>;
@@ -59,5 +57,4 @@ export type AppPage = {
   html(): Promise<string>;
 };
 
-/** Builds a server tool from what it may use. */
 export type ServerToolFactory = (context: ServerToolContext) => ServerTool;

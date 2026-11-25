@@ -18,7 +18,6 @@ import {
 
 export { PAIR_WAIT_MS, RECONNECT_WAIT_MS } from "../domain/tabLifecycle";
 
-/** What happened on the Agent Connection. */
 export type ConnectionEvent =
   | { type: "paired" }
   | { type: "unpaired" }
@@ -257,7 +256,6 @@ export class AgentConnection {
     this.#versionGap = gap;
   }
 
-  /** Whether a page is paired. */
   get paired(): boolean {
     return this.#page !== undefined;
   }

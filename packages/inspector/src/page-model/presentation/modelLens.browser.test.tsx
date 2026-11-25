@@ -782,7 +782,6 @@ it("names the tree's objects and the models in full on hover", async () => {
   ).toBe(1);
 });
 
-// Whether the detail pane scrolls sideways.
 const sideways = () =>
   page
     .getByRole("region", { name: "Selected" })

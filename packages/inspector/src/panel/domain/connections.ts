@@ -72,7 +72,6 @@ const NO_FIX: ReadonlySet<NotConnectedReason> = new Set([
   "no-client",
 ]);
 
-/** The Agent Connection's row. */
 export function agentRow(status: AgentConnectionStatus): ConnectionRow {
   switch (status.state) {
     case "off":

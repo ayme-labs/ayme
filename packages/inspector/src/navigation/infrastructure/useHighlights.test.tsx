@@ -17,7 +17,6 @@ import { useHighlights } from "./useHighlights";
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-/** A look at the page that shows each element under its ref. */
 function lookOf(elementsByRef: Record<string, Element>): Look {
   const refs = Object.keys(elementsByRef);
   return {
