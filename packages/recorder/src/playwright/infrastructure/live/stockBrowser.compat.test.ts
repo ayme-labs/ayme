@@ -1567,9 +1567,6 @@ const PLACES = `
     });
   </script>`;
 
-/** The highlight drawn on the page now, in the page's coordinates; null
- * when none is. */
-/** How many highlights the page draws. */
 const drawnCount = (page: Page) =>
   page.evaluate(
     () => document.querySelectorAll("ayme-recorder-highlight").length
