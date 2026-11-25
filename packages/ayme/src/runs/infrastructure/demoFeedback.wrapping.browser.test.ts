@@ -160,7 +160,7 @@ it("does not pause what only reads the page", async () => {
   expect(await page.locator("button").count()).toBe(1);
 });
 
-// ayme's reach check scrolls before every click it measures (ADR-0041); the
+// ayme's reach check scrolls before every click it measures (ADR-0062); the
 // click after it is paced.
 it("does not pause a scroll", async () => {
   vi.useFakeTimers();

@@ -12,7 +12,7 @@ export type PageDriver = {
   /**
    * Probes one Page Object Root without scrolling or sending input, in one
    * task in the page: how many elements its locator matched and, for one
-   * element, whether it is present and available (ADR-0035) and its ref.
+   * element, whether it is present and available (ADR-0062) and its ref.
    * Inside a probe run of `watch`, it also labels the root in later captures.
    */
   probe(root: Locator, label: string): Promise<RootState>;

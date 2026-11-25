@@ -38,7 +38,7 @@ export class AgentToolView {
    * The connection's tools changed to `tools`. True when the MCP list
    * changed since it was last announced, and not when a tool merely became
    * available or unavailable: the list has no field for that, and a cached
-   * list would churn (ADR-0035).
+   * list would churn (ADR-0062).
    */
   toolsChanged(tools: readonly PageTool[]): boolean {
     for (const tool of tools) this.#offered.set(tool.name, tool.group);

@@ -157,9 +157,9 @@ export type ElementToolDefinition = {
   inputSchema: JsonSchema;
   targetField: TargetField;
   /**
-   * The input the tool sends its element, which must reach it (ADR-0035,
-   * ADR-0039): the Goal Loop and the Inspector offer only those elements,
-   * and a call on another is refused with its Availability Reason.
+   * The input the tool sends its element, which must reach it (ADR-0062):
+   * the Goal Loop and the Inspector offer only those elements, and a call
+   * on another is refused with its Availability Reason.
    */
   needsReach?: ElementInput;
   perform(

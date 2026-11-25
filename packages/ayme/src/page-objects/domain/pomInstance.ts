@@ -9,7 +9,7 @@ export type PredicateAnswer = { available: boolean; reason?: string };
 
 /**
  * Package-internal: what one observation of a Page Object Root found
- * (ADR-0035): whether it is on the page, whether a click would reach it,
+ * (ADR-0062): whether it is on the page, whether a click would reach it,
  * and, for a present root a click would not reach, what is in the way. The
  * runtime reports the measurement, never a kind of widget.
  */
@@ -78,7 +78,7 @@ export type PomInstanceObservation = {
 
 /**
  * Package-internal: whether the action `methodName` can run on `instance`
- * now, by ADR-0035's precedence: an absent Page Object, then a root a click
+ * now, by ADR-0062's precedence: an absent Page Object, then a root a click
  * would not reach, then the action's predicate. It reads only the
  * observation.
  */

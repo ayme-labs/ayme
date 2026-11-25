@@ -59,7 +59,7 @@ export class ListPage {
     return this.items.count();
   }
 
-  // Available only while the list has items (ADR-0035): on an empty list
+  // Available only while the list has items (ADR-0062): on an empty list
   // the tool is listed, and a call is refused with this reason. Marked
   // destructive, so the Inspector marks it and an agent's ayme MCP server
   // gives it `destructiveHint`.

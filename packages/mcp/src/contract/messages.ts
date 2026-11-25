@@ -9,7 +9,7 @@ import * as z from "zod/mini";
  * A tool the page offers, as the page names and describes it, and whether
  * a call can run it now: a Page Object Tool is listed while its Page Object
  * is on the page, and `reason` says why an unavailable one cannot run, when
- * the page knows (ADR-0035). A Page Object Tool whose action says nothing
+ * the page knows (ADR-0062). A Page Object Tool whose action says nothing
  * beyond its name and schema has no description, and MCP lists it without
  * one. `group` is where the tool comes from, as ayme's runtime names it
  * (`pageObject`, `browser`, `custom`, `peek` or `agent`); the server decides

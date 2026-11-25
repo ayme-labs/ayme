@@ -5,7 +5,7 @@ import { asSentence, RuntimeStateError } from "../../shared";
 
 /**
  * Package-internal: whether a tool, or an action on one Page Object
- * instance, can be offered and run now (ADR-0035): `present` while its Page
+ * instance, can be offered and run now (ADR-0062): `present` while its Page
  * Object is, so it is listed; `available` while a call would run it;
  * otherwise `reason`, the Availability Reason, when there is one.
  */

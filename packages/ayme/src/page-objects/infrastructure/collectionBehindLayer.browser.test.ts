@@ -179,7 +179,7 @@ describe("a collection whose items are all behind a modal layer", () => {
   });
 
   // Without a layer an item out of view is listed available and tested once
-  // the call has scrolled to it (ADR-0041); a cover over the list's view then
+  // the call has scrolled to it (ADR-0062); a cover over the list's view then
   // refuses it there.
   it("refuses a call on an item covered where its scroll lands, naming the tool called", async () => {
     const { session, opened, ids } = await setUp();

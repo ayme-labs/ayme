@@ -1,4 +1,4 @@
-// What the In-page Module measures of one element's reach (ADR-0041), as
+// What the In-page Module measures of one element's reach (ADR-0062), as
 // every host reads it: plain data, so it crosses into Node as it is
 // (ADR-0049).
 

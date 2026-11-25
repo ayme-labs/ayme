@@ -21,7 +21,7 @@ export type LiveTools = Readonly<{
   /**
    * Every tool the session lists, in publication order: each one whose Page
    * Object or element is on the page, whether or not WebMCP has it. A tool
-   * can be listed and unavailable (ADR-0035): `available` says whether a
+   * can be listed and unavailable (ADR-0062): `available` says whether a
    * call would run it, and `reason` why not. `publication` says whether
    * agents can call them.
    */

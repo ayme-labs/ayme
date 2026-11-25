@@ -57,7 +57,7 @@ export type AymeModelOptions<Self = unknown> = {
 export type ActionAvailability = boolean | string;
 
 /**
- * An action's availability predicate (ADR-0035). It gets the live Page
+ * An action's availability predicate (ADR-0062). It gets the live Page
  * Object as `self`, runs read-only with the observation and never with the
  * call, so it must not scroll, click, focus or change the page.
  */

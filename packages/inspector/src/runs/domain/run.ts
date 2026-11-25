@@ -33,7 +33,7 @@ export type CollectionItem = {
   /** What it shows, e.g. "Milk". */
   label: string;
   /**
-   * Whether the action would run on it now (ADR-0035), as the registry last
+   * Whether the action would run on it now (ADR-0062), as the registry last
    * observed it; undefined before it has.
    */
   available?: boolean;

@@ -92,7 +92,7 @@ export type InPage = {
    */
   forget(keys: readonly string[]): Promise<void>;
   /**
-   * Reach (ADR-0041) of the element `ref` names, measured in the page: what
+   * Reach (ADR-0062) of the element `ref` names, measured in the page: what
    * a click would reach, and what blocks or takes it, named by its role
    * and name. An element that is gone is absent. With `atCall`, the element is
    * scrolled into view first, as the call that clicks it scrolls, and the
@@ -175,7 +175,7 @@ export type InPage = {
   names(target: Locator, ref: string): Promise<boolean>;
   /**
    * Of `refs`, those whose element `input` would reach now, measured in one
-   * batch in the page: a click reaches an element (ADR-0035) when nothing
+   * batch in the page: a click reaches an element (ADR-0062) when nothing
    * covers or blocks it; focus needs only that nothing blocks it. In the
    * order given.
    */
