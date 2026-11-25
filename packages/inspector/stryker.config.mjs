@@ -1,7 +1,13 @@
 import { defineStrykerConfig } from "@ayme-dev/test-config/stryker";
 
+const shared = defineStrykerConfig();
+
 export default {
-  ...defineStrykerConfig(),
+  ...shared,
+  // Skips the strings holding Tailwind classes, which are styling no test
+  // reads; see stryker/classStrings.mjs.
+  plugins: [...shared.plugins, "./stryker/classStrings.mjs"],
+  ignorers: ["classStrings"],
   // An Inspector test runner's Chromium grows by about 50 MB with each mutant
   // it tests and never gives it back, so a long full-lane run used up a 16 GB
   // CI runner and lost the job. Stryker replaces each test runner, with its

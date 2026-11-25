@@ -78,6 +78,7 @@
     "@modelcontextprotocol/ext-apps": "^2.0.4",
     "@playwright/test": "^1.64.0",
     "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/instrumenter": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
