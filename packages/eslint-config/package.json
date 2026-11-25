@@ -6,7 +6,8 @@
   "exports": {
     "./base": "./base.js",
     "./horizontal-boundaries": "./horizontal-boundaries.js",
-    "./testing-entries": "./testing-entries.js"
+    "./testing-entries": "./testing-entries.js",
+    "./relative-imports": "./relative-imports.js"
   },
   "scripts": {
     "test": "node --test"

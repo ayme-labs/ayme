@@ -155,16 +155,45 @@ it(
         'export const load = () => import("../../node_modules/playwright/index.mjs");',
         playwright,
       ],
+      [
+        "src/app/misplaced.ts",
+        "export const load = () => import(`@ayme-dev/recorder/testing`);",
+        engine,
+      ],
+      [
+        "src/app/misplaced.ts",
+        "export const load = () => import(`playwright-core`);",
+        playwright,
+      ],
+      [
+        "testing/pom/Misplaced.ts",
+        'export type Engine = import("../../../recorder/src/engine").Engine;',
+        engine,
+      ],
     ];
     for (const [path, code, message] of refusals)
       expect(await lint(path, `${code}\n`), `${path}: ${code}`).toEqual([
         expect.stringContaining(message),
       ]);
-    expect(
-      await lint(
+    // The contract by its name, a local folder that shares a name with the
+    // engine or Playwright, and Playwright's types in the page objects.
+    const allowed: [path: string, code: string][] = [
+      [
         "src/app/placed.ts",
-        'export type Update = import("@ayme-dev/recorder/contract").RecorderUpdate;\n'
-      )
-    ).toEqual([]);
+        'export type Update = import("@ayme-dev/recorder/contract").RecorderUpdate;',
+      ],
+      ["src/app/placed.ts", 'export const load = () => import("./recorder");'],
+      [
+        "src/app/placed.ts",
+        'export const load = () => import("./playwright/index");',
+      ],
+      ["testing/pom/Placed.ts", 'export * from "./recorder";'],
+      [
+        "testing/pom/Placed.ts",
+        'export type Page = import("../../node_modules/@playwright/test").Page;',
+      ],
+    ];
+    for (const [path, code] of allowed)
+      expect(await lint(path, `${code}\n`), `${path}: ${code}`).toEqual([]);
   }
 );

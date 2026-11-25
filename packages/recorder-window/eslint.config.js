@@ -3,6 +3,7 @@ import {
   boundariesPlugin,
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
+import { relativeImports } from "@ayme-dev/eslint-config/relative-imports";
 
 // The source layout's rules; this file is the source of truth.
 // packages/recorder-window/AGENTS.md holds the rules lint cannot see.
@@ -38,16 +39,13 @@ const frontDoor = (others) => ({
 
 const patterns = [
   frontDoor(slices),
-  // The engine and stock Playwright, by package name or by a relative path
-  // into their folders, such as ../../../recorder/src or one through
-  // node_modules.
   {
-    regex: String.raw`^(@ayme-dev/recorder(/(?!contract$).*)?$|\.\.?/(.*/)?recorder(/|$))`,
+    regex: "^@ayme-dev/recorder(/(?!contract$).*)?$",
     message:
       "The window knows the engine only through @ayme-dev/recorder/contract, its plain data: it never imports engine code.",
   },
   {
-    regex: String.raw`^(\.\.?/(.*/)?)?(@playwright/|playwright(-core)?(/|$))`,
+    regex: "^(@playwright/|playwright(-core)?(/|$))",
     message:
       "Only the engine's playwright slice imports Playwright (docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md).",
   },
@@ -64,17 +62,18 @@ function restricted(files, patterns, { ignores } = {}) {
     ...(ignores ? { ignores } : {}),
     rules: {
       "no-restricted-imports": ["error", { patterns }],
-      // The same rules for a dynamic import() and a type written as
-      // import("…"). esquery reads `/` as the end of a regex, so selectors
-      // match it as `\x2F`.
+      // The same rules for a dynamic import(), its module in quotes or
+      // backticks, and a type written as import("…"). esquery reads `/` as
+      // the end of a regex, so selectors match it as `\x2F`.
       "no-restricted-syntax": [
         "error",
         ...patterns.flatMap(({ regex, message }) => {
           const value = `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
           return [
-            { selector: `ImportExpression[source.value=${value}]`, message },
-            { selector: `TSImportType[source.value=${value}]`, message },
-          ];
+            `ImportExpression[source.value=${value}]`,
+            `ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0][source.quasis.0.value.cooked=${value}]`,
+            `TSImportType[source.value=${value}]`,
+          ].map((selector) => ({ selector, message }));
         }),
       ],
     },
@@ -121,6 +120,17 @@ function sliceBoundaries(files, { ignores } = {}) {
 const pageObjects = ["testing/**/*.{ts,tsx}"];
 const playwrightPattern = patterns[2];
 
+// The same packages reached by a relative path, judged by the package the
+// path lands in, so a local folder that shares a name passes.
+const engineByPath = {
+  package: "^@ayme-dev/recorder$",
+  message: patterns[1].message,
+};
+const playwrightByPath = {
+  package: "^(@playwright/.+|playwright|playwright-core)$",
+  message: playwrightPattern.message,
+};
+
 export default [
   ...config,
   ...horizontalBoundaries({
@@ -129,6 +139,8 @@ export default [
   }),
   sliceBoundaries([sourceFiles]),
   restricted([sourceFiles], patterns),
+  relativeImports([sourceFiles], [engineByPath, playwrightByPath]),
+  relativeImports(pageObjects, [engineByPath]),
   restricted(
     pageObjects,
     patterns.filter((pattern) => pattern !== playwrightPattern)

@@ -1,8 +1,10 @@
+import { join } from "node:path";
 import config from "@ayme-dev/eslint-config/base";
 import {
   boundariesPlugin,
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
+import { relativeImports } from "@ayme-dev/eslint-config/relative-imports";
 
 // The source layout's rules; this file is the source of truth.
 // packages/mcp/AGENTS.md holds the rules lint cannot see.
@@ -85,9 +87,11 @@ function restrictedImports(files, patterns, ignores = []) {
         ...patterns.flatMap(({ regex, message }) => {
           const value = `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
           return [
-            { selector: `ImportExpression[source.value=${value}]`, message },
-            { selector: `TSImportType[source.value=${value}]`, message },
-          ];
+            `ImportExpression[source.value=${value}]`,
+            // The module in backticks.
+            `ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0][source.quasis.0.value.cooked=${value}]`,
+            `TSImportType[source.value=${value}]`,
+          ].map((selector) => ({ selector, message }));
         }),
       ],
     },
@@ -147,12 +151,13 @@ export default [
   frontDoors(undefined, ["src/*.ts"], { tests: false }),
   frontDoors(undefined, ["src/*.test.ts"], { tests: true }),
   // Test support (ADR-0057) drives the built command from outside, so it
-  // imports nothing of src/.
-  restrictedImports(
+  // imports nothing of src/: judged by where the path leads, so a folder of
+  // testing/ named src passes.
+  relativeImports(
     ["testing/**/*.ts"],
     [
       {
-        regex: String.raw`^\.\.?/(.*/)?src(/|$)`,
+        folder: join(packageRoot, "src"),
         message:
           "The MCP package's test support uses no slice: it drives the built ayme command.",
       },

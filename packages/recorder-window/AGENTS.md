@@ -2,7 +2,7 @@
 
 The checks:
 
-- [`eslint.config.js`](eslint.config.js): what each slice of `src/` holds, which slices each may use, and the imports of any kind `pnpm lint` refuses, among them the engine other than through `@ayme-dev/recorder/contract`, and stock Playwright outside [`testing/`](testing/index.ts), by package name or relative path; [`src/layout.test.ts`](src/layout.test.ts) checks it does.
+- [`eslint.config.js`](eslint.config.js): what each slice of `src/` holds, which slices each may use, and the imports of any kind `pnpm lint` refuses, among them the engine other than through `@ayme-dev/recorder/contract`, and stock Playwright outside [`testing/`](testing/index.ts), by package name or by a relative path into their packages. It reads an `import()` only when its module is written out; [`src/layout.test.ts`](src/layout.test.ts) checks it does.
 - [`horizontal-boundaries.js`](../eslint-config/horizontal-boundaries.js): the layers and what each may use.
 - [`src/build.test.ts`](src/build.test.ts): what each script [`tsdown.config.ts`](tsdown.config.ts) builds carries.
 

@@ -3,6 +3,7 @@ import {
   boundariesPlugin,
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
+import { relativeImports } from "@ayme-dev/eslint-config/relative-imports";
 
 // The source layout's rules; this file is the source of truth.
 // packages/inspector/AGENTS.md holds the rules lint cannot see.
@@ -92,9 +93,11 @@ function restrictedImports(files, patterns, ignores = []) {
         ...patterns.flatMap(({ regex, message }) => {
           const value = `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
           return [
-            { selector: `ImportExpression[source.value=${value}]`, message },
-            { selector: `TSImportType[source.value=${value}]`, message },
-          ];
+            `ImportExpression[source.value=${value}]`,
+            // The module in backticks.
+            `ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0][source.quasis.0.value.cooked=${value}]`,
+            `TSImportType[source.value=${value}]`,
+          ].map((selector) => ({ selector, message }));
         }),
       ],
     },
@@ -111,6 +114,12 @@ export default [
   // Every production file under src/, in a slice or not; the blocks below
   // add their own patterns.
   restrictedImports([sourceFiles], [aymeThroughInspector], testFiles),
+  // ...and no relative path into ayme, its source or its build.
+  relativeImports(
+    [sourceFiles],
+    [{ package: "^@ayme-dev/ayme$", message: aymeThroughInspector.message }],
+    { ignores: testFiles }
+  ),
   {
     files: [sourceFiles],
     plugins: { "slice-boundaries": boundariesPlugin },

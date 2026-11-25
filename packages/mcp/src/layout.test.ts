@@ -78,11 +78,29 @@ it(
         'export type Start = typeof import("../src/server").startMcpServer;',
         "The MCP package's test support uses no slice",
       ],
+      [
+        "testing/fixtures/misplaced.ts",
+        "export const load = () => import(`../../src/server/index`);",
+        "The MCP package's test support uses no slice",
+      ],
+      // The module in backticks.
+      [
+        "src/tools/application/misplaced.ts",
+        "export const load = () => import(`../../connection/application/agentConnection`);",
+        "Import another slice through its index.ts.",
+      ],
     ];
     for (const [path, code, message] of refusals)
       expect(await lint(path, `${code}\n`), `${path}: ${code}`).toEqual([
         expect.stringContaining(message),
       ]);
+    // A folder of testing/ named src is test support's own.
+    expect(
+      await lint(
+        "testing/placed.ts",
+        'export const load = () => import("./src/fixture");\nexport { fixture } from "./src/fixture";\n'
+      )
+    ).toEqual([]);
   }
 );
 
@@ -130,13 +148,47 @@ it(
         .map((entry) =>
           relative(join(packageRoot, "src"), join(entry.parentPath, entry.name))
         )
+        // A file at the slice's top is outside a layer folder, but for its
+        // index.ts; a deeper one is in the folder its path starts with.
         .filter((path) => {
-          const [, folder, ...rest] = path.split(sep);
-          return (
-            !layers.has(folder!) && !(folder === "index.ts" && !rest.length)
-          );
+          const [, first, ...rest] = path.split(sep);
+          return rest.length ? !layers.has(first!) : first !== "index.ts";
         })
     );
     expect(outside, "files outside a layer folder").toEqual([]);
+  }
+);
+
+it(
+  "every folder of src/ is a slice eslint.config.js lists",
+  { timeout: 60_000 },
+  async () => {
+    const config = (await eslint.calculateConfigForFile(
+      join(packageRoot, "src/cli.ts")
+    )) as {
+      rules?: Record<
+        string,
+        [
+          unknown,
+          {
+            policies: { from: { element: { captured: { slice: string } } } }[];
+          }?,
+        ]
+      >;
+    };
+    const listed = (
+      config.rules?.["slice-boundaries/dependencies"]?.[1]?.policies ?? []
+    ).map(({ from }) => from.element.captured.slice);
+    // The rule itself, so a lookup that finds nothing cannot pass.
+    expect(listed).toContain("server");
+    const folders = readdirSync(join(packageRoot, "src"), {
+      withFileTypes: true,
+    })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    expect(
+      folders.filter((folder) => !listed.includes(folder)),
+      "folders of src/ that are no slice: lint holds them to no slice's rules"
+    ).toEqual([]);
   }
 );

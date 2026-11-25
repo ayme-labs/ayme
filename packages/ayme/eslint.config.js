@@ -3,6 +3,7 @@ import {
   boundariesPlugin,
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
+import { relativeImports } from "@ayme-dev/eslint-config/relative-imports";
 
 // The source layout's rules; this file is the source of truth.
 // packages/ayme/AGENTS.md holds the rules lint cannot see.
@@ -144,6 +145,11 @@ const typescriptInCompiler = {
     "Only compiler imports typescript, an optional peer that only the ./compiler entry needs.",
 };
 
+const typescriptByPath = {
+  package: "^typescript$",
+  message: typescriptInCompiler.message,
+};
+
 function frontDoors(
   slice,
   files,
@@ -181,10 +187,11 @@ function frontDoors(
 
 /**
  * Refuses imports matching `patterns` in `files`, for every kind of import,
- * and `values` in a dynamic import(): a static import of one is left to a
- * rule that tells a type import from a value. A later block's patterns
- * replace an earlier one's for its files, so each block refuses ownPackage
- * too.
+ * and `values` in every import but `import type`, `export type` and a type
+ * written as `import("…")`. `import { type T }` is a value import: under
+ * verbatimModuleSyntax it leaves `import {} from` in the build, which loads
+ * the module. A later block's patterns replace an earlier one's for its
+ * files, so each block refuses ownPackage too.
  */
 function restrictedImports(files, ownPatterns, ignored = [], values = []) {
   const patterns = [...ownPatterns, ...ownPackage];
@@ -206,10 +213,17 @@ function restrictedImports(files, ownPatterns, ignored = [], values = []) {
             message,
           },
         ]),
-        ...values.map(({ regex, message }) => ({
-          selector: `ImportExpression[source.value=${selectorRegex(regex)}]`,
-          message,
-        })),
+        ...values.flatMap(({ regex, message }) =>
+          [
+            `ImportDeclaration[importKind!="type"]`,
+            `ExportNamedDeclaration[exportKind!="type"]`,
+            `ExportAllDeclaration[exportKind!="type"]`,
+            "ImportExpression",
+          ].map((node) => ({
+            selector: `${node}[source.value=${selectorRegex(regex)}]`,
+            message,
+          }))
+        ),
         {
           selector: "ImportExpression[source.type!=Literal]",
           message:
@@ -311,32 +325,6 @@ const playwrightValues = {
   message:
     "The in-page module's host side takes only Playwright's types: it reaches the page through Playwright's Page.",
 };
-
-const pagePartValues = {
-  regex: String.raw`(^|/)in-page/page(/|$)`,
-  message:
-    "Only the in-page module's page part may use its values: import its types, and reach the page through the built installInPage (ADR-0049).",
-};
-
-/** Refuses a static import of a value matching `patterns` in the production
- * code of `files`, and lets a type import through. */
-function typeImportsOnly(files, patterns, ignores = []) {
-  return {
-    files,
-    ignores: [...ignores, ...testCode],
-    rules: {
-      "@typescript-eslint/no-restricted-imports": [
-        "error",
-        {
-          patterns: patterns.map((pattern) => ({
-            ...pattern,
-            allowTypeImports: true,
-          })),
-        },
-      ],
-    },
-  };
-}
 
 /** Relative imports of the in-page module, which domain and application may not use. */
 const inPageImport = {
@@ -528,8 +516,54 @@ export default [
   },
   // The page part is built into the document's module and reached only through
   // `installInPage`: everything else imports its types and nothing else.
-  typeImportsOnly([sourceFiles], [pagePartValues], ["src/in-page/page/**"]),
-  typeImportsOnly([inPageHost], [pagePartValues, playwrightValues]),
+  {
+    files: [sourceFiles],
+    ignores: ["src/in-page/page/**", ...testCode],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: String.raw`(^|/)in-page/page(/|$)`,
+              allowTypeImports: true,
+              message:
+                "Only the in-page module's page part may use its values: import its types, and reach the page through the built installInPage (ADR-0049).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // typescript and Playwright reached by a relative path, such as
+  // ../../node_modules/typescript/lib/typescript.js, judged by the package
+  // the path lands in.
+  relativeImports([sourceFiles, "testing/**/*.ts"], [typescriptByPath], {
+    ignores: ["src/compiler/**", "testing/compiler/**"],
+  }),
+  relativeImports(
+    ["src/in-page/**/*.ts"],
+    [
+      typescriptByPath,
+      {
+        package: "^@playwright/test$",
+        message: inPageDependencies(false).message,
+      },
+    ],
+    { ignores: testCode }
+  ),
+  relativeImports(
+    [inPageHost],
+    [
+      typescriptByPath,
+      {
+        package: "^@playwright/test$",
+        message: playwrightValues.message,
+        allowTypeImports: true,
+      },
+    ],
+    { ignores: testCode }
+  ),
   // The entries, the package's own tests and the shared test harnesses,
   // which use the slices' front doors. The entries belong to no slice, which
   // the rule against Playwright Lite's internal entry above reads, so they

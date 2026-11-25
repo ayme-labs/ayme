@@ -42,7 +42,7 @@ const refusals: [path: string, code: string, message: string][] = [
   ],
   [
     "src/app/misplaced.ts",
-    'import type { Ayme } from "@ayme-dev/ayme";\nexport type Misplaced = Ayme;',
+    'import type { ToolInfo } from "@ayme-dev/ayme";\nexport type Misplaced = ToolInfo;',
     aymeEntry,
   ],
   [
@@ -52,12 +52,39 @@ const refusals: [path: string, code: string, message: string][] = [
   ],
   [
     "src/navigation/domain/misplaced.ts",
-    'export type Misplaced = import("@ayme-dev/ayme").Ayme;',
+    'export type Misplaced = import("@ayme-dev/ayme").ToolInfo;',
     aymeEntry,
   ],
   [
     "src/misplaced.ts",
     'export const load = () => import("@ayme-dev/ayme");',
+    aymeEntry,
+  ],
+  // The module in backticks.
+  [
+    "src/app/misplaced.ts",
+    "export const load = () => import(`@ayme-dev/ayme/internal`);",
+    aymeEntry,
+  ],
+  [
+    "src/runs/domain/misplaced.ts",
+    "export const load = () => import(`../../navigation/domain/lens`);",
+    frontDoor,
+  ],
+  // ayme by a relative path, into its source or its build.
+  [
+    "src/app/misplaced.ts",
+    'export const load = () => import("../../../ayme/src/internal");',
+    aymeEntry,
+  ],
+  [
+    "src/app/misplaced.ts",
+    'export { ayme } from "../../../ayme/dist/internal.mjs";',
+    aymeEntry,
+  ],
+  [
+    "src/panel/view/misplaced.ts",
+    'export type Misplaced = import("../../../node_modules/@ayme-dev/ayme/dist/inspector.mjs").InspectorState;',
     aymeEntry,
   ],
 ];
@@ -136,13 +163,43 @@ it(
         .map((entry) =>
           relative(join(packageRoot, "src"), join(entry.parentPath, entry.name))
         )
+        // A file at the slice's top is outside a layer folder, but for its
+        // front door; a deeper one is in the folder its path starts with.
         .filter((path) => {
-          const [, folder, ...rest] = path.split(sep);
-          return (
-            !layers.has(folder!) && !(folder === "index.ts" && !rest.length)
-          );
+          const [, first, ...rest] = path.split(sep);
+          return rest.length ? !layers.has(first!) : first !== "index.ts";
         })
     );
     expect(outside, "files outside a layer folder").toEqual([]);
   }
 );
+
+it("every folder of src/ is a slice eslint.config.js lists", slow, async () => {
+  const config = (await eslint.calculateConfigForFile(
+    join(packageRoot, "src/index.ts")
+  )) as {
+    rules?: Record<
+      string,
+      [
+        unknown,
+        {
+          policies: { from: { element: { captured: { slice: string } } } }[];
+        }?,
+      ]
+    >;
+  };
+  const listed = (
+    config.rules?.["slice-boundaries/dependencies"]?.[1]?.policies ?? []
+  ).map(({ from }) => from.element.captured.slice);
+  // The rule itself, so a lookup that finds nothing cannot pass.
+  expect(listed).toContain("app");
+  const folders = readdirSync(join(packageRoot, "src"), {
+    withFileTypes: true,
+  })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+  expect(
+    folders.filter((folder) => !listed.includes(folder)),
+    "folders of src/ that are no slice: lint holds them to no slice's rules"
+  ).toEqual([]);
+});
