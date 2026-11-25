@@ -62,7 +62,6 @@ export type RunsViewProps = {
   flashing: string | undefined;
   toggleRun: (id: string) => void;
   toggleResult: (id: string) => void;
-  /** Copies a run's result, given the run's id. */
   copyResult: (id: string, text: string) => void;
   /** The run whose result was just copied, whose Copy says so. */
   copiedResult: string | undefined;

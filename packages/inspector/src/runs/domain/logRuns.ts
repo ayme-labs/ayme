@@ -11,7 +11,6 @@ import type {
 /** The Caller the panel's own runs name, as `callers` exports it. */
 export const inspectorCaller: (typeof callers)["inspector"] = "inspector";
 
-/** Whether a run was made from the panel. */
 export function isPanelRun(run: Pick<Run, "by">): boolean {
   return run.by === inspectorCaller;
 }
@@ -41,7 +40,6 @@ export function rowIdOf(run: Pick<LogRun, "id" | "startedAt">): string {
 /** A top-level Run: one a Caller started, not a tool. */
 type TopLevelRun = Extract<LogRun, { by: unknown }>;
 
-/** The panel's notes on a Run, by its row id. */
 type Notes = (rowId: string) => RunNotes;
 
 /** A Run from the log as Runs shows it, with the Runs it started. */
