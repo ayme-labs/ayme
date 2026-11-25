@@ -187,7 +187,7 @@ ayme/
 
 `package.yaml` is the file your agent reads. The [`ayme-recorder` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-recorder/SKILL.md#read-the-package) describes every field.
 
-The first save creates `ayme/.gitignore`, which lists `recordings/` and itself. If the folder already has one, such as the one `ayme mcp` writes, the recorder keeps its text and adds the `recordings/` line, unless a line there already names the folder. The file keeps new recordings out of git. It cannot untrack recordings you have already committed.
+The first save creates `ayme/.gitignore`, which lists `recordings/` and itself. If the folder already has one, such as the one `ayme mcp` writes, a save adds a `recordings/` line at its end. It leaves the file as it is when a line there already names the folder, such as `!recordings/` to commit recordings, and when it cannot write to the file; the recording is saved either way. A `recordings/` line keeps new recordings out of git. It cannot untrack recordings you have already committed.
 
 ## Warnings
 

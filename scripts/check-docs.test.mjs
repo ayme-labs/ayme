@@ -672,7 +672,7 @@ test("passes backticked paths that resolve from the file's folder, its src/, the
           "`notes/c.md`, `a.ts` is no path, `deep/layer/b.ts`, `./notes/c.md`,",
           "`LICENSE.md` and `packages/other/d.json`; the end of a path: `layer/b.ts`.",
           "Left out: `src/` and `packages/lib/` (folders), `node_modules/effect/AGENTS.md`,",
-          "`dist/x.js`, `packages/lib/out/y.js`, `ayme/init-script.js`, `./ayme/recordings/latest.yaml`, `src/<name>/z.ts`,",
+          "`dist/x.js`, `packages/lib/out/y.js`, `src/<name>/z.ts`,",
           "`src/**/z.ts`, `src/z?.ts`, `{a,b}/z.ts`, `go run ./x/y.go`, `npm:pkg/file.json`,",
           "`@scope/pkg/file.json`.",
           "",
@@ -700,16 +700,6 @@ test("fails a backticked path that names no file", () => {
     problems[0],
     /packages\/lib\/AGENTS\.md:7: `src\/gone\.ts` names no file/
   );
-});
-
-test("fails a path with an ayme folder that does not start it", () => {
-  const problems = checkDocs(
-    agentsFixture({
-      "packages/lib/AGENTS.md":
-        "See `packages/ayme/src/gone.ts` and `apps/web/ayme/pom/Gone.ts`.\n",
-    })
-  );
-  assert.equal(problems.length, 2, problems.join("\n"));
 });
 
 test("fails a model, a component and a path that only passes through build output", () => {

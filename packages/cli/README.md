@@ -105,7 +105,7 @@ The recorder keeps its data in an `ayme` folder in the folder you run it from:
 - `ayme/recordings/<recording-id>/trace.zip`: the Playwright trace of the recording, with DOM snapshots and network requests. When the trace cannot be written, for example because the browser stopped answering, the recording is saved without it.
 - `ayme/recordings/latest.yaml`: a copy of the latest recording that was saved. A run that recorded nothing leaves it as it was, so use the path printed as `Recording package:` for the run you just made.
 
-The first save creates `ayme/.gitignore`, which lists `recordings/` and itself, or adds `recordings/` to the one the folder has. It keeps new recordings out of what git picks up, but it cannot untrack files that are already committed. To look into a trace, run `npx ayme-recorder trace latest`; the guide explains [what the trace holds](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#trace).
+The first save lists `recordings/` in `ayme/.gitignore`, and creates the file if the folder has none. That keeps new recordings out of what git picks up, but it cannot untrack files that are already committed. The guide says [when the recorder leaves the file as it is](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#where-recordings-are-stored). To look into a trace, run `npx ayme-recorder trace latest`; the guide explains [what the trace holds](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#trace).
 
 ## Turn a recording into page objects
 

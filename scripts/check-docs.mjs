@@ -48,9 +48,9 @@
  * - a code span that looks like a repository path (it has a `/`, no space and
  *   ends in a source or doc extension) names no file, relative to the file's
  *   folder, to that folder's `src/` or to the repository root, and ends no path
- *   in the repository. A path under `node_modules/`, `dist/` or `out/`, or
- *   one that starts with `ayme/`, a project's ayme folder, which the
- *   repository does not hold, a span with a placeholder or glob, and the paths in
+ *   in the repository. A path under
+ *   `node_modules/`, `dist/` or `out/`, which the repository does not
+ *   hold, a span with a placeholder or glob, and the paths in
  *   `PATHS_NOT_IN_THE_REPOSITORY` are left out. A span also resolves when it
  *   ends a path in the repository, since the files write `infrastructure/x.ts`
  *   for `src/page-state/infrastructure/x.ts` and name files of other packages
@@ -86,8 +86,6 @@ const SOURCE_PATH =
   /\.(?:[cm]?[jt]sx?|vue|svelte|json|mdx?|html|css|ya?ml|sh|txt|mmd|tla|cfg)$/;
 /** Folders a repository path names only in a consumer's project or in build output. */
 const ABSENT_SEGMENTS = new Set(["node_modules", "dist", "out"]);
-/** A path that starts with it names a project's ayme folder; `packages/ayme/` and an app's `ayme/` are still checked. */
-const PROJECT_AYME_FOLDER = "ayme/";
 /**
  * Paths a file names that the repository does not hold, though they are not
  * under one of those folders, by file. An exact path
@@ -326,7 +324,6 @@ function pathSpans(text) {
       SOURCE_PATH.test(span) &&
       !/[\s<>{}*?$…:]/.test(span) &&
       !span.startsWith("@") &&
-      !path.posix.normalize(span).startsWith(PROJECT_AYME_FOLDER) &&
       !path.posix
         .normalize(span)
         .split("/")

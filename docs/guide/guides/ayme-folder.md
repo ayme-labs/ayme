@@ -83,7 +83,7 @@ Five kinds of project need one thing more:
   }
   ```
 
-  With `composite` on, `tsc --noEmit -p ayme` overwrites the app's build info, and the next `tsc -b` then passes without checking the app's own files again. With `incremental` on, it still writes over that file.
+  With either on, `tsc --noEmit -p ayme` writes build info: into the app's own file when the app's tsconfig sets `tsBuildInfoFile`, as Vite's templates do, and into `ayme/tsconfig.tsbuildinfo` otherwise. In the app's file, `composite` also makes the next `tsc -b` pass without checking the app's own files again.
 
 - **A project with no tsconfig to extend**, such as one that only drives a site it doesn't build. Put the compiler options in `ayme/tsconfig.json` itself:
 
