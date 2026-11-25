@@ -17,13 +17,6 @@ function of(currentDocument: Document): InFlight {
 }
 
 /**
- * How long `actionsSettled` waits at most: past ayme's default action timeout
- * of one second, so that an action that never settles delays a look rather
- * than stopping it.
- */
-export const ACTIONS_SETTLED_LIMIT_MS = 1_500;
-
-/**
  * Runs `action` in `currentDocument`, counting it as running until it returns
  * or settles.
  */
@@ -51,18 +44,10 @@ export function whileActing<T>(currentDocument: Document, action: () => T): T {
 
 /**
  * Resolves once no action is running in `currentDocument`, at once when none
- * is, and after `ACTIONS_SETTLED_LIMIT_MS` at the latest.
+ * is. Each action ends within its own timeout.
  */
 export function actionsSettled(currentDocument: Document): Promise<void> {
   const actions = of(currentDocument);
   if (actions.running === 0) return Promise.resolve();
-  return new Promise((resolve) => {
-    const settle = () => {
-      clearTimeout(limit);
-      actions.waiting = actions.waiting.filter((other) => other !== settle);
-      resolve();
-    };
-    const limit = setTimeout(settle, ACTIONS_SETTLED_LIMIT_MS);
-    actions.waiting.push(settle);
-  });
+  return new Promise((resolve) => actions.waiting.push(resolve));
 }
