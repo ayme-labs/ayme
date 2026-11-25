@@ -194,7 +194,9 @@ and holds the dialog as its child:
 
 ```ts
 // On ProjectsPage:
-readonly newProjectDialog = new NewProjectDialog(this.page.getByRole("dialog"));
+get newProjectDialog() {
+  return new NewProjectDialog(this.page.getByRole("dialog"));
+}
 
 async openNewProjectDialog() {
   await this.newProjectButton.click();
