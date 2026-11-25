@@ -113,9 +113,9 @@ export type InPage = {
    * Page Object Root `root`: how many elements its Locator matches, and
    * whether it is on the page (Page Object Presence) and a click would reach
    * it (Page Object Availability), measured with the Locator resolved in one
-   * task in the page, never scrolling or sending input (ADR-0019). Called
-   * inside a probe run of `watch`, it also labels this host's roots with
-   * `label` in its later captures.
+   * task in the page, never scrolling or sending input (ADR-0061,
+   * ADR-0062). Called inside a probe run of `watch`, it also labels this
+   * host's roots with `label` in its later captures.
    */
   probe(root: Locator, label: string): Promise<RootState>;
   /**

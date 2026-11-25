@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: deprecated
 ---
 
 # Enforce dependency direction with Turbo Boundaries
