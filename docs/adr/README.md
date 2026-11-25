@@ -17,7 +17,6 @@ A replaced or deprecated ADR lives in [retired/](retired/), its text unchanged.
 - [ADR-0028: Keep Structural Ref continuity in the observation session's identity ledger](0028-keep-structural-ref-continuity-in-the-observation-sessions-identity-ledger.md)
 - [ADR-0030: Application setup owns the runtime and decides publication](0030-application-setup-owns-the-runtime-and-decides-publication.md)
 - [ADR-0031: Application code drives ayme through the runtime object setup returns](0031-application-code-drives-ayme-through-the-runtime-object-setup-returns.md)
-- [ADR-0033: Each coding agent's ayme MCP server pairs with one page and with the app's own processes, and a local process pairs without a token](0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md)
 - [ADR-0034: Peek Tools reach coding agents only, and only while the app runs in development](0034-peek-tools-reach-coding-agents-only-in-development.md)
 - [ADR-0036: Bundler adapters own the lifetime of compiler state](0036-bundler-adapters-own-the-lifetime-of-compiler-state.md)
 - [ADR-0037: Unsettled APIs ship marked experimental](0037-unsettled-apis-ship-marked-experimental.md)
@@ -39,3 +38,4 @@ A replaced or deprecated ADR lives in [retired/](retired/), its text unchanged.
 - [ADR-0063: Page Object Tools are published per class, and a Page Object Id picks the instance](0063-page-object-tools-are-published-per-class-and-a-page-object-id-picks-the-instance.md)
 - [ADR-0064: A Page Object Model is an ordinary class whose children and exposed actions are declared](0064-a-page-object-model-is-an-ordinary-class-whose-children-and-exposed-actions-are-declared.md)
 - [ADR-0065: A shared ayme package ships the engine and the Page Object compiler, with separate framework and build integrations](0065-a-shared-ayme-package-ships-the-engine-and-the-page-object-compiler-with-separate-framework-and-build-integrations.md)
+- [ADR-0066: Each coding agent's ayme MCP server pairs with one page and with the app's own processes, and its fallback tools reach every tool it lists](0066-each-coding-agents-ayme-mcp-server-pairs-with-one-page-and-the-apps-processes-and-its-fallback-tools-reach-every-tool-it-lists.md)

@@ -169,7 +169,7 @@ type ToolHolder = PageSession | ProcessSession;
  * tab's calls are answered, it is disconnected, and it may not connect
  * again. The tab's lifecycle decides this (see `attached`); the connection
  * carries it out. An App Process never replaces the page or another App
- * Process, and the page never replaces it (ADR-0033).
+ * Process, and the page never replaces it (ADR-0066).
  *
  * The agent sees one tool per name: the page's, else that of the App
  * Process that connected first among those that offer it, and each call
