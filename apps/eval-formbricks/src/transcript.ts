@@ -113,6 +113,7 @@ const usageLimitTexts = [
   /^Your group's usage limit is set to \$0/,
   /^This service is disabled for your org\b/,
   /^(?:Fable|Haiku|Mythos|Opus|Sonnet)(?: [^\u00B7\n]{1,40})? requires usage credits\./,
+  /^Your model policy only allows [^\n]*, which requires usage credits\b/,
   /^API Error: Usage credits required for 1M context\b/,
 ];
 

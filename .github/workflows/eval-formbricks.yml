@@ -30,8 +30,8 @@ on:
         type: boolean
         default: false
 
-# One eval at a time: every paid run uses the same Claude Code login, and two
-# at once would share its usage limits.
+# One eval at a time: every paid run uses the same Claude Code logins, and two
+# at once would share their usage limits.
 concurrency:
   group: eval-formbricks
   cancel-in-progress: false

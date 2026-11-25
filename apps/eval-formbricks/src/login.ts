@@ -56,9 +56,23 @@ export async function withFallbackLogin<T>(
   log: (line: string) => void,
   parent: NodeJS.ProcessEnv = process.env
 ): Promise<T> {
-  // Read only after a limit: a run the first login serves does not depend on the second token's source.
-  const fallback = () =>
-    readEnvVariable(fallbackTokenVariable, directory, parent);
+  // Read once, and only after a limit: a run the first login serves does not depend on the second token's source.
+  let fallbackToken: { value: string | undefined } | undefined;
+  const fallback = () => {
+    if (fallbackToken === undefined) {
+      try {
+        fallbackToken = {
+          value: readEnvVariable(fallbackTokenVariable, directory, parent),
+        };
+      } catch (error) {
+        log(
+          `The fallback login cannot be read, so the limit is handled as without one: ${(error as Error).message}`
+        );
+        fallbackToken = { value: undefined };
+      }
+    }
+    return fallbackToken.value;
+  };
   try {
     return await attempt({
       name: "first",

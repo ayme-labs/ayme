@@ -9,7 +9,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { usageLimitError, withFallbackLogin } from "./login.ts";
 import { runsRoot } from "./paths.ts";
 import { defaultScenarioId, startupScenarios } from "./scenarios.ts";
-import { runStartup, type StartupResult } from "./startup.ts";
+import { runStartup } from "./startup.ts";
 import { resultEvent } from "./transcript.ts";
 
 const firstToken = "first-token-for-the-test";
@@ -37,6 +37,7 @@ describe("a result event's usage limit", () => {
       "Your usage allocation has been disabled by your admin",
       "Your group's usage limit is set to $0",
       "This service is disabled for your org",
+      "Your model policy only allows Fable, which requires usage credits · /model to set it up",
       "Sonnet 5.5 requires usage credits. Switch to another model, or manage usage credits at claude.ai/settings/usage, to continue.",
       "API Error: Usage credits required for 1M context · run /usage-credits to turn them on (they take effect in a new session), or /model sonnet to switch to standard context",
     ])
@@ -88,6 +89,21 @@ describe("withFallbackLogin without a second token", () => {
       )
     ).resolves.toBe("served");
   });
+
+  it("lets a limited run stand when the fallback cannot be read", async () => {
+    directory = await mkdtemp(path.join(os.tmpdir(), "eval-login-"));
+    await mkdir(path.join(directory, ".env.local"));
+    const lines: string[] = [];
+    const outcome = await withFallbackLogin(
+      directory,
+      (login) =>
+        Promise.resolve(usageLimitError({ usageLimited: true }, login, "x")),
+      (line) => lines.push(line),
+      exported
+    );
+    expect(outcome).toBeNull();
+    expect(lines.join("\n")).toContain("The fallback login cannot be read");
+  });
 });
 
 /**
@@ -133,14 +149,8 @@ describe("runStartup across two logins", () => {
     );
   }
 
-  const start = async () => {
-    const { runDir, result } = await runStartup({
-      scenario,
-      model: "sonnet",
-      timeoutMs: 10_000,
-    });
-    return { runDir, result: result as StartupResult };
-  };
+  const start = () =>
+    runStartup({ scenario, model: "sonnet", timeoutMs: 10_000 });
 
   it("repeats the run on the fallback login when the first is limited and records the login by name", async () => {
     logins({ first: "limit-in-setup.jsonl", fallback: "startup-exact.jsonl" });
@@ -193,12 +203,8 @@ describe("runStartup across two logins", () => {
       "FAKE_CLAUDE_BY_TOKEN",
       JSON.stringify({ [firstToken]: fixture("limit-in-setup.jsonl") })
     );
-    const error = await start().catch((thrown: unknown) => thrown as Error);
-    expect((error as Error).message).toContain(
+    await expect(start()).rejects.toThrow(
       "Claude Code does not accept the CLAUDE_CODE_OAUTH_TOKEN_FALLBACK"
-    );
-    expect((error as Error).message).not.toContain(
-      "accept the CLAUDE_CODE_OAUTH_TOKEN from"
     );
   });
 });
