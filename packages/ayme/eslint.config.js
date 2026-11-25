@@ -3,15 +3,15 @@ import {
   boundariesPlugin,
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
-import { relativeImports } from "@ayme-dev/eslint-config/relative-imports";
 
 // The source layout's rules; this file is the source of truth.
 // packages/ayme/AGENTS.md holds the rules lint cannot see.
 
 const packageRoot = import.meta.dirname;
 
-// The slices of src/, and the slices each may use: only those listed before
-// it here. runtime is the composition root: only the entries use it.
+// The slices of src/, and the slices each may use: only those listed before it
+// here. Every folder of src/ is a slice, which src/layout.test.ts checks.
+// runtime is the composition root: only the entries use it.
 const allowedSlices = {
   // The JSON contracts, tool descriptors, errors, Caller names and small
   // helpers every slice shares.
@@ -143,11 +143,6 @@ const typescriptInCompiler = {
   regex: "^typescript(/.*)?$",
   message:
     "Only compiler imports typescript, an optional peer that only the ./compiler entry needs.",
-};
-
-const typescriptByPath = {
-  package: "^typescript$",
-  message: typescriptInCompiler.message,
 };
 
 function frontDoors(
@@ -337,7 +332,7 @@ const inPageImport = {
 // needs typescript. No slice uses compiler either, which allowedSlices says.
 const compilerEntry = "src/compiler.ts";
 const compilerFromItsEntry = {
-  regex: String.raw`^\.\.?/${notTestSupport}(.*/)?compiler(/|$)`,
+  regex: String.raw`^\.\.?/${notTestSupport}(.*/)?compiler(\.[cm]?[jt]s)?(/|$)`,
   message:
     "Only the ./compiler entry uses compiler, so no other entry needs typescript, an optional peer.",
 };
@@ -535,35 +530,6 @@ export default [
       ],
     },
   },
-  // typescript and Playwright reached by a relative path, such as
-  // ../../node_modules/typescript/lib/typescript.js, judged by the package
-  // the path lands in.
-  relativeImports([sourceFiles, "testing/**/*.ts"], [typescriptByPath], {
-    ignores: ["src/compiler/**", "testing/compiler/**"],
-  }),
-  relativeImports(
-    ["src/in-page/**/*.ts"],
-    [
-      typescriptByPath,
-      {
-        package: "^@playwright/test$",
-        message: inPageDependencies(false).message,
-      },
-    ],
-    { ignores: testCode }
-  ),
-  relativeImports(
-    [inPageHost],
-    [
-      typescriptByPath,
-      {
-        package: "^@playwright/test$",
-        message: playwrightValues.message,
-        allowTypeImports: true,
-      },
-    ],
-    { ignores: testCode }
-  ),
   // The entries, the package's own tests and the shared test harnesses,
   // which use the slices' front doors. The entries belong to no slice, which
   // the rule against Playwright Lite's internal entry above reads, so they

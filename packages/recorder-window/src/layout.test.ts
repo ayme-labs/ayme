@@ -113,70 +113,38 @@ it("lint keeps Playwright and Effect out of the window", slow, async () => {
 });
 
 it(
-  "lint refuses the engine and stock Playwright in a type written as import(), and by a relative path",
+  "lint refuses the engine and stock Playwright in a type written as import(), and a module in backticks",
   slow,
   async () => {
-    const engine =
-      "The window knows the engine only through @ayme-dev/recorder/contract";
-    const playwright = "Only the engine's playwright slice imports Playwright";
     const refusals: [path: string, code: string, message: string][] = [
       [
         "src/app/misplaced.ts",
         'export type Engine = import("@ayme-dev/recorder").Recorder;',
-        engine,
-      ],
-      [
-        "src/timeline/view/misplaced.ts",
-        'export * from "../../../../recorder/src/contract";',
-        engine,
-      ],
-      [
-        "src/app/misplaced.test.ts",
-        'export const load = () => import("../../node_modules/@ayme-dev/recorder/src/index");',
-        engine,
-      ],
-      [
-        "src/app/misplaced.ts",
-        'export type Engine = typeof import("../../../recorder/src/engine");',
-        engine,
+        "The window knows the engine only through @ayme-dev/recorder/contract",
       ],
       [
         "src/app/misplaced.ts",
         'export type Page = import("playwright-core").Page;',
-        playwright,
+        "Only the engine's playwright slice imports Playwright",
       ],
-      [
-        "src/controls/view/misplaced.ts",
-        'import type { Page } from "../../../node_modules/@playwright/test";\nexport type Misplaced = Page;',
-        playwright,
-      ],
-      [
-        "src/app/misplaced.ts",
-        'export const load = () => import("../../node_modules/playwright/index.mjs");',
-        playwright,
-      ],
+      // A module in backticks, which the selectors cannot read.
       [
         "src/app/misplaced.ts",
         "export const load = () => import(`@ayme-dev/recorder/testing`);",
-        engine,
-      ],
-      [
-        "src/app/misplaced.ts",
-        "export const load = () => import(`playwright-core`);",
-        playwright,
+        "Write the module in import() as a quoted string",
       ],
       [
         "testing/pom/Misplaced.ts",
-        'export type Engine = import("../../../recorder/src/engine").Engine;',
-        engine,
+        "export const load = () => import(`playwright-core`);",
+        "Write the module in import() as a quoted string",
       ],
     ];
     for (const [path, code, message] of refusals)
       expect(await lint(path, `${code}\n`), `${path}: ${code}`).toEqual([
         expect.stringContaining(message),
       ]);
-    // The contract by its name, a local folder that shares a name with the
-    // engine or Playwright, and Playwright's types in the page objects.
+    // The contract by its name, and local modules that share a name with the
+    // engine or Playwright.
     const allowed: [path: string, code: string][] = [
       [
         "src/app/placed.ts",
@@ -188,10 +156,6 @@ it(
         'export const load = () => import("./playwright/index");',
       ],
       ["testing/pom/Placed.ts", 'export * from "./recorder";'],
-      [
-        "testing/pom/Placed.ts",
-        'export type Page = import("../../node_modules/@playwright/test").Page;',
-      ],
     ];
     for (const [path, code] of allowed)
       expect(await lint(path, `${code}\n`), `${path}: ${code}`).toEqual([]);

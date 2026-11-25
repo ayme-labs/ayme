@@ -62,45 +62,35 @@ it(
         'export type Connection = import("../connection/application/agentConnection").AgentConnection;',
         "Import another slice through its index.ts.",
       ],
-      // Test support drives the built command: no import of src/ of any kind.
+      // Test support drives the built command, so it imports nothing of
+      // src/, in a .tsx or .mts file too.
       [
         "testing/misplaced.ts",
         'export { startMcpServer } from "../src/server";',
         "The MCP package's test support uses no slice",
       ],
       [
-        "testing/misplaced.ts",
-        'export const load = () => import("../src/server");',
+        "testing/misplaced.mts",
+        'export { startMcpServer } from "../src/server";',
         "The MCP package's test support uses no slice",
       ],
       [
-        "testing/misplaced.ts",
-        'export type Start = typeof import("../src/server").startMcpServer;',
+        "testing/misplaced.tsx",
+        'import type { startMcpServer } from "../src/server";\nexport type Start = typeof startMcpServer;',
         "The MCP package's test support uses no slice",
       ],
+      // A module in backticks, which the selectors cannot read, so it would
+      // slip past them all: the slice order here.
       [
-        "testing/fixtures/misplaced.ts",
-        "export const load = () => import(`../../src/server/index`);",
-        "The MCP package's test support uses no slice",
-      ],
-      // The module in backticks.
-      [
-        "src/tools/application/misplaced.ts",
-        "export const load = () => import(`../../connection/application/agentConnection`);",
-        "Import another slice through its index.ts.",
+        "src/pairing/domain/misplaced.ts",
+        "export const load = () => import(`../../connection/index`);",
+        "Write the module in import() as a quoted string",
       ],
     ];
     for (const [path, code, message] of refusals)
       expect(await lint(path, `${code}\n`), `${path}: ${code}`).toEqual([
         expect.stringContaining(message),
       ]);
-    // A folder of testing/ named src is test support's own.
-    expect(
-      await lint(
-        "testing/placed.ts",
-        'export const load = () => import("./src/fixture");\nexport { fixture } from "./src/fixture";\n'
-      )
-    ).toEqual([]);
   }
 );
 

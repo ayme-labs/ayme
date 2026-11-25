@@ -1,20 +1,19 @@
-import { join } from "node:path";
 import config from "@ayme-dev/eslint-config/base";
 import {
   boundariesPlugin,
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
-import { relativeImports } from "@ayme-dev/eslint-config/relative-imports";
 
 // The source layout's rules; this file is the source of truth.
 // packages/mcp/AGENTS.md holds the rules lint cannot see.
 
 const packageRoot = import.meta.dirname;
 
-// The slices of src/, and the slices each may use: only those listed before
-// it here. server, client and process are the composition roots: nothing
-// uses them, and none uses another. Test support lives in testing/ beside
-// src/ (ADR-0057): it drives the built command from outside and uses no slice.
+// The slices of src/, and the slices each may use: only those listed before it
+// here. Every folder of src/ is a slice, which src/layout.test.ts checks.
+// server, client and process are the composition roots: nothing uses them, and
+// none uses another. Test support lives in testing/ beside src/ (ADR-0057): it
+// drives the built command from outside and uses no slice.
 const allowedSlices = {
   // The messages between the server and the page client or App Process, as
   // zod schemas both sides validate.
@@ -88,11 +87,16 @@ function restrictedImports(files, patterns, ignores = []) {
           const value = `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
           return [
             `ImportExpression[source.value=${value}]`,
-            // The module in backticks.
-            `ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0][source.quasis.0.value.cooked=${value}]`,
             `TSImportType[source.value=${value}]`,
           ].map((selector) => ({ selector, message }));
         }),
+        // A module in backticks, which the selectors above do not read.
+        {
+          selector:
+            'ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0]',
+          message:
+            "Write the module in import() as a quoted string, so lint can check it.",
+        },
       ],
     },
   };
@@ -151,16 +155,22 @@ export default [
   frontDoors(undefined, ["src/*.ts"], { tests: false }),
   frontDoors(undefined, ["src/*.test.ts"], { tests: true }),
   // Test support (ADR-0057) drives the built command from outside, so it
-  // imports nothing of src/: judged by where the path leads, so a folder of
-  // testing/ named src passes.
-  relativeImports(
-    ["testing/**/*.ts"],
-    [
-      {
-        folder: join(packageRoot, "src"),
-        message:
-          "The MCP package's test support uses no slice: it drives the built ayme command.",
-      },
-    ]
-  ),
+  // imports nothing of src/.
+  {
+    files: ["testing/**/*.{ts,tsx,mts,cts}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: String.raw`^\.\.?/(.*/)?src(/|$)`,
+              message:
+                "The MCP package's test support uses no slice: it drives the built ayme command.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

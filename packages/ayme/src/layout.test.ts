@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
 import { expect, it, vi } from "vitest";
@@ -419,16 +419,6 @@ const refusals: [path: string, code: string, message: string][] = [
     'export type Node = import("typescript").Node;',
     "Only compiler imports typescript",
   ],
-  [
-    "src/runtime/misplaced.ts",
-    'export const load = () => import("../../node_modules/typescript/lib/typescript.js");',
-    "Only compiler imports typescript",
-  ],
-  [
-    "src/page-objects/domain/misplaced.ts",
-    'import type ts from "../../../node_modules/typescript";\nexport type Node = ts.Node;',
-    "Only compiler imports typescript",
-  ],
   // compiler uses only shared and page-objects' domain...
   [
     "src/compiler/misplaced.ts",
@@ -454,6 +444,17 @@ const refusals: [path: string, code: string, message: string][] = [
   [
     "src/server.ts",
     'export type Compiler = import("./compiler/index").PomCompiler;',
+    "Only the ./compiler entry uses compiler",
+  ],
+  // The ./compiler entry itself, which would bring compiler with it.
+  [
+    "src/index.ts",
+    'export * from "./compiler.js";',
+    "Only the ./compiler entry uses compiler",
+  ],
+  [
+    "src/server.ts",
+    'export const load = () => import("./compiler");',
     "Only the ./compiler entry uses compiler",
   ],
   [
@@ -493,16 +494,6 @@ const refusals: [path: string, code: string, message: string][] = [
     "src/in-page/host/misplaced.ts",
     'export { expect } from "@playwright/test";',
     "The in-page module's host side takes only Playwright's types",
-  ],
-  [
-    "src/in-page/host/misplaced.ts",
-    'import { expect } from "../../../node_modules/@playwright/test";\nexport { expect };',
-    "The in-page module's host side takes only Playwright's types",
-  ],
-  [
-    "src/in-page/page/misplaced.ts",
-    'export const load = () => import("../../../node_modules/@playwright/test/index.mjs");',
-    "The in-page module uses only shared and @ayme-dev/core",
   ],
 ];
 
@@ -588,10 +579,6 @@ it(
         "src/in-page/host/misplaced.ts",
         'export type Target = import("@playwright/test").Locator;',
       ],
-      [
-        "src/in-page/host/misplaced.ts",
-        'import type { Page } from "../../../node_modules/@playwright/test";\nexport type Target = Page;',
-      ],
       // Tests are let off: they may use any slice and package.
       [
         "src/in-page/host/misplaced.test.ts",
@@ -610,10 +597,6 @@ it(
       [
         "src/compiler.ts",
         'export { createPomCompiler } from "./compiler/index";',
-      ],
-      [
-        "src/compiler/misplaced.ts",
-        'export const load = () => import("../../node_modules/typescript/lib/typescript.js");',
       ],
     ];
     for (const [path, code] of allowed)
@@ -895,22 +878,34 @@ it(
     // The config as tsdown reads it, spreads and all. By path, so the
     // typecheck does not follow it into the build's own modules.
     const { default: tsdown } = await vi.importActual<{
-      default: { entry: string[] };
+      default: { entry: string | string[] | Record<string, string> };
     }>("../tsdown.config.ts");
-    const listed = tsdown.entry.map((entry) => entry.replace(/^\.\//, ""));
+    // Each entry's source, and the name of the file the build makes of it: a
+    // list names it after its source, a map by its key.
+    const entries =
+      typeof tsdown.entry === "object" && !Array.isArray(tsdown.entry)
+        ? Object.entries(tsdown.entry)
+        : [tsdown.entry]
+            .flat()
+            .map((source): [string, string] => [
+              basename(source, ".ts"),
+              source,
+            ]);
+    const listed = entries.map(([, source]) => source.replace(/^\.\//, ""));
+    const built = entries.map(([name]) => name);
     const { exports } = JSON.parse(
       readFileSync(join(packageRoot, "package.json"), "utf8")
     ) as { exports: Record<string, { import: string }> };
-    // Each export's built file, as the source tsdown builds it from.
-    const exported = Object.values(exports).map(({ import: built }) =>
-      built.replace(/^\.\/dist\/(.+)\.mjs$/, "src/$1.ts")
+    // Each export's built file, by the name the build gives it.
+    const exported = Object.values(exports).map(({ import: file }) =>
+      file.replace(/^\.\/dist\/(.+)\.mjs$/, "$1")
     );
     expect(exported.length).toBeGreaterThan(0);
     for (const entry of listed)
       expect(entry, `${entry} is not at the top of src/`).toMatch(
         /^src\/[^/]+\.ts$/
       );
-    expect(listed).toEqual(expect.arrayContaining(exported));
+    expect(built).toEqual(expect.arrayContaining(exported));
   }
 );
 

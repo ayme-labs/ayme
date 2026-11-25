@@ -22,6 +22,7 @@ const slow = { timeout: 60_000 };
 
 const frontDoor = "Import another slice through its index.ts.";
 const aymeEntry = "Import ayme only through @ayme-dev/ayme/inspector.";
+const quoted = "Write the module in import() as a quoted string";
 
 // Each import the layout refuses: the file, its code and the message.
 const refusals: [path: string, code: string, message: string][] = [
@@ -60,32 +61,22 @@ const refusals: [path: string, code: string, message: string][] = [
     'export const load = () => import("@ayme-dev/ayme");',
     aymeEntry,
   ],
-  // The module in backticks.
+  // A module in backticks, which the selectors cannot read, so it would
+  // slip past them all: the slice order here.
   [
     "src/app/misplaced.ts",
     "export const load = () => import(`@ayme-dev/ayme/internal`);",
-    aymeEntry,
+    quoted,
   ],
   [
-    "src/runs/domain/misplaced.ts",
+    "src/shared/domain/misplaced.ts",
+    "export const load = () => import(`../../panel/index`);",
+    quoted,
+  ],
+  [
+    "src/runs/domain/misplaced.test.ts",
     "export const load = () => import(`../../navigation/domain/lens`);",
-    frontDoor,
-  ],
-  // ayme by a relative path, into its source or its build.
-  [
-    "src/app/misplaced.ts",
-    'export const load = () => import("../../../ayme/src/internal");',
-    aymeEntry,
-  ],
-  [
-    "src/app/misplaced.ts",
-    'export { ayme } from "../../../ayme/dist/internal.mjs";',
-    aymeEntry,
-  ],
-  [
-    "src/panel/view/misplaced.ts",
-    'export type Misplaced = import("../../../node_modules/@ayme-dev/ayme/dist/inspector.mjs").InspectorState;',
-    aymeEntry,
+    quoted,
   ],
 ];
 

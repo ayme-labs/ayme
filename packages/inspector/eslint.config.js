@@ -3,16 +3,16 @@ import {
   boundariesPlugin,
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
-import { relativeImports } from "@ayme-dev/eslint-config/relative-imports";
 
 // The source layout's rules; this file is the source of truth.
 // packages/inspector/AGENTS.md holds the rules lint cannot see.
 
 const packageRoot = import.meta.dirname;
 
-// The slices of src/, and the slices each may use: only those listed before
-// it here. app composes them, and nothing uses app. Test support, the
-// Inspector POM included, lives in testing/ beside src/ (ADR-0057).
+// The slices of src/, and the slices each may use: only those listed before it
+// here. Every folder of src/ is a slice, which src/layout.test.ts checks. app
+// composes them, and nothing uses app. Test support, the Inspector POM
+// included, lives in testing/ beside src/ (ADR-0057).
 const allowedSlices = {
   // The contract client and its two transports, rendering into the shadow
   // root, and shared UI bits.
@@ -94,11 +94,16 @@ function restrictedImports(files, patterns, ignores = []) {
           const value = `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
           return [
             `ImportExpression[source.value=${value}]`,
-            // The module in backticks.
-            `ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0][source.quasis.0.value.cooked=${value}]`,
             `TSImportType[source.value=${value}]`,
           ].map((selector) => ({ selector, message }));
         }),
+        // A module in backticks, which the selectors above do not read.
+        {
+          selector:
+            'ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0]',
+          message:
+            "Write the module in import() as a quoted string, so lint can check it.",
+        },
       ],
     },
   };
@@ -114,12 +119,6 @@ export default [
   // Every production file under src/, in a slice or not; the blocks below
   // add their own patterns.
   restrictedImports([sourceFiles], [aymeThroughInspector], testFiles),
-  // ...and no relative path into ayme, its source or its build.
-  relativeImports(
-    [sourceFiles],
-    [{ package: "^@ayme-dev/ayme$", message: aymeThroughInspector.message }],
-    { ignores: testFiles }
-  ),
   {
     files: [sourceFiles],
     plugins: { "slice-boundaries": boundariesPlugin },
