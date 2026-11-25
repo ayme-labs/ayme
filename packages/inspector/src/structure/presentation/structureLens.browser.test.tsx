@@ -559,7 +559,6 @@ it("scrolls sideways only when the deepest row has no room for its ref and role"
       members: [],
       children: [deep, ...(index === 59 ? [{ ...deep, ref: "e61" }] : [])],
     };
-  // Whether the navigator's scroll area is wider than the panel.
   const sideways = async () =>
     (await lens.tree.elementHandle())!.evaluate((tree) => {
       const scroller = tree.closest(".overflow-auto")!;
