@@ -231,6 +231,33 @@ it("omits generated positions for a failed import and reports source positions a
   expect(invalidate).toHaveBeenCalledTimes(4);
 });
 
+it("keeps the source position of an error in a file it did not compile, beside one it did", async () => {
+  const { write, watch } = await fixture();
+  const helper = await write("helper.ts", 'import "./missing";');
+  const entry = await write("entry.ts", '// pom\nimport "./helper";');
+  const { outcome } = await watch(entry, (_file, source) =>
+    source.startsWith("// pom")
+      ? { code: `\n\n${source}`, dependencies: [] }
+      : null
+  );
+  const result = await outcome();
+  assert(result.kind === "failed");
+  expect(result.errors.map(buildErrorLine)).toEqual([
+    `${helper}:1:8: Could not resolve "./missing"`,
+  ]);
+});
+
+it("reports an error esbuild gives no location, such as a missing entry", async () => {
+  const { folder, watch } = await fixture();
+  const entry = join(folder, "missing.ts");
+  const { outcome } = await watch(entry);
+  const result = await outcome();
+  assert(result.kind === "failed");
+  expect(result.errors).toEqual([
+    { text: expect.stringContaining("missing.ts"), location: null },
+  ]);
+});
+
 it("omits generated positions when the working directory is a symlink", async () => {
   const { folder, write, watch } = await fixture();
   const actual = join(folder, "actual");
