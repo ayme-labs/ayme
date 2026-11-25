@@ -53,7 +53,6 @@ export type ChildRun = {
   className?: string;
   /** The Page Object it ran on, e.g. "ListPage" or "ListPage.items[1]". */
   objectPath?: string;
-  /** The collection item it ran on. */
   item?: CollectionItem;
   arguments: ToolArguments;
   status: "running" | "succeeded" | "failed";
