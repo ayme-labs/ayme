@@ -4,7 +4,7 @@
 
 Lint cannot see the rules below:
 
-- Write each module as a plain string, and ayme by its package name, since lint reads only that string, not where a path leads.
+- Give `import()` a plain string, and reach ayme by its package name, since lint reads only that string, not where a path leads.
 - In tests and [`testing/`](testing/index.ts), use ayme only through `@ayme-dev/ayme/inspector`, its public API and `@ayme-dev/ayme/internal`, so the Inspector depends only on ayme's contract.
 - Take from another slice's front door only what your layer may use, since lint cannot see past the door to the layer it re-exports from.
 - When a slice needs code from a later one, move that code down into the lower slice, since the slice order runs one way.
