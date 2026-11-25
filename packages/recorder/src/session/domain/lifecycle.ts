@@ -1718,7 +1718,7 @@ function pageSettled(draft: Draft, id: InputId) {
   );
   // A wait that was cut short ends too: nothing waits for it any more.
   if (!input) return;
-  // Typing needs no read of its own: its report has come by now.
+  // Typing needs no read of its own: what it changed is its report's.
   if (input.held.kind === "typing")
     return change(draft, input.id, { stage: "settled" });
   change(draft, input.id, {
