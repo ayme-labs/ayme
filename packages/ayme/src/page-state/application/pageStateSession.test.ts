@@ -516,7 +516,9 @@ describe("runAction", () => {
     );
     const reader = cursor();
 
-    await expect(session.runAction(reader, call, () => {})).resolves.toEqual({
+    await expect(
+      session.runAction(reader, call, () => {})
+    ).resolves.toStrictEqual({
       settled: false,
       loading: "https://app.test/next",
       next: "The page is loading https://app.test/next. What the action changed before the load could not be read. Call snapshot next to read the new page.",

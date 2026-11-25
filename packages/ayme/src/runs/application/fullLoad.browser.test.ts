@@ -155,18 +155,11 @@ describe("a tool call that starts a full page load, in Chromium", () => {
   it("ends a goal with a Handover whose step leaves page_changed out when the load's changes could not be read", async () => {
     // Over Playwright in Node, the old document's last capture can be lost
     // when the next document commits at once; the session then answers so.
-    const session = getPageStateSession(document);
-    const runAction = session.runAction.bind(session);
-    vi.spyOn(session, "runAction").mockImplementation(
-      (cursor, toolCall, perform) =>
-        toolCall.tool === "Leaver.leave"
-          ? Promise.resolve({
-              settled: false,
-              loading: NO_CONTENT,
-              next: `The page is loading ${NO_CONTENT}. What the action changed before the load could not be read. Call snapshot next to read the new page.`,
-            })
-          : runAction(cursor, toolCall, perform)
-    );
+    vi.spyOn(getPageStateSession(document), "runAction").mockResolvedValueOnce({
+      settled: false,
+      loading: NO_CONTENT,
+      next: `The page is loading ${NO_CONTENT}. What the action changed before the load could not be read. Call snapshot next to read the new page.`,
+    });
 
     const handover = (await call("goal", {
       goal: "leave the page",
@@ -174,7 +167,7 @@ describe("a tool call that starts a full page load, in Chromium", () => {
     })) as { reason: string; history: object[] };
 
     expect(handover.reason).toBe("page_loading");
-    expect(handover.history).toEqual([
+    expect(handover.history).toStrictEqual([
       {
         operation: "Leaver.leave",
         chosen: {},

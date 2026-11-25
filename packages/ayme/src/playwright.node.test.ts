@@ -420,6 +420,31 @@ describe("ayme over a Playwright Page", () => {
     });
   });
 
+  it("answers a navigate whose router function changes the page and then loads another document without the changes it could not read", async () => {
+    const page = await pageServing((url) =>
+      url.pathname === "/two"
+        ? "<p>Second document</p>"
+        : "<p>First document</p>"
+    );
+    const ayme = await startedOn(page, {
+      async navigate(url) {
+        await page.evaluate(
+          `document.querySelector("p").textContent = "Leaving"`
+        );
+        await page.goto(url);
+      },
+    });
+    await ayme.tools.run("snapshot", {});
+
+    await expect(
+      ayme.tools.run("navigate", { url: "/two" })
+    ).resolves.toStrictEqual({
+      settled: false,
+      loading: "http://app.test/two",
+      next: "The page is loading http://app.test/two. What the action changed before the load could not be read. Call snapshot next to read the new page.",
+    });
+  });
+
   it("resolves a relative navigation against the document's base URL", async () => {
     const page = await pageServing(
       () => '<base href="/sub/"><p>Page</p>',
