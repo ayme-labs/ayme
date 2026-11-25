@@ -7,7 +7,7 @@ What your project keeps in `ayme/`, how to set the folder up for your Page Objec
 ```text
 ayme/
   tsconfig.json        the folder's compiler options
-  pom/                 your Page Object Models, one class per file
+  pom/                 your Page Object Models
   page-objects.ts      the classes `ayme mcp` serves to a page without ayme
   CONVENTIONS.md       what you settled for how ayme's skills work here
   product-surfaces/    the `product-surfaces` skill's list
@@ -24,7 +24,7 @@ An app that ships ayme needs only `tsconfig.json` and `pom/`. Each other entry a
 
 ## Set the folder up for Page Objects
 
-1. Put each [Page Object Model](ayme-page-objects.md) in its own file, `ayme/pom/<ClassName>.ts`. Files inside `ayme/` import each other by relative path.
+1. Put your [Page Object Models](ayme-page-objects.md) in `ayme/pom/`. Files inside `ayme/` import each other by relative path.
 
 2. Add `ayme/tsconfig.json`. It gives the folder your app's compiler options, so the build plugin, `ayme mcp`, the type check and your editor all compile the Page Objects the same way:
 
