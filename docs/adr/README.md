@@ -39,5 +39,5 @@ A replaced or deprecated ADR lives in [retired/](retired/), its text unchanged.
 - [ADR-0057: Test support lives beside src and is never published](0057-test-support-lives-beside-src-and-is-never-published.md)
 - [ADR-0060: A project keeps everything ayme in one `ayme` folder, without a dot](0060-a-project-keeps-everything-ayme-in-one-ayme-folder-without-a-dot.md)
 - [ADR-0061: A Page Object's presence is separate from its availability, and its model may declare its root and its presence](0061-a-page-objects-presence-is-separate-from-its-availability-and-its-model-may-declare-it.md)
-- [ADR-0062: An unavailable tool stays listed and says why, and reach is tested as Playwright's click tests it](0062-a-tool-stays-listed-when-unavailable-and-says-why-and-reach-is-tested-as-the-click-tests-it.md)
+- [ADR-0062: An unavailable tool stays listed and can say why, and reach is tested as Playwright's click tests it](0062-a-tool-stays-listed-when-unavailable-and-says-why-and-reach-is-tested-as-the-click-tests-it.md)
 - [ADR-0063: Page Object Tools are published per class, and a Page Object Id picks the instance](0063-page-object-tools-are-published-per-class-and-a-page-object-id-picks-the-instance.md)
