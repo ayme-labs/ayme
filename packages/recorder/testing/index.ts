@@ -263,6 +263,7 @@ export async function startScriptedRecorder(
             ? { kind: "storageSaved" }
             : { kind: "requestFailed", request, reason: storageFails }
         );
+      // Assert visibility.
       case "pick":
         // Playwright tells of its mode only when it changes.
         if (picking === request.on) return;

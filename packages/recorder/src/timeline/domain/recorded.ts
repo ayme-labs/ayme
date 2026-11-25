@@ -35,6 +35,7 @@ export type PageSnapshot = {
   readonly tree: string;
 };
 
+/** What Playwright reported about one Interaction. */
 export type InteractionReport = {
   /** Playwright's name for it: "click", "check" and so on. */
   readonly type: string;

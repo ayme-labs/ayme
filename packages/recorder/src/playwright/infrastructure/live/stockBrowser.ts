@@ -809,6 +809,7 @@ async function openPage(
         return stopTrace(request.keep);
       case "saveStorage":
         return saveStorage();
+      // Assert visibility.
       case "pick":
         return pick(request.on);
       case "highlight":

@@ -539,6 +539,7 @@ export function openAddress(state: LifecycleState): string | null {
   return state.pages.at(-1)?.url ?? null;
 }
 
+/** The phase a state shows outside the engine. */
 export function shown(state: LifecycleState): RecorderPhase {
   switch (state.phase) {
     case "ended":
@@ -718,6 +719,7 @@ function pageOpened(state: LifecycleState, page: Page): Step {
   });
 }
 
+/** A page's main frame is at another address. */
 function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
   const page = state.pages.find((open) => open.id === id);
   if (!page) return stay(state);
@@ -1503,6 +1505,7 @@ function reporting(state: Active, draft: Draft, on: boolean): Active {
   return state;
 }
 
+/** Every page holds inputs back, or no longer does. */
 function inputsHeld(state: Active, draft: Draft, on: boolean): Active {
   if (state.phase === "wrappingUp")
     return on ? state : { ...state, gateOff: true };
@@ -1686,6 +1689,7 @@ function inputPassedOn(
   }
 }
 
+/** The wait asked for after an input is over. */
 function pageSettled(draft: Draft, id: InputId) {
   const input = draft.inputs.find(
     (held) => held.id === id && held.stage === "settling"
@@ -2480,6 +2484,7 @@ function failed(
       // The page goes on holding what follows: each key it holds is told
       // of, passed on, and lets the page through once more.
       return stay(state);
+    // Assert visibility.
     case "pick":
       // Picking that cannot start is off; picking that cannot be left
       // counts as left, as switching Playwright's recorder off does.

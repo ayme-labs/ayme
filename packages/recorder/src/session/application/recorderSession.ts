@@ -168,6 +168,7 @@ export class RecorderSession extends Context.Service<
               yield* give(deferred, item.result);
               deferred = undefined;
               return;
+            // Highlight.
             case "keepReply":
               kept.set(item.key, reply);
               return;
@@ -271,6 +272,7 @@ export class RecorderSession extends Context.Service<
               timeline = new Timeline();
               fromTimeline = 0;
               return publish();
+            // Highlight.
             case "locate":
               return yield* tell({
                 kind: "located",

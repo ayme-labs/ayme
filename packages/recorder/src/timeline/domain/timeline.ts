@@ -108,6 +108,7 @@ type Written = {
   };
 };
 
+/** What an Interaction's entry is measured as. */
 type Measured = {
   readonly target: FirstRef | undefined;
   readonly named: NamedElement | null;
