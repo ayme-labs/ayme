@@ -8,6 +8,7 @@ root=$(cd "$here/../../.." && pwd)
 out=${1:?give a new output folder}
 mkdir "$out"
 node "$here/rules.mjs"
+(cd "$root" && pnpm exec prettier --log-level warn --write "$here"/*.rules.json)
 status=0
 for focus in requests lifecycle ids; do
   sh "$root/.agents/skills/stately/scripts/stately-check" check "$here/session.json" \
