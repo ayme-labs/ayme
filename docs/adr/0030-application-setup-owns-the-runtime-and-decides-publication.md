@@ -33,9 +33,7 @@ driver and supports an explicit retry. It mirrors the registry's active
 tool set and adds no observer of its own (ADR-0009).
 
 Turning publication off does not remove ayme or Page Object code from
-browser output. Complete removal from production builds remains a
-separate decision, to be resolved before production adoption is
-recommended.
+browser output. Removing them from a build is ADR-0040's decision.
 
 ## Consequences
 
@@ -43,4 +41,4 @@ One place starts ayme, stops it and decides publication, with or without
 a framework integration.
 
 Publication can no longer be compiled out through a build setting.
-Removal from production builds is the mechanism for that.
+A build without ayme (ADR-0040) is the mechanism for that.

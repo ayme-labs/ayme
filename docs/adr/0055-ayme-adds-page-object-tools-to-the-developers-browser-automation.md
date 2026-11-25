@@ -13,10 +13,10 @@ Developers who drive a browser with a coding agent already use Playwright MCP, P
 
 ayme adds to the browser automation a developer already uses. It does not replace it.
 
-- `ayme mcp` is how a coding agent outside the browser reaches the page, whatever drives the browser. It lists the page's Page Object Tools, `page_objects` and Peek Tools, the App Processes' tools, and its own tools (`ayme_connect`, `ayme_inspect`, `ayme_list_tools`, `ayme_call`).
+- `ayme mcp` is how a coding agent outside the browser reaches the page, whatever drives the browser. It lists the page's Page Object Tools, `page_objects` and Peek Tools, the App Processes' tools, and its own tools: to pair with a page, to open the Inspector, and to list and call any tool it lists.
 - `ayme mcp` lists none of ayme's own browser driving: not the Browser Tools, `snapshot`, `goal` or Custom Tools. A coding agent drives the browser with its own browser automation; one without any adds one. Custom Tools go with the Browser Tools because a Custom Tool names its element by a Structural Ref, which only ayme's `snapshot` gives.
-- The server decides what it lists. The page reports every tool with its group, so the page code is the same whichever agent reaches it, whether the page ships ayme and pairs through `ayme_connect` or loads served Page Objects.
-- The server's own tools stay. A page that ships ayme pairs through `ayme_connect`, and an agent whose client never refreshes its tool list reaches the page through `ayme_list_tools` and `ayme_call`.
+- The server decides what it lists. The page reports every tool with its group, so the page code is the same whichever agent reaches it, whether the page ships ayme and pairs through the server's pairing tool or loads served Page Objects.
+- The server's own tools stay. A page that ships ayme pairs through the server's pairing tool, and an agent whose client never refreshes its tool list reaches the page through the server's tools that list and call tools.
 - WebMCP publication is for an agent that runs in the page, which has no browser automation of its own. It publishes the session's tools, `page_objects` among them, and is experimental. A page that loads served Page Objects publishes nothing through WebMCP.
 
 ## Considered and rejected
@@ -36,4 +36,4 @@ ADR-0034 needs no change: Peek Tools stay offered through the Agent Connection, 
 
 ## Cost
 
-A developer who used ayme as their only browser automation must add another, such as Playwright MCP, and a coding agent can no longer run the Goal Loop through `goal`; the changelog says so in one line. A page from before the page client sent each tool's group gets every tool listed, as before, until its `@ayme-dev/mcp` is updated.
+A developer who used ayme as their only browser automation must add another, such as Playwright MCP, and a coding agent can no longer run the Goal Loop through `goal`; the changelog says so in one line.

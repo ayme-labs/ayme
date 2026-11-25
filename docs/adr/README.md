@@ -14,7 +14,7 @@ A replaced or deprecated ADR lives in [retired/](retired/), its text unchanged.
 - [ADR-0019: Determine live Page Object availability from root reachability](0019-determine-live-page-object-availability-from-root-reachability.md)
 - [ADR-0021: Pin Playwright Lite to immutable fork tags](0021-pin-playwright-lite-to-immutable-fork-tags.md)
 - [ADR-0022: Build decision requests in the browser; the Decision Endpoint adds the key, provider and model](0022-build-decision-requests-in-the-browser.md)
-- [ADR-0023: Ref Tools are one registration, visible to agents and to the Goal Loop](0023-register-ref-tools-once-for-agents-and-the-goal-loop.md)
+- [ADR-0023: A tool on a Structural Ref is one registration, visible to agents and to the Goal Loop](0023-register-ref-tools-once-for-agents-and-the-goal-loop.md)
 - [ADR-0024: Core owns the meaning of a Settled Page; the activity signal comes from outside](0024-core-owns-the-meaning-of-a-settled-page.md)
 - [ADR-0027: The browser runtime records its interactions in core's observation model](0027-the-browser-runtime-records-its-interactions-in-cores-observation-model.md)
 - [ADR-0028: Keep Structural Ref continuity in the observation session's identity ledger](0028-keep-structural-ref-continuity-in-the-observation-sessions-identity-ledger.md)
