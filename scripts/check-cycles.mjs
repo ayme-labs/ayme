@@ -1,9 +1,8 @@
 /**
  * Fails on a cycle of runtime imports inside a workspace's `src`, or inside
- * an example app's `ayme` folder, which a `.svelte` file may be the only one
- * to import from.
+ * an app's `ayme` folder, including Page Objects used outside its `src`.
  *
- *   node scripts/check-cycles.mjs packages/*\/src apps/*\/src apps/example-*\/ayme
+ *   node scripts/check-cycles.mjs packages/*\/src apps/*\/src apps/*\/ayme
  *
  * Each folder is read with madge, resolving imports through the workspace's
  * own `tsconfig.json`, so its path aliases and its package's self-imports
@@ -28,7 +27,7 @@ import ts from "typescript";
 
 const skipTypeImports = { skipTypeImports: true };
 
-/** Each runtime import cycle in the given `src` directories, as `src: a > b`. */
+/** Each runtime import cycle in the given source directories, as `src: a > b`. */
 export async function findCycles(sourceDirs) {
   const cycles = [];
   for (const sourceDir of sourceDirs) {

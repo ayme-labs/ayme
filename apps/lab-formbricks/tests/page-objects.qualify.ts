@@ -11,9 +11,8 @@ import {
 } from "@playwright/test";
 
 import { SignInPage } from "#pom/SignInPage";
-import { SurveyEditorPage } from "#pom/SurveyEditorPage";
 import { SurveyNavigationPage } from "#pom/SurveyNavigationPage";
-import { SurveySummaryPage } from "#pom/SurveySummaryPage";
+import { SurveyEditorPage, SurveySummaryPage } from "#pom/SurveyPages";
 import {
   disconnect,
   seedResponse,

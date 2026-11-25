@@ -103,7 +103,7 @@ run-contract.ts                    the entry script
 tests/contract.replay.spec.ts      the replay test
 tests/replay.ts                    copy of assets/replay.ts, with match() for the site
 ayme/
-  pom/                             page objects, one class per file
+  pom/                             page objects
   CONVENTIONS.md                   what holds for every flow in the repository
   recordings/rec_…/                the recording, written by the recorder
   params/contract.recorded.json    what the recording entered and showed
