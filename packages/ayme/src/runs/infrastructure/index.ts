@@ -2,6 +2,7 @@ export {
   installRuntimePageInstrumentation,
   instrumentedPage,
 } from "./pageInstrumentation";
+export { actionsSettled } from "./actionsInFlight";
 export {
   demoFeedback,
   demoModeOptions,

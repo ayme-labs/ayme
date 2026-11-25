@@ -174,3 +174,64 @@ it("asks the runtime for Demo Mode on the Inspector's behalf, and withdraws the 
   for (const value of [on, off]) expect(roundTrip(value)).toStrictEqual(value);
   void ayme;
 });
+
+/** The ref the runtime's snapshot gives the button named `name`. */
+async function buttonRef(ayme: ReturnType<typeof createAyme>, name: string) {
+  const { structure } = (await ayme.tools.run("snapshot", {})) as {
+    structure: string;
+  };
+  const ref = new RegExp(`(e\\d+) button "${name}"`).exec(structure)?.[1];
+  if (!ref) throw new Error(`No button "${name}" in:\n${structure}`);
+  return ref;
+}
+
+/** Resolves once the contract's state shows a running Run's `operation`. */
+function interactionStarted(
+  contract: ReturnType<typeof inlineInspectorContract>,
+  operation: string
+) {
+  return new Promise<void>((resolve) => {
+    const unsubscribe = contract.subscribe({
+      onEvent: (event) => {
+        if (
+          event.type === "state" &&
+          event.state.runs.some(
+            (run) =>
+              run.status === "running" &&
+              run.interactions.some((done) => done.operation === operation)
+          )
+        ) {
+          unsubscribe();
+          resolve();
+        }
+      },
+      onError: () => {},
+    });
+  });
+}
+
+// A look holds the page's main thread for as long as it reads the page, and
+// an action waits on that thread for the animation frames that tell it its
+// element is stable: a look taken while an action runs eats into the
+// action's time. The look waits for the action instead.
+it("answers a look asked for while one of the runtime's actions runs once that action has ended", async () => {
+  document.body.innerHTML = '<button id="save" disabled>Save</button>';
+  const button = document.querySelector("button")!;
+  const contract = inlineInspectorContract();
+  const ayme = createAyme();
+  stop = ayme.start();
+  const ref = await buttonRef(ayme, "Save");
+  const order: string[] = [];
+  button.addEventListener("click", () => order.push("clicked"));
+
+  const started = interactionStarted(contract, "click");
+  const clicking = ayme.tools.run("click", { target: ref });
+  await started;
+  const looking = contract.look().then(() => order.push("look answered"));
+  // The click waits for the button to be enabled; the look is asked meanwhile.
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  button.disabled = false;
+  await Promise.all([clicking, looking]);
+
+  expect(order).toEqual(["clicked", "look answered"]);
+});

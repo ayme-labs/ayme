@@ -206,8 +206,11 @@ export type PageStateStore = {
   readonly session: PageStateSession;
   /** A capture nobody records, as text. */
   capturePageState(): Promise<string>;
-  /** A capture nobody records, asking for every predicate. */
-  look(): Promise<PageStateLook>;
+  /**
+   * A capture nobody records, asking for every predicate; it reads the page
+   * once `ready` resolves.
+   */
+  look(ready?: () => Promise<void>): Promise<PageStateLook>;
 };
 
 const stores = new WeakMap<Page, PageStateStore>();
@@ -265,7 +268,8 @@ function createStore(page: Page, host: PageStateHost): PageStateStore {
   }
   const captureWith = async (
     accepts?: readonly Predicate[],
-    keep?: readonly string[]
+    keep?: readonly string[],
+    ready?: () => Promise<void>
   ) => {
     const inputs = await elementInputs();
     const filters = await Promise.all(
@@ -274,6 +278,7 @@ function createStore(page: Page, host: PageStateHost): PageStateStore {
         filter: await filterInput(filter, toolFilterKey(name)),
       }))
     );
+    await ready?.();
     return host.capture(inputs, { accepts, filters, ...(keep && { keep }) });
   };
 
@@ -313,7 +318,7 @@ function createStore(page: Page, host: PageStateHost): PageStateStore {
   return {
     session,
     // The Inspector offers each tool the refs it takes, so a look carries them.
-    look: () => session.look({ accepts: PREDICATES }),
+    look: (ready) => session.look({ accepts: PREDICATES, ready }),
     async capturePageState() {
       return renderPageState(
         structureCapture(await captureWith(), treeRefAllocator())

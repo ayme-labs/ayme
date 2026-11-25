@@ -46,7 +46,8 @@ import { resolveRequestedRef } from "./refResolution";
  */
 export type CapturePage = (
   accepts?: readonly Predicate[],
-  keep?: readonly string[]
+  keep?: readonly string[],
+  ready?: () => Promise<void>
 ) => Promise<Capture>;
 
 /** What a reader of a capture asks of it besides its tree. */
@@ -58,6 +59,11 @@ export type CaptureAsk = {
    * a Page Object's declared span of text; a look alone asks for them.
    */
   keep?: readonly string[];
+  /**
+   * Resolves when the capture may begin. It is awaited after what the
+   * capture needs is gathered, right before the page is read.
+   */
+  ready?: () => Promise<void>;
 };
 
 /**
@@ -163,8 +169,9 @@ export class PageStateSession {
   private async capturePage({
     accepts,
     keep,
+    ready,
   }: CaptureAsk = {}): Promise<PageCapture> {
-    const capture = await this.captureDocument(accepts, keep);
+    const capture = await this.captureDocument(accepts, keep, ready);
     this.enter(capture);
     return this.read(capture);
   }
