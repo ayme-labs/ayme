@@ -188,7 +188,7 @@ There is one `ProjectRow.remove` tool for both rows. Your code calls it through 
 ```ts
 // main.ts
 import { createAyme } from "@ayme-dev/ayme";
-import { ProjectsPage } from "./pages";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 const ayme = createAyme({ pageObjects: [ProjectsPage] });
 ayme.start();

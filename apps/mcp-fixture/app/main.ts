@@ -1,7 +1,8 @@
 import { createAyme, type CustomTool } from "@ayme-dev/ayme";
 
-import { Basket } from "./Basket";
-import { GroceriesPage, OtherPage } from "./pages";
+import { Basket } from "#pom/Basket";
+import { GroceriesPage } from "#pom/GroceriesPage";
+import { OtherPage } from "#pom/OtherPage";
 
 /**
  * A Custom Tool: it returns the text of the element it's given. `ayme mcp`

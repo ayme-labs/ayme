@@ -672,7 +672,7 @@ test("passes backticked paths that resolve from the file's folder, its src/, the
           "`notes/c.md`, `a.ts` is no path, `deep/layer/b.ts`, `./notes/c.md`,",
           "`LICENSE.md` and `packages/other/d.json`; the end of a path: `layer/b.ts`.",
           "Left out: `src/` and `packages/lib/` (folders), `node_modules/effect/AGENTS.md`,",
-          "`dist/x.js`, `packages/lib/out/y.js`, `.ayme/init-script.js`, `src/<name>/z.ts`,",
+          "`dist/x.js`, `packages/lib/out/y.js`, `src/<name>/z.ts`,",
           "`src/**/z.ts`, `src/z?.ts`, `{a,b}/z.ts`, `go run ./x/y.go`, `npm:pkg/file.json`,",
           "`@scope/pkg/file.json`.",
           "",

@@ -1,10 +1,42 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  appendFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { writeInitScript } from "./initScriptFiles";
+
+// The real file system, but for one moment no test can otherwise reach:
+// between the creation of a file and the first write to it, where another
+// tool may write to the same file.
+const betweenCreationAndFirstWrite = vi.hoisted(() => ({
+  of: undefined as { file: string; run: () => Promise<void> } | undefined,
+}));
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const real = await importOriginal<typeof import("node:fs/promises")>();
+  const writeFile: typeof real.writeFile = async (file, data, options) => {
+    const { of } = betweenCreationAndFirstWrite;
+    const flag = typeof options === "object" ? options?.flag : undefined;
+    if (of === undefined || flag === undefined || file !== of.file)
+      return real.writeFile(file, data, options);
+    betweenCreationAndFirstWrite.of = undefined;
+    const handle = await real.open(of.file, flag);
+    try {
+      await of.run();
+      await handle.writeFile(data);
+    } finally {
+      await handle.close();
+    }
+  };
+  return { ...real, writeFile };
+});
 
 let folder: string;
 beforeEach(async () => {
@@ -12,7 +44,7 @@ beforeEach(async () => {
 });
 afterEach(() => rm(folder, { recursive: true, force: true }));
 
-const read = (name: string) => readFile(join(folder, ".ayme", name), "utf8");
+const read = (name: string) => readFile(join(folder, "ayme", name), "utf8");
 
 it("writes an init script that loads the served code from the port of the server that wrote it", async () => {
   await writeInitScript({ folder, port: 9411 });
@@ -38,8 +70,8 @@ it("creates a .gitignore that ignores the init script", async () => {
 });
 
 it("adds the init script to a .gitignore without replacing the user's lines", async () => {
-  await mkdir(join(folder, ".ayme"));
-  await writeFile(join(folder, ".ayme", ".gitignore"), "notes/\n# mine\n*.log");
+  await mkdir(join(folder, "ayme"));
+  await writeFile(join(folder, "ayme", ".gitignore"), "notes/\n# mine\n*.log");
 
   await writeInitScript({ folder, port: 9411 });
 
@@ -49,9 +81,9 @@ it("adds the init script to a .gitignore without replacing the user's lines", as
 });
 
 it("leaves a .gitignore that already ignores the init script as it is", async () => {
-  await mkdir(join(folder, ".ayme"));
+  await mkdir(join(folder, "ayme"));
   await writeFile(
-    join(folder, ".ayme", ".gitignore"),
+    join(folder, "ayme", ".gitignore"),
     "/init-script.js\nnotes/\n"
   );
 
@@ -59,4 +91,28 @@ it("leaves a .gitignore that already ignores the init script as it is", async ()
   await writeInitScript({ folder, port: 9412 });
 
   expect(await read(".gitignore")).toBe("/init-script.js\nnotes/\n");
+});
+
+it("keeps the line the recorder adds between the creation of the .gitignore and its first write", async () => {
+  const file = join(folder, "ayme", ".gitignore");
+  betweenCreationAndFirstWrite.of = {
+    file,
+    run: () => appendFile(file, "recordings/\n"),
+  };
+
+  await writeInitScript({ folder, port: 9411 });
+
+  // The other tool's line first, then the whole of this one's file.
+  expect(await read(".gitignore")).toMatch(
+    /^recordings\/\n# .*\ninit-script\.js\n$/
+  );
+});
+
+it("writes the init script all the same when the .gitignore cannot be read, as a folder of its name cannot", async () => {
+  await mkdir(join(folder, "ayme", ".gitignore"), { recursive: true });
+
+  await expect(writeInitScript({ folder, port: 9411 })).resolves.toBe(
+    join(folder, "ayme", "init-script.js")
+  );
+  expect(await read("init-script.js")).toContain("9411");
 });

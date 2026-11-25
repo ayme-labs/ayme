@@ -10,7 +10,7 @@ Vite plugin, the way an app's are. The tests live here rather than in
 
 ```
 app/         the fixture pages, their startup code and the Vite config
-pom/         the fixture app's Page Objects
+ayme/pom/    the fixture app's Page Objects
 tests/       Playwright fixtures (fixtures.ts) and the specs
 ```
 

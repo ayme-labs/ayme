@@ -210,7 +210,7 @@ describe("a recording", () => {
 
     await expect(recorder.send({ type: "finish" })).resolves.toBe("applied");
 
-    const folder = join(projectDir, ".ayme", "recordings", recordingId);
+    const folder = join(projectDir, "ayme", "recordings", recordingId);
     await expect(recorder.done).resolves.toEqual({ kind: "saved", folder });
     const text = await readFile(join(folder, "package.yaml"), "utf8");
     expect(text).toContain(
@@ -219,7 +219,7 @@ describe("a recording", () => {
         `mode: structural`,
         `createdAt: 1970-01-01T00:00:00.000Z`,
         `url: http://shop.test/`,
-        `tracePath: .ayme/recordings/${recordingId}/trace.zip`,
+        `tracePath: ayme/recordings/${recordingId}/trace.zip`,
         `visits:`,
         `  - visitId: visit_1`,
         `    url: http://shop.test/`,
@@ -233,7 +233,7 @@ describe("a recording", () => {
     expect(text).toContain(savedClick);
     // The latest recording is also filed as "latest".
     await expect(
-      readFile(join(projectDir, ".ayme", "recordings", "latest.yaml"), "utf8")
+      readFile(join(projectDir, "ayme", "recordings", "latest.yaml"), "utf8")
     ).resolves.toBe(text);
     // The recording's trace is beside the package.
     expect((await readdir(folder)).sort()).toEqual([
@@ -246,7 +246,7 @@ describe("a recording", () => {
   });
 
   it("replaces an earlier 'latest', and the semantic one of the released recorder", async () => {
-    const recordings = join(projectDir, ".ayme", "recordings");
+    const recordings = join(projectDir, "ayme", "recordings");
     const first = await start();
     await first.recorder.send({ type: "record" });
     await recordClick(first.browser);
@@ -515,7 +515,7 @@ describe("a recording", () => {
 
     expect(answers).toEqual(["applied", "ignored"]);
     await expect(recorder.send({ type: "finish" })).resolves.toBe("ignored");
-    expect(await readdir(join(projectDir, ".ayme", "recordings"))).toEqual([
+    expect(await readdir(join(projectDir, "ayme", "recordings"))).toEqual([
       "latest.yaml",
       recordingId,
     ]);
@@ -570,13 +570,13 @@ describe("a recording", () => {
 
     await expect(recorder.done).resolves.toEqual({
       kind: "saved",
-      folder: join(projectDir, ".ayme", "recordings", recordingId),
+      folder: join(projectDir, "ayme", "recordings", recordingId),
     });
   });
 
   it("ends 'failed' with the reason when the package cannot be written, and still lets the browser go", async () => {
-    // The project's `.ayme` is a file: no folder can be made in it.
-    await writeFile(join(projectDir, ".ayme"), "");
+    // The project's `ayme` is a file: no folder can be made in it.
+    await writeFile(join(projectDir, "ayme"), "");
     const { recorder, browser } = await start();
     const updates: RecorderUpdate[] = [];
     recorder.subscribe((update) => updates.push(update));

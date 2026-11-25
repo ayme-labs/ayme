@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#pom/*": "./ayme/pom/*.ts"
+  },
   "scripts": {
     "build": "vite build && vite build --mode without-ayme && node scripts/verify-browser-output.mjs",
     "dev": "vite --host 127.0.0.1 --port 4190 --strictPort",
@@ -13,7 +16,7 @@
     "test:e2e:dev": "AYME_E2E_RENDER=spa playwright test && playwright test --config playwright.benchScripted.config.ts",
     "test:e2e:prod": "AYME_E2E_SERVER=production AYME_E2E_RENDER=spa playwright test",
     "test:goals": "playwright test --config playwright.goals.config.ts --reporter=list",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p ayme"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",

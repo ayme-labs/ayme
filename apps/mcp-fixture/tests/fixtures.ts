@@ -148,7 +148,7 @@ export async function serverAddress(agent: Agent) {
 
 /**
  * Starts `ayme mcp` in a project of its own under the test's output folder,
- * whose `.ayme` is a copy of `outside/.ayme`, so it serves that entry's Page
+ * whose `ayme` is a copy of `outside/ayme`, so it serves that entry's Page
  * Objects, and runs the init script it writes in every page of `context`.
  * Returns the agent and the origin of its server, where a page fetches the
  * served code from. The agent opens with `revision`, 2025-11-25 by
@@ -159,12 +159,12 @@ export async function startServingAgent(
   testInfo: TestInfo,
   revision?: McpRevision
 ) {
-  // Beside the fixture's own packages, as a project's `.ayme` sits beside its
+  // Beside the fixture's own packages, as a project's `ayme` sits beside its
   // installed `@ayme-dev/ayme`.
   const project = testInfo.outputPath("project");
   await cp(
-    fileURLToPath(new URL("../outside/.ayme", import.meta.url)),
-    join(project, ".ayme"),
+    fileURLToPath(new URL("../outside/ayme", import.meta.url)),
+    join(project, "ayme"),
     { recursive: true }
   );
   const port = await freePort();
@@ -174,7 +174,7 @@ export async function startServingAgent(
     String(port)
   );
   await context.addInitScript({
-    path: join(project, ".ayme", "init-script.js"),
+    path: join(project, "ayme", "init-script.js"),
   });
   return { agent, server: `http://127.0.0.1:${port}` };
 }

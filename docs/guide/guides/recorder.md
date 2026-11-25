@@ -30,7 +30,7 @@ With the `ayme-recorder` skill installed, ask your agent to record a flow and sa
 
 The agent starts the recorder at that address. Press **Record**, click through the flow, and press **Finish**. The agent reads the recording, proposes page objects and a test, and writes them once you agree.
 
-You can also record first and hand the recording over afterwards. Run `codegen` yourself, then ask the agent to turn the recording into a test, and give it the path the terminal printed as `Recording package:`. Do not point it at `.ayme/recordings/latest.yaml` instead: that file is a copy of the latest recording that was saved, so after a run that recorded nothing it still holds the one before.
+You can also record first and hand the recording over afterwards. Run `codegen` yourself, then ask the agent to turn the recording into a test, and give it the path the terminal printed as `Recording package:`. Do not point it at `ayme/recordings/latest.yaml` instead: that file is a copy of the latest recording that was saved, so after a run that recorded nothing it still holds the one before.
 
 ## Commands
 
@@ -77,7 +77,7 @@ Opens a recording's trace with your project's own `npx playwright trace`:
 ```sh
 npx ayme-recorder trace latest                    # the latest recording
 npx ayme-recorder trace rec_20261113T195055354Z   # a recording by its id
-npx ayme-recorder trace .ayme/recordings/rec_20261113T195055354Z/trace.zip
+npx ayme-recorder trace ayme/recordings/rec_20261113T195055354Z/trace.zip
 ```
 
 `trace open` works the same way. Any other `trace` command, such as `trace actions` or `trace snapshot`, is passed to `npx playwright trace` as it is.
@@ -173,8 +173,10 @@ The recorder does not keep you logged in between recordings. Unless you use the 
 
 ## Where recordings are stored
 
+Recordings go in your project's [`ayme` folder](ayme-folder.md), beside `package.json`:
+
 ```text
-.ayme/
+ayme/
   .gitignore                     keeps recordings out of git
   recordings/
     latest.yaml                  a copy of the latest package that was saved
@@ -185,7 +187,7 @@ The recorder does not keep you logged in between recordings. Unless you use the 
 
 `package.yaml` is the file your agent reads. The [`ayme-recorder` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-recorder/SKILL.md#read-the-package) describes every field.
 
-The first save creates `.ayme/.gitignore`, unless the folder already has one, which it leaves as it is. The file keeps new recordings out of git. It cannot untrack recordings you have already committed.
+The first save creates `ayme/.gitignore`, which lists `recordings/` and itself. If the folder already has one, such as the one `ayme mcp` writes, a save adds a `recordings/` line at its end. It leaves the file as it is when a line there already names the folder, such as `!recordings/` to commit recordings, and when it cannot write to the file; the recording is saved either way. A `recordings/` line keeps new recordings out of git. It cannot untrack recordings you have already committed.
 
 ## Warnings
 

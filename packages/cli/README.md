@@ -99,13 +99,13 @@ Your agent writes the test's checks from what the recording saw change, but some
 
 ## What the recorder writes
 
-The recorder keeps its data in an `.ayme` folder in the folder you run it from:
+The recorder keeps its data in an `ayme` folder in the folder you run it from:
 
-- `.ayme/recordings/<recording-id>/package.yaml`: the package's YAML file: the page at each Visit, the steps and the changes.
-- `.ayme/recordings/<recording-id>/trace.zip`: the Playwright trace of the recording, with DOM snapshots and network requests. When the trace cannot be written, for example because the browser stopped answering, the recording is saved without it.
-- `.ayme/recordings/latest.yaml`: a copy of the latest recording that was saved. A run that recorded nothing leaves it as it was, so use the path printed as `Recording package:` for the run you just made.
+- `ayme/recordings/<recording-id>/package.yaml`: the package's YAML file: the page at each Visit, the steps and the changes.
+- `ayme/recordings/<recording-id>/trace.zip`: the Playwright trace of the recording, with DOM snapshots and network requests. When the trace cannot be written, for example because the browser stopped answering, the recording is saved without it.
+- `ayme/recordings/latest.yaml`: a copy of the latest recording that was saved. A run that recorded nothing leaves it as it was, so use the path printed as `Recording package:` for the run you just made.
 
-The first save creates `.ayme/.gitignore`, which lists `recordings/` and itself, when the folder has none yet. It keeps new recordings out of what git picks up, but it cannot untrack files that are already committed. To look into a trace, run `npx ayme-recorder trace latest`; the guide explains [what the trace holds](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#trace).
+The first save lists `recordings/` in `ayme/.gitignore`, and creates the file if the folder has none. That keeps new recordings out of what git picks up, but it cannot untrack files that are already committed. The guide says [when the recorder leaves the file as it is](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#where-recordings-are-stored). To look into a trace, run `npx ayme-recorder trace latest`; the guide explains [what the trace holds](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#trace).
 
 ## Turn a recording into page objects
 
@@ -115,7 +115,7 @@ The `ayme-recorder` skill teaches your coding agent to read a recording and writ
 
 Then hand it the recording you just saved, with the path the terminal printed as `Recording package:`:
 
-> Turn the recording at `.ayme/recordings/<recording-id>/package.yaml` into Playwright page objects and a test, with the `ayme-recorder` skill.
+> Turn the recording at `ayme/recordings/<recording-id>/package.yaml` into Playwright page objects and a test, with the `ayme-recorder` skill.
 
 The agent reads the recording, proposes the page objects and the test, and writes them once you agree. You can also ask the agent to record the flow itself, as the guide describes in [Hand a flow to your coding agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#hand-a-flow-to-your-coding-agent).
 

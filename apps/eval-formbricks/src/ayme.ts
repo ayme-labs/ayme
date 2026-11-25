@@ -2,7 +2,7 @@
  * Everything the arms with ayme set up before the measured window. The lab
  * app is unmodified Formbricks and ships no ayme: an `ayme mcp` from
  * `@ayme-dev/mcp`, started in the lab app's folder, builds and serves the
- * Page Objects in its `.ayme/` and writes `.ayme/init-script.js`, and the
+ * Page Objects in its `ayme/` and writes `ayme/init-script.js`, and the
  * headless browser the harness launches on the mission's start page runs
  * that init script in every document, so the page starts ayme and pairs
  * with the server by itself.
@@ -90,7 +90,7 @@ export function aymeMcpArgs(port: number): string[] {
 }
 
 /** The init script `ayme mcp` writes as it starts in the lab app's folder, naming its port. Git ignores it. */
-export const initScriptPath = path.join(labRoot, ".ayme/init-script.js");
+export const initScriptPath = path.join(labRoot, "ayme/init-script.js");
 
 /**
  * What a page that loads the init script needs of its browser context:

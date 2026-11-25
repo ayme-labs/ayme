@@ -34,12 +34,32 @@ Keep SvelteKit's generated tsconfig as the base and enable decorators:
 }
 ```
 
-SvelteKit 3 and plain Svelte apps differ only in this step; see [Svelte](../frameworks/svelte.md).
+On SvelteKit 3, or Svelte without SvelteKit, this step and the `dev` import in step 4 differ; see [Svelte](../frameworks/svelte.md#setup).
 
 ## 3. Write a Page Object Model
 
+Page Objects live in `ayme/pom/`, at your project's root. Give the folder a tsconfig that extends your app's, so it compiles with the app's options:
+
+```jsonc
+// ayme/tsconfig.json
+{
+  "extends": "../tsconfig.json",
+  "include": ["**/*.ts"],
+}
+```
+
+Without SvelteKit, extend `../tsconfig.app.json` instead, where Vite's Svelte template keeps its options.
+
+Add the `#pom/*` alias to your `package.json`, so app code and tests import the Page Objects the same way from any folder:
+
+```json
+{ "imports": { "#pom/*": "./ayme/pom/*.ts" } }
+```
+
+[The `ayme` folder](../guides/ayme-folder.md) describes the rest of the folder. Then write the model:
+
 ```ts
-// src/lib/pom/ProjectsPage.ts
+// ayme/pom/ProjectsPage.ts
 import { ayme } from "@ayme-dev/ayme";
 import type { Page } from "@playwright/test";
 
@@ -86,7 +106,7 @@ Use the Page Object in a page:
 <!-- src/routes/+page.svelte -->
 <script lang="ts">
   import { usePageObject } from "@ayme-dev/svelte";
-  import { ProjectsPage } from "$lib/pom/ProjectsPage";
+  import { ProjectsPage } from "#pom/ProjectsPage";
 
   const pom = usePageObject(ProjectsPage);
   let projects = $state<string[]>([]);

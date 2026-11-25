@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { NestedPage } from "../.ayme/pom/NestedPage";
+import { NestedPage } from "#pom/NestedPage";
 import { expect, test } from "./fixtures";
 
 /** The ref the package's starting picture gives the element on `line`. */

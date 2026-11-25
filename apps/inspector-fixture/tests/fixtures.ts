@@ -12,7 +12,7 @@ import {
   registerInspectorSelectors,
 } from "@ayme-dev/inspector/testing";
 
-import { ListPage } from "../pom/ListPage";
+import { ListPage } from "#pom/ListPage";
 
 export { expect } from "@playwright/test";
 

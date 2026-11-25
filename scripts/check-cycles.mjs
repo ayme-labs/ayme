@@ -1,9 +1,11 @@
 /**
- * Fails on a cycle of runtime imports inside a workspace's `src`.
+ * Fails on a cycle of runtime imports inside a workspace's `src`, or inside
+ * an example app's `ayme` folder, which a `.svelte` file may be the only one
+ * to import from.
  *
- *   node scripts/check-cycles.mjs packages/*\/src apps/*\/src
+ *   node scripts/check-cycles.mjs packages/*\/src apps/*\/src apps/example-*\/ayme
  *
- * Each `src` is read with madge, resolving imports through the workspace's
+ * Each folder is read with madge, resolving imports through the workspace's
  * own `tsconfig.json`, so its path aliases and its package's self-imports
  * through `exports` count as edges. madge's own `--ts-config` loses both: it
  * hands the resolver options that were already parsed, and the resolver

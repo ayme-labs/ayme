@@ -180,7 +180,7 @@ it("keeps the compiler's Programs for the length of a build, and a rebuild start
 
 it("in watch mode, rebuilds after an edit to a Page Object Model module that its tsconfig does not list", async () => {
   const root = await workspace({
-    // As the tsconfig above a project's `.ayme` folder may not list it.
+    // As the tsconfig above a project's `ayme` folder may not list it.
     "tsconfig.json": JSON.stringify({
       ...JSON.parse(tsconfig),
       files: ["main.ts"],

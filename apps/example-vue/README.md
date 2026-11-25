@@ -3,7 +3,7 @@
 This browser playground combines a functional list app with an ayme inspector so the same Page Object behavior can be exercised by a person or an agent. It is published at [ayme-labs.github.io/ayme](https://ayme-labs.github.io/ayme/) so developers can try ayme before adding it to their own project. This README is for people reading the repository; visitors follow the instructions on the page itself.
 
 - The demo app lets you add items and archive them through a confirmation dialog.
-- A switch above the app shows its Page Object code instead: the files in `playwright/pom` as they are, highlighted, and the `useAyme` call that wires them into `App.vue`, as the Vue guide sets them up. The app and the code sit side by side in a strip that scrolls sideways, so the app stays on the page, a scroll away, and a tool that acts on it scrolls it back into view. `ignore` keeps the switch and the code out of Structural Page State, and `scripts/verify-browser-output.mjs` allows the Page Object source in the output only verbatim, as the text the code view shows. `pnpm run build` builds the app twice, into `dist` with ayme and, with `--mode without-ayme`, into `dist-without-ayme` as a build without ayme, and the same script then checks the second output for any trace of ayme: the runtime, the compiled Page Object Models, their action descriptions and locator calls, Playwright and the Inspector.
+- A switch above the app shows its Page Object code instead: the files in `ayme/pom` as they are, highlighted, and the `useAyme` call that wires them into `App.vue`, as the Vue guide sets them up. The app and the code sit side by side in a strip that scrolls sideways, so the app stays on the page, a scroll away, and a tool that acts on it scrolls it back into view. `ignore` keeps the switch and the code out of Structural Page State, and `scripts/verify-browser-output.mjs` allows the Page Object source in the output only verbatim, as the text the code view shows. `pnpm run build` builds the app twice, into `dist` with ayme and, with `--mode without-ayme`, into `dist-without-ayme` as a build without ayme, and the same script then checks the second output for any trace of ayme: the runtime, the compiled Page Object Models, their action descriptions and locator calls, Playwright and the Inspector.
 - `ListPage` is a normal TypeScript class using `Page` and `Locator` types from Playwright. Vite bundles that same class for WebMCP and constructs it with the DOM-backed browser implementation.
 - `@ayme` and `@ayme.action` choose the Page Object Tools. Tool descriptions come from the decorator.
 - Registered page tools use their fully qualified POM method name, such as `ListPage.addItem`. Each class action is registered once across all its instances, such as `ListItem.archive`.
@@ -34,7 +34,7 @@ Call the lifecycle API once in the application root, with the pages it registers
 
 ```ts
 import { useAyme } from "@ayme-dev/vue";
-import { ListPage } from "./playwright/pom/ListPage";
+import { ListPage } from "#pom/ListPage";
 
 useAyme({ pageObjects: [ListPage], webMCP: { enabled: true } });
 ```
@@ -75,7 +75,7 @@ pnpm run goals:runs compare goal-runs/<runA>.json goal-runs/<runB>.json
 pnpm run goals:runs replay goal-runs/<run>.json --done-bar 0.7
 ```
 
-By default it runs the harness's own goal set, `tests/goalHarness.spec.ts` under `playwright.harness.config.ts`: goals that are allowed to fail, so neither CI nor `pnpm run test:goals` runs them. Its Create menu goal reproduces issue 1059 on `/harness/create-menu`, a top bar whose `TopBar` Page Object (`playwright/pom/TopBar.ts`) opens the menu; the menu button states that it is closed only through `aria-expanded`. `--goal-set <name>` picks a goal set by name: `harness`, `live-lane` (the live lane's goals, `playwright.goals.config.ts`; `--live-lane` says the same) or `bench` (the [bench goal set](#bench-goal-set)). The specs share `pursueGoal` through `tests/goalLane.ts`.
+By default it runs the harness's own goal set, `tests/goalHarness.spec.ts` under `playwright.harness.config.ts`: goals that are allowed to fail, so neither CI nor `pnpm run test:goals` runs them. Its Create menu goal reproduces issue 1059 on `/harness/create-menu`, a top bar whose `TopBar` Page Object (`ayme/pom/TopBar.ts`) opens the menu; the menu button states that it is closed only through `aria-expanded`. `--goal-set <name>` picks a goal set by name: `harness`, `live-lane` (the live lane's goals, `playwright.goals.config.ts`; `--live-lane` says the same) or `bench` (the [bench goal set](#bench-goal-set)). The specs share `pursueGoal` through `tests/goalLane.ts`.
 
 | Goal set  | Goal                                                             | Expected end                                                     |
 | --------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |

@@ -2,7 +2,7 @@ recordingId: rec_<id>
 mode: structural
 createdAt: <time>
 url: http://127.0.0.1:<port>/cart.html
-tracePath: .ayme/recordings/rec_<id>/trace.zip
+tracePath: ayme/recordings/rec_<id>/trace.zip
 visits:
   - visitId: visit_1
     url: http://127.0.0.1:<port>/cart.html

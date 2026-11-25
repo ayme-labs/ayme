@@ -20,7 +20,7 @@ On a page that doesn't ship ayme, the server serves the project's Page Objects
 through the init script your browser automation loads; see
 [A page that doesn't ship ayme](browser-setup.md#a-page-that-doesnt-ship-ayme).
 Playwright CLI and Playwright MCP load it from their config file; start
-agent-browser with `--init-script .ayme/init-script.js`.
+agent-browser with `--init-script ayme/init-script.js`.
 
 - Before you take a full snapshot, check your tool list. When a Page Object
   Tool does the next step, call it instead; take the snapshot only when none

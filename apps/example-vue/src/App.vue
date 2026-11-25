@@ -8,7 +8,7 @@ import {
 } from "vue";
 import { decisionEndpoint } from "@ayme-dev/ayme";
 import { useAyme } from "@ayme-dev/vue";
-import { ListPage } from "../playwright/pom/ListPage";
+import { ListPage } from "#pom/ListPage";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 import AgentPanel from "./AgentPanel.vue";
 import { track, trackToolRuns } from "./analytics";
