@@ -103,7 +103,7 @@ export default function Controls() {
 }
 ```
 
-- `usePageObject(Model)` returns the session's instance of the class immediately and registers the class after commit. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. Changing the model class requires remounting the component. Unmounting it removes its registration.
+- `usePageObject(Model)` returns the session's instance of the class immediately and registers the class after commit. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. When the model class changes while the component stays mounted, as after a Fast Refresh edit, it returns the new class's instance and the old class's registration is removed. Unmounting it removes its registration.
 - `useAyme()` returns the provider's session, `ayme`, and its WebMCP publication, `webMCP`.
 
 Hooks need the provider in an ancestor component, and throw without it. A hook in the component that renders the provider throws too:
@@ -232,17 +232,16 @@ A build includes ayme only with the plugin's `include: true`. The config above k
 ## Limits
 
 - The supported React and Next.js versions are on [Install](../start/install.md#supported-versions).
-- Change the props or the model class only by remounting.
-- In the dev server, an edit to a Page Object Model or a type it imports re-runs the module that imports the model. In the [quickstart](../start/quickstart-react.md)'s layout, where that module calls `createRoot`, the console shows `The ayme runtime already has an active owner.` and Vite then reloads the page, which picks up the edit. When the component sits in a file of its own, Fast Refresh keeps it mounted, `usePageObject` throws `The Page Object model or provider changed while the component was mounted.`, and the page stays broken until you reload it.
+- Change the provider's props only by remounting it.
+- In the dev server, an edit to a Page Object Model or a type it imports re-runs the module that imports the model. In the [quickstart](../start/quickstart-react.md)'s layout, where that module calls `createRoot`, the console shows `The ayme runtime already has an active owner.` and Vite then reloads the page, which picks up the edit. When the component sits in a file of its own, Fast Refresh keeps it mounted and `usePageObject` returns an instance of the edited class. The runtime keeps the old class's instance until the page reloads.
 
 ## Troubleshooting
 
-| Error                                                                        | Cause                                                                                  |
-| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `AymeProvider cannot be nested beneath another ayme runtime owner.`          | A second provider beneath the first. Start ayme once, at the root.                     |
-| `The provider options changed while the provider was mounted.`               | A provider prop changed while mounted.                                                 |
-| `ayme hooks require an ancestor AymeProvider.`                               | A hook without a provider above, including in the component that renders the provider. |
-| `The Page Object model or provider changed while the component was mounted.` | `usePageObject` got a different model.                                                 |
+| Error                                                               | Cause                                                                                  |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `AymeProvider cannot be nested beneath another ayme runtime owner.` | A second provider beneath the first. Start ayme once, at the root.                     |
+| `The provider options changed while the provider was mounted.`      | A provider prop changed while mounted.                                                 |
+| `ayme hooks require an ancestor AymeProvider.`                      | A hook without a provider above, including in the component that renders the provider. |
 
 ## API
 
