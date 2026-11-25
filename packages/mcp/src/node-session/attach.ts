@@ -24,6 +24,8 @@ export type AymePlaywright = {
       subscribe(listener: (tools: readonly AgentTool[]) => void): () => void;
       run(name: string, input: unknown): Promise<unknown>;
     };
+    /** Spike: the session's Inspector contract, as plain data. */
+    readonly inspector: import("../connection").InspectorPort;
   };
   registerAymeRef(selectors: Playwright["selectors"]): Promise<void>;
 };

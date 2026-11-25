@@ -35,6 +35,8 @@ import {
 } from "./session";
 import type { ToolSources } from "./publishedTools";
 import { checkedFilters } from "./checkedFilters";
+import type { InspectorPort } from "@ayme-dev/mcp/client";
+import { playwrightInspectorPort } from "./playwrightInspector";
 
 export type { Ayme } from "./session";
 
@@ -73,6 +75,11 @@ export type PlaywrightAyme = Omit<Ayme, "start"> & {
    * Its Runs are `ayme-mcp`'s.
    */
   readonly agentTools: AgentTools;
+  /**
+   * Spike: the session's Inspector contract as plain data, for `ayme mcp` to
+   * relay to an external Inspector window. Read it after `start()`.
+   */
+  readonly inspector: InspectorPort;
 };
 
 /**
@@ -92,7 +99,16 @@ export function createPlaywrightAyme(
     navigate: options.navigate,
   });
   const agentTools = agentToolsBySession.get(core)!;
+  let inspector: InspectorPort | undefined;
   return {
+    get inspector() {
+      return (inspector ??= playwrightInspectorPort({
+        session: core,
+        page,
+        registry: target.registry,
+        pageState: target.pageState,
+      }));
+    },
     ...core,
     agentTools: {
       list: agentTools.list,

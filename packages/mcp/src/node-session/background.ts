@@ -127,6 +127,7 @@ export async function runBackground({
           port: mcpPort,
           tab: `ayme-node-${keyOf(folder)}`,
           url: () => page.url(),
+          inspector: session.inspector,
           log: (message) => console.info(`[ayme mcp front] ${message}`),
           tools: {
             list: () => session.agentTools.list().filter(isOffered) as never,
