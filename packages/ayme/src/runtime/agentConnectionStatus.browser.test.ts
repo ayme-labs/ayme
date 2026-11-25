@@ -25,7 +25,6 @@ const client = vi.hoisted(() => {
         return () => void listeners.delete(listener);
       },
     },
-    /** Whether the session follows the stand-in. */
     followed: () => listeners.size > 0,
     reset() {
       status = { state: "not-connected" };

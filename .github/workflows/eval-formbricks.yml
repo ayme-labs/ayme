@@ -30,8 +30,8 @@ on:
         type: boolean
         default: false
 
-# One eval at a time: every paid run uses the same Claude Code login, and two
-# at once would share its usage limits.
+# One eval at a time: every paid run uses the same Claude Code logins, and two
+# at once would share their usage limits.
 concurrency:
   group: eval-formbricks
   cancel-in-progress: false
@@ -118,6 +118,7 @@ jobs:
         working-directory: apps/eval-formbricks
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN_FALLBACK: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_FALLBACK }}
           MISSION: ${{ inputs.mission }}
           ARMS: ${{ inputs.arms }}
           RUNS: ${{ inputs.runs }}

@@ -84,7 +84,6 @@ export function syntheticRefsAbsentFrom(
 /** The ref a fragment that wraps several snapshot roots carries. */
 export const SYNTHETIC_ROOT_REF = syntheticRef("root");
 
-/** The selector the browser Page resolves to the element `ref` names. */
 export function selectorForRef(ref: AriaRef): string {
   return `ayme-ref=${ref}`;
 }

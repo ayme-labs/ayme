@@ -173,7 +173,6 @@ function observe(
   return evidence;
 }
 
-/** Records a visit start whose bootstrap observation resolves to an empty/unparseable snapshot. */
 function startVisitWithUnresolvableTree(
   timeline: StructuralTimeline,
   options: { visitId: VisitId; at: number; pageId?: PageId }
@@ -196,7 +195,6 @@ function startVisitWithUnresolvableTree(
   return entry;
 }
 
-/** Records an observation whose lazy tree handle rejects on resolve. */
 function observeUnresolvable(
   timeline: StructuralTimeline,
   options: {
@@ -1117,7 +1115,7 @@ describe("StructuralTimeline", () => {
         pageId: PAGE,
         actionId: id,
       });
-      // Destination visit shares the action-start timestamp; only entry position keeps the action in v1.
+      // Destination visit shares the action-start timestamp; only entry position keeps the action in the first visit.
       startVisit(timeline, { visitId: visit(2), at: 10, yaml: loginYaml });
       timeline.recordActionCompleted({
         kind: "action-completed",

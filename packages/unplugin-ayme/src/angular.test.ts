@@ -17,7 +17,6 @@ import { expect, it, vi } from "vitest";
 // Programs, an invalidate drops them (ADR-0036).
 const { compilerCalls, compileFailure } = vi.hoisted(() => ({
   compilerCalls: [] as ("compile" | "invalidate")[],
-  // What `compile` throws instead of compiling, when set.
   compileFailure: { error: undefined as Error | undefined },
 }));
 

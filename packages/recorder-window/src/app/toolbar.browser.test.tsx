@@ -319,7 +319,6 @@ describe("the toolbar", () => {
 });
 
 describe("a person's input on the toolbar", () => {
-  /** Every error the page sees thrown while the test runs. */
   function pageErrors() {
     const errors: string[] = [];
     const listener = (event: ErrorEvent) => errors.push(event.message);

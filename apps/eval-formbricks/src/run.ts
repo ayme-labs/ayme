@@ -31,6 +31,7 @@ import { runMain } from "./cli.ts";
 import { agentEffort, claudeVersion, runClaude } from "./claude.ts";
 import { codexConfig, codexRules, codexVersion, runCodex } from "./codex.ts";
 import { moveFiles, readLabChanges } from "./labCheckout.ts";
+import { usageLimitError, withFallbackLogin, type Login } from "./login.ts";
 import {
   ensureDatabaseBuilt,
   openFormbricksDatabase,
@@ -134,9 +135,19 @@ export async function writeJson(filePath: string, value: unknown) {
 /**
  * Runs the mission once and stores it under `results/runs/<run id>/`.
  * Throws when the run cannot complete; a failed verdict is a result, not an error.
+ * A Claude Code run whose first login hits its usage limit is done again from the start on the fallback login.
  */
 export async function runOnce(
   options: RunOptions
+): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
+  if ((options.agent ?? "claude") !== "claude") return runOnceOn(options, null);
+  return withFallbackLogin(evalRoot, (login) => runOnceOn(options, login), log);
+}
+
+/** One attempt; `login` is the Claude Code login it runs on, `null` for Codex. */
+async function runOnceOn(
+  options: RunOptions,
+  login: Login | null
 ): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
   const runId = `${new Date().toISOString().replace(/[:.]/g, "-")}-${options.arm.id}-${randomBytes(3).toString("hex")}`;
   const runDir = path.join(runsRoot, runId);
@@ -155,6 +166,7 @@ export async function runOnce(
     agent,
     configDir: claudeConfigDir,
     envDirectory: evalRoot,
+    login: login ?? undefined,
   });
 
   log("Checking preconditions.");
@@ -283,6 +295,15 @@ export async function runOnce(
             mcpConfigPath,
             readableDirectories: armSetup?.readableDirectories,
           });
+    // A limit ends the attempt: half a run is no measurement. The repeat must not find what this one left behind.
+    const limited = login === null ? null : usageLimitError(run, login, runDir);
+    if (limited !== null) {
+      await moveFiles(
+        readLabChanges().untracked,
+        path.join(runDir, "agent-files")
+      );
+      throw limited;
+    }
     // Without a completed setup turn there is no measured turn, so there is no result; the transcript stays in the run folder.
     if (run.task === null)
       throw new Error(
@@ -305,6 +326,7 @@ export async function runOnce(
 
     const result = normalizeRun({
       runId,
+      login: login?.name,
       agent,
       arm: options.arm.id,
       missionId: mission.id,

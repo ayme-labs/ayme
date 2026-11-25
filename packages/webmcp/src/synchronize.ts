@@ -35,7 +35,6 @@ export type WebMcpRegistration = {
 
 type SynchronizationOptions = {
   signal: AbortSignal;
-  /** Prepended to every name the driver registers. */
   toolNamePrefix?: string;
   onError(error: unknown): void;
 };

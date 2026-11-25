@@ -6,6 +6,10 @@
 // would, until the harness stops the process. FAKE_CLAUDE_TRANSCRIPT names
 // the fixture, or several when it holds `{scenario}`, the startup scenario the
 // run's folder names; FAKE_CLAUDE_RESULT_DELAY_MS delays each turn's result event.
+// FAKE_CLAUDE_BY_TOKEN, a JSON object from an OAuth token to a fixture, makes the
+// answer depend on the CLAUDE_CODE_OAUTH_TOKEN it receives, as a login does: a
+// token not in it is not logged in and runs nothing. It refuses to start when it
+// is handed the fallback login's variable, which only the harness may hold.
 // Each user message's text goes to stderr, so a test can see what was sent,
 // as do the arguments and the skills in its configuration folder. The fixture
 // writes that folder, which differs per run, as $CLAUDE_CONFIG_DIR.
@@ -17,8 +21,17 @@ if (process.argv[2] === "--version") {
   process.stdout.write("2.1.281 (Claude Code)\n");
   process.exit(0);
 }
+if (process.env.CLAUDE_CODE_OAUTH_TOKEN_FALLBACK !== undefined) {
+  process.stderr.write("fake claude: handed the fallback login's variable\n");
+  process.exit(1);
+}
+const token = process.env.CLAUDE_CODE_OAUTH_TOKEN ?? "";
+const byToken = process.env.FAKE_CLAUDE_BY_TOKEN
+  ? JSON.parse(process.env.FAKE_CLAUDE_BY_TOKEN)
+  : null;
 if (process.argv[2] === "auth") {
-  process.stdout.write(`${JSON.stringify({ loggedIn: true })}\n`);
+  const loggedIn = byToken === null || token in byToken;
+  process.stdout.write(`${JSON.stringify({ loggedIn })}\n`);
   process.exit(0);
 }
 if (!process.argv.includes("--input-format")) {
@@ -34,10 +47,13 @@ process.stderr.write(
 
 const [, scenario = ""] =
   /-startup-(.+)-[0-9a-f]{6}\/claude-config$/.exec(configDir) ?? [];
-const fixture = process.env.FAKE_CLAUDE_TRANSCRIPT.replace(
-  "{scenario}",
-  scenario
-);
+if (byToken !== null && !(token in byToken)) {
+  process.stderr.write("fake claude: not logged in\n");
+  process.exit(1);
+}
+const fixture = (
+  byToken === null ? process.env.FAKE_CLAUDE_TRANSCRIPT : byToken[token]
+).replace("{scenario}", scenario);
 
 const turns = [[]];
 for (const line of readFileSync(fixture, "utf8")

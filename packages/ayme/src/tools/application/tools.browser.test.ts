@@ -39,8 +39,6 @@ import {
 // them, and the set `@ayme-dev/webmcp` publishes. An agent's call is a
 // `webmcp` Run, through the publication harness.
 
-// --- Fixtures: one tool of each kind an agent can be given ---
-
 const pomManifest = (className: string, methodName: string): PomManifest => ({
   className,
   members: [],

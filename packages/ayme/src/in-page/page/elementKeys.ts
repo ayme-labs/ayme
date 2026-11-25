@@ -26,7 +26,6 @@ export function createElementKeys(document: string) {
       }
       return key;
     },
-    /** The element `key` names, while it lives. */
     elementOf: (key: string): Element | undefined => byKey.get(key)?.deref(),
   };
 }

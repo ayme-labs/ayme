@@ -1812,7 +1812,6 @@ describe("live Page Object registry", () => {
         registry,
         tool,
         archives,
-        /** The item at `index` leaves the page. */
         async remove(index: number) {
           present = present.map((count, at) => (at === index ? 0 : count));
           pageChanges();

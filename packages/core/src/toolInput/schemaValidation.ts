@@ -144,7 +144,6 @@ function objectViolations(
   return violations;
 }
 
-/** The most violations the sentences spell out. */
 const MAX_LISTED_VIOLATIONS = 20;
 
 /**
@@ -206,7 +205,6 @@ function describe(schema: JsonSchema): string {
   }
 }
 
-/** E.g. "1 entry" or "2 items". */
 function counted(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`;
 }

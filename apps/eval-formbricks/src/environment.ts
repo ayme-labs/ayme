@@ -7,6 +7,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 export const tokenVariable = "CLAUDE_CODE_OAUTH_TOKEN";
+/** The optional second login's token; `login.ts` says when it is used. */
+export const fallbackTokenVariable = "CLAUDE_CODE_OAUTH_TOKEN_FALLBACK";
 export const envFileName = ".env.local";
 
 /** `KEY=value` lines; `#` comments, an `export ` prefix and matching quotes are allowed. */

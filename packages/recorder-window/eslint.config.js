@@ -26,7 +26,6 @@ const allowedSlices = {
   app: ["controls", "timeline", "channel"],
 };
 const slices = Object.keys(allowedSlices);
-// app isn't layered.
 const unlayered = ["app"];
 const sourceFiles = "src/**/*.{ts,tsx}";
 

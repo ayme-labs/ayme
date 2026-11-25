@@ -10,7 +10,12 @@ import {
   codexTokenVariable,
   codexSignInPrecondition,
 } from "./codex.ts";
-import { readEnvVariable, readOauthToken } from "./environment.ts";
+import {
+  readEnvVariable,
+  readOauthToken,
+  tokenVariable,
+} from "./environment.ts";
+import type { Login } from "./login.ts";
 import { claudeTokenPrecondition, type Precondition } from "./preconditions.ts";
 
 export const agentIds = ["claude", "codex"] as const;
@@ -36,20 +41,27 @@ export function agentAccess(options: {
   configDir: string;
   /** The directory holding the env file. */
   envDirectory: string;
+  /** The Claude Code login to sign in with; the first by default. */
+  login?: Pick<Login, "token" | "variable">;
 }): {
   environment: NodeJS.ProcessEnv | undefined;
   preconditions: Precondition[];
 } {
   const { configDir, envDirectory } = options;
   if (options.agent === "claude") {
-    const oauthToken = readOauthToken(envDirectory);
+    const { token, variable } = options.login ?? {
+      token: readOauthToken(envDirectory),
+      variable: tokenVariable,
+    };
     const environment =
-      oauthToken === undefined
+      token === undefined
         ? undefined
-        : claudeEnvironment({ configDir, oauthToken });
+        : claudeEnvironment({ configDir, oauthToken: token });
     return {
       environment,
-      preconditions: [claudeTokenPrecondition({ environment, envDirectory })],
+      preconditions: [
+        claudeTokenPrecondition({ environment, envDirectory, variable }),
+      ],
     };
   }
   const environment = codexEnvironment({ configDir });

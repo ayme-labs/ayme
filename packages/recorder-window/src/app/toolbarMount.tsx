@@ -91,7 +91,6 @@ function shadowRootFor(host: HTMLElement) {
   return { root, container };
 }
 
-/** The button of the toolbar under a click, if any. */
 const buttonAt = (root: ShadowRoot, { clientX, clientY }: MouseEvent) => {
   const element = root.elementFromPoint(clientX, clientY);
   // Stryker disable next-line OptionalChaining: a point whose input reaches the toolbar lies on one of its elements
@@ -149,7 +148,6 @@ export function mountToolbar(call: ToolbarCall): HTMLElement {
   const host = createHost();
   const { root, container } = shadowRootFor(host);
 
-  // A person's input on the toolbar goes no further than the window.
   const stop = stopperFor(host, root);
   for (const type of INPUT_TYPES) window.addEventListener(type, stop, true);
   const keep = keepInDocument(host);

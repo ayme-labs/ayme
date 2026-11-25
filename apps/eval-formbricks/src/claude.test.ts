@@ -278,4 +278,26 @@ describe("runClaude", () => {
     expect(turns[0]?.result).not.toBeNull();
     expect(turns[1]?.result).toBeNull();
   });
+
+  it("flags a usage limit in the setup turn, which ends the run before the task", async () => {
+    const run = await drive({ fixture: "limit-in-setup.jsonl" });
+    expect(run.usageLimited).toBe(true);
+    expect(run.task).toBeNull();
+  });
+
+  it("flags a usage limit in the task turn, after a completed setup turn", async () => {
+    const run = await drive({ fixture: "limit-in-task.jsonl" });
+    expect(run.usageLimited).toBe(true);
+    expect(run.setupFailure).toBeNull();
+    expect(run.task).not.toBeNull();
+  });
+
+  it("flags no limit in a completed run or in an error that is not one", async () => {
+    expect((await drive({ fixture: "complete.jsonl" })).usageLimited).toBe(
+      false
+    );
+    expect((await drive({ fixture: "setup-failed.jsonl" })).usageLimited).toBe(
+      false
+    );
+  });
 });

@@ -62,6 +62,8 @@ export type ClaudeRun = {
   setup: Turn;
   /** Why the setup turn did not complete; the task is sent only after a completed setup turn. */
   setupFailure: string | null;
+  /** A turn's `result` event said the Claude Code login hit its usage limit; Codex's driver does not report its limits. */
+  usageLimited?: boolean;
   /** The measured turn; `null` when the task was never sent. */
   task: Turn | null;
   /** When the agent was started. */
@@ -215,6 +217,7 @@ export async function runClaude(
   invocation: ClaudeInvocation
 ): Promise<ClaudeRun> {
   const startedAt = new Date();
+  let usageLimited = false;
   const agent = startAgentProcess({
     command: "claude",
     args: claudeArguments(invocation),
@@ -224,7 +227,10 @@ export async function runClaude(
     stderrPath: invocation.stderrPath,
     onLine: (line) => {
       const result = resultEvent(line);
-      if (result !== null) agent.completeTurn(result);
+      if (result !== null) {
+        usageLimited ||= result.usageLimit;
+        agent.completeTurn(result);
+      }
       return true;
     },
   });
@@ -247,6 +253,7 @@ export async function runClaude(
       signal,
       setup: setup.turn,
       setupFailure,
+      usageLimited,
       task,
       startedAt: startedAt.toISOString(),
       finishedAt: new Date().toISOString(),

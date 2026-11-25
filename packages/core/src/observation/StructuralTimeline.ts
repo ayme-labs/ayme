@@ -751,7 +751,6 @@ export class StructuralTimeline {
     return { toUrl: navigation.toUrl };
   }
 
-  /** Whether a later visit has closed the window that owns this action. */
   actionOwningVisitHasEnded(actionId: StructuralActionId): boolean {
     const startedIndex = this._entries.findIndex(
       (entry) => entry.kind === "action-started" && entry.actionId === actionId

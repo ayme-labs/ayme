@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -514,4 +514,19 @@ it("hands the recorder the window it serves: its handle says where", async () =>
   expect(recorder.windowUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
   recorder.end();
   await expect(recorder.done).resolves.toEqual({ kind: "empty" });
+});
+
+// The guide cannot import the range, so it spells it out: moving the range
+// in playwright-range.json fails here until the guide says the same.
+it("the guide states the range the recorder names", async () => {
+  const guide = await readFile(
+    new URL("../../../docs/guide/guides/recorder.md", import.meta.url),
+    "utf8"
+  );
+
+  expect(guide).toContain(
+    `needs Playwright ${range.floor} or newer, and is verified on ${range.floor} to ${range.lastVerified}.`
+  );
+  expect(guide).toContain(`Older than ${range.floor}:`);
+  expect(guide).toContain(`Newer than ${range.lastVerified}:`);
 });
