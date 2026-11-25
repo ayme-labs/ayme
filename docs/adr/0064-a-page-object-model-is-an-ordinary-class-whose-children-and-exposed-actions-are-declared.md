@@ -18,13 +18,13 @@ What a model holds cannot all be read from its types. A locator's type cannot sa
 - Only Page Object Actions whose declaration is explicitly marked become Page Object Tools, including a marked method a class inherits; an unmarked method never does, whatever its class.
 - The build derives the development-time contract from TypeScript visibility and static types: action schemas from their signatures, and a declared child's model from its type, which must agree with the declaration.
 - Because a child's declaration says whether it is one element or many, ayme can warn when a single child matches several elements, and names each element of a collection by its index.
-- The build fails rather than guess, so an unsupported or ambiguous type gives a build diagnostic instead of a weak runtime schema: it fails on a type the compiler cannot represent, with no override for it, and on a declaration it cannot honour, such as one on a member that holds neither a locator nor a Page Object, or whose type it cannot resolve.
+- The build fails rather than guess, so an unsupported or ambiguous type gives a build diagnostic instead of a weak runtime schema: it fails on a type the compiler cannot represent, with no override for it, and on a declaration on a member that holds neither a locator nor a Page Object, on a shape the guide does not list, or whose type it cannot resolve.
 - A Locator member that resolves to its Page Object's root is the root, not a child (ADR-0061). The Structural Page State marks only Page Object Roots; marking children is a separate decision.
 
 ## Considered and rejected
 
-- Requiring ayme base classes, or Page Object declarations kept apart from the class. Consumers could not keep their existing Page Object Models, and would duplicate their method schemas.
-- Inferring the production contract through runtime reflection. The schemas would be weak where the build can diagnose.
+- Requiring ayme base classes or custom Page Object Model declarations. Consumers should be able to reuse their ordinary Page Object Models without adopting base classes or duplicating their method schemas.
+- Inferring the production contract through runtime reflection. What was chosen gives a build diagnostic for an unsupported or ambiguous type, where a schema inferred at run time would be weak.
 - Declaring only locator children and recognising Page Object children by their type. It keeps two rules and leaves undescribed children in the model.
 - Keeping inference and using marks only to add descriptions. It keeps accidental children and leaves a locator's cardinality unknown.
 - One mark for children, with the cardinality read from the type. A locator's type carries none.

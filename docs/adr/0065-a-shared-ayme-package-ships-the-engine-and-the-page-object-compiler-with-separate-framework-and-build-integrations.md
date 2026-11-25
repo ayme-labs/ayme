@@ -37,9 +37,10 @@ Do not apply a blanket `ayme-` prefix within the `@ayme-dev` scope. Keep example
 
 ## Considered and rejected
 
-- The compiler in its own package, or in the bundler integrations' package. It can drift from the runtime that reads its output, and a path without a bundler would install a bundler plugin to get it.
+- The compiler in a package of its own. That only adds a way for it to drift from the runtime that reads its output.
+- The compiler in the bundler integrations' package. `ayme mcp` compiles Page Object Models for a browser that runs no bundler, and on that path a bundler plugin would be one more install with nothing to plug into.
 - TypeScript as a regular dependency of `@ayme-dev/ayme`. Every install would download it, browser-only ones included.
 
 ## Cost
 
-A project that builds Page Object Models installs TypeScript itself, within the range the peer states. Runtime consumers depend on no bundler tooling, and on the compiler only through an entry they do not import.
+A project that builds Page Object Models installs TypeScript itself, within the range the peer states. Runtime consumers do not depend on compiler or bundler tooling: the compiler is an entry of the shared package that they do not import, and TypeScript is an optional peer.
