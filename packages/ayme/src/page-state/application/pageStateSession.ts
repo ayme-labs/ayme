@@ -267,12 +267,11 @@ export class PageStateSession {
    * it: what a failed action did still reaches its Caller once. Where
    * capturing that page throws, the page as last recorded stands in for it.
    *
-   * An action that starts a full page load answers at once, before the old
-   * document goes away, with the Change Record up to the old document's
-   * last capture, the URL that is loading and `next`. `perform` and the
-   * settle wait are left to finish on their own; their outcome is never
-   * reported. A navigation that stays in the document leaves the action to
-   * settle as usual.
+   * An action that starts a full page load answers at once with the URL
+   * that is loading, `next` and the Change Record when the old document's
+   * last capture reaches the host. `perform` and the settle wait are left
+   * to finish on their own; their outcome is never reported. A navigation
+   * that stays in the document leaves the action to settle as usual.
    */
   async runAction(
     cursor: Cursor,
@@ -369,10 +368,6 @@ export class PageStateSession {
       .catch(() => {});
   }
 
-  /**
-   * The answer to an action that started a full load of `url`, with the
-   * old document's last capture, when it could take one, as its after.
-   */
   private async loadingResult(
     actionId: StructuralActionId,
     cursor: Cursor,
@@ -381,30 +376,22 @@ export class PageStateSession {
     capture: Capture | undefined
   ): Promise<ActionResult> {
     // The document may already be gone; the answer goes out regardless.
-    const record = await (
+    const record =
       capture === undefined
-        ? Promise.reject(new Error("The old document left no capture."))
-        : this.completeAction(actionId, capture)
-    )
-      .then((after) => {
-        cursor.move(after);
-        return readChangeRecord(this.history, starts, after);
-      })
-      .catch(
-        (): Pick<
-          ActionResult,
-          "page_changed" | "changes_before" | "changes"
-        > => ({
-          page_changed: false,
-        })
-      );
+        ? undefined
+        : await this.completeAction(actionId, capture)
+            .then((after) => {
+              cursor.move(after);
+              return readChangeRecord(this.history, starts, after);
+            })
+            .catch(() => undefined);
     return {
-      page_changed: record.page_changed,
+      page_changed: true,
       settled: false,
-      ...(record.changes_before
+      ...(record?.changes_before
         ? { changes_before: record.changes_before }
         : {}),
-      ...(record.changes ? { changes: record.changes } : {}),
+      ...(record?.changes ? { changes: record.changes } : {}),
       loading: url,
       next: `The page is loading ${url}. Call snapshot next to read the new page.`,
     };

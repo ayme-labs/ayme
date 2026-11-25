@@ -76,8 +76,9 @@ export type Capture = {
  * `stable` says whether the page went quiet before the deadline, and
  * `after` is the page after it. `threw` carries what perform threw, or else
  * why capturing the page after it failed, and then has no `after`. A full
- * load's `after` is the old document's last capture, when the old document
- * saw the load start.
+ * load's `after` is the old document's last capture when the browser
+ * delivered it. It may be missing if that message was lost while the old
+ * document unloaded.
  */
 export type ActionOutcome<T> =
   | { kind: "settled"; result: T; stable: boolean; after: Capture }

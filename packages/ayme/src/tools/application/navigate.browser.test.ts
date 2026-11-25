@@ -103,7 +103,7 @@ describe("the navigate tool, in Chromium", () => {
 
   it("answers at once with the loading URL when a full page load starts", async () => {
     await expect(call("navigate", { url: "/__no-content" })).resolves.toEqual({
-      page_changed: false,
+      page_changed: true,
       settled: false,
       loading: NO_CONTENT,
       next: `The page is loading ${NO_CONTENT}. Call snapshot next to read the new page.`,
@@ -118,7 +118,7 @@ describe("the navigate tool, in Chromium", () => {
     try {
       const loading = new URL("/__no-content/settings", location.href).href;
       await expect(call("navigate", { url: "settings" })).resolves.toEqual({
-        page_changed: false,
+        page_changed: true,
         settled: false,
         loading,
         next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
@@ -274,7 +274,7 @@ describe("the navigate tool with a router function, in Chromium", () => {
   it("answers at once with the loading URL when the router starts a full page load", async () => {
     route = async (url) => location.assign(url);
     await expect(call("navigate", { url: "/__no-content" })).resolves.toEqual({
-      page_changed: false,
+      page_changed: true,
       settled: false,
       loading: NO_CONTENT,
       next: `The page is loading ${NO_CONTENT}. Call snapshot next to read the new page.`,
@@ -348,7 +348,7 @@ describe("the navigate tool on a Page that navigates late, in Chromium", () => {
 
   it("answers with the loading URL once the full load starts", async () => {
     await expect(call("navigate", { url: "/__no-content" })).resolves.toEqual({
-      page_changed: false,
+      page_changed: true,
       settled: false,
       loading: NO_CONTENT,
       next: `The page is loading ${NO_CONTENT}. Call snapshot next to read the new page.`,

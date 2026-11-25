@@ -142,7 +142,7 @@ describe("a tool call that starts a full page load, in Chromium", () => {
           operation: "Leaver.leave",
           chosen: {},
           result: "ok",
-          page_changed: false,
+          page_changed: true,
           did: "Leaver.leave()",
         },
       ],

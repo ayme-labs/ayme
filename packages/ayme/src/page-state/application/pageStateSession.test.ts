@@ -499,7 +499,7 @@ describe("runAction", () => {
     const reader = cursor();
 
     await expect(session.runAction(reader, call, () => {})).resolves.toEqual({
-      page_changed: false,
+      page_changed: true,
       settled: false,
       loading: "https://app.test/next",
       next: "The page is loading https://app.test/next. Call snapshot next to read the new page.",
@@ -507,24 +507,26 @@ describe("runAction", () => {
     expect(reader.current()).toBe(session.history.latestObservation);
   });
 
-  it("still answers a full load when capturing the page as it goes away throws", async () => {
-    const { session } = sessionOn(
-      { loads: "https://app.test/next" },
-      savePage,
-      savePage,
-      new Error("The document is gone.")
-    );
-    const reader = cursor();
+  it.each(["https://app.test/next", "https://app.test/"])(
+    "reports the page changed when a full load of %s has no after capture",
+    async (url) => {
+      const { session } = sessionOn(
+        { loads: url },
+        savePage,
+        savePage,
+        new Error("The document is gone.")
+      );
+      const reader = cursor();
 
-    await expect(
-      session.runAction(reader, call, () => {})
-    ).resolves.toMatchObject({
-      page_changed: false,
-      settled: false,
-      loading: "https://app.test/next",
-    });
-    expect(reader.current()).toBeUndefined();
-  });
+      await expect(session.runAction(reader, call, () => {})).resolves.toEqual({
+        page_changed: true,
+        settled: false,
+        loading: url,
+        next: `The page is loading ${url}. Call snapshot next to read the new page.`,
+      });
+      expect(reader.current()).toBeUndefined();
+    }
+  );
 });
 
 async function expectOneFailedCompletedAction(session: PageStateSession) {

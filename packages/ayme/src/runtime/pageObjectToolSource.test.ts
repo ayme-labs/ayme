@@ -155,7 +155,7 @@ describe("a Page Object Tool's answer to an agent", () => {
     const { stub, readPageObjectTree } = session({
       answer: async () => ({
         settled: false,
-        page_changed: false,
+        page_changed: true,
         loading: "http://app/item/1",
         next: "The page is loading http://app/item/1. Call snapshot next to read the new page.",
       }),
