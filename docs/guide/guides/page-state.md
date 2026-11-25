@@ -171,7 +171,7 @@ An action that fails still reports what it changed. Its error keeps its own mess
 
 ## Full page loads
 
-A tool call whose action starts loading a new document, such as a click on a plain link or on a form's submit button, answers at once, before the old document goes away and ayme with it. The answer is the action result with `settled: false`, the Change Record up to that moment in `changes_before` and `changes`, the URL the navigation started for in `loading`, and in `next` a note that the page is loading and that `snapshot` is the next call. For a form submit, `loading` is the form's `action`: where the server redirects is not known yet when the answer goes out.
+A tool call whose action starts loading a new document, such as a click on a plain link or on a form's submit button, answers at once when ayme sees the load start, before the old document goes away and ayme with it. The answer is the action result with `settled: false`, the Change Record up to that moment in `changes_before` and `changes`, the URL the navigation started for in `loading`, and in `next` a note that the page is loading and that `snapshot` is the next call. For a form submit, `loading` is the form's `action`: where the server redirects is not known yet when the answer goes out.
 
 ```ts
 {
@@ -186,7 +186,7 @@ A tool call whose action starts loading a new document, such as a click on a pla
 
 This holds for Browser Tools, Custom Tools and Page Object Tools alike; an agent reads a Page Object Tool's as [its short answer](#a-page-object-tools-answer-to-an-agent). A navigation that stays in the document, such as your client router's route change, a fragment change, or going back to an entry of the same document, waits for a Settled Page like any other action. A Goal Loop step that starts a full load is the run's last; its Handover has the reason `page_loading` and names the URL in `loading`.
 
-Over Playwright in Node, the old document's last capture can fail to reach ayme when the next document commits at once, as from a local server on a busy machine. The answer then has no `page_changed` and no Change Record, and `next` says that what the action changed before the load could not be read. `navigate` without a router function, `reload`, `navigate_back` and `navigate_forward` change nothing in the document before it goes, so for them the page before the call stands in for its last capture, and they always answer with `page_changed`.
+Over Playwright in Node, the old document's last capture can fail to reach ayme when the next document commits at once, as from a local server on a busy machine. The answer then has no `page_changed` and no Change Record, and `next` says that what the action changed before the load could not be read. ayme does not see a load that Playwright's own `goto`, `reload`, `goBack` or `goForward` starts, so `navigate` without a router function, `reload`, `navigate_back` and `navigate_forward` answer once that call returns. They change nothing in the document before it goes, so the page before the call stands in for its last capture, and they always answer with `page_changed`.
 
 ## A Page Object Tool's answer to an agent
 

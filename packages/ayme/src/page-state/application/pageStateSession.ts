@@ -267,8 +267,9 @@ export class PageStateSession {
    * it: what a failed action did still reaches its Caller once. Where
    * capturing that page throws, the page as last recorded stands in for it.
    *
-   * An action that starts a full page load answers at once, before the old
-   * document goes away, with the Change Record up to the old document's
+   * An action that starts a full page load answers at once when the page
+   * reports the load start, before the old document goes away, else once
+   * `perform` returns, with the Change Record up to the old document's
    * last capture, the URL that is loading and `next`. `perform` and the
    * settle wait are left to finish on their own; their outcome is never
    * reported. A navigation that stays in the document leaves the action to
