@@ -181,7 +181,8 @@ export function startPageObjects(
       if (
         !closed &&
         (state.kind === "cannot-start" || state.kind === "watching-install") &&
-        (await problemNow()) !== lastProblem &&
+        // A failed check leaves the state it has to answer with.
+        (await problemNow().catch(() => lastProblem)) !== lastProblem &&
         outcomes.state === state
       ) {
         retry();

@@ -23,6 +23,21 @@ import {
   watchFiles,
 } from "./pageObjectsBuild";
 
+// A test sets `error` to make esbuild's next builds reject, as when its service has died.
+const esbuildFails = vi.hoisted(() => ({
+  error: undefined as Error | undefined,
+}));
+vi.mock("esbuild", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("esbuild")>();
+  return {
+    ...actual,
+    build: ((options) =>
+      esbuildFails.error === undefined
+        ? actual.build(options)
+        : Promise.reject(esbuildFails.error)) as typeof actual.build,
+  };
+});
+
 const entry = "/project/ayme/page-objects.ts";
 
 /** The diagnostics of a compile error, as `ayme mcp` reads them. */
@@ -1147,6 +1162,24 @@ it("stops before it loads the compiler when the project's @ayme-dev/ayme is anot
     );
     expect(globalThis.aymeCompilerLoaded).toBeUndefined();
   } finally {
+    await build.close();
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+it("still answers with the install it waits for when checking the install again throws", async () => {
+  const { project, entry } = await projectWithAyme("0.1.3", {
+    files: ["pnpm-lock.yaml"],
+  });
+  const build = startPageObjects(entry, () => {}, "0.1.5");
+  try {
+    const waiting = await build.whenSettled();
+    assert(waiting.kind === "watching-install");
+    esbuildFails.error = new Error("The service was stopped");
+
+    expect(await build.whenSettled()).toBe(waiting);
+  } finally {
+    esbuildFails.error = undefined;
     await build.close();
     await rm(project, { recursive: true, force: true });
   }
