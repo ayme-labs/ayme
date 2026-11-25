@@ -180,7 +180,6 @@ export function replaceInspectorTransport(
   client = createInspectorClient(transport, options);
 }
 
-/** The newest state the document's client holds, kept current. */
 export function useInspectorState(
   source: InspectorClient = inspectorClient()
 ): InspectorState {
