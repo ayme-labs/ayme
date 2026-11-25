@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 
 import { INSPECTOR_PACKAGE } from "../domain/externalInspector";
 
-/** The export of `@ayme-dev/inspector` that holds the external build. */
 const EXTERNAL_EXPORT = `${INSPECTOR_PACKAGE}/external`;
 
 /**
