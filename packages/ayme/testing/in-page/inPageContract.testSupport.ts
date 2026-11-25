@@ -1086,6 +1086,30 @@ export function inPageContract(lane: InPageLane) {
     expect(capture.document).not.toBe(action.before.document);
   });
 
+  it.runIf(lane.hostsOutliveLoads)(
+    "an action that starts a full load answers without an after capture if the old document could not report the load",
+    async () => {
+      const page = await lane.newPage();
+      await setBody(page, "<button>Reload</button>");
+      await page.evaluate(`
+        Object.defineProperty(window, "navigation", { value: undefined });
+        document.querySelector("button").addEventListener("click", () => location.reload());
+      `);
+      const url = page.url();
+      const host = lane.createHost(page).inPage(page);
+      const next = lane.nextDocument(page);
+
+      const action = await host.begin();
+      const outcome = await action.perform(() =>
+        page.locator("button").click()
+      );
+
+      expect(outcome).toEqual({ kind: "loading", url });
+      await next;
+      expect((await host.capture()).document).not.toBe(action.before.document);
+    }
+  );
+
   it("every host bound to a document hears of it, and of each same-document navigation in it", async () => {
     const page = await lane.newPage();
     const [one, other] = [lane.createHost(page), lane.createHost(page)];

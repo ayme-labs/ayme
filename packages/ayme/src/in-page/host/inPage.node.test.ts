@@ -18,6 +18,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type * as Playwright from "../../playwright";
 import { inPageContract } from "../../../testing/in-page/inPageContract.testSupport";
+import type { CallArgument } from "../page/call";
+import type { HostMessage } from "../page/install";
 
 // Playwright's overlay keeps its shadow root closed unless it runs under its own
 // tests; the contract reads the highlight boxes it draws.
@@ -181,6 +183,66 @@ function countingEvaluations(page: Page) {
 }
 
 describe("an action in Node", () => {
+  it("keeps the old document's last capture when context destruction is reported first", async () => {
+    const raw = await newPage();
+    await raw.evaluate(() => {
+      document.body.innerHTML = "<p>Staying</p><button>Leave</button>";
+      document.querySelector("button")!.addEventListener("click", () => {
+        document.querySelector("p")!.textContent = "Leaving";
+        location.href = "/next";
+      });
+    });
+    const loadSent = Promise.withResolvers<void>();
+    const contextDestroyed = Promise.withResolvers<void>();
+    const page = new Proxy(raw, {
+      get(target, property) {
+        if (property === "exposeFunction")
+          return (
+            name: string,
+            hear: (
+              document: Playwright.DocumentToken,
+              message: HostMessage
+            ) => void
+          ) =>
+            raw.exposeFunction(name, async (document, message) => {
+              if (message.kind === "loading") {
+                loadSent.resolve();
+                await contextDestroyed.promise;
+                // Let the rejection reach the host before forwarding the real load message.
+                await new Promise<void>((resolve) => setImmediate(resolve));
+              }
+              hear(document, message);
+            });
+        if (property === "evaluate")
+          return async (
+            fn: string | ((arg?: CallArgument) => unknown),
+            arg?: CallArgument
+          ) => {
+            if (arg?.name === "settle") {
+              await loadSent.promise;
+              contextDestroyed.resolve();
+              throw new Error("Execution context was destroyed");
+            }
+            return raw.evaluate(fn, arg);
+          };
+        const member: unknown = Reflect.get(target, property);
+        return typeof member === "function" ? member.bind(target) : member;
+      },
+    });
+    const action = await built.createInPageHost().inPage(page).begin();
+
+    const outcome = await action.perform(() => raw.locator("button").click());
+
+    expect(outcome).toEqual({
+      kind: "loading",
+      url: `${origin}/next`,
+      after: expect.objectContaining({
+        document: action.before.document,
+        distilledText: expect.stringContaining("Leaving"),
+      }),
+    });
+  });
+
   it("costs at most two evaluations: one before it, and one held through its settle", async () => {
     const raw = await newPage();
     await raw.evaluate(() => {

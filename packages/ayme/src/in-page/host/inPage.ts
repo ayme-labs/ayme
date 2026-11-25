@@ -452,9 +452,8 @@ export function createInPageHost(version = packageVersion): InPageHost {
       action: number,
       elements: ActionOptions["elements"]
     ): Promise<Settled> {
-      let result;
       try {
-        result = await page.evaluate(callInPage, {
+        const result = await page.evaluate(callInPage, {
           version,
           host,
           binding,
@@ -463,16 +462,14 @@ export function createInPageHost(version = packageVersion): InPageHost {
           name: "settle" as const,
           args: [action, elements],
         });
+        if (result.kind === "ok") return result.value as Settled;
       } catch (error) {
         // Real Playwright reports a load as the context it destroyed.
         if (page.isClosed() || !contextDestroyed(error)) throw error;
-        return { loading: page.url() };
       }
-      // Any answer but the module's is another document's: its token, no
-      // module yet, or another version's.
-      return result.kind === "ok"
-        ? (result.value as Settled)
-        : { loading: page.url() };
+      // Round-trip through the replacement context so Playwright can deliver the old context's queued binding call before we fall back to the URL.
+      await page.evaluate("void 0").catch(() => {}); // The replacement context can go away too, and the action still ended in a load.
+      return { loading: page.url() };
     }
 
     function action(
