@@ -8,13 +8,24 @@ export class SettlingPage extends FixturePage {
   @ayme.child({
     description: "Adds ten results, one every 100 ms, after its click.",
   })
-  readonly loadButton = this.page.getByRole("button", {
-    name: "Load results",
-  });
+  get loadButton() {
+    return this.page.getByRole("button", {
+      name: "Load results",
+    });
+  }
+
   @ayme.child
-  readonly results = this.page.getByRole("listitem");
+  get results() {
+    return this.page.getByRole("listitem");
+  }
+
   @ayme.child({ description: 'Sets the mark state to "Marked" at once.' })
-  readonly markButton = this.page.getByRole("button", { name: "Mark" });
+  get markButton() {
+    return this.page.getByRole("button", { name: "Mark" });
+  }
+
   @ayme.child({ description: '"Not marked", then "Marked".' })
-  readonly markState = this.page.locator("#mark-state");
+  get markState() {
+    return this.page.locator("#mark-state");
+  }
 }

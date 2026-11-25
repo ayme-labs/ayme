@@ -34,11 +34,6 @@ export class ConnectionRow extends PanelPart {
  * Agent Connection and one for WebMCP.
  */
 export class Connections extends PanelPart {
-  @ayme.child
-  readonly agent: ConnectionRow;
-  @ayme.child
-  readonly webMCP: ConnectionRow;
-
   /**
    * @param header the panel's header.
    * @param portalRoot an element holding the Inspector's portal.
@@ -48,10 +43,18 @@ export class Connections extends PanelPart {
     private readonly portalRoot: Locator
   ) {
     super(header.getByRole("button", { name: /^Connections: / }));
-    this.agent = new ConnectionRow(
+  }
+
+  @ayme.child
+  get agent(): ConnectionRow {
+    return new ConnectionRow(
       this.popover.getByRole("region", { name: "Agent", exact: true })
     );
-    this.webMCP = new ConnectionRow(
+  }
+
+  @ayme.child
+  get webMCP(): ConnectionRow {
+    return new ConnectionRow(
       this.popover.getByRole("region", { name: "WebMCP", exact: true })
     );
   }

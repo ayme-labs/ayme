@@ -8,14 +8,25 @@ export class LargePage extends FixturePage {
   readonly path = "/large.html";
 
   @ayme.child({ description: "Has the focus when the page loads." })
-  readonly noteInput = this.page.getByRole("textbox", { name: "Note" });
+  get noteInput() {
+    return this.page.getByRole("textbox", { name: "Note" });
+  }
+
   @ayme.child({
     description:
       '"Not saved", "Saving 1" to "Saving 9" after typing, then "Saved".',
   })
-  readonly noteState = this.page.locator("#note-state");
+  get noteState() {
+    return this.page.locator("#note-state");
+  }
+
   @ayme.child({ description: 'Sets the mark state to "Marked" at once.' })
-  readonly markButton = this.page.getByRole("button", { name: "Mark" });
+  get markButton() {
+    return this.page.getByRole("button", { name: "Mark" });
+  }
+
   @ayme.child({ description: '"Not marked", then "Marked".' })
-  readonly markState = this.page.locator("#mark-state");
+  get markState() {
+    return this.page.locator("#mark-state");
+  }
 }

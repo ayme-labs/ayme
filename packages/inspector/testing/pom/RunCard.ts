@@ -23,19 +23,20 @@ export type ArgumentValue =
 export class RunCard extends PanelPart {
   /** `fill_form`'s form. */
   @ayme.child
-  readonly fillForm: FillForm;
+  get fillForm(): FillForm {
+    return new FillForm(this.root);
+  }
+
   /** `generate_locator`'s form. */
   @ayme.child
-  readonly locatorGroups: LocatorGroups;
+  get locatorGroups(): LocatorGroups {
+    return new LocatorGroups(this.root);
+  }
+
   /** `goal`'s map of values. */
   @ayme.child
-  readonly values: ValueRows;
-
-  constructor(root: Locator) {
-    super(root);
-    this.fillForm = new FillForm(root);
-    this.locatorGroups = new LocatorGroups(root);
-    this.values = this.valueRows("values");
+  get values(): ValueRows {
+    return this.valueRows("values");
   }
 
   @ayme.child

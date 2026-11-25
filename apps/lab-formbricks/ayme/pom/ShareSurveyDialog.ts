@@ -7,13 +7,12 @@ import { SurveySummaryPage } from "./SurveySummaryPage";
 /** Opens over the summary when a survey is published for the first time. */
 export class ShareSurveyDialog extends AppComponent {
   @ayme.child
-  readonly closeButton: Locator;
-  private readonly modal: Modal;
+  get closeButton(): Locator {
+    return this.modal.closeButton;
+  }
 
-  constructor(root: Locator) {
-    super(root);
-    this.modal = new Modal(root);
-    this.closeButton = this.modal.closeButton;
+  private get modal(): Modal {
+    return new Modal(this.root);
   }
 
   @ayme.action

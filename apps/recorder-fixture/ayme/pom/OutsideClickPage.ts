@@ -9,62 +9,94 @@ export class OutsideClickPage extends FixturePage {
   readonly path = "/outside-click.html";
 
   @ayme.child
-  readonly openClickPanelButton = this.page.getByRole("button", {
-    name: "Open click panel",
-  });
+  get openClickPanelButton() {
+    return this.page.getByRole("button", {
+      name: "Open click panel",
+    });
+  }
+
   @ayme.child({
     description: "Closes on a click outside it, heard on the document.",
   })
-  readonly clickPanel = this.page.getByRole("group", { name: "Click panel" });
-  @ayme.child
-  readonly insideClickPanelButton = this.page.getByRole("button", {
-    name: "Inside click panel",
-  });
+  get clickPanel() {
+    return this.page.getByRole("group", { name: "Click panel" });
+  }
 
   @ayme.child
-  readonly openPointerdownPanelButton = this.page.getByRole("button", {
-    name: "Open pointerdown panel",
-  });
+  get insideClickPanelButton() {
+    return this.page.getByRole("button", {
+      name: "Inside click panel",
+    });
+  }
+
+  @ayme.child
+  get openPointerdownPanelButton() {
+    return this.page.getByRole("button", {
+      name: "Open pointerdown panel",
+    });
+  }
+
   @ayme.child({
     description:
       "Closes on a pointerdown outside it, heard on the document in the capture phase.",
   })
-  readonly pointerdownPanel = this.page.getByRole("group", {
-    name: "Pointerdown panel",
-  });
-  @ayme.child
-  readonly insidePointerdownPanelButton = this.page.getByRole("button", {
-    name: "Inside pointerdown panel",
-  });
+  get pointerdownPanel() {
+    return this.page.getByRole("group", {
+      name: "Pointerdown panel",
+    });
+  }
 
   @ayme.child
-  readonly openMousedownPanelButton = this.page.getByRole("button", {
-    name: "Open mousedown panel",
-  });
+  get insidePointerdownPanelButton() {
+    return this.page.getByRole("button", {
+      name: "Inside pointerdown panel",
+    });
+  }
+
+  @ayme.child
+  get openMousedownPanelButton() {
+    return this.page.getByRole("button", {
+      name: "Open mousedown panel",
+    });
+  }
+
   @ayme.child({
     description:
       "Closes on a mousedown outside it, heard on the document in the capture phase.",
   })
-  readonly mousedownPanel = this.page.getByRole("group", {
-    name: "Mousedown panel",
-  });
-  @ayme.child
-  readonly insideMousedownPanelButton = this.page.getByRole("button", {
-    name: "Inside mousedown panel",
-  });
+  get mousedownPanel() {
+    return this.page.getByRole("group", {
+      name: "Mousedown panel",
+    });
+  }
 
   @ayme.child
-  readonly openFocusoutPanelButton = this.page.getByRole("button", {
-    name: "Open focusout panel",
-  });
+  get insideMousedownPanelButton() {
+    return this.page.getByRole("button", {
+      name: "Inside mousedown panel",
+    });
+  }
+
+  @ayme.child
+  get openFocusoutPanelButton() {
+    return this.page.getByRole("button", {
+      name: "Open focusout panel",
+    });
+  }
+
   @ayme.child({
     description: "Takes the focus when opened, and closes when it leaves.",
   })
-  readonly focusoutPanel = this.page.getByRole("group", {
-    name: "Focusout panel",
-  });
+  get focusoutPanel() {
+    return this.page.getByRole("group", {
+      name: "Focusout panel",
+    });
+  }
+
   @ayme.child
-  readonly insideFocusoutPanelButton = this.page.getByRole("button", {
-    name: "Inside focusout panel",
-  });
+  get insideFocusoutPanelButton() {
+    return this.page.getByRole("button", {
+      name: "Inside focusout panel",
+    });
+  }
 }
