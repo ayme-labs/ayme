@@ -273,7 +273,6 @@ function asObject(value: JsonValue | undefined): ToolArguments {
     : {};
 }
 
-/** The arguments as the JSON editor shows them. */
 export function argumentsToJson(args: ToolArguments) {
   return JSON.stringify(args, null, 2);
 }

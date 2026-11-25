@@ -49,7 +49,6 @@ export type RunCardProps = {
   schemaText: SchemaText;
   /** Runs the tool with its input, on the item for a rooted action. */
   onRun: (input: ToolArguments, item?: CollectionItem) => void;
-  /** Shows a run in Runs. */
   onShowRun: (runId: string) => void;
   /** Highlights an item on the page while it's hovered. */
   onHover?: OnHover;

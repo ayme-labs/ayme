@@ -68,7 +68,6 @@ export type RunCardLook = {
   press: Press;
   /** Whether Run is off: its press would do nothing. */
   runDisabled: boolean;
-  /** Run's tooltip. */
   runTitle: string;
   /** Whether the head can open and close the form. */
   canToggle: boolean;
