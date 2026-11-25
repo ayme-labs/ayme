@@ -273,11 +273,17 @@ export class PageStateSession {
    * settle wait are left to finish on their own; their outcome is never
    * reported. A navigation that stays in the document leaves the action to
    * settle as usual.
+   *
+   * With `onlyNavigates`, `perform` changes nothing in the document but
+   * where it is, as a browser Page's `goto` or `reload` does: when the old
+   * document's last capture does not arrive, the page before the action
+   * stands for it.
    */
   async runAction(
     cursor: Cursor,
     call: ToolCall,
-    perform: () => unknown
+    perform: () => unknown,
+    { onlyNavigates = false }: { onlyNavigates?: boolean } = {}
   ): Promise<ActionResult> {
     let actionId = await this.startAction(call);
     let history = this.history;
@@ -288,8 +294,10 @@ export class PageStateSession {
     // capture finds the page moved on since.
     let before = history.latestObservation;
     let outcome: ActionOutcome<unknown>;
+    let pageBefore: Capture;
     try {
       const action = await this.actionPage.begin();
+      pageBefore = action.before;
       // A full load since the session last read the page: the action runs in
       // the new document, whose history it starts in.
       if (this.enter(action.before)) {
@@ -313,7 +321,7 @@ export class PageStateSession {
         cursor,
         { received, before },
         outcome.url,
-        outcome.after
+        outcome.after ?? (onlyNavigates ? pageBefore : undefined)
       );
     if (outcome.kind === "threw") {
       const after = this.checkedOrNone(outcome.after);
@@ -383,31 +391,26 @@ export class PageStateSession {
     capture: Capture | undefined
   ): Promise<ActionResult> {
     // The document may already be gone; the answer goes out regardless.
-    const record = await (
-      capture === undefined
-        ? Promise.reject(new Error("The old document left no capture."))
-        : this.completeAction(actionId, capture)
-    )
-      .then((after) => {
-        cursor.move(after);
-        return readChangeRecord(this.history, starts, after);
-      })
-      .catch(() => undefined);
-    if (!record)
-      return {
-        settled: false,
-        loading: url,
-        next: `The page is loading ${url}. What the action changed before the load could not be read. Call snapshot next to read the new page.`,
-      };
+    const record =
+      capture &&
+      (await this.completeAction(actionId, capture)
+        .then((after) => {
+          cursor.move(after);
+          return readChangeRecord(this.history, starts, after);
+        })
+        .catch(() => undefined));
+    const unread = record
+      ? ""
+      : " What the action changed before the load could not be read.";
     return {
-      page_changed: record.page_changed,
+      ...(record && { page_changed: record.page_changed }),
       settled: false,
-      ...(record.changes_before
+      ...(record?.changes_before
         ? { changes_before: record.changes_before }
         : {}),
-      ...(record.changes ? { changes: record.changes } : {}),
+      ...(record?.changes ? { changes: record.changes } : {}),
       loading: url,
-      next: `The page is loading ${url}. Call snapshot next to read the new page.`,
+      next: `The page is loading ${url}.${unread} Call snapshot next to read the new page.`,
     };
   }
 

@@ -1103,6 +1103,38 @@ export function inPageContract(lane: InPageLane) {
     expect(capture.document).not.toBe(action.before.document);
   });
 
+  it("an action whose full load is not held answers it with the old document's last capture, or, when that was lost, with no capture at all", async () => {
+    const page = await lane.newPage();
+    await setBody(page, "<p>Staying</p><button>Reload</button>");
+    await page.evaluate(`document.querySelector("button").addEventListener("click", () => {
+      document.querySelector("p").textContent = "Leaving";
+      location.reload();
+    })`);
+    const url = page.url();
+    const host = lane.createHost(page);
+    const next = lane.nextDocument(page);
+
+    const action = await host.inPage(page).begin();
+    const outcome = await action.perform(() => page.locator("button").click());
+    await next;
+
+    // Real Chromium can drop the old document's last capture when the next
+    // document commits at once; never is it the next document's.
+    const delivered = outcome.kind === "loading" && outcome.after !== undefined;
+    expect(outcome).toEqual(
+      delivered
+        ? {
+            kind: "loading",
+            url,
+            after: expect.objectContaining({
+              document: action.before.document,
+              distilledText: expect.stringContaining("Leaving"),
+            }),
+          }
+        : { kind: "loading", url }
+    );
+  });
+
   it("every host bound to a document hears of it, and of each same-document navigation in it", async () => {
     const page = await lane.newPage();
     const [one, other] = [lane.createHost(page), lane.createHost(page)];

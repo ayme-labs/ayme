@@ -523,6 +523,26 @@ describe("runAction", () => {
     });
     expect(reader.current()).toBeUndefined();
   });
+
+  it("answers a full load an action that only navigates started from the page before it, when the old document left no capture", async () => {
+    const { session } = sessionOn(
+      { loads: "https://app.test/next" },
+      savePage,
+      savePage,
+      new Error("The document is gone.")
+    );
+    const reader = cursor();
+
+    await expect(
+      session.runAction(reader, call, () => {}, { onlyNavigates: true })
+    ).resolves.toEqual({
+      page_changed: false,
+      settled: false,
+      loading: "https://app.test/next",
+      next: "The page is loading https://app.test/next. Call snapshot next to read the new page.",
+    });
+    expect(reader.current()).toBeDefined();
+  });
 });
 
 async function expectOneFailedCompletedAction(session: PageStateSession) {

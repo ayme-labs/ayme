@@ -388,6 +388,38 @@ describe("ayme over a Playwright Page", () => {
     expect(JSON.stringify(result)).not.toContain("Second document");
   });
 
+  it("answers a navigate, a reload and a move back to another document with what changed before them", async () => {
+    const page = await pageServing((url) =>
+      url.pathname === "/two"
+        ? "<p>Second document</p>"
+        : "<p>First document</p>"
+    );
+    const ayme = await startedOn(page);
+    await ayme.tools.run("snapshot", {});
+    await page.evaluate(`document.querySelector("p").textContent = "Edited"`);
+    const loading = (url: string) => ({
+      settled: false,
+      loading: url,
+      next: `The page is loading ${url}. Call snapshot next to read the new page.`,
+    });
+
+    await expect(ayme.tools.run("navigate", { url: "/two" })).resolves.toEqual({
+      page_changed: true,
+      changes_before: expect.stringContaining("Edited"),
+      ...loading("http://app.test/two"),
+    });
+    await ayme.tools.run("snapshot", {});
+    await expect(ayme.tools.run("reload", {})).resolves.toEqual({
+      page_changed: false,
+      ...loading("http://app.test/two"),
+    });
+    await ayme.tools.run("snapshot", {});
+    await expect(ayme.tools.run("navigate_back", {})).resolves.toEqual({
+      page_changed: false,
+      ...loading("http://app.test/"),
+    });
+  });
+
   it("resolves a relative navigation against the document's base URL", async () => {
     const page = await pageServing(
       () => '<base href="/sub/"><p>Page</p>',

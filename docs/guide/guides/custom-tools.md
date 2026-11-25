@@ -36,7 +36,7 @@ createAyme({ customTools: [highlight] });
 
 - The published tool takes `{ ref }`. ayme resolves the Structural Ref against the current page and calls `execute` with the current ref and a Playwright `Locator` of its element: act on the element through the Locator, as `locator.click()` or `locator.evaluate(…)` does. An unknown, removed or ambiguous ref fails before `execute` runs.
 - `description` is the only instruction the model gets about the operation.
-- The call returns the same action result as every other action: a JSON value returned by `execute` appears under `result`, next to `page_changed`, `settled` and, when the page changed, `changes_before` and `changes`.
+- The call returns the same action result as every other action: a JSON value returned by `execute` appears under `result`, next to `page_changed`, `settled` and, when the page changed, `changes_before` and `changes`. A call that starts a [full page load](page-state.md#full-page-loads) answers as one.
 - `filter` limits only which elements the Goal Loop may offer for this tool. It is not enforced when an agent calls the tool with a ref. Without a `filter`, every node that has a ref may be offered.
 - `filter` is a CSS selector, or a function that takes the session's Playwright `Page` and returns a `Locator`, as in [a Locator filter](#a-locator-filter) below.
 - A Custom Tool whose name another tool already has leaves the session with no tools: `ayme.tools.list()` is empty, so nothing is published, and `ayme.tools.run` throws until the clash is fixed.

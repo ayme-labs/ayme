@@ -31,10 +31,9 @@ export type ActionResult = {
  * The Change Record a failed action's error carries, on the error itself:
  * what changed before the action and what it changed before it failed.
  */
-export type ActionFailure = Pick<
-  ActionResult,
-  "page_changed" | "changes_before" | "changes"
->;
+export type ActionFailure = Pick<ActionResult, "changes_before" | "changes"> & {
+  page_changed: boolean;
+};
 
 /**
  * The sentence every action tool's description ends with: how the result
