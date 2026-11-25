@@ -19,10 +19,15 @@ import type {
   PageObjectModel,
   PageObjectNode,
 } from "../domain/pageModel";
-import type { OnHover, RenderRun } from "../../navigation";
+import type { OnHover, RenderRun } from "../../navigation/domain";
 import { hoverHandlers } from "./hover";
 import { LiveMark } from "./LiveMark";
-import { chip, DestructiveMark, rowFocusRing, rowPress } from "../../shared";
+import {
+  chip,
+  DestructiveMark,
+  rowFocusRing,
+  rowPress,
+} from "../../shared/view";
 
 /**
  * The page as a whole: its host, the page Page Objects on it, and the

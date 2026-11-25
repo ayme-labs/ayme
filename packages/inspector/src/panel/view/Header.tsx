@@ -20,7 +20,7 @@ import { DropdownMenu } from "radix-ui";
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { AymeMark, focusRing, pressableIcon } from "../../shared";
+import { AymeMark, focusRing, pressableIcon } from "../../shared/view";
 import type { Layout, ThemePreference } from "../domain/preferences";
 
 const iconButton = cn(

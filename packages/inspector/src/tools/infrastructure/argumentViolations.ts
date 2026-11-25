@@ -3,7 +3,7 @@ import {
   toolInputViolations,
 } from "@ayme-dev/ayme/inspector";
 
-import type { ToolArguments } from "../../runs";
+import type { ToolArguments } from "../../runs/domain";
 import type { RunnableTool } from "../domain/runnableTools";
 
 /**

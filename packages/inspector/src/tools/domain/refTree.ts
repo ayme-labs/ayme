@@ -1,5 +1,5 @@
-import type { StructureNode } from "../../structure";
-import { nodeText } from "../../shared";
+import type { StructureNode } from "../../structure/domain";
+import { nodeText } from "../../shared/domain";
 
 /** A node a ref field can choose: one that carries a ref. */
 export type RefNode = StructureNode & { ref: string };

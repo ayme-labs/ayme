@@ -11,13 +11,9 @@ import { GripVerticalIcon, RotateCcwIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { Run } from "../../runs";
-import {
-  focusRing,
-  INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
-  pressable,
-  pressableIcon,
-} from "../../shared";
+import type { Run } from "../../runs/domain";
+import { focusRing, pressable, pressableIcon } from "../../shared/view";
+import { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "../../shared/domain";
 import { inputClass } from "../view/ArgumentsFormView";
 import {
   changedFields,

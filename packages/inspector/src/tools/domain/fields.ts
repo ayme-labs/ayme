@@ -5,7 +5,7 @@ import type {
 } from "@ayme-dev/ayme/inspector";
 import type { ToolParameter } from "@ayme-dev/ayme/inspector";
 
-import type { ToolArguments } from "../../runs";
+import type { ToolArguments } from "../../runs/domain";
 import { jsonSyntaxError } from "./jsonSyntax";
 import { mapValueTypes, type ValueType } from "./valueRows";
 

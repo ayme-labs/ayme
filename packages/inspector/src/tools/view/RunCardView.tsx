@@ -13,7 +13,7 @@ import type { SchemaViolation } from "@ayme-dev/ayme/inspector";
 import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { OnHover } from "../../navigation";
+import type { OnHover } from "../../navigation/domain";
 import {
   DestructiveMark,
   focusRing,
@@ -21,13 +21,13 @@ import {
   QualifiedName,
   rowFocusRing,
   rowPress,
-} from "../../shared";
+} from "../../shared/view";
 import {
   formatDuration,
   type ChildRun,
   type CollectionItem,
   type Run,
-} from "../../runs";
+} from "../../runs/domain";
 import type { Field, FieldGroup } from "../domain/fields";
 import type { RunCardLook } from "../domain/press";
 import type { RunnableTool } from "../domain/runnableTools";

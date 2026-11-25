@@ -1,6 +1,6 @@
 import type { App } from "@modelcontextprotocol/ext-apps/app-with-deps";
 
-import type { FullscreenState, WindowFullscreen } from "../panel";
+import type { FullscreenState, WindowFullscreen } from "../panel/domain";
 
 /** The height the Inspector asks an Agent App for, shown inline. */
 export const INLINE_HEIGHT = 600;

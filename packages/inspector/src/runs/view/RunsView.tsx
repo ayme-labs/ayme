@@ -24,14 +24,14 @@ import {
 import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { HighlightTarget, OnHover } from "../../navigation";
+import type { HighlightTarget, OnHover } from "../../navigation/domain";
 import {
   focusRing,
   pressable,
   QualifiedName,
   rowFocusRing,
   rowPress,
-} from "../../shared";
+} from "../../shared/view";
 import { formatDuration } from "../domain/duration";
 import { readableResult } from "../domain/readableResult";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";

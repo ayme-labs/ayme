@@ -21,21 +21,16 @@ import {
   treeRows,
   type TreeRow,
 } from "../domain/treeRows";
-import {
-  chip,
-  Empty,
-  focusRing,
-  INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
-  rowPress,
-  WhatTheModelSees,
-} from "../../shared";
+import { chip, Empty, focusRing, rowPress } from "../../shared/view";
+import { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "../../shared/domain";
+import { WhatTheModelSees } from "../../shared/presentation";
 import type {
   Lens,
   OnHover,
   RenderRun,
   SearchEntry,
   Selection,
-} from "../../navigation";
+} from "../../navigation/domain";
 
 /** Whether the structure is being captured, or why it couldn't be. */
 export type StructureCapture = {

@@ -1,4 +1,4 @@
-import type { StructureNode } from "../../structure";
+import type { StructureNode } from "../../structure/domain";
 
 /** The roles `fill_form` fills, as its fields' `type`. */
 const fieldTypes = [

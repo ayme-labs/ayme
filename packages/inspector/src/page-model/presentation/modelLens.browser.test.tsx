@@ -3,15 +3,16 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { PageModel } from "../domain/pageModel";
-import { defaultPreferences, DetailPane } from "../../panel";
+import { defaultPreferences } from "../../panel/domain";
+import { DetailPane } from "../../panel/view";
 import {
   type Lens,
   type LensId,
-  Navigator,
   type OnHover,
   type RenderRun,
   type Selection,
-} from "../../navigation";
+} from "../../navigation/domain";
+import { Navigator } from "../../navigation/presentation";
 import {
   collection,
   component,

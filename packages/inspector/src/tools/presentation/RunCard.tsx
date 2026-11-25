@@ -1,7 +1,7 @@
 import type { SchemaViolation } from "@ayme-dev/ayme/inspector";
 
-import type { OnHover } from "../../navigation";
-import type { CollectionItem, Run, ToolArguments } from "../../runs";
+import type { OnHover } from "../../navigation/domain";
+import type { CollectionItem, Run, ToolArguments } from "../../runs/domain";
 import { argumentsToJson, type SchemaText } from "../domain/fields";
 import type { RefSource } from "../domain/refTree";
 import type { RunnableTool } from "../domain/runnableTools";

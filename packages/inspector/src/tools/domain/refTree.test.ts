@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import { forest, node } from "../../../testing/structure/projected";
-import { buildStructureTree } from "../../structure";
+import { buildStructureTree } from "../../structure/infrastructure";
 import { refTreeRows, type RefTreeRow } from "./refTree";
 
 // Unit tests: the ref field's search over the structure tree model. The page

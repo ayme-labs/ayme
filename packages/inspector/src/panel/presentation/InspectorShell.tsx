@@ -29,7 +29,7 @@ import {
 import { Header, layoutNames } from "../view/Header";
 import { releaseVelocity, type Sample } from "../domain/motion";
 import type { Layout, Preferences } from "../domain/preferences";
-import { resizeGrip, usePointerDrag } from "../../shared";
+import { resizeGrip, usePointerDrag } from "../../shared/presentation";
 import { useGlide } from "./useGlide";
 import { usePointerClick } from "./usePointerClick";
 import { usePresence } from "./usePresence";

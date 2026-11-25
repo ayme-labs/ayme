@@ -3,7 +3,7 @@ import { XIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { focusRing, pressable, pressableIcon } from "../../shared";
+import { focusRing, pressable, pressableIcon } from "../../shared/view";
 import type { ValueRow, ValueType } from "../domain/valueRows";
 
 const inputClass =

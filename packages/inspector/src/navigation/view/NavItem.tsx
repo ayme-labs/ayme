@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { rowFocusRing, rowPress } from "../../shared";
+import { rowFocusRing, rowPress } from "../../shared/view";
 
 export function NavItem({
   selected,

@@ -2,13 +2,12 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
 
-import type { Look } from "../../shared";
 import {
   createHighlights,
   createInspectorContract,
 } from "@ayme-dev/ayme/internal";
 
-import { createInspectorClient } from "../../shared";
+import { createInspectorClient, type Look } from "../../shared/infrastructure";
 import { useHighlights } from "./useHighlights";
 
 // Unit tests: the page's hover and pin highlights, over hand-made looks.

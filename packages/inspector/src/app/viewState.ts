@@ -1,5 +1,9 @@
-import { type LensId, pageSelection, type Selection } from "../navigation";
-import type { ObjectTree } from "../page-model";
+import {
+  type LensId,
+  pageSelection,
+  type Selection,
+} from "../navigation/domain";
+import type { ObjectTree } from "../page-model/domain";
 
 /** The key of the Inspector's view state in the tab's storage. */
 export const viewStateKey = "ayme-inspector:view";

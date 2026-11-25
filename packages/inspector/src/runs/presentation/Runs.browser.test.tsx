@@ -8,7 +8,7 @@ import {
   anItem,
   aRun,
 } from "../../../testing/runs/runs";
-import { RunsRegion } from "../../panel";
+import { RunsRegion } from "../../panel/view";
 import { renderPart } from "../../../testing/renderPart";
 import { RunsView } from "../../../testing";
 import type { Run, RunFocus } from "../domain/run";

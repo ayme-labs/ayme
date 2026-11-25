@@ -4,8 +4,8 @@ import { XIcon } from "lucide-react";
 import type { JsonValue } from "@ayme-dev/ayme/inspector";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { ToolArguments } from "../../runs";
-import { focusRing, pressable, pressableIcon } from "../../shared";
+import type { ToolArguments } from "../../runs/domain";
+import { focusRing, pressable, pressableIcon } from "../../shared/view";
 import { initialValues, type Field, type FieldGroup } from "../domain/fields";
 import type { RefSource } from "../domain/refTree";
 import type { ValueType } from "../domain/valueRows";

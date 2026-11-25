@@ -1,4 +1,4 @@
-import type { StructureNode, StructureTree } from "../../structure";
+import type { StructureNode, StructureTree } from "../../structure/domain";
 import type { InteractionDescription } from "./run";
 
 /** Describe the actual target, retaining a containing object's identity as context only. */

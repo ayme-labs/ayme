@@ -1,6 +1,6 @@
 import type { StructureTree } from "../domain/structure";
 import { memberResolves } from "../domain/memberSelection";
-import type { Selection } from "../../navigation";
+import type { Selection } from "../../navigation/domain";
 
 /**
  * Whether a selection is stale, so the app sends it back to the page.

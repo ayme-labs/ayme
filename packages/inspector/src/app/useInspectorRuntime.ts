@@ -1,25 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
+import { listRunnableTools } from "../tools/domain";
 import {
-  listRunnableTools,
   pickPromptOf,
   refFilterOf,
   type RefPickingHandlers,
   startRefPicking,
   useLiveTools,
-} from "../tools";
+} from "../tools/infrastructure";
+import { actionSignature, rootTargetPath } from "../page-model/infrastructure";
 import {
-  actionSignature,
   buildPageModel,
   indexMembers,
   type MemberIndex,
-  rootTargetPath,
-} from "../page-model";
+} from "../page-model/domain";
 import { renderPomDefinitions } from "@ayme-dev/ayme/inspector";
-import { buildStructureTree, emptyStructure } from "../structure";
-import { useHighlights } from "../navigation";
-import { usePageLook } from "../shared";
-import { interactionTarget, useRuns } from "../runs";
+import { buildStructureTree } from "../structure/infrastructure";
+import { emptyStructure } from "../structure/domain";
+import { useHighlights } from "../navigation/infrastructure";
+import { usePageLook } from "../shared/infrastructure";
+import { interactionTarget } from "../runs/domain";
+import { useRuns } from "../runs/infrastructure";
 import { itemsOf } from "./collectionItems";
 
 /**

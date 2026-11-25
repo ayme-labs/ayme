@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef } from "react";
 
 import type { InspectorHighlightLayer } from "@ayme-dev/ayme/inspector";
 
-import { inspectorClient, type InspectorClient, type Look } from "../../shared";
+import {
+  inspectorClient,
+  type InspectorClient,
+  type Look,
+} from "../../shared/infrastructure";
 import type { HighlightTarget } from "../domain/highlight";
 
 /**
