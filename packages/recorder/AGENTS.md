@@ -31,7 +31,7 @@ The checks:
 
 Nothing checks the rules below, nor those under "Changing the lifecycle":
 
-- Give `import()` a plain string, since lint reads only that string.
+- Write a path with no spare `./`, trailing slash or detour, and give `import()` a plain string, since lint reads the string, not where it leads.
 - Import nothing of the window by path either, since the CLI hands the engine where the window's built files and the toolbar's script are; lint refuses the window by package name only, and the built-file check sees only what survives bundling.
 - Hand an application module what it needs done on the disk or in the browser from the composition root, as the session is handed the function that saves a package and the recorded browser as a layer, since lint keeps it from importing another slice's infrastructure.
 - Let nothing but promises, callbacks and plain data leave `src/index.ts`, and turn Effect into promises only in `startRecorderOn`, so callers need neither Effect's nor Playwright's types; the public type test sees another package's type, not an object that is not plain data.

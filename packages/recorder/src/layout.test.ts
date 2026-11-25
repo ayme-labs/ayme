@@ -439,7 +439,7 @@ const refusals: [path: string, code: string, message: string][] = [
   ],
   [
     "src/playwright/infrastructure/index.ts",
-    'export { setGate } from "./../in-page/calls";',
+    'export { setGate } from "../infrastructure/in-page/calls";',
     fromLiveOnly,
   ],
   // The window, by its package name, in every file and form.
@@ -507,6 +507,11 @@ it(
       [
         "src/playwright/infrastructure/plain/placed.ts",
         'export { withRules } from "../pageRules";',
+      ],
+      // A plain file that is only named like one of the two folders.
+      [
+        "src/playwright/infrastructure/plain/placed.ts",
+        'export type Placed = typeof import("./live");',
       ],
       // The package's entry sits in no slice.
       ["src/placed.ts", 'export { startRecorderOn } from "./engine";'],

@@ -104,12 +104,12 @@ const liveAndInPage = [
   `${infrastructure}/in-page/**`,
 ];
 const noLiveOrInPage = {
-  regex: String.raw`^\.\.?/(.*/)?(live|in-page)(/|$)`,
+  regex: String.raw`^\.\.?/(.*/)?(live|in-page)/`,
   message:
     "Plain logic stays testable without a browser: it may not import infrastructure/live or infrastructure/in-page (docs/testing.md#code-a-real-browser-runs).",
 };
 const noInPage = {
-  regex: String.raw`^\.\.?/(.*/)?in-page(/|$)`,
+  regex: String.raw`^\.\.?/(.*/)?in-page/`,
   message:
     "infrastructure/in-page is reached from infrastructure/live only (docs/testing.md#code-a-real-browser-runs).",
 };
