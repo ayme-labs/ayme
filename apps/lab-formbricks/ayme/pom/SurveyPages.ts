@@ -4,6 +4,7 @@ import { AppPage } from "./AppPage";
 import { EditActiveSurveyDialog } from "./EditActiveSurveyDialog";
 import { ShareSurveyDialog } from "./ShareSurveyDialog";
 
+// The summary and editor pages share this file because each returns the other: in two files they would import each other.
 @ayme({
   description:
     "A survey's results. A survey published for the first time opens here with its share dialog.",
