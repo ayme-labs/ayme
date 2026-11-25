@@ -5,7 +5,7 @@ supersedes: ADR-0018
 
 # Pin Playwright Lite to immutable fork tags
 
-ADR-0018 bundled Playwright Lite into ayme and required the pinned commit
+ADR-0018 bundled Playwright Lite into `@ayme-dev/webmcp` and required the pinned commit
 to remain in Playwright Lite's main ancestry. The fork now keeps `main` as a
 mirror of upstream and publishes each upstream sync as an `ayme-<date>` tag:
 upstream plus the fork's patch queue. Syncs rebase the queue, so fork commits

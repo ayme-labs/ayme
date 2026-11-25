@@ -6,14 +6,14 @@ status: accepted
 
 ## Why
 
-A Page Object Tool answered an agent with the full action result: both parts of the Change Record, a structural diff of the whole page with element refs, a `next` hint, and, through `ayme mcp`, a note of the tools that appeared, went away or changed availability. Every call added thousands of characters to the agent's context, whether it needed them or not. ayme now sits next to the agent's own browser automation, which already reads the page, so the agent needs from ayme what the action did to the Page Objects, not the whole page again.
+A Page Object Tool answered an agent with the full action result: both parts of the Change Record, a structural diff of the whole page with element refs, a hint at the next tool, and, through `ayme mcp`, a note of the tools that appeared, went away or changed availability. Every call added a large block of text to the agent's context, whether it needed them or not. ayme now sits next to the agent's own browser automation, which already reads the page, so the agent needs from ayme what the action did to the Page Objects, not the whole page again.
 
 ## Decision
 
 The two agent channels, WebMCP publication and `ayme mcp`, present a Page Object Tool's result as a short answer: whether the page settled, what the action returned, the URL when the action changed it, and how the Page Object Tree changed. A page whose new document is still loading has not settled; the answer has no field of its own for it.
 
-- The change is told in the tree `page_objects` returns: a Page Object that appeared is shown in full, with its children and its id; one that went away is marked removed; a value that changed reads old → new. It is not a structural diff of the page.
-- A refused call answers with its Availability Reason alone. A failed one answers with what failed and, when the Page Object Tree changed while it ran, `changes` in the same tree, so the agent sees how far a half-run action got. Neither carries advice, a Change Record or a pointer to a next tool.
+- The change is told in the Page Object Tree: a Page Object that appeared is shown in full, with its children and its id; one that went away is marked removed; a value that changed reads old → new. It is not a structural diff of the page.
+- A refused call answers with its Availability Reason alone. A failed one answers with what failed and, when the Page Object Tree changed while it ran, the change in the same tree, so the agent sees how far a half-run action got. Neither carries advice, a Change Record or a pointer to a next tool.
 - The answer has no availability listing, and `ayme mcp` adds no note of tools that appeared or went away to it. The next answer of another tool still carries that note.
 - Both channels take the Page Object Tools and their answers from one source, so the answer cannot differ between them.
 - A programmatic call from application code (ADR-0031) keeps returning the full action result: application code, the Inspector and the Goal Loop read it. The short answer is a presentation for agents, not a new result type.
