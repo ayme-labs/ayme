@@ -1,7 +1,10 @@
 import { EXCLUDE_ATTRIBUTE } from "@ayme-dev/ayme/inspector";
 
 import { renderInspector } from "./renderInspector";
-import { exposeInspectorShadowRoot, inspectorClient } from "../shared";
+import {
+  exposeInspectorShadowRoot,
+  inspectorClient,
+} from "../shared/infrastructure";
 
 export type InspectorOptions = {
   /**

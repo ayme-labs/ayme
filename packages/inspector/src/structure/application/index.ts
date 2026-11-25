@@ -1,0 +1,1 @@
+export { isStaleSelection } from "./staleSelection";

@@ -1,4 +1,4 @@
-import type { HighlightTarget, OnHover } from "../../navigation";
+import type { HighlightTarget, OnHover } from "../../navigation/domain";
 
 /**
  * Pointer handlers that show a dashed highlight on the page while a row is

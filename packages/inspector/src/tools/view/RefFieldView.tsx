@@ -5,7 +5,7 @@ import { ChevronDownIcon, CrosshairIcon } from "lucide-react";
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { NodeDetail, pressable } from "../../shared";
+import { NodeDetail, pressable } from "../../shared/view";
 
 import type { RefNode, RefTreeRow } from "../domain/refTree";
 import { refText, RefTreeView } from "./RefTreeView";

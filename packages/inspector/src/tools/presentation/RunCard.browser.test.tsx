@@ -3,7 +3,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import { listRunnableTools, type RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../../testing/structure/projected";
-import { buildStructureTree } from "../../structure";
+import { buildStructureTree } from "../../structure/infrastructure";
 import {
   aChildRun,
   anInteraction,

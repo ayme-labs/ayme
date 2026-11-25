@@ -9,7 +9,7 @@ import {
 } from "@ayme-dev/ayme";
 
 import { mountInspector } from "./index";
-import { inspectorShadowRoot } from "./shared";
+import { inspectorShadowRoot } from "./shared/infrastructure";
 
 const disposals: (() => void)[] = [];
 

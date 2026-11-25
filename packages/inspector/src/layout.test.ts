@@ -20,7 +20,9 @@ async function lint(path: string, code: string) {
 // ESLint loads the package config and its import resolver on first use.
 const slow = { timeout: 60_000 };
 
-const frontDoor = "Import another slice through its index.ts.";
+const frontDoor = "Import another slice through its layer's index.ts";
+const layeredDoor = "A layered slice has no index.ts";
+const viewOrder = "view may only depend on the allowed horizontal layers.";
 const aymeEntry = "Import ayme only through @ayme-dev/ayme/inspector.";
 const quoted = "Write the module in import() as a quoted string";
 
@@ -40,6 +42,31 @@ const refusals: [path: string, code: string, message: string][] = [
     "src/tools/misplaced.test.ts",
     'export type Lens = import("../navigation/domain/lens").LensId;',
     frontDoor,
+  ],
+  [
+    "src/runs/domain/misplaced.ts",
+    'export type Lens = import("../../navigation").LensId;',
+    layeredDoor,
+  ],
+  [
+    "src/runs/domain/misplaced.ts",
+    'export type { LensId } from "../../navigation/index.js";',
+    layeredDoor,
+  ],
+  [
+    "src/panel/view/index.ts",
+    'export { Divider } from "../../shared/presentation";',
+    viewOrder,
+  ],
+  [
+    "src/panel/view/misplaced.ts",
+    'export const load = () => import("../../shared/presentation/index.js");',
+    viewOrder,
+  ],
+  [
+    "src/panel/view/misplaced.ts",
+    'export type Divider = typeof import("../../shared/presentation").Divider;',
+    viewOrder,
   ],
   [
     "src/app/misplaced.ts",
@@ -104,6 +131,14 @@ it(
         "testing/pom/Placed.ts",
         'import { ayme } from "@ayme-dev/ayme";\nexport const Placed = ayme;',
       ],
+      [
+        "src/panel/view/placed.ts",
+        'export type { ControlState } from "../../shared/domain";',
+      ],
+      [
+        "src/panel/view/placed.test.ts",
+        'export { Divider } from "../../shared/presentation";',
+      ],
     ];
     for (const [path, code] of allowed)
       expect(await lint(path, `${code}\n`), `${path}: ${code}`).toEqual([]);
@@ -138,7 +173,7 @@ async function layeredSlices() {
 }
 
 it(
-  "every file of a layered slice but its front door sits in a layer folder",
+  "every file of a layered slice sits in a layer folder with a front door",
   slow,
   async () => {
     const { layered, layers } = await layeredSlices();
@@ -154,14 +189,22 @@ it(
         .map((entry) =>
           relative(join(packageRoot, "src"), join(entry.parentPath, entry.name))
         )
-        // A file at the slice's top is outside a layer folder, but for its
-        // front door; a deeper one is in the folder its path starts with.
         .filter((path) => {
           const [, first, ...rest] = path.split(sep);
-          return rest.length ? !layers.has(first!) : first !== "index.ts";
+          return !rest.length || !layers.has(first!);
         })
     );
     expect(outside, "files outside a layer folder").toEqual([]);
+    for (const slice of layered) {
+      const slicePath = join(packageRoot, "src", slice);
+      for (const layer of readdirSync(slicePath, { withFileTypes: true })) {
+        if (!layer.isDirectory()) continue;
+        expect(
+          readdirSync(join(slicePath, layer.name)),
+          `${slice}/${layer.name}`
+        ).toContain("index.ts");
+      }
+    }
   }
 );
 

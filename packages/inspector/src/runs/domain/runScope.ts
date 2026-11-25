@@ -1,6 +1,6 @@
 import type { ChildRun, Run } from "./run";
-import { runIsOnMember } from "../../structure";
-import type { Selection } from "../../navigation";
+import { runIsOnMember } from "../../structure/domain";
+import type { Selection } from "../../navigation/domain";
 
 /** Which runs belong to the selection, and what Runs calls that scope. */
 export type RunScope = {

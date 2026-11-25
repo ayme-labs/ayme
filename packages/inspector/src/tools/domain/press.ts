@@ -1,4 +1,4 @@
-import type { CollectionItem, ToolArguments } from "../../runs";
+import type { CollectionItem, ToolArguments } from "../../runs/domain";
 
 /** What a run card's Run does when pressed. */
 export type Press =

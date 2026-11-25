@@ -1,5 +1,5 @@
-import { inspectorClient } from "../../shared";
-import type { StructureNode } from "../../structure";
+import { inspectorClient } from "../../shared/infrastructure";
+import type { StructureNode } from "../../structure/domain";
 
 /**
  * Which nodes of the structure a tool can use: the refs the tool can take

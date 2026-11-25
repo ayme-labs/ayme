@@ -1,6 +1,6 @@
 import { renderSchema } from "@ayme-dev/ayme/inspector";
 
-import { actionSignature } from "../../page-model";
+import { actionSignature } from "../../page-model/infrastructure";
 import type { SchemaText } from "../domain/fields";
 
 /** Schemas as the definition text agents read writes them. */

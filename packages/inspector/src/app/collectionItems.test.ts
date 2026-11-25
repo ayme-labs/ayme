@@ -1,9 +1,9 @@
 import { expect, it } from "vitest";
 import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
-import { indexMembers } from "../page-model";
+import { indexMembers } from "../page-model/domain";
 import { collection, page } from "../../testing/page-model/pageModel";
-import type { StructureNode } from "../structure";
+import type { StructureNode } from "../structure/domain";
 import { itemsOf } from "./collectionItems";
 
 // Unit tests: a rooted action's items as the run card offers them. The

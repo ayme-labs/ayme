@@ -15,7 +15,7 @@ import {
   type PublicationStatus,
   type Tone,
 } from "../domain/connections";
-import { focusRing, pressable, pressableIcon } from "../../shared";
+import { focusRing, pressable, pressableIcon } from "../../shared/view";
 
 const DOCS =
   "https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md";

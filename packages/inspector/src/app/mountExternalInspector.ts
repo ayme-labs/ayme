@@ -1,6 +1,6 @@
 import { renderInspector } from "./renderInspector";
-import type { WindowFullscreen } from "../panel";
-import { exposeInspectorShadowRoot } from "../shared";
+import type { WindowFullscreen } from "../panel/domain";
+import { exposeInspectorShadowRoot } from "../shared/infrastructure";
 
 /**
  * Mounts the Inspector into the window it owns (ADR-0049): the external

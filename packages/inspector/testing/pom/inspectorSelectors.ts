@@ -1,8 +1,9 @@
 import type { Selectors } from "@playwright/test";
 
-// The hook's module itself, not shared's index: that index renders the panel
-// and imports its stylesheet, which a dogfooding page's bundler, compiling
-// this Page Object from source, has no way to resolve.
+// The hook's module itself, not shared's infrastructure front door: that
+// front door also re-exports renderInShadowRoot, which imports the
+// stylesheet, which a dogfooding page's bundler, compiling this Page Object
+// from source, has no way to resolve.
 // eslint-disable-next-line no-restricted-imports
 import { INSPECTOR_SHADOW_ROOT_KEY } from "../../src/shared/infrastructure/shadowRootHook";
 

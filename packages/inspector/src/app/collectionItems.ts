@@ -1,12 +1,12 @@
 import type { InspectorRootedInstance } from "@ayme-dev/ayme/inspector";
 
-import { type MemberIndex, pathBelowPage } from "../page-model";
+import { type MemberIndex, pathBelowPage } from "../page-model/domain";
 import {
   type StructureNode,
   type StructureTree,
   structureRows,
-} from "../structure";
-import type { CollectionItem } from "../runs";
+} from "../structure/domain";
+import type { CollectionItem } from "../runs/domain";
 
 /**
  * A rooted action's items on the page, by its tool's name, in page

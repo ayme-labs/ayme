@@ -1,36 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useInspectorRuntime } from "./useInspectorRuntime";
+import { Empty } from "../shared/view";
 import {
-  Empty,
   inspectorClient,
-  InspectorRoot,
-  useCopy,
   useInspectorState,
   useTabState,
-} from "../shared";
+} from "../shared/infrastructure";
+import { InspectorRoot, useCopy } from "../shared/presentation";
+import { Connections, DetailPane } from "../panel/view";
 import {
-  Connections,
-  DetailPane,
   InspectorBody,
   InspectorShell,
   useDarkTheme,
-  useHostReservation,
-  usePreferences,
   WindowShell,
-  type WindowFullscreen,
-} from "../panel";
+} from "../panel/presentation";
+import { useHostReservation, usePreferences } from "../panel/infrastructure";
+import { type WindowFullscreen } from "../panel/domain";
 import {
   type Lens,
   type LensId,
-  Navigator,
   pageSelection,
   type Selection,
   selectionHighlight,
-} from "../navigation";
-import { isStaleSelection, structureLens, unfoldedOnPage } from "../structure";
-import { modelLens } from "../page-model";
-import { toolsLens } from "../tools";
+} from "../navigation/domain";
+import { Navigator } from "../navigation/presentation";
+import { isStaleSelection } from "../structure/application";
+import { structureLens } from "../structure/presentation";
+import { unfoldedOnPage } from "../structure/domain";
+import { modelLens } from "../page-model/presentation";
+import { toolsLens } from "../tools/presentation";
 import { useRunning } from "./useRunning";
 import { decodeViewState, viewStateKey, withSelection } from "./viewState";
 

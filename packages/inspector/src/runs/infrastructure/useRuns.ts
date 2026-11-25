@@ -7,7 +7,7 @@ import {
   type JsonValue,
 } from "@ayme-dev/ayme/inspector";
 
-import { inspectorClient, useTabState } from "../../shared";
+import { inspectorClient, useTabState } from "../../shared/infrastructure";
 import {
   rowIdOf,
   shownRuns,
