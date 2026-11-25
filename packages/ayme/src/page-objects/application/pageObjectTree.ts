@@ -192,7 +192,7 @@ function childInstances(
 /**
  * `instance` as the tree shows it: its node while it is present; else, in
  * its place, the present Page Objects inside it, since a child can be on
- * the page while the Page Object it is reached through is not (ADR-0042),
+ * the page while the Page Object it is reached through is not (ADR-0061),
  * and its tools are listed.
  */
 function readNodes(
