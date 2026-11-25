@@ -7,7 +7,7 @@ import type { Locator } from "@playwright/test";
 // presence predicates, `@ayme.action` an action's availability predicate.
 
 /**
- * A Page Object Model's presence predicate (ADR-0042). It gets the live Page
+ * A Page Object Model's presence predicate (ADR-0061). It gets the live Page
  * Object as `self` and answers whether the Page Object is on the page now.
  * It runs read-only with the observation and never with a call, so it must
  * not scroll, click, focus or change the page.
@@ -17,7 +17,7 @@ export type PresencePredicate<Self = unknown> = (
 ) => boolean | Promise<boolean>;
 
 /**
- * A Page Object Model's root predicate (ADR-0042). It gets the live Page
+ * A Page Object Model's root predicate (ADR-0061). It gets the live Page
  * Object as `self` and answers the locator of the element that anchors it,
  * its Page Object Root. It runs read-only with the observation and never
  * with a call, so it must not scroll, click, focus or change the page.
@@ -57,7 +57,7 @@ export type AymeModelOptions<Self = unknown> = {
 export type ActionAvailability = boolean | string;
 
 /**
- * An action's availability predicate (ADR-0035). It gets the live Page
+ * An action's availability predicate (ADR-0062). It gets the live Page
  * Object as `self`, runs read-only with the observation and never with the
  * call, so it must not scroll, click, focus or change the page.
  */

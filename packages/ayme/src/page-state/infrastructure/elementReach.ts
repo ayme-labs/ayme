@@ -10,7 +10,7 @@ import type { Reach, ReachInput } from "../application/reach";
 
 /**
  * Package-internal: the input a tool sends its element. A click needs to
- * reach it (ADR-0035); keyboard input needs only that it can take focus,
+ * reach it (ADR-0062); keyboard input needs only that it can take focus,
  * which an open modal it is not in or an inert ancestor prevents.
  */
 export type ElementInput = ReachInput;
@@ -30,7 +30,7 @@ export function refsOfLocator(page: Page, locator: Locator): Promise<string[]> {
  * element `ref` names on `page`, when the input would not reach it as
  * `reach` measures it, with the Availability Reason a Page Object Tool
  * gives: the same measurement and wording as a Page Object Root's
- * (ADR-0035), which never names a kind of widget. A click's reach is
+ * (ADR-0062), which never names a kind of widget. A click's reach is
  * measured where the click would land: the element is scrolled into view
  * first, as the call's own action scrolls it, which also moves an element
  * only partly shown.

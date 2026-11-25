@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0049
 ---
 
 # ayme core prefers to reach the page through Playwright Lite, so it can run outside the browser

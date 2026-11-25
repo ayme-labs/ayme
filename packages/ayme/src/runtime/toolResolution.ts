@@ -140,7 +140,7 @@ export function resolveTools(
 /**
  * Package-internal: every tool of the session that is offered, with its
  * availability, in publication order: a Page Object Tool while its Page
- * Object is present, available or not (ADR-0035); empty when a tool name
+ * Object is present, available or not (ADR-0062); empty when a tool name
  * clash leaves the set unresolvable.
  */
 export function listTools(

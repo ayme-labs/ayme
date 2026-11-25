@@ -3,7 +3,7 @@ import type { WebMcpDriver } from "./driver";
 /**
  * A tool of the session, by its unprefixed name, as `ayme.tools.list()`
  * reads it. Publication registers every listed tool, available or not; the
- * session refuses a call to an unavailable one with its reason (ADR-0035).
+ * session refuses a call to an unavailable one with its reason (ADR-0062).
  */
 export type WebMcpTool = Readonly<{
   name: string;

@@ -13,7 +13,7 @@ import {
 } from "./registry";
 import { createAyme, type Ayme } from "../../runtime";
 
-// Observation and publication seam (ADR-0042): a Page Object Model that
+// Observation and publication seam (ADR-0061): a Page Object Model that
 // declares when it is on the page, observed on a real page, and what the
 // session's tool list and the page state say about it.
 

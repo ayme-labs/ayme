@@ -1,5 +1,5 @@
 // Stryker disable all
-// Reach (ADR-0041), measured in the document: whether a click on an element
+// Reach (ADR-0062), measured in the document: whether a click on an element
 // would land, what blocks it, what it would hit instead. The in-page module
 // carries it, so Availability reads the same in the browser and in Node.
 // Runs in the document, with nothing outside this file and what it imports.

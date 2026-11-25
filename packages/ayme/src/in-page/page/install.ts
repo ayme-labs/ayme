@@ -175,7 +175,7 @@ export type Slot = {
    */
   watch(host: HostKey, request: { binding: string; on: boolean }): ChangeState;
   changes(host: HostKey): ChangeState;
-  /** Reach (ADR-0041) of the element a ref names, for a host that sends refs. */
+  /** Reach (ADR-0062) of the element a ref names, for a host that sends refs. */
   measure(host: HostKey, request: ReachRequest): ReachAnswer;
   /**
    * The refs of `request.refs` whose element would be reached by the input,

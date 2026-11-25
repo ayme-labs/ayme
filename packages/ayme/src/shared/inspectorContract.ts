@@ -61,7 +61,7 @@ export type PublishedToolInfo = Readonly<{
  * predicate, if it has one, holds; every other tool always is. `reason`,
  * when the tool is unavailable and there is one, is its Availability Reason:
  * the runtime's, naming the Structural Ref of the element a click would
- * reach instead, or the predicate's string (ADR-0035).
+ * reach instead, or the predicate's string (ADR-0062).
  */
 export type ToolInfo = PublishedToolInfo &
   Readonly<{ available: boolean; reason?: string }>;

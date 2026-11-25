@@ -92,7 +92,7 @@ export type InPage = {
    */
   forget(keys: readonly string[]): Promise<void>;
   /**
-   * Reach (ADR-0041) of the element `ref` names, measured in the page: what
+   * Reach (ADR-0062) of the element `ref` names, measured in the page: what
    * a click would reach, and what blocks or takes it, named by its role
    * and name. An element that is gone is absent. With `atCall`, the element is
    * scrolled into view first, as the call that clicks it scrolls, and the
@@ -113,9 +113,9 @@ export type InPage = {
    * Page Object Root `root`: how many elements its Locator matches, and
    * whether it is on the page (Page Object Presence) and a click would reach
    * it (Page Object Availability), measured with the Locator resolved in one
-   * task in the page, never scrolling or sending input (ADR-0019). Called
-   * inside a probe run of `watch`, it also labels this host's roots with
-   * `label` in its later captures.
+   * task in the page, never scrolling or sending input (ADR-0061,
+   * ADR-0062). Called inside a probe run of `watch`, it also labels this
+   * host's roots with `label` in its later captures.
    */
   probe(root: Locator, label: string): Promise<RootState>;
   /**
@@ -175,7 +175,7 @@ export type InPage = {
   names(target: Locator, ref: string): Promise<boolean>;
   /**
    * Of `refs`, those whose element `input` would reach now, measured in one
-   * batch in the page: a click reaches an element (ADR-0035) when nothing
+   * batch in the page: a click reaches an element (ADR-0062) when nothing
    * covers or blocks it; focus needs only that nothing blocks it. In the
    * order given.
    */

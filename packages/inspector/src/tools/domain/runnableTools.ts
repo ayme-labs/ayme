@@ -32,7 +32,7 @@ export type RunnableTool = {
    */
   present: boolean;
   /**
-   * Whether a call would run it (ADR-0035): the session refuses a call on
+   * Whether a call would run it (ADR-0062): the session refuses a call on
    * an unavailable tool, with `reason` when it has one. Never true for an
    * absent tool.
    */

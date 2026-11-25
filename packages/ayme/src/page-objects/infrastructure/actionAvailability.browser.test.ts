@@ -23,7 +23,7 @@ import {
   subscribeToRegisteredPoms,
 } from "./registry";
 
-// Observation and publication seam (ADR-0035): a real Page Object with an
+// Observation and publication seam (ADR-0062): a real Page Object with an
 // availability predicate, observed on a real page, and what the published
 // tool list, a call and the Goal Loop's offer say about its actions.
 
@@ -985,7 +985,7 @@ describe("Action Availability", () => {
   });
 
   // A root below the fold shows nothing to hit-test when it is observed, so
-  // the call scrolls to it as its action would and tests it there (ADR-0041).
+  // the call scrolls to it as its action would and tests it there (ADR-0062).
   it("scrolls to a below-fold root the observation could not hit-test, and runs the action", async () => {
     document.body.innerHTML =
       '<div style="height:3000px"></div><section id="panel" aria-label="Panel" style="height:40px"><button>Act</button></section>';

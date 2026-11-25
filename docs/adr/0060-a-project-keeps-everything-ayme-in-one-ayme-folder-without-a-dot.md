@@ -15,7 +15,7 @@ Angular's dev server ignores every folder whose name starts with a dot. With Pag
 A project keeps everything ayme in one folder, `ayme/`, at its root, beside `package.json`.
 
 - Page Object Models live in `ayme/pom/`, whether or not the app ships ayme.
-- App code and tests import a Page Object Model through one alias in the app's `package.json`, `#pom/*`, so an import reads the same from any file. Files inside the folder import each other by relative path.
+- App code and tests import a Page Object Model through one alias in the app's `package.json`, so an import reads the same from any file. Files inside the folder import each other by relative path.
 - What people and skills write in the folder is committed. What a tool generates there is ignored, through the folder's own `.gitignore`.
 - No tool reads `.ayme/` as a fallback.
 

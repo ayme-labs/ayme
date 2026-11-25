@@ -170,7 +170,7 @@ type ObservedInstance = {
  * not walked, and the observation says why; the registered Page Object
  * itself is walked anyway. A child absent by its root is still walked:
  * a present Page Object inside one that is not on the page stays listed
- * (ADR-0020).
+ * (ADR-0061).
  */
 async function observeInstance(
   walk: Walk,

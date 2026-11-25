@@ -101,7 +101,7 @@ type ObservedRegisteredPom = Omit<RegisteredPom, "tools"> & {
   /**
    * Undefined until its first observation has run: a Page Object lists no
    * tools before then, so an agent is never told a tool's availability the
-   * observation has not found yet (ADR-0035).
+   * observation has not found yet (ADR-0062).
    */
   instances: readonly PomInstanceObservation[] | undefined;
   /** The locators the last observation found its members and roots holding. */
@@ -475,7 +475,7 @@ export function createPomRegistry(
 
   /**
    * Package-internal: every registered Page Object tool, one per name, with
-   * whether it is present, available now, and why not (ADR-0035). A tool is
+   * whether it is present, available now, and why not (ADR-0062). A tool is
    * present while its Page Object, or the component instance it acts on,
    * is; available while that Page Object is available and the action's
    * predicate, if it has one, holds. A rooted action stands for every
@@ -822,7 +822,7 @@ async function heldRoot(
  * Performs a Page Object Action for a Run, on its Document, whose Change
  * Record reads from its cursor. With a root, checks whether a click would
  * reach the root where the action would find it, as the Run's Reach
- * measures it (ADR-0041): the observation that listed the tool could not
+ * measures it (ADR-0062): the observation that listed the tool could not
  * tell for a root it had to scroll to.
  */
 async function performPageObjectAction(

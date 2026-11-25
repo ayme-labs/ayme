@@ -8,7 +8,7 @@ import {
 } from "./pomInstance";
 import { assertAvailable } from "../../page-state/domain";
 
-// Unit tests: one Page Object instance's Action Availability (ADR-0035),
+// Unit tests: one Page Object instance's Action Availability (ADR-0062),
 // from hand-written observations, without a page or a runtime.
 
 let minted = 0;

@@ -123,7 +123,7 @@ export function goneToolResult(name: string): ToolResult {
  * A page tool as the MCP tool list shows it: its name, description and
  * schema, and `destructiveHint` when its author marked it destructive, but
  * not its availability, since that list changes on presence and not on
- * availability (ADR-0035). An unmarked tool gets no annotations: MCP then
+ * availability (ADR-0062). An unmarked tool gets no annotations: MCP then
  * takes it as possibly destructive, and ayme never says otherwise.
  */
 export function mcpPageTool({

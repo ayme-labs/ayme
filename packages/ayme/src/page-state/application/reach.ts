@@ -2,14 +2,14 @@ import type { Page } from "@playwright/test";
 
 import type { ReachMeasurement } from "../../shared";
 
-// Package-internal: what the layout shows of one element (ADR-0035,
-// ADR-0041), measured in the page by the in-page module: it names what is
-// in the way by its role and name and carries no `Element`.
+// Package-internal: what the layout shows of one element (ADR-0062),
+// measured in the page by the in-page module: it names what is in the way
+// by its role and name and carries no `Element`.
 export type { ReachMeasurement };
 
 /**
  * Package-internal: what a tool sends its element, which must reach it
- * (ADR-0035): a click needs the element reached; keyboard input needs only
+ * (ADR-0062): a click needs the element reached; keyboard input needs only
  * that it can take focus, which an open modal it is not in or an inert
  * ancestor prevents.
  */
