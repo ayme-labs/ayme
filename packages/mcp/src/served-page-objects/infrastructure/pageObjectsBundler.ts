@@ -6,7 +6,11 @@ import * as esbuild from "esbuild";
 
 import type { BuildError } from "../domain/buildFailure";
 import type { BuiltModules } from "../domain/buildState";
-import { ENTRY_MODULE, RUNTIME_MODULE } from "../domain/servedPageObjects";
+import {
+  ENTRY_MODULE,
+  RUNTIME_MODULE,
+  RUNTIME_PACKAGE,
+} from "../domain/servedPageObjects";
 
 export type PageObjectsBuildEvent =
   | { kind: "building" }
@@ -50,7 +54,6 @@ type PomDiagnostic =
       lineText: string;
     };
 
-const RUNTIME = "@ayme-dev/ayme";
 /** The runtime entry's id, which no file on disk has. */
 const RUNTIME_ENTRY = "ayme-served-runtime";
 /** The plugin that compiles Page Object Models, which esbuild names on its errors. */
@@ -316,7 +319,7 @@ function runtimeEntry(folder: string): esbuild.Plugin {
         namespace,
       }));
       build.onLoad({ filter: /.*/, namespace }, () => ({
-        contents: `export * from ${JSON.stringify(RUNTIME)};`,
+        contents: `export * from ${JSON.stringify(RUNTIME_PACKAGE)};`,
         resolveDir: folder,
         loader: "js",
       }));

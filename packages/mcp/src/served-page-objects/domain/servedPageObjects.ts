@@ -17,6 +17,9 @@ export const SERVED_PATH = "/page-objects/";
 /** Where it streams the stamp of each good build to a page. */
 export const EVENTS_PATH = `${SERVED_PATH}events`;
 
+/** The package a project's Page Objects run on, resolved from the project. */
+export const RUNTIME_PACKAGE = "@ayme-dev/ayme";
+
 /** The built module that re-exports the project's own `@ayme-dev/ayme`. */
 export const RUNTIME_MODULE = "runtime.js";
 

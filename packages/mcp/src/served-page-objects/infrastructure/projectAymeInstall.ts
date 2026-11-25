@@ -8,8 +8,8 @@ import {
   type PackageManager,
   type ProjectInstall,
 } from "../domain/aymeVersion";
+import { RUNTIME_PACKAGE } from "../domain/servedPageObjects";
 
-const RUNTIME = "@ayme-dev/ayme";
 const COMPILER = "@ayme-dev/ayme/compiler";
 
 type InstallResolution = {
@@ -39,11 +39,13 @@ export function projectAymeInstall(
   const folder = dirname(entry);
   return {
     async resolve() {
-      const resolved = await resolveAfresh(folder, [RUNTIME, COMPILER]);
+      const resolved = await resolveAfresh(folder, [RUNTIME_PACKAGE, COMPILER]);
       const { install } = installLocation(folder);
-      const runtime = resolved.get(RUNTIME);
+      const runtime = resolved.get(RUNTIME_PACKAGE);
       const version =
-        runtime === undefined ? undefined : packageVersion(runtime, RUNTIME);
+        runtime === undefined
+          ? undefined
+          : packageVersion(runtime, RUNTIME_PACKAGE);
       const compiler = resolved.get(COMPILER);
       const cannotStart = (error: string) =>
         ({ kind: "cannot-start", error, compiler, install, version }) as const;
@@ -51,7 +53,7 @@ export function projectAymeInstall(
         cannotStart(
           `Building the Page Objects entry ${entry} needs ${specifier}, which does not resolve from ${folder}.`
         );
-      if (runtime === undefined) return doesNotResolve(RUNTIME);
+      if (runtime === undefined) return doesNotResolve(RUNTIME_PACKAGE);
       const mismatch = aymeVersionMismatch({
         entry,
         project: version,
