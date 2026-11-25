@@ -108,7 +108,6 @@ function upgrade(port: number, path: string, headers: Record<string, string>) {
   });
 }
 
-/** A window's subscription to the server's channel. */
 function subscribe(port: number) {
   const socket = createWSClient({
     url: `ws://127.0.0.1:${port}/channel`,

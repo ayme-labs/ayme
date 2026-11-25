@@ -24,10 +24,8 @@ const COMMAND_TYPES = [
   "stop",
   "continue",
   "clear",
-  // Assert visibility.
   "assertVisibility",
   "leaveAssertVisibility",
-  // Highlight.
   "clearHighlight",
 ] as const satisfies readonly RecorderCommandType[];
 /** An entry's id, as a window or the toolbar sends back one the engine
@@ -42,7 +40,6 @@ export const CommandSchema = z.union([
   z.object({ type: z.enum(COMMAND_TYPES) }),
   z.object({ type: z.literal("discard"), entry: EntryIdSchema }),
   z.object({ type: z.literal("restore"), entry: EntryIdSchema }),
-  // Highlight.
   z.object({
     type: z.literal("highlight"),
     entry: EntryIdSchema,
