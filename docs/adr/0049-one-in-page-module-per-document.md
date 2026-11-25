@@ -13,7 +13,7 @@ ayme reached the page partly through Playwright Lite and partly directly, held D
 
 ## Decision
 
-The ayme package holds no DOM node, and it reaches a document only through Playwright's Page and one In-page Module. Lint enforces it.
+The ayme package holds no DOM node, and it reaches a document only through Playwright's Page and one In-page Module.
 
 - No DOM node crosses a module boundary. A target is a Locator or a Structural Ref, and no element handle is held.
 - Each document has one In-page Module: the first Host installs it, and every later Host binds to it. It owns capture, the root probe, the watchers, the Settled Page wait, the predicates, locator generation and pick. History, Visits and cursors stay on the Host.
