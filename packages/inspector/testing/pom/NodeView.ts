@@ -7,13 +7,14 @@ import { WhatTheModelSees } from "./WhatTheModelSees";
 
 /** A structure node's detail: what it is, who owns it, and its single-element tools. */
 export class NodeView extends PanelPart {
-  /** Its page-state line and its single-element tools' schemas, as an agent gets them. */
-  @ayme.child
-  readonly modelSees: WhatTheModelSees;
-
   constructor(detail: Locator) {
     super(detail.getByRole("article", { name: "Structure node" }));
-    this.modelSees = new WhatTheModelSees(this.root);
+  }
+
+  /** Its page-state line and its single-element tools' schemas, as an agent gets them. */
+  @ayme.child
+  get modelSees(): WhatTheModelSees {
+    return new WhatTheModelSees(this.root);
   }
 
   /** The node as the page state lists it, e.g. `e3 button "Add item"`. */

@@ -1,5 +1,5 @@
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { SurveyEditorPage } from "./SurveyEditorPage";
 
@@ -10,14 +10,9 @@ export class SurveyNavigationPage extends AppPage {
   readonly path = "/organizations/:organizationId/workspaces/new/survey";
 
   @ayme.child
-  readonly startFromScratchButton: Locator;
-
-  constructor(page: Page) {
-    super(page);
+  get startFromScratchButton(): Locator {
     // The option's accessible name runs on into its description, "Create your own survey questions".
-    this.startFromScratchButton = page.getByRole("button", {
-      name: /^Start from scratch\b/,
-    });
+    return this.page.getByRole("button", { name: /^Start from scratch\b/ });
   }
 
   @ayme.action({ description: "Creates an empty survey." })

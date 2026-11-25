@@ -6,5 +6,7 @@ export class WishlistPage extends FixturePage {
   readonly path = "/wishlist.html";
 
   @ayme.child({ description: "The header's and the footer's: two links." })
-  readonly wishlistLinks = this.page.getByRole("link", { name: "Wishlist" });
+  get wishlistLinks() {
+    return this.page.getByRole("link", { name: "Wishlist" });
+  }
 }

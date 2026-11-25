@@ -9,10 +9,18 @@ export class LeavingPage extends FixturePage {
     description:
       "Goes to the checkout as the mouse is released, before the click that follows.",
   })
-  readonly leaveButton = this.page.getByRole("button", { name: "Leave" });
+  get leaveButton() {
+    return this.page.getByRole("button", { name: "Leave" });
+  }
+
   @ayme.child
-  readonly stayButton = this.page.getByRole("button", { name: "Stay" });
+  get stayButton() {
+    return this.page.getByRole("button", { name: "Stay" });
+  }
+
   // Not by its text, which is what changes.
   @ayme.child({ description: '"Not stayed", then "Stayed".' })
-  readonly stayed = this.page.locator("#stayed");
+  get stayed() {
+    return this.page.locator("#stayed");
+  }
 }

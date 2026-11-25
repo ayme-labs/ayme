@@ -1,5 +1,5 @@
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { SurveySummaryPage } from "./SurveySummaryPage";
 
@@ -40,44 +40,45 @@ export class SurveyEditorPage extends AppPage {
   readonly path = "/workspaces/:workspaceId/surveys/:surveyId/edit";
 
   @ayme.child
-  readonly surveyNameInput: Locator;
+  get surveyNameInput(): Locator {
+    return this.page.getByRole("textbox", { name: "Survey name", exact: true });
+  }
+
   /** The text of the question open in the editor, the first one when the editor opens. */
   @ayme.child
-  readonly questionTextEditor: Locator;
-  @ayme.child
-  readonly saveButton: Locator;
-  @ayme.child
-  readonly saveAndCloseButton: Locator;
-  @ayme.child
-  readonly saveAsDraftButton: Locator;
-  /** Shows for about two seconds after a save went through. */
-  @ayme.child
-  readonly changesSavedMessage: Locator;
-
-  constructor(page: Page) {
-    super(page);
-    this.surveyNameInput = page.getByRole("textbox", {
-      name: "Survey name",
-      exact: true,
-    });
+  get questionTextEditor(): Locator {
     // The question text is a rich-text editor without an accessible name. Formbricks's own
     // Playwright helper finds it the same way: from the "Question*" label to its form group.
-    this.questionTextEditor = page
+    return this.page
       .locator('label:text-is("Question*")')
       .locator("..")
       .locator("..")
       .locator(".editor-input");
-    this.saveButton = page.getByRole("button", { name: "Save", exact: true });
-    this.saveAndCloseButton = page.getByRole("button", {
-      name: "Save & Close",
-      exact: true,
-    });
-    this.saveAsDraftButton = page.getByRole("button", {
+  }
+
+  @ayme.child
+  get saveButton(): Locator {
+    return this.page.getByRole("button", { name: "Save", exact: true });
+  }
+
+  @ayme.child
+  get saveAndCloseButton(): Locator {
+    return this.page.getByRole("button", { name: "Save & Close", exact: true });
+  }
+
+  @ayme.child
+  get saveAsDraftButton(): Locator {
+    return this.page.getByRole("button", {
       name: "Save as draft",
       exact: true,
     });
+  }
+
+  /** Shows for about two seconds after a save went through. */
+  @ayme.child
+  get changesSavedMessage(): Locator {
     // A toast has no name or test id, so its text tells it from an error's.
-    this.changesSavedMessage = page
+    return this.page
       .locator("[data-rht-toaster]")
       .getByRole("status")
       .filter({ hasText: "Changes saved." });
