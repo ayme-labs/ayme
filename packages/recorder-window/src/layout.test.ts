@@ -111,3 +111,53 @@ it("lint keeps Playwright and Effect out of the window", slow, async () => {
     )
   ).toEqual([expect.stringContaining("No Effect in the window")]);
 });
+
+it(
+  "lint refuses the engine and stock Playwright in a type written as import(), and a module in backticks",
+  slow,
+  async () => {
+    const refusals: [path: string, code: string, message: string][] = [
+      [
+        "src/app/misplaced.ts",
+        'export type Engine = import("@ayme-dev/recorder").Recorder;',
+        "The window knows the engine only through @ayme-dev/recorder/contract",
+      ],
+      [
+        "src/app/misplaced.ts",
+        'export type Page = import("playwright-core").Page;',
+        "Only the engine's playwright slice imports Playwright",
+      ],
+      // A module in backticks, which the selectors cannot read.
+      [
+        "src/app/misplaced.ts",
+        "export const load = () => import(`@ayme-dev/recorder/testing`);",
+        "Write the module in import() as a quoted string",
+      ],
+      [
+        "testing/pom/Misplaced.ts",
+        "export const load = () => import(`playwright-core`);",
+        "Write the module in import() as a quoted string",
+      ],
+    ];
+    for (const [path, code, message] of refusals)
+      expect(await lint(path, `${code}\n`), `${path}: ${code}`).toEqual([
+        expect.stringContaining(message),
+      ]);
+    // The contract by its name, and local modules that share a name with the
+    // engine or Playwright.
+    const allowed: [path: string, code: string][] = [
+      [
+        "src/app/placed.ts",
+        'export type Update = import("@ayme-dev/recorder/contract").RecorderUpdate;',
+      ],
+      ["src/app/placed.ts", 'export const load = () => import("./recorder");'],
+      [
+        "src/app/placed.ts",
+        'export const load = () => import("./playwright/index");',
+      ],
+      ["testing/pom/Placed.ts", 'export * from "./recorder";'],
+    ];
+    for (const [path, code] of allowed)
+      expect(await lint(path, `${code}\n`), `${path}: ${code}`).toEqual([]);
+  }
+);

@@ -9,9 +9,10 @@ import {
 
 const packageRoot = import.meta.dirname;
 
-// The slices of src/, and the slices each may use: only those listed before
-// it here. app composes them, and nothing uses app. Test support, the
-// Inspector POM included, lives in testing/ beside src/ (ADR-0057).
+// The slices of src/, and the slices each may use: only those listed before it
+// here. Every folder of src/ is a slice, which src/layout.test.ts checks. app
+// composes them, and nothing uses app. Test support, the Inspector POM
+// included, lives in testing/ beside src/ (ADR-0057).
 const allowedSlices = {
   // The contract client and its two transports, rendering into the shadow
   // root, and shared UI bits.
@@ -54,26 +55,55 @@ function deepImport(slice) {
   return `^(?!(.*/)?testing/).*(^|/)(${others.join("|")})/(?!index(\\.[jt]sx?)?$)`;
 }
 
+// The Inspector reads ayme only through its inspector entry (ADR-0049).
+// Tests, and the test support beside src/, may use ayme's public API.
+const aymeThroughInspector = {
+  regex: "^@ayme-dev/ayme(/(?!inspector$).*)?$",
+  message: "Import ayme only through @ayme-dev/ayme/inspector.",
+};
+
 function frontDoors(slice, files, { tests, ignores = [] }) {
   const patterns = [
     {
       regex: deepImport(slice),
       message: "Import another slice through its index.ts.",
     },
+    ...(tests ? [] : [aymeThroughInspector]),
   ];
+  return restrictedImports(
+    files,
+    patterns,
+    tests ? ignores : [...testFiles, ...ignores]
+  );
+}
+
+/** Refuses imports matching `patterns` in `files`: static, dynamic, and in a
+ * type written as `import("…")`. A later block's patterns replace an earlier
+ * one's for its files. */
+function restrictedImports(files, patterns, ignores = []) {
   return {
     files,
-    ignores: tests ? ignores : [...testFiles, ...ignores],
+    ...(ignores.length ? { ignores } : {}),
     rules: {
       "no-restricted-imports": ["error", { patterns }],
-      // The same rules for a dynamic import(). esquery reads `/` as the end
-      // of a regex, so selectors match it as `\x2F`.
+      // esquery reads `/` as the end of a regex, so selectors match it as
+      // `\x2F`.
       "no-restricted-syntax": [
         "error",
-        ...patterns.map(({ regex, message }) => ({
-          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
-          message,
-        })),
+        ...patterns.flatMap(({ regex, message }) => {
+          const value = `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
+          return [
+            `ImportExpression[source.value=${value}]`,
+            `TSImportType[source.value=${value}]`,
+          ].map((selector) => ({ selector, message }));
+        }),
+        // A module in backticks, which the selectors above do not read.
+        {
+          selector:
+            'ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0]',
+          message:
+            "Write the module in import() as a quoted string, so lint can check it.",
+        },
       ],
     },
   };
@@ -86,6 +116,9 @@ export default [
     // app isn't layered.
     enforcedSlices: slices.filter((slice) => slice !== "app"),
   }),
+  // Every production file under src/, in a slice or not; the blocks below
+  // add their own patterns.
+  restrictedImports([sourceFiles], [aymeThroughInspector], testFiles),
   {
     files: [sourceFiles],
     plugins: { "slice-boundaries": boundariesPlugin },
@@ -134,23 +167,4 @@ export default [
     tests: true,
     ignores: slices.map((slice) => `testing/${slice}/**`),
   }),
-  {
-    // The Inspector reads ayme only through its inspector entry (ADR-0049).
-    // Tests, and the test support beside src/, may use ayme's public API.
-    files: [sourceFiles],
-    ignores: testFiles,
-    rules: {
-      "@typescript-eslint/no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              regex: "^@ayme-dev/ayme(/(?!inspector$).*)?$",
-              message: "Import ayme only through @ayme-dev/ayme/inspector.",
-            },
-          ],
-        },
-      ],
-    },
-  },
 ];

@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const eslint = new ESLint({ cwd: packageRoot });
@@ -388,6 +388,113 @@ const refusals: [path: string, code: string, message: string][] = [
     'export { listRegisteredPoms } from "../../dist/internal.mjs";',
     "ayme's source never imports its own build output",
   ],
+  // typescript, an optional peer, only in compiler, type imports included.
+  [
+    "src/runtime/misplaced.ts",
+    'import ts from "typescript";\nexport const kind = ts.SyntaxKind;',
+    "Only compiler imports typescript",
+  ],
+  [
+    "src/page-objects/domain/misplaced.ts",
+    'import type ts from "typescript";\nexport type Node = ts.Node;',
+    "Only compiler imports typescript",
+  ],
+  [
+    "src/shared/misplaced.ts",
+    'export type Node = import("typescript").Node;',
+    "Only compiler imports typescript",
+  ],
+  [
+    "src/misplaced.ts",
+    'export const load = () => import("typescript");',
+    "Only compiler imports typescript",
+  ],
+  [
+    "src/tools/application/misplaced.test.ts",
+    'import ts from "typescript";\nexport const kind = ts.SyntaxKind;',
+    "Only compiler imports typescript",
+  ],
+  [
+    "testing/misplaced.ts",
+    'export type Node = import("typescript").Node;',
+    "Only compiler imports typescript",
+  ],
+  // compiler uses only shared and page-objects' domain...
+  [
+    "src/compiler/misplaced.ts",
+    'export { createPage } from "../page-objects/infrastructure";',
+    "compiler uses only shared and page-objects' domain.",
+  ],
+  [
+    "src/compiler/misplaced.ts",
+    'export type Rooted = import("../page-objects/application").RootedToolInstance;',
+    "compiler uses only shared and page-objects' domain.",
+  ],
+  [
+    "src/compiler/misplaced.ts",
+    'export type { RunContext } from "../runs/application";',
+    "compiler may only use page-objects, shared, itself",
+  ],
+  // ...and only the ./compiler entry uses compiler.
+  [
+    "src/misplaced.ts",
+    'export { createPomCompiler } from "./compiler/index";',
+    "Only the ./compiler entry uses compiler",
+  ],
+  [
+    "src/server.ts",
+    'export type Compiler = import("./compiler/index").PomCompiler;',
+    "Only the ./compiler entry uses compiler",
+  ],
+  // The ./compiler entry itself, which would bring compiler with it.
+  [
+    "src/index.ts",
+    'export * from "./compiler.js";',
+    "Only the ./compiler entry uses compiler",
+  ],
+  [
+    "src/server.ts",
+    'export const load = () => import("./compiler");',
+    "Only the ./compiler entry uses compiler",
+  ],
+  [
+    "src/runtime/misplaced.ts",
+    'export type Compiler = import("../compiler/index").PomCompiler;',
+    "runtime may only use goal-loop",
+  ],
+  // @playwright/test in in-page for types only, on its host side.
+  [
+    "src/in-page/host/misplaced.ts",
+    'import { expect } from "@playwright/test";\nexport { expect };',
+    "The in-page module's host side takes only Playwright's types",
+  ],
+  [
+    "src/in-page/host/misplaced.ts",
+    'export const load = () => import("@playwright/test");',
+    "The in-page module's host side takes only Playwright's types",
+  ],
+  [
+    "src/in-page/page/misplaced.ts",
+    'import type { Page } from "@playwright/test";\nexport type Target = Page;',
+    "The in-page module uses only shared and @ayme-dev/core",
+  ],
+  [
+    "src/in-page/misplaced.ts",
+    'export type Target = import("@playwright/test").Page;',
+    "The in-page module uses only shared and @ayme-dev/core",
+  ],
+  // import { type Page } leaves import {} from "@playwright/test" in the
+  // build under verbatimModuleSyntax, which loads Playwright.
+  [
+    "src/in-page/host/misplaced.ts",
+    'import { type Page } from "@playwright/test";\nexport type Target = Page;',
+    "The in-page module's host side takes only Playwright's types",
+  ],
+  [
+    "src/in-page/host/misplaced.ts",
+    'export { expect } from "@playwright/test";',
+    "The in-page module's host side takes only Playwright's types",
+  ],
 ];
 
 // ESLint loads the package config and its import resolver on first use.
@@ -467,6 +574,29 @@ it(
       [
         "src/in-page/host/misplaced.ts",
         'export type { Page } from "@playwright/test";\nexport { AymeError } from "../../shared";',
+      ],
+      [
+        "src/in-page/host/misplaced.ts",
+        'export type Target = import("@playwright/test").Locator;',
+      ],
+      // Tests are let off: they may use any slice and package.
+      [
+        "src/in-page/host/misplaced.test.ts",
+        'import { expect } from "@playwright/test";\nexport { expect };',
+      ],
+      [
+        "src/misplaced.test.ts",
+        'export { createPomCompiler } from "./compiler/index";',
+      ],
+      // compiler takes typescript, shared and page-objects' domain, and the
+      // ./compiler entry takes compiler.
+      [
+        "src/compiler/misplaced.ts",
+        'import ts from "typescript";\nexport const kind = ts.SyntaxKind;\nexport type { PageObjectId } from "../page-objects/domain";\nexport { AymeError } from "../shared";',
+      ],
+      [
+        "src/compiler.ts",
+        'export { createPomCompiler } from "./compiler/index";',
       ],
     ];
     for (const [path, code] of allowed)
@@ -684,5 +814,131 @@ it(
     // migration used is empty.
     expect(files.length).toBeGreaterThan(0);
     expect(allowed).toEqual([]);
+  }
+);
+
+/** Every slice under src/ that lint holds to the layer order, and the layer
+ * folders it knows, read from the layer rule's options. */
+async function layeredSlices() {
+  const src = join(packageRoot, "src");
+  const slices = readdirSync(src, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+  const layered: string[] = [];
+  const layers = new Set<string>();
+  for (const slice of slices) {
+    const config = (await eslint.calculateConfigForFile(
+      join(src, slice, "domain", "file.ts")
+    )) as { rules?: Record<string, [unknown, LayerOptions?]> };
+    const options = config.rules?.[layerRule]?.[1];
+    if (!options) continue;
+    layered.push(slice);
+    for (const policy of options.policies as {
+      from?: { element?: { types?: string } };
+    }[])
+      if (policy.from?.element?.types) layers.add(policy.from.element.types);
+  }
+  return { layered, layers };
+}
+
+it(
+  "every file of a layered slice sits in a layer folder, so the slice has no index.ts",
+  { timeout: 60_000 },
+  async () => {
+    const { layered, layers } = await layeredSlices();
+    // The rule itself, so a lookup that finds nothing cannot pass.
+    expect(layered).toContain("page-state");
+    expect([...layers]).toContain("domain");
+    const outside = layered.flatMap((slice) =>
+      readdirSync(join(packageRoot, "src", slice), {
+        recursive: true,
+        withFileTypes: true,
+      })
+        .filter((entry) => entry.isFile())
+        .map((entry) =>
+          relative(join(packageRoot, "src"), join(entry.parentPath, entry.name))
+        )
+        // A file at the slice's top is outside every layer folder; a deeper
+        // one is in the folder its path starts with.
+        .filter((path) => {
+          const [, first, ...rest] = path.split(sep);
+          return !rest.length || !layers.has(first!);
+        })
+    );
+    expect(outside, "files outside a layer folder").toEqual([]);
+  }
+);
+
+// An entry is what package.json exports, and the build makes only the
+// entries tsdown.config.ts lists.
+it(
+  "every entry sits at the top of src/ and is listed in tsdown.config.ts",
+  { timeout: 60_000 },
+  async () => {
+    // The config as tsdown reads it, spreads and all. By path, so the
+    // typecheck does not follow it into the build's own modules.
+    const { default: tsdown } = await vi.importActual<{
+      default: { entry: string | string[] | Record<string, string> };
+    }>("../tsdown.config.ts");
+    // Each entry's source, and the name of the file the build makes of it: a
+    // list names it after its source, a map by its key.
+    const entries =
+      typeof tsdown.entry === "object" && !Array.isArray(tsdown.entry)
+        ? Object.entries(tsdown.entry)
+        : [tsdown.entry]
+            .flat()
+            .map((source): [string, string] => [
+              basename(source, ".ts"),
+              source,
+            ]);
+    const listed = entries.map(([, source]) => source.replace(/^\.\//, ""));
+    const built = entries.map(([name]) => name);
+    const { exports } = JSON.parse(
+      readFileSync(join(packageRoot, "package.json"), "utf8")
+    ) as { exports: Record<string, { import: string }> };
+    // Each export's built file, by the name the build gives it.
+    const exported = Object.values(exports).map(({ import: file }) =>
+      file.replace(/^\.\/dist\/(.+)\.mjs$/, "$1")
+    );
+    expect(exported.length).toBeGreaterThan(0);
+    for (const entry of listed)
+      expect(entry, `${entry} is not at the top of src/`).toMatch(
+        /^src\/[^/]+\.ts$/
+      );
+    expect(built).toEqual(expect.arrayContaining(exported));
+  }
+);
+
+it(
+  "every folder of src/ is a slice eslint.config.js lists",
+  { timeout: 60_000 },
+  async () => {
+    const config = (await eslint.calculateConfigForFile(
+      join(packageRoot, "src/index.ts")
+    )) as {
+      rules?: Record<
+        string,
+        [
+          unknown,
+          {
+            policies: { from: { element: { captured: { slice: string } } } }[];
+          }?,
+        ]
+      >;
+    };
+    const listed = (
+      config.rules?.["slice-boundaries/dependencies"]?.[1]?.policies ?? []
+    ).map(({ from }) => from.element.captured.slice);
+    // The rule itself, so a lookup that finds nothing cannot pass.
+    expect(listed).toContain("compiler");
+    const folders = readdirSync(join(packageRoot, "src"), {
+      withFileTypes: true,
+    })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    expect(
+      folders.filter((folder) => !listed.includes(folder)),
+      "folders of src/ that are no slice: lint holds them to no slice's rules"
+    ).toEqual([]);
   }
 );

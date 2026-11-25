@@ -2,13 +2,14 @@
 
 The checks:
 
-- [`eslint.config.js`](eslint.config.js): what each slice of `src/` holds, which slices each may use, and the static and dynamic imports `pnpm lint` refuses; [`src/layout.test.ts`](src/layout.test.ts) checks it does.
+- [`eslint.config.js`](eslint.config.js): what each slice of `src/` holds, which slices each may use, and the imports `pnpm lint` refuses, `import("…")` types included; [`src/layout.test.ts`](src/layout.test.ts) checks it does.
 - [`horizontal-boundaries.js`](../eslint-config/horizontal-boundaries.js): the layers and what each may use.
 - [`src/build.test.ts`](src/build.test.ts): what each script [`tsdown.config.ts`](tsdown.config.ts) builds carries.
 
 Lint cannot see the rules below:
 
-- Reach the engine only through `@ayme-dev/recorder/contract`, and stock Playwright only from `testing/`, in a type written as `import("…")` and by a relative path too, since the window knows the engine only as its plain data; lint checks only package names in static and dynamic imports.
+- Reach the engine only through `@ayme-dev/recorder/contract`, and stock Playwright only from `testing/`, by relative path too, since the window knows the engine only as its plain data; lint checks only package names.
+- Give `import()` a plain string, since lint reads only that string.
 - Enable a control, and allow Discard, Restore and highlighting, only while the state's `commands` lists them, since the engine owns those rules and a copy in the window would drift.
 - Keep [`main.tsx`](src/app/main.tsx) and [`toolbar.tsx`](src/app/toolbar.tsx) to mounting, and put what they decide in [`mountWindow.tsx`](src/app/mountWindow.tsx) and [`toolbarMount.tsx`](src/app/toolbarMount.tsx), so the component tests can call it.
 

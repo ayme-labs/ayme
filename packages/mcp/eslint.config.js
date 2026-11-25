@@ -9,10 +9,11 @@ import {
 
 const packageRoot = import.meta.dirname;
 
-// The slices of src/, and the slices each may use: only those listed before
-// it here. server, client and process are the composition roots: nothing
-// uses them, and none uses another. Test support lives in testing/ beside
-// src/ (ADR-0057): it drives the built command from outside and uses no slice.
+// The slices of src/, and the slices each may use: only those listed before it
+// here. Every folder of src/ is a slice, which src/layout.test.ts checks.
+// server, client and process are the composition roots: nothing uses them, and
+// none uses another. Test support lives in testing/ beside src/ (ADR-0057): it
+// drives the built command from outside and uses no slice.
 const allowedSlices = {
   // The messages between the server and the page client or App Process, as
   // zod schemas both sides validate.
@@ -58,25 +59,44 @@ function deepImport(slice) {
 }
 
 function frontDoors(slice, files, { tests }) {
-  const patterns = [
-    {
-      regex: deepImport(slice),
-      message: "Import another slice through its index.ts.",
-    },
-  ];
+  return restrictedImports(
+    files,
+    [
+      {
+        regex: deepImport(slice),
+        message: "Import another slice through its index.ts.",
+      },
+    ],
+    tests ? [] : testFiles
+  );
+}
+
+/** Refuses imports matching `patterns` in `files`: static, dynamic, and in a
+ * type written as `import("…")`. */
+function restrictedImports(files, patterns, ignores = []) {
   return {
     files,
-    ...(tests ? {} : { ignores: testFiles }),
+    ...(ignores.length ? { ignores } : {}),
     rules: {
       "no-restricted-imports": ["error", { patterns }],
-      // The same rules for a dynamic import(). esquery reads `/` as the end
-      // of a regex, so selectors match it as `\x2F`.
+      // esquery reads `/` as the end of a regex, so selectors match it as
+      // `\x2F`.
       "no-restricted-syntax": [
         "error",
-        ...patterns.map(({ regex, message }) => ({
-          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
-          message,
-        })),
+        ...patterns.flatMap(({ regex, message }) => {
+          const value = `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
+          return [
+            `ImportExpression[source.value=${value}]`,
+            `TSImportType[source.value=${value}]`,
+          ].map((selector) => ({ selector, message }));
+        }),
+        // A module in backticks, which the selectors above do not read.
+        {
+          selector:
+            'ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0]',
+          message:
+            "Write the module in import() as a quoted string, so lint can check it.",
+        },
       ],
     },
   };
@@ -137,7 +157,7 @@ export default [
   // Test support (ADR-0057) drives the built command from outside, so it
   // imports nothing of src/.
   {
-    files: ["testing/**/*.ts"],
+    files: ["testing/**/*.{ts,tsx,mts,cts}"],
     rules: {
       "no-restricted-imports": [
         "error",
