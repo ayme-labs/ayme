@@ -27,7 +27,7 @@ const publishedPaths = fs
 // and absent from the release configuration, so that nothing tags or
 // publishes it. docs/releasing.md ("A package that is built but held back")
 // lists what releases one.
-const HELD_BACK = ["packages/cli"];
+const HELD_BACK = [];
 
 test("Release Please releases exactly the packages that are not private", () => {
   assert.deepEqual(Object.keys(config.packages).sort(), publishedPaths);

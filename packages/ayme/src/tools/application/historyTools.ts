@@ -38,7 +38,8 @@ function traversalTool(
         async () => {
           if (!(await navigation.traverse(traverse)))
             return `There is no history entry to go ${direction} to; the page did not move.`;
-        }
+        },
+        { onlyNavigates: true }
       );
     },
   };
@@ -71,7 +72,8 @@ export const reloadTool: PublishedElementTool = {
     return context.pageStateSession.runAction(
       cursor,
       { tool: "reload", args: input },
-      () => navigation.start(() => page.reload())
+      () => navigation.start(() => page.reload()),
+      { onlyNavigates: true }
     );
   },
 };

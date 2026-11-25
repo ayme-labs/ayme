@@ -43,7 +43,11 @@ export type GoalLoopStepRecord = {
   chosen: Record<string, ChosenOption>;
   /** `"ok"`, or the error the action failed with. */
   result: string;
-  page_changed: boolean;
+  /**
+   * Whether the step changed the page. Absent when the step started a full
+   * load whose changes could not be read.
+   */
+  page_changed?: boolean;
   /**
    * What the action returned, when it returned a value: a Custom Tool's or
    * Page Object tool's result, the only trace of an effect the page does not

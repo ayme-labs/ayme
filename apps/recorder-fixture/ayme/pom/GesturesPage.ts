@@ -19,17 +19,31 @@ export class GesturesPage extends FixturePage {
   @ayme.child({
     description: "Reacts to the press itself, not to the click after it.",
   })
-  readonly holdButton = this.page.getByRole("button", { name: "Hold me" });
+  get holdButton() {
+    return this.page.getByRole("button", { name: "Hold me" });
+  }
+
   // Not by its text, which is what changes.
   @ayme.child({ description: '"Pressed <n>", then "Released <n>".' })
-  readonly held = this.page.locator("#held");
+  get held() {
+    return this.page.locator("#held");
+  }
+
   // The slider has no role: its track and handle are found by their ids.
   @ayme.child({ description: "A slider's handle, moved by dragging it." })
-  readonly handle = this.page.locator("#handle");
+  get handle() {
+    return this.page.locator("#handle");
+  }
+
   @ayme.child({ description: 'Where the handle is: "Handle at <n>".' })
-  readonly position = this.page.getByText("Handle at");
+  get position() {
+    return this.page.getByText("Handle at");
+  }
+
   @ayme.child({ description: "Text to select by dragging across it." })
-  readonly text = this.page.getByText("The quick brown fox jumps");
+  get text() {
+    return this.page.getByText("The quick brown fox jumps");
+  }
 
   /** What the page has received and shows now, read in one step. */
   async state(): Promise<GesturesState> {

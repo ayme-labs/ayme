@@ -84,23 +84,31 @@ export class LayoutMenu {
  * The panel drags by it.
  */
 export class InspectorHeader extends PanelPart {
-  @ayme.child
-  readonly connections: Connections;
-  @ayme.child
-  readonly themeSwitch: ThemeSwitch;
-  @ayme.child
-  readonly layoutMenu: LayoutMenu;
-
   /**
    * @param root the header.
    * @param portalRoot an element holding the Inspector's portal, where the
    *   Connections popover and the layout menu open.
    */
-  constructor(root: Locator, portalRoot: Locator) {
+  constructor(
+    root: Locator,
+    private readonly portalRoot: Locator
+  ) {
     super(root);
-    this.connections = new Connections(root, portalRoot);
-    this.themeSwitch = new ThemeSwitch(root);
-    this.layoutMenu = new LayoutMenu(root, portalRoot);
+  }
+
+  @ayme.child
+  get connections(): Connections {
+    return new Connections(this.root, this.portalRoot);
+  }
+
+  @ayme.child
+  get themeSwitch(): ThemeSwitch {
+    return new ThemeSwitch(this.root);
+  }
+
+  @ayme.child
+  get layoutMenu(): LayoutMenu {
+    return new LayoutMenu(this.root, this.portalRoot);
   }
 
   @ayme.child

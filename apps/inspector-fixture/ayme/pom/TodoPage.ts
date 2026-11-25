@@ -11,11 +11,11 @@ import { AppComponent } from "./AppComponent";
  */
 @ayme
 export class TodoPage {
-  @ayme.child
-  readonly archiveDialog: ArchiveDialog;
+  constructor(private readonly page: Page) {}
 
-  constructor(private readonly page: Page) {
-    this.archiveDialog = new ArchiveDialog(page.locator("#todo-archive"));
+  @ayme.child
+  get archiveDialog(): ArchiveDialog {
+    return new ArchiveDialog(this.page.locator("#todo-archive"));
   }
 
   @ayme.child

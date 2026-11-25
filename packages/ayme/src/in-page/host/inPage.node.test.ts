@@ -154,6 +154,16 @@ describe("the in-page module over real Playwright, as built", () => {
       await page.waitForEvent("load");
       return page;
     },
+    async holdNextLoad(page, until) {
+      await page.route(
+        `${origin}/`,
+        async (route) => {
+          await until;
+          await route.fallback();
+        },
+        { times: 1 }
+      );
+    },
     hostsOutliveLoads: true,
   });
 });

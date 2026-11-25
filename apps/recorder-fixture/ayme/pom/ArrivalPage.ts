@@ -6,9 +6,17 @@ export class ArrivalPage extends FixturePage {
   readonly path = "/arrival.html";
 
   @ayme.child
-  readonly heading = this.page.getByRole("heading", { name: "Arrived" });
+  get heading() {
+    return this.page.getByRole("heading", { name: "Arrived" });
+  }
+
   @ayme.child
-  readonly countUpButton = this.page.getByRole("button", { name: "Count up" });
+  get countUpButton() {
+    return this.page.getByRole("button", { name: "Count up" });
+  }
+
   @ayme.child({ description: '"Count: <n>".' })
-  readonly count = this.page.getByText("Count:");
+  get count() {
+    return this.page.getByText("Count:");
+  }
 }

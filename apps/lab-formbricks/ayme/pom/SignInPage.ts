@@ -1,5 +1,5 @@
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { SurveyNavigationPage } from "./SurveyNavigationPage";
 
@@ -7,29 +7,32 @@ export class SignInPage extends AppPage {
   readonly path = "/auth/login";
 
   @ayme.child
-  readonly emailInput: Locator;
+  get emailInput(): Locator {
+    return this.page.getByLabel("Email", { exact: true });
+  }
+
   @ayme.child
-  readonly passwordInput: Locator;
+  get passwordInput(): Locator {
+    return this.page.getByLabel("Password", { exact: true });
+  }
+
   /** Shows the email form, then submits it. */
   @ayme.child
-  readonly logInWithEmailButton: Locator;
-  /** Why the sign-in failed: a toast, or a message under a field. */
-  @ayme.child
-  readonly errorMessage: Locator;
-
-  constructor(page: Page) {
-    super(page);
-    this.emailInput = page.getByLabel("Email", { exact: true });
-    this.passwordInput = page.getByLabel("Password", { exact: true });
+  get logInWithEmailButton(): Locator {
     // After a sign-in the button also shows "Last Used".
-    this.logInWithEmailButton = page.getByRole("button", {
+    return this.page.getByRole("button", {
       name: /^Log in with Email(?: Last Used)?$/,
     });
+  }
+
+  /** Why the sign-in failed: a toast, or a message under a field. */
+  @ayme.child
+  get errorMessage(): Locator {
     // Scoped to toasts, so a notice the page opens with, such as a verified email, is not an error.
-    this.errorMessage = page
+    return this.page
       .locator("[data-rht-toaster]")
       .getByRole("status")
-      .or(page.locator("form").getByRole("alert"));
+      .or(this.page.locator("form").getByRole("alert"));
   }
 
   @ayme.action({

@@ -1,5 +1,5 @@
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { ArchiveDialog, ListItem } from "./components";
 
@@ -7,13 +7,11 @@ export class ListPage extends AppPage {
   // The playground is served at the site root in development, and under
   // /playground or /ayme when deployed. ayme.dev drops the trailing slash.
   readonly path = "/{:base(playground|ayme)}?{/}?";
-  @ayme.child
-  readonly archiveDialog: ArchiveDialog;
 
-  constructor(page: Page) {
-    super(page);
-    this.archiveDialog = new ArchiveDialog(
-      page.getByRole("dialog", { name: "Archive item" })
+  @ayme.child
+  get archiveDialog(): ArchiveDialog {
+    return new ArchiveDialog(
+      this.page.getByRole("dialog", { name: "Archive item" })
     );
   }
 
@@ -36,7 +34,8 @@ export class ListPage extends AppPage {
   @ayme.collection
   async items(): Promise<ListItem[]> {
     const rows = await this.itemRows.all();
-    return rows.map((row) => new ListItem(row, this.archiveDialog));
+    const archiveDialog = this.archiveDialog;
+    return rows.map((row) => new ListItem(row, archiveDialog));
   }
 
   @ayme.action

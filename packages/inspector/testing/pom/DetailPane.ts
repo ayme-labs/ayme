@@ -1,5 +1,4 @@
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator } from "@playwright/test";
 
 import { ModelDetailView } from "./ModelDetailView";
 import { NodeView } from "./NodeView";
@@ -11,19 +10,20 @@ import { ToolPage } from "./ToolPage";
 export class DetailPane extends PanelPart {
   /** The Model lens's view of the page, a Page Object or a model. */
   @ayme.child
-  readonly model: ModelDetailView;
+  get model(): ModelDetailView {
+    return new ModelDetailView(this.root);
+  }
+
   /** A structure node's view. */
   @ayme.child
-  readonly node: NodeView;
+  get node(): NodeView {
+    return new NodeView(this.root);
+  }
+
   /** A tool's page, from the Tools lens. */
   @ayme.child
-  readonly toolPage: ToolPage;
-
-  constructor(root: Locator) {
-    super(root);
-    this.model = new ModelDetailView(root);
-    this.node = new NodeView(root);
-    this.toolPage = new ToolPage(root);
+  get toolPage(): ToolPage {
+    return new ToolPage(this.root);
   }
 
   /**
