@@ -77,7 +77,8 @@ export type Capture = {
  * `after` is the page after it. `threw` carries what perform threw, or else
  * why capturing the page after it failed, and then has no `after`. A full
  * load's `after` is the old document's last capture, when the old document
- * saw the load start.
+ * saw the load start and what it sent reached the host: over a DevTools
+ * connection, Chromium can drop it when the next document commits at once.
  */
 export type ActionOutcome<T> =
   | { kind: "settled"; result: T; stable: boolean; after: Capture }

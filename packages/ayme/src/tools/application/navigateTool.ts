@@ -59,7 +59,9 @@ export const navigateTool: PublishedElementTool = {
         : () =>
             // The URL the checks above passed, resolved against the
             // document's base URL.
-            navigation.start(() => page.goto(destination!.href))
+            navigation.start(() => page.goto(destination!.href)),
+      // A router function may change the document before it loads another.
+      { onlyNavigates: !navigate }
     );
   },
 };
