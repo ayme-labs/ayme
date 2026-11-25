@@ -31,8 +31,9 @@ export function usePointerClick() {
       window.removeEventListener("pointerup", onRelease, true);
       window.removeEventListener("click", onClick, true);
     };
-    // Stryker restore ArrowFunction,BlockStatement,CallExpression,StringLiteral,BooleanLiteral
   }, []);
+  // Both restores lead the return, since a restore after the last statement of a block leads no node.
+  // Stryker restore ArrowFunction,BlockStatement,CallExpression,StringLiteral,BooleanLiteral
   // Stryker restore ArrayDeclaration
   return pointer;
 }

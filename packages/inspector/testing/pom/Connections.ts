@@ -28,12 +28,11 @@ export class ConnectionRow extends PanelPart {
   }
 
   /**
-   * Whether the copy button shows a check, as it does just after a copy,
-   * rather than the copy icon. The copy icon draws a rectangle, a check does
-   * not.
+   * The check on the copy button, which shows just after a copy in place of
+   * the copy icon. Lucide names each icon's SVG by its class.
    */
-  async showsCheck(): Promise<boolean> {
-    return (await this.copyButton.locator("svg rect").count()) === 0;
+  get checkIcon(): Locator {
+    return this.copyButton.locator("svg.lucide-check");
   }
 }
 
