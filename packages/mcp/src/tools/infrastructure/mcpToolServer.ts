@@ -68,7 +68,7 @@ export function createMcpToolServer({
   /** Hears the agent's name each time a request or the handshake gives it. */
   agentNamed: (name: string) => void;
 }): McpServer {
-  const { connection, failedPageObjects } = context;
+  const { connection, pageObjectsBuildState } = context;
   // The SDK's high-level server registers the MCP App pages as resources;
   // the tools stay on this server's own handlers.
   const mcpServer = new McpServer(
@@ -140,7 +140,7 @@ export function createMcpToolServer({
         wasOffered(name)
           ? goneToolResult(name)
           : errorResult(`Unknown tool "${name}".`),
-      failedPageObjects
+      pageObjectsBuildState
     );
   };
 

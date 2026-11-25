@@ -1,9 +1,9 @@
 import { expect, it } from "vitest";
 
 import { AgentConnection } from "../../connection";
+import type { SettledBuildState } from "../../served-page-objects";
 import {
   errorResult,
-  type FailedPageObjects,
   notConnectedResult,
   textResult,
 } from "../domain/toolResult";
@@ -16,7 +16,7 @@ const context = () => ({
   connection: new AgentConnection(),
   pairing: { address: "ws://127.0.0.1:9351", token: "f00d" },
   wasOffered: () => false,
-  failedPageObjects: async () => undefined,
+  pageObjectsBuildState: async () => undefined,
   inspector: {
     url: "http://127.0.0.1:9351/inspector",
     installed: async () => true,
@@ -61,24 +61,32 @@ const linkAndNote = ({ content }: { content: unknown[] }) => {
  * A context whose served Page Objects have no good build until `fix()`.
  */
 const failingBuild = () => {
-  let failed: FailedPageObjects | undefined = {
-    entry: "/work/ayme/page-objects.ts",
-    error:
-      "Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.",
-    watching: true,
-  };
+  const entry = "/work/ayme/page-objects.ts";
+  const errors = [
+    {
+      text: "Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.",
+      location: null,
+    },
+  ];
+  let state: SettledBuildState = { kind: "never-built", entry, errors };
+  const modules = new Map([["entry.js", "code"]]);
   return {
     context: {
       ...context(),
       initScript: "/work/ayme/init-script.js",
-      failedPageObjects: async () => failed,
+      pageObjectsBuildState: async () => state,
     },
-    fix: () => (failed = undefined),
+    fix: () => {
+      state = { kind: "built", entry, modules };
+    },
+    failRebuild: () => {
+      state = { kind: "rebuild-failed", entry, modules, errors };
+    },
   };
 };
 
 it("ayme_connect says the Page Objects did not build, with the first error, until a build succeeds", async () => {
-  const { context, fix } = failingBuild();
+  const { context, fix, failRebuild } = failingBuild();
   const connect = connectTool(context);
 
   const { content, isError } = await connect.call({
@@ -102,20 +110,25 @@ it("ayme_connect says the Page Objects did not build, with the first error, unti
   expect(note).not.toContain("Make the");
   expect(note).not.toMatch(/^This server serves Page Objects/);
 
-  fix();
-  expect(
-    linkAndNote(await connect.call({ url: "http://localhost:5173/" })).note
-  ).toBe(
-    "This server serves Page Objects to pages that load /work/ayme/init-script.js."
-  );
+  for (const change of [fix, failRebuild]) {
+    change();
+    expect(
+      linkAndNote(await connect.call({ url: "http://localhost:5173/" })).note
+    ).toBe(
+      "This server serves Page Objects to pages that load /work/ayme/init-script.js."
+    );
+  }
 });
 
 it("ayme_connect does not promise a build when the server is not watching", async () => {
   const { context } = failingBuild();
-  const failed = (await context.failedPageObjects())!;
   const result = await connectTool({
     ...context,
-    failedPageObjects: async () => ({ ...failed, watching: false }),
+    pageObjectsBuildState: async () => ({
+      kind: "cannot-start",
+      entry: "/work/ayme/page-objects.ts",
+      error: "Missing compiler.",
+    }),
   }).call({ url: "http://localhost:5173/" });
 
   expect(linkAndNote(result).note).toMatch(

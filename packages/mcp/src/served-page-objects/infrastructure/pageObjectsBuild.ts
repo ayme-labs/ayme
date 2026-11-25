@@ -10,11 +10,12 @@ import {
   type PackageManager,
   type ProjectInstall,
 } from "../domain/aymeVersion";
-import { PageObjectsBuildError, buildErrorLine } from "../domain/buildFailure";
+import {
+  buildLog,
+  type PageObjectsBuildState,
+  type SettledBuildState,
+} from "../domain/buildState";
 import { ENTRY_MODULE, RUNTIME_MODULE } from "../domain/servedPageObjects";
-
-/** The built modules, by their path under the served path. */
-export type BuiltModules = ReadonlyMap<string, string>;
 
 /** What `ayme mcp` uses of the Page Object compiler of `@ayme-dev/ayme/compiler`. */
 type PomCompilerEntry = {
@@ -62,155 +63,139 @@ const MODELS_PLUGIN = "ayme-served-page-object-models";
 
 /** The Page Objects entry's build, which rebuilds as its files change. */
 export type PageObjectsBuild = {
-  /**
-   * The last good build. Before the first build ends, it waits for it;
-   * while no build has succeeded, it rejects with why the last one failed.
-   */
-  modules(): Promise<BuiltModules>;
-  /** Calls `listener` with each good build from now on; returns how to stop. */
-  onBuilt(listener: (modules: BuiltModules) => void): () => void;
-  /** Stops watching. */
+  readonly state: PageObjectsBuildState;
+  /** Waits for startup and the first build, checking for a changed install after a failed start. */
+  whenSettled(): Promise<SettledBuildState>;
+  /** Calls the listener on each change from now on; returns how to stop. */
+  subscribe(listener: (state: PageObjectsBuildState) => void): () => void;
   close(): Promise<void>;
 };
-
-/**
- * Why the build of the Page Objects entry has not started, and the
- * project's install files whose change starts it again: none when they
- * could not be watched.
- */
-export class PageObjectsNotStarted extends Error {
-  constructor(
-    message: string,
-    readonly watched: readonly string[]
-  ) {
-    super(message);
-  }
-}
 
 /** How long the install files stay unchanged before a start: an install writes them more than once. */
 const SETTLED_MS = 100;
 
-/**
- * The build of `entry`, started as {@link watchPageObjects} starts it. When
- * it cannot start, for instance while the project's `@ayme-dev/ayme` is
- * another version than `version` or does not resolve, it logs why and
- * starts it again: when the project's `package.json` or nearest lockfile
- * changes (`watch` watches them), and when `modules()` is asked and the
- * project's `@ayme-dev/ayme` no longer is what the last start found. Until
- * it starts, `modules()` rejects with a {@link PageObjectsNotStarted}, and
- * `onBuilt` listeners hear the builds of the build that starts.
- */
-export async function startPageObjects(
+/** Starts again after an install changes, even if the file watcher missed the change. */
+export function startPageObjects(
   entry: string,
   log: (message: string) => void,
   version: string,
   watch: typeof watchFiles = watchFiles
-): Promise<PageObjectsBuild> {
+): PageObjectsBuild {
   const folder = dirname(entry);
-  const listeners = new Set<(modules: BuiltModules) => void>();
-  let lastHeard: BuiltModules | undefined;
-  const hear = (modules: BuiltModules) => {
-    if (modules === lastHeard) return;
-    lastHeard = modules;
-    for (const listener of listeners) listener(modules);
-  };
+  const outcomes = buildOutcomes({
+    entry,
+    folder,
+    // Nothing is written there: the outputs stay in memory.
+    outdir: join(folder, "ayme-served"),
+    log,
+  });
   const problemNow = async () => {
     const found = await projectAyme(entry, version);
     return "problem" in found ? found.problem : undefined;
   };
-  let started: PageObjectsBuild | undefined;
-  /**
-   * Why the last start failed, what was wrong with the project's
-   * `@ayme-dev/ayme` then, and the install files watched since.
-   */
-  let failure:
-    | { message: string; problem: string | undefined; watched: string[] }
-    | undefined;
+  let context: esbuild.BuildContext | undefined;
+  let lastProblem: string | undefined;
   let stopWatching = () => {};
   let closed = false;
   let attempt: Promise<void> | undefined;
   let settling: NodeJS.Timeout | undefined;
   // A change during an attempt starts another once it ends.
   let changedMeanwhile = false;
-  const tryStart = async () => {
+
+  const tryStart = async (previous: PageObjectsBuildState) => {
     let problem: string | undefined;
     try {
       problem = await problemNow();
-      const build = await watchPageObjects(entry, log, version);
-      if (closed) return void (await build.close());
+      context = await watchPageObjects(entry, version, outcomes);
       stopWatching();
-      started = build;
-      failure = undefined;
-      build.onBuilt(hear);
-      build.modules().then(hear, () => {});
     } catch (error) {
-      const message = (error as Error).message;
-      log(message);
+      lastProblem = problem;
       stopWatching();
-      const watched: string[] = [];
-      if (!closed)
-        try {
-          // A file watched before stays watched, so that a lockfile an
-          // install removes is watched when it writes it again.
-          for (const file of [
-            ...(failure?.watched ?? []),
-            ...installFiles(folder),
-          ])
-            if (!watched.includes(file)) watched.push(file);
-          stopWatching = watch(
-            watched,
-            () => {
-              clearTimeout(settling);
-              settling = setTimeout(retry, SETTLED_MS);
-            },
-            () => (watched.length = 0)
-          );
-        } catch {
-          watched.length = 0;
+      const failure = { entry, error: (error as Error).message };
+      outcomes.setState(watchInstall(previous, failure));
+    }
+  };
+  const watchInstall = (
+    previous: PageObjectsBuildState,
+    failure: { entry: string; error: string }
+  ): SettledBuildState => {
+    const stopped = { ...failure, kind: "cannot-start" } as const;
+    if (closed) return stopped;
+    try {
+      // Keep a previously watched lockfile so its recreation triggers a start.
+      const files = [
+        ...new Set([
+          ...(previous.kind === "watching-install"
+            ? previous.installFiles
+            : []),
+          ...installFiles(folder),
+        ]),
+      ];
+      const watching = {
+        ...failure,
+        kind: "watching-install",
+        installFiles: files,
+      } as const;
+      stopWatching = watch(
+        files,
+        () => {
+          clearTimeout(settling);
+          settling = setTimeout(retry, SETTLED_MS);
+        },
+        () => {
+          if (outcomes.state === watching) outcomes.setState(stopped);
         }
-      failure = { message, problem, watched };
+      );
+      return watching;
+    } catch {
+      return stopped;
     }
   };
   const retry = () => {
-    if (started !== undefined || closed) return;
+    if (context !== undefined || closed) return;
     if (attempt !== undefined) return void (changedMeanwhile = true);
-    attempt = tryStart().finally(() => {
+    const previous = outcomes.state;
+    attempt = tryStart(previous).finally(() => {
       attempt = undefined;
       if (changedMeanwhile) {
         changedMeanwhile = false;
         retry();
       }
     });
+    if (previous.kind !== "starting")
+      outcomes.setState({ kind: "starting", entry });
   };
   const attempted = async () => {
     while (attempt !== undefined) await attempt;
   };
+
   retry();
-  await attempted();
   return {
-    async modules() {
+    get state() {
+      return outcomes.state;
+    },
+    subscribe: outcomes.subscribe,
+    async whenSettled() {
       await attempted();
+      const state = outcomes.state;
       if (
-        started === undefined &&
         !closed &&
-        (await problemNow()) !== failure!.problem
+        (state.kind === "cannot-start" || state.kind === "watching-install") &&
+        // A failed check leaves the state it has to answer with.
+        (await problemNow().catch(() => lastProblem)) !== lastProblem &&
+        outcomes.state === state
       ) {
         retry();
         await attempted();
       }
-      if (started !== undefined) return started.modules();
-      throw new PageObjectsNotStarted(failure!.message, failure!.watched);
-    },
-    onBuilt(listener) {
-      listeners.add(listener);
-      return () => void listeners.delete(listener);
+      return outcomes.whenSettled();
     },
     async close() {
       closed = true;
       clearTimeout(settling);
       stopWatching();
       await attempted();
-      await started?.close();
+      await context?.dispose();
     },
   };
 }
@@ -275,26 +260,23 @@ function installFiles(folder: string): string[] {
  * the runtime's and the compiler's included, resolves from the entry's
  * folder, as in a build of the project itself, so the page runs, and its
  * Page Objects are compiled by, the project's own `@ayme-dev/ayme`. It
- * starts only when that is version `version`, `ayme mcp`'s own: it rejects
- * with why otherwise, before it loads the compiler.
+ * starts only when that is version `version`, `ayme mcp`'s own, so the
+ * compiler and the runtime match.
  *
  * It builds again whenever a file the build read changes, in watch mode,
  * and logs each outcome. A build that fails is logged with each error's
  * file, and leaves the last good build served.
  */
-export async function watchPageObjects(
+async function watchPageObjects(
   entry: string,
-  log: (message: string) => void,
-  version: string
-): Promise<PageObjectsBuild> {
+  version: string,
+  outcomes: ReturnType<typeof buildOutcomes>
+): Promise<esbuild.BuildContext> {
   const folder = dirname(entry);
   const found = await projectAyme(entry, version);
   if ("problem" in found) throw new Error(found.problem);
   const { createPomCompiler, PomCompileError } =
     await importFile<PomCompilerEntry>(found.compiler);
-  // Nothing is written there: the outputs stay in memory.
-  const outdir = join(folder, "ayme-served");
-  const outcomes = buildOutcomes({ entry, folder, outdir, log });
   const context = await esbuild.context({
     absWorkingDir: folder,
     entryPoints: {
@@ -307,7 +289,7 @@ export async function watchPageObjects(
     minify: true,
     platform: "browser",
     write: false,
-    outdir,
+    outdir: outcomes.outdir,
     logLevel: "silent",
     plugins: [
       runtimeEntry(folder),
@@ -315,12 +297,13 @@ export async function watchPageObjects(
       outcomes.plugin,
     ],
   });
-  await context.watch();
-  return {
-    modules: outcomes.modules,
-    onBuilt: outcomes.onBuilt,
-    close: () => context.dispose(),
-  };
+  try {
+    await context.watch();
+    return context;
+  } catch (error) {
+    await context.dispose();
+    throw error;
+  }
 }
 
 /**
@@ -448,70 +431,91 @@ export function buildOutcomes({
   outdir: string;
   log: (message: string) => void;
 }) {
-  let good: BuiltModules | undefined;
-  let failure: Error | undefined;
-  let firstEnded: () => void;
-  const first = new Promise<void>((resolve) => (firstEnded = resolve));
-  let built = 0;
-  const listeners = new Set<(modules: BuiltModules) => void>();
+  let state: PageObjectsBuildState = { kind: "starting", entry };
+  const listeners = new Set<(state: PageObjectsBuildState) => void>();
+  const setState = (next: PageObjectsBuildState) => {
+    const previous = state;
+    state = next;
+    const message = buildLog(state, previous);
+    if (message !== undefined) log(message);
+    for (const listener of listeners) listener(state);
+  };
+  const subscribe = (listener: (state: PageObjectsBuildState) => void) => {
+    listeners.add(listener);
+    return () => void listeners.delete(listener);
+  };
   const plugin: esbuild.Plugin = {
     name: "ayme-served-outcomes",
     setup(build) {
+      build.onStart(() => {
+        if (state.kind === "starting") setState({ kind: "building", entry });
+      });
       build.onEnd(({ errors, outputFiles = [] }) => {
         if (errors.length === 0) {
-          good = new Map(
+          const modules = new Map(
             outputFiles.map((file) => [
               relative(outdir, file.path).split("\\").join("/"),
               file.text,
             ])
           );
-          failure = undefined;
-          log(
-            `${built++ === 0 ? "Built" : "Rebuilt"} the Page Objects entry ${entry}.`
-          );
-          for (const listener of listeners) listener(good);
+          setState({ kind: "built", entry, modules });
         } else {
-          failure = new PageObjectsBuildError({
-            entry,
-            lastGood: good !== undefined,
-            errors: withoutRepeats(errors, folder).map(
-              ({ text, location, pluginName }) => {
-                if (!location) return { text, location };
-                const file = resolve(folder, location.file);
-                return {
-                  text,
-                  location: {
-                    file,
-                    line: location.line,
-                    column:
-                      // A plugin's error has the column the plugin gave it.
-                      pluginName || location.line !== 1
-                        ? location.column
-                        : location.column - byteOrderMarkLength(file),
-                    lineText: location.lineText,
-                  },
-                };
-              }
-            ),
-          });
-          log(failure.message);
+          const diagnostics = withoutRepeats(errors, folder).map(
+            ({ text, location, pluginName }) => {
+              if (!location) return { text, location };
+              const file = resolve(folder, location.file);
+              return {
+                text,
+                location: {
+                  file,
+                  line: location.line,
+                  column:
+                    // A plugin's error has the column the plugin gave it.
+                    pluginName || location.line !== 1
+                      ? location.column
+                      : location.column - byteOrderMarkLength(file),
+                  lineText: location.lineText,
+                },
+              };
+            }
+          );
+          setState(
+            state.kind === "built" || state.kind === "rebuild-failed"
+              ? {
+                  kind: "rebuild-failed",
+                  entry,
+                  modules: state.modules,
+                  errors: diagnostics,
+                }
+              : { kind: "never-built", entry, errors: diagnostics }
+          );
         }
-        firstEnded();
       });
     },
   };
   return {
+    outdir,
     plugin,
-    async modules() {
-      await first;
-      if (good !== undefined) return good;
-      throw failure!;
+    get state() {
+      return state;
     },
-    onBuilt(listener: (modules: BuiltModules) => void) {
-      listeners.add(listener);
-      return () => void listeners.delete(listener);
+    setState,
+    subscribe,
+    async whenSettled(): Promise<SettledBuildState> {
+      if (isSettled(state)) return state;
+      return new Promise((resolve) => {
+        const stop = subscribe((next) => {
+          if (!isSettled(next)) return;
+          stop();
+          resolve(next);
+        });
+      });
     },
   };
+}
+
+function isSettled(state: PageObjectsBuildState): state is SettledBuildState {
+  return state.kind !== "starting" && state.kind !== "building";
 }
 
 /**
@@ -560,54 +564,6 @@ function byteOrderMarkLength(file: string): number {
 }
 
 const BYTE_ORDER_MARK = Buffer.from([0xef, 0xbb, 0xbf]);
-
-/**
- * Why `build` serves nothing while no build of `entry` has succeeded: the
- * first error of the last build, or why the build could not start, and
- * whether it watches the entry's files, which it does once started, or the
- * project's install files, which it does while it could not start. It
- * waits for the first build to end, and resolves with `undefined` once a
- * build has succeeded.
- */
-export async function failedPageObjects(
-  entry: string,
-  build: Promise<PageObjectsBuild>
-): Promise<
-  | {
-      entry: string;
-      error: string;
-      watching: boolean;
-      installFiles?: readonly string[];
-    }
-  | undefined
-> {
-  let started: PageObjectsBuild;
-  try {
-    started = await build;
-  } catch (error) {
-    return { entry, error: (error as Error).message, watching: false };
-  }
-  try {
-    await started.modules();
-    return undefined;
-  } catch (error) {
-    if (error instanceof PageObjectsNotStarted)
-      return {
-        entry,
-        error: error.message,
-        watching: error.watched.length > 0,
-        ...(error.watched.length > 0 ? { installFiles: error.watched } : {}),
-      };
-    return {
-      entry,
-      error:
-        error instanceof PageObjectsBuildError && error.errors[0]
-          ? buildErrorLine(error.errors[0])
-          : (error as Error).message,
-      watching: true,
-    };
-  }
-}
 
 /** The runtime's entry: a module that re-exports `@ayme-dev/ayme` from `folder`. */
 function runtimeEntry(folder: string): esbuild.Plugin {

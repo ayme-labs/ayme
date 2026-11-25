@@ -9,8 +9,18 @@ describe("pageObjectsNotBuilt", () => {
     "The server is watching for changes: it rebuilds the entry when a file it read changes.";
 
   it("states that the server is watching, and gives no advice", () => {
-    const error = "/work/ayme/pom/PlainPage.ts:3:0: Unexpected end of file";
-    const text = pageObjectsNotBuilt({ entry, error, watching: true });
+    const file = "/work/ayme/pom/PlainPage.ts";
+    const error = `${file}:3:1: Unexpected end of file`;
+    const text = pageObjectsNotBuilt({
+      kind: "never-built",
+      entry,
+      errors: [
+        {
+          text: "Unexpected end of file",
+          location: { file, line: 3, column: 0 },
+        },
+      ],
+    });
 
     expect(text).toBe(
       [`${failed} The first error: ${error}`, watching].join("\n")
@@ -21,12 +31,17 @@ describe("pageObjectsNotBuilt", () => {
   });
 
   it("keeps TypeScript's no-inputs error and does not say how to cover the entry", () => {
-    const error =
-      "/work/ayme/pom/PlainPage.ts: Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.";
-    const text = pageObjectsNotBuilt({ entry, error, watching: true });
+    const file = "/work/ayme/pom/PlainPage.ts";
+    const diagnostic =
+      "Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.";
+    const text = pageObjectsNotBuilt({
+      kind: "never-built",
+      entry,
+      errors: [{ text: diagnostic, location: { file, line: 0, column: 0 } }],
+    });
 
     expect(text).toBe(
-      [`${failed} The first error: ${error}`, watching].join("\n")
+      [`${failed} The first error: ${file}: ${diagnostic}`, watching].join("\n")
     );
     expect(text).not.toContain("Fix it");
     expect(text).not.toContain("Make the");
@@ -38,7 +53,7 @@ describe("pageObjectsNotBuilt", () => {
     const text = pageObjectsNotBuilt({
       entry,
       error,
-      watching: true,
+      kind: "watching-install",
       installFiles: ["/work/package.json", "/pnpm-lock.yaml"],
     });
 
@@ -53,7 +68,7 @@ describe("pageObjectsNotBuilt", () => {
       pageObjectsNotBuilt({
         entry,
         error,
-        watching: true,
+        kind: "watching-install",
         installFiles: ["/work/package.json"],
       })
     ).toMatch(
@@ -63,7 +78,7 @@ describe("pageObjectsNotBuilt", () => {
 
   it("states that the server is not watching when the build could not start", () => {
     const error = "needs @ayme-dev/ayme/compiler, which does not resolve";
-    const text = pageObjectsNotBuilt({ entry, error, watching: false });
+    const text = pageObjectsNotBuilt({ kind: "cannot-start", entry, error });
 
     expect(text).toBe(
       [

@@ -1,4 +1,8 @@
 import type { PageTool, ToolCallOutcome } from "../../contract";
+import {
+  buildErrorLine,
+  type SettledBuildState,
+} from "../../served-page-objects";
 
 /** An MCP tool result. */
 export type ToolResult = {
@@ -49,42 +53,44 @@ export function pageToolResult(outcome: ToolCallOutcome): ToolResult {
   return textResult(JSON.stringify(result));
 }
 
-/**
- * The Page Objects entry this server serves, while no build of it has
- * succeeded, the first error of its last build, and whether the server
- * watches for changes: the entry's files once the build started, or,
- * while it could not start, `installFiles`.
- */
-export type FailedPageObjects = {
-  entry: string;
-  error: string;
-  watching: boolean;
-  /**
-   * While the build could not start: the project's `package.json` and
-   * lockfile, on whose change the server starts it again.
-   */
-  installFiles?: readonly string[];
-};
-
-/**
- * What an agent is told while no build of the served Page Objects entry
- * has succeeded: that it did not build, its first error, whether a build
- * ever succeeded, and whether the server is watching for changes.
- */
-export function pageObjectsNotBuilt({
-  entry,
-  error,
-  watching,
-  installFiles,
-}: FailedPageObjects) {
-  const state = !watching
-    ? "The server is not watching for changes: the build could not start, so no file is watched."
-    : installFiles?.length
-      ? `The server is watching ${installFiles.join(" and ")} for changes: it starts the build again when ${installFiles.length === 1 ? "it changes" : "either changes"}.`
-      : "The server is watching for changes: it rebuilds the entry when a file it read changes.";
+/** What an agent is told while no build of the served entry has succeeded. */
+export function pageObjectsNotBuilt(
+  state?: SettledBuildState,
+  initScript?: string
+): string | undefined {
+  if (state === undefined) return undefined;
+  let error: string;
+  let watching: string;
+  switch (state.kind) {
+    case "cannot-start":
+      error = state.error;
+      watching =
+        "The server is not watching for changes: the build could not start, so no file is watched.";
+      break;
+    case "watching-install": {
+      const { installFiles } = state;
+      error = state.error;
+      watching = `The server is watching ${installFiles.join(" and ")} for changes: it starts the build again when ${installFiles.length === 1 ? "it changes" : "either changes"}.`;
+      break;
+    }
+    case "never-built":
+      // Deduplication leaves at least one diagnostic of a failed build.
+      error = buildErrorLine(state.errors[0]!);
+      watching =
+        "The server is watching for changes: it rebuilds the entry when a file it read changes.";
+      break;
+    case "built":
+    case "rebuild-failed":
+      return undefined;
+  }
   return [
-    `The Page Objects entry ${entry} did not build, and no build of it has succeeded, so this server serves no Page Objects. The first error: ${error}`,
-    state,
+    `The Page Objects entry ${state.entry} did not build, and no build of it has succeeded, so this server serves no Page Objects. The first error: ${error}`,
+    watching,
+    ...(initScript !== undefined && state.kind !== "cannot-start"
+      ? [
+          `Once it builds, this server serves Page Objects to pages that load ${initScript}.`,
+        ]
+      : []),
   ].join("\n");
 }
 
@@ -95,14 +101,12 @@ export function pageObjectsNotBuilt({
  */
 export function notConnectedResult(
   versionGap?: string,
-  failedPageObjects?: FailedPageObjects
+  state?: SettledBuildState
 ): ToolResult {
   if (versionGap !== undefined)
     return errorResult(`No page is connected: ${versionGap}`);
-  if (failedPageObjects !== undefined)
-    return errorResult(
-      `No page is connected. ${pageObjectsNotBuilt(failedPageObjects)}`
-    );
+  const why = pageObjectsNotBuilt(state);
+  if (why !== undefined) return errorResult(`No page is connected. ${why}`);
   return errorResult("No page is connected.");
 }
 

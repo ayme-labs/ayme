@@ -6,13 +6,15 @@ import { WebSocketServer, type WebSocket } from "ws";
 
 import type { ServerExtension } from "../../connection";
 import { isLoopbackHostHeader } from "../../pairing";
+import { buildFailure } from "../domain/buildFailure";
+import type { BuiltModules, PageObjectsBuildState } from "../domain/buildState";
 import {
   ENTRY_MODULE,
   EVENTS_PATH,
   RUNTIME_MODULE,
   SERVED_PATH,
 } from "../domain/servedPageObjects";
-import type { BuiltModules, PageObjectsBuild } from "./pageObjectsBuild";
+import type { PageObjectsBuild } from "./pageObjectsBuild";
 
 /** How many good builds stay served, so a page importing one finishes it. */
 const KEPT_BUILDS = 10;
@@ -35,7 +37,7 @@ type Stamp = { entry: string; runtime: string };
  * answered, as the external Inspector's are.
  */
 export function servedPageObjectsServer(
-  build: Promise<PageObjectsBuild>
+  build: PageObjectsBuild
 ): ServerExtension {
   const sockets = new WebSocketServer({ noServer: true });
   const builds = keptBuilds(build);
@@ -54,10 +56,19 @@ export function servedPageObjectsServer(
         const name = path.slice(SERVED_PATH.length);
         const stamp = new URLSearchParams(query).get("build") ?? undefined;
         builds.module(name, stamp).then(
-          (code) =>
-            code === undefined
-              ? send(response, 404, "text/plain", `No module ${request.url}.`)
-              : send(response, 200, "text/javascript; charset=utf-8", code),
+          (result) => {
+            if ("error" in result)
+              send(response, 500, "text/plain", result.error);
+            else if (result.code === undefined)
+              send(response, 404, "text/plain", `No module ${request.url}.`);
+            else
+              send(
+                response,
+                200,
+                "text/javascript; charset=utf-8",
+                result.code
+              );
+          },
           (error: unknown) =>
             send(response, 500, "text/plain", (error as Error).message)
         );
@@ -76,6 +87,7 @@ export function servedPageObjectsServer(
       return true;
     },
     close() {
+      builds.stop();
       for (const ws of sockets.clients) ws.terminate();
       sockets.close();
     },
@@ -83,59 +95,69 @@ export function servedPageObjectsServer(
 }
 
 /** The last {@link KEPT_BUILDS} good builds, newest first, and their stamps. */
-function keptBuilds(build: Promise<PageObjectsBuild>) {
+function keptBuilds(build: PageObjectsBuild) {
   const kept: { stamp: Stamp; modules: BuiltModules }[] = [];
-  const keep = (modules: BuiltModules) => {
+  const keep = (state: PageObjectsBuildState) => {
+    if (state.kind !== "built" && state.kind !== "rebuild-failed") return;
+    const { modules } = state;
     if (kept[0]?.modules === modules) return;
     kept.unshift({ stamp: stampOf(modules), modules });
     kept.length = Math.min(kept.length, KEPT_BUILDS);
   };
-  // Registered before any page follows, so a new build is kept before
-  // its stamp is sent.
-  const ready = build.then((b) => {
-    b.onBuilt(keep);
-    return b.modules().then(keep, () => {});
-  });
-  // Why the build did not start is logged where it is awaited.
-  ready.catch(() => {});
+  const stop = build.subscribe(keep);
+  keep(build.state);
+
+  /** A chunk can finish loading after the page has been offered a new build. */
+  function moduleCode(name: string, stamp?: string) {
+    const part =
+      name === ENTRY_MODULE
+        ? "entry"
+        : name === RUNTIME_MODULE
+          ? "runtime"
+          : undefined;
+    if (part !== undefined)
+      return (
+        stamp === undefined
+          ? kept[0]
+          : kept.find((k) => k.stamp[part] === stamp)
+      )?.modules.get(name);
+    for (const { modules } of kept) {
+      const code = modules.get(name);
+      if (code !== undefined) return code;
+    }
+    return undefined;
+  }
+
   return {
-    /**
-     * The module `name`: `entry.js` and `runtime.js` of the build stamped
-     * `stamp`, or of the last good build without one; a chunk from the
-     * newest build that has it. Rejects with why no build succeeded.
-     */
-    async module(name: string, stamp?: string) {
-      await ready;
-      if (kept.length === 0) await (await build).modules();
-      const part =
-        name === ENTRY_MODULE
-          ? "entry"
-          : name === RUNTIME_MODULE
-            ? "runtime"
-            : undefined;
-      if (part !== undefined)
-        return (
-          stamp === undefined
-            ? kept[0]
-            : kept.find((k) => k.stamp[part] === stamp)
-        )?.modules.get(name);
-      for (const { modules } of kept) {
-        const code = modules.get(name);
-        if (code !== undefined) return code;
+    stop,
+    async module(
+      name: string,
+      stamp?: string
+    ): Promise<{ code: string | undefined } | { error: string }> {
+      if (kept.length === 0) {
+        const state = await build.whenSettled();
+        switch (state.kind) {
+          case "cannot-start":
+          case "watching-install":
+            return { error: state.error };
+          case "never-built":
+            return { error: buildFailure({ ...state, lastGood: false }) };
+          case "built":
+          case "rebuild-failed":
+            break;
+        }
       }
-      return undefined;
+      return { code: moduleCode(name, stamp) };
     },
     /** Sends `ws` the stamp of the last good build, then of each new one. */
     follow(ws: WebSocket) {
       const sendStamp = () => kept[0] && ws.send(JSON.stringify(kept[0].stamp));
-      void build.then(
-        (b) => {
-          const stop = b.onBuilt(sendStamp);
-          ws.once("close", stop);
-          void ready.then(sendStamp);
-        },
-        () => ws.close()
-      );
+      // The cache subscribed first, so a new build is kept before its stamp is sent.
+      const unfollow = build.subscribe((state) => {
+        if (state.kind === "built") sendStamp();
+      });
+      ws.once("close", unfollow);
+      sendStamp();
     },
   };
 }

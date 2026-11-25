@@ -1,11 +1,13 @@
 export { ENTRY_FILE } from "./domain/servedPageObjects";
-export {
-  failedPageObjects,
-  startPageObjects,
-} from "./infrastructure/pageObjectsBuild";
+export { buildErrorLine } from "./domain/buildFailure";
 export type {
   BuiltModules,
-  PageObjectsBuild,
+  PageObjectsBuildState,
+  SettledBuildState,
+} from "./domain/buildState";
+export {
+  startPageObjects,
+  type PageObjectsBuild,
 } from "./infrastructure/pageObjectsBuild";
 export { findPageObjectsEntry } from "./infrastructure/pageObjectsEntry";
 export { writeInitScript } from "./infrastructure/initScriptFiles";
