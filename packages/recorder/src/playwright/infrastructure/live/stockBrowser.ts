@@ -547,7 +547,8 @@ async function openPage(
    * comes. When the element is gone, Playwright's own ref stands.
    */
   /**
-   * For an assertion, which Playwright reports by a selector alone: the ref
+   * For an assertion, which Playwright reports by a selector alone, built
+   * when the element was hovered: the ref
    * the adapter's own snapshots give the picked element, or its nearest
    * ancestor they list, read off a public snapshot of each in turn. Its
    * snapshot names it as it names a click's target. The picked element is
@@ -562,7 +563,8 @@ async function openPage(
   ): Promise<InteractionReport> => {
     const { selector } = report;
     if (report.type !== "assertVisible" || selector === null) return report;
-    // Calls Playwright traces: never inside a snapshot's mark.
+    // Calls Playwright traces: never inside a snapshot's mark. They add
+    // actions to the trace, as a highlight's lookup does.
     const read = markers.then(async () => {
       const matches = page.locator(selector);
       const at = await matches.evaluateAll(pickedAmong).catch(() => -1);
@@ -652,7 +654,10 @@ async function openPage(
   await context.addInitScript(keepCursorsAsTheyAre);
   // The toolbar's page function first, then its script: each document
   // shows it before it first paints, and before Playwright's own overlay
-  // could.
+  // could. Its host element stays in the trace's page snapshots, empty:
+  // Playwright's snapshotter leaves out only a few kinds of element, none
+  // of which can hold the toolbar. The trace holds no screenshots, so the
+  // toolbar is in no picture.
   if (toolbar) {
     await context.exposeBinding(TOOLBAR_BINDING, (_source, message: unknown) =>
       toolbar.answer(message)
@@ -1005,7 +1010,8 @@ async function openPage(
   /** The latest highlight asked: only it is drawn. */
   let latestHighlight = 0;
   /** A DevTools session of each page the highlight was drawn in: drawing
-   * through it is no call of Playwright, and leaves nothing in the trace. */
+   * through it is no call of Playwright, and leaves nothing in the trace.
+   * Opening it, at a page's first highlight, adds an action to the trace. */
   const drawers = new Map<Page, Promise<CDPSession>>();
   const draw = (page: Page, boxes: readonly HighlightBox[] | null) => {
     let drawer = drawers.get(page);
@@ -1271,7 +1277,10 @@ const PICKING_MODE = "assertingVisibility";
  * locator would read it in the one frame it matches in without moving it
  * by that frame's place, and read nothing when it matches in two. A frame
  * that cannot be read, as one gone meanwhile, lights nothing up, and the
- * others still do.
+ * others still do. Each lookup adds actions to the trace; the package's
+ * position numbers stay right, as they are the stock trace tool's own
+ * numbers for the snapshot marks (the compatibility suite checks a
+ * highlight between two snapshots).
  */
 async function boxesOf(
   page: Page,

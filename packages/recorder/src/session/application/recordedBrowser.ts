@@ -20,8 +20,11 @@ export class RecordedBrowser extends Context.Service<
     /**
      * Takes one request and completes at once, whatever the request: the
      * browser carries it out in its own time, and the engine's one worker
-     * never waits on it. A request the browser could not carry out, as on a
-     * page that is gone, is answered by nothing.
+     * never waits on it. A request that breaks while the browser carries it
+     * out is answered by "requestFailed", with the request. One may go
+     * unanswered only when its page is gone, as the page's closing was
+     * told, or when it has no answer by design: letting inputs through,
+     * clearing the highlight, and a picking mode Playwright is in already.
      */
     readonly ask: (request: BrowserRequest) => Effect.Effect<void>;
     /** The browser was given a file to save its storage state to
