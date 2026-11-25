@@ -1948,8 +1948,9 @@ const HIDDEN_TEXT = `
   </ol>
   <p>Only <span style="display: none">one </span>item</p>`;
 
-// A known limit, in the CLI's README. Once a label here finds its element,
-// the limit is gone: take it out of the README, and expect no misses.
+// A known limit, which the Recorder guide tells as a highlight that can
+// land on a look-alike. Once a label here finds its element, the limit is
+// gone: expect no misses.
 it("finds by the selector of a label nothing, or a look-alike, when hidden text is in the element or in a look-alike", async () => {
   const browser = await onStockPlaywright(HIDDEN_TEXT);
 

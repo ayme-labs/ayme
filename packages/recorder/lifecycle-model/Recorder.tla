@@ -1788,7 +1788,7 @@ R03c_TracingRunsThroughPause ==
 
 \* 4. Finish saves everything recorded up to that moment, including an
 \*    Interaction that has not settled yet. Closing the page right after an
-\*    input can lose it (cli README, Known limits): its report never comes,
+\*    input can lose it (Recorder guide, Limits): its report never comes,
 \*    or its entry is cut short ("cut", L withoutPage). Gives way once the
 \*    five-second time limit passes, and for input on the blank page a
 \*    --start-recording recording opens on (README, Known limits).
