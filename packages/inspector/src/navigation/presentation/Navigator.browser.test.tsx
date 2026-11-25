@@ -9,7 +9,7 @@ import { Navigator } from "./Navigator";
 import type { Selection } from "../domain/selection";
 
 // Component tests: the navigator with fixture lenses, driven by its page
-// object on playwright-lite. The lenses stand in for tickets E, F and G's.
+// object on playwright-lite.
 
 const navigator = new NavigatorPart(
   createPage().getByRole("navigation", { name: "Navigator" })
