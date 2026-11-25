@@ -34,7 +34,8 @@ export class ListPage extends AppPage {
   @ayme.collection
   async items(): Promise<ListItem[]> {
     const rows = await this.itemRows.all();
-    return rows.map((row) => new ListItem(row, this.archiveDialog));
+    const archiveDialog = this.archiveDialog;
+    return rows.map((row) => new ListItem(row, archiveDialog));
   }
 
   @ayme.action
