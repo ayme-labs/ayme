@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
-import { indexMembers } from "../../page-model";
+import { indexMembers } from "../../page-model/domain";
 import { page } from "../../../testing/page-model/pageModel";
 import { forest, node } from "../../../testing/structure/projected";
 import { buildStructureTree } from "../infrastructure/structureTree";

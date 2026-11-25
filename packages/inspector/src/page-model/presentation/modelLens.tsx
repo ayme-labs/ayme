@@ -1,13 +1,13 @@
 import { walk, type PageModel, type PageObjectNode } from "../domain/pageModel";
-import { Empty } from "../../shared";
+import { Empty } from "../../shared/view";
 import type {
   Lens,
   OnHover,
   RenderRun,
   SearchEntry,
   Selection,
-} from "../../navigation";
-import type { ModelPanes } from "../../panel";
+} from "../../navigation/domain";
+import type { ModelPanes } from "../../panel/domain";
 import {
   MemberDetail,
   ModelDetail,

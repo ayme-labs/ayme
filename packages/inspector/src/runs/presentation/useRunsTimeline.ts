@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { useCopy } from "../../shared";
+import { useCopy } from "../../shared/presentation";
 import type { RunFocus } from "../domain/run";
 
 /**

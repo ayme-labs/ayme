@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import { InspectorRoot, renderInShadowRoot } from "../src/shared";
+import { InspectorRoot } from "../src/shared/presentation";
+import { renderInShadowRoot } from "../src/shared/infrastructure";
 
 /**
  * Component-test support: renders one part of the panel with fixture props

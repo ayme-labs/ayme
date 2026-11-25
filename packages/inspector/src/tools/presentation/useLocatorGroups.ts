@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { Run } from "../../runs";
-import { useCopy } from "../../shared";
+import type { Run } from "../../runs/domain";
+import { useCopy } from "../../shared/presentation";
 import {
   addTarget,
   groupOutcomes,

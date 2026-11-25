@@ -2,6 +2,7 @@ import config from "@ayme-dev/eslint-config/base";
 import {
   boundariesPlugin,
   horizontalBoundaries,
+  horizontalLayerElementTypes,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
 
 // The source layout's rules; this file is the source of truth.
@@ -43,16 +44,37 @@ const allowedSlices = {
   ],
 };
 const slices = Object.keys(allowedSlices);
+// app composes the other slices and has no layers.
+const layeredSlices = slices.filter((slice) => slice !== "app");
 const sourceFiles = "src/**/*.{ts,tsx}";
 const testFiles = ["src/**/*.test.{ts,tsx}"];
 const testSupport = "testing/**/*.{ts,tsx}";
 
-/** Imports beneath another slice, past its front door (its index.ts). A path
- * through testing/ is test support, which has no front door for the
- * package's own tests: its folders are named after the slices they serve. */
-function deepImport(slice) {
-  const others = slices.filter((other) => other !== slice);
-  return `^(?!(.*/)?testing/).*(^|/)(${others.join("|")})/(?!index(\\.[jt]sx?)?$)`;
+const index = String.raw`index(\.[jt]sx?)?`;
+const layers = horizontalLayerElementTypes.join("|");
+// Test support's folders are named for the slices they serve (ADR-0057).
+const sourceImport = String.raw`^\.\.?/(?!(.*/)?testing/)(.*/)?`;
+
+// Layered slices expose their layers so horizontalBoundaries can check
+// imports through the front doors, including the doors' own re-exports.
+function sliceFrontDoors(slice) {
+  const layered = layeredSlices.filter((other) => other !== slice).join("|");
+  const unlayered = slice === "app" ? [] : [`${sourceImport}app/(?!${index}$)`];
+  return [
+    {
+      regex: [
+        ...unlayered,
+        `${sourceImport}(${layered})/(?!((${layers})(/${index})?|${index})$)`,
+      ].join("|"),
+      message:
+        "Import another slice through its layer's index.ts, or app/index.ts.",
+    },
+    {
+      regex: `${sourceImport}(${layered})(/${index})?$`,
+      message:
+        "A layered slice has no index.ts: import the front door of the layer you use.",
+    },
+  ];
 }
 
 // The Inspector reads ayme only through its inspector entry (ADR-0049).
@@ -64,10 +86,7 @@ const aymeThroughInspector = {
 
 function frontDoors(slice, files, { tests, ignores = [] }) {
   const patterns = [
-    {
-      regex: deepImport(slice),
-      message: "Import another slice through its index.ts.",
-    },
+    ...sliceFrontDoors(slice),
     ...(tests ? [] : [aymeThroughInspector]),
   ];
   return restrictedImports(
@@ -111,11 +130,7 @@ function restrictedImports(files, patterns, ignores = []) {
 
 export default [
   ...config,
-  ...horizontalBoundaries({
-    packageRoot,
-    // app isn't layered.
-    enforcedSlices: slices.filter((slice) => slice !== "app"),
-  }),
+  ...horizontalBoundaries({ packageRoot, enforcedSlices: layeredSlices }),
   // Every production file under src/, in a slice or not; the blocks below
   // add their own patterns.
   restrictedImports([sourceFiles], [aymeThroughInspector], testFiles),

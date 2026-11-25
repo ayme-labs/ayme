@@ -1,5 +1,5 @@
-import type { WindowFullscreen } from "../panel";
-import { renderInShadowRoot } from "../shared";
+import type { WindowFullscreen } from "../panel/domain";
+import { renderInShadowRoot } from "../shared/infrastructure";
 import { InspectorApp } from "./InspectorApp";
 
 /**

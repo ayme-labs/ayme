@@ -2,7 +2,8 @@ import { useRef, type Ref } from "react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { AymeMark, usePointerDrag } from "../../shared";
+import { AymeMark } from "../../shared/view";
+import { usePointerDrag } from "../../shared/presentation";
 import { fitLogo, type Viewport } from "../domain/geometry";
 import type { Point } from "../domain/preferences";
 import type { Presence } from "./usePresence";

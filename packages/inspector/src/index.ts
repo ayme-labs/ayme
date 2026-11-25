@@ -1,2 +1,2 @@
 export { mountInspector, type InspectorOptions } from "./app";
-export { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "./shared";
+export { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "./shared/domain";

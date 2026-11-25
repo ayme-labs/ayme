@@ -3,7 +3,7 @@ import type {
   ProjectedStructuralNode,
 } from "@ayme-dev/ayme/inspector";
 
-import { nodeLabel } from "../../shared";
+import { nodeLabel } from "../../shared/domain";
 
 /**
  * What the recorded page state called the element `ref` named: its role and

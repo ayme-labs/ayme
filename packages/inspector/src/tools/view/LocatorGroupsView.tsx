@@ -10,11 +10,15 @@ import {
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { focusRing, pressable, pressableIcon } from "../../shared";
-import type { StructureNode } from "../../structure";
+import {
+  focusRing,
+  NodeDetail,
+  pressable,
+  pressableIcon,
+} from "../../shared/view";
+import type { StructureNode } from "../../structure/domain";
 import type { GroupOutcome, LocatorGroup } from "../domain/locatorGroups";
 import { findRefNode, type RefTreeRow } from "../domain/refTree";
-import { NodeDetail } from "../../shared";
 import { refText, RefTreeView } from "./RefTreeView";
 
 const smallButton =

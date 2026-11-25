@@ -3,16 +3,16 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { StructureTree } from "../domain/structure";
-import { DetailPane } from "../../panel";
+import { DetailPane } from "../../panel/view";
 import {
   type Lens,
   type LensId,
-  Navigator,
   type OnHover,
   pageSelection,
   type RenderRun,
   type Selection,
-} from "../../navigation";
+} from "../../navigation/domain";
+import { Navigator } from "../../navigation/presentation";
 import { renderPart } from "../../../testing/renderPart";
 import {
   DetailPane as DetailPanePart,

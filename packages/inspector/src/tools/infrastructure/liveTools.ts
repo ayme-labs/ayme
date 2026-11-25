@@ -11,7 +11,7 @@ import {
   inspectorClient,
   useInspectorState,
   type InspectorClient,
-} from "../../shared";
+} from "../../shared/infrastructure";
 
 /**
  * The tools the panel can run now, and how agents reach them: through the

@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import { Divider } from "../../shared/presentation";
 import type { Layout, RegionSizes } from "../domain/preferences";
 import { regionRanges } from "../domain/regions";
 import { InspectorBodyView } from "../view/InspectorBody";
@@ -58,16 +59,30 @@ export function InspectorBody({
       runs={runs}
       bodyRef={body}
       sizes={sizes as CSSProperties}
-      navigatorSize={{
-        ...ranges.navigator,
-        onChange: (width) => change({ navigatorWidth: width }),
-        onReset: () => change({ navigatorWidth: undefined }),
-      }}
-      runsSize={{
-        ...ranges.runs,
-        onChange: (size) => change({ [runsKey]: size }),
-        onReset: () => change({ [runsKey]: undefined }),
-      }}
+      navigatorDivider={
+        <Divider
+          orientation="vertical"
+          border="before"
+          label="Resize the navigator"
+          step={16}
+          {...ranges.navigator}
+          onChange={(width) => change({ navigatorWidth: width })}
+          onReset={() => change({ navigatorWidth: undefined })}
+        />
+      }
+      runsDivider={
+        <Divider
+          orientation={layout === "bottom" ? "vertical" : "horizontal"}
+          border="after"
+          label="Resize Runs"
+          step={16}
+          grows="backward"
+          className="[&:has(+[data-collapsed])]:hidden"
+          {...ranges.runs}
+          onChange={(size) => change({ [runsKey]: size })}
+          onReset={() => change({ [runsKey]: undefined })}
+        />
+      }
     />
   );
 }

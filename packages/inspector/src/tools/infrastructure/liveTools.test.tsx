@@ -8,7 +8,7 @@ import {
   type InspectorSession,
 } from "@ayme-dev/ayme/internal";
 
-import { createInspectorClient } from "../../shared";
+import { createInspectorClient } from "../../shared/infrastructure";
 import { useLiveTools, type LiveTools } from "./liveTools";
 import {
   agentConnectionOf,

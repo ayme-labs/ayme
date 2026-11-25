@@ -23,14 +23,15 @@ import {
   revealSelection,
   type ObjectTree,
 } from "../domain/objectTree";
-import { Divider, QualifiedName, rowFocusRing, rowPress } from "../../shared";
+import { Divider } from "../../shared/presentation";
+import { QualifiedName, rowFocusRing, rowPress } from "../../shared/view";
 import {
   defaultPreferences,
   maxModelSplit as maxSplit,
   minModelSplit as minSplit,
   type ModelPanes,
-} from "../../panel";
-import type { OnHover, Selection } from "../../navigation";
+} from "../../panel/domain";
+import type { OnHover, Selection } from "../../navigation/domain";
 import { hoverHandlers } from "../view/hover";
 import { LiveMark } from "../view/LiveMark";
 

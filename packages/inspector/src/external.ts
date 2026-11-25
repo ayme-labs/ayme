@@ -10,7 +10,7 @@ import { connectAgentApp, mountExternalInspector, showServerLost } from "./app";
 import {
   replaceInspectorTransport,
   webSocketInspectorContract,
-} from "./shared";
+} from "./shared/infrastructure";
 
 /**
  * The id of the element that names the socket of the page an Agent App

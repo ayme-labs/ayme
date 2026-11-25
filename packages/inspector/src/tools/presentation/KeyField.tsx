@@ -3,7 +3,7 @@ import { SearchIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { focusRing, pressable } from "../../shared";
+import { focusRing, pressable } from "../../shared/view";
 import {
   checkKey,
   keyOfEvent,
