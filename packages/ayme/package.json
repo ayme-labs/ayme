@@ -76,6 +76,7 @@
     "test:mutation": "stryker run"
   },
   "dependencies": {
+    "@typescript/typescript6": "^6.0.2",
     "zod": "^4.5.4"
   },
   "peerDependencies": {
@@ -83,7 +84,7 @@
     "@ayme-dev/mcp": "workspace:*",
     "@ayme-dev/webmcp": "workspace:*",
     "@playwright/test": ">=1.29 <1.65",
-    "typescript": ">=5.4 <7"
+    "typescript": ">=5.4 <8"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {

@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import ts from "typescript";
+import { ts, type TypeScript } from "./typescriptApi";
 
 import { PomCompileError, typeScriptDiagnostic } from "./pomCompileError";
 
@@ -78,7 +78,7 @@ export function importsPomModule(
 /** Calls `onImport` once per transitive local import, with its text if readable. */
 function walkImportedModules(
   fileName: string,
-  compilerOptions: ts.CompilerOptions,
+  compilerOptions: TypeScript.CompilerOptions,
   onImport: (fileName: string, source: string | undefined) => void,
   visited = new Set<string>()
 ) {
@@ -123,7 +123,7 @@ function projectConfigFor(
   fileName: string,
   options: PomProjectOptions,
   onConfigFile?: (fileName: string) => void
-): ts.ParsedCommandLine {
+): TypeScript.ParsedCommandLine {
   const configPath = projectConfigPath(fileName, options);
   if (!configPath)
     throw new PomCompileError([
@@ -173,7 +173,7 @@ function parseConfig(
   // Parsed as a source file, an option's error is located in it, as `tsc` locates it.
   const configFile = ts.parseJsonText(configPath, text ?? "");
 
-  const parseHost: ts.ParseConfigHost = onConfigFile
+  const parseHost: TypeScript.ParseConfigHost = onConfigFile
     ? {
         ...ts.sys,
         readFile(fileName) {
@@ -192,7 +192,7 @@ function parseConfig(
   );
 }
 
-function configError(configPath: string, diagnostic: ts.Diagnostic) {
+function configError(configPath: string, diagnostic: TypeScript.Diagnostic) {
   const located = typeScriptDiagnostic(diagnostic);
   return new PomCompileError([
     {

@@ -844,7 +844,7 @@
       {
         "name": "Build plugin",
         "responsibility": "compiles the marked Page Object Models and derives each action's input schema and each `Locator` member into POM metadata placed in the browser bundle; through its `include` option, off by default, also decides whether a build carries ayme at all",
-        "technology": "Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and Turbopack entries, over the Page Object compiler in `@ayme-dev/ayme`'s Node-only `compiler` entry, which runs the project's own TypeScript compiler",
+        "technology": "Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and Turbopack entries, over the Page Object compiler in `@ayme-dev/ayme`'s Node-only `compiler` entry",
         "evidence": {
           "text": "verified: `packages/unplugin-ayme/src/unplugin.ts`, `packages/ayme/src/compiler/pomCompiler.ts`, `packages/ayme/src/compiler/derivePomManifests.ts`, `docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md`",
           "inferred": false,

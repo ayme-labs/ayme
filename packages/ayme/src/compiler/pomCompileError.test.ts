@@ -1,4 +1,4 @@
-import ts from "typescript";
+import { ts, type TypeScript } from "./typescriptApi";
 import { describe, expect, it } from "vitest";
 
 import { PomCompileError, typeScriptDiagnostic } from "./pomCompileError";
@@ -17,7 +17,9 @@ describe("PomCompileError", () => {
 });
 
 describe("typeScriptDiagnostic", () => {
-  const diagnostic = (overrides: Partial<ts.Diagnostic>): ts.Diagnostic => ({
+  const diagnostic = (
+    overrides: Partial<TypeScript.Diagnostic>
+  ): TypeScript.Diagnostic => ({
     category: ts.DiagnosticCategory.Error,
     code: 1,
     file: undefined,

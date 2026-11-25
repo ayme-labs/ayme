@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import ts from "typescript";
+import { ts, type TypeScript } from "./typescriptApi";
 
 import type { PomManifest } from "../shared";
 
@@ -87,7 +87,7 @@ export function injectedImport(include: boolean) {
  * when the bundler adapter that owns it says a build started or ended or a
  * watched file changed (ADR-0036).
  */
-export type PomPrograms = Map<string, ts.Program>;
+export type PomPrograms = Map<string, TypeScript.Program>;
 
 /**
  * The source transform behind the compiler's `compile`. With `programs`,
@@ -179,7 +179,11 @@ function standInModule(
     manifests.map((manifest) => [manifest.className, manifest])
   );
   const classes = sourceFile.statements.filter(
-    (statement): statement is ts.ClassDeclaration & { name: ts.Identifier } =>
+    (
+      statement
+    ): statement is TypeScript.ClassDeclaration & {
+      name: TypeScript.Identifier;
+    } =>
       ts.isClassDeclaration(statement) &&
       statement.name !== undefined &&
       byName.has(statement.name.text)
@@ -226,7 +230,7 @@ type StandInShape = {
  * constructor, static members and `#private` names are no one's to name.
  */
 function standInShape(
-  declaration: ts.ClassDeclaration,
+  declaration: TypeScript.ClassDeclaration,
   manifest: PomManifest
 ): StandInShape {
   const actions = new Set(manifest.tools.map((tool) => tool.methodName));
@@ -277,7 +281,7 @@ function standInShape(
  * or a member: `x.page`, `{ page: 1 }` and `get page()` name no binding,
  * while a shorthand `{ page }` does.
  */
-function isBindingReference(node: ts.Identifier) {
+function isBindingReference(node: TypeScript.Identifier) {
   const parent = node.parent;
   if (ts.isPropertyAccessExpression(parent)) return parent.name !== node;
   if (ts.isQualifiedName(parent)) return parent.right !== node;
@@ -311,7 +315,7 @@ function withoutUnusedImports(code: string, fileName: string) {
     ts.ScriptKind.TS
   );
   const referenced = new Set<string>();
-  const collect = (node: ts.Node) => {
+  const collect = (node: TypeScript.Node) => {
     if (ts.isImportDeclaration(node)) return;
     if (ts.isIdentifier(node) && isBindingReference(node))
       referenced.add(node.text);
