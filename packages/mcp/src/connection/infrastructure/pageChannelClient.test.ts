@@ -57,7 +57,6 @@ async function startServer(call: object, port = 0) {
   return { url: `ws://127.0.0.1:${listening}`, port: listening, paths };
 }
 
-/** A WebSocket class that counts the sockets the channel opens. */
 function countingWebSocket() {
   let count = 0;
   class CountingWebSocket extends globalThis.WebSocket {
