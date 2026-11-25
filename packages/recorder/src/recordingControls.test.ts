@@ -39,7 +39,7 @@ const click = {
   target: { ref: "e2", tree: idle },
   values: { button: "left" },
 };
-const recordings = () => join(projectDir, ".ayme", "recordings");
+const recordings = () => join(projectDir, "ayme", "recordings");
 
 /** One click from held to written down: the page shows `after` once it has
  * the click. */
@@ -673,8 +673,8 @@ describe("saving", () => {
   });
 });
 
-describe("the .gitignore of .ayme", () => {
-  const ignoreFile = () => join(projectDir, ".ayme", ".gitignore");
+describe("the .gitignore of ayme/", () => {
+  const ignoreFile = () => join(projectDir, "ayme", ".gitignore");
   const finishOneClick = async () => {
     const { recorder, browser } = await start();
     await recorder.send({ type: "record" });
@@ -693,15 +693,104 @@ describe("the .gitignore of .ayme", () => {
     );
   });
 
-  it("is never overwritten, nor added to, when the project already has one", async () => {
-    await mkdir(join(projectDir, ".ayme"), { recursive: true });
-    await writeFile(ignoreFile(), "# mine\nrecordings/old\n");
+  it("gets the recordings folder's line when the project already has one, such as the one `ayme mcp` wrote, and keeps its text", async () => {
+    await mkdir(join(projectDir, "ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "# mine\nrecordings/old\ninit-script.js");
 
     await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
 
     expect(await readFile(ignoreFile(), "utf8")).toBe(
-      "# mine\nrecordings/old\n"
+      "# mine\nrecordings/old\ninit-script.js\nrecordings/\n"
     );
+  });
+
+  it("gets the line once, over two saves", async () => {
+    await mkdir(join(projectDir, "ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "init-script.js\n");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe(
+      "init-script.js\nrecordings/\n"
+    );
+  });
+
+  it.each([
+    "recordings/",
+    "/recordings",
+    "recordings \r\n",
+    "!recordings/",
+    "!recordings/\r",
+  ])(
+    "is left as it is when its line %j already decides about the folder",
+    async (line) => {
+      await mkdir(join(projectDir, "ayme"), { recursive: true });
+      await writeFile(ignoreFile(), `# mine\n${line}`);
+
+      await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+      expect(await readFile(ignoreFile(), "utf8")).toBe(`# mine\n${line}`);
+    }
+  );
+
+  it("gets the line when its only line about the folder starts with a space, which git reads as part of a name", async () => {
+    await mkdir(join(projectDir, "ayme"), { recursive: true });
+    await writeFile(ignoreFile(), " recordings/\n");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe(
+      " recordings/\nrecordings/\n"
+    );
+  });
+
+  it("is left as it is when its first line decides about the folder after a byte order mark, which git skips", async () => {
+    await mkdir(join(projectDir, "ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "\uFEFF!recordings/\n");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe("\uFEFF!recordings/\n");
+  });
+
+  it("gets the line when its only line about the folder ends with a tab, which git reads as part of a name", async () => {
+    await mkdir(join(projectDir, "ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "recordings/\t\n");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe(
+      "recordings/\t\nrecordings/\n"
+    );
+  });
+
+  it("does not stand in the way of the save when it cannot be read, as a folder of its name cannot", async () => {
+    await mkdir(ignoreFile(), { recursive: true });
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readdir(recordings())).toContain("latest.yaml");
+  });
+
+  it("gets the line with the line ends the file already has", async () => {
+    await mkdir(join(projectDir, "ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "init-script.js\r\n# mine");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe(
+      "init-script.js\r\n# mine\r\nrecordings/\r\n"
+    );
+  });
+
+  it("gets the line alone when the project's file is empty", async () => {
+    await mkdir(join(projectDir, "ayme"), { recursive: true });
+    await writeFile(ignoreFile(), "");
+
+    await expect(finishOneClick()).resolves.toMatchObject({ kind: "saved" });
+
+    expect(await readFile(ignoreFile(), "utf8")).toBe("recordings/\n");
   });
 
   it("is not written when nothing is saved", async () => {
@@ -852,7 +941,6 @@ describe("the trace of a recording", () => {
   });
 });
 
-// The review of the whole recorder against the spec.
 describe("a wrap-up's time limit", () => {
   it("is that wrap-up's own: the limit of an earlier Stop does not cut a later Finish short (rule 4)", async () => {
     const { recorder, browser } = await start();

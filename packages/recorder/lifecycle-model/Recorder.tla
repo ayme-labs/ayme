@@ -1,6 +1,9 @@
 ------------------------------ MODULE Recorder ------------------------------
-\* The lifecycle of the ayme Recorder, as the engine is built. README.md says
-\* which engine commit it was last compared with, the rules and how to run it.
+\* The lifecycle of the ayme Recorder, as the engine is built. Each rule the
+\* recorder must keep is the comment above its check, under "The rules"
+\* below. README.md says what the model assumes and leaves out, its known
+\* limits and races, and how to run it; the verify-recorder-lifecycle skill
+\* says which engine commit it was last compared with.
 \*
 \* One page, one recorder window, one toolbar, N things the person does.
 \* Names in the comments are functions of the engine, under
@@ -34,9 +37,10 @@ CONSTANTS
               \* person's next action (a few milliseconds; README, assumptions)
   LateRevisions,\* a revision of typing may reach the engine after the person's
                \* next action (race R5); otherwise it is quick (see Quick)
-  LeaveOutB2,  \* not a fix: bug B2 (a known limit) left out, to check every
-               \* other path of rules 7 and 12. No typing reaches the page
-               \* unheld while an earlier entry of the page is still open
+  LeaveOutB2,  \* not a fix: bug B2 (a known limit) left out, as the guarantee
+               \* a fix would have to give, to check every other path of
+               \* rules 7 and 12. No typing reaches the page unheld while an
+               \* earlier entry of the page is still open
   LateTypingReport,\* the report of typing whose key a page held back may come
                    \* after that page has settled (race R7); otherwise it comes
                    \* first, within the 250 ms the page must be quiet
@@ -63,10 +67,12 @@ CONSTANTS
               \* (a read in flight; L keepRead, 5ecea373)
   SameFieldElsewhere,\* after a navigation, typing in a field of the new page
               \* that Playwright reports as a revision of the last fill
-              \* (8d1c4656)
+              \* (8d1c4656); a field may also take more keys after a
+              \* navigation
   AddressChanges,\* the page may change its address within its document, as
               \* history.replaceState or a change of the hash does; Playwright
-              \* tells it as a navigation
+              \* tells it as a navigation. The page keeps its gate and its
+              \* fills as they were
   TypeAfterStopOnNewPage,\* during a wrap-up, with the pages no longer holding,
               \* a key may be typed in a document the recorder has not read
               \* yet; not a fix: off, it leaves that path out (config
@@ -80,7 +86,8 @@ CONSTANTS
               \* cannotStart, after Record, not after Continue)
   Buttons     \* what the person clicks with: a subset of {"left", "right",
               \* "middle", "leftOnCheckbox", "middleOnCheckbox"}; Playwright
-              \* reports a click on a checkbox as a check, which names no button
+              \* reports a click on a checkbox as a check, which names no button.
+              \* Left only where a path or chart is clearer without right-clicks
 
 Inputs == 1..N
 \* The engine's entries. Entry i is input i's: a held click, or the input
@@ -1733,6 +1740,15 @@ OnItsOwn ==
 
 -----------------------------------------------------------------------------
 \* The rules (spec #1267, "Rules the recorder must keep"; old numbers kept)
+\* R01 to R10 are spec rules 1 to 10; X1 is rule 11; X2 and X8 are rule 12;
+\* X3 and X5 are rule 13a, and R03b is 13b. S1 to S4 are the storage save's
+\* (--save-storage). F1 to F7 are the rules of typed text in the window. N1
+\* to N6 are narrower versions of rule 12, each for its own shortest path.
+\* P1 to P31 are probes: each must break, which shows the model reaches that
+\* situation. L1 and L2 are progress, checked with fairness (Progress.cfg).
+\* Also checked: X4, X6, X7, X10, X11, X12a and D1, and the variants R03a to
+\* R03c, R04v, R06_DecisionsChangeOnlyByAPress, X3v, F1v, F3_FinalKeepsItsChanges,
+\* F4n, F7s and N1b; each is explained beside its check.
 
 EntOf(i) == {i, N + i}
 Recorded(i) == \E e \in EntOf(i) : e \in TLHas(Eng) \/ e \in pkgHas \/ InL(Eng, e)
@@ -1757,18 +1773,25 @@ R02_OneBeforeOneAfter ==
 
 \* 3. While stopped, nothing is added to the timeline and input reaches the
 \*    page untouched. Tracing keeps running.
+\* Input reaches the page untouched. Gives way once the five-second time
+\* limit passes (README, Known limits).
 R03a_StoppedClicksAreUntouched ==
   \A i \in Inputs : made[i].phase \in {"paused", "off"} => ~touched[i]
+\* Nothing is added; this is also rule 13b: nothing done while not recording
+\* appears.
 R03b_StoppedAddsNothing ==
   /\ phase = "paused" => tl = tlAtPause
   /\ \A e \in tl : made[In(e)].phase \notin {"paused", "off"}
+\* Tracing keeps running.
 R03c_TracingRunsThroughPause ==
   phase = "paused" => tracing = "on"
 
 \* 4. Finish saves everything recorded up to that moment, including an
 \*    Interaction that has not settled yet. Closing the page right after an
-\*    input can lose it (cli README, Known limits): its report never comes,
-\*    or its entry is cut short ("cut", L withoutPage).
+\*    input can lose it (Recorder guide, Limits): its report never comes,
+\*    or its entry is cut short ("cut", L withoutPage). Gives way once the
+\*    five-second time limit passes, and for input on the blank page a
+\*    --start-recording recording opens on (README, Known limits).
 R04_FinishSavesEverything ==
   pkg # "none" =>
     \A i \in Inputs :
@@ -1790,8 +1813,6 @@ R06_ReviewUntilFinishOrClear ==
   /\ ~Reviewable => dis = kept
   /\ pkg # "none" => pkgDis = kept
 
-\* 7. An assertion never carries changes: whatever changed since the last
-\*    snapshot counts as changed before it.
 \*    Its property: the decisions change only by a press while they are
 \*    taken, one entry at a time, or go with a cleared timeline. So Stop,
 \*    Continue, a revision of a fill and a save leave them as they are.
@@ -1801,6 +1822,8 @@ R06_DecisionsChangeOnlyByAPress ==
           /\ \E e \in Ids : dis' = dis \cup {e} \/ dis' = dis \ {e}
        \/ dis' = {} /\ tl' = {}]_vars
 
+\* 7. An assertion never carries changes: whatever changed since the last
+\*    snapshot counts as changed before it.
 R07_AssertionCarriesNoChanges ==
   \A e \in tl : ent[e] = "assert" =>
     /\ bsnap[e] = asnap[e]
@@ -1844,16 +1867,20 @@ S3_EveryEndSavesTheStorage ==
 \* ends as it does with no such step (L savesStorage).
 S4_NoStorageWithoutTheFlag == ~SaveStorage => storage = "none"
 
-\* 11. Input reaches the page in the order the person gave it.
+\* 11. Input reaches the page in the order the person gave it. Gives way once
+\*     the five-second time limit passes (README, Known limits).
 X1_NothingOvertakesAHeldClick == ~overtook
 
-\* 12. Each "after" is no later than the next "before".
+\* 12. Each "after" is no later than the next "before". Breaks on B2, typing
+\*     in a field the page moved the focus to by itself (README, Known
+\*     limits).
 X2_SnapshotsInTimeOrder ==
   \A e \in tl : \A f \in tl :
     (In(e) < In(f) /\ asnap[e] # 0 /\ DocAt(asnap[e]) = BefDoc(f)) => asnap[e] <= Bef(f)
 
 \* 12, for an input known from its report only: the snapshot it starts from
 \* (L startReported: its page's latest) is read no later than the input.
+\* Breaks on B2 (README, Known limits).
 X8_StartsNoLaterThanTheInput ==
   \A e \in tl : ent[e] = "rep" => bsnap[e] <= evStamp[In(e)]
 
@@ -1872,7 +1899,9 @@ X12a_AssertionReadsInTimeOrder ==
                                      /\ ~\E f \in tl : In(a) < In(f) /\ In(f) < In(e))
          => bsnap[e] <= evStamp[In(e)]
 
-\* 13a. Nothing done while recording is thrown away.
+\* 13a. Nothing done while recording is thrown away. Gives way once the
+\*      five-second time limit passes, and for input on the blank page a
+\*      --start-recording recording opens on (README, Known limits).
 X3_NothingYouDidIsDropped ==
   \A i \in Inputs : (ev[i] = "in" /\ Shown(i) /\ made[i].gen = gen /\ page = "open")
                       => Recorded(i)
@@ -1895,7 +1924,8 @@ R04v_FinishSavesAllOffTheBlankPage ==
 \* Wrapping up and saving never wait for something that cannot come: some
 \* step that needs nobody can still happen. MayGoOn is ENABLED OnItsOwn
 \* written out from the guards of those steps (TLC evaluates ENABLED of them
-\* far too slowly); L2 checks the same with fairness.
+\* far too slowly); L2 checks the same with fairness. Breaks when the page
+\* closes right after a click (README, Known limits).
 MayGoOn ==
   Alive /\
   \/ \E i \in Inputs : passReq[i] \/ ev[i] = "flying" \/ revFly[i]
@@ -1907,7 +1937,8 @@ X4_WrapUpNeverGetsStuck ==
   phase \in {"wrap", "saving"} => MayGoOn
 
 \* "Paused" on screen is the moment recording ends: what is done after Stop
-\* and before that is still recorded (spec, "What makes them hold").
+\* and before that is still recorded (spec, "What makes them hold"). Gives
+\* way once the five-second time limit passes (README, Known limits).
 X5_StopWindowIsRecorded ==
   \A i \in Inputs : (ev[i] = "in" /\ made[i].view = "wrapPause" /\ made[i].gen = gen
                      /\ page = "open") => Recorded(i)
@@ -2006,8 +2037,9 @@ F2_StaysInPlace ==
 \*    step. After that the reads its rows run between do not change, and its
 \*    rows change only in two ways (F3_FinalKeepsItsChanges, a property): a
 \*    key Playwright reports only after the next action still sets its text,
-\*    and the focus a click's press moved can still go from its rows to that
-\*    click's, once the click is written (TL pressedAfter).
+\*    while the page stays at its document, and the focus a click's press
+\*    moved can still go from its rows to that click's, once the click is
+\*    written (TL pressedAfter).
 F3_NextActionMakesItFinal ==
   \A e \in Elems(lst) :
     (shown[e] /\ \E f \in Elems(lst) : Pos(Eng, f) > Pos(Eng, e) /\ ent[f] # "key")
@@ -2026,7 +2058,10 @@ F3_FinalKeepsItsChanges ==
            \* when it is written
            /\ r2.f = r.f \/ (r.f /\ ~r2.f /\ ClickWrittenAt(r.b))]_vars
 
-\* 4. Stop and Finish keep its last text: every key typed while recording.
+\* 4. Stop and Finish keep its last text: every key typed while recording
+\*    and while the page stayed at its document. A key typed once the page
+\*    went to another document is a fill of its own there (F4n). Breaks
+\*    when the page closes while a revision is on its way (README, Races).
 F4_StopAndFinishKeepLastText ==
   (phase = "paused" \/ pkg # "none") =>
     \A i \in Inputs :

@@ -8,7 +8,7 @@ import {
 } from "vue";
 import { decisionEndpoint } from "@ayme-dev/ayme";
 import { useAyme } from "@ayme-dev/vue";
-import { ListPage } from "../playwright/pom/ListPage";
+import { ListPage } from "#pom/ListPage";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 import AgentPanel from "./AgentPanel.vue";
 import { track, trackToolRuns } from "./analytics";
@@ -109,7 +109,7 @@ function followScroll() {
           <p
             class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
           >
-            ayme WebMCP
+            ayme
           </p>
           <h1 class="mt-2 text-3xl font-semibold tracking-tight text-balance">
             Playground
@@ -121,11 +121,10 @@ function followScroll() {
             tools.
             <template v-if="agentConnection">
               Try it here — from the inspector or your own coding agent — before
-              adding ayme WebMCP to your project.
+              adding ayme to your project.
             </template>
             <template v-else>
-              Try it here from the inspector before adding ayme WebMCP to your
-              project.
+              Try it here from the inspector before adding ayme to your project.
             </template>
           </p>
           <AgentPanel v-if="agentConnection" class="mt-5" />

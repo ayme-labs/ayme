@@ -49,7 +49,7 @@
  *   ends in a source or doc extension) names no file, relative to the file's
  *   folder, to that folder's `src/` or to the repository root, and ends no path
  *   in the repository. A path under
- *   `node_modules/`, `dist/`, `out/` or `.ayme/`, which the repository does not
+ *   `node_modules/`, `dist/` or `out/`, which the repository does not
  *   hold, a span with a placeholder or glob, and the paths in
  *   `PATHS_NOT_IN_THE_REPOSITORY` are left out. A span also resolves when it
  *   ends a path in the repository, since the files write `infrastructure/x.ts`
@@ -85,7 +85,7 @@ const SKILLS_LOCK = "skills-lock.json";
 const SOURCE_PATH =
   /\.(?:[cm]?[jt]sx?|vue|svelte|json|mdx?|html|css|ya?ml|sh|txt|mmd|tla|cfg)$/;
 /** Folders a repository path names only in a consumer's project or in build output. */
-const ABSENT_SEGMENTS = new Set(["node_modules", "dist", "out", ".ayme"]);
+const ABSENT_SEGMENTS = new Set(["node_modules", "dist", "out"]);
 /**
  * Paths a file names that the repository does not hold, though they are not
  * under one of those folders, by file. An exact path

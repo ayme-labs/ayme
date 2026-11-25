@@ -1,6 +1,8 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 
+import { BasketItem } from "./BasketItem";
+
 /** Clearing needs something in the basket; the reason states the fact. */
 const canClear = async (self: Basket) =>
   (await self.items.count()) > 0 || "The basket is empty";
@@ -46,16 +48,5 @@ export class Basket {
     await this.items.evaluateAll((items) =>
       items.forEach((item) => item.remove())
     );
-  }
-}
-
-/** One basket row, addressed by its own root ref. */
-@ayme({ root: (self: BasketItem) => self.root })
-export class BasketItem {
-  constructor(readonly root: Locator) {}
-
-  @ayme.action
-  async remove() {
-    await this.root.evaluate((element) => element.remove());
   }
 }

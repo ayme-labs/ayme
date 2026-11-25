@@ -6,7 +6,7 @@ import { ENTRY_FILE } from "../domain/servedPageObjects";
 /**
  * The Page Objects entry the server serves, as an absolute path: `named`
  * (the `--page-objects` flag) resolved against `folder`, which must exist,
- * or else `.ayme/page-objects.ts` in `folder` if there is one.
+ * or else `ayme/page-objects.ts` in `folder` if there is one.
  */
 export function findPageObjectsEntry({
   folder,

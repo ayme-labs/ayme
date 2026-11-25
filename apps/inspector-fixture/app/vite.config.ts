@@ -8,7 +8,7 @@ const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 /**
  * Serves the e2e fixture pages with the built Inspector and runtime: the
  * workspace packages resolve to their `dist`, as they ship. The ayme plugin
- * compiles and registers the Page Objects in `pom/`, the way an app's are.
+ * compiles and registers the Page Objects in `ayme/pom/`, the way an app's are.
  * The one exception is the Inspector's own Page Object, which the dogfood
  * page registers: test support resolves to source (ADR-0057), and the path
  * in tsconfig.json has the plugin compile it too.

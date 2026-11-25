@@ -7,7 +7,7 @@ before and the after state.
    Reuse the evidence the pull request already has, labelled with where it came from, and capture
    only what it is missing.
 2. Run the product in each state, set up so the change shows. How to start the product belongs to
-   the opening part of `.ayme/CONVENTIONS.md`. When it is missing there and the repository says it
+   the opening part of `ayme/CONVENTIONS.md`. When it is missing there and the repository says it
    elsewhere, add a line that points to that place. When the repository says it nowhere, ask the
    user, write their answer there, and tell them you did.
 3. For each change, capture what its consumer sees in both states, following the same steps in each.

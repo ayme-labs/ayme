@@ -10,7 +10,6 @@ import type { SnapshotId, TracePosition } from "../../timeline/domain";
 // recording's snapshots by: the tool's own numbering, which no archive
 // reader can guess.
 
-/** What one run of the tool came to. */
 export type ToolRun = {
   readonly code: number;
   readonly stdout: string;
@@ -62,7 +61,6 @@ export function passThroughPlaywrightCli(
   });
 }
 
-/** Runs `playwright trace <args>` the same way. */
 export const passThroughTraceTool = (
   cli: string,
   args: readonly string[],

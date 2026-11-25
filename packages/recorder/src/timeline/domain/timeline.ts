@@ -236,7 +236,6 @@ export const sameDocument = (page: string, read: string) =>
  * holds it. */
 const PRESSED = new Set(["click", "check", "uncheck"]);
 
-/** Whether two reports say the same: the one object, or the same text. */
 const sameReport = (one: InteractionReport, other: InteractionReport) =>
   one === other || JSON.stringify(one) === JSON.stringify(other);
 
@@ -719,6 +718,12 @@ export class Timeline {
    * one clicked, or one around it, the focus stands where the read before
    * had it, so that the move is the click's own change. Null when the press
    * moved no focus.
+   *
+   * A page's first click can leave out the focus its press moved: the page
+   * is first read for that click, after the press, and no read shows where
+   * the focus was before. Telling it would take the gate noting
+   * the focused element at the press, a datum the adapter and the lifecycle
+   * would carry.
    */
   private beforeItsPress(
     previous: Kept,
@@ -958,7 +963,6 @@ export class Timeline {
     };
   }
 
-  /** An Interaction's entry as measured. */
   private entryOf(
     written: Written,
     interaction: RecordedInteraction,
@@ -1126,7 +1130,6 @@ export class Timeline {
     const change = next.resumes
       ? null
       : await this.change(through, next, through.tree, pressed ?? next.tree);
-    // Nothing changed: there is nothing to tell.
     if (change && changedSomething(change))
       this.writeChange(visit, next.snapshot.at, change);
     visit.through += 1;

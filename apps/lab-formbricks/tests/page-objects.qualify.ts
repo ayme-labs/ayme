@@ -10,10 +10,10 @@ import {
   test as base,
 } from "@playwright/test";
 
-import { SignInPage } from "../.ayme/pom/SignInPage";
-import { SurveyEditorPage } from "../.ayme/pom/SurveyEditorPage";
-import { SurveyNavigationPage } from "../.ayme/pom/SurveyNavigationPage";
-import { SurveySummaryPage } from "../.ayme/pom/SurveySummaryPage";
+import { SignInPage } from "#pom/SignInPage";
+import { SurveyEditorPage } from "#pom/SurveyEditorPage";
+import { SurveyNavigationPage } from "#pom/SurveyNavigationPage";
+import { SurveySummaryPage } from "#pom/SurveySummaryPage";
 import {
   disconnect,
   seedResponse,
@@ -28,7 +28,7 @@ import {
 // the lab app running (pnpm lab:dev), and no other ayme MCP server listening
 // on ports 9350 to 9365: a page pairs by itself only with exactly one.
 
-/** The lab app's folder, where `ayme mcp` finds `.ayme/page-objects.ts`. */
+/** The lab app's folder, where `ayme mcp` finds `ayme/page-objects.ts`. */
 const LAB_DIR = fileURLToPath(new URL("..", import.meta.url));
 
 type Agent = Awaited<ReturnType<typeof startAgent>>;
@@ -46,7 +46,7 @@ const test = base.extend<{
     try {
       // The server wrote it as it started, naming its port.
       await context.addInitScript({
-        path: path.join(LAB_DIR, ".ayme/init-script.js"),
+        path: path.join(LAB_DIR, "ayme/init-script.js"),
       });
       await use(agent);
     } finally {

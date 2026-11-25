@@ -97,8 +97,6 @@ export function foundRows(
   return rows;
 }
 
-/** Whether the only property of its own an element changed is the
- * cursor. */
 const cursorOnly = (changed: readonly PropertyChange[]) =>
   changed.length > 0 && changed.every((one) => one.property === "cursor");
 
@@ -122,8 +120,6 @@ const written = (value: string | number | boolean | undefined) =>
     ? undefined
     : String(value);
 
-/** A node's own text: its text pieces, apart from the elements inside it,
- * joined by a space. */
 const ownText = (node: StructuralNode) =>
   node.children.filter((child) => typeof child === "string").join(" ");
 

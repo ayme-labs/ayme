@@ -4,22 +4,33 @@ import {
   horizontalBoundaries,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
 
-// The source layout's rules. packages/ayme/AGENTS.md introduces them; this
-// file is the source of truth.
+// The source layout's rules; this file is the source of truth.
+// packages/ayme/AGENTS.md holds the rules lint cannot see.
 
 const packageRoot = import.meta.dirname;
 
-// The slices of src/, and the slices each may use: only those listed before
-// it here. runtime is the composition root: only the entries use it.
+// The slices of src/, and the slices each may use: only those listed before it
+// here. Every folder of src/ is a slice, which src/layout.test.ts checks.
+// runtime is the composition root: only the entries use it.
 const allowedSlices = {
+  // The JSON contracts, tool descriptors, errors, Caller names and small
+  // helpers every slice shares.
   shared: [],
-  // The in-page module (ADR-0049). Only a slice's infrastructure and runtime
-  // may use it, which the layered slices' block below enforces.
+  // The in-page module (ADR-0049): one per document, which captures, keeps
+  // its refs and runs actions there. Only a slice's infrastructure and
+  // runtime may use it, which the layered slices' block below enforces.
   "in-page": ["shared"],
+  // The Structural Page State, its session and history, Change Records,
+  // Structural Refs, acting on the page, and Reach.
   "page-state": ["in-page", "shared"],
+  // Runs: the queue, the Run log, Interactions, and the page instrumentation
+  // that records them and gives Demo Mode.
   runs: ["page-state", "in-page", "shared"],
+  // The @ayme marks, the Page Object registry and tree, and createPage.
   "page-objects": ["runs", "page-state", "in-page", "shared"],
+  // The Browser Tools, Custom Tools, Peek Tools and page context.
   tools: ["page-objects", "runs", "page-state", "in-page", "shared"],
+  // The Goal Loop and its Decision Endpoint.
   "goal-loop": [
     "tools",
     "page-objects",
@@ -28,6 +39,8 @@ const allowedSlices = {
     "in-page",
     "shared",
   ],
+  // createAyme and its options, WebMCP publication, the Inspector and the
+  // Agent Connection.
   runtime: [
     "goal-loop",
     "tools",
@@ -37,11 +50,11 @@ const allowedSlices = {
     "in-page",
     "shared",
   ],
-  // The Page Object compiler, for Node. Only the compiler entry uses it.
+  // The Page Object compiler, for Node.
   compiler: ["page-objects", "shared"],
 };
 const slices = Object.keys(allowedSlices);
-// shared, runtime and compiler stay unlayered, as packages/ayme/AGENTS.md says.
+// The layered slices; the others stay unlayered.
 const layeredSlices = [
   "page-state",
   "runs",
@@ -125,7 +138,18 @@ const ownPackage = [
   },
 ];
 
-function frontDoors(slice, files, { tests, ignores = [], restricted = [] }) {
+// typescript is an optional peer that only the ./compiler entry needs.
+const typescriptInCompiler = {
+  regex: "^typescript(/.*)?$",
+  message:
+    "Only compiler imports typescript, an optional peer that only the ./compiler entry needs.",
+};
+
+function frontDoors(
+  slice,
+  files,
+  { tests, ignores = [], restricted = [], values = [] }
+) {
   const patterns = [
     {
       regex: deepImport(slice),
@@ -145,20 +169,26 @@ function frontDoors(slice, files, { tests, ignores = [], restricted = [] }) {
             message: "Only test code may use test code.",
           },
         ]),
+    ...(slice === "compiler" ? [] : [typescriptInCompiler]),
     ...restricted,
   ];
-  return restrictedImports(files, patterns, [
-    ...(tests ? [] : testCode),
-    ...ignores,
-  ]);
+  return restrictedImports(
+    files,
+    patterns,
+    [...(tests ? [] : testCode), ...ignores],
+    values
+  );
 }
 
 /**
- * Refuses imports matching `patterns` in `files`, for every kind of import.
- * A later block's patterns replace an earlier one's for its files, so each
- * block refuses ownPackage too.
+ * Refuses imports matching `patterns` in `files`, for every kind of import,
+ * and `values` in every import but `import type`, `export type` and a type
+ * written as `import("…")`. `import { type T }` is a value import: under
+ * verbatimModuleSyntax it leaves `import {} from` in the build, which loads
+ * the module. A later block's patterns replace an earlier one's for its
+ * files, so each block refuses ownPackage too.
  */
-function restrictedImports(files, ownPatterns, ignored = []) {
+function restrictedImports(files, ownPatterns, ignored = [], values = []) {
   const patterns = [...ownPatterns, ...ownPackage];
   return {
     files,
@@ -178,6 +208,17 @@ function restrictedImports(files, ownPatterns, ignored = []) {
             message,
           },
         ]),
+        ...values.flatMap(({ regex, message }) =>
+          [
+            `ImportDeclaration[importKind!="type"]`,
+            `ExportNamedDeclaration[exportKind!="type"]`,
+            `ExportAllDeclaration[exportKind!="type"]`,
+            "ImportExpression",
+          ].map((node) => ({
+            selector: `${node}[source.value=${selectorRegex(regex)}]`,
+            message,
+          }))
+        ),
         {
           selector: "ImportExpression[source.type!=Literal]",
           message:
@@ -188,10 +229,10 @@ function restrictedImports(files, ownPatterns, ignored = []) {
   };
 }
 
-// The layer order holds across slices as inside one, so a layer reaches
-// another slice only through the front doors of the layers it may use. These
-// files still break it: each may use one layer's front door, until the issues
-// named with it are done. src/layout.test.ts fails when one no longer needs
+// The layer order holds across slices as inside one (ADR-0046), so a layer
+// reaches another slice only through the front doors of the layers it may
+// use. These files still break it: each may use one layer's front door,
+// until the issues named with it are done. src/layout.test.ts fails when one no longer needs
 // to, so it leaves the list then. New code that needs an exception before its
 // issue is done adds one naming that issue. A "follow-up" has no issue yet.
 const layerOrderExceptions = [
@@ -257,23 +298,43 @@ const layerOrderExceptions = [
 const liteInternalExceptions = [];
 const liteInternal = "@ayme-dev/playwright-lite/internal";
 const liteInternalMessage = `No production file imports Playwright Lite's internal entry, ${liteInternal}: reach the page through Playwright's Page and Locator, or the in-page module (ADR-0049).`;
+const liteInternalPattern = {
+  regex: `^${liteInternal}$`,
+  message: liteInternalMessage,
+};
 const allowlistedEntries = liteInternalExceptions
   .map(({ file }) => file)
   .filter((file) => /^src\/[^/]+\.ts$/.test(file));
 
-/** Relative imports of the in-page module, which domain and application may not use. */
-/** Packages the in-page module may use: core, and Playwright's types on its host side. */
-const inPageDependencies = {
-  regex:
-    "^(?![./]|@ayme-dev/core(/.*)?$|@playwright/test$|virtual:ayme-(in-page|aria-snapshot)$)",
+/** Packages the in-page module may use: core, and on its host side
+ * @playwright/test, for its types only. */
+const inPageDependencies = (playwright) => ({
+  regex: `^(?![./]|@ayme-dev/core(/.*)?$|${playwright ? "@playwright/test$|" : ""}virtual:ayme-(in-page|aria-snapshot)$)`,
   message:
     "The in-page module uses only shared and @ayme-dev/core, and Playwright's types on its host side.",
+});
+// The host reaches the page part only through Playwright's Page, so it
+// takes Playwright's types and none of its values.
+const playwrightValues = {
+  regex: "^@playwright/test$",
+  message:
+    "The in-page module's host side takes only Playwright's types: it reaches the page through Playwright's Page.",
 };
 
+/** Relative imports of the in-page module, which domain and application may not use. */
 const inPageImport = {
   regex: String.raw`^\.\.?/(.*/)?in-page(/.*)?$`,
   message:
     "Only a slice's infrastructure and runtime may use the in-page module.",
+};
+
+// The ./compiler entry, the only one that uses compiler, so no other entry
+// needs typescript. No slice uses compiler either, which allowedSlices says.
+const compilerEntry = "src/compiler.ts";
+const compilerFromItsEntry = {
+  regex: String.raw`^\.\.?/${notTestSupport}(.*/)?compiler(\.[cm]?[jt]s)?(/|$)`,
+  message:
+    "Only the ./compiler entry uses compiler, so no other entry needs typescript, an optional peer.",
 };
 
 export default [
@@ -373,14 +434,28 @@ export default [
     },
   },
   // Every file under src/, in a slice or not; the blocks below add their own.
-  restrictedImports([sourceFiles], []),
+  restrictedImports([sourceFiles], [typescriptInCompiler]),
   ...slices.flatMap((slice) => [
     frontDoors(slice, [`src/${slice}/**/*.ts`], {
       tests: false,
-      restricted: slice === "in-page" ? [inPageDependencies] : [],
+      restricted: {
+        "in-page": [inPageDependencies(false)],
+        // compiler runs in Node without the browser runtime.
+        compiler: [
+          {
+            regex: String.raw`^\.\.?/${notTestSupport}(.*/)?page-objects/(?!domain(/|$))`,
+            message: "compiler uses only shared and page-objects' domain.",
+          },
+        ],
+      }[slice],
     }),
     frontDoors(slice, [`src/${slice}/**/*.test.ts`], { tests: true }),
   ]),
+  frontDoors("in-page", [inPageHost], {
+    tests: false,
+    restricted: [inPageDependencies(true)],
+    values: [playwrightValues],
+  }),
   // A layered slice reaches the browser through its infrastructure: its
   // domain and application act on the page and Document their Run hands
   // them. A later block replaces the rule config above for its files, so it
@@ -461,16 +536,21 @@ export default [
   // refuse it here, but for the allowlisted ones.
   frontDoors(undefined, ["src/*.ts"], {
     tests: false,
+    ignores: [...allowlistedEntries, compilerEntry],
+    restricted: [liteInternalPattern, compilerFromItsEntry],
+  }),
+  frontDoors(undefined, [compilerEntry], {
+    tests: false,
     ignores: allowlistedEntries,
-    restricted: [
-      {
-        regex: `^${liteInternal}$`,
-        message: liteInternalMessage,
-      },
-    ],
+    restricted: [liteInternalPattern],
   }),
   ...(allowlistedEntries.length > 0
-    ? [frontDoors(undefined, allowlistedEntries, { tests: false })]
+    ? [
+        frontDoors(undefined, allowlistedEntries, {
+          tests: false,
+          restricted: [compilerFromItsEntry],
+        }),
+      ]
     : []),
   frontDoors(undefined, ["src/*.test.ts"], { tests: true }),
   // Test support (ADR-0057): a folder of testing/ named after a slice belongs

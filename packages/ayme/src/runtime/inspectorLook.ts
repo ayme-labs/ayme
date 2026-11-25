@@ -5,6 +5,7 @@ import {
   listRootedToolInstances,
 } from "../page-objects/infrastructure";
 import { inPage } from "../in-page";
+import { actionsSettled } from "../runs/infrastructure";
 import { renderPageState } from "../page-state/domain";
 import {
   latestPageStateCapture,
@@ -26,10 +27,13 @@ import { listElementToolTargets } from "./publishedTools";
  * contract: the projected Structural Page State with its refs, each
  * registered target named by the ref of its element, each rooted tool's item
  * by its Page Object id and that ref, and the native controls' states.
- * Records nothing and moves no cursor.
+ * Records nothing and moves no cursor. It reads the page once the runtime's
+ * running page actions have settled, as they need the main thread it holds.
  */
 export async function lookAtInspectorState(): Promise<InspectorLook> {
-  const state = await lookAtPageStateForDocument(document);
+  const state = await lookAtPageStateForDocument(document, () =>
+    actionsSettled(document)
+  );
   const [targets, elementToolTargets, rooted] = await Promise.all([
     listRegisteredPomTargets(),
     listElementToolTargets(state),

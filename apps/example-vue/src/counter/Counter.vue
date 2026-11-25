@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { usePageObject } from "@ayme-dev/vue";
-import { CounterPage } from "../../playwright/pom/CounterPage";
-import { SubCounterPage } from "../../playwright/pom/SubCounterPage";
+import { CounterPage } from "#pom/CounterPage";
+import { SubCounterPage } from "#pom/SubCounterPage";
 
 const count = ref(0);
 // Registered here, not at setup: the counter's presence is this component's

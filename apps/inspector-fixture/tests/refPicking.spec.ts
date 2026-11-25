@@ -1,6 +1,6 @@
 import type { RefField } from "@ayme-dev/inspector/testing";
 
-import type { ListPage } from "../pom/ListPage";
+import type { ListPage } from "#pom/ListPage";
 import { expect, highlightOf, outline, test } from "./fixtures";
 
 // E2E: picking a ref by pointing at the fixture page, with the real ListPage

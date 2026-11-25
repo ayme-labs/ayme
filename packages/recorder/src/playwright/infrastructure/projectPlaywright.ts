@@ -9,7 +9,6 @@ import type * as PlaywrightCore from "playwright-core";
 import range from "../../../playwright-range.json" with { type: "json" };
 import { RecorderStartError } from "../../session/domain";
 
-/** What the adapter uses of Playwright's module. */
 export type Playwright = Pick<typeof PlaywrightCore, "chromium">;
 
 /** The Playwright versions the recorder supports, from the one place that
@@ -29,7 +28,6 @@ export function placeInRange(version: string): "below" | "within" | "above" {
   return "within";
 }
 
-/** The range as a sentence names it. */
 export const rangeText = `Playwright ${range.floor} or newer, and is verified on ${range.floor} to ${range.lastVerified}`;
 
 // The names a project installs Playwright under. Each exports the same

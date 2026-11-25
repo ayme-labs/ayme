@@ -15,7 +15,6 @@ import {
 
 export type { WindowTarget } from "./windowChannelRouter";
 
-/** The recorder window's server, listening at `url`. */
 export type WindowServer = {
   /** The window's local address, such as `http://127.0.0.1:53124/`. */
   readonly url: string;

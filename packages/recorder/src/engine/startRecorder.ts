@@ -10,7 +10,7 @@ import { startRecorderOn, type Recorder } from "./recorder";
 
 export type RecorderOptions = {
   /** The project's folder. Playwright is resolved from here; the engine
-   * brings none of its own. A recording is saved in its `.ayme/recordings`. */
+   * brings none of its own. A recording is saved in its `ayme/recordings`. */
   readonly projectDir: string;
   /** Launch a browser on a URL, or attach to one that is running. */
   readonly browser:

@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#pom/*": "./ayme/pom/*.ts"
+  },
   "scripts": {
     "lab:prepare": "bash scripts/prepare.sh",
     "lab:dev": "bash scripts/dev.sh",
@@ -10,7 +13,7 @@
     "lab:qualify": "bash scripts/qualify.sh",
     "lab:stop": "bash scripts/stop.sh",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p ayme"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",

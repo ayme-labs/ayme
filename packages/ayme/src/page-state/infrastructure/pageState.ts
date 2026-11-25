@@ -129,11 +129,13 @@ export async function getPageStateForDocument(
 /**
  * Capture `currentDocument`'s page state without recording it in the
  * interaction history, for a reader that is not a caller (the Inspector).
+ * The page is read once `ready` resolves.
  */
 export async function lookAtPageStateForDocument(
-  currentDocument: Document
+  currentDocument: Document,
+  ready?: () => Promise<void>
 ): Promise<PageStateLook> {
-  return storeOf(currentDocument).look();
+  return storeOf(currentDocument).look(ready);
 }
 
 /**

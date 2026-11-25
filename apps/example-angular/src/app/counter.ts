@@ -1,8 +1,7 @@
 import { Component, signal } from "@angular/core";
 import { injectPageObject, injectPeek } from "@ayme-dev/angular";
-// Imported through the tsconfig `paths` alias @pom/*.
-import { CounterPage } from "@pom/CounterPage";
-import { SubCounterPage } from "@pom/SubCounterPage";
+import { CounterPage } from "#pom/CounterPage";
+import { SubCounterPage } from "#pom/SubCounterPage";
 
 @Component({
   selector: "app-counter",

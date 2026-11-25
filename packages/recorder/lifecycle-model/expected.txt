@@ -3,7 +3,7 @@
 # with no rule after the colon must hold every rule it checks. `run.sh` fails
 # a config whose broken rules are not exactly these, and `run-all.sh` runs the
 # configs in this order. Progress.cfg is not run (README, "Running it").
-# The README's table, "Running it", says why each config gives what it does.
+# gen-configs.sh says what each config is for.
 #
 # The charts: their rules hold.
 Chart-Lifecycle:

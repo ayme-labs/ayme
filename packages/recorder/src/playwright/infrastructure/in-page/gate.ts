@@ -48,7 +48,6 @@ export type Gate = {
   /** The held click an event is, as it reached the page once sent on; null
    * for an event that is no held click's. */
   heldClickOf(event: Event): HeldClick | null;
-  // Assert visibility.
   /** Leaves every input alone while Playwright's recorder picks an element,
    * or no longer: the picking click is Playwright's, and never reaches the
    * page. It stops by itself after the picking click. */
@@ -157,6 +156,15 @@ export function gateIn(held: string, rules: GateRules): void {
       }
       // A click sent on while the person holds the button down would end
       // their press: it waits for the release, a second at most.
+      // The button is checked once, on purpose. A press that comes after
+      // this check and is still down when the click is sent on is ended by
+      // the click's re-sent release, so a double click can reach the page
+      // as a single click: the second click and the `dblclick` never
+      // happen. Two fixes were rejected: holding each single click for the
+      // person's double-click interval, which would slow every click; and
+      // holding the person's press while a click waits, which would hold
+      // presses and drags, which the gate leaves alone now unless one
+      // matches the click it sends on (`replayed` in pageRules.ts).
       if (pressed)
         await new Promise<void>((resolve) => {
           released = resolve;
@@ -330,7 +338,6 @@ export function gateIn(held: string, rules: GateRules): void {
       mac: navigator.platform.includes("Mac"),
     });
   };
-  /** The key went to the document itself: no element had focus. */
   const nothingFocused = (event: KeyboardEvent) => {
     const target = event.composedPath()[0];
     return target === document.body || target === document.documentElement;

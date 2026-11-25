@@ -21,7 +21,6 @@ export function keepCursorsAsTheyAre(): void {
   take();
 }
 
-/** Hides what Playwright's recorder draws over the page. */
 export function hidePlaywrightOverlay(): void {
   const sheet = new CSSStyleSheet();
   sheet.replaceSync("x-pw-glass { display: none !important; }");
@@ -42,7 +41,10 @@ export type HighlightBox = {
  * before, or takes them away when there is none. It is not part of the
  * page: hidden from the page's structure and from every input, and drawn
  * in a closed shadow root. The highlight and the outline while picking
- * share it, so they look the same.
+ * share it, so they look the same. Its host elements are in the trace's
+ * page snapshots while it is drawn, as the toolbar's host is: Playwright's
+ * snapshotter leaves out only a few kinds of element, none of which can
+ * hold them.
  */
 export function outline(name: string, boxes: readonly HighlightBox[]): void {
   for (const drawn of document.querySelectorAll(name)) drawn.remove();

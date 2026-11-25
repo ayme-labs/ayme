@@ -4,7 +4,10 @@ import boundariesPlugin from "eslint-plugin-boundaries";
 export { boundariesPlugin };
 
 // The layers inside a slice, `src/<slice>/<layer>/`, and what each may use.
-// A slice has only the layers it needs.
+// A slice has only the layers it needs. domain holds pure rules and types;
+// application the flows and the ports they use; infrastructure the adapters
+// to the network, the DOM, storage and Playwright; presentation UI-logic
+// hooks and containers; view components that take props and callbacks.
 export const horizontalLayerElementTypes = [
   "domain",
   "application",

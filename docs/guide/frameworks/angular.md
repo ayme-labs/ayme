@@ -58,8 +58,8 @@ Registering a page doesn't tie it to a route. Give each page a `present` that ch
 // src/app/app.config.ts
 import { ApplicationConfig, isDevMode } from "@angular/core";
 import { provideAyme } from "@ayme-dev/angular";
-import { ProjectsPage } from "../../playwright/pom/ProjectsPage";
-import { SettingsPage } from "../../playwright/pom/SettingsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
+import { SettingsPage } from "#pom/SettingsPage";
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -77,7 +77,7 @@ A component that calls an action gets the session's instance from `injectPageObj
 ```ts
 import { Component } from "@angular/core";
 import { injectPageObject } from "@ayme-dev/angular";
-import { ProjectsPage } from "../../playwright/pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 @Component({
   selector: "app-projects",
@@ -151,7 +151,7 @@ Put `provideAyme` in the application config, not in route providers. The router 
 
 ## Page Object Models
 
-Page Object Models are marked with `@ayme` and `@ayme.action`, as [Page Object Models](../guides/ayme-page-objects.md) shows. Keep each in its own `.ts` file; new Angular workspaces already enable `experimentalDecorators`. Import them with relative paths or through tsconfig `paths` aliases, and share them with your Playwright tests. A Page Object Model inside `node_modules` is not compiled. A model the plugin did not compile fails at `injectPageObject` in the browser.
+Page Object Models are marked with `@ayme` and `@ayme.action`, as [Page Object Models](../guides/ayme-page-objects.md) shows. Keep each in its own `.ts` file in `ayme/pom/`, as [The `ayme` folder](../guides/ayme-folder.md) shows; new Angular workspaces already enable `experimentalDecorators`. Import them through the `#pom/*` alias, and share them with your Playwright tests. A Page Object Model inside `node_modules` is not compiled. A model the plugin did not compile fails at `injectPageObject` in the browser.
 
 During `ng serve`, editing a type a Page Object Model imports updates its tool schema after a reload, without restarting the server.
 
