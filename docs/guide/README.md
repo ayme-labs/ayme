@@ -25,6 +25,7 @@ How to turn your app's Page Object Models into tools that coding agents and your
 - [Inspector](guides/inspector.md): turn on the in-page panel that shows your Page Objects, the page state and the tools, and run them by hand.
 - [Server rendering](guides/server-rendering.md): what ayme does on the server and in the browser with Next.js, Nuxt, SvelteKit and Angular SSR.
 - [Coding agent skills](guides/coding-agent-skill.md): the skills ayme ships for your coding agent, what each is for and how to install it.
+- [Recorder](guides/recorder.md): record a flow in your app for your coding agent to turn into page objects and a test, with the recorder's commands, warnings and limits.
 
 ## Frameworks
 

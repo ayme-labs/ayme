@@ -253,7 +253,6 @@ describe("startWebMcpPublication", () => {
     tools.source.run.mockImplementation(async () => {
       tools.set([]);
       await flush();
-      // Still registered while its call runs.
       expect(driver.names()).toEqual(["Dialog.close"]);
       return "closed";
     });

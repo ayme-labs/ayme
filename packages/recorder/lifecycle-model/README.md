@@ -78,7 +78,7 @@ These break a rule at a person's speed, and the engine keeps them on purpose.
 
 **Input on the blank page a `--start-recording` recording opens on** is not recorded (`X3`, `R04`, `F1`; config `Limit-BlankPageInput`). After Record is applied and before the page has gone to its address, a click on the blank page, or an element picked there with Assert visibility, is held, read and sent on, but the blank page has no Visit, so the timeline drops it: there is nothing on it to record. The cli README says so (`2875db0a`). `X3v`, `R04v` and `F1v` are rules 13a, 4 and F1 for what is done on a page with a Visit, and hold in `Path-StartRecording-BlankPage`.
 
-**The five-second time limit** gives up, as the cli README's Known limits say: a click with no "after" when time runs out is not recorded (R04, X3, X5); clicks still held are sent on together and can reach the page out of order (X1); a click made just after the pause, while one of those still waits, is held and sent on as well (R03a). A fill that showed is kept as it showed. Config `TimeLimit`.
+**The five-second time limit** gives up: a click with no "after" when time runs out is not recorded (R04, X3, X5); clicks still held are sent on together and can reach the page out of order (X1); a click made just after the pause, while one of those still waits, is held and sent on as well (R03a). A fill that showed is kept as it showed. Config `TimeLimit`.
 
 ## Races: actions within a few milliseconds
 
@@ -301,7 +301,7 @@ which runs `java -cp "$TLA2TOOLS" tlc2.TLC -workers 1 -config Rules.cfg Recorder
 
 `run.sh` uses the tool of the `statechart` skill installed in `.agents/skills/statechart`, or the one `STATECHART` names. The tool finds TLC and Java with `mise`, installing them on a first run, or takes `TLA2TOOLS` and `JAVA`. `out/` is generated and not kept.
 
-Every config runs with one TLC worker. An input is a click, with the left or right button, or typing, unless a config says otherwise. The configs, and what each must give:
+Every config runs with one TLC worker. An input is a click, with the left or right button, or typing, unless a config says otherwise. `expected.txt` records the rules each config must break, by name; `run.sh` and `run-all.sh` fail a config that breaks any others, and name the config and what it expected. The configs, and what each must give:
 
 | Config                                                                                                                                              | Scope                                                                                                                                                   | States           | Must give                                                                                                                                        |
 | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -364,5 +364,6 @@ Every config runs with one TLC worker. An input is a click, with the left or rig
 - `*.cfg`: one per config above, written by `gen-configs.sh`.
 - `view-lifecycle.mjs`, `view-gate.mjs`, `view-fill.mjs`, `view-paths.mjs`: the plain words of the charts and the paths.
 - `tlc.sh`, `run.sh`, `run-all.sh`, `gen-configs.sh`: the commands above.
+- `expected.txt`: the rules each config must break, and the order `run-all.sh` runs them in.
 
 Rule names: R01 to R10 are spec rules 1 to 10; X1 is rule 11; X2 and X8 are rule 12; X3 and X5 are rule 13a (R03b is 13b). F1 to F7 are the rules of typed text in the window; F7s is F7 without its exception. X12a is rule 12 around an assertion. X10 says a fill starts from a read of the document it was typed in; X11 that a read of a document the page left is never its latest read; F4n that a key typed in another document is never a fill's text. X3v, R04v and F1v are 13a, 4 and F1 for what is done on a page with a Visit. S1 to S4 are the storage save's (`--save-storage`, #1356): S1, S3 and S4 are among the holding rules, and S2, a rule over a step, is checked with F3's property. P26 to P31 (config `Probes-Storage`) show the save is reached with nothing recorded, with a package, failing, after a Record that could not start, with its trace never started and once a started one is gone, and after a package that could not be written.

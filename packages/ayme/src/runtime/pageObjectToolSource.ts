@@ -28,11 +28,9 @@ export type PageObjectToolTurn = {
   run(name: string, input: unknown): Promise<unknown>;
   /** The Page Object Tree now, and the capture of the page it was read from. */
   readPageObjectTree(): Promise<PageObjectTreeRead>;
-  /** The page's URL now. */
   url(): string;
 };
 
-/** A Page Object Tool's answer to an agent. */
 export type PageObjectToolAnswer = {
   /**
    * Whether the page settled after the action. `false` while a new document

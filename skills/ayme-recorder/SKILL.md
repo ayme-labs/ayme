@@ -68,7 +68,7 @@ mode: structural
 createdAt: 2026-…               # when the recording was stored
 url: https://…                  # where the recording started
 tracePath: ayme/recordings/rec_…/trace.zip   # relative to where codegen ran
-visits:                         # one per page, from a load or a navigation to another path
+visits:                         # one per page: where recording started, a tab that opened, or a navigation to another site or path
   - visitId, url, cause
     baselineTree:               # the page just before the first interaction; with none, the last read
     timelineEntries:            # in order
@@ -100,8 +100,10 @@ A visit's `cause` is `initial` for the page the recording started on,
 or window that opened. The package does not say what made a page navigate.
 When the last step of the visit before could have led there, such as a click
 on a link or Enter pressed in a form, it did. When no step could have, the
-user used the browser's Back or Forward button, reloaded or typed an address,
-or the page redirected by itself. Ask the user which it was rather than guess.
+user used the browser's Back or Forward button or typed an address, or the
+page redirected by itself. Ask the user which it was rather than guess. A
+reload of the same address starts no visit, and neither does a change of only
+the address's query or hash.
 
 A package made by the 0.1 recorder differs in a few places; see
 [Packages from the 0.1 recorder](#packages-from-the-01-recorder).

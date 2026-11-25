@@ -7,7 +7,6 @@ import type {
 } from "../shared";
 import { inspectorChannelPort } from "./inspectorChannelPort";
 
-/** A contract whose commands only record how they were called. */
 function recordingContract() {
   const calls: [string, unknown][] = [];
   const observers = new Set<InspectorObserver>();

@@ -930,8 +930,8 @@ describe("the words of a selector, for a step whose element is not known", () =>
         "getByRole('listitem').getByRole('link', { name: 'Go' })"
       )
     ).toBe("getByRole('listitem').getByRole('link', { name: 'Go' })");
-    // Decision D: a selector with no words of Playwright's is no element's
-    // name, never its raw text.
+    // A selector with no words of Playwright's is no element's name, never
+    // its raw text.
     expect(selectorWords("#main", undefined)).toBe("element");
     expect(selectorWords(null, undefined)).toBeUndefined();
   });

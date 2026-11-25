@@ -8,6 +8,11 @@ each ayme container names the host process it runs in as its deployment node. Ev
 carries its evidence, the file it was verified from or the signal it was inferred from,
 linked relative to the repository root.
 
+[ARCHITECTURE.html](ARCHITECTURE.html) draws this file as an interactive diagram, published
+at https://claude.ai/artifact/5YFUfE3seAb7iu2ffbZMMG. Its data block mirrors this file, so
+change both in the same pull request. After the pull request merges, republish the page from
+`main` to that link, so the published diagram shows what `main` holds.
+
 ## Context
 
 ayme turns the Page Object Models of an app's Playwright tests into tools that coding agents,

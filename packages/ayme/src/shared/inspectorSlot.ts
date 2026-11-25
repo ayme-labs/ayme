@@ -9,7 +9,6 @@ const slotKey = Symbol.for("ayme.inspectorContract");
 
 type Slot = {
   contract?: InspectorContract;
-  /** Callers waiting for a contract to be published. */
   readonly waiting: Set<(contract: InspectorContract) => void>;
 };
 

@@ -1,7 +1,5 @@
-/** The person's choice of theme: the system's scheme, or light or dark. */
 export type ThemePreference = "system" | "light" | "dark";
 
-/** Each choice's name, for a person. */
 export const THEME_LABELS: Record<ThemePreference, string> = {
   system: "System",
   light: "Light",

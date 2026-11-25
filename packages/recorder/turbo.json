@@ -2,7 +2,11 @@
   "extends": ["//"],
   "tasks": {
     "test": {
-      "dependsOn": ["build", "^build"]
+      "dependsOn": ["build", "^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/docs/guide/guides/recorder.md"
+      ]
     },
     "test:crap": {
       "dependsOn": ["build", "^build"]

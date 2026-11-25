@@ -236,7 +236,6 @@ function Discard({
   );
 }
 
-/** Puts a discarded entry back. */
 function Restore({
   command,
   onCommand,
@@ -291,7 +290,6 @@ function Changes({ card, onCommand }: { card: Card; onCommand: OnCommand }) {
   );
 }
 
-/** One element's row: its chip, and what happened to it. */
 function ChangeRow({
   change,
   leave,
@@ -369,7 +367,6 @@ function FoldedRow({
   );
 }
 
-/** What happened to a row's element. */
 function Effect({ text }: { text: string }) {
   return (
     <span

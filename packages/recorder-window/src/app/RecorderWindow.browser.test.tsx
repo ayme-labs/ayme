@@ -105,7 +105,6 @@ function scheme(dark: boolean) {
       matches = next;
       for (const listener of listeners) listener();
     },
-    /** Whether anything still follows the scheme. */
     followed: () => listeners.size > 0,
   };
 }
@@ -918,7 +917,7 @@ it("strikes a discarded entry through, hides what it changed, and restores it fr
   expect(sent).toEqual([{ type: "restore", entry: entryId("interaction_2") }]);
 });
 
-it("offers neither Discard nor Restore while recording", async () => {
+it("offers neither Discard nor Restore when the state offers neither", async () => {
   const { channel, tell } = scriptedChannel();
   mount(channel);
 

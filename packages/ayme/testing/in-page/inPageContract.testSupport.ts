@@ -357,9 +357,7 @@ export function inPageContract(lane: InPageLane) {
     await labelling(host.inPage(page), page, [["Absent", "#absent"]]);
 
     const capture = await host.inPage(page).capture({
-      elements: await page.evaluateHandle<ElementInputs>(
-        '({ ignores: [{ selector: "#ignored" }] })'
-      ),
+      elements: { ignores: [{ selector: "#ignored" }] },
     });
 
     expect(capture.excludedRefs).toEqual([
@@ -480,25 +478,18 @@ export function inPageContract(lane: InPageLane) {
       '<button>Kept</button><aside id="ignored" aria-label="Assistant"><button>Ignored</button></aside>'
     );
     const [host, other] = [lane.createHost(page), lane.createHost(page)];
-    const byMatches = () =>
-      page.evaluateHandle<ElementInputs>(
-        '({ ignores: [{ matches: "ignore" }] })'
-      );
+    const byMatches: ElementInputs = { ignores: [{ matches: "ignore" }] };
 
     const bySelector = await host.inPage(page).capture({
-      elements: await page.evaluateHandle<ElementInputs>(
-        '({ ignores: [{ selector: "#ignored" }] })'
-      ),
+      elements: { ignores: [{ selector: "#ignored" }] },
     });
     await host
       .inPage(page)
       .match(page.getByRole("complementary", { name: "Assistant" }), "ignore");
-    const byLocator = await host
-      .inPage(page)
-      .capture({ elements: await byMatches() });
+    const byLocator = await host.inPage(page).capture({ elements: byMatches });
     const byAnotherHost = await other
       .inPage(page)
-      .capture({ elements: await byMatches() });
+      .capture({ elements: byMatches });
 
     expect(byLocator.excludedRefs).toEqual(bySelector.excludedRefs);
     expect(bySelector.excludedRefs).toHaveLength(2);
@@ -515,9 +506,7 @@ export function inPageContract(lane: InPageLane) {
     const panels = page.getByRole("complementary", { name: "Panel" });
     const capture = async () =>
       inPageOf.capture({
-        elements: await page.evaluateHandle<ElementInputs>(
-          '({ ignores: [{ matches: "ignore" }] })'
-        ),
+        elements: { ignores: [{ matches: "ignore" }] },
       });
 
     await inPageOf.match(panels, "ignore");
@@ -546,9 +535,7 @@ export function inPageContract(lane: InPageLane) {
     const excluded = async (of: InPageHost, key: string) =>
       (
         await of.inPage(page).capture({
-          elements: await page.evaluateHandle<ElementInputs>(
-            `({ ignores: [{ matches: ${JSON.stringify(key)} }] })`
-          ),
+          elements: { ignores: [{ matches: key }] },
         })
       ).excludedRefs;
     await host.inPage(page).match(panel, "ignore");

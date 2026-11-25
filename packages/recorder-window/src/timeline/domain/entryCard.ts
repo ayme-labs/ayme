@@ -14,11 +14,9 @@ import {
 } from "./changeWording";
 import { interactionTitle } from "./entryText";
 
-/** The kinds of entry the window has an icon for. */
 export type EntryIcon =
   "click" | "press" | "fill" | "assertVisible" | "interaction" | "change";
 
-/** An element as a chip shows it. */
 export type Chip = {
   readonly text: string;
   /** Shown on hover: the target's selector, when the chip names it. */
@@ -43,7 +41,6 @@ export type ChangeItem =
       readonly folded: readonly ChangeLine[];
     });
 
-/** One entry as the window shows it. */
 export type EntryCard = {
   readonly icon: EntryIcon;
   readonly title: string;
@@ -91,7 +88,6 @@ function targetOf(
   return targetRef ? { text: `[ref=${targetRef}]`, highlight } : null;
 }
 
-/** The entry's icon and title: an Interaction's kind, or a change's. */
 function headingOf(entry: TimelineEntry): Pick<EntryCard, "icon" | "title"> {
   if (entry.kind !== "interaction")
     return { icon: "change", title: changeTitle(entry.changes) };

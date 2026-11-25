@@ -11,7 +11,6 @@ import { InteractionHistory } from "../domain/interactionHistory";
 import { PageStateSession, type ActionPage } from "./pageStateSession";
 import type { PomRootMarks } from "../domain/pomRootMarks";
 
-/** A capture as the module answers it. */
 type PageCapture = { capture: Capture };
 
 const ref = AriaRefSchema.parse;

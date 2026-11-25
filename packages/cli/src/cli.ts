@@ -5,7 +5,6 @@ import { codegen } from "./codegen";
 import { planOf } from "./plan";
 import { readCommand } from "./readCommand";
 
-// What to do is decided in `planOf`; this only carries the plan out.
 const plan = planOf(readCommand(process.argv.slice(2)));
 const projectDir = process.cwd();
 if (plan.kind === "print") {

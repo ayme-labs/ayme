@@ -192,7 +192,6 @@ function tarballsDir() {
   return dir;
 }
 
-/** Versions of the workspace packages, keyed by package name. */
 function workspaceVersions() {
   const versions = new Map<string, string>();
   for (const dir of fs.readdirSync(packagesRoot)) {
@@ -268,7 +267,6 @@ function findPublicationLeaks(
 }
 
 let tmp = "";
-/** Tarball and extracted package directory, keyed by package name. */
 const packed: Record<string, { tarball: string; dir: string }> = {};
 
 beforeAll(() => {
@@ -340,7 +338,6 @@ function tarballDependencies(names: string[]) {
 }
 
 it("every publishable package is packed, all with one shared version", () => {
-  // Every package that is not private is packed, beside the held-back ones.
   expect(PACKED_PACKAGES.filter((dir) => !isHeldBack(dir)).sort()).toEqual(
     publishableDirs().sort()
   );
