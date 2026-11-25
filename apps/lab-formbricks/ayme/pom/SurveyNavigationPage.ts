@@ -1,7 +1,7 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 import { AppPage } from "./AppPage";
-import { SurveyEditorPage } from "./SurveyEditorPage";
+import { SurveyEditorPage } from "./SurveyPages";
 
 @ayme({
   description: "Where an organization without surveys creates its first one.",

@@ -1,10 +1,17 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 import { AppComponent } from "./AppComponent";
-import { SurveyEditorPage } from "./SurveyEditorPage";
+import type { SurveyEditorPage } from "./SurveyPages";
 
 /** The warning Formbricks shows before it opens the editor of a survey that has responses. */
 export class EditActiveSurveyDialog extends AppComponent {
+  constructor(
+    root: Locator,
+    private readonly createEditorPage: () => SurveyEditorPage
+  ) {
+    super(root);
+  }
+
   @ayme.child
   get editButton(): Locator {
     return this.root.getByRole("button", { name: "Edit", exact: true });
@@ -24,6 +31,6 @@ export class EditActiveSurveyDialog extends AppComponent {
   })
   async edit(): Promise<SurveyEditorPage> {
     await this.editButton.click();
-    return new SurveyEditorPage(this.root.page());
+    return this.createEditorPage();
   }
 }

@@ -1,9 +1,8 @@
 import type { AymeOptions } from "@ayme-dev/ayme";
 
 import { SignInPage } from "./pom/SignInPage";
-import { SurveyEditorPage } from "./pom/SurveyEditorPage";
 import { SurveyNavigationPage } from "./pom/SurveyNavigationPage";
-import { SurveySummaryPage } from "./pom/SurveySummaryPage";
+import { SurveyEditorPage, SurveySummaryPage } from "./pom/SurveyPages";
 
 /**
  * The Page Objects `ayme mcp` serves to the Formbricks lab app, which does
