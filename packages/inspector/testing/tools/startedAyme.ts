@@ -28,8 +28,8 @@ import {
   type PomDefinition,
 } from "@ayme-dev/ayme/inspector";
 
-// Not the slice's index: the tests mock the runtime's internal entry while
-// they load this, and the index would wait on that mock.
+// Not shared's infrastructure front door: the tests mock the runtime's
+// internal entry while they load this, and the front door would wait on that mock.
 // eslint-disable-next-line no-restricted-imports
 import { replaceInspectorTransport } from "../../src/shared/infrastructure/inspectorClient";
 
