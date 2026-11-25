@@ -207,7 +207,7 @@ it("ships none of a framework package's hook code in a build without ayme", asyn
       "The provider options changed while the provider was mounted."
     );
     expect(code).not.toContain(
-      "The Page Object model or provider changed while the component was mounted."
+      "The Page Object provider changed while the component was mounted."
     );
     expect(code).not.toContain("useSyncExternalStore");
     expect(code).not.toContain("Waiting for the WebMCP driver.");
