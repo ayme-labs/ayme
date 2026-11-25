@@ -7,10 +7,10 @@ import { claudeEnvironment } from "./claude.ts";
 import {
   codexDefaultModel,
   codexEnvironment,
-  codexTokenVariable,
   codexSignInPrecondition,
 } from "./codex.ts";
 import {
+  codexTokenVariable,
   readEnvVariable,
   readOauthToken,
   tokenVariable,

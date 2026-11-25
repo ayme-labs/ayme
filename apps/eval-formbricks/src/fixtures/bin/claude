@@ -10,13 +10,26 @@
 // answer depend on the CLAUDE_CODE_OAUTH_TOKEN it receives, as a login does: a
 // token not in it is not logged in and runs nothing. It refuses to start when it
 // is handed the fallback login's variable, which only the harness may hold.
+// FAKE_CLAUDE_TOKEN_LOG names a file where every invocation, `--version` too,
+// appends its first argument and the token variables it was handed.
 // Each user message's text goes to stderr, so a test can see what was sent,
 // as do the arguments and the skills in its configuration folder. The fixture
 // writes that folder, which differs per run, as $CLAUDE_CONFIG_DIR.
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
 
+if (process.env.FAKE_CLAUDE_TOKEN_LOG) {
+  const tokens = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) =>
+      /^(CLAUDE_CODE_OAUTH_TOKEN|CODEX_ACCESS_TOKEN)/.test(name)
+    )
+  );
+  appendFileSync(
+    process.env.FAKE_CLAUDE_TOKEN_LOG,
+    `${JSON.stringify({ command: process.argv[2], tokens })}\n`
+  );
+}
 if (process.argv[2] === "--version") {
   process.stdout.write("2.1.281 (Claude Code)\n");
   process.exit(0);
