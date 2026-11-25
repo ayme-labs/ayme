@@ -215,7 +215,6 @@ const stopped = [
   taken(snapshot1),
   reportingOff,
 ];
-// Visits.
 const navigated = (to: string, page = page1): Happening => ({
   kind: "pageNavigated",
   page,
@@ -229,7 +228,6 @@ const visitAt = (
   kind: "timeline",
   add: { kind: "visit", page, url: at, cause },
 });
-// Every kind of input.
 const letThrough = (upTo: InputId | null): ToDo => ({
   kind: "browser",
   ask: { kind: "letInputsThrough", page: page1, upTo },
@@ -314,7 +312,6 @@ describe("the lifecycle", () => {
     /** The phase it shows; what a wrap-up leads to may be left out. */
     state: Partial<RecorderPhase>;
   }>([
-    // Before anything is recorded.
     {
       name: "an outside end before anything was recorded ends with 'empty'",
       happened: [outsideEnd],
@@ -368,7 +365,6 @@ describe("the lifecycle", () => {
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
 
-    // Record.
     {
       name: "Record starts a Visit for the open page and has Interactions reported; its answer waits",
       happened: [opened, record],
@@ -484,7 +480,6 @@ describe("the lifecycle", () => {
       state: { phase: "notRecording" },
     },
 
-    // A held click.
     {
       name: "a held click gets its 'before', is passed on, and gets its 'after' once the page is settled",
       happened: [opened, ...started, ...oneClick],
@@ -666,7 +661,6 @@ describe("the lifecycle", () => {
       state: { phase: "recording" },
     },
 
-    // Finish.
     {
       name: "Finish stops holding inputs and starts the wrap-up time limit",
       happened: [opened, ...started, finish],
@@ -1095,7 +1089,6 @@ describe("the lifecycle", () => {
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
 
-    // A breakdown.
     {
       name: "a recorder that breaks down ends 'failed' with the reason",
       happened: [
@@ -1153,7 +1146,6 @@ describe("the lifecycle", () => {
       state: { phase: "ended", outcome: { kind: "empty" } },
     },
 
-    // An end from outside while recording.
     {
       name: "an outside end while recording wraps up and saves, as Finish does",
       happened: [opened, ...started, outsideEnd, gateOff, taken(snapshot1)],
@@ -1191,7 +1183,6 @@ describe("the lifecycle", () => {
       state: { phase: "saving" },
     },
 
-    // Visits.
     {
       name: "a page that goes to another address while recording starts a Visit there",
       happened: [opened, ...started, navigated("http://shop.test/cart")],
@@ -1361,7 +1352,6 @@ describe("the lifecycle", () => {
     /** The phase it shows; what a wrap-up leads to may be left out. */
     state: Partial<RecorderPhase>;
   }>([
-    // Stop.
     {
       name: "Stop wraps up as Finish does, and is answered at once",
       happened: [opened, ...started, stop],
@@ -1499,7 +1489,6 @@ describe("the lifecycle", () => {
       state: { phase: "paused" },
     },
 
-    // Paused.
     {
       name: "a report that arrives while paused is ignored: nothing done while not recording appears (rules 3 and 13)",
       happened: [...stopped, reported],
@@ -1538,7 +1527,6 @@ describe("the lifecycle", () => {
       state: { phase: "paused" },
     },
 
-    // Continue.
     {
       name: "Continue has Playwright report Interactions again, starts no Visit, and its answer waits",
       happened: [...stopped, resume],
@@ -1574,7 +1562,6 @@ describe("the lifecycle", () => {
       state: { phase: "recording" },
     },
 
-    // Clear.
     {
       name: "Clear while recording wraps up, and is answered at once",
       happened: [opened, ...started, clear],
@@ -2663,7 +2650,6 @@ describe("the lifecycle, for every kind of input", () => {
       state: { phase: "recording" },
     },
 
-    // Typing waits behind a held input.
     {
       name: "a key typed while a click is held waits: the click's 'after' is taken before the typing reaches the page, which gets no snapshot or wait of its own",
       happened: [
@@ -3114,7 +3100,6 @@ describe("the lifecycle, for discard and restore", () => {
   });
 });
 
-// Follow-ups to every kind of input.
 describe("the lifecycle, for a page that is blank at Record", () => {
   const blank: Happening = {
     kind: "pageOpened",
@@ -4764,7 +4749,6 @@ describe("the lifecycle, for what the review against the spec found", () => {
       state: { phase: "wrappingUp" },
     },
 
-    // The change analysis of the branch: behaviour no row pinned.
     {
       name: "a report of a kind the recorder does not record is ignored, while recording and while wrapping up",
       happened: [
@@ -4917,8 +4901,6 @@ describe("the lifecycle, for the time an answer is given", () => {
   });
 });
 
-// The change analysis of the branch: what the highlight does when the
-// recorder leaves recording and pausing.
 describe("the lifecycle, for a highlight that the recorder leaves behind", () => {
   const highlight: Happening = {
     kind: "command",
@@ -5043,7 +5025,6 @@ describe("the lifecycle, with more than one page", () => {
     todo: ToDo[][];
     state: Partial<RecorderPhase>;
   }>([
-    // Visits.
     {
       name: "Record starts a Visit for every page at an address: the first is 'initial', the others 'openPage'",
       happened: [opened, opened2, record],
@@ -5113,7 +5094,6 @@ describe("the lifecycle, with more than one page", () => {
       state: { phase: "wrappingUp" },
     },
 
-    // A page that closes while another stays open.
     {
       name: "a click held on a page that stays open goes on when another page closes",
       happened: [
@@ -5414,7 +5394,6 @@ describe("the lifecycle, with more than one page", () => {
       state: { phase: "saving" },
     },
 
-    // Told when nothing waits for it.
     {
       name: "a save that is told done when none was under way changes nothing",
       happened: [opened, saved],
@@ -5603,7 +5582,6 @@ describe("the lifecycle, with more than one page", () => {
   });
 });
 
-// The change analysis of the branch: Assert visibility around a pause.
 describe("the lifecycle, for Assert visibility that is left or resumed", () => {
   const assert: Happening = {
     kind: "command",
@@ -5636,8 +5614,6 @@ describe("the lifecycle, for Assert visibility that is left or resumed", () => {
   });
 });
 
-// The change analysis of the branch: what is told a second time, or when
-// its turn is over, changes nothing.
 describe("the lifecycle, for what is told twice or out of turn", () => {
   const reportedAs = (report: InteractionReport): Happening => ({
     kind: "interactionReported",
@@ -5676,7 +5652,6 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
     todo: ToDo[][];
     state: Partial<RecorderPhase>;
   }>([
-    // Starting.
     {
       name: "a trace told started a second time asks for nothing more",
       happened: [opened, ...started, traceStarted],
@@ -5708,7 +5683,6 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
       state: { phase: "recording" },
     },
 
-    // Wrapping up.
     {
       name: "pages that tell they hold inputs back during a wrap-up have confirmed nothing: no last snapshot is taken",
       happened: [opened, ...started, stop, holding],
@@ -5746,7 +5720,6 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
       state: { phase: "paused" },
     },
 
-    // A held input.
     {
       name: "an input told passed on a second time is not waited for twice",
       happened: [opened, ...started, ...clickSettling, passedOn(input1)],
@@ -5814,7 +5787,6 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
       state: { phase: "recording" },
     },
 
-    // Where an input that is not held back starts and ends.
     {
       name: "a choice reported while typing waits for its 'before' does not end at the typing's snapshot: typing is not where an Interaction ends",
       happened: [
@@ -5863,7 +5835,6 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
       state: { phase: "recording" },
     },
 
-    // What Playwright revises.
     {
       name: "a revision with nothing reported to revise since Record changes nothing",
       happened: [
@@ -5939,7 +5910,6 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
   });
 });
 
-// The change analysis of the branch: which held clicks one report covers.
 describe("the lifecycle, for the clicks one report covers", () => {
   const url2 = "http://shop.test/help";
   const held = (input: InputId, count: number, page = page1): Happening => ({
@@ -6185,7 +6155,6 @@ describe("the lifecycle, for rules no row reached", () => {
     todo: ToDo[][];
     state: Partial<RecorderPhase>;
   }>([
-    // Pages.
     {
       name: "a page that opened while recording is read at the end like the others",
       happened: [opened, ...started, opened2, finish, gateOff],
@@ -6248,7 +6217,6 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "wrappingUp" },
     },
 
-    // The trace.
     {
       name: "a trace told stopped a second time writes no second package",
       happened: [...stopped, finish, traceStopped, traceStopped],
@@ -6262,7 +6230,6 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "wrappingUp" },
     },
 
-    // Whose report it is.
     {
       name: "a report that comes while a click's 'before' is still being taken is not that click's: it has not reached the page",
       happened: [
@@ -6336,7 +6303,6 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "recording" },
     },
 
-    // Where an input that is not held back starts and ends.
     {
       name: "a choice reported on one page starts at once, whatever still settles on another",
       happened: [
@@ -6633,7 +6599,6 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "recording" },
     },
 
-    // The clicks one report covers.
     {
       name: "a double click reported before its second click has settled is written once that has, ending where it does",
       happened: [
@@ -6657,7 +6622,6 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "recording" },
     },
 
-    // The time limit of a wrap-up.
     {
       name: "when the time limit passes, a double click whose second click never settled is written with what its first click changed",
       happened: [opened, ...started, ...doubleReportedEarly, stop, timeLimit],
@@ -6685,7 +6649,6 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "paused" },
     },
 
-    // A request the browser could not carry out.
     {
       name: "a page that cannot be let through goes on holding: nothing else is asked",
       happened: [opened, ...started, failed(letThrough(null))],
@@ -6774,7 +6737,6 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "wrappingUp" },
     },
 
-    // Assert visibility.
     {
       name: "Assert visibility waits while a key press is held back",
       happened: [opened, ...started, held(input1, { kind: "press" }), assert],
@@ -6836,7 +6798,6 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "recording" },
     },
 
-    // Highlight.
     {
       name: "an element found for a highlight once the recorder has ended is answered 'ignored'",
       happened: [
@@ -6930,7 +6891,6 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
     todo: ToDo[][];
     state: Partial<RecorderPhase>;
   }>([
-    // An assertion.
     {
       name: "an assertion whose snapshot cannot be taken is written at its page's latest snapshot: nothing is passed on, and two clicks held afterwards are passed on and recorded as usual (rules 1 and 2)",
       happened: [
@@ -6990,7 +6950,6 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
       state: { phase: "recording" },
     },
 
-    // An input known from its report.
     {
       name: "a choice whose first snapshot cannot be taken is recorded with its 'after' only, with a warning; typing reported after it is still written, starting where the choice ends",
       happened: [
@@ -7148,7 +7107,6 @@ describe("the lifecycle, for a snapshot that cannot be taken for an input no pag
       state: { phase: "recording" },
     },
 
-    // The time limit of a wrap-up.
     {
       name: "when the time limit passes while a choice waits for its first snapshot, nothing is asked to be passed on: no page held it",
       happened: [opened, ...started, reportedAs(choice), stop, timeLimit],

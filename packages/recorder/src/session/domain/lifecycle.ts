@@ -96,18 +96,14 @@ export type BrowserSignal =
     }
   /** The trace is stopped and kept, as "stopTrace" asked. */
   | { readonly kind: "traceStopped"; readonly trace: RecordingTrace }
-  // Visits.
   /** A held input can no longer reach its page: the document it was held
    * in is gone. Told instead of "inputPassedOn". */
   | { readonly kind: "inputGone"; readonly input: InputId }
-  // Warnings.
   /** Something a person should know about how the recording is made. */
   | { readonly kind: "browserWarned"; readonly warning: RecorderWarning }
-  // Assert visibility.
   /** Playwright's recorder is in its picking mode now, or no longer is,
    * whoever switched it: it leaves it by itself once the element is picked. */
   | { readonly kind: "picking"; readonly on: boolean }
-  // Highlight.
   /** The browser drew the highlight asked for, or found no element for it
    * for certain and drew nothing. */
   | {
@@ -115,12 +111,10 @@ export type BrowserSignal =
       readonly highlight: number;
       readonly found: boolean;
     }
-  // The trace's order.
   /** The trace is started, as "startTrace" asked: snapshots may be marked. */
   | { readonly kind: "traceStarted" }
   /** The trace is thrown away, as "stopTrace" without `keep` asked. */
   | { readonly kind: "traceDiscarded" }
-  // The storage state.
   /** The storage state is saved, as "saveStorage" asked, or there was no
    * file to save it to. */
   | { readonly kind: "storageSaved" };
@@ -204,14 +198,12 @@ export type BrowserRequest =
    * so that nothing it does, as the page Playwright opens to read an origin
    * no page is at, is recorded or traced. */
   | { readonly kind: "saveStorage" }
-  // Assert visibility.
   /** Have Playwright's recorder pick the element whose visibility is
    * asserted, or stop picking, and have every page leave the picking click
    * alone meanwhile: it is Playwright's, and never reaches the page. Picking
    * that starts is answered by "picking"; one that is asked to stop needs no
    * answer. */
   | { readonly kind: "pick"; readonly on: boolean }
-  // Highlight.
   /** Draw the recorder's own highlight on this element of the page, in
    * place of any other, or on none. Drawn only while no later highlight was
    * asked. One on an element is answered by "highlighted"; one on none needs
@@ -237,10 +229,8 @@ export type Happening =
   | { readonly kind: "saveFailed"; readonly reason: string }
   /** The recorder cannot go on: something it was carrying out broke. */
   | { readonly kind: "brokeDown"; readonly reason: string }
-  // Warnings.
   /** The timeline made something of the recording a person should know of. */
   | { readonly kind: "timelineWarned"; readonly warning: RecorderWarning }
-  // Highlight.
   /** The timeline found how to look for the element of the entry a
    * highlight names on the page as it is now; null when the entry names no
    * element to look for. */
@@ -280,10 +270,8 @@ export type ToDo =
   | { readonly kind: "end"; readonly outcome: RecordingOutcome }
   /** Throw away everything recorded: the timeline starts empty again. */
   | { readonly kind: "clear" }
-  // Warnings.
   /** Tell every subscriber of a warning, once. */
   | { readonly kind: "warn"; readonly warning: RecorderWarning }
-  // Highlight.
   /** Ask the timeline where an element of an entry is now, its target or
    * with `row` the element of that row of its changes, then tell the
    * lifecycle "located". */
@@ -545,7 +533,6 @@ export const initialState: LifecycleState = {
   pages: [],
 };
 
-/** The phase a state shows outside the engine. */
 /** The address of the page that is open: the one that opened last of
  * those still open; null while none is. */
 export function openAddress(state: LifecycleState): string | null {
@@ -589,10 +576,8 @@ const COMMANDS: readonly RecorderCommandType[] = [
   "clear",
   "discard",
   "restore",
-  // Assert visibility.
   "assertVisibility",
   "leaveAssertVisibility",
-  // Highlight.
   "highlight",
   "clearHighlight",
 ];
@@ -733,7 +718,6 @@ function pageOpened(state: LifecycleState, page: Page): Step {
   });
 }
 
-/** A page's main frame is at another address. */
 function pageNavigated(state: LifecycleState, id: PageId, url: string): Step {
   const page = state.pages.find((open) => open.id === id);
   if (!page) return stay(state);
@@ -999,7 +983,6 @@ function record(pages: readonly Page[]): Step {
   };
 }
 
-/** A command asked while recording. */
 function whileRecording(
   state: Extract<LifecycleState, { phase: "recording" }>,
   asked: RecorderCommand
@@ -1023,7 +1006,6 @@ function whileRecording(
   }
 }
 
-/** A command asked while paused. */
 function whilePaused(
   state: Extract<LifecycleState, { phase: "paused" }>,
   asked: RecorderCommand
@@ -1271,8 +1253,6 @@ const discardTrace: ToDo = {
   within: TRACE_STOP_LIMIT_MS,
 };
 
-// Visits.
-
 /** Where a page opened by the page before it starts, before it goes anywhere. */
 const BLANK = "about:blank";
 
@@ -1502,7 +1482,6 @@ function heard(state: Active, draft: Draft, happening: BrowserSignal): Active {
   }
 }
 
-/** The trace is started. */
 function traceStarted(state: Active, draft: Draft): Active {
   if (!state.traceStarting) return state;
   // Playwright reports from the trace on; a wrap-up that began meanwhile
@@ -1515,7 +1494,6 @@ function traceStarted(state: Active, draft: Draft): Active {
   return { ...state, traceStarting: false };
 }
 
-/** Playwright reports Interactions, or no longer does. */
 function reporting(state: Active, draft: Draft, on: boolean): Active {
   if (recordingOf(state)?.starting && on)
     draft.todo.push({
@@ -1525,7 +1503,6 @@ function reporting(state: Active, draft: Draft, on: boolean): Active {
   return state;
 }
 
-/** Every page holds inputs back, or no longer does. */
 function inputsHeld(state: Active, draft: Draft, on: boolean): Active {
   if (state.phase === "wrappingUp")
     return on ? state : { ...state, gateOff: true };
@@ -1539,7 +1516,6 @@ function inputsHeld(state: Active, draft: Draft, on: boolean): Active {
   return { ...state, starting: false };
 }
 
-/** A page held an input back. */
 function inputHeld(
   draft: Draft,
   page: PageId,
@@ -1672,7 +1648,6 @@ function giveSnapshot(draft: Draft, owner: Input, snapshot: PageSnapshot) {
 const startAt = (input: Input, snapshot: SnapshotId, at: number | null) =>
   input.unread && !input.before ? { before: snapshot, passedOnAt: at } : {};
 
-/** A held input has reached its page. */
 function inputPassedOn(
   draft: Draft,
   id: InputId,
@@ -1711,7 +1686,6 @@ function inputPassedOn(
   }
 }
 
-/** The wait asked for after an input is over. */
 function pageSettled(draft: Draft, id: InputId) {
   const input = draft.inputs.find(
     (held) => held.id === id && held.stage === "settling"
@@ -2239,7 +2213,6 @@ const stillWrappingUp = (
   state.switchingOff ||
   state.discardingTrace;
 
-/** Has the pages hold no input back any more. */
 const holdNoMore: ToDo = {
   kind: "browser",
   ask: { kind: "holdInputs", on: false },
@@ -2391,7 +2364,6 @@ const behindUnwritten = (draft: Draft, input: Input) =>
         held.page === input.page && !held.joins && held.held.kind !== "typing"
     );
 
-/** What a wrap-up that is over leads to. */
 function wrappedUp(
   state: Extract<LifecycleState, { phase: "wrappingUp" }>,
   todo: readonly ToDo[]
@@ -2456,7 +2428,6 @@ function giveUp(state: Extract<LifecycleState, { phase: "wrappingUp" }>): Step {
 const heldByItsPage = (input: Input) =>
   input.held.kind !== "asserted" && input.held.kind !== "reported";
 
-/** Lets every input that is still held back reach its page. */
 function release(inputs: readonly Input[]): ToDo[] {
   return inputs
     .filter(
@@ -2509,12 +2480,10 @@ function failed(
       // The page goes on holding what follows: each key it holds is told
       // of, passed on, and lets the page through once more.
       return stay(state);
-    // Assert visibility.
     case "pick":
       // Picking that cannot start is off; picking that cannot be left
       // counts as left, as switching Playwright's recorder off does.
       return request.on ? pickingChanged(state, false, false) : stay(state);
-    // Highlight.
     case "highlight":
       // Nothing is drawn: there is nothing to clear.
       return request.target
@@ -2607,7 +2576,6 @@ function cannotStart(
   };
 }
 
-/** What becomes of an input whose snapshot could not be taken. */
 function withoutItsSnapshot(draft: Draft, owner: Input) {
   if (owner.stage === "takingAfter") {
     // It keeps its "before" only, as when its page is gone. One that was to
@@ -2714,8 +2682,6 @@ function unanswered(
   return proceed({ ...next, ...settle(draft) }, draft.todo);
 }
 
-// Assert visibility.
-
 /** Playwright's name for an assertion that an element is visible. */
 const ASSERTED = "assertVisible";
 
@@ -2813,8 +2779,6 @@ function asserted(draft: Draft, page: PageId, report: InteractionReport) {
   if (earlier?.stage === "settling")
     askSharedSnapshot(draft, earlier, assertion);
 }
-
-// Highlight.
 
 /** Whether the recording can be reviewed now, and its entries highlighted:
  * while recording or paused. */
