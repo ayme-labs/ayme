@@ -245,7 +245,6 @@ const BUTTONS = `
   <button id="second">Second</button>
   <button id="third">Third</button>`;
 
-/** Playwright reports Interactions from now on. */
 async function reporting(browser: Harness) {
   await browser.ask({ kind: "reportInteractions", on: true });
   await browser.toldOf("reportingInteractions");
@@ -444,13 +443,10 @@ async function stockToolEvaluates(
   }
 }
 
-/** The actions the stock trace tool lists for a trace file. */
 const stockToolActions = (file: string) => stockToolList(file, "actions");
 
-/** The requests the stock trace tool lists for a trace file. */
 const stockToolRequests = (file: string) => stockToolList(file, "requests");
 
-/** What the stock trace tool lists for a trace file. */
 async function stockToolList(file: string, list: "actions" | "requests") {
   const cli = projectPlaywrightCli(projectDir)!;
   const cwd = await mkdtemp(join(tmpdir(), "ayme-recorder-compat-"));
@@ -631,8 +627,6 @@ it("tells of a trace that is kept, and of none that is thrown away, and starts a
   ).toEqual([]);
   await rm(dirname(trace.file), { recursive: true, force: true });
 });
-
-// Visits.
 
 // The storage state (ticket #1356): --load-storage and --save-storage make
 // the library calls Playwright's own codegen makes, on the recorded context.
@@ -898,8 +892,6 @@ it("holds a middle click on a checkbox and on a radio, and sends it on without c
   ]);
 });
 
-// Attaching.
-
 it.runIf(attaching)(
   "lets go of a browser it attached to as it found it: open, its page where it was, and Playwright's recorder no longer acting on it",
   async () => {
@@ -1077,7 +1069,6 @@ it.runIf(attaching)(
   }
 );
 
-// Follow-ups to every kind of input.
 it("reports files chosen in a file input as an upload, with their names", async () => {
   const browser = await onStockPlaywright(
     `<label>Photos <input id="photos" type="file" multiple /></label>`
@@ -2076,7 +2067,6 @@ it.runIf(attaching)(
   }
 );
 
-// Private details found in review.
 it("names a click on an element its snapshot does not list by the nearest ancestor it does, with the element's own selector", async () => {
   // A decoration with no role, in a group that has one.
   const browser = await onStockPlaywright(
@@ -2293,7 +2283,6 @@ it("reports typing once, and revises that report with each key typed into the sa
   ]);
 });
 
-// The review of the whole recorder against the spec.
 it("holds a click behind an input that still waits to be passed on, also once the pages no longer hold inputs back: input reaches the page in the order it was given", async () => {
   const browser = await onStockPlaywright(`${BUTTONS}
     <script>

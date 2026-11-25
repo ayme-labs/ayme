@@ -41,7 +41,6 @@ import {
 // adapter sends them into a page: here, where the page code and the plain
 // rules meet, since neither may reach the other's folder.
 
-/** Installs the gate in a document: `gateIn` with the gate's rules. */
 export const installGate: (held: string) => void = withRules(
   gateIn,
   {
@@ -63,13 +62,11 @@ export const installGate: (held: string) => void = withRules(
 
 const ancestorRules = { ancestorChain, elementAbove, ariaRefOf };
 
-/** Installs the target watch in a document. */
 export const installTargetWatch: (tell: string) => void = withRules(
   targetWatchIn,
   { ...ancestorRules, actedOnIndex, controlsSelector, actedOn }
 );
 
-/** Reads the refs of an element's ancestors in its page. */
 export const ancestorRefs: (element: Element) => (string | null)[] = withRules(
   ancestorRefsIn,
   ancestorRules

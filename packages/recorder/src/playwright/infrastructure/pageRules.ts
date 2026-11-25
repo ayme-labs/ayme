@@ -5,7 +5,6 @@
 // (docs/testing.md#code-a-real-browser-runs). Each uses nothing from outside
 // itself but the rules and helpers sent with it.
 
-/** The modifier keys held with an input. */
 export type Modifier = "Alt" | "Control" | "Meta" | "Shift";
 
 /** Which held click an event is: the document that held it, and its number
@@ -87,7 +86,6 @@ export function typingKey(key: KeyFacts): boolean {
   return key.key === "Insert" && key.shift && !key.mac;
 }
 
-/** The kind of a key's target, from what the page says of it. */
 export function keyTarget(
   target: {
     readonly nodeName: string;
@@ -422,7 +420,6 @@ export function letThroughUpTo<
   return Math.max(0, ...through.filter(inDocument).map((input) => input.seq));
 }
 
-/** The rules the gate is sent with. */
 export type GateRules = {
   readonly recordedAsPress: typeof recordedAsPress;
   readonly keyTarget: typeof keyTarget;

@@ -48,7 +48,6 @@ export type Gate = {
   /** The held click an event is, as it reached the page once sent on; null
    * for an event that is no held click's. */
   heldClickOf(event: Event): HeldClick | null;
-  // Assert visibility.
   /** Leaves every input alone while Playwright's recorder picks an element,
    * or no longer: the picking click is Playwright's, and never reaches the
    * page. It stops by itself after the picking click. */
@@ -339,7 +338,6 @@ export function gateIn(held: string, rules: GateRules): void {
       mac: navigator.platform.includes("Mac"),
     });
   };
-  /** The key went to the document itself: no element had focus. */
   const nothingFocused = (event: KeyboardEvent) => {
     const target = event.composedPath()[0];
     return target === document.body || target === document.documentElement;

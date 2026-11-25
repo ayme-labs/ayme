@@ -237,7 +237,6 @@ export const stockBrowser = (
               )
             : unavailable(cause),
       });
-      // Warnings.
       if (placeInRange(version) === "above")
         Queue.offerUnsafe(signals, {
           kind: "browserWarned",
@@ -273,7 +272,6 @@ export const stockBrowser = (
     })
   );
 
-/** Launches Chromium for the recorder with the project's Playwright. */
 const launchIn = (playwright: Playwright, options: Launch) =>
   playwright.chromium.launch({
     headless: options.headless,
@@ -307,10 +305,8 @@ function openWindow(browser: Browser, url: string): void {
 /** Milliseconds on the clock Playwright's own times are on. */
 const now = () => Math.floor(performance.now() * 1e3) / 1e3;
 
-/** This Playwright has no recorder the engine knows how to start. */
 class NoPlaywrightRecorder extends Error {}
 
-/** The running browser has not exactly one page to record. */
 class NotOnePage extends Error {}
 
 /**
@@ -415,9 +411,7 @@ async function openPage(
     { id: InputId; frame: Frame; seq: number }[]
   >();
   let inputs = 0;
-  /** How often the gate was switched. */
   let gateChanges = 0;
-  /** How often Playwright's recorder started or stopped picking. */
   let pickingChanges = 0;
 
   const track = (page: Page) => {
@@ -780,7 +774,6 @@ async function openPage(
     await context.tracing.stop({ path: file });
     const cli = projectPlaywrightCli(projectDir);
     const positions = cli ? await snapshotPositions(cli, file, marked) : {};
-    // Warnings.
     if (Object.keys(positions).length < marked.size)
       tell({
         kind: "browserWarned",
@@ -793,7 +786,6 @@ async function openPage(
     tell({ kind: "traceStopped", trace: { file, positions } });
   }
 
-  /** One request of a kind. */
   type Asked<K extends BrowserRequest["kind"]> = Extract<
     BrowserRequest,
     { kind: K }
@@ -817,10 +809,8 @@ async function openPage(
         return stopTrace(request.keep);
       case "saveStorage":
         return saveStorage();
-      // Assert visibility.
       case "pick":
         return pick(request.on);
-      // Highlight.
       case "highlight":
         return highlight(request);
       case "waitForSettled":
@@ -1244,7 +1234,6 @@ function withLocator(report: InteractionReport, page: Page): InteractionReport {
   }
 }
 
-/** A report of Playwright's recorder, in the engine's words. */
 function reportOf(action: PlaywrightAction): InteractionReport {
   const { name, selector, ref, ariaSnapshot, signals, ...values } = action;
   void signals;
@@ -1387,10 +1376,8 @@ async function pickedRef(element: Locator): Promise<string | undefined> {
 /** How far up from a picked element its ref is looked for. */
 const PICKED_DEPTH = 32;
 
-/** How long finding the element of a highlight may take. */
 const HIGHLIGHT_LOOKUP_MS = 500;
 
-/** How long letting go of an attached browser may take. */
 const LET_GO_LIMIT_MS = 5_000;
 
 /** Sends a held input on to its page, as the press of the mouse or the
