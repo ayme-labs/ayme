@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 import type { ChangeRow } from "../../contract";
 import { foundRows } from "./changeRows";
 
-/** A Change Tree and the page before it. */
 type Change = {
   readonly change: StructuralTree;
   readonly before: StructuralTree;

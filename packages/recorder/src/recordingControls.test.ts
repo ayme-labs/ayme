@@ -941,7 +941,6 @@ describe("the trace of a recording", () => {
   });
 });
 
-// The review of the whole recorder against the spec.
 describe("a wrap-up's time limit", () => {
   it("is that wrap-up's own: the limit of an earlier Stop does not cut a later Finish short (rule 4)", async () => {
     const { recorder, browser } = await start();

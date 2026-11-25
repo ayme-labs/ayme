@@ -215,7 +215,6 @@ const stopped = [
   taken(snapshot1),
   reportingOff,
 ];
-// Visits.
 const navigated = (to: string, page = page1): Happening => ({
   kind: "pageNavigated",
   page,
@@ -229,7 +228,6 @@ const visitAt = (
   kind: "timeline",
   add: { kind: "visit", page, url: at, cause },
 });
-// Every kind of input.
 const letThrough = (upTo: InputId | null): ToDo => ({
   kind: "browser",
   ask: { kind: "letInputsThrough", page: page1, upTo },
@@ -3114,7 +3112,6 @@ describe("the lifecycle, for discard and restore", () => {
   });
 });
 
-// Follow-ups to every kind of input.
 describe("the lifecycle, for a page that is blank at Record", () => {
   const blank: Happening = {
     kind: "pageOpened",
@@ -4764,7 +4761,6 @@ describe("the lifecycle, for what the review against the spec found", () => {
       state: { phase: "wrappingUp" },
     },
 
-    // The change analysis of the branch: behaviour no row pinned.
     {
       name: "a report of a kind the recorder does not record is ignored, while recording and while wrapping up",
       happened: [
@@ -5603,7 +5599,6 @@ describe("the lifecycle, with more than one page", () => {
   });
 });
 
-// The change analysis of the branch: Assert visibility around a pause.
 describe("the lifecycle, for Assert visibility that is left or resumed", () => {
   const assert: Happening = {
     kind: "command",
@@ -5636,8 +5631,6 @@ describe("the lifecycle, for Assert visibility that is left or resumed", () => {
   });
 });
 
-// The change analysis of the branch: what is told a second time, or when
-// its turn is over, changes nothing.
 describe("the lifecycle, for what is told twice or out of turn", () => {
   const reportedAs = (report: InteractionReport): Happening => ({
     kind: "interactionReported",
@@ -5939,7 +5932,6 @@ describe("the lifecycle, for what is told twice or out of turn", () => {
   });
 });
 
-// The change analysis of the branch: which held clicks one report covers.
 describe("the lifecycle, for the clicks one report covers", () => {
   const url2 = "http://shop.test/help";
   const held = (input: InputId, count: number, page = page1): Happening => ({
@@ -6633,7 +6625,6 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "recording" },
     },
 
-    // The clicks one report covers.
     {
       name: "a double click reported before its second click has settled is written once that has, ending where it does",
       happened: [
@@ -6836,7 +6827,6 @@ describe("the lifecycle, for rules no row reached", () => {
       state: { phase: "recording" },
     },
 
-    // Highlight.
     {
       name: "an element found for a highlight once the recorder has ended is answered 'ignored'",
       happened: [
