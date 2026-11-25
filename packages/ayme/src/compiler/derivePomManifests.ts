@@ -1528,6 +1528,10 @@ function schemaForType(
   parameterName: string
 ): JsonSchema {
   if (type.isUnion()) return unionSchema(context, type, parameterName);
+  if (!(type.flags & ts.TypeFlags.EnumLiteral)) {
+    if (type.isStringLiteral()) return { type: "string", enum: [type.value] };
+    if (type.isNumberLiteral()) return { type: "number", enum: [type.value] };
+  }
   if (type.flags & ts.TypeFlags.StringLike) return { type: "string" };
   if (type.flags & ts.TypeFlags.NumberLike) return { type: "number" };
   if (type.flags & ts.TypeFlags.BooleanLike) return { type: "boolean" };

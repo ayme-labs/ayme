@@ -1,9 +1,38 @@
 import { ayme } from "@ayme-dev/ayme";
 
 type Value = string | number | readonly Value[] | { [name: string]: Value };
+type ProjectName = "Gamma";
+
+enum ProjectStatus {
+  Active = "active",
+}
 
 @ayme
 export class ParameterShapesPom {
+  @ayme.action({ description: "Take single literals." })
+  literals(
+    name: ProjectName,
+    count: 3,
+    optionalCount: 0 | undefined,
+    optionalName?: ""
+  ) {
+    return [name, count, optionalCount, optionalName];
+  }
+
+  @ayme.action({ description: "Take nested literals." })
+  nestedLiterals(
+    names: ProjectName[],
+    pair: [ProjectName, 3?],
+    options: { name: ProjectName; count?: 3 }
+  ) {
+    return [names, pair, options];
+  }
+
+  @ayme.action({ description: "Take boolean literals and a declared enum." })
+  otherLiterals(open: true, closed: false, status: ProjectStatus) {
+    return [open, closed, status];
+  }
+
   @ayme.action({ description: "Take an array." })
   array(tags: string[]) {
     return tags;

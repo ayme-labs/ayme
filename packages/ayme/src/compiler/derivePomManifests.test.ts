@@ -13,7 +13,8 @@ import {
 } from "../../testing/compiler/pomCompileError.testSupport";
 import { createPomProgram } from "./pomProgram";
 import { version } from "../../package.json";
-import type { PomManifest } from "../shared";
+import { inputSchemaFor } from "../page-objects/domain";
+import { checkedToolInput, ToolInputError, type PomManifest } from "../shared";
 
 // Each test builds TypeScript Programs, which run several times slower on CI
 // while the browser suites and the packed-consumer test run beside them.
@@ -1398,6 +1399,89 @@ describe("derivePomManifests", () => {
     function parametersOf(methodName: string) {
       return parametersIn(manifestFor("parameterShapesPom"), methodName);
     }
+
+    it("schemas single string and number literals as enums, preserving optionality", () => {
+      expect(parametersOf("literals")).toEqual([
+        {
+          name: "name",
+          optional: false,
+          schema: { type: "string", enum: ["Gamma"] },
+        },
+        {
+          name: "count",
+          optional: false,
+          schema: { type: "number", enum: [3] },
+        },
+        {
+          name: "optionalCount",
+          optional: true,
+          schema: { type: "number", enum: [0] },
+        },
+        {
+          name: "optionalName",
+          optional: true,
+          schema: { type: "string", enum: [""] },
+        },
+      ]);
+    });
+
+    it("refuses another value using the compiled input schema", () => {
+      const schema = inputSchemaFor(parametersOf("literals")!);
+      const valid = { name: "Gamma", count: 3 };
+
+      expect(checkedToolInput(schema, valid)).toEqual(valid);
+      expect(() =>
+        checkedToolInput(schema, { ...valid, name: "Delta", count: 4 })
+      ).toThrow(
+        new ToolInputError(
+          "Input property name must be one of Gamma. Input property count must be one of 3."
+        )
+      );
+    });
+
+    it("schemas single literals inside arrays, tuples and object properties", () => {
+      expect(parametersOf("nestedLiterals")).toEqual([
+        {
+          name: "names",
+          optional: false,
+          schema: { type: "array", items: { type: "string", enum: ["Gamma"] } },
+        },
+        {
+          name: "pair",
+          optional: false,
+          schema: {
+            type: "array",
+            prefixItems: [
+              { type: "string", enum: ["Gamma"] },
+              { type: "number", enum: [3] },
+            ],
+            minItems: 1,
+            maxItems: 2,
+          },
+        },
+        {
+          name: "options",
+          optional: false,
+          schema: {
+            type: "object",
+            properties: {
+              name: { type: "string", enum: ["Gamma"] },
+              count: { type: "number", enum: [3] },
+            },
+            required: ["name"],
+            additionalProperties: false,
+          },
+        },
+      ]);
+    });
+
+    it("keeps single boolean literals and a declared enum as primitive schemas", () => {
+      expect(parametersOf("otherLiterals")).toEqual([
+        { name: "open", optional: false, schema: { type: "boolean" } },
+        { name: "closed", optional: false, schema: { type: "boolean" } },
+        { name: "status", optional: false, schema: { type: "string" } },
+      ]);
+    });
 
     it("schemas an array and a readonly array by their items", () => {
       const manifest = manifestFor("parameterShapesPom");
