@@ -241,7 +241,7 @@ token from its connect link, or without a token only when the page's origin is
 `localhost` or `127.0.0.1`, so another website you have open cannot drive it.
 A connection that sends no `Origin` is accepted without a token too: browsers
 always send one, so it comes from a local program, which can already act as
-you (ADR-0033). Only such a connection may pair as an App Process. Any local
+you (ADR-0066). Only such a connection may pair as an App Process. Any local
 program can therefore offer tools to the agent. The page and App Processes
 pair only with a loopback address. The Inspector's page and script are served
 to a request whose `Host` is `127.0.0.1` or `localhost`, and its WebSocket

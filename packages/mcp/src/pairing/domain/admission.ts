@@ -76,7 +76,7 @@ export function isLocalOrigin(origin: string | undefined): boolean {
 /**
  * Whether a connection whose handshake carries `origin` comes from a local
  * process, such as an App Process: browsers always send `Origin`, and the
- * server listens on loopback only (ADR-0033).
+ * server listens on loopback only (ADR-0066).
  */
 export function isLocalProcess(origin: string | undefined): boolean {
   return origin === undefined;
