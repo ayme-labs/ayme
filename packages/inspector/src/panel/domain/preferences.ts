@@ -31,7 +31,6 @@ export type Preferences = {
   float?: Rect;
   /** The width of the left or right dock. */
   sideWidth: number;
-  /** The height of the bottom dock. */
   bottomHeight: number;
   logo?: Point;
   modelPanes: ModelPanes;
