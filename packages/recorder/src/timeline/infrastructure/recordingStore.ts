@@ -10,7 +10,7 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { RecordingTrace } from "../domain";
+import type { RecordingTrace } from "../domain/recorded";
 import type { Timeline } from "../domain/timeline";
 
 /**

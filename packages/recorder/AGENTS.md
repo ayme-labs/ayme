@@ -16,20 +16,22 @@ The layers inside a slice: `domain` (pure rules and types), `application` (the f
 
 The checks:
 
-- [`eslint.config.js`](eslint.config.js), which [`src/layout.test.ts`](src/layout.test.ts) checks:
-  - which slices each slice may use, in every import of `src/`, tests included, a type written as `import("…")` too;
-  - the layer order across slices ([ADR-0046](../../docs/adr/0046-the-layer-order-holds-across-slices-through-one-front-door-per-layer.md)), in production files only, a type written as `import("…")` too;
-  - in static and dynamic imports only: the front doors (except paths through `testing/`), Playwright only in the `playwright` slice, where Effect may be imported, and which files may reach `infrastructure/live/` and `infrastructure/in-page/`;
-  - in static imports only: code in `in-page/` imports types only.
+- [`eslint.config.js`](eslint.config.js), which [`src/layout.test.ts`](src/layout.test.ts) checks, in static and dynamic imports and a type written as `import("…")`:
+  - which slices each slice may use, in every file of `src/`, tests included;
+  - the layer order across slices ([ADR-0046](../../docs/adr/0046-the-layer-order-holds-across-slices-through-one-front-door-per-layer.md)), in production files only;
+  - inside a slice of `src/`, tests included, no import of the slice's own front doors;
+  - the front doors (except paths through `testing/`), Playwright only in the `playwright` slice, where Effect may be imported, and which files may reach `infrastructure/live/` and `infrastructure/in-page/`;
+  - code in `in-page/` imports types only, so no dynamic `import()`;
+  - no file of `src/` or `testing/` imports the window by its package name;
+  - an `import()` whose module is in backticks with no substitution is refused.
+- [`src/layout.test.ts`](src/layout.test.ts) also checks that every file of a layered slice sits in a layer folder, so the slice has no `index.ts` of its own.
 - [`src/publicTypes.test.ts`](src/publicTypes.test.ts): no type of another package is reachable from the built entry's declarations, and the built engine imports only the packages it lists.
 - [`src/outsideEnd.test.ts`](src/outsideEnd.test.ts): an end from outside finishes from every state it lists, on a browser gone silent.
 
 Nothing checks the rules below, nor those under "Changing the lifecycle":
 
-- Where lint does not look, follow its import rules all the same: the rules for front doors, Playwright, Effect and reaching `live/` and `in-page/` in a type written as `import("…")`, and the types-only rule of `in-page/` in a dynamic `import()`, since they bind every import, and lint reads only the forms above.
-- Import nothing of the window, by package or by path, since the CLI hands the engine where the window's built files and the toolbar's script are; the built-file check sees only what survives bundling.
-- Put every file of a layered slice in a layer folder, and give a layered slice no `index.ts` of its own, so the layer rule judges every production file and import by its layer.
-- Inside a slice, import the module itself rather than a front door, since a door is the slice's surface for other slices, and importing your own layer's door makes an import cycle.
+- Give `import()` a plain string, since lint reads only that string.
+- Import nothing of the window by path either, since the CLI hands the engine where the window's built files and the toolbar's script are; lint refuses the window by package name only, and the built-file check sees only what survives bundling.
 - Hand an application module what it needs done on the disk or in the browser from the composition root, as the session is handed the function that saves a package and the recorded browser as a layer, since lint keeps it from importing another slice's infrastructure.
 - Let nothing but promises, callbacks and plain data leave `src/index.ts`, and turn Effect into promises only in `startRecorderOn`, so callers need neither Effect's nor Playwright's types; the public type test sees another package's type, not an object that is not plain data.
 - Give each id or ref that could be taken for another a type of its own, under a name no other type in the repository has, as `EntryId`, core's `PageId`, `InputId`, `SnapshotId`, `TracePosition` and the refs in [`refs.ts`](src/timeline/domain/refs.ts) are, so the compiler tells them apart.
