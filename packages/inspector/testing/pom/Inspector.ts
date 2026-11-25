@@ -20,22 +20,6 @@ import type { RunCard } from "./RunCard";
  */
 @ayme
 export class Inspector {
-  @ayme.child
-  readonly shell: PanelShell;
-  @ayme.child
-  readonly header: InspectorHeader;
-  @ayme.child
-  readonly logo: CollapsedLogo;
-  @ayme.child
-  readonly navigator: Navigator;
-  @ayme.child
-  readonly detail: DetailPane;
-  @ayme.child
-  readonly runs: RunsView;
-  /** The Structure lens's tree, in the navigator. */
-  @ayme.child
-  readonly structure: StructureLens;
-
   /**
    * @param page a Playwright page with `registerInspectorSelectors` applied,
    *   which reaches into the Inspector's closed shadow root.
@@ -46,24 +30,50 @@ export class Inspector {
   constructor(
     private readonly page: Page,
     private readonly mountedIn?: Locator
-  ) {
-    this.shell = new PanelShell(this.panel);
-    this.header = new InspectorHeader(
+  ) {}
+
+  @ayme.child
+  get shell(): PanelShell {
+    return new PanelShell(this.panel);
+  }
+
+  @ayme.child
+  get header(): InspectorHeader {
+    return new InspectorHeader(
       // The panel header, inside the frame that clips the panel's content.
       this.panel.locator(":scope > div > header"),
       this.container
     );
-    this.logo = new CollapsedLogo(
+  }
+
+  @ayme.child
+  get logo(): CollapsedLogo {
+    return new CollapsedLogo(
       this.container.getByRole("button", { name: "Open ayme" })
     );
-    this.navigator = new Navigator(
+  }
+
+  @ayme.child
+  get navigator(): Navigator {
+    return new Navigator(
       this.panel.getByRole("navigation", { name: "Navigator" })
     );
-    this.detail = new DetailPane(
-      this.panel.getByRole("region", { name: "Selected" })
-    );
-    this.runs = new RunsView(this.panel.getByRole("region", { name: "Runs" }));
-    this.structure = new StructureLens(this.navigator.root);
+  }
+
+  @ayme.child
+  get detail(): DetailPane {
+    return new DetailPane(this.panel.getByRole("region", { name: "Selected" }));
+  }
+
+  @ayme.child
+  get runs(): RunsView {
+    return new RunsView(this.panel.getByRole("region", { name: "Runs" }));
+  }
+
+  /** The Structure lens's tree, in the navigator. */
+  @ayme.child
+  get structure(): StructureLens {
+    return new StructureLens(this.navigator.root);
   }
 
   /**

@@ -179,8 +179,8 @@ in-browser agents and the app's own code call on the running page.
   `ayme-recorder install` installs a browser with the project's own Playwright
 - Technology: Node CLI (`ayme-recorder codegen <url>`, `codegen --cdp-endpoint <address>`,
   `trace` and `install` from `@ayme-dev/cli`), over the engine `@ayme-dev/recorder`, whose
-  flows are written with Effect; all three packages are private until the rebuild matches
-  the released recorder. The engine loads Playwright from the project's folder and bundles
+  flows are written with Effect; `@ayme-dev/cli` is published and bundles the engine and
+  `@ayme-dev/recorder-window`, which stay private. The engine loads Playwright from the project's folder and bundles
   none, and runs the project's own `playwright trace` as a separate process. It keeps
   Visits and element identity and compares page structures with `@ayme-dev/core`, which
   also runs its wait for a Settled Page. `@ayme-dev/recorder-window` is the window, React
@@ -367,9 +367,11 @@ hosting its playground.
     - Evidence: verified: [docs/guide/guides/goals-with-jev.md](docs/guide/guides/goals-with-jev.md)
   - **Playground**: does not run here; it is ayme's own app
     - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
-  - **Recorder**: does not run here yet: `@ayme-dev/cli` is private until the rebuild
-    matches the released recorder
-    - Evidence: verified: [packages/cli/package.json](packages/cli/package.json)
+  - **Recorder**: `npx ayme-recorder codegen <url>` from `@ayme-dev/cli`, run by the
+    developer or their coding agent in the project's folder, with the project's own
+    Playwright; optional
+    - Deployment node: a Node process on the developer's machine
+    - Evidence: verified: [packages/cli/README.md](packages/cli/README.md)
 - External systems:
   - **Host application**: the developer's own app, served by its dev server
     - Evidence: verified: [docs/guide/start/install.md](docs/guide/start/install.md)

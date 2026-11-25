@@ -89,10 +89,10 @@ export function usePageObject<T extends object>(
   model: PageObjectConstructor<T>
 ): T {
   const runtime = useRuntime();
-  const [retained] = useState(() => ({ model, runtime }));
-  if (retained.model !== model || retained.runtime !== runtime)
+  const [initialRuntime] = useState(runtime);
+  if (initialRuntime !== runtime)
     throw new Error(
-      "The Page Object model or provider changed while the component was mounted."
+      "The Page Object provider changed while the component was mounted."
     );
   useEffect(() => {
     runtime.pom.register(model);

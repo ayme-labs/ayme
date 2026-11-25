@@ -92,8 +92,9 @@ export function documentNavigation(currentDocument: Document): Navigation {
 
 /**
  * A Node host's navigation of `page`. Playwright's own calls tell where the
- * page is; a navigation's start is told by the in-page module, whose load
- * report ends the action, so `start` has nothing to wait for but the call.
+ * page is. The in-page module does not see a load Playwright's `goto` or
+ * `reload` starts, so `start` has nothing to wait for but the call, and the
+ * action answers the load from the page before it.
  */
 export function pageNavigation(page: Page): Navigation {
   return {

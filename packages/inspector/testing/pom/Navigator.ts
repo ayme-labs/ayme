@@ -14,15 +14,14 @@ export type LensName = "Model" | "Structure" | "Tools";
 export class Navigator extends PanelPart {
   /** The Model lens's tree. */
   @ayme.child
-  readonly model: ModelLens;
+  get model(): ModelLens {
+    return new ModelLens(this.root);
+  }
+
   /** The Tools lens's tree, while that lens is shown. */
   @ayme.child
-  readonly tools: ToolsLens;
-
-  constructor(root: Locator) {
-    super(root);
-    this.model = new ModelLens(root);
-    this.tools = new ToolsLens(root);
+  get tools(): ToolsLens {
+    return new ToolsLens(this.root);
   }
 
   @ayme.child

@@ -117,7 +117,9 @@ function stepRecord(
     operation,
     chosen,
     result: outcome.result,
-    page_changed: outcome.page_changed,
+    ...(outcome.page_changed === undefined
+      ? {}
+      : { page_changed: outcome.page_changed }),
     ...(outcome.returned !== undefined
       ? { returned: boundedReturned(outcome.returned) }
       : {}),
@@ -141,7 +143,10 @@ async function executeToolAction(
   const action = raw as ActionResult | undefined;
   return {
     result: "ok",
-    page_changed: action?.page_changed ?? false,
+    // A full load whose changes could not be read has no page_changed.
+    ...(action?.loading && action.page_changed === undefined
+      ? {}
+      : { page_changed: action?.page_changed ?? false }),
     // A null return says nothing; an actual value is the step's only trace
     // when its effect is not on the page.
     ...(action?.result != null ? { returned: action.result } : {}),

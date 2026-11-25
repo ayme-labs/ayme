@@ -267,17 +267,24 @@ export class PageStateSession {
    * it: what a failed action did still reaches its Caller once. Where
    * capturing that page throws, the page as last recorded stands in for it.
    *
-   * An action that starts a full page load answers at once, before the old
-   * document goes away, with the Change Record up to the old document's
+   * An action that starts a full page load answers at once when the page
+   * reports the load start, before the old document goes away, else once
+   * `perform` returns, with the Change Record up to the old document's
    * last capture, the URL that is loading and `next`. `perform` and the
    * settle wait are left to finish on their own; their outcome is never
    * reported. A navigation that stays in the document leaves the action to
    * settle as usual.
+   *
+   * With `onlyNavigates`, `perform` changes nothing in the document but
+   * where it is, as a browser Page's `goto` or `reload` does: when the old
+   * document's last capture does not arrive, the page before the action
+   * stands for it.
    */
   async runAction(
     cursor: Cursor,
     call: ToolCall,
-    perform: () => unknown
+    perform: () => unknown,
+    { onlyNavigates = false }: { onlyNavigates?: boolean } = {}
   ): Promise<ActionResult> {
     let actionId = await this.startAction(call);
     let history = this.history;
@@ -288,8 +295,10 @@ export class PageStateSession {
     // capture finds the page moved on since.
     let before = history.latestObservation;
     let outcome: ActionOutcome<unknown>;
+    let pageBefore: Capture;
     try {
       const action = await this.actionPage.begin();
+      pageBefore = action.before;
       // A full load since the session last read the page: the action runs in
       // the new document, whose history it starts in.
       if (this.enter(action.before)) {
@@ -313,7 +322,7 @@ export class PageStateSession {
         cursor,
         { received, before },
         outcome.url,
-        outcome.after
+        outcome.after ?? (onlyNavigates ? pageBefore : undefined)
       );
     if (outcome.kind === "threw") {
       const after = this.checkedOrNone(outcome.after);
@@ -371,7 +380,9 @@ export class PageStateSession {
 
   /**
    * The answer to an action that started a full load of `url`, with the
-   * old document's last capture, when it could take one, as its after.
+   * old document's last capture, when it reached the host, as its after.
+   * Without one the answer says its changes could not be read, rather than
+   * that there were none.
    */
   private async loadingResult(
     actionId: StructuralActionId,
@@ -381,32 +392,26 @@ export class PageStateSession {
     capture: Capture | undefined
   ): Promise<ActionResult> {
     // The document may already be gone; the answer goes out regardless.
-    const record = await (
-      capture === undefined
-        ? Promise.reject(new Error("The old document left no capture."))
-        : this.completeAction(actionId, capture)
-    )
-      .then((after) => {
-        cursor.move(after);
-        return readChangeRecord(this.history, starts, after);
-      })
-      .catch(
-        (): Pick<
-          ActionResult,
-          "page_changed" | "changes_before" | "changes"
-        > => ({
-          page_changed: false,
+    const record =
+      capture &&
+      (await this.completeAction(actionId, capture)
+        .then((after) => {
+          cursor.move(after);
+          return readChangeRecord(this.history, starts, after);
         })
-      );
+        .catch(() => undefined));
+    const unread = record
+      ? ""
+      : " What the action changed before the load could not be read.";
     return {
-      page_changed: record.page_changed,
+      ...(record && { page_changed: record.page_changed }),
       settled: false,
-      ...(record.changes_before
+      ...(record?.changes_before
         ? { changes_before: record.changes_before }
         : {}),
-      ...(record.changes ? { changes: record.changes } : {}),
+      ...(record?.changes ? { changes: record.changes } : {}),
       loading: url,
-      next: `The page is loading ${url}. Call snapshot next to read the new page.`,
+      next: `The page is loading ${url}.${unread} Call snapshot next to read the new page.`,
     };
   }
 

@@ -25,7 +25,6 @@ import {
   type Pairing,
 } from "../pairing";
 import {
-  failedPageObjects,
   findPageObjectsEntry,
   servedPageObjectsServer,
   startPageObjects,
@@ -95,11 +94,7 @@ export async function startMcpServer({
       ...(build ? [servedPageObjectsServer(build)] : []),
     ],
   });
-  const closeBuild = () =>
-    void build?.then(
-      (b) => b.close(),
-      () => {}
-    );
+  const closeBuild = () => void build?.close();
   let port: number;
   try {
     port =
@@ -133,10 +128,7 @@ export async function startMcpServer({
     connection,
     pairing,
     initScript,
-    failedPageObjects: async () =>
-      entry === undefined || build === undefined
-        ? undefined
-        : failedPageObjects(entry, build),
+    pageObjectsBuildState: async () => build?.whenSettled(),
     inspector: {
       url: inspectorUrl(SERVER_HOST, port),
       installed: async () => (await readExternalBuild()) !== undefined,

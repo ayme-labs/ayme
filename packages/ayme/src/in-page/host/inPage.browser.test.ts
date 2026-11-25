@@ -69,6 +69,8 @@ describe("the in-page module over Playwright Lite", () => {
       const next = await loaded(frames.get(page)!, () => {});
       return next.page;
     },
+    // The host and the module share the frame's realm: no message to drop.
+    async holdNextLoad() {},
     hostsOutliveLoads: false,
   });
 });

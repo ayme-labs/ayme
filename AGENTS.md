@@ -45,7 +45,7 @@ Before adding or renaming a term in [GLOSSARY.md](GLOSSARY.md), show the user th
 
 ### Architectural decisions
 
-The rules for writing, replacing and retiring an ADR, and the list of those in force, are in [docs/adr/AGENTS.md](docs/adr/AGENTS.md).
+Before writing, changing or retiring an ADR, read [docs/adr/AGENTS.md](docs/adr/AGENTS.md), which names the skill that holds the rules.
 
 ## Commit types
 

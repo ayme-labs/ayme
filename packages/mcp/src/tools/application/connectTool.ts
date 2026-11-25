@@ -18,7 +18,7 @@ export const connectTool: ServerToolFactory = ({
   connection,
   pairing,
   initScript,
-  failedPageObjects,
+  pageObjectsBuildState,
 }) => ({
   name: "ayme_connect",
   description:
@@ -41,11 +41,9 @@ export const connectTool: ServerToolFactory = ({
       // A call for the page waits a moment for the page this link opens.
       connection.linked();
       if (initScript === undefined) return textResult(link);
-      const failed = await failedPageObjects();
       const serving =
-        failed === undefined
-          ? `This server serves Page Objects to pages that load ${initScript}.`
-          : `${pageObjectsNotBuilt(failed)}${failed.watching ? `\nOnce it builds, this server serves Page Objects to pages that load ${initScript}.` : ""}`;
+        pageObjectsNotBuilt(await pageObjectsBuildState(), initScript) ??
+        `This server serves Page Objects to pages that load ${initScript}.`;
       // One text item, the link alone on its first line: an agent that
       // joins text items with nothing between them would run the link into
       // the next sentence.

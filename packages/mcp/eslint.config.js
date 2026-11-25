@@ -27,12 +27,18 @@ const allowedSlices = {
   // The external Inspector (ADR-0049): serving its build, relaying its
   // window's requests to the paired page, and what `ayme inspect` prints.
   inspector: ["connection", "pairing", "contract"],
-  // The page's tools as MCP tools, the server's own tools, and the client's
-  // and App Process's work with ayme.tools.
-  tools: ["inspector", "connection", "pairing", "contract"],
   // The Page Objects `ayme mcp` serves (ADR-0051): finding, building and
   // serving the entry. Server side only.
   "served-page-objects": ["connection", "pairing", "contract"],
+  // The page's tools as MCP tools, the server's own tools, and the client's
+  // and App Process's work with ayme.tools.
+  tools: [
+    "served-page-objects",
+    "inspector",
+    "connection",
+    "pairing",
+    "contract",
+  ],
   // The composition root of `ayme mcp`, which src/cli.ts starts.
   server: [
     "served-page-objects",

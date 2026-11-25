@@ -1,6 +1,6 @@
 import type { AgentConnection } from "../../connection";
+import type { SettledBuildState } from "../../served-page-objects";
 import {
-  type FailedPageObjects,
   notConnectedResult,
   pageToolResult,
   type ToolResult,
@@ -13,7 +13,7 @@ import {
  * after the server refused a page's ayme, it answers that no page is
  * connected, and why, since the name may be a page tool the agent listed
  * before. While the served Page Objects have no good build, that answer
- * says why (`failedPageObjects`). A call for the page waits while its tab
+ * says why (`pageObjectsBuildState`). A call for the page waits while its tab
  * loads a new document (see `AgentConnection.call`).
  */
 export async function callPageTool(
@@ -21,13 +21,16 @@ export async function callPageTool(
   name: string,
   input: unknown,
   unknown: (name: string) => ToolResult,
-  failedPageObjects: () => Promise<FailedPageObjects | undefined>
+  pageObjectsBuildState: () => Promise<SettledBuildState | undefined>
 ): Promise<ToolResult> {
   const outcome = await connection.call(name, input);
   if (!outcome)
     return connection.paired ||
       (connection.connected && connection.versionGap === undefined)
       ? unknown(name)
-      : notConnectedResult(connection.versionGap, await failedPageObjects());
+      : notConnectedResult(
+          connection.versionGap,
+          await pageObjectsBuildState()
+        );
   return pageToolResult(outcome);
 }

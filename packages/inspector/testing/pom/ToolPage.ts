@@ -7,16 +7,19 @@ import { WhatTheModelSees } from "./WhatTheModelSees";
 
 /** A tool's page in the detail pane. */
 export class ToolPage extends PanelPart {
-  @ayme.child
-  readonly modelSees: WhatTheModelSees;
-  /** The tool's run card. */
-  @ayme.child
-  readonly card: RunCard;
-
   constructor(detail: Locator) {
     super(detail.locator("article[data-tool-page]"));
-    this.modelSees = new WhatTheModelSees(this.root);
-    this.card = new RunCard(this.root.getByRole("form"));
+  }
+
+  @ayme.child
+  get modelSees(): WhatTheModelSees {
+    return new WhatTheModelSees(this.root);
+  }
+
+  /** The tool's run card. */
+  @ayme.child
+  get card(): RunCard {
+    return new RunCard(this.root.getByRole("form"));
   }
 
   /** The tool's name. */

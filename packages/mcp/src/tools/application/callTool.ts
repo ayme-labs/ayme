@@ -9,7 +9,7 @@ import type { ServerToolFactory } from "./serverTool";
 export const callTool: ServerToolFactory = ({
   connection,
   wasOffered,
-  failedPageObjects,
+  pageObjectsBuildState,
 }) => ({
   name: "ayme_call",
   description:
@@ -40,6 +40,6 @@ export const callTool: ServerToolFactory = ({
           : errorResult(
               `No connected page or App Process offers a tool "${name}".`
             ),
-      failedPageObjects
+      pageObjectsBuildState
     ),
 });

@@ -7,8 +7,12 @@ import type { InteractionHistory } from "./interactionHistory";
 
 export type ActionResult = {
   result?: JsonValue;
-  /** Whether either part of the Change Record has a change. */
-  page_changed: boolean;
+  /**
+   * Whether either part of the Change Record has a change. Absent only with
+   * `loading`, when the old document's last capture never reached ayme and
+   * the record could not be read.
+   */
+  page_changed?: boolean;
   settled: boolean;
   /**
    * What changed on the page since the Caller last received it, before the
@@ -27,10 +31,9 @@ export type ActionResult = {
  * The Change Record a failed action's error carries, on the error itself:
  * what changed before the action and what it changed before it failed.
  */
-export type ActionFailure = Pick<
-  ActionResult,
-  "page_changed" | "changes_before" | "changes"
->;
+export type ActionFailure = Pick<ActionResult, "changes_before" | "changes"> & {
+  page_changed: boolean;
+};
 
 /**
  * The sentence every action tool's description ends with: how the result

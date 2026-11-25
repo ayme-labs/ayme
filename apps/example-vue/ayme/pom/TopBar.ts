@@ -1,5 +1,5 @@
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { CreateMenu } from "./CreateMenu";
 
@@ -10,14 +10,10 @@ import { CreateMenu } from "./CreateMenu";
  */
 export class TopBar extends AppPage {
   readonly path = "/harness/create-menu";
-  @ayme.child
-  readonly createMenu: CreateMenu;
 
-  constructor(page: Page) {
-    super(page);
-    this.createMenu = new CreateMenu(
-      page.getByRole("menu", { name: "Create" })
-    );
+  @ayme.child
+  get createMenu(): CreateMenu {
+    return new CreateMenu(this.page.getByRole("menu", { name: "Create" }));
   }
 
   @ayme.child

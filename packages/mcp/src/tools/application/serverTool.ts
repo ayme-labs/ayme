@@ -2,7 +2,8 @@ import type { JsonSchema } from "@ayme-dev/core/tool-input";
 
 import type { AgentConnection } from "../../connection";
 import type { Pairing } from "../../pairing";
-import type { FailedPageObjects, ToolResult } from "../domain/toolResult";
+import type { SettledBuildState } from "../../served-page-objects";
+import type { ToolResult } from "../domain/toolResult";
 
 /** What a server tool may use. */
 export type ServerToolContext = {
@@ -25,11 +26,8 @@ export type ServerToolContext = {
    * serves any (see `served-page-objects`).
    */
   initScript?: string;
-  /**
-   * Why the Page Objects this server serves did not build, while no build
-   * of them has succeeded; `undefined` once one has, or when it serves none.
-   */
-  failedPageObjects(): Promise<FailedPageObjects | undefined>;
+  /** The state after startup and the first build, when the server serves Page Objects. */
+  pageObjectsBuildState(): Promise<SettledBuildState | undefined>;
   /** Whether the connection ever offered a tool by that name, to tell a gone tool from an unknown one. */
   wasOffered(name: string): boolean;
 };

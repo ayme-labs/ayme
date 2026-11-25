@@ -136,7 +136,7 @@ Each step sends the page state, the Page Object Model definitions, the goal, the
     operation: string,   // the tool's name; a Page Object Tool's qualified name
     chosen: Record<string, { key: string, description: string }>,
     result: string,      // "ok", or the error the action failed with
-    page_changed: boolean,
+    page_changed?: boolean, // absent when the step started a full load whose changes could not be read
     changes?: string,    // what the step changed, cut to 400 characters; absent when nothing
     returned?: JsonValue, // what the tool returned, its JSON cut to 200 characters; absent when nothing
     did: string,         // operation(description, …), for a human skimming

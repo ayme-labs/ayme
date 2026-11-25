@@ -1,5 +1,5 @@
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import { AppPage } from "./AppPage";
 import { EditActiveSurveyDialog } from "./EditActiveSurveyDialog";
 import { ShareSurveyDialog } from "./ShareSurveyDialog";
@@ -13,29 +13,35 @@ export class SurveySummaryPage extends AppPage {
   readonly path = "/workspaces/:workspaceId/surveys/:surveyId/summary";
 
   @ayme.child
-  readonly surveyTitleHeading: Locator;
-  @ayme.child
-  readonly editButton: Locator;
-  @ayme.child
-  readonly shareSurveyDialog: ShareSurveyDialog;
-  @ayme.child
-  readonly editActiveSurveyDialog: EditActiveSurveyDialog;
+  get surveyTitleHeading(): Locator {
+    return this.page.getByRole("heading", { level: 1 });
+  }
 
-  constructor(page: Page) {
-    super(page);
-    this.surveyTitleHeading = page.getByRole("heading", { level: 1 });
-    this.editButton = page.getByRole("button", { name: "Edit", exact: true });
+  @ayme.child
+  get editButton(): Locator {
+    return this.page.getByRole("button", { name: "Edit", exact: true });
+  }
+
+  @ayme.child
+  get shareSurveyDialog(): ShareSurveyDialog {
     // The share dialog has no accessible name, so it is found by its copy-link button.
-    this.shareSurveyDialog = new ShareSurveyDialog(
-      page.getByRole("dialog").filter({
-        has: page.getByRole("button", {
+    return new ShareSurveyDialog(
+      this.page.getByRole("dialog").filter({
+        has: this.page.getByRole("button", {
           name: "Copy survey link to clipboard",
           exact: true,
         }),
       })
     );
-    this.editActiveSurveyDialog = new EditActiveSurveyDialog(
-      page.getByRole("dialog", { name: "Edit an active survey?", exact: true })
+  }
+
+  @ayme.child
+  get editActiveSurveyDialog(): EditActiveSurveyDialog {
+    return new EditActiveSurveyDialog(
+      this.page.getByRole("dialog", {
+        name: "Edit an active survey?",
+        exact: true,
+      })
     );
   }
 
