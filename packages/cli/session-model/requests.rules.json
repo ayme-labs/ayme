@@ -1,0 +1,543 @@
+{
+  "context": {
+    "ext": {
+      "min": 0,
+      "max": 5
+    },
+    "owned": "bool",
+    "browserUp": "bool",
+    "record": "bool",
+    "active": {
+      "min": 1,
+      "max": 2
+    },
+    "dialog": {
+      "min": 0,
+      "max": 2
+    },
+    "hasGood": "bool",
+    "lastFailed": "bool",
+    "aTab": {
+      "min": 1,
+      "max": 2
+    },
+    "aClose": "bool",
+    "wTab": {
+      "min": 1,
+      "max": 2
+    },
+    "orph1": "bool",
+    "orph2": "bool",
+    "win1": "bool",
+    "win2": "bool",
+    "pickBy": {
+      "min": 0,
+      "max": 2
+    },
+    "pickAsk": {
+      "min": 0,
+      "max": 2
+    },
+    "listFirstLine": [
+      "none",
+      "tab",
+      "tabAndFailing",
+      "tabWhileLastBuildFailed"
+    ],
+    "swappedUnderPageWork": "bool",
+    "closedByAyme": ["none", "owned", "notOwned"],
+    "scheme": ["session", "perPage"],
+    "id1": {
+      "min": 0,
+      "max": 3
+    },
+    "id2": {
+      "min": 0,
+      "max": 3
+    },
+    "g1": {
+      "min": 0,
+      "max": 3
+    },
+    "g2": {
+      "min": 0,
+      "max": 3
+    },
+    "hw": {
+      "min": 0,
+      "max": 3
+    },
+    "renamePending": "bool",
+    "idReused": "bool"
+  },
+  "init": {
+    "ext": 0,
+    "owned": false,
+    "browserUp": false,
+    "record": false,
+    "active": 1,
+    "dialog": 0,
+    "hasGood": false,
+    "lastFailed": false,
+    "aTab": 1,
+    "aClose": false,
+    "wTab": 1,
+    "orph1": false,
+    "orph2": false,
+    "win1": false,
+    "win2": false,
+    "pickBy": 0,
+    "pickAsk": 0,
+    "listFirstLine": "none",
+    "swappedUnderPageWork": false,
+    "closedByAyme": "none",
+    "scheme": "session",
+    "id1": 0,
+    "id2": 0,
+    "g1": 0,
+    "g2": 0,
+    "hw": 0,
+    "renamePending": false,
+    "idReused": false
+  },
+  "guards": {
+    "outside": "ext < 5",
+    "canStart": "ext < 5",
+    "browserCanGo": "ext < 5",
+    "stopAsked": "in('agent.stopping') && in('life.running')",
+    "abandonedWorkEnds": "event.tab == 1 ? (orph1 && (in('life.running.tab.working') && active == 1) && dialog != 1) : (orph2 && (in('life.running.tab.working') && active == 2) && dialog != 2)",
+    "canNavigate": "false",
+    "canRead": "false",
+    "canOpenDialog": "ext < 5 && dialog == 0",
+    "dialogIsOpen": "ext < 5 && dialog != 0",
+    "buildOk": "event.ok",
+    "canEdit": "ext < 5",
+    "canSwap": "!in('agent.callRunning') && !in('window.callRunning')",
+    "canSwitchTab": "ext < 5 && event.tab != active",
+    "canHideTab": "ext < 5",
+    "canOpenWindow": "ext < 5 && (event.w == 1 ? !win1 : !win2)",
+    "closesLastWindow": "ext < 5 && (event.w == 1 ? (win1 && !win2) : (win2 && !win1))",
+    "closesAWindow": "ext < 5 && (event.w == 1 ? win1 : win2)",
+    "closesPicker": "ext < 5 && event.w == pickBy && (event.w == 1 ? win1 : win2)",
+    "canAskPick": "false",
+    "pickIsStarting": "pickAsk != 0",
+    "askWithoutSession": "ext < 5 && in('life.noSession')",
+    "canAsk": "ext < 5 && in('life.running')",
+    "agentTabHasDialog": "dialog != 0 && dialog == aTab",
+    "agentCanList": "in('life.running.browser.connected') && dialog != aTab && (hasGood || in('life.running.pageObjects.failed')) && !((in('agent.callRunning') && aTab == aTab) || (in('window.callRunning') && wTab == aTab) || (aTab == 1 ? orph1 : orph2))",
+    "agentTabHidden": "in('life.running.browser.connected') && !(in('life.running.tab.working') && active == aTab)",
+    "noGoodPageObjects": "in('life.running.pageObjects.failed') && !hasGood",
+    "agentCanStart": "in('life.running.browser.connected') && (in('life.running.tab.working') && active == aTab) && dialog != aTab && hasGood && !((in('agent.callRunning') && aTab == aTab) || (in('window.callRunning') && wTab == aTab) || (aTab == 1 ? orph1 : orph2))",
+    "agentPageFree": "(in('life.running.tab.working') && active == aTab) && dialog != aTab",
+    "canRun": "ext < 5 && in('life.running') && (in('life.running.inspector.windowOpen') || in('life.running.inspector.picking'))",
+    "windowTabHasDialog": "dialog != 0 && dialog == wTab",
+    "windowTabHidden": "in('life.running.browser.connected') && !(in('life.running.tab.working') && active == wTab)",
+    "windowCanStart": "in('life.running.browser.connected') && (in('life.running.tab.working') && active == wTab) && dialog != wTab && hasGood && !((in('agent.callRunning') && aTab == wTab) || (in('window.callRunning') && wTab == wTab) || (wTab == 1 ? orph1 : orph2))",
+    "windowPageFree": "(in('life.running.tab.working') && active == wTab) && dialog != wTab"
+  },
+  "actions": {
+    "countOutside": {
+      "ext": "ext + 1"
+    },
+    "startOwnBrowser": {
+      "ext": "ext + 1",
+      "record": "true",
+      "owned": "true",
+      "browserUp": "true"
+    },
+    "joinBrowser": {
+      "ext": "ext + 1",
+      "record": "true",
+      "owned": "false",
+      "browserUp": "true"
+    },
+    "browserGone": {
+      "ext": "ext + 1",
+      "dialog": "0",
+      "hasGood": "false",
+      "lastFailed": "false",
+      "orph1": "false",
+      "orph2": "false",
+      "win1": "false",
+      "win2": "false",
+      "pickBy": "0",
+      "pickAsk": "0",
+      "active": "1",
+      "id1": "0",
+      "id2": "0",
+      "g1": "0",
+      "g2": "0",
+      "hw": "max(hw, max(g1, g2))",
+      "renamePending": "false",
+      "record": "false",
+      "browserUp": "false"
+    },
+    "endSession": {
+      "dialog": "0",
+      "hasGood": "false",
+      "lastFailed": "false",
+      "orph1": "false",
+      "orph2": "false",
+      "win1": "false",
+      "win2": "false",
+      "pickBy": "0",
+      "pickAsk": "0",
+      "active": "1",
+      "id1": "0",
+      "id2": "0",
+      "g1": "0",
+      "g2": "0",
+      "hw": "max(hw, max(g1, g2))",
+      "renamePending": "false",
+      "record": "false",
+      "browserUp": "(aClose && owned) ? false : browserUp",
+      "closedByAyme": "aClose ? (owned ? 'owned' : closedByAyme) : closedByAyme"
+    },
+    "endAbandonedWork": {
+      "orph1": "event.tab == 1 ? false : orph1",
+      "orph2": "event.tab == 2 ? false : orph2"
+    },
+    "openDialog": {
+      "ext": "ext + 1",
+      "dialog": "event.tab"
+    },
+    "answerDialog": {
+      "ext": "ext + 1",
+      "dialog": "0"
+    },
+    "keepBuild": {
+      "hasGood": "true",
+      "lastFailed": "false"
+    },
+    "failBuild": {
+      "lastFailed": "true"
+    },
+    "edit": {
+      "ext": "ext + 1",
+      "renamePending": "renamePending || event.rename"
+    },
+    "swap": {
+      "swappedUnderPageWork": "swappedUnderPageWork || orph1 || orph2",
+      "id1": "renamePending ? 0 : id1",
+      "id2": "renamePending ? 0 : id2",
+      "renamePending": "false"
+    },
+    "switchTab": {
+      "ext": "ext + 1",
+      "active": "event.tab"
+    },
+    "openWindow": {
+      "ext": "ext + 1",
+      "win1": "event.w == 1 ? true : win1",
+      "win2": "event.w == 2 ? true : win2"
+    },
+    "closeWindow": {
+      "ext": "ext + 1",
+      "win1": "event.w == 1 ? false : win1",
+      "win2": "event.w == 2 ? false : win2"
+    },
+    "closeWindowEndPick": {
+      "ext": "ext + 1",
+      "win1": "event.w == 1 ? false : win1",
+      "win2": "event.w == 2 ? false : win2",
+      "pickBy": "0"
+    },
+    "askPick": {
+      "ext": "ext + 1",
+      "pickAsk": "event.w"
+    },
+    "beginPick": {
+      "pickBy": "pickAsk",
+      "pickAsk": "0"
+    },
+    "endPick": {
+      "ext": "ext + 1",
+      "pickBy": "0"
+    },
+    "answerNoSession": {
+      "ext": "ext + 1"
+    },
+    "askList": {
+      "ext": "ext + 1",
+      "aTab": "event.tab",
+      "listFirstLine": "'none'"
+    },
+    "askCall": {
+      "ext": "ext + 1",
+      "aTab": "event.tab"
+    },
+    "askDetach": {
+      "ext": "ext + 1",
+      "aClose": "false"
+    },
+    "askClose": {
+      "ext": "ext + 1",
+      "aClose": "true"
+    },
+    "answerList": {
+      "listFirstLine": "in('life.running.pageObjects.failed') ? 'tabAndFailing' : (lastFailed ? 'tabWhileLastBuildFailed' : 'tab')"
+    },
+    "abandonAgentCall": {
+      "orph1": "aTab == 1 ? true : orph1",
+      "orph2": "aTab == 2 ? true : orph2"
+    },
+    "askRun": {
+      "ext": "ext + 1",
+      "wTab": "event.tab"
+    },
+    "abandonWindowCall": {
+      "orph1": "wTab == 1 ? true : orph1",
+      "orph2": "wTab == 2 ? true : orph2"
+    },
+    "navigate": {
+      "ext": "ext + 1",
+      "id1": "event.tab == 1 ? 0 : id1",
+      "id2": "event.tab == 2 ? 0 : id2"
+    },
+    "read": {
+      "id1": "event.tab == 1 ? (scheme == 'session' ? g1 + 1 : (event.tab == 1 ? g1 + 1 : g2 + 1)) : id1",
+      "id2": "event.tab == 2 ? (scheme == 'session' ? g1 + 1 : (event.tab == 1 ? g1 + 1 : g2 + 1)) : id2",
+      "g1": "(scheme == 'session' || event.tab == 1) ? g1 + 1 : g1",
+      "g2": "(scheme == 'perPage' && event.tab == 2) ? g2 + 1 : g2",
+      "idReused": "idReused || (scheme == 'session' ? g1 + 1 : (event.tab == 1 ? g1 + 1 : g2 + 1)) <= hw"
+    }
+  },
+  "events": {
+    "LIST": {
+      "payloads": [
+        {
+          "tab": 1
+        },
+        {
+          "tab": 2
+        }
+      ]
+    },
+    "CALL": {
+      "payloads": [
+        {
+          "tab": 1
+        },
+        {
+          "tab": 2
+        }
+      ]
+    },
+    "RUN": {
+      "payloads": [
+        {
+          "tab": 1
+        },
+        {
+          "tab": 2
+        }
+      ]
+    },
+    "TAB_SWITCH": {
+      "payloads": [
+        {
+          "tab": 1
+        },
+        {
+          "tab": 2
+        }
+      ]
+    },
+    "DIALOG_OPEN": {
+      "payloads": [
+        {
+          "tab": 1
+        },
+        {
+          "tab": 2
+        }
+      ]
+    },
+    "ORPHAN_DONE": {
+      "payloads": [
+        {
+          "tab": 1
+        },
+        {
+          "tab": 2
+        }
+      ]
+    },
+    "NAVIGATE": {
+      "payloads": [
+        {
+          "tab": 1
+        },
+        {
+          "tab": 2
+        }
+      ]
+    },
+    "READ": {
+      "payloads": [
+        {
+          "tab": 1
+        },
+        {
+          "tab": 2
+        }
+      ]
+    },
+    "BUILD_DONE": {
+      "payloads": [
+        {
+          "ok": true
+        },
+        {
+          "ok": false
+        }
+      ]
+    },
+    "EDIT": {
+      "payloads": [
+        {
+          "rename": false
+        }
+      ]
+    },
+    "WINDOW_OPEN": {
+      "payloads": [
+        {
+          "w": 1
+        }
+      ]
+    },
+    "WINDOW_CLOSE": {
+      "payloads": [
+        {
+          "w": 1
+        }
+      ]
+    },
+    "PICK_ASK": {
+      "payloads": [
+        {
+          "w": 1
+        },
+        {
+          "w": 2
+        }
+      ]
+    }
+  },
+  "fairness": {
+    "weak": [
+      "BROWSER_READY",
+      "BUILD_DONE",
+      "SWAP",
+      "ORPHAN_DONE",
+      "READ",
+      "PICK_BEGIN",
+      "STOP_DONE",
+      "A_LIST",
+      "A_DIALOG",
+      "A_HIDDEN",
+      "A_NO_PAGE_OBJECTS",
+      "A_START",
+      "A_DONE",
+      "W_DIALOG",
+      "W_HIDDEN",
+      "W_NO_PAGE_OBJECTS",
+      "W_START",
+      "W_DONE"
+    ]
+  },
+  "citations": {
+    "canSwap": "packages/ayme/src/runtime/session.ts:593",
+    "abandonAgentCall": "packages/ayme/src/runs/application/run.ts:85-91",
+    "abandonWindowCall": "packages/ayme/src/runs/application/run.ts:85-91",
+    "read": "packages/ayme/src/page-objects/application/pageObjectIds.ts:16-70"
+  },
+  "rules": [
+    {
+      "id": "R1_AgentRequestAnswered",
+      "kind": "leads-to",
+      "description": "Rule 1: every request from an `ayme` command gets an answer.",
+      "when": "!in('agent.idle')",
+      "then": "in('agent.idle')"
+    },
+    {
+      "id": "R1_InspectorRunAnswered",
+      "kind": "leads-to",
+      "description": "Rule 1: every tool run from an Inspector window gets an answer.",
+      "when": "!in('window.idle')",
+      "then": "in('window.idle')"
+    },
+    {
+      "id": "R3_DialogAnswersWithoutWaiting",
+      "kind": "leads-to",
+      "description": "Rule 3: while a dialog is open on its tab, a request that needs the page is answered by the session alone, without anyone answering the dialog.",
+      "when": "(in('agent.listing') || in('agent.calling') || in('agent.callRunning')) && dialog != 0 && dialog == aTab",
+      "then": "in('agent.idle')"
+    },
+    {
+      "id": "R4_OneCallPerPage",
+      "kind": "never",
+      "description": "Rule 4: at most one call holds a page's turn.",
+      "when": "(((in('agent.callRunning') && aTab == 1) ? 1 : 0) + ((in('window.callRunning') && wTab == 1) ? 1 : 0) + ((1 == 1 ? orph1 : orph2) ? 1 : 0)) > 1 || (((in('agent.callRunning') && aTab == 2) ? 1 : 0) + ((in('window.callRunning') && wTab == 2) ? 1 : 0) + ((2 == 1 ? orph1 : orph2) ? 1 : 0)) > 1"
+    },
+    {
+      "id": "R5_NoSwapDuringCall",
+      "kind": "never",
+      "description": "Rule 5: the Page Objects are never swapped while a call's work is still running on a page.",
+      "when": "swappedUnderPageWork"
+    },
+    {
+      "id": "R5_RebuildIsSwappedIn",
+      "kind": "leads-to",
+      "description": "Rule 5: a finished rebuild is swapped in.",
+      "when": "in('life.running.pageObjects.built')",
+      "then": "!in('life.running.pageObjects.built')"
+    },
+    {
+      "id": "R6_ListingSaysBuildFailing",
+      "kind": "never",
+      "description": "Rule 6: no listing answered while the last finished build failed leaves out that the build is failing.",
+      "when": "listFirstLine == 'tabWhileLastBuildFailed'"
+    },
+    {
+      "id": "R9_HiddenTabCallFailsAtOnce",
+      "kind": "leads-to",
+      "description": "Rule 9: a call on a hidden tab is answered by the session alone.",
+      "when": "(in('agent.calling') || in('agent.callRunning')) && in('life.running.browser.connected') && !(in('life.running.tab.working') && active == aTab)",
+      "then": "in('agent.idle')"
+    },
+    {
+      "id": "Reach_SwapWaiting",
+      "kind": "reachable",
+      "then": "in('life.running.pageObjects.built') && in('agent.callRunning')"
+    },
+    {
+      "id": "Reach_AbandonedWork",
+      "kind": "reachable",
+      "then": "orph1 || orph2"
+    },
+    {
+      "id": "Reach_TwoCallersQueued",
+      "kind": "reachable",
+      "then": "in('agent.calling') && in('window.callRunning') && aTab == wTab"
+    }
+  ],
+  "bounds": {
+    "maxStates": 400000,
+    "timeoutMs": 0
+  },
+  "assumptions": [
+    "Focus: requests, calls, the page queue, dialogs, hidden tabs and hot reload (rules 1, 3, 4, 5, 6, 8, 9 and the queue half of 11). Pick, ids, attach and close are off; one Inspector window.",
+    "Every outside event (a request, an edit, a tab change, a dialog, a window, the browser going away, a start, detach or close) counts against a budget of 5 per run; the session's own steps are free. A liveness rule therefore asks: once the outside world stops acting, does every pending request get its answer from the session alone?",
+    "Weak fairness covers only the session's own steps. A dialog nobody answers and a tab nobody shows again are allowed to stay that way forever.",
+    "Two tabs. ayme works on the tab in front (`active`); the other tab is hidden. TAB_HIDE hides the front tab too (window minimised or covered).",
+    "Two callers: the agent's `ayme` commands (one request at a time) and Inspector windows running a tool. Each queues on ayme's per-page run queue (packages/ayme/src/runtime/session.ts:593).",
+    "A Playwright action on a tab with an open dialog, or on a hidden tab, does not finish until the dialog is answered or the tab is shown again.",
+    "When the session answers a call early (dialog open, tab hidden), the call's page work keeps the tab's turn on the queue until it really ends (`orph1`, `orph2`): ayme's run queue releases a turn only when its promise settles (packages/ayme/src/runs/application/run.ts:85-91).",
+    "A pageObjects listing takes a turn on the page queue, as page_objects does in ayme's runtime, and is modelled as one step. A tools listing would not queue.",
+    "The session swaps rebuilt Page Objects when none of its own call requests is running.",
+    "A listing's first line names its tab and, when the Page Objects state is `build failed`, says so: one line carries both (rules 6 and 8 each claim the first line).",
+    "Request with no session: answered at once by the thin front, in one step. A start's check and its claim of the record are one step."
+  ]
+}
