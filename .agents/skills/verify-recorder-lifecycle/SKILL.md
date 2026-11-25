@@ -116,8 +116,8 @@ a shared machine run one at a time.
    decide: it no longer describes the code (a step split in two, a branch
    added or removed, a new wait, a new path into the state a rule guards), or
    the change alters a promise on purpose (the commit message, a doc comment,
-   `packages/recorder/AGENTS.md` or the cli README says so), or it has no
-   effect on what the model describes.
+   `packages/recorder/AGENTS.md` or the Recorder guide says so), or it has
+   no effect on what the model describes.
 
 3. **Update the model from the code, not from the result.** Make each changed
    operator do what the code does, one step of `step` as one step of the
