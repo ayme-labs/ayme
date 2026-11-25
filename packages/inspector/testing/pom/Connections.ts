@@ -26,6 +26,14 @@ export class ConnectionRow extends PanelPart {
   get copyButton(): Locator {
     return this.root.getByRole("button", { name: /^Copy / });
   }
+
+  /**
+   * The check on the copy button, which shows just after a copy in place of
+   * the copy icon. Lucide names each icon's SVG by its class.
+   */
+  get checkIcon(): Locator {
+    return this.copyButton.locator("svg.lucide-check");
+  }
 }
 
 /**

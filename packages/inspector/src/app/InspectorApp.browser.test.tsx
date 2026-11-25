@@ -591,6 +591,7 @@ describe("the Inspector", () => {
     expect(await connections.agent.copyButton.getAttribute("title")).toBe(
       "Copy"
     );
+    expect(await connections.agent.checkIcon.count()).toBe(0);
     await connections.agent.copyButton.click();
 
     expect(writeText).toHaveBeenCalledTimes(2);
@@ -599,6 +600,7 @@ describe("the Inspector", () => {
     await expect
       .poll(() => connections.agent.copyButton.getAttribute("title"))
       .toBe("Copied");
+    await expect.poll(() => connections.agent.checkIcon.count()).toBe(1);
     writeText.mockRestore();
   });
 
