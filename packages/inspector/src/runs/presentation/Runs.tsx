@@ -6,7 +6,6 @@ export type RunsProps = Omit<
   RunsViewProps,
   keyof ReturnType<typeof useRunsTimeline>
 > & {
-  /** Brings a run into view. */
   focus?: RunFocus;
   /** Called once the focused run is in view, so the focus can be let go. */
   onFocusShown?: () => void;

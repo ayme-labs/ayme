@@ -43,7 +43,6 @@ export function node(
   };
 }
 
-/** A projected page state of these roots. */
 export function forest(...roots: Child[]): ProjectedStructuralNodeForest {
   return { roots };
 }

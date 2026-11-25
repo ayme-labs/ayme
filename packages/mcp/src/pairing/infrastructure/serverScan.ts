@@ -1,7 +1,6 @@
 import { BUSY_SERVER, PROBE_PATH, SERVER_IDENTITY } from "../domain/admission";
 import { SERVER_HOST } from "../domain/pairing";
 
-/** How long a probe waits for a port to answer. */
 const PROBE_TIMEOUT_MS = 2000;
 
 /**

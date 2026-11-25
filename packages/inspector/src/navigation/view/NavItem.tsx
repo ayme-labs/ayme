@@ -4,7 +4,6 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import { rowFocusRing, rowPress } from "../../shared";
 
-/** A row in a navigator tree or list. */
 export function NavItem({
   selected,
   depth = 0,

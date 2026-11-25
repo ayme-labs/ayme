@@ -105,7 +105,6 @@ function renderRuns(props: Partial<RunsProps> = {}, width?: number) {
   };
 }
 
-/** Whether a row of the timeline fades in as it appears. */
 function fadesIn(row: typeof runsView.runs) {
   return row.evaluate((item) =>
     getComputedStyle(item).transitionProperty.includes("opacity")

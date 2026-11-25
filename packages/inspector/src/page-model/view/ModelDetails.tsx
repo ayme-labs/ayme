@@ -104,7 +104,6 @@ export function ObjectDetail({
   onOpenModel: (className: string) => void;
   /** Goes to a child Page Object or collection, by path. */
   onOpenObject: (path: string) => void;
-  /** Selects one of its members, by path. */
   onSelectMember: (path: string) => void;
 }) {
   const count = node.itemCount ?? 0;
@@ -203,7 +202,6 @@ export function ModelDetail({
   renderRun: RenderRun;
   onOpenModel: (className: string) => void;
   onOpenObject: (node: PageObjectNode) => void;
-  /** Selects one of its members, by path. */
   onSelectMember: (path: string) => void;
 }) {
   const onPage = instances.length > 0;

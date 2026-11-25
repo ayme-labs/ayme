@@ -47,7 +47,6 @@ function runScopeOf(
   membersOf: (ref: string) => readonly string[],
   within: (path: string) => ReadonlySet<string>
 ): { label: RunScope["label"]; includes: Includes } {
-  /** Whether a run's object is one of `paths`. */
   const isOn = (paths: ReadonlySet<string>, run: ChildRun) =>
     run.objectPath !== undefined
       ? paths.has(run.objectPath)
