@@ -3,7 +3,7 @@ status: accepted
 supersedes: ADR-0033
 ---
 
-# Each coding agent's ayme MCP server pairs with one page and with the app's own processes, and its fallback tools reach every tool it lists
+# Each coding agent's ayme MCP server pairs with one page and with the app's own processes, and its fallback tools reach every tool they offer
 
 ## Why
 
@@ -15,11 +15,11 @@ Not every agent client follows changes to a server's tool list, so tools a page 
 
 ## Decision
 
-- Each coding agent runs its own ayme MCP server. The server pairs with one page, through a link the agent asks for, and does not manage a browser.
+- Each coding agent runs its own ayme MCP server. The server pairs with one page and does not manage a browser. A page pairs through a link the agent asks for. A page on the developer's own machine also pairs by itself when exactly one server answers, so a tab that is already open needs no link where the choice cannot be wrong.
 - The app's own processes, such as its dev server or a backend, pair with the same server beside the page, as App Processes. They never replace the page or each other, and each call goes to the connection that offers the tool.
 - A process that looks for the server finds it the way a page does, and pairs only when exactly one server answers.
 - A process pairs without a token when its connection sends no `Origin`. Browsers always send one, and the server listens on loopback only, so such a connection can only come from a local program, which can already act as the developer.
-- Two fixed tools of the server's own, one that lists tools and one that calls any of them by name, keep every tool the server lists reachable, whether or not the agent's client follows tool-list changes. Which of the page's tools the server lists is ADR-0055's.
+- Two fixed tools of the server's own, one that lists tools and one that calls any of them by name, keep every tool of the page and of the App Processes reachable, whether or not the agent's client follows tool-list changes. The server's own tools are in its list from the start, so they need no fallback. Which of the page's tools the server lists is ADR-0055's.
 - WebMCP publication stays for agents that run in the page.
 
 ## Considered and rejected
