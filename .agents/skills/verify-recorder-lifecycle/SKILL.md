@@ -35,12 +35,12 @@ Words used here:
 
 ## When a change touches the verified code
 
-The model covers these files under `packages/recorder/src/`, and stands for
+The model covers these files, and stands for
 each function named in a comment beside the operator that models it (search
 `Recorder.tla` for the function's name):
 
-- `session/domain/lifecycle.ts`: all of `step`, from `record`, `resume`,
-  `wrapUp`, `goOnWrappingUp`, `giveUp`, `wrappedUp`, `endFromOutside`,
+- `packages/recorder/src/session/domain/lifecycle.ts`: all of `step`, from
+  `record`, `resume`, `wrapUp`, `goOnWrappingUp`, `giveUp`, `wrappedUp`, `endFromOutside`,
   `clearPaused`, `traceGone`, `saved`, `cannotStart` (after Record),
   `brokeDown` (while the storage state is saved), `saveFailed`, `ending` and `ended` (the storage
   save, with `storageNotSaved`), through `proceed`, `startNext`,
@@ -54,27 +54,29 @@ each function named in a comment beside the operator that models it (search
   `decidable`, `decide`,
   `pageNavigated` (with `leftDocument`, `elsewhere` and `hadVisit`),
   `keepRead`, `atRecord`, `causeOf`, to `shown` and `offered`.
-- `playwright/infrastructure/live/stockBrowser.ts`: `passOnHeld`, `passOn`,
-  `holdInputs`, `letInputsThrough`, `reportInteractions`,
+- `packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts`:
+  `passOnHeld`, `passOn`, `holdInputs`, `letInputsThrough`, `reportInteractions`,
   `everyReportDelivered`, `saveStorage`, `pick` (Playwright's mode first,
   then the gates),
   `inModeOrder`, `takeSnapshot`, `settle`, `letGo`, the page opened blank to
   start recording (`opening`, which goes to its address in `holdInputs`), and
   the order of reports (`inReportOrder`, `reportFrom`, `withAncestors`,
   `withPickedRef`, `actionAdded`, `actionUpdated`).
-- `playwright/infrastructure/in-page/gate.ts` (`gateIn`, `startGate`, and the
-  gate's `set`, `open`, `arrived`, its picking start and `endPicking`),
+- `packages/recorder/src/playwright/infrastructure/in-page/gate.ts` (`gateIn`,
+  `startGate`, and the gate's `set`, `open`, `arrived`, its picking start and `endPicking`),
   `drawing.ts` (`startPicking`), and `pageRules.ts` (`mouseRoute`,
   `keyRoute`, `keyHeld`, `clickHeld`, `heldButton`, `arrivingEvent`): which
   buttons the gate holds, and which clicks picking leaves to Playwright.
-- `timeline/domain/timeline.ts` (`add`, `keepRead`, `replace`, `retext`,
-  `produce`, `writeInteraction`, `pressedAfter`, `beforeItsPress`, `measure`,
+- `packages/recorder/src/timeline/domain/timeline.ts` (`add`, `keepRead`,
+  `replace`, `retext`, `produce`, `writeInteraction`, `pressedAfter`, `beforeItsPress`, `measure`,
   `changedBefore`, `tell`, `package`) and
   `recorded.ts` (`TimelineAddition`).
-- `session/application/recorderSession.ts` (`publishEntries`, the package write telling `saveFailed`, the time
-  limit), `engine/startRecorder.ts` (Record sent first, for
-  `--start-recording`), `server/infrastructure/toolbarBridge.ts`,
-  `server/infrastructure/windowChannelRouter.ts`.
+- `packages/recorder/src/session/application/recorderSession.ts`
+  (`publishEntries`, the package write telling `saveFailed`, the time limit),
+  `packages/recorder/src/engine/startRecorder.ts` (Record sent first, for
+  `--start-recording`),
+  `packages/recorder/src/server/infrastructure/toolbarBridge.ts`,
+  `packages/recorder/src/server/infrastructure/windowChannelRouter.ts`.
 
 **Sync commit: `33ce414f`** (`recorder/1356-storage-flags`). To see what changed in
 covered code since, from any folder of the repository (the procedure below
@@ -123,7 +125,7 @@ a shared machine run one at a time.
    operator do what the code does, one step of `step` as one step of the
    model, with the function's name in its comment. Change a rule only for a
    promise that changed on purpose, and write down the evidence. Keep the
-   bounds; if you must reduce one, say so. Run `./gen-configs.sh` after
+   bounds; if you must reduce one, say so. Run `gen-configs.sh` after
    changing its table.
 
 4. **Rerun and judge each result.**

@@ -660,7 +660,7 @@ test("checks the SKILL.md of a repo-local skill and leaves a vendored one out", 
   );
 });
 
-test("passes backticked paths that resolve from the file's folder, its src/, the root or the end of a path", () => {
+test("passes backticked paths that resolve from the file's folder, its src/ or the root", () => {
   assert.deepEqual(
     checkDocs(
       agentsFixture({
@@ -670,7 +670,7 @@ test("passes backticked paths that resolve from the file's folder, its src/, the
         "packages/other/d.json": "",
         "packages/lib/AGENTS.md": [
           "`notes/c.md`, `a.ts` is no path, `deep/layer/b.ts`, `./notes/c.md`,",
-          "`LICENSE.md` and `packages/other/d.json`; the end of a path: `layer/b.ts`.",
+          "`LICENSE.md` and `packages/other/d.json`.",
           "Left out: `src/` and `packages/lib/` (folders), `node_modules/effect/AGENTS.md`,",
           "`dist/x.js`, `packages/lib/out/y.js`, `src/<name>/z.ts`,",
           "`src/**/z.ts`, `src/z?.ts`, `{a,b}/z.ts`, `go run ./x/y.go`, `npm:pkg/file.json`,",
@@ -699,6 +699,20 @@ test("fails a backticked path that names no file", () => {
   assert.match(
     problems[0],
     /packages\/lib\/AGENTS\.md:7: `src\/gone\.ts` names no file/
+  );
+});
+
+test("fails a backticked path that is only the end of a file's path", () => {
+  const problems = checkDocs(
+    agentsFixture({
+      "packages/lib/src/deep/layer/b.ts": "",
+      "packages/lib/AGENTS.md": "See `layer/b.ts`.\n",
+    })
+  );
+  assert.equal(problems.length, 1, problems.join("\n"));
+  assert.match(
+    problems[0],
+    /packages\/lib\/AGENTS\.md:1: `layer\/b\.ts` names no file/
   );
 });
 

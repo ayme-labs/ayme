@@ -11,7 +11,8 @@ description: >
 # Dogfooding the Inspector
 
 The Inspector normally hides from ayme: a closed shadow root, a host the page
-state ignores. The inspector-fixture app's `/dogfood.html` mounts it the other
+state ignores. The inspector-fixture app's dogfood page,
+`apps/inspector-fixture/app/dogfood.html`, mounts it the other
 way round, with `mountInspector({ dogfood: true })`: an open shadow root, the
 Agent Connection on, and the Inspector's own Page Object (the one its tests
 use, `@ayme-dev/inspector/testing`) registered beside the list app's. An agent
@@ -107,5 +108,5 @@ Run every command inside the repository's Devbox shell.
   keeps the whole panel out of the page state.
 
 The page and its tests live in `apps/inspector-fixture` (`README.md`,
-`tests/dogfood.spec.ts`). The guide for connecting an agent is
+`apps/inspector-fixture/tests/dogfood.spec.ts`). The guide for connecting an agent is
 `docs/guide/guides/connect-an-agent.md`.

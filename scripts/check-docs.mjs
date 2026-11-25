@@ -47,14 +47,10 @@
  * not ours to edit), to the same link rules and to two more:
  * - a code span that looks like a repository path (it has a `/`, no space and
  *   ends in a source or doc extension) names no file, relative to the file's
- *   folder, to that folder's `src/` or to the repository root, and ends no path
- *   in the repository. A path under
+ *   folder, to that folder's `src/` or to the repository root. A path under
  *   `node_modules/`, `dist/` or `out/`, which the repository does not
  *   hold, a span with a placeholder or glob, and the paths in
- *   `PATHS_NOT_IN_THE_REPOSITORY` are left out. A span also resolves when it
- *   ends a path in the repository, since the files write `infrastructure/x.ts`
- *   for `src/page-state/infrastructure/x.ts` and name files of other packages
- *   and apps.
+ *   `PATHS_NOT_IN_THE_REPOSITORY` are left out.
  * - an `AGENTS.md` is over its word budget in `scripts/agents-word-budgets.json`,
  *   has none, or has one more than `BUDGET_SLACK` words above its count, so a
  *   cut lowers the budget in the same pull request.
@@ -336,19 +332,17 @@ function pathSpans(text) {
 
 /**
  * Whether a path a span names is a file: relative to the file's folder, to its
- * `src/` or to `root`, or the end of the path of a file in the repository.
+ * `src/` or to `root`.
  */
-function repositoryFileExists(root, file, span, files) {
+function repositoryFileExists(root, file, span) {
   const folder = path.join(root, path.dirname(file));
-  const direct = [folder, path.join(folder, "src"), root].some((base) => {
+  return [folder, path.join(folder, "src"), root].some((base) => {
     try {
       return fs.statSync(path.join(base, span)).isFile();
     } catch {
       return false;
     }
   });
-  const tail = `/${span.replace(/^\.?\//, "")}`;
-  return direct || files.some((known) => `/${known}`.endsWith(tail));
 }
 
 /** The words in a file: its runs of characters between white space, as `wc -w` counts them. */
@@ -910,7 +904,7 @@ export function checkDocs(root) {
       for (const { span, line } of pathSpans(raw))
         if (
           !PATHS_NOT_IN_THE_REPOSITORY[file]?.has(span) &&
-          !repositoryFileExists(root, file, span, files)
+          !repositoryFileExists(root, file, span)
         )
           report(
             file,
