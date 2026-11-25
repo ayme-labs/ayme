@@ -19,8 +19,10 @@ changes, a report that comes after the recorder stopped waiting for it. Tests
 check the orders someone thought of. The model in
 `packages/recorder/lifecycle-model/` checks every order of its steps within
 its bounds, and gives the shortest sequence of steps to each rule that breaks.
-Its README holds the rules, the known limits, the races, the charts and what
-the model leaves out. Read it before you change anything.
+Each rule is the comment above its check in `Recorder.tla`, under "The
+rules". The model's README holds the known limits, the races, the
+assumptions and what the model leaves out. Read both before you change
+anything.
 
 Words used here:
 
@@ -84,7 +86,7 @@ git log --oneline 33ce414f..HEAD -- ':(top)packages/recorder/src'
 
 A change touches the model when it adds, removes or reorders a step of the
 covered functions, changes what one of them waits for, or changes what a
-rule in the README promises. A rename, a comment, or code the README lists
+rule in `Recorder.tla` promises. A rename, a comment, or code the README lists
 as left out does not.
 
 ## Procedure
@@ -104,9 +106,8 @@ a shared machine run one at a time.
    `out/Chart-*/chart.mmd`. It compares the rules that break in each config
    with `expected.txt`, and a config that gives others, or that the tool could
    not check in full (no report, or TLC stopped with an error), is named with its log in `out-<config>.log`, and
-   the run exits non-zero. Read every report with the `statechart` skill. The
-   README's table, "Running it", says why each config gives what it does and
-   how many states it reaches. `./run.sh <config>` checks one config the same
+   the run exits non-zero. Read every report with the `statechart` skill.
+   `gen-configs.sh` says what each config is for. `./run.sh <config>` checks one config the same
    way. To check one config with TLC alone, set `TLA2TOOLS` (README,
    "Running it") and run `./tlc.sh Rules`.
 
@@ -136,15 +137,15 @@ a shared machine run one at a time.
      mechanism in a scratch copy of `Recorder.tla` (remove the new check,
      reorder the new step) and confirm the rule breaks. A check you never saw
      fail proves nothing.
-   - Every probe (P1 to P31) must still break: each shows the model still
-     reaches a situation.
+   - Every config must still break exactly the rules `expected.txt` lists for
+     it, its probes included.
 
-5. **Update the README and this skill**: the rules and their outcomes, the
-   known limits and races, the table of configs with the states they reach
-   and `expected.txt`,
-   the charts (from `out/Chart-*/chart.mmd`), the coverage above, and the
-   engine commit the model was last compared with, in both places. Move the
-   sync commit only after the model describes the code at the new commit.
+5. **Update what the change made stale**: the rule comments in
+   `Recorder.tla`, `expected.txt`, the README's known limits, races,
+   assumptions and what the model leaves out, the coverage above, and the
+   sync commit above. Move the sync commit only after the model describes
+   the code at the new commit. When this step changes a line of
+   `expected.txt`, run that config again with `./run.sh <config>`.
    Put the model's update in a commit of its own, apart from any engine fix.
 
 ## What a result means
