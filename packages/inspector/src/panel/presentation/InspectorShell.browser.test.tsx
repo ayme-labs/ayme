@@ -288,7 +288,6 @@ describe("motion", () => {
     );
   }
 
-  /** An easing as the browser writes it back. */
   function asTheBrowserWrites(easing: string) {
     return new KeyframeEffect(null, null, { easing }).getTiming().easing;
   }

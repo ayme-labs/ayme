@@ -16,7 +16,6 @@ function subscribe(onChange: () => void) {
   return () => window.removeEventListener("resize", onChange);
 }
 
-/** The viewport's size, kept current as the window resizes. */
 export function useViewport(): Viewport {
   return useSyncExternalStore(subscribe, readViewport);
 }
