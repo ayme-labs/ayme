@@ -13,6 +13,7 @@
 - [apps/example-vue/](apps/example-vue/): the hosted playground where visitors try ayme before integrating it. A visitor installs only ayme's MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
 - [docs/testing.md](docs/testing.md): the test lanes and where test-only code lives. Read it before adding tests or test helpers, and read its [Local runs and CI](docs/testing.md#local-runs-and-ci) section before running anything beyond one package's tests.
 - Before a pull request goes ready, follow the [change-analysis guidance](docs/testing.md#change-analysis).
+- Before a pull request goes ready, review it with the [product-surfaces skill](skills/product-surfaces/SKILL.md), with evidence, and post the review on it: a reviewer sees what each consumer will notice without reading the code.
 - [docs/framework-integrations.md](docs/framework-integrations.md): what a framework integration ships, its behaviour contract and the files a new framework touches. Read it before adding or changing a framework integration.
 - [docs/releasing.md](docs/releasing.md): how the published packages are versioned and released.
 - [Experimental APIs](docs/guide/reference/experimental-apis.md): the APIs whose shape is not settled yet. Read [ADR-0037](docs/adr/0037-unsettled-apis-ship-marked-experimental.md) before marking an API experimental or graduating one.
