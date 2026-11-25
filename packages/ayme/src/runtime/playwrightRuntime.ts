@@ -96,6 +96,7 @@ export function createPlaywrightAyme(
     ...core,
     agentTools: {
       list: agentTools.list,
+      subscribe: agentTools.subscribe,
       run: (name, input) =>
         name === pageObjectsTool.name
           ? readThroughLoads(page, () => agentTools.run(name, input))

@@ -381,6 +381,10 @@ export const appProcessToolsBySession = new WeakMap<Ayme, AppProcessTools>();
  */
 export type AgentTools = {
   list(): readonly (ToolInfo & { description?: string })[];
+  /** Spike: calls `listener` with the new list after each change. */
+  subscribe(
+    listener: (tools: readonly (ToolInfo & { description?: string })[]) => void
+  ): () => void;
   run(name: string, input: unknown): Promise<unknown>;
 };
 /** Spike: the agent tools of each session, for a Node host that has no loader. */

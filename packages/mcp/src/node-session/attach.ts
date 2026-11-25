@@ -8,17 +8,20 @@ import { pathToFileURL } from "node:url";
 import type { Browser, Page } from "@playwright/test";
 
 type Playwright = typeof import("@playwright/test");
+type AgentTool = {
+  name: string;
+  group?: string;
+  description?: string;
+  inputSchema: unknown;
+};
+
 /** What the spike uses of the project's `@ayme-dev/ayme/playwright`. */
 export type AymePlaywright = {
   createAyme(options: { page: Page; pageObjects: readonly unknown[] }): {
     start(): Promise<() => void>;
     agentTools: {
-      list(): readonly {
-        name: string;
-        group?: string;
-        description?: string;
-        inputSchema: unknown;
-      }[];
+      list(): readonly AgentTool[];
+      subscribe(listener: (tools: readonly AgentTool[]) => void): () => void;
       run(name: string, input: unknown): Promise<unknown>;
     };
   };

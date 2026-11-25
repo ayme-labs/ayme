@@ -36,7 +36,7 @@ function cacheFolder(): string {
 }
 
 /** The folder's name in the cache: a hash of its real path. */
-const keyOf = (folder: string) =>
+export const keyOf = (folder: string) =>
   createHash("sha1").update(realpathSync(folder)).digest("hex").slice(0, 16);
 
 export const recordFile = (folder: string) =>

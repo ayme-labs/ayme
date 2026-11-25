@@ -8,9 +8,10 @@ import { dirname } from "node:path";
 import { version } from "../../package.json";
 import { ENTRY_FILE, findPageObjectsEntry } from "../served-page-objects";
 import { attach, loadProjectAyme } from "./attach";
+import { connectMcpFront, type McpFrontKind } from "./mcpFront";
 import { loadNodePageObjects } from "./nodePageObjects";
 import type { SessionRequest, SessionResponse } from "./protocol";
-import { removeRecord, socketFile, writeRecord } from "./record";
+import { keyOf, removeRecord, socketFile, writeRecord } from "./record";
 
 const PAGE_OBJECTS = "page_objects";
 
@@ -36,10 +37,15 @@ export async function runBackground({
   endpoint,
   mark,
   pageObjects,
+  mcpPort,
+  mcpAs = "page",
 }: {
   endpoint: string;
   mark: string;
   pageObjects?: string;
+  /** Spike placeholder: the port of an `ayme mcp` server to offer the tools to. */
+  mcpPort?: number;
+  mcpAs?: McpFrontKind;
 }): Promise<void> {
   const folder = process.cwd();
   const entry = findPageObjectsEntry({ folder, named: pageObjects });
@@ -109,6 +115,29 @@ export async function runBackground({
     return Promise.resolve({ ok: true, text: "Stopped." });
   };
 
+  // Spike: the second front. The tools as `ayme mcp` takes a page's: only
+  // the Page Object Tools and page_objects, as the commands offer.
+  const isOffered = (tool: { name: string; group?: string }) =>
+    tool.group === "pageObject" || tool.name === PAGE_OBJECTS;
+  const front =
+    mcpPort === undefined
+      ? undefined
+      : await connectMcpFront({
+          kind: mcpAs,
+          port: mcpPort,
+          tab: `ayme-node-${keyOf(folder)}`,
+          url: () => page.url(),
+          log: (message) => console.info(`[ayme mcp front] ${message}`),
+          tools: {
+            list: () => session.agentTools.list().filter(isOffered) as never,
+            subscribe: (listener) =>
+              session.agentTools.subscribe((tools) =>
+                listener(tools.filter(isOffered) as never)
+              ),
+            run: (name, input) => session.agentTools.run(name, input),
+          },
+        });
+
   const socket = socketFile(folder, process.pid);
   rmSync(socket, { force: true });
   let ended = false;
@@ -117,6 +146,7 @@ export async function runBackground({
     ended = true;
     removeRecord(folder);
     rmSync(socket, { force: true });
+    front?.dispose();
     try {
       stopSession();
     } catch {

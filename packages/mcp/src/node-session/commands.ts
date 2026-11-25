@@ -94,6 +94,8 @@ async function attach(folder: string, args: string[]): Promise<number> {
       cdp: { type: "string" },
       mark: { type: "string" },
       "page-objects": { type: "string" },
+      "mcp-port": { type: "string" },
+      "mcp-as": { type: "string" },
     },
   });
   if (!values.cdp || !values.mark)
@@ -190,6 +192,8 @@ async function background(args: string[]): Promise<number> {
       cdp: { type: "string" },
       mark: { type: "string" },
       "page-objects": { type: "string" },
+      "mcp-port": { type: "string" },
+      "mcp-as": { type: "string" },
     },
   });
   // Loaded here only: the thin commands never load Playwright or esbuild.
@@ -199,6 +203,11 @@ async function background(args: string[]): Promise<number> {
       endpoint: values.cdp!,
       mark: values.mark!,
       pageObjects: values["page-objects"],
+      mcpPort:
+        values["mcp-port"] === undefined
+          ? undefined
+          : Number(values["mcp-port"]),
+      mcpAs: values["mcp-as"] as "process" | "page" | undefined,
     });
   } catch (error) {
     fail((error as Error).message);

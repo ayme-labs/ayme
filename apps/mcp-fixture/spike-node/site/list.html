@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Basket</title>
+  </head>
+  <body>
+    <h1>Groceries</h1>
+    <ul>
+      <li>Milk <button>Remove</button></li>
+      <li>Bread <button>Remove</button></li>
+    </ul>
+    <button
+      id="ask"
+      onclick="
+        document.getElementById('answer').textContent = String(confirm('Sure?'))
+      "
+    >
+      Ask
+    </button>
+    <p id="answer"></p>
+    <a href="detail.html">Open detail</a>
+  </body>
+</html>

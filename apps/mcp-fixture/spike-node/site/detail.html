@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Detail</title>
+  </head>
+  <body>
+    <h1>Detail</h1>
+    <label>Name <input name="name" /></label>
+    <button
+      onclick="
+        document.getElementById('saved').textContent =
+          'Saved ' + document.querySelector('input').value
+      "
+    >
+      Save
+    </button>
+    <p id="saved"></p>
+    <a href="list.html">Back</a>
+  </body>
+</html>
