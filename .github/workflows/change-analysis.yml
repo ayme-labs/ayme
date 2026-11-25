@@ -127,7 +127,12 @@ jobs:
           BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
           INCREMENTAL: ${{ github.event_name == 'pull_request' && 'true' || '' }}
       - if: always()
-        run: cat reports/analyze-changed.md >> "$GITHUB_STEP_SUMMARY" || echo "No report was written; see the analysis step's log." >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          if ! cat reports/analyze-changed.md >> "$GITHUB_STEP_SUMMARY"; then
+            message="No report was written; see the analysis step's log."
+            echo "::warning::$message"
+            echo "$message" >> "$GITHUB_STEP_SUMMARY"
+          fi
       # The scope job of a later merge looks for this step.
       - name: Report written
         if: steps.analysis.outcome == 'success'
