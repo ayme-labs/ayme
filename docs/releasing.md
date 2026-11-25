@@ -65,9 +65,9 @@ A new package that is not private joins the release in [`release-please-config.j
 
 ## A package that is built but held back
 
-A package can be built, packed and checked before it is released. `@ayme-dev/cli`, the Recorder's command line, is one: `"private": true` in its `package.json`, and absent from `release-please-config.json` and `.release-please-manifest.json`, so Release Please neither tags nor publishes it. The packed-consumer check still packs it, installs it in a clean project and records a flow with it, and keeps its tarball out of `AYME_PACKED_DIR`, so the release never publishes it. [`scripts/release-config.test.mjs`](../scripts/release-config.test.mjs) keeps it that way: it fails if the package stops being private or turns up in the release configuration without leaving its `HELD_BACK` list.
+A package can be built, packed and checked before it is released: `"private": true` in its `package.json`, and absent from `release-please-config.json` and `.release-please-manifest.json`, so Release Please neither tags nor publishes it. The packed-consumer check still packs it, installs it in a clean project and checks it, and keeps its tarball out of `AYME_PACKED_DIR`, so the release never publishes it. [`scripts/release-config.test.mjs`](../scripts/release-config.test.mjs) keeps it that way: it fails if a package on its `HELD_BACK` list stops being private or turns up in the release configuration. No package is held back now. `@ayme-dev/cli`, the Recorder's command line, was until its first release from this repository, and the steps below are the ones that released it.
 
-To release it, change each of these in one pull request:
+To release a held-back package, change each of these in one pull request:
 
 1. `packages/cli/package.json`: delete `"private": true`. Set `version` to the version its first release starts from; the maintainer chooses it (join the linked group at its current version, keep its own version track, or force a first version with `release-as`).
 2. `release-please-config.json`: add `"packages/cli": { "component": "cli" }` under `packages`, and `"cli"` to the linked group's `components` in alphabetical order. If the package keeps its own version track, leave it out of the group, and change `scripts/publish-packages.mjs` and the `version` output of `release.yml`, which assume one version for every tarball.
