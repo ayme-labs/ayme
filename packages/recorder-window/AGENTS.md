@@ -16,5 +16,5 @@ Lint cannot see the rules below:
 
 [`vitest.config.ts`](vitest.config.ts) splits the tests into a Node project and a Chromium one. Run `pnpm turbo run build --filter=@ayme-dev/recorder-window` from the repository root before `pnpm test`, which runs Vitest alone, since [`src/build.test.ts`](src/build.test.ts) reads this package's `dist/` and the browser tests need the built ayme runtime.
 
-- In [`testing/`](testing/index.ts), make the window a page, each of its parts a component rooted at its element, and get repeated items from methods, so each component scopes its locators to the UI it owns.
+- In [`testing/`](testing/index.ts), follow [the page-object guide](../../skills/shared/page-object-design.md): the window a page, its parts components rooted at their element, locators and children as getters, repeated items from methods.
 - Put end-to-end tests in [`apps/recorder-fixture`](../../apps/recorder-fixture/README.md), since they drive a real recorder on the engine's scripted browser.

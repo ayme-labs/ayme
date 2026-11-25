@@ -68,20 +68,32 @@ const MAIN: readonly CommandName[] = ["Record", "Stop", "Continue recording"];
 export class RecorderToolbar {
   /** The toolbar itself. */
   @ayme.child
-  readonly root: Locator;
+  get root(): Locator {
+    return this.inside('[role="toolbar"]');
+  }
   @ayme.child
-  readonly recordButton: Locator;
+  get recordButton(): Locator {
+    return this.button("Record");
+  }
   @ayme.child
-  readonly stopButton: Locator;
+  get stopButton(): Locator {
+    return this.button("Stop");
+  }
   @ayme.child
-  readonly continueButton: Locator;
+  get continueButton(): Locator {
+    return this.button("Continue recording");
+  }
   /** Assert visibility: pressed, it enters picking, or leaves it. */
   @ayme.child
-  readonly assertVisibility: Locator;
+  get assertVisibility(): Locator {
+    return this.button("Assert visibility");
+  }
   /** In place of the first control while the recorder wraps up or saves:
    * it says so, and can not be pressed. */
   @ayme.child
-  readonly busyIndicator: Locator;
+  get busyIndicator(): Locator {
+    return this.inside("button[data-busy]");
+  }
 
   /** The toolbar in `page`, reached through `selectors`: `@playwright/test`'s,
    * of the same Playwright that reached the page. */
@@ -94,14 +106,7 @@ export class RecorderToolbar {
   constructor(
     readonly page: Page,
     private readonly engine: string
-  ) {
-    this.root = this.inside('[role="toolbar"]');
-    this.recordButton = this.button("Record");
-    this.stopButton = this.button("Stop");
-    this.continueButton = this.button("Continue recording");
-    this.assertVisibility = this.button("Assert visibility");
-    this.busyIndicator = this.inside("button[data-busy]");
-  }
+  ) {}
 
   /** Whether the toolbar shows Assert visibility on. */
   async picking(): Promise<boolean> {
