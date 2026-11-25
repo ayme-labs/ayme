@@ -16,7 +16,7 @@ ayme reached the page partly through Playwright Lite and partly directly, held D
 The ayme package holds no DOM node, and it reaches a document only through Playwright's Page and one In-page Module.
 
 - No DOM node crosses a module boundary. A target is a Locator or a Structural Ref, and no element handle is held.
-- Each document has one In-page Module: the first Host installs it, and every later Host binds to it. It owns capture, the root probe, the watchers, the Settled Page wait, the predicates, locator generation and pick. History, Visits and cursors stay on the Host.
+- Each document has one In-page Module: the first Host installs it, every later Host binds to it, and a Host of another version is refused. It owns capture, the root probe, the watchers, the Settled Page wait, the predicates, locator generation and pick. History, Visits and cursors stay on the Host.
 - Every ref is minted in the module, synthetic root refs included, so no two Hosts ever name two elements with one ref.
 - The module is one self-contained function evaluated in the page, and each Host hears it through one binding of its own.
 - Runtime state is keyed by Page. Lint keeps the browser's globals out of the In-page Module's Host side and out of every slice's domain and application layers. Reach is measured in the page and returns whether the element is present and available and, when something is in the way, its role and name, not refs (ADR-0062).
