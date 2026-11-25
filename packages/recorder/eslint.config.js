@@ -10,8 +10,9 @@ import {
 const packageRoot = import.meta.dirname;
 
 // The slices of src/, and the slices each may use: only those listed before
-// it here. engine is the composition root and the front door. Test support
-// lives in testing/ beside src/ (ADR-0057).
+// it here. Every folder of src/ is a slice, which src/layout.test.ts checks.
+// engine is the composition root and the front door. Test support lives in
+// testing/ beside src/ (ADR-0057).
 const allowedSlices = {
   contract: [],
   timeline: ["contract"],
@@ -60,6 +61,18 @@ function frontDoors(slice) {
     },
   ];
 }
+/** From test support in testing/<slice>/, the slice's own front doors, as
+ * the slice-boundaries rule refuses them inside the slice in src/. */
+function ownFrontDoors(slice) {
+  const door = layeredSlices.includes(slice)
+    ? `/(${layers.join("|")})(/${index})?`
+    : `(/${index})?`;
+  return {
+    regex: String.raw`^\.\.?/(.*/)?src/${slice}${door}$`,
+    message:
+      "Inside a slice, import the module itself, not the slice's front doors.",
+  };
+}
 // Types included: no Playwright type leaves the slice either (ADR-0052).
 const playwright = {
   regex: "^(@playwright/|playwright(-core)?(/|$))",
@@ -80,37 +93,75 @@ const otherEffectPackages = {
 // How the playwright slice's infrastructure is measured decides where its
 // code may sit (docs/testing.md#code-a-real-browser-runs): `live/` drives a
 // real browser and `in-page/` runs in the page, while the plain logic beside
-// them stays testable without a browser. So plain logic reaches neither, the
-// layer's front door reaches `live/` to wire the stock adapter, and
-// `in-page/` is reached from `live/` only and imports nothing to run.
+// them stays testable without a browser. So plain logic, in any folder of
+// the layer but those two, reaches neither, the layer's front door reaches
+// `live/` to wire the stock adapter, and `in-page/` is reached from `live/`
+// only and imports nothing to run. Any relative path counts that goes
+// through a folder of either name.
 const infrastructure = "src/playwright/infrastructure";
+const liveAndInPage = [
+  `${infrastructure}/live/**`,
+  `${infrastructure}/in-page/**`,
+];
 const noLiveOrInPage = {
-  regex: String.raw`^\./(live|in-page)(/|$)`,
+  regex: String.raw`^\.\.?/(.*/)?(live|in-page)/`,
   message:
     "Plain logic stays testable without a browser: it may not import infrastructure/live or infrastructure/in-page (docs/testing.md#code-a-real-browser-runs).",
 };
 const noInPage = {
-  regex: String.raw`^\./in-page(/|$)`,
+  regex: String.raw`^\.\.?/(.*/)?in-page/`,
   message:
     "infrastructure/in-page is reached from infrastructure/live only (docs/testing.md#code-a-real-browser-runs).",
 };
+// What runs in the page is sent as text: it can use nothing it imports.
+const typesOnlyMessage =
+  "Code in infrastructure/in-page runs in the page and may import types only (docs/testing.md#code-a-real-browser-runs).";
+
+// The CLI hands the engine where the window's built files and the toolbar's
+// script are, so no file of the package imports the window.
+const noWindow = {
+  regex: "^@ayme-dev/recorder-window(/|$)",
+  message:
+    "The engine imports nothing of the window: the CLI hands it where the window's built files and the toolbar's script are.",
+};
 
 /** One config per group of files: a later `no-restricted-imports` replaces an
- * earlier one for the same file, so each group states all of its patterns. */
-function restrictedImports(files, patterns, { ignores } = {}) {
+ * earlier one for the same file, so each group states all of its patterns,
+ * and every group refuses the window. `typesOnly` refuses every dynamic
+ * import(), which always loads a value. */
+function restrictedImports(files, ownPatterns, { ignores, typesOnly } = {}) {
+  const patterns = [...ownPatterns, noWindow];
+  // esquery reads `/` as the end of a regex, so selectors match it as `\x2F`.
+  const value = (regex) => `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
   return {
     files,
     ...(ignores ? { ignores } : {}),
     rules: {
       "no-restricted-imports": ["error", { patterns }],
-      // The same rules for a dynamic import(). esquery reads `/` as the end
-      // of a regex, so selectors match it as `\x2F`.
+      // The same rules for a dynamic import() and a type written as
+      // import("…").
       "no-restricted-syntax": [
         "error",
-        ...patterns.map(({ regex, message }) => ({
-          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
-          message,
-        })),
+        ...patterns.flatMap(({ regex, message }) => [
+          ...(typesOnly
+            ? []
+            : [
+                {
+                  selector: `ImportExpression[source.value=${value(regex)}]`,
+                  message,
+                },
+              ]),
+          { selector: `TSImportType[source.value=${value(regex)}]`, message },
+        ]),
+        typesOnly
+          ? { selector: "ImportExpression", message: typesOnlyMessage }
+          : // A module in backticks, which the selectors above do not read.
+            {
+              selector:
+                'ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0]',
+              message:
+                "Write the module in import() as a quoted string, so lint can check it.",
+            },
       ],
     },
   };
@@ -136,14 +187,24 @@ function sliceRestrictions(slice) {
     ...(slice === "playwright"
       ? [
           restrictedImports(
-            [`${infrastructure}/*.ts`],
+            [`${infrastructure}/**/*.ts`],
             [...production, noLiveOrInPage],
-            { ignores: [...testFiles, `${infrastructure}/index.ts`] }
+            {
+              ignores: [
+                ...testFiles,
+                ...liveAndInPage,
+                `${infrastructure}/index.ts`,
+              ],
+            }
           ),
           restrictedImports(
             [`${infrastructure}/index.ts`],
             [...production, noInPage]
           ),
+          restrictedImports([`${infrastructure}/in-page/**/*.ts`], production, {
+            ignores: testFiles,
+            typesOnly: true,
+          }),
         ]
       : []),
     ...(slice && !effectFree
@@ -159,8 +220,14 @@ function sliceRestrictions(slice) {
     ...(slice === "playwright"
       ? [
           restrictedImports(
-            [`${infrastructure}/*.test.ts`],
-            [...always, noLiveOrInPage]
+            [`${infrastructure}/**/*.test.ts`],
+            [...always, noLiveOrInPage],
+            { ignores: liveAndInPage }
+          ),
+          restrictedImports(
+            [`${infrastructure}/in-page/**/*.test.ts`],
+            always,
+            { typesOnly: true }
           ),
         ]
       : []),
@@ -180,32 +247,56 @@ export default [
           default: "allow",
           checkAllOrigins: false,
           checkUnknownLocals: false,
-          policies: slices.map((slice) => ({
-            from: { element: { captured: { slice } } },
-            disallow: {
-              to: {
-                element: {
-                  captured: {
-                    slice: slices.filter(
-                      (target) =>
-                        target !== slice &&
-                        !allowedSlices[slice].includes(target)
-                    ),
+          // A file shares its element with the front door of its own layer,
+          // or of its unlayered slice.
+          checkInternals: true,
+          policies: slices.flatMap((slice) => [
+            {
+              from: { element: { captured: { slice } } },
+              disallow: {
+                to: {
+                  element: {
+                    captured: {
+                      slice: slices.filter(
+                        (target) =>
+                          target !== slice &&
+                          !allowedSlices[slice].includes(target)
+                      ),
+                    },
                   },
                 },
               },
+              message: `${slice} may only use ${[...allowedSlices[slice], "itself"].join(", ")}.`,
             },
-            message: `${slice} may only use ${[...allowedSlices[slice], "itself"].join(", ")}.`,
-          })),
+            // A door is the slice's surface for other slices, and importing
+            // your own layer's door makes an import cycle.
+            {
+              from: { element: { captured: { slice } } },
+              disallow: {
+                to: {
+                  file: {
+                    path: layeredSlices.includes(slice)
+                      ? layers.map((layer) => `src/${slice}/${layer}/index.ts`)
+                      : `src/${slice}/index.ts`,
+                  },
+                },
+              },
+              message:
+                "Inside a slice, import the module itself, not the slice's front doors.",
+            },
+          ]),
         },
       ],
     },
   },
+  // Every file of src/, in a slice or not; the blocks below add their own
+  // patterns.
+  restrictedImports([sourceFiles], []),
   ...slices.flatMap(sliceRestrictions),
   {
-    // What runs in the page is sent as text: it can use nothing it imports.
-    // A type is all it may take, and its functions stay trivial: a decision
-    // belongs in a plain rule (pageRules.ts), which Node tests and mutates.
+    // A type is all code in the page may take, and its functions stay
+    // trivial: a decision belongs in a plain rule (pageRules.ts), which Node
+    // tests and mutates.
     files: [`${infrastructure}/in-page/**/*.ts`],
     rules: {
       "@typescript-eslint/no-restricted-imports": [
@@ -215,8 +306,7 @@ export default [
             {
               regex: ".*",
               allowTypeImports: true,
-              message:
-                "Code in infrastructure/in-page runs in the page and may import types only (docs/testing.md#code-a-real-browser-runs).",
+              message: typesOnlyMessage,
             },
           ],
         },
@@ -227,13 +317,13 @@ export default [
   // The package's entry and its tests, which use the slices' front doors.
   ...sliceRestrictions(undefined),
   // Test support (ADR-0057): a folder of testing/ named after a slice belongs
-  // to that slice, so it may use the slice's own files, and other slices
-  // through their front doors. The rest of testing/ uses front doors only.
-  // It is test-only code, so it may use any Effect package.
+  // to that slice, so it may use the slice's own files, not its front doors,
+  // and other slices through their front doors. The rest of testing/ uses
+  // front doors only. It is test-only code, so it may use any Effect package.
   ...slices.map((slice) =>
     restrictedImports(
       [`testing/${slice}/**/*.ts`],
-      [...frontDoors(slice), playwright]
+      [...frontDoors(slice), ownFrontDoors(slice), playwright]
     )
   ),
   restrictedImports(
