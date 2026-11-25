@@ -93,35 +93,28 @@ export interface ScriptedBrowser {
   holdConfirmations(): void;
   /** ...until now. */
   releaseConfirmations(): void;
-  // Visits.
   /** The page goes to another address, in a new document: a click held in
    * the one before can no longer reach it. */
   goTo(url: string): void;
   /** The held inputs that reached a page, in order. */
   readonly passedOn: readonly string[];
-  // Every kind of input.
   /** The page holds an input back: a click of some count, a key press, or
    * a key typed while an earlier input was held. Numbered as `holdClick`
    * numbers. */
   holdInput(held: HeldInput): void;
-  // Warnings.
   /** The browser warns of something a person should know. */
   warn(warning: RecorderWarning): void;
-  // Assert visibility.
   /** The person picks an element while Playwright is in its picking mode:
    * Playwright reports the assertion, then leaves picking by itself. */
   pick(report: Written<InteractionReport>): void;
-  // Highlight.
   /** The element the recorder's highlight is drawn on now; null when none
    * is. It is drawn on an element whose ref the page shows now, or that has
    * a selector. */
   readonly highlighted: HighlightTarget | null;
-  // The trace's order.
   /** From now on the trace is not told started, kept or thrown away... */
   holdTraceAnswers(): void;
   /** ...until now. */
   releaseTraceAnswers(): void;
-  // Ending.
   /** From now on the browser answers nothing it is asked, and tells nothing
    * by itself: a browser that hangs. What a test plays by hand is still
    * told. */
@@ -261,7 +254,6 @@ export async function startScriptedRecorder(
         });
         return;
       }
-      // Every kind of input.
       case "letInputsThrough":
         // Nothing answers it.
         return;
@@ -271,13 +263,11 @@ export async function startScriptedRecorder(
             ? { kind: "storageSaved" }
             : { kind: "requestFailed", request, reason: storageFails }
         );
-      // Assert visibility.
       case "pick":
         // Playwright tells of its mode only when it changes.
         if (picking === request.on) return;
         picking = request.on;
         return tell({ kind: "picking", on: request.on });
-      // Highlight.
       case "highlight": {
         const { target } = request;
         const found = target !== null && shows(tree, target.find);
@@ -462,15 +452,12 @@ export async function startScriptedRecorder(
         tell({ kind: "pageNavigated", page, url });
       },
       passedOn,
-      // Every kind of input.
       holdInput: (held) => {
         const input = `input_${++inputs}` as InputId;
         heldIn.set(input, documents);
         tell({ kind: "inputHeld", input, page, held });
       },
-      // Warnings.
       warn: (warning) => tell({ kind: "browserWarned", warning }),
-      // Assert visibility.
       pick: (report) => {
         tell({
           kind: "interactionReported",
