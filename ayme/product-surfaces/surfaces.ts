@@ -298,7 +298,7 @@ export const surfaces = {
   },
   releasedPackages: {
     name: "Released packages",
-    what: "The ayme packages as published on npm, including @ayme-dev/mcp and @ayme-dev/cli: each one's name, version, readme and what installing it needs, and each version's release notes. @ayme-dev/cli is on npm but is not yet released from this repository",
+    what: "The ayme packages as published on npm, including @ayme-dev/mcp and @ayme-dev/cli: each one's name, version, readme and what installing it needs, and each version's release notes",
     consumers: {
       appDeveloper:
         "Installs and updates the packages for their app and the `ayme` command, and reads their readmes and release notes",
