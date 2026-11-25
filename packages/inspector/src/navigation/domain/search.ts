@@ -2,10 +2,8 @@ import type { LegendCounts, Lens, LensId, SearchEntry } from "./lens";
 
 const MAX_RESULTS = 24;
 
-/** A search result: an entry, and the lens it shows in. */
 export type SearchResult = { lens: LensId; entry: SearchEntry };
 
-/** What the page highlights while an entry is hovered. */
 export function entryHighlight(entry: SearchEntry) {
   return (
     entry.highlight ??
@@ -13,7 +11,6 @@ export function entryHighlight(entry: SearchEntry) {
   );
 }
 
-/** Every lens's legend counts, added up. */
 export function mergeLegends(lenses: readonly Lens[]): LegendCounts {
   const merged: LegendCounts = {};
   for (const { legend } of lenses)
