@@ -710,7 +710,6 @@ function nearestLockfile(folder: string) {
   }
 }
 
-/** The nearest folder from `folder` up for which `found` holds, if any. */
 function nearestAbove(
   folder: string,
   found: (folder: string) => boolean
