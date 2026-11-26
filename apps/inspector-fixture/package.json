@@ -26,7 +26,6 @@
   },
   "devDependencies": {
     "@agentclientprotocol/claude-agent-acp": "0.112.0",
-    "@ayme-dev/e2e-testing": "workspace:*",
     "@ayme-dev/e2e-tools": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",

@@ -193,9 +193,6 @@ importers:
         specifier: workspace:*
         version: link:../../packages/webmcp
     devDependencies:
-      "@ayme-dev/e2e-testing":
-        specifier: workspace:*
-        version: link:../../packages/e2e-testing
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../../packages/eslint-config
@@ -361,9 +358,6 @@ importers:
         specifier: ^19.0.0
         version: 19.2.8(react@19.2.8)
     devDependencies:
-      "@ayme-dev/e2e-testing":
-        specifier: workspace:*
-        version: link:../../packages/e2e-testing
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../../packages/eslint-config
@@ -598,9 +592,6 @@ importers:
       "@agentclientprotocol/claude-agent-acp":
         specifier: 0.112.0
         version: 0.112.0(@anthropic-ai/sdk@1.14.0(zod@4.6.7))(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@modelcontextprotocol/server@2.4.0)
-      "@ayme-dev/e2e-testing":
-        specifier: workspace:*
-        version: link:../../packages/e2e-testing
       "@ayme-dev/e2e-tools":
         specifier: workspace:*
         version: link:../../packages/e2e-tools
@@ -1067,27 +1058,6 @@ importers:
       vitest:
         specifier: ^5.1.0
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.13.3)(@vitest/browser-playwright@5.1.0)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
-
-  packages/e2e-testing:
-    devDependencies:
-      "@ayme-dev/eslint-config":
-        specifier: workspace:*
-        version: link:../eslint-config
-      "@ayme-dev/typescript-config":
-        specifier: workspace:*
-        version: link:../typescript-config
-      "@e2e-dev/web":
-        specifier: 0.17.0
-        version: 0.17.0(@e2e-dev/core@0.25.0)(e2e@0.25.0)
-      e2e:
-        specifier: 0.25.0
-        version: 0.25.0
-      eslint:
-        specifier: ^10.9.1
-        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
 
   packages/e2e-tools:
     dependencies:
@@ -1716,6 +1686,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@e2e-dev/web":
+        specifier: 0.17.0
+        version: 0.17.0(@e2e-dev/core@0.25.0)(e2e@0.25.0)
       "@playwright/test":
         specifier: ^1.64.0
         version: 1.64.0
@@ -1731,6 +1704,9 @@ importers:
       "@vitest/coverage-v8":
         specifier: ^5.1.0
         version: 5.1.0(@vitest/browser@5.1.0)(vitest@5.1.0)
+      e2e:
+        specifier: 0.25.0
+        version: 0.25.0
       eslint:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
@@ -17453,7 +17429,7 @@ snapshots:
       eventsource-parser: 3.1.1
       jose: 6.2.12
       pkce-challenge: 5.0.1
-      zod: 4.6.7
+      zod: 4.6.5
 
   "@modelcontextprotocol/core@2.0.0":
     dependencies:
@@ -17504,7 +17480,7 @@ snapshots:
   "@modelcontextprotocol/server@2.4.0":
     dependencies:
       "@modelcontextprotocol/core": 2.4.0
-      zod: 4.6.7
+      zod: 4.6.5
 
   "@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4":
     optional: true

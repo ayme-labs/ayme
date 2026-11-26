@@ -1,5 +1,5 @@
 import { AppView } from "./appView";
-import { callOverMcp, expect, test } from "./fixtures";
+import { callOverMcp, expect, INSPECTOR, test } from "./fixtures";
 
 // E2E: the panel shows the page's live tools as the runtime lists them, and a
 // Page Object Tool as an agent gets it over ayme MCP. The expected values
@@ -145,16 +145,22 @@ test("a tool that can't run now shows dimmed with its reason, and Run gives the 
   )!;
   // The fixture's list starts empty, so its ListPage.clear has nothing to clear.
   expect(clear.available).toBe(false);
+  // Asked before the panel runs it: the app's own run is a Run too.
+  const refusal = await app.refusal("ListPage.clear");
 
   const card = await inspector.tool("ListPage.clear");
 
+  // The tool's run card is dimmed and gives the reason; its row in the
+  // Tools lens's list shows neither.
   await expect(card.root).toHaveCSS("opacity", "0.6");
   await expect(card.reason).toHaveText(clear.reason!);
   await expect(card.runButton).toBeEnabled();
   await card.runButton.click();
+  // The newest run of the tool is the app's until the panel's arrives.
   const run = inspector.runs.latest("ListPage.clear");
+  await expect.poll(() => run.caller()).toEqual(INSPECTOR);
   await expect.poll(() => run.status()).toBe("Failed");
-  await expect(run.error).toHaveText(await app.refusal("ListPage.clear"));
+  await expect(run.error).toHaveText(refusal);
 });
 
 test.describe("with the inspector option on", () => {

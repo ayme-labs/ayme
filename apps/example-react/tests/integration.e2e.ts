@@ -1,13 +1,12 @@
 import { expect } from "e2e";
-import {
-  publishedToolNames,
-  recordPublishedTools,
-} from "@ayme-dev/e2e-testing";
+import { e2e as webmcp } from "@ayme-dev/webmcp/testing";
 import {
   counterTests,
   devRebuildTests,
   test,
 } from "@ayme-dev/example-certification/e2e/tests";
+
+const { publishedToolNames, recordPublishedTools } = webmcp;
 
 // The shared certification, against the dev server and the production build.
 // The app is a single-page app with no router, so it has no client navigation

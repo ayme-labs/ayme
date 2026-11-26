@@ -227,22 +227,26 @@ describe("connected to an agent", () => {
     }
   );
 
-  connected(
-    "the Connections pill names the agent, then says Reconnecting once its server stops, then Not connected",
-    async ({ mcpServer, inspector }) => {
-      const { pill } = inspector.header.connections;
-      await expect(await pill.front()).toHaveText(AGENT_CLIENT_NAME);
+  // Its own budget: "Not connected" waits out the client's reconnect window
+  // (RECONNECTING_MS in packages/mcp/src/client/index.ts).
+  describe("after its server stops", { timeout: 60_000 }, () => {
+    connected(
+      "the Connections pill names the agent, then says Reconnecting once its server stops, then Not connected",
+      async ({ mcpServer, inspector }) => {
+        const { pill } = inspector.header.connections;
+        await expect(await pill.front()).toHaveText(AGENT_CLIENT_NAME);
 
-      await mcpServer!.close();
+        // Watched while the server stops, not after.
+        const stopped = mcpServer!.close();
+        await expect(await pill.front()).toHaveText("Reconnecting");
+        await stopped;
 
-      await expect(await pill.front()).toHaveText("Reconnecting");
-      // The tab says it is reconnecting for 10 s, then that its server
-      // stopped answering.
-      await expect(await pill.front()).toHaveText("Not connected", {
-        timeout: 15_000,
-      });
-    }
-  );
+        await expect(await pill.front()).toHaveText("Not connected", {
+          timeout: 30_000,
+        });
+      }
+    );
+  });
 });
 
 test("the header's menus and switches work by mouse inside the closed shadow root", async ({
@@ -354,11 +358,14 @@ const lookProperties = [
 
 /** How the panel looks: the styles host CSS would change if it leaked in. */
 async function panelLooks(inspector: Inspector) {
-  // A part the hook can't reach reads null, which must not compare equal.
+  // Waits for each part, as Playwright's `evaluate` on a locator does; a part
+  // the hook can't reach reads null, which must not compare equal.
   const look = async (selector: string) => {
-    const read = await panelLook(inspector.tab, selector, lookProperties);
-    if (!read) throw new Error(`Nothing in the Inspector matches ${selector}.`);
-    return read;
+    const read = () => panelLook(inspector.tab, selector, lookProperties);
+    await expect
+      .poll(read, { message: `Nothing in the Inspector matches ${selector}.` })
+      .not.toBeNull();
+    return (await read())!;
   };
   return {
     panel: await look('[aria-label="ayme"]'),
@@ -399,38 +406,46 @@ plainTest(
     await openFixture({ app, browser, screen }, "/");
 
     // The browser's defaults, which the Inspector's CSS reset would change.
-    const styles = await browser.evaluate(() => {
-      const heading = [...document.querySelectorAll("h1, h2, h3")].find(
-        (candidate) => candidate.textContent?.trim() === "Groceries"
-      )!;
-      const button = [...document.querySelectorAll("main button")].find(
-        (candidate) => candidate.textContent?.trim() === "Add item"
-      )!;
-      return {
-        fontSize: getComputedStyle(heading).fontSize,
-        fontWeight: getComputedStyle(heading).fontWeight,
-        buttonBackground: getComputedStyle(button).backgroundColor,
-      };
-    });
-    expect(styles.fontSize).toBe("32px");
-    expect(styles.fontWeight).toBe("700");
-    expect(styles.buttonBackground).not.toBe("rgba(0, 0, 0, 0)");
+    // Polled, as Playwright's `toHaveCSS` retries.
+    const styles = () =>
+      browser.evaluate(() => {
+        const heading = [...document.querySelectorAll("h1, h2, h3")].find(
+          (candidate) => candidate.textContent?.trim() === "Groceries"
+        )!;
+        const button = [...document.querySelectorAll("main button")].find(
+          (candidate) => candidate.textContent?.trim() === "Add item"
+        )!;
+        return {
+          fontSize: getComputedStyle(heading).fontSize,
+          fontWeight: getComputedStyle(heading).fontWeight,
+          buttonBackground: getComputedStyle(button).backgroundColor,
+        };
+      });
+    await expect.poll(async () => (await styles()).fontSize).toBe("32px");
+    await expect.poll(async () => (await styles()).fontWeight).toBe("700");
+    await expect
+      .poll(async () => (await styles()).buttonBackground)
+      .not.toBe("rgba(0, 0, 0, 0)");
   }
 );
 
 plainTest(
   "the legend counts what the page's runtime reports",
   async ({ app, browser, screen }) => {
-    // A page with a Page Object child that is not on it, for all three counts.
-    const { inspector, page } = await openFixture(
-      { app, browser, screen },
-      "/models.html"
-    );
-    const { live, notOnPage, refs } = await new AppView(page).legendCounts();
-    const legend = await inspector.navigator.legend.front();
+    // The list page has a collection model with no item and no single child
+    // missing; the models page has a single child missing. So a count of the
+    // models not on the page and a count of the Page Object nodes not on it,
+    // which the Model lens implements, differ on the first.
+    for (const path of ["/", "/models.html"] as const) {
+      const { inspector, page } = await openFixture(
+        { app, browser, screen },
+        path
+      );
+      const { live, notOnPage, refs } = await new AppView(page).legendCounts();
 
-    await expect(legend).toContainText(`${live} live`);
-    await expect(legend).toContainText(`${notOnPage} not on page`);
-    await expect(legend).toContainText(`${refs} refs`);
+      await expect
+        .poll(() => inspector.navigator.legendItems())
+        .toEqual([`${live} live`, `${notOnPage} not on page`, `${refs} refs`]);
+    }
   }
 );
