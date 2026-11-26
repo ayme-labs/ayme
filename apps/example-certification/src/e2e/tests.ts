@@ -4,15 +4,16 @@ import { fileURLToPath } from "node:url";
 import { test as base, type Browser, type WebApp } from "@e2e-dev/web";
 import { expect, type Locator, type Screen } from "e2e";
 import { freePort, startAgent, type Agent } from "@ayme-dev/mcp/testing";
-import {
+import { e2e as webmcp, type RecordingDriver } from "@ayme-dev/webmcp/testing";
+
+import { counterPath, server } from "./config";
+
+const {
   executePublishedTool,
   publishedToolNames,
   publishedToolSchema,
   recordPublishedTools,
-  type RecordingDriver,
-} from "@ayme-dev/e2e-testing";
-
-import { counterPath, server } from "./config";
+} = webmcp;
 
 // The e2e (e2e.com) port of `../tests.ts`. e2e gives a test no Playwright
 // `Page` or `BrowserContext`, so what the Playwright builders do through
@@ -185,7 +186,10 @@ async function openCounter(
   inspector: boolean | undefined
 ) {
   await recordPublishedTools(browser);
-  const response = browser.waitForResponse(`${app.baseUrl}${counterPath()}`);
+  // The test's whole budget, as Playwright's `goto` has it.
+  const response = browser.waitForResponse(`${app.baseUrl}${counterPath()}`, {
+    timeout: 60_000,
+  });
   await browser.goto(counterPath(), { waitUntil: "networkidle" });
   expect((await response).status).toBe(200);
   // No warm-up before the run, unlike the Playwright config's global setup:
