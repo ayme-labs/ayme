@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { claudeCode } from "@e2e-dev/acp";
 import { web } from "@e2e-dev/web";
 import type { E2EConfig } from "e2e";
@@ -9,8 +11,21 @@ import base from "./e2e.config";
 // model, so only `e2e run --config e2e.goals.config.ts` reaches these files;
 // `test:e2e` runs e2e.config.ts, whose glob (`*.e2e.ts`) leaves them out.
 
-/** The fixture server; `AYME_GOALS_PORT` points at one already running. */
-const port = process.env.AYME_GOALS_PORT ?? "5199";
+/**
+ * This checkout's own ports, so two checkouts' runs never meet: one fixed
+ * port each would let a run reuse another checkout's warm server.
+ */
+const checkout = createHash("sha256")
+  .update(import.meta.dirname)
+  .digest()
+  .readUInt16BE(0);
+/** The fixture server's port; `AYME_GOALS_PORT` overrides it. */
+const port = process.env.AYME_GOALS_PORT ?? String(5200 + (checkout % 400));
+// The external placement's Inspector window is served by `ayme mcp`, and a
+// recording is keyed to the window's origin: one port for every test (they
+// run one at a time) lets them replay. Above the 9350-9365 range pages scan
+// to pair (packages/mcp/testing/index.ts), so no page pairs with it unasked.
+process.env.AYME_E2E_MCP_PORT ??= String(9400 + (checkout % 400));
 
 export default {
   ...base,

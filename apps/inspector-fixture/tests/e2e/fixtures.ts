@@ -231,7 +231,11 @@ export function testIn(
         // eslint-disable-next-line no-empty-pattern
         mcpServer: async ({}, use) => {
           if (placement !== "external" && !connected) return use(undefined);
-          const agent = await startAgent("--port", String(await freePort()));
+          // A fixed port when the run names one: the goal tests' recordings
+          // are keyed to the Inspector window's origin (e2e.goals.config.ts).
+          const port =
+            process.env.AYME_E2E_MCP_PORT ?? String(await freePort());
+          const agent = await startAgent("--port", port);
           await use(agent);
           await agent.close();
         },
