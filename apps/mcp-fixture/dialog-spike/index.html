@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- Spike: a page whose buttons open each kind of JavaScript dialog. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Dialog spike</title>
+  </head>
+  <body>
+    <h1>Dialog spike</h1>
+    <button id="confirm" type="button">Open confirm</button>
+    <button id="alert" type="button">Open alert</button>
+    <button id="prompt" type="button">Open prompt</button>
+    <button id="mark" type="button">Mark</button>
+    <button id="reset" type="button">Reset</button>
+    <p id="result">result: none</p>
+    <p id="marks">marks: 0</p>
+    <script>
+      const result = document.getElementById("result");
+      const marks = document.getElementById("marks");
+      let count = 0;
+      const show = (text) => (result.textContent = `result: ${text}`);
+      document.getElementById("confirm").onclick = () =>
+        show(`confirm ${confirm("Delete the item?")}`);
+      document.getElementById("alert").onclick = () => {
+        alert("Saved.");
+        show("alert closed");
+      };
+      document.getElementById("prompt").onclick = () =>
+        show(`prompt ${JSON.stringify(prompt("Your name?", "Ada"))}`);
+      document.getElementById("mark").onclick = () =>
+        (marks.textContent = `marks: ${++count}`);
+      document.getElementById("reset").onclick = () => {
+        count = 0;
+        marks.textContent = "marks: 0";
+        show("none");
+      };
+    </script>
+  </body>
+</html>
