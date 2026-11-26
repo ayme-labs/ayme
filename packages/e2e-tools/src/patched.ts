@@ -37,6 +37,8 @@ export interface ServedTool {
   /** A zod object schema, as the ACP executor's MCP server registers it. */
   readonly inputSchema: unknown;
   readonly readOnly: boolean;
+  /** When set, the tool is listed only while this answers false (`hidden` in the ACP patch). */
+  readonly hidden?: (ctx: StepExecutorContext) => boolean | Promise<boolean>;
   run(
     args: unknown,
     step: {

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   directPageObjects,
+  NotAvailable,
   serveProjectTools,
   staleNotes,
 } from "@ayme-dev/e2e-tools";
@@ -51,10 +52,16 @@ const tools: Record<string, DefinedTool> = Object.fromEntries(
     return [name, { ...defined, tool }];
   })
 );
+// As arm 3 serves them: the agent's list holds the actions that can run on
+// the screen now, and a call that failed on a stale Page Object, or any
+// replayed call that failed, puts its action out of use for the test.
 const served = serveProjectTools(tools, {
   onFailure: staleNotes(path.join(here, ".e2e/stale-page-objects"), (tool) =>
     pageObjects.sourceOf(tool)
   ),
+  hidden: async (tool) => (await pageObjects.ruledOutNow(tool)) !== undefined,
+  dropAfterFailure: (failure) =>
+    failure.during === "replay" || !(failure.error instanceof NotAvailable),
 });
 
 const call = async (

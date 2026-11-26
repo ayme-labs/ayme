@@ -17,6 +17,17 @@ import type { ToolFailure } from "./stale";
 
 type Execute = (input: unknown, options: object) => unknown;
 
+/** The tools that failed in a test and are left out for the rest of it, in the attempt's memory. */
+const droppedIn = (ctx: StepExecutorContext): Map<string, string> => {
+  const key = `ayme-e2e-tools.dropped:${ctx.attempt.testId}`;
+  let dropped = ctx.attempt.memory.get(key) as Map<string, string> | undefined;
+  if (dropped === undefined) ctx.attempt.memory.set(key, (dropped = new Map()));
+  return dropped;
+};
+
+const firstLine = (error: unknown) =>
+  String(error instanceof Error ? error.message : error).split("\n")[0] ?? "";
+
 const executeOf = (name: string, defined: DefinedTool): Execute => {
   const execute = (defined.tool as { execute?: Execute }).execute;
   if (execute === undefined)
@@ -30,6 +41,18 @@ export function serveProjectTools(
   options: {
     /** Hears of every call that threw, replayed or live, such as `staleNotes`. */
     onFailure?: (failure: ToolFailure) => void;
+    /**
+     * Whether a tool is left out of the agent's list now, by its name, such
+     * as `(tool) => pageObjects.ruledOutNow(tool).then(Boolean)`. Asked
+     * whenever the patched ACP executor checks the list (its `hidden`).
+     */
+    hidden?: (tool: string) => boolean | Promise<boolean>;
+    /**
+     * Whether a failed call takes its tool out of the agent's list for the
+     * rest of the test, and has a later call of it refused at once, replayed
+     * or live.
+     */
+    dropAfterFailure?: (failure: ToolFailure) => boolean;
   } = {}
 ): (ctx: StepExecutorContext) => Promise<ServedTool[]> {
   const served = Object.entries(tools).map(([name, defined]): ServedTool => {
@@ -42,7 +65,19 @@ export function serveProjectTools(
       description: defined.tool.description ?? name,
       inputSchema: defined.tool.inputSchema,
       readOnly: !mutates,
+      ...(options.hidden === undefined && options.dropAfterFailure === undefined
+        ? {}
+        : {
+            hidden: async (ctx: StepExecutorContext) =>
+              droppedIn(ctx).has(name) ||
+              ((await options.hidden?.(name)) ?? false),
+          }),
       async run(args, { ctx, observe, replaying }) {
+        const dropped = droppedIn(ctx).get(name);
+        if (dropped !== undefined)
+          throw new Error(
+            `${name} failed earlier in this test (${dropped}) and is out of use until its page object is fixed. Reach the goal with the other action tools.`
+          );
         const result = await budgetsOf(ctx)
           .runTool(
             {
@@ -55,14 +90,17 @@ export function serveProjectTools(
             async () => execute(args, {})
           )
           .catch((error: unknown) => {
-            options.onFailure?.({
+            const failure: ToolFailure = {
               tool: name,
               input: args as JsonValue,
               error,
               during: replaying === true ? "replay" : "live",
               test: ctx.attempt.testId,
               instruction: ctx.step.instruction,
-            });
+            };
+            options.onFailure?.(failure);
+            if (options.dropAfterFailure?.(failure) === true)
+              droppedIn(ctx).set(name, firstLine(error));
             throw error;
           });
         const text =
