@@ -11,8 +11,9 @@ export type ProjectAyme = {
   readonly entry: string;
   /** Its `./compiler` entry, which compiles the Page Object Models. */
   readonly compiler: string;
-  /** Its `./playwright` entry, the Node Host the compiled classes
-   * register with. */
+  /** Its `./internal` entry, which creates the Node Host the compiled
+   * classes register with on the Playwright the Session found, and reads
+   * its Runs' answers. */
   readonly nodeHost: string;
 };
 
@@ -88,7 +89,7 @@ export const projectAyme = (
       );
     }
     const files: Record<string, string> = {};
-    for (const subpath of ["./compiler", "./playwright"]) {
+    for (const subpath of ["./compiler", "./internal"]) {
       const file = entryFile(folder, manifest, subpath);
       if (file === undefined)
         return refuse(
@@ -104,6 +105,6 @@ export const projectAyme = (
     return Effect.succeed({
       entry,
       compiler: files["./compiler"]!,
-      nodeHost: files["./playwright"]!,
+      nodeHost: files["./internal"]!,
     });
   });

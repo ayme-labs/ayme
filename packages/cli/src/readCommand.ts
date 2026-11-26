@@ -8,6 +8,7 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
        ayme attach --cdp=<url>
        ayme page-objects
        ayme tools
+       ayme call <tool> [--params <json> | --params @<file>]
        ayme detach
        ayme close
        ayme list
@@ -25,6 +26,16 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  Objects, each with its id, and how many tools they have.
   tools          List every Page Object Tool of the Session's Tab with its
                  parameters, and why a tool is unavailable.
+  call <tool>    Run the Page Object Tool <tool> and print what its action
+                 returned, the URL when the action changed it, and how the
+                 Page Object Tree changed.
+  --params <json>
+                 The tool's input as one JSON object, as ayme tools prints its
+                 parameters: {"id": "<Page Object Id>", "args": {...}} for a
+                 tool of a Page Object with an id. Leave it out for a tool
+                 that takes none.
+  --params @<file>
+                 Read that JSON object from <file>.
   detach         End a Session started with attach, and leave its browser
                  running.
   close          End the Session, and close its browser if ayme opened it.
@@ -80,6 +91,9 @@ export type Command =
     } & Named)
   | ({ kind: "attach"; cdp: string; json: boolean } & Named)
   | ({ kind: "ask"; request: SessionRequest; json: boolean } & Named)
+  /** `ayme call`: the tool, and its `--params` as given, JSON or
+   * `@<file>`. */
+  | ({ kind: "call"; tool: string; params?: string; json: boolean } & Named)
   | { kind: "list"; json: boolean }
   /** The Session's background process, which `open` starts with the
    * options it was given, as JSON. */
@@ -120,6 +134,7 @@ const SESSION_WORDS = new Set([
   "list",
   "page-objects",
   "tools",
+  "call",
 ]);
 
 /** What each command that only asks the folder's Session asks it. */
@@ -146,6 +161,7 @@ function readSessionCommand(
     json?: boolean;
     cdp?: string;
     session?: string;
+    params?: string;
   };
   try {
     ({ positionals, values } = parseArgs({
@@ -161,6 +177,7 @@ function readSessionCommand(
         json: { type: "boolean" },
         cdp: { type: "string" },
         session: { type: "string", short: "s" },
+        params: { type: "string" },
       },
     }));
   } catch (error) {
@@ -182,6 +199,18 @@ function readSessionCommand(
     return { kind: "attach", cdp: values.cdp, json, ...named };
   }
   if (values.cdp !== undefined) return { kind: "error", text: USAGE };
+  const { params } = values;
+  if (word === "call")
+    return url !== undefined && more.length === 0 && !values.headed
+      ? {
+          kind: "call",
+          tool: url,
+          ...(params === undefined ? {} : { params }),
+          json,
+          ...named,
+        }
+      : { kind: "error", text: USAGE };
+  if (params !== undefined) return { kind: "error", text: USAGE };
   if (word === "open" && more.length === 0)
     return {
       kind: "open",

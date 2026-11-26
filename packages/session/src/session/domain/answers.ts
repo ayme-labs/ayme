@@ -1,5 +1,6 @@
 import type { ListedTool, Listing, TabName } from "./listing";
 import type { SessionAnswer, SessionEnd } from "./requests";
+import type { RunAnswer, RunError } from "./run";
 
 /** The first line of a listing: the Tab it describes. */
 const tabLine = ({ url, title }: TabName) =>
@@ -119,3 +120,60 @@ export function endAnswer(end: SessionEnd, opened: boolean): SessionAnswer {
       return failed("The Session never started.");
   }
 }
+
+const changesLines = (changes: string) => ["changes:", changes];
+
+/** The answer to `ayme call`: the Run's short answer, a line for each of
+ * its parts, and the tree of its changes last. */
+export const callAnswer = (answer: RunAnswer): SessionAnswer => ({
+  ok: true,
+  text: [
+    `settled: ${answer.settled}`,
+    ...(answer.result === undefined
+      ? []
+      : [`result: ${JSON.stringify(answer.result)}`]),
+    ...(answer.url === undefined ? [] : [`url: ${answer.url}`]),
+    ...(answer.changes === undefined ? [] : changesLines(answer.changes)),
+  ].join("\n"),
+  data: answer,
+});
+
+/** The answer to `ayme call` when its Run was refused or failed, followed
+ * by the tree of its changes as WebMCP publication tells them. */
+export const runFailed = ({ message, changes }: RunError): SessionAnswer =>
+  failed(
+    changes === undefined
+      ? message
+      : [message, "", ...changesLines(changes)].join("\n")
+  );
+
+/** The answer to a command still waiting when the Session ended. */
+export function endedBeforeAnswer(end: SessionEnd): SessionAnswer {
+  switch (end) {
+    case "stopped":
+      return failed("The Session was closed before it answered this command.");
+    case "detached":
+      return failed(
+        "ayme detach ended the Session before it answered this command."
+      );
+    case "browser gone":
+      return failed(
+        "The Session ended before it answered this command: its browser went away."
+      );
+    case "start failed":
+      return failed("The Session never started.");
+  }
+}
+
+/** The answer to `ayme call` when its `--params` is not JSON. */
+export const paramsNotJson = (why: string): SessionAnswer =>
+  failed(
+    `--params is not JSON: ${why.replace(/\.$/, "")}. Give the tool's input as one JSON object, as ayme tools prints its parameters.`
+  );
+
+/** The answer to `ayme call` when the file its `--params @<file>` names
+ * cannot be read. */
+export const paramsUnreadable = (file: string, why: string): SessionAnswer =>
+  failed(
+    `--params @${file} names a file ayme cannot read: ${why.replace(/\.$/, "")}.`
+  );

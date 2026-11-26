@@ -12,7 +12,7 @@ export type Plan =
   | { kind: "capture"; target: CaptureTarget }
   | Extract<
       Command,
-      { kind: "open" | "attach" | "ask" | "list" | "session process" }
+      { kind: "open" | "attach" | "ask" | "call" | "list" | "session process" }
     >;
 
 /**
@@ -47,6 +47,7 @@ export function planOf(command: Command): Plan {
     case "open":
     case "attach":
     case "ask":
+    case "call":
     case "list":
     case "session process":
       return command;

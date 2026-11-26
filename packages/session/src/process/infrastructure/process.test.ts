@@ -3,6 +3,7 @@ import { once } from "node:events";
 import {
   mkdtempSync,
   readdirSync,
+  writeFileSync,
   realpathSync,
   rmSync,
   statSync,
@@ -14,7 +15,7 @@ import { beforeEach, expect, it, onTestFinished, vi } from "vitest";
 
 import { scriptedBrowser } from "../../../testing";
 import { serveSession } from "./background";
-import { askSession, listSessions, openSession } from "./commands";
+import { askCall, askSession, listSessions, openSession } from "./commands";
 import {
   claimAfter,
   claimRecord,
@@ -336,6 +337,45 @@ it("a request the Session does not know is answered so, and the Session goes on"
   expect(await askSession(place, { stop: {} })).toMatchObject({
     ok: true,
   });
+});
+
+it("a call reaches the Session with the tool's input as --params gives it: JSON, a file of the folder, or none", async () => {
+  const { served, browser } = await claimAndServe();
+  if (served._tag !== "Success") throw served.failure;
+  writeFileSync(
+    join(projectDir, "add.json"),
+    '{"id":"po1","args":{"item":"Milk"}}'
+  );
+
+  for (const params of ['{"id":"po1"}', "@add.json", undefined])
+    expect(await askCall(place, "Basket.add", params)).toMatchObject({
+      ok: true,
+    });
+
+  expect(browser.runs).toEqual([
+    { tool: "Basket.add", input: { id: "po1" } },
+    { tool: "Basket.add", input: { id: "po1", args: { item: "Milk" } } },
+    { tool: "Basket.add", input: {} },
+  ]);
+});
+
+it("--params that is not JSON, or names a file that cannot be read, is answered with why and starts no Run", async () => {
+  const { served, browser } = await claimAndServe();
+  if (served._tag !== "Success") throw served.failure;
+
+  expect(await askCall(place, "Basket.add", "{id: po1}")).toEqual({
+    ok: false,
+    text: expect.stringMatching(
+      /^--params is not JSON: .+\. Give the tool's input as one JSON object, as ayme tools prints its parameters\.$/
+    ),
+  });
+  expect(await askCall(place, "Basket.add", "@missing.json")).toEqual({
+    ok: false,
+    text: expect.stringMatching(
+      /^--params @missing\.json names a file ayme cannot read: ENOENT.*\.$/
+    ),
+  });
+  expect(browser.runs).toEqual([]);
 });
 
 it("Sessions of different names run side by side in one folder, and a command reaches the one it names", async () => {

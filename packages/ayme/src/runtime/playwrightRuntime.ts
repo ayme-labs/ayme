@@ -4,8 +4,8 @@
 // share nothing. It holds nothing of the browser: Playwright Lite, the
 // document's globals and the Inspector's loaders stay with the browser
 // runtime.
-import type { Locator, Page } from "@playwright/test";
-import { inPage } from "../in-page";
+import type { Locator, Page, Selectors } from "@playwright/test";
+import { inPage, registerAymeRef } from "../in-page";
 import { listCustomToolsOf } from "../tools/infrastructure";
 import {
   registerCustomTool,
@@ -100,6 +100,18 @@ export function createPlaywrightAyme(
 }
 
 /**
+ * A session over `options.page` on the Playwright whose `selectors` are
+ * handed in: the one that drives the Page's browser, where it registers the
+ * `ayme-ref` engine once.
+ */
+export function createNodeHost(
+  options: PlaywrightAymeOptions,
+  selectors: Selectors
+): PlaywrightAyme {
+  return createPlaywrightAyme(options, () => registerAymeRef(selectors));
+}
+
+/**
  * The filters registered, selectors checked in the page and functions called
  * with `page`, and the Custom Tools registered.
  */
@@ -145,6 +157,8 @@ function playwrightTarget(
   };
   return {
     kind: "playwright",
+    // The Page the host drives outlives each document it shows.
+    outlivesFullLoads: true,
     key: () => page,
     rawPage: () => page,
     pageState,

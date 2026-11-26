@@ -61,6 +61,7 @@ describe("what the command line does for a command", () => {
     { kind: "open", open: { headed: false }, json: true },
     { kind: "attach", cdp: "http://127.0.0.1:9222", json: false },
     { kind: "ask", request: { detach: {} }, json: false, session: "review" },
+    { kind: "call", tool: "Basket.add", params: "@add.json", json: false },
     { kind: "list", json: false },
     { kind: "session process", options: "{}" },
   ] as const)("reaches a Session as the command asks: $kind", (command) => {

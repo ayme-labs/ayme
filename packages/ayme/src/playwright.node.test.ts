@@ -3,14 +3,16 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, selectors, type Browser, type Page } from "@playwright/test";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import type * as Internal from "./internal";
 import type * as Playwright from "./playwright";
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), "../dist");
 
 let built: typeof Playwright;
+let internal: typeof Internal;
 let browser: Browser;
 const stops: (() => void)[] = [];
 
@@ -19,6 +21,10 @@ beforeAll(async () => {
   // The Node lane loads what ships, by path, as builtEntries.test.ts reads it.
   // eslint-disable-next-line no-restricted-syntax
   built = (await import(entry)) as typeof Playwright;
+  // eslint-disable-next-line no-restricted-syntax
+  internal = (await import(
+    pathToFileURL(join(dist, "internal.mjs")).href
+  )) as typeof Internal;
   browser = await chromium.launch();
 }, 120_000);
 
@@ -638,6 +644,168 @@ describe("ayme over a Playwright Page", () => {
       expect(none.result).toBe(
         "There is no history entry to go forward to; the page did not move."
       );
+    });
+  });
+});
+
+describe("a Session's Node Host, through the internal entry", () => {
+  /** A Node Host over `page` on the Playwright `selectors` it is handed,
+   * started. */
+  async function hostOn(
+    page: Page,
+    pageObjects: Playwright.PlaywrightAymeOptions["pageObjects"]
+  ) {
+    const ayme = internal.createNodeHost({ page, pageObjects }, selectors);
+    stops.push(await ayme.start());
+    return ayme;
+  }
+
+  it("answers a Run of a Page Object Tool with the short answer an agent reads, as the Caller it names, before anything read the page", async () => {
+    const page = await pageShowing(
+      '<section id="counter"><output>0</output><button>Add</button></section>' +
+        "<script>document.querySelector('button').onclick = () => document.querySelector('output').textContent = '1'</script>"
+    );
+    const Counter = pageObjectRootedAt("Counter", "#counter");
+    const ayme = await hostOn(page, [Counter]);
+
+    const answer = await internal
+      .pageObjectCallerOf(ayme, "ayme-command")
+      .run("Counter.press", { id: "po1" });
+
+    expect(answer).toEqual({
+      settled: true,
+      changes: 'Counter po1\n  button: button "Add" → button "Add" [active]',
+    });
+    expect(await page.locator("output").textContent()).toBe("1");
+    expect(ayme.runs.list().at(-1)).toMatchObject({
+      tool: "Counter.press",
+      by: "ayme-command",
+      status: "succeeded",
+    });
+  });
+
+  it("lists the Page Object Tree, the tools, the URL and the title in one turn, once the Run under way has ended", async () => {
+    const page = await pageShowing("<h1>Before</h1>");
+    class Gate {
+      constructor(readonly page: Page) {}
+      async pass() {
+        await this.page.waitForFunction(() => "open" in window, null, {
+          timeout: 0,
+        });
+        await this.page.evaluate(() => {
+          document.title = "After";
+          document.querySelector("h1")!.textContent = "After";
+        });
+      }
+      get heading(): ReturnType<Page["locator"]> {
+        return this.page.getByRole("heading");
+      }
+    }
+    built.ayme(Gate);
+    built.registerCompiledPom(Gate, {
+      className: "Gate",
+      members: [{ memberName: "heading", kind: "locator", access: "getter" }],
+      tools: [
+        {
+          methodName: "pass",
+          toolName: "Gate.pass",
+          description: "Wait until the gate opens",
+          parameters: [],
+        },
+      ],
+      components: [],
+    });
+    const ayme = await hostOn(page, [Gate]);
+    const caller = internal.pageObjectCallerOf(ayme, "ayme-command");
+
+    const run = caller.run("Gate.pass", {});
+    let listed = false;
+    const listing = caller.listing().finally(() => (listed = true));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(listed).toBe(false);
+    await page.evaluate(() => Object.assign(window, { open: true }));
+
+    await run;
+    expect(await listing).toEqual({
+      pageObjectTree: 'Gate\n  heading: heading "After" [level=1]',
+      tools: expect.arrayContaining([
+        expect.objectContaining({ name: "Gate.pass", available: true }),
+      ]),
+      url: "about:blank",
+      title: "After",
+    });
+    expect(ayme.runs.list().at(-1)).toMatchObject({
+      tool: "page_objects",
+      by: "ayme-command",
+    });
+  });
+
+  it("refuses a tool that is not a Page Object Tool as one there is not", async () => {
+    const page = await pageShowing("<button>Save</button>");
+    const ayme = await hostOn(page, []);
+
+    await expect(
+      internal.pageObjectCallerOf(ayme, "ayme-command").run("snapshot", {})
+    ).rejects.toThrow('There is no tool "snapshot".');
+  });
+
+  it("answers an action that loads another document from the new page, once the Page Object it returned is present there", async () => {
+    const page = await browser.newPage();
+    await page.route("http://app.test/**", (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body:
+          new URL(route.request().url()).pathname === "/home"
+            ? "<h1>Home</h1>"
+            : '<form method="post" action="/home"><button>Log in</button></form>',
+      })
+    );
+    await page.goto("http://app.test/");
+    class Home {
+      constructor(readonly page: Page) {}
+    }
+    built.ayme({
+      present: (self: Home) => new URL(self.page.url()).pathname === "/home",
+    })(Home);
+    built.registerCompiledPom(Home, {
+      className: "Home",
+      members: [],
+      tools: [],
+      components: [],
+    });
+    class SignIn {
+      constructor(readonly page: Page) {}
+      async logIn() {
+        await this.page.getByRole("button").click();
+        return new Home(this.page);
+      }
+    }
+    built.ayme({
+      present: (self: SignIn) => new URL(self.page.url()).pathname === "/",
+    })(SignIn);
+    built.registerCompiledPom(SignIn, {
+      className: "SignIn",
+      members: [],
+      tools: [
+        {
+          methodName: "logIn",
+          toolName: "SignIn.logIn",
+          description: "Log in",
+          parameters: [],
+        },
+      ],
+      components: [],
+    });
+    const ayme = await hostOn(page, [SignIn, Home]);
+
+    const answer = await internal
+      .pageObjectCallerOf(ayme, "ayme-command")
+      .run("SignIn.logIn", {});
+
+    expect(answer).toEqual({
+      settled: false,
+      url: "http://app.test/home",
+      changes: "- SignIn (removed)\n+ Home",
     });
   });
 });
