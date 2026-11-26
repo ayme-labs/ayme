@@ -1,6 +1,6 @@
 name: First-install eval
 
-# Runs apps/eval-first-install: a worker installs and uses Ayme beside each
+# Runs apps/eval-first-install: a worker installs and uses ayme beside each
 # browser automation, as a first-time user would, on a fresh runner per run.
 # Started by hand only, because every run calls the model and costs money.
 on:
@@ -124,10 +124,14 @@ jobs:
           # The eval's second login. eval-formbricks.yml uses the first and
           # falls back to this one.
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_FALLBACK }}
+          # Through env, not pasted into the command: the tool name is typed
+          # in by whoever starts the round, and this step holds the token.
+          TOOL: ${{ matrix.tool }}
+          RUN: ${{ matrix.run }}
         run: >-
-          node src/run.ts --tool "${{ matrix.tool }}"
+          node src/run.ts --tool "$TOOL"
           --packed "$RUNNER_TEMP/packed"
-          --out "results/runs/${{ matrix.tool }}-${{ matrix.run }}"
+          --out "results/runs/$TOOL-$RUN"
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
@@ -159,6 +163,7 @@ jobs:
           REF: ${{ inputs.ref }}
           SHA: ${{ needs.pack.outputs.sha }}
         run: |
+          { echo "### First-install eval: $REF${SHA:+ at $SHA}"; echo; } >> "$GITHUB_STEP_SUMMARY"
           shopt -s nullglob
           dirs=(results/runs/*/)
           if [ ${#dirs[@]} -eq 0 ]; then
@@ -166,11 +171,7 @@ jobs:
             exit 0
           fi
           node src/score.ts "${dirs[@]}" --json results/scores.json > results/scores.md
-          {
-            echo "### First-install eval: $REF at $SHA"
-            echo
-            cat results/scores.md
-          } >> "$GITHUB_STEP_SUMMARY"
+          cat results/scores.md >> "$GITHUB_STEP_SUMMARY"
           cat results/scores.md
       - uses: actions/upload-artifact@v4
         with:
