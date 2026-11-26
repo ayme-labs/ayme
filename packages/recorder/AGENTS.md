@@ -5,11 +5,11 @@ The engine of the Recorder: it starts a recorder on the Playwright the project h
 The slices of `src/`, from the bottom up:
 
 - `contract`: the plain data shared with the CLI, the window and the toolbar, types only; the `./contract` entry.
-- `timeline`: Visits, snapshots and Interactions in, the Visits with their entries out as they are produced, and the Recording Package at the end. Its `infrastructure` writes the package and its trace to disk and finds a recording's trace.
+- `timeline`: Visits, snapshots and Interactions in, the Visits with their entries out as they are produced, and the Recording Package at the end. Its `infrastructure` writes the package and its trace to disk.
 - `session`: one live recorder: the lifecycle ([`lifecycle.ts`](src/session/domain/lifecycle.ts)), the queue's one worker ([`recorderSession.ts`](src/session/application/recorderSession.ts)), and the engine's one seam, the recorded browser ([`recordedBrowser.ts`](src/session/application/recordedBrowser.ts)).
 - `playwright`: the stock Playwright adapter of the recorded browser. Its `infrastructure/live/` drives the browser, `infrastructure/in-page/` runs in a recorded page, and the plain logic beside them, such as [`pageRules.ts`](src/playwright/infrastructure/pageRules.ts), decides ([docs/testing.md](../../docs/testing.md#code-a-real-browser-runs)).
 - `server`: the window's server and the in-page toolbar's bridge.
-- `engine`: the composition root ([`recorder.ts`](src/engine/recorder.ts)), the front door, and the `trace` and `install` commands.
+- `engine`: the composition root ([`recorder.ts`](src/engine/recorder.ts)) and the front door.
 - `testing/`, beside `src/`: the package's test support ([ADR-0057](../../docs/adr/0057-test-support-lives-beside-src-and-is-never-published.md)), imported from source as `@ayme-dev/recorder/testing`, with a real recorder on a scripted browser ([`testing/index.ts`](testing/index.ts)).
 
 The layers inside a slice: `domain` (pure rules and types), `application` (the flows and the ports they use), `infrastructure` (Playwright, the disk, the network).
@@ -94,4 +94,4 @@ Each rule the lifecycle must keep is the comment above its check in [`lifecycle-
 
 ## Known limits
 
-Users read the limits in [the Recorder guide](../../docs/guide/guides/recorder.md#limits), and a coding agent reads what a package holds in [the `ayme-recorder` skill](../../skills/ayme-recorder/SKILL.md). Why one is so is a comment where the code makes it so, or, for one the model reproduces, under [the model's Known limits](lifecycle-model/README.md#known-limits).
+Users read the limits in [the ayme capture guide](../../docs/guide/guides/recorder.md#limits), and a coding agent reads what a package holds in [the `ayme-capture` skill](../../skills/ayme-capture/SKILL.md). Why one is so is a comment where the code makes it so, or, for one the model reproduces, under [the model's Known limits](lifecycle-model/README.md#known-limits).

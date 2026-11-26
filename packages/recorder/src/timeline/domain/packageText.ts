@@ -18,7 +18,7 @@ import type { InteractionReport, PageId, TracePosition } from "./recorded";
 import type { FirstRef } from "./refs";
 
 // The text of a Recording Package, in the released format: the layout the
-// `ayme-recorder` skill and the 0.1 recorder's readers know. Trees are core's
+// `ayme-capture` skill and the 0.1 recorder's readers know. Trees are core's
 // compact notation; everything else is written as YAML.
 
 /** What a recording is filed under. */

@@ -31,7 +31,7 @@ const cliCommand = join(
     JSON.parse(await readFile(cliManifest, "utf8")) as {
       bin: Record<string, string>;
     }
-  ).bin["ayme-recorder"]!
+  ).bin["ayme"]!
 );
 
 /** The recorder window's built files and the toolbar's built script, as the
@@ -62,7 +62,7 @@ export type FixturePages = {
   readonly requests: readonly { path: string; userAgent: string }[];
 };
 
-/** One run of `ayme-recorder`, as a child process. */
+/** One run of `ayme`, as a child process. */
 export type Run = {
   /** Everything it has written to stdout so far. */
   stdout(): string;
@@ -257,8 +257,12 @@ export const test = base.extend<{
    * at the end of the test, after every recorder. */
   runningBrowser: (url: string) => Promise<RunningBrowser>;
   fixturePages: FixturePages;
-  /** Runs `ayme-recorder` with these arguments in a project folder. */
-  runRecorder: (args: string[], options?: { cwd?: string }) => Promise<Run>;
+  /** Runs `ayme` with these arguments in a project folder, with these
+   * environment variables added. */
+  runRecorder: (
+    args: string[],
+    options?: { cwd?: string; env?: NodeJS.ProcessEnv }
+  ) => Promise<Run>;
   /** Starts a recorder in this process on a fixture page such as
    * `/cart.html`. Its project is a folder of the test's own inside this
    * app, so the app's Playwright is the one it finds; or, when
@@ -407,7 +411,7 @@ export const test = base.extend<{
   // eslint-disable-next-line no-empty-pattern
   runRecorder: async ({}, use) => {
     const children: ReturnType<typeof spawn>[] = [];
-    await use(async (args, { cwd = fixtureProject } = {}) => {
+    await use(async (args, { cwd = fixtureProject, env = {} } = {}) => {
       const debugPort = await freePort();
       const child = spawn(process.execPath, [cliCommand, ...args], {
         cwd,
@@ -417,6 +421,7 @@ export const test = base.extend<{
           AYME_RECORDER_HEADLESS: "1",
           // The test's own way into the recorder's browser.
           AYME_RECORDER_DEBUG_PORT: String(debugPort),
+          ...env,
         },
         stdio: ["ignore", "pipe", "pipe"],
       });
@@ -448,7 +453,7 @@ export const test = base.extend<{
               else if (child.exitCode !== null || child.signalCode !== null)
                 reject(
                   new Error(
-                    `ayme-recorder ended before printing "${text}".\nstdout: ${stdout}\nstderr: ${stderr}`
+                    `ayme ended before printing "${text}".\nstdout: ${stdout}\nstderr: ${stderr}`
                   )
                 );
             };

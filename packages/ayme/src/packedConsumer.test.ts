@@ -1715,7 +1715,7 @@ it("the packed CLI carries its engine, its window, its toolbar and its notices, 
     "dist/window/window.js",
     "package.json",
   ]);
-  expect(manifest.bin).toEqual({ "ayme-recorder": "./dist/cli.mjs" });
+  expect(manifest.bin).toEqual({ ayme: "./dist/cli.mjs" });
   // The engine and the window are inside the command: nothing to install
   // beside it but the Playwright the project has.
   expect(manifest.dependencies).toBeUndefined();
@@ -1764,7 +1764,7 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
 });
 
 it(
-  "a clean project installs the packed CLI and records one flow with it",
+  "a clean project installs the packed CLI and records one flow with ayme capture",
   { timeout: 120_000 },
   async () => {
     const project = path.join(tmp, "recorder-project");
@@ -1774,7 +1774,7 @@ it(
     fs.writeFileSync(
       path.join(project, "package.json"),
       JSON.stringify({
-        name: "ayme-recorder-consumer",
+        name: "ayme-capture-consumer",
         private: true,
         devDependencies: {
           [CLI]: `file:${packed[CLI]!.tarball}`,
@@ -1801,14 +1801,14 @@ it(
       });
     });
 
+    // The installed package's `ayme` command, as its manifest names it.
+    const installed = path.join(project, "node_modules/@ayme-dev/cli");
+    const ayme = (readManifest(installed) as { bin?: Record<string, string> })
+      .bin?.ayme;
+    expect(ayme).toBeDefined();
     const command = spawn(
       process.execPath,
-      [
-        path.join(project, "node_modules/@ayme-dev/cli/dist/cli.mjs"),
-        "codegen",
-        pageUrl,
-        "--headless",
-      ],
+      [path.join(installed, ayme!), "capture", pageUrl, "--headless"],
       {
         cwd: project,
         env: {

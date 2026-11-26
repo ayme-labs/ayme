@@ -213,7 +213,7 @@ test.describe("the recorder window", () => {
   test("names the page that is open in its title, before Record, while recording and after Clear", async ({
     recording: { window },
   }) => {
-    const title = "ayme Recorder - http://shop.test/";
+    const title = "ayme capture - http://shop.test/";
     await expect(window.page).toHaveTitle(title);
 
     await record(window);
