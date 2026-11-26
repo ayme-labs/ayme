@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 30
     outputs:
       version: ${{ steps.version.outputs.version }}
-      tests-failed: ${{ steps.packed.outcome == 'failure' || steps.loader.outcome == 'failure' || steps.browser.outcome == 'failure' || steps.recorder.outcome == 'failure' }}
+      tests-failed: ${{ steps.packed.outcome == 'failure' || steps.loader.outcome == 'failure' || steps.install.outcome == 'failure' || steps.browser.outcome == 'failure' || steps.recorder.outcome == 'failure' }}
     env:
       SPEC: ${{ inputs.playwright || 'latest' }}
       # Vitest colours its summary on CI, which the pass-count checks below
