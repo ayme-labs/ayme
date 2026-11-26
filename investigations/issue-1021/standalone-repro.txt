@@ -1,0 +1,21 @@
+Info: Running script "node" on /Users/abelenekes/.t3/worktrees/ayme/t3-29754522
+{"rows":12,"ms":3.7,"observations":1,"resolutions":{"all:internal:role=list[name=\"Projects\"i] >> :scope > li":1,"count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*":12,"directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*":24,"isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*":12,"directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button":12,"count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button":12},"locatorCalls":{"all":1,"count":24,"isVisible":12},"qsaCalls":255,"candidates":4915,"dom":{"document:*":{"calls":73,"candidates":2117},"BODY:li":{"calls":73,"candidates":876},"BODY:*":{"calls":73,"candidates":1898},"document::modal":{"calls":12,"candidates":0},"LI:*":{"calls":24,"candidates":24}},"observedRows":12}
+{"rows":24,"ms":8.7,"observations":1,"resolutions":{"all:internal:role=list[name=\"Projects\"i] >> :scope > li":1,"count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*":24,"directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*":48,"isVisible:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=*":24,"directResolve:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button":24,"count:internal:role=list[name=\"Projects\"i] >> :scope > li >> nth=* >> internal:role=button":24},"locatorCalls":{"all":1,"count":48,"isVisible":24},"qsaCalls":507,"candidates":18463,"dom":{"document:*":{"calls":145,"candidates":7685},"BODY:li":{"calls":145,"candidates":3480},"BODY:*":{"calls":145,"candidates":7250},"document::modal":{"calls":24,"candidates":0},"LI:*":{"calls":48,"candidates":48}},"observedRows":24}
+candidate growth = 3.756x
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: #1021 RED: 4915 -> 18463 selector candidates for 2x rows
+    at file:///Users/abelenekes/.t3/worktrees/ayme/t3-29754522/investigations/issue-1021/run.mjs:73:5 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.21.0
+Error: error running script "node" in Devbox: exit status 1
+
