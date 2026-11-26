@@ -13,11 +13,7 @@ const certification = await certificationConfig({
 
 export default {
   ...certification,
-  testMatch: [
-    "vue-webmcp.spec.ts",
-    "agentConnection.spec.ts",
-    "integration.spec.ts",
-  ],
+  testMatch: ["vue-webmcp.spec.ts", "integration.spec.ts"],
   // The suite warms the counter page and `/other`; the playground's own
   // tests need the playground warm too.
   globalSetup: [certification.globalSetup, "./tests/warmDevServer.ts"]

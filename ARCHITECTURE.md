@@ -153,8 +153,7 @@ in-browser agents and the app's own code call on the running page.
 ### Playground
 
 - Responsibility: the hosted demo app with the Inspector in demo mode, plus the rendered
-  documentation beside it. The "Try with your own coding agent" wizard and the Agent
-  Connection are left out of the hosted builds
+  documentation beside it. An agent reaches it through WebMCP publication only
 - Technology: Vue single-page app built from [apps/example-vue](apps/example-vue), with the docs rendered by
   Jekyll from [docs/guide](docs/guide)
 - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue), [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
@@ -433,8 +432,8 @@ hosting its playground.
 - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md), [.agents/skills/inspector-dogfood/SKILL.md](.agents/skills/inspector-dogfood/SKILL.md)
 - Containers:
   - **Browser runtime**: the playground's and the examples' development builds; the
-    playground has WebMCP publication, the Inspector in demo mode and the Agent Connection
-    on, and a `goal` only when its dev server has a model key
+    playground has WebMCP publication and the Inspector in demo mode, and a `goal` only
+    when its dev server has a model key
     - Deployment node: the example's page in the contributor's browser
     - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue), [apps/example-vue/vite.config.ts](apps/example-vue/vite.config.ts)
   - **Build plugin**: the workspace's `@ayme-dev/unplugin-ayme`, consumed from its built
@@ -445,10 +444,8 @@ hosting its playground.
     with the contributor's coding agent
     - Deployment node: the coding agent's process on the contributor's machine
     - Evidence: verified: [.agents/skills/inspector-dogfood/SKILL.md](.agents/skills/inspector-dogfood/SKILL.md), [packages/mcp/src/cli.ts](packages/mcp/src/cli.ts)
-  - **App Process runtime**: started by the Next.js example's `instrumentation.ts` and the
-    Nuxt example's Nitro plugin
-    - Deployment node: the Next.js or Nuxt example's dev server process
-    - Evidence: verified: [apps/example-next/instrumentation.ts](apps/example-next/instrumentation.ts), [apps/example-nuxt/server/plugins/ayme.ts](apps/example-nuxt/server/plugins/ayme.ts)
+  - **App Process runtime**: does not run here; no example starts one
+    - Evidence: verified: [apps/example-next/README.md](apps/example-next/README.md), [apps/example-nuxt/README.md](apps/example-nuxt/README.md)
   - **Node host runtime**: does not run here outside the unit tests; the playground and the
     examples run the browser runtime
     - Evidence: verified: [packages/ayme/src/playwright.node.test.ts](packages/ayme/src/playwright.node.test.ts)
@@ -457,8 +454,7 @@ hosting its playground.
     - Deployment node: the playground's Vite dev server
     - Evidence: verified: [apps/example-vue/vite/decisionEndpoint.dev.ts](apps/example-vue/vite/decisionEndpoint.dev.ts), [apps/example-vue/scripts/appEnvironment.ts](apps/example-vue/scripts/appEnvironment.ts),
       [apps/example-vue/.env.example](apps/example-vue/.env.example)
-  - **Playground**: a Vite dev server on port 4190, with the "Try with your own coding agent"
-    wizard unless `VITE_AGENT_CONNECTION=false`
+  - **Playground**: a Vite dev server on port 4190
     - Deployment node: the playground's Vite dev server
     - Evidence: verified: [apps/example-vue/package.json](apps/example-vue/package.json), [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue)
   - **Recorder**: the workspace build, `node packages/cli/dist/cli.mjs capture <url>`,
@@ -495,9 +491,9 @@ hosting its playground.
   - **ayme MCP server**: started over stdio by the test's MCP client
     - Deployment node: a Playwright container on a GitHub Actions runner
     - Evidence: verified: [packages/mcp/testing/](packages/mcp/testing/), [apps/mcp-fixture/](apps/mcp-fixture/)
-  - **App Process runtime**: the example dev servers paired in the certification tests
+  - **App Process runtime**: the MCP fixture's stand-in App Process in its end-to-end tests
     - Deployment node: a Playwright container on a GitHub Actions runner
-    - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
+    - Evidence: verified: [apps/mcp-fixture/README.md](apps/mcp-fixture/README.md)
   - **Node host runtime**: the unit lane drives real Playwright Chromium against the built
     package: the in-page module's contract suite and the Playwright entry's tests
     - Deployment node: a Playwright container on a GitHub Actions runner
@@ -533,8 +529,7 @@ hosting its playground.
 - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
 - Containers:
   - **Browser runtime**: the playground's production build with `webMCP` and `inspector`
-    in demo mode, `agentConnection` off (`VITE_AGENT_CONNECTION=false`), and no `goal`
-    since no Decision Endpoint exists
+    in demo mode, and no `goal` since no Decision Endpoint exists
     - Deployment nodes: the ayme-labs.github.io/ayme GitHub Pages site, and its
       `/playground/` copy that ayme.dev/playground/ proxies to
     - Evidence: verified: [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue), [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)

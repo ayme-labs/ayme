@@ -3,7 +3,6 @@ import {
   recordPublishedTools,
   waitForPublishedTool,
 } from "@ayme-dev/webmcp/testing";
-import { ignoreAutoPairScan } from "@ayme-dev/mcp/testing";
 
 /**
  * Loads the playground once before any test starts. Vite compiles the app's
@@ -18,7 +17,6 @@ export default async function warmDevServer(config: FullConfig) {
       baseURL: config.projects[0]!.use.baseURL,
     });
     await recordPublishedTools(context);
-    await ignoreAutoPairScan(context);
     const page = await context.newPage();
     // The published tool shows the app's modules loaded.
     await page.goto("/", { timeout: 60_000 });

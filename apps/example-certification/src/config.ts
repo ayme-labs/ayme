@@ -29,31 +29,6 @@ const freePort = () =>
     });
   });
 
-/**
- * The port of the agent's ayme MCP server that an example's App Process
- * looks for, in place of the auto-pair range. The example's server start
- * reads it from `AYME_EXAMPLE_AGENT_PORT`, which the run's `webServer`
- * passes, and the Agent Connection suite's App Process case starts its
- * agent there. A free port, so outside the range that pages and processes
- * of other runs scan. Written back to `process.env` so Playwright workers,
- * which re-load the config, resolve the same port.
- */
-export const agentPort = Number(
-  (process.env.AYME_EXAMPLE_AGENT_PORT ??= String(await freePort()))
-);
-
-/**
- * A free port other than `agentPort`. The system can hand out the agent's
- * port again once its listener closes; an example's App Process then probes
- * its own dev server, and Nuxt's dev server restarts when the probe hangs up
- * mid-answer, dropping Playwright's readiness check.
- */
-async function freePortBesideAgent() {
-  let port = await freePort();
-  while (port === agentPort) port = await freePort();
-  return port;
-}
-
 export type ExampleServerCommand = {
   command: string;
   env?: Record<string, string>;
@@ -81,9 +56,7 @@ export async function certificationConfig(app: {
   // Written back to `process.env` so Playwright workers, which re-load the
   // config, resolve the same port.
   const portVariable = `AYME_E2E_PORT_${app.name.toUpperCase()}`;
-  const port = Number(
-    (process.env[portVariable] ??= String(await freePortBesideAgent()))
-  );
+  const port = Number((process.env[portVariable] ??= String(await freePort())));
   const baseURL = `http://127.0.0.1:${port}`;
   if (app.counterPath) process.env.AYME_E2E_COUNTER_PATH = app.counterPath;
   return defineConfig({

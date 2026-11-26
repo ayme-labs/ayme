@@ -6,9 +6,6 @@ import type { AymeRuns, Caller } from "@ayme-dev/ayme";
  * `dataLayer`; elsewhere nothing reads them.
  */
 export type PlaygroundEvent =
-  | { event: "playground_agent_panel_open" }
-  | { event: "playground_agent_panel_step"; step: number; step_name: string }
-  | { event: "playground_prompt_copy"; prompt: string }
   | { event: "playground_view_switch"; view: "app" | "code" }
   | {
       event: "playground_tool_run";
