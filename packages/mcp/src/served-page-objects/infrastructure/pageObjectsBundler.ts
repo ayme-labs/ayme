@@ -76,17 +76,21 @@ export async function watchPageObjects(
 ): Promise<() => Promise<void>> {
   const folder = dirname(entry);
   // Nothing is written there: the outputs stay in memory.
+  // Stryker disable next-line StringLiteral: equivalent, the modules are named relative to outdir, wherever it is.
   const outdir = join(folder, "ayme-served");
   const context = await esbuild.context({
     absWorkingDir: folder,
     entryPoints: {
+      // Stryker disable next-line Regex: equivalent, ".js" is only at the end of the module's name.
       [RUNTIME_MODULE.replace(/\.js$/, "")]: RUNTIME_ENTRY,
+      // Stryker disable next-line Regex: equivalent, ".js" is only at the end of the module's name.
       [ENTRY_MODULE.replace(/\.js$/, "")]: entry,
     },
     bundle: true,
     splitting: true,
     format: "esm",
     minify: true,
+    // Stryker disable next-line StringLiteral: equivalent, esbuild builds for the browser when the platform is empty.
     platform: "browser",
     write: false,
     outdir,
@@ -149,6 +153,7 @@ function pageObjectModels(
       build.onLoad({ filter: /\.ts$/ }, async ({ path }) => {
         if (path.split(sep).includes("node_modules")) return;
         // What the compile read before it threw, such as a tsconfig.json.
+        // Stryker disable next-line ArrayDeclaration: equivalent, watching a file that no compile read starts no rebuild.
         let read: readonly string[] = [];
         let pom;
         try {
@@ -225,6 +230,7 @@ function buildResults(
     name: "ayme-served-outcomes",
     setup(build) {
       build.onStart(() => publish({ kind: "building" }));
+      // Stryker disable next-line ArrayDeclaration: equivalent, a build that writes nothing always has outputFiles; the default is for the type.
       build.onEnd(({ errors, outputFiles = [] }) => {
         if (errors.length === 0) {
           const modules = new Map(
@@ -318,6 +324,7 @@ function runtimeEntry(folder: string): esbuild.Plugin {
         path: RUNTIME_ENTRY,
         namespace,
       }));
+      // Stryker disable next-line Regex: equivalent, the one path in this namespace is not empty.
       build.onLoad({ filter: /.*/, namespace }, () => ({
         contents: `export * from ${JSON.stringify(RUNTIME_PACKAGE)};`,
         resolveDir: folder,

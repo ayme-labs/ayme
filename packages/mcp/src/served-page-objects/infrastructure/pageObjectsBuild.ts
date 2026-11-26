@@ -58,6 +58,7 @@ export function startWithInstall(
   install: ProjectAymeInstall,
   startBuild: StartBuild
 ): PageObjectsBuild {
+  // Stryker disable next-line ObjectLiteral,StringLiteral: equivalent, the first retry() below sets the starting state before anything reads this one.
   let state: PageObjectsBuildState = { kind: "starting", entry };
   const listeners = new Set<(state: PageObjectsBuildState) => void>();
   const setState = (next: PageObjectsBuildState) => {

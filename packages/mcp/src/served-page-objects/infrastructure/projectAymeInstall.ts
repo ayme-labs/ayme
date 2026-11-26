@@ -130,18 +130,22 @@ async function resolveAfresh(
     stdin: {
       contents: specifiers
         .map((s) => `import ${JSON.stringify(s)};`)
+        // Stryker disable next-line StringLiteral: equivalent, each import ends with a semicolon.
         .join("\n"),
       resolveDir: folder,
     },
     bundle: true,
     write: false,
     platform: "node",
+    // Stryker disable next-line StringLiteral: equivalent, each import resolves by its kind, whatever the output format.
     format: "esm",
+    // Stryker disable next-line StringLiteral: equivalent, every import is external, so the build has nothing to log.
     logLevel: "silent",
     plugins: [
       {
         name: "ayme-resolve-afresh",
         setup(build) {
+          // Stryker disable next-line Regex: equivalent, no import path is empty.
           build.onResolve({ filter: /.*/ }, async ({ path, pluginData }) => {
             if (pluginData === probe || !specifiers.includes(path)) return;
             const result = await build.resolve(path, {
