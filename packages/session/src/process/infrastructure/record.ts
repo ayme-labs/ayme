@@ -40,12 +40,19 @@ export const nameOf = ({ name }: SessionPlace): string => name ?? DEFAULT_NAME;
 // A name is shown in hints such as `ayme -s=<name> close`, which a shell
 // must read as one word.
 const USABLE_NAME = /^[\w.-]+$/;
+// Its claim folder's name holds it twice over, and a file name has at most
+// 255 bytes.
+const LONGEST_NAME = 64;
 
 /** Why `place`'s name cannot name a Session, if it cannot. */
-export const unusableName = (place: SessionPlace): string | undefined =>
-  USABLE_NAME.test(nameOf(place))
-    ? undefined
-    : `${JSON.stringify(nameOf(place))} cannot name a Session: a name has letters, digits, ".", "_" and "-" only.`;
+export function unusableName(place: SessionPlace): string | undefined {
+  const name = nameOf(place);
+  if (!USABLE_NAME.test(name))
+    return `${JSON.stringify(name)} cannot name a Session: a name has letters, digits, ".", "_" and "-" only.`;
+  if (name.length > LONGEST_NAME)
+    return `${JSON.stringify(name)} cannot name a Session: a name has at most ${LONGEST_NAME} characters.`;
+  return undefined;
+}
 
 /** What the process of a Session is known by while it runs. */
 export type SessionRecord = {
@@ -90,10 +97,14 @@ const sessionsFolder = () => join(cacheFolder(), "sessions");
 const folderKey = (projectDir: string) => `${hash(realpathSync(projectDir))}-`;
 
 /** The folder of the claims of a Session of a project folder, named by
- * the project folder's key and a hash of the Session's name: what a claim
- * is keyed by. */
+ * the project folder's key and the Session's name in hexadecimal: what a
+ * claim is keyed by. Hexadecimal keeps two names apart exactly, also those
+ * that differ only in case on a file system that ignores it. */
 const claimFolder = (place: SessionPlace) =>
-  join(sessionsFolder(), folderKey(place.projectDir) + hash(nameOf(place)));
+  join(
+    sessionsFolder(),
+    folderKey(place.projectDir) + Buffer.from(nameOf(place)).toString("hex")
+  );
 
 const recordFile = (folder: string, generation: number) =>
   join(folder, `${generation}.json`);
@@ -157,10 +168,11 @@ function readClaimIn(folder: string): Claim {
   const generation = Math.max(0, ...generations(folder));
   if (generation === 0) return { generation, live: false, started: false };
   const record = readRecord(recordFile(folder, generation));
+  // The end marker first: an ended claim needs no look at its process.
   const live =
     record !== undefined &&
-    processStart(record.pid) === record.since &&
-    !existsSync(endedFile(folder, generation));
+    !existsSync(endedFile(folder, generation)) &&
+    processStart(record.pid) === record.since;
   const started = existsSync(startedFile(folder, generation));
   return record
     ? { generation, record, live, started }

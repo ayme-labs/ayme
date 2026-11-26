@@ -548,6 +548,37 @@ it("list in a folder with no Session says so, and is no failure", () => {
   });
 });
 
+it("names that differ only in case are two Sessions, also on a file system that ignores case", async () => {
+  const [upper, lower] = [await otherProcess(), await otherProcess()];
+  claimRecord({ projectDir, name: "Work" }, { ...upper, socket: "W.sock" });
+
+  expect(
+    claimRecord({ projectDir, name: "work" }, { ...lower, socket: "w.sock" })
+  ).toMatchObject({ generation: 1 });
+  expect(liveRecord({ projectDir, name: "Work" })).toMatchObject({
+    pid: upper.pid,
+  });
+  expect(liveRecord({ projectDir, name: "work" })).toMatchObject({
+    pid: lower.pid,
+  });
+});
+
+it("a session name of up to 64 characters is used, and a longer one is refused", async () => {
+  const longest = "n".repeat(64);
+  const holder = await otherProcess();
+  claimRecord({ projectDir, name: longest }, { ...holder, socket: "n.sock" });
+  expect(liveRecord({ projectDir, name: longest })).toMatchObject({
+    name: longest,
+  });
+
+  expect(
+    await askSession({ projectDir, name: `${longest}n` }, { stop: {} })
+  ).toEqual({
+    ok: false,
+    text: `"${longest}n" cannot name a Session: a name has at most 64 characters.`,
+  });
+});
+
 it.each(["", "two words", "../up", "a/b"])(
   "a session name ayme cannot use is refused: %j",
   async (name) => {
