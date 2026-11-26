@@ -68,21 +68,6 @@ UI on the server without a fake DOM or fake Playwright implementation. The
 browser constructs and registers the real POM during hydration, and runtime
 activation still happens in the existing effect.
 
-## Peeks
-
-The counter adds the Peek `counter` with `usePeek`, read as `peek.counter`.
-In development, `instrumentation.ts` starts an App Process (on the Node.js
-runtime only): the server pairs with the agent's ayme MCP server beside the
-tab. `app/server-peeks.ts`, which the root layout imports, offers the Peek
-`renders`, how often the server rendered the home page, read as
-`peek.node.renders`. It lives there, not in `instrumentation.ts`, so it reads
-the same `app/renders.ts` the page counts in, and after an edit the next
-request runs it with the new code. Neither offers anything under `next start`.
-`instrumentation.ts` looks for the agent's server on the port range, or only on the port in
-`AYME_EXAMPLE_AGENT_PORT` when set, which the e2e tests set; ayme itself
-reads no environment variable. `usePeek` registers in an effect, in the
-browser, so server rendering adds no `counter` instance to the App Process.
-
 ## Verify
 
 After building, with no manually started server running:
@@ -99,14 +84,9 @@ The tests are the shared [example certification](../example-certification/README
 run against `next dev` and against `next start` after `next build`. The app
 turns the Inspector on in development; against `next dev` a smoke test opens
 it and runs a tool from it, and against `next start` a test checks that the
-page loads no Inspector code. It turns the Agent Connection
-(`agentConnection`) on the same way: against `next dev` an MCP client pairs
-with the page through a connect link, calls a tool and reads the counter's
-Peek, and against `next start` the page loads no Agent Connection code and
-opens no WebSocket. Against `next dev`, with the App Process paired, a
-server-rendered page load leaves `peek.counter` with exactly one instance,
-from the browser, and the server offers `peek.node.renders` but no
-`peek.node.counter`. Against `next start` no App Process pairs.
+page loads no Inspector code. An agent reaches the app through WebMCP
+publication only: against both servers the certification checks that it reads
+the Page Object Tree with `page_objects` and runs a Page Object Tool.
 
 Main CI uses Turbo's affected graph to run relevant build, lint, typecheck,
 test, and development and production E2E tasks. It then runs repository format

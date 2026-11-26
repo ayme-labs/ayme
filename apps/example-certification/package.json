@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
-    "@ayme-dev/mcp": "workspace:*",
     "@ayme-dev/webmcp": "workspace:*"
   },
   "devDependencies": {

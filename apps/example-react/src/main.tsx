@@ -1,6 +1,6 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AymeProvider, useAyme, usePageObject, usePeek } from "@ayme-dev/react";
+import { AymeProvider, useAyme, usePageObject } from "@ayme-dev/react";
 import { CounterPage } from "#pom/CounterPage";
 import { SubCounterPage } from "#pom/SubCounterPage";
 import "./style.css";
@@ -11,7 +11,6 @@ function Counter() {
   // lifetime, which no URL states (the certification unmounts it on its page).
   const pom = usePageObject(CounterPage);
   usePageObject(SubCounterPage);
-  usePeek({ count }, "counter");
   return (
     <section aria-label="Counter">
       <p>
@@ -61,7 +60,6 @@ createRoot(document.getElementById("root")!).render(
     <AymeProvider
       webMCP={{ enabled: true }}
       inspector={import.meta.env.MODE !== "inspector-disabled"}
-      agentConnection={import.meta.env.MODE !== "inspector-disabled"}
     >
       {location.pathname === "/other" ? <OtherPage /> : <App />}
     </AymeProvider>

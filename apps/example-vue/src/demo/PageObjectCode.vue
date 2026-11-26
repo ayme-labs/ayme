@@ -21,7 +21,6 @@ import { ListPage } from "#pom/ListPage";
 useAyme({
   pageObjects: [ListPage],
   inspector: import.meta.env.DEV,
-  agentConnection: import.meta.env.DEV,
 });
 </${"script"}>`;
 

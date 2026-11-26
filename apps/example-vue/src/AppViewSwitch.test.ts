@@ -8,7 +8,7 @@ import App from "./App.vue";
 vi.mock("@ayme-dev/vue", () => ({
   useAyme: () => ({ ayme: { runs: { subscribe: () => () => {} } } }),
 }));
-const stubs = { ListDemo: true, PeekCheck: true, PageObjectCode: true };
+const stubs = { ListDemo: true, PageObjectCode: true };
 
 enableAutoUnmount(afterEach);
 
