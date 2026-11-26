@@ -13,6 +13,7 @@
     "test:e2e": "pnpm run test:playwright && pnpm run test:e2e:e2e",
     "test:playwright": "playwright test --reporter=list",
     "test:e2e:e2e": "e2e run",
+    "test:goals": "E2E_TELEMETRY_DISABLED=1 e2e run --config e2e.goals.config.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p ayme"
   },
   "dependencies": {
