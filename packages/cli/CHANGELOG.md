@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.3.0](https://github.com/ayme-labs/ayme/compare/cli-v0.2.0...cli-v0.3.0) (2026-11-26)
+## 0.3.0 (2026-11-26)
 
 
 ### ⚠ BREAKING CHANGES

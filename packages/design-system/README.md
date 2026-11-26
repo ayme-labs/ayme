@@ -6,4 +6,4 @@ To add ayme to an application, see [`@ayme-dev/ayme`](https://github.com/ayme-la
 
 ## License
 
-[FSL-1.1-ALv2](https://github.com/ayme-labs/ayme/blob/main/LICENSE). The logos are trademarks and are not covered by the code license; see [TRADEMARKS.md](https://github.com/ayme-labs/ayme/blob/main/packages/design-system/TRADEMARKS.md). The components derive from shadcn/ui; their upstream notice is in [THIRD_PARTY_NOTICES.txt](https://github.com/ayme-labs/ayme/blob/main/packages/design-system/THIRD_PARTY_NOTICES.txt).
+[FSL-1.1-ALv2](https://github.com/ayme-labs/ayme/blob/main/LICENSE). The ayme name and logos are not covered by the code license; see [TRADEMARKS.md](https://github.com/ayme-labs/ayme/blob/main/packages/design-system/TRADEMARKS.md). The components derive from shadcn/ui; their upstream notice is in [THIRD_PARTY_NOTICES.txt](https://github.com/ayme-labs/ayme/blob/main/packages/design-system/THIRD_PARTY_NOTICES.txt).
