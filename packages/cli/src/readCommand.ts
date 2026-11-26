@@ -80,20 +80,22 @@ export function readCommand(args: string[]): Command {
   if (args[0] === SESSION_PROCESS && args.length === 2)
     return { kind: "session process", options: args[1]! };
   const word = args.find((arg) => !arg.startsWith("-"));
-  if (word !== undefined && SESSION_WORDS.has(word))
+  if (word !== undefined && (word === "open" || asked(word) !== undefined))
     return readSessionCommand(args);
   return readCapture(args);
 }
 
-/** The commands of a Session. */
-const SESSION_WORDS = new Set(["open", "close", "page-objects", "tools"]);
-
-/** What each command that only asks the folder's Session asks it. */
-const ASKED: Record<string, SessionRequest> = {
+/** What each command that only asks the folder's Session asks it. With
+ * `open`, these are the commands of a Session. */
+const ASKED: Readonly<Record<string, SessionRequest>> = {
   close: { stop: {} },
   "page-objects": { pageObjects: {} },
   tools: { tools: {} },
 };
+
+/** What the command `word` asks the folder's Session, if it only asks. */
+const asked = (word: string): SessionRequest | undefined =>
+  Object.hasOwn(ASKED, word) ? ASKED[word] : undefined;
 
 /** The word the Session's background process is started with. */
 export const SESSION_PROCESS = "__session";
@@ -128,9 +130,9 @@ function readSessionCommand(args: string[]): Command {
       },
       json,
     };
-  const asked = word === undefined ? undefined : ASKED[word];
-  if (asked && url === undefined && !values.headed)
-    return { kind: "ask", request: asked, json };
+  const request = word === undefined ? undefined : asked(word);
+  if (request && url === undefined && !values.headed)
+    return { kind: "ask", request, json };
   return { kind: "error", text: USAGE };
 }
 
