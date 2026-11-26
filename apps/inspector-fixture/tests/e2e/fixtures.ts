@@ -126,12 +126,14 @@ export async function openFixture(
   }
   if (agent) await browser.goto(await connectLink(agent, app, path, external));
   else await app.open(path);
-  const [pageTab] = browser.tabs();
+  // The tab the page opened in: a test may have an Inspector tab in front.
+  const pageTab = browser.tabs().find((tab) => tab.isActive());
+  if (!pageTab) throw new Error(`No tab is active after opening ${path}.`);
   await fixtureReady(browser, path);
   if (agent)
     await expect.poll(() => agent.toolNames()).toContain("page_objects");
 
-  const page = new Tab(screen, browser, pageTab!);
+  const page = new Tab(screen, browser, pageTab);
   return {
     page,
     inspector: new Inspector(

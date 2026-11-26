@@ -334,8 +334,12 @@ const lookProperties = [
 
 /** How the panel looks: the styles host CSS would change if it leaked in. */
 async function panelLooks(inspector: Inspector) {
-  const look = (selector: string) =>
-    panelLook(inspector.tab, selector, lookProperties);
+  // A part the hook can't reach reads null, which must not compare equal.
+  const look = async (selector: string) => {
+    const read = await panelLook(inspector.tab, selector, lookProperties);
+    if (!read) throw new Error(`Nothing in the Inspector matches ${selector}.`);
+    return read;
+  };
   return {
     panel: await look('[aria-label="ayme"]'),
     title: await look("header h2"),

@@ -731,25 +731,48 @@ type Pick = "first" | "last";
  * `panelTexts`): the Playwright Page Objects read these parts with
  * `evaluate` and DOM text, which e2e's locators do not give.
  */
+/**
+ * One step from the timeline to a run: the CSS that matches it and which
+ * match to take. A step after the first matches only the runs its previous
+ * step's run started.
+ */
+type RunStep = { selector: string; pick: Pick };
+
 async function readRun(
   tab: Tab,
-  selector: string,
-  pick: Pick
+  steps: readonly RunStep[]
 ): Promise<RunSnapshot | null> {
   await tab.front();
   // As a JSON string: e2e's evaluate types its result as JSON, and a
   // snapshot's optional parts don't fit that type.
   const json = await tab.browser.evaluate(
-    ({ selector, pick }: { selector: string; pick: Pick }) => {
+    (steps: RunStep[]) => {
       const key = Symbol.for("@ayme-dev/inspector/shadow-root");
-      const runs = [
+      const [first, ...rest] = steps;
+      const roots = [
         ...document.querySelectorAll("[data-ayme-inspector-host]"),
-      ].flatMap((host) => [
-        ...((host as unknown as Record<symbol, ShadowRoot | undefined>)[
-          key
-        ]?.querySelectorAll(selector) ?? []),
-      ]);
-      const run = pick === "first" ? runs[0] : runs.at(-1);
+      ].flatMap((host) => {
+        const root = (
+          host as unknown as Record<symbol, ShadowRoot | undefined>
+        )[key];
+        return root ? [root] : [];
+      });
+      const take = (matches: Element[], pick: Pick) =>
+        pick === "first" ? matches[0] : matches.at(-1);
+      let run = take(
+        roots.flatMap((root) => [...root.querySelectorAll(first!.selector)]),
+        first!.pick
+      );
+      for (const step of rest) {
+        const parent = run;
+        // The runs this one started, not those its children started.
+        run = take(
+          [...(parent?.querySelectorAll(step.selector) ?? [])].filter(
+            (child) => child.parentElement?.closest("li") === parent
+          ),
+          step.pick
+        );
+      }
       // An ancestor comes first in document order: the run's own card.
       const card = run?.querySelector("[data-run-card]");
       if (!run || !card) return "null";
@@ -798,7 +821,7 @@ async function readRun(
         ),
       });
     },
-    { selector, pick }
+    [...steps]
   );
   return JSON.parse(json) as RunSnapshot | null;
 }
@@ -811,19 +834,14 @@ async function readRun(
 export class RunEntry {
   constructor(
     private readonly tab: Tab,
-    private readonly selector: string,
-    private readonly pick: Pick
+    private readonly steps: readonly RunStep[],
+    /** The run's element, for pressing or hovering something in it. */
+    private readonly root: On
   ) {}
-
-  private get root(): On {
-    return this.tab
-      .css(this.selector)
-      .within((runs) => (this.pick === "first" ? runs.first() : runs.last()));
-  }
 
   /** What its card shows now, or null while it is not in the timeline. */
   read(): Promise<RunSnapshot | null> {
-    return readRun(this.tab, this.selector, this.pick);
+    return readRun(this.tab, this.steps);
   }
 
   /** Running, Succeeded or Failed. */
@@ -870,12 +888,24 @@ export class RunEntry {
     return (await this.read())?.result ?? null;
   }
 
-  /** The newest child run of one tool. */
+  /** The newest child run of one tool, among the runs this one started. */
   child(toolName: string): RunEntry {
     return new RunEntry(
       this.tab,
-      `${this.selector} [aria-label="Child runs"] > li[aria-label=${JSON.stringify(toolName)}]`,
-      "last"
+      [
+        ...this.steps,
+        {
+          selector: `[aria-label="Child runs"] > li[aria-label=${JSON.stringify(toolName)}]`,
+          pick: "last",
+        },
+      ],
+      this.root.within((run) =>
+        run
+          .getByRole("list", "Child runs")
+          .first()
+          .getByRole("listitem", toolName)
+          .last()
+      )
     );
   }
 }
@@ -889,10 +919,11 @@ export class RunsView extends Part {
 
   /** The newest top-level run of one tool. */
   latest(toolName: string): RunEntry {
+    const selector = `[aria-label="Runs timeline"] > li[aria-label=${JSON.stringify(toolName)}]`;
     return new RunEntry(
       this.tab,
-      `[aria-label="Runs timeline"] > li[aria-label=${JSON.stringify(toolName)}]`,
-      "first"
+      [{ selector, pick: "first" }],
+      this.tab.css(selector).within((runs) => runs.first())
     );
   }
 

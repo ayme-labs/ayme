@@ -92,15 +92,20 @@ function recordPageErrors(key: string) {
  * uses it, or `test`, which builds on it.
  */
 export const exampleTest = base.extend<{ ignoreAutoPairScan: void }>({
-  ignoreAutoPairScan: async ({ browser }, use) => {
-    await browser.addInitScript(ignoreAutoPairScanInPage);
-    // The resource timing that `loadedScripts` reads keeps 250 entries by
-    // default, fewer than a dev server can load.
-    await browser.addInitScript(() =>
-      performance.setResourceTimingBufferSize(10_000)
-    );
-    await use();
-  },
+  // Automatic: no test names it, and e2e sets up only the fixtures a test
+  // names, or those marked `auto`.
+  ignoreAutoPairScan: [
+    async ({ browser }, use) => {
+      await browser.addInitScript(ignoreAutoPairScanInPage);
+      // The resource timing that `loadedScripts` reads keeps 250 entries by
+      // default, fewer than a dev server can load.
+      await browser.addInitScript(() =>
+        performance.setResourceTimingBufferSize(10_000)
+      );
+      await use();
+    },
+    { auto: true },
+  ],
 });
 
 /**
@@ -109,20 +114,24 @@ export const exampleTest = base.extend<{ ignoreAutoPairScan: void }>({
  * example's own specs use it too.
  */
 export const test = exampleTest.extend<{ failOnPageErrors: void }>({
-  failOnPageErrors: async ({ app, browser }, use) => {
-    await browser.addInitScript(recordPageErrors, pageErrorsKey);
-    await use();
-    // A test that never opened the app has no page to read.
-    if (!(await browser.url()).startsWith(app.baseUrl)) return;
-    const errors = await browser.evaluate(
-      (key: string) => JSON.parse(sessionStorage.getItem(key) ?? "[]"),
-      pageErrorsKey
-    );
-    expect(
-      errors,
-      "page errors, console errors and hydration warnings"
-    ).toEqual([]);
-  },
+  // Automatic, as `ignoreAutoPairScan` is: no test names it.
+  failOnPageErrors: [
+    async ({ app, browser }, use) => {
+      await browser.addInitScript(recordPageErrors, pageErrorsKey);
+      await use();
+      // A test that never opened the app has no page to read.
+      if (!(await browser.url()).startsWith(app.baseUrl)) return;
+      const errors = await browser.evaluate(
+        (key: string) => JSON.parse(sessionStorage.getItem(key) ?? "[]"),
+        pageErrorsKey
+      );
+      expect(
+        errors,
+        "page errors, console errors and hydration warnings"
+      ).toEqual([]);
+    },
+    { auto: true },
+  ],
 });
 
 const otherPage = (screen: Screen) =>
