@@ -9,6 +9,7 @@ import {
   ownName,
   wordsOf,
   type NamedElement,
+  type PageView,
 } from "./elementNames";
 import { changedItself } from "./packageText";
 
@@ -50,7 +51,7 @@ export type FoundRow = {
  */
 export function foundRows(
   change: StructuralTree,
-  pageBefore?: () => StructuralTree
+  pageBefore: () => StructuralTree
 ): FoundRow[] {
   const names = new ElementNames(change, pageBefore);
   const rows: FoundRow[] = [];
@@ -65,23 +66,24 @@ export function foundRows(
     const { kind } = node.status!;
     if (kind === "added" || kind === "removed") {
       const view = kind === "added" ? "after" : "before";
-      const inside = ownName(node) ? [] : wentWith(node, kind);
-      const named =
-        inside.length > 0
-          ? inside.map((one) => ({ one, element: names.labelOf(one, view) }))
-          : [{ one: node, element: names.labelNear(node, view) }];
-      for (const { one, element } of named)
+      const push = (one: StructuralNode, element: NamedElement | null) =>
         rows.push({
           row: {
             kind,
             element: wordsOf(element),
-            ...(element ? placeOf(change, one) : {}),
+            ...(element ? placeOf(names, one, view) : {}),
           },
           element,
         });
-      // What the page moved into it was there before: it keeps a status of
-      // its own, and is listed by what changed of it.
-      movedInto(node, kind).forEach(visit);
+      const parts = inside(node, kind);
+      if (!parts.some((part) => part.went))
+        push(node, names.labelNear(node, view));
+      // In the order of the page: what the page moved into it was there
+      // before, keeps a status of its own, and is listed by what changed of
+      // it.
+      for (const { went, moved } of parts)
+        if (went) push(went, names.labelOf(went, view));
+        else visit(moved!);
       return true;
     }
     // Core records how every node it marks as changed stood before; a tree
@@ -99,33 +101,44 @@ export function foundRows(
   return rows;
 }
 
-/** The named elements inside a node that appeared or was removed that went
- * with it, the topmost of them, in order. */
-const wentWith = (node: StructuralNode, kind: string): StructuralNode[] =>
-  node.children.flatMap((child) => {
-    if (typeof child === "string" || child.status?.kind !== kind) return [];
-    return ownName(child) ? [child] : wentWith(child, kind);
-  });
+type Part =
+  | { readonly went: StructuralNode; readonly moved?: undefined }
+  | { readonly went?: undefined; readonly moved: StructuralNode };
 
-/** The topmost nodes inside a node that appeared or was removed that did
- * not go with it, as one the page moved into a new wrapper, in order. */
-const movedInto = (node: StructuralNode, kind: string): StructuralNode[] =>
-  node.children.flatMap((child) => {
-    if (typeof child === "string") return [];
-    return child.status?.kind === kind ? movedInto(child, kind) : [child];
-  });
+/** What is inside a node that appeared or was removed, in the order of the
+ * page: the topmost named elements that went with it, when it has no name
+ * of its own, and the topmost nodes that did not, as content the page moved
+ * into a new wrapper. */
+function inside(node: StructuralNode, kind: string): Part[] {
+  const parts: Part[] = [];
+  const walk = (parent: StructuralNode, named: boolean) => {
+    for (const child of parent.children) {
+      if (typeof child === "string") continue;
+      if (child.status?.kind !== kind) {
+        parts.push({ moved: child });
+        continue;
+      }
+      const went = !named && ownName(child) !== null;
+      if (went) parts.push({ went: child });
+      walk(child, named || went);
+    }
+  };
+  walk(node, ownName(node) !== null);
+  return parts;
+}
 
 const cursorOnly = (changed: readonly PropertyChange[]) =>
   changed.length > 0 && changed.every((one) => one.property === "cursor");
 
-/** An element's own role, and its nearest ancestor that has a name, by its
- * ref and that name: whoever shows a recorder can tell which elements went
- * in or out of the same one. */
+/** An element's own role, and its nearest ancestor that has a name on the
+ * page it is labelled on, by its ref and that name: whoever shows a
+ * recorder can tell which elements went in or out of the same one. */
 function placeOf(
-  change: StructuralTree,
-  node: StructuralNode
+  names: ElementNames,
+  node: StructuralNode,
+  view: PageView
 ): Pick<ChangeRow, "role" | "parent"> {
-  const parent = change.getAncestorsOf(node.ref).find((one) => one.name);
+  const parent = names.ancestorsOf(node, view).find((one) => one.name);
   return {
     role: node.role,
     ...(parent ? { parent: { ref: parent.ref, name: parent.name } } : {}),

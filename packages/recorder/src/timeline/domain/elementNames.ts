@@ -90,6 +90,14 @@ export class ElementNames {
     return place.labels.of(named ?? place.node);
   }
 
+  /** An element's ancestors, nearest first, on the page it is labelled
+   * on: a removed one sat in the page before, not where the Change Tree
+   * puts it. */
+  ancestorsOf(node: StructuralNode, view: PageView) {
+    const place = this.placeOf(node, view);
+    return place.tree.getAncestorsOf(place.node.ref);
+  }
+
   /** The page an element is labelled on, its labels, and the element
    * there: the page before the change, for one counted against it. */
   private placeOf(node: StructuralNode, view: PageView) {
