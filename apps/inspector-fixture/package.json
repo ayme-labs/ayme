@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite --config app/vite.config.ts",
+    "check:goal-mirror": "node scripts/check-goal-mirror.mjs",
     "lint": "eslint . --max-warnings 0",
     "test:e2e": "pnpm run test:playwright && pnpm run test:e2e:e2e",
     "test:playwright": "playwright test --reporter=list",
