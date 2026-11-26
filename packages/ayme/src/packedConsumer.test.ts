@@ -1761,6 +1761,8 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
   ])
     expect(notices, name).toMatch(new RegExp(`^${name}@\\d`, "m"));
   expect(notices).toContain("Permission is hereby granted, free of charge");
+  // The window's components, copied from shadcn/ui into the design system.
+  expect(notices).toContain("Copyright (c) 2023 shadcn");
 });
 
 it(
