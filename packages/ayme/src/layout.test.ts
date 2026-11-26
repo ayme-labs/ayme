@@ -419,6 +419,11 @@ const refusals: [path: string, code: string, message: string][] = [
     'export type Node = import("typescript").Node;',
     "Only compiler imports typescript",
   ],
+  [
+    "src/runtime/misplaced.ts",
+    'import ts from "@typescript/typescript6";\nexport const kind = ts.SyntaxKind;',
+    "Only compiler imports typescript",
+  ],
   // compiler uses only shared and page-objects' domain...
   [
     "src/compiler/misplaced.ts",

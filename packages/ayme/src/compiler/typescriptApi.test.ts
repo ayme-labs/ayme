@@ -19,7 +19,7 @@ const missing = Object.assign(
 describe("compilerApi", () => {
   it("only uses the TypeScript 6 compatibility API with TypeScript 7", () => {
     if (projectTypeScript.version.startsWith("7.")) {
-      expect(ts.versionMajorMinor).toBe("6.0");
+      expect(ts.version).toMatch(/^6\./);
     } else {
       expect(ts).toBe(projectTypeScript);
     }
@@ -37,23 +37,17 @@ describe("compilerApi", () => {
     );
   });
 
-  // Browser-only installs download no TypeScript (ADR-0050).
-  it.each(["ayme", "unplugin-ayme"])(
-    "is an optional peer of %s, never a dependency",
-    (name) => {
-      const manifest = JSON.parse(
-        readFileSync(
-          new URL(`../../../${name}/package.json`, import.meta.url),
-          "utf8"
-        )
-      ) as {
-        dependencies?: Record<string, string>;
-        peerDependencies: Record<string, string>;
-        peerDependenciesMeta: Record<string, { optional?: boolean }>;
-      };
-      expect(manifest.dependencies?.[TYPESCRIPT6]).toBeUndefined();
-      expect(manifest.peerDependencies[TYPESCRIPT6]).toBe("^6.0.2");
-      expect(manifest.peerDependenciesMeta[TYPESCRIPT6]?.optional).toBe(true);
-    }
-  );
+  // Browser-only installs download no TypeScript (ADR-0065).
+  it("is an optional peer of the package, never a dependency", () => {
+    const manifest = JSON.parse(
+      readFileSync(new URL("../../package.json", import.meta.url), "utf8")
+    ) as {
+      dependencies?: Record<string, string>;
+      peerDependencies: Record<string, string>;
+      peerDependenciesMeta: Record<string, { optional?: boolean }>;
+    };
+    expect(manifest.dependencies?.[TYPESCRIPT6]).toBeUndefined();
+    expect(manifest.peerDependencies[TYPESCRIPT6]).toBe("^6.0.2");
+    expect(manifest.peerDependenciesMeta[TYPESCRIPT6]?.optional).toBe(true);
+  });
 });

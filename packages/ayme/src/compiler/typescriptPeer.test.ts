@@ -8,12 +8,9 @@ import {
 } from "./typescriptPeer";
 
 describe("assertSupportedTypeScript", () => {
-  it.each(["ayme", "unplugin-ayme"])("matches the %s peer range", (name) => {
+  it("matches the package's peer range", () => {
     const manifest = JSON.parse(
-      readFileSync(
-        new URL(`../../../${name}/package.json`, import.meta.url),
-        "utf8"
-      )
+      readFileSync(new URL("../../package.json", import.meta.url), "utf8")
     ) as { peerDependencies: Record<string, string> };
     expect(manifest.peerDependencies.typescript).toBe(SUPPORTED_TYPESCRIPT);
   });
@@ -33,7 +30,7 @@ describe("assertSupportedTypeScript", () => {
     for (const version of ["4.9.5", "5.3.3", "8.0.0"])
       expect(() => assertSupportedTypeScript(version)).toThrow(
         new Error(
-          `[ayme] TypeScript ${version} is installed, and the Page Object compiler supports TypeScript ${SUPPORTED_TYPESCRIPT}.`
+          `[ayme] TypeScript ${version} is installed, and the Page Object compiler supports TypeScript >=5.4 <8.`
         )
       );
   });
