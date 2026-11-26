@@ -7,6 +7,11 @@ import {
   type Interaction,
 } from "../domain/interactions";
 import { elementsOf } from "../domain/playwrightCalls";
+import {
+  RunStoppedError,
+  spikeRunGate,
+  synchronous,
+} from "../application/spikeRunGate";
 
 type PageInstrumentation = (page: Page) => Page;
 
@@ -14,6 +19,7 @@ type PageInstrumentation = (page: Page) => Page;
 const inputDevices = new Set<string | symbol>(["keyboard", "mouse"]);
 
 const instrumentations = new Set<PageInstrumentation>();
+
 // Changes on every install and uninstall, so late-bound targets re-derive.
 let generation = 0;
 
@@ -122,9 +128,53 @@ export function instrumentedPage(
           return device(property);
         if (typeof member !== "function") return member;
         return (...args: unknown[]) => {
+          const refused = () =>
+            new RunStoppedError(
+              `${String(subject)}.${String(property)}: ${spikeRunGate.refusal}`
+            );
+          const name = `${String(subject)}.${String(property)}`;
+          const onCall = spikeRunGate.onCall;
+          const trace = synchronous.has(String(property))
+            ? undefined
+            : onCall &&
+              ((call: string, phase: string) =>
+                onCall(
+                  call,
+                  `${phase}${spikeRunGate.scope?.active() ? " (action)" : " (ayme)"}`
+                ));
+          const inAction = spikeRunGate.scope?.active() ?? true;
+          if (inAction && spikeRunGate.refusal !== undefined) {
+            trace?.(name, "refused");
+            throw refused();
+          }
+          if (
+            inAction &&
+            spikeRunGate.held &&
+            !synchronous.has(String(property))
+          )
+            return spikeRunGate.held.then(() => {
+              trace?.(name, "released");
+              if (spikeRunGate.refusal !== undefined) throw refused();
+              return (
+                Reflect.get(proxy, property) as (...args: unknown[]) => unknown
+              )(...args);
+            });
           const target = resolve();
-          const run = () =>
-            bindResult(call(target, property, args), property, args);
+          const run = () => {
+            trace?.(name, "start");
+            const result = bindResult(
+              call(target, property, args),
+              property,
+              args
+            );
+            if (result instanceof Promise)
+              result.then(
+                () => trace?.(name, "end"),
+                (error: unknown) =>
+                  trace?.(name, `error: ${String(error).slice(0, 120)}`)
+              );
+            return result;
+          };
           const interaction =
             onInteraction && interactionOf(subject, target, property, args);
           if (!interaction) return run();

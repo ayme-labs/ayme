@@ -22,6 +22,17 @@ export type AymePlaywright = {
       run(name: string, input: unknown): Promise<unknown>;
     };
   };
+  /** Spike (dialogs): stops, holds or lets go the Run in progress at its next Playwright call. */
+  spikeRunGate: {
+    hold(): void;
+    refuse(reason: string): void;
+    allow(): void;
+    onActionEnd: (() => void) | undefined;
+    onMethodEnd: ((outcome: string) => void) | undefined;
+    onCall: ((call: string, phase: string) => void) | undefined;
+    scope: { run<T>(execute: () => T): T; active(): boolean } | undefined;
+    readonly state: string;
+  };
   registerAymeRef(selectors: Playwright["selectors"]): Promise<void>;
 };
 

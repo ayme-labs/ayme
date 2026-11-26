@@ -8,6 +8,7 @@ import { dirname } from "node:path";
 import { version } from "../../package.json";
 import { ENTRY_FILE, findPageObjectsEntry } from "../served-page-objects";
 import { attach, loadProjectAyme } from "./attach";
+import { watchDialogs } from "./dialogs";
 import { loadNodePageObjects } from "./nodePageObjects";
 import type { SessionRequest, SessionResponse } from "./protocol";
 import { removeRecord, socketFile, writeRecord } from "./record";
@@ -51,6 +52,7 @@ export async function runBackground({
   const classes = await loadNodePageObjects(entry);
   const project = await loadProjectAyme(dirname(entry));
   const { page } = await attach(project, endpoint, mark);
+  const dialogs = await watchDialogs(page, project.ayme.spikeRunGate);
   const session = project.ayme.createAyme({ page, pageObjects: classes });
   const stopSession = await session.start();
   // The session lists a Page Object's tools once it has looked at the page,
@@ -73,16 +75,29 @@ export async function runBackground({
     // Only the Page Object Tools and page_objects come through this path.
     if (!offered().some((tool) => tool.name === name))
       return { ok: false, text: `There is no Page Object Tool "${name}".` };
-    try {
-      return {
-        ok: true,
-        text: resultText(await session.agentTools.run(name, input)),
-      };
-    } catch (error) {
-      return { ok: false, text: errorText(error) };
-    }
+    return dialogs.wrap(
+      name,
+      async () => {
+        try {
+          return {
+            ok: true,
+            text: resultText(await session.agentTools.run(name, input)),
+          };
+        } catch (error) {
+          return { ok: false, text: errorText(error) };
+        }
+      },
+      (text) => ({ ok: false, text })
+    );
   };
   const answer = (request: SessionRequest): Promise<SessionResponse> => {
+    // Spike (dialogs): while a dialog is open, nothing that needs the page waits for it.
+    const dialog = dialogs.openText();
+    if (
+      dialog !== undefined &&
+      (request.method === "page_objects" || request.method === "call")
+    )
+      return Promise.resolve({ ok: false, text: dialog });
     if (request.method === "page_objects")
       return run(PAGE_OBJECTS, {}).then((response) => {
         const count = toolCount();

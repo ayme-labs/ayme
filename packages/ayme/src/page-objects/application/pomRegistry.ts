@@ -59,7 +59,7 @@ import { readPageObjectTree as readTree } from "./pageObjectTree";
 import { keepReturnedObject } from "./returnedPageObjects";
 import type { PageObjectTreeRead } from "../domain/pageObjectTreeText";
 import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
-import type { RunContext } from "../../runs/application";
+import { spikeRunGate, type RunContext } from "../../runs/application";
 
 /**
  * Package-internal: a Page Object tool as the registry holds it. Its
@@ -903,7 +903,10 @@ async function performPageObjectAction(
     cursor,
     { tool: tool.toolName, args },
     () => {
-      const value: unknown = method.apply(instance, parameters);
+      // Spike (dialogs): the action's own calls are the ones a gate stops.
+      const value: unknown = spikeRunGate.runAction(() =>
+        method.apply(instance, parameters)
+      );
       // Never rejects: what the action throws is the Run's to report.
       returned = Promise.resolve(value).catch(() => undefined);
       return value;

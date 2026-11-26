@@ -72,6 +72,7 @@ import {
   type ToolRunOptions,
 } from "../runs/application";
 import { instrumentedPage } from "../runs/infrastructure";
+import { spikeRunGate } from "../runs/application";
 import type { loadWebMcpPublication } from "./webMcp";
 import { pageObjectToolSource } from "./pageObjectToolSource";
 import {
@@ -822,10 +823,11 @@ export function createAymeOn(
             tool === pageObjectsTool ||
             (target.peeks()?.isPeekTool(tool) ?? false),
         },
+        // Spike (dialogs): a refusal stops only the Run it was set in.
         () =>
           executeWithChildRuns(id, cursor, (context) =>
             tool.execute(checkedInput, context)
-          ),
+          ).finally(() => spikeRunGate.actionEnded()),
         settle
       );
     });

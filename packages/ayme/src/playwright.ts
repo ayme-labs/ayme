@@ -23,6 +23,9 @@ export function createAyme(options: PlaywrightAymeOptions): PlaywrightAyme {
   return createPlaywrightAyme(options, () => registerAymeRef(selectors));
 }
 
+// Spike (dialogs): stops the Run in progress at its next Playwright call.
+export { RunStoppedError, spikeRunGate } from "./runs/application";
+
 // The in-page module's host side, which a Node host drives over its Page.
 export {
   createInPageHost,
