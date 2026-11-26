@@ -52,6 +52,25 @@ it(
   }
 );
 
+it(
+  "lint asks for a quoted module in import(), which it can check",
+  slow,
+  async () => {
+    for (const specifier of ["playwright-core", "effect/unstable/http"])
+      expect(
+        await lint(
+          "src/misplaced.ts",
+          `export const module = await import(\`${specifier}\`);\n`
+        ),
+        specifier
+      ).toEqual([
+        expect.stringContaining(
+          "Write the module in import() as a quoted string"
+        ),
+      ]);
+  }
+);
+
 it("lint lets a test drive a browser of its own", slow, async () => {
   expect(
     await lint(
