@@ -19,7 +19,7 @@ import {
   SessionStartError,
   type SessionAnswer,
 } from "../../session/domain";
-import { releaseRecord, type SessionPlace } from "./record";
+import { nameOf, releaseRecord, type SessionPlace } from "./record";
 import { listen } from "./wire";
 
 /** What the command that starts a Session tells its process, over the
@@ -41,13 +41,17 @@ const messageOf = (cause: unknown) =>
   cause instanceof Error ? cause.message : String(cause);
 
 /**
- * Starts a Session and serves it on `socket`: once this returns, commands
- * reach it there, and a request waits for the start. The scope ends it.
+ * Starts the Session named `name` and serves it on `socket`: once this
+ * returns, commands reach it there, and a request waits for the start. The
+ * scope ends it.
  */
 export const serveSession = ({
   socket,
   request,
-}: Omit<ProcessOptions, keyof SessionPlace>): Effect.Effect<
+  name,
+}: Omit<ProcessOptions, keyof SessionPlace> & {
+  readonly name: string;
+}): Effect.Effect<
   Session,
   SessionStartError,
   SessionBrowser | PageObjectsBuild | Scope.Scope
@@ -77,7 +81,7 @@ export const serveSession = ({
       }),
       (listening) => Effect.promise(() => listening.close())
     );
-    const session = yield* openSession(request);
+    const session = yield* openSession(request, name);
     yield* Deferred.succeed(served, session);
     return session;
   });
@@ -118,7 +122,10 @@ export async function runSessionProcess(
           releaseRecord(options, generation);
         })
       );
-      const session = yield* serveSession(options);
+      const session = yield* serveSession({
+        ...options,
+        name: nameOf(options),
+      });
       // The process is told to end as a Caller's stop, and so is a start
       // whose command went away before its answer.
       const stop = () => void Effect.runPromise(session.ask({ stop: {} }));

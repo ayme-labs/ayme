@@ -101,7 +101,7 @@ test("a command without a Session says so on stderr, and exits with 1", async ({
   ayme,
   project,
 }) => {
-  const text = `No Session is open in ${project}. Start one with ayme open.`;
+  const text = `No Session is open in ${project}. Start one with ayme -s=default open.`;
 
   expect(await ayme("close")).toEqual({
     code: 1,
@@ -125,7 +125,7 @@ test("a second ayme open in a folder with a Session is refused", async ({
   expect(await ayme("open")).toEqual({
     code: 1,
     stdout: "",
-    stderr: `A Session is already open in ${project}, in process ${sessionProcess()}. End it with ayme close first.\n`,
+    stderr: `A Session is already open in ${project}, in process ${sessionProcess()}. End it with ayme -s=default close first.\n`,
   });
 });
 

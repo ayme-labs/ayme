@@ -21,6 +21,8 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { commandLine } from "../../session/domain";
+
 /** Which Session of which project folder: one name of the folder's, the
  * default name when none is given. */
 export type SessionPlace = {
@@ -30,9 +32,10 @@ export type SessionPlace = {
 
 /** The name of a Session started or reached without one, as Playwright
  * CLI's. */
-export const DEFAULT_NAME = "default";
+const DEFAULT_NAME = "default";
 
-const nameOf = ({ name }: SessionPlace) => name ?? DEFAULT_NAME;
+/** The name of `place`'s Session. */
+export const nameOf = ({ name }: SessionPlace): string => name ?? DEFAULT_NAME;
 
 // A name is shown in hints such as `ayme -s=<name> close`, which a shell
 // must read as one word.
@@ -255,10 +258,8 @@ export function releaseRecord(place: SessionPlace, generation: number): void {
 }
 
 /** The `ayme` command line of `word` for `place`'s Session. */
-export const commandFor = (place: SessionPlace, word: string) =>
-  nameOf(place) === DEFAULT_NAME
-    ? `ayme ${word}`
-    : `ayme -s=${nameOf(place)} ${word}`;
+const commandFor = (place: SessionPlace, word: string) =>
+  commandLine(nameOf(place), word);
 
 /** `place`'s Session, as a sentence names it after "A" or "No". */
 const session = (place: SessionPlace) =>

@@ -63,11 +63,11 @@ async function serve({ socket = sessionFolder().socket } = {}) {
   const scope = Effect.runSync(Scope.make());
   onTestFinished(() => Effect.runPromise(Scope.close(scope, Exit.void)));
   const served = await Effect.runPromise(
-    serveSession({ socket, request: { open: { headed: false } } }).pipe(
-      Effect.provide(layer),
-      Scope.provide(scope),
-      Effect.result
-    )
+    serveSession({
+      socket,
+      request: { open: { headed: false } },
+      name: "default",
+    }).pipe(Effect.provide(layer), Scope.provide(scope), Effect.result)
   );
   return {
     served,
@@ -134,7 +134,7 @@ async function pendingAfter(
 it("a command in a folder with no Session says so", async () => {
   expect(await askSession(place, { stop: {} })).toEqual({
     ok: false,
-    text: `No Session is open in ${projectDir}. Start one with ayme open.`,
+    text: `No Session is open in ${projectDir}. Start one with ayme -s=default open.`,
   });
 });
 
@@ -184,7 +184,7 @@ it("opening a Session in a folder that has one is refused before any process sta
 
   expect(answer).toEqual({
     ok: false,
-    text: `A Session is already open in ${projectDir}, in process ${process.pid}. End it with ayme close first.`,
+    text: `A Session is already open in ${projectDir}, in process ${process.pid}. End it with ayme -s=default close first.`,
   });
 });
 

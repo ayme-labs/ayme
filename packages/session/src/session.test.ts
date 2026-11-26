@@ -180,7 +180,7 @@ it("page-objects answers the Page Object Tree, after a line naming the Tab and b
       "Tab: Groceries (http://127.0.0.1:5173/basket.html)",
       "Basket po1",
       "  heading: heading [level=1]: Groceries",
-      "This screen has 2 Page Object Tools: ayme tools lists them with their parameters.",
+      "This screen has 2 Page Object Tools: ayme -s=default tools lists them with their parameters.",
     ].join("\n"),
     data: {
       tab,
@@ -234,7 +234,7 @@ it("one Page Object Tool is counted as one, and a tool that says nothing is list
 
   expect(await session.ask({ pageObjects: {} })).toMatchObject({
     text: expect.stringMatching(
-      /\nThis screen has 1 Page Object Tool: ayme tools lists it with its parameters\.$/
+      /\nThis screen has 1 Page Object Tool: ayme -s=default tools lists it with its parameters\.$/
     ),
   });
   expect(await session.ask({ tools: {} })).toMatchObject({
@@ -357,7 +357,7 @@ it("a Session joins the browser it is asked to and answers its start with that b
 
   expect(await session.started).toEqual({
     ok: true,
-    text: "A Session started on the browser at http://127.0.0.1:9333.\nayme detach ends the Session and leaves the browser running.",
+    text: "A Session started on the browser at http://127.0.0.1:9333.\nayme -s=default detach ends the Session and leaves the browser running.",
     data: { address: "http://127.0.0.1:9333" },
   });
   expect(browser.asked).toEqual([joining]);
@@ -385,7 +385,7 @@ it("detach on a browser ayme opened is refused with a pointer to ayme close, and
 
   expect(await session.ask({ detach: {} })).toEqual({
     ok: false,
-    text: "ayme opened this Session's browser, so ayme detach would leave it without an owner. End the Session and close the browser with ayme close.",
+    text: "ayme opened this Session's browser, so ayme detach would leave it without an owner. End the Session and close the browser with ayme -s=default close.",
   });
   expect(browser.released).toBe(false);
   expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
@@ -431,5 +431,30 @@ it("detach after the joined browser went away says the Session had already ended
   expect(await session.ask({ detach: {} })).toEqual({
     ok: false,
     text: "The Session had already ended: its browser went away.",
+  });
+});
+
+it("every command a Session's answers tell to run names the Session, so that it reaches this one wherever AYME_SESSION points", async () => {
+  const opened = await startScriptedSession({ ...opening, name: "work" });
+  const joined = await startScriptedSession({ ...joining, name: "work" });
+  opened.browser.show({ tab, pageObjectTree: "Basket", tools: [readHeading] });
+
+  expect(await opened.session.started).toMatchObject({
+    text: expect.stringContaining(
+      " ayme -s=work close ends the Session and closes the browser."
+    ),
+  });
+  expect(await joined.session.started).toMatchObject({
+    text: expect.stringContaining(
+      "\nayme -s=work detach ends the Session and leaves the browser running."
+    ),
+  });
+  expect(await opened.session.ask({ detach: {} })).toMatchObject({
+    text: expect.stringMatching(/with ayme -s=work close\.$/),
+  });
+  expect(await opened.session.ask({ pageObjects: {} })).toMatchObject({
+    text: expect.stringMatching(
+      /\nThis screen has 1 Page Object Tool: ayme -s=work tools lists it with its parameters\.$/
+    ),
   });
 });

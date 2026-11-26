@@ -55,13 +55,15 @@ export interface Session {
 }
 
 /**
- * Starts a Session on the browser `request` asks for, running the
- * project's Page Objects there once they are built. It returns at once,
- * while the Session starts, and the Session ends at the latest when the
- * scope closes.
+ * Starts the Session named `name` on the browser `request` asks for,
+ * running the project's Page Objects there once they are built. It returns
+ * at once, while the Session starts, and the Session ends at the latest
+ * when the scope closes. Its answers name it in the commands they tell the
+ * user to run.
  */
 export const openSession = (
-  request: SessionBrowserRequest
+  request: SessionBrowserRequest,
+  name: string
 ): Effect.Effect<
   Session,
   never,
@@ -157,7 +159,8 @@ export const openSession = (
       >,
       started: Started
     ): Effect.Effect<SessionAnswer> => {
-      if ("pageObjects" in request) return listed(started, pageObjectsAnswer);
+      if ("pageObjects" in request)
+        return listed(started, (listing) => pageObjectsAnswer(listing, name));
       if ("tools" in request) return listed(started, toolsAnswer);
       return Effect.succeed(unknownRequest);
     };
@@ -168,7 +171,7 @@ export const openSession = (
       started: afterStart(({ held }) =>
         Effect.gen(function* () {
           if (!(yield* Deferred.isDone(ending)))
-            return (opened ? openedAnswer : joinedAnswer)(held.address);
+            return (opened ? openedAnswer : joinedAnswer)(held.address, name);
           return failed(endedAtStart(yield* Deferred.await(ended)));
         })
       ),
@@ -176,7 +179,8 @@ export const openSession = (
       // at once; any other request waits for the start. Detaching from a
       // browser ayme opened would leave it without an owner (rule 11).
       ask: (request) => {
-        if ("detach" in request && opened) return Effect.succeed(detachRefused);
+        if ("detach" in request && opened)
+          return Effect.succeed(detachRefused(name));
         if ("stop" in request || "detach" in request)
           return end("stop" in request ? "stopped" : "detached").pipe(
             Effect.flatMap((how) =>

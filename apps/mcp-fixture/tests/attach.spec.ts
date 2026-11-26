@@ -62,7 +62,7 @@ test("ayme attach starts a Session on the automation's browser, and ayme detach 
 
   expect(await ayme("attach", `--cdp=${address}`)).toEqual({
     code: 0,
-    stdout: `A Session started on the browser at ${address}.\nayme detach ends the Session and leaves the browser running.\n`,
+    stdout: `A Session started on the browser at ${address}.\nayme -s=default detach ends the Session and leaves the browser running.\n`,
     stderr: "",
   });
   expect((await ayme("page-objects")).stdout).toMatch(
@@ -161,7 +161,7 @@ test("ayme detach on a browser ayme opened is refused with a pointer to ayme clo
     code: 1,
     stdout: "",
     stderr:
-      "ayme opened this Session's browser, so ayme detach would leave it without an owner. End the Session and close the browser with ayme close.\n",
+      "ayme opened this Session's browser, so ayme detach would leave it without an owner. End the Session and close the browser with ayme -s=default close.\n",
   });
   expect(await ayme("close")).toMatchObject({
     code: 0,
@@ -187,6 +187,12 @@ test("a folder has a Session of each name, ayme list shows them, and -s picks th
   expect(await ayme("close")).toMatchObject({
     code: 1,
     stderr: `No Session is open in ${project}. Start one with ayme open.\n`,
+  });
+  // Its hint names the Session it refused for, so that run as printed it
+  // reaches that one and not the default.
+  expect(await ayme("-s=one", "detach")).toMatchObject({
+    code: 1,
+    stderr: expect.stringMatching(/with ayme -s=one close\.\n$/),
   });
   expect(await ayme("-s=one", "close")).toMatchObject({ code: 0 });
   expect(await ayme("list")).toMatchObject({
