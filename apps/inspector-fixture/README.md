@@ -11,7 +11,10 @@ Vite plugin, the way an app's are. The tests live here rather than in
 ```
 app/         the fixture pages, their startup code and the Vite config
 ayme/pom/    the fixture app's Page Objects
-tests/       Playwright fixtures (fixtures.ts) and the specs
+tests/            Playwright fixtures (fixtures.ts) and the specs
+tests/e2e/        the e2e port's fixtures and Page Objects
+tests/e2e/tools/  the Page Object study's third arm: its tool entry and its check
+tests/goals/      the goal tests of the study's first and third arms
 ```
 
 The pages:
@@ -63,3 +66,12 @@ fixture page that fails to start or a runtime that never lists its tools fails
 before any test assertion, with its own message. WebMCP is experimental, so
 only the test of the Connections popover's WebMCP state installs a WebMCP
 driver, the recording one from `@ayme-dev/webmcp/testing`.
+
+The goal tests (`tests/goals/`) run only by hand, with Claude Code signed in:
+`pnpm exec e2e run --config e2e.goals.config.ts` for the Page Object study's
+first arm, on e2e as published, and `pnpm test:goals:tools` for its third,
+the same files with the e2e suite's Page Objects as tools
+([`@ayme-dev/e2e-tools`](../../packages/e2e-tools/README.md)). A server
+already on the goals' port is reused, whichever checkout started it, so give
+each checkout its own `AYME_GOALS_PORT`. `pnpm test:tools-check` checks the
+third arm's wiring with no model.
