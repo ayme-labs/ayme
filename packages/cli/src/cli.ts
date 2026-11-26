@@ -4,7 +4,7 @@ import { planOf } from "./plan";
 import { readCommand } from "./readCommand";
 import { session } from "./session";
 
-const plan = planOf(readCommand(process.argv.slice(2)));
+const plan = planOf(readCommand(process.argv.slice(2), process.env));
 if (plan.kind === "print") {
   process[plan.stream].write(plan.text);
   process.exitCode = plan.exitCode;

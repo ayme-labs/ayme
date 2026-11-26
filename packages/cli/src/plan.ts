@@ -10,7 +10,10 @@ export type Plan =
       exitCode: number;
     }
   | { kind: "capture"; target: CaptureTarget }
-  | Extract<Command, { kind: "open" | "ask" | "session process" }>;
+  | Extract<
+      Command,
+      { kind: "open" | "attach" | "ask" | "list" | "session process" }
+    >;
 
 /**
  * Decides what to do for a command: print and stop, record with
@@ -42,7 +45,9 @@ export function planOf(command: Command): Plan {
     case "capture":
       return { kind: "capture", target: command.target };
     case "open":
+    case "attach":
     case "ask":
+    case "list":
     case "session process":
       return command;
   }
