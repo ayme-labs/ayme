@@ -669,7 +669,7 @@ describe("a Session's Node Host, through the internal entry", () => {
     const ayme = await hostOn(page, [Counter]);
 
     const answer = await internal
-      .pageObjectToolAnswersOf(ayme, "ayme-command")
+      .pageObjectCallerOf(ayme, "ayme-command")
       .run("Counter.press", { id: "po1" });
 
     expect(answer).toEqual({
@@ -684,12 +684,68 @@ describe("a Session's Node Host, through the internal entry", () => {
     });
   });
 
+  it("lists the Page Object Tree, the tools, the URL and the title in one turn, once the Run under way has ended", async () => {
+    const page = await pageShowing("<h1>Before</h1>");
+    class Gate {
+      constructor(readonly page: Page) {}
+      async pass() {
+        await this.page.waitForFunction(() => "open" in window, null, {
+          timeout: 0,
+        });
+        await this.page.evaluate(() => {
+          document.title = "After";
+          document.querySelector("h1")!.textContent = "After";
+        });
+      }
+      get heading(): ReturnType<Page["locator"]> {
+        return this.page.getByRole("heading");
+      }
+    }
+    built.ayme(Gate);
+    built.registerCompiledPom(Gate, {
+      className: "Gate",
+      members: [{ memberName: "heading", kind: "locator", access: "getter" }],
+      tools: [
+        {
+          methodName: "pass",
+          toolName: "Gate.pass",
+          description: "Wait until the gate opens",
+          parameters: [],
+        },
+      ],
+      components: [],
+    });
+    const ayme = await hostOn(page, [Gate]);
+    const caller = internal.pageObjectCallerOf(ayme, "ayme-command");
+
+    const run = caller.run("Gate.pass", {});
+    let listed = false;
+    const listing = caller.listing().finally(() => (listed = true));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(listed).toBe(false);
+    await page.evaluate(() => Object.assign(window, { open: true }));
+
+    await run;
+    expect(await listing).toEqual({
+      pageObjectTree: 'Gate\n  heading: heading "After" [level=1]',
+      tools: expect.arrayContaining([
+        expect.objectContaining({ name: "Gate.pass", available: true }),
+      ]),
+      url: "about:blank",
+      title: "After",
+    });
+    expect(ayme.runs.list().at(-1)).toMatchObject({
+      tool: "page_objects",
+      by: "ayme-command",
+    });
+  });
+
   it("refuses a tool that is not a Page Object Tool as one there is not", async () => {
     const page = await pageShowing("<button>Save</button>");
     const ayme = await hostOn(page, []);
 
     await expect(
-      internal.pageObjectToolAnswersOf(ayme, "ayme-command").run("snapshot", {})
+      internal.pageObjectCallerOf(ayme, "ayme-command").run("snapshot", {})
     ).rejects.toThrow('There is no tool "snapshot".');
   });
 
@@ -743,7 +799,7 @@ describe("a Session's Node Host, through the internal entry", () => {
     const ayme = await hostOn(page, [SignIn, Home]);
 
     const answer = await internal
-      .pageObjectToolAnswersOf(ayme, "ayme-command")
+      .pageObjectCallerOf(ayme, "ayme-command")
       .run("SignIn.logIn", {});
 
     expect(answer).toEqual({

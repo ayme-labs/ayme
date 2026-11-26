@@ -13,7 +13,8 @@
 // build it runs: ayme's source needs ayme's own build, so another workspace
 // cannot take them from it. The Session of the `ayme` command runs a
 // project's Page Objects through here: it creates its Node Host on the
-// Playwright that drives its browser, and reads a Run's short answer.
+// Playwright that drives its browser, and reads a Run's short answer and
+// a listing, each in the Tab's turn.
 export {
   getStartedAyme,
   markRenderSession,
@@ -49,5 +50,5 @@ export type {
   InspectorContractPorts,
   InspectorSession,
 } from "./runtime";
-export { createNodeHost, pageObjectToolAnswersOf } from "./runtime";
-export type { PageObjectToolSource } from "./runtime";
+export { createNodeHost, pageObjectCallerOf } from "./runtime";
+export type { PageObjectCaller } from "./runtime";

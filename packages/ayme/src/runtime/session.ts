@@ -378,27 +378,46 @@ export type AppProcessTools = {
 
 const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
 
+/**
+ * A session's Page Object Tools as one Caller that offers no other tools
+ * reaches them, such as a Session of the `ayme` command.
+ */
+export type PageObjectCaller = {
+  /**
+   * Runs the Page Object Tool `name`, answered as the agent channels answer
+   * it. Any other tool is refused as one there is not.
+   */
+  run: PageObjectToolSource["run"];
+  /**
+   * Reads what a listing shows in one turn on the page's queue, so it waits
+   * for the Run under way and no Run starts before it is complete: the Page
+   * Object Tree as text, read as a Run of the Caller, every tool then, and
+   * the page's URL and title.
+   */
+  listing(): Promise<{
+    readonly pageObjectTree: string;
+    readonly tools: readonly ToolInfo[];
+    readonly url: string;
+    readonly title: string;
+  }>;
+};
+
 // Keyed by the session's `tools`, which a Node host's session object
 // shares with the core one it spreads.
-const pageObjectToolAnswersBySession = new WeakMap<
+const pageObjectCallers = new WeakMap<
   object,
-  (by: Caller) => PageObjectToolSource
+  (by: Caller) => PageObjectCaller
 >();
 
-/**
- * The session's Page Object Tools as a Caller that offers no other tools
- * runs them, such as a Session of the `ayme` command: each Run started as
- * `by`, and answered as the agent channels answer it. Any other tool is
- * refused as one there is not.
- */
-export function pageObjectToolAnswersOf(
+/** The session's Page Object Tools as `by` reaches them, its Runs started as `by`. */
+export function pageObjectCallerOf(
   ayme: Pick<Ayme, "tools">,
   by: string
-): PageObjectToolSource {
-  const answers = pageObjectToolAnswersBySession.get(ayme.tools);
-  if (!answers)
+): PageObjectCaller {
+  const caller = pageObjectCallers.get(ayme.tools);
+  if (!caller)
     throw new RuntimeStateError("This is not an ayme runtime session.");
-  return answers(by as Caller);
+  return caller(by as Caller);
 }
 export const appProcessToolsBySession = new WeakMap<Ayme, AppProcessTools>();
 
@@ -1148,9 +1167,22 @@ export function createAymeOn(
   }
 
   appProcessToolsBySession.set(ayme, appProcessTools.tools);
-  pageObjectToolAnswersBySession.set(ayme.tools, (by) =>
-    pageObjectToolsFor(by, { pageObjectToolsOnly: true })
-  );
+  pageObjectCallers.set(ayme.tools, (by) => ({
+    run: pageObjectToolsFor(by, { pageObjectToolsOnly: true }).run,
+    listing: () =>
+      takeTurn(async () => {
+        const pageObjectTree = String(
+          await recordTopLevelRun("page_objects", {}, by, probeAfterAction)
+        );
+        const page = target.rawPage();
+        return {
+          pageObjectTree,
+          tools: ayme.tools.list(),
+          url: page.url(),
+          title: await page.title(),
+        };
+      }),
+  }));
   setAgentConnectionStatus(ayme, agentConnectionStatus.status);
   return ayme;
 }
