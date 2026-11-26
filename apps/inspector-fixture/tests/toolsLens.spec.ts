@@ -177,7 +177,7 @@ test.describe("with the inspector option on", () => {
     const peeks = (await app.tools())
       .filter(({ group }) => group === "peek")
       .map(({ name }) => name);
-    // The fixture's Peek of its list.
+    // Only /session.html's runtime registers a Peek: its list's.
     expect(peeks).toEqual(["peek.list"]);
     await listPage.addItem("Milk");
 

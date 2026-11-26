@@ -315,10 +315,6 @@ export class Navigator extends Part {
   }
 
   /** The legend's counts: live, not on page, refs. */
-  get legend(): On {
-    return this.on((root) => root.getByRole("group", "Legend"));
-  }
-
   /** The legend's items as the DOM has them, such as "3 live". */
   legendItems(): Promise<string[]> {
     return panelTexts(
@@ -835,6 +831,18 @@ export class ModelDetailView extends Part {
 
 /** The detail pane: the view of what's selected, with its run cards. */
 export class DetailPane extends Part {
+  /**
+   * The opacity of the view's only run card, as `runCard()` without a name
+   * finds it. e2e has no CSS matcher, so it is read in the panel.
+   */
+  async cardOpacity() {
+    return (
+      await panelLook(this.tab, 'section[aria-label="Selected"] form', [
+        "opacity",
+      ])
+    )?.opacity;
+  }
+
   get model(): ModelDetailView {
     return new ModelDetailView(this.tab, this.root);
   }
