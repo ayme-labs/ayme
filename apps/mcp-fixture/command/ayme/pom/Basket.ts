@@ -25,6 +25,16 @@ export class Basket {
   @ayme.action({ description: "Put an item in the basket." })
   async add(item: string) {
     await this.root.getByRole("textbox", { name: "Item" }).fill(item);
+    // The page has no script of its own, so the action lists the item.
+    await this.root
+      .getByRole("list")
+      .evaluate(
+        (list, name) =>
+          list.append(
+            Object.assign(document.createElement("li"), { textContent: name })
+          ),
+        item
+      );
   }
 
   @ayme.action({
