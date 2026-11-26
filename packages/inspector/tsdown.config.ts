@@ -1,6 +1,26 @@
-import { defineConfig } from "tsdown";
+import { readFileSync } from "node:fs";
+
+import { defineConfig, type Rolldown } from "tsdown";
 
 import { inspectorCss } from "./inspectorCss.config.ts";
+
+/** Emits `THIRD_PARTY_NOTICES.txt`: this package's hand-kept file, then the
+ * design system's, whose components are copied from shadcn/ui, not installed,
+ * so the design system's file is the one copy of their notice. */
+function thirdPartyNotices(): Rolldown.Plugin {
+  const read = (path: string) =>
+    readFileSync(new URL(path, import.meta.url), "utf8");
+  return {
+    name: "ayme-inspector-third-party-notices",
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "THIRD_PARTY_NOTICES.txt",
+        source: `${read("./THIRD_PARTY_NOTICES.txt")}\n${read("../design-system/THIRD_PARTY_NOTICES.txt")}`,
+      });
+    },
+  };
+}
 
 const shared = {
   format: ["esm"] as ["esm"],
@@ -22,7 +42,7 @@ export default defineConfig([
     ...shared,
     clean: true,
     // Bundled third-party code keeps its license notices (see the file).
-    copy: ["THIRD_PARTY_NOTICES.txt"],
+    plugins: [...shared.plugins, thirdPartyNotices()],
     dts: true,
     entry: {
       index: "src/index.ts",
