@@ -1,6 +1,12 @@
 {
   "extends": ["//"],
   "tasks": {
+    "build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/design-system/THIRD_PARTY_NOTICES.txt"
+      ]
+    },
     "typecheck": {
       "dependsOn": ["build", "^build", "^typecheck"]
     },

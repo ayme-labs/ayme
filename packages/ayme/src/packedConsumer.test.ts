@@ -1774,6 +1774,18 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
   expect(notices).toContain("Copyright (c) 2023 shadcn");
 });
 
+it("the packed Inspector's notices carry shadcn/ui's, whose components its panel copies from the design system", () => {
+  const notices = fs.readFileSync(
+    path.join(
+      packed["@ayme-dev/inspector"]!.dir,
+      "dist/THIRD_PARTY_NOTICES.txt"
+    ),
+    "utf8"
+  );
+
+  expect(notices).toContain("Copyright (c) 2023 shadcn");
+});
+
 it(
   "a clean project installs the packed CLI and records one flow with it",
   { timeout: 120_000 },
