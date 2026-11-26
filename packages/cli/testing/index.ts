@@ -16,19 +16,31 @@ export type AymeRun = {
 };
 
 /** Runs the built `ayme` with `args` in `cwd`, and resolves once it
- * exited. */
+ * exited. `signal` stops it as Ctrl+C in its terminal would. */
 export function runAyme(
   args: readonly string[],
-  { cwd, env }: { readonly cwd: string; readonly env?: NodeJS.ProcessEnv }
+  {
+    cwd,
+    env,
+    signal,
+  }: {
+    readonly cwd: string;
+    readonly env?: NodeJS.ProcessEnv;
+    readonly signal?: AbortSignal;
+  }
 ): Promise<AymeRun> {
   return new Promise((resolve) => {
     execFile(
       process.execPath,
       [aymeCommand, ...args],
-      { cwd, env: env ?? process.env },
+      {
+        cwd,
+        env: env ?? process.env,
+        ...(signal ? { signal, killSignal: "SIGINT" as const } : {}),
+      },
       (error, stdout, stderr) =>
         resolve({
-          code: error ? Number(error.code ?? 1) : 0,
+          code: error ? (typeof error.code === "number" ? error.code : 1) : 0,
           stdout,
           stderr,
         })
