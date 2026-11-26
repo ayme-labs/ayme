@@ -1,4 +1,12 @@
 {
   "extends": ["//"],
-  "tags": ["app"]
+  "tags": ["app"],
+  "tasks": {
+    "test:e2e": { "dependsOn": ["build", "^build", "e2e"] },
+    "e2e": {
+      "dependsOn": ["build", "^build"],
+      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH", "AYME_E2E_PORT_*"],
+      "cache": false
+    }
+  }
 }

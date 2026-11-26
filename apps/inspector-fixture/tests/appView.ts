@@ -18,9 +18,7 @@ export type LiveTool = {
 export type LoggedRun = {
   tool: string;
   input?: unknown;
-  status: "running" | "succeeded" | "failed";
   result?: unknown;
-  error?: string;
 };
 
 /** The navigator legend's three counts, as the page's runtime gives them. */
@@ -42,7 +40,7 @@ const indented = (text: string) =>
  * live one's definition declares (`name: Class`) and `page_objects` leaves
  * out is not on the page; the refs are the nodes of `snapshot`'s structure,
  * each line's first token after its dash, whatever its form (`e5`, `s_1`),
- * where a text line has `text:`.
+ * skipping text lines and property lines.
  */
 export function legendCounts(
   pageObjects: string,
@@ -53,8 +51,11 @@ export function legendCounts(
   const declared = new Map<string, string[]>();
   let current: string[] = [];
   for (const { indent, text } of indented(definitions)) {
-    if (indent === 0) declared.set(text, (current = []));
-    else if (/^\w+: [A-Z]\w*$/.test(text)) current.push(text.split(":")[0]!);
+    // A declaration may end in its authored description, `// ...`.
+    const declaration = text.replace(/\s*\/\/.*$/, "");
+    if (indent === 0) declared.set(declaration, (current = []));
+    else if (/^\w+: [A-Z]\w*$/.test(declaration))
+      current.push(declaration.split(":")[0]!);
   }
   const lines = indented(pageObjects);
   let live = 0;
@@ -80,7 +81,12 @@ export function legendCounts(
       structure
         .split("\n")
         .map((line) => /^\s*- ([^\s:]+)/.exec(line)?.[1])
-        .filter((token) => token !== undefined && token !== "text")
+        // A text line has `text:`, and a node's property lines, such as a
+        // link's `- /url: /docs`, start with a slash.
+        .filter(
+          (token) =>
+            token !== undefined && token !== "text" && !token.startsWith("/")
+        )
     ).size,
   };
 }
@@ -142,22 +148,20 @@ export class AppView {
       window
         .fixtureAyme!.runs.list()
         .filter((run) => run.parent === undefined)
-        .map(({ tool, input, status, result, error }) => ({
-          tool,
-          input,
-          status,
-          result,
-          error,
-        }))
+        .map(({ tool, input, result }) => ({ tool, input, result }))
     );
   }
 
   /** The navigator legend's counts, from `page_objects` and `snapshot`. */
   async legendCounts(): Promise<LegendCounts> {
+    // One snapshot, so its definitions and structure describe one moment.
+    const { pomDefinitions, structure } = (await this.run("snapshot", {
+      names: [],
+    })) as { pomDefinitions: string; structure: string };
     return legendCounts(
       (await this.run("page_objects")) as string,
-      await this.pomDefinitions(),
-      await this.structure()
+      pomDefinitions,
+      structure
     );
   }
 

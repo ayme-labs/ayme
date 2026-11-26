@@ -322,21 +322,33 @@ for (const placement of placements) {
           );
         },
       };
+      await listPage.addItem("Milk");
       // Something else first, so a copy that never lands is told apart.
       await clipboard.write("not copied");
-      await listPage.addItem("Milk");
       await (await inspector.tool("ListPage.countItems")).runButton.click();
       const run = inspector.runs.latest("ListPage.countItems");
       await expect.poll(() => run.status()).toBe("Succeeded");
+      const logged = (await appView.runs()).at(-1)!;
 
       await run.copyResultButton.click();
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
 
-      // The panel says so once the write resolved; the Inspector's tab stays
-      // in front until the clipboard is read.
-      await expect(await run.announced.front()).toHaveText("Copied");
-      const copied = await clipboard.read();
-      const logged = (await appView.runs()).at(-1)!;
-      expect(JSON.parse(copied)).toEqual(logged.result);
+      // The write is asynchronous, so the clipboard is read until it lands,
+      // with the Inspector's tab in front. The panel's "Copied" status
+      // clears again, so it is not waited for.
+      await expect
+        .poll(async () => {
+          const copied = await clipboard.read();
+          try {
+            return JSON.parse(copied) as unknown;
+          } catch {
+            return copied;
+          }
+        })
+        .toEqual(logged.result);
     });
 
     test("press_key presses the key the page receives", async ({
@@ -344,13 +356,14 @@ for (const placement of placements) {
       listPage,
     }) => {
       const pressKey = await inspector.tool("press_key");
-      await pressKey.fill({ key: "F4" });
-
-      await pressKey.runButton.click();
 
       // The fixture writes the function key it receives into the New item
-      // field.
-      await expect(await listPage.newItemInput.front()).toHaveValue("F4");
+      // field; two keys, so a run that always presses the same one fails.
+      for (const key of ["F4", "F7"]) {
+        await pressKey.fill({ key });
+        await pressKey.runButton.click();
+        await expect(await listPage.newItemInput.front()).toHaveValue(key);
+      }
     });
 
     test("the fill_form editor fills only the fields still changed after an undo", async ({
@@ -395,6 +408,15 @@ for (const placement of placements) {
       await locatorGroups.toggleFromTree(2, ...groups[1]!);
       await card.runButton.click();
 
+      // The panel submitted these groups and no others.
+      await expect
+        .poll(() => inspector.runs.latest("generate_locator").status())
+        .toBe("Succeeded");
+      const submitted = (await appView.runs()).at(-1)!;
+      expect(submitted.tool).toBe("generate_locator");
+      expect(submitted.input).toEqual({
+        groups: groups.map((targets) => ({ targets })),
+      });
       const expected = (await appView.run("generate_locator", {
         groups: groups.map((targets) => ({ targets })),
       })) as { groups: { locators: { target: string; locator: string }[] }[] };
@@ -450,6 +472,8 @@ for (const placement of placements) {
         ).waitFor();
 
         const run = inspector.runs.latest("ListPage.addItem");
+        // The newest run of the tool is the agent's until the panel's arrives.
+        await expect.poll(() => run.caller()).toEqual(INSPECTOR);
         await expect.poll(() => run.status()).toBe("Failed");
         // The panel shows the error an agent gets for the same call. Its call
         // log varies with timing, so the first line is compared.
@@ -487,6 +511,8 @@ for (const placement of placements) {
           ).waitFor();
 
           const run = inspector.runs.latest("ListPage.addItem");
+          // The newest run of the tool is the agent's until the panel's arrives.
+          await expect.poll(() => run.caller()).toEqual(INSPECTOR);
           await expect
             .poll(async () => (await run.read())?.earlierPage)
             .toBe(false);

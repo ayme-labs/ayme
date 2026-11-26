@@ -166,8 +166,8 @@ async function connectLink(
 }
 
 /**
- * What a Page Object Tool's call over `agent` answers: its JSON, or its
- * error text with `isError`.
+ * What a Page Object Tool's call over `agent` answers, as JSON. A call that
+ * fails throws with its error text, so no check of the answer can pass on it.
  */
 export async function callOverMcp(
   agent: Agent,
@@ -175,9 +175,8 @@ export async function callOverMcp(
   input: Record<string, unknown> = {}
 ) {
   const { text, isError } = await agent.call(name, input);
-  return isError
-    ? { isError, text }
-    : (JSON.parse(text) as Record<string, unknown>);
+  if (isError) throw new Error(`${name} failed over ayme MCP: ${text}`);
+  return JSON.parse(text) as Record<string, unknown>;
 }
 
 /**

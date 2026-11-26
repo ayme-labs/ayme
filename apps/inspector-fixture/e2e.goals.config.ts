@@ -9,7 +9,7 @@ import base from "./e2e.config";
 // The goal-driven tests (tests/goals/*.goal.ts): each user step is an
 // `agent.act` goal, run by Claude Code on the machine's own login. CI has no
 // model, so only `e2e run --config e2e.goals.config.ts` reaches these files;
-// `test:e2e` runs e2e.config.ts, whose glob (`*.e2e.ts`) leaves them out.
+// `pnpm e2e` runs e2e.config.ts, whose glob (`*.e2e.ts`) leaves them out.
 
 /**
  * This checkout's own ports, so two checkouts' runs never meet: one fixed

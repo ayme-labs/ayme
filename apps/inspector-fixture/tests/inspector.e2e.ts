@@ -248,7 +248,6 @@ describe("connected to an agent", () => {
         const { pill } = inspector.header.connections;
         await expect(await pill.front()).toHaveText(AGENT_CLIENT_NAME);
 
-        // Watched while the server stops, not after.
         const stopped = mcpServer!.close();
         await expect(await pill.front()).toHaveText("Reconnecting");
         await stopped;

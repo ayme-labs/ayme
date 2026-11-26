@@ -50,26 +50,28 @@ layout, host CSS, stacking, mounting, motion and dogfooding) run inline only.
 
 ## Running
 
-Run from this directory inside the repository's Devbox shell. `pnpm test:e2e`
-tests the built packages, so build first; Turbo's `test:e2e` task does. It runs
-the Playwright suite (`test:playwright`), then its port to
-[e2e](https://e2e.com) (`test:e2e:e2e`, the `*.e2e.ts` files with their
-helpers in `tests/e2e/`), each on Chromium against the fixture pages, served on a free port
-(`AYME_E2E_PORT_INSPECTOR` overrides it). A test that calls Page Object Tools
-as a coding agent (`connected`) starts an `ayme mcp` server and opens the page
-through its connect link. The Browser Tools, which the server doesn't list,
-run on the page's own runtime, as the app runs them. The tests drive the panel
-through the Inspector's page objects from `@ayme-dev/inspector/testing`. A
-fixture page that fails to start or a runtime that never lists its tools fails
-before any test assertion, with its own message. WebMCP is experimental, so
-only the test of the Connections popover's WebMCP state installs a WebMCP
-driver, the recording one from `@ayme-dev/webmcp/testing`.
+Run from this directory inside the repository's Devbox shell. The tests run
+the built packages, so build first; Turbo's tasks do. `pnpm test:e2e` runs
+the Playwright suite on Chromium against the fixture pages, served on a free
+port (`AYME_E2E_PORT_INSPECTOR` overrides it), and drives the panel through
+the Inspector's page objects from `@ayme-dev/inspector/testing`. `pnpm e2e`
+runs its port to [e2e](https://e2e.com), the `*.e2e.ts` files, which serve
+the pages on a port e2e picks and drive the panel through the copies of
+those page objects in `tests/e2e/pom/`. Turbo's `test:e2e` task runs both. A
+test that calls Page Object Tools as a coding agent (`connected`) starts an
+`ayme mcp` server and opens the page through its connect link. The Browser
+Tools, which the server doesn't list, run on the page's own runtime, as the
+app runs them. A fixture page that fails to start or a runtime that never
+lists its tools fails before any test assertion, with its own message.
+WebMCP is experimental, so only the test of the Connections popover's WebMCP
+state installs a WebMCP driver, the recording one from
+`@ayme-dev/webmcp/testing`.
 
 `pnpm test:goals` runs the goal-driven tests (`tests/goals/*.goal.ts`, with
 `e2e.goals.config.ts`), e2e's telemetry off. Each is the `*.e2e.ts` test of
 the same name with every action on the panel written as an `agent.act` goal,
 which Claude Code carries out on this machine's own login. CI has no model, so
-`test:e2e` leaves them out. A first run records each goal into
+`pnpm e2e` and Turbo's tasks leave them out. A first run records each goal into
 `.e2e/goals-cache/`, and later runs replay it without the model. The fixture
 pages and the external placement's `ayme mcp` get ports of this checkout's own
 (`AYME_GOALS_PORT` and `AYME_E2E_MCP_PORT` override them).

@@ -2,7 +2,6 @@ import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
 import { callOverMcp, INSPECTOR, placements, testIn } from "../e2e/fixtures";
-import { panelLook } from "../e2e/pom/Inspector";
 
 // The goal-driven twin of ../toolsLens.e2e.ts: the same tests, with each
 // action on the panel an agent goal.
@@ -201,21 +200,8 @@ for (const placement of placements) {
       const card = inspector.detail.runCard();
 
       // The tool's run card is dimmed and gives the reason; its row in the
-      // Tools lens's list shows neither. e2e has no CSS matcher: the card's
-      // computed opacity, read in the panel. The card is the Selected
-      // region's only form, as `runCard()` finds it.
-      await expect
-        .poll(
-          async () =>
-            (
-              await panelLook(
-                inspector.tab,
-                'section[aria-label="Selected"] form',
-                ["opacity"]
-              )
-            )?.opacity
-        )
-        .toBe("0.6");
+      // Tools lens's list shows neither.
+      await expect.poll(() => inspector.detail.cardOpacity()).toBe("0.6");
       await expect(await card.reason.front()).toHaveText(clear.reason!);
       await expect(await card.runButton.front()).toBeEnabled();
       await agent.act("run it");
