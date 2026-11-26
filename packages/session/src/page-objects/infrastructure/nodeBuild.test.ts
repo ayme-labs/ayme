@@ -1,4 +1,11 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -139,6 +146,22 @@ it("compiles a model the project imports through a tsconfig path alias, which is
   const built = await build(dir);
 
   expect(await registeredWith(installed)).toEqual(built.classes);
+});
+
+it("registers a model in a linked folder with its own install with the project's @ayme-dev/ayme, which runs it", async () => {
+  const { dir, installed } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./shared/Basket";\nexport default [Basket];\n',
+  });
+  const elsewhere = await folder("linked");
+  const theirs = await installAyme(elsewhere);
+  await write(elsewhere, { "shared/Basket.ts": BASKET });
+  await symlink(join(elsewhere, "shared"), join(dir, "ayme", "shared"));
+
+  const built = await build(dir);
+
+  expect(await registeredWith(installed)).toEqual(built.classes);
+  expect(await registeredWith(theirs)).toEqual([]);
 });
 
 it("a module that does not parse fails the build, naming the entry and the file", async () => {

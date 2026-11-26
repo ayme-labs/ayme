@@ -83,41 +83,53 @@ const pageObjectModels = ({
   },
 });
 
+/** Marks the resolve `projectPackages` asks esbuild for itself. */
+const RESOLVING = Symbol("ayme-project-packages");
+
+/** An import of `@ayme-dev/ayme` or one of its entries. */
+const AYME_IMPORT = /^@ayme-dev\/ayme(\/|$)/;
+
 /**
  * Leaves every installed package the Page Objects import out of the build,
  * imported from the file the project installed: Node then loads the
- * project's own copies, the one `@ayme-dev/ayme` the Node Host reads
- * included, wherever the built module is. An import that resolves to the
- * project's own source, such as one through a tsconfig path alias, is
- * built with the rest.
+ * project's own copies, wherever the built module is. An import that
+ * resolves to the project's own source, such as one through a tsconfig path
+ * alias, is built with the rest.
+ *
+ * `@ayme-dev/ayme` is always the copy installed for `projectDir`, the one
+ * the compiler and the Node Host come from: a class registers with the copy
+ * its module imports, and a model in a linked folder with an install of its
+ * own would otherwise register with that one, which the Node Host never
+ * reads.
  */
-const projectPackages: esbuild.Plugin = {
+const projectPackages = (projectDir: string): esbuild.Plugin => ({
   name: "ayme-project-packages",
   setup(build) {
     build.onResolve({ filter: /^[^./#]/ }, async (args) => {
       if (isBuiltin(args.path)) return { external: true };
-      if (args.pluginData === projectPackages) return undefined;
+      if (args.pluginData === RESOLVING) return undefined;
       const resolved = await build.resolve(args.path, {
         kind: args.kind,
         importer: args.importer,
-        resolveDir: args.resolveDir,
-        pluginData: projectPackages,
+        resolveDir: AYME_IMPORT.test(args.path) ? projectDir : args.resolveDir,
+        pluginData: RESOLVING,
       });
       if (resolved.errors.length > 0) return { errors: resolved.errors };
       if (!installed(resolved.path)) return { path: resolved.path };
       return { path: pathToFileURL(resolved.path).href, external: true };
     });
   },
-};
+});
 
 /** The entry built into one ES module, or the build's messages. */
-const bundle = (entry: string, compiler: CompilerEntry) =>
-  Effect.tryPromise({
+const bundle = (entry: string, compiler: CompilerEntry) => {
+  // The project folder, which holds the ayme folder.
+  const projectDir = join(dirname(entry), "..");
+  return Effect.tryPromise({
     try: () =>
       esbuild.build({
-        // The project folder, which holds the ayme folder: messages name
-        // files from there.
-        absWorkingDir: join(dirname(entry), ".."),
+        // Messages name files from the project folder.
+        absWorkingDir: projectDir,
         entryPoints: [entry],
         bundle: true,
         platform: "node",
@@ -125,7 +137,7 @@ const bundle = (entry: string, compiler: CompilerEntry) =>
         write: false,
         outfile: "page-objects.mjs",
         logLevel: "silent",
-        plugins: [projectPackages, pageObjectModels(compiler)],
+        plugins: [projectPackages(projectDir), pageObjectModels(compiler)],
       }),
     catch: (failure) => failure as esbuild.BuildFailure,
   }).pipe(
@@ -141,6 +153,7 @@ const bundle = (entry: string, compiler: CompilerEntry) =>
       )
     )
   );
+};
 
 /** Imports `code` as an ES module, from a file of its own that is removed
  * once it loaded. */
