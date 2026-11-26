@@ -33,7 +33,7 @@ On a shared machine, note that the worker chooses its own ports and browser, and
 
 ## In CI
 
-[eval-first-install.yml](../../.github/workflows/eval-first-install.yml) runs on a push to `t3/eval-first-install-on-main` that changes [ci.json](ci.json), which names the ref, the tools and the runs per tool. A `workflow_dispatch` workflow could not be dispatched from that branch, because GitHub dispatches only workflows on the default branch. One job packs the ref and runs the self-check; then each run gets its own fresh runner, with Claude Code 2.1.326 and the `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK` secret, the eval's second login. The score table goes to the job summary, and each run's folder is uploaded as an artifact.
+[eval-first-install.yml](../../.github/workflows/eval-first-install.yml) is started by hand, from the Actions page or with `gh workflow run eval-first-install.yml -f ref=<ref>`, with the ref, the runs per tool and the tools as inputs. One job packs the ref and runs the self-check; then each run gets its own fresh runner, with Claude Code 2.1.326 and the `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK` secret, the eval's second login. The score table goes to the job summary, under the ref and the commit it resolved to, and each run's folder is uploaded as an artifact.
 
 ## A run's folder
 
