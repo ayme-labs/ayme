@@ -16,7 +16,7 @@ import {
 } from "../src/session/domain";
 
 /** The address the scripted browser gives. */
-export const SCRIPTED_ADDRESS = "http://127.0.0.1:9222";
+const SCRIPTED_ADDRESS = "http://127.0.0.1:9222";
 
 /**
  * The remote control of a scripted browser. It opens at once, unless the
@@ -33,6 +33,9 @@ export interface ScriptedBrowser {
   open(): void;
   /** A held open fails, for the reason a person reads. */
   failOpen(reason: string): void;
+  /** A held open breaks with an error nobody expected, such as a folder
+   * that could not be made. */
+  breakOpen(defect: Error): void;
   /** The browser goes away: it crashed, or someone closed it. */
   goAway(): void;
 }
@@ -63,12 +66,14 @@ export function scriptedBrowser({ held }: { readonly held?: true } = {}): {
 
   const layer = Layer.succeed(SessionBrowser, {
     get: (asking) =>
+      // The wait for the open is outside the acquire, which cannot be
+      // interrupted, so that a Session can stop a start under way.
       Effect.acquireRelease(
-        Effect.sync(() => asked.push(asking)).pipe(
-          Effect.andThen(Deferred.await(opened)),
-          Effect.as({ address: SCRIPTED_ADDRESS, gone: Deferred.await(gone) })
-        ),
+        Effect.sync(() => asked.push(asking)),
         () => Effect.sync(() => (released = true))
+      ).pipe(
+        Effect.andThen(Deferred.await(opened)),
+        Effect.as({ address: SCRIPTED_ADDRESS, gone: Deferred.await(gone) })
       ),
   });
 
@@ -82,6 +87,7 @@ export function scriptedBrowser({ held }: { readonly held?: true } = {}): {
       open: () => Deferred.doneUnsafe(opened, Exit.void),
       failOpen: (reason) =>
         Deferred.doneUnsafe(opened, Exit.fail(new SessionStartError(reason))),
+      breakOpen: (defect) => Deferred.doneUnsafe(opened, Exit.die(defect)),
       goAway: () => Deferred.doneUnsafe(gone, Exit.void),
     },
   };
