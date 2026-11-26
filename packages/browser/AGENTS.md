@@ -11,6 +11,7 @@ The checks:
 
 Nothing checks these:
 
+- `leaveDialogsOpen` listens for dialogs as soon as Playwright hands the browser over, since its public API has nothing to listen on sooner: a dialog a page opens while the join is under way is dismissed by Playwright, as the compatibility suite records.
 - Write a `BrowserError` message as what was found, and leave what to do about it to the caller, since the recorder's advice and a Session's differ.
 - Keep starting and joining different only in how the browser is got and let go of, so one compatibility suite tests both.
 - A caller lists this package under `devDependencies`, as the recorder does, so its build bundles it and the built caller imports no package of ayme's that `@ayme-dev/cli` would have to install.

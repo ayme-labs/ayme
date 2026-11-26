@@ -1,5 +1,8 @@
 import { Effect, type Scope } from "effect";
-import type { Browser as PlaywrightBrowser } from "playwright-core";
+import type {
+  BrowserContext,
+  Browser as PlaywrightBrowser,
+} from "playwright-core";
 
 import type { BrowserError } from "../../browserError";
 import { browserUnavailable, type BrowserRequest } from "../../browserRequest";
@@ -10,6 +13,15 @@ export interface Browser {
   readonly playwrightBrowser: PlaywrightBrowser;
   /** True when ayme started it, so that ayme may close it. */
   readonly opened: boolean;
+}
+
+/** Gives each context of the browser, those made later among them, a
+ * dialog listener that does nothing, so that Playwright dismisses none. */
+function leaveDialogsOpen(playwrightBrowser: PlaywrightBrowser) {
+  const listen = (context: BrowserContext) => context.on("dialog", () => {});
+  playwrightBrowser.contexts().forEach(listen);
+  playwrightBrowser.on("context", listen);
+  return playwrightBrowser;
 }
 
 /** Releases a browser: a started one is closed, and one the person already
@@ -24,7 +36,9 @@ const release = (playwrightBrowser: PlaywrightBrowser) =>
  * only let go, so it stays open. Interrupted while Playwright still gets
  * the browser, it stops at once, as Playwright's own wait has no means to
  * be stopped and can last until its timeout; a browser Playwright gets
- * after that is released without any other use.
+ * after that is released without any other use. With `leaveDialogsOpen`,
+ * the dialog listeners are added as soon as Playwright hands the browser
+ * over: Playwright's public API has nothing to listen on any sooner.
  */
 export const browser = (
   { playwright }: ProjectPlaywright,
@@ -32,7 +46,8 @@ export const browser = (
 ): Effect.Effect<Browser, BrowserError, Scope.Scope> =>
   Effect.acquireRelease(
     Effect.suspend(() => {
-      const getting =
+      const asked = "join" in request ? request.join : request.open;
+      const got =
         "join" in request
           ? playwright.chromium.connectOverCDP(request.join.cdp, {
               // The browser is someone else's: its settings stay as they
@@ -40,6 +55,7 @@ export const browser = (
               noDefaults: true,
             })
           : launch(playwright, request.open);
+      const getting = asked.leaveDialogsOpen ? got.then(leaveDialogsOpen) : got;
       return Effect.tryPromise({
         try: () => getting,
         catch: (cause) => browserUnavailable(request, cause),
