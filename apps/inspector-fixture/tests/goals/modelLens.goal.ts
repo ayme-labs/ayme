@@ -17,7 +17,7 @@ describe("inline", () => {
   }) => {
     const input = outline(page.locator("#todo-new"), browser);
     const panel = screen.getByRole("complementary", "ayme");
-    await agent.act("select {object} in the Model lens", {
+    await agent.act("select {object} under On this page in the Model lens", {
       params: { object: "TodoPage" },
     });
 
