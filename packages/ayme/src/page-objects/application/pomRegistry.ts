@@ -52,6 +52,7 @@ import {
 import type { PageDriver } from "./pageDriver";
 import {
   createPageObjectIds,
+  type PageObjectIdSource,
   type PageObjectIds,
   type PageObjectRoot,
 } from "./pageObjectIds";
@@ -149,11 +150,14 @@ const noPageStates: PomPageStates = {
 
 /**
  * Package-internal: a registry of the Page Objects on one page, which it
- * reads through `driver` and watches while any is registered.
+ * reads through `driver` and watches while any is registered. Its Page
+ * Object ids come from `pageObjectIdSource` when its Host gives one, and
+ * are numbered for this page alone otherwise.
  */
 export function createPomRegistry(
   driver: PageDriver,
-  pageStates: PomPageStates = noPageStates
+  pageStates: PomPageStates = noPageStates,
+  pageObjectIdSource?: PageObjectIdSource
 ) {
   const registeredPoms = new Set<ObservedRegisteredPom>();
   // Registrations refused for a same-named class, in the order they were
@@ -164,7 +168,7 @@ export function createPomRegistry(
   let stopWatchingPage: (() => void) | undefined;
   // The ids of this page's Page Objects, which outlive a registration: an id
   // is never given to another Page Object.
-  const pageObjectIds = createPageObjectIds(driver);
+  const pageObjectIds = createPageObjectIds(driver, pageObjectIdSource);
 
   /**
    * Package-internal: unregisters every Page Object, as a runtime session
