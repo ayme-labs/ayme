@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Screen } from "e2e";
 
 import type { On, Tab } from "../tab";
@@ -10,6 +11,10 @@ import type { On, Tab } from "../tab";
 // Where the Playwright Page Objects step through CSS, these query by role,
 // name or label, and fall back to `Tab.css` only where nothing else tells
 // the parts apart.
+//
+// The ayme decorators make some of their methods Page Object Tools for the
+// Page Object study's third arm (`packages/e2e-tools`); this suite calls the
+// methods directly, and the decorators change nothing it sees.
 
 export type LensName = "Model" | "Structure" | "Tools";
 
@@ -17,11 +22,20 @@ export type LensName = "Model" | "Structure" | "Tools";
 type Root = (screen: Screen) => Locator;
 
 /** A part of the Inspector, anchored at its root on one tab. */
+@ayme({ root: (self: Part) => Part.rootOf(self) })
 abstract class Part {
   constructor(
     protected readonly tab: Tab,
     protected readonly root: Root
   ) {}
+
+  /**
+   * The part's root on its tab's screen, for ayme's root rule. ayme types
+   * the rule for Playwright's Locator; e2e's has what the rule is asked for.
+   */
+  static rootOf(part: Part) {
+    return part.root(part.tab.screen) as never;
+  }
 
   /** A locator inside this part. */
   protected on(query: (root: Locator) => Locator): On {
@@ -183,6 +197,7 @@ export class ModelLens extends Part {
     );
   }
 
+  @ayme.action({ description: "Collapses or expands one of the two panes." })
   async togglePane(name: ModelPaneName) {
     await this.paneToggle(name).click();
   }
@@ -294,14 +309,17 @@ export class ToolsLens extends Part {
 
 /** The navigator: search, the lens switcher and the active lens's tree. */
 export class Navigator extends Part {
+  @ayme.child
   get tools(): ToolsLens {
     return new ToolsLens(this.tab, this.root);
   }
 
+  @ayme.child
   get structure(): StructureLens {
     return new StructureLens(this.tab, this.root);
   }
 
+  @ayme.child
   get model(): ModelLens {
     return new ModelLens(this.tab, this.root);
   }
@@ -342,12 +360,14 @@ export class Navigator extends Part {
     );
   }
 
+  @ayme.action({ description: "Shows a lens: Model, Structure or Tools." })
   async showLens(name: LensName) {
     await this.on((root) =>
       root.getByRole("group", "Lens").getByRole("button", name)
     ).click();
   }
 
+  @ayme.action({ description: "Searches the active lens." })
   async search(query: string) {
     await this.searchBox.fill(query);
   }
@@ -398,6 +418,7 @@ export class WhatTheModelSees extends Part {
     return this.on((root) => root.getByLabel("Page state"));
   }
 
+  @ayme.action({ description: "Opens what the model sees, when it is closed." })
   async open() {
     if ((await this.toggle.getAttribute("aria-expanded")) !== "true")
       await this.toggle.click();
@@ -666,6 +687,7 @@ export class RunCard extends Part {
   }
 
   /** Opens the form, on a card whose form is closed. */
+  @ayme.action({ description: "Opens the arguments form, when it is closed." })
   async openArguments() {
     if (
       (await this.argumentsToggle.count()) &&
@@ -675,6 +697,9 @@ export class RunCard extends Part {
   }
 
   /** Fills the typed form with the given arguments, by name. */
+  @ayme.action({
+    description: "Fills the typed form with the given arguments, by name.",
+  })
   async fill(args: Readonly<Record<string, ArgumentValue>>) {
     await this.openArguments();
     for (const [path, value] of Object.entries(args)) {
@@ -700,6 +725,9 @@ export class RunCard extends Part {
   }
 
   /** Chooses the item a rooted action runs on, by what it shows. */
+  @ayme.action({
+    description: "Chooses the item a rooted action runs on, by what it shows.",
+  })
   async pickItem(label: string) {
     await this.items
       .within((items) => items.filter({ hasText: label }))
@@ -707,12 +735,17 @@ export class RunCard extends Part {
   }
 
   /** Fills the arguments, picks the item when given, and runs the tool. */
+  @ayme.action({
+    description:
+      "Fills the arguments, picks the item when given, and runs the tool.",
+  })
   async run(
     args: Readonly<Record<string, ArgumentValue>> = {},
-    { item }: { item?: string } = {}
+    // Named, not destructured: a tool passes each parameter by its name.
+    options: { item?: string } = {}
   ) {
     await this.fill(args);
-    if (item !== undefined) await this.pickItem(item);
+    if (options.item !== undefined) await this.pickItem(options.item);
     await this.runButton.click();
   }
 }
@@ -750,10 +783,12 @@ export class ToolPage extends Part {
     super(tab, (screen) => detail(screen).getByRole("article"));
   }
 
+  @ayme.child
   get modelSees(): WhatTheModelSees {
     return new WhatTheModelSees(this.tab, this.root);
   }
 
+  @ayme.child
   get card(): RunCard {
     return new RunCard(
       this.tab,
@@ -819,6 +854,7 @@ export class DetailPane extends Part {
     return new NodeView(this.tab, this.root);
   }
 
+  @ayme.child
   get toolPage(): ToolPage {
     return new ToolPage(this.tab, this.root);
   }
@@ -1077,11 +1113,13 @@ export class RunsView extends Part {
     return this.on((root) => root.getByRole("button", "Clear"));
   }
 
+  @ayme.action({ description: "Clears the Runs timeline." })
   async clear() {
     await this.clearButton.click();
   }
 
   /** Shows the selection's runs, e.g. "This object". */
+  @ayme.action({ description: "Shows only the selection's runs." })
   async showSelection() {
     await this.on((root) =>
       root.getByRole("group", "Runs scope").getByRole("button").first()
@@ -1089,6 +1127,7 @@ export class RunsView extends Part {
   }
 
   /** Shows every run. */
+  @ayme.action({ description: "Shows every run." })
   async showAll() {
     await this.on((root) =>
       root.getByRole("group", "Runs scope").getByRole("button", "All")
@@ -1110,6 +1149,10 @@ export class PanelShell extends Part {
   }
 
   /** Resizes the panel from one edge or corner by a distance in pixels. */
+  @ayme.action({
+    description:
+      "Resizes the panel from one edge or corner by a distance in pixels.",
+  })
   async resizeBy(
     handle: PanelEdge | PanelCorner,
     deltaX: number,
@@ -1167,6 +1210,7 @@ export class LayoutMenu extends Part {
     return this.menu.within((menu) => menu.getByRole("menuitemradio", choice));
   }
 
+  @ayme.action({ description: "Moves the panel to a layout." })
   async choose(choice: LayoutChoice) {
     await this.trigger.click();
     await this.option(choice).click();
@@ -1211,6 +1255,10 @@ export class Connections extends Part {
     );
   }
 
+  @ayme.action({
+    description:
+      "Opens the Connections popover, which says how agents reach the page.",
+  })
   async open() {
     if ((await this.pill.getAttribute("aria-expanded")) !== "true")
       await this.pill.click();
@@ -1219,6 +1267,7 @@ export class Connections extends Part {
 
 /** The panel's header: the title, Connections, the theme, layout and collapse. */
 export class InspectorHeader extends Part {
+  @ayme.child
   get connections(): Connections {
     return new Connections(this.tab, this.root);
   }
@@ -1227,6 +1276,7 @@ export class InspectorHeader extends Part {
     return new ThemeSwitch(this.tab, this.root);
   }
 
+  @ayme.child
   get layoutMenu(): LayoutMenu {
     return new LayoutMenu(this.tab, this.root);
   }
@@ -1239,17 +1289,20 @@ export class InspectorHeader extends Part {
     return this.on((root) => root.getByRole("button", "Collapse inspector"));
   }
 
+  @ayme.action({ description: "Collapses the panel to its logo." })
   async collapse() {
     await this.collapseButton.click();
   }
 
   /** Drags the panel by its header. */
+  @ayme.action({ description: "Drags the panel by its header, in pixels." })
   async dragBy(deltaX: number, deltaY: number) {
     await dragBy(this.title, deltaX, deltaY, this.tab);
   }
 }
 
 /** The collapsed Inspector: the ayme logo, which opens the panel. */
+@ayme({ root: (self: CollapsedLogo) => self.root.front() as never })
 export class CollapsedLogo {
   constructor(private readonly tab: Tab) {}
 
@@ -1257,26 +1310,32 @@ export class CollapsedLogo {
     return this.tab.on((screen) => screen.getByRole("button", "Open ayme"));
   }
 
+  @ayme.action({ description: "Opens the panel from its logo." })
   async open() {
     await this.root.click();
   }
 }
 
+@ayme
 export class Inspector {
   constructor(readonly tab: Tab) {}
 
+  @ayme.child
   get shell(): PanelShell {
     return new PanelShell(this.tab, panelOf);
   }
 
+  @ayme.child
   get logo(): CollapsedLogo {
     return new CollapsedLogo(this.tab);
   }
 
+  @ayme.child
   get header(): InspectorHeader {
     return new InspectorHeader(this.tab, panelOf);
   }
 
+  @ayme.child
   get navigator(): Navigator {
     return new Navigator(this.tab, (screen) =>
       panelOf(screen).getByRole("navigation", "Navigator")
@@ -1288,12 +1347,14 @@ export class Inspector {
     return this.navigator.structure;
   }
 
+  @ayme.child
   get detail(): DetailPane {
     return new DetailPane(this.tab, (screen) =>
       panelOf(screen).getByRole("region", "Selected")
     );
   }
 
+  @ayme.child
   get runs(): RunsView {
     return new RunsView(this.tab, (screen) =>
       panelOf(screen).getByRole("region", "Runs")
@@ -1313,11 +1374,15 @@ export class Inspector {
     return this.tab.css("[data-ayme-inspector-root]");
   }
 
+  @ayme.action({ description: "Collapses the panel to its logo." })
   async collapse() {
     await this.header.collapse();
   }
 
   /** Expands the panel if it is collapsed to the logo. */
+  @ayme.action({
+    description: "Expands the panel if it is collapsed to the logo.",
+  })
   async open() {
     await this.tab.front();
     const { screen } = this.tab;
@@ -1331,6 +1396,9 @@ export class Inspector {
    * Selects a tool in the Tools lens and returns its run card. A search in
    * progress is cleared first: its results replace the lens's tree.
    */
+  @ayme.action({
+    description: "Selects a tool in the Tools lens and opens its page.",
+  })
   async tool(name: string): Promise<RunCard> {
     await this.navigator.showLens("Tools");
     await this.navigator.search("");

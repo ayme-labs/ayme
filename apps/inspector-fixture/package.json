@@ -12,6 +12,7 @@
     "test:e2e": "pnpm run test:playwright && pnpm run test:e2e:e2e",
     "test:playwright": "playwright test --reporter=list",
     "test:e2e:e2e": "e2e run",
+    "test:tools-check": "e2e run --config e2e.tools-check.config.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p ayme"
   },
   "dependencies": {
@@ -24,9 +25,11 @@
   },
   "devDependencies": {
     "@ayme-dev/e2e-testing": "workspace:*",
+    "@ayme-dev/e2e-tools": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@ayme-dev/unplugin-ayme": "workspace:*",
+    "@e2e-dev/acp": "0.1.4",
     "@e2e-dev/web": "0.17.0",
     "@playwright/test": "^1.64.0",
     "@types/node": "^24.0.0",
