@@ -106,7 +106,7 @@ jobs:
           mkdir -p "$project"
           (cd "$project" && npm init -y > /dev/null \
             && npm install --no-audit --no-fund "playwright@$VERSION" \
-            && npx --no-install playwright install --with-deps chromium-headless-shell) 2>&1 | tee browser-compat.log
+            && npx --no-install playwright install --with-deps chromium) 2>&1 | tee browser-compat.log
           echo "project=$project" >> "$GITHUB_OUTPUT"
       - name: Browser compatibility suite
         id: browser
