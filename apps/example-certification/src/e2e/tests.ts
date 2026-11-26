@@ -271,7 +271,9 @@ export function counterTests({
   navigation?: { away: string; awayText: string; back: string };
 }) {
   test.describe("counter", () => {
-    test.beforeEach((fixtures) => openCounter(fixtures, inspector));
+    test.beforeEach(({ app, browser, screen }) =>
+      openCounter({ app, browser, screen }, inspector)
+    );
 
     test("publishes the Page Object's tools with their compiled schemas", async ({
       browser,

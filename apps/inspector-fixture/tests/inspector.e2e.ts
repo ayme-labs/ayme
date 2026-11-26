@@ -256,9 +256,11 @@ test("the header's menus and switches work by mouse inside the closed shadow roo
 
 plainTest(
   "with the tools published and no Agent Connection, the header says no agent and WebMCP is published",
-  async (fixtures) => {
+  async ({ app, browser, screen }) => {
     // The browser's WebMCP, which the runtime publishes its tools to.
-    const { inspector } = await openFixture(fixtures, "/", { webMCP: true });
+    const { inspector } = await openFixture({ app, browser, screen }, "/", {
+      webMCP: true,
+    });
     const { connections } = inspector.header;
 
     await expect(await connections.pill.front()).toHaveText("No agent");
@@ -272,8 +274,11 @@ plainTest(
 
 plainTest(
   "with WebMCP publishing off, the Connections popover says so and offers the option that turns it on",
-  async (fixtures) => {
-    const { inspector } = await openFixture(fixtures, "/unpublished.html");
+  async ({ app, browser, screen }) => {
+    const { inspector } = await openFixture(
+      { app, browser, screen },
+      "/unpublished.html"
+    );
     const { connections } = inspector.header;
 
     await connections.open();
@@ -347,38 +352,44 @@ async function elementOverPanel(browser: Browser, inspector: Inspector) {
   );
 }
 
-plainTest("host CSS does not reach the panel", async (fixtures) => {
-  const plain = await openFixture(fixtures, "/");
-  const unstyled = await panelLooks(plain.inspector);
-  const unstyledBox = await plain.inspector.shell.box();
+plainTest(
+  "host CSS does not reach the panel",
+  async ({ app, browser, screen }) => {
+    const plain = await openFixture({ app, browser, screen }, "/");
+    const unstyled = await panelLooks(plain.inspector);
+    const unstyledBox = await plain.inspector.shell.box();
 
-  const styled = await openFixture(fixtures, "/react.html");
+    const styled = await openFixture({ app, browser, screen }, "/react.html");
 
-  expect(await panelLooks(styled.inspector)).toEqual(unstyled);
-  expect(await styled.inspector.shell.box()).toEqual(unstyledBox);
-  expect(await elementOverPanel(fixtures.browser, styled.inspector)).toBe(
-    "ayme-inspector"
-  );
-});
+    expect(await panelLooks(styled.inspector)).toEqual(unstyled);
+    expect(await styled.inspector.shell.box()).toEqual(unstyledBox);
+    expect(await elementOverPanel(browser, styled.inspector)).toBe(
+      "ayme-inspector"
+    );
+  }
+);
 
-plainTest("the panel's CSS does not reach the host", async (fixtures) => {
-  await openFixture(fixtures, "/");
+plainTest(
+  "the panel's CSS does not reach the host",
+  async ({ app, browser, screen }) => {
+    await openFixture({ app, browser, screen }, "/");
 
-  // The browser's defaults, which the Inspector's CSS reset would change.
-  const styles = await fixtures.browser.evaluate(() => {
-    const heading = [...document.querySelectorAll("h1, h2, h3")].find(
-      (candidate) => candidate.textContent?.trim() === "Groceries"
-    )!;
-    const button = [...document.querySelectorAll("main button")].find(
-      (candidate) => candidate.textContent?.trim() === "Add item"
-    )!;
-    return {
-      fontSize: getComputedStyle(heading).fontSize,
-      fontWeight: getComputedStyle(heading).fontWeight,
-      buttonBackground: getComputedStyle(button).backgroundColor,
-    };
-  });
-  expect(styles.fontSize).toBe("32px");
-  expect(styles.fontWeight).toBe("700");
-  expect(styles.buttonBackground).not.toBe("rgba(0, 0, 0, 0)");
-});
+    // The browser's defaults, which the Inspector's CSS reset would change.
+    const styles = await browser.evaluate(() => {
+      const heading = [...document.querySelectorAll("h1, h2, h3")].find(
+        (candidate) => candidate.textContent?.trim() === "Groceries"
+      )!;
+      const button = [...document.querySelectorAll("main button")].find(
+        (candidate) => candidate.textContent?.trim() === "Add item"
+      )!;
+      return {
+        fontSize: getComputedStyle(heading).fontSize,
+        fontWeight: getComputedStyle(heading).fontWeight,
+        buttonBackground: getComputedStyle(button).backgroundColor,
+      };
+    });
+    expect(styles.fontSize).toBe("32px");
+    expect(styles.fontWeight).toBe("700");
+    expect(styles.buttonBackground).not.toBe("rgba(0, 0, 0, 0)");
+  }
+);
