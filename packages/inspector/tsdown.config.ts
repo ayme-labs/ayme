@@ -42,7 +42,7 @@ export default defineConfig([
     ...shared,
     clean: true,
     // Bundled third-party code keeps its license notices (see the file).
-    plugins: [inspectorCss(), thirdPartyNotices()],
+    plugins: [...shared.plugins, thirdPartyNotices()],
     dts: true,
     entry: {
       index: "src/index.ts",

@@ -1774,7 +1774,7 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
   expect(notices).toContain("Copyright (c) 2023 shadcn");
 });
 
-it("the packed Inspector's notices carry shadcn/ui's, whose components its panel copies from the design system", () => {
+it("the packed Inspector carries the shadcn/ui MIT notice", () => {
   const notices = fs.readFileSync(
     path.join(
       packed["@ayme-dev/inspector"]!.dir,
