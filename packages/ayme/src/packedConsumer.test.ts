@@ -28,7 +28,7 @@
  *
  * 11. The packed `@ayme-dev/cli` carries the recorder engine and window
  *     and nothing of Playwright, and a clean project that installs it
- *     records a flow once.
+ *     records a flow once and lists its Page Objects in a Session.
  *
  * With `AYME_PACKED_DIR` set, the tarballs are packed into that empty
  * directory and kept, so the release workflow publishes exactly the
@@ -1726,8 +1726,12 @@ it("the packed CLI carries its engine, its window, its toolbar and its notices, 
   ]);
   expect(manifest.bin).toEqual({ ayme: "./dist/cli.mjs" });
   // The engine and the window are inside the command: nothing to install
-  // beside it but the Playwright the project has.
-  expect(manifest.dependencies).toBeUndefined();
+  // beside it but the Playwright the project has, and esbuild, which builds
+  // the project's Page Objects for a Session and ships a binary per
+  // platform, so it cannot be bundled.
+  expect(manifest.dependencies).toEqual({
+    esbuild: readManifest(path.join(packagesRoot, "cli")).dependencies!.esbuild,
+  });
   expect(manifest.peerDependencies).toEqual({
     "@playwright/test": `>=${recorderRange.floor}`,
   });
@@ -1775,13 +1779,14 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
 });
 
 it(
-  "a clean project installs the packed CLI and records one flow with ayme capture",
-  { timeout: 120_000 },
+  "a clean project installs the packed CLI, records one flow with ayme capture, and lists its Page Objects in a Session",
+  { timeout: 150_000 },
   async () => {
     const project = path.join(tmp, "recorder-project");
     fs.mkdirSync(project);
-    // The project's own Playwright, which the recorder uses: the CLI brings
-    // none.
+    // The project's own Playwright, which the recorder and a Session use:
+    // the CLI brings none. A Session runs the project's Page Objects with
+    // the project's own @ayme-dev/ayme and TypeScript.
     fs.writeFileSync(
       path.join(project, "package.json"),
       JSON.stringify({
@@ -1789,11 +1794,47 @@ it(
         private: true,
         devDependencies: {
           [CLI]: `file:${packed[CLI]!.tarball}`,
+          "@ayme-dev/ayme": `file:${packed["@ayme-dev/ayme"]!.tarball}`,
           "@playwright/test": lastPlaywright,
+          typescript: "6.0.3",
         },
       })
     );
     exec("pnpm", ["install", "--ignore-scripts", "--no-lockfile"], project);
+    fs.mkdirSync(path.join(project, "ayme", "pom"), { recursive: true });
+    fs.writeFileSync(
+      path.join(project, "ayme", "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          strict: true,
+          experimentalDecorators: true,
+          target: "ES2022",
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          skipLibCheck: true,
+        },
+      })
+    );
+    fs.writeFileSync(
+      path.join(project, "ayme", "pom", "ShopPage.ts"),
+      `import { ayme } from "@ayme-dev/ayme";
+import type { Page } from "@playwright/test";
+
+@ayme
+export class ShopPage {
+  constructor(private readonly page: Page) {}
+
+  @ayme.action({ description: "Add an item." })
+  async addItem() {
+    await this.page.getByRole("button", { name: "Add item" }).click();
+  }
+}
+`
+    );
+    fs.writeFileSync(
+      path.join(project, "ayme", "page-objects.ts"),
+      `import { ShopPage } from "./pom/ShopPage";\n\nexport default [ShopPage];\n`
+    );
 
     const app = createHttpServer((_request, response) => {
       response.setHeader("content-type", "text/html");
@@ -1829,6 +1870,30 @@ it(
         },
       }
     );
+    // A command of the folder's Session, with a cache folder of the
+    // project's own.
+    const session = (...args: string[]) =>
+      new Promise<{ code: number; stdout: string; stderr: string }>((resolve) =>
+        execFile(
+          process.execPath,
+          [path.join(installed, ayme!), ...args],
+          {
+            cwd: project,
+            env: {
+              ...process.env,
+              NODE_PATH: "",
+              AYME_CACHE_DIR: path.join(project, ".cache"),
+            },
+          },
+          (error, stdout, stderr) =>
+            resolve({
+              code: error ? Number(error.code ?? 1) : 0,
+              stdout,
+              stderr,
+            })
+        )
+      );
+    let opened: Awaited<ReturnType<typeof session>> | undefined;
     let stdout = "";
     let stderr = "";
     command.stdout.on("data", (chunk: Buffer) => (stdout += chunk));
@@ -1904,6 +1969,17 @@ it(
         true
       );
       await browser.close().catch(() => {});
+
+      // A Session builds the project's Page Objects with the esbuild the
+      // CLI declares, and lists them.
+      opened = await session("open", pageUrl);
+      expect(opened, opened.stderr).toMatchObject({ code: 0 });
+      expect(await session("page-objects")).toMatchObject({
+        code: 0,
+        stdout: expect.stringMatching(
+          /^Tab: Shop \(.+\)\nShopPage\n[^]*This screen has 1 Page Object Tool: ayme tools lists it with its parameters\.\n$/
+        ),
+      });
     } catch (error) {
       // What the command printed is the first thing to look at.
       throw new Error(
@@ -1912,6 +1988,7 @@ it(
       );
     } finally {
       command.kill();
+      if (opened?.code === 0) await session("close");
       app.close();
     }
   }
