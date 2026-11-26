@@ -48,7 +48,7 @@ with `createAyme({ agentConnection })` and adds one Peek with `ayme.peek`. The
 looks for a server on its test's port only, or pairs by link, so it never
 pairs with a server another test or run has on the machine.
 
-`session.spec.ts`, `listings.spec.ts` and `call.spec.ts` run the built `ayme` command of
+`session.spec.ts`, `listings.spec.ts`, `call.spec.ts` and `tabs.spec.ts` run the built `ayme` command of
 `@ayme-dev/cli` as a child process, through the `ayme` fixture of
 `aymeCommand.ts`. Each test gets a project folder and a cache folder of its own
 in its output folder, so the command uses the fixture's Playwright and
@@ -64,7 +64,10 @@ unavailable while the basket is empty. `sign-in.html` and `account.html`,
 also without ayme, each have a Page Object present there alone:
 `SignInPage`, whose `signIn` submits its form, a full page load, and returns
 `AccountPage`, whose actions wait until the test sets `released` on the
-page's window, throw, or leave an error and a rejection nothing catches. The test's own Playwright
+page's window, throw, or leave an error and a rejection nothing catches.
+`tabs.html`, without ayme, has `TabsPage`, whose action opens a tab, which
+hides its own, and then clicks there. `GroceryList` is a Session's Page Object
+on the app page, `/`, which ships ayme, so the page has two Hosts. The test's own Playwright
 connection, at the address `ayme open` printed, plays the developer's browser
 automation.
 

@@ -176,3 +176,16 @@ export const paramsUnreadable = (file: string, why: string): SessionAnswer =>
   failed(
     `--params @${file} names a file ayme cannot read: ${why.replace(/\.$/, "")}.`
   );
+
+/** Why a command that needs a Tab is answered with none (rule 9). */
+export const NO_TAB_OPEN =
+  "No tab is open in the Session's browser. Open one with your browser automation, then run ayme again.";
+
+/** Why `--tab` named no open Tab: the URLs the open Tabs show. */
+export const noTabShows = (url: string, shown: readonly string[]): string =>
+  `No tab of the Session's browser shows ${url}. --tab takes the URL a tab shows, as the first line of ayme page-objects prints it. The open tabs show: ${shown.join(", ")}.`;
+
+/** Why `ayme call` was refused when its Page Object Id is on another Tab
+ * than the one `--tab` names: the id chooses the Tab. */
+export const idOnAnotherTab = (id: string, on: string, named: string): string =>
+  `${id} is a Page Object of the tab that shows ${on}, not of the one that shows ${named}. Leave out --tab: the Page Object Id chooses the tab.`;

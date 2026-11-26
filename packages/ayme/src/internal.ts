@@ -12,9 +12,10 @@
 // on are here for the playground's goal lane, which reads them from the
 // build it runs: ayme's source needs ayme's own build, so another workspace
 // cannot take them from it. The Session of the `ayme` command runs a
-// project's Page Objects through here: it creates its Node Host on the
-// Playwright that drives its browser, and reads a Run's short answer and
-// a listing, each in the Tab's turn.
+// project's Page Objects through here: it creates a Node Host for each Tab
+// on the Playwright that drives its browser, all of them taking their Page
+// Object Ids from one source, and reads a Run's short answer and a listing,
+// each in the Tab's turn.
 export {
   getStartedAyme,
   markRenderSession,
@@ -22,7 +23,10 @@ export {
   snapshotRuntimeOptions,
 } from "./runtime";
 export { listRegisteredPoms } from "./page-objects/infrastructure";
-export { registerCompiledPom } from "./page-objects/application";
+export {
+  createPageObjectIdSource,
+  registerCompiledPom,
+} from "./page-objects/application";
 export type { PageObjectConstructor } from "./page-objects/application";
 // The compiled Page Object manifest's types, as the build plugin derives it.
 export type {

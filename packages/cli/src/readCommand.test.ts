@@ -438,6 +438,49 @@ describe("readCommand for a Session", () => {
     }
   );
 
+  it.each([
+    [["page-objects", "--tab=http://localhost:5173/basket"]],
+    [["page-objects", "--tab", "http://localhost:5173/basket"]],
+  ])("asks for the listing of the Tab --tab names by its URL: `%s`", (args) => {
+    expect(readCommand(args)).toEqual({
+      kind: "ask",
+      request: { pageObjects: { tab: "http://localhost:5173/basket" } },
+      json: false,
+    });
+  });
+
+  it("names the Tab for ayme tools and ayme call with --tab", () => {
+    expect(readCommand(["tools", "--tab=about:blank"])).toMatchObject({
+      request: { tools: { tab: "about:blank" } },
+    });
+    expect(
+      readCommand(["call", "ShopPage.readHeading", "--tab=about:blank"])
+    ).toEqual({
+      kind: "call",
+      tool: "ShopPage.readHeading",
+      tab: "about:blank",
+      json: false,
+    });
+  });
+
+  it.each([
+    [["close", "--tab=about:blank"]],
+    [["open", "--tab=about:blank"]],
+    [["attach", "--cdp=http://a", "--tab=about:blank"]],
+    [["tools", "--tab="]],
+  ])(
+    "refuses --tab beside a command that works on no Tab, and an empty one: `%s`",
+    (args) => {
+      expect(readCommand(args).kind).toBe("error");
+    }
+  );
+
+  it("lists --tab in its usage text", () => {
+    expect(USAGE).toContain("ayme page-objects [--tab=<url>]");
+    expect(USAGE).toContain("ayme tools [--tab=<url>]");
+    expect(USAGE).toContain("--tab=<url>");
+  });
+
   it("lists call with its --params in its usage text", () => {
     expect(USAGE).toContain(
       "ayme call <tool> [--params <json> | --params @<file>]"
