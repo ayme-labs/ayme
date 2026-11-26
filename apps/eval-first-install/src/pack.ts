@@ -20,7 +20,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
 import { repoRoot, resultsDir } from "./paths.ts";
@@ -36,8 +36,6 @@ export type Packed = {
   sha: string;
   version: string;
   tarballs: string[];
-  skillDir: string;
-  docsDir: string;
 };
 
 // The ref's `pnpm install` runs the repo's root `prepare`, whose
@@ -82,12 +80,15 @@ export function pack(ref = DEFAULT_REF, outDir?: string): Packed {
   const root = repoRoot();
   const sha = resolveRef(ref, root);
   const short = sha.slice(0, 8);
-  const dir = outDir ?? join(resultsDir, "packed", short);
+  const dir = outDir ? resolve(outDir) : join(resultsDir, "packed", short);
   const existing = readPacked(dir);
   if (existing?.sha === sha) {
     console.log(`Reusing the packed ${ref} at ${short} from ${dir}`);
     return existing;
   }
+  // The folder is emptied below, so it must be a pack or empty.
+  if (!existing && existsSync(dir) && readdirSync(dir).length > 0)
+    throw new Error(`${dir} holds files but no pack; name a new folder`);
 
   const worktree = join(
     root,
@@ -131,10 +132,12 @@ export function pack(ref = DEFAULT_REF, outDir?: string): Packed {
         join(worktree, "packages", name)
       );
     }
-    const skillDir = join(dir, "skill");
-    const docsDir = join(dir, "docs");
-    cpSync(join(worktree, "skills", "ayme"), skillDir, { recursive: true });
-    cpSync(join(worktree, "docs", "guide"), docsDir, { recursive: true });
+    cpSync(join(worktree, "skills", "ayme"), join(dir, "skill"), {
+      recursive: true,
+    });
+    cpSync(join(worktree, "docs", "guide"), join(dir, "docs"), {
+      recursive: true,
+    });
 
     const packed: Packed = {
       dir,
@@ -142,8 +145,6 @@ export function pack(ref = DEFAULT_REF, outDir?: string): Packed {
       sha,
       version,
       tarballs: readdirSync(tarballDir).filter((f) => f.endsWith(".tgz")),
-      skillDir,
-      docsDir,
     };
     writeFileSync(
       join(dir, "meta.json"),

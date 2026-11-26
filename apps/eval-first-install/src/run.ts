@@ -1,5 +1,5 @@
 /**
- * One first-install run: a developer's project with Ayme installed from a
+ * One first-install run: a developer's project with ayme installed from a
  * local registry, a worker told only which browser automation to use, a
  * setup phase, a restart, a task on the fixture app, and the harness's own
  * outcome check and score.
@@ -60,6 +60,14 @@ const { values } = parseArgs({
 const tool = values.tool as Tool;
 if (!TOOLS.includes(tool))
   throw new Error(`--tool must be one of ${TOOLS.join(", ")}`);
+// Checked, because any other value would start a paid worker.
+if (values.agent !== "claude" && values.agent !== "none")
+  throw new Error("--agent must be claude or none");
+
+// Only `claude` signs in, so no other process the harness starts gets the
+// token: not the registry, npm or the self-check's browser.
+const token = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
 
 const runId = `${tool}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 const out = resolve(values.out ?? join(resultsDir, "runs", runId));
@@ -71,12 +79,11 @@ const log = (line: string) => {
   writeFileSync(harnessLog, `${stamped}\n`, { flag: "a" });
 };
 
-const packed: Packed = values.packed
-  ? (JSON.parse(
-      readFileSync(join(values.packed, "meta.json"), "utf8")
-    ) as Packed)
+const packedArg = values.packed && resolve(values.packed);
+const packed: Packed = packedArg
+  ? (JSON.parse(readFileSync(join(packedArg, "meta.json"), "utf8")) as Packed)
   : pack(values.ref ?? DEFAULT_REF);
-const packedDir = values.packed ?? packed.dir;
+const packedDir = packedArg || packed.dir;
 
 // Everything the worker sees lives outside the repo, so it finds no
 // CLAUDE.md, skill or setting of this repo above its folder.
@@ -197,7 +204,7 @@ function runClaude(
   return new Promise((resolve) => {
     const child = spawn("claude", args, {
       cwd: project,
-      env,
+      env: token ? { ...env, CLAUDE_CODE_OAUTH_TOKEN: token } : env,
       stdio: [
         "ignore",
         openSync(join(out, `${name}.jsonl`), "w"),
@@ -290,7 +297,11 @@ const registry = await startRegistry(
   join(work, "registry"),
   join(out, "registry.log")
 );
-const fixture = await startFixture();
+// The registry already runs, so a fixture that fails to start stops it.
+const fixture = await startFixture().catch((error) => {
+  registry.stop();
+  throw error;
+});
 let exitCode = 0;
 try {
   log(
@@ -380,7 +391,12 @@ try {
   log(
     `Outcome: ${outcome.passed ? "passed" : "failed"} ${JSON.stringify(outcome.checks)}`
   );
-  if (existsSync(project)) copyWorkerFiles();
+  // A failed copy must not skip stopping the worker's processes below.
+  try {
+    if (existsSync(project)) copyWorkerFiles();
+  } catch (error) {
+    log(`Copying the worker's files failed: ${String(error)}`);
+  }
   meta.leftRunning = await stopRunProcesses();
   await fixture.close();
   registry.stop();

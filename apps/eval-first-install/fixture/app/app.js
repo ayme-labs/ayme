@@ -1,4 +1,4 @@
-// A small list app with no Ayme in it. Its DOM matches the Page Objects in
+// A small list app with no ayme in it. Its DOM matches the Page Objects in
 // ../project/ayme/pom/, which were written for apps/example-vue's list demo.
 // Every change is sent to the server, which keeps the list so the harness can
 // check the outcome and a reload shows the same list.

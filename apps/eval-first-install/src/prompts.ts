@@ -29,9 +29,9 @@ export function setupPrompt(tool: Tool, page: string): string {
 
 ## Brief
 
-The app I work on runs at ${page}. It is a small list app, its server is already running, and its source is not in this folder. The app itself does not include Ayme. This project has Ayme installed, with Page Objects for the app in ayme/.
+The app I work on runs at ${page}. It is a small list app, its server is already running, and its source is not in this folder. The app itself does not include ayme. This project has ayme installed, with Page Objects for the app in ayme/.
 
-I want you to do browser tasks on that page for me with ${TOOL_NAMES[tool]}, using the project's Ayme Page Objects wherever they fit. Get everything ready for that. Install ${tool} at the version named. I will restart you when you are done, and then give you a task.
+I want you to do browser tasks on that page for me with ${TOOL_NAMES[tool]}, using the project's ayme Page Objects wherever they fit. Get everything ready for that. Install ${tool} at the version named. I will restart you when you are done, and then give you a task.
 
 ${environmentFacts}
 
@@ -54,14 +54,14 @@ On the page at ${page}:
 4. Archive the item "Rye bread ${n}".
 5. Confirm that the active items include "Soy milk ${n}" and include neither "Oat milk ${n}" nor "Rye bread ${n}".
 
-Use ${tool} and the project's Ayme Page Objects, as you set up. The same environment facts and limits as before apply. If something is not working, diagnose it and fix your setup.
+Use ${tool} and the project's ayme Page Objects, as you set up. The same environment facts and limits as before apply. If something is not working, diagnose it and fix your setup.
 
 When the task is done, or you are sure it cannot be done, close the browser and anything else you started. Then write ./REPORT.md with these sections and answer with its contents:
 - Outcome: done or not done, with the evidence from the page.
-- How each step was done: for each numbered step, the exact tool or command you called. Say plainly which steps went through an Ayme Page Object Tool and which through plain browser driving, and why.
+- How each step was done: for each numbered step, the exact tool or command you called. Say plainly which steps went through an ayme Page Object Tool and which through plain browser driving, and why.
 - How you decided: which documents or help output you read, in order, and which of them decided how you call the Page Objects with ${tool}. If you chose between alternatives, name them and say why you chose as you did.
 - Setup as it finally worked: the exact install commands, registrations, config files and start commands.
 - Documentation problems: every place a document was wrong, missing, contradictory or left you guessing. For each, quote the sentence with its file name, give the exact command or call, the exact error or output, and what turned out to work.
-- Product problems: anything that looks like a defect in Ayme or in ${tool}, with the exact call and output.
+- Product problems: anything that looks like a defect in ayme or in ${tool}, with the exact call and output.
 `;
 }

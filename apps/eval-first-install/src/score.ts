@@ -225,6 +225,9 @@ const PLAIN_VERBS = new Set([
   "keyup",
   "keyboard",
 ]);
+// Options whose value can be a plain word, such as `--session first`, which
+// would otherwise read as the command.
+const VALUE_OPTIONS = new Set(["--session", "-s", "--profile", "--browser"]);
 const PLAIN_MCP =
   /^browser_(click|type|fill_form|press_key|select_option|hover|drag)$/;
 
@@ -287,8 +290,9 @@ function classify(use: ToolUse): Classified[] {
     if (at < 0) continue;
     const rest = tokens.slice(at + 1);
     const verbAt = rest.findIndex(
-      (t) =>
+      (t, i) =>
         !t.startsWith("-") &&
+        !VALUE_OPTIONS.has(rest[i - 1] ?? "") &&
         /^[a-z][a-z-]*$/.test(t) &&
         t !== "true" &&
         t !== "false"
@@ -321,9 +325,11 @@ const RESTART_ASK =
   /\b(restart (me|claude)|please restart|need(s)? (a|another|one more) restart|restart needed|after (a|another) restart)\b/i;
 
 function claimedOutcome(report: string): string {
+  // The Outcome section only, up to the next heading: a later section can
+  // say an earlier attempt failed.
   const section = /outcome[^\n]*\n?([\s\S]{0,300})/i.exec(report);
   if (!section) return "no report";
-  const text = section[0].toLowerCase();
+  const text = section[0].split(/\n#/)[0]!.toLowerCase();
   if (/not done|\bfailed\b|could not|cannot be done/.test(text))
     return "not done";
   if (/\bdone\b/.test(text)) return "done";
@@ -338,7 +344,6 @@ export function scoreRun(dir: string): Score {
     : {};
   const tool: string = meta.tool ?? /free-([a-z-]+)\.out/.exec(dir)?.[1] ?? "?";
   const uses = [...toolUses(setup, "setup"), ...toolUses(task, "task")];
-  const taskUses = uses.filter((u) => u.phase === "task");
 
   const skillPhases = [
     ...new Set(
