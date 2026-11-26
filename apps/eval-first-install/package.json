@@ -1,0 +1,15 @@
+{
+  "name": "@ayme-dev/eval-first-install",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "eval:pack": "node src/pack.ts",
+    "eval:run": "node src/run.ts",
+    "eval:score": "node src/score.ts"
+  },
+  "devDependencies": {
+    "@ayme-dev/ayme": "workspace:*",
+    "@playwright/test": "^1.64.0"
+  }
+}
