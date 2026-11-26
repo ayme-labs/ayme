@@ -1,4 +1,4 @@
-import { mkdtempSync, realpathSync } from "node:fs";
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Exit, Scope } from "effect";
@@ -10,8 +10,12 @@ import { askSession, openSession } from "./commands";
 import { liveRecord } from "./record";
 import { send } from "./wire";
 
-const folder = (name: string) =>
-  realpathSync(mkdtempSync(join(tmpdir(), `ayme-${name}-`)));
+/** A folder of the test's own, removed when it ends. */
+function folder(name: string): string {
+  const made = realpathSync(mkdtempSync(join(tmpdir(), `ayme-${name}-`)));
+  onTestFinished(() => rmSync(made, { recursive: true, force: true }));
+  return made;
+}
 
 let projectDir: string;
 beforeEach(() => {
