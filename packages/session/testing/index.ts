@@ -5,11 +5,15 @@ import { onTestFinished } from "vitest";
 
 import {
   openSession,
+  PageObjectsBuild,
   SessionBrowser,
+  type BuiltPageObjects,
   type SessionBrowserRequest,
 } from "../src/session/application";
 import {
   SessionStartError,
+  TabReadError,
+  type Listing,
   type SessionAnswer,
   type SessionEnd,
   type SessionRequest,
@@ -18,10 +22,17 @@ import {
 /** The address the scripted browser gives. */
 export const SCRIPTED_ADDRESS = "http://127.0.0.1:9222";
 
+/** What the scripted build gives: the project's Page Objects, built. */
+export const SCRIPTED_PAGE_OBJECTS: BuiltPageObjects = Object.freeze({
+  built: "the scripted Page Objects",
+});
+
 /**
- * The remote control of a scripted browser. It opens at once, unless the
- * Session was started with `held: true`; then the test finishes the open
- * with `open` or `failOpen`.
+ * The remote control of a scripted browser and of the scripted build of
+ * the project's Page Objects. Each finishes at once, unless the Session was
+ * started with `held: true` for the browser's open, or `heldBuild: true`
+ * for the build; then the test finishes it with `open` or `failOpen`, and
+ * `finishBuild` or `failBuild`.
  */
 export interface ScriptedBrowser {
   /** Every browser the Session asked for, in order. */
@@ -33,9 +44,30 @@ export interface ScriptedBrowser {
   open(): void;
   /** A held open fails, for the reason a person reads. */
   failOpen(reason: string): void;
+  /** A held build finishes: the Page Objects are built. */
+  finishBuild(): void;
+  /** A held build fails, with the build's errors as `ayme open` prints
+   * them. */
+  failBuild(errors: string): void;
+  /** The built Page Objects the Session ran on its Tab, each time it
+   * became the Tab's Host. */
+  readonly hostedWith: readonly BuiltPageObjects[];
   /** The browser goes away: it crashed, or someone closed it. */
   goAway(): void;
+  /** What the Tab the browser opened on shows from now on: a page without
+   * Page Objects until then. */
+  show(listing: Listing): void;
+  /** Every read of the Tab's page fails, for the reason a person reads,
+   * until the test shows a listing again. */
+  failReads(reason: string): void;
 }
+
+/** What the scripted Tab shows until a test says otherwise. */
+export const EMPTY_LISTING: Listing = {
+  tab: { url: "about:blank", title: "" },
+  pageObjectTree: "No Page Object is on the page.",
+  tools: [],
+};
 
 /** The Session's interface with each member as a promise. */
 export interface ScriptedSession {
@@ -44,45 +76,79 @@ export interface ScriptedSession {
   readonly ended: Promise<SessionEnd>;
 }
 
-export type ScriptedSessionOptions = SessionBrowserRequest & {
+/** How the scripted browser and build behave: each finishes at once
+ * unless held. */
+export type ScriptedOptions = {
   /** The open waits for the test: `open` or `failOpen`. */
   readonly held?: true;
+  /** The build waits for the test: `finishBuild` or `failBuild`. */
+  readonly heldBuild?: true;
 };
 
-/** A scripted browser, as the layer a Session gets its browser from, and
- * its remote control. */
-export function scriptedBrowser({ held }: { readonly held?: true } = {}): {
-  layer: Layer.Layer<SessionBrowser>;
+export type ScriptedSessionOptions = SessionBrowserRequest & ScriptedOptions;
+
+/** A scripted browser and build, as the layer a Session gets them from,
+ * and their remote control. */
+export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
+  layer: Layer.Layer<SessionBrowser | PageObjectsBuild>;
   browser: ScriptedBrowser;
 } {
   const asked: SessionBrowserRequest[] = [];
+  const hostedWith: BuiltPageObjects[] = [];
   let released = false;
+  let shown: Listing | TabReadError = EMPTY_LISTING;
   const opened = Deferred.makeUnsafe<void, SessionStartError>();
+  const built = Deferred.makeUnsafe<BuiltPageObjects, SessionStartError>();
   const gone = Deferred.makeUnsafe<void>();
   if (!held) Deferred.doneUnsafe(opened, Exit.void);
+  if (!heldBuild)
+    Deferred.doneUnsafe(built, Exit.succeed(SCRIPTED_PAGE_OBJECTS));
 
-  const layer = Layer.succeed(SessionBrowser, {
+  const tab = {
+    listing: Effect.suspend(() =>
+      shown instanceof TabReadError ? Effect.fail(shown) : Effect.succeed(shown)
+    ),
+  };
+  const build = Layer.succeed(PageObjectsBuild, {
+    build: Deferred.await(built),
+  });
+  const browsers = Layer.succeed(SessionBrowser, {
     get: (asking) =>
       Effect.acquireRelease(
         Effect.sync(() => asked.push(asking)).pipe(
           Effect.andThen(Deferred.await(opened)),
-          Effect.as({ address: SCRIPTED_ADDRESS, gone: Deferred.await(gone) })
+          Effect.as({
+            address: SCRIPTED_ADDRESS,
+            gone: Deferred.await(gone),
+            host: (pageObjects: BuiltPageObjects) =>
+              Effect.sync(() => {
+                hostedWith.push(pageObjects);
+                return tab;
+              }),
+          })
         ),
         () => Effect.sync(() => (released = true))
       ),
   });
 
   return {
-    layer,
+    layer: Layer.merge(browsers, build),
     browser: {
       asked,
+      hostedWith,
       get released() {
         return released;
       },
       open: () => Deferred.doneUnsafe(opened, Exit.void),
       failOpen: (reason) =>
         Deferred.doneUnsafe(opened, Exit.fail(new SessionStartError(reason))),
+      finishBuild: () =>
+        Deferred.doneUnsafe(built, Exit.succeed(SCRIPTED_PAGE_OBJECTS)),
+      failBuild: (errors) =>
+        Deferred.doneUnsafe(built, Exit.fail(new SessionStartError(errors))),
       goAway: () => Deferred.doneUnsafe(gone, Exit.void),
+      show: (listing) => (shown = listing),
+      failReads: (reason) => (shown = new TabReadError(reason)),
     },
   };
 }
@@ -91,8 +157,11 @@ export function scriptedBrowser({ held }: { readonly held?: true } = {}): {
 export async function startScriptedSession(
   options: ScriptedSessionOptions
 ): Promise<{ session: ScriptedSession; browser: ScriptedBrowser }> {
-  const { held, ...request } = options;
-  const { layer, browser } = scriptedBrowser(held ? { held } : {});
+  const { held, heldBuild, ...request } = options;
+  const { layer, browser } = scriptedBrowser({
+    ...(held ? { held } : {}),
+    ...(heldBuild ? { heldBuild } : {}),
+  });
   const scope = Effect.runSync(Scope.make());
   onTestFinished(() => Effect.runPromise(Scope.close(scope, Exit.void)));
   const session = await Effect.runPromise(

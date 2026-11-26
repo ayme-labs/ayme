@@ -30,7 +30,17 @@ it("lint keeps each slice to the slices it may use", slow, async () => {
       'export { askSession } from "../../process/infrastructure";\n'
     )
   ).toContainEqual(
-    expect.stringContaining("playwright may only use session, itself")
+    expect.stringContaining(
+      "playwright may only use session, page-objects, itself"
+    )
+  );
+  expect(
+    await lint(
+      "src/page-objects/infrastructure/misplaced.ts",
+      'export { stockBrowser } from "../../playwright/infrastructure";\n'
+    )
+  ).toContainEqual(
+    expect.stringContaining("page-objects may only use session, itself")
   );
   expect(
     await lint(
@@ -113,6 +123,18 @@ it(
       await lint(
         "src/playwright/infrastructure/index.ts",
         'export { stockBrowser } from "./live/stockBrowser";\n'
+      )
+    ).toEqual([]);
+    expect(
+      await lint(
+        "src/page-objects/infrastructure/misplaced.ts",
+        'export { projectPageObjects } from "./live/nodeBuild";\n'
+      )
+    ).toEqual([expect.stringContaining("reaches infrastructure/live")]);
+    expect(
+      await lint(
+        "src/page-objects/infrastructure/index.ts",
+        'export { projectPageObjects } from "./live/nodeBuild";\n'
       )
     ).toEqual([]);
   }

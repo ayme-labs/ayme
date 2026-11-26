@@ -266,6 +266,14 @@ describe("readCommand for a Session", () => {
     });
   });
 
+  it.each([
+    ["page-objects", { pageObjects: {} }],
+    ["tools", { tools: {} }],
+  ])("asks the Session for its listing for `%s`", (word, request) => {
+    expect(readCommand([word])).toEqual({ kind: "ask", request, json: false });
+    expect(readCommand([word, "--json"])).toMatchObject({ json: true });
+  });
+
   it.each([[["--json", "close"]], [["close", "--json"]]])(
     "asks for the answer as JSON with the global --json: `%s`",
     (args) => {
@@ -277,13 +285,17 @@ describe("readCommand for a Session", () => {
     [["open", "http://a", "http://b"]],
     [["close", "now"]],
     [["close", "--headed"]],
+    [["page-objects", "now"]],
+    [["tools", "--headed"]],
   ])("refuses what the command does not take: `%s`", (args) => {
     expect(readCommand(args).kind).toBe("error");
   });
 
-  it("lists open, close and --json in its usage text", () => {
+  it("lists open, close, page-objects, tools and --json in its usage text", () => {
     expect(USAGE).toContain("ayme open [url] [--headed]");
     expect(USAGE).toContain("ayme close");
+    expect(USAGE).toContain("ayme page-objects");
+    expect(USAGE).toContain("ayme tools");
     expect(USAGE).toContain("--json");
   });
 

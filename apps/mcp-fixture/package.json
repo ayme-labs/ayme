@@ -9,7 +9,7 @@
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "test:e2e": "playwright test --reporter=list",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p ayme"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p ayme && tsc --noEmit -p command/ayme"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",

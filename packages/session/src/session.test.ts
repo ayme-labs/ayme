@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { startScriptedSession } from "../testing";
+import { SCRIPTED_PAGE_OBJECTS, startScriptedSession } from "../testing";
 
 it("a Session opens the browser it is asked for and answers its start with the browser's address", async () => {
   const { session, browser } = await startScriptedSession({
@@ -80,4 +80,157 @@ it("when the start fails, the start and every request waiting for it are answere
   expect(await waiting).toEqual(why);
   expect(await session.ask({ stop: {} })).toEqual(why);
   expect(await session.ended).toBe("start failed");
+});
+
+const tab = {
+  url: "http://127.0.0.1:5173/basket.html",
+  title: "Groceries",
+};
+
+const readHeading = {
+  name: "Basket.readHeading",
+  description: "Read the basket's heading.",
+  parameters: { type: "object", properties: {}, additionalProperties: false },
+  available: true,
+};
+
+const clear = {
+  name: "Basket.clear",
+  description: "Clear the basket.",
+  parameters: {
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  available: false,
+  reason: "The basket is empty",
+};
+
+it("page-objects answers the Page Object Tree, after a line naming the Tab and before one saying how many tools ayme tools lists", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show({
+    tab,
+    pageObjectTree: "Basket po1\n  heading: heading [level=1]: Groceries",
+    tools: [readHeading, clear],
+  });
+
+  expect(await session.ask({ pageObjects: {} })).toEqual({
+    ok: true,
+    text: [
+      "Tab: Groceries (http://127.0.0.1:5173/basket.html)",
+      "Basket po1",
+      "  heading: heading [level=1]: Groceries",
+      "This screen has 2 Page Object Tools: ayme tools lists them with their parameters.",
+    ].join("\n"),
+    data: {
+      tab,
+      pageObjectTree: "Basket po1\n  heading: heading [level=1]: Groceries",
+      tools: 2,
+    },
+  });
+});
+
+it("tools lists every Page Object Tool of the Tab with its parameters, an unavailable one with why", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show({
+    tab,
+    pageObjectTree: "Basket po1",
+    tools: [readHeading, clear],
+  });
+
+  expect(await session.ask({ tools: {} })).toEqual({
+    ok: true,
+    text: [
+      "Tab: Groceries (http://127.0.0.1:5173/basket.html)",
+      "Basket.readHeading: Read the basket's heading.",
+      '  parameters: {"type":"object","properties":{},"additionalProperties":false}',
+      "Basket.clear (unavailable: The basket is empty): Clear the basket.",
+      '  parameters: {"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}',
+    ].join("\n"),
+    data: { tab, tools: [readHeading, clear] },
+  });
+});
+
+it("a screen without Page Object Tools says so in both listings", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show({
+    tab: { url: "http://127.0.0.1:5173/plain.html", title: "" },
+    pageObjectTree: "No Page Object is on the page.",
+    tools: [],
+  });
+
+  expect(await session.ask({ pageObjects: {} })).toMatchObject({
+    text: "Tab: http://127.0.0.1:5173/plain.html\nNo Page Object is on the page.\nThis screen has no Page Object Tools.",
+  });
+  expect(await session.ask({ tools: {} })).toMatchObject({
+    text: "Tab: http://127.0.0.1:5173/plain.html\nThis screen has no Page Object Tools.",
+  });
+});
+
+it("one Page Object Tool is counted as one, and a tool that says nothing is listed by its name", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const silent = { name: "Basket.empty", parameters: {}, available: false };
+  browser.show({ tab, pageObjectTree: "Basket", tools: [silent] });
+
+  expect(await session.ask({ pageObjects: {} })).toMatchObject({
+    text: expect.stringMatching(
+      /\nThis screen has 1 Page Object Tool: ayme tools lists it with its parameters\.$/
+    ),
+  });
+  expect(await session.ask({ tools: {} })).toMatchObject({
+    text: expect.stringMatching(
+      /\nBasket\.empty \(unavailable\)\n {2}parameters: \{\}$/
+    ),
+  });
+});
+
+it("a listing whose read of the page fails is answered with why, and the Session goes on", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.failReads("The page closed while ayme read it.");
+
+  const why = { ok: false, text: "The page closed while ayme read it." };
+  expect(await session.ask({ pageObjects: {} })).toEqual(why);
+  expect(await session.ask({ tools: {} })).toEqual(why);
+
+  browser.show({ tab, pageObjectTree: "Basket", tools: [] });
+  expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
+});
+
+it("the Session builds the project's Page Objects at its start and runs the built ones on its Tab", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...opening,
+    heldBuild: true,
+  });
+
+  const listing = session.ask({ pageObjects: {} });
+  expect(await pending(session.started)).toBe(true);
+  expect(await pending(listing)).toBe(true);
+  browser.finishBuild();
+
+  expect(await session.started).toMatchObject({ ok: true });
+  expect(await listing).toMatchObject({ ok: true });
+  expect(browser.hostedWith).toEqual([SCRIPTED_PAGE_OBJECTS]);
+});
+
+it("when the first build fails, no Session starts: the start says why, and the browser ayme opened is closed", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...opening,
+    heldBuild: true,
+  });
+  const waiting = session.ask({ tools: {} });
+
+  browser.failBuild(
+    'The Page Objects did not build:\nayme/pom/Basket.ts:3:9: ERROR: Expected ";" but found "basket"'
+  );
+
+  const why = {
+    ok: false,
+    text: 'The Page Objects did not build:\nayme/pom/Basket.ts:3:9: ERROR: Expected ";" but found "basket"',
+  };
+  expect(await session.started).toEqual(why);
+  expect(await waiting).toEqual(why);
+  expect(await session.ended).toBe("start failed");
+  expect(browser.released).toBe(true);
+  expect(browser.hostedWith).toEqual([]);
 });

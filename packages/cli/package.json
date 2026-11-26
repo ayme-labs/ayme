@@ -55,6 +55,9 @@
       "optional": true
     }
   },
+  "dependencies": {
+    "esbuild": "^0.28.2"
+  },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/recorder": "workspace:*",

@@ -7,7 +7,9 @@ import type { Browser } from "playwright-core";
 
 import { SessionBrowser } from "../../../session/application";
 import { SessionStartError } from "../../../session/domain";
+import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { sessionStartError } from "../startErrors";
+import { hostTab } from "./tabHost";
 
 const startFailed = (what: string) => (cause: unknown) =>
   new SessionStartError(
@@ -54,15 +56,20 @@ export const stockBrowser = (projectDir: string): Layer.Layer<SessionBrowser> =>
         // this listener leaves every dialog to the developer's browser
         // automation.
         context.on("dialog", () => {});
+        // The Tab the browser opened on.
+        const page = context.pages()[0]!;
         const { url } = open;
         if (url !== undefined)
           yield* Effect.tryPromise({
-            try: () => context.pages()[0]!.goto(url),
+            try: () => page.goto(url),
             catch: startFailed(`Chromium opened, but ${url} did not load.`),
           });
         return {
           address: yield* addressOf(profile),
           gone: goneFrom(playwrightBrowser),
+          // The Session hands the Tab the Page Objects the project's build
+          // gave.
+          host: (pageObjects) => hostTab(page, pageObjects as NodePageObjects),
         };
       }),
   });

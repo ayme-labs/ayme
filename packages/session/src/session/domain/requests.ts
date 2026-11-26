@@ -1,8 +1,15 @@
+type Nothing = Readonly<Record<never, never>>;
+
 /**
  * What a Caller asks a Session. Each kind is one key, so a later kind is one
- * more member: the Page Object, tool, call and Inspector requests join it.
+ * more member: the call and Inspector requests join it.
  */
-export type SessionRequest = { readonly stop: Readonly<Record<never, never>> };
+export type SessionRequest =
+  | { readonly stop: Nothing }
+  /** `ayme page-objects`: the Page Object Tree of the Tab. */
+  | { readonly pageObjects: Nothing }
+  /** `ayme tools`: every Page Object Tool of the Tab, with its parameters. */
+  | { readonly tools: Nothing };
 
 /** What a Session answers: the text a command prints, and on success the
  * data `--json` prints with it. */
