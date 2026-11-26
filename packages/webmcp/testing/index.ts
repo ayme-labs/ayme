@@ -1,7 +1,7 @@
 /// <reference types="webmcp-types" preserve="true" />
 // Test support (ADR-0057): a recording WebMCP driver for Playwright
 // tests, which only tests may import. The helpers receive the test's own
-// `Page` and `BrowserContext`; `e2e` has the same ones on e2e's `browser`. The reference above declares
+// `Page` and `BrowserContext`; `e2e` has a subset of them on e2e's `browser`. The reference above declares
 // `document.modelContext` for the tests that import this entry.
 import type { BrowserContext, Page } from "@playwright/test";
 
@@ -11,7 +11,7 @@ import {
 } from "./recordingDriver";
 
 export type { PublishedTool, RecordingDriver } from "./recordingDriver";
-/** The same helpers on the e2e runner's `browser`, for its suites. */
+/** A subset of these helpers on the e2e runner's `browser`, for its suites. */
 export * as e2e from "./e2e";
 
 /** Install a minimal `document.modelContext` that records what the ayme
