@@ -22,7 +22,7 @@ test("running a Page Object tool from the panel acts on the page", async ({
   agent,
   listPage,
 }) => {
-  await agent.act("open the {tool} tool", {
+  await agent.act("open the {tool} tool in the Tools lens", {
     params: { tool: "ListPage.addItem" },
   });
   await agent.act("run it with the text {text}", { params: { text: "Milk" } });
@@ -82,6 +82,8 @@ test("the layout and its sizes survive a reload", async ({
   await agent.act("set the layout to {layout}", {
     params: { layout: "Floating" },
   });
+  // Counted by e2e's replay cache, so the goal twin's goals are saved.
+  await (await inspector.panel.front()).waitFor();
   await expect.poll(() => shell.box()).toEqual(floating);
 });
 
@@ -116,6 +118,8 @@ test("a docked panel sits beside the page, and floating it gives the space back"
   await agent.act("set the layout to {layout}", {
     params: { layout: "Floating" },
   });
+  // Counted by e2e's replay cache, so the goal twin's goals are saved.
+  await (await inspector.panel.front()).waitFor();
   await expect.poll(pageLeft).toBe(before);
 });
 
@@ -139,6 +143,8 @@ test("the page highlights what's hovered in the panel and what's selected, at on
   await agent.act("hover the search result {result}", {
     params: { result: 'textbox "New item"' },
   });
+  // Counted by e2e's replay cache, so the goal twin's goals are saved.
+  await (await listPage.addItemButton.front()).waitFor();
 
   await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
   await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
@@ -181,6 +187,8 @@ test("the app's DOM gains no attribute while an element is highlighted", async (
   await agent.act("hover the search result {result}", {
     params: { result: 'textbox "New item"' },
   });
+  // Counted by e2e's replay cache, so the goal twin's goals are saved.
+  await (await listPage.addItemButton.front()).waitFor();
 
   // Both highlights are showing.
   await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
@@ -194,7 +202,7 @@ test("a host member named like one of the panel's controls stays one match, and 
   inspector,
   listPage,
 }) => {
-  await agent.act("open the {tool} tool", {
+  await agent.act("open the {tool} tool in the Tools lens", {
     params: { tool: "ListPage.addItem" },
   });
   await agent.act("run it with the text {text}", { params: { text: "Milk" } });
@@ -216,6 +224,8 @@ test("the Structure view follows typing and text changes on the page", async ({
 }) => {
   const structure = () => inspector.structure.treeText();
   await agent.act("show the {lens} lens", { params: { lens: "Structure" } });
+  // Counted by e2e's replay cache, so the goal twin's goals are saved.
+  await (await inspector.structure.tree.front()).waitFor();
 
   await listPage.newItemInput.fill("Oat milk");
   await expect.poll(structure).toContain("Oat milk");
@@ -241,6 +251,8 @@ describe("connected to an agent", () => {
       await agent.act("show the {lens} lens", {
         params: { lens: "Structure" },
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await inspector.structure.tree.front()).waitFor();
       await expect
         .poll(() => inspector.structure.treeText())
         .toContain("Groceries");
@@ -340,7 +352,7 @@ describe("on a React host with aggressive global CSS", () => {
   onReact(
     "the panel works beside the host's own React",
     async ({ agent, listPage }) => {
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListPage.addItem" },
       });
       await agent.act("run it with the text {text}", {

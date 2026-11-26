@@ -48,6 +48,8 @@ for (const placement of placements) {
       const click = await inspector.tool("click");
 
       await pickOnPage(click.refField("target"), listPage);
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await listPage.addItemButton.front()).waitFor();
       await listPage.addItemButton.hover();
 
       // The dashed hover highlight.
@@ -96,6 +98,8 @@ for (const placement of placements) {
     }) => {
       const ref = (await inspector.tool("fill")).refField("target");
       await pickOnPage(ref, listPage);
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await listPage.addItemButton.front()).waitFor();
 
       await listPage.addItemButton.hover();
       await expect

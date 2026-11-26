@@ -4,17 +4,17 @@ Where each kind of test runs, what it is for, and where test-only code lives. Th
 
 ## Test lanes
 
-| Lane                       | Runs with                                                                             | Files                                          | Command                                                                      |
-| -------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------- |
-| Unit                       | Vitest in Node, or jsdom for components                                               | `*.test.ts`, `*.test.tsx`                      | `pnpm test`                                                                  |
-| Browser                    | Vitest browser mode on Chromium                                                       | `*.browser.test.ts`, `*.browser.test.tsx`      | `pnpm test` or `pnpm test:e2e` (see below)                                   |
-| Native WebMCP              | Vitest browser mode on Chromium's own WebMCP                                          | `*.browser.test.ts` in `webmcp`                | `pnpm test:e2e` in `packages/webmcp`                                         |
-| E2E                        | Playwright on built packages and example apps; e2e beside it where a suite was ported | `tests/**/*.spec.ts`, `tests/**/*.e2e.ts`      | `pnpm test:e2e`                                                              |
-| Recorder compatibility     | Vitest in Node, driving Chromium on stock Playwright                                  | `*.compat.test.ts` in `recorder`               | `pnpm test:compat` in `packages/recorder`                                    |
-| Package verification       | A clean consumer installs the packed packages                                         | `packedConsumer.test.ts`                       | `pnpm test` in `ayme`                                                        |
-| Live goals                 | Playwright with the real model                                                        | `apps/example-vue/tests/goals.spec.ts`         | `pnpm test:goals` in `apps/example-vue`                                      |
-| Inspector goals            | e2e with Claude Code on the machine's own login                                       | `tests/goals/*.goal.ts` in `inspector-fixture` | `pnpm exec e2e run --config e2e.goals.config.ts` in `apps/inspector-fixture` |
-| Inspector goals with tools | The same, on `e2e-patched`, with the e2e suite's Page Objects as tools                | the same files                                 | `pnpm test:goals:tools` in `apps/inspector-fixture`                          |
+| Lane                       | Runs with                                                                             | Files                                          | Command                                             |
+| -------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
+| Unit                       | Vitest in Node, or jsdom for components                                               | `*.test.ts`, `*.test.tsx`                      | `pnpm test`                                         |
+| Browser                    | Vitest browser mode on Chromium                                                       | `*.browser.test.ts`, `*.browser.test.tsx`      | `pnpm test` or `pnpm test:e2e` (see below)          |
+| Native WebMCP              | Vitest browser mode on Chromium's own WebMCP                                          | `*.browser.test.ts` in `webmcp`                | `pnpm test:e2e` in `packages/webmcp`                |
+| E2E                        | Playwright on built packages and example apps; e2e beside it where a suite was ported | `tests/**/*.spec.ts`, `tests/**/*.e2e.ts`      | `pnpm test:e2e`                                     |
+| Recorder compatibility     | Vitest in Node, driving Chromium on stock Playwright                                  | `*.compat.test.ts` in `recorder`               | `pnpm test:compat` in `packages/recorder`           |
+| Package verification       | A clean consumer installs the packed packages                                         | `packedConsumer.test.ts`                       | `pnpm test` in `ayme`                               |
+| Live goals                 | Playwright with the real model                                                        | `apps/example-vue/tests/goals.spec.ts`         | `pnpm test:goals` in `apps/example-vue`             |
+| Inspector goals            | e2e with Claude Code on the machine's own login                                       | `tests/goals/*.goal.ts` in `inspector-fixture` | `pnpm test:goals` in `apps/inspector-fixture`       |
+| Inspector goals with tools | The same, on `e2e-patched`, with the e2e suite's Page Objects as tools                | the same files                                 | `pnpm test:goals:tools` in `apps/inspector-fixture` |
 
 - **Unit** covers pure modules. Expected values come from fixtures and examples, never from the code under test.
 - **Browser** covers code that needs a real DOM.

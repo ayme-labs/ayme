@@ -27,16 +27,20 @@ for (const placement of placements) {
 
       // The list can still be settling under a resting pointer, which then
       // hovers another row: hover again until it is this one.
+      // Until the test's own timeout, as Playwright's `toPass()` without one.
       await expect
-        .poll(async () => {
-          await agent.act(
-            "hover {object} under On this page in the Model lens",
-            {
-              params: { object: "TodoPage.items[1]" },
-            }
-          );
-          return secondItem();
-        })
+        .poll(
+          async () => {
+            await agent.act(
+              "hover {object} under On this page in the Model lens",
+              {
+                params: { object: "TodoPage.items[1]" },
+              }
+            );
+            return secondItem();
+          },
+          { timeout: 30_000 }
+        )
         .toBe("dashed");
       await inspector.header.title.hover();
       await expect.poll(secondItem).toBe("none");
@@ -44,6 +48,13 @@ for (const placement of placements) {
       await agent.act("select {object} under On this page in the Model lens", {
         params: { object: "TodoPage.items[1]" },
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await page
+          .locator("#todo-items > li")
+          .within((rows) => rows.nth(1))
+          .front()
+      ).waitFor();
       await inspector.header.title.hover();
 
       await expect.poll(secondItem).toBe("solid");
@@ -67,6 +78,8 @@ for (const placement of placements) {
       await agent.act("hover its {member} member", {
         params: { member: "archiveButton" },
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await page.locator("#todo-items > li >> nth=1").front()).waitFor();
 
       await expect.poll(archiveButton).toBe("dashed");
       await expect.poll(item).toBe("solid");

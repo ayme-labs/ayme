@@ -71,4 +71,4 @@ The recordings are under `.e2e/cache-tools-check`; delete it to record afresh.
 | Arm 3, Claude Code on your own login                     | `pnpm test:goals:tools`                            |
 | The same goals answered by scripted calls, with no model | `AYME_E2E_EXECUTOR=scripted pnpm test:goals:tools` |
 
-The scripted run takes its calls from [`tests/e2e/tools/goalCalls.ts`](../../apps/inspector-fixture/tests/e2e/tools/goalCalls.ts), one entry per goal, and keeps its recordings apart from the agent's. Arm 1's config reuses a fixture server already on its port (5199, or `AYME_GOALS_PORT`), whichever checkout started it: give each checkout its own port.
+The scripted run takes its calls from [`tests/e2e/tools/goalCalls.ts`](../../apps/inspector-fixture/tests/e2e/tools/goalCalls.ts), one entry per goal, and keeps its recordings apart from the agent's. Both run with arm 1's ports, which come from the checkout's path.

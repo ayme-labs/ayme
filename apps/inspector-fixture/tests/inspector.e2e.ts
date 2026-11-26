@@ -73,6 +73,8 @@ test("the layout and its sizes survive a reload", async ({
   await header.layoutMenu.choose("Dock left");
   await expect.poll(() => shell.box()).toEqual(dockedLeft);
   await header.layoutMenu.choose("Floating");
+  // Counted by e2e's replay cache, so the goal twin's goals are saved.
+  await (await inspector.panel.front()).waitFor();
   await expect.poll(() => shell.box()).toEqual(floating);
 });
 
@@ -101,6 +103,8 @@ test("a docked panel sits beside the page, and floating it gives the space back"
   await expect.poll(pageLeft).toBeGreaterThanOrEqual(panel.x + panel.width);
 
   await inspector.header.layoutMenu.choose("Floating");
+  // Counted by e2e's replay cache, so the goal twin's goals are saved.
+  await (await inspector.panel.front()).waitFor();
   await expect.poll(pageLeft).toBe(before);
 });
 
@@ -118,6 +122,8 @@ test("the page highlights what's hovered in the panel and what's selected, at on
   // and Chromium 156 sends no mouseenter for that; enter it from outside.
   await browser.mouse.move(0, 0);
   await navigator.result('textbox "New item"').hover();
+  // Counted by e2e's replay cache, so the goal twin's goals are saved.
+  await (await listPage.addItemButton.front()).waitFor();
 
   await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
   await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
@@ -153,6 +159,8 @@ test("the app's DOM gains no attribute while an element is highlighted", async (
   await navigator.search("New item");
   await browser.mouse.move(0, 0);
   await navigator.result('textbox "New item"').hover();
+  // Counted by e2e's replay cache, so the goal twin's goals are saved.
+  await (await listPage.addItemButton.front()).waitFor();
 
   // Both highlights are showing.
   await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
@@ -183,6 +191,8 @@ test("the Structure view follows typing and text changes on the page", async ({
 }) => {
   const structure = () => inspector.structure.treeText();
   await inspector.navigator.showLens("Structure");
+  // Counted by e2e's replay cache, so the goal twin's goals are saved.
+  await (await inspector.structure.tree.front()).waitFor();
 
   await listPage.newItemInput.fill("Oat milk");
   await expect.poll(structure).toContain("Oat milk");
@@ -206,6 +216,8 @@ describe("connected to an agent", () => {
     async ({ mcpServer, browser, page, inspector }) => {
       // The panel has looked at the page: its structure shows the heading.
       await inspector.navigator.showLens("Structure");
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await inspector.structure.tree.front()).waitFor();
       await expect
         .poll(() => inspector.structure.treeText())
         .toContain("Groceries");

@@ -63,6 +63,10 @@ for (const placement of placements) {
       await reloadFixture(page, "/");
       await agent.act("open the ayme panel");
       await agent.act("show all runs in Runs");
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
       await expect
         .poll(async () => (await inspector.runs.latest("click").read())?.toggle)
         .toContain('button "Dismiss notice"');
@@ -72,12 +76,16 @@ for (const placement of placements) {
       agent,
       inspector,
     }) => {
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListPage.addItem" },
       });
       await agent.act("run it with the text {text}", {
         params: { text: "Milk" },
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
 
       const run = inspector.runs.latest("ListPage.addItem");
       await expect.poll(() => run.status()).toBe("Succeeded");
@@ -109,6 +117,10 @@ for (const placement of placements) {
           { name: "Urgent", type: "checkbox", target: urgent, value: "true" },
         ],
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
       const run = inspector.runs.latest("fill_form");
       await expect
         .poll(() => run.interactionList())
@@ -151,6 +163,10 @@ for (const placement of placements) {
       const target = await appView.ref('combobox "Size"');
       await agent.act("show all runs in Runs");
       await appView.run("select_option", { target, values: ["Large"] });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
       const run = inspector.runs.latest("select_option");
       await expect
         .poll(async () => (await run.read())?.toggle)
@@ -166,7 +182,7 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListPage.addItem" },
       });
       await agent.act("run it with the text {text}", {
@@ -183,6 +199,8 @@ for (const placement of placements) {
         "hover the {position} Interaction of the latest {tool} run in Runs",
         { params: { position: "second", tool: "ListPage.addItem" } }
       );
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await listPage.addItemButton.front()).waitFor();
 
       // The dashed hover highlight.
       await expect
@@ -199,10 +217,12 @@ for (const placement of placements) {
       // The Add item button's ref, as snapshot gives it.
       const ref = await appView.ref('button "Add item"');
 
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "mark_element" },
       });
-      await agent.act("run it with the ref {ref}", { params: { ref } });
+      await agent.act("choose {ref} as its ref element and run it", {
+        params: { ref },
+      });
 
       await expect(await listPage.addItemButton.front()).toHaveAttribute(
         "data-marked"
@@ -215,11 +235,41 @@ for (const placement of placements) {
     // The run card's and Runs' own choices, made with the mouse in the closed
     // shadow root the Inspector mounts in. None of them is a popup that could
     // close before the press lands.
+    test("a collection action runs on the item and choice picked with the mouse", async ({
+      agent,
+      listPage,
+    }) => {
+      await listPage.addItem("Milk");
+      await listPage.addItem("Eggs");
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "ListItem.mark" },
+      });
+
+      await agent.act("pick the {item} item", { params: { item: "Eggs" } });
+      await agent.act("switch the arguments editor to JSON");
+      await agent.act("switch the arguments editor back to Form");
+      // "done" is the field's first choice, which it shows before any pick.
+      await agent.act("set the state to {state}", {
+        params: { state: "todo" },
+      });
+      await agent.act("run it");
+
+      const item = (text: string) =>
+        listPage.items.within((items) => items.filter({ hasText: text }));
+      await expect(await item("Eggs").front()).toHaveAttribute(
+        "data-state",
+        "todo"
+      );
+      await expect(await item("Milk").front()).not.toHaveAttribute(
+        "data-state"
+      );
+    });
+
     test("Runs switches between the selection's runs and all runs with the mouse", async ({
       agent,
       inspector,
     }) => {
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListPage.countItems" },
       });
       await agent.act("run it");
@@ -247,7 +297,7 @@ for (const placement of placements) {
     }) => {
       await listPage.addItem("Milk");
 
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "goal" },
       });
       await agent.act(
@@ -268,6 +318,176 @@ for (const placement of placements) {
       await expect(await listPage.items.front()).toHaveCount(0);
       expect(await run.resultText()).toContain('"reason": "done"');
     });
+
+    test("Clear empties Runs, and the run after it is the only one shown", async ({
+      agent,
+      appView,
+      inspector,
+    }) => {
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "ListPage.countItems" },
+      });
+      await agent.act("run it");
+      await agent.act("show all runs in Runs");
+      await expect(await inspector.runs.runs.front()).toHaveCount(1);
+
+      await agent.act("clear Runs");
+      await expect(await inspector.runs.runs.front()).toHaveCount(0);
+      // Another tool, so the run Runs shows next is told apart from the
+      // cleared one.
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "page_objects" },
+      });
+      await agent.act("run it");
+
+      await expect
+        .poll(async () => (await appView.runs()).map(({ tool }) => tool))
+        .toEqual(["ListPage.countItems", "page_objects"]);
+      const newest = (await appView.runs()).at(-1)!;
+      await expect(await inspector.runs.runs.front()).toHaveCount(1);
+      await expect(await inspector.runs.runs.front()).toHaveAttribute(
+        "aria-label",
+        newest.tool
+      );
+      await expect
+        .poll(() => inspector.runs.latest(newest.tool).status())
+        .toBe("Succeeded");
+    });
+
+    test("a run's result copies as the page's Run log has it", async ({
+      agent,
+      appView,
+      inspector,
+      listPage,
+    }) => {
+      // The config grants the clipboard.
+      const clipboard = {
+        write: async (text: string) => {
+          await inspector.tab.front();
+          await inspector.tab.browser.evaluate(
+            (text: string) =>
+              navigator.clipboard.writeText(text).then(() => null),
+            text
+          );
+        },
+        read: async () => {
+          await inspector.tab.front();
+          return inspector.tab.browser.evaluate(() =>
+            navigator.clipboard.readText()
+          );
+        },
+      };
+      // Something else first, so a copy that never lands is told apart.
+      await clipboard.write("not copied");
+      await listPage.addItem("Milk");
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "ListPage.countItems" },
+      });
+      await agent.act("run it");
+      const run = inspector.runs.latest("ListPage.countItems");
+      await expect.poll(() => run.status()).toBe("Succeeded");
+
+      await agent.act("copy the result of the latest {tool} run", {
+        params: { tool: "ListPage.countItems" },
+      });
+
+      // The panel says so once the write resolved; the Inspector's tab stays
+      // in front until the clipboard is read.
+      await expect(await run.announced.front()).toHaveText("Copied");
+      const copied = await clipboard.read();
+      const logged = (await appView.runs()).at(-1)!;
+      expect(JSON.parse(copied)).toEqual(logged.result);
+    });
+
+    test("press_key presses the key the page receives", async ({
+      agent,
+      listPage,
+    }) => {
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "press_key" },
+      });
+      await agent.act("set the key to {key}", { params: { key: "F4" } });
+
+      await agent.act("run it");
+
+      // The fixture writes the function key it receives into the New item
+      // field.
+      await expect(await listPage.newItemInput.front()).toHaveValue("F4");
+    });
+
+    test("the fill_form editor fills only the fields still changed after an undo", async ({
+      agent,
+      appView,
+      inspector,
+      listPage,
+    }) => {
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "fill_form" },
+      });
+      await agent.act("show the arguments for {tool} if they are hidden", {
+        params: { tool: "fill_form" },
+      });
+
+      await agent.act("set {field} to {value} in the form", {
+        params: { field: "New item", value: "Milk" },
+      });
+      await agent.act("check {field} in the form", {
+        params: { field: "Urgent" },
+      });
+      await agent.act("undo the change to {field}", {
+        params: { field: "New item" },
+      });
+      await agent.act("run it");
+
+      const run = inspector.runs.latest("fill_form");
+      await expect.poll(() => run.status()).toBe("Succeeded");
+      const { input } = (await appView.runs()).at(-1)!;
+      expect(
+        (input as { fields: { name: string }[] }).fields.map(({ name }) => name)
+      ).toEqual(["Urgent"]);
+      await expect(await listPage.urgentCheckbox.front()).toBeChecked();
+      await expect(await listPage.newItemInput.front()).toHaveValue("");
+    });
+
+    test("generate_locator offers the locator of each target in each group", async ({
+      agent,
+      appView,
+      inspector,
+    }) => {
+      const groups = [
+        [
+          await appView.ref('button "Add item"'),
+          await appView.ref('textbox "New item"'),
+        ],
+        [await appView.ref('button "Clear"')],
+      ];
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "generate_locator" },
+      });
+      const card = inspector.detail.runCard();
+      await agent.act("show the arguments for {tool} if they are hidden", {
+        params: { tool: "generate_locator" },
+      });
+      const { locatorGroups } = card;
+
+      await agent.act("add {targets} to group {group} from its tree", {
+        params: { targets: groups[0]!, group: 1 },
+      });
+      await agent.act("add a group");
+      await agent.act("add {targets} to group {group} from its tree", {
+        params: { targets: groups[1]!, group: 2 },
+      });
+      await agent.act("run it");
+
+      const expected = (await appView.run("generate_locator", {
+        groups: groups.map((targets) => ({ targets })),
+      })) as { groups: { locators: { target: string; locator: string }[] }[] };
+      for (const [index, group] of expected.groups.entries())
+        for (const { target, locator } of group.locators)
+          await expect(
+            await locatorGroups.locator(index + 1, target).front()
+          ).toHaveText(locator);
+    });
   });
 
   const connected = testIn(placement, "/", { connected: true });
@@ -282,12 +502,16 @@ for (const placement of placements) {
           text: "Milk",
         });
 
-        await agent.act("open the {tool} tool", {
+        await agent.act("open the {tool} tool in the Tools lens", {
           params: { tool: "ListPage.addItem" },
         });
         await agent.act("run it with the text {text}", {
           params: { text: "Milk" },
         });
+        // Counted by e2e's replay cache, so the goal twin's goals are saved.
+        await (
+          await inspector.runs.runs.within((runs) => runs.first()).front()
+        ).waitFor();
 
         const run = inspector.runs.latest("ListPage.addItem");
         await expect.poll(() => run.status()).toBe("Failed");
@@ -318,13 +542,16 @@ for (const placement of placements) {
             "ListPage.addItem",
             { text: "Milk" }
           );
-
-          await agent.act("open the {tool} tool", {
+          await agent.act("open the {tool} tool in the Tools lens", {
             params: { tool: "ListPage.addItem" },
           });
           await agent.act("run it with the text {text}", {
             params: { text: "Milk" },
           });
+          // Counted by e2e's replay cache, so the goal twin's goals are saved.
+          await (
+            await inspector.runs.runs.within((runs) => runs.first()).front()
+          ).waitFor();
 
           const run = inspector.runs.latest("ListPage.addItem");
           await expect
@@ -343,7 +570,7 @@ for (const placement of placements) {
     unpublished(
       "a Page Object tool runs from the panel",
       async ({ agent, inspector, listPage }) => {
-        await agent.act("open the {tool} tool", {
+        await agent.act("open the {tool} tool in the Tools lens", {
           params: { tool: "ListPage.addItem" },
         });
         await agent.act("run it with the text {text}", {
@@ -365,7 +592,7 @@ for (const placement of placements) {
       "a Custom Tool runs from the panel",
       async ({ agent, inspector, listPage }) => {
         // The Add item button's ref, from snapshot run in the panel.
-        await agent.act("open the {tool} tool", {
+        await agent.act("open the {tool} tool in the Tools lens", {
           params: { tool: "snapshot" },
         });
         await agent.act("run it");
@@ -375,10 +602,12 @@ for (const placement of placements) {
         const ref = /(e\d+) button "Add item"/.exec(structure)?.[1];
         if (!ref) throw new Error(`No Add item button in:\n${structure}`);
 
-        await agent.act("open the {tool} tool", {
+        await agent.act("open the {tool} tool in the Tools lens", {
           params: { tool: "mark_element" },
         });
-        await agent.act("run it with the ref {ref}", { params: { ref } });
+        await agent.act("choose {ref} as its ref element and run it", {
+          params: { ref },
+        });
 
         await expect(await listPage.addItemButton.front()).toHaveAttribute(
           "data-marked"
@@ -392,16 +621,20 @@ for (const placement of placements) {
     unpublished(
       "snapshot runs from the panel and shows its result",
       async ({ agent, inspector }) => {
-        await agent.act("open the {tool} tool", {
+        await agent.act("open the {tool} tool in the Tools lens", {
           params: { tool: "snapshot" },
         });
         await agent.act("run it");
 
         const run = inspector.runs.latest("snapshot");
         await expect.poll(() => run.status()).toBe("Succeeded");
-        await agent.act("show the result of the latest {tool} run", {
+        await agent.act("open the Result of the latest {tool} run in Runs", {
           params: { tool: "snapshot" },
         });
+        // Counted by e2e's replay cache, so the goal twin's goals are saved.
+        await (
+          await inspector.runs.runs.within((runs) => runs.first()).front()
+        ).waitFor();
         await expect
           .poll(async () => (await run.read())?.result)
           .toContain('"structure"');
