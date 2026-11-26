@@ -1,6 +1,6 @@
 # Browser package
 
-Gets ayme a browser: it finds the Playwright the project has installed, holds the one list of supported Playwright versions, starts Chromium, joins a running browser over the DevTools protocol without Playwright's defaults, and releases the browser. It is private: the recorder bundles it, and so `@ayme-dev/cli` carries it. Why it uses the project's Playwright and none of its own: [ADR-0052](../../docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md).
+Gets ayme a browser: it finds the Playwright the project has installed, holds the one list of supported Playwright versions, starts Chromium, joins a running browser over the DevTools protocol without Playwright's defaults, and releases the browser. Joining a headless Chromium still sets Playwright's font families on each page, which ayme cannot stop ([the compatibility suite](src/infrastructure/live/browser.compat.test.ts) records it). It is private: the recorder bundles it, and so `@ayme-dev/cli` carries it. Why it uses the project's Playwright and none of its own: [ADR-0052](../../docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md).
 
 `src/index.ts` is the front door. Getting and releasing the browser drives a real one, so it sits in [`infrastructure/live/`](src/infrastructure/live/browser.ts), which the [compatibility suite measures](../../docs/testing.md#code-a-real-browser-runs); the rest is plain logic the unit tests measure.
 

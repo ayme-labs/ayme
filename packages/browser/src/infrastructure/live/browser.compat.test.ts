@@ -74,6 +74,10 @@ async function running(): Promise<{
   return { address: `http://127.0.0.1:${port}`, context };
 }
 
+/** A monospace font installed with the system, which a tab sets as its own
+ * cursive font. */
+const OWN_FONT = process.platform === "darwin" ? "Courier" : "Monospace";
+
 const prefersDark = (page: { evaluate<T>(fn: () => T): Promise<T> }) =>
   page.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches);
 
@@ -174,6 +178,35 @@ it("joins without Playwright's defaults: the page keeps the browser's own colour
     .flatMap((each) => each.pages());
   expect(await prefersDark(page!)).toBe(true);
   expect(await prefersDark(context.pages()[0]!)).toBe(true);
+});
+
+// A record of a limit, not a promise: joining without defaults still sends
+// Playwright's own font families to each page of a headless Chromium, which
+// ayme cannot stop. A test that sees them kept means Playwright changed.
+it("joining a headless browser replaces a tab's own font families with Playwright's", async () => {
+  const { address, context } = await running();
+  const page = context.pages()[0]!;
+  // Text that a monospace font and any other set at different widths.
+  await page.setContent(
+    `<span id="cursive" style="font-family: cursive">iiiiiWWWWW</span><span id="own" style="font-family: ${OWN_FONT}">iiiiiWWWWW</span>`
+  );
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Page.setFontFamilies", {
+    fontFamilies: { cursive: OWN_FONT },
+  });
+  const widths = () =>
+    page.evaluate(() =>
+      ["cursive", "own"].map(
+        (id) => document.getElementById(id)!.getBoundingClientRect().width
+      )
+    );
+  const [cursive, own] = await widths();
+  expect(cursive).toBe(own);
+
+  await got({ join: { cdp: address } });
+
+  const [cursiveAfter, ownAfter] = await widths();
+  expect(cursiveAfter).not.toBe(ownAfter);
 });
 
 it("leaves a browser it joined open, with its page where it was, when it releases it", async () => {
