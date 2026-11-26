@@ -27,16 +27,20 @@ for (const placement of placements) {
 
       // The list can still be settling under a resting pointer, which then
       // hovers another row: hover again until it is this one.
+      // Until the test's own timeout, as Playwright's `toPass()` without one.
       await expect
-        .poll(async () => {
-          await agent.act(
-            "hover {object} under On this page in the Model lens",
-            {
-              params: { object: "TodoPage.items[1]" },
-            }
-          );
-          return secondItem();
-        })
+        .poll(
+          async () => {
+            await agent.act(
+              "hover {object} under On this page in the Model lens",
+              {
+                params: { object: "TodoPage.items[1]" },
+              }
+            );
+            return secondItem();
+          },
+          { timeout: 30_000 }
+        )
         .toBe("dashed");
       await inspector.header.title.hover();
       await expect.poll(secondItem).toBe("none");

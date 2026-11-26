@@ -1,7 +1,7 @@
 import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { callOverMcp, placements, testIn } from "./e2e/fixtures";
+import { callOverMcp, INSPECTOR, placements, testIn } from "./e2e/fixtures";
 import { panelLook } from "./e2e/pom/Inspector";
 
 // E2E: the panel shows the page's live tools as the runtime lists them, and a
@@ -161,26 +161,34 @@ for (const placement of placements) {
       // The fixture's list starts empty, so its ListPage.clear has nothing to
       // clear.
       expect(clear.available).toBe(false);
+      // Asked before the panel runs it: the app's own run is a Run too.
+      const refusal = await appView.refusal("ListPage.clear");
 
       const card = await inspector.tool("ListPage.clear");
 
-      // e2e has no CSS matcher: the card's computed opacity, read in the panel.
+      // The tool's run card is dimmed and gives the reason; its row in the
+      // Tools lens's list shows neither. e2e has no CSS matcher: the card's
+      // computed opacity, read in the panel. The card is the Selected
+      // region's only form, as `runCard()` finds it.
       await expect
         .poll(
           async () =>
             (
-              await panelLook(inspector.tab, "article[data-tool-page] form", [
-                "opacity",
-              ])
+              await panelLook(
+                inspector.tab,
+                'section[aria-label="Selected"] form',
+                ["opacity"]
+              )
             )?.opacity
         )
         .toBe("0.6");
       await expect(await card.reason.front()).toHaveText(clear.reason!);
       await expect(await card.runButton.front()).toBeEnabled();
       await card.runButton.click();
+      // The newest run of the tool is the app's until the panel's arrives.
       const run = inspector.runs.latest("ListPage.clear");
+      await expect.poll(() => run.caller()).toEqual(INSPECTOR);
       await expect.poll(() => run.status()).toBe("Failed");
-      const refusal = await appView.refusal("ListPage.clear");
       await expect.poll(async () => (await run.read())?.error).toBe(refusal);
     });
 

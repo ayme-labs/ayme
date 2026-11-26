@@ -1,7 +1,8 @@
 import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { callOverMcp, placements, testIn } from "../e2e/fixtures";
+import { callOverMcp, INSPECTOR, placements, testIn } from "../e2e/fixtures";
+import { panelLook } from "../e2e/pom/Inspector";
 
 // The goal-driven twin of ../toolsLens.e2e.ts: the same tests, with each
 // action on the panel an agent goal.
@@ -15,6 +16,9 @@ for (const placement of placements) {
   const test = testIn(placement);
   const connected = testIn(placement, "/", { connected: true });
   const unpublished = testIn(placement, "/unpublished.html");
+  // The session's inspector option turns the page's Peeks on; the other
+  // fixture pages mount the panel themselves.
+  const withInspectorOption = testIn(placement, "/session.html");
 
   describe(placement, () => {
     test("the Tools lens lists every live tool of the page", async ({
@@ -158,6 +162,82 @@ for (const placement of placements) {
                 .sort()
             )
             .toEqual(liveTools.map(({ name }) => name).sort());
+        }
+      );
+    });
+
+    test("a tool that can't run now shows dimmed with its reason, and Run gives the refusal", async ({
+      agent,
+      appView,
+      inspector,
+    }) => {
+      const clear = (await appView.tools()).find(
+        ({ name }) => name === "ListPage.clear"
+      )!;
+      // The fixture's list starts empty, so its ListPage.clear has nothing to
+      // clear.
+      expect(clear.available).toBe(false);
+      // Asked before the panel runs it: the app's own run is a Run too.
+      const refusal = await appView.refusal("ListPage.clear");
+
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "ListPage.clear" },
+      });
+      const card = inspector.detail.runCard();
+
+      // The tool's run card is dimmed and gives the reason; its row in the
+      // Tools lens's list shows neither. e2e has no CSS matcher: the card's
+      // computed opacity, read in the panel. The card is the Selected
+      // region's only form, as `runCard()` finds it.
+      await expect
+        .poll(
+          async () =>
+            (
+              await panelLook(
+                inspector.tab,
+                'section[aria-label="Selected"] form',
+                ["opacity"]
+              )
+            )?.opacity
+        )
+        .toBe("0.6");
+      await expect(await card.reason.front()).toHaveText(clear.reason!);
+      await expect(await card.runButton.front()).toBeEnabled();
+      await agent.act("run it");
+      // The newest run of the tool is the app's until the panel's arrives.
+      const run = inspector.runs.latest("ListPage.clear");
+      await expect.poll(() => run.caller()).toEqual(INSPECTOR);
+      await expect.poll(() => run.status()).toBe("Failed");
+      await expect.poll(async () => (await run.read())?.error).toBe(refusal);
+    });
+
+    describe("with the inspector option on", () => {
+      withInspectorOption(
+        "the page's own Peek lists under Peek tools, and its tool page reads it",
+        async ({ agent, appView, inspector, listPage }) => {
+          const peeks = (await appView.tools())
+            .filter(({ group }) => group === "peek")
+            .map(({ name }) => name);
+          // The fixture's Peek of its list.
+          expect(peeks).toEqual(["peek.list"]);
+          await listPage.addItem("Milk");
+
+          await agent.act("show the {lens} lens", {
+            params: { lens: "Tools" },
+          });
+          await expect
+            .poll(() => inspector.navigator.tools.peekSections())
+            .toEqual({ Browser: peeks });
+          await agent.act("open the {tool} tool in the Tools lens", {
+            params: { tool: "peek.list" },
+          });
+          await agent.act("run it");
+
+          const run = inspector.runs.latest("peek.list");
+          await expect.poll(() => run.status()).toBe("Succeeded");
+          expect(JSON.parse((await run.resultText()) ?? "")).toEqual(
+            await appView.run("peek.list")
+          );
         }
       );
     });

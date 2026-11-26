@@ -100,8 +100,9 @@ export class AppView {
           window
             .fixtureAyme!.runs.list()
             .filter((run) => run.parent === undefined)
-            .map(({ tool, status, result, error }) => ({
+            .map(({ tool, input, status, result, error }) => ({
               tool,
+              input,
               status,
               result,
               error,

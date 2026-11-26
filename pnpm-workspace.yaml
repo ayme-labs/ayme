@@ -25,9 +25,9 @@ minimumReleaseAgeExclude:
   - "@vue/server-renderer@3.5.42"
   - "@vue/shared@3.5.42"
   - vue@3.5.42
-  - "@e2e-dev/core@0.25.0"
-  - "@e2e-dev/web@0.17.0"
-  - e2e@0.25.0
+  - "@e2e-dev/core@0.25.0" # e2e is pinned exactly, and this version was under the minimum release age when it was pinned
+  - "@e2e-dev/web@0.17.0" # e2e is pinned exactly, and this version was under the minimum release age when it was pinned
+  - e2e@0.25.0 # e2e is pinned exactly, and this version was under the minimum release age when it was pinned
 # rolldown 1.2.12, which vite 8.3.0 (from @angular/build) would bring into
 # Nuxt's peer set, crashes vue-tsc in nuxt typecheck. 1.2.8 is the version
 # @angular/build pins.

@@ -1,45 +1,13 @@
 import type { Browser } from "@e2e-dev/web";
 import type { JsonValue } from "e2e";
 
-// The recording WebMCP driver of `@ayme-dev/webmcp/testing`, on e2e's
-// `browser`. The two must agree on the driver's shape; this package depends
-// on no ayme package (a `tooling` package may not), so the type is repeated.
+import {
+  installRecordingDriver,
+  type RecordingDriver,
+} from "./recordingDriver";
 
-export type PublishedTool = {
-  name: string;
-  description: string;
-  inputSchema: unknown;
-  /** Only on a tool marked destructive: `{ consequentialHint: true }`. */
-  annotations?: { consequentialHint?: boolean };
-  execute(args: unknown): Promise<unknown>;
-};
-
-export type RecordingDriver = { tools: PublishedTool[] };
-
-// Runs in the browser, so it uses nothing from this module's scope.
-function installRecordingDriver() {
-  const publishedTools: PublishedTool[] = [];
-  Object.defineProperty(document, "modelContext", {
-    configurable: false,
-    value: {
-      tools: publishedTools,
-      async registerTool(
-        tool: PublishedTool,
-        { signal }: { signal: AbortSignal }
-      ) {
-        publishedTools.push(tool);
-        signal.addEventListener(
-          "abort",
-          () => {
-            const index = publishedTools.indexOf(tool);
-            if (index >= 0) publishedTools.splice(index, 1);
-          },
-          { once: true }
-        );
-      },
-    },
-  });
-}
+// The recording WebMCP driver's helpers on e2e's `browser`, which hands a
+// test no Playwright `Page`; the front door exports them as `e2e`.
 
 /**
  * Installs a minimal `document.modelContext` that records what the ayme

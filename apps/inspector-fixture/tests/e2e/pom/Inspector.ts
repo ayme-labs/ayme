@@ -1,4 +1,4 @@
-import type { Locator, Screen } from "e2e";
+import { expect, type Locator, type Screen } from "e2e";
 
 import type { On, Tab } from "../tab";
 
@@ -282,9 +282,11 @@ export class ToolsLens extends Part {
   async listed(): Promise<Partial<Record<ToolGroupLabel, string[]>>> {
     const listed: Partial<Record<ToolGroupLabel, string[]>> = {};
     for (const label of toolGroupLabels) {
+      // The group's own list in the navigator, as the Playwright Page
+      // Object reads it.
       const names = await panelTexts(
         this.tab,
-        `[aria-label=${JSON.stringify(label)}] button`
+        `nav[aria-label="Navigator"] ul[aria-label=${JSON.stringify(label)}] > li button`
       );
       if (names.length > 0) listed[label] = names;
     }
@@ -309,6 +311,14 @@ export class Navigator extends Part {
   /** The legend's counts: live, not on page, refs. */
   get legend(): On {
     return this.on((root) => root.getByRole("group", "Legend"));
+  }
+
+  /** The legend's items as the DOM has them, such as "3 live". */
+  legendItems(): Promise<string[]> {
+    return panelTexts(
+      this.tab,
+      'nav[aria-label="Navigator"] [aria-label="Legend"] > span'
+    );
   }
 
   get searchBox(): On {
@@ -357,6 +367,13 @@ export class Navigator extends Part {
  * "What the model sees" in a detail view: a structure node's page state and
  * the Page Object definitions an agent receives. It starts collapsed.
  */
+/**
+ * What the model sees of the selected detail, as CSS for the mount's hook:
+ * a tool page and a structure node each have one, in the Selected region.
+ */
+const inModelSees =
+  'section[aria-label="Selected"] section[aria-label="What the model sees"]';
+
 export class WhatTheModelSees extends Part {
   constructor(tab: Tab, scope: Root) {
     super(tab, (screen) =>
@@ -377,20 +394,27 @@ export class WhatTheModelSees extends Part {
 
   /** The Page Object definitions' text, line by line as the panel shows it. */
   definitionsText(): Promise<string | null> {
-    return panelText(this.tab, 'pre[aria-label="Page object definitions"]');
+    return panelText(
+      this.tab,
+      `${inModelSees} pre[aria-label="Page object definitions"]`
+    );
   }
 
-  /** A tool's input schema, parsed from what the block shows. */
+  /**
+   * A tool's input schema, parsed from what the block shows. It waits for
+   * the block, as the Playwright Page Object's `textContent()` does.
+   */
   async schemaValue(toolName: string): Promise<unknown> {
     const label = JSON.stringify(`${toolName} input schema`);
-    return JSON.parse(
-      (await panelText(this.tab, `pre[aria-label=${label}]`)) ?? ""
-    );
+    const read = () =>
+      panelText(this.tab, `${inModelSees} pre[aria-label=${label}]`);
+    await expect.poll(read).not.toBeNull();
+    return JSON.parse((await read()) ?? "");
   }
 
   /** The page state's text, line by line as the panel shows it. */
   pageStateText(): Promise<string | null> {
-    return panelText(this.tab, '[aria-label="Page state"]');
+    return panelText(this.tab, `${inModelSees} [aria-label="Page state"]`);
   }
 
   /** A structure node's own lines of the page state, without its children. */
@@ -466,27 +490,35 @@ export class KeyField extends Part {
 
 /** `generate_locator`'s groups of targets, each with the locators a run gave them. */
 export class LocatorGroups extends Part {
+  /** One group, in the card's list of groups. */
   private group(number: number) {
-    return (groups: Locator) => groups.getByRole("listitem", `Group ${number}`);
+    return (card: Locator) =>
+      card
+        .getByRole("list", "Locator groups")
+        .getByRole("listitem", `Group ${number}`);
+  }
+
+  get addGroupButton(): On {
+    return this.on((card) => card.getByRole("button", "Add group"));
   }
 
   /** The locator the last run gave a target. */
   locator(number: number, ref: string): On {
-    return this.on((groups) =>
-      this.group(number)(groups).getByLabel(`Locator for ${ref}`)
+    return this.on((card) =>
+      this.group(number)(card).getByLabel(`Locator for ${ref}`)
     );
   }
 
   /** Adds targets from a group's tree, or removes ones it has, by ref. */
   async toggleFromTree(number: number, ...refs: string[]) {
-    const treeButton = this.on((groups) =>
-      this.group(number)(groups).getByRole("button", "Add from tree")
+    const treeButton = this.on((card) =>
+      this.group(number)(card).getByRole("button", "Add from tree")
     );
     if ((await treeButton.getAttribute("aria-expanded")) !== "true")
       await treeButton.click();
     for (const ref of refs)
-      await this.on((groups) =>
-        this.group(number)(groups)
+      await this.on((card) =>
+        this.group(number)(card)
           .getByRole("tree", `Add targets to group ${number}`)
           .getByRole("treeitem")
           .filter({ hasText: new RegExp(`^${ref}(?!\\d)`) })
@@ -639,10 +671,7 @@ export class RunCard extends Part {
 
   /** `generate_locator`'s groups. */
   get locatorGroups(): LocatorGroups {
-    return new LocatorGroups(
-      this.tab,
-      this.inside((card) => card.getByRole("list", "Locator groups"))
-    );
+    return new LocatorGroups(this.tab, this.root);
   }
 
   /** `fill_form`'s form. */
@@ -939,9 +968,9 @@ async function readRun(
           toggle
             ?.querySelector('[title^="Not available to highlight:"]')
             ?.getAttribute("data-gone") === "true",
-        arguments: text(card.querySelector('[aria-label="Arguments"]')),
+        arguments: text(card.querySelector('figure[aria-label="Arguments"]')),
         interactions: [
-          ...card.querySelectorAll('[aria-label="Interactions"] > li'),
+          ...card.querySelectorAll('ol[aria-label="Interactions"] > li'),
         ].map((item) => {
           const [operation = "", value] = [
             ...item.querySelectorAll(":scope > span"),
@@ -952,7 +981,7 @@ async function readRun(
             ...(value === undefined ? {} : { value }),
           };
         }),
-        error: text(card.querySelector('[aria-label="Error"]')),
+        error: text(card.querySelector('[role="note"][aria-label="Error"]')),
         result: text(card.querySelector('figure[aria-label="Result"]')),
         earlierPage: [...card.querySelectorAll("*")].some(
           (element) => element.textContent === "Earlier page"
@@ -1017,12 +1046,17 @@ export class RunEntry {
     );
   }
 
-  /** Shows or hides its result, on a successful run that returned one. */
   /** Copies its result. */
   get copyResultButton(): On {
     return this.root.within((run) => run.getByRole("button", "Copy").first());
   }
 
+  /** What its card announces, such as "Copied" once a copy landed. */
+  get announced(): On {
+    return this.root.within((run) => run.getByRole("status").first());
+  }
+
+  /** Shows or hides its result, on a successful run that returned one. */
   get resultToggle(): On {
     return this.root.within((run) => run.getByRole("button", "Result").first());
   }
@@ -1152,9 +1186,10 @@ export class LayoutMenu extends Part {
 
   get menu(): On {
     // Named after its trigger, e.g. "Layout: Floating". Playwright's
-    // `{ name: "Layout" }` matched that as a substring; e2e matches whole names.
+    // `{ name: "Layout" }` matches that as a substring, case aside; e2e
+    // matches whole names, so the regex says the same.
     return this.tab.on((screen) =>
-      screen.getByRole("menu", { name: /^Layout: / })
+      screen.getByRole("menu", { name: /layout/i })
     );
   }
 

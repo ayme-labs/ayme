@@ -478,6 +478,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.compatibility_matrix != '[]'
     runs-on: ubuntu-latest
+    env:
+      # A lane's test:e2e can run an e2e suite, as the E2E job does.
+      E2E_TELEMETRY_DISABLED: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -541,6 +544,11 @@ jobs:
       - name: Install Chromium
         if: (matrix.e2e || matrix.browser)
         run: pnpm --filter ${{ matrix.package }} exec playwright install --with-deps chromium
+      # As in the E2E job: an e2e suite needs the browser of the Playwright its
+      # web engine pins.
+      - name: Install the e2e web engine's browser
+        if: matrix.e2e && hashFiles(format('{0}/e2e.config.ts', matrix.dir)) != ''
+        run: pnpm --dir ${{ matrix.dir }} exec e2e-web install chromium
       # pnpm 11 needs Node 22.13, so pnpm stays on this Node 24 while the
       # scripts it starts resolve `node` from PATH, which becomes the floor.
       - name: Keep pnpm on Node 24
