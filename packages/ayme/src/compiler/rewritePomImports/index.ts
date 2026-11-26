@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import ts from "typescript";
+import { ts, type TypeScript } from "../typescriptApi";
 
 type Replacement = {
   start: number;
@@ -9,9 +9,9 @@ type Replacement = {
 };
 
 type ResolvedImport = {
-  element: ts.ImportSpecifier;
+  element: TypeScript.ImportSpecifier;
   importedName: string;
-  definingFile: ts.SourceFile;
+  definingFile: TypeScript.SourceFile;
 };
 
 /**
@@ -21,7 +21,7 @@ type ResolvedImport = {
 export function rewritePomImports(
   code: string,
   fileName: string,
-  program: ts.Program
+  program: TypeScript.Program
 ) {
   const sourceFile = ts.createSourceFile(
     fileName,
@@ -51,13 +51,15 @@ export function rewritePomImports(
   return applyReplacements(code, replacements);
 }
 
-type LocalNamedImport = ts.ImportDeclaration & {
-  importClause: ts.ImportClause & { namedBindings: ts.NamedImports };
-  moduleSpecifier: ts.StringLiteral;
+type LocalNamedImport = TypeScript.ImportDeclaration & {
+  importClause: TypeScript.ImportClause & {
+    namedBindings: TypeScript.NamedImports;
+  };
+  moduleSpecifier: TypeScript.StringLiteral;
 };
 
 function isNamedLocalImport(
-  declaration: ts.ImportDeclaration
+  declaration: TypeScript.ImportDeclaration
 ): declaration is LocalNamedImport {
   const clause = declaration.importClause;
   return (
@@ -69,9 +71,9 @@ function isNamedLocalImport(
 
 function replacementFor(
   declaration: LocalNamedImport,
-  sourceFile: ts.SourceFile,
-  program: ts.Program,
-  checker: ts.TypeChecker,
+  sourceFile: TypeScript.SourceFile,
+  program: TypeScript.Program,
+  checker: TypeScript.TypeChecker,
   containingFileName: string
 ): Replacement | undefined {
   const clause = declaration.importClause;
@@ -180,9 +182,9 @@ function replacementFor(
 }
 
 function definingSourceFile(
-  symbol: ts.Symbol,
-  checker: ts.TypeChecker
-): ts.SourceFile | undefined {
+  symbol: TypeScript.Symbol,
+  checker: TypeScript.TypeChecker
+): TypeScript.SourceFile | undefined {
   const resolved = aliasedSymbol(symbol, checker);
   if (resolved.flags & ts.SymbolFlags.Module) return undefined;
   const files = [
@@ -195,19 +197,22 @@ function definingSourceFile(
   return files.length === 1 ? files[0] : undefined;
 }
 
-function aliasedSymbol(symbol: ts.Symbol, checker: ts.TypeChecker) {
+function aliasedSymbol(
+  symbol: TypeScript.Symbol,
+  checker: TypeScript.TypeChecker
+) {
   return symbol.flags & ts.SymbolFlags.Alias
     ? checker.getAliasedSymbol(symbol)
     : symbol;
 }
 
 function importDeclarationUsesExport(
-  sourceFile: ts.SourceFile,
+  sourceFile: TypeScript.SourceFile,
   exportName: string,
-  statement: ts.ImportDeclaration,
-  checker: ts.TypeChecker,
-  importedFile?: ts.SourceFile,
-  program?: ts.Program,
+  statement: TypeScript.ImportDeclaration,
+  checker: TypeScript.TypeChecker,
+  importedFile?: TypeScript.SourceFile,
+  program?: TypeScript.Program,
   visited?: Set<string>
 ) {
   const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
@@ -265,11 +270,11 @@ function importDeclarationUsesExport(
 }
 
 function taintedImportReferencesExport(
-  declarations: readonly ts.Declaration[],
-  binding: ts.Symbol | undefined,
-  importedFile: ts.SourceFile | undefined,
-  program: ts.Program | undefined,
-  checker: ts.TypeChecker,
+  declarations: readonly TypeScript.Declaration[],
+  binding: TypeScript.Symbol | undefined,
+  importedFile: TypeScript.SourceFile | undefined,
+  program: TypeScript.Program | undefined,
+  checker: TypeScript.TypeChecker,
   visited?: Set<string>,
   importedName?: string
 ) {
@@ -292,12 +297,12 @@ function taintedImportReferencesExport(
 }
 
 function declarationReferences(
-  declaration: ts.Node,
-  symbol: ts.Symbol,
-  checker: ts.TypeChecker
+  declaration: TypeScript.Node,
+  symbol: TypeScript.Symbol,
+  checker: TypeScript.TypeChecker
 ) {
   let found = false;
-  const visit = (node: ts.Node) => {
+  const visit = (node: TypeScript.Node) => {
     if (found) return;
     if (
       ts.isIdentifier(node) &&
@@ -313,9 +318,9 @@ function declarationReferences(
 }
 
 function sameSymbol(
-  left: ts.Symbol | undefined,
-  right: ts.Symbol,
-  checker: ts.TypeChecker
+  left: TypeScript.Symbol | undefined,
+  right: TypeScript.Symbol,
+  checker: TypeScript.TypeChecker
 ) {
   if (!left) return false;
   if (left === right) return true;
@@ -334,7 +339,7 @@ function sameSymbol(
   );
 }
 
-function declarationFiles(symbol: ts.Symbol) {
+function declarationFiles(symbol: TypeScript.Symbol) {
   return [
     ...new Set(
       (symbol.declarations ?? []).map((declaration) =>
@@ -345,7 +350,7 @@ function declarationFiles(symbol: ts.Symbol) {
 }
 
 function exportDeclarationExportsName(
-  statement: ts.ExportDeclaration,
+  statement: TypeScript.ExportDeclaration,
   exportName: string
 ) {
   if (!statement.exportClause) return exportName;
@@ -358,9 +363,9 @@ function exportDeclarationExportsName(
 }
 
 function hasPlaywrightRuntimeEdge(
-  sourceFile: ts.SourceFile,
-  program: ts.Program,
-  checker: ts.TypeChecker,
+  sourceFile: TypeScript.SourceFile,
+  program: TypeScript.Program,
+  checker: TypeScript.TypeChecker,
   exportName?: string,
   visited = new Set<string>()
 ): boolean {
@@ -492,7 +497,7 @@ function hasPlaywrightRuntimeEdge(
   return false;
 }
 
-function importDeclarationIsRuntime(statement: ts.ImportDeclaration) {
+function importDeclarationIsRuntime(statement: TypeScript.ImportDeclaration) {
   const clause = statement.importClause;
   if (!clause) return true;
   if (clause.isTypeOnly) return false;
@@ -503,7 +508,7 @@ function importDeclarationIsRuntime(statement: ts.ImportDeclaration) {
   );
 }
 
-function exportDeclarationIsRuntime(statement: ts.ExportDeclaration) {
+function exportDeclarationIsRuntime(statement: TypeScript.ExportDeclaration) {
   if (statement.isTypeOnly) return false;
   return !(
     statement.exportClause &&
@@ -515,7 +520,7 @@ function exportDeclarationIsRuntime(statement: ts.ExportDeclaration) {
 function moduleSourceFile(
   specifier: string,
   containingFileName: string,
-  program: ts.Program
+  program: TypeScript.Program
 ) {
   const resolved = resolveModuleFileName(
     specifier,
@@ -528,7 +533,7 @@ function moduleSourceFile(
 function resolveModuleFileName(
   specifier: string,
   containingFileName: string,
-  program: ts.Program
+  program: TypeScript.Program
 ) {
   const resolved = ts.resolveModuleName(
     specifier,
@@ -539,11 +544,15 @@ function resolveModuleFileName(
   return resolved ? path.resolve(resolved.resolvedFileName) : undefined;
 }
 
-function isRelativeSpecifier(node: ts.Expression): node is ts.StringLiteral {
+function isRelativeSpecifier(
+  node: TypeScript.Expression
+): node is TypeScript.StringLiteral {
   return ts.isStringLiteral(node) && node.text.startsWith(".");
 }
 
-function isPlaywrightSpecifier(node: ts.Expression): node is ts.StringLiteral {
+function isPlaywrightSpecifier(
+  node: TypeScript.Expression
+): node is TypeScript.StringLiteral {
   return (
     ts.isStringLiteral(node) &&
     (node.text === "playwright" || node.text === "@playwright/test")
@@ -562,7 +571,7 @@ function relativeSpecifier(fromFileName: string, toFileName: string) {
 }
 
 function renderImport(
-  clause: ts.ImportClause,
+  clause: TypeScript.ImportClause,
   imports: ResolvedImport[],
   moduleSpecifier: string,
   quote: "'" | '"'

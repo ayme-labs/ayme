@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import ts from "typescript";
+import { ts, type TypeScript } from "./typescriptApi";
 
 import { rootlessClassRefusals } from "../page-objects/domain";
 import type {
@@ -53,7 +53,7 @@ export function derivePomManifests(
  */
 export function derivePomManifestsFromProgram(
   fileName: string,
-  program: ts.Program,
+  program: TypeScript.Program,
   onSkipped?: (methods: SkippedPomMethod[]) => void,
   { parameters = true }: { parameters?: boolean } = {}
 ): PomManifest[] {
@@ -67,7 +67,7 @@ export function derivePomManifestsFromProgram(
   const checker = program.getTypeChecker();
   const manifests: PomManifest[] = [];
   // A class can be both a top-level Page Object and a Child.
-  const reported = new Set<ts.ClassDeclaration>();
+  const reported = new Set<TypeScript.ClassDeclaration>();
 
   for (const declaration of sourceFile.statements) {
     if (
@@ -128,7 +128,7 @@ export function derivePomManifestsFromProgram(
 /** A Page Object Child, and the class it is an instance of. */
 type PomChild = {
   member: PomMemberManifest;
-  declaration?: ts.ClassDeclaration;
+  declaration?: TypeScript.ClassDeclaration;
 };
 
 /**
@@ -141,15 +141,19 @@ type MemberRole =
   | { role: "child"; child: PomChild }
   | {
       role: "action";
-      member: ts.MethodDeclaration;
+      member: TypeScript.MethodDeclaration;
       methodName: string;
       description: ToolDescription;
     }
-  | { role: "method"; member: ts.MethodDeclaration; methodName: string };
+  | {
+      role: "method";
+      member: TypeScript.MethodDeclaration;
+      methodName: string;
+    };
 
 function memberRole(
-  checker: ts.TypeChecker,
-  member: ts.ClassElement
+  checker: TypeScript.TypeChecker,
+  member: TypeScript.ClassElement
 ): MemberRole | undefined {
   if (!isPublicInstanceMember(member)) return undefined;
   if (!member.name || !ts.isIdentifier(member.name)) return undefined;
@@ -174,14 +178,14 @@ type ChildMarker = "child" | "collection";
 /** A member's `@ayme.child` or `@ayme.collection`, and whom errors name. */
 type ChildDeclaration = {
   marker: ChildMarker;
-  decorator: ts.Decorator;
+  decorator: TypeScript.Decorator;
   memberName: string;
   /** `Page Object Child <declaring class>.<member>`. */
   owner: string;
 };
 
 function childDeclaration(
-  member: ts.ClassElement,
+  member: TypeScript.ClassElement,
   memberName: string
 ): ChildDeclaration | undefined {
   const decorated = overloadImplementation(member);
@@ -217,7 +221,9 @@ function childDeclaration(
  * The implementation of an overloaded method, which carries its decorators;
  * any other member itself.
  */
-function overloadImplementation(member: ts.ClassElement): ts.ClassElement {
+function overloadImplementation(
+  member: TypeScript.ClassElement
+): TypeScript.ClassElement {
   if (
     // Stryker disable next-line ConditionalExpression,LogicalOperator: equivalent, it only skips a search that finds no other implementation.
     !ts.isMethodDeclaration(member) ||
@@ -245,8 +251,8 @@ function overloadImplementation(member: ts.ClassElement): ts.ClassElement {
  * `readonly T[]` of a Page Object. Anything else fails the build.
  */
 function declaredChild(
-  checker: ts.TypeChecker,
-  member: ts.ClassElement,
+  checker: TypeScript.TypeChecker,
+  member: TypeScript.ClassElement,
   { marker, decorator, memberName, owner }: ChildDeclaration
 ): PomChild {
   const fail = (problem: string) =>
@@ -280,10 +286,10 @@ function declaredChild(
 
 /** What `declaredChild` checks a member's type against. */
 type DeclaredChild = {
-  checker: ts.TypeChecker;
-  member: ts.ClassElement;
+  checker: TypeScript.TypeChecker;
+  member: TypeScript.ClassElement;
   memberName: string;
-  type: ts.Type;
+  type: TypeScript.Type;
   typeText: string;
   /** Whether a method's signature without arguments, if any, takes them. */
   takesParameters?: boolean;
@@ -292,7 +298,7 @@ type DeclaredChild = {
   described: { description?: string };
   collection: boolean;
   /** The Page Object the member's array or promised array holds. */
-  itemsDeclaration: ts.ClassDeclaration | undefined;
+  itemsDeclaration: TypeScript.ClassDeclaration | undefined;
 };
 
 /** A Child Collection method: `@ayme.collection` returning Page Objects. */
@@ -410,8 +416,8 @@ function declaredChildValue(
  * member is named by, and one on a setter, which holds no child to read.
  */
 function rejectUnsupportedChildDeclarations(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration
 ) {
   for (const member of declaration.members) {
     if (!hasChildMarker(member)) continue;
@@ -438,7 +444,7 @@ function rejectUnsupportedChildDeclarations(
 }
 
 /** Whether a member is marked `@ayme.child` or `@ayme.collection`. */
-function hasChildMarker(member: ts.ClassElement) {
+function hasChildMarker(member: TypeScript.ClassElement) {
   return (
     ts.canHaveDecorators(member) ? (ts.getDecorators(member) ?? []) : []
   ).some(
@@ -449,7 +455,7 @@ function hasChildMarker(member: ts.ClassElement) {
 }
 
 /** What keeps a member from being a public instance member, if anything. */
-function nonPublicVisibility(member: ts.ClassElement) {
+function nonPublicVisibility(member: TypeScript.ClassElement) {
   if (member.name && ts.isPrivateIdentifier(member.name)) return "private";
   const modifiers = ts.canHaveModifiers(member)
     ? // Stryker disable next-line ArrayDeclaration: equivalent, no modifier matches an item that is not one.
@@ -469,22 +475,22 @@ function nonPublicVisibility(member: ts.ClassElement) {
  * A member's name as errors show it: `#row`, `"row"` or `["row"]` too. A
  * member with decorators always has one.
  */
-function childMemberName(member: ts.ClassElement) {
+function childMemberName(member: TypeScript.ClassElement) {
   return member.name!.getText();
 }
 
 /** `any`, `unknown`, or a type the program could not resolve. */
-function isUnresolvedType(type: ts.Type) {
+function isUnresolvedType(type: TypeScript.Type) {
   return (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) !== 0;
 }
 
-function awaitedType(checker: ts.TypeChecker, type: ts.Type) {
+function awaitedType(checker: TypeScript.TypeChecker, type: TypeScript.Type) {
   if (!isNamedType(type, "Promise")) return type;
-  return checker.getTypeArguments(type as ts.TypeReference)[0] ?? type;
+  return checker.getTypeArguments(type as TypeScript.TypeReference)[0] ?? type;
 }
 
 /** The item type of an array or read-only array, awaited first. */
-function itemsType(checker: ts.TypeChecker, type: ts.Type) {
+function itemsType(checker: TypeScript.TypeChecker, type: TypeScript.Type) {
   const value = awaitedType(checker, type);
   if (!checker.isArrayType(value)) return undefined;
   return checker.getIndexTypeOfType(value, ts.IndexKind.Number);
@@ -497,8 +503,8 @@ type RootState = "declared" | "undeclared" | "unreadable";
  * inline object literals are read; anything else is left to the runtime.
  */
 function rootState(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration
 ): RootState {
   const states: RootState[] = [];
   for (const decorator of ts.getDecorators(declaration) ?? []) {
@@ -550,7 +556,7 @@ function rootState(
       states.push("unreadable");
     else
       for (const base of bases)
-        states.push(rootState(checker, base as ts.ClassDeclaration));
+        states.push(rootState(checker, base as TypeScript.ClassDeclaration));
   }
   return states.includes("declared")
     ? "declared"
@@ -560,8 +566,8 @@ function rootState(
 }
 
 /** Whether the node, or an enclosing namespace, is declared with `declare`. */
-function isAmbient(node: ts.Node): boolean {
-  for (let n: ts.Node | undefined = node; n; n = n.parent) {
+function isAmbient(node: TypeScript.Node): boolean {
+  for (let n: TypeScript.Node | undefined = node; n; n = n.parent) {
     if (
       ts.canHaveModifiers(n) &&
       ts.getModifiers(n)?.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword)
@@ -572,8 +578,8 @@ function isAmbient(node: ts.Node): boolean {
 }
 
 function skippedMethods(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration
 ): SkippedPomMethod[] {
   return classMembers(checker, declaration).flatMap((member) => {
     const role = memberRole(checker, member);
@@ -598,15 +604,18 @@ function skippedMethods(
  * member order. Without `withParameters`, each tool lists no parameters.
  */
 function classManifest(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration,
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration,
   withParameters: boolean
-): { manifest: PomComponentManifest; references: ts.ClassDeclaration[] } {
+): {
+  manifest: PomComponentManifest;
+  references: TypeScript.ClassDeclaration[];
+} {
   const className = declaration.name!.text;
   const members: PomMemberManifest[] = [];
   const tools: ToolManifest[] = [];
-  const childReferences: ts.ClassDeclaration[] = [];
-  const returnReferences: ts.ClassDeclaration[] = [];
+  const childReferences: TypeScript.ClassDeclaration[] = [];
+  const returnReferences: TypeScript.ClassDeclaration[] = [];
 
   rejectUnsupportedChildDeclarations(checker, declaration);
   for (const member of classMembers(checker, declaration)) {
@@ -658,7 +667,7 @@ function classManifest(
  * runs from, and files of two packages, or of two installed versions of one,
  * never share one. A build embeds no machine-specific path.
  */
-function declaringFile(declaration: ts.ClassDeclaration) {
+function declaringFile(declaration: TypeScript.ClassDeclaration) {
   const fileName = path.resolve(declaration.getSourceFile().fileName);
   const pkg = namedPackage(path.dirname(fileName));
   const relative = path
@@ -698,12 +707,15 @@ function namedPackage(dir: string): NamedPackage {
  * depth-first walk first reaches it.
  */
 function reachableComponents(
-  checker: ts.TypeChecker,
-  references: readonly ts.ClassDeclaration[],
+  checker: TypeScript.TypeChecker,
+  references: readonly TypeScript.ClassDeclaration[],
   withParameters: boolean
 ) {
-  const components = new Map<ts.ClassDeclaration, PomComponentManifest>();
-  const visit = (declarations: readonly ts.ClassDeclaration[]) => {
+  const components = new Map<
+    TypeScript.ClassDeclaration,
+    PomComponentManifest
+  >();
+  const visit = (declarations: readonly TypeScript.ClassDeclaration[]) => {
     for (const declaration of declarations) {
       if (components.has(declaration)) continue;
       const { manifest, references } = classManifest(
@@ -725,8 +737,8 @@ function reachableComponents(
  * other class's tools.
  */
 function rejectSameNamedClasses(
-  page: ts.ClassDeclaration,
-  components: Iterable<ts.ClassDeclaration>
+  page: TypeScript.ClassDeclaration,
+  components: Iterable<TypeScript.ClassDeclaration>
 ) {
   const pageName = page.name!.text;
   const byName = new Map([[pageName, page]]);
@@ -747,9 +759,9 @@ function rejectSameNamedClasses(
 }
 
 function classMembers(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
-): ts.ClassElement[] {
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration
+): TypeScript.ClassElement[] {
   const type = declaredClassType(checker, declaration);
   if (!type) return [];
 
@@ -760,10 +772,14 @@ function classMembers(
 }
 
 function memberValueInfo(
-  checker: ts.TypeChecker,
-  member: ts.ClassElement
+  checker: TypeScript.TypeChecker,
+  member: TypeScript.ClassElement
 ):
-  | { access: PomMemberAccess; type: ts.Type; takesParameters?: boolean }
+  | {
+      access: PomMemberAccess;
+      type: TypeScript.Type;
+      takesParameters?: boolean;
+    }
   | undefined {
   if (ts.isPropertyDeclaration(member)) {
     return { access: "field", type: checker.getTypeAtLocation(member.name) };
@@ -790,8 +806,8 @@ function memberValueInfo(
  * overloaded method is called by its overloads, not its implementation.
  */
 function callableSignature(
-  checker: ts.TypeChecker,
-  member: ts.MethodDeclaration
+  checker: TypeScript.TypeChecker,
+  member: TypeScript.MethodDeclaration
 ) {
   const signatures = checker.getTypeAtLocation(member.name).getCallSignatures();
   return (
@@ -801,8 +817,8 @@ function callableSignature(
 }
 
 function returnPomClassDeclarations(
-  checker: ts.TypeChecker,
-  declaration: ts.MethodDeclaration
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.MethodDeclaration
 ) {
   const signature = checker.getSignatureFromDeclaration(declaration);
   if (!signature) return [];
@@ -813,15 +829,15 @@ function returnPomClassDeclarations(
 }
 
 function returnPomDeclarations(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen = new Set<ts.Type>()
-): ts.ClassDeclaration[] {
+  checker: TypeScript.TypeChecker,
+  type: TypeScript.Type,
+  seen = new Set<TypeScript.Type>()
+): TypeScript.ClassDeclaration[] {
   if (seen.has(type)) return [];
   seen.add(type);
 
   if (isNamedType(type, "Promise")) {
-    const value = checker.getTypeArguments(type as ts.TypeReference)[0];
+    const value = checker.getTypeArguments(type as TypeScript.TypeReference)[0];
     return value ? returnPomDeclarations(checker, value, seen) : [];
   }
   if (type.isUnion()) {
@@ -833,10 +849,10 @@ function returnPomDeclarations(
 }
 
 function componentDeclaration(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  member: ts.ClassElement
-): ts.ClassDeclaration | undefined {
+  checker: TypeScript.TypeChecker,
+  type: TypeScript.Type,
+  member: TypeScript.ClassElement
+): TypeScript.ClassDeclaration | undefined {
   const candidates = pomDeclarations(checker, type);
   // A subclass and its ancestor do not compete: `Sub & Base` is a `Sub`.
   const declarations = candidates.filter(
@@ -855,14 +871,14 @@ function componentDeclaration(
 }
 
 function pomDeclarations(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  seen = new Set<ts.Type>()
-): ts.ClassDeclaration[] {
+  checker: TypeScript.TypeChecker,
+  type: TypeScript.Type,
+  seen = new Set<TypeScript.Type>()
+): TypeScript.ClassDeclaration[] {
   if (seen.has(type)) return [];
   seen.add(type);
 
-  const declarations = new Set<ts.ClassDeclaration>();
+  const declarations = new Set<TypeScript.ClassDeclaration>();
   for (const symbol of [type.getSymbol(), type.aliasSymbol]) {
     for (const declaration of symbol?.declarations ?? []) {
       if (
@@ -885,12 +901,12 @@ function pomDeclarations(
   return [...declarations];
 }
 
-function isNamedType(type: ts.Type, name: string) {
+function isNamedType(type: TypeScript.Type, name: string) {
   const symbol = type.getSymbol();
   return symbol?.getName() === name;
 }
 
-function isPublicInstanceMember(member: ts.ClassElement) {
+function isPublicInstanceMember(member: TypeScript.ClassElement) {
   if (
     !ts.isPropertyDeclaration(member) &&
     !ts.isGetAccessorDeclaration(member) &&
@@ -908,7 +924,7 @@ function isPublicInstanceMember(member: ts.ClassElement) {
   );
 }
 
-function isLocatorType(type: ts.Type) {
+function isLocatorType(type: TypeScript.Type) {
   const symbol = type.aliasSymbol ?? type.getSymbol();
   return symbol?.getName() === "Locator";
 }
@@ -918,8 +934,8 @@ function isLocatorType(type: ts.Type) {
  * `@ayme`.
  */
 function isPomClass(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration
 ): boolean {
   return (
     findClassMarker(declaration) !== undefined ||
@@ -930,9 +946,9 @@ function isPomClass(
 }
 
 function isAncestorClass(
-  checker: ts.TypeChecker,
-  ancestor: ts.ClassDeclaration,
-  declaration: ts.ClassDeclaration
+  checker: TypeScript.TypeChecker,
+  ancestor: TypeScript.ClassDeclaration,
+  declaration: TypeScript.ClassDeclaration
 ): boolean {
   return baseClassDeclarations(checker, declaration).some(
     (base) => base === ancestor || isAncestorClass(checker, ancestor, base)
@@ -941,9 +957,9 @@ function isAncestorClass(
 
 // TypeScript rejects circular `extends`, so walking base classes terminates.
 function baseClassDeclarations(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
-): ts.ClassDeclaration[] {
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration
+): TypeScript.ClassDeclaration[] {
   const type = declaredClassType(checker, declaration);
   if (!type?.isClassOrInterface()) return [];
   return checker
@@ -954,8 +970,8 @@ function baseClassDeclarations(
 }
 
 function declaredClassType(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration
 ) {
   if (!declaration.name) return undefined;
   const symbol = checker.getSymbolAtLocation(declaration.name);
@@ -967,17 +983,21 @@ function declaredClassType(
  * `@ayme({ ... })`, `ayme.action` for both `@ayme.action` and
  * `@ayme.action({ ... })`.
  */
-function decoratorTarget(decorator: ts.Decorator) {
+function decoratorTarget(decorator: TypeScript.Decorator) {
   const expression = decorator.expression;
   return ts.isCallExpression(expression) ? expression.expression : expression;
 }
 
-function isMarker(decorator: ts.Decorator, name: string) {
+function isMarker(decorator: TypeScript.Decorator, name: string) {
   const target = decoratorTarget(decorator);
   return ts.isIdentifier(target) && target.text === name;
 }
 
-function isMemberMarker(decorator: ts.Decorator, name: string, member: string) {
+function isMemberMarker(
+  decorator: TypeScript.Decorator,
+  name: string,
+  member: string
+) {
   const target = decoratorTarget(decorator);
   return (
     ts.isPropertyAccessExpression(target) &&
@@ -987,7 +1007,7 @@ function isMemberMarker(decorator: ts.Decorator, name: string, member: string) {
   );
 }
 
-function findClassMarker(declaration: ts.ClassDeclaration) {
+function findClassMarker(declaration: TypeScript.ClassDeclaration) {
   return (ts.getDecorators(declaration) ?? []).find((decorator) =>
     isMarker(decorator, "ayme")
   );
@@ -998,8 +1018,8 @@ function findClassMarker(declaration: ts.ClassDeclaration) {
  * constant string; `owner` names the class or action in the error otherwise.
  */
 function decoratorDescription(
-  checker: ts.TypeChecker,
-  decorator: ts.Decorator,
+  checker: TypeScript.TypeChecker,
+  decorator: TypeScript.Decorator,
   owner: string
 ) {
   return decoratorOption(checker, decorator, {
@@ -1017,8 +1037,8 @@ function decoratorDescription(
  * since a mark the build cannot read would be lost without a word.
  */
 function decoratorDestructive(
-  checker: ts.TypeChecker,
-  decorator: ts.Decorator,
+  checker: TypeScript.TypeChecker,
+  decorator: TypeScript.Decorator,
   owner: string
 ) {
   const argument = ts.isCallExpression(decorator.expression)
@@ -1049,8 +1069,8 @@ function decoratorDestructive(
  * read it, or when it may come from a spread or a computed key.
  */
 function decoratorOption<T>(
-  checker: ts.TypeChecker,
-  decorator: ts.Decorator,
+  checker: TypeScript.TypeChecker,
+  decorator: TypeScript.Decorator,
   {
     key,
     named,
@@ -1060,7 +1080,7 @@ function decoratorOption<T>(
     key: string;
     /** The option in the errors, such as `The description of <owner>`. */
     named: string;
-    value: (expression: ts.Expression) => T | undefined;
+    value: (expression: TypeScript.Expression) => T | undefined;
     /** What `value` reads, in the error. */
     expected: string;
   }
@@ -1068,7 +1088,7 @@ function decoratorOption<T>(
   const options = optionsArgument(decorator);
   if (!options || !ts.isObjectLiteralExpression(options)) return undefined;
   // The last element that sets the option wins.
-  let last: ts.ObjectLiteralElementLike | undefined;
+  let last: TypeScript.ObjectLiteralElementLike | undefined;
   let readable = false;
   for (const element of options.properties) {
     const sets = setsOption(checker, element, key);
@@ -1093,7 +1113,11 @@ function decoratorOption<T>(
  * Whether a value of `type` may have `key`: it is `any` or `unknown`, a branch
  * of a union has it, or an index signature accepts it.
  */
-function mayHave(checker: ts.TypeChecker, type: ts.Type, key: string): boolean {
+function mayHave(
+  checker: TypeScript.TypeChecker,
+  type: TypeScript.Type,
+  key: string
+): boolean {
   if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return true;
   const keyType = checker.getStringLiteralType(key);
   return (type.isUnion() ? type.types : [type]).some(
@@ -1110,8 +1134,8 @@ function mayHave(checker: ts.TypeChecker, type: ts.Type, key: string): boolean {
  * it wraps in parentheses or casts, since a cast can hide the option.
  */
 function mayHold(
-  checker: ts.TypeChecker,
-  expression: ts.Expression,
+  checker: TypeScript.TypeChecker,
+  expression: TypeScript.Expression,
   key: string
 ): boolean {
   if (mayHave(checker, checker.getTypeAtLocation(expression), key)) return true;
@@ -1120,7 +1144,9 @@ function mayHold(
 }
 
 /** A decorator call's options argument, without its parentheses and casts. */
-function optionsArgument(decorator: ts.Decorator): ts.Expression | undefined {
+function optionsArgument(
+  decorator: TypeScript.Decorator
+): TypeScript.Expression | undefined {
   if (!ts.isCallExpression(decorator.expression)) return undefined;
   const options = decorator.expression.arguments[0];
   return options && unwrapped(options);
@@ -1131,8 +1157,8 @@ function optionsArgument(decorator: ts.Decorator): ts.Expression | undefined {
  * it, and a computed key whose value the type checker can't tell.
  */
 function setsOption(
-  checker: ts.TypeChecker,
-  element: ts.ObjectLiteralElementLike,
+  checker: TypeScript.TypeChecker,
+  element: TypeScript.ObjectLiteralElementLike,
   key: string
 ): "yes" | "no" | "maybe" {
   if (ts.isSpreadAssignment(element))
@@ -1153,13 +1179,15 @@ function setsOption(
 }
 
 /** `expression` without the parentheses, `as`, `satisfies` and `!` that leave its value as it is. */
-function unwrapped(expression: ts.Expression): ts.Expression {
+function unwrapped(expression: TypeScript.Expression): TypeScript.Expression {
   const inner = wrapped(expression);
   return inner ? unwrapped(inner) : expression;
 }
 
 /** What one layer of parentheses, `as`, `satisfies` or `!` wraps, if `expression` is one. */
-function wrapped(expression: ts.Expression): ts.Expression | undefined {
+function wrapped(
+  expression: TypeScript.Expression
+): TypeScript.Expression | undefined {
   return ts.isParenthesizedExpression(expression) ||
     ts.isAsExpression(expression) ||
     ts.isSatisfiesExpression(expression) ||
@@ -1169,7 +1197,9 @@ function wrapped(expression: ts.Expression): ts.Expression | undefined {
     : undefined;
 }
 
-function constantBoolean(expression: ts.Expression): boolean | undefined {
+function constantBoolean(
+  expression: TypeScript.Expression
+): boolean | undefined {
   const inner = unwrapped(expression);
   if (inner.kind === ts.SyntaxKind.TrueKeyword) return true;
   if (inner.kind === ts.SyntaxKind.FalseKeyword) return false;
@@ -1180,7 +1210,7 @@ function constantBoolean(expression: ts.Expression): boolean | undefined {
  * The value of a string literal, a template literal without substitutions, or
  * a `+` concatenation of those, if `expression` is one.
  */
-function constantString(outer: ts.Expression): string | undefined {
+function constantString(outer: TypeScript.Expression): string | undefined {
   const expression = unwrapped(outer);
   if (ts.isStringLiteralLike(expression)) return expression.text;
   if (
@@ -1199,8 +1229,8 @@ function constantString(outer: ts.Expression): string | undefined {
  * the nearest base class that does, as `root` and `present` are inherited.
  */
 function classDescription(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration
 ): { description?: string } {
   const marker = findClassMarker(declaration);
   const description =
@@ -1220,8 +1250,8 @@ function classDescription(
  * names, not a type-only base a merged interface adds.
  */
 function extendedClassDeclaration(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration
 ) {
   const base = declaration.heritageClauses?.find(
     (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
@@ -1238,8 +1268,8 @@ function extendedClassDeclaration(
 type ToolDescription = { authored?: string; destructive?: true };
 
 function toolDescription(
-  checker: ts.TypeChecker,
-  declaration: ts.MethodDeclaration,
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.MethodDeclaration,
   methodName: string
 ): ToolDescription | undefined {
   const marker = (ts.getDecorators(declaration) ?? []).find((decorator) =>
@@ -1265,8 +1295,8 @@ function toolDescription(
  * parts are input fields. Two fields of one input never share a key.
  */
 function toolParameters(
-  checker: ts.TypeChecker,
-  method: ts.MethodDeclaration,
+  checker: TypeScript.TypeChecker,
+  method: TypeScript.MethodDeclaration,
   className: string,
   methodName: string
 ): ToolParameter[] {
@@ -1298,8 +1328,8 @@ function toolParameters(
 }
 
 function toolParameter(
-  checker: ts.TypeChecker,
-  parameter: ts.ParameterDeclaration,
+  checker: TypeScript.TypeChecker,
+  parameter: TypeScript.ParameterDeclaration,
   className: string,
   methodName: string
 ): ToolParameter {
@@ -1346,7 +1376,7 @@ function toolParameter(
 }
 
 /** The property names an object pattern binds, a rest binding aside. */
-function boundKeys(pattern: ts.ObjectBindingPattern): string[] {
+function boundKeys(pattern: TypeScript.ObjectBindingPattern): string[] {
   return pattern.elements.flatMap((element) => {
     if (element.dotDotDotToken) return [];
     const key = element.propertyName ?? element.name;
@@ -1359,7 +1389,7 @@ function boundKeys(pattern: ts.ObjectBindingPattern): string[] {
 /** The refusal of an object pattern whose `untyped` bindings have no type. */
 function untypedBindings(
   context: SchemaContext,
-  parameter: ts.ParameterDeclaration,
+  parameter: TypeScript.ParameterDeclaration,
   untyped: readonly string[]
 ) {
   const names = untyped.join(", ").replace(/, ([^,]*)$/, " and $1");
@@ -1380,9 +1410,9 @@ function untypedBindings(
  */
 function objectPatternFields(
   context: SchemaContext,
-  parameter: ts.ParameterDeclaration,
-  pattern: ts.ObjectBindingPattern,
-  type: ts.Type
+  parameter: TypeScript.ParameterDeclaration,
+  pattern: TypeScript.ObjectBindingPattern,
+  type: TypeScript.Type
 ): NamedToolParameter[] {
   // An unannotated pattern has no type of its own: TypeScript 6 types it
   // `{}`, which the check below finds, and TypeScript 5 gives each binding
@@ -1435,9 +1465,9 @@ function objectPatternFields(
  */
 function arrayPatternFields(
   context: SchemaContext,
-  parameter: ts.ParameterDeclaration,
-  pattern: ts.ArrayBindingPattern,
-  type: ts.Type
+  parameter: TypeScript.ParameterDeclaration,
+  pattern: TypeScript.ArrayBindingPattern,
+  type: TypeScript.Type
 ): NamedToolParameter[] {
   const { checker } = context;
   // A union, of tuples or arrays, gives its elements no one type each.
@@ -1445,7 +1475,7 @@ function arrayPatternFields(
   if (arrayType.isUnion() || !checker.isArrayLikeType(arrayType))
     throw unsupportedInputType(context, arrayType, context.parameter);
   const flags = checker.isTupleType(arrayType)
-    ? (arrayType as ts.TupleTypeReference).target.elementFlags
+    ? (arrayType as TypeScript.TupleTypeReference).target.elementFlags
     : undefined;
   const unnamed = (index: number, why: string) =>
     new UnsupportedParameterError(
@@ -1491,12 +1521,14 @@ function arrayPatternFields(
 }
 
 /** A destructured parameter as the source declares it, e.g. `[x, y]: Point`. */
-function patternLabel(parameter: ts.ParameterDeclaration) {
+function patternLabel(parameter: TypeScript.ParameterDeclaration) {
   return `${parameter.name.getText()}${parameter.type ? `: ${parameter.type.getText()}` : ""}`;
 }
 
 /** The value of a literal default (`"a"`, `3`, `-1`, `true`), if it is one. */
-function literalDefault(initializer: ts.Expression): JsonPrimitive | undefined {
+function literalDefault(
+  initializer: TypeScript.Expression
+): JsonPrimitive | undefined {
   if (ts.isStringLiteralLike(initializer)) return initializer.text;
   if (ts.isNumericLiteral(initializer)) return Number(initializer.text);
   if (
@@ -1512,19 +1544,19 @@ function literalDefault(initializer: ts.Expression): JsonPrimitive | undefined {
 }
 
 type SchemaContext = {
-  checker: ts.TypeChecker;
+  checker: TypeScript.TypeChecker;
   className: string;
   methodName: string;
   /** The parameter being described, as its declaration names it. */
   parameter: string;
-  declaration: ts.ParameterDeclaration;
+  declaration: TypeScript.ParameterDeclaration;
   /** The object types being described, outermost first. */
-  enclosing: Set<ts.Type>;
+  enclosing: Set<TypeScript.Type>;
 };
 
 function schemaForType(
   context: SchemaContext,
-  type: ts.Type,
+  type: TypeScript.Type,
   parameterName: string
 ): JsonSchema {
   if (type.isUnion()) return unionSchema(context, type, parameterName);
@@ -1560,7 +1592,7 @@ function schemaForType(
  */
 function unionSchema(
   context: SchemaContext,
-  type: ts.UnionType,
+  type: TypeScript.UnionType,
   parameterName: string
 ): JsonSchema {
   const members = type.types.filter(
@@ -1601,19 +1633,23 @@ function unionSchema(
 
 function objectSchemaForType(
   context: SchemaContext,
-  type: ts.Type,
+  type: TypeScript.Type,
   parameterName: string
 ): JsonSchema {
   const { checker } = context;
   if (checker.isArrayType(type)) {
-    const [item] = checker.getTypeArguments(type as ts.TypeReference);
+    const [item] = checker.getTypeArguments(type as TypeScript.TypeReference);
     return {
       type: "array",
       items: schemaForType(context, item!, parameterName),
     };
   }
   if (checker.isTupleType(type))
-    return tupleSchema(context, type as ts.TupleTypeReference, parameterName);
+    return tupleSchema(
+      context,
+      type as TypeScript.TupleTypeReference,
+      parameterName
+    );
   if (
     type.getCallSignatures().length ||
     type.getConstructSignatures().length ||
@@ -1668,7 +1704,7 @@ function objectSchemaForType(
 /** A tuple, with optional elements and a trailing rest element. */
 function tupleSchema(
   context: SchemaContext,
-  type: ts.TupleTypeReference,
+  type: TypeScript.TupleTypeReference,
   parameterName: string
 ): JsonSchema {
   const elements = context.checker.getTypeArguments(type);
@@ -1701,7 +1737,7 @@ function tupleSchema(
  */
 class UnsupportedParameterError extends PomCompileError {
   constructor(
-    parameter: ts.ParameterDeclaration,
+    parameter: TypeScript.ParameterDeclaration,
     text: string,
     readonly reason: string
   ) {
@@ -1715,7 +1751,10 @@ class UnsupportedInputTypeError extends UnsupportedParameterError {}
  * An unsupported type is often an import the tsconfig could not resolve, so
  * the error names the tsconfig the Program was compiled with.
  */
-function toolsCompiledWith<T>(program: ts.Program, deriveTools: () => T) {
+function toolsCompiledWith<T>(
+  program: TypeScript.Program,
+  deriveTools: () => T
+) {
   try {
     return deriveTools();
   } catch (error) {
@@ -1737,7 +1776,7 @@ function toolsCompiledWith<T>(program: ts.Program, deriveTools: () => T) {
 
 function unsupportedInputType(
   context: SchemaContext,
-  type: ts.Type,
+  type: TypeScript.Type,
   parameterName: string
 ) {
   const typeText = context.checker.typeToString(type);
@@ -1749,8 +1788,8 @@ function unsupportedInputType(
 }
 
 function literalValue(
-  checker: ts.TypeChecker,
-  type: ts.Type
+  checker: TypeScript.TypeChecker,
+  type: TypeScript.Type
 ): JsonPrimitive | undefined {
   if (type.isStringLiteral()) return type.value;
   if (type.isNumberLiteral()) return type.value;
@@ -1767,7 +1806,7 @@ function jsonPrimitiveSchemaType(value: JsonPrimitive): JsonSchema["type"] {
   return undefined;
 }
 
-function typeIncludesUndefined(type: ts.Type) {
+function typeIncludesUndefined(type: TypeScript.Type) {
   return (
     type.isUnion() &&
     type.types.some((member) => (member.flags & ts.TypeFlags.Undefined) !== 0)

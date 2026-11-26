@@ -1312,6 +1312,10 @@ it(
         devDependencies: {
           "@playwright/test": lastPlaywright,
           "@vitejs/plugin-react": "6.1.1",
+          // create-vite's React template installs TypeScript 7, so the
+          // compiler needs the compatibility package, as the quickstart says.
+          "@typescript/typescript6": "6.0.2",
+          typescript: "7.0.2",
           vite: "8.3.4",
         },
       })

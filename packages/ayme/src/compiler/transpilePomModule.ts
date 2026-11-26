@@ -1,4 +1,4 @@
-import ts from "typescript";
+import { ts } from "./typescriptApi";
 
 import { PomCompileError, typeScriptDiagnostic } from "./pomCompileError";
 

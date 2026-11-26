@@ -1,4 +1,4 @@
-import ts from "typescript";
+import { ts, type TypeScript } from "./typescriptApi";
 
 /**
  * One reason a module did not compile: its text and, where the compiler knows
@@ -35,19 +35,24 @@ export class PomCompileError extends Error {
 }
 
 /** A `PomCompileError` with one diagnostic, at `node`'s name if it has one. */
-export function pomCompileErrorAt(node: ts.Node, text: string) {
+export function pomCompileErrorAt(node: TypeScript.Node, text: string) {
   return new PomCompileError([diagnosticAt(node, text)]);
 }
 
 /** A diagnostic at `node`'s name, if it has one, or at `node`. */
-export function diagnosticAt(node: ts.Node, text: string): PomDiagnostic {
-  const named = (node as { name?: ts.Node }).name ?? node;
+export function diagnosticAt(
+  node: TypeScript.Node,
+  text: string
+): PomDiagnostic {
+  const named = (node as { name?: TypeScript.Node }).name ?? node;
   const source = named.getSourceFile();
   return position(text, source, named.getStart(source));
 }
 
 /** TypeScript's `diagnostic`, at its file and start if it has them. */
-export function typeScriptDiagnostic(diagnostic: ts.Diagnostic): PomDiagnostic {
+export function typeScriptDiagnostic(
+  diagnostic: TypeScript.Diagnostic
+): PomDiagnostic {
   const text = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
   const { file, start } = diagnostic;
   if (file === undefined) return { text };
@@ -57,7 +62,7 @@ export function typeScriptDiagnostic(diagnostic: ts.Diagnostic): PomDiagnostic {
 
 function position(
   text: string,
-  source: ts.SourceFile,
+  source: TypeScript.SourceFile,
   start: number
 ): PomDiagnostic {
   // TypeScript counts the line and the column from 0.

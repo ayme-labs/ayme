@@ -143,6 +143,18 @@ jobs:
               pins: react react-dom @types/react@18.3.31 @types/react-dom@18.3.7
               build: "@ayme-dev/ayme... --filter=@ayme-dev/inspector... --filter=@ayme-dev/webmcp"
               browser: true
+            # The app installs @typescript/typescript6 beside TypeScript 7, as
+            # a consumer does. Pin ayme too because the workspace compiler
+            # resolves both from packages/ayme.
+            - name: TypeScript 7 compatibility
+              package: "@ayme-dev/example-react"
+              dir: apps/example-react
+              version: "7.0.2"
+              pins: typescript @typescript/typescript6@^6.0.2
+              linked: packages/ayme
+              build: "@ayme-dev/example-react^..."
+              compiler: true
+              e2e: true
             # The Next, Nuxt and SvelteKit minima run the example apps' build,
             # typecheck and E2E suites, with every framework process on the Node
             # floor.
@@ -487,7 +499,7 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
-      - name: Install the pinned minimum versions
+      - name: Install the pinned versions
         env:
           DIR: ${{ matrix.dir }}
           LINKED: ${{ matrix.linked }}
@@ -519,6 +531,13 @@ jobs:
           pnpm install --no-frozen-lockfile
       - name: Build ${{ matrix.build }}
         run: pnpm exec turbo run build --filter=${{ matrix.build }}
+      - name: Test the Page Object compiler with TypeScript ${{ matrix.version }}
+        if: matrix.compiler
+        env:
+          VERSION: ${{ matrix.version }}
+        run: |
+          test "$(pnpm -C packages/ayme exec node -p 'require("typescript").version')" = "$VERSION"
+          pnpm -C packages/ayme exec vitest run src/compiler --no-file-parallelism
       - name: Install Chromium
         if: (matrix.e2e || matrix.browser)
         run: pnpm --filter ${{ matrix.package }} exec playwright install --with-deps chromium

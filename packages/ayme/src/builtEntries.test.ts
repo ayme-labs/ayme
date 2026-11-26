@@ -59,7 +59,7 @@ it("the built ./inspector entry carries no browser runtime", () => {
 });
 
 const TYPESCRIPT_IMPORT =
-  /from\s*["']typescript["']|import\(\s*["']typescript["']\s*\)/;
+  /from\s*["'](?:typescript|@typescript\/typescript6)["']|\(\s*["'](?:typescript|@typescript\/typescript6)["']\s*\)/;
 
 it("the built ./compiler entry carries no browser runtime", () => {
   const code = codeOf("compiler.mjs");
