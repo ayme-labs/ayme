@@ -6,8 +6,8 @@ import type { LayoutChoice } from "./e2e/pom/Inspector";
 import type { On, Tab } from "./e2e/tab";
 
 // E2E: the Inspector stays above, and operable over, the page's own
-// positioned UI, while the rest of the page keeps its pointer. An agent's
-// clicks reach page elements under the panel.
+// positioned UI, while the rest of the page keeps its pointer. The click
+// Browser Tool reaches page elements under the panel.
 
 const test = testIn("inline");
 
@@ -168,8 +168,8 @@ for (const zIndex of [50, 101]) {
       await clickOutside(inspector.logo.root);
     });
 
-    test("an agent's click reaches a page button under the panel", async ({
-      agentView,
+    test("a click Browser Tool reaches a page button under the panel", async ({
+      appView,
       browser,
       page,
       inspector,
@@ -177,8 +177,8 @@ for (const zIndex of [50, 101]) {
       const button = await placeButtonUnder(page, inspector.panel, zIndex);
       expect(await inspectorIsOnTopAt(browser, button)).toBe(true);
 
-      await agentView.call("click", {
-        target: await agentView.ref('button "Covered button"'),
+      await appView.run("click", {
+        target: await appView.ref('button "Covered button"'),
       });
 
       await expect(await button.front()).toHaveAttribute("data-clicks", "1");

@@ -1,10 +1,9 @@
-import { describe, test as plainTest } from "@e2e-dev/web";
-import { expect, type JsonValue } from "e2e";
+import { describe } from "@e2e-dev/web";
+import { expect } from "e2e";
+import type { Agent } from "@ayme-dev/mcp/testing";
 
-import type { AgentView } from "./e2e/agentView";
 import {
   INSPECTOR,
-  openFixture,
   outline,
   placements,
   reloadFixture,
@@ -12,24 +11,16 @@ import {
 } from "./e2e/fixtures";
 
 // E2E: running tools from the panel, on the fixture page with the real
-// ListPage Page Object, the Ayme runtime and a recording WebMCP driver, in
-// both placements of the Inspector.
+// ListPage Page Object and the ayme runtime, in both placements of the
+// Inspector. The app runs Browser Tools through its runtime, and an agent
+// calls Page Object Tools over ayme MCP.
 
-/** The failure text an agent gets calling a tool over WebMCP. */
-async function agentFailure(
-  agentView: AgentView,
-  name: string,
-  input: { [key: string]: JsonValue }
-) {
-  const failure = (await agentView.call(name, input)) as {
-    isError?: boolean;
-    content?: { text: string }[];
-  } | null;
-  if (!failure?.isError)
-    throw new Error(
-      `Expected ${name} to fail over WebMCP: ${JSON.stringify(failure)}`
-    );
-  return failure.content![0]!.text;
+/** The failure text an agent gets calling a tool over ayme MCP. */
+async function agentFailure(agent: Agent, name: string, input: object) {
+  const { text, isError } = await agent.call(name, { ...input });
+  if (!isError)
+    throw new Error(`Expected ${name} to fail over ayme MCP: ${text}`);
+  return text;
 }
 
 function firstLine(text: string | null | undefined) {
@@ -41,7 +32,7 @@ for (const placement of placements) {
 
   describe(placement, () => {
     test("a non-POM target keeps its accessible name after clicking removes it and after reload", async ({
-      agentView,
+      appView,
       browser,
       page,
       inspector,
@@ -54,9 +45,9 @@ for (const placement of placements) {
         document.querySelector("main")!.append(button);
         return null;
       });
-      const ref = await agentView.ref('button "Dismiss notice"');
+      const ref = await appView.ref('button "Dismiss notice"');
       await inspector.runs.showAll();
-      await agentView.call("click", { target: ref });
+      await appView.run("click", { target: ref });
       const run = inspector.runs.latest("click");
       await expect
         .poll(async () => (await run.read())?.toggle)
@@ -95,13 +86,13 @@ for (const placement of placements) {
     });
 
     test("form fields keep their names and values without repeating their refs", async ({
-      agentView,
+      appView,
       inspector,
     }) => {
-      const text = await agentView.ref('textbox "New item"');
-      const urgent = await agentView.ref('checkbox "Urgent"');
+      const text = await appView.ref('textbox "New item"');
+      const urgent = await appView.ref('checkbox "Urgent"');
       await inspector.runs.showAll();
-      await agentView.call("fill_form", {
+      await appView.run("fill_form", {
         fields: [
           { name: "New item", type: "textbox", target: text, value: "Milk" },
           { name: "Urgent", type: "checkbox", target: urgent, value: "true" },
@@ -127,7 +118,7 @@ for (const placement of placements) {
     });
 
     test("a selection's chosen values show beside its readable target", async ({
-      agentView,
+      appView,
       browser,
       page,
       inspector,
@@ -145,9 +136,9 @@ for (const placement of placements) {
         document.querySelector("main")!.append(select);
         return null;
       });
-      const target = await agentView.ref('combobox "Size"');
+      const target = await appView.ref('combobox "Size"');
       await inspector.runs.showAll();
-      await agentView.call("select_option", { target, values: ["Large"] });
+      await appView.run("select_option", { target, values: ["Large"] });
       const run = inspector.runs.latest("select_option");
       await expect
         .poll(async () => (await run.read())?.toggle)
@@ -155,30 +146,6 @@ for (const placement of placements) {
       const shown = await run.read();
       expect(shown?.toggle).toContain('combobox "Size"');
       expect(shown?.arguments).toBeNull();
-    });
-
-    test("an agent's call over WebMCP shows in Runs as the agent's", async ({
-      agentView,
-      inspector,
-    }) => {
-      await agentView.call("ListPage.addItem", { text: "Milk" });
-
-      const run = inspector.runs.latest("ListPage.addItem");
-      await expect.poll(() => run.status()).toBe("Succeeded");
-      expect(await run.caller()).toEqual({
-        icon: "Run by an agent through WebMCP",
-      });
-      expect((await run.read())?.arguments).toBe('{"text":"Milk"}');
-      await expect
-        .poll(() => run.interactionList())
-        .toEqual([
-          {
-            operation: "fill",
-            target: "ListPage.newItemInput",
-            value: '"Milk"',
-          },
-          { operation: "click", target: "ListPage.addItemButton" },
-        ]);
     });
 
     test("hovering a run's Interaction highlights its element on the page", async ({
@@ -202,38 +169,13 @@ for (const placement of placements) {
         .toBe("dashed");
     });
 
-    test("a tool that fails on the page shows its error", async ({
-      agentView,
-      inspector,
-      listPage,
-    }) => {
-      // The tool's target is gone: the page no longer has its Add item button.
-      await listPage.removeAddItemButton();
-      const agentError = await agentFailure(agentView, "ListPage.addItem", {
-        text: "Milk",
-      });
-
-      const addItem = await inspector.tool("ListPage.addItem");
-      await addItem.run({ text: "Milk" });
-
-      const run = inspector.runs.latest("ListPage.addItem");
-      await expect.poll(() => run.status()).toBe("Failed");
-      // The panel shows the error an agent gets for the same call. Its call
-      // log varies with timing, so the first line is compared.
-      // The error shows just after the status: wait for it, as Playwright's
-      // `textContent()` waits for the element.
-      await expect
-        .poll(async () => firstLine((await run.read())?.error))
-        .toBe(firstLine(agentError));
-    });
-
     test("a Custom Tool runs from the panel and shows in Runs", async ({
-      agentView,
+      appView,
       inspector,
       listPage,
     }) => {
-      // The Add item button's ref, as an agent reads it from snapshot.
-      const ref = await agentView.ref('button "Add item"');
+      // The Add item button's ref, as snapshot gives it.
+      const ref = await appView.ref('button "Add item"');
 
       await (await inspector.tool("mark_element")).run({ ref });
 
@@ -314,9 +256,93 @@ for (const placement of placements) {
     });
   });
 
+  const connected = testIn(placement, "/", { connected: true });
+
+  describe(`${placement} connected to an agent`, () => {
+    connected(
+      "an agent's call over ayme MCP shows in Runs as the agent's",
+      async ({ mcpServer, inspector }) => {
+        await mcpServer!.call("ListPage.addItem", { text: "Milk" });
+
+        const run = inspector.runs.latest("ListPage.addItem");
+        await expect.poll(() => run.status()).toBe("Succeeded");
+        expect(await run.caller()).toEqual({
+          icon: "Run by an agent through ayme MCP",
+        });
+        expect((await run.read())?.arguments).toBe('{"text":"Milk"}');
+        await expect
+          .poll(() => run.interactionList())
+          .toEqual([
+            {
+              operation: "fill",
+              target: "ListPage.newItemInput",
+              value: '"Milk"',
+            },
+            { operation: "click", target: "ListPage.addItemButton" },
+          ]);
+      }
+    );
+
+    connected(
+      "a tool that fails on the page shows its error",
+      async ({ mcpServer, inspector, listPage }) => {
+        // The tool's target is gone: the page no longer has its Add item button.
+        await listPage.removeAddItemButton();
+        const agentError = await agentFailure(mcpServer!, "ListPage.addItem", {
+          text: "Milk",
+        });
+
+        const addItem = await inspector.tool("ListPage.addItem");
+        await addItem.run({ text: "Milk" });
+
+        const run = inspector.runs.latest("ListPage.addItem");
+        await expect.poll(() => run.status()).toBe("Failed");
+        // The panel shows the error an agent gets for the same call. Its call
+        // log varies with timing, so the first line is compared.
+        // The error shows just after the status: wait for it, as Playwright's
+        // `textContent()` waits for the element.
+        await expect
+          .poll(async () => firstLine((await run.read())?.error))
+          .toBe(firstLine(agentError));
+      }
+    );
+  });
+
   const unpublished = testIn(placement, "/unpublished.html");
+  const unpublishedConnected = testIn(placement, "/unpublished.html", {
+    connected: true,
+  });
 
   describe(`${placement} with WebMCP publication off`, () => {
+    describe("connected to an agent", () => {
+      unpublishedConnected(
+        "a Page Object tool that fails gives the text an agent gets for the same call",
+        async ({ mcpServer, inspector, listPage }) => {
+          await listPage.removeAddItemButton();
+          const agentError = await agentFailure(
+            mcpServer!,
+            "ListPage.addItem",
+            { text: "Milk" }
+          );
+
+          await (
+            await inspector.tool("ListPage.addItem")
+          ).run({ text: "Milk" });
+
+          const run = inspector.runs.latest("ListPage.addItem");
+          await expect
+            .poll(async () => (await run.read())?.earlierPage)
+            .toBe(false);
+          await expect.poll(() => run.status()).toBe("Failed");
+          // The error shows just after the status: wait for it, as
+          // Playwright's `textContent()` waits for the element.
+          await expect
+            .poll(async () => firstLine((await run.read())?.error))
+            .toBe(firstLine(agentError));
+        }
+      );
+    });
+
     unpublished(
       "a Page Object tool runs from the panel",
       async ({ inspector, listPage }) => {
@@ -336,8 +362,7 @@ for (const placement of placements) {
     unpublished(
       "a Custom Tool runs from the panel",
       async ({ inspector, listPage }) => {
-        // The Add item button's ref, from snapshot run in the panel:
-        // with publication off, no agent can call it.
+        // The Add item button's ref, from snapshot run in the panel.
         const getPageContext = await inspector.tool("snapshot");
         await getPageContext.runButton.click();
         const run = inspector.runs.latest("snapshot");
@@ -373,35 +398,3 @@ for (const placement of placements) {
     );
   });
 }
-
-// Inline only: it opens fixture pages of its own, as the Playwright version,
-// whose external project ran it inline too.
-plainTest(
-  "with WebMCP publication off, a Page Object tool that fails gives the text an agent gets for the same call",
-  async (fixtures) => {
-    // What an agent gets on the published page: the Add item button is gone.
-    const published = await openFixture(fixtures, "/");
-    await published.listPage.removeAddItemButton();
-    const agentError = await agentFailure(
-      published.agentView,
-      "ListPage.addItem",
-      { text: "Milk" }
-    );
-
-    const { inspector, listPage } = await openFixture(
-      fixtures,
-      "/unpublished.html"
-    );
-    await listPage.removeAddItemButton();
-    await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
-
-    const run = inspector.runs.latest("ListPage.addItem");
-    await expect.poll(async () => (await run.read())?.earlierPage).toBe(false);
-    await expect.poll(() => run.status()).toBe("Failed");
-    // The error shows just after the status: wait for it, as Playwright's
-    // `textContent()` waits for the element.
-    await expect
-      .poll(async () => firstLine((await run.read())?.error))
-      .toBe(firstLine(agentError));
-  }
-);

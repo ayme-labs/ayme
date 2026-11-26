@@ -269,9 +269,17 @@ export class ToolsLens extends Part {
 
 /** The navigator: search, the lens switcher and the active lens's tree. */
 export class Navigator extends Part {
-  readonly tools = new ToolsLens(this.tab, this.root);
-  readonly structure = new StructureLens(this.tab, this.root);
-  readonly model = new ModelLens(this.tab, this.root);
+  get tools(): ToolsLens {
+    return new ToolsLens(this.tab, this.root);
+  }
+
+  get structure(): StructureLens {
+    return new StructureLens(this.tab, this.root);
+  }
+
+  get model(): ModelLens {
+    return new ModelLens(this.tab, this.root);
+  }
 
   get searchBox(): On {
     return this.on((root) => root.getByRole("searchbox"));
@@ -575,7 +583,9 @@ export class RunCard extends Part {
 
 /** A structure node's view in the detail pane. */
 export class NodeView extends Part {
-  readonly modelSees = new WhatTheModelSees(this.tab, this.root);
+  get modelSees(): WhatTheModelSees {
+    return new WhatTheModelSees(this.tab, this.root);
+  }
 
   /** The run slot of one single-element tool the node offers, by the tool's name. */
   tool(name: string): On {
@@ -604,11 +614,16 @@ export class ToolPage extends Part {
     super(tab, (screen) => detail(screen).getByRole("article"));
   }
 
-  readonly modelSees = new WhatTheModelSees(this.tab, this.root);
-  readonly card = new RunCard(
-    this.tab,
-    this.inside((root) => root.getByRole("form"))
-  );
+  get modelSees(): WhatTheModelSees {
+    return new WhatTheModelSees(this.tab, this.root);
+  }
+
+  get card(): RunCard {
+    return new RunCard(
+      this.tab,
+      this.inside((root) => root.getByRole("form"))
+    );
+  }
 
   /** The tool's name. */
   get title(): On {
@@ -660,9 +675,17 @@ export class ModelDetailView extends Part {
 
 /** The detail pane: the view of what's selected, with its run cards. */
 export class DetailPane extends Part {
-  readonly model = new ModelDetailView(this.tab, this.root);
-  readonly node = new NodeView(this.tab, this.root);
-  readonly toolPage = new ToolPage(this.tab, this.root);
+  get model(): ModelDetailView {
+    return new ModelDetailView(this.tab, this.root);
+  }
+
+  get node(): NodeView {
+    return new NodeView(this.tab, this.root);
+  }
+
+  get toolPage(): ToolPage {
+    return new ToolPage(this.tab, this.root);
+  }
 
   /** A run card, by its action's name; without one, the view's only card. */
   runCard(action?: string): RunCard {
@@ -1006,8 +1029,13 @@ export class ConnectionRow {
 
 /** The Connections pill in the header, and the popover it opens. */
 export class Connections extends Part {
-  readonly agent = new ConnectionRow(this.tab, "Agent");
-  readonly webMCP = new ConnectionRow(this.tab, "WebMCP");
+  get agent(): ConnectionRow {
+    return new ConnectionRow(this.tab, "Agent");
+  }
+
+  get webMCP(): ConnectionRow {
+    return new ConnectionRow(this.tab, "WebMCP");
+  }
 
   get pill(): On {
     return this.on((root) =>
@@ -1023,9 +1051,17 @@ export class Connections extends Part {
 
 /** The panel's header: the title, Connections, the theme, layout and collapse. */
 export class InspectorHeader extends Part {
-  readonly connections = new Connections(this.tab, this.root);
-  readonly themeSwitch = new ThemeSwitch(this.tab, this.root);
-  readonly layoutMenu = new LayoutMenu(this.tab, this.root);
+  get connections(): Connections {
+    return new Connections(this.tab, this.root);
+  }
+
+  get themeSwitch(): ThemeSwitch {
+    return new ThemeSwitch(this.tab, this.root);
+  }
+
+  get layoutMenu(): LayoutMenu {
+    return new LayoutMenu(this.tab, this.root);
+  }
 
   get title(): On {
     return this.on((root) => root.getByRole("heading", "ayme"));
@@ -1069,27 +1105,39 @@ export class CollapsedLogo {
 }
 
 export class Inspector {
-  readonly shell: PanelShell;
-  readonly logo: CollapsedLogo;
-  readonly header: InspectorHeader;
-  readonly navigator: Navigator;
-  /** The Structure lens's tree, in the navigator. */
-  readonly structure: StructureLens;
-  readonly detail: DetailPane;
-  readonly runs: RunsView;
+  constructor(readonly tab: Tab) {}
 
-  constructor(readonly tab: Tab) {
-    this.shell = new PanelShell(tab, panelOf);
-    this.logo = new CollapsedLogo(tab);
-    this.header = new InspectorHeader(tab, panelOf);
-    this.navigator = new Navigator(tab, (screen) =>
+  get shell(): PanelShell {
+    return new PanelShell(this.tab, panelOf);
+  }
+
+  get logo(): CollapsedLogo {
+    return new CollapsedLogo(this.tab);
+  }
+
+  get header(): InspectorHeader {
+    return new InspectorHeader(this.tab, panelOf);
+  }
+
+  get navigator(): Navigator {
+    return new Navigator(this.tab, (screen) =>
       panelOf(screen).getByRole("navigation", "Navigator")
     );
-    this.structure = this.navigator.structure;
-    this.detail = new DetailPane(tab, (screen) =>
+  }
+
+  /** The Structure lens's tree, in the navigator. */
+  get structure(): StructureLens {
+    return this.navigator.structure;
+  }
+
+  get detail(): DetailPane {
+    return new DetailPane(this.tab, (screen) =>
       panelOf(screen).getByRole("region", "Selected")
     );
-    this.runs = new RunsView(tab, (screen) =>
+  }
+
+  get runs(): RunsView {
+    return new RunsView(this.tab, (screen) =>
       panelOf(screen).getByRole("region", "Runs")
     );
   }

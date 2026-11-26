@@ -1,20 +1,17 @@
 import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import type { AgentView } from "./e2e/agentView";
+import type { AppView } from "./e2e/appView";
 import { outline, placements, reloadFixture, testIn } from "./e2e/fixtures";
 import type { Tab } from "./e2e/tab";
 
 // E2E: the Model lens on a fixture page whose Page Object has child Page
-// Objects, a collection, and a child that is not on the page, with the Ayme
-// runtime and a recording WebMCP driver, in both placements of the Inspector.
+// Objects, a collection, and a child that is not on the page, with the ayme
+// runtime, in both placements of the Inspector.
 
-/**
- * The Page Object Models snapshot describes, called over WebMCP the
- * way an agent calls it.
- */
-async function modelsAnAgentIsTold(agentView: AgentView, page: Tab) {
-  const { pomDefinitions } = (await agentView.call("snapshot", {})) as {
+/** The Page Object Models snapshot describes, run by the page's runtime. */
+async function modelsSnapshotDescribes(appView: AppView, page: Tab) {
+  const { pomDefinitions } = (await appView.run("snapshot")) as {
     pomDefinitions: string;
   };
   const names = [...pomDefinitions.matchAll(/^(\S+)/gm)].map(
@@ -35,12 +32,12 @@ for (const placement of placements) {
   const test = testIn(placement, "/models.html");
 
   describe(placement, () => {
-    test("the model list shows every Page Object Model an agent is told about, including those not on the page", async ({
-      agentView,
+    test("the model list shows every Page Object Model snapshot describes, including those not on the page", async ({
+      appView,
       page,
       inspector,
     }) => {
-      const described = await modelsAnAgentIsTold(agentView, page);
+      const described = await modelsSnapshotDescribes(appView, page);
 
       await expect
         .poll(() => inspector.navigator.model.modelNames())

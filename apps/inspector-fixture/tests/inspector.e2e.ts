@@ -1,13 +1,18 @@
 import { describe, test as plainTest, type Browser } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { openFixture, outline, reloadFixture, testIn } from "./e2e/fixtures";
+import {
+  callOverMcp,
+  openFixture,
+  outline,
+  reloadFixture,
+  testIn,
+} from "./e2e/fixtures";
 import { panelLook, type Inspector } from "./e2e/pom/Inspector";
 
-// E2E: the built Inspector on fixture pages with a real Page Object, the
-// Ayme runtime and a recording WebMCP driver, in the inline placement. Each
-// test has one reason to fail; fixture and runtime problems fail first, in
-// openFixture.
+// E2E: the built Inspector on fixture pages with a real Page Object and the
+// ayme runtime, in the inline placement. Each test has one reason to fail;
+// fixture and runtime problems fail first, in openFixture.
 
 const test = testIn("inline");
 
@@ -153,7 +158,7 @@ test("the app's DOM gains no attribute while an element is highlighted", async (
 });
 
 test("a host member named like one of the panel's controls stays one match, and its tool runs", async ({
-  agentView,
+  appView,
   inspector,
   listPage,
 }) => {
@@ -163,9 +168,7 @@ test("a host member named like one of the panel's controls stays one match, and 
   await expect(await inspector.runs.clearButton.front()).toBeVisible();
 
   await expect(await listPage.clearButton.front()).toHaveCount(1);
-  expect(await agentView.call("ListPage.clear", {})).not.toMatchObject({
-    isError: true,
-  });
+  await appView.run("ListPage.clear");
   await expect(await listPage.items.front()).toHaveCount(0);
 });
 
@@ -192,32 +195,34 @@ test("the Structure view follows typing and text changes on the page", async ({
   await expect.poll(structure).toContain('heading"Groceries for Friday"');
 });
 
-test("the Inspector's looks at the page leave the agent's view of it alone", async ({
-  agentView,
-  browser,
-  page,
-  inspector,
-}) => {
-  // The panel has looked at the page: its structure shows the heading.
-  await inspector.navigator.showLens("Structure");
-  await expect
-    .poll(() => inspector.structure.treeText())
-    .toContain("Groceries");
+describe("connected to an agent", () => {
+  const connected = testIn("inline", "/", { connected: true });
 
-  // A toast appears, then the agent's first action changes nothing. Had the
-  // panel's look been recorded, it would be the agent's "before" and the
-  // toast would count as the action's change.
-  await page.front();
-  await browser.evaluate(() => {
-    const toast = document.createElement("p");
-    toast.setAttribute("role", "status");
-    toast.textContent = "Saved";
-    document.body.append(toast);
-    return null;
-  });
-  const result = await agentView.call("ListPage.countItems", {});
+  connected(
+    "the Inspector's looks at the page leave the agent's view of it alone",
+    async ({ mcpServer, browser, page, inspector }) => {
+      // The panel has looked at the page: its structure shows the heading.
+      await inspector.navigator.showLens("Structure");
+      await expect
+        .poll(() => inspector.structure.treeText())
+        .toContain("Groceries");
 
-  expect(result).toMatchObject({ page_changed: false });
+      // A toast appears, then the agent's first action changes nothing. Had
+      // the panel's look been recorded, it would be the agent's "before" and
+      // the toast would count as the action's change.
+      await page.front();
+      await browser.evaluate(() => {
+        const toast = document.createElement("p");
+        toast.setAttribute("role", "status");
+        toast.textContent = "Saved";
+        document.body.append(toast);
+        return null;
+      });
+      const result = await callOverMcp(mcpServer!, "ListPage.countItems");
+
+      expect(result).not.toHaveProperty("changes");
+    }
+  );
 });
 
 test("the header's menus and switches work by mouse inside the closed shadow root", async ({
@@ -249,16 +254,21 @@ test("the header's menus and switches work by mouse inside the closed shadow roo
   await expect(await inspector.panel.front()).toBeVisible();
 });
 
-test("with the tools published and no Agent Connection, the header says no agent and WebMCP is published", async ({
-  inspector,
-}) => {
-  const { connections } = inspector.header;
+plainTest(
+  "with the tools published and no Agent Connection, the header says no agent and WebMCP is published",
+  async (fixtures) => {
+    // The browser's WebMCP, which the runtime publishes its tools to.
+    const { inspector } = await openFixture(fixtures, "/", { webMCP: true });
+    const { connections } = inspector.header;
 
-  await expect(await connections.pill.front()).toHaveText("No agent");
-  await connections.open();
-  await expect(await connections.agent.state.front()).toHaveText("Off");
-  await expect(await connections.webMCP.state.front()).toHaveText("Published");
-});
+    await expect(await connections.pill.front()).toHaveText("No agent");
+    await connections.open();
+    await expect(await connections.agent.state.front()).toHaveText("Off");
+    await expect(await connections.webMCP.state.front()).toHaveText(
+      "Published"
+    );
+  }
+);
 
 plainTest(
   "with WebMCP publishing off, the Connections popover says so and offers the option that turns it on",

@@ -24,6 +24,17 @@ export class ListPage {
     );
   }
 
+  /**
+   * The pointer cursor over the New item field, as the page computes it. e2e
+   * has no CSS matcher, so it is read with `getComputedStyle`.
+   */
+  async newItemInputCursor(): Promise<string> {
+    await this.tab.front();
+    return this.tab.browser.evaluate(
+      () => getComputedStyle(document.querySelector("main label input")!).cursor
+    );
+  }
+
   get urgentCheckbox(): On {
     return this.tab.on((screen) => screen.getByRole("checkbox", "Urgent"));
   }

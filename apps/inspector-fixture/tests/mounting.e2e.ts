@@ -84,17 +84,17 @@ describe("mounted by the session's inspector option", () => {
 });
 
 describe("with the inspector option on, without demo", () => {
-  const test = testIn("inline", "/session.html");
+  const test = testIn("inline", "/session.html", { connected: true });
 
   test("adds no click cue to an agent's call or a run, and records the run", async ({
-    agentView,
+    mcpServer,
     page,
     inspector,
     listPage,
   }) => {
     await countClickCues(page);
 
-    await agentView.call("ListPage.addItem", { text: "Eggs" });
+    await mcpServer!.call("ListPage.addItem", { text: "Eggs" });
     await expect(await listPage.items.front()).toHaveText(["Eggs"]);
     await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
 
@@ -109,16 +109,16 @@ describe("with the inspector option on, without demo", () => {
 });
 
 describe("with the inspector option in demo mode", () => {
-  const test = testIn("inline", "/session.html?demo");
+  const test = testIn("inline", "/session.html?demo", { connected: true });
 
   test("shows the click cue of an agent's call", async ({
-    agentView,
+    mcpServer,
     page,
     listPage,
   }) => {
     await countClickCues(page);
 
-    await agentView.call("ListPage.addItem", { text: "Eggs" });
+    await mcpServer!.call("ListPage.addItem", { text: "Eggs" });
 
     await expect(await listPage.items.front()).toHaveText(["Eggs"]);
     await expect(await html(page).front()).toHaveAttribute(

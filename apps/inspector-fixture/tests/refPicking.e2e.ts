@@ -2,10 +2,23 @@ import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
 import { highlightOf, outline, placements, testIn } from "./e2e/fixtures";
+import type { RefField } from "./e2e/pom/Inspector";
+import type { ListPage } from "./e2e/pom/ListPage";
 
 // E2E: picking a ref by pointing at the fixture page, with the real ListPage
-// Page Object and the Ayme runtime, in both placements of the Inspector. The
+// Page Object and the ayme runtime, in both placements of the Inspector. The
 // run card is the single-element Browser Tools' own view.
+
+/**
+ * Starts picking with `field` and waits until the page picks too. The panel
+ * shows picking at once; the page starts when the request reaches it, which
+ * for an Inspector in a window of its own goes through `ayme mcp`.
+ */
+async function pickOnPage(field: RefField, listPage: ListPage) {
+  await field.pickOnPage();
+  // The page's crosshair cursor.
+  await expect.poll(() => listPage.newItemInputCursor()).toBe("crosshair");
+}
 
 for (const placement of placements) {
   const test = testIn(placement);
@@ -17,7 +30,7 @@ for (const placement of placements) {
     }) => {
       const fill = await inspector.tool("fill");
 
-      await fill.refField("target").pickOnPage();
+      await pickOnPage(fill.refField("target"), listPage);
       await listPage.newItemInput.click();
       await expect
         .poll(() => fill.refField("target").value())
@@ -34,7 +47,7 @@ for (const placement of placements) {
     }) => {
       const click = await inspector.tool("click");
 
-      await click.refField("target").pickOnPage();
+      await pickOnPage(click.refField("target"), listPage);
       await listPage.addItemButton.hover();
 
       // The dashed hover highlight.
@@ -50,7 +63,7 @@ for (const placement of placements) {
       listPage,
     }) => {
       const ref = (await inspector.tool("click")).refField("target");
-      await ref.pickOnPage();
+      await pickOnPage(ref, listPage);
 
       await page.front();
       await browser.keyboard.press("Escape");
@@ -82,7 +95,7 @@ for (const placement of placements) {
       listPage,
     }) => {
       const ref = (await inspector.tool("fill")).refField("target");
-      await ref.pickOnPage();
+      await pickOnPage(ref, listPage);
 
       await listPage.addItemButton.hover();
       await expect
