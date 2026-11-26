@@ -23,7 +23,8 @@
  * e2e can record the call and repeat it.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createPomCompiler } from "@ayme-dev/ayme/compiler";
@@ -191,6 +192,14 @@ export function directPageObjects(options: {
       ));
   const bound = new Map<string, Bound>();
   for (const tool of deriveEntryTools(entry)) bound.set(tool.name, tool);
+
+  // The patched e2e keeps the version of the Page Object source with each
+  // call it records, so a replay can tell when the Page Objects changed since.
+  // The source does not change during a run, so it is read once.
+  let version: string | undefined;
+  (globalThis as Record<symbol, unknown>)[
+    Symbol.for("e2e.patch.toolSourceVersion")
+  ] = () => (version ??= sourceVersion([...bound.values()], entry));
 
   const screens = () => {
     const kept = patchedScreens();
@@ -534,4 +543,39 @@ function returned(result: unknown): string {
   if (result === undefined || result === null || typeof result === "object")
     return "";
   return ` and returned ${JSON.stringify(result)}`;
+}
+
+/** One digest of every source file the Page Objects' actions are written in. */
+function sourceVersion(tools: readonly Bound[], entry: string): string {
+  const hash = createHash("sha256");
+  const files = [
+    ...new Set(tools.map((tool) => onDisk(tool.sourceFile, entry))),
+  ];
+  for (const file of files.sort()) {
+    hash.update(file);
+    hash.update(existsSync(file) ? readFileSync(file) : "");
+  }
+  return hash.digest("hex").slice(0, 16);
+}
+
+/**
+ * A source file as ayme names it, `<package>@<version>/<path>`, on disk: the
+ * package found from the entry's folder up, as its own package.json or under
+ * node_modules. A name that is already a path is returned as it is.
+ */
+function onDisk(named: string, from: string): string {
+  const qualified = /^((?:@[^/]+\/)?[^/@]+)@[^/]+\/(.+)$/.exec(named);
+  if (qualified === null) return named;
+  const [, name, rest] = qualified as unknown as [string, string, string];
+  for (let dir = path.dirname(from); ; dir = path.dirname(dir)) {
+    const own = path.join(dir, "package.json");
+    if (
+      existsSync(own) &&
+      (JSON.parse(readFileSync(own, "utf8")) as { name?: string }).name === name
+    )
+      return path.join(dir, rest);
+    const linked = path.join(dir, "node_modules", name);
+    if (existsSync(linked)) return path.join(realpathSync(linked), rest);
+    if (path.dirname(dir) === dir) return named;
+  }
 }
