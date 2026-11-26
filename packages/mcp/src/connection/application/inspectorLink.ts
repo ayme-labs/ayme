@@ -24,7 +24,7 @@ export class InspectorLink {
   /** Asks the page, and resolves with its result or rejects with its error. */
   request(method: string, params: unknown): Promise<unknown> {
     if (this.#closed)
-      return Promise.reject(new Error("The page left the Ayme MCP server."));
+      return Promise.reject(new Error("The page left the ayme MCP server."));
     const id = String(this.#nextId++);
     return new Promise((resolve, reject) => {
       this.#waiting.set(id, { resolve, reject });
@@ -72,7 +72,7 @@ export class InspectorLink {
   close() {
     this.#closed = true;
     this.#outbox.length = 0;
-    const error = new Error("The page left the Ayme MCP server.");
+    const error = new Error("The page left the ayme MCP server.");
     for (const waiting of this.#waiting.values()) waiting.reject(error);
     this.#waiting.clear();
     this.#rouse();

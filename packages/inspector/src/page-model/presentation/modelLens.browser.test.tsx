@@ -3,26 +3,27 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { PageModel } from "../domain/pageModel";
-import { defaultPreferences, DetailPane } from "../../panel";
+import { defaultPreferences } from "../../panel/domain";
+import { DetailPane } from "../../panel/view";
 import {
   type Lens,
   type LensId,
-  Navigator,
   type OnHover,
   type RenderRun,
   type Selection,
-} from "../../navigation";
+} from "../../navigation/domain";
+import { Navigator } from "../../navigation/presentation";
 import {
   collection,
   component,
   page as pageObject,
   type Contents,
-} from "../test-utils/pageModel";
-import { renderPart } from "../../testing/renderPart";
+} from "../../../testing/page-model/pageModel";
+import { renderPart } from "../../../testing/renderPart";
 import {
   DetailPane as DetailPanePart,
   Navigator as NavigatorPart,
-} from "../../testing";
+} from "../../../testing";
 import { modelLens } from "./modelLens";
 import type { ObjectTree } from "../domain/objectTree";
 
@@ -782,7 +783,6 @@ it("names the tree's objects and the models in full on hover", async () => {
   ).toBe(1);
 });
 
-// Whether the detail pane scrolls sideways.
 const sideways = () =>
   page
     .getByRole("region", { name: "Selected" })

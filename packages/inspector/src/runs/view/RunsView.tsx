@@ -24,19 +24,18 @@ import {
 import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { HighlightTarget, OnHover } from "../../navigation";
+import type { HighlightTarget, OnHover } from "../../navigation/domain";
 import {
   focusRing,
   pressable,
   QualifiedName,
   rowFocusRing,
   rowPress,
-} from "../../shared";
+} from "../../shared/view";
 import { formatDuration } from "../domain/duration";
 import { readableResult } from "../domain/readableResult";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";
 import { runPresentation } from "../domain/runPresentation";
-import { RunImageView } from "./RunImageView";
 
 export type RunsViewProps = {
   /** The runs to show, newest first. */
@@ -63,12 +62,9 @@ export type RunsViewProps = {
   flashing: string | undefined;
   toggleRun: (id: string) => void;
   toggleResult: (id: string) => void;
-  /** Copies a run's result, given the run's id. */
   copyResult: (id: string, text: string) => void;
   /** The run whose result was just copied, whose Copy says so. */
   copiedResult: string | undefined;
-  /** Opens a run's image, given its data URL, full size. */
-  openImage: (src: string) => void;
   /** When the timeline last opened: a run that starts after it fades in. */
   shownAt: number;
 };
@@ -179,7 +175,6 @@ type RowProps = Pick<
   | "toggleResult"
   | "copyResult"
   | "copiedResult"
-  | "openImage"
   | "onHover"
   | "canHighlight"
 >;
@@ -248,7 +243,6 @@ function RunRow({
   toggleResult,
   copyResult,
   copiedResult,
-  openImage,
   onHover,
   canHighlight,
 }: RowProps & {
@@ -300,7 +294,6 @@ function RunRow({
           onToggleResult={() => toggleResult(run.id)}
           onCopyResult={(text) => copyResult(run.id, text)}
           resultCopied={run.id === copiedResult}
-          onOpenImage={openImage}
           onHover={earlierDocument ? () => {} : onHover}
           canHighlight={earlierDocument ? () => false : canHighlight}
         />
@@ -319,7 +312,6 @@ function RunRow({
                 toggleResult={toggleResult}
                 copyResult={copyResult}
                 copiedResult={copiedResult}
-                openImage={openImage}
                 onHover={onHover}
                 canHighlight={canHighlight}
               />
@@ -341,7 +333,6 @@ function RunEntryCard({
   onToggleResult,
   onCopyResult,
   resultCopied,
-  onOpenImage,
   onHover,
   canHighlight,
 }: {
@@ -355,7 +346,6 @@ function RunEntryCard({
   onCopyResult: (text: string) => void;
   /** Whether its result was just copied. */
   resultCopied: boolean;
-  onOpenImage: (src: string) => void;
   onHover: OnHover;
   canHighlight: RunsViewProps["canHighlight"];
 }) {
@@ -420,11 +410,6 @@ function RunEntryCard({
             >
               {JSON.stringify(args)}
             </figure>
-          )}
-          {run.status === "succeeded" && run.image && (
-            <div className="mx-2.5 mb-2">
-              <RunImageView image={run.image} onOpen={onOpenImage} />
-            </div>
           )}
           {run.error && (
             <p
@@ -504,18 +489,18 @@ function RunTime({ run }: { run: ChildRun }) {
   );
 }
 
-// Ayme's own Callers, keyed on the names `callers` exports.
+// ayme's own Callers, keyed on the names `callers` exports.
 const callerIcons = {
   inspector: { Icon: UserIcon, label: "Run by you from the Inspector" },
   app: { Icon: AppWindowIcon, label: "Run by the app" },
   webmcp: { Icon: BotIcon, label: "Run by an agent through WebMCP" },
   "ayme-mcp": {
     Icon: SquareTerminalIcon,
-    label: "Run by an agent through Ayme MCP",
+    label: "Run by an agent through ayme MCP",
   },
 } satisfies Record<BuiltInCaller, { Icon: typeof UserIcon; label: string }>;
 
-/** Who started a run: an icon for Ayme's own Callers, the name for another. */
+/** Who started a run: an icon for ayme's own Callers, the name for another. */
 function CallerMark({ by }: { by: Caller }) {
   const builtIn = Object.hasOwn(callerIcons, by)
     ? callerIcons[by as BuiltInCaller]

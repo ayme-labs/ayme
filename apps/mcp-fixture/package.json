@@ -3,10 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#pom/*": "./ayme/pom/*.ts"
+  },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "test:e2e": "playwright test --reporter=list",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p ayme"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
@@ -19,6 +22,7 @@
     "@ayme-dev/typescript-config": "workspace:*",
     "@ayme-dev/unplugin-ayme": "workspace:*",
     "@modelcontextprotocol/client": "^2.4.0",
+    "@modelcontextprotocol/ext-apps": "^2.0.4",
     "@playwright/test": "^1.64.0",
     "@types/node": "^24.0.0",
     "eslint": "^10.9.1",

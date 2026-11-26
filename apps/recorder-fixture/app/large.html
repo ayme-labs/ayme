@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Large</title>
+  </head>
+  <body>
+    <h1>Large</h1>
+    <!-- The page is large, so that a read of it takes long enough to give
+         an input while one waits. Typing here keeps the page changing for
+         about a second: "Saving 1" to "Saving 9", then "Saved". -->
+    <label>Note <input id="note" autofocus /></label>
+    <p id="note-state">Not saved</p>
+    <button id="mark">Mark</button>
+    <p id="mark-state">Not marked</p>
+    <ul id="rows" aria-label="Rows"></ul>
+    <script>
+      const rows = document.getElementById("rows");
+      for (let n = 1; n <= 2000; n += 1) {
+        const row = document.createElement("li");
+        row.textContent = `Row ${n}`;
+        rows.append(row);
+      }
+      const noteState = document.getElementById("note-state");
+      document.getElementById("note").addEventListener("input", () => {
+        for (let n = 1; n <= 10; n += 1)
+          setTimeout(() => {
+            noteState.textContent = n < 10 ? `Saving ${n}` : "Saved";
+          }, n * 100);
+      });
+      document.getElementById("mark").addEventListener("click", () => {
+        document.getElementById("mark-state").textContent = "Marked";
+      });
+    </script>
+  </body>
+</html>

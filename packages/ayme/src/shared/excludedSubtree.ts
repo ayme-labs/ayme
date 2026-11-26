@@ -1,8 +1,8 @@
 /**
  * The mark of an excluded subtree: an element that carries it, and everything
- * under it, is no part of the page Ayme reads and acts on. Capture leaves it
- * out, Reach looks through it, picking and Demo Mode's pass-through let it be,
- * and screenshots hide it. Any client sets it on its own DOM, as the inline
+ * under it, is no part of the page ayme reads and acts on. Capture leaves it
+ * out, Reach looks through it, and picking and Demo Mode's pass-through let it
+ * be. Any client sets it on its own DOM, as the inline
  * Inspector does on its host.
  */
 export const EXCLUDE_ATTRIBUTE = "data-ayme-exclude";
@@ -25,7 +25,7 @@ const isOverlayHost = (node: Node) =>
   node instanceof Element && node.localName === OVERLAY_HOST;
 
 /**
- * Package-internal: whether `records` are only marks of Ayme's and
+ * Package-internal: whether `records` are only marks of ayme's and
  * Playwright's own on the page, which are no activity of it: the runtime's
  * hit-test marks on an excluded subtree, and Playwright's highlight overlay
  * host under `<html>` coming and going. An observer that took them for

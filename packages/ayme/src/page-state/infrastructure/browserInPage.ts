@@ -58,21 +58,18 @@ export function bindDocument(
 export async function captureDocument(
   currentDocument: Document,
   inputs: ElementInputs,
-  ask: { accepts?: readonly Predicate[]; filters?: readonly NamedFilter[] } = {}
+  ask: {
+    accepts?: readonly Predicate[];
+    filters?: readonly NamedFilter[];
+    keep?: readonly string[];
+  } = {}
 ): Promise<Capture> {
-  const page = browserPageOf(currentDocument);
-  // The inputs are plain data, which the module reads in the page
-  // (ADR-0049); the handle carries them to Playwright Lite's page function.
-  const elements = await page.evaluateHandle(() => inputs);
-  try {
-    return await inPage(page).capture({
-      elements,
-      ...(ask.accepts ? { accepts: ask.accepts } : {}),
-      ...(ask.filters?.length ? { filters: ask.filters } : {}),
-    });
-  } finally {
-    void elements.dispose();
-  }
+  return inPage(browserPageOf(currentDocument)).capture({
+    elements: inputs,
+    ...(ask.accepts ? { accepts: ask.accepts } : {}),
+    ...(ask.filters?.length ? { filters: ask.filters } : {}),
+    ...(ask.keep ? { keep: ask.keep } : {}),
+  });
 }
 
 /**
@@ -105,8 +102,12 @@ export async function beginDocumentAction(
   inputs: () => Promise<ElementInputs>
 ): Promise<PageAction> {
   const page = browserPageOf(currentDocument);
-  // Playwright Lite calls the page function as it is, so the handle holds
-  // the function itself (transitional: #1175, #1177).
+  // The handle holds the `inputs` function itself: Playwright Lite calls
+  // `() => inputs` as it is, so the function keeps its closure. The module
+  // calls it when the action begins and again when it settles, so the capture
+  // after the action places the roots the registry probed last.
+  // `playwrightHost.ts` hands plain data it read once, and captures again
+  // after the action when roots or a Locator `ignore` may have changed.
   const elements = await page.evaluateHandle<ActionInputs>(() => inputs);
   try {
     const action = await inPage(page).begin({ elements });

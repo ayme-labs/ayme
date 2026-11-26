@@ -9,6 +9,7 @@ export type { PublishedToolGroup, PublishedToolInfo, ToolInfo };
 import { type GoalTool } from "../goal-loop/application";
 import {
   getPageContextTool,
+  pageObjectsTool,
   type PeekTool,
   type PublishedElementTool,
   type RegisteredElementTool,
@@ -27,6 +28,7 @@ import type { ToolAvailability } from "../page-state/domain";
 export type PublishedTool =
   | CallerAwarePomTool
   | typeof getPageContextTool
+  | typeof pageObjectsTool
   | PublishedElementTool
   | PeekTool
   | GoalTool;
@@ -68,6 +70,10 @@ function resolveRegisteredTools(
     [
       getPageContextTool.name,
       { tool: getPageContextTool, group: "agent", ...always() },
+    ],
+    [
+      pageObjectsTool.name,
+      { tool: pageObjectsTool, group: "agent", ...always() },
     ],
   ]);
   const takenElsewhere = new Set([
@@ -134,7 +140,7 @@ export function resolveTools(
 /**
  * Package-internal: every tool of the session that is offered, with its
  * availability, in publication order: a Page Object Tool while its Page
- * Object is present, available or not (ADR-0035); empty when a tool name
+ * Object is present, available or not (ADR-0062); empty when a tool name
  * clash leaves the set unresolvable.
  */
 export function listTools(
@@ -205,7 +211,6 @@ function descriptionsOf(
   };
 }
 
-/** Each tool's reading. */
 function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
   return Object.freeze(
     tools.map(({ tool, group, available, reason }) =>

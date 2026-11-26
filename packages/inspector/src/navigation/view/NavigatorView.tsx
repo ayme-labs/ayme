@@ -4,12 +4,12 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import {
   focusRing,
-  INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
   pressable,
   QualifiedName,
   rowFocusRing,
   rowPress,
-} from "../../shared";
+} from "../../shared/view";
+import { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "../../shared/domain";
 
 import type { HighlightTarget, OnHover } from "../domain/highlight";
 import type { LegendCounts, Lens, LensId } from "../domain/lens";

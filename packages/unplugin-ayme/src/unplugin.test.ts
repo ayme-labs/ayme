@@ -72,7 +72,7 @@ function writePackage(root: string) {
   writeFileSync(join(root, "package.json"), "{}");
 }
 
-describe("ayme WebMCP transform", () => {
+describe("ayme transform", () => {
   it("types only the supported Playwright overrides", () => {
     const supported: AymeOptions = {
       playwright: {
@@ -86,7 +86,7 @@ describe("ayme WebMCP transform", () => {
     const unsupportedOption: AymeOptions = {
       playwright: {
         use: {
-          // @ts-expect-error Playwright fields outside Ayme's supported subset are rejected.
+          // @ts-expect-error Playwright fields outside ayme's supported subset are rejected.
           baseURL: "https://example.test",
         },
       },

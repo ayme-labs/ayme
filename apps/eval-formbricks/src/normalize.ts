@@ -1,5 +1,6 @@
-import type { Turn } from "./claude.ts";
-import { combinedCost, type GoalLoopUsage } from "./goalLoop.ts";
+import type { Turn } from "./agentProcess.ts";
+import { summarizeCodexTranscript } from "./codexTranscript.ts";
+import type { LoginName } from "./login.ts";
 import {
   summarizeTranscript,
   totalTokens,
@@ -12,8 +13,12 @@ import type { Verdict } from "./verdict.ts";
 /** What a run leaves behind, before it is turned into a result. */
 export type RunArtifacts = {
   runId: string;
+  /** Which Claude Code login served the run, never the token; absent for a Codex run. */
+  login?: LoginName;
   arm: string;
   missionId: string;
+  /** The agent that ran: Claude Code unless named. Its transcript is read accordingly. */
+  agent?: "claude" | "codex";
   /** The model as requested; the model as used comes from the transcript. */
   requestedModel: string;
   /** The thinking effort the agent ran with, the same for every arm. */
@@ -32,14 +37,14 @@ export type RunArtifacts = {
   versions: {
     /** From `claude --version`; the transcript's own report wins when present. */
     claudeCode: string | null;
+    /** From `codex --version`, for a run through Codex. */
+    codex?: string | null;
     browserInterface: { name: string; version: string };
     browser: string | null;
     formbricksCommit: string | null;
     aymeCommit: string | null;
   };
-  /** The Goal Loop's own model calls, tokens and cost during the run; no calls for arms without it. */
-  goalLoop: GoalLoopUsage;
-  /** What the arm's setup established before the measured window, such as the page paired with the Ayme MCP server; `null` for arms without a setup. */
+  /** What the arm's setup established before the measured window, such as the page paired with the ayme MCP server; `null` for arms without a setup. */
   setup: Record<string, unknown> | null;
   /** What the agent changed in the lab app folder during the run. */
   labCheckout: {
@@ -52,6 +57,8 @@ export type RunArtifacts = {
 
 export type NormalizedResult = {
   runId: string;
+  /** Which Claude Code login served the run; Codex runs, and results stored before the fallback existed, have none. */
+  login?: LoginName;
   arm: string;
   mission: string;
   /** The verdict's outcome, from the database alone. */
@@ -75,14 +82,13 @@ export type NormalizedResult = {
   agentReported: { durationMs: number | null; apiDurationMs: number | null };
   /** The task turn's tokens. */
   tokens: TokenUsage | null;
-  /** The task turn's cost: the session's cumulative cost at its end minus the setup turn's. */
+  /** The task turn's cost: the session's cumulative cost at its end minus the setup turn's. Unknown for Codex, which reports tokens only. */
   costUsd: number | null;
-  goalLoop: GoalLoopUsage;
-  /** The agent's cost plus the Goal Loop's where it ran; `null` while either is unknown. */
-  combinedCostUsd: number | null;
   toolCalls: ToolCallCounts;
   versions: {
     claudeCode: string | null;
+    /** Present for a run through Codex alone. */
+    codex?: string;
     model: { requested: string; used: string | null; effort: string | null };
     browserInterface: { name: string; version: string };
     browser: string | null;
@@ -140,7 +146,10 @@ function turnCost(
 }
 
 export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
-  const summary = summarizeTranscript(artifacts.transcript);
+  const summary =
+    artifacts.agent === "codex"
+      ? summarizeCodexTranscript(artifacts.transcript)
+      : summarizeTranscript(artifacts.transcript);
   // The setup message is answered first; everything after its result event is the task turn's.
   const [setup = noTurn, task = noTurn] = summary.turns;
   const { result } = task;
@@ -156,6 +165,7 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     null;
   return {
     runId: artifacts.runId,
+    login: artifacts.login,
     arm: artifacts.arm,
     mission: artifacts.missionId,
     pass: artifacts.verdict.pass,
@@ -178,11 +188,12 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     },
     tokens: result?.usage ?? null,
     costUsd,
-    goalLoop: artifacts.goalLoop,
-    combinedCostUsd: combinedCost(costUsd, artifacts.goalLoop),
     toolCalls: task.toolCalls,
     versions: {
       claudeCode: init?.claudeCodeVersion ?? artifacts.versions.claudeCode,
+      ...(artifacts.versions.codex == null
+        ? {}
+        : { codex: artifacts.versions.codex }),
       model: {
         requested: artifacts.requestedModel,
         used: modelUsed,
@@ -245,7 +256,7 @@ export function summarizeResult(result: NormalizedResult) {
         `  - ${name}: ${counts.total} (${counts.failed} failed)`
     )
     .join("\n");
-  const { goalLoop, setupTurn } = result;
+  const { setupTurn } = result;
   return `# Run ${result.runId}
 
 - Arm: ${result.arm}
@@ -258,20 +269,16 @@ export function summarizeResult(result: NormalizedResult) {
 - Cache read tokens: ${count(result.tokens?.cacheRead)}
 - Output tokens: ${count(result.tokens?.output)}
 - Cost: ${dollars(result.costUsd)}
-- Goal Loop calls: ${goalLoop.calls} (${goalLoop.failedCalls} failed)
-- Goal Loop tokens: ${goalLoop.usage === null ? "none" : `${goalLoop.usage.input} in, ${goalLoop.usage.output} out`}
-- Goal Loop cost: ${goalLoop.calls === 0 ? "none" : dollars(goalLoop.costUsd)}
-- Combined cost: ${dollars(result.combinedCostUsd)}
 - Tool calls: ${result.toolCalls.total} (${result.toolCalls.failed} failed)
 ${tools}
 - Permission denials: ${result.agent.permissionDenials}
 - Setup turn, not counted above: ${seconds(setupTurn.wallTimeMs)}, ${count(setupTurn.tokens === null ? null : totalTokens(setupTurn.tokens))} tokens, ${dollars(setupTurn.costUsd)}, tool calls ${setupTurn.toolCalls.total} (${setupTurn.toolCalls.failed} failed)
-- Claude Code: ${result.versions.claudeCode ?? "unknown"}
+- ${result.versions.codex === undefined ? `Claude Code: ${result.versions.claudeCode ?? "unknown"}` : `Codex: ${result.versions.codex}`}
 - Model: ${result.versions.model.used ?? "unknown"} (requested ${result.versions.model.requested}, effort ${result.versions.model.effort ?? "unknown"})
 - Browser interface: ${result.versions.browserInterface.name} ${result.versions.browserInterface.version}
 - Browser: ${result.versions.browser ?? "unknown"}
 - Formbricks: ${result.versions.formbricksCommit ?? "unknown"}
-- Ayme: ${result.versions.aymeCommit ?? "unknown"}
+- ayme: ${result.versions.aymeCommit ?? "unknown"}
 - MCP servers: ${result.isolation.mcpServers.map((server) => `${server.name} (${server.status})`).join(", ") || "none"}
 - Skills: ${result.isolation.skills.join(", ") || "none"}
 - Plugins: ${result.isolation.plugins.map((plugin) => plugin.source ?? plugin.name).join(", ") || "none"}

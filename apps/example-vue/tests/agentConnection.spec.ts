@@ -5,6 +5,6 @@ import { agentConnectionTests } from "@ayme-dev/example-certification/tests";
 // `--mode inspector-disabled`. Its Peek check renders only in development.
 agentConnectionTests({
   enabled: () => true,
-  snapshotText: 'button "Add item"',
+  pageObject: "ListPage",
   peek: server === "dev",
 });

@@ -39,7 +39,7 @@ export const PREDICATES: readonly Predicate[] = [
   "select",
 ];
 
-/** One capture of one document: Ayme's dual capture, for one host. */
+/** One capture of one document: ayme's dual capture, for one host. */
 export type Capture = {
   document: DocumentToken;
   url: string;
@@ -59,6 +59,11 @@ export type Capture = {
    */
   accepted?: Record<string, string[]>;
   /**
+   * The refs of the elements the host asked the capture to keep as nodes of
+   * their own, which it gave a node; absent when the host asked for none.
+   */
+  kept?: string[];
+  /**
    * The mark this capture gave each element a probe or a reach had named by a
    * synthetic ref first, under that ref: what tells a ref read before the
    * capture from the one the capture shows. Absent when none was renamed.
@@ -72,7 +77,8 @@ export type Capture = {
  * `after` is the page after it. `threw` carries what perform threw, or else
  * why capturing the page after it failed, and then has no `after`. A full
  * load's `after` is the old document's last capture, when the old document
- * saw the load start.
+ * saw the load start and what it sent reached the host: over a DevTools
+ * connection, Chromium can drop it when the next document commits at once.
  */
 export type ActionOutcome<T> =
   | { kind: "settled"; result: T; stable: boolean; after: Capture }

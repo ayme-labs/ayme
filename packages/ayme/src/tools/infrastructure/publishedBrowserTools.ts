@@ -9,13 +9,12 @@ import {
 } from "../application/browserTools";
 import type { PublishedElementTool } from "../application/elementTools";
 import { pressKeyTool } from "../application/pressKeyTool";
-import { screenshotTool } from "../application/screenshotTool";
 import { generateLocatorTool } from "./generateLocator";
 import { NAVIGATION_TOOLS } from "./navigationTools";
 
 /**
  * A Browser Tool that acts on the page, as published: its description ends
- * with how the action result reports what changed. Only Ayme's own Browser
+ * with how the action result reports what changed. Only ayme's own Browser
  * Tools carry the sentence; a Page Object Tool or Custom Tool is published
  * with the description its author wrote, and the Goal Loop offers its model
  * every tool's own description.
@@ -32,7 +31,6 @@ const PUBLISHED_BROWSER_TOOLS: readonly PublishedElementTool[] = [
   withActionResultNote(fillFormTool),
   withActionResultNote(pressKeyTool),
   generateLocatorTool,
-  screenshotTool,
   ...NAVIGATION_TOOLS.map(withActionResultNote),
 ];
 

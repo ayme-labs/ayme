@@ -3,8 +3,8 @@ import { parseArgs } from "node:util";
 export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>]
        ayme inspect [--port <port>]
 
-  mcp            Start the Ayme MCP server for a coding agent, over stdio.
-  inspect        Print the URL of the Ayme Inspector of the running server.
+  mcp            Start the ayme MCP server for a coding agent, over stdio.
+  inspect        Print the URL of the ayme Inspector of the running server.
                  Needs the optional package @ayme-dev/inspector.
   --port <port>  Listen for pages on this port only, instead of the first
                  free one from 9350 to 9365; with inspect, look for the
@@ -12,8 +12,8 @@ export const USAGE = `Usage: ayme mcp [--port <port>] [--page-objects <file>]
   --page-objects <file>
                  Experimental: build and serve this entry, whose default
                  export lists Page Object classes, to pages that load
-                 .ayme/init-script.js, which the server writes. Without it,
-                 the server serves .ayme/page-objects.ts if there is one.
+                 ayme/init-script.js, which the server writes. Without it,
+                 the server serves ayme/page-objects.ts if there is one.
   -h, --help     Print this usage text.
 `;
 

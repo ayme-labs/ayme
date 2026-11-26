@@ -56,7 +56,7 @@ watch(currentStep, ({ step, label }) =>
 const wizardHost = useTemplateRef<HTMLElement>("wizardHost");
 
 // An open dialog blocks the page for the agent, so a connect link pasted into
-// this tab closes it. Ayme's page client pairs from the same `#ayme=` hash.
+// this tab closes it. ayme's page client pairs from the same `#ayme=` hash.
 function onHashChange(event: HashChangeEvent) {
   if (new URL(event.newURL).hash.startsWith("#ayme=")) open.value = false;
 }
@@ -123,7 +123,7 @@ onBeforeUnmount(() => window.removeEventListener("hashchange", onHashChange));
           <!-- 1. Set up your agent -->
           <div v-if="step === 1" class="grid gap-3 text-sm">
             <p>
-              Your agent (Claude Code, Codex, …) can’t see browser tabs. Ayme’s
+              Your agent (Claude Code, Codex, …) can’t see browser tabs. ayme’s
               MCP server is a small program your agent starts on your computer.
               It passes messages between your agent and the one tab you connect.
             </p>

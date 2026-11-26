@@ -484,24 +484,42 @@ it("C4: rejects changing a mounted provider's page factory", async () => {
   ).rejects.toThrow("provider options changed while the provider was mounted");
 });
 
-it("C6: requires remounting to change the model class", async () => {
+it("C6: replaces the registered model when its class changes without a remount", async () => {
+  function createModel() {
+    class RefreshModel extends Model {}
+    registerCompiledPom(RefreshModel, {
+      className: RefreshModel.name,
+      components: [],
+      members: [],
+      tools: [],
+    });
+    return RefreshModel;
+  }
+  const original = createModel();
+  const replacement = createModel();
+  const unmounted = vi.fn();
+  let current: Model | undefined;
   function Child({ model }: { model: typeof Model }) {
-    usePageObject(model);
+    current = usePageObject(model);
+    useEffect(() => unmounted, []);
     return null;
   }
   const app = root();
-  await act(() =>
-    app.render(h(AymeProvider, { pageFactory }, h(Child, { model: Model })))
-  );
-  await expect(
-    act(async () =>
-      app.render(
-        h(AymeProvider, { pageFactory }, h(Child, { model: OtherModel }))
-      )
-    )
-  ).rejects.toThrow(
-    "model or provider changed while the component was mounted"
-  );
+  const render = (model: typeof Model) =>
+    h(AymeProvider, { pageFactory }, h(Child, { model }));
+  await act(() => app.render(render(original)));
+  expect(current).toBeInstanceOf(original);
+  expect(listRegisteredPoms()).toHaveLength(1);
+  expect(listRegisteredPoms()[0]?.instance).toBe(current);
+
+  await act(() => app.render(render(replacement)));
+  expect(unmounted).not.toHaveBeenCalled();
+  expect(current).toBeInstanceOf(replacement);
+  expect(listRegisteredPoms()).toHaveLength(1);
+  expect(listRegisteredPoms()[0]?.instance).toBe(current);
+
+  await act(() => app.render(h(AymeProvider, { pageFactory })));
+  expect(listRegisteredPoms()).toHaveLength(0);
 });
 
 it("C4: changes the options when the provider is remounted", async () => {
@@ -545,7 +563,7 @@ it("C3: rejects a second owner while the first is active, and accepts a new one 
   await act(() => first.render(h(AymeProvider, { pageFactory })));
   await expect(
     act(async () => root().render(h(AymeProvider, { pageFactory })))
-  ).rejects.toThrow("The Ayme runtime already has an active owner.");
+  ).rejects.toThrow("The ayme runtime already has an active owner.");
   await act(() => first.unmount());
   roots.splice(roots.indexOf(first), 1);
   await act(() => root().render(h(AymeProvider, { pageFactory })));
@@ -592,7 +610,7 @@ it("C8: rejects a Page Object Model the compiler did not reach", async () => {
   }
   await expect(
     act(async () => root().render(h(AymeProvider, { pageFactory }, h(Child))))
-  ).rejects.toThrow("Uncompiled has no compiler-derived Ayme metadata.");
+  ).rejects.toThrow("Uncompiled has no compiler-derived ayme metadata.");
 });
 
 // usePeek seam: the hook's contract with `ayme.peek`, which it adapts

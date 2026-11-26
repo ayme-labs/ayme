@@ -3,7 +3,7 @@ import type { WebMcpDriver } from "./driver";
 /**
  * A tool of the session, by its unprefixed name, as `ayme.tools.list()`
  * reads it. Publication registers every listed tool, available or not; the
- * session refuses a call to an unavailable one with its reason (ADR-0035).
+ * session refuses a call to an unavailable one with its reason (ADR-0062).
  */
 export type WebMcpTool = Readonly<{
   name: string;
@@ -35,7 +35,6 @@ export type WebMcpRegistration = {
 
 type SynchronizationOptions = {
   signal: AbortSignal;
-  /** Prepended to every name the driver registers. */
   toolNamePrefix?: string;
   onError(error: unknown): void;
 };
@@ -77,11 +76,9 @@ const changeRecordText = (error: Error) =>
 
 /**
  * Whether WebMCP publishes a tool: every listed one but a Peek Tool, which
- * reads app state for a coding agent while developing, and `screenshot`,
- * whose image result WebMCP cannot carry.
+ * reads app state for a coding agent while developing.
  */
-const publishable = (tool: WebMcpTool) =>
-  tool.group !== "peek" && tool.name !== "screenshot";
+const publishable = (tool: WebMcpTool) => tool.group !== "peek";
 
 /** What makes a published tool stale: its description, schema or mark changed. */
 const versionOf = (tool: WebMcpTool) =>

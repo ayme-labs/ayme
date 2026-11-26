@@ -1,10 +1,10 @@
-import { readRef } from "../../test-utils/elementRefs.testSupport";
+import { readRef } from "../../../testing/elementRefs.testSupport";
 import type { Locator } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 import { createPage } from "../../page-objects/infrastructure";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 import { createAyme } from "../../runtime";
 import {
   browserInPage,
@@ -41,7 +41,6 @@ describe("Custom Tools in Chromium", () => {
     document.body.innerHTML = "";
   });
 
-  /** Start a runtime session with the given Custom Tools. */
   function start(customTools?: CustomTool[]) {
     const runtime = createAyme({
       pageFactory: () => page,
@@ -72,8 +71,6 @@ describe("Custom Tools in Chromium", () => {
     };
     return { customTool, targets };
   }
-
-  // --- Registration ---
 
   it("publishes a registered Custom Tool with its name, description and ref input", () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
@@ -123,8 +120,6 @@ describe("Custom Tools in Chromium", () => {
       'Cannot publish the tool "click": another published tool already uses that name.'
     );
   });
-
-  // --- Execution ---
 
   it("passes the current Structural Ref and a Locator of its element to execute", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
@@ -296,8 +291,6 @@ describe("Custom Tools in Chromium", () => {
     expect(listCustomTools()).toEqual([]);
   });
 
-  // --- Ref resolution failures ---
-
   it("fails an unknown ref without calling execute", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool, targets } = recordingCustomTool();
@@ -341,8 +334,6 @@ describe("Custom Tools in Chromium", () => {
     );
     expect(targets).toHaveLength(0);
   });
-
-  // --- Session lifetime ---
 
   it("unregisters a Custom Tool when the runtime session ends", () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';

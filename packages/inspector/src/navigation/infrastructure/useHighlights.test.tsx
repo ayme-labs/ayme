@@ -2,13 +2,12 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
 
-import type { Look } from "../../shared";
 import {
   createHighlights,
   createInspectorContract,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/ayme/internal";
 
-import { createInspectorClient } from "../../shared";
+import { createInspectorClient, type Look } from "../../shared/infrastructure";
 import { useHighlights } from "./useHighlights";
 
 // Unit tests: the page's hover and pin highlights, over hand-made looks.
@@ -17,7 +16,6 @@ import { useHighlights } from "./useHighlights";
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-/** A look at the page that shows each element under its ref. */
 function lookOf(elementsByRef: Record<string, Element>): Look {
   const refs = Object.keys(elementsByRef);
   return {
@@ -82,7 +80,6 @@ function mountHighlights(page = fakePage()) {
           connectionStatus: () => {
             throw new Error("No session.");
           },
-          subscribeToAgentImageRuns: () => () => {},
           highlights: createHighlights(page.locate),
           pick: async () => undefined,
           registry: {

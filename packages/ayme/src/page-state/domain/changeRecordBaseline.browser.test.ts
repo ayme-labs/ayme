@@ -1,4 +1,4 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
@@ -12,12 +12,12 @@ import {
 import { registerCompiledPom } from "../../page-objects/application";
 import { configureGoalLoop } from "../../goal-loop/infrastructure";
 import { type GoalLoopDecisionFunction } from "../../goal-loop/application";
-import { refsOfSelectors } from "../../test-utils/elementRefs.testSupport";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { refsOfSelectors } from "../../../testing/elementRefs.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
 import {
   agentTools,
   firstChoices,
-} from "../../test-utils/publication.testSupport";
+} from "../../../testing/publication.testSupport";
 import { createAyme } from "../../runtime";
 
 type ActionResultShape = {
@@ -120,7 +120,7 @@ describe("Change Record baseline in Chromium", () => {
     document.body.insertAdjacentHTML("beforeend", TOAST);
 
     const result = await act("App.noop", {
-      ref: await rootRef("App"),
+      id: await rootId("App"),
       args: {},
     });
 
@@ -129,8 +129,6 @@ describe("Change Record baseline in Chromium", () => {
     expect(result.changes_before).toContain("Background toast");
     expect(result.changes).toBeUndefined();
   });
-
-  // --- Two actions in a row ---
 
   it("starts the second Change Record from the first action's Settled Page", async () => {
     document.body.innerHTML = `
@@ -160,7 +158,7 @@ describe("Change Record baseline in Chromium", () => {
     expect(second.changes_before).not.toContain("Result of the first action");
   });
 
-  // --- A capture Ayme makes for itself must not consume the change ---
+  // --- A capture ayme makes for itself must not consume the change ---
 
   it("keeps the Change Record complete when the inspector captures in between", async () => {
     document.body.innerHTML = '<button id="act">Act</button>';
@@ -176,8 +174,6 @@ describe("Change Record baseline in Chromium", () => {
     expect(result.changes_before).toContain("Background toast");
   });
 
-  // --- No change at all ---
-
   it("reports page_changed false when neither the action nor the page changed anything", async () => {
     document.body.innerHTML = '<button id="act">Act</button>';
     // Focus first: the click would otherwise move focus, a change of its own.
@@ -191,8 +187,6 @@ describe("Change Record baseline in Chromium", () => {
     expect(result.page_changed).toBe(false);
     expect(result.changes).toBeUndefined();
   });
-
-  // --- Goal Loop ---
 
   it("counts a change made while the decision function is pending into that step's page_changed", async () => {
     let step = 0;

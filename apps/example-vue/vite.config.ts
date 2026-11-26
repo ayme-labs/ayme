@@ -14,9 +14,9 @@ export default defineConfig(({ command, mode }) => {
   // Endpoint and whether the page turns the Goal Loop on.
   const decisionProvider =
     command === "serve" ? readDecisionProvider(mode) : undefined;
-  // `vite build --mode without-ayme` is the one build without Ayme, written
+  // `vite build --mode without-ayme` is the one build without ayme, written
   // next to `dist` for scripts/verify-browser-output.mjs to check; every
-  // other build keeps Ayme, because the Playwright suites and the hosted
+  // other build keeps ayme, because the Playwright suites and the hosted
   // playground run against the production build.
   const withoutAyme = mode === "without-ayme";
   return {

@@ -1,8 +1,8 @@
 # @ayme-dev/design-system
 
-An internal building block of [Ayme](https://github.com/ayme-labs/ayme): the palette, tokens, logos and React components Ayme's own surfaces share. It is under active development and is not intended for direct use.
+An internal building block of [ayme](https://github.com/ayme-labs/ayme): the palette, tokens, logos and React components ayme's own surfaces share. It is under active development and is not intended for direct use.
 
-To add Ayme to an application, see [`@ayme-dev/ayme`](https://github.com/ayme-labs/ayme/tree/main/packages/ayme). How Ayme's surfaces use this package is in its [agent notes](https://github.com/ayme-labs/ayme/blob/main/packages/design-system/AGENTS.md).
+To add ayme to an application, see [`@ayme-dev/ayme`](https://github.com/ayme-labs/ayme/tree/main/packages/ayme). How ayme's surfaces use this package is in its [agent notes](https://github.com/ayme-labs/ayme/blob/main/packages/design-system/AGENTS.md).
 
 ## License
 

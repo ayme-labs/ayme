@@ -47,15 +47,29 @@ const edits: Edit[] = [
     count: 1,
   },
   {
-    why: "marks private to Ayme's module, never Playwright's `_ariaRef` expando",
+    why: "marks private to ayme's module, never Playwright's `_ariaRef` expando",
     find: "let ariaRef = element._ariaRef;",
     replace: "let ariaRef = options.aymeRefs.marks.get(element);",
     count: 1,
   },
   {
-    why: "marks private to Ayme's module, never Playwright's `_ariaRef` expando",
+    why: "marks private to ayme's module, never Playwright's `_ariaRef` expando",
     find: "element._ariaRef = ariaRef;",
     replace: "options.aymeRefs.marks.set(element, ariaRef);",
+    count: 1,
+  },
+  {
+    why: "a declared Page Object child the capture is asked to keep stays a node of its own, though it is an inline span of text",
+    find: 'if (role === "generic" && box.inline && element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE)',
+    replace:
+      'if (role === "generic" && box.inline && element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE && !options.aymeRefs?.kept?.has(element))',
+    count: 1,
+  },
+  {
+    why: "a declared Page Object child the capture is asked to keep stays a node of its own, though its role is presentation or none",
+    find: "const role = (_a = getAriaRole(element)) != null ? _a : defaultRole;",
+    replace:
+      'const ariaRole = (_a = getAriaRole(element)) != null ? _a : defaultRole;\n  const role = options.aymeRefs?.kept?.has(element) && (!ariaRole || ariaRole === "presentation" || ariaRole === "none") ? "generic" : ariaRole;',
     count: 1,
   },
   {
@@ -75,7 +89,9 @@ const edits: Edit[] = [
  * { testIdAttributeName, root })` over an `InjectedScript` of the module's.
  * Playwright Lite's and stock Playwright's copies keep their own; this one
  * never reads or writes theirs. It also exports Playwright's `isElementVisible`,
- * the visibility `locator.isVisible()` reads.
+ * the visibility `locator.isVisible()` reads, and the role, accessible name
+ * and hiddenness its capture reads of an element, with the whitespace
+ * normalized as it does.
  */
 export function pinnedAriaSnapshotModule(): string {
   let source = readPinnedSource();
@@ -83,7 +99,7 @@ export function pinnedAriaSnapshotModule(): string {
     const found = source.split(find).length - 1;
     if (found !== count)
       throw new Error(
-        `The pinned InjectedScript has ${found} of ${JSON.stringify(find)} where Ayme's build expects ${count} (${why}).`
+        `The pinned InjectedScript has ${found} of ${JSON.stringify(find)} where ayme's build expects ${count} (${why}).`
       );
     source = source.replaceAll(find, replace);
   }
@@ -95,8 +111,12 @@ export {
   asLocator,
   captureAriaSnapshot,
   generateSelector,
+  getAriaRole,
+  getElementAccessibleName,
   InjectedScript,
+  isElementHiddenForAria,
   isElementVisible,
+  normalizeWhiteSpace,
 };
 `;
 }

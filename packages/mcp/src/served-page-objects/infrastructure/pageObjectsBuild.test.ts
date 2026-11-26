@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import {
   mkdir,
   mkdtemp,
@@ -7,30 +8,48 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import * as esbuild from "esbuild";
 import { expect, it, vi } from "vitest";
 
-import { PageObjectsBuildError, buildErrorLine } from "../domain/buildFailure";
+import { buildErrorLine } from "../domain/buildFailure";
+import { ENTRY_MODULE } from "../domain/servedPageObjects";
 import {
   buildOutcomes,
-  failedPageObjects,
   pageObjectModels,
   type PageObjectsBuild,
+  startPageObjects,
+  watchFiles,
 } from "./pageObjectsBuild";
 
-const entry = "/project/.ayme/page-objects.ts";
+// A test sets `error` to make esbuild's next builds reject, as when its service has died.
+const esbuildFails = vi.hoisted(() => ({
+  error: undefined as Error | undefined,
+}));
+vi.mock("esbuild", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("esbuild")>();
+  return {
+    ...actual,
+    build: ((options) =>
+      esbuildFails.error === undefined
+        ? actual.build(options)
+        : Promise.reject(esbuildFails.error)) as typeof actual.build,
+  };
+});
+
+const entry = "/project/ayme/page-objects.ts";
+
+/** The diagnostics of a compile error, as `ayme mcp` reads them. */
+type PomDiagnostics = Parameters<typeof pageObjectModels>[1] extends new (
+  ...args: never[]
+) => { diagnostics: infer Diagnostics }
+  ? Diagnostics
+  : never;
 
 /** The compiler entry's error class, as `ayme mcp` reads it. */
 class PomCompileError extends Error {
-  constructor(
-    readonly diagnostics: readonly (
-      | { text: string; file?: undefined }
-      | { text: string; file: string; line?: undefined }
-      | { text: string; file: string; line: number; column: number }
-    )[]
-  ) {
+  constructor(readonly diagnostics: PomDiagnostics) {
     super(diagnostics.map(({ text }) => text).join("\n"));
   }
 }
@@ -38,70 +57,276 @@ class PomCompileError extends Error {
 const models = (compiler: Parameters<typeof pageObjectModels>[0]) =>
   pageObjectModels(compiler, PomCompileError);
 
-const buildWith = (modules: PageObjectsBuild["modules"]) =>
-  Promise.resolve<PageObjectsBuild>({
-    modules,
-    onBuilt: () => () => {},
-    close: async () => {},
-  });
-
-it("gives the first error of a build of the entry that has never succeeded", async () => {
-  const failing = buildWith(async () => {
-    throw new PageObjectsBuildError({
-      entry,
-      lastGood: false,
-      errors: [
-        {
-          text: "Unexpected end of file",
-          location: {
-            file: "/project/.ayme/pom/PlainPage.ts",
-            line: 22,
-            column: 0,
-          },
-        },
-        { text: "Second error", location: null },
-      ],
-    });
-  });
-
-  expect(await failedPageObjects(entry, failing)).toEqual({
-    entry,
-    error: "/project/.ayme/pom/PlainPage.ts:22:1: Unexpected end of file",
-    watching: true,
-  });
-});
-
-it("gives why the build could not start", async () => {
-  const unstarted = Promise.reject<PageObjectsBuild>(
-    new Error("needs @ayme-dev/ayme/compiler, which does not resolve")
+/**
+ * A project with a Page Objects entry, a `package.json` and a pnpm
+ * lockfile, and `install`, which installs a fake `@ayme-dev/ayme` of a
+ * version as a package manager would: by pointing its folder at another
+ * copy, as pnpm does, or by writing over it.
+ */
+async function aymeProject() {
+  const project = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-install-"))
   );
-
-  expect(await failedPageObjects(entry, unstarted)).toEqual({
+  const entry = join(project, "ayme", "page-objects.ts");
+  await mkdir(dirname(entry), { recursive: true });
+  await writeFile(entry, "export default {};\n");
+  await writeFile(join(project, "package.json"), "{}");
+  await writeFile(join(project, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+  const installed = join(project, "node_modules", "@ayme-dev", "ayme");
+  const install = async (
+    version: string,
+    how: "repoint" | "replace" = "replace"
+  ) => {
+    const target =
+      how === "repoint" ? join(project, "store", version) : installed;
+    // The compiler entry came after the first releases.
+    const compiler = version !== "0.0.1";
+    await mkdir(target, { recursive: true });
+    await writeFile(
+      join(target, "package.json"),
+      JSON.stringify({
+        name: "@ayme-dev/ayme",
+        version,
+        type: "module",
+        exports: {
+          ".": "./index.mjs",
+          ...(compiler ? { "./compiler": "./compiler.mjs" } : {}),
+        },
+      })
+    );
+    await writeFile(join(target, "index.mjs"), "export const ayme = 1;\n");
+    if (compiler)
+      await writeFile(
+        join(target, "compiler.mjs"),
+        `export class PomCompileError extends Error {}
+export const createPomCompiler = () => ({ compile: () => null, invalidate() {} });
+`
+      );
+    if (how === "repoint") {
+      await mkdir(dirname(installed), { recursive: true });
+      await rm(installed, { recursive: true, force: true });
+      await symlink(target, installed, "dir");
+    }
+  };
+  return {
+    project,
     entry,
-    error: "needs @ayme-dev/ayme/compiler, which does not resolve",
+    install,
+    packageJson: join(project, "package.json"),
+    lockfile: join(project, "pnpm-lock.yaml"),
+    remove: () => rm(project, { recursive: true, force: true }),
+  };
+}
+
+/** A file watcher the test fires by hand, and whether it is watching. */
+function handWatch() {
+  const watcher = {
+    files: [] as readonly string[],
     watching: false,
-  });
-});
+    change: () => {},
+    fail: () => {},
+    watch: (
+      files: readonly string[],
+      changed: () => void,
+      failed?: () => void
+    ) => {
+      watcher.files = files;
+      watcher.change = changed;
+      watcher.watching = true;
+      watcher.fail = () => {
+        watcher.watching = false;
+        failed?.();
+      };
+      return () => (watcher.watching = false);
+    },
+  };
+  return watcher;
+}
 
-it("gives the message of another error the started build rejects with", async () => {
-  const failing = buildWith(async () => {
-    throw new Error("The service was stopped");
-  });
+for (const how of ["repoint", "replace"] as const) {
+  it(`a start after an install that ${how}s the project's @ayme-dev/ayme reads the new install`, async () => {
+    const { entry, install, remove } = await aymeProject();
+    try {
+      await install("0.0.1", how);
+      const build = startPageObjects(
+        entry,
+        () => {},
+        "0.2.0",
+        handWatch().watch
+      );
+      try {
+        expect(await build.whenSettled()).toMatchObject({
+          kind: "watching-install",
+          error: expect.stringContaining(
+            "this project has @ayme-dev/ayme 0.0.1"
+          ),
+        });
 
-  expect(await failedPageObjects(entry, failing)).toEqual({
-    entry,
-    error: "The service was stopped",
-    watching: true,
+        await install("0.2.0", how);
+        const state = await build.whenSettled();
+        assert(state.kind === "built");
+        expect(state.modules.has(ENTRY_MODULE)).toBe(true);
+      } finally {
+        await build.close();
+      }
+    } finally {
+      await remove();
+    }
   });
-});
+}
 
-it("gives nothing once a build has succeeded", async () => {
-  expect(
-    await failedPageObjects(
+it("after a failed start, starts the build again when an install file changes, keeps watching the lockfile while it is gone, and stops watching once started", async () => {
+  const { entry, install, packageJson, lockfile, remove } = await aymeProject();
+  const watcher = handWatch();
+  const logged: string[] = [];
+  let build: PageObjectsBuild | undefined;
+  try {
+    await install("0.0.1");
+    build = startPageObjects(
       entry,
-      buildWith(async () => new Map())
-    )
-  ).toBeUndefined();
+      (message) => logged.push(message),
+      "0.2.0",
+      watcher.watch
+    );
+    expect(build.state).toEqual({ kind: "starting", entry });
+    const onChange = vi.fn();
+    build.subscribe(onChange);
+    expect(await build.whenSettled()).toEqual({
+      kind: "watching-install",
+      entry,
+      error: expect.stringContaining("this project has @ayme-dev/ayme 0.0.1"),
+      installFiles: [packageJson, lockfile],
+    });
+    expect(logged).toHaveLength(1);
+
+    // An install that removes the lockfile and fails.
+    await rm(lockfile);
+    watcher.change();
+    await expect.poll(() => logged).toHaveLength(2);
+    expect(watcher.files).toEqual([packageJson, lockfile]);
+
+    await install("0.2.0");
+    watcher.change();
+    await expect.poll(() => build!.state.kind).toBe("built");
+    expect(onChange).toHaveBeenCalledWith({ kind: "building", entry });
+    expect(onChange).toHaveBeenLastCalledWith(build.state);
+    expect(watcher.watching).toBe(false);
+  } finally {
+    await build?.close();
+    await remove();
+  }
+});
+
+it("an answer while the build has not started checks the install again: unchanged, it logs nothing; changed, it starts the build again", async () => {
+  const { entry, install, remove } = await aymeProject();
+  const logged: string[] = [];
+  let build: PageObjectsBuild | undefined;
+  try {
+    await install("0.0.1");
+    // No file change reaches it: an install that writes only node_modules.
+    build = startPageObjects(
+      entry,
+      (message) => logged.push(message),
+      "0.2.0",
+      handWatch().watch
+    );
+    const answer = () => build!.whenSettled();
+    expect(await answer()).toMatchObject({
+      kind: "watching-install",
+      error: expect.stringContaining("@ayme-dev/ayme 0.0.1"),
+    });
+    expect(await answer()).toBe(build.state);
+    expect(logged).toHaveLength(1);
+
+    await install("0.1.0");
+    expect(await answer()).toMatchObject({
+      kind: "watching-install",
+      error: expect.stringContaining("@ayme-dev/ayme 0.1.0"),
+    });
+    expect(logged).toHaveLength(2);
+
+    await install("0.2.0");
+    expect(await answer()).toMatchObject({ kind: "built" });
+  } finally {
+    await build?.close();
+    await remove();
+  }
+});
+
+it("publishes when the install watcher stops, keeping the original failure and log", async () => {
+  const { entry, install, remove } = await aymeProject();
+  const watcher = handWatch();
+  const log = vi.fn();
+  await install("0.0.1");
+  const build = startPageObjects(entry, log, "0.2.0", watcher.watch);
+  try {
+    const state = await build.whenSettled();
+    assert(state.kind === "watching-install");
+    const changed = vi.fn();
+    build.subscribe(changed);
+
+    watcher.fail();
+
+    expect(build.state).toEqual({
+      kind: "cannot-start",
+      entry,
+      error: state.error,
+    });
+    expect(changed).toHaveBeenCalledWith(build.state);
+    expect(log).toHaveBeenCalledExactlyOnceWith(state.error);
+  } finally {
+    await build.close();
+    await remove();
+  }
+});
+
+it("stops watching the install files once closed", async () => {
+  const { entry, install, remove } = await aymeProject();
+  const watcher = handWatch();
+  const logged: string[] = [];
+  try {
+    await install("0.0.1");
+    const build = startPageObjects(
+      entry,
+      (message) => logged.push(message),
+      "0.2.0",
+      watcher.watch
+    );
+    expect(await build.whenSettled()).toMatchObject({
+      kind: "watching-install",
+    });
+    expect(watcher.watching).toBe(true);
+
+    await build.close();
+    expect(watcher.watching).toBe(false);
+    watcher.change();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(logged).toHaveLength(1);
+  } finally {
+    await remove();
+  }
+});
+
+it("watches files that are written, removed and created again", async () => {
+  const folder = await mkdtemp(join(tmpdir(), "ayme-watch-"));
+  const lockfile = join(folder, "pnpm-lock.yaml");
+  await writeFile(lockfile, "a");
+  const changed = vi.fn();
+  const stop = watchFiles([lockfile], changed);
+  try {
+    // On macOS, a watch misses what is written as it starts.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await writeFile(join(folder, "other.txt"), "a");
+    await writeFile(lockfile, "b");
+    await expect.poll(() => changed.mock.calls.length).toBeGreaterThan(0);
+    await rm(lockfile);
+    changed.mockClear();
+    await writeFile(lockfile, "c");
+    await expect.poll(() => changed.mock.calls.length).toBeGreaterThan(0);
+  } finally {
+    stop();
+    await rm(folder, { recursive: true, force: true });
+  }
 });
 
 /** The callbacks a plugin registers, from a fake esbuild build. */
@@ -177,6 +402,7 @@ it("reports each diagnostic of a compile error where the compiler locates it", a
             file: "/project/Child.ts",
             line: 8,
             column: 14,
+            lineText: "  async pick(callback: () => void) {",
           },
           { text: "no position", file: "/project/tsconfig.json" },
           { text: "no file" },
@@ -190,7 +416,13 @@ it("reports each diagnostic of a compile error where the compiler locates it", a
     errors: [
       {
         text: "unsupported",
-        location: { file: "/project/Child.ts", line: 8, column: 13 },
+        location: {
+          file: "/project/Child.ts",
+          line: 8,
+          column: 13,
+          // esbuild draws its code frame from this line, which it has not loaded.
+          lineText: "  async pick(callback: () => void) {",
+        },
       },
       { text: "no position", location: { file: "/project/tsconfig.json" } },
       { text: "no file", location: { file } },
@@ -206,7 +438,13 @@ it("gives esbuild a diagnostic's column in UTF-8 bytes, as esbuild counts it", a
       compile: () => {
         // TypeScript counts the column in UTF-16 code units, from 1.
         throw new PomCompileError([
-          { text: "Expression expected.", file, line: 1, column: 14 },
+          {
+            text: "Expression expected.",
+            file,
+            line: 1,
+            column: 14,
+            lineText: "const café = ;",
+          },
         ]);
       },
       invalidate: () => {},
@@ -229,33 +467,6 @@ it("gives esbuild a diagnostic's column in UTF-8 bytes, as esbuild counts it", a
   expect(
     buildErrorLine(result.errors[0] as Parameters<typeof buildErrorLine>[0])
   ).toBe(`${file}:1:14: Expression expected.`);
-});
-
-it("leaves a file's byte order mark out of a diagnostic's line and column, as TypeScript does", async () => {
-  const file = await pomFile("\uFEFFconst value = ;\n");
-  const { onLoad } = setUp(
-    models({
-      compile: () => {
-        // TypeScript drops the mark as it reads the file, and counts without it.
-        throw new PomCompileError([
-          { text: "Expression expected.", file, line: 1, column: 15 },
-        ]);
-      },
-      invalidate: () => {},
-    })
-  );
-
-  const result = (await onLoad({ path: file })) as {
-    errors: esbuild.PartialMessage[];
-  };
-  expect(result).toMatchObject({
-    errors: [
-      { location: { file, line: 1, column: 14, lineText: "const value = ;" } },
-    ],
-  });
-  expect(
-    buildErrorLine(result.errors[0] as Parameters<typeof buildErrorLine>[0])
-  ).toBe(`${file}:1:15: Expression expected.`);
 });
 
 it("reports esbuild's own error on the first line of a file with a byte order mark at the column an editor counts", async () => {
@@ -284,9 +495,8 @@ it("reports esbuild's own error on the first line of a file with a byte order ma
     expect(failure.errors).toMatchObject([
       { location: { line: 1, column: 17, lineText: "const value = ;" } },
     ]);
-    const error = (await outcomes
-      .modules()
-      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    const error = outcomes.state;
+    assert(error.kind === "never-built");
     expect(buildErrorLine(error.errors[0]!)).toBe(
       `${join(folder, "entry.ts")}:1:15: ${failure.errors[0]!.text}`
     );
@@ -329,34 +539,14 @@ it("reports esbuild's own error after non-ASCII text at the column an editor cou
         },
       },
     ]);
-    const error = (await outcomes
-      .modules()
-      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    const error = outcomes.state;
+    assert(error.kind === "never-built");
     expect(buildErrorLine(error.errors[0]!)).toBe(
       `${join(folder, "entry.ts")}:1:${line.indexOf(";") + 1}: ${failure.errors[0]!.text}`
     );
   } finally {
     await rm(folder, { recursive: true, force: true });
   }
-});
-
-it("counts a diagnostic's line as TypeScript does, across each kind of line break", async () => {
-  // Lines: "// a", "b", "c", "d", then "const café = ;".
-  const file = await pomFile("// a\r\nb\rc\u2028d\u2029const café = ;\n");
-  const { onLoad } = setUp(
-    models({
-      compile: () => {
-        throw new PomCompileError([
-          { text: "Expression expected.", file, line: 5, column: 14 },
-        ]);
-      },
-      invalidate: () => {},
-    })
-  );
-
-  expect(await onLoad({ path: file })).toMatchObject({
-    errors: [{ location: { file, line: 5, column: 14 } }],
-  });
 });
 
 it("leaves to esbuild a module the compiler does not compile, and one in node_modules", async () => {
@@ -370,12 +560,12 @@ it("leaves to esbuild a module the compiler does not compile, and one in node_mo
   expect(compile).toHaveBeenCalledOnce();
 });
 
-it("rejects with each error of a failed first build, its file resolved from the entry's folder, and logs it", async () => {
+it("keeps each error of a failed first build, its file resolved from the entry's folder, and logs it", () => {
   const log = vi.fn();
   const outcomes = buildOutcomes({
     entry,
-    folder: "/project/.ayme",
-    outdir: "/project/.ayme/ayme-served",
+    folder: "/project/ayme",
+    outdir: "/project/ayme/ayme-served",
     log,
   });
   const { onEnd } = setUp(outcomes.plugin);
@@ -390,31 +580,30 @@ it("rejects with each error of a failed first build, its file resolved from the 
     ] as esbuild.Message[],
   });
 
-  const error = await outcomes.modules().catch((e: unknown) => e);
-  expect(error).toBeInstanceOf(PageObjectsBuildError);
-  expect((error as PageObjectsBuildError).errors).toEqual([
+  const state = outcomes.state;
+  assert(state.kind === "never-built");
+  expect(state.errors).toEqual([
     {
       text: "Unexpected end of file",
       location: {
-        file: "/project/.ayme/pom/PlainPage.ts",
+        file: "/project/ayme/pom/PlainPage.ts",
         line: 22,
         column: 0,
       },
     },
     { text: "The service was stopped", location: null },
   ]);
-  expect((error as Error).message).toContain(
-    "No build of it has succeeded, so none is served."
+  expect(log).toHaveBeenCalledWith(
+    `The Page Objects entry ${entry} did not build. No build of it has succeeded, so none is served.\n  /project/ayme/pom/PlainPage.ts:22:1: Unexpected end of file\n  The service was stopped`
   );
-  expect(log).toHaveBeenCalledWith((error as Error).message);
 });
 
-it("keeps the last good build after a later build fails, and says so in the log", async () => {
+it("keeps the last good build and the errors of a failed rebuild, and says so in the log", () => {
   const log = vi.fn();
   const outcomes = buildOutcomes({
     entry,
-    folder: "/project/.ayme",
-    outdir: "/project/.ayme/ayme-served",
+    folder: "/project/ayme",
+    outdir: "/project/ayme/ayme-served",
     log,
   });
   const { onEnd } = setUp(outcomes.plugin);
@@ -422,7 +611,7 @@ it("keeps the last good build after a later build fails, and says so in the log"
   onEnd({
     errors: [],
     outputFiles: [
-      { path: "/project/.ayme/ayme-served/entry.js", text: "good" },
+      { path: "/project/ayme/ayme-served/entry.js", text: "good" },
     ] as esbuild.OutputFile[],
   });
   onEnd({
@@ -431,12 +620,14 @@ it("keeps the last good build after a later build fails, and says so in the log"
     ] as esbuild.Message[],
   });
 
-  expect(await outcomes.modules()).toEqual(new Map([["entry.js", "good"]]));
+  expect(outcomes.state).toEqual({
+    kind: "rebuild-failed",
+    entry,
+    modules: new Map([["entry.js", "good"]]),
+    errors: [{ text: "Unexpected end of file", location: null }],
+  });
   expect(log).toHaveBeenLastCalledWith(
     expect.stringContaining("did not build. The page gets the last good build.")
-  );
-  expect(await failedPageObjects(entry, buildWith(outcomes.modules))).toBe(
-    undefined
   );
 });
 
@@ -484,11 +675,11 @@ it("omits generated positions for an unresolved import after statements and non-
         ],
       })
       .catch(() => {});
-    expect(await failedPageObjects(file, buildWith(outcomes.modules))).toEqual({
-      entry: file,
-      error: `${file}: Could not resolve "./does-not-exist"`,
-      watching: true,
-    });
+    const state = outcomes.state;
+    assert(state.kind === "never-built");
+    expect(state.errors.map(buildErrorLine)).toEqual([
+      `${file}: Could not resolve "./does-not-exist"`,
+    ]);
   } finally {
     await rm(join(file, ".."), { recursive: true, force: true });
   }
@@ -532,7 +723,13 @@ it.each(["Page.ts", "Child.ts"])(
                 if (path === child)
                   return { code: "\n\nexport {};", dependencies: [] };
                 throw new PomCompileError([
-                  { text, file, line: 8, column: 14 },
+                  {
+                    text,
+                    file,
+                    line: 8,
+                    column: 14,
+                    lineText: "  async pick(callback: () => void) {",
+                  },
                 ]);
               },
               invalidate: () => {},
@@ -542,9 +739,9 @@ it.each(["Page.ts", "Child.ts"])(
         })
         .catch(() => {});
       const line = `${file}:8:14: ${text}`;
-      expect(
-        await failedPageObjects(entry, buildWith(outcomes.modules))
-      ).toEqual({ entry, error: line, watching: true });
+      const state = outcomes.state;
+      assert(state.kind === "never-built");
+      expect(state.errors.map(buildErrorLine)).toEqual([line]);
       expect(log).toHaveBeenCalledWith(
         `The Page Objects entry ${entry} did not build. No build of it has succeeded, so none is served.\n  ${line}`
       );
@@ -557,7 +754,7 @@ it.each(["Page.ts", "Child.ts"])(
 it("omits generated positions when the working directory is a symlink", async () => {
   const root = await mkdtemp(join(tmpdir(), "ayme-pom-link-"));
   const folder = join(root, "actual");
-  const linked = join(root, ".ayme");
+  const linked = join(root, "ayme");
   await mkdir(folder);
   await symlink(folder, linked, "dir");
   await writeFile(join(folder, "Page.ts"), "class Page {}");
@@ -625,6 +822,7 @@ it("reports a tsconfig JSON error once, though the compiler and esbuild each rea
                   file: tsconfig,
                   line: 3,
                   column: 24,
+                  lineText: '    "target": "es2022",,',
                 },
               ]);
             },
@@ -636,9 +834,8 @@ it("reports a tsconfig JSON error once, though the compiler and esbuild each rea
       .catch((error: esbuild.BuildFailure) => error);
     // esbuild reads the tsconfig for `paths` and reports the mistake too.
     expect(failure.errors).toHaveLength(2);
-    const error = (await outcomes
-      .modules()
-      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    const error = outcomes.state;
+    assert(error.kind === "never-built");
     expect(error.errors.map(buildErrorLine)).toEqual([
       `${tsconfig}:3:24: Could not read TypeScript project configuration: Property assignment expected.`,
     ]);
@@ -682,6 +879,7 @@ it("reports a tsconfig JSON error once when the tsconfig is a symlink, which esb
                   file: tsconfig,
                   line: 3,
                   column: 24,
+                  lineText: '    "target": "es2022",,',
                 },
               ]);
             },
@@ -692,9 +890,8 @@ it("reports a tsconfig JSON error once when the tsconfig is a symlink, which esb
       })
       .catch((error: esbuild.BuildFailure) => error);
     expect(failure.errors).toHaveLength(2);
-    const error = (await outcomes
-      .modules()
-      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    const error = outcomes.state;
+    assert(error.kind === "never-built");
     expect(error.errors.map(buildErrorLine)).toEqual([
       `${tsconfig}:3:24: Could not read TypeScript project configuration: Property assignment expected.`,
     ]);
@@ -734,6 +931,7 @@ it("keeps esbuild's own error on the line of a compiler error when the file is n
                   file: other,
                   line: 1,
                   column: 1,
+                  lineText: 'import "./missing";',
                 },
               ]);
             },
@@ -743,9 +941,8 @@ it("keeps esbuild's own error on the line of a compiler error when the file is n
         ],
       })
       .catch((error: esbuild.BuildFailure) => error);
-    const error = (await outcomes
-      .modules()
-      .catch((e: unknown) => e)) as PageObjectsBuildError;
+    const error = outcomes.state;
+    assert(error.kind === "never-built");
     expect(error.errors.map(buildErrorLine).sort()).toEqual(
       [
         `${other}:1:1: Page Object "Page" reaches two different classes named "Row".`,
@@ -848,13 +1045,18 @@ it("invalidates and forgets compiled files on rebuild, retaining the last good b
   });
   try {
     await context.rebuild();
-    const good = await outcomes.modules();
+    const first = outcomes.state;
+    assert(first.kind === "built");
+    const good = first.modules;
     expect([...good.values()].join("\n")).toContain("value = 1");
     await writeFile(file, '// pom\nimport "./missing";');
     await expect(context.rebuild()).rejects.toMatchObject({
       errors: [{ location: { line: 0, column: 0 } }],
     });
-    expect(await outcomes.modules()).toBe(good);
+    expect(outcomes.state).toMatchObject({
+      kind: "rebuild-failed",
+      modules: good,
+    });
     expect(log).toHaveBeenLastCalledWith(
       expect.stringContaining("The page gets the last good build.")
     );
@@ -863,16 +1065,198 @@ it("invalidates and forgets compiled files on rebuild, retaining the last good b
     await expect(context.rebuild()).rejects.toMatchObject({
       errors: [{ location: { line: 1, column: 7 } }],
     });
-    expect(await outcomes.modules()).toBe(good);
+    expect(outcomes.state).toMatchObject({
+      kind: "rebuild-failed",
+      modules: good,
+    });
     await writeFile(file, "export const value = 2;");
     await context.rebuild();
-    expect(
-      [...(await outcomes.modules())].map(([, code]) => code).join("\n")
-    ).toContain("value = 2");
-    expect(await outcomes.modules()).not.toBe(good);
+    const fixed = outcomes.state;
+    assert(fixed.kind === "built");
+    expect([...fixed.modules.values()].join("\n")).toContain("value = 2");
+    expect(fixed.modules).not.toBe(good);
+    expect(log).toHaveBeenLastCalledWith(
+      `Rebuilt the Page Objects entry ${file}.`
+    );
     expect(invalidate).toHaveBeenCalledTimes(4);
   } finally {
     await context.dispose();
     await rm(folder, { recursive: true, force: true });
+  }
+});
+
+/**
+ * A project folder, with a `package.json` and `files`, its Page Objects
+ * entry, and an installed `@ayme-dev/ayme` of `version`, whose compiler
+ * compiles nothing and records that it loaded, and whose runtime exports
+ * `runtime`. A release from before the compiler entry has no `./compiler`.
+ */
+async function projectWithAyme(
+  version: string | undefined,
+  {
+    files = [],
+    compiler = true,
+    distManifest,
+  }: {
+    files?: readonly string[];
+    compiler?: boolean;
+    /** A `package.json` in the package's `dist`, such as a bundler writes. */
+    distManifest?: object;
+  } = {}
+) {
+  const project = await realpath(
+    await mkdtemp(join(tmpdir(), "ayme-version-"))
+  );
+  const ayme = join(project, "node_modules", "@ayme-dev", "ayme");
+  await mkdir(join(ayme, "dist"), { recursive: true });
+  await writeFile(
+    join(ayme, "package.json"),
+    JSON.stringify({
+      name: "@ayme-dev/ayme",
+      version,
+      type: "module",
+      exports: {
+        ".": "./dist/index.js",
+        ...(compiler ? { "./compiler": "./dist/compiler.js" } : {}),
+      },
+    })
+  );
+  await writeFile(
+    join(ayme, "dist", "index.js"),
+    'export const runtime = "ayme";'
+  );
+  await writeFile(
+    join(ayme, "dist", "compiler.js"),
+    `globalThis.aymeCompilerLoaded = true;
+export class PomCompileError extends Error {}
+export const createPomCompiler = () => ({ compile: () => null, invalidate() {} });`
+  );
+  if (distManifest !== undefined)
+    await writeFile(
+      join(ayme, "dist", "package.json"),
+      JSON.stringify(distManifest)
+    );
+  await writeFile(join(project, "package.json"), "{}");
+  for (const file of files) await writeFile(join(project, file), "");
+  const entry = join(project, "ayme", "page-objects.ts");
+  await mkdir(dirname(entry));
+  await writeFile(entry, "export default [];");
+  return { project, entry };
+}
+
+declare global {
+  var aymeCompilerLoaded: boolean | undefined;
+}
+
+it("stops before it loads the compiler when the project's @ayme-dev/ayme is another version, naming both and the install command", async () => {
+  const { project, entry } = await projectWithAyme("0.1.3", {
+    files: ["pnpm-lock.yaml"],
+  });
+  globalThis.aymeCompilerLoaded = undefined;
+  const build = startPageObjects(entry, () => {}, "0.1.5");
+  try {
+    const state = await build.whenSettled();
+    assert(state.kind === "watching-install");
+    expect(state.error).toContain(
+      `Building the Page Objects entry ${entry} stopped: this project has @ayme-dev/ayme 0.1.3; ayme mcp 0.1.5 needs the same version. Run \`pnpm add -D @ayme-dev/ayme@0.1.5\` in ${project}.`
+    );
+    expect(globalThis.aymeCompilerLoaded).toBeUndefined();
+  } finally {
+    await build.close();
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+it("still answers with the install it waits for when checking the install again throws", async () => {
+  const { project, entry } = await projectWithAyme("0.1.3", {
+    files: ["pnpm-lock.yaml"],
+  });
+  const build = startPageObjects(entry, () => {}, "0.1.5");
+  try {
+    const waiting = await build.whenSettled();
+    assert(waiting.kind === "watching-install");
+    esbuildFails.error = new Error("The service was stopped");
+
+    expect(await build.whenSettled()).toBe(waiting);
+  } finally {
+    esbuildFails.error = undefined;
+    await build.close();
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+it("names the versions, not a missing compiler, for a release from before the compiler entry, at a pnpm workspace's root", async () => {
+  const { project, entry } = await projectWithAyme("0.1.3", {
+    files: ["pnpm-lock.yaml", "pnpm-workspace.yaml"],
+    compiler: false,
+  });
+  const build = startPageObjects(entry, () => {}, "0.1.5");
+  try {
+    const state = await build.whenSettled();
+    assert(state.kind === "watching-install");
+    expect(state.error).toContain(
+      `this project has @ayme-dev/ayme 0.1.3; ayme mcp 0.1.5 needs the same version. Run \`pnpm add -D -w @ayme-dev/ayme@0.1.5\` in ${project}.`
+    );
+  } finally {
+    await build.close();
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+/** Why the build cannot start with ayme mcp 0.1.5, for tests of install advice. */
+async function mismatch({
+  project,
+  entry,
+}: Awaited<ReturnType<typeof projectWithAyme>>) {
+  const build = startPageObjects(entry, () => {}, "0.1.5");
+  try {
+    const state = await build.whenSettled();
+    assert(state.kind === "watching-install");
+    return state.error;
+  } finally {
+    await build.close();
+    await rm(project, { recursive: true, force: true });
+  }
+}
+
+it("names npm's command when no lockfile is above the project", async () => {
+  const project = await projectWithAyme("0.1.3");
+  expect(await mismatch(project)).toContain(
+    ` Run \`npm install -D @ayme-dev/ayme@0.1.5\` in ${project.project}.`
+  );
+});
+
+it("reads the version from the package's own package.json, not another one inside it", async () => {
+  for (const distManifest of [
+    { name: "bundled", version: "9.9.9" },
+    { name: "@ayme-dev/ayme" },
+  ])
+    expect(
+      await mismatch(await projectWithAyme("0.1.3", { distManifest }))
+    ).toContain("this project has @ayme-dev/ayme 0.1.3;");
+});
+
+it("stops when no package.json states the version of @ayme-dev/ayme", async () => {
+  expect(await mismatch(await projectWithAyme(undefined))).toContain(
+    "this project has @ayme-dev/ayme of a version it does not state;"
+  );
+});
+
+it("builds with the project's @ayme-dev/ayme when it is ayme mcp's version", async () => {
+  const { project, entry } = await projectWithAyme("0.1.5");
+  const log = vi.fn();
+  const build = startPageObjects(entry, log, "0.1.5");
+  try {
+    const state = await build.whenSettled();
+    assert(state.kind === "built");
+    const { modules } = state;
+    expect([...modules.keys()]).toEqual(
+      expect.arrayContaining(["entry.js", "runtime.js"])
+    );
+    expect([...modules.values()].join("\n")).toContain('"ayme"');
+    expect(log).toHaveBeenCalledWith(`Built the Page Objects entry ${entry}.`);
+  } finally {
+    await build.close();
+    await rm(project, { recursive: true, force: true });
   }
 });

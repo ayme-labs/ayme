@@ -1,8 +1,13 @@
 import { createAyme, type CustomTool } from "@ayme-dev/ayme";
 
-import { Basket } from "./Basket";
+import { Basket } from "#pom/Basket";
+import { GroceriesPage } from "#pom/GroceriesPage";
+import { OtherPage } from "#pom/OtherPage";
 
-/** A Custom Tool: it returns the text of the element it's given. */
+/**
+ * A Custom Tool: it returns the text of the element it's given. `ayme mcp`
+ * lists the page's Page Objects, not its Custom Tools: this shows it does not.
+ */
 const readText: CustomTool = {
   name: "read_text",
   description: "Read the text of one element on the page.",
@@ -11,44 +16,26 @@ const readText: CustomTool = {
   },
 };
 
-/** The Custom Tool `/other` offers in place of `read_text`. */
-const readOther: CustomTool = {
-  name: "read_other",
-  description: "Read the text of one element on the other page.",
-  async execute({ locator }) {
-    return locator.textContent();
-  },
-};
-
 /**
- * A Custom Tool that never answers, so a call stays in flight. The page
- * shows the ref it holds on <html> as `data-holding`.
- */
-const hold: CustomTool = {
-  name: "hold",
-  description: "Keep the call in flight; it never answers.",
-  execute({ ref }) {
-    document.documentElement.dataset.holding = ref;
-    return new Promise(() => {});
-  },
-};
-
-/**
- * Starts the runtime with the Agent Connection on. WebMCP publication is off
- * unless the URL has `?webmcp`, so the page shows the connection does not
- * need it. `?inspector` mounts the Inspector. The Basket Page Object is registered
- * only while shown, and its `clear` action is available only once the basket
- * is filled. The page reports its state on <html> for the e2e tests.
+ * Starts the runtime with the Agent Connection on, and registers the page's
+ * own Page Object, `OtherPage` on `/other` and `GroceriesPage` elsewhere.
+ * WebMCP publication is off unless the URL has `?webmcp`, so the page shows
+ * the connection does not need it. `?inspector` mounts the Inspector. The
+ * Basket Page Object is registered only while shown, and its `clear` action
+ * is available only once the basket is filled. The page reports its state on
+ * <html> for the e2e tests.
  */
 const root = document.documentElement.dataset;
 try {
   const runtime = createAyme({
-    customTools: [location.pathname === "/other" ? readOther : readText, hold],
+    customTools: [readText],
     agentConnection: true,
     webMCP: { enabled: new URLSearchParams(location.search).has("webmcp") },
     inspector: new URLSearchParams(location.search).has("inspector"),
   });
   runtime.start();
+  if (location.pathname === "/other") runtime.pom.register(OtherPage);
+  else runtime.pom.register(GroceriesPage);
   // `?peek=<name>` adds a Peek of that name, which reads "page".
   const peekName = new URLSearchParams(location.search).get("peek");
   if (peekName) runtime.peek(() => ({ value: "page" }), peekName);

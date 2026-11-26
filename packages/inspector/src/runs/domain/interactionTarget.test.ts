@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { StructureNode } from "../../structure";
+import type { StructureNode } from "../../structure/domain";
 import { interactionTarget } from "./interactionTarget";
 
 const button: StructureNode = {

@@ -7,9 +7,9 @@ import type {
   PomManifest,
 } from "@ayme-dev/ayme/inspector";
 
-import { startedAyme } from "../tools/test-utils/startedAyme";
+import { startedAyme } from "../../testing/tools/startedAyme";
 import { renderInspector } from "./renderInspector";
-import { Inspector } from "../testing";
+import { Inspector } from "../../testing";
 
 // Component tests through the whole panel and its runtime wiring: whether a Model
 // lens action runs from the panel follows the live tools, not WebMCP
@@ -62,7 +62,6 @@ const save: RegisteredPomTool = {
   parameters: [],
 };
 
-/** The editor, with its toolbar on the page or not. */
 function editor(toolbarOnPage: boolean): InspectorPageObject {
   return {
     id: "Editor",
@@ -107,7 +106,6 @@ function renderApp({
   live: ToolInfo[];
   registrations?: InspectorPageObject[];
 }) {
-  // WebMCP publication is off throughout.
   startedAyme.webMCP.publicationStatus = {
     state: "disabled",
     message: "WebMCP publication is disabled.",

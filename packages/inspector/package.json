@@ -1,7 +1,7 @@
 {
   "name": "@ayme-dev/inspector",
   "version": "0.2.0",
-  "description": "Ayme's in-page panel for a page's Page Objects, Structural Page State and tools.",
+  "description": "ayme's in-page panel for a page's Page Objects, Structural Page State and tools.",
   "keywords": [
     "ai-agent",
     "coding-agent",
@@ -23,7 +23,18 @@
     "directory": "packages/inspector"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs",
+        "default": "./dist/index.mjs"
+      },
+      "./external": {
+        "import": "./dist/external.mjs",
+        "default": "./dist/external.mjs"
+      }
+    }
   },
   "type": "module",
   "files": [
@@ -39,15 +50,11 @@
       "import": "./dist/external.mjs",
       "default": "./dist/external.mjs"
     },
-    "./testing": {
-      "types": "./dist/testing.d.mts",
-      "import": "./dist/testing.mjs",
-      "default": "./dist/testing.mjs"
-    }
+    "./testing": "./testing/index.ts"
   },
   "scripts": {
     "build": "tsdown",
-    "lint": "eslint src --max-warnings 0",
+    "lint": "eslint src testing --max-warnings 0",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "test:crap": "vitest run --config vitest.fast.config.ts --coverage",
@@ -68,6 +75,7 @@
     "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#2b8849cfb31714353d94e6a33095ac3aa5b898bb",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
+    "@modelcontextprotocol/ext-apps": "^2.0.4",
     "@playwright/test": "^1.64.0",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",

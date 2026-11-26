@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type FormEvent } from "react";
 
-import type { ToolArguments } from "../../runs";
+import type { ToolArguments } from "../../runs/domain";
 import { needsInput } from "../application/needsInput";
 import { runCardLook } from "../domain/press";
 import {

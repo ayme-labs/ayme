@@ -19,7 +19,7 @@ import type {
 // state events that carry a revision.
 
 /**
- * Where a tool comes from: a Page Object (Page Object Tool), Ayme's
+ * Where a tool comes from: a Page Object (Page Object Tool), ayme's
  * Browser Tools, the app's Custom Tools, the app's Peeks (Peek Tools), or the
  * agent's own tools (`snapshot`, `goal`).
  */
@@ -61,14 +61,14 @@ export type PublishedToolInfo = Readonly<{
  * predicate, if it has one, holds; every other tool always is. `reason`,
  * when the tool is unavailable and there is one, is its Availability Reason:
  * the runtime's, naming the Structural Ref of the element a click would
- * reach instead, or the predicate's string (ADR-0035).
+ * reach instead, or the predicate's string (ADR-0062).
  */
 export type ToolInfo = PublishedToolInfo &
   Readonly<{ available: boolean; reason?: string }>;
 
 /**
  * Whether the session's page is connected to a coding agent through the
- * agent's Ayme MCP server, for the Inspector: `off` without the
+ * agent's ayme MCP server, for the Inspector: `off` without the
  * `agentConnection` option, else as the page client reports it.
  * `not-connected` says why once the tab knows, `no-client` when the page
  * client failed to load; `connected` names the agent when its MCP client
@@ -167,8 +167,13 @@ export type InspectorTarget = Readonly<{
   ref?: string;
 }>;
 
-/** A collection tool's item on the page, whether the tool would run on it and why not. */
+/**
+ * A rooted tool's item on the page, whether the tool would run on it and why
+ * not: `id` is its Page Object id, which the tool takes, and `ref` the
+ * Structural Ref of its root in the look, when the page state holds it.
+ */
 export type InspectorRootedInstance = Readonly<{
+  id: string;
   ref?: string;
   available: boolean;
   reason?: string;
@@ -227,28 +232,8 @@ export type InspectorState = Readonly<{
   pomDefinitions: readonly PomDefinition[];
 }>;
 
-/** An agent's call whose result is an image, once `ayme mcp` saved it. */
-export type InspectorAgentImageRun = Readonly<{
-  name: string;
-  input: JsonValue;
-  /** The file `ayme mcp` saved the image to, when it named its folder. */
-  savedTo?: string;
-  startedAt: number;
-  durationMs: number;
-}>;
-
-/**
- * What the runtime pushes. `state` carries the new canonical state;
- * `agent-image-run` reports a fact that is no state, and carries the
- * revision it was seen at.
- */
-export type InspectorEvent =
-  | Readonly<{ type: "state"; state: InspectorState }>
-  | Readonly<{
-      type: "agent-image-run";
-      revision: number;
-      run: InspectorAgentImageRun;
-    }>;
+/** What the runtime pushes: `state` carries the new canonical state. */
+export type InspectorEvent = Readonly<{ type: "state"; state: InspectorState }>;
 
 /** The two highlights: `hover` (dashed) and `pinned` (solid). */
 export type InspectorHighlightLayer = "hover" | "pinned";

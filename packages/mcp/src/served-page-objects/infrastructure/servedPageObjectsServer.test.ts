@@ -4,16 +4,24 @@ import type { AddressInfo } from "node:net";
 import { afterEach, expect, it } from "vitest";
 import { WebSocket } from "ws";
 
-import type { BuiltModules, PageObjectsBuild } from "./pageObjectsBuild";
+import type {
+  BuiltModules,
+  SettledBuildState,
+  PageObjectsBuildState,
+} from "../domain/buildState";
+import type { PageObjectsBuild } from "./pageObjectsBuild";
 import { servedPageObjectsServer } from "./servedPageObjectsServer";
 
-/** A build the test rebuilds by hand. */
-function fakeBuild(first: BuiltModules) {
-  let last = first;
-  const listeners = new Set<(modules: BuiltModules) => void>();
+/** A build whose settled outcomes the test publishes by hand. */
+function fakeBuild(first: SettledBuildState) {
+  let state = first;
+  const listeners = new Set<(state: PageObjectsBuildState) => void>();
   const build: PageObjectsBuild = {
-    modules: async () => last,
-    onBuilt(listener) {
+    get state() {
+      return state;
+    },
+    whenSettled: async () => state,
+    subscribe(listener) {
       listeners.add(listener);
       return () => void listeners.delete(listener);
     },
@@ -21,9 +29,9 @@ function fakeBuild(first: BuiltModules) {
   };
   return {
     build,
-    rebuild(modules: BuiltModules) {
-      last = modules;
-      for (const listener of listeners) listener(modules);
+    publish(next: SettledBuildState) {
+      state = next;
+      for (const listener of listeners) listener(state);
     },
   };
 }
@@ -32,7 +40,7 @@ let server: Server | undefined;
 afterEach(() => new Promise((resolve) => server?.close(resolve)));
 
 async function serve(build: PageObjectsBuild) {
-  const extension = servedPageObjectsServer(Promise.resolve(build));
+  const extension = servedPageObjectsServer(build);
   server = createServer((request, response) => {
     if (!extension.request(request, response)) response.end();
   });
@@ -69,12 +77,21 @@ const modules = (entry: string, chunk: string) =>
     [chunk, `${chunk} code`],
   ]);
 
+const entry = "/project/ayme/page-objects.ts";
+const built = (modules: BuiltModules): SettledBuildState => ({
+  kind: "built",
+  entry,
+  modules,
+});
+
 it("serves the chunks of an earlier build after a rebuild, for a page still importing it", async () => {
-  const { build, rebuild } = fakeBuild(modules("old entry", "chunk-OLD.js"));
+  const { build, publish } = fakeBuild(
+    built(modules("old entry", "chunk-OLD.js"))
+  );
   const get = await serve(build);
   await get("entry.js");
 
-  rebuild(modules("new entry", "chunk-NEW.js"));
+  publish(built(modules("new entry", "chunk-NEW.js")));
 
   expect(await get("chunk-OLD.js")).toEqual({
     status: 200,
@@ -88,12 +105,29 @@ it("serves the chunks of an earlier build after a rebuild, for a page still impo
 });
 
 it("serves the entry of the build a stamp names", async () => {
-  const { build, rebuild } = fakeBuild(modules("old entry", "chunk-OLD.js"));
+  const { build, publish } = fakeBuild(
+    built(modules("old entry", "chunk-OLD.js"))
+  );
   const get = await serve(build);
   const { entry: stamp } = await get.stamp();
 
-  rebuild(modules("new entry", "chunk-NEW.js"));
+  publish(built(modules("new entry", "chunk-NEW.js")));
 
   expect((await get(`entry.js?build=${stamp}`)).text).toBe("old entry");
   expect((await get("entry.js?build=unknown")).status).toBe(404);
+});
+
+it("serves the first failure until a good build, then keeps serving that build across a failure", async () => {
+  const errors = [{ text: "Unexpected end of file", location: null }];
+  const { build, publish } = fakeBuild({ kind: "never-built", entry, errors });
+  const get = await serve(build);
+  expect(await get("entry.js")).toEqual({
+    status: 500,
+    text: `The Page Objects entry ${entry} did not build. No build of it has succeeded, so none is served.\n  Unexpected end of file`,
+  });
+
+  const good = modules("good entry", "chunk-GOOD.js");
+  publish(built(good));
+  publish({ kind: "rebuild-failed", entry, modules: good, errors });
+  expect(await get("entry.js")).toEqual({ status: 200, text: "good entry" });
 });

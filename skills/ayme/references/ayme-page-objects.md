@@ -1,8 +1,8 @@
 # Page Object Models
 
-How to mark a Page Object Model, decorator by decorator, so Ayme turns what a user does with it into Page Object Tools.
+How to mark a Page Object Model, decorator by decorator, so ayme turns what a user does with it into Page Object Tools.
 
-Put marked models in `.ts` files the application imports, with `experimentalDecorators` on; the [build plugin](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/build-plugin.md#what-it-compiles) compiles them. They run in the browser, so they use Playwright's types only, as [Playwright in the browser](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/playwright-in-the-browser.md) explains. A marked model stays your Page Object Model: it needs no Ayme base class, and it keeps working in your Playwright tests.
+Put marked models in `.ts` files the application imports, with `experimentalDecorators` on, and keep them in `ayme/pom/`, as [The `ayme` folder](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/ayme-folder.md) shows; the [build plugin](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/build-plugin.md#what-it-compiles) compiles them. They run in the browser, so they use Playwright's types only, as [Playwright in the browser](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/playwright-in-the-browser.md) explains. A marked model stays your Page Object Model: it needs no ayme base class, and it keeps working in your Playwright tests.
 
 An agent sees each model as its definition: the model with its description, its children, then its actions with theirs. The examples below add up to this one:
 
@@ -32,7 +32,11 @@ const onPage = (self: AppPage) =>
 @ayme({ present: onPage })
 export abstract class AppPage {
   abstract readonly path: string;
-  constructor(readonly page: Page) {}
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 }
 
 export class ProjectsPage extends AppPage {
@@ -49,7 +53,11 @@ const rootOf = (self: AppComponent) => self.root;
 
 @ayme({ root: rootOf })
 export abstract class AppComponent {
-  constructor(readonly root: Locator) {}
+  readonly root: Locator;
+
+  constructor(root: Locator) {
+    this.root = root;
+  }
 }
 
 export class NewProjectDialog extends AppComponent {
@@ -89,9 +97,25 @@ Leave helper methods that only read the page unmarked, such as ones that return 
 
 An action can return a Page Object, as `openNewProjectDialog` returns a `NewProjectDialog`. An agent is told what it returns: that tool's description reads `Shows NewProjectDialog.` Returning a Page Object does not make its actions tools. Only a Page Object a model declares, as [`@ayme.child`](#aymechild) shows, has its actions listed.
 
-The method's parameters are the tool's inputs. Plain data works: strings, numbers, booleans, unions of literals, arrays, tuples and plain objects. A function, a class instance such as `Date`, an object with methods, `any`, `unknown` or an open generic fails the build, which names the parameter.
+The method's parameters are the tool's inputs. Plain data works: strings, numbers, booleans, unions of literals, arrays, tuples and plain objects. A function, a class instance such as `Date`, an object with methods, `any`, `unknown` or an open generic fails the build, which names the parameter. A [build without ayme](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/build-plugin.md#errors) does not check them.
 
-**`description`** tells an agent what it needs to use the action well that its name and parameters cannot: what it causes, who may do it, and how to use it. An action whose description would only restate its name needs none.
+Take two or more parameters as one destructured object, and keep a single parameter positional, as in `pick(name: string)`. A call then names each value, two values of the same type cannot be swapped, and an optional input is added without reordering every caller's arguments.
+
+```ts
+export class NewProjectDialog extends AppComponent {
+  @ayme.action
+  async fillProjectForm({ name, owner }: { name: string; owner: string }) {
+    await this.root.getByLabel("Name").fill(name);
+    await this.root.getByLabel("Owner").fill(owner);
+    return this;
+  }
+}
+
+// In a spec:
+await dialog.fillProjectForm({ name: "Q3 launch", owner: "Ada" });
+```
+
+**`description`** tells an agent what its name and parameters cannot: what the action causes and who may do it. It states facts about the action and leaves the next step to the agent. An action whose description would only restate its name needs none.
 
 ```ts
 export class ProjectRow extends AppComponent {
@@ -113,40 +137,41 @@ export class ProjectRow extends AppComponent {
 
 **`available`** declares when an action can run, for an action whose control shows only in some states or to some users.
 
-Say a row shows its Remove button only to an admin of that project. The user is an admin of Launch plan but not of Q4 survey. `snapshot` marks each row's root with its class, `ProjectRow`:
+Say a row shows its Remove button only to an admin of that project. The user is an admin of Launch plan but not of Q4 survey. `snapshot` marks each row's root with its class, `ProjectRow`, and its [Page Object id](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md#page-object-ids):
 
 ```text
 - e5 list:
-  - e6 ProjectRow:
+  - e6 ProjectRow po1:
     - text: Launch plan
     - e7 button "Archive"
     - e8 button "Rename"
     - e9 button "Remove"
-  - e10 ProjectRow:
+  - e10 ProjectRow po2:
     - text: Q4 survey
     - e11 button "Archive"
     - e12 button "Rename"
 ```
 
-An agent names a row by the ref on its marked line. It calls `ProjectRow.remove({ ref: "e10" })` to remove Q4 survey. The call is refused before anything runs:
+An agent names a row by the id on its marked line. It calls `ProjectRow.remove({ id: "po2" })` to remove Q4 survey. The call is refused before anything runs:
 
 ```text
-RuntimeStateError: ProjectRow on ref "e10" is unavailable: Only admins can remove projects.
+RuntimeStateError: ProjectRow "po2" is unavailable: Only admins can remove projects.
 ```
 
-The reason comes from `available`. It is a function that gets the live Page Object and answers `true`, `false`, or a string that says why not:
+The reason comes from `available`. It is a function that gets the live Page Object and answers `true`, `false`, or a string that says why not. The string states why the action cannot run, and nothing about what to do next. It states only what the predicate checked: in this app a row shows Remove only to an admin of its project, so a row without the button is one the user is no admin of:
 
 ```ts
-const canRemove = async (self: ProjectRow) =>
-  (await self.removeButton.isVisible()) || "Only admins can remove projects";
-
 export class ProjectRow extends AppComponent {
   @ayme.child
   get removeButton() {
     return this.root.getByRole("button", { name: "Remove" });
   }
 
-  @ayme.action({ available: canRemove })
+  @ayme.action({
+    available: async (self: ProjectRow) =>
+      (await self.removeButton.isVisible()) ||
+      "Only admins can remove projects",
+  })
   async remove() {
     await this.removeButton.click();
     return this;
@@ -170,7 +195,7 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-An agent gets the mark as the tool's annotation, `destructiveHint` over `ayme mcp` and `consequentialHint` over WebMCP, so it or the harness driving it can stop before the call. Ayme still runs the tool like any other. Write `true` in the decorator itself: the build reads it from source, as it reads `description`. [Destructive actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#destructive-actions) has the details.
+An agent gets the mark as the tool's annotation, `destructiveHint` over `ayme mcp` and `consequentialHint` over WebMCP, so it or the harness driving it can stop before the call. ayme still runs the tool like any other. Write `true` in the decorator itself: the build reads it from source, as it reads `description`. [Destructive actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#destructive-actions) has the details.
 
 ## `@ayme.child`
 
@@ -178,9 +203,9 @@ An agent gets the mark as the tool's annotation, `destructiveHint` over `ayme mc
 
 Declare what an agent reads or acts on, such as the inputs, buttons and lists the model's actions are about. Leave undeclared what only your tests or helper code use, layout wrappers, and the root itself.
 
-A child Page Object needs the declaration too. Ayme reaches a component only through the members its models declare. Without `@ayme.collection` on `projects` below, no `ProjectRow` is reached, and `ProjectRow.remove` never becomes a tool. Nothing warns you. The [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md)'s Model view shows what a model holds.
+A child Page Object needs the declaration too. ayme reaches a component only through the members its models declare. Without `@ayme.collection` on `projects` below, no `ProjectRow` is reached, and `ProjectRow.remove` never becomes a tool. Nothing warns you. The [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md)'s Model view shows what a model holds.
 
-Declare a locator as a getter, and a child page object built from `this.page` or `this.root` the same way. Playwright 1.65 follows TypeScript's `useDefineForClassFields` (on for an ES2022 or later target, and when no target is set), so a field initializer runs before the constructor assigns its parameter properties. `readonly submit = this.page.getByRole(...)` then reads `page` before it exists. A getter runs when the locator is read.
+Declare a locator as a getter, and a child page object built from `this.page` or `this.root` the same way. A getter reads `this.page` when the locator is used, after the constructor has set it.
 
 ```ts
 export class ProjectsPage extends AppPage {

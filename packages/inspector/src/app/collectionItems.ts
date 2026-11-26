@@ -1,19 +1,21 @@
 import type { InspectorRootedInstance } from "@ayme-dev/ayme/inspector";
 
-import { type MemberIndex, pathBelowPage } from "../page-model";
+import { type MemberIndex, pathBelowPage } from "../page-model/domain";
 import {
   type StructureNode,
   type StructureTree,
   structureRows,
-} from "../structure";
-import type { CollectionItem } from "../runs";
+} from "../structure/domain";
+import type { CollectionItem } from "../runs/domain";
 
 /**
  * A rooted action's items on the page, by its tool's name, in page
- * order, labelled by what they show, each with the look's `verdicts` on
- * whether the action would run on it. A verdict is matched by the ref of its
- * element, the page state the structure was built from, so an item that
- * moved keeps its own. An item with no ref in the page state is left out.
+ * order, labelled by what they show, each with its Page Object id and the
+ * look's `verdicts` on whether the action would run on it. A verdict is
+ * matched by the ref of its element, the page state the structure was built
+ * from, so an item that moved keeps its own. An item with no ref in the page
+ * state is left out, as is one the look gives no id: the action could not be
+ * told to run on it.
  */
 export function itemsOf(
   toolName: string,
@@ -31,17 +33,17 @@ export function itemsOf(
     seen.add(node.ref);
     const ref = node.ref;
     const verdict = verdicts.find((candidate) => candidate.ref === ref);
+    if (!verdict) return [];
     return [
       {
         path: item.path,
         name: item.name,
         pathBelowPage: pathBelowPage(item, members),
+        id: verdict.id,
         ref: node.ref,
         label: textOf(node),
-        ...(verdict && {
-          available: verdict.available,
-          ...(verdict.reason === undefined ? {} : { reason: verdict.reason }),
-        }),
+        available: verdict.available,
+        ...(verdict.reason === undefined ? {} : { reason: verdict.reason }),
       },
     ];
   });

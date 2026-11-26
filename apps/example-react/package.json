@@ -3,10 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#pom/*": "./ayme/pom/*.ts"
+  },
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4191 --strictPort",
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p ayme",
     "lint": "eslint . --max-warnings 0",
     "test:e2e": "pnpm run test:playwright:dev && pnpm run test:playwright:prod && pnpm run test:e2e:dev && pnpm run test:e2e:prod",
     "test:playwright:dev": "AYME_E2E_RENDER=spa playwright test",

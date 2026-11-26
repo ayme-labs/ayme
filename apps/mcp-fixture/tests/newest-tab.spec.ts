@@ -19,15 +19,15 @@ test("pairing a second tab switches to it, answers the first tab's calls and dis
   expect(answer.error).toMatch(/^Another tab connected.*outcome is unknown/);
   await expect
     .poll(() => agent.pageToolNames())
-    .toEqual(expect.arrayContaining(["read_other"]));
+    .toContain("OtherPage.readHeading");
   await expect.poll(() => storedPairing(first)).toBeNull();
 
   // The first tab does not take the connection back when it reloads.
   await first.reload();
   await expect(first.locator("html[data-fixture=ready]")).toBeAttached();
-  await holdCall(agent, second);
+  await holdCall(agent, second, true);
   await expect(first.locator("html[data-holding]")).not.toBeAttached();
-  expect(await agent.pageToolNames()).toContain("read_other");
+  expect(await agent.pageToolNames()).toContain("OtherPage.readHeading");
 });
 
 test("a tab that reloads while another tab pairs does not take the connection back", async ({
@@ -53,5 +53,5 @@ test("a tab that reloads while another tab pairs does not take the connection ba
   await reloaded;
   await expect(first.locator("html[data-fixture=ready]")).toBeAttached();
   await expect.poll(() => storedPairing(first)).toBeNull();
-  expect(await agent.pageToolNames()).toContain("read_other");
+  expect(await agent.pageToolNames()).toContain("OtherPage.readHeading");
 });

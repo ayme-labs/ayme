@@ -1,4 +1,4 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
 import type { Page } from "@playwright/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -12,8 +12,8 @@ import {
   type Ayme,
   type CustomTool,
 } from "../../index";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 
 // Runtime object seam, with an agent calling through WebMCP (a `webmcp` Run,
 // through the publication harness): its call of a Custom Tool answers with a
@@ -71,7 +71,7 @@ const addMilk: CustomTool = {
   description: "Add Milk to the list.",
   async execute(_target, { run }) {
     return run("ListPage.addItem", {
-      ref: await rootRef("ListPage"),
+      id: await rootId("ListPage"),
       args: { text: "Milk" },
     });
   },

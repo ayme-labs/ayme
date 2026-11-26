@@ -7,7 +7,6 @@ import type {
 } from "../shared";
 import { inspectorChannelPort } from "./inspectorChannelPort";
 
-/** A contract whose commands only record how they were called. */
 function recordingContract() {
   const calls: [string, unknown][] = [];
   const observers = new Set<InspectorObserver>();
@@ -98,10 +97,9 @@ describe("inspectorChannelPort", () => {
     const heard: unknown[] = [];
     inspectorChannelPort(contract).subscribe((event) => heard.push(event));
     const event = {
-      type: "agent-image-run",
-      revision: 2,
-      run: { name: "screenshot", input: {}, startedAt: 1, durationMs: 2 },
-    } as const;
+      type: "state",
+      state: { revision: 2 },
+    } as unknown as InspectorEvent;
 
     emit(event);
 

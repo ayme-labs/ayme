@@ -1,9 +1,14 @@
 import { expect, it } from "vitest";
 import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
-import { indexMembers } from "../../page-model";
-import { collection, page } from "../../page-model/test-utils/pageModel";
-import { aChildRun, anInteraction, anItem, aRun } from "../test-utils/runs";
+import { indexMembers } from "../../page-model/domain";
+import { collection, page } from "../../../testing/page-model/pageModel";
+import {
+  aChildRun,
+  anInteraction,
+  anItem,
+  aRun,
+} from "../../../testing/runs/runs";
 import { runScope as scopeOf } from "./runScope";
 
 // Unit tests: which runs Runs shows for the selection. The runs are one on
@@ -14,8 +19,8 @@ const archiveMilk = aRun({
   id: "2",
   toolName: "ListItem.archive",
   className: "ListItem",
-  item: anItem("ListPage.items[1]", { ref: "e12", label: "Milk" }),
-  arguments: { ref: "e12", args: {} },
+  item: anItem("ListPage.items[1]", { id: "po12", ref: "e12", label: "Milk" }),
+  arguments: { id: "po12", args: {} },
 });
 const runs = [archiveMilk, addItem];
 const members = new Map([

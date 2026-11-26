@@ -43,7 +43,7 @@ export function AymeProvider({
   });
   if (ancestor)
     throw new Error(
-      "AymeProvider cannot be nested beneath another Ayme runtime owner."
+      "AymeProvider cannot be nested beneath another ayme runtime owner."
     );
   if (!sameRuntimeOptions(options, setup.options))
     throw new Error(
@@ -59,7 +59,7 @@ export function AymeProvider({
 
 function useRuntime() {
   const runtime = useContext(RuntimeContext);
-  if (!runtime) throw new Error("Ayme hooks require an ancestor AymeProvider.");
+  if (!runtime) throw new Error("ayme hooks require an ancestor AymeProvider.");
   return runtime;
 }
 
@@ -89,10 +89,10 @@ export function usePageObject<T extends object>(
   model: PageObjectConstructor<T>
 ): T {
   const runtime = useRuntime();
-  const [retained] = useState(() => ({ model, runtime }));
-  if (retained.model !== model || retained.runtime !== runtime)
+  const [initialRuntime] = useState(runtime);
+  if (initialRuntime !== runtime)
     throw new Error(
-      "The Page Object model or provider changed while the component was mounted."
+      "The Page Object provider changed while the component was mounted."
     );
   useEffect(() => {
     runtime.pom.register(model);

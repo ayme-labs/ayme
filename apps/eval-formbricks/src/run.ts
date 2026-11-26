@@ -1,16 +1,23 @@
 /**
  * One mission, once, through one arm. Checks preconditions, seeds, opens the
- * mission's start page, runs Claude Code, reads the verdict from the database
+ * mission's start page, runs the agent, reads the verdict from the database
  * and stores the run.
  * `runOnce` is the function the suite calls; the command below wraps it.
  *
- *   node src/run.ts --arm playwright-mcp [--model sonnet] [--timeout-seconds 600] [--mission <id>]
+ *   node src/run.ts --arm playwright-mcp [--agent claude|codex] [--model sonnet] [--timeout-seconds 600] [--mission <id>]
  */
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  agentAccess,
+  agentIds,
+  defaultModels,
+  isAgentId,
+  type AgentId,
+} from "./agents.ts";
 import {
   arms,
   armIds,
@@ -20,19 +27,11 @@ import {
   type ArmSetup,
 } from "./arms.ts";
 import { initPageScript, openStartPage } from "./browser.ts";
-import {
-  agentEffort,
-  claudeEnvironment,
-  claudeVersion,
-  runClaude,
-} from "./claude.ts";
-import {
-  openRouterKeyVariable,
-  readEnvVariable,
-  readOauthToken,
-} from "./environment.ts";
-import { decisionUsageFile, measureGoalLoop } from "./goalLoop.ts";
+import { runMain } from "./cli.ts";
+import { agentEffort, claudeVersion, runClaude } from "./claude.ts";
+import { codexConfig, codexRules, codexVersion, runCodex } from "./codex.ts";
 import { moveFiles, readLabChanges } from "./labCheckout.ts";
+import { usageLimitError, withFallbackLogin, type Login } from "./login.ts";
 import {
   ensureDatabaseBuilt,
   openFormbricksDatabase,
@@ -52,16 +51,15 @@ import {
   type NormalizedResult,
 } from "./normalize.ts";
 import {
+  agentRoot,
   evalRoot,
   formbricksRoot,
-  labRoot,
   labUrl,
   repoRoot,
   runsRoot,
 } from "./paths.ts";
 import {
   checkPreconditions,
-  claudeTokenPrecondition,
   dockerPrecondition,
   formbricksPreparedPrecondition,
   labAppPrecondition,
@@ -71,17 +69,20 @@ import { createPrompt, setupPrompt } from "./prompt.ts";
 import { judgeMission } from "./verdict.ts";
 
 export type RunOptions = {
+  /** Claude Code unless named. */
+  agent?: AgentId;
   arm: Arm;
   mission: MissionDefinition;
   model: string;
   timeoutSeconds: number;
 };
 
-export const defaultModel = "sonnet";
+/** The startup lane's, which runs through Claude Code alone. */
+export const defaultModel = defaultModels.claude;
 export const defaultTimeoutSeconds = 600;
 
 function usage() {
-  return `Usage: pnpm eval:run -- --arm <${armIds.join("|")}> [--model <model>] [--timeout-seconds <seconds>] [--mission <${Object.keys(missionDefinitions).join("|")}>]`;
+  return `Usage: pnpm eval:run -- --arm <${armIds.join("|")}> [--agent <${agentIds.join("|")}>] [--model <model>] [--timeout-seconds <seconds>] [--mission <${Object.keys(missionDefinitions).join("|")}>]`;
 }
 
 function parseOptions(argv: string[]): RunOptions {
@@ -95,6 +96,8 @@ function parseOptions(argv: string[]): RunOptions {
   }
   const arm = values.get("arm");
   if (arm === undefined || !isArmId(arm)) throw new Error(usage());
+  const agent = values.get("agent") ?? "claude";
+  if (!isAgentId(agent)) throw new Error(usage());
   const missionId = values.get("mission") ?? defaultMissionId;
   const mission = missionDefinitions[missionId];
   if (mission === undefined) throw new Error(usage());
@@ -104,9 +107,10 @@ function parseOptions(argv: string[]): RunOptions {
   if (!Number.isInteger(timeoutSeconds) || timeoutSeconds <= 0)
     throw new Error(usage());
   return {
+    agent,
     arm: arms[arm],
     mission,
-    model: values.get("model") ?? defaultModel,
+    model: values.get("model") ?? defaultModels[agent],
     timeoutSeconds,
   };
 }
@@ -131,9 +135,19 @@ export async function writeJson(filePath: string, value: unknown) {
 /**
  * Runs the mission once and stores it under `results/runs/<run id>/`.
  * Throws when the run cannot complete; a failed verdict is a result, not an error.
+ * A Claude Code run whose first login hits its usage limit is done again from the start on the fallback login.
  */
 export async function runOnce(
   options: RunOptions
+): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
+  if ((options.agent ?? "claude") !== "claude") return runOnceOn(options, null);
+  return withFallbackLogin(evalRoot, (login) => runOnceOn(options, login), log);
+}
+
+/** One attempt; `login` is the Claude Code login it runs on, `null` for Codex. */
+async function runOnceOn(
+  options: RunOptions,
+  login: Login | null
 ): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
   const runId = `${new Date().toISOString().replace(/[:.]/g, "-")}-${options.arm.id}-${randomBytes(3).toString("hex")}`;
   const runDir = path.join(runsRoot, runId);
@@ -141,22 +155,24 @@ export async function runOnce(
   const outputDir = path.join(runDir, "playwright-output");
   const initPagePath = path.join(runDir, "init-page.cjs");
   const mcpConfigPath = path.join(runDir, "mcp.json");
-  // A fresh, empty Claude Code configuration for this run alone; deleted with the browser profile.
-  const claudeConfigDir = path.join(runDir, "claude-config");
+  const agent = options.agent ?? "claude";
+  // A fresh, empty configuration of the agent's for this run alone; deleted with the browser profile.
+  const claudeConfigDir = path.join(runDir, `${agent}-config`);
   await mkdir(profileDir, { recursive: true });
   await mkdir(outputDir, { recursive: true });
   await mkdir(claudeConfigDir, { recursive: true });
 
-  const oauthToken = readOauthToken(evalRoot);
-  const environment =
-    oauthToken === undefined
-      ? undefined
-      : claudeEnvironment({ configDir: claudeConfigDir, oauthToken });
+  const { environment, preconditions: agentPreconditions } = agentAccess({
+    agent,
+    configDir: claudeConfigDir,
+    envDirectory: evalRoot,
+    login: login ?? undefined,
+  });
 
   log("Checking preconditions.");
   try {
     await checkPreconditions([
-      claudeTokenPrecondition({ environment, envDirectory: evalRoot }),
+      ...agentPreconditions,
       dockerPrecondition,
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
@@ -168,10 +184,18 @@ export async function runOnce(
     throw error;
   }
   if (environment === undefined) throw new Error("unreachable: no environment");
-  ensureDatabaseBuilt(formbricksRoot, log);
-  log(`Run ${runId}: ${runDir}`);
-
-  const database = await openFormbricksDatabase(formbricksRoot);
+  // The agent's configuration folder holds its sign-in, so it never outlives the run, however the run ends.
+  const removeAgentConfig = () =>
+    rm(claudeConfigDir, { recursive: true, force: true });
+  let database: Awaited<ReturnType<typeof openFormbricksDatabase>>;
+  try {
+    ensureDatabaseBuilt(formbricksRoot, log);
+    log(`Run ${runId}: ${runDir}`);
+    database = await openFormbricksDatabase(formbricksRoot);
+  } catch (error) {
+    await removeAgentConfig();
+    throw error;
+  }
   let armSetup: ArmSetup | undefined;
   try {
     log("Seeding the mission.");
@@ -207,36 +231,79 @@ export async function runOnce(
       initPagePath,
       configDir: claudeConfigDir,
       start: mission.start,
-      cwd: labRoot,
+      cwd: agentRoot,
       log,
     };
     const prompt = createPrompt(mission, options.arm, labUrl);
-    const setup = setupPrompt(options.arm);
+    const setup = setupPrompt(options.arm, agent);
     await writeFile(path.join(runDir, "setup-prompt.txt"), setup);
     await writeFile(path.join(runDir, "prompt.txt"), prompt);
     await writeFile(initPagePath, initPageScript(mission.start.url));
-    await writeJson(mcpConfigPath, {
-      mcpServers: options.arm.mcpServers(armContext),
-    });
     // Whatever the arm's interface needs outside the measured window.
     armSetup = await options.arm.setup?.(armContext);
+    // After the setup, which may add a server only it can name, such as one attached to a port it chose.
+    const mcpServers = {
+      ...options.arm.mcpServers(armContext),
+      ...armSetup?.mcpServers,
+    };
+    await writeJson(mcpConfigPath, { mcpServers });
+    if (agent === "codex") {
+      // The arm's skills are where its setup installed them, for either agent.
+      const skillsDir = path.join(claudeConfigDir, "skills");
+      await mkdir(path.join(claudeConfigDir, "rules"), { recursive: true });
+      await mkdir(skillsDir, { recursive: true });
+      await writeFile(
+        path.join(claudeConfigDir, "rules", "eval.rules"),
+        codexRules(
+          options.arm,
+          armSetup?.environment.PATH ?? environment.PATH ?? ""
+        )
+      );
+      await writeFile(
+        path.join(claudeConfigDir, "config.toml"),
+        codexConfig({
+          model: options.model,
+          mcpServers,
+          readable: [
+            agentRoot,
+            skillsDir,
+            ...(armSetup?.readableDirectories ?? []),
+          ],
+        })
+      );
+    }
 
     log(
-      `Starting the agent (${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`
+      `Starting the agent (${agent}, ${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`
     );
-    const run = await runClaude({
-      cwd: labRoot,
+    const invocation = {
+      cwd: agentRoot,
       environment: { ...environment, ...armSetup?.environment },
-      model: options.model,
-      arm: options.arm,
-      mcpConfigPath,
-      readableDirectories: armSetup?.readableDirectories,
       setupPrompt: setup,
       prompt,
       timeoutMs: options.timeoutSeconds * 1000,
       transcriptPath: path.join(runDir, "transcript.jsonl"),
       stderrPath: path.join(runDir, "stderr.log"),
-    });
+    };
+    const run =
+      agent === "codex"
+        ? await runCodex(invocation)
+        : await runClaude({
+            ...invocation,
+            model: options.model,
+            arm: options.arm,
+            mcpConfigPath,
+            readableDirectories: armSetup?.readableDirectories,
+          });
+    // A limit ends the attempt: half a run is no measurement. The repeat must not find what this one left behind.
+    const limited = login === null ? null : usageLimitError(run, login, runDir);
+    if (limited !== null) {
+      await moveFiles(
+        readLabChanges().untracked,
+        path.join(runDir, "agent-files")
+      );
+      throw limited;
+    }
     // Without a completed setup turn there is no measured turn, so there is no result; the transcript stays in the run folder.
     if (run.task === null)
       throw new Error(
@@ -257,21 +324,10 @@ export async function runOnce(
     );
     await writeJson(path.join(runDir, "verdict.json"), verdict);
 
-    // The lab app's Decision Endpoint records every Goal Loop call; this run's are the ones in its window.
-    // Calls the Goal Loop made before the task message would be the setup turn's; the window starts with the task.
-    const goalLoop = await measureGoalLoop({
-      usageFile: decisionUsageFile(formbricksRoot),
-      window: { startedAt: run.task.sentAt, finishedAt: run.finishedAt },
-      openRouterApiKey: readEnvVariable(openRouterKeyVariable, evalRoot),
-      log,
-    });
-    if (goalLoop.calls > 0)
-      log(
-        `The Goal Loop made ${goalLoop.calls} decision calls (${goalLoop.failedCalls} failed); cost ${goalLoop.costUsd === null ? "unknown" : `$${goalLoop.costUsd}`}.`
-      );
-
     const result = normalizeRun({
       runId,
+      login: login?.name,
+      agent,
       arm: options.arm.id,
       missionId: mission.id,
       requestedModel: options.model,
@@ -284,13 +340,13 @@ export async function runOnce(
       finishedAt: run.finishedAt,
       verdict,
       versions: {
-        claudeCode: claudeVersion(),
+        claudeCode: agent === "claude" ? claudeVersion() : null,
+        codex: agent === "codex" ? codexVersion() : null,
         browserInterface: options.arm.browserInterface(),
         browser: browserVersion,
         formbricksCommit: gitOutput(formbricksRoot, ["rev-parse", "HEAD"]),
         aymeCommit: gitOutput(repoRoot, ["rev-parse", "HEAD"]),
       },
-      goalLoop,
       setup: armSetup?.evidence ?? null,
       labCheckout: {
         movedFiles: labChanges.untracked,
@@ -309,10 +365,13 @@ export async function runOnce(
       );
     return { runId, runDir, result };
   } finally {
-    await armSetup?.dispose();
-    await database.close();
-    await rm(profileDir, { recursive: true, force: true });
-    await rm(claudeConfigDir, { recursive: true, force: true });
+    try {
+      await armSetup?.dispose();
+      await database.close();
+    } finally {
+      await removeAgentConfig();
+      await rm(profileDir, { recursive: true, force: true });
+    }
   }
 }
 
@@ -322,11 +381,4 @@ async function main() {
   process.exitCode = result.pass ? 0 : 1;
 }
 
-if (import.meta.main) {
-  main().catch((error: unknown) => {
-    process.stderr.write(
-      `${error instanceof Error ? error.message : String(error)}\n`
-    );
-    process.exitCode = 2;
-  });
-}
+if (import.meta.main) runMain(main);

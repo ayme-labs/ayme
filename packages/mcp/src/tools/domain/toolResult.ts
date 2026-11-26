@@ -1,16 +1,11 @@
+import type { PageTool, ToolCallOutcome } from "../../contract";
 import {
-  ImageResultSchema,
-  type ImageResult,
-  type PageTool,
-  type ToolCallOutcome,
-} from "../../contract";
+  buildErrorLine,
+  type SettledBuildState,
+} from "../../served-page-objects";
 
-/** An MCP tool result. */
 export type ToolResult = {
-  content: (
-    | { type: "text"; text: string }
-    | { type: "image"; data: string; mimeType: string }
-  )[];
+  content: { type: "text"; text: string }[];
   isError?: boolean;
 };
 
@@ -57,93 +52,44 @@ export function pageToolResult(outcome: ToolCallOutcome): ToolResult {
   return textResult(JSON.stringify(result));
 }
 
-/** The image a page tool returned, such as a screenshot, if it returned one. */
-export function imageOf(outcome: ToolCallOutcome): ImageResult | undefined {
-  if (!outcome.ok) return undefined;
-  const parsed = ImageResultSchema.safeParse(outcome.result);
-  return parsed.success ? parsed.data : undefined;
-}
-
-/** Where an image's file was written, or why it could not be. */
-export type SavedImage = { path: string } | { error: string };
-
-// Larger images are not returned inline, as agents' models refuse them.
-const MAX_INLINE_SIDE = 8000;
-const MAX_INLINE_BYTES = 5 * 1024 * 1024;
-
-/** How many bytes a base64 string decodes to. */
-function decodedBytes(base64: string): number {
-  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
-  return (base64.length / 4) * 3 - padding;
-}
-
-/** Why an image is too large to return inline, if it is. */
-function tooLargeToInline(image: ImageResult): string | undefined {
-  if (image.width > MAX_INLINE_SIDE || image.height > MAX_INLINE_SIDE)
-    return `it is over ${MAX_INLINE_SIDE} pixels on a side`;
-  if (decodedBytes(image.data) > MAX_INLINE_BYTES) return "it is over 5 MB";
-  return undefined;
-}
-
-/**
- * An image as an MCP result: the image, then a line naming what it shows and
- * the file it was saved to. An image too large to return inline comes back
- * as that line alone, saying why; it fails if its file could not be written
- * either.
- */
-export function imageToolResult(
-  image: ImageResult,
-  saved: SavedImage
-): ToolResult {
-  const format = image.mimeType === "image/png" ? "PNG" : "JPEG";
-  const shows = `Screenshot of ${image.subject}, ${image.width}×${image.height} ${format}`;
-  const line =
-    "path" in saved
-      ? `${shows}, saved to ${saved.path}.`
-      : `${shows}. It could not be saved to a file: ${saved.error}.`;
-  const tooLarge = tooLargeToInline(image);
-  if (tooLarge)
-    return {
-      content: [
-        { type: "text", text: `${line} Not returned inline: ${tooLarge}.` },
-      ],
-      ...("error" in saved ? { isError: true } : {}),
-    };
-  return {
-    content: [
-      { type: "image", data: image.data, mimeType: image.mimeType },
-      { type: "text", text: line },
-    ],
-  };
-}
-
-/**
- * The Page Objects entry this server serves, while no build of it has
- * succeeded, the first error of its last build, and whether its build
- * watches the entry's files, which it does unless it could not start.
- */
-export type FailedPageObjects = {
-  entry: string;
-  error: string;
-  watching: boolean;
-};
-
-/**
- * What an agent is told while no build of the served Page Objects entry
- * has succeeded: that it did not build, its first error, whether a build
- * ever succeeded, and whether the server is watching for changes.
- */
-export function pageObjectsNotBuilt({
-  entry,
-  error,
-  watching,
-}: FailedPageObjects) {
-  const state = watching
-    ? "The server is watching for changes: it rebuilds the entry when a file it read changes."
-    : "The server is not watching for changes: the build could not start, so no file is watched.";
+/** What an agent is told while no build of the served entry has succeeded. */
+export function pageObjectsNotBuilt(
+  state?: SettledBuildState,
+  initScript?: string
+): string | undefined {
+  if (state === undefined) return undefined;
+  let error: string;
+  let watching: string;
+  switch (state.kind) {
+    case "cannot-start":
+      error = state.error;
+      watching =
+        "The server is not watching for changes: the build could not start, so no file is watched.";
+      break;
+    case "watching-install": {
+      const { installFiles } = state;
+      error = state.error;
+      watching = `The server is watching ${installFiles.join(" and ")} for changes: it starts the build again when ${installFiles.length === 1 ? "it changes" : "either changes"}.`;
+      break;
+    }
+    case "never-built":
+      // Deduplication leaves at least one diagnostic of a failed build.
+      error = buildErrorLine(state.errors[0]!);
+      watching =
+        "The server is watching for changes: it rebuilds the entry when a file it read changes.";
+      break;
+    case "built":
+    case "rebuild-failed":
+      return undefined;
+  }
   return [
-    `The Page Objects entry ${entry} did not build, and no build of it has succeeded, so this server serves no Page Objects. The first error: ${error}`,
-    state,
+    `The Page Objects entry ${state.entry} did not build, and no build of it has succeeded, so this server serves no Page Objects. The first error: ${error}`,
+    watching,
+    ...(initScript !== undefined && state.kind !== "cannot-start"
+      ? [
+          `Once it builds, this server serves Page Objects to pages that load ${initScript}.`,
+        ]
+      : []),
   ].join("\n");
 }
 
@@ -154,14 +100,12 @@ export function pageObjectsNotBuilt({
  */
 export function notConnectedResult(
   versionGap?: string,
-  failedPageObjects?: FailedPageObjects
+  state?: SettledBuildState
 ): ToolResult {
   if (versionGap !== undefined)
     return errorResult(`No page is connected: ${versionGap}`);
-  if (failedPageObjects !== undefined)
-    return errorResult(
-      `No page is connected. ${pageObjectsNotBuilt(failedPageObjects)}`
-    );
+  const why = pageObjectsNotBuilt(state);
+  if (why !== undefined) return errorResult(`No page is connected. ${why}`);
   return errorResult("No page is connected.");
 }
 
@@ -179,8 +123,8 @@ export function goneToolResult(name: string): ToolResult {
  * A page tool as the MCP tool list shows it: its name, description and
  * schema, and `destructiveHint` when its author marked it destructive, but
  * not its availability, since that list changes on presence and not on
- * availability (ADR-0035). An unmarked tool gets no annotations: MCP then
- * takes it as possibly destructive, and Ayme never says otherwise.
+ * availability (ADR-0062). An unmarked tool gets no annotations: MCP then
+ * takes it as possibly destructive, and ayme never says otherwise.
  */
 export function mcpPageTool({
   name,

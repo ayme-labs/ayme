@@ -11,17 +11,35 @@ npm install -D @ayme-dev/inspector @ayme-dev/mcp
 
 `ng add`:
 
-- installs Ayme, the build plugin and `@playwright/test`;
+- installs ayme, the build plugin and `@playwright/test`;
 - switches the build and serve builders to `@angular-builders/custom-esbuild`;
-- adds the plugin to the build target, and with `include: true` to its development configuration, so `ng serve` has Ayme and `ng build` does not;
+- adds the plugin to the build target, and with `include: true` to its development configuration, so `ng serve` has ayme and `ng build` does not;
 - adds `provideAyme()` to the application config.
 
 New Angular workspaces already enable `experimentalDecorators`. [Angular](../frameworks/angular.md) lists the manual steps.
 
 ## 2. Write a Page Object Model
 
+Page Objects live in `ayme/pom/`, at your project's root. Give the folder a tsconfig that extends your app's, so it compiles with the app's options:
+
+```jsonc
+// ayme/tsconfig.json
+{
+  "extends": "../tsconfig.json",
+  "include": ["**/*.ts"],
+}
+```
+
+Add the `#pom/*` alias to your `package.json`, so app code and tests import the Page Objects the same way from any folder:
+
+```json
+{ "imports": { "#pom/*": "./ayme/pom/*.ts" } }
+```
+
+[The `ayme` folder](../guides/ayme-folder.md) describes the rest of the folder. Then write the model:
+
 ```ts
-// playwright/pom/ProjectsPage.ts
+// ayme/pom/ProjectsPage.ts
 import { ayme } from "@ayme-dev/ayme";
 import type { Page } from "@playwright/test";
 
@@ -44,7 +62,7 @@ export class ProjectsPage {
 
 If your Playwright tests already have a Page Object Model for this page, mark that one instead.
 
-## 3. Start Ayme and use the Page Object
+## 3. Start ayme and use the Page Object
 
 Turn the Inspector and the Agent Connection on in development where `ng add` added `provideAyme()`:
 
@@ -66,7 +84,7 @@ Use the Page Object in a component, and render `<app-projects />` in your app:
 // src/app/projects.ts
 import { Component, signal } from "@angular/core";
 import { injectPageObject } from "@ayme-dev/angular";
-import { ProjectsPage } from "../../playwright/pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 @Component({
   selector: "app-projects",
@@ -102,7 +120,7 @@ export class Projects {
 
 Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-To call it from your coding agent, register Ayme's MCP server in the agent and connect it to the page, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
+To call it from your coding agent, register ayme's MCP server in the agent and connect it to the page, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
 
 ## Next
 

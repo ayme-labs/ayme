@@ -86,7 +86,7 @@ async function buildSelfContained(input: string) {
     // No build-machine paths, as in the package's own build.
     experimental: { attachDebugInfo: "none" },
     output: { format: "cjs", comments: false },
-    // As in the package's build, a module of Ayme's or core's sets up on
+    // As in the package's build, a module of ayme's or core's sets up on
     // import only the state its own exports use.
     treeshake: {
       moduleSideEffects: (id) =>

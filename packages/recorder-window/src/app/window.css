@@ -1,0 +1,9 @@
+/*
+ * The window's stylesheet: the design system for a page that owns its
+ * document. It is compiled at build time into the string module
+ * `virtual:ayme-recorder-window-css`, which the window's script puts in the
+ * page, so the window is one script and one page.
+ */
+@import "@ayme-dev/design-system/globals.css";
+
+@source "../";

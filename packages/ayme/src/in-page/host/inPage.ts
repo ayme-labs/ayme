@@ -92,9 +92,9 @@ export type InPage = {
    */
   forget(keys: readonly string[]): Promise<void>;
   /**
-   * Reach (ADR-0041) of the element `ref` names, measured in the page: what
-   * a click would reach, and what blocks or takes it, named by Structural
-   * Ref. An element that is gone is absent. With `atCall`, the element is
+   * Reach (ADR-0062) of the element `ref` names, measured in the page: what
+   * a click would reach, and what blocks or takes it, named by its role
+   * and name. An element that is gone is absent. With `atCall`, the element is
    * scrolled into view first, as the call that clicks it scrolls, and the
    * hit test is where the click lands.
    */
@@ -103,17 +103,19 @@ export type InPage = {
     options?: { atCall?: boolean }
   ): Promise<ReachMeasurement>;
   /**
-   * The ref of what blocks every click on the element `ref` names and its
-   * focus: the last opened native modal it is not in, else its inert ancestor.
+   * What blocks every click on the element `ref` names and its focus, when
+   * anything does: the last opened native modal it is not in, else its inert
+   * ancestor, with `inTheWay`, its role and name, when it has a role to name
+   * it by (see `ReachMeasurement`).
    */
-  blockingAncestor(ref: string): Promise<string | undefined>;
+  blockingAncestor(ref: string): Promise<{ inTheWay?: string } | undefined>;
   /**
    * Page Object Root `root`: how many elements its Locator matches, and
    * whether it is on the page (Page Object Presence) and a click would reach
    * it (Page Object Availability), measured with the Locator resolved in one
-   * task in the page, never scrolling or sending input (ADR-0019). Called
-   * inside a probe run of `watch`, it also labels this host's roots with
-   * `label` in its later captures.
+   * task in the page, never scrolling or sending input (ADR-0061,
+   * ADR-0062). Called inside a probe run of `watch`, it also labels this
+   * host's roots with `label` in its later captures.
    */
   probe(root: Locator, label: string): Promise<RootState>;
   /**
@@ -145,6 +147,20 @@ export type InPage = {
    * the capture's. Undefined for a ref whose element left the document.
    */
   currentRefs(refs: readonly string[]): Promise<(string | undefined)[]>;
+  /**
+   * The key of the element each of `refs`, now or before, names, and the ref
+   * it has now, in the order given: a key names its element for as long as
+   * it lives, however often captures rename it, and never an element of
+   * another document. Undefined for a ref whose element left the document.
+   */
+  elementKeys(
+    refs: readonly string[]
+  ): Promise<({ key: string; ref: string } | undefined)[]>;
+  /**
+   * The ref the element each of `keys` names has now, in the order given.
+   * Undefined once it left the document, and for a key of another document.
+   */
+  keyedRefs(keys: readonly string[]): Promise<(string | undefined)[]>;
   /** The URL the document resolves relative URLs against: its `baseURI`. */
   baseURI(): Promise<string>;
   /** The key of the document's current history entry, or none without the Navigation API. */
@@ -159,7 +175,7 @@ export type InPage = {
   names(target: Locator, ref: string): Promise<boolean>;
   /**
    * Of `refs`, those whose element `input` would reach now, measured in one
-   * batch in the page: a click reaches an element (ADR-0035) when nothing
+   * batch in the page: a click reaches an element (ADR-0062) when nothing
    * covers or blocks it; focus needs only that nothing blocks it. In the
    * order given.
    */
@@ -271,18 +287,18 @@ export type CaptureOptions = {
   accepts?: readonly Predicate[];
   /** The Custom Tools' filters whose accepted refs the capture carries, under each name. */
   filters?: readonly NamedFilter[];
-  /**
-   * The host's inputs, plain data (`ElementInputs`). Transitional: the
-   * browser runtime gives a handle to them, for Playwright Lite's page
-   * function (#1177).
-   */
-  elements?: JSHandle<ElementInputs> | ElementInputs;
+  /** The refs of elements the capture keeps as nodes of their own (`Capture.kept`). */
+  keep?: readonly string[];
+  /** The host's inputs, plain data (`ElementInputs`). */
+  elements?: ElementInputs;
 };
 
 export type ActionOptions = {
   /**
-   * As `CaptureOptions.elements`; a handle may hold a function, which the
-   * module reads again before each of the action's captures.
+   * As `CaptureOptions.elements`, or a handle that holds them as a function,
+   * which the module calls when the action begins and again when it settles.
+   * The browser runtime hands the function; the Node host hands plain data it
+   * read once.
    */
   elements?: JSHandle<ActionInputs> | ElementInputs;
 };
@@ -309,7 +325,7 @@ export function createInPageHost(version = packageVersion): InPageHost {
 
   const versionError = (found: string) =>
     new InPageVersionError(
-      `This document runs Ayme's in-page module ${found}; this host is ${version}.`
+      `This document runs ayme's in-page module ${found}; this host is ${version}.`
     );
 
   function forPage(page: Page): InPage {
@@ -417,7 +433,7 @@ export function createInPageHost(version = packageVersion): InPageHost {
         if (installed) {
           if (inFrame && "framed" in result && result.framed) return inFrame();
           throw new RuntimeStateError(
-            "The document lost Ayme's in-page module right after it was installed."
+            "The document lost ayme's in-page module right after it was installed."
           );
         }
         await bound();
@@ -544,10 +560,14 @@ export function createInPageHost(version = packageVersion): InPageHost {
 
     const inPage: InPage = {
       bound,
-      capture: ({ elements, accepts, filters } = {}) => {
+      capture: ({ elements, accepts, filters, keep } = {}) => {
         const ask =
-          accepts || filters
-            ? { ...(accepts && { accepts }), ...(filters && { filters }) }
+          accepts || filters || keep
+            ? {
+                ...(accepts && { accepts }),
+                ...(filters && { filters }),
+                ...(keep && { keep }),
+              }
             : undefined;
         return call<Capture>("capture", [elements, ask]);
       },
@@ -612,6 +632,17 @@ export function createInPageHost(version = packageVersion): InPageHost {
       async currentRefs(refs) {
         if (refs.length === 0) return [];
         return call<(string | undefined)[]>("currentRefs", [refs]);
+      },
+      async elementKeys(refs) {
+        if (refs.length === 0) return [];
+        return call<({ key: string; ref: string } | undefined)[]>(
+          "elementKeys",
+          [refs]
+        );
+      },
+      async keyedRefs(keys) {
+        if (keys.length === 0) return [];
+        return call<(string | undefined)[]>("keyedRefs", [keys]);
       },
       names: (target, ref) => callOn<boolean>(target, "names", ref),
       watch(probe) {
@@ -750,12 +781,10 @@ export function createInPageHost(version = packageVersion): InPageHost {
 /** How often Locator Recommendation resolves a container the page keeps replacing. */
 const RECOMMEND_ATTEMPTS = 3;
 
-/** What a watcher needs of its Page. */
 type WatcherPage = {
   probe(signal: AbortSignal): Promise<void>;
   /** Whether the document tells this host of changes, and where they stand. */
   watching(on: boolean): Promise<ChangeState>;
-  /** Where the document's changes stand. */
   changes(): Promise<ChangeState>;
   endRound(round: number): Promise<void>;
   /** Calls `listener` when a document has loaded, until the returned function is called. */
@@ -827,7 +856,6 @@ function createWatcher() {
     get round() {
       return round;
     },
-    /** What the module tells this host about a document. */
     heard(document: DocumentToken, message: HostMessage): void {
       if (!watch || message.kind !== "change") return;
       note(watch, { document, seq: message.seq });

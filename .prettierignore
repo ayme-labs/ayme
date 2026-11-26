@@ -27,6 +27,10 @@ apps/example-vue/tests/vue-webmcp.spec.ts-snapshots/
 
 # Vendored repo-local agent skills, kept byte-for-byte with upstream
 /.agents/skills/typesafe-ai/
+/.agents/skills/statechart/
+/.agents/skills/create-formal-verification-skill/
+/.agents/skills/maintain-formal-verification-skill/
+/.agents/skills/stately/
 
 apps/example-angular/.angular/
 
@@ -41,3 +45,4 @@ packages/*/CHANGELOG.md
 
 # Liquid template for the docs site, which Prettier cannot parse
 docs/guide/_layouts/
+/apps/lab-formbricks/ayme/init-script.js

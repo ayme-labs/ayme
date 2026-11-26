@@ -1,10 +1,10 @@
 # React
 
-Everything about Ayme in a React app: setup, the provider, hooks, server rendering with Next.js, limits and the API of `@ayme-dev/react`.
+Everything about ayme in a React app: setup, the provider, hooks, server rendering with Next.js, limits and the API of `@ayme-dev/react`.
 
 ## Setup
 
-Install Ayme, the React package and the build plugin, with the Inspector and the Agent Connection for development, as the [React quickstart](../start/quickstart-react.md) does:
+Install ayme, the React package and the build plugin, with the Inspector and the Agent Connection for development, as the [React quickstart](../start/quickstart-react.md) does:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/react
@@ -23,11 +23,11 @@ export default defineConfig(({ command }) => ({
 }));
 ```
 
-`include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
+`include` keeps ayme in the dev server and out of `vite build`; [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
 On Next.js, use the Turbopack loader, as the [build plugin reference](../reference/build-plugin.md#nextjs) shows. Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows.
 
-## Start Ayme at the root
+## Start ayme at the root
 
 Wrap the app in `AymeProvider`, with the Inspector and the Agent Connection in development:
 
@@ -55,23 +55,23 @@ The provider takes the [`createAyme` options](../reference/ayme.md#createayme) a
 
 The props must stay fixed while the provider is mounted; remount the provider and its consumers to change them.
 
-Only one owner can run Ayme in a document. A provider nested inside another provider throws. A second provider elsewhere in the tree, or a `createAyme().start()` outside React, is rejected while the first owner runs. Unmounting the provider stops publication and observation.
+Only one owner can run ayme in a document. A provider nested inside another provider throws. A second provider elsewhere in the tree, or a `createAyme().start()` outside React, is rejected while the first owner runs. Unmounting the provider stops publication and observation.
 
 Strict Mode's effect replay in development keeps the session's Page and Page Objects.
 
-Wrap the application root, not a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout`, and the provider with it. Unmounting the provider stops Ayme and closes the agent connection. The agent can lose the answer to its call.
+Wrap the application root, not a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout`, and the provider with it. Unmounting the provider stops ayme and closes the agent connection. The agent can lose the answer to its call.
 
 ## Hooks
 
-Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the provider's `pageObjects` prop:
+Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the provider's `pageObjects` prop. The `#pom/*` imports are the alias that [The `ayme` folder](../guides/ayme-folder.md#set-the-folder-up-for-page-objects) sets up:
 
 ```tsx
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { AymeProvider } from "@ayme-dev/react";
 import App from "./App";
-import { ProjectsPage } from "./pom/ProjectsPage";
-import { SettingsPage } from "./pom/SettingsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
+import { SettingsPage } from "#pom/SettingsPage";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -90,7 +90,7 @@ Call the hooks in descendants of the provider. A component that calls an action 
 
 ```tsx
 import { usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "./pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 export default function Controls() {
   const pom = usePageObject(ProjectsPage);
@@ -103,7 +103,7 @@ export default function Controls() {
 }
 ```
 
-- `usePageObject(Model)` returns the session's instance of the class immediately and registers the class after commit. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. Changing the model class requires remounting the component. Unmounting it removes its registration.
+- `usePageObject(Model)` returns the session's instance of the class immediately and registers the class after commit. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. When the model class changes while the component stays mounted, as after a Fast Refresh edit, it returns the new class's instance and the old class's registration is removed. Unmounting it removes its registration.
 - `useAyme()` returns the provider's session, `ayme`, and its WebMCP publication, `webMCP`.
 
 Hooks need the provider in an ancestor component, and throw without it. A hook in the component that renders the provider throws too:
@@ -200,7 +200,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 "use client";
 
 import { usePageObject } from "@ayme-dev/react";
-import { ProjectsPage } from "../../pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 export default function Projects() {
   const pom = usePageObject(ProjectsPage);
@@ -225,29 +225,29 @@ The build needs the Turbopack loader from the [build plugin reference](../refere
 
 ## Bundle size
 
-Ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in the entry chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
+ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in the entry chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
 
-A build includes Ayme only with the plugin's `include: true`. The config above keeps Ayme in the dev server and out of `vite build`; see [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
+A build includes ayme only with the plugin's `include: true`. The config above keeps ayme in the dev server and out of `vite build`; see [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
 
 ## Limits
 
 - The supported React and Next.js versions are on [Install](../start/install.md#supported-versions).
-- Change the props or the model class only by remounting.
+- Change the provider's props only by remounting it.
+- In the dev server, an edit to a Page Object Model or a type it imports re-runs the module that imports the model. In the [quickstart](../start/quickstart-react.md)'s layout, where that module calls `createRoot`, the console shows `The ayme runtime already has an active owner.` and Vite then reloads the page, which picks up the edit. When the component sits in a file of its own, Fast Refresh keeps it mounted and `usePageObject` returns an instance of the edited class. The runtime keeps the old class's instance until the page reloads.
 
 ## Troubleshooting
 
-| Error                                                                        | Cause                                                                                  |
-| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `AymeProvider cannot be nested beneath another Ayme runtime owner.`          | A second provider beneath the first. Start Ayme once, at the root.                     |
-| `The provider options changed while the provider was mounted.`               | A provider prop changed while mounted.                                                 |
-| `Ayme hooks require an ancestor AymeProvider.`                               | A hook without a provider above, including in the component that renders the provider. |
-| `The Page Object model or provider changed while the component was mounted.` | `usePageObject` got a different model.                                                 |
+| Error                                                               | Cause                                                                                  |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `AymeProvider cannot be nested beneath another ayme runtime owner.` | A second provider beneath the first. Start ayme once, at the root.                     |
+| `The provider options changed while the provider was mounted.`      | A provider prop changed while mounted.                                                 |
+| `ayme hooks require an ancestor AymeProvider.`                      | A hook without a provider above, including in the component that renders the provider. |
 
 ## API
 
 | Export                       | Kind      | Does                                                                                                                                                              |
 | ---------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AymeProvider`               | Component | Starts and owns Ayme for its subtree. Props are the `createAyme` options.                                                                                         |
+| `AymeProvider`               | Component | Starts and owns ayme for its subtree. Props are the `createAyme` options.                                                                                         |
 | `useAyme()`                  | Hook      | Returns `{ ayme, webMCP }` from the provider above.                                                                                                               |
 | `usePageObject(Model)`       | Hook      | Returns the class's instance and registers it while the component is mounted.                                                                                     |
 | `usePeek(values, name, id?)` | Hook      | [Experimental](../reference/experimental-apis.md). Adds the component's instance of the Peek `name` while it is mounted, reading `values` from its latest render. |

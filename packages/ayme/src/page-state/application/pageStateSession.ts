@@ -36,6 +36,7 @@ import {
   type PageStateCapture,
   type RefResolution,
 } from "../domain/structuralPageState";
+import type { PomRootIds } from "../domain/pomRootMarks";
 import { resolveRequestedRef } from "./refResolution";
 
 /**
@@ -43,12 +44,26 @@ import { resolveRequestedRef } from "./refResolution";
  * plain data from the document's in-page module, whose refs, synthetic ones
  * included, are the document's own, whoever captures.
  */
-export type CapturePage = (accepts?: readonly Predicate[]) => Promise<Capture>;
+export type CapturePage = (
+  accepts?: readonly Predicate[],
+  keep?: readonly string[],
+  ready?: () => Promise<void>
+) => Promise<Capture>;
 
 /** What a reader of a capture asks of it besides its tree. */
 export type CaptureAsk = {
   /** The predicates whose accepted refs the capture carries. */
   accepts?: readonly Predicate[];
+  /**
+   * The refs of elements the capture keeps as nodes of their own, such as
+   * a Page Object's declared span of text; a look alone asks for them.
+   */
+  keep?: readonly string[];
+  /**
+   * Resolves when the capture may begin. It is awaited after what the
+   * capture needs is gathered, right before the page is read.
+   */
+  ready?: () => Promise<void>;
 };
 
 /**
@@ -60,6 +75,14 @@ export type CaptureAsk = {
 export type ActionPage = {
   begin(): Promise<PageAction>;
 };
+
+/**
+ * The id of each Page Object `roots` name by its class and the Structural
+ * Ref of its root, in the order given.
+ */
+export type RootIds = (
+  roots: readonly { className: string; ref: string }[]
+) => Promise<(string | undefined)[]>;
 
 /** An action begun on the page: the page right before it, and the action. */
 export type PageAction = {
@@ -86,7 +109,6 @@ export class PageStateSession {
         renamed?: ReadonlyMap<string, string>;
       }
     | undefined;
-  private readonly recordedListeners = new Set<() => void>();
   // The synthetic refs this session's trees mint for themselves.
   private refFactory = treeRefAllocator();
   private current: InteractionHistory;
@@ -96,7 +118,7 @@ export class PageStateSession {
   /**
    * `history`: every capture is an observation in it; the observation a
    * cursor stands at is the "before" of its next Change Record, and its
-   * identity ledger keeps ref continuity. Captures Ayme makes for itself
+   * identity ledger keeps ref continuity. Captures ayme makes for itself
    * move no cursor.
    *
    * `restart`: a host whose Page outlives its documents, which a full load
@@ -104,12 +126,18 @@ export class PageStateSession {
    * loaded. Each document has its own history, identity ledger and refs, as
    * the browser runtime's has by starting over at a full load. Without it,
    * the session keeps one document's.
+   *
+   * `rootIds`: what the page state text a reader receives prints on each
+   * Page Object Root beside its marks, by the root's Structural Ref, in the
+   * order asked; undefined for a root that has none. Without it, the text
+   * prints none.
    */
   constructor(
     history: InteractionHistory,
     private readonly captureDocument: CapturePage,
     private readonly actionPage: ActionPage,
-    private readonly restart?: (url: string) => InteractionHistory
+    private readonly restart?: (url: string) => InteractionHistory,
+    private readonly rootIds?: RootIds
   ) {
     this.current = history;
   }
@@ -140,8 +168,10 @@ export class PageStateSession {
   /** A capture of the page as the session reads it: its tree and marks. */
   private async capturePage({
     accepts,
+    keep,
+    ready,
   }: CaptureAsk = {}): Promise<PageCapture> {
-    const capture = await this.captureDocument(accepts);
+    const capture = await this.captureDocument(accepts, keep, ready);
     this.enter(capture);
     return this.read(capture);
   }
@@ -160,7 +190,36 @@ export class PageStateSession {
   }
 
   async getPageState(cursor?: Cursor): Promise<PageState> {
-    return this.pageStateFor(await this.capture(cursor));
+    const capture = await this.capture(cursor);
+    return this.pageStateFor(capture, await this.rootIdsOf(capture));
+  }
+
+  /**
+   * The id of each Page Object rooted in `capture` that has one, by its
+   * root's ref and its class.
+   */
+  private async rootIdsOf(capture: PageCapture): Promise<PomRootIds> {
+    // In the order the tree shows the roots, and a root's classes in the
+    // order its marks print, which is the order a Page Object new to the
+    // page gets its id in.
+    const roots = capture.tree
+      .getAllRefs()
+      .flatMap((ref) =>
+        [...(capture.pomRootMarks.get(ref) ?? [])]
+          .sort()
+          .map((className) => ({ className, ref }))
+      );
+    if (!this.rootIds || roots.length === 0) return new Map();
+    const ids = await this.rootIds(roots);
+    const byRef = new Map<AriaRef, Map<string, string>>();
+    roots.forEach(({ className, ref }, index) => {
+      const id = ids[index];
+      if (id === undefined) return;
+      const classes = byRef.get(ref) ?? new Map<string, string>();
+      classes.set(className, id);
+      byRef.set(ref, classes);
+    });
+    return byRef;
   }
 
   async getPageStateCapture(
@@ -193,7 +252,7 @@ export class PageStateSession {
    *
    * A Caller's state is what it received: `snapshot` and the Settled Page of
    * its previous action; each step's tree for the Goal Loop's fork. Captures
-   * Ayme makes for itself move no cursor: the before capture, taken right
+   * ayme makes for itself move no cursor: the before capture, taken right
    * before `perform` and recorded only when the page differs from the latest
    * observation, is one. A change that happened on its own since the Caller
    * last read the page, or by another Caller, is therefore in
@@ -208,17 +267,24 @@ export class PageStateSession {
    * it: what a failed action did still reaches its Caller once. Where
    * capturing that page throws, the page as last recorded stands in for it.
    *
-   * An action that starts a full page load answers at once, before the old
-   * document goes away, with the Change Record up to the old document's
+   * An action that starts a full page load answers at once when the page
+   * reports the load start, before the old document goes away, else once
+   * `perform` returns, with the Change Record up to the old document's
    * last capture, the URL that is loading and `next`. `perform` and the
    * settle wait are left to finish on their own; their outcome is never
    * reported. A navigation that stays in the document leaves the action to
    * settle as usual.
+   *
+   * With `onlyNavigates`, `perform` changes nothing in the document but
+   * where it is, as a browser Page's `goto` or `reload` does: when the old
+   * document's last capture does not arrive, the page before the action
+   * stands for it.
    */
   async runAction(
     cursor: Cursor,
     call: ToolCall,
-    perform: () => unknown
+    perform: () => unknown,
+    { onlyNavigates = false }: { onlyNavigates?: boolean } = {}
   ): Promise<ActionResult> {
     let actionId = await this.startAction(call);
     let history = this.history;
@@ -229,8 +295,10 @@ export class PageStateSession {
     // capture finds the page moved on since.
     let before = history.latestObservation;
     let outcome: ActionOutcome<unknown>;
+    let pageBefore: Capture;
     try {
       const action = await this.actionPage.begin();
+      pageBefore = action.before;
       // A full load since the session last read the page: the action runs in
       // the new document, whose history it starts in.
       if (this.enter(action.before)) {
@@ -254,7 +322,7 @@ export class PageStateSession {
         cursor,
         { received, before },
         outcome.url,
-        outcome.after
+        outcome.after ?? (onlyNavigates ? pageBefore : undefined)
       );
     if (outcome.kind === "threw") {
       const after = this.checkedOrNone(outcome.after);
@@ -312,7 +380,9 @@ export class PageStateSession {
 
   /**
    * The answer to an action that started a full load of `url`, with the
-   * old document's last capture, when it could take one, as its after.
+   * old document's last capture, when it reached the host, as its after.
+   * Without one the answer says its changes could not be read, rather than
+   * that there were none.
    */
   private async loadingResult(
     actionId: StructuralActionId,
@@ -322,32 +392,26 @@ export class PageStateSession {
     capture: Capture | undefined
   ): Promise<ActionResult> {
     // The document may already be gone; the answer goes out regardless.
-    const record = await (
-      capture === undefined
-        ? Promise.reject(new Error("The old document left no capture."))
-        : this.completeAction(actionId, capture)
-    )
-      .then((after) => {
-        cursor.move(after);
-        return readChangeRecord(this.history, starts, after);
-      })
-      .catch(
-        (): Pick<
-          ActionResult,
-          "page_changed" | "changes_before" | "changes"
-        > => ({
-          page_changed: false,
+    const record =
+      capture &&
+      (await this.completeAction(actionId, capture)
+        .then((after) => {
+          cursor.move(after);
+          return readChangeRecord(this.history, starts, after);
         })
-      );
+        .catch(() => undefined));
+    const unread = record
+      ? ""
+      : " What the action changed before the load could not be read.";
     return {
-      page_changed: record.page_changed,
+      ...(record && { page_changed: record.page_changed }),
       settled: false,
-      ...(record.changes_before
+      ...(record?.changes_before
         ? { changes_before: record.changes_before }
         : {}),
-      ...(record.changes ? { changes: record.changes } : {}),
+      ...(record?.changes ? { changes: record.changes } : {}),
       loading: url,
-      next: `The page is loading ${url}. Call snapshot next to read the new page.`,
+      next: `The page is loading ${url}.${unread} Call snapshot next to read the new page.`,
     };
   }
 
@@ -495,18 +559,6 @@ export class PageStateSession {
       tree,
       ...(renamed ? { renamed } : {}),
     };
-    for (const listener of this.recordedListeners) listener();
-  }
-
-  /**
-   * Calls `listener` each time a page state is recorded, until the returned
-   * function is called.
-   */
-  onRecorded(listener: () => void): () => void {
-    this.recordedListeners.add(listener);
-    return () => {
-      this.recordedListeners.delete(listener);
-    };
   }
 
   /**
@@ -558,9 +610,9 @@ export class PageStateSession {
     }
   }
 
-  private pageStateFor(capture: PageCapture): PageState {
+  private pageStateFor(capture: PageCapture, rootIds: PomRootIds): PageState {
     return Object.freeze({
-      text: renderPageState(capture).text,
+      text: renderPageState(capture, rootIds).text,
       resolve: async (...refs: AriaRef[]) => this.resolveRefs(refs),
     });
   }
@@ -577,7 +629,7 @@ export class PageStateSession {
 
   /** Resolve refs through the session's identity ledger and a fresh capture. */
   async resolveRefs(refs: readonly AriaRef[]): Promise<RefResolution[]> {
-    // A capture Ayme makes for itself: the observation session's identity
+    // A capture ayme makes for itself: the observation session's identity
     // ledger carries ref identities forward through it without it becoming
     // the state a caller received.
     // The ledger is read at the latest recorded observation, which may be a

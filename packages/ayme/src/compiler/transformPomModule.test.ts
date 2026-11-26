@@ -15,7 +15,7 @@ vi.mock("./pomProgram", async (importOriginal) => {
   return { ...actual, createPomProgram };
 });
 
-import { diagnosticsOf } from "./pomCompileError.testSupport";
+import { diagnosticsOf } from "../../testing/compiler/pomCompileError.testSupport";
 import {
   absentEntryFor,
   createPomTransform,
@@ -67,7 +67,11 @@ describe("with a Program cache", () => {
 
   it("drops the cached Program when a transform fails", () => {
     const programs: PomPrograms = new Map();
-    const transform = createPomTransform({}, undefined, programs);
+    const transform = createPomTransform(
+      { include: true },
+      undefined,
+      programs
+    );
 
     expect(transform(...fixture("annotatedChildrenPom"))).not.toBeNull();
     expect(programs.size).toBe(1);
@@ -200,6 +204,7 @@ describe("a subclass in a module without the decorator", () => {
           // The option's value: `"unknown"`.
           line: 2,
           column: 44,
+          lineText: '  "compilerOptions": { "moduleResolution": "unknown" }',
         },
       ]);
     });
@@ -214,6 +219,7 @@ describe("a subclass in a module without the decorator", () => {
           file: join(root!, "tsconfig.json"),
           line: 2,
           column: 22,
+          lineText: '  "compilerOptions": }',
         },
       ]);
     });
@@ -308,14 +314,14 @@ describe("a solution-style tsconfig", () => {
   });
 });
 
-describe("a build without Ayme", () => {
+describe("a build without ayme", () => {
   const fixture = (name: string) => {
     const fixturePath = fileURLToPath(
       new URL(`./fixtures/${name}.ts`, import.meta.url)
     );
     return [readFileSync(fixturePath, "utf8"), fixturePath] as const;
   };
-  // Without `include: true`, every build is a build without Ayme.
+  // Without `include: true`, every build is a build without ayme.
   const transform = createPomTransform();
 
   it("compiles each Page Object Model to a stand-in of its name, keeping the rest of the module", () => {
@@ -399,11 +405,27 @@ describe("a build without Ayme", () => {
     expect(code).not.toContain("opened");
   });
 
+  it.each([
+    ["unset", {}],
+    ["false", { include: false }],
+  ] as const)(
+    "compiles a Page Object Model whose action takes a type no schema describes to its stand-in, with include %s",
+    (_, options) => {
+      const code = createPomTransform(options)(
+        ...fixture("unsupportedShapes/typedArrayPom")
+      )?.code;
+
+      expect(code).toContain(
+        'export class TypedArrayPom extends absentPageObject("TypedArrayPom", {"actions":["attach"],"properties":[],"methods":[]}) {}'
+      );
+    }
+  );
+
   it("leaves a module without a Page Object Model alone", () => {
     expect(transform("export const x = 1;", "/app/x.ts")).toBeNull();
   });
 
-  it("is the build with Ayme once include is true", () => {
+  it("is the build with ayme once include is true", () => {
     const code = createPomTransform({ include: true })(
       ...fixture("withoutAymePom")
     )?.code;
@@ -412,6 +434,17 @@ describe("a build without Ayme", () => {
     expect(code).toContain("Add an item to the list.");
     expect(code).toContain("The dialog that adds an item.");
     expect(code).not.toContain("@ayme-dev/ayme/absent");
+  });
+
+  it("fails on an action's type no schema describes once include is true", () => {
+    expect(() =>
+      createPomTransform({ include: true })(
+        ...fixture("unsupportedShapes/typedArrayPom")
+      )
+    ).toThrow(
+      // TypeScript 5.7 and later name the type Uint8Array<ArrayBufferLike>.
+      "Unsupported Page Object Tool input type for TypedArrayPom.attach(contents): Uint8Array"
+    );
   });
 });
 

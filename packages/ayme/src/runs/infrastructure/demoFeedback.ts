@@ -1,13 +1,13 @@
 import type { Locator, Page } from "@playwright/test";
 
 import { inPage, type InPage } from "../../in-page";
+import { whileActing } from "./actionsInFlight";
 import {
   elementsOf,
   kindOf,
   type CallSubject,
 } from "../domain/playwrightCalls";
 
-/** How long demo mode pauses before each action. */
 export const DEMO_PAUSE_MS = 500;
 
 /**
@@ -15,7 +15,9 @@ export const DEMO_PAUSE_MS = 500;
  * `demo`): each call that acts pauses before it, each click shows a cue where
  * it lands, and each pointer action reaches the elements under an excluded
  * subtree, which it lets through while it covers one. Reads, waits and
- * configuration run as they are (`kindOf` says which calls act).
+ * configuration run as they are (`kindOf` says which calls act). Every call
+ * that acts counts as running while it does, without demo mode's pause
+ * and cue before it (`actionsSettled`).
  */
 export function demoFeedback(
   page: Page,
@@ -141,7 +143,9 @@ function wrapPage(page: Page, options: () => DemoFeedbackOptions): Page {
             !(call.cue && clickCue) &&
             call.hitTargets.length === 0
           )
-            return wrapResult(member.apply(target, args));
+            return wrapResult(
+              whileActing(document, () => member.apply(target, args))
+            );
 
           return (async () => {
             if (beforeActionMs)
@@ -150,8 +154,10 @@ function wrapPage(page: Page, options: () => DemoFeedbackOptions): Page {
               );
             if (call.cue && clickCue) await inPage(page).cue(call.cue);
             return wrapResult(
-              await passThroughWhileCovered(call.hitTargets, () =>
-                member.apply(target, args)
+              await whileActing(document, () =>
+                passThroughWhileCovered(call.hitTargets, () =>
+                  member.apply(target, args)
+                )
               )
             );
           })();

@@ -1,8 +1,6 @@
-import type { AgentImageRun } from "../tools/application";
 import {
   type AgentConnectionStatus,
   type AppProcessTool,
-  type InspectorAgentImageRun,
   type InspectorContract,
   type InspectorEvent,
   type InspectorHighlightLayer,
@@ -10,7 +8,6 @@ import {
   type InspectorPageObject,
   type InspectorRecordedPageState,
   type InspectorState,
-  type JsonValue,
   type PomDefinition,
   type ToolInfo,
 } from "../shared";
@@ -39,7 +36,6 @@ export type InspectorContractPorts = {
     get(): AgentConnectionStatus;
     subscribe(listener: () => void): () => void;
   };
-  subscribeToAgentImageRuns(listener: (run: AgentImageRun) => void): () => void;
   highlights: {
     set(layer: InspectorHighlightLayer, refs: readonly string[]): Promise<void>;
   };
@@ -67,7 +63,7 @@ export type InspectorContractPorts = {
 
 const NO_SESSION: InspectorPublication = Object.freeze({
   state: "disposed",
-  message: "No Ayme runtime session has started.",
+  message: "No ayme runtime session has started.",
 });
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
@@ -190,16 +186,8 @@ export function createInspectorContract(
       followSession();
       publish();
     });
-    const stopImages = ports.subscribeToAgentImageRuns((run) =>
-      emit({
-        type: "agent-image-run",
-        revision: read().revision,
-        run: plainImageRun(run),
-      })
-    );
     stopListening = () => {
       stopStarted();
-      stopImages();
       unfollow();
       unfollow = () => {};
     };
@@ -276,22 +264,5 @@ export function createInspectorContract(
     async pomDefinitionText({ names = [] }) {
       return ports.pomDefinitionText(names);
     },
-  };
-}
-
-/** What an agent's image Run reports, without the image's bytes. */
-function plainImageRun({
-  name,
-  input,
-  savedTo,
-  startedAt,
-  durationMs,
-}: AgentImageRun): InspectorAgentImageRun {
-  return {
-    name,
-    input: input as JsonValue,
-    ...(savedTo === undefined ? {} : { savedTo }),
-    startedAt,
-    durationMs,
   };
 }

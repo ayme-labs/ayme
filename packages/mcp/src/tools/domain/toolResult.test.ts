@@ -1,115 +1,26 @@
 import { describe, expect, it } from "vitest";
 
-import type { ImageResult } from "../../contract";
-import { imageOf, imageToolResult, pageObjectsNotBuilt } from "./toolResult";
-
-const image: ImageResult = {
-  type: "image",
-  subject: "the viewport",
-  filename: "page-1.png",
-  mimeType: "image/png",
-  width: 1280,
-  height: 720,
-  data: "iVBORw0KGgo=",
-};
-
-const PATH = "/tmp/ayme-screenshots/page-1.png";
-
-/** `bytes` bytes, base64-encoded. */
-const base64Of = (bytes: number) => Buffer.alloc(bytes).toString("base64");
-
-describe("imageOf", () => {
-  it("finds the image in a tool's result", () => {
-    expect(imageOf({ callId: "1", ok: true, result: image })).toEqual(image);
-  });
-
-  it("finds none in a failure or another result", () => {
-    expect(imageOf({ callId: "1", ok: false, error: "no" })).toBeUndefined();
-    expect(
-      imageOf({ callId: "1", ok: true, result: { type: "image" } })
-    ).toBeUndefined();
-  });
-});
-
-describe("imageToolResult", () => {
-  it("returns the image with a line naming what it shows and its file", () => {
-    expect(imageToolResult(image, { path: PATH })).toEqual({
-      content: [
-        { type: "image", data: image.data, mimeType: "image/png" },
-        {
-          type: "text",
-          text: `Screenshot of the viewport, 1280×720 PNG, saved to ${PATH}.`,
-        },
-      ],
-    });
-  });
-
-  it.each([
-    [{ width: 8001, height: 720 }, "it is over 8000 pixels on a side"],
-    [{ width: 1280, height: 9000 }, "it is over 8000 pixels on a side"],
-    // 5 MiB and one byte, base64-encoded: 5,592,408 characters.
-    [{ data: base64Of(5 * 1024 * 1024 + 1) }, "it is over 5 MB"],
-  ])(
-    "returns only the file of an image too large to return inline",
-    (over, why) => {
-      const large = { ...image, ...over };
-
-      expect(imageToolResult(large, { path: PATH })).toEqual({
-        content: [
-          {
-            type: "text",
-            text: `Screenshot of the viewport, ${large.width}×${large.height} PNG, saved to ${PATH}. Not returned inline: ${why}.`,
-          },
-        ],
-      });
-    }
-  );
-
-  it("returns an image of exactly 5 MiB inline, though its base64 is longer", () => {
-    const result = imageToolResult(
-      { ...image, data: base64Of(5 * 1024 * 1024) },
-      { path: PATH }
-    );
-
-    expect(result.content[0]).toMatchObject({ type: "image" });
-  });
-
-  it("still returns the image when its file could not be written", () => {
-    expect(imageToolResult(image, { error: "EACCES" })).toEqual({
-      content: [
-        { type: "image", data: image.data, mimeType: "image/png" },
-        {
-          type: "text",
-          text: "Screenshot of the viewport, 1280×720 PNG. It could not be saved to a file: EACCES.",
-        },
-      ],
-    });
-  });
-
-  it("fails when an image too large to return inline could not be written", () => {
-    expect(
-      imageToolResult({ ...image, width: 9000 }, { error: "EACCES" })
-    ).toEqual({
-      content: [
-        {
-          type: "text",
-          text: "Screenshot of the viewport, 9000×720 PNG. It could not be saved to a file: EACCES. Not returned inline: it is over 8000 pixels on a side.",
-        },
-      ],
-      isError: true,
-    });
-  });
-});
+import { pageObjectsNotBuilt } from "./toolResult";
 
 describe("pageObjectsNotBuilt", () => {
-  const entry = "/work/.ayme/page-objects.ts";
+  const entry = "/work/ayme/page-objects.ts";
   const failed = `The Page Objects entry ${entry} did not build, and no build of it has succeeded, so this server serves no Page Objects.`;
   const watching =
     "The server is watching for changes: it rebuilds the entry when a file it read changes.";
 
   it("states that the server is watching, and gives no advice", () => {
-    const error = "/work/.ayme/pom/PlainPage.ts:3:0: Unexpected end of file";
-    const text = pageObjectsNotBuilt({ entry, error, watching: true });
+    const file = "/work/ayme/pom/PlainPage.ts";
+    const error = `${file}:3:1: Unexpected end of file`;
+    const text = pageObjectsNotBuilt({
+      kind: "never-built",
+      entry,
+      errors: [
+        {
+          text: "Unexpected end of file",
+          location: { file, line: 3, column: 0 },
+        },
+      ],
+    });
 
     expect(text).toBe(
       [`${failed} The first error: ${error}`, watching].join("\n")
@@ -120,20 +31,54 @@ describe("pageObjectsNotBuilt", () => {
   });
 
   it("keeps TypeScript's no-inputs error and does not say how to cover the entry", () => {
-    const error =
-      "/work/.ayme/pom/PlainPage.ts: Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.";
-    const text = pageObjectsNotBuilt({ entry, error, watching: true });
+    const file = "/work/ayme/pom/PlainPage.ts";
+    const diagnostic =
+      "Could not read TypeScript project configuration /work/tsconfig.json: No inputs were found in config file.";
+    const text = pageObjectsNotBuilt({
+      kind: "never-built",
+      entry,
+      errors: [{ text: diagnostic, location: { file, line: 0, column: 0 } }],
+    });
 
     expect(text).toBe(
-      [`${failed} The first error: ${error}`, watching].join("\n")
+      [`${failed} The first error: ${file}: ${diagnostic}`, watching].join("\n")
     );
     expect(text).not.toContain("Fix it");
     expect(text).not.toContain("Make the");
   });
 
+  it("states which install files the server watches when the build could not start, and gives no advice", () => {
+    const error =
+      "Building the Page Objects entry /work/ayme/page-objects.ts stopped: this project has @ayme-dev/ayme 0.0.1; ayme mcp 0.2.0 needs the same version.";
+    const text = pageObjectsNotBuilt({
+      entry,
+      error,
+      kind: "watching-install",
+      installFiles: ["/work/package.json", "/pnpm-lock.yaml"],
+    });
+
+    expect(text).toBe(
+      [
+        `${failed} The first error: ${error}`,
+        "The server is watching /work/package.json and /pnpm-lock.yaml for changes: it starts the build again when either changes.",
+      ].join("\n")
+    );
+    expect(text).not.toContain("not watching");
+    expect(
+      pageObjectsNotBuilt({
+        entry,
+        error,
+        kind: "watching-install",
+        installFiles: ["/work/package.json"],
+      })
+    ).toMatch(
+      /\nThe server is watching \/work\/package\.json for changes: it starts the build again when it changes\.$/
+    );
+  });
+
   it("states that the server is not watching when the build could not start", () => {
     const error = "needs @ayme-dev/ayme/compiler, which does not resolve";
-    const text = pageObjectsNotBuilt({ entry, error, watching: false });
+    const text = pageObjectsNotBuilt({ kind: "cannot-start", entry, error });
 
     expect(text).toBe(
       [

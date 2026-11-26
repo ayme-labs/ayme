@@ -1,16 +1,16 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { PomManifest, ToolManifest } from "../../shared";
 import { ayme as model } from "../../page-objects/domain";
 import { createPage } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 import {
   startSession,
   type TestSession,
-} from "../../test-utils/session.testSupport";
+} from "../../../testing/session.testSupport";
 
 // Runtime object seam: a Change Record names a Page Object Root the way the
 // snapshot does, so an agent reading only the diff can tell which Page Object
@@ -121,7 +121,7 @@ describe("Page Object Root Marks in a Change Record, in Chromium", () => {
 
   const run = async (tool: string) =>
     (await agentTools().call(tool, {
-      ref: await rootRef(tool.slice(0, tool.lastIndexOf("."))),
+      id: await rootId(tool.slice(0, tool.lastIndexOf("."))),
       args: {},
     })) as ActionResultShape;
 
@@ -136,7 +136,10 @@ describe("Page Object Root Marks in a Change Record, in Chromium", () => {
     const structure = await readStructure();
 
     expect(firstLine(result.changes)).toMatch(/^- e\d+ ListPage:$/);
-    expect(structure).toContain(firstLine(result.changes));
+    // The snapshot prints the Page Object's id after the same mark.
+    expect(firstLine(structure)?.replace(/ po\d+:$/, ":")).toBe(
+      firstLine(result.changes)
+    );
     expect(result.changes).toContain("<added> listitem: Eggs");
   });
 
@@ -204,7 +207,7 @@ describe("Page Object Root Marks in a Change Record, in Chromium", () => {
     model({ root: rootOf })(Panel);
     registerCompiledPom(Panel, manifest("Panel", []));
     register(Panel);
-    expect(await readStructure()).toMatch(/- e\d+ Panel "Shopping list"/);
+    expect(await readStructure()).toMatch(/- e\d+ Panel po\d+ "Shopping list"/);
     target = "ul";
 
     const result = await run("ListPage.clearList");

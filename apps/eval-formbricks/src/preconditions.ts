@@ -24,20 +24,23 @@ export function claudeTokenPrecondition(options: {
   environment: NodeJS.ProcessEnv | undefined;
   /** The directory holding the env file, for the message. */
   envDirectory: string;
+  /** The variable the login's token comes from, for the message; the first login's by default. */
+  variable?: string;
 }): Precondition {
+  const variable = options.variable ?? tokenVariable;
   const envFile = path.join(options.envDirectory, envFileName);
   return {
     name: "Claude Code token",
     check: () => {
       if (options.environment === undefined)
-        return `No ${tokenVariable}. Create a token with \`claude setup-token\` and put \`${tokenVariable}=<token>\` in ${envFile} (ignored by git), or export the variable.`;
+        return `No ${variable}. Create a token with \`claude setup-token\` and put \`${variable}=<token>\` in ${envFile} (ignored by git), or export the variable.`;
       if (claudeVersion() === null)
         return "Claude Code is not installed: `claude --version` failed.";
       const status = claudeAuthStatus(options.environment);
       if (status === null)
         return "Claude Code did not report its authentication status.";
       if (!status.loggedIn)
-        return `Claude Code does not accept the ${tokenVariable} from ${envFile}. Create a new one with \`claude setup-token\`.`;
+        return `Claude Code does not accept the ${variable} from ${envFile}. Create a new one with \`claude setup-token\`.`;
       return null;
     },
   };
@@ -67,42 +70,6 @@ export function labAppPrecondition(baseUrl: string): Precondition {
       } catch {
         return `The lab app is not reachable at ${baseUrl}. Run pnpm lab:dev in apps/lab-formbricks.`;
       }
-    },
-  };
-}
-
-/**
- * The Goal Loop arm needs the lab app's Decision Endpoint to hold the model
- * key. The key lives in the lab app's environment, not the eval's, so the
- * check asks the running endpoint: an empty decision request gets 400 when
- * the key is set, refused before any model call, and 503 when it is not.
- * The lab app records the 400 in its usage file, before any run's window.
- */
-export function decisionEndpointPrecondition(
-  baseUrl: string,
-  fetchImpl: typeof fetch = fetch
-): Precondition {
-  const url = `${baseUrl}/api/ayme/decisions`;
-  return {
-    name: "Decision Endpoint",
-    check: async () => {
-      let status: number;
-      try {
-        ({ status } = await fetchImpl(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: "{}",
-          // The lab app compiles the route on its first request.
-          signal: AbortSignal.timeout(60_000),
-        }));
-      } catch {
-        return `The lab app's Decision Endpoint is not reachable at ${url}. Run pnpm lab:dev in apps/lab-formbricks.`;
-      }
-      if (status === 503)
-        return "The lab app's Decision Endpoint has no model key, so every Goal Loop decision would fail. Restart pnpm lab:dev with AYME_OPENROUTER_API_KEY exported.";
-      if (status !== 400)
-        return `The lab app's Decision Endpoint at ${url} answered an empty request with HTTP ${status}, not 400.`;
-      return null;
     },
   };
 }

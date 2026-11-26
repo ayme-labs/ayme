@@ -4,12 +4,8 @@ status: accepted
 
 # Build decision requests in the browser; the Decision Endpoint adds the key, provider and model
 
-The Goal Loop's request to the System One model (the questions, the state, the single `goal_met` cutoff) is built inside Ayme in the browser. The Decision Endpoint adds the model key and its provider's id for the Jev version the questions are tuned for. It builds the upstream request from scratch, forwards no browser headers, uses a fixed upstream URL per provider and caps the body size.
+The Goal Loop's request to the System One model (the questions and the state) is built inside ayme in the browser. The Decision Endpoint adds the model key and its provider's id for the Jev version the questions are tuned for. It builds the upstream request from scratch, forwards no browser headers, uses a fixed upstream URL per provider and caps the body size.
 
 Only the key is secret; the question wording is open source. Which provider and model to call is the server's concern: the provider is the one the key belongs to, and each provider names the same Jev version differently. Building the request in a backend would split one concern across two places and two languages, and every non-JavaScript backend would have to re-implement it. A narrow endpoint is a one-route contract any backend can satisfy. The contract includes how it fails: every failure the endpoint writes carries a small error body, so the browser can tell a refusal from a route nothing serves, and the Goal Loop tells the agent what to do next from the kind of failure rather than from its wording.
 
-Ayme never hosts the endpoint and never lends a key. The provider, the key and an `authorize` function are all required, so an ungated endpoint cannot be deployed by accident. The app hands Ayme one function from decision request to decision response; a helper covers the common HTTP case. No dev-server plugin is shipped.
-
-## Clarification (2026-11-17)
-
-The request no longer carries a single `goal_met` cutoff: ADR-0047 replaced it with two bars. What this ADR decides is unchanged: the request is built in the browser, and the Decision Endpoint adds the key, provider and model.
+ayme never hosts the endpoint and never lends a key. The provider, the key and an authorization function are all required, so an ungated endpoint cannot be deployed by accident. The app hands ayme one function from decision request to decision response; a helper covers the common HTTP case. No dev-server plugin is shipped.

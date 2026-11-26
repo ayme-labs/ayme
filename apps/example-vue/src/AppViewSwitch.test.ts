@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import App from "./App.vue";
 
-// Only App.vue's view switch is under test, so Ayme, the playground and the
+// Only App.vue's view switch is under test, so ayme, the playground and the
 // code view are stubbed out.
 vi.mock("@ayme-dev/vue", () => ({
   useAyme: () => ({ ayme: { runs: { subscribe: () => () => {} } } }),

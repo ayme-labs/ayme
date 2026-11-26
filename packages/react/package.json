@@ -1,7 +1,7 @@
 {
   "name": "@ayme-dev/react",
   "version": "0.2.0",
-  "description": "Starting Ayme in a React app and Page Objects in components.",
+  "description": "Starting ayme in a React app and Page Objects in components.",
   "keywords": [
     "ai-agent",
     "coding-agent",

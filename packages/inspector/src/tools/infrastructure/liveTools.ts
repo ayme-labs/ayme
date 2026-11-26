@@ -11,7 +11,7 @@ import {
   inspectorClient,
   useInspectorState,
   type InspectorClient,
-} from "../../shared";
+} from "../../shared/infrastructure";
 
 /**
  * The tools the panel can run now, and how agents reach them: through the
@@ -21,20 +21,20 @@ export type LiveTools = Readonly<{
   /**
    * Every tool the session lists, in publication order: each one whose Page
    * Object or element is on the page, whether or not WebMCP has it. A tool
-   * can be listed and unavailable (ADR-0035): `available` says whether a
+   * can be listed and unavailable (ADR-0062): `available` says whether a
    * call would run it, and `reason` why not. `publication` says whether
    * agents can call them.
    */
   live: readonly ToolInfo[];
   /**
    * The tools of the App Processes paired beside the page, which the
-   * panel runs through the agent's Ayme MCP server: none while no server
+   * panel runs through the agent's ayme MCP server: none while no server
    * is paired. An App Process offers Peek tools only, read in Node.
    */
   appProcess: readonly NodePeekTool[];
   /** WebMCP publication; a failure carries its error in `message`. */
   publication: AymeWebMcpPublicationStatus;
-  /** Whether the page is connected to a coding agent's Ayme MCP server. */
+  /** Whether the page is connected to a coding agent's ayme MCP server. */
   agentConnection: AgentConnectionStatus;
 }>;
 

@@ -2,24 +2,37 @@ import config from "@ayme-dev/eslint-config/base";
 import {
   boundariesPlugin,
   horizontalBoundaries,
+  horizontalLayerElementTypes,
 } from "@ayme-dev/eslint-config/horizontal-boundaries";
 
-// The source layout's rules. packages/inspector/AGENTS.md introduces them;
-// this file is the source of truth.
+// The source layout's rules; this file is the source of truth.
+// packages/inspector/AGENTS.md holds the rules lint cannot see.
 
 const packageRoot = import.meta.dirname;
 
-// The slices of src/, and the slices each may use: only those listed before
-// it here. app composes them, and nothing uses app. testing is the Inspector
-// POM entry, which only tests may use (ADR-0026).
+// The slices of src/, and the slices each may use: only those listed before it
+// here. Every folder of src/ is a slice, which src/layout.test.ts checks. app
+// composes them, and nothing uses app. Test support, the Inspector POM
+// included, lives in testing/ beside src/ (ADR-0057).
 const allowedSlices = {
+  // The contract client and its two transports, rendering into the shadow
+  // root, and shared UI bits.
   shared: [],
+  // The dockable panel, its preferences and its body layout.
   panel: ["shared"],
+  // The selection, the Lens contract, the run slot, the navigator and the
+  // page highlights.
   navigation: ["shared"],
+  // The Page Object tree and the Model lens.
   "page-model": ["navigation", "panel", "shared"],
+  // The page state tree, member selection and the Structure lens.
   structure: ["page-model", "navigation", "panel", "shared"],
+  // Running a tool, and the Runs of the page's Run log.
   runs: ["structure", "page-model", "navigation", "panel", "shared"],
+  // The tool list, the run card and its fields, and ref picking.
   tools: ["runs", "structure", "page-model", "navigation", "panel", "shared"],
+  // Mounting, in the page or filling the external build's window, the
+  // stylesheet and the wiring of every slice.
   app: [
     "tools",
     "runs",
@@ -29,49 +42,87 @@ const allowedSlices = {
     "panel",
     "shared",
   ],
-  testing: ["shared"],
 };
 const slices = Object.keys(allowedSlices);
+// app composes the other slices and has no layers.
+const layeredSlices = slices.filter((slice) => slice !== "app");
 const sourceFiles = "src/**/*.{ts,tsx}";
 const testFiles = ["src/**/*.test.{ts,tsx}"];
+const testSupport = "testing/**/*.{ts,tsx}";
 
-/** Imports beneath another slice, past its front door (its index.ts). */
-function deepImport(slice, { tests }) {
-  const others = slices.filter(
-    (other) => other !== slice && !(tests && other === "testing")
-  );
-  // Tests may also use another slice's test-utils.
-  const allowed = tests
-    ? "index(\\.[jt]sx?)?$|test-utils/"
-    : "index(\\.[jt]sx?)?$";
-  return `(^|/)(${others.join("|")})/(?!${allowed})`;
-}
+const index = String.raw`index(\.[jt]sx?)?`;
+const layers = horizontalLayerElementTypes.join("|");
+// Test support's folders are named for the slices they serve (ADR-0057).
+const sourceImport = String.raw`^\.\.?/(?!(.*/)?testing/)(.*/)?`;
 
-function frontDoors(slice, files, { tests }) {
-  const patterns = [
+// Layered slices expose their layers so horizontalBoundaries can check
+// imports through the front doors, including the doors' own re-exports.
+function sliceFrontDoors(slice) {
+  const layered = layeredSlices.filter((other) => other !== slice).join("|");
+  const unlayered = slice === "app" ? [] : [`${sourceImport}app/(?!${index}$)`];
+  return [
     {
-      regex: deepImport(slice, { tests }),
-      message: "Import another slice through its index.ts.",
+      regex: [
+        ...unlayered,
+        `${sourceImport}(${layered})/(?!((${layers})(/${index})?|${index})$)`,
+      ].join("|"),
+      message:
+        "Import another slice through its layer's index.ts, or app/index.ts.",
+    },
+    {
+      regex: `${sourceImport}(${layered})(/${index})?$`,
+      message:
+        "A layered slice has no index.ts: import the front door of the layer you use.",
     },
   ];
-  if (!tests)
-    patterns.push({
-      regex: "(^|/)test-utils(/|$)",
-      message: "Only tests may import test-utils.",
-    });
+}
+
+// The Inspector reads ayme only through its inspector entry (ADR-0049).
+// Tests, and the test support beside src/, may use ayme's public API.
+const aymeThroughInspector = {
+  regex: "^@ayme-dev/ayme(/(?!inspector$).*)?$",
+  message: "Import ayme only through @ayme-dev/ayme/inspector.",
+};
+
+function frontDoors(slice, files, { tests, ignores = [] }) {
+  const patterns = [
+    ...sliceFrontDoors(slice),
+    ...(tests ? [] : [aymeThroughInspector]),
+  ];
+  return restrictedImports(
+    files,
+    patterns,
+    tests ? ignores : [...testFiles, ...ignores]
+  );
+}
+
+/** Refuses imports matching `patterns` in `files`: static, dynamic, and in a
+ * type written as `import("…")`. A later block's patterns replace an earlier
+ * one's for its files. */
+function restrictedImports(files, patterns, ignores = []) {
   return {
     files,
-    ...(tests ? {} : { ignores: testFiles }),
+    ...(ignores.length ? { ignores } : {}),
     rules: {
       "no-restricted-imports": ["error", { patterns }],
-      // The same rules for a dynamic import(). esquery reads `/` as the end
-      // of a regex, so selectors match it as `\x2F`.
+      // esquery reads `/` as the end of a regex, so selectors match it as
+      // `\x2F`.
       "no-restricted-syntax": [
         "error",
-        ...patterns.map(({ regex, message }) => ({
-          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
-          message,
-        })),
+        ...patterns.flatMap(({ regex, message }) => {
+          const value = `/${regex.replaceAll("/", String.raw`\x2F`)}/`;
+          return [
+            `ImportExpression[source.value=${value}]`,
+            `TSImportType[source.value=${value}]`,
+          ].map((selector) => ({ selector, message }));
+        }),
+        // A module in backticks, which the selectors above do not read.
+        {
+          selector:
+            'ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0]',
+          message:
+            "Write the module in import() as a quoted string, so lint can check it.",
+        },
       ],
     },
   };
@@ -79,13 +130,10 @@ function frontDoors(slice, files, { tests }) {
 
 export default [
   ...config,
-  ...horizontalBoundaries({
-    packageRoot,
-    // app and testing aren't layered.
-    enforcedSlices: slices.filter(
-      (slice) => !["app", "testing"].includes(slice)
-    ),
-  }),
+  ...horizontalBoundaries({ packageRoot, enforcedSlices: layeredSlices }),
+  // Every production file under src/, in a slice or not; the blocks below
+  // add their own patterns.
+  restrictedImports([sourceFiles], [aymeThroughInspector], testFiles),
   {
     files: [sourceFiles],
     plugins: { "slice-boundaries": boundariesPlugin },
@@ -105,7 +153,6 @@ export default [
                     slice: slices.filter(
                       (target) =>
                         target !== slice &&
-                        target !== "testing" &&
                         !allowedSlices[slice].includes(target)
                     ),
                   },
@@ -125,24 +172,14 @@ export default [
   // The package entry and its test, which use the slices' front doors.
   frontDoors(undefined, ["src/*.{ts,tsx}"], { tests: false }),
   frontDoors(undefined, ["src/*.test.{ts,tsx}"], { tests: true }),
-  {
-    // The Inspector reads Ayme only through its inspector entry (ADR-0049).
-    // Its own Page Object Models (src/testing/) use Ayme's public API, and
-    // tests and test-utils may also use ./testing.
-    files: [sourceFiles],
-    ignores: ["src/testing/**", "src/**/test-utils/**", ...testFiles],
-    rules: {
-      "@typescript-eslint/no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              regex: "^@ayme-dev/ayme(/(?!inspector$).*)?$",
-              message: "Import Ayme only through @ayme-dev/ayme/inspector.",
-            },
-          ],
-        },
-      ],
-    },
-  },
+  // Test support (ADR-0057): a folder of testing/ named after a slice belongs
+  // to that slice, so it may use the slice's own files, and other slices
+  // through their front doors. The rest of testing/ uses front doors only.
+  ...slices.map((slice) =>
+    frontDoors(slice, [`testing/${slice}/**/*.{ts,tsx}`], { tests: true })
+  ),
+  frontDoors(undefined, [testSupport], {
+    tests: true,
+    ignores: slices.map((slice) => `testing/${slice}/**`),
+  }),
 ];

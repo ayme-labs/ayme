@@ -5,30 +5,15 @@ import {
   assertAvailable,
   obstructionReason,
   unfocusableReason,
-  type LatestRefByRef,
 } from "../domain/toolAvailability";
-import type { Reach, ReachInput, ReachMeasurement } from "../application/reach";
+import type { Reach, ReachInput } from "../application/reach";
 
 /**
  * Package-internal: the input a tool sends its element. A click needs to
- * reach it (ADR-0035); keyboard input needs only that it can take focus,
+ * reach it (ADR-0062); keyboard input needs only that it can take focus,
  * which an open modal it is not in or an inert ancestor prevents.
  */
 export type ElementInput = ReachInput;
-
-/**
- * Package-internal: what an Availability Reason may name as in the way of
- * `element`, a present element a click would not reach, nearest first; it
- * names the first the agent's latest page state gave a ref. The open native
- * modal the element is not in, or its inert ancestor, stands alone, as does
- * an element hit-testing found that is a modal or holds `element`; else the
- * element hit-testing found and its ancestors up to the first that holds
- * `element`, since what holds it is not in its way. Empty when nothing was
- * found.
- */
-export function inTheWayOf({ blocker, hit }: ReachMeasurement): string[] {
-  return blocker ? [blocker] : [...(hit ?? [])];
-}
 
 /**
  * Package-internal: the Structural Ref of each element `locator` matches on
@@ -45,7 +30,7 @@ export function refsOfLocator(page: Page, locator: Locator): Promise<string[]> {
  * element `ref` names on `page`, when the input would not reach it as
  * `reach` measures it, with the Availability Reason a Page Object Tool
  * gives: the same measurement and wording as a Page Object Root's
- * (ADR-0035), which never names a kind of widget. A click's reach is
+ * (ADR-0062), which never names a kind of widget. A click's reach is
  * measured where the click would land: the element is scrolled into view
  * first, as the call's own action scrolls it, which also moves an element
  * only partly shown.
@@ -55,10 +40,9 @@ export async function assertReachable(
   page: Page,
   toolName: string,
   ref: string,
-  input: ElementInput,
-  latestRefOf: LatestRefByRef
+  input: ElementInput
 ): Promise<void> {
-  const reason = await unreachableReason(reach, page, ref, latestRefOf, input);
+  const reason = await unreachableReason(reach, page, ref, input);
   if (reason !== undefined)
     assertAvailable(toolName, { present: true, available: false, reason });
 }
@@ -73,8 +57,7 @@ export async function assertLocatorReachable(
   page: Page,
   toolName: string,
   locator: Locator,
-  input: ElementInput,
-  latestRefOf: LatestRefByRef
+  input: ElementInput
 ): Promise<void> {
   // The element a root observation reads: the first the locator matches.
   const [ref] = await inPage(page).mint(locator);
@@ -82,21 +65,20 @@ export async function assertLocatorReachable(
     throw new RefResolutionError(
       `${toolName} is unavailable: its locator matches no element.`
     );
-  await assertReachable(reach, page, toolName, ref, input, latestRefOf);
+  await assertReachable(reach, page, toolName, ref, input);
 }
 
 async function unreachableReason(
   reach: Reach,
   page: Page,
   ref: string,
-  latestRefOf: LatestRefByRef,
   input: ElementInput
 ): Promise<string | undefined> {
   if (input === "focus") {
     const blocker = await reach.blockingAncestor(page, ref);
-    return blocker ? unfocusableReason(blocker, latestRefOf) : undefined;
+    return blocker ? unfocusableReason(blocker.inTheWay) : undefined;
   }
   const measurement = await reach.measureReachAtCall(page, ref);
   if (measurement.available) return undefined;
-  return obstructionReason(inTheWayOf(measurement), latestRefOf);
+  return obstructionReason(measurement.inTheWay);
 }

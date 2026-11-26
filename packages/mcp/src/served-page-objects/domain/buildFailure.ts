@@ -63,20 +63,3 @@ function editorColumn({
   // Decoded as it is: by default a decoder drops a U+FEFF that comes first.
   return new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes).length + 1;
 }
-
-/**
- * Why a build of the Page Objects `entry` failed: its message is
- * `buildFailure`'s, and it keeps the errors, in esbuild's order.
- */
-export class PageObjectsBuildError extends Error {
-  readonly errors: readonly BuildError[];
-
-  constructor(options: {
-    entry: string;
-    errors: readonly BuildError[];
-    lastGood: boolean;
-  }) {
-    super(buildFailure(options));
-    this.errors = options.errors;
-  }
-}

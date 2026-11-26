@@ -1,6 +1,6 @@
 # Playwright in the browser
 
-Which Playwright calls a Page Object Model can make when Ayme runs it inside your app.
+Which Playwright calls a Page Object Model can make when ayme runs it inside your app.
 
 ## What runs your Page Object Model
 
@@ -16,7 +16,7 @@ The supported `Page` and `Locator` methods and options are the ones marked imple
 
 Install `@playwright/test` as a development dependency for the types; a separate `playwright` installation is not needed. Import `Page` and `Locator` with `import type`. A Page Object Model that runs in the browser must not import Playwright runtime values such as `expect` or `test`, including decorators that call `test.step`. The build plugin may remove unused imports behind local barrels, but that does not give you a browser version of Playwright Test.
 
-Without `@playwright/test`, Ayme's public API, the build plugin's defaults and its direct settings still work; registering a Page Object Model needs its types. The supported `@playwright/test` range is on [Install](../start/install.md).
+Without `@playwright/test`, ayme's public API, the build plugin's defaults and its direct settings still work; registering a Page Object Model needs its types. The supported `@playwright/test` range is on [Install](../start/install.md).
 
 ## Synthetic input
 

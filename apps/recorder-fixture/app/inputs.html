@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Inputs</title>
+    <style>
+      body {
+        margin: 20px;
+        font: 16px/1.5 sans-serif;
+      }
+      #star {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        background: gold;
+      }
+      iframe {
+        width: 300px;
+        height: 80px;
+        border: 3px solid #999;
+        padding: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Inputs</h1>
+    <label>Item <input id="item" /></label>
+    <ul id="list" aria-label="Shopping list"></ul>
+    <label
+      >Size
+      <select id="size">
+        <option>Small</option>
+        <option>Large</option>
+      </select></label
+    >
+    <label>Photo <input id="photo" type="file" /></label>
+    <!-- A decoration the page structure does not list, in a group it does. -->
+    <div role="group" aria-label="Card" id="card"><i id="star"></i></div>
+    <p id="starred">Not starred</p>
+    <button id="twice">Open twice</button>
+    <p id="opened">Opened 0 times</p>
+    <iframe
+      id="frame"
+      title="Inner"
+      srcdoc="<button id='inner'>Inner button</button><p id='innerSaid'>Inner not pressed</p><script>document.getElementById('inner').addEventListener('click',()=>{document.getElementById('innerSaid').textContent='Inner pressed'})</script>"
+    ></iframe>
+    <div id="host"></div>
+    <!-- Many elements: every snapshot of this page takes a while. -->
+    <div id="bulk" aria-label="Bulk"></div>
+    <script>
+      // Every key the page gets, in order.
+      window.keys = [];
+      document.addEventListener(
+        "keydown",
+        (event) => keys.push(event.key),
+        true
+      );
+
+      const item = document.getElementById("item");
+      const list = document.getElementById("list");
+      item.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        const entry = document.createElement("li");
+        entry.textContent = item.value;
+        list.append(entry);
+        item.value = "";
+      });
+
+      document.getElementById("card").addEventListener("click", () => {
+        document.getElementById("starred").textContent = "Starred";
+      });
+      let opened = 0;
+      document.getElementById("twice").addEventListener("dblclick", () => {
+        opened += 1;
+        document.getElementById("opened").textContent =
+          `Opened ${opened} times`;
+      });
+
+      const shadow = document
+        .getElementById("host")
+        .attachShadow({ mode: "open" });
+      shadow.innerHTML =
+        '<button id="shadowed">Shadow button</button><p id="shadowSaid">Shadow not pressed</p>';
+      shadow.getElementById("shadowed").addEventListener("click", () => {
+        shadow.getElementById("shadowSaid").textContent = "Shadow pressed";
+      });
+
+      const bulk = document.getElementById("bulk");
+      for (let index = 0; index < 3000; index += 1) {
+        const cell = document.createElement("span");
+        cell.textContent = `${index} `;
+        bulk.append(cell);
+      }
+    </script>
+  </body>
+</html>

@@ -2,14 +2,14 @@ import type { Page } from "@playwright/test";
 
 import type { ReachMeasurement } from "../../shared";
 
-// Package-internal: what the layout shows of one element (ADR-0035,
-// ADR-0041), measured in the page by the in-page module: it names what is
-// in the way by Structural Ref and carries no `Element`.
+// Package-internal: what the layout shows of one element (ADR-0062),
+// measured in the page by the in-page module: it names what is in the way
+// by its role and name and carries no `Element`.
 export type { ReachMeasurement };
 
 /**
  * Package-internal: what a tool sends its element, which must reach it
- * (ADR-0035): a click needs the element reached; keyboard input needs only
+ * (ADR-0062): a click needs the element reached; keyboard input needs only
  * that it can take focus, which an open modal it is not in or an inert
  * ancestor prevents.
  */
@@ -42,8 +42,12 @@ export type Reach = {
   measureReachAtCall(page: Page, ref: string): Promise<ReachMeasurement>;
   /**
    * What blocks both every click on the element `ref` names, whatever
-   * covers it, and its focus: the last opened native modal when the element
-   * is not in one, else its inert ancestor, by its Structural Ref.
+   * covers it, and its focus, when anything does: the last opened native
+   * modal when the element is not in one, else its inert ancestor, with
+   * `inTheWay`, its role and name, as a measurement's.
    */
-  blockingAncestor(page: Page, ref: string): Promise<string | undefined>;
+  blockingAncestor(
+    page: Page,
+    ref: string
+  ): Promise<{ inTheWay?: string } | undefined>;
 };

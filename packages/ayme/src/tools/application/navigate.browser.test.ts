@@ -7,7 +7,7 @@ import { NO_VALUE_NEEDED_KEY } from "../../goal-loop/domain";
 import {
   agentTools,
   operations,
-} from "../../test-utils/publication.testSupport";
+} from "../../../testing/publication.testSupport";
 import { createAyme, type Ayme } from "../../runtime";
 import { errorText } from "../../shared";
 

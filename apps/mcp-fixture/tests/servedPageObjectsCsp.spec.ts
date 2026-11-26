@@ -1,6 +1,6 @@
 import { expect, startServingAgent, test } from "./fixtures";
 
-// `plain.html`, a page without Ayme, sent with a Content Security Policy that
+// `plain.html`, a page without ayme, sent with a Content Security Policy that
 // allows scripts and connections only to the page's own origin. The served
 // runtime and the socket to `ayme mcp` are on another origin.
 const STRICT_PAGE = "/plain.html?strict-csp";
@@ -26,7 +26,7 @@ test("on a page with a strict Content Security Policy, the tab does not pair wit
       url: `${baseURL}${STRICT_PAGE}`,
     });
 
-    await page.goto(link);
+    await page.goto(link.split("\n")[0]!);
     await refused;
 
     expect(await agent.pageToolNames()).toEqual([]);
@@ -50,7 +50,7 @@ test.describe("with bypassCSP", () => {
         url: `${baseURL}${STRICT_PAGE}`,
       });
 
-      await page.goto(link);
+      await page.goto(link.split("\n")[0]!);
       // The page's imports wait for the server's first build, which takes
       // a few seconds while the rest of the suite runs beside it.
       await expect
@@ -62,7 +62,7 @@ test.describe("with bypassCSP", () => {
 
       const { text, isError } = await agent.call(PLAIN_PAGE_TOOL);
       expect(isError, text).toBe(false);
-      expect(text).toContain("does not run Ayme");
+      expect(text).toContain("does not run ayme");
     } finally {
       await agent.close();
     }

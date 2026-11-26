@@ -13,7 +13,7 @@ import { ACTION_RESULT_NOTE } from "../domain/actionResult";
 import { listElementTools } from "../../tools/infrastructure";
 import { renderChangeRecord } from "../domain/changeRecord";
 import { getInteractionHistory } from "../infrastructure/pageState";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 
 // Runtime object seam: an action's result reports what changed on the page
 // before it, since its Caller last received the page, apart from what the
@@ -313,7 +313,7 @@ describe("The two parts of a Change Record, in Chromium", () => {
     expect(result.page_changed).toBe(true);
   });
 
-  it("tells the model how an action result reports changes on Ayme's Browser Tools only", async () => {
+  it("tells the model how an action result reports changes on ayme's Browser Tools only", async () => {
     const highlight: CustomTool = {
       name: "highlight_element",
       description: "Highlight one element on the page.",

@@ -42,7 +42,7 @@ export type CustomTool = {
    * Marks the operation as one that cannot be undone, such as deleting a
    * record or submitting an order. The published tool says so in its
    * annotations: `destructiveHint` over MCP, `consequentialHint` over
-   * WebMCP. Ayme still runs it like any other tool. `false` is the same as
+   * WebMCP. ayme still runs it like any other tool. `false` is the same as
    * leaving it out.
    */
   destructive?: boolean;
@@ -70,7 +70,7 @@ export type CustomTool = {
 export type CustomToolContext = {
   /**
    * Starts a Run of the live tool `name` as a child Run of the Custom Tool's
-   * Run, and returns its result. Throws Ayme's errors, as `ayme.tools.run`
+   * Run, and returns its result. Throws ayme's errors, as `ayme.tools.run`
    * does.
    */
   run<N extends string>(name: N, input: ToolInput<N>): Promise<ToolResult<N>>;
@@ -157,9 +157,9 @@ export type ElementToolDefinition = {
   inputSchema: JsonSchema;
   targetField: TargetField;
   /**
-   * The input the tool sends its element, which must reach it (ADR-0035,
-   * ADR-0039): the Goal Loop and the Inspector offer only those elements,
-   * and a call on another is refused with its Availability Reason.
+   * The input the tool sends its element, which must reach it (ADR-0062):
+   * the Goal Loop and the Inspector offer only those elements, and a call
+   * on another is refused with its Availability Reason.
    */
   needsReach?: ElementInput;
   perform(
@@ -182,8 +182,6 @@ const REF_INPUT_SCHEMA: JsonSchema = {
   required: ["ref"],
   additionalProperties: false,
 };
-
-// --- The shared mechanism ---
 
 /**
  * How a tool that acts on one element executes for a Run: resolve the
@@ -208,8 +206,7 @@ function elementToolExecution(
         context.page,
         definition.name,
         target.elementRef,
-        definition.needsReach,
-        (ref) => context.pageStateSession.latestRefOfNamed(ref)
+        definition.needsReach
       );
     return context.pageStateSession.runAction(
       context.cursor,
@@ -329,8 +326,6 @@ export async function resolveElementTarget(
     );
   return { elementRef: refs[0]!, selector };
 }
-
-// --- Registration ---
 
 /**
  * Package-internal: register a Custom Tool. It takes a Structural Ref as

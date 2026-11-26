@@ -1,5 +1,4 @@
 import type { Locator } from "@playwright/test";
-import type { LatestRefByRef } from "../../page-state/domain";
 import type { RootState } from "../../shared";
 
 /**
@@ -13,8 +12,9 @@ export type PageDriver = {
   /**
    * Probes one Page Object Root without scrolling or sending input, in one
    * task in the page: how many elements its locator matched and, for one
-   * element, whether it is present and available (ADR-0035) and its ref.
-   * Inside a probe run of `watch`, it also labels the root in later captures.
+   * element, whether it is present (ADR-0061) and available (ADR-0062) and
+   * its ref. Inside a probe run of `watch`, it also labels the root in later
+   * captures.
    */
   probe(root: Locator, label: string): Promise<RootState>;
   /** The Structural Ref of each element `locator` resolves to now. */
@@ -25,6 +25,20 @@ export type PageDriver = {
    * to the capture's. Undefined for one whose element left the page.
    */
   currentRefs(refs: readonly string[]): Promise<(string | undefined)[]>;
+  /**
+   * The key of the element each of `refs`, now or before, names, and the
+   * Structural Ref it has now, in the order given: a key names its element
+   * for as long as it lives, however often captures rename it, and never an
+   * element of another document. Undefined for one whose element left.
+   */
+  elementKeys(
+    refs: readonly string[]
+  ): Promise<({ key: string; ref: string } | undefined)[]>;
+  /**
+   * The Structural Ref the element each of `keys` names has now, in the
+   * order given. Undefined once it left the page.
+   */
+  keyedRefs(keys: readonly string[]): Promise<(string | undefined)[]>;
   /** Whether `ref`, now or before, names the one element `locator` resolves to. */
   names(locator: Locator, ref: string): Promise<boolean>;
   /**
@@ -37,9 +51,4 @@ export type PageDriver = {
   refresh(): void;
   /** Resolves once no probe run is due, as a capture needs the roots. */
   probed(): Promise<void>;
-  /**
-   * The Structural Ref the agent's latest recorded page state gave what
-   * `ref` names, when it gave it one: what names an element in the way.
-   */
-  latestPageStateRef: LatestRefByRef;
 };

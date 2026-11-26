@@ -1,5 +1,5 @@
 // The `./playwright` entry in Node, over real Playwright Chromium and against
-// the built package: Ayme over a Page a Node host was handed (ADR-0049).
+// the built package: ayme over a Page a Node host was handed (ADR-0049).
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -30,7 +30,7 @@ afterAll(async () => {
 /** A page of its own context showing `body`. */
 async function pageShowing(body: string): Promise<Page> {
   const page = await browser.newPage();
-  await page.setContent(`<!doctype html><title>Ayme</title>${body}`);
+  await page.setContent(`<!doctype html><title>ayme</title>${body}`);
   return page;
 }
 
@@ -86,7 +86,7 @@ async function snapshot(ayme: Playwright.PlaywrightAyme): Promise<string> {
   return structure;
 }
 
-describe("Ayme over a Playwright Page", () => {
+describe("ayme over a Playwright Page", () => {
   it("runs a live Page Object Tool and reports what it changed", async () => {
     const page = await pageShowing(
       '<section id="counter"><output>0</output><button>Add</button></section>' +
@@ -97,9 +97,10 @@ describe("Ayme over a Playwright Page", () => {
     const { structure } = (await ayme.tools.run("snapshot", {})) as {
       structure: string;
     };
-    const ref = /(e\d+)[^\n]*Counter/.exec(structure)?.[1];
+    const id = /Counter (po\d+)/.exec(structure)?.[1];
+    expect(id, structure).toBeDefined();
 
-    const result = await ayme.tools.run("Counter.press", { ref } as never);
+    const result = await ayme.tools.run("Counter.press", { id } as never);
 
     expect(JSON.stringify(result)).toContain("1");
     expect(await page.locator("output").textContent()).toBe("1");
@@ -237,7 +238,7 @@ describe("Ayme over a Playwright Page", () => {
           contentType: "text/html",
           headers: { "content-security-policy": "script-src 'unsafe-inline'" },
           body:
-            "<!doctype html><title>Ayme</title>" +
+            "<!doctype html><title>ayme</title>" +
             panels +
             '<script>try { new Function("return 1"); window.evaluates = true } catch { window.evaluates = false }</script>',
         })
@@ -336,7 +337,7 @@ describe("Ayme over a Playwright Page", () => {
     await page.route("http://app.test/**", (route) =>
       route.fulfill({
         contentType: "text/html",
-        body: `<!doctype html><title>Ayme</title>${serve(new URL(route.request().url()))}`,
+        body: `<!doctype html><title>ayme</title>${serve(new URL(route.request().url()))}`,
       })
     );
     await page.goto(first);
@@ -387,19 +388,61 @@ describe("Ayme over a Playwright Page", () => {
     expect(JSON.stringify(result)).not.toContain("Second document");
   });
 
-  it("takes a screenshot with its size", async () => {
-    const page = await pageShowing("<h1>Shot</h1>");
+  it("answers a navigate, a reload and a move back to another document with what changed before them", async () => {
+    const page = await pageServing((url) =>
+      url.pathname === "/two"
+        ? "<p>Second document</p>"
+        : "<p>First document</p>"
+    );
     const ayme = await startedOn(page);
+    await ayme.tools.run("snapshot", {});
+    await page.evaluate(`document.querySelector("p").textContent = "Edited"`);
+    const loading = (url: string) => ({
+      settled: false,
+      loading: url,
+      next: `The page is loading ${url}. Call snapshot next to read the new page.`,
+    });
 
-    const result = (await ayme.tools.run("screenshot", {})) as {
-      width: number;
-      height: number;
-      mimeType: string;
-    };
+    await expect(ayme.tools.run("navigate", { url: "/two" })).resolves.toEqual({
+      page_changed: true,
+      changes_before: expect.stringContaining("Edited"),
+      ...loading("http://app.test/two"),
+    });
+    await ayme.tools.run("snapshot", {});
+    await expect(ayme.tools.run("reload", {})).resolves.toEqual({
+      page_changed: false,
+      ...loading("http://app.test/two"),
+    });
+    await ayme.tools.run("snapshot", {});
+    await expect(ayme.tools.run("navigate_back", {})).resolves.toEqual({
+      page_changed: false,
+      ...loading("http://app.test/"),
+    });
+  });
 
-    expect(result).toMatchObject({ mimeType: "image/png" });
-    expect(result.width).toBe(page.viewportSize()!.width);
-    expect(result.height).toBe(page.viewportSize()!.height);
+  it("answers a navigate whose router function changes the page and then loads another document without the changes it could not read", async () => {
+    const page = await pageServing((url) =>
+      url.pathname === "/two"
+        ? "<p>Second document</p>"
+        : "<p>First document</p>"
+    );
+    const ayme = await startedOn(page, {
+      async navigate(url) {
+        await page.evaluate(
+          `document.querySelector("p").textContent = "Leaving"`
+        );
+        await page.goto(url);
+      },
+    });
+    await ayme.tools.run("snapshot", {});
+
+    await expect(
+      ayme.tools.run("navigate", { url: "/two" })
+    ).resolves.toStrictEqual({
+      settled: false,
+      loading: "http://app.test/two",
+      next: "The page is loading http://app.test/two. What the action changed before the load could not be read. Call snapshot next to read the new page.",
+    });
   });
 
   it("resolves a relative navigation against the document's base URL", async () => {

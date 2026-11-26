@@ -22,7 +22,7 @@ import { actionSignature } from "./actionSignature";
 // the definition text gives agents.
 
 /**
- * The compiler's test fixtures, found through Ayme's package, so
+ * The compiler's test fixtures, found through ayme's package, so
  * they resolve from a copy of this test elsewhere too, such as Stryker's
  * sandbox.
  */
@@ -48,6 +48,17 @@ const tools = [
 
 /** A call each action's schema must accept, by tool name. */
 const calls: Record<string, Record<string, JsonValue>> = {
+  "ParameterShapesPom.literals": { name: "Gamma", count: 3, optionalCount: 0 },
+  "ParameterShapesPom.nestedLiterals": {
+    names: ["Gamma"],
+    pair: ["Gamma", 3],
+    options: { name: "Gamma", count: 3 },
+  },
+  "ParameterShapesPom.otherLiterals": {
+    open: true,
+    closed: false,
+    status: "active",
+  },
   "ParameterShapesPom.array": { tags: ["a", "b"] },
   "ParameterShapesPom.readonlyArray": { sizes: [1, 2], labels: ["a"] },
   "ParameterShapesPom.tuple": {

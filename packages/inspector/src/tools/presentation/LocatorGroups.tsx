@@ -1,4 +1,4 @@
-import type { Run } from "../../runs";
+import type { Run } from "../../runs/domain";
 import type { LocatorGroup } from "../domain/locatorGroups";
 import type { RefSource } from "../domain/refTree";
 import { LocatorGroupsView } from "../view/LocatorGroupsView";

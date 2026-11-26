@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { InspectorEvent, InspectorState } from "@ayme-dev/ayme/inspector";
+import type { InspectorState } from "@ayme-dev/ayme/inspector";
 
 import { createInspectorClient, emptyInspectorState } from "./inspectorClient";
 import { webSocketInspectorContract } from "./webSocketInspectorContract";
@@ -140,7 +140,7 @@ describe("webSocketInspectorContract", () => {
     const [{ id }] = socket().sent;
     socket().receive({
       id,
-      error: "No page is connected to this Ayme MCP server.",
+      error: "No page is connected to this ayme MCP server.",
     });
 
     await expect(asked).rejects.toThrow("No page is connected");
@@ -246,30 +246,6 @@ describe("webSocketInspectorContract", () => {
       await demo;
 
       expect(client.current().tools[0]!.name).toBe("after demo");
-    });
-  });
-
-  it("moves an image run's revision with the state's after a new page", async () => {
-    const { contract, socket } = connect();
-    socket().open();
-    const events: InspectorEvent[] = [];
-    contract.subscribe({ onEvent: (e) => events.push(e), onError: () => {} });
-    socket().receive({ event: { type: "state", state: state(5) } });
-    socket().receive({ reset: true });
-    socket().answer("getState", state(1));
-    await vi.advanceTimersByTimeAsync(0);
-
-    socket().receive({
-      event: {
-        type: "agent-image-run",
-        revision: 2,
-        run: { name: "screenshot", input: {}, startedAt: 1, durationMs: 2 },
-      },
-    });
-
-    expect(events.at(-1)).toMatchObject({
-      type: "agent-image-run",
-      revision: 7,
     });
   });
 

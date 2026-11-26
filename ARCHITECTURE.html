@@ -1,10 +1,10 @@
 <!-- The architecture diagram, published at https://claude.ai/artifact/5YFUfE3seAb7iu2ffbZMMG.
      Its data block is ARCHITECTURE.md in JSON: change both in the same pull request. -->
-<title>Ayme Architecture</title>
+<title>ayme Architecture</title>
 <style>
   @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
 
-  /* Layout concept: actors on the left, the Ayme system boundary in the middle holding one frame per deployment node
+  /* Layout concept: actors on the left, the ayme system boundary in the middle holding one frame per deployment node
    of the chosen environment, external systems on the right. Edges are drawn over the cards; selecting an element
    lights up its own connections and lists their flows in the inspector above the picture. */
   :root {
@@ -658,7 +658,7 @@
 
 <div class="page">
   <div class="top">
-    <h1>Ayme architecture</h1>
+    <h1>ayme architecture</h1>
     <p class="premise" id="premise"></p>
   </div>
   <div class="bar">
@@ -713,11 +713,11 @@
           class="stage"
           id="stage"
           role="group"
-          aria-label="Architecture of Ayme in the selected environment"
+          aria-label="Architecture of ayme in the selected environment"
         >
           <div class="actors" id="actors"></div>
           <div class="boundary" id="boundary">
-            <div class="btitle">Ayme<span>system boundary</span></div>
+            <div class="btitle">ayme<span>system boundary</span></div>
             <div class="bgrid" id="bgrid"></div>
           </div>
           <div class="externals" id="externals"></div>
@@ -739,11 +739,11 @@
 
 <script id="data" type="application/json">
   {
-    "premise": "Ayme turns the Page Object Models of an app's Playwright tests into tools that coding agents, in-browser agents and the app's own code call on the running page. Ayme is a library: its runtime units run inside the host app's page, bundler and Node processes and inside the coding agent, so each container's deployment node is the host process it runs in.",
+    "premise": "ayme turns the Page Object Models of an app's Playwright tests into tools that coding agents, in-browser agents and the app's own code call on the running page. ayme is a library: its runtime units run inside the host app's page, bundler and Node processes and inside the coding agent, so each container's deployment node is the host process it runs in.",
     "actors": [
       {
         "name": "App developers",
-        "role": "the team integrating Ayme into their app",
+        "role": "the team integrating ayme into their app",
         "goal": "expose their Page Object Actions as tools, inspect what agents see, and read app state through Peeks while developing",
         "evidence": {
           "text": "verified: `docs/guide/start/install.md`, `packages/inspector/README.md`",
@@ -783,7 +783,7 @@
       },
       {
         "name": "Playground visitors",
-        "role": "developers evaluating Ayme before integrating it",
+        "role": "developers evaluating ayme before integrating it",
         "goal": "try the Inspector and the page's tools on a hosted demo",
         "evidence": {
           "text": "verified: `apps/example-vue/README.md`, `apps/example-vue/src/App.vue`",
@@ -795,9 +795,9 @@
     "externals": [
       {
         "name": "Host application",
-        "provides": "the page Ayme observes and acts on, the Page Object Models it compiles, the bundler that runs the build plugin, the backend that mounts the Decision Endpoint, and the Node processes that pair as App Processes",
+        "provides": "the page ayme observes and acts on, the Page Object Models it compiles, the bundler that runs the build plugin, the backend that mounts the Decision Endpoint, the Node processes that pair as App Processes, the Playwright installation the Recorder loads, and the project folder a recording is saved in",
         "evidence": {
-          "text": "verified: `docs/guide/reference/ayme.md`, `docs/guide/guides/server-rendering.md`",
+          "text": "verified: `docs/guide/reference/ayme.md`, `docs/guide/guides/server-rendering.md`, `packages/recorder/src/playwright/infrastructure/projectPlaywright.ts`",
           "inferred": false,
           "mixed": false
         }
@@ -833,7 +833,7 @@
     "containers": [
       {
         "name": "Browser runtime",
-        "responsibility": "the Ayme session in the host app's page: the Page Object registry, Structural Page State and interaction history, the Browser, Custom, Page Object and Peek tools, the Goal Loop, and the optional modules it loads on demand: WebMCP publication, the Inspector panel and the page side of the Agent Connection. It captures the page and runs its actions through the document's In-page Module, which it installs unless another host already has",
+        "responsibility": "the ayme session in the host app's page: the Page Object registry, Structural Page State and interaction history, the Browser, Custom, Page Object and Peek tools, the Goal Loop, and the optional modules it loads on demand: WebMCP publication, the Inspector panel and the page side of the Agent Connection. It captures the page and runs its actions through the document's In-page Module, which it installs unless another host already has",
         "technology": "TypeScript library (`@ayme-dev/ayme` with `@ayme-dev/webmcp`, `@ayme-dev/inspector` and `@ayme-dev/mcp/client`), started by a framework package (`@ayme-dev/vue`, `react`, `svelte`, `angular`), by `createAyme` or, with served Page Objects, by the init script; bundles Playwright Lite, the team's pinned fork of Playwright that runs Page Object Models against the live DOM",
         "evidence": {
           "text": "verified: `packages/ayme/src/runtime/runtime.ts`, `packages/ayme/src/runtime/webMcp.ts`, `packages/ayme/src/runtime/inspector.ts`, `packages/ayme/src/runtime/agentConnection.ts`, `packages/ayme/src/page-objects/infrastructure/browserPage.ts`, `packages/ayme/src/page-state/infrastructure/browserInPage.ts`, `packages/ayme/src/in-page/`, `packages/mcp/src/served-page-objects/domain/servedPageObjects.ts`, `docs/adr/0021-pin-playwright-lite-to-immutable-fork-tags.md`",
@@ -843,7 +843,7 @@
       },
       {
         "name": "Build plugin",
-        "responsibility": "compiles the marked Page Object Models and derives each action's input schema and each `Locator` member into POM metadata placed in the browser bundle; through its `include` option, off by default, also decides whether a build carries Ayme at all",
+        "responsibility": "compiles the marked Page Object Models and derives each action's input schema and each `Locator` member into POM metadata placed in the browser bundle; through its `include` option, off by default, also decides whether a build carries ayme at all",
         "technology": "Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and Turbopack entries, over the Page Object compiler in `@ayme-dev/ayme`'s Node-only `compiler` entry, which runs the project's own TypeScript compiler",
         "evidence": {
           "text": "verified: `packages/unplugin-ayme/src/unplugin.ts`, `packages/ayme/src/compiler/pomCompiler.ts`, `packages/ayme/src/compiler/derivePomManifests.ts`, `docs/adr/0040-a-build-includes-ayme-only-when-its-configuration-says-so.md`",
@@ -852,18 +852,18 @@
         }
       },
       {
-        "name": "Ayme MCP server",
-        "responsibility": "one server per coding agent: speaks MCP over stdio to the agent, pairs with one page and with the app's App Processes over a loopback WebSocket, and exposes their tools as MCP tools beside its own. It serves the external Inspector and relays between its windows and the paired page. Experimentally, when the project has a Page Objects entry, it also builds and serves that entry with the project's runtime, and writes the init script the browser automation loads. The init script starts no runtime on a page whose app has already started Ayme. Known gap: an app that starts Ayme late still gets a second runtime (issue #1238)",
-        "technology": "Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio, tRPC over WebSocket on `127.0.0.1`, ports 9350 to 9365; esbuild and `@ayme-dev/ayme/compiler` for served Page Objects",
+        "name": "ayme MCP server",
+        "responsibility": "one server per coding agent: speaks MCP over stdio to the agent, pairs with one page and with the app's App Processes over a loopback WebSocket, and exposes their tools as MCP tools beside its own. It serves the external Inspector, to a browser window and, as an MCP App, to an Agent App that shows it in its chat, and relays between its windows and the paired page. Experimentally, when the project has a Page Objects entry, it also builds and serves that entry with the project's runtime, and writes the init script the browser automation loads. The init script starts no runtime on a page whose app has already started ayme. Known gap: an app that starts ayme late still gets a second runtime (issue #1238)",
+        "technology": "Node CLI (`ayme mcp` from `@ayme-dev/mcp`), MCP SDK over stdio with the MCP Apps extension (`@modelcontextprotocol/ext-apps`), tRPC over WebSocket on `127.0.0.1`, ports 9350 to 9365; esbuild and `@ayme-dev/ayme/compiler` for served Page Objects",
         "evidence": {
-          "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/pairing/domain/pairing.ts`, `docs/adr/0033-the-agent-connection-pairs-one-page-and-the-apps-processes.md`, `packages/mcp/src/inspector/application/inspectorRelay.ts`, `packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts`, `packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts`, `packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts`, `packages/mcp/src/served-page-objects/domain/servedPageObjects.ts`, `packages/mcp/src/served-page-objects/infrastructure/initScriptFiles.ts`, `docs/adr/0051-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md`",
+          "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/pairing/domain/pairing.ts`, `docs/adr/0066-each-coding-agents-ayme-mcp-server-pairs-with-one-page-and-the-apps-processes-and-its-fallback-tools-reach-every-tool-it-lists.md`, `packages/mcp/src/inspector/application/inspectorRelay.ts`, `packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts`, `packages/mcp/src/served-page-objects/infrastructure/pageObjectsBuild.ts`, `packages/mcp/src/served-page-objects/infrastructure/servedPageObjectsServer.ts`, `packages/mcp/src/served-page-objects/domain/servedPageObjects.ts`, `packages/mcp/src/served-page-objects/infrastructure/initScriptFiles.ts`, `docs/adr/0051-ayme-mcp-builds-and-serves-page-objects-kept-outside-the-app.md`",
           "inferred": false,
           "mixed": false
         }
       },
       {
         "name": "App Process runtime",
-        "responsibility": "the Ayme session inside a Node process of the host app (its dev server or backend): pairs with the agent's MCP server beside the page and offers the process's Peek Tools, `peek.node.<name>`",
+        "responsibility": "the ayme session inside a Node process of the host app (its dev server or backend): pairs with the agent's MCP server beside the page and offers the process's Peek Tools, `peek.node.<name>`",
         "technology": "`createAyme` from `@ayme-dev/ayme` in Node, loading `@ayme-dev/mcp/process`",
         "evidence": {
           "text": "verified: `packages/ayme/src/runtime/agentConnection.ts`, `packages/mcp/src/process/`, `packages/mcp/README.md`",
@@ -873,7 +873,7 @@
       },
       {
         "name": "Node host runtime",
-        "responsibility": "the Ayme session in a Node process that drives a browser `Page` it is handed, such as a Playwright script or test: it runs the session code the browser runtime shares over that Page, through the In-page Module installed in the document, and carries no browser runtime of its own",
+        "responsibility": "the ayme session in a Node process that drives a browser `Page` it is handed, such as a Playwright script or test: it runs the session code the browser runtime shares over that Page, through the In-page Module installed in the document, and carries no browser runtime of its own",
         "technology": "`createAyme({ page })` from `@ayme-dev/ayme/playwright`, over a real Playwright `Page` (`@playwright/test`)",
         "evidence": {
           "text": "verified: `packages/ayme/src/playwright.ts`, `packages/ayme/src/runtime/playwrightRuntime.ts`, `docs/adr/0049-one-in-page-module-per-document.md`",
@@ -883,7 +883,7 @@
       },
       {
         "name": "Decision Endpoint",
-        "responsibility": "the one route in the host app's backend that gates each Goal Loop decision request, adds the provider key and Jev model, forwards it to the provider and relays the answer; Ayme ships the handler, the app mounts and gates it",
+        "responsibility": "the one route in the host app's backend that gates each Goal Loop decision request, adds the provider key and Jev model, forwards it to the provider and relays the answer; ayme ships the handler, the app mounts and gates it",
         "technology": "Fetch-API request handler from `@ayme-dev/ayme/server`",
         "evidence": {
           "text": "verified: `packages/ayme/src/goal-loop/infrastructure/decisionEndpointHandler.ts`, `docs/guide/reference/decision-endpoint.md`, `docs/adr/0022-build-decision-requests-in-the-browser.md`",
@@ -897,6 +897,16 @@
         "technology": "Vue single-page app built from `apps/example-vue`, with the docs rendered by Jekyll from `docs/guide`",
         "evidence": {
           "text": "verified: `apps/example-vue/src/App.vue`, `.github/workflows/deploy-example-vue.yml`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "name": "Recorder",
+        "responsibility": "one process per recording: opens a URL in a Chromium it launches with the Playwright the developer's project has installed, or attaches to a running Chromium, and records the input given on the page as Interactions with what each changed. It serves the recorder window at a local address it prints, which shows the recording live and holds Record, Stop, Continue, Assert visibility, Clear and Finish, discard and restore of an entry while it records or is paused, and a highlight on the page of an entry's element while its target is hovered, or of a change row's element while the row's element is hovered; when it launched the browser, it opens the window there as a second window, apart from what it records. Every recorded page also gets an in-page toolbar with Record, Stop and Continue in one control, and Assert visibility, kept out of the page's structure. It ends when Finish is pressed, the last page is closed or it is stopped from the terminal. A recording that was started ends by writing a Recording Package, with its trace beside it, into the project's `ayme/recordings`; without one it ends with \"empty\". `ayme-recorder trace` opens a recording's trace with the project's own `playwright trace`, and `ayme-recorder install` installs a browser with the project's own Playwright",
+        "technology": "Node CLI (`ayme-recorder codegen <url>`, `codegen --cdp-endpoint <address>`, `trace` and `install` from `@ayme-dev/cli`), over the engine `@ayme-dev/recorder`, whose flows are written with Effect; `@ayme-dev/cli` is published and bundles the engine and `@ayme-dev/recorder-window`, which stay private. The engine loads Playwright from the project's folder and bundles none, and runs the project's own `playwright trace` as a separate process. It keeps Visits and element identity and compares page structures with `@ayme-dev/core`, which also runs its wait for a Settled Page. `@ayme-dev/recorder-window` is the window, React with the design system, built to one page and one script that the engine serves on plain Node `http` and `ws`; the window talks to the engine over tRPC on a WebSocket, and knows it only through the engine's plain-data contract. The same package builds the toolbar, one script with React and the design system in a closed shadow root, which the engine runs in every recorded document; the toolbar sends commands and pulls the state through one page function the engine exposes in the page",
+        "evidence": {
+          "text": "verified: `packages/cli/src/cli.ts`, `packages/cli/src/codegen.ts`, `packages/recorder/src/engine/startRecorder.ts`, `packages/recorder/src/session/application/recorderSession.ts`, `packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts`, `packages/recorder/src/playwright/infrastructure/traceTool.ts`, `packages/recorder/src/timeline/domain/timeline.ts`, `packages/recorder/src/timeline/infrastructure/recordingStore.ts`, `packages/recorder/src/server/infrastructure/windowServer.ts`, `packages/recorder-window/src/app/main.tsx`, `packages/recorder/src/server/infrastructure/toolbarBridge.ts`, `packages/recorder-window/src/app/toolbar.tsx`, `docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md`",
           "inferred": false,
           "mixed": false
         }
@@ -924,11 +934,11 @@
       },
       {
         "from": "App developers",
-        "to": "Ayme MCP server",
+        "to": "ayme MCP server",
         "flows": [
           {
             "dir": "→",
-            "text": "opening the external Inspector at `/inspector`, then its window's requests over a WebSocket at `/inspector/ws`"
+            "text": "opening the external Inspector at `/inspector`, then its window's requests over a WebSocket at `/inspector/ws`; from the Inspector an Agent App shows in its chat, the same requests over the same WebSocket, admitted by its token from the Agent App's origin"
           },
           {
             "dir": "←",
@@ -942,20 +952,47 @@
         }
       },
       {
-        "from": "Coding agents",
-        "to": "Ayme MCP server",
+        "from": "App developers",
+        "to": "Recorder",
         "flows": [
           {
             "dir": "→",
-            "text": "`ayme_connect`, `ayme_list_tools`, `ayme_call` and the page's tools, over stdio"
+            "text": "`ayme-recorder codegen <url>` or `codegen --cdp-endpoint <address>`, started in their project's folder, and the terminal's stop; `ayme-recorder trace <target>`"
+          },
+          {
+            "dir": "→",
+            "text": "in the recorder window, Record, Stop, Continue, Assert visibility, Clear, Finish, discard and restore of an entry, and the highlight of a hovered entry's or change row's element, sent over tRPC on a WebSocket at `/channel`; Record, Stop, Continue and Assert visibility in the in-page toolbar, sent through the page function the engine exposes there"
           },
           {
             "dir": "←",
-            "text": "connect links, tool lists and `tools/list_changed` notifications, tool results and change notes"
+            "text": "the window's address, where the Recording Package was saved, that nothing was recorded, or the reason the recorder could not start or failed"
+          },
+          {
+            "dir": "←",
+            "text": "in the recorder window and the toolbar, the recorder's state as it changes: its phase, the commands that apply now, the address of the page that is open, and the Visits with their entries"
           }
         ],
         "evidence": {
-          "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/server/serverTools.ts`",
+          "text": "verified: `packages/cli/src/readCommand.ts`, `packages/cli/src/codegen.ts`, `packages/recorder/src/server/infrastructure/windowChannelRouter.ts`, `packages/recorder-window/src/channel/infrastructure/webSocketRecorderChannel.ts`, `packages/recorder/src/server/infrastructure/toolbarBridge.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
+        "from": "Coding agents",
+        "to": "ayme MCP server",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "`ayme_connect`, `ayme_list_tools`, `ayme_call`, `ayme_inspect` and the page's tools, over stdio; an Agent App that shows MCP Apps also reads the Inspector's page that `ayme_inspect` points to"
+          },
+          {
+            "dir": "←",
+            "text": "connect links, the external Inspector's URL, tool lists and `tools/list_changed` notifications, tool results and change notes; the Inspector's page with its script inside, its socket's address and the token that admits it"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/mcp/src/server/index.ts`, `packages/mcp/src/server/serverTools.ts`, `packages/mcp/src/tools/infrastructure/mcpToolServer.ts`",
           "inferred": false,
           "mixed": false
         }
@@ -974,7 +1011,7 @@
           }
         ],
         "evidence": {
-          "text": "inferred: the driver is the browser's or a polyfill's; Ayme only registers tools with it (`packages/webmcp/src/publication.ts`)",
+          "text": "inferred: the driver is the browser's or a polyfill's; ayme only registers tools with it (`packages/webmcp/src/publication.ts`)",
           "inferred": true,
           "mixed": false
         }
@@ -1057,7 +1094,7 @@
       },
       {
         "from": "Browser runtime",
-        "to": "Ayme MCP server",
+        "to": "ayme MCP server",
         "flows": [
           {
             "dir": "→",
@@ -1174,8 +1211,27 @@
         }
       },
       {
+        "from": "Recorder",
+        "to": "Host application",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "loading the Playwright installed in the project's folder, launching Chromium with it and opening the URL, or attaching to a running Chromium at its DevTools protocol address; in the page, holding a click or key press back and sending it on, and reading the page's structure; running the toolbar's script and its page function in every document, switching Playwright's own recorder into picking for Assert visibility, and drawing a highlight through a DevTools session of the page; tracing the recording, and writing the Recording Package with its trace into the project's `ayme/recordings`; running the project's own `playwright trace` as a separate process"
+          },
+          {
+            "dir": "←",
+            "text": "the opening, navigating and closing of a page, and the closing of the browser; a click or key press the page held back, the page's activity, the Interactions and assertions Playwright's own recorder reports, the toolbar's commands and requests for the state, and the trace's position numbers"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/recorder/src/playwright/infrastructure/projectPlaywright.ts`, `packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts`, `packages/recorder/src/playwright/infrastructure/in-page/gate.ts`, `packages/recorder/src/playwright/infrastructure/in-page/watches.ts`, `packages/recorder/src/playwright/infrastructure/traceTool.ts`, `packages/recorder/src/timeline/infrastructure/recordingStore.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
         "from": "App Process runtime",
-        "to": "Ayme MCP server",
+        "to": "ayme MCP server",
         "flows": [
           {
             "dir": "→",
@@ -1226,7 +1282,7 @@
         },
         "containers": {
           "Browser runtime": {
-            "how": "the app's development build, with `inspector` and `agentConnection` on under the framework's development flag; or, with served Page Objects, the runtime the init script starts in a page the browser automation opened, whose app need not ship Ayme",
+            "how": "the app's development build, with `inspector` and `agentConnection` on under the framework's development flag; or, with served Page Objects, the runtime the init script starts in a page the browser automation opened, whose app need not ship ayme",
             "node": "the host app's page in the developer's browser",
             "nodeKey": "the host app's page in the developer's browser",
             "runs": true,
@@ -1251,7 +1307,7 @@
               "mixed": false
             }
           },
-          "Ayme MCP server": {
+          "ayme MCP server": {
             "how": "`npx -y @ayme-dev/mcp@<version> mcp`, one child process per agent",
             "node": "the coding agent's process on the developer's machine",
             "nodeKey": "the coding agent's process on the developer's machine",
@@ -1304,7 +1360,7 @@
             }
           },
           "Playground": {
-            "how": "does not run here; it is Ayme's own app",
+            "how": "does not run here; it is ayme's own app",
             "node": "",
             "nodeKey": "",
             "runs": false,
@@ -1312,6 +1368,19 @@
             "optional": false,
             "evidence": {
               "text": "verified: `apps/example-vue/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Recorder": {
+            "how": "`npx ayme-recorder codegen <url>` from `@ayme-dev/cli`, run by the developer or their coding agent in the project's folder, with the project's own Playwright",
+            "node": "a Node process on the developer's machine",
+            "nodeKey": "a Node process on the developer's machine",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": true,
+            "evidence": {
+              "text": "verified: `packages/cli/README.md`",
               "inferred": false,
               "mixed": false
             }
@@ -1343,7 +1412,7 @@
             }
           },
           "Browser automation": {
-            "how": "Playwright MCP, Playwright CLI or a Playwright script pointed at `.ayme/init-script.js`; optional, present only with served Page Objects",
+            "how": "Playwright MCP, Playwright CLI or a Playwright script pointed at `ayme/init-script.js`; optional, present only with served Page Objects",
             "evidence": {
               "text": "verified: `docs/guide/guides/page-objects-without-ayme.md`",
               "inferred": false,
@@ -1358,7 +1427,7 @@
         "group": "Host app",
         "label": "production",
         "sub": "app's users",
-        "purpose": "the host app serving its users, with Ayme's agent surface limited to what the app's setup publishes",
+        "purpose": "the host app serving its users, with ayme's agent surface limited to what the app's setup publishes",
         "evidence": {
           "text": "verified: `docs/adr/0030-application-setup-owns-the-runtime-and-decides-publication.md`",
           "inferred": false,
@@ -1366,7 +1435,7 @@
         },
         "containers": {
           "Browser runtime": {
-            "how": "the production bundle, only when it was built with `include: true`, otherwise it is a build without Ayme and none of it runs; WebMCP publication as the app's setup decides, the Inspector and Agent Connection off, Peeks inert",
+            "how": "the production bundle, only when it was built with `include: true`, otherwise it is a build without ayme and none of it runs; WebMCP publication as the app's setup decides, the Inspector and Agent Connection off, Peeks inert",
             "node": "the host app's page in its users' browsers",
             "nodeKey": "the host app's page in its users' browsers",
             "runs": true,
@@ -1391,7 +1460,7 @@
               "mixed": false
             }
           },
-          "Ayme MCP server": {
+          "ayme MCP server": {
             "how": "does not run here; coding agents are a development tool",
             "node": "",
             "nodeKey": "",
@@ -1455,6 +1524,19 @@
               "inferred": false,
               "mixed": false
             }
+          },
+          "Recorder": {
+            "how": "does not run here; recording is a development tool",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "inferred: nothing of the recorder is part of an app's build",
+              "inferred": true,
+              "mixed": false
+            }
           }
         },
         "externals": {
@@ -1494,7 +1576,7 @@
       },
       {
         "key": "ayme-development",
-        "group": "Ayme",
+        "group": "ayme",
         "label": "development",
         "sub": "contributor's machine",
         "purpose": "a contributor's machine working in this monorepo: the playground and the framework examples run from the workspace packages, with a coding agent attached",
@@ -1530,7 +1612,7 @@
               "mixed": false
             }
           },
-          "Ayme MCP server": {
+          "ayme MCP server": {
             "how": "the workspace build, `node packages/mcp/dist/cli.mjs mcp`, registered with the contributor's coding agent",
             "node": "the coding agent's process on the contributor's machine",
             "nodeKey": "the coding agent's process on the contributor's machine",
@@ -1594,6 +1676,19 @@
               "inferred": false,
               "mixed": false
             }
+          },
+          "Recorder": {
+            "how": "the workspace build, `node packages/cli/dist/cli.mjs codegen <url>`, started in a folder with Playwright installed, such as `apps/recorder-fixture`",
+            "node": "a Node process on the contributor's machine, and the Chromium it launches",
+            "nodeKey": "a Node process on the contributor's machine, and the Chromium it launches",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `packages/cli/package.json`, `apps/recorder-fixture/README.md`",
+              "inferred": false,
+              "mixed": false
+            }
           }
         },
         "externals": {
@@ -1633,7 +1728,7 @@
       },
       {
         "key": "ci",
-        "group": "Ayme",
+        "group": "ayme",
         "label": "ci",
         "sub": "GitHub Actions",
         "purpose": "the checks on every pull request and on `main`, including the live goal lane",
@@ -1669,7 +1764,7 @@
               "mixed": false
             }
           },
-          "Ayme MCP server": {
+          "ayme MCP server": {
             "how": "started over stdio by the test's MCP client",
             "node": "a Playwright container on a GitHub Actions runner",
             "nodeKey": "a Playwright container on a GitHub Actions runner",
@@ -1677,7 +1772,7 @@
             "nodeKnown": true,
             "optional": false,
             "evidence": {
-              "text": "verified: `packages/mcp/src/testing/`, `apps/mcp-fixture/`",
+              "text": "verified: `packages/mcp/testing/`, `apps/mcp-fixture/`",
               "inferred": false,
               "mixed": false
             }
@@ -1722,7 +1817,7 @@
             }
           },
           "Playground": {
-            "how": "built on pull requests that change it, not deployed; its build also builds it without Ayme and checks that output carries none of Ayme",
+            "how": "built on pull requests that change it, not deployed; its build also builds it without ayme and checks that output carries none of ayme",
             "node": "a GitHub Actions runner",
             "nodeKey": "a GitHub Actions runner",
             "runs": true,
@@ -1730,6 +1825,19 @@
             "optional": false,
             "evidence": {
               "text": "verified: `.github/workflows/deploy-example-vue.yml`, `apps/example-vue/package.json`, `apps/example-vue/scripts/verify-browser-output.mjs`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Recorder": {
+            "how": "started by the recorder fixture's end-to-end tests, as a child process and, to record, in the test's own process, with a headless Chromium",
+            "node": "a Playwright container on a GitHub Actions runner",
+            "nodeKey": "a Playwright container on a GitHub Actions runner",
+            "runs": true,
+            "nodeKnown": true,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `apps/recorder-fixture/tests/fixtures.ts`, `.github/workflows/ci.yml`",
               "inferred": false,
               "mixed": false
             }
@@ -1755,13 +1863,13 @@
           "WebMCP driver": {
             "how": "a recording driver from `@ayme-dev/webmcp/testing`",
             "evidence": {
-              "text": "verified: `packages/webmcp/src/testing.ts`",
+              "text": "verified: `packages/webmcp/testing/index.ts`",
               "inferred": false,
               "mixed": false
             }
           },
           "Browser automation": {
-            "how": "the Playwright context of the served Page Objects specs, which loads the `.ayme/init-script.js` the test's `ayme mcp` wrote",
+            "how": "the Playwright context of the served Page Objects specs, which loads the `ayme/init-script.js` the test's `ayme mcp` wrote",
             "evidence": {
               "text": "verified: `apps/mcp-fixture/README.md`, `apps/mcp-fixture/tests/servedPageObjects.spec.ts`",
               "inferred": false,
@@ -1772,7 +1880,7 @@
       },
       {
         "key": "playground",
-        "group": "Ayme",
+        "group": "ayme",
         "label": "playground",
         "sub": "GitHub Pages",
         "purpose": "the public demo and docs at ayme-labs.github.io/ayme, and the same demo at ayme.dev/playground/",
@@ -1808,7 +1916,7 @@
               "mixed": false
             }
           },
-          "Ayme MCP server": {
+          "ayme MCP server": {
             "how": "does not run here; the hosted builds leave out the Agent Connection",
             "node": "",
             "nodeKey": "",
@@ -1869,6 +1977,19 @@
             "optional": false,
             "evidence": {
               "text": "verified: `.github/workflows/deploy-example-vue.yml`, `docs/guide/_config.yml`",
+              "inferred": false,
+              "mixed": false
+            }
+          },
+          "Recorder": {
+            "how": "does not run here; the site is static",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
+            "optional": false,
+            "evidence": {
+              "text": "verified: `.github/workflows/deploy-example-vue.yml`",
               "inferred": false,
               "mixed": false
             }

@@ -31,6 +31,7 @@ import {
   existingPageState,
   latestRefOfLocator,
   pageStateOf,
+  providePageObjectIdsOf,
   providePageObjectProbeOf,
   type PageStateHost,
 } from "./pageStates";
@@ -86,6 +87,16 @@ export function providePageObjectProbe(
   providePageObjectProbeOf(pageOfDocument(document), probe);
 }
 
+/**
+ * Package-internal: what the document's page state text reads the id of each
+ * Page Object Root from, set while the registry observes it.
+ */
+export function providePageObjectIds(
+  rootIds: Parameters<typeof providePageObjectIdsOf>[1]
+): void {
+  providePageObjectIdsOf(pageOfDocument(document), rootIds);
+}
+
 /** Package-internal: set while a runtime session is active, as the session registered it. */
 export function configurePageStateIgnore(
   ignore: SessionFilter | undefined
@@ -118,11 +129,13 @@ export async function getPageStateForDocument(
 /**
  * Capture `currentDocument`'s page state without recording it in the
  * interaction history, for a reader that is not a caller (the Inspector).
+ * The page is read once `ready` resolves.
  */
 export async function lookAtPageStateForDocument(
-  currentDocument: Document
+  currentDocument: Document,
+  ready?: () => Promise<void>
 ): Promise<PageStateLook> {
-  return storeOf(currentDocument).look();
+  return storeOf(currentDocument).look(ready);
 }
 
 /**
@@ -133,17 +146,6 @@ export function getInteractionHistory(
   currentDocument: Document
 ): InteractionHistory {
   return getPageStateSession(currentDocument).history;
-}
-
-/**
- * Package-internal: calls `listener` each time a page state of
- * `currentDocument` is recorded, until the returned function is called.
- */
-export function onPageStateRecorded(
-  currentDocument: Document,
-  listener: () => void
-): () => void {
-  return getPageStateSession(currentDocument).onRecorded(listener);
 }
 
 /**
@@ -159,16 +161,6 @@ export async function latestPageStateRefOf(
     pageOfDocument(document),
     inPage(locator.page()),
     locator
-  );
-}
-
-/**
- * Package-internal: the Structural Ref the agent's latest recorded page
- * state gave what the in-page ref `ref` names, when it gave it one.
- */
-export function latestPageStateRefNamed(ref: string): AriaRef | undefined {
-  return existingPageState(pageOfDocument(document))?.session.latestRefOfNamed(
-    ref
   );
 }
 

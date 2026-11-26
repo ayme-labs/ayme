@@ -8,11 +8,19 @@ declare module "virtual:ayme-in-page" {
 }
 
 // Playwright's pinned `captureAriaSnapshot`, with marks and a ref counter its
-// caller owns, and its selector generator and `asLocator`
+// caller owns, its selector generator and `asLocator`, and the role,
+// accessible name and hiddenness its capture reads
 // (build/pinnedAriaSnapshot.ts).
 declare module "virtual:ayme-aria-snapshot" {
   export const captureAriaSnapshot: import("./page/capture").CaptureAriaSnapshot;
   export const isElementVisible: (element: Element) => boolean;
+  export const getAriaRole: (element: Element) => string | null;
+  export const getElementAccessibleName: (
+    element: Element,
+    includeHidden: boolean
+  ) => { text: string };
+  export const normalizeWhiteSpace: (text: string) => string;
+  export const isElementHiddenForAria: (element: Element) => boolean;
   export const InjectedScript: import("./page/recommend").SelectorGenerator["InjectedScript"];
   export const generateSelector: import("./page/recommend").SelectorGenerator["generateSelector"];
   export const asLocator: import("./page/recommend").SelectorGenerator["asLocator"];

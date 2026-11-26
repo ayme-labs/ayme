@@ -1,25 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
+import { listRunnableTools } from "../tools/domain";
 import {
-  listRunnableTools,
   pickPromptOf,
   refFilterOf,
   type RefPickingHandlers,
   startRefPicking,
   useLiveTools,
-} from "../tools";
+} from "../tools/infrastructure";
+import { actionSignature, rootTargetPath } from "../page-model/infrastructure";
 import {
-  actionSignature,
   buildPageModel,
   indexMembers,
   type MemberIndex,
-  rootTargetPath,
-} from "../page-model";
+} from "../page-model/domain";
 import { renderPomDefinitions } from "@ayme-dev/ayme/inspector";
-import { buildStructureTree, emptyStructure } from "../structure";
-import { useHighlights } from "../navigation";
-import { usePageLook } from "../shared";
-import { interactionTarget, useRuns } from "../runs";
+import { buildStructureTree } from "../structure/infrastructure";
+import { emptyStructure } from "../structure/domain";
+import { useHighlights } from "../navigation/infrastructure";
+import { usePageLook } from "../shared/infrastructure";
+import { interactionTarget } from "../runs/domain";
+import { useRuns } from "../runs/infrastructure";
 import { itemsOf } from "./collectionItems";
 
 /**
@@ -51,7 +52,7 @@ export function useInspectorRuntime({
     () => refreshPageState(),
     [refreshPageState]
   );
-  // A Run's item is the one its ref names in the latest look at the page.
+  // A Run's item is the one its Page Object id names in the latest look at the page.
   const latestStructure = useRef(emptyStructure);
   const latestRefs = useRef<readonly string[]>([]);
   const latestCollectionItems = useRef(toolInstances);
@@ -59,14 +60,14 @@ export function useInspectorRuntime({
     latestCollectionItems.current = toolInstances;
   }, [toolInstances]);
   const itemOf = useCallback(
-    (toolName: string, ref: string) =>
+    (toolName: string, id: string) =>
       latestMembers.current &&
       itemsOf(
         toolName,
         latestMembers.current,
         latestStructure.current,
         latestCollectionItems.current.get(toolName)
-      ).find((item) => item.ref === ref),
+      ).find((item) => item.id === id),
     []
   );
   const { runs, invoke, clear } = useRuns({
@@ -148,10 +149,10 @@ export function useInspectorRuntime({
      * described as agents read it;
      * `tools.appProcess`, the tools of
      * the App Processes paired beside the page, run through the agent's
-     * Ayme MCP server;
+     * ayme MCP server;
      * `tools.publication`, the WebMCP publication status (a failure
      * carries its error in `message`); and `tools.agentConnection`,
-     * whether the page is connected to a coding agent's Ayme MCP server.
+     * whether the page is connected to a coding agent's ayme MCP server.
      */
     tools,
     /**

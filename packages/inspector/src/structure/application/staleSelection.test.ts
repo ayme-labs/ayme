@@ -1,9 +1,9 @@
 import { expect, it } from "vitest";
 import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
-import { indexMembers } from "../../page-model";
-import { page } from "../../page-model/test-utils/pageModel";
-import { forest, node } from "../test-utils/projected";
+import { indexMembers } from "../../page-model/domain";
+import { page } from "../../../testing/page-model/pageModel";
+import { forest, node } from "../../../testing/structure/projected";
 import { buildStructureTree } from "../infrastructure/structureTree";
 import { emptyStructure } from "../domain/structure";
 import { isStaleSelection } from "./staleSelection";

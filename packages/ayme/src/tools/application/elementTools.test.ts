@@ -10,7 +10,7 @@ const { captureAriaSnapshot, pageObjectStructure } = vi.hoisted(() => ({
 
 vi.mock("../../page-state/infrastructure/browserInPage", async () =>
   (
-    await import("../../in-page/inPageStandIn.testSupport")
+    await import("../../../testing/in-page/inPageStandIn.testSupport")
   ).standInBrowserInPage(captureAriaSnapshot, () => pageObjectStructure())
 );
 
@@ -31,11 +31,11 @@ import {
 import { RefResolutionError } from "../../shared";
 import {
   getPageStateForDocument,
-  latestPageStateRefNamed,
+  getPageStateSession,
 } from "../../page-state/infrastructure";
 import { listPublishedBrowserTools } from "../infrastructure/publishedBrowserTools";
-import { ayme, runContext } from "../../test-utils/agentCalls.testSupport";
-import { alwaysReaches } from "../../test-utils/reach.testSupport";
+import { ayme, runContext } from "../../../testing/agentCalls.testSupport";
+import { alwaysReaches } from "../../../testing/reach.testSupport";
 import type { AriaRef } from "../../page-state/domain";
 
 const ref = AriaRefSchema.parse;
@@ -66,7 +66,7 @@ describe("Structural Ref interactions", () => {
     vi.unstubAllGlobals();
   });
 
-  it("clicks the current resolved ref through Ayme's selector engine", async () => {
+  it("clicks the current resolved ref through ayme's selector engine", async () => {
     const button = document.querySelector("#save");
     if (!button) throw new Error("Expected the save button.");
     mockCapture(button, "e2");
@@ -182,7 +182,9 @@ describe("Structural Ref interactions", () => {
     const clicked: { selector?: string; named?: AriaRef } = {};
     const click = vi.fn(async (selector: string) => {
       clicked.selector = selector;
-      clicked.named = latestPageStateRefNamed(refFromSelector(selector)!);
+      clicked.named = getPageStateSession(document).latestRefOfNamed(
+        refFromSelector(selector)!
+      );
     });
     const page = fakePage({ click });
 

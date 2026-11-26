@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { AymeProvider } from "@ayme-dev/react";
 
-/** The app's Ayme runtime. The root layout owns it, so every page runs it. */
+/** The app's ayme runtime. The root layout owns it, so every page runs it. */
 export default function AymeRuntime({ children }: { children: ReactNode }) {
   return (
     <AymeProvider

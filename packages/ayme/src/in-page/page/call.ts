@@ -23,6 +23,8 @@ export type CallName =
   | "excluded"
   | "passThrough"
   | "currentRefs"
+  | "elementKeys"
+  | "keyedRefs"
   | "baseURI"
   | "historyEntry"
   | "controls";

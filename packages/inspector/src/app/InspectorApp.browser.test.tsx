@@ -12,9 +12,9 @@ import {
 import type { InspectorPageObject } from "@ayme-dev/ayme/inspector";
 
 import { renderInspector } from "./renderInspector";
-import { forest, node } from "../structure/test-utils/projected";
-import { startedAyme } from "../tools/test-utils/startedAyme";
-import { Inspector } from "../testing";
+import { forest, node } from "../../testing/structure/projected";
+import { startedAyme } from "../../testing/tools/startedAyme";
+import { Inspector } from "../../testing";
 
 // Component tests of the whole panel, driven through the Inspector POM on
 // playwright-lite. The runtime's
@@ -591,6 +591,7 @@ describe("the Inspector", () => {
     expect(await connections.agent.copyButton.getAttribute("title")).toBe(
       "Copy"
     );
+    expect(await connections.agent.checkIcon.count()).toBe(0);
     await connections.agent.copyButton.click();
 
     expect(writeText).toHaveBeenCalledTimes(2);
@@ -599,6 +600,7 @@ describe("the Inspector", () => {
     await expect
       .poll(() => connections.agent.copyButton.getAttribute("title"))
       .toBe("Copied");
+    await expect.poll(() => connections.agent.checkIcon.count()).toBe(1);
     writeText.mockRestore();
   });
 

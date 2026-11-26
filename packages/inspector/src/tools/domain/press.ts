@@ -1,4 +1,4 @@
-import type { CollectionItem, ToolArguments } from "../../runs";
+import type { CollectionItem, ToolArguments } from "../../runs/domain";
 
 /** What a run card's Run does when pressed. */
 export type Press =
@@ -50,7 +50,7 @@ export function press(card: {
   if (!target) return { kind: "blocked", why: "no-item" };
   return {
     kind: "run",
-    input: { ref: target.ref, args: card.args },
+    input: { id: target.id, args: card.args },
     item: target,
   };
 }

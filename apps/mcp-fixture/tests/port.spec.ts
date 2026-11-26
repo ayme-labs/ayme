@@ -30,7 +30,7 @@ test("--port makes the server listen on that port, and its connect link pairs th
 
     await expect
       .poll(() => agent.pageToolNames(), { message: agent.log })
-      .toContain("snapshot");
+      .toContain("page_objects");
   } finally {
     await agent.close();
   }

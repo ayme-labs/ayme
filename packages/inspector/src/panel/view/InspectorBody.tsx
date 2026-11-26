@@ -1,14 +1,6 @@
 import type { CSSProperties, ReactNode, Ref } from "react";
 
-import { Divider } from "../../shared";
 import type { Layout } from "../domain/preferences";
-import type { RegionRange } from "../domain/regions";
-
-/** A divider's range and what dragging, a key or a double-click does. */
-export type RegionControl = RegionRange & {
-  onChange: (size: number) => void;
-  onReset: () => void;
-};
 
 /**
  * The panel's body: the navigator beside the detail pane, with Runs below
@@ -21,8 +13,8 @@ export function InspectorBodyView({
   navigator,
   detail,
   runs,
-  navigatorSize,
-  runsSize,
+  navigatorDivider,
+  runsDivider,
   sizes,
   bodyRef,
 }: {
@@ -30,13 +22,12 @@ export function InspectorBodyView({
   navigator: ReactNode;
   detail: ReactNode;
   runs: ReactNode;
-  navigatorSize: RegionControl;
-  runsSize: RegionControl;
+  navigatorDivider: ReactNode;
+  runsDivider: ReactNode;
   /** The regions' sizes as the CSS variables their own styles read. */
   sizes: CSSProperties;
   bodyRef: Ref<HTMLDivElement>;
 }) {
-  const runsColumn = layout === "bottom";
   return (
     <div
       ref={bodyRef}
@@ -48,24 +39,10 @@ export function InspectorBodyView({
           than `--navigator-max`. */}
       <div className="flex min-h-0 min-w-0 flex-1 in-data-[layout=bottom]:[&>:first-child]:max-w-(--navigator-max)">
         {navigator}
-        <Divider
-          orientation="vertical"
-          border="before"
-          label="Resize the navigator"
-          step={16}
-          {...navigatorSize}
-        />
+        {navigatorDivider}
         {detail}
       </div>
-      <Divider
-        orientation={runsColumn ? "vertical" : "horizontal"}
-        border="after"
-        label="Resize Runs"
-        step={16}
-        grows="backward"
-        className="[&:has(+[data-collapsed])]:hidden"
-        {...runsSize}
-      />
+      {runsDivider}
       {runs}
     </div>
   );

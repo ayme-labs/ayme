@@ -5,10 +5,10 @@ import { AriaRefSchema, type AriaRef } from "./StructuralTypes";
  * `e<number>`, or `f<number>e<number>` where Playwright prefixes it with the
  * frame's sequence number: in an iframe's content, and in the main frame after
  * a cross-document navigation. The prefix is part of the ref, so `e4` and
- * `f1e4` name different nodes. A synthetic ref is Ayme's `s_<word>` (`s_root`,
+ * `f1e4` name different nodes. A synthetic ref is ayme's `s_<word>` (`s_root`,
  * `s_1`, …), minted for a node Playwright's snapshot gave no ref, such as a
  * Page Object Root. The browser Page acts on either through the `ayme-ref=…`
- * selector, which Ayme's own selector engine resolves from the current capture
+ * selector, which ayme's own selector engine resolves from the current capture
  * (ADR-0038).
  */
 const REAL_REF = /(?:f\d+)?e\d+/;
@@ -45,7 +45,7 @@ export function refWrittenOtherwise(text: string): AriaRef | undefined {
   return ref === undefined ? undefined : AriaRefSchema.parse(ref.toLowerCase());
 }
 
-/** Whether `ref` is synthetic: minted by Ayme, not by Playwright's snapshot. */
+/** Whether `ref` is synthetic: minted by ayme, not by Playwright's snapshot. */
 export function isSyntheticRef(ref: AriaRef): boolean {
   return ref.startsWith(SYNTHETIC_PREFIX);
 }
@@ -84,7 +84,6 @@ export function syntheticRefsAbsentFrom(
 /** The ref a fragment that wraps several snapshot roots carries. */
 export const SYNTHETIC_ROOT_REF = syntheticRef("root");
 
-/** The selector the browser Page resolves to the element `ref` names. */
 export function selectorForRef(ref: AriaRef): string {
   return `ayme-ref=${ref}`;
 }

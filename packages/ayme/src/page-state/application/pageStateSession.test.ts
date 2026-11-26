@@ -11,7 +11,6 @@ import { InteractionHistory } from "../domain/interactionHistory";
 import { PageStateSession, type ActionPage } from "./pageStateSession";
 import type { PomRootMarks } from "../domain/pomRootMarks";
 
-/** A capture as the module answers it. */
 type PageCapture = { capture: Capture };
 
 const ref = AriaRefSchema.parse;
@@ -57,7 +56,14 @@ function sessionOn(
   {
     loads,
     restart,
-  }: { loads?: string; restart?: (url: string) => InteractionHistory },
+    rootIds,
+  }: {
+    loads?: string;
+    restart?: (url: string) => InteractionHistory;
+    rootIds?: (
+      roots: readonly { className: string; ref: string }[]
+    ) => Promise<(string | undefined)[]>;
+  },
   ...captures: (PageCapture | Error)[]
 ) {
   let taken = 0;
@@ -107,7 +113,8 @@ function sessionOn(
     }),
     next,
     actionPage,
-    restart
+    restart,
+    rootIds
   );
   return { session, count: () => taken };
 }
@@ -155,6 +162,81 @@ describe("a capture of another document than the session's", () => {
     // Not "Old" turning into "New" under the recycled refs e1 and e2.
     expect(result).not.toHaveProperty("changes_before");
     expect(result.page_changed).toBe(false);
+  });
+});
+
+describe("the page state a reader receives", () => {
+  const list = capture(
+    [
+      "- list [ref=e1]:",
+      "  - listitem [ref=e2]: Milk",
+      "  - listitem [ref=e3]: Eggs",
+      "  - listitem [ref=e4]: Tea",
+    ].join("\n"),
+    // As the registry found the roots, which is not the tree's order.
+    new Map([
+      [ref("e3"), ["ListItem"]],
+      [ref("e1"), ["ListPage", "Panel"]],
+      [ref("e2"), ["ListItem"]],
+    ])
+  );
+
+  it("prints each Page Object's id beside its class, asking for them in the tree's order", async () => {
+    const asked: string[][] = [];
+    const ids: Record<string, string> = {
+      "ListPage e1": "po3",
+      "Panel e1": "po4",
+      "ListItem e2": "po1",
+      "ListItem e3": "po2",
+    };
+    const { session } = sessionOn(
+      {
+        rootIds: async (roots) => {
+          const named = roots.map(
+            ({ className, ref }) => `${className} ${ref}`
+          );
+          asked.push(named);
+          return named.map((root) => ids[root]);
+        },
+      },
+      list
+    );
+
+    const state = await session.getPageState(cursor());
+
+    expect(state.text).toBe(
+      [
+        "- e1 list:",
+        '  - /pom: ["ListPage","Panel"]',
+        '  - /id: ["po3","po4"]',
+        "  - e2 ListItem po1: Milk",
+        "  - e3 ListItem po2: Eggs",
+        "  - e4 listitem: Tea",
+      ].join("\n")
+    );
+    expect(asked).toEqual([
+      ["ListPage e1", "Panel e1", "ListItem e2", "ListItem e3"],
+    ]);
+  });
+
+  it("prints a root that has no id with its class alone", async () => {
+    const { session } = sessionOn(
+      { rootIds: async (refs) => refs.map(() => undefined) },
+      list
+    );
+
+    const state = await session.getPageState(cursor());
+
+    expect(state.text).toContain("  - e2 ListItem: Milk");
+  });
+
+  it("prints no id when nothing gives the roots one", async () => {
+    const { session } = sessionOver(list);
+
+    const state = await session.getPageState(cursor());
+
+    expect(state.text).toContain("  - e2 ListItem: Milk");
+    expect(state.text).not.toContain("id:");
   });
 });
 
@@ -425,7 +507,7 @@ describe("runAction", () => {
     expect(reader.current()).toBe(session.history.latestObservation);
   });
 
-  it("still answers a full load when capturing the page as it goes away throws", async () => {
+  it("answers a full load whose old document left no capture without page_changed, saying its changes could not be read", async () => {
     const { session } = sessionOn(
       { loads: "https://app.test/next" },
       savePage,
@@ -436,12 +518,32 @@ describe("runAction", () => {
 
     await expect(
       session.runAction(reader, call, () => {})
-    ).resolves.toMatchObject({
+    ).resolves.toStrictEqual({
+      settled: false,
+      loading: "https://app.test/next",
+      next: "The page is loading https://app.test/next. What the action changed before the load could not be read. Call snapshot next to read the new page.",
+    });
+    expect(reader.current()).toBeUndefined();
+  });
+
+  it("answers a full load an action that only navigates started from the page before it, when the old document left no capture", async () => {
+    const { session } = sessionOn(
+      { loads: "https://app.test/next" },
+      savePage,
+      savePage,
+      new Error("The document is gone.")
+    );
+    const reader = cursor();
+
+    await expect(
+      session.runAction(reader, call, () => {}, { onlyNavigates: true })
+    ).resolves.toEqual({
       page_changed: false,
       settled: false,
       loading: "https://app.test/next",
+      next: "The page is loading https://app.test/next. Call snapshot next to read the new page.",
     });
-    expect(reader.current()).toBeUndefined();
+    expect(reader.current()).toBeDefined();
   });
 });
 

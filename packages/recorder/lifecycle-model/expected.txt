@@ -1,0 +1,73 @@
+# What each config must give: the rules it breaks, by their full names in
+# Recorder.tla, and nothing else. A line is `Config: Rule Rule ...`; a config
+# with no rule after the colon must hold every rule it checks. `run.sh` fails
+# a config whose broken rules are not exactly these, and `run-all.sh` runs the
+# configs in this order. Progress.cfg is not run (README, "Running it").
+# gen-configs.sh says what each config is for.
+#
+# The charts: their rules hold.
+Chart-Lifecycle:
+Chart-Gate:
+Chart-Fill:
+# The rules hold at a person's speed.
+Rules:
+Rules-Pages:
+Rules-Rounds:
+Rules-Ends:
+Surfaces:
+# The time limit.
+TimeLimit: R03a_StoppedClicksAreUntouched R04_FinishSavesEverything X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X5_StopWindowIsRecorded X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput
+TimeLimit-Holds:
+Rules-StartRecording:
+Path-StartRecording-Stop:
+Path-StartRecording-BlankPage:
+Path-StartRecording-Continue:
+# Rules 7 and 12.
+Rule7:
+Rule7-Strict: F7s_MeasuredStrictly
+Rule7-Navigation:
+Rule7-StartRecording:
+Rule7-AssertThenType:
+Rule7-TypeAfterStopOnNewPage: F7_MeasuredFromFirstKey
+Fold-AfterStep:
+Rules-WithoutB2:
+# Known limits: each breaks its own rule.
+Limit-TypingThenTyping: N3_TypingThenTypingInTimeOrder
+Limit-ClosedPageWaits: X4_WrapUpNeverGetsStuck
+Limit-BlankPageInput: X3_NothingYouDidIsDropped R04_FinishSavesEverything F1_ShowsOnceItHasItsPlace
+# Paths the engine once broke: each holds.
+Path-AfterStop:
+Path-StopClickCtrlC:
+Path-HeldKeyAfterStop:
+Path-PickOnNewPage:
+Path-PickOnNewPage-NextClick:
+Path-TypingAfterContinue:
+Path-NavigationThenType:
+Path-ReadAcrossNavigation:
+Input-ReadAcrossNavigation:
+Path-TypingAfterNavigation:
+Path-AddressChangeWhileTyping:
+# Races: R1 to R4 in Races, one each after.
+Races: R01_HeldClickReachesThePageOnce R04_FinishSavesEverything X3_NothingYouDidIsDropped X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded X8_StartsNoLaterThanTheInput
+Race-LateRevision:
+Race-LateRevision-Stop: F7_MeasuredFromFirstKey
+Race-LateTypingReport: N1_AfterStopInTimeOrder X5_StopWindowIsRecorded
+Race-LastText: F4_StopAndFinishKeepLastText
+Race-ClickLostAfterStop: X5_StopWindowIsRecorded
+Race-ClickAfterPicking: X3_NothingYouDidIsDropped
+Race-HeldMessageAfterStop: X1_NothingOvertakesAHeldClick X2_SnapshotsInTimeOrder X3_NothingYouDidIsDropped X5_StopWindowIsRecorded N1_AfterStopInTimeOrder
+Race-NavigationBeforeTypingReport: X10_FillStartsInItsDocument
+# Middle clicks.
+Clicks-Middle:
+Clicks-Middle-Fill:
+Clicks-MiddleOnCheckbox:
+Clicks-Mixed:
+# Probes: every probe breaks, which shows the model reaches that situation.
+Probes: P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten
+Probes-Discard: P2_NeverSavesADiscard P24_NeverDiscardsWhileRecording P25_NeverTypesOnInADiscardedFill
+Probes-Clear: P6_NeverClearsThenRecordsAgain P8_NeverEndsEmptyAfterRecording
+Probes-Window: P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow
+Probes-Window-Navigation: P19_NeverNavigatesUnderALiveFill
+Probes-Continue: P22_NeverStartsAFillFromARevision
+Probes-LateRevision: P23_NeverSetsAFinalFillsText
+Probes-Storage: P26_NeverSavesStorageWithNothingRecorded P27_NeverSavesStorageWithAPackage P28_NeverWarnsOfTheStorage P29_NeverSavesStorageAfterTheTraceFailedToStart P30_NeverSavesStorageAfterAFailedStartsTraceIsGone P31_NeverSavesStorageAfterAFailedWrite

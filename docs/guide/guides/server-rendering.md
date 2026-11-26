@@ -1,10 +1,10 @@
 # Server rendering
 
-What Ayme does on the server and in the browser when your app renders on the server with Next.js, Nuxt, SvelteKit or Angular SSR.
+What ayme does on the server and in the browser when your app renders on the server with Next.js, Nuxt, SvelteKit or Angular SSR.
 
 ## What runs where
 
-Page Objects run only in the browser. Your app keeps rendering on the server as it did, and Ayme keeps that safe:
+Page Objects run only in the browser. Your app keeps rendering on the server as it did, and ayme keeps that safe:
 
 - The framework package gives each server render its own session, and starting it does nothing. It never calls `pageFactory`, observes no DOM, publishes nothing and never claims the server's process, so concurrent requests share nothing.
 - `usePageObject`, or `injectPageObject` in Angular, returns an unconstructed object with the model's prototype and registers nothing, so markup can reference its methods in event handlers. Do not read its locators or constructor-initialized fields, or run its actions, while rendering on the server.
@@ -17,7 +17,7 @@ After hydration, the root owner starts the session in the browser, constructs an
 
 ## Server state
 
-A coding agent can still read your server's state through Peeks. A session you create and start yourself in Node, rather than one a framework package creates to render, makes the process its App Process: with `agentConnection` on, it pairs with the agent's Ayme MCP server beside the tab and offers its Peeks as `peek.node.<name>`. Start one such session per process, once, in the server's entry point, such as Next.js's `instrumentation.ts` or a Nitro server plugin in Nuxt, and define each Peek in the module that owns the state it reads. [In Node](../reference/ayme.md#in-node) shows the setup, and why a Peek in Next.js does not belong in `instrumentation.ts`.
+A coding agent can still read your server's state through Peeks. A session you create and start yourself in Node, rather than one a framework package creates to render, makes the process its App Process: with `agentConnection` on, it pairs with the agent's ayme MCP server beside the tab and offers its Peeks as `peek.node.<name>`. Start one such session per process, once, in the server's entry point, such as Next.js's `instrumentation.ts` or a Nitro server plugin in Nuxt, and define each Peek in the module that owns the state it reads. [In Node](../reference/ayme.md#in-node) shows the setup, and why a Peek in Next.js does not belong in `instrumentation.ts`.
 
 ## Per framework
 

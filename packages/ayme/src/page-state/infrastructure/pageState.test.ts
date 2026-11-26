@@ -9,7 +9,7 @@ const { captureAriaSnapshot, pageObjectRoots } = vi.hoisted(() => ({
 
 vi.mock("./browserInPage", async () =>
   (
-    await import("../../in-page/inPageStandIn.testSupport")
+    await import("../../../testing/in-page/inPageStandIn.testSupport")
   ).standInBrowserInPage(captureAriaSnapshot, async () => ({
     roots: await pageObjectRoots(),
     absentElements: [],
@@ -26,13 +26,12 @@ import {
   configurePageStateIgnore,
   getPageStateForDocument,
   getPageStateSession,
-  latestPageStateRefNamed,
   latestPageStateCapture,
   lookAtPageStateForDocument,
 } from "./pageState";
 import { createCursors } from "../domain/cursors";
 import { pageStateNodeEntry } from "../domain/structuralPageState";
-import { ayme } from "../../test-utils/agentCalls.testSupport";
+import { ayme } from "../../../testing/agentCalls.testSupport";
 
 const ref = AriaRefSchema.parse;
 
@@ -491,7 +490,7 @@ describe("the page state", () => {
       createCursors().of("app"),
       { tool: "click", args: {} },
       () => {
-        named = latestPageStateRefNamed("s_1");
+        named = getPageStateSession(document).latestRefOfNamed("s_1");
       }
     );
 
@@ -543,7 +542,7 @@ describe("the page state", () => {
     `);
   });
 
-  it("shares its session with Ayme when a structural ref is retargeted", async () => {
+  it("shares its session with ayme when a structural ref is retargeted", async () => {
     const original = document.querySelector("#captured");
     if (!original) throw new Error("Missing original root.");
 

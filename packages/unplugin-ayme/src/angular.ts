@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -12,12 +11,12 @@ import {
 
 export type AymeAngularOptions = {
   /**
-   * The tsconfig Ayme's compiler reads, resolved from the workspace root.
+   * The tsconfig ayme's compiler reads, resolved from the workspace root.
    * Point it at the app's own tsconfig, which Angular's watcher also reads.
    */
   tsconfigPath?: string;
   /**
-   * Whether the build includes Ayme. Defaults to false: the runtime's
+   * Whether the build includes ayme. Defaults to false: the runtime's
    * entries then resolve to its absent entry and each Page Object Model
    * compiles to a stand-in.
    */
@@ -39,7 +38,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
   );
   if (unknown.length > 0)
     throw new TypeError(
-      `Ayme's Angular plugin has no option(s): ${unknown.join(", ")}. Referenced in angular.json as a plain string, it receives the builder's options.`
+      `ayme's Angular plugin has no option(s): ${unknown.join(", ")}. Referenced in angular.json as a plain string, it receives the builder's options.`
     );
   if (
     options.tsconfigPath !== undefined &&
@@ -74,7 +73,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         compiler.invalidate();
       });
 
-      // The stand-in of a build without Ayme is what `onLoad` hands esbuild
+      // The stand-in of a build without ayme is what `onLoad` hands esbuild
       // as the module's contents, and esbuild maps a module to the contents
       // it loaded, so no source map carries the replaced model.
       const compile = async (fileName: string) => {
@@ -87,7 +86,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         };
       };
 
-      // A build without Ayme resolves the runtime's two entries and the
+      // A build without ayme resolves the runtime's two entries and the
       // framework packages to their absent entries, wherever they are
       // imported from.
       if (!include)
@@ -148,7 +147,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         const pom = await compiled.get(fileName);
         if (!pom)
           throw new Error(
-            `Ayme did not compile Page Object Model ${fileName}.`
+            `ayme did not compile Page Object Model ${fileName}.`
           );
         return {
           contents: pom.contents,
@@ -176,45 +175,19 @@ function buildError(
     return { text, location: { file: compiled } };
   if (diagnostic.line === undefined)
     return { text, location: { file: diagnostic.file } };
-  const { file, line, column } = diagnostic;
-  const lineText = sourceLine(file, line);
+  const { file, line, column, lineText } = diagnostic;
   return {
     text,
     location: {
       file,
       line,
-      column: esbuildColumn(lineText, column),
+      // TypeScript counts the column from 1 in UTF-16 code units; esbuild
+      // counts it from 0 in UTF-8 bytes.
+      column: Buffer.byteLength(lineText.slice(0, column - 1)),
       // esbuild draws its code frame from this line, which it has not loaded.
-      ...(lineText !== undefined && { lineText }),
+      lineText,
     },
   };
-}
-
-/**
- * `column` of `lineText`, counted from 1 in UTF-16 code units as TypeScript
- * counts it, as esbuild counts it: from 0, in UTF-8 bytes. Without the line,
- * the count of code units stands in.
- */
-function esbuildColumn(lineText: string | undefined, column: number) {
-  return lineText === undefined
-    ? column - 1
-    : Buffer.byteLength(lineText.slice(0, column - 1));
-}
-
-/**
- * Line `line` of `file`, counted from 1, if the file can be read and has it.
- * It is the line TypeScript counted: split at its line breaks, without the
- * byte order mark a file may start with.
- */
-function sourceLine(file: string, line: number): string | undefined {
-  try {
-    return readFileSync(file, "utf8")
-      .replace(/^\uFEFF/, "")
-      .split(/\r\n|[\n\r\u2028\u2029]/)[line - 1];
-  } catch {
-    // An unreadable file has no line to measure.
-  }
-  return undefined;
 }
 
 /**

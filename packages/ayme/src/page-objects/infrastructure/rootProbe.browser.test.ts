@@ -1,26 +1,19 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { inPage } from "../../in-page";
-import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
 import { createPage } from "./browserPage";
 
 import type { Locator } from "@playwright/test";
 
 const byId = (id: string) => document.getElementById(id)!;
 
-// What one probe found of the root, with what is in the way as the elements
-// its refs name.
+// What one probe found of the root, with what is in the way by its role and
+// name. The fixtures label each element that may be in the way by its id.
 const observePomRoot = async (locator: Locator) => {
   const { present, available, inTheWay } = await inPage(createPage()).probe(
     locator,
     "Root"
   );
-  return {
-    present,
-    available,
-    inTheWay: (await Promise.all(inTheWay.map(elementOfRef))).flatMap(
-      (element) => element ?? []
-    ),
-  };
+  return { present, available, inTheWay };
 };
 
 // Preserve the original availability matrix while testing presence separately.
@@ -119,7 +112,6 @@ describe("POM root reachability", () => {
     await expect(observePomRoot(root)).resolves.toEqual({
       present: true,
       available: true,
-      inTheWay: [],
     });
   });
 
@@ -134,7 +126,6 @@ describe("POM root reachability", () => {
     await expect(observePomRoot(root)).resolves.toEqual({
       present: true,
       available: true,
-      inTheWay: [],
     });
   });
 
@@ -149,13 +140,12 @@ describe("POM root reachability", () => {
     await expect(observePomRoot(root)).resolves.toEqual({
       present: true,
       available: true,
-      inTheWay: [],
     });
   });
 
   // Playwright Lite reads a box-less element's visibility from its light
   // children alone, so a root whose content is only in its shadow tree is not
-  // visible to the click; Ayme agrees rather than offering what cannot be acted on.
+  // visible to the click; ayme agrees rather than offering what cannot be acted on.
   it("reads a display-contents root with only shadow content as absent, as the click does", async () => {
     document.body.innerHTML =
       '<section id="root" style="display:contents"></section>';
@@ -168,7 +158,6 @@ describe("POM root reachability", () => {
     await expect(observePomRoot(locator)).resolves.toEqual({
       present: false,
       available: false,
-      inTheWay: [],
     });
   });
 
@@ -183,7 +172,6 @@ describe("POM root reachability", () => {
     ).resolves.toEqual({
       present: false,
       available: false,
-      inTheWay: [],
     });
   });
 
@@ -238,18 +226,18 @@ describe("POM root reachability", () => {
   // elsewhere is still out of reach there (ayme-labs/ayme#828).
   it("rejects a root covered only where a click would land, naming the cover", async () => {
     document.body.innerHTML =
-      '<section id="root" style="position:fixed;left:0;top:0;width:200px;height:200px">Sidebar</section><div id="badge" style="position:fixed;left:80px;top:80px;width:40px;height:40px;z-index:10"></div>';
+      '<section id="root" style="position:fixed;left:0;top:0;width:200px;height:200px">Sidebar</section><div id="badge" role="region" aria-label="badge" style="position:fixed;left:80px;top:80px;width:40px;height:40px;z-index:10"></div>';
     await expect(
       observePomRoot(createPage().locator("#root"))
     ).resolves.toEqual({
       present: true,
       available: false,
-      inTheWay: [byId("badge")],
+      inTheWay: 'region "badge"',
     });
   });
 
   // Nothing shows of a below-fold root now, so there is no point to
-  // hit-test: a call scrolls to it and tests it there (ADR-0041).
+  // hit-test: a call scrolls to it and tests it there (ADR-0062).
   it("accepts a below-fold root under a fullscreen overlay, which a call finds", async () => {
     document.body.innerHTML =
       '<div style="height:2000px"></div><section id="root" style="height:100px">Below fold</section><div style="position:fixed;inset:0;z-index:10"></div>';
@@ -319,13 +307,13 @@ describe("POM root reachability", () => {
   });
   it("keeps an obstructed root structurally present", async () => {
     document.body.innerHTML =
-      '<section id="root" style="width:200px;height:100px">Panel</section><div id="overlay" style="position:fixed;inset:0;z-index:10"></div>';
+      '<section id="root" style="width:200px;height:100px">Panel</section><div id="overlay" role="region" aria-label="overlay" style="position:fixed;inset:0;z-index:10"></div>';
     await expect(
       observePomRoot(createPage().locator("#root"))
     ).resolves.toEqual({
       present: true,
       available: false,
-      inTheWay: [byId("overlay")],
+      inTheWay: 'region "overlay"',
     });
   });
 
@@ -338,44 +326,41 @@ describe("POM root reachability", () => {
     await expect(observePomRoot(page.locator("#active"))).resolves.toEqual({
       present: true,
       available: true,
-      inTheWay: [],
     });
     await expect(observePomRoot(page.locator("#blocked"))).resolves.toEqual({
       present: true,
       available: false,
-      inTheWay: [byId("active"), byId("first")],
+      inTheWay: 'button "Confirm"',
     });
     document.querySelector<HTMLDialogElement>("#first")!.close();
     await expect(observePomRoot(page.locator("#blocked"))).resolves.toEqual({
       present: true,
       available: true,
-      inTheWay: [],
     });
   });
 
   it("lets a modal escape inherited inertness but respects inert inside it", async () => {
     document.body.innerHTML =
-      '<div inert><dialog id="modal"><section id="panel"><button id="root">Confirm</button></section></dialog></div>';
+      '<div inert><dialog id="modal"><section id="panel" aria-label="panel"><button id="root">Confirm</button></section></dialog></div>';
     const modal = document.querySelector<HTMLDialogElement>("#modal")!;
     modal.showModal();
     const root = createPage().locator("#root");
     await expect(observePomRoot(root)).resolves.toEqual({
       present: true,
       available: true,
-      inTheWay: [],
     });
     modal.inert = true;
     await expect(observePomRoot(root)).resolves.toEqual({
       present: true,
       available: false,
-      inTheWay: [modal],
+      inTheWay: "dialog",
     });
     modal.inert = false;
     document.querySelector<HTMLElement>("#panel")!.inert = true;
     await expect(observePomRoot(root)).resolves.toEqual({
       present: true,
       available: false,
-      inTheWay: [byId("panel")],
+      inTheWay: 'region "panel"',
     });
   });
 
@@ -390,7 +375,6 @@ describe("POM root reachability", () => {
     await expect(observePomRoot(root)).resolves.toEqual({
       present: false,
       available: false,
-      inTheWay: [],
     });
   });
 
@@ -402,7 +386,6 @@ describe("POM root reachability", () => {
     ).resolves.toEqual({
       present: false,
       available: false,
-      inTheWay: [],
     });
   });
 });
@@ -419,35 +402,34 @@ describe("what is in the way of a present root a click would not reach", () => {
 
   it("names the element over the root", async () => {
     document.body.innerHTML =
-      '<section id="root" style="width:200px;height:100px">Content</section><div id="overlay" style="position:fixed;inset:0"></div>';
+      '<section id="root" style="width:200px;height:100px">Content</section><div id="overlay" role="region" aria-label="overlay" style="position:fixed;inset:0"></div>';
 
-    expect((await observeRoot()).inTheWay).toEqual([byId("overlay")]);
+    expect((await observeRoot()).inTheWay).toBe('region "overlay"');
   });
 
   it("names the last opened native modal the root is not in, over whatever covers it", async () => {
     document.body.innerHTML =
-      '<section id="root" style="width:200px;height:100px">Content</section><dialog id="first"><button>First</button></dialog><dialog id="second"><button>Second</button></dialog>';
+      '<section id="root" style="width:200px;height:100px">Content</section><dialog id="first" aria-label="first"><button>First</button></dialog><dialog id="second" aria-label="second"><button>Second</button></dialog>';
     document.querySelector<HTMLDialogElement>("#first")!.showModal();
     document.querySelector<HTMLDialogElement>("#second")!.showModal();
 
     expect(await observeRoot()).toEqual({
       present: true,
       available: false,
-      inTheWay: [byId("second")],
+      inTheWay: 'dialog "second"',
     });
-    expect((await observeRoot()).inTheWay).toEqual([byId("second")]);
   });
 
   it("names a modal it hits over a root in an earlier modal by itself, not what holds it", async () => {
     document.body.innerHTML =
-      '<dialog id="lower"><section id="root" style="width:200px;height:100px">Content</section></dialog><div id="region"><dialog id="upper" style="width:100vw;height:100vh;max-width:none;max-height:none;padding:0;border:0"></dialog></div>';
+      '<dialog id="lower"><section id="root" style="width:200px;height:100px">Content</section></dialog><div id="region" role="region" aria-label="region"><dialog id="upper" aria-label="upper" style="width:100vw;height:100vh;max-width:none;max-height:none;padding:0;border:0"></dialog></div>';
     document.querySelector<HTMLDialogElement>("#lower")!.showModal();
     document.querySelector<HTMLDialogElement>("#upper")!.showModal();
 
     expect(await observeRoot()).toEqual({
       present: true,
       available: false,
-      inTheWay: [byId("upper")],
+      inTheWay: 'dialog "upper"',
     });
   });
 
@@ -459,63 +441,58 @@ describe("what is in the way of a present root a click would not reach", () => {
     expect(await observeRoot()).toEqual({
       present: true,
       available: true,
-      inTheWay: [],
     });
   });
 
   it("names what covers a root inside the open modal, not the modal", async () => {
     document.body.innerHTML =
-      '<dialog id="modal" style="width:300px;height:200px"><section id="root" style="width:200px;height:100px">Content</section><div id="cover" style="position:absolute;inset:0"></div></dialog>';
+      '<dialog id="modal" aria-label="modal" style="width:300px;height:200px"><section id="root" style="width:200px;height:100px">Content</section><div id="cover" role="region" aria-label="cover" style="position:absolute;inset:0"></div></dialog>';
     document.querySelector<HTMLDialogElement>("#modal")!.showModal();
 
-    expect((await observeRoot()).inTheWay).toEqual([byId("cover")]);
+    expect((await observeRoot()).inTheWay).toBe('region "cover"');
   });
 
   it("names the inert ancestor", async () => {
     document.body.innerHTML =
-      '<div id="wrapper" inert><section id="root" style="width:200px;height:100px">Content</section></div>';
+      '<div id="wrapper" role="region" aria-label="wrapper" inert><section id="root" style="width:200px;height:100px">Content</section></div>';
 
     expect(await observeRoot()).toEqual({
       present: true,
       available: false,
-      inTheWay: [byId("wrapper")],
+      inTheWay: 'region "wrapper"',
     });
-    expect((await observeRoot()).inTheWay).toEqual([byId("wrapper")]);
   });
 
-  it("names the root's own ancestor when nothing else takes the click", async () => {
+  it("names nothing when only the root's own ancestor with no role takes the click", async () => {
     document.body.style.pointerEvents = "none";
     document.body.innerHTML =
       '<section id="root" style="width:200px;height:100px">Content</section>';
 
-    expect((await observeRoot()).inTheWay).toEqual([document.documentElement]);
+    expect(await observeRoot()).toEqual({ present: true, available: false });
   });
 
   it("names the covering element inside an open shadow root", async () => {
     document.body.innerHTML =
-      '<section id="root" style="width:200px;height:100px">Content</section><div id="host"></div>';
+      '<section id="root" style="width:200px;height:100px">Content</section><div id="host" role="region" aria-label="host"></div>';
     const shadow = byId("host").attachShadow({ mode: "open" });
     shadow.innerHTML =
       '<div id="cover" style="position:fixed;inset:0;background:white"></div>';
 
-    // Walked up through the shadow root to the host, which does not hold the root.
-    expect((await observeRoot()).inTheWay).toEqual([
-      shadow.getElementById("cover"),
-      byId("host"),
-    ]);
+    // Walked up from the cover, which has no role, through the shadow root
+    // to the host, which does not hold the root.
+    expect((await observeRoot()).inTheWay).toBe('region "host"');
   });
 
   it("names what covers the part of a root the viewport shows when its centre is out of view", async () => {
     document.documentElement.style.overflow = "hidden";
     const height = document.documentElement.clientHeight;
-    document.body.innerHTML = `<section id="root" style="position:absolute;left:0;top:${height - 50}px;width:200px;height:200px">Content</section><div id="footer" style="position:fixed;left:0;right:0;bottom:0;height:60px"></div>`;
+    document.body.innerHTML = `<section id="root" style="position:absolute;left:0;top:${height - 50}px;width:200px;height:200px">Content</section><div id="footer" role="region" aria-label="footer" style="position:fixed;left:0;right:0;bottom:0;height:60px"></div>`;
 
     expect(await observeRoot()).toEqual({
       present: true,
       available: false,
-      inTheWay: [byId("footer")],
+      inTheWay: 'region "footer"',
     });
-    expect((await observeRoot()).inTheWay).toEqual([byId("footer")]);
   });
 
   it("keeps the root available when it is covered away from where a click would land", async () => {
@@ -525,18 +502,17 @@ describe("what is in the way of a present root a click would not reach", () => {
     expect(await observeRoot()).toEqual({
       present: true,
       available: true,
-      inTheWay: [],
     });
   });
 
   it("names what covers where a click would land though most of the root is bare", async () => {
     document.body.innerHTML =
-      '<section id="root" style="position:fixed;left:0;top:0;width:200px;height:200px">Content</section><div id="cover" style="position:fixed;left:0;top:0;width:200px;height:120px;z-index:10"></div>';
+      '<section id="root" style="position:fixed;left:0;top:0;width:200px;height:200px">Content</section><div id="cover" role="region" aria-label="cover" style="position:fixed;left:0;top:0;width:200px;height:120px;z-index:10"></div>';
 
     expect(await observeRoot()).toEqual({
       present: true,
       available: false,
-      inTheWay: [byId("cover")],
+      inTheWay: 'region "cover"',
     });
   });
 });

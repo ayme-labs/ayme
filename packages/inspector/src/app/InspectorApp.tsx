@@ -1,35 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useInspectorRuntime } from "./useInspectorRuntime";
+import { Empty } from "../shared/view";
 import {
-  Empty,
   inspectorClient,
-  InspectorRoot,
-  useCopy,
   useInspectorState,
   useTabState,
-} from "../shared";
+} from "../shared/infrastructure";
+import { InspectorRoot, useCopy } from "../shared/presentation";
+import { Connections, DetailPane } from "../panel/view";
 import {
-  Connections,
-  DetailPane,
   InspectorBody,
   InspectorShell,
   useDarkTheme,
-  useHostReservation,
-  usePreferences,
   WindowShell,
-} from "../panel";
+} from "../panel/presentation";
+import { useHostReservation, usePreferences } from "../panel/infrastructure";
+import { type WindowFullscreen } from "../panel/domain";
 import {
   type Lens,
   type LensId,
-  Navigator,
   pageSelection,
   type Selection,
   selectionHighlight,
-} from "../navigation";
-import { isStaleSelection, structureLens, unfoldedOnPage } from "../structure";
-import { modelLens } from "../page-model";
-import { toolsLens } from "../tools";
+} from "../navigation/domain";
+import { Navigator } from "../navigation/presentation";
+import { isStaleSelection } from "../structure/application";
+import { structureLens } from "../structure/presentation";
+import { unfoldedOnPage } from "../structure/domain";
+import { modelLens } from "../page-model/presentation";
+import { toolsLens } from "../tools/presentation";
 import { useRunning } from "./useRunning";
 import { decodeViewState, viewStateKey, withSelection } from "./viewState";
 
@@ -38,9 +38,15 @@ import { decodeViewState, viewStateKey, withSelection } from "./viewState";
  * the one selection the navigator, the detail pane and Runs share, and
  * keeps where the person was in it for the tab. `windowed` fills a window of
  * the Inspector's own, outside the page it shows, in place of the dockable
- * panel.
+ * panel; `fullscreen` is what an Agent App that shows that window offers.
  */
-export function InspectorApp({ windowed = false }: { windowed?: boolean }) {
+export function InspectorApp({
+  windowed = false,
+  fullscreen,
+}: {
+  windowed?: boolean;
+  fullscreen?: WindowFullscreen;
+}) {
   const [preferences, updatePreferences] = usePreferences();
   const reserveHost = useHostReservation();
   const [viewState, setViewState] = useTabState(viewStateKey, decodeViewState);
@@ -144,7 +150,7 @@ export function InspectorApp({ windowed = false }: { windowed?: boolean }) {
   const detail = unserved ? (
     <Empty>
       No page is serving the Inspector. Pair a page with this ayme mcp, and
-      start that page&apos;s Ayme session with{" "}
+      start that page&apos;s ayme session with{" "}
       <code>
         inspector: {"{"} placement: &quot;external&quot; {"}"}
       </code>
@@ -191,6 +197,7 @@ export function InspectorApp({ windowed = false }: { windowed?: boolean }) {
           theme={preferences.theme}
           onThemeChange={(theme) => updatePreferences({ theme })}
           status={status}
+          fullscreen={fullscreen}
         >
           {inspectorBody}
         </WindowShell>

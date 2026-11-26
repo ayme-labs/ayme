@@ -16,11 +16,9 @@ const shownSources = [
   "ArchiveDialog.ts",
   "AppComponent.ts",
   "AppPage.ts",
-].map((file) =>
-  fs.readFileSync(path.join(appRoot, "playwright/pom", file), "utf8")
-);
+].map((file) => fs.readFileSync(path.join(appRoot, "ayme/pom", file), "utf8"));
 
-// What a Build without Ayme leaves out: the runtime's own text, the compiled
+// What a Build without ayme leaves out: the runtime's own text, the compiled
 // Page Object Model manifest, the models' action descriptions and locator
 // calls, Playwright in the browser and the Inspector. The labels the models
 // look up are the demo's own UI text too, so the locator calls that carry
@@ -76,13 +74,13 @@ function verifyBrowserOutput(directory, mode) {
 function verifyBuildWithoutAyme(directory) {
   const hits = findMarkers(directory, aymeMarkers);
   if (hits.length > 0)
-    throw new Error(`Ayme is in the build without Ayme:\n${hits.join("\n")}`);
+    throw new Error(`ayme is in the build without ayme:\n${hits.join("\n")}`);
 }
 
 // Publication is decided at runtime setup (ADR-0030), so one build covers
 // publication on and off.
 verifyBrowserOutput(path.join(appRoot, "dist"), "production");
-// The build without Ayme (`vite build --mode without-ayme`) proves on a real
+// The build without ayme (`vite build --mode without-ayme`) proves on a real
 // consumer what the build plugin promises for `include: false`, and leaks
 // no server-only code either.
 verifyBrowserOutput(path.join(appRoot, "dist-without-ayme"), "without-ayme");

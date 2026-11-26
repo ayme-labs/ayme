@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
-import { indexMembers } from "../../page-model";
-import { collection, model, page } from "../../page-model/test-utils/pageModel";
-import { forest, node } from "../test-utils/projected";
+import { indexMembers } from "../../page-model/domain";
+import { collection, model, page } from "../../../testing/page-model/pageModel";
+import { forest, node } from "../../../testing/structure/projected";
 import { buildStructureTree } from "../infrastructure/structureTree";
-import { selectionHighlight } from "../../navigation";
+import { selectionHighlight } from "../../navigation/domain";
 import {
   memberResolves as resolvesIn,
   runIsOnMember as runIsOn,

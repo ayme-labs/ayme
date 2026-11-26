@@ -1,11 +1,10 @@
 import { BUSY_SERVER, PROBE_PATH, SERVER_IDENTITY } from "../domain/admission";
 import { SERVER_HOST } from "../domain/pairing";
 
-/** How long a probe waits for a port to answer. */
 const PROBE_TIMEOUT_MS = 2000;
 
 /**
- * The addresses of the Ayme MCP servers that answer a probe on `ports` of
+ * The addresses of the ayme MCP servers that answer a probe on `ports` of
  * the loopback interface, in port order, probed with `WebSocketClass`, the
  * global WebSocket unless given. A busy server answers a page's
  * probe as busy, so a page's scan does not count it (see `probeAnswer`).

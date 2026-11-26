@@ -1,4 +1,4 @@
-import { elementOfRef } from "../../test-utils/elementRefs.testSupport";
+import { elementOfRef } from "../../../testing/elementRefs.testSupport";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
@@ -6,7 +6,7 @@ import { listRegisteredPomTargets, registerCompiledPom } from "./registry";
 import {
   startSession,
   type TestSession,
-} from "../../test-utils/session.testSupport";
+} from "../../../testing/session.testSupport";
 
 // What every consumer of the registry's targets reads of declared Locator
 // children, on a real page: each element of a Locator collection at its

@@ -32,7 +32,7 @@ HOST=127.0.0.1 PORT=4194 pnpm --filter @ayme-dev/example-sveltekit start:spa
 ## Setup
 
 - `vite.config.ts` adds `ayme()` next to `sveltekit()`.
-- `tsconfig.json` extends SvelteKit's generated config and enables `experimentalDecorators`. The compiler follows that chain, so the POM in `src/lib/pom` needs no separate tsconfig.
+- `tsconfig.json` extends SvelteKit's generated config and enables `experimentalDecorators`. The POM is in `ayme/pom`, and `ayme/tsconfig.json` extends that file, so the compiler follows the same chain.
 - Publication is enabled in the root layout. The initial status is `waiting` on the server and in the browser. A browser with a WebMCP driver activates publication; without one it becomes unavailable and local Page Object calls still work.
 
 ## Verify
@@ -46,7 +46,7 @@ pnpm --filter @ayme-dev/example-sveltekit test:e2e
 
 The shared [example certification](../example-certification/README.md) runs against `vite dev` and the adapter-node server, with server rendering and in SPA mode, including client navigation to the other page and back. The example's own test checks that a descendant's `onMount` sees a started runtime. Against `vite dev`, where the app turns the Inspector on, a smoke test opens it and runs a tool from it. The app turns the Agent Connection (`agentConnection`) on in development too: against `vite dev` an MCP client pairs with the page through a connect link and calls a tool, and reads the Peek `counter` the counter adds with `peek` before and after an increment and sees it go when the counter unmounts, and against the adapter-node server the page loads no Agent Connection code and opens no WebSocket.
 
-The tests observe tools through the recording WebMCP driver from `@ayme-dev/webmcp/testing`, not through Ayme's internal registry. They do not certify a particular browser's WebMCP API.
+The tests observe tools through the recording WebMCP driver from `@ayme-dev/webmcp/testing`, not through ayme's internal registry. They do not certify a particular browser's WebMCP API.
 
 ## Limits
 

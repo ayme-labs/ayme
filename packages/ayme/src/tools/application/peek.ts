@@ -42,7 +42,7 @@ type Peek = {
 
 /**
  * Package-internal: the state of a set of Peeks. Its shape is shared by
- * every bundle that loads Ayme in one process, so it changes only with care.
+ * every bundle that loads ayme in one process, so it changes only with care.
  */
 export type PeekStore = {
   /** By Peek name. A Peek stays here while it has an instance. */

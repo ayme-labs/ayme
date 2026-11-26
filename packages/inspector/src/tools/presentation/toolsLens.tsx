@@ -9,14 +9,14 @@ import {
   DestructiveIcon,
   DestructiveMark,
   QualifiedName,
-  WhatTheModelSees,
-} from "../../shared";
+} from "../../shared/view";
+import { WhatTheModelSees } from "../../shared/presentation";
 import {
   type Lens,
-  NavItem,
   type RenderRun,
   type Selection,
-} from "../../navigation";
+} from "../../navigation/domain";
+import { NavItem } from "../../navigation/view";
 import {
   listTools,
   peekSideLabels,

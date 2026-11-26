@@ -1,10 +1,10 @@
-# Ayme documentation
+# ayme documentation
 
 How to turn your app's Page Object Models into tools that coding agents and your own app call.
 
 ## Start
 
-- [What is Ayme](start/what-is-ayme.md): what Ayme does with your Page Object Models and what an agent gets from it.
+- [What is ayme](start/what-is-ayme.md): what ayme does with your Page Object Models and what an agent gets from it.
 - [Install](start/install.md): the packages, what each one owns, and the supported versions of each framework, Node.js, Playwright and TypeScript.
 - [Quickstart: Vue](start/quickstart-vue.md): from a Vite Vue app to your first Page Object Tool, called by your coding agent.
 - [Quickstart: React](start/quickstart-react.md): from a Vite React app to your first Page Object Tool, called by your coding agent.
@@ -14,16 +14,18 @@ How to turn your app's Page Object Models into tools that coding agents and your
 ## Guides
 
 - [Page Object Models](guides/ayme-page-objects.md): mark a model and its actions, how tools are named, and how children and collections work.
-- [Publish tools](guides/publish-tools.md): start Ayme and turn WebMCP publication on for agents that run in the browser.
-- [Connect an agent](guides/connect-an-agent.md): let Claude Code, Codex, Cursor or another coding agent call your tools through Ayme's MCP server.
-- [Page Objects on a page without Ayme](guides/page-objects-without-ayme.md): let `ayme mcp` serve your Page Objects to a page that doesn't ship Ayme, through Playwright MCP or Playwright CLI.
+- [The `ayme` folder](guides/ayme-folder.md): where your Page Objects live, the folder's tsconfig, and which of its files you commit.
+- [Publish tools](guides/publish-tools.md): start ayme and turn WebMCP publication on for agents that run in the browser.
+- [Connect an agent](guides/connect-an-agent.md): let Claude Code, Codex, Cursor or another coding agent call your tools through ayme's MCP server.
+- [Page Objects on a page without ayme](guides/page-objects-without-ayme.md): let `ayme mcp` serve your Page Objects to a page that doesn't ship ayme, through Playwright MCP, Playwright CLI or agent-browser.
 - [Page state](guides/page-state.md): the Structural Page State, Structural Refs and interaction history an agent works with.
 - [Custom Tools](guides/custom-tools.md): register operations of your own on one element.
 - [Build an in-app assistant](guides/in-app-assistant.md): give the assistant inside your app your Page Object Actions and the page state as its tools.
 - [Goals with Jev](guides/goals-with-jev.md): let a decision model drive your page toward a goal, and read the Handover it returns.
 - [Inspector](guides/inspector.md): turn on the in-page panel that shows your Page Objects, the page state and the tools, and run them by hand.
-- [Server rendering](guides/server-rendering.md): what Ayme does on the server and in the browser with Next.js, Nuxt, SvelteKit and Angular SSR.
-- [Coding agent skill](guides/coding-agent-skill.md): let a coding agent set up Ayme in your project with the `ayme` skill.
+- [Server rendering](guides/server-rendering.md): what ayme does on the server and in the browser with Next.js, Nuxt, SvelteKit and Angular SSR.
+- [Coding agent skills](guides/coding-agent-skill.md): the skills ayme ships for your coding agent, what each is for and how to install it.
+- [Recorder](guides/recorder.md): record a flow in your app for your coding agent to turn into page objects and a test, with the recorder's commands, warnings and limits.
 
 ## Frameworks
 
@@ -35,13 +37,13 @@ How to turn your app's Page Object Models into tools that coding agents and your
 ## Reference
 
 - [`@ayme-dev/ayme`](reference/ayme.md): the decorators, `createAyme`, the session's tools, Page Objects, Peeks and publication, and the package entries.
-- [Browser Tools](reference/browser-tools.md): every built-in tool Ayme publishes, with its input.
+- [Browser Tools](reference/browser-tools.md): every built-in tool ayme publishes, with its input.
 - [Decision Endpoint](reference/decision-endpoint.md): the contract of the route that adds your key to each decision model request.
 - [Build plugin](reference/build-plugin.md): the options of `@ayme-dev/unplugin-ayme` and how its Playwright settings resolve.
 - [Experimental APIs](reference/experimental-apis.md): the APIs whose shape is not settled yet, and what that means for code that uses them.
-- [Errors](reference/errors.md): the errors Ayme's packages throw and how an agent sees a failure.
-- [Playwright in the browser](reference/playwright-in-the-browser.md): which Playwright calls a Page Object Model can make when Ayme runs it in your app.
+- [Errors](reference/errors.md): the errors ayme's packages throw and how an agent sees a failure.
+- [Playwright in the browser](reference/playwright-in-the-browser.md): which Playwright calls a Page Object Model can make when ayme runs it in your app.
 
 ## Troubleshooting
 
-- [Troubleshooting](troubleshooting.md): the common reasons an Ayme setup fails, by what you see.
+- [Troubleshooting](troubleshooting.md): the common reasons an ayme setup fails, by what you see.

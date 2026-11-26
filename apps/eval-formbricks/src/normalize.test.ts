@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { noGoalLoop } from "./goalLoop.ts";
 import {
   normalizeRun,
   summarizeResult,
@@ -60,6 +59,7 @@ const failed: Verdict = {
 function artifacts(overrides: Partial<RunArtifacts>): RunArtifacts {
   return {
     runId: "run-1",
+    login: "first",
     arm: "playwright-mcp",
     missionId: "rename-survey-and-question",
     requestedModel: "sonnet",
@@ -86,27 +86,23 @@ function artifacts(overrides: Partial<RunArtifacts>): RunArtifacts {
       formbricksCommit: "8abe0b42",
       aymeCommit: "4cdac8dd",
     },
-    goalLoop: noGoalLoop,
     setup: null,
     labCheckout: { movedFiles: [], modifiedFiles: [] },
     ...overrides,
   };
 }
 
-/** Three Goal Loop calls in the run's window, two of them answered. */
-const goalLoopRan = {
-  calls: 3,
-  failedCalls: 1,
-  usage: { input: 952, cacheCreation: 0, cacheRead: 0, output: 140 },
-  generationIds: ["gen-a", "gen-b"],
-  costUsd: 0.1,
-  callsWithCost: 2,
-};
-
 // The fixture's two turns: the setup turn (a Skill call, 8,065 tokens, $0.0312) ends with the first
 // result event; the task turn (four browser calls, 48,920 tokens, $0.4633 cumulative) ends with the second.
 describe("a completed run", () => {
   const result = normalizeRun(artifacts({}));
+
+  it("records which login served the run, by name only", () => {
+    expect(result.login).toBe("first");
+    expect(normalizeRun(artifacts({ login: "fallback" })).login).toBe(
+      "fallback"
+    );
+  });
 
   it("takes tokens from the task turn's result event alone", () => {
     expect(result.tokens).toEqual({
@@ -115,13 +111,11 @@ describe("a completed run", () => {
       cacheRead: 45000,
       output: 800,
     });
-    expect(result.goalLoop).toEqual(noGoalLoop);
     expect(result.setup).toBeNull();
   });
 
   it("takes the task turn's cost as the difference of the cumulative costs", () => {
     expect(result.costUsd).toBeCloseTo(0.4633 - 0.0312, 10);
-    expect(result.combinedCostUsd).toBe(result.costUsd);
     // The difference is stored free of float noise.
     expect(String(result.costUsd)).toBe("0.4321");
   });
@@ -221,30 +215,10 @@ describe("a completed run", () => {
     );
   });
 
-  it("adds the Goal Loop's cost into the combined cost when it is known", () => {
-    const withGoalLoop = normalizeRun(artifacts({ goalLoop: goalLoopRan }));
-    expect(withGoalLoop.goalLoop).toEqual(goalLoopRan);
-    expect(withGoalLoop.combinedCostUsd).toBeCloseTo(0.5321, 10);
-    const summary = summarizeResult(withGoalLoop);
-    expect(summary).toContain("- Goal Loop calls: 3 (1 failed)");
-    expect(summary).toContain("- Goal Loop tokens: 952 in, 140 out");
-    expect(summary).toContain("- Goal Loop cost: $0.1000");
-    expect(summary).toContain("- Combined cost: $0.5321");
-  });
-
-  it("leaves the combined cost unknown when the Goal Loop ran at an unknown cost", () => {
-    const unknownCost = normalizeRun(
-      artifacts({ goalLoop: { ...goalLoopRan, costUsd: null } })
-    );
-    expect(unknownCost.costUsd).toBe(0.4321);
-    expect(unknownCost.combinedCostUsd).toBeNull();
-    const summary = summarizeResult(unknownCost);
-    expect(summary).toContain("- Goal Loop cost: unknown");
-    expect(summary).toContain("- Combined cost: unknown");
-  });
-
   it("records what the arm's setup established before the window", () => {
-    const setup = { goalToolPublished: true, tools: ["goal"] };
+    const setup = {
+      tools: ["SurveyEditorPage.fillSurveyForm", "page_objects"],
+    };
     expect(normalizeRun(artifacts({ setup })).setup).toEqual(setup);
   });
 });
@@ -257,7 +231,6 @@ describe("a run whose result has no usage block", () => {
   it("leaves tokens and cost unavailable instead of inventing zeros", () => {
     expect(result.tokens).toBeNull();
     expect(result.costUsd).toBeNull();
-    expect(result.combinedCostUsd).toBeNull();
     // The setup turn completed as usual; its figures stay.
     expect(result.setupTurn.costUsd).toBe(0.0312);
   });

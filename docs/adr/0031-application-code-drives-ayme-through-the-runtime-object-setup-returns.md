@@ -3,10 +3,10 @@ status: accepted
 supersedes: ADR-0025
 ---
 
-# Application code drives Ayme through the runtime object setup returns
+# Application code drives ayme through the runtime object setup returns
 
 ADR-0025 made the runtime session the public browser interface and kept
-`/internal` for Ayme's own packages. It recorded the session's names and
+an internal entry for ayme's own packages. It recorded the session's names and
 options, which have since changed. This decision keeps what future work
 must respect and leaves names and signatures to the package README.
 
@@ -22,12 +22,12 @@ no operations of their own.
 Every registered tool can be reached through that object by name, whether
 or not WebMCP publication is on. A programmatic call runs the registered
 tool through the same execution path as an agent's call and a Goal Loop
-step, so there is one action implementation. It fails by throwing Ayme's
+step, so there is one action implementation. It fails by throwing ayme's
 errors; only publication turns errors into tool results. It acts as a
 caller of its own, so it does not move the calling agent's Change Record.
 
-`/internal` is transitional. It holds what has no public interface yet,
-and Ayme's own packages move off it as public interfaces appear.
+The internal entry is transitional. It holds what has no public interface yet,
+and ayme's own packages move off it as public interfaces appear.
 
 ## Considered options
 
@@ -40,5 +40,4 @@ and Ayme's own packages move off it as public interfaces appear.
 
 ## Consequences
 
-The interface's names and signatures live in the package README. Research
-PR #329 holds the comparison.
+The interface's names and signatures live in the package README.

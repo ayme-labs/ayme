@@ -1,5 +1,5 @@
 /**
- * Packed-consumer regression for the publishable Ayme packages.
+ * Packed-consumer regression for the publishable ayme packages.
  *
  * Each package is built into an isolated staging directory, so the shared
  * workspace `dist` that parallel tests read is never mutated, and is packed
@@ -26,12 +26,24 @@
  *     its Page Object Model with the packed Turbopack loader, and the
  *     production build runs it.
  *
+ * 11. The packed `@ayme-dev/cli` carries the recorder engine and window
+ *     and nothing of Playwright, and a clean project that installs it
+ *     records a flow once.
+ *
  * With `AYME_PACKED_DIR` set, the tarballs are packed into that empty
  * directory and kept, so the release workflow publishes exactly the
- * artefacts these tests checked.
+ * artefacts these tests checked. A private package in the list is held
+ * back: it is packed and checked here, but its tarball goes elsewhere, so
+ * that nothing publishes it until its manifest stops being private.
+ *
+ * `AYME_PACKED_ONLY=cli` (names, comma-separated) packs only those packages,
+ * for running one test with `-t`; the tests that look at every package then
+ * fail.
  */
 import { execFile, execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
+import { createServer as createHttpServer } from "node:http";
+import { createServer as createNetServer, type AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,6 +52,8 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 
 // @boundaries-ignore The supported Playwright range is repo-wide data (playwright-range.json).
 import playwrightRange from "../../../playwright-range.json";
+// @boundaries-ignore The recorder's range is data its package states once (playwright-range.json); the packed CLI declares the same range.
+import recorderRange from "../../recorder/playwright-range.json";
 
 const aymeRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -62,8 +76,12 @@ const loadsConfig = (version: string) =>
   minorOf(version) >= minorOf(configLoaderFloor) &&
   minorOf(version) <= minorOf(lastSupported);
 
-const PUBLISHED_PACKAGES = [
+// Every package that is packed and checked: the ones that are not private,
+// which are published, and the private ones listed here, which are held back
+// (docs/releasing.md).
+const PACKED_PACKAGES = [
   "ayme",
+  "cli",
   "inspector",
   "mcp",
   "webmcp",
@@ -147,6 +165,11 @@ function readManifest(dir: string): Manifest {
   return JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
 }
 
+/** Whether a workspace package is held back: built and checked here, but
+ * private, so that its tarball is not among those the release publishes. */
+const isHeldBack = (dir: string) =>
+  readManifest(path.join(packagesRoot, dir)).private === true;
+
 /** Directories of the workspace packages that are not private. */
 function publishableDirs() {
   return fs
@@ -169,7 +192,6 @@ function tarballsDir() {
   return dir;
 }
 
-/** Versions of the workspace packages, keyed by package name. */
 function workspaceVersions() {
   const versions = new Map<string, string>();
   for (const dir of fs.readdirSync(packagesRoot)) {
@@ -228,7 +250,11 @@ function findPublicationLeaks(
   })) {
     if (!entry.isFile()) continue;
     const file = path.join(entry.parentPath, entry.name);
-    const contents = fs.readFileSync(file, "utf8");
+    // `C:\fakepath\` is the path every browser shows for a chosen file: the
+    // recorder reads it in a page. It names no folder of the machine.
+    const contents = fs
+      .readFileSync(file, "utf8")
+      .replace(/C:\\{1,2}fakepath\\{1,2}/g, "");
     for (const pattern of patterns) {
       const match = pattern.exec(contents);
       if (match)
@@ -241,13 +267,16 @@ function findPublicationLeaks(
 }
 
 let tmp = "";
-/** Tarball and extracted package directory, keyed by package name. */
 const packed: Record<string, { tarball: string; dir: string }> = {};
 
 beforeAll(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ayme-packed-"));
   const tarballs = tarballsDir();
-  for (const name of PUBLISHED_PACKAGES) {
+  fs.mkdirSync(path.join(tmp, "held-back"));
+  const only = process.env.AYME_PACKED_ONLY?.split(",");
+  for (const name of PACKED_PACKAGES.filter(
+    (name) => !only || only.includes(name)
+  )) {
     const root = path.join(packagesRoot, name);
     const staging = path.join(tmp, "staging", name);
     fs.mkdirSync(staging, { recursive: true });
@@ -271,7 +300,17 @@ beforeAll(() => {
       root
     );
     const { filename } = JSON.parse(
-      exec("pnpm", ["pack", "--json", "--pack-destination", tarballs], staging)
+      exec(
+        "pnpm",
+        [
+          "pack",
+          "--json",
+          "--pack-destination",
+          // A held-back package is checked, never published.
+          isHeldBack(name) ? path.join(tmp, "held-back") : tarballs,
+        ],
+        staging
+      )
     ) as { filename: string };
     const extracted = path.join(tmp, "extracted", name);
     fs.mkdirSync(extracted, { recursive: true });
@@ -299,16 +338,18 @@ function tarballDependencies(names: string[]) {
 }
 
 it("every publishable package is packed, all with one shared version", () => {
-  expect(publishableDirs().sort()).toEqual([...PUBLISHED_PACKAGES].sort());
+  expect(PACKED_PACKAGES.filter((dir) => !isHeldBack(dir)).sort()).toEqual(
+    publishableDirs().sort()
+  );
   const versions = Object.values(packed).map(
     ({ dir }) => readManifest(dir).version
   );
-  expect(versions).toHaveLength(PUBLISHED_PACKAGES.length);
+  expect(versions).toHaveLength(PACKED_PACKAGES.length);
   expect(new Set(versions).size).toBe(1);
 });
 
 it("packed manifests name this repository, as npm provenance requires", () => {
-  for (const name of PUBLISHED_PACKAGES)
+  for (const name of PACKED_PACKAGES)
     expect(readManifest(packed[`@ayme-dev/${name}`]!.dir).repository).toEqual({
       type: "git",
       url: "git+https://github.com/ayme-labs/ayme.git",
@@ -317,7 +358,7 @@ it("packed manifests name this repository, as npm provenance requires", () => {
 });
 
 it("packed manifests carry the keywords, homepage and description npm shows", () => {
-  for (const name of PUBLISHED_PACKAGES) {
+  for (const name of PACKED_PACKAGES) {
     const { description, homepage, keywords } = readManifest(
       packed[`@ayme-dev/${name}`]!.dir
     );
@@ -330,7 +371,7 @@ it("packed manifests carry the keywords, homepage and description npm shows", ()
 // The README rules live in the repository's docs check (`pnpm docs:check`),
 // which reads each package's own README.md; npm must show that file as is.
 it("packed READMEs are the ones the docs check approved", () => {
-  for (const name of PUBLISHED_PACKAGES)
+  for (const name of PACKED_PACKAGES)
     expect(
       fs.readFileSync(
         path.join(packed[`@ayme-dev/${name}`]!.dir, "README.md"),
@@ -363,6 +404,10 @@ it("the leak check reports non-registry specifiers and local paths", () => {
     path.join(fixture, "dist", "index.mjs"),
     'const url = "file:///x"; const re = {a:/b/}; export const p = "/home/ci";\n' +
       'export const q = "D:/agent/_work/pkg";\n'
+  );
+  fs.writeFileSync(
+    path.join(fixture, "dist", "fakepath.mjs"),
+    'export const a = "C:\\\\fakepath\\\\"; export const b = `C:\\fakepath\\`;\n'
   );
   fs.writeFileSync(
     path.join(fixture, "dist", "win.mjs"),
@@ -451,9 +496,10 @@ console.log("ok");
   }
 );
 
-it("the Playwright peer is optional in core and WebMCP and required by the inspector", () => {
-  // Core and WebMCP declare the optional peer, WebMCP for its testing entry;
-  // the inspector requires it.
+it("the Playwright peer is optional in ayme and required by the inspector", () => {
+  // ayme's types name Playwright's, and the Inspector requires the peer, so
+  // a project with the Inspector has them installed. No other package names
+  // Playwright outside its test support, which is not published (ADR-0057).
   for (const name of [
     "ayme",
     "vue",
@@ -461,14 +507,13 @@ it("the Playwright peer is optional in core and WebMCP and required by the inspe
     "svelte",
     "angular",
     "inspector",
+    "mcp",
     "unplugin-ayme",
     "webmcp",
   ]) {
     const manifest = readManifest(path.join(packagesRoot, name));
-    expect(manifest.peerDependencies?.["@playwright/test"]).toBe(
-      ["ayme", "inspector", "webmcp"].includes(name)
-        ? playwrightPeerRange
-        : undefined
+    expect(manifest.peerDependencies?.["@playwright/test"], name).toBe(
+      ["ayme", "inspector"].includes(name) ? playwrightPeerRange : undefined
     );
     expect(
       (
@@ -476,7 +521,51 @@ it("the Playwright peer is optional in core and WebMCP and required by the inspe
           peerDependenciesMeta?: Record<string, { optional?: boolean }>;
         }
       ).peerDependenciesMeta?.["@playwright/test"]?.optional
-    ).toBe(["ayme", "webmcp"].includes(name) ? true : undefined);
+    ).toBe(name === "ayme" ? true : undefined);
+  }
+});
+
+it("no packed package carries test support (ADR-0057)", () => {
+  for (const [name, { dir }] of Object.entries(packed)) {
+    const manifest = readManifest(dir) as Manifest & {
+      exports?: Record<string, unknown>;
+    };
+    expect(Object.keys(manifest.exports ?? {}), name).not.toContain(
+      "./testing"
+    );
+    expect(
+      filesOf(dir).filter((file) =>
+        /testing|test-utils|testSupport/.test(file)
+      ),
+      name
+    ).toEqual([]);
+  }
+  expect(
+    readManifest(packed["@ayme-dev/mcp"]!.dir).dependencies
+  ).not.toHaveProperty("@modelcontextprotocol/client");
+});
+
+it("a package with test support publishes its exports without the testing entry", () => {
+  // pnpm replaces `exports` whole with `publishConfig.exports` when it
+  // packs, so the manifest states the map twice: the two must agree.
+  type Exports = Record<string, unknown>;
+  const withTestSupport = PACKED_PACKAGES.map(
+    (name) =>
+      readManifest(path.join(packagesRoot, name)) as Manifest & {
+        exports?: Exports;
+        publishConfig?: { exports?: Exports };
+      }
+  ).filter((manifest) => manifest.exports?.["./testing"]);
+  expect(withTestSupport).not.toHaveLength(0);
+  for (const { name, exports, publishConfig } of withTestSupport) {
+    const published = Object.fromEntries(
+      Object.entries(exports!).filter(([entry]) => entry !== "./testing")
+    );
+    expect(publishConfig?.exports, name).toEqual(published);
+    expect(
+      (readManifest(packed[name]!.dir) as { exports?: Exports }).exports,
+      name
+    ).toEqual(published);
   }
 });
 
@@ -577,7 +666,7 @@ void [DescribedPom, BarePom];
 ${
   version
     ? `
-import type { BrowserContext, Page, Locator } from '@playwright/test';
+import type { Page, Locator } from '@playwright/test';
 import { createAyme, type ActionResult } from '@ayme-dev/ayme';
 import type { PageObjectConstructor } from '@ayme-dev/ayme/internal';
 import { usePageObject } from '@ayme-dev/vue';
@@ -625,24 +714,6 @@ const session = createAyme();
 const registered: Pom = session.pom.register(ctor);
 const clicked: Promise<ActionResult> = session.tools.run('click', { target: 'e1' });
 void [instance, svelteInstance, registered, clicked];
-import {
-  executePublishedTool,
-  publishedToolNames,
-  publishedToolSchema,
-  recordPublishedTools,
-  waitForPublishedTool,
-  type PublishedTool,
-  type RecordingDriver,
-} from '@ayme-dev/webmcp/testing';
-export async function recordAndRun(context: BrowserContext, page: Page): Promise<unknown> {
-  await recordPublishedTools(context);
-  await waitForPublishedTool(page, 'Pom.act', { timeout: 10 });
-  const names: string[] = await publishedToolNames(page);
-  const schema = await publishedToolSchema(page, names[0]!);
-  const driver: RecordingDriver = { tools: [] as PublishedTool[] };
-  void [schema?.inputSchema, driver];
-  return executePublishedTool(page, 'Pom.act', { value: 'x' });
-}
 `
     : ""
 }
@@ -1204,10 +1275,9 @@ it(
         'if ("createAyme" in internal) throw new Error("createAyme must not be on /internal");',
         'const webmcp = await import("@ayme-dev/webmcp");',
         'if (JSON.stringify(Object.keys(webmcp)) !== JSON.stringify(["startWebMcpPublication"])) throw new Error("unexpected @ayme-dev/webmcp exports: " + Object.keys(webmcp));',
-        'const testing = await import("@ayme-dev/webmcp/testing");',
-        'const testingExports = ["executePublishedTool", "publishedToolNames", "publishedToolSchema", "recordPublishedTools", "recordPublishedToolsLate", "waitForPublishedTool"];',
-        'if (JSON.stringify(Object.keys(testing).sort()) !== JSON.stringify(testingExports)) throw new Error("unexpected /testing exports: " + Object.keys(testing));',
-        'if ([main, internal, webmcp].some((entry) => "recordPublishedTools" in entry)) throw new Error("the recording driver must stay on /testing");',
+        'const testing = await import("@ayme-dev/webmcp/testing").catch((error) => error.code);',
+        'if (testing !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw new Error("test support must not be published: " + testing);',
+        'if ([main, internal, webmcp].some((entry) => "recordPublishedTools" in entry)) throw new Error("the recording driver is test support, which is not published");',
         'console.log("ok");',
       ].join("\n")
     );
@@ -1222,7 +1292,8 @@ it(
   { timeout: 180_000 },
   async () => {
     const consumer = path.join(tmp, "vite-dev-consumer");
-    fs.mkdirSync(path.join(consumer, "src", "pom"), { recursive: true });
+    fs.mkdirSync(path.join(consumer, "src"), { recursive: true });
+    fs.mkdirSync(path.join(consumer, "ayme", "pom"), { recursive: true });
     const { tarballs, workspaceYaml } = tarballDependencies([
       "@ayme-dev/ayme",
       "@ayme-dev/react",
@@ -1236,6 +1307,7 @@ it(
         name: "ayme-vite-dev-consumer",
         private: true,
         type: "module",
+        imports: { "#pom/*": "./ayme/pom/*.ts" },
         dependencies: { ...tarballs, react: "19.2.8", "react-dom": "19.2.8" },
         devDependencies: {
           "@playwright/test": lastPlaywright,
@@ -1250,9 +1322,16 @@ it(
       ["install", "--ignore-scripts", "--no-lockfile"],
       consumer
     );
-    // The quickstart's app, with its Page Object Model and AymeProvider.
+    // The quickstart's app, with its Page Object Model in `ayme/pom/`, the
+    // folder's tsconfig, the `#pom/*` alias and AymeProvider. The tsconfigs
+    // are split as Vite's template splits them: the options are in
+    // `tsconfig.app.json`, which the folder's tsconfig extends.
     const files: Record<string, string> = {
       "tsconfig.json": JSON.stringify({
+        files: [],
+        references: [{ path: "./tsconfig.app.json" }],
+      }),
+      "tsconfig.app.json": JSON.stringify({
         compilerOptions: {
           experimentalDecorators: true,
           target: "ES2022",
@@ -1261,6 +1340,10 @@ it(
           jsx: "react-jsx",
         },
         include: ["src"],
+      }),
+      "ayme/tsconfig.json": JSON.stringify({
+        extends: "../tsconfig.app.json",
+        include: ["**/*.ts"],
       }),
       "vite.config.ts": `
 import react from '@vitejs/plugin-react';
@@ -1271,7 +1354,7 @@ export default defineConfig(({ command }) => ({ plugins: [react(), ayme({ includ
       "index.html": `<!doctype html>
 <html><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>
 `,
-      "src/pom/ProjectsPage.ts": `
+      "ayme/pom/ProjectsPage.ts": `
 import { ayme } from '@ayme-dev/ayme';
 import type { Page } from '@playwright/test';
 @ayme
@@ -1287,7 +1370,7 @@ export class ProjectsPage {
       "src/main.tsx": `
 import { createRoot } from 'react-dom/client';
 import { AymeProvider, usePageObject } from '@ayme-dev/react';
-import { ProjectsPage } from './pom/ProjectsPage';
+import { ProjectsPage } from '#pom/ProjectsPage';
 function Projects() {
   const pom = usePageObject(ProjectsPage);
   return <button onClick={() => void pom.createProject('x')}>New project</button>;
@@ -1369,7 +1452,7 @@ it(
   async () => {
     const consumer = path.join(tmp, "next-consumer");
     fs.mkdirSync(path.join(consumer, "app"), { recursive: true });
-    fs.mkdirSync(path.join(consumer, "pom"));
+    fs.mkdirSync(path.join(consumer, "ayme", "pom"), { recursive: true });
     const { tarballs, workspaceYaml } = tarballDependencies([
       "@ayme-dev/ayme",
       "@ayme-dev/react",
@@ -1381,6 +1464,7 @@ it(
         name: "ayme-next-consumer",
         private: true,
         type: "module",
+        imports: { "#pom/*": "./ayme/pom/*.ts" },
         dependencies: {
           ...tarballs,
           next: "16.3.4",
@@ -1401,7 +1485,8 @@ it(
       ["install", "--ignore-scripts", "--no-lockfile"],
       consumer
     );
-    // create-next-app's tsconfig with decorators, and the build plugin
+    // create-next-app's tsconfig with decorators, the `ayme` folder's
+    // tsconfig as its guide page shows for Next.js, and the build plugin
     // reference's Next.js config as written there.
     const files: Record<string, string> = {
       "tsconfig.json": JSON.stringify({
@@ -1424,6 +1509,11 @@ it(
         include: ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
         exclude: ["node_modules"],
       }),
+      "ayme/tsconfig.json": JSON.stringify({
+        extends: "../tsconfig.json",
+        compilerOptions: { incremental: false },
+        include: ["**/*.ts"],
+      }),
       "next.config.mjs": `
 import { fileURLToPath } from "node:url";
 
@@ -1440,7 +1530,7 @@ export default {
             options: {
               include: true,
               tsconfigPath: fileURLToPath(
-                new URL("./tsconfig.json", import.meta.url)
+                new URL("./ayme/tsconfig.json", import.meta.url)
               ),
             },
           },
@@ -1451,7 +1541,7 @@ export default {
   },
 };
 `,
-      "pom/CounterPage.ts": `
+      "ayme/pom/CounterPage.ts": `
 import { ayme } from '@ayme-dev/ayme';
 import type { Page } from '@playwright/test';
 @ayme
@@ -1483,7 +1573,7 @@ export default function Runtime({ children }: { children: ReactNode }) {
 'use client';
 import { useState } from 'react';
 import { usePageObject } from '@ayme-dev/react';
-import { CounterPage } from '../pom/CounterPage';
+import { CounterPage } from '#pom/CounterPage';
 export default function Counter() {
   const [count, setCount] = useState(0);
   const pom = usePageObject(CounterPage);
@@ -1562,6 +1652,252 @@ export default function Home() {
     } finally {
       server.kill();
       await browser.close();
+    }
+  }
+);
+
+it.skipIf(!process.env.AYME_PACKED_DIR)(
+  "the tarballs kept for the release are those of packages that are not private",
+  () => {
+    const kept = fs
+      .readdirSync(path.resolve(process.env.AYME_PACKED_DIR!))
+      .filter((file) => file.endsWith(".tgz"));
+    expect(kept.length).toBeGreaterThan(0);
+    for (const file of kept)
+      expect(
+        JSON.parse(
+          exec(
+            "tar",
+            ["-xzOf", file, "package/package.json"],
+            path.resolve(process.env.AYME_PACKED_DIR!)
+          )
+        ).private,
+        file
+      ).not.toBe(true);
+  }
+);
+
+/** Every file of an extracted package, relative to it, sorted. */
+function filesOf(dir: string) {
+  return fs
+    .readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) =>
+      path
+        .relative(dir, path.join(entry.parentPath, entry.name))
+        .split(path.sep)
+        .join("/")
+    )
+    .sort();
+}
+
+const CLI = "@ayme-dev/cli";
+
+it("the packed CLI carries its engine, its window, its toolbar and its notices, and declares Playwright as the project's own", () => {
+  const { dir } = packed[CLI]!;
+  const manifest = readManifest(dir) as ReturnType<typeof readManifest> & {
+    bin?: Record<string, string>;
+    peerDependenciesMeta?: Record<string, { optional?: boolean }>;
+  };
+
+  expect(filesOf(dir)).toEqual([
+    "LICENSE",
+    "README.md",
+    "dist/THIRD_PARTY_NOTICES.txt",
+    "dist/cli.mjs",
+    "dist/toolbar/toolbar.js",
+    "dist/window/index.html",
+    "dist/window/mark-small.svg",
+    "dist/window/window.js",
+    "package.json",
+  ]);
+  expect(manifest.bin).toEqual({ "ayme-recorder": "./dist/cli.mjs" });
+  // The engine and the window are inside the command: nothing to install
+  // beside it but the Playwright the project has.
+  expect(manifest.dependencies).toBeUndefined();
+  expect(manifest.peerDependencies).toEqual({
+    "@playwright/test": `>=${recorderRange.floor}`,
+  });
+  expect(manifest.peerDependenciesMeta?.["@playwright/test"]?.optional).toBe(
+    true
+  );
+});
+
+it("the packed CLI contains nothing of Playwright", () => {
+  const { dir } = packed[CLI]!;
+  const loadsPlaywright =
+    /(?:\bfrom|\bimport\(|\brequire\()\s*["'](?:@playwright\/|playwright)/;
+
+  for (const file of filesOf(dir)) {
+    expect(file, file).not.toMatch(/playwright/i);
+    if (file.endsWith(".mjs") || file.endsWith(".js"))
+      expect(fs.readFileSync(path.join(dir, file), "utf8"), file).not.toMatch(
+        loadsPlaywright
+      );
+  }
+});
+
+it("the packed CLI's notices name the third-party code bundled into it, with its licence", () => {
+  const notices = fs.readFileSync(
+    path.join(packed[CLI]!.dir, "dist/THIRD_PARTY_NOTICES.txt"),
+    "utf8"
+  );
+
+  // The engine's and the window's third-party packages, which are inside the
+  // command's file and the window's script.
+  for (const name of [
+    "effect",
+    "zod",
+    "yaml",
+    "@trpc/server",
+    "ws",
+    "react",
+    "react-dom",
+    "lucide-react",
+  ])
+    expect(notices, name).toMatch(new RegExp(`^${name}@\\d`, "m"));
+  expect(notices).toContain("Permission is hereby granted, free of charge");
+});
+
+it(
+  "a clean project installs the packed CLI and records one flow with it",
+  { timeout: 120_000 },
+  async () => {
+    const project = path.join(tmp, "recorder-project");
+    fs.mkdirSync(project);
+    // The project's own Playwright, which the recorder uses: the CLI brings
+    // none.
+    fs.writeFileSync(
+      path.join(project, "package.json"),
+      JSON.stringify({
+        name: "ayme-recorder-consumer",
+        private: true,
+        devDependencies: {
+          [CLI]: `file:${packed[CLI]!.tarball}`,
+          "@playwright/test": lastPlaywright,
+        },
+      })
+    );
+    exec("pnpm", ["install", "--ignore-scripts", "--no-lockfile"], project);
+
+    const app = createHttpServer((_request, response) => {
+      response.setHeader("content-type", "text/html");
+      response.end(
+        "<!doctype html><title>Shop</title><button>Add item</button>"
+      );
+    });
+    await new Promise<void>((resolve) => app.listen(0, "127.0.0.1", resolve));
+    const pageUrl = `http://127.0.0.1:${(app.address() as AddressInfo).port}/`;
+    // The test's own way into the recorder's browser, as a connection of
+    // its own: the port is free until the browser binds it.
+    const debugPort = await new Promise<number>((resolve) => {
+      const probe = createNetServer().listen(0, "127.0.0.1", () => {
+        const { port } = probe.address() as AddressInfo;
+        probe.close(() => resolve(port));
+      });
+    });
+
+    const command = spawn(
+      process.execPath,
+      [
+        path.join(project, "node_modules/@ayme-dev/cli/dist/cli.mjs"),
+        "codegen",
+        pageUrl,
+        "--headless",
+      ],
+      {
+        cwd: project,
+        env: {
+          ...process.env,
+          NODE_PATH: "",
+          AYME_RECORDER_DEBUG_PORT: String(debugPort),
+        },
+      }
+    );
+    let stdout = "";
+    let stderr = "";
+    command.stdout.on("data", (chunk: Buffer) => (stdout += chunk));
+    command.stderr.on("data", (chunk: Buffer) => (stderr += chunk));
+    const exit = new Promise<number | null>((resolve) =>
+      command.on("close", resolve)
+    );
+    const { chromium } = await import("playwright");
+    try {
+      await expect
+        .poll(() => /Recorder UI: \S+\n/.test(stdout), { timeout: 30_000 })
+        .toBe(true);
+      const windowUrl = /Recorder UI: (\S+)/.exec(stdout)![1]!;
+      // The address is printed as soon as the recorder has started, which
+      // does not wait for the browser: it may not listen yet.
+      let connection: Awaited<ReturnType<typeof chromium.connectOverCDP>>;
+      await expect
+        .poll(
+          async () => {
+            connection = await chromium
+              .connectOverCDP(`http://127.0.0.1:${debugPort}`)
+              .catch(() => undefined as never);
+            return connection;
+          },
+          { timeout: 30_000 }
+        )
+        .toBeDefined();
+      const browser = connection!;
+      // The recorded page is the browser's one page at that address.
+      const recorded = () =>
+        browser
+          .contexts()
+          .flatMap((context) => context.pages())
+          .find((candidate) => candidate.url() === pageUrl);
+      await expect.poll(recorded, { timeout: 30_000 }).toBeDefined();
+      const page = recorded()!;
+      // The test opens the window itself, from the printed address, in a
+      // context of its own. The engine also opens it in the browser it
+      // launched, but without waiting for it: that page may not be there
+      // yet, and the address works either way.
+      const window = await (await browser.newContext()).newPage();
+      await window.goto(windowUrl);
+
+      // The in-page toolbar, which the packed command carries and puts in
+      // the recorded page: its host element is in the page, its contents in
+      // a closed shadow root.
+      await expect
+        .poll(() => page.locator("ayme-recorder-toolbar").count(), {
+          timeout: 30_000,
+        })
+        .toBe(1);
+
+      await window.getByRole("button", { name: "Record", exact: true }).click();
+      // Stop is offered once the pages hold inputs back.
+      await expect
+        .poll(() =>
+          window.getByRole("button", { name: "Stop", exact: true }).isEnabled()
+        )
+        .toBe(true);
+      await page.getByRole("button", { name: "Add item" }).click();
+      await expect
+        .poll(() => window.getByRole("main").textContent())
+        .toContain("Add item");
+      await window.getByRole("button", { name: "Finish", exact: true }).click();
+
+      expect(await exit, stderr).toBe(0);
+      const saved = /Recording package: (.+package\.yaml)/.exec(stdout)?.[1];
+      expect(saved, stdout).toBeDefined();
+      const text = fs.readFileSync(saved!, "utf8");
+      expect(text).toContain("type: click");
+      expect(text).toContain('internal:role=button[name="Add item"i]');
+      expect(fs.existsSync(path.join(path.dirname(saved!), "trace.zip"))).toBe(
+        true
+      );
+      await browser.close().catch(() => {});
+    } catch (error) {
+      // What the command printed is the first thing to look at.
+      throw new Error(
+        `${(error as Error).message}\n--- stdout ---\n${stdout}\n--- stderr ---\n${stderr}`,
+        { cause: error }
+      );
+    } finally {
+      command.kill();
+      app.close();
     }
   }
 );

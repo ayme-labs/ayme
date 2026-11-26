@@ -1,7 +1,6 @@
 import type { Locator } from "@playwright/test";
 import {
   obstructionReason,
-  type LatestRefByRef,
   type ToolAvailability,
 } from "../../page-state/domain";
 
@@ -10,7 +9,7 @@ export type PredicateAnswer = { available: boolean; reason?: string };
 
 /**
  * Package-internal: what one observation of a Page Object Root found
- * (ADR-0035): whether it is on the page, whether a click would reach it,
+ * (ADR-0062): whether it is on the page, whether a click would reach it,
  * and, for a present root a click would not reach, what is in the way. The
  * runtime reports the measurement, never a kind of widget.
  */
@@ -23,11 +22,10 @@ export type ObservedPomRoot = {
   present: boolean;
   available: boolean;
   /**
-   * What an Availability Reason may name as in the way of a present root a
-   * click would not reach, by Structural Ref, nearest first; empty for every
-   * other root.
+   * What an Availability Reason names as in the way of a present root a
+   * click would not reach, by its role and name, when the probe gave it.
    */
-  inTheWay: readonly string[];
+  inTheWay?: string;
 };
 
 /** Package-internal: a Page Object Root that is not on the page. */
@@ -35,7 +33,6 @@ export const absentPomRoot: ObservedPomRoot = {
   ref: undefined,
   present: false,
   available: false,
-  inTheWay: [],
 };
 
 /**
@@ -81,14 +78,13 @@ export type PomInstanceObservation = {
 
 /**
  * Package-internal: whether the action `methodName` can run on `instance`
- * now, by ADR-0035's precedence: an absent Page Object, then a root a click
+ * now, by ADR-0062's precedence: an absent Page Object, then a root a click
  * would not reach, then the action's predicate. It reads only the
- * observation and, to name what is in the way, `latestRefOf`.
+ * observation.
  */
 export function availabilityOf(
   instance: PomInstanceObservation,
-  methodName: string,
-  latestRefOf: LatestRefByRef
+  methodName: string
 ): ToolAvailability {
   const { root } = instance;
   if (!instance.present) return { present: false, available: false };
@@ -96,7 +92,7 @@ export function availabilityOf(
     return {
       present: true,
       available: false,
-      reason: obstructionReason(root.inTheWay, latestRefOf),
+      reason: obstructionReason(root.inTheWay),
     };
   const answer = instance.predicates.get(methodName);
   if (!answer || answer.available) return { present: true, available: true };
@@ -152,7 +148,6 @@ function sameRoot(
     left.ref === right.ref &&
     left.present === right.present &&
     left.available === right.available &&
-    left.inTheWay.length === right.inTheWay.length &&
-    left.inTheWay.every((ref, index) => ref === right.inTheWay[index])
+    left.inTheWay === right.inTheWay
   );
 }

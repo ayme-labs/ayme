@@ -1,9 +1,10 @@
 /**
- * Fails on a cycle of runtime imports inside a workspace's `src`.
+ * Fails on a cycle of runtime imports inside a workspace's `src`, or inside
+ * an app's `ayme` folder, including Page Objects used outside its `src`.
  *
- *   node scripts/check-cycles.mjs packages/*\/src apps/*\/src
+ *   node scripts/check-cycles.mjs packages/*\/src apps/*\/src apps/*\/ayme
  *
- * Each `src` is read with madge, resolving imports through the workspace's
+ * Each folder is read with madge, resolving imports through the workspace's
  * own `tsconfig.json`, so its path aliases and its package's self-imports
  * through `exports` count as edges. madge's own `--ts-config` loses both: it
  * hands the resolver options that were already parsed, and the resolver
@@ -26,7 +27,7 @@ import ts from "typescript";
 
 const skipTypeImports = { skipTypeImports: true };
 
-/** Each runtime import cycle in the given `src` directories, as `src: a > b`. */
+/** Each runtime import cycle in the given source directories, as `src: a > b`. */
 export async function findCycles(sourceDirs) {
   const cycles = [];
   for (const sourceDir of sourceDirs) {

@@ -1,10 +1,9 @@
-import type { StructureNode } from "../../structure";
-import { nodeText } from "../../shared";
+import type { StructureNode } from "../../structure/domain";
+import { nodeText } from "../../shared/domain";
 
 /** A node a ref field can choose: one that carries a ref. */
 export type RefNode = StructureNode & { ref: string };
 
-/** Whether a tool can use a node. */
 export type CanUseNode = (node: RefNode) => boolean;
 
 /** A row of the ref field's tree. */
@@ -99,7 +98,6 @@ export type RefSource = {
   onPreviewEnd?: () => void;
 };
 
-/** The node with a ref in the tree, if it is there. */
 export function findRefNode(
   nodes: readonly StructureNode[],
   ref: string

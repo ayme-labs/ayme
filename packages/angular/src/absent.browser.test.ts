@@ -1,4 +1,4 @@
-// The entry a build without Ayme resolves `@ayme-dev/angular` to: the names
+// The entry a build without ayme resolves `@ayme-dev/angular` to: the names
 // of the index, backed by the runtime's absent entry, so an application
 // renders as it does with the real package.
 import "zone.js";
@@ -40,7 +40,7 @@ import type * as index from "./index";
 class Model {
   constructor() {
     throw new Error(
-      "Page Objects are not constructed in a build without Ayme."
+      "Page Objects are not constructed in a build without ayme."
     );
   }
 }
@@ -123,6 +123,6 @@ it("passes the provider's options to the absent runtime, which logs the publicat
     })
   );
   expect(logged).toHaveBeenCalledWith(
-    "Ayme was removed from this build, but setup enables WebMCP publication."
+    "ayme was removed from this build, but setup enables WebMCP publication."
   );
 });

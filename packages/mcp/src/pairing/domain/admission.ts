@@ -9,7 +9,7 @@
  *   token that is not this server's, as when another server took the port
  *   of the one it paired with; the server tells it so it forgets that
  *   pairing;
- * - `probe`: an auto-pair scan asks whether this is an Ayme MCP server; the
+ * - `probe`: an auto-pair scan asks whether this is an ayme MCP server; the
  *   server answers by closing with {@link SERVER_IDENTITY} (see
  *   `probeAnswer`);
  * - `refused`: anything else.
@@ -30,7 +30,7 @@ export const SERVER_IDENTITY = Object.freeze({
 });
 
 /**
- * How a busy server closes a probe: it is an Ayme MCP server, but one a
+ * How a busy server closes a probe: it is an ayme MCP server, but one a
  * page may not pair with by itself, so the scan does not count it.
  */
 export const BUSY_SERVER = Object.freeze({
@@ -76,7 +76,7 @@ export function isLocalOrigin(origin: string | undefined): boolean {
 /**
  * Whether a connection whose handshake carries `origin` comes from a local
  * process, such as an App Process: browsers always send `Origin`, and the
- * server listens on loopback only (ADR-0033).
+ * server listens on loopback only (ADR-0066).
  */
 export function isLocalProcess(origin: string | undefined): boolean {
   return origin === undefined;

@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Locator } from "@playwright/test";
-import { recordAgentImageRun } from "../tools/application";
 import { ayme } from "../page-objects/domain";
 import { createPage, listRegisteredPoms } from "../page-objects/infrastructure";
 import { registerCompiledPom } from "../page-objects/application";
@@ -22,7 +21,7 @@ import {
   sessionReach,
   type AymePage,
 } from "./runtime";
-import { alwaysReaches } from "../test-utils/reach.testSupport";
+import { alwaysReaches } from "../../testing/reach.testSupport";
 import * as registryModule from "../page-objects/infrastructure";
 import { loadWebMcpPublication } from "./webMcp";
 import { listElementToolTargets } from "./publishedTools";
@@ -32,7 +31,7 @@ vi.mock(
   async (importOriginal) => ({
     ...(await importOriginal<object>()),
     ...(
-      await import("../test-utils/pageOfDocument.testSupport")
+      await import("../../testing/pageOfDocument.testSupport")
     ).standInPageOfDocument(),
   })
 );
@@ -43,7 +42,7 @@ vi.mock("./agentConnection", () => ({
   loadProcessConnection: vi.fn(),
 }));
 vi.mock("../page-objects/infrastructure/inPageDriver", async () =>
-  (await import("../test-utils/pageDriver.testSupport")).standInDriverModule()
+  (await import("../../testing/pageDriver.testSupport")).standInDriverModule()
 );
 vi.mock("../page-objects/infrastructure/browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),
@@ -344,11 +343,9 @@ it("starts the Agent Connection while a session with agentConnection is started"
   await flush();
   expect(startAgentConnection).toHaveBeenCalledOnce();
   // The page client reaches the session's tools, and runs them as ayme-mcp.
-  const [{ tools, recordAgentImage }] = startAgentConnection.mock
-    .calls[0] as unknown as [
-    { tools: Ayme["tools"]; recordAgentImage: unknown },
+  const [{ tools }] = startAgentConnection.mock.calls[0] as unknown as [
+    { tools: Ayme["tools"] },
   ];
-  expect(recordAgentImage).toBe(recordAgentImageRun);
   const names = (list: readonly { name: string }[]) =>
     list.map(({ name }) => name);
   expect(names(tools.list())).toEqual(names(runtime.tools.list()));
@@ -595,7 +592,7 @@ it("rejects a run before start, after stop and for a tool that does not exist", 
   await expect(
     runtime.tools.run("goal", { goal: "save", maxSteps: 1 })
   ).rejects.toThrow(
-    'Cannot run the tool "goal": the Ayme runtime session is not started.'
+    'Cannot run the tool "goal": the ayme runtime session is not started.'
   );
   const stop = start(runtime);
   await expect(
@@ -676,6 +673,7 @@ it("runs goal as the application while publication is unavailable", async () => 
       page: expect.any(Object),
       navigation: expect.any(Object),
       pomDefinitions: expect.any(Function),
+      pageObjectTree: expect.any(Function),
       pageStateSession: getPageStateSession(document),
       // A session handed no Reach measures Chromium's geometry.
       reach: pageState.geometryReach,
@@ -686,7 +684,7 @@ it("runs goal as the application while publication is unavailable", async () => 
 });
 
 it("lists the element tools' targets only while a session is started", async () => {
-  const notConfigured = "The Ayme browser runtime is not configured.";
+  const notConfigured = "The ayme browser runtime is not configured.";
   await expect(listElementToolTargets()).rejects.toThrow(notConfigured);
   start(session(false))();
   await expect(listElementToolTargets()).rejects.toThrow(notConfigured);
@@ -851,7 +849,7 @@ it("C3: rejects concurrent owners with the active-owner code and permits a fresh
   expect(() => second.start()).toThrow(
     expect.objectContaining({
       name: "RuntimeStateError",
-      message: "The Ayme runtime already has an active owner.",
+      message: "The ayme runtime already has an active owner.",
       code: "active-owner",
     })
   );
@@ -887,7 +885,7 @@ it("publishes while a session with webMCP.enabled is started, under its toolName
   expect(options.signal.aborted).toBe(true);
   expect(runtime.webMCP.publicationStatus).toEqual({
     state: "disposed",
-    message: "The Ayme runtime was disposed.",
+    message: "The ayme runtime was disposed.",
   });
 });
 

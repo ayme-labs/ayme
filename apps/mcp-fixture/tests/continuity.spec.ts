@@ -15,9 +15,9 @@ test("after a reload the tab reconnects without a new link", async ({
   await page.reload();
 
   await expect
-    .poll(async () => (await agent.call("snapshot")).isError)
+    .poll(async () => (await agent.call("page_objects")).isError)
     .toBe(false);
-  expect(await agent.pageToolNames()).toContain("read_text");
+  expect(await agent.pageToolNames()).toContain("GroceriesPage.readHeading");
 });
 
 test("after its socket drops without a reload the page reconnects and reports its tools again", async ({
@@ -40,7 +40,9 @@ test("after its socket drops without a reload the page reconnects and reports it
   await expect.poll(() => servers.length).toBe(2);
   await expect
     .poll(() => agent.pageToolNames())
-    .toEqual(expect.arrayContaining(["snapshot", "read_text"]));
+    .toEqual(
+      expect.arrayContaining(["page_objects", "GroceriesPage.readHeading"])
+    );
   expect(await page.evaluate(() => "beforeDrop" in window)).toBe(true);
 });
 
@@ -55,11 +57,13 @@ test("after a same-tab navigation the new page's tools replace the old ones", as
 
   await expect
     .poll(() => agent.pageToolNames())
-    .toEqual(expect.arrayContaining(["snapshot", "read_other"]));
-  expect(await agent.pageToolNames()).not.toContain("read_text");
+    .toEqual(expect.arrayContaining(["page_objects", "OtherPage.readHeading"]));
+  expect(await agent.pageToolNames()).not.toContain(
+    "GroceriesPage.readHeading"
+  );
 });
 
-test("a call in flight when the page reloads is answered with the reloaded page's tools", async ({
+test("a call in flight when the page reloads is answered with the reloaded page's URL, and its tools are listed", async ({
   agent,
   baseURL,
   connect,
@@ -71,14 +75,12 @@ test("a call in flight when the page reloads is answered with the reloaded page'
   await page.reload();
 
   const answer = unanswered(await call);
-  expect(answer).toMatchObject({ settled: false, loading: `${baseURL}/` });
+  expect(answer).toMatchObject({ settled: false, url: `${baseURL}/` });
   expect(answer.error).toMatch(/^The page reloaded .*outcome is unknown/);
-  expect(answer.tools).toEqual(
-    expect.arrayContaining(["snapshot", "read_text"])
-  );
+  expect(await agent.pageToolNames()).toContain("GroceriesPage.readHeading");
 });
 
-test("a call in flight when the page navigates is answered with the new page's tools", async ({
+test("a call in flight when the page navigates is answered with the new page's URL, and its tools are listed", async ({
   agent,
   baseURL,
   connect,
@@ -90,16 +92,11 @@ test("a call in flight when the page navigates is answered with the new page's t
   await page.goto("/other");
 
   const answer = unanswered(await call);
-  expect(answer).toMatchObject({
-    settled: false,
-    loading: `${baseURL}/other`,
-  });
+  expect(answer).toMatchObject({ settled: false, url: `${baseURL}/other` });
   expect(answer.error).toMatch(
     /^The page navigated to .*\/other .*outcome is unknown/
   );
-  expect(answer.tools).toEqual(
-    expect.arrayContaining(["snapshot", "read_other"])
-  );
+  expect(await agent.pageToolNames()).toContain("OtherPage.readHeading");
 });
 
 test("a call in flight when the page starts loading another document gets the page's own loading answer", async ({
@@ -118,16 +115,11 @@ test("a call in flight when the page starts loading another document gets the pa
   const { text, isError } = await call;
   expect(isError, text).toBe(false);
   const answer = JSON.parse(text) as Record<string, unknown>;
-  expect(answer).toMatchObject({
-    settled: false,
-    loading: `${baseURL}/plain.html`,
-  });
-  expect(answer.next).toContain("snapshot");
+  expect(answer).toEqual({ settled: false, url: `${baseURL}/plain.html` });
 });
 
-test("a reload the agent calls answers with its loading URL even when a task holds the old document as it reloads", async ({
+test("an action that reloads the page answers that it has not settled, even when a task holds the old document as it reloads", async ({
   agent,
-  baseURL,
   connect,
   page,
 }) => {
@@ -149,13 +141,11 @@ test("a reload the agent calls answers with its loading URL even when a task hol
       );
     });
 
-    const { text, isError } = await agent.call("reload");
+    const { text, isError } = await agent.call("GroceriesPage.reload");
 
     expect(isError, `reload ${round}: ${text}`).toBe(false);
-    expect(JSON.parse(text)).toMatchObject({
-      settled: false,
-      loading: `${baseURL}/`,
-    });
+    // The URL did not change, so the answer does not name it.
+    expect(JSON.parse(text)).toEqual({ settled: false });
     await expect
       .poll(() =>
         page
@@ -165,37 +155,37 @@ test("a reload the agent calls answers with its loading URL even when a task hol
       )
       .toBe(false);
     await expect
-      .poll(async () => (await agent.call("snapshot")).isError)
+      .poll(async () => (await agent.call("page_objects")).isError)
       .toBe(false);
   }
 });
 
-test("a snapshot sent right after a full-load answer waits for the new page and reads it", async ({
+test("a call sent right after an action's full-load answer waits for the new page and runs there", async ({
   agent,
   baseURL,
   connect,
 }) => {
   await connect();
 
-  const loading = await agent.call("navigate", { url: "/other" });
-  const snapshot = await agent.call("snapshot");
+  const loading = await agent.call("GroceriesPage.openOther");
+  const heading = await agent.call("OtherPage.readHeading");
 
   expect(JSON.parse(loading.text)).toMatchObject({
-    loading: `${baseURL}/other`,
+    url: `${baseURL}/other`,
   });
-  expect(snapshot.isError, snapshot.text).toBe(false);
-  expect(await agent.pageToolNames()).toContain("read_other");
+  expect(heading.isError, heading.text).toBe(false);
+  expect(JSON.parse(heading.text)).toMatchObject({ result: "Groceries" });
 });
 
-test("a call after a full load to a page without Ayme says no page came back, and did not run", async ({
+test("a call after a full load to a page without ayme says no page came back, and did not run", async ({
   agent,
   baseURL,
   connect,
 }) => {
   await connect();
 
-  await agent.call("navigate", { url: "/plain.html" });
-  const { text, isError } = await agent.call("snapshot");
+  await agent.call("GroceriesPage.openPlain");
+  const { text, isError } = await agent.call("page_objects");
 
   expect(isError).toBe(true);
   expect(text).toMatch(
@@ -220,5 +210,5 @@ test("a call in flight when the tab closes says the tab closed, and the connecti
     error: expect.stringMatching(/^The tab closed.*outcome is unknown/),
   });
   expect(await agent.pageToolNames()).toEqual([]);
-  expect((await agent.call("snapshot")).isError).toBe(true);
+  expect((await agent.call("page_objects")).isError).toBe(true);
 });

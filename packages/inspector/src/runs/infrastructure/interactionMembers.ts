@@ -1,12 +1,12 @@
 import type { Interaction } from "@ayme-dev/ayme/inspector";
 import { rootTargetPath } from "@ayme-dev/ayme/inspector";
 
+import { actionSignature } from "../../page-model/infrastructure";
+import { buildPageModel, indexMembers } from "../../page-model/domain";
 import {
-  actionSignature,
-  buildPageModel,
-  indexMembers,
-} from "../../page-model";
-import { inspectorClient, type InspectorClient } from "../../shared";
+  inspectorClient,
+  type InspectorClient,
+} from "../../shared/infrastructure";
 
 /**
  * The Page Object member each Interaction acted on, by place: the member

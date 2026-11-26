@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createAyme, createPage, type Ayme } from "../../index";
-import { agentTools } from "../../test-utils/publication.testSupport";
+import { agentTools } from "../../../testing/publication.testSupport";
 
 // Runtime object seam, with an agent calling through WebMCP (a `webmcp` Run,
 // through the publication harness): its Runs take their turn on the same

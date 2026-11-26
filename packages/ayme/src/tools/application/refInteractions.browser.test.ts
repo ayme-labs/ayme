@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
-import { ayme, runContext } from "../../test-utils/agentCalls.testSupport";
+import { ayme, runContext } from "../../../testing/agentCalls.testSupport";
 import {
   createAymeRuntime,
   createPage,

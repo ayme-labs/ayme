@@ -31,7 +31,7 @@ const isAymePluginEntry = (plugin: unknown) => {
   return typeof path === "string" && path.replace(/^\.\//, "") === pluginFile;
 };
 // The build target's own entry has no `include`, so `ng build` is a Build
-// without Ayme; the development configuration's entry, which `ng serve` uses,
+// without ayme; the development configuration's entry, which `ng serve` uses,
 // sets it. A configuration's array replaces the option's, so the development
 // entry repeats `tsconfigPath`, and a development array written from scratch
 // starts as a copy of the option's, so the other plugins there stay in
@@ -74,9 +74,9 @@ const replaceable = (builder: string | undefined) =>
   (builder in replaced || Object.values(customEsbuild).includes(builder));
 
 /**
- * `ng add @ayme-dev/angular`: installs Ayme's runtime and build integration
+ * `ng add @ayme-dev/angular`: installs ayme's runtime and build integration
  * and the Playwright types Page Object Models use, switches the build and
- * serve targets to custom-esbuild with Ayme's plugin, kept in the development
+ * serve targets to custom-esbuild with ayme's plugin, kept in the development
  * configuration only, and adds `provideAyme()` to the application config.
  * What it cannot change safely, it leaves alone and lists as manual steps.
  */
@@ -93,7 +93,7 @@ export function ngAdd(options: NgAddOptions): Rule {
       : undefined;
     if (!projectName || project?.extensions["projectType"] !== "application")
       throw new SchematicsException(
-        `Ayme needs an Angular application project; ${projectName ? `"${projectName}" is not one` : "the workspace has none"}.`
+        `ayme needs an Angular application project; ${projectName ? `"${projectName}" is not one` : "the workspace has none"}.`
       );
     const build = project.targets.get("build");
     const serve = project.targets.get("serve");
@@ -102,7 +102,7 @@ export function ngAdd(options: NgAddOptions): Rule {
     const manual: string[] = [];
     const rules: Rule[] = [
       // The Angular CLI installs this package before the schematic runs and
-      // saves it with a caret; pin it like the other Ayme packages.
+      // saves it with a caret; pin it like the other ayme packages.
       addDependency("@ayme-dev/angular", version),
       addDependency("@ayme-dev/ayme", version),
       addDependency("@ayme-dev/unplugin-ayme", version, {
@@ -138,7 +138,7 @@ export function ngAdd(options: NgAddOptions): Rule {
         `ng add could not add provideAyme() to "${projectName}": it adds it only to a standalone application whose build target uses Angular's standard builder (yours: ${build?.builder ?? "none"}). Add provideAyme() from @ayme-dev/angular to your application config's providers, or to your root NgModule's.`
       );
 
-    // An existing plugin file is kept only when it already re-exports Ayme's
+    // An existing plugin file is kept only when it already re-exports ayme's
     // plugin; ng add never overwrites one.
     const pluginConflict =
       tree.exists(pluginFile) &&
@@ -177,10 +177,10 @@ export function ngAdd(options: NgAddOptions): Rule {
     } else {
       manual.push(
         pluginConflict
-          ? `ng add left angular.json and ${pluginFile} alone: ${pluginFile} already exists and does not re-export Ayme's plugin. Ayme's compiler needs an esbuild plugin:`
-          : `ng add left angular.json alone: it switches only Angular's standard builders, on a build target with a tsConfig option ("${projectName}" has build: ${build?.builder ?? "none"}, serve: ${serve?.builder ?? "none"}, tsConfig: ${typeof tsconfigPath === "string" ? tsconfigPath : "none"}). Ayme's compiler needs an esbuild plugin:`,
+          ? `ng add left angular.json and ${pluginFile} alone: ${pluginFile} already exists and does not re-export ayme's plugin. ayme's compiler needs an esbuild plugin:`
+          : `ng add left angular.json alone: it switches only Angular's standard builders, on a build target with a tsConfig option ("${projectName}" has build: ${build?.builder ?? "none"}, serve: ${serve?.builder ?? "none"}, tsConfig: ${typeof tsconfigPath === "string" ? tsconfigPath : "none"}). ayme's compiler needs an esbuild plugin:`,
         `  - Create a plugin file at the workspace root, such as ${pluginFile}: ${pluginSource.trim()}`,
-        `  - Add { "path": "./<plugin file>", "options": { "tsconfigPath": "<your app tsconfig>" } } to the build target's "plugins", and { "path": "./<plugin file>", "options": { "tsconfigPath": "<your app tsconfig>", "include": true } } to the development configuration's "plugins", so that ng serve has Ayme and ng build does not. With Angular's standard builders, first install @angular-builders/custom-esbuild for your Angular major and switch to ${customEsbuild.application} and ${customEsbuild.devServer}.`
+        `  - Add { "path": "./<plugin file>", "options": { "tsconfigPath": "<your app tsconfig>" } } to the build target's "plugins", and { "path": "./<plugin file>", "options": { "tsconfigPath": "<your app tsconfig>", "include": true } } to the development configuration's "plugins", so that ng serve has ayme and ng build does not. With Angular's standard builders, first install @angular-builders/custom-esbuild for your Angular major and switch to ${customEsbuild.application} and ${customEsbuild.devServer}.`
       );
     }
 
@@ -189,7 +189,7 @@ export function ngAdd(options: NgAddOptions): Rule {
       (_, context) => {
         if (manual.length === 0)
           context.logger.info(
-            "Ayme is set up. To publish its tools through WebMCP, install @ayme-dev/webmcp and turn it on with provideAyme({ webMCP: { enabled: true } })."
+            "ayme is set up. To publish its tools through WebMCP, install @ayme-dev/webmcp and turn it on with provideAyme({ webMCP: { enabled: true } })."
           );
         else for (const line of manual) context.logger.warn(line);
       },
@@ -205,12 +205,11 @@ function angularMajor(tree: Tree) {
   const major = range?.match(/\d+/)?.[0];
   if (!major)
     throw new SchematicsException(
-      `Ayme could not read the Angular major from the @angular/core dependency in package.json (${range ?? "missing"}).`
+      `ayme could not read the Angular major from the @angular/core dependency in package.json (${range ?? "missing"}).`
     );
   return major;
 }
 
-/** Whether a TypeScript file under the project's source already calls provideAyme(). */
 function providesAyme(tree: Tree, sourceRoot: string) {
   let found = false;
   tree.getDir(sourceRoot).visit((path) => {

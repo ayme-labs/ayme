@@ -72,7 +72,6 @@ const NO_FIX: ReadonlySet<NotConnectedReason> = new Set([
   "no-client",
 ]);
 
-/** The Agent Connection's row. */
 export function agentRow(status: AgentConnectionStatus): ConnectionRow {
   switch (status.state) {
     case "off":
@@ -110,14 +109,12 @@ export function agentRow(status: AgentConnectionStatus): ConnectionRow {
 
 /**
  * How many of the session's tools WebMCP publishes: every one but a Peek
- * Tool and `screenshot`, as `@ayme-dev/webmcp` decides.
+ * Tool, as `@ayme-dev/webmcp` decides.
  */
 export function webMcpToolCount(
   tools: readonly Readonly<{ name: string; group?: string }>[]
 ): number {
-  return tools.filter(
-    (tool) => tool.group !== "peek" && tool.name !== "screenshot"
-  ).length;
+  return tools.filter((tool) => tool.group !== "peek").length;
 }
 
 /** WebMCP's row; `tools` is how many tools it publishes. */
@@ -161,7 +158,7 @@ export function webMcpRow(
       return {
         tone: "off",
         label: "Stopped",
-        lines: ["No Ayme runtime session is running, so nothing is published."],
+        lines: ["No ayme runtime session is running, so nothing is published."],
       };
   }
 }

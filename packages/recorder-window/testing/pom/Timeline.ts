@@ -1,0 +1,211 @@
+import { ayme } from "@ayme-dev/ayme";
+import type { Locator } from "@playwright/test";
+
+import { RecorderPart } from "./parts";
+
+/** One row of what an entry changed, read as a person reads it. */
+export type WhatChanged = { readonly element: string; readonly effect: string };
+
+/** One row of what an entry changed: the element's chip, and what happened
+ * to it. Hovering the chip highlights the element on the page. A row that
+ * folds elements of one role, as "4 listitems", expands from its chip to
+ * the rows it folds, and highlights nothing of its own. */
+export class ChangeRow extends RecorderPart {
+  // Its own, not those of the rows it folds.
+  @ayme.child
+  get element(): Locator {
+    return this.root.locator(":scope > [data-testid=change-element]");
+  }
+  @ayme.child
+  get effect(): Locator {
+    return this.root.locator(":scope > [data-testid=change-effect]");
+  }
+  /** The rows a row of elements of one role folds, while it is expanded. */
+  @ayme.child
+  get foldedList(): Locator {
+    return this.root.getByRole("list");
+  }
+
+  /** The row as a person reads it. */
+  async read(): Promise<WhatChanged> {
+    return {
+      element: (await this.element.innerText()).trim(),
+      effect: (await this.effect.innerText()).trim(),
+    };
+  }
+
+  /** Whether a row of elements of one role shows the rows it folds. */
+  async isExpanded(): Promise<boolean> {
+    return (await this.element.getAttribute("aria-expanded")) === "true";
+  }
+
+  /** Shows the rows a row of elements of one role folds. */
+  @ayme.action({
+    description:
+      "Expands a row that folds elements of one role, to show each of them.",
+  })
+  async expand(): Promise<this> {
+    if (!(await this.isExpanded())) await this.element.click();
+    await this.foldedList.waitFor();
+    return this;
+  }
+
+  /** The rows it folds, in order, while it is expanded. */
+  async folded(): Promise<ChangeRow[]> {
+    const rows = await this.foldedList.getByRole("listitem").all();
+    return rows.map((row) => new ChangeRow(row));
+  }
+
+  /** The rows it folds, as a person reads each, while it is expanded. */
+  async whatFolded(): Promise<WhatChanged[]> {
+    const read: WhatChanged[] = [];
+    for (const row of await this.folded()) read.push(await row.read());
+    return read;
+  }
+}
+
+/** How an entry shows, apart from its words (`Entry.look`). */
+export type EntryLook = {
+  readonly opacity: string;
+  readonly fontStyle: string;
+  readonly background: string;
+  readonly border: string;
+  readonly busy: string | null;
+  readonly live: string | null;
+};
+
+/** One entry of a Visit: an Interaction, or a change no Interaction made. */
+export class Entry extends RecorderPart {
+  @ayme.child
+  get title(): Locator {
+    return this.root.getByRole("heading");
+  }
+  /** The Interaction's target; none on a change no Interaction made.
+   * Hovering it highlights its element on the page. */
+  @ayme.child
+  get target(): Locator {
+    return this.root.getByTestId("entry-target");
+  }
+  @ayme.child
+  get whatChangedList(): Locator {
+    return this.root.getByRole("list", { name: "What changed" });
+  }
+  /** Leaves the entry out of the recording. It shows while the entry is
+   * hovered or has focus, while the recording is paused. */
+  @ayme.child
+  get discardButton(): Locator {
+    return this.root.getByRole("button", { name: "Discard", exact: true });
+  }
+  /** Puts a discarded entry back, while the recording is paused. */
+  @ayme.child
+  get restoreButton(): Locator {
+    return this.root.getByRole("button", { name: "Restore", exact: true });
+  }
+
+  /** The rows of what it changed, in the order shown: a row that folds
+   * elements of one role is one of them. */
+  async changes(): Promise<ChangeRow[]> {
+    const rows = await this.whatChangedList.locator(":scope > li").all();
+    return rows.map((row) => new ChangeRow(row));
+  }
+
+  /** What it changed, as a person reads each row. */
+  async whatChanged(): Promise<WhatChanged[]> {
+    const read: WhatChanged[] = [];
+    for (const row of await this.changes()) read.push(await row.read());
+    return read;
+  }
+
+  /** How the entry shows, apart from its words: whatever could mark one
+   * entry out from another, as a state of its own. */
+  async look(): Promise<EntryLook> {
+    return this.root.evaluate((entry) => {
+      const shown = getComputedStyle(entry);
+      return {
+        opacity: shown.opacity,
+        fontStyle: shown.fontStyle,
+        background: shown.backgroundColor,
+        border: shown.borderColor,
+        busy: entry.getAttribute("aria-busy"),
+        live: entry.getAttribute("aria-live"),
+      };
+    });
+  }
+
+  /** Whether the entry shows as left out: its title struck through. */
+  async looksDiscarded(): Promise<boolean> {
+    const line = await this.title.evaluate(
+      (title) => getComputedStyle(title).textDecorationLine
+    );
+    return line.includes("line-through");
+  }
+
+  /** Leaves the entry out: the Discard that shows on it while it is
+   * hovered. The entry stays in the timeline, struck through. */
+  @ayme.action({
+    description:
+      "Leaves the entry out of the recording, while it records or is paused: it stays in place, struck through.",
+  })
+  async discard(): Promise<this> {
+    await this.title.hover();
+    await this.discardButton.click();
+    await this.restoreButton.waitFor();
+    return this;
+  }
+}
+
+/** One Visit: a page of the flow, with its entries. */
+export class Visit extends RecorderPart {
+  @ayme.child
+  get heading(): Locator {
+    return this.root.getByRole("heading", { level: 2 });
+  }
+  /** How the Visit started, such as "Navigated to http://shop.test/". */
+  @ayme.child
+  get start(): Locator {
+    return this.root.getByTestId("visit-start");
+  }
+  @ayme.collection
+  get entryCards(): Locator {
+    return this.root.getByRole("article");
+  }
+  /** The entries of Interactions, the steps, without the changes no
+   * Interaction made. */
+  @ayme.collection
+  get stepCards(): Locator {
+    return this.entryCards.and(this.root.locator('[data-kind="interaction"]'));
+  }
+
+  async entries(): Promise<Entry[]> {
+    return (await this.entryCards.all()).map((card) => new Entry(card));
+  }
+
+  /** The steps, in the order shown. */
+  async steps(): Promise<Entry[]> {
+    return (await this.stepCards.all()).map((card) => new Entry(card));
+  }
+}
+
+/** The recording as the window lists it: one section per Visit. */
+export class Timeline extends RecorderPart {
+  @ayme.collection
+  get visitSections(): Locator {
+    return this.root.getByRole("region");
+  }
+  /** What the window says while there is no Visit. */
+  @ayme.child
+  get empty(): Locator {
+    return this.root.getByTestId("timeline-empty");
+  }
+  /** The lines that join an entry's icon to the next one's. */
+  @ayme.collection
+  get lines(): Locator {
+    return this.root.getByTestId("timeline-line");
+  }
+
+  async visits(): Promise<Visit[]> {
+    return (await this.visitSections.all()).map(
+      (section) => new Visit(section)
+    );
+  }
+}

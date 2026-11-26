@@ -2,16 +2,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import { listRunnableTools, type RunnableTool } from "../domain/runnableTools";
-import { forest, node } from "../../structure/test-utils/projected";
-import { buildStructureTree } from "../../structure";
+import { forest, node } from "../../../testing/structure/projected";
+import { buildStructureTree } from "../../structure/infrastructure";
 import {
   aChildRun,
   anInteraction,
   anItem,
   aRun,
-} from "../../runs/test-utils/runs";
-import { renderPart } from "../../testing/renderPart";
-import { RunCard as RunCardPart } from "../../testing";
+} from "../../../testing/runs/runs";
+import { renderPart } from "../../../testing/renderPart";
+import { RunCard as RunCardPart } from "../../../testing";
 import { argumentViolationsOf } from "../infrastructure/argumentViolations";
 import { schemaText } from "../infrastructure/schemaText";
 import { RunCard, type RunCardProps } from "./RunCard";
@@ -75,8 +75,16 @@ const rename: RunnableTool = {
   rooted: true,
 };
 
-const milk = anItem("ListPage.items[0]", { ref: "e3", label: "Milk" });
-const eggs = anItem("ListPage.items[1]", { ref: "e6", label: "Eggs" });
+const milk = anItem("ListPage.items[0]", {
+  id: "po3",
+  ref: "e3",
+  label: "Milk",
+});
+const eggs = anItem("ListPage.items[1]", {
+  id: "po6",
+  ref: "e6",
+  label: "Eggs",
+});
 
 function renderCard(props: Partial<RunCardProps> & Pick<RunCardProps, "tool">) {
   const onRun = vi.fn();
@@ -800,12 +808,13 @@ it.each([undefined, "child"])(
       [{ ...tool, available: true }]
     ).get(name)!;
     const instance = anItem(childPath ? "Shell.child" : "Shell", {
+      id: "po8",
       ref: "e8",
       label: "Menu",
     });
     const { card, onRun } = renderCard({ tool: runnable, items: [instance] });
     await card.run();
-    expect(onRun).toHaveBeenCalledWith({ ref: "e8", args: {} }, instance);
+    expect(onRun).toHaveBeenCalledWith({ id: "po8", args: {} }, instance);
   }
 );
 
@@ -816,7 +825,7 @@ describe("a rooted action", () => {
     await card.run({ text: "Oat milk" }, { item: "Eggs" });
 
     expect(onRun).toHaveBeenCalledExactlyOnceWith(
-      { ref: "e6", args: { text: "Oat milk" } },
+      { id: "po6", args: { text: "Oat milk" } },
       eggs
     );
   });
@@ -839,7 +848,7 @@ describe("a rooted action", () => {
       "Aleksandra Wiśniewska-Kowalczyk — Senior Product Design Engineer, Platform Infrastructure €12345678.90 · ".repeat(
         4
       );
-    const long = anItem("ListPage.items[2]", { ref: "e9", label });
+    const long = anItem("ListPage.items[2]", { id: "po9", ref: "e9", label });
     const { card } = renderCard({ tool: rename, items: [milk, long] });
 
     await card.openArguments();
@@ -883,7 +892,7 @@ describe("a rooted action", () => {
 
     expect(await card.items.count()).toBe(0);
     expect(onRun).toHaveBeenCalledExactlyOnceWith(
-      { ref: "e3", args: { text: "Oat milk" } },
+      { id: "po3", args: { text: "Oat milk" } },
       milk
     );
   });

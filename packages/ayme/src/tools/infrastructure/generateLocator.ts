@@ -67,7 +67,7 @@ const definition = (label: string) => ({
  * The Locator Recommendation for the element `selector` addresses, relative
  * to the container's locator when one is given, from the in-page module:
  * Playwright's own generator checks it addresses exactly the element, or the
- * interactive ancestor it picked for it; Ayme checks it carries no Structural
+ * interactive ancestor it picked for it; ayme checks it carries no Structural
  * Ref.
  */
 async function recommendLocator(

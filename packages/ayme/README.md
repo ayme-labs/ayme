@@ -1,6 +1,6 @@
 # @ayme-dev/ayme
 
-Ayme turns the Page Object Models from your Playwright tests into tools that coding agents and your own app call in the running page. Mark a model and its actions, and each action becomes a Page Object Tool, published through WebMCP and runnable from your own code.
+ayme turns the Page Object Models from your Playwright tests into tools that coding agents and your own app call in the running page. Mark a model and its actions, and each action becomes a Page Object Tool, published through WebMCP and runnable from your own code.
 
 ## Install
 
@@ -36,9 +36,9 @@ export class ProjectsPage {
 
 `ProjectsPage.createProject` is now a Page Object Tool. Enable `compilerOptions.experimentalDecorators` in the tsconfig of your Page Object Models.
 
-## Start Ayme
+## Start ayme
 
-Your framework package starts Ayme at the root of your app: `AymeProvider` in Vue and React, `useAyme` in Svelte, `provideAyme()` in Angular. Without one, create and start the session yourself:
+Your framework package starts ayme at the root of your app: `AymeProvider` in Vue and React, `useAyme` in Svelte, `provideAyme()` in Angular. Without one, create and start the session yourself:
 
 ```ts
 import { createAyme } from "@ayme-dev/ayme";
@@ -64,13 +64,13 @@ await ayme.tools.run(
 );
 ```
 
-A Caller name is any non-empty string; an empty one throws a `RuntimeStateError`. Name yours in lowercase kebab-case; Ayme does not enforce it. Ayme's own Callers use the names in `callers`: `app`, `webmcp` (WebMCP publication), `ayme-mcp` (the Ayme MCP server) and `inspector`.
+A Caller name is any non-empty string; an empty one throws a `RuntimeStateError`. Name yours in lowercase kebab-case; ayme does not enforce it. ayme's own Callers use the names in `callers`: `app`, `webmcp` (WebMCP publication), `ayme-mcp` (the ayme MCP server) and `inspector`.
 
 Each Caller name has its own Change Record cursor: the page that Caller last received, through `snapshot` or as the Settled Page of its last action, is where its next action's Change Record starts. Two Callers under one name share one cursor. An action's result carries the record in two parts: `changes_before`, what changed since the Caller last received the page, on its own or by another Caller, and `changes`, what the action changed; `page_changed` is true when either has a change.
 
 Runs take turns: the page runs one at a time, whichever Caller starts it. An action's turn ends once the page has settled; a read such as `snapshot` or a Peek Tool waits its turn without a settle wait. Don't call `ayme.tools.run` from inside a tool while it runs: that Run waits behind the tool's own and never starts. A Custom Tool uses the `run` in its context instead, `execute(target, { run })`: each tool it starts that way is a child Run, which runs inside its turn, after the child Runs it started before. The `goal` tool runs each step's tool as a child Run too.
 
-Ayme keeps a log of the page's Runs, `ayme.runs`, whoever started them. `list()` returns the newest 200 top-level Runs with their child Runs, oldest first, each a `Run` with its `id`, `tool`, `input`, Caller (`by`) or, for a child Run, its parent's id (`parent`), `status` (`"running"`, `"succeeded"` or `"failed"`), its `result` as JSON captured when it returned (absent for `undefined`) or its `error` text, `startedAt`, `durationMs`, and the `interactions` it performed itself on the page (each a click, fill, key press, hover, selection, or keyboard or mouse input, with its `operation`, and its `locator` or `value` when it has one; waits, assertions, scrolls, focus changes and navigations are not Interactions). `subscribe(listener)` calls `listener` with the new list when a Run starts, gains an Interaction, or ends, and returns the function that unsubscribes. A new document starts an empty log.
+ayme keeps a log of the page's Runs, `ayme.runs`, whoever started them. `list()` returns the newest 200 top-level Runs with their child Runs, oldest first, each a `Run` with its `id`, `tool`, `input`, Caller (`by`) or, for a child Run, its parent's id (`parent`), `status` (`"running"`, `"succeeded"` or `"failed"`), its `result` as JSON captured when it returned (absent for `undefined`) or its `error` text, `startedAt`, `durationMs`, and the `interactions` it performed itself on the page (each a click, fill, key press, hover, selection, or keyboard or mouse input, with its `operation`, and its `locator` or `value` when it has one; waits, assertions, scrolls, focus changes and navigations are not Interactions). `subscribe(listener)` calls `listener` with the new list when a Run starts, gains an Interaction, or ends, and returns the function that unsubscribes. A new document starts an empty log.
 
 ```ts
 const unsubscribe = ayme.runs.subscribe((runs) => {
@@ -98,7 +98,7 @@ await ayme.tools.run("peek.cart", {}); // { name: "cart", instances: [{ values: 
 
 > **Experimental:** this may change in any release. See [Experimental APIs](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/experimental-apis.md).
 
-Your app's own Node processes, such as its dev server or an Express backend, can offer Peeks too, as `peek.node.<name>`. Install `@ayme-dev/mcp` beside `@ayme-dev/ayme` there, and start Ayme once, in the server's entry point: the session becomes the process's App Process, and a process has one. The sessions your framework package creates to render on the server never claim it. An Express backend, in `server/ayme.ts`:
+Your app's own Node processes, such as its dev server or an Express backend, can offer Peeks too, as `peek.node.<name>`. Install `@ayme-dev/mcp` beside `@ayme-dev/ayme` there, and start ayme once, in the server's entry point: the session becomes the process's App Process, and a process has one. The sessions your framework package creates to render on the server never claim it. An Express backend, in `server/ayme.ts`:
 
 ```ts
 import { createAyme } from "@ayme-dev/ayme";
@@ -118,14 +118,14 @@ The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference
 ## Documentation
 
 - [Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/ayme-page-objects.md): marking models and actions, tool names, children and collections.
-- [Publish tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md): starting Ayme and turning WebMCP publication on.
+- [Publish tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md): starting ayme and turning WebMCP publication on.
 - [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md): the Structural Page State, Structural Refs and interaction history.
 - [Custom Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/custom-tools.md): operations of your own on one element.
-- [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md): let a coding agent call your tools through Ayme's MCP server.
+- [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md): let a coding agent call your tools through ayme's MCP server.
 - [Goals with Jev](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/goals-with-jev.md): let a decision model drive the page toward a goal, through your Decision Endpoint.
 - [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md), [errors](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/errors.md) and the [Decision Endpoint contract](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/decision-endpoint.md)
 - [`@ayme-dev/ayme` reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md)
-- [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
+- [ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 
 ## Supported versions
 

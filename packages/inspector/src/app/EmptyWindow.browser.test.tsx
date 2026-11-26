@@ -4,7 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { InspectorContract } from "@ayme-dev/ayme/inspector";
 
 import { renderInspector } from "./renderInspector";
-import { replaceInspectorTransport } from "../shared";
+import { replaceInspectorTransport } from "../shared/infrastructure";
 
 // Component tests: what the Inspector's own window says while no page serves
 // the contract, over a transport the test drives.

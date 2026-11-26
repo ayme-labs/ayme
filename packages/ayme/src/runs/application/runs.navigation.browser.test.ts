@@ -3,7 +3,7 @@ import type { Ayme } from "../../index";
 
 type AymeWindow = Window & { ayme?: Ayme };
 
-// A page of its own that starts Ayme from this package's source, so a
+// A page of its own that starts ayme from this package's source, so a
 // reload of it is a cross-document navigation with a fresh runtime.
 const PAGE = `
   <main><button>Save</button></main>
@@ -20,7 +20,7 @@ describe("The Run log across a cross-document navigation, in Chromium", () => {
 
   afterEach(() => frame.remove());
 
-  /** The Ayme the frame's current document started. */
+  /** The ayme the frame's current document started. */
   async function aymeOf(previous?: Ayme): Promise<Ayme> {
     let ayme: Ayme | undefined;
     // The first load transforms the package's source, which takes a while.

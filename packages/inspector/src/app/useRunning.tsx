@@ -1,16 +1,14 @@
 import { useState } from "react";
 
-import { isPanelRun, type RunFocus, Runs, runScope } from "../runs";
+import { isPanelRun, type RunFocus, runScope } from "../runs/domain";
+import { Runs } from "../runs/presentation";
 import type { InspectorRuntime } from "./useInspectorRuntime";
 import type { ViewState } from "./viewState";
-import { RunsRegion } from "../panel";
-import type { RenderRun, Selection } from "../navigation";
-import {
-  argumentViolationsOf,
-  findRefNode,
-  RunCard,
-  schemaText,
-} from "../tools";
+import { RunsRegion } from "../panel/view";
+import type { RenderRun, Selection } from "../navigation/domain";
+import { argumentViolationsOf, schemaText } from "../tools/infrastructure";
+import { findRefNode } from "../tools/domain";
+import { RunCard } from "../tools/presentation";
 
 /**
  * Running from the panel: the run slot's run card, and Runs scoped to the

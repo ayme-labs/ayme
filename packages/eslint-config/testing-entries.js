@@ -2,11 +2,11 @@
 // so this policy cannot collide with other uses of them.
 import { builtinRules } from "eslint/use-at-your-own-risk";
 
-// ADR-0026: only tests may import a `testing` entry, whether
-// `@ayme-dev/<package>/testing`, or inside the package a relative `./testing`
-// or any path through a `testing/` folder, such as `./testing/pom/Inspector`.
+// ADR-0057: only tests may import test support, whether another package's
+// `@ayme-dev/<package>/testing`, or inside the package any relative path
+// through its `testing/` folder, such as `../testing/pom/Inspector`.
 export const message =
-  "Only test files may import a testing entry (docs/adr/0026-test-seams-behind-a-testing-entry.md).";
+  "Only test files may import test support (docs/adr/0057-test-support-lives-beside-src-and-is-never-published.md).";
 const packageEntry = String.raw`^@ayme-dev/.+/testing$`;
 const relativeEntry = String.raw`^\.{1,2}/(.+/)?testing(\.[cm]?[jt]sx?|/.+)?$`;
 // esquery reads `/` as the end of a regex, so selectors match it as `\x2F`.
@@ -23,8 +23,8 @@ export default [
       "**/*.test.tsx",
       "**/*.browser.test.ts",
       "**/tests/**",
-      // The testing entry itself, which gathers its parts from its folder.
-      "**/testing.ts",
+      // Test support itself, which may use its own parts and another
+      // package's test support.
       "**/testing/**",
     ],
     // Aliased so these restrictions cannot collide with other uses of the
@@ -50,6 +50,11 @@ export default [
       [`${plugin}/no-restricted-syntax`]: [
         "error",
         { selector: `ImportExpression[source.value=${specifier}]`, message },
+        // A type written as `import("../testing").T`.
+        {
+          selector: `TSImportType Literal[value=${specifier}]`,
+          message,
+        },
         {
           selector: `CallExpression[callee.name='require'][arguments.0.value=${specifier}]`,
           message,

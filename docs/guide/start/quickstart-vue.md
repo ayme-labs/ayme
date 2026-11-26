@@ -22,9 +22,9 @@ export default defineConfig(({ command }) => ({
 }));
 ```
 
-`include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
+`include` keeps ayme in the dev server and out of `vite build`; [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
-Enable decorators in the tsconfig that covers your Page Object Models, `tsconfig.app.json` in Vite's templates:
+Enable decorators in your app's tsconfig, `tsconfig.app.json` in Vite's templates:
 
 ```json
 { "compilerOptions": { "experimentalDecorators": true } }
@@ -32,8 +32,26 @@ Enable decorators in the tsconfig that covers your Page Object Models, `tsconfig
 
 ## 3. Write a Page Object Model
 
+Page Objects live in `ayme/pom/`, at your project's root. Give the folder a tsconfig that extends your app's, so it compiles with the app's options:
+
+```jsonc
+// ayme/tsconfig.json
+{
+  "extends": "../tsconfig.app.json",
+  "include": ["**/*.ts"],
+}
+```
+
+Add the `#pom/*` alias to your `package.json`, so app code and tests import the Page Objects the same way from any folder:
+
+```json
+{ "imports": { "#pom/*": "./ayme/pom/*.ts" } }
+```
+
+[The `ayme` folder](../guides/ayme-folder.md) describes the rest of the folder. Then write the model:
+
 ```ts
-// src/pom/ProjectsPage.ts
+// ayme/pom/ProjectsPage.ts
 import { ayme } from "@ayme-dev/ayme";
 import type { Page } from "@playwright/test";
 
@@ -56,16 +74,16 @@ export class ProjectsPage {
 
 If your Playwright tests already have a Page Object Model for this page, mark that one instead.
 
-## 4. Start Ayme and use the Page Object
+## 4. Start ayme and use the Page Object
 
-Start Ayme in the root component with the Inspector and the Agent Connection in development, and use the Page Object:
+Start ayme in the root component with the Inspector and the Agent Connection in development, and use the Page Object:
 
 ```vue
 <!-- src/App.vue -->
 <script setup lang="ts">
 import { ref } from "vue";
 import { useAyme, usePageObject } from "@ayme-dev/vue";
-import { ProjectsPage } from "./pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 useAyme({
   inspector: import.meta.env.DEV,
@@ -100,7 +118,7 @@ function create() {
 
 Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-To call it from your coding agent, register Ayme's MCP server in the agent and connect it to the page, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
+To call it from your coding agent, register ayme's MCP server in the agent and connect it to the page, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
 
 ## Next
 

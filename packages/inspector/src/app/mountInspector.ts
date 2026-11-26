@@ -1,7 +1,10 @@
 import { EXCLUDE_ATTRIBUTE } from "@ayme-dev/ayme/inspector";
 
 import { renderInspector } from "./renderInspector";
-import { exposeInspectorShadowRoot, inspectorClient } from "../shared";
+import {
+  exposeInspectorShadowRoot,
+  inspectorClient,
+} from "../shared/infrastructure";
 
 export type InspectorOptions = {
   /**
@@ -40,8 +43,8 @@ export function mountInspector(options: InspectorOptions = {}) {
     host.dataset.aymeInspectorHost = "";
     host.style.pointerEvents = "none";
     // Closed, so the host page's locators never match the Inspector's own
-    // text, and marked as an excluded subtree, so the runtime's capture,
-    // Reach and screenshots leave it out. Tests reach the root through the
+    // text, and marked as an excluded subtree, so the runtime's capture and
+    // Reach leave it out. Tests reach the root through the
     // hook. Open and unmarked when dogfooding: the runtime's page state keeps
     // it then.
     if (!options.dogfood) host.setAttribute(EXCLUDE_ATTRIBUTE, "");

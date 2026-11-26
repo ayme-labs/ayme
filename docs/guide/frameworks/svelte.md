@@ -1,10 +1,10 @@
 # Svelte
 
-Everything about Ayme in a Svelte or SvelteKit app: setup, starting Ayme in the root component, root ownership, composables, server rendering, limits and the API of `@ayme-dev/svelte`.
+Everything about ayme in a Svelte or SvelteKit app: setup, starting ayme in the root component, root ownership, composables, server rendering, limits and the API of `@ayme-dev/svelte`.
 
 ## Setup
 
-Install Ayme, the Svelte package and the build plugin, with the Inspector and the Agent Connection for development, as the [Svelte quickstart](../start/quickstart-svelte.md) does:
+Install ayme, the Svelte package and the build plugin, with the Inspector and the Agent Connection for development, as the [Svelte quickstart](../start/quickstart-svelte.md) does:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/svelte
@@ -24,7 +24,7 @@ export default defineConfig(({ command }) => ({
 }));
 ```
 
-`include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
+`include` keeps ayme in the dev server and out of `vite build`; [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
 Enable `experimentalDecorators` in the tsconfig, keeping SvelteKit's generated base:
 
@@ -36,9 +36,11 @@ Enable `experimentalDecorators` in the tsconfig, keeping SvelteKit's generated b
 }
 ```
 
-On SvelteKit 3, which reads its configuration from the `sveltekit()` call, extend `$app/tsconfig` instead and import Page Object Models with their `.ts` extension, such as `#lib/pom/ProjectsPage.ts`. Keep `svelte.config.js` and its adapter as they are. Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows, in `.ts` modules.
+On SvelteKit 3, extend `$app/tsconfig` instead. SvelteKit 3 has no `svelte.config.js`: the adapter and the other options go in the `sveltekit()` call, and `ayme()` follows it as above. Without SvelteKit, as in Vite's Svelte template, turn `experimentalDecorators` on in `tsconfig.app.json`.
 
-## Start Ayme at the root
+Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows, in `.ts` modules in `ayme/pom/`, with the tsconfig that [The `ayme` folder](../guides/ayme-folder.md) shows.
+
+## Start ayme at the root
 
 Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without SvelteKit, with the Inspector and the Agent Connection in development:
 
@@ -55,7 +57,7 @@ Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without Sv
 {@render children()}
 ```
 
-Svelte 3 and 4, or Svelte 5 without runes, render `<slot />` instead; the `useAyme` call is the same. Without SvelteKit, use `import.meta.env.DEV` for `dev`.
+Svelte 3 and 4, or Svelte 5 without runes, render `<slot />` instead; the `useAyme` call is the same. On SvelteKit 3, import `dev` from `$app/env`. Without SvelteKit, use `import.meta.env.DEV` for `dev`.
 
 The options are the [`createAyme` options](../reference/ayme.md#createayme), passed through unchanged. To make the `navigate` tool move through SvelteKit's router, pass `goto`:
 
@@ -89,8 +91,8 @@ Registering a page doesn't tie it to a route. Give each page a `present` that ch
   import type { Snippet } from "svelte";
   import { dev } from "$app/environment";
   import { useAyme } from "@ayme-dev/svelte";
-  import { ProjectsPage } from "$lib/pom/ProjectsPage";
-  import { SettingsPage } from "$lib/pom/SettingsPage";
+  import { ProjectsPage } from "#pom/ProjectsPage";
+  import { SettingsPage } from "#pom/SettingsPage";
 
   let { children }: { children: Snippet } = $props();
   useAyme({
@@ -108,7 +110,7 @@ A component that calls an action gets the session's instance from `usePageObject
 ```svelte
 <script lang="ts">
   import { usePageObject } from "@ayme-dev/svelte";
-  import { ProjectsPage } from "$lib/pom/ProjectsPage";
+  import { ProjectsPage } from "#pom/ProjectsPage";
 
   const pom = usePageObject(ProjectsPage);
 </script>
@@ -178,15 +180,15 @@ The [SvelteKit example](https://github.com/ayme-labs/ayme/blob/main/apps/example
 
 ## Bundle size
 
-Ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in one chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
+ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in one chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
 
-A build includes Ayme only with the plugin's `include: true`. The config above keeps Ayme in the dev server and out of `vite build`; see [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
+A build includes ayme only with the plugin's `include: true`. The config above keeps ayme in the dev server and out of `vite build`; see [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
 
 ## Limits
 
 - Call `useAyme(options)` only in the root `+layout.svelte` or `App.svelte`. SvelteKit creates the next layout before it destroys the previous one, so an owner in a route-group layout becomes a second active owner on navigation and throws.
 - Decorators inside `.svelte` scripts are not compiled.
-- The compiler follows SvelteKit's generated tsconfig, so Page Object Models under `src` need nothing more. Models outside `src`, such as a `playwright/` folder, need their own tsconfig with `experimentalDecorators`, passed to the plugin as `ayme({ tsconfigPath })`.
+- Page Object Models in `ayme/pom/` compile with `ayme/tsconfig.json`. [The `ayme` folder](../guides/ayme-folder.md#set-the-folder-up-for-page-objects) says which tsconfig it extends, with or without SvelteKit.
 - The supported Svelte versions are on [Install](../start/install.md#supported-versions). The [SvelteKit example](https://github.com/ayme-labs/ayme/blob/main/apps/example-sveltekit/README.md) runs SvelteKit 2.
 
 ## Troubleshooting

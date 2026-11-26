@@ -1,4 +1,4 @@
-import { rootRef } from "../../test-utils/agentCalls.testSupport";
+import { rootId } from "../../../testing/agentCalls.testSupport";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DecisionRequest } from "../../goal-loop/domain";
@@ -8,7 +8,7 @@ import { ayme as model } from "../../page-objects/domain";
 import { createPage } from "../../page-objects/infrastructure";
 import { registerCompiledPom } from "../../page-objects/application";
 import { RuntimeStateError, ToolInputError } from "../../shared";
-import { rootOf } from "../../test-utils/pomRoot.testSupport";
+import { rootOf } from "../../../testing/pomRoot.testSupport";
 import { createAyme, type Ayme, type AymeOptions } from "../../runtime";
 
 // Runtime object seam: an app adds Peeks with `ayme.peek` and reads them as
@@ -17,7 +17,7 @@ import { createAyme, type Ayme, type AymeOptions } from "../../runtime";
 
 // The Agent Connection and the Inspector load as no-ops that keep the
 // session they are started with: the dev gate only needs their options on,
-// and a real page client would scan for an agent's Ayme MCP server.
+// and a real page client would scan for an agent's ayme MCP server.
 const connected = vi.hoisted(() => ({ sessions: [] as unknown[] }));
 vi.mock("../../runtime/agentConnection", () => ({
   loadProcessConnection: async () => {
@@ -60,7 +60,6 @@ function peek(ayme: Ayme, ...args: Parameters<Ayme["peek"]>) {
   return remove;
 }
 
-/** The names of the tools `ayme` can run now. */
 const toolNames = (ayme: Ayme) =>
   ayme.tools.list().flatMap(({ name, available }) => (available ? [name] : []));
 
@@ -517,7 +516,7 @@ describe("calling a Peek Tool", () => {
 
     // An action's call resolves once the tools reflect the page it changed.
     await ayme.tools.run("Toolbar.reveal", {
-      ref: await rootRef("Toolbar"),
+      id: await rootId("Toolbar"),
       args: {},
     });
     expect(toolNames(ayme)).toContain("Editor.save");

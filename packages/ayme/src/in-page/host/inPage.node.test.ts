@@ -17,7 +17,7 @@ import { Rolldown } from "tsdown";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type * as Playwright from "../../playwright";
-import { inPageContract } from "./inPageContract.testSupport";
+import { inPageContract } from "../../../testing/in-page/inPageContract.testSupport";
 
 // Playwright's overlay keeps its shadow root closed unless it runs under its own
 // tests; the contract reads the highlight boxes it draws.
@@ -82,10 +82,11 @@ async function bundlePageRuntime(): Promise<string> {
           id === entry
             ? [
                 `import { createAyme, createPage } from ${JSON.stringify(join(dist, "index.mjs"))};`,
-                `import { inPage } from ${JSON.stringify(join(dist, "testing.mjs"))};`,
+                `import { inPage } from ${JSON.stringify(join(dist, "internal.mjs"))};`,
                 "let ayme;",
                 "window.aymePageRuntime = {",
                 "  bound: () => inPage(createPage()).bound(),",
+                "  elementKeys: (refs) => inPage(createPage()).elementKeys(refs),",
                 "  start() { ayme = createAyme(); ayme.start(); },",
                 '  snapshot: async () => (await ayme.tools.run("snapshot", {})).structure,',
                 "};",
@@ -100,6 +101,7 @@ async function bundlePageRuntime(): Promise<string> {
 
 type PageRuntime = {
   bound(): Promise<Playwright.Bound>;
+  elementKeys: Playwright.InPage["elementKeys"];
   start(): void;
   snapshot(): Promise<string>;
 };
@@ -151,6 +153,16 @@ describe("the in-page module over real Playwright, as built", () => {
     async nextDocument(page) {
       await page.waitForEvent("load");
       return page;
+    },
+    async holdNextLoad(page, until) {
+      await page.route(
+        `${origin}/`,
+        async (route) => {
+          await until;
+          await route.fallback();
+        },
+        { times: 1 }
+      );
     },
     hostsOutliveLoads: true,
   });
@@ -325,6 +337,26 @@ describe("the page's own runtime and a Node host on one document", () => {
     expect(runtime.installedBy).toBe(node.host);
   });
 
+  it("the page's own runtime and a Node host get one key for one element", async () => {
+    const page = await newPage();
+    await page.evaluate(() => {
+      document.body.innerHTML = "<button>Save</button>";
+    });
+    const node = built.inPage(page);
+    const refs = await node.mint(page.locator("button"));
+
+    const fromRuntime = await page.evaluate(
+      (refs) =>
+        (
+          window as unknown as { aymePageRuntime: PageRuntime }
+        ).aymePageRuntime.elementKeys(refs),
+      refs
+    );
+
+    expect(fromRuntime).toEqual(await node.elementKeys(refs));
+    expect(fromRuntime[0]?.key).toEqual(expect.any(String));
+  });
+
   it("a Node host of another version gets a version error from the page's module", async () => {
     const page = await newPage();
     const runtime = await pageRuntimeBound(page);
@@ -332,7 +364,7 @@ describe("the page's own runtime and a Node host on one document", () => {
     await expect(
       built.createInPageHost("0.0.0-other").inPage(page).bound()
     ).rejects.toThrow(
-      `This document runs Ayme's in-page module ${runtime.version}; this host is 0.0.0-other.`
+      `This document runs ayme's in-page module ${runtime.version}; this host is 0.0.0-other.`
     );
     expect((await built.inPage(page).bound()).installedBy).toBe(runtime.host);
   });

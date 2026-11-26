@@ -17,7 +17,6 @@ import { expect, it, vi } from "vitest";
 // Programs, an invalidate drops them (ADR-0036).
 const { compilerCalls, compileFailure } = vi.hoisted(() => ({
   compilerCalls: [] as ("compile" | "invalidate")[],
-  // What `compile` throws instead of compiling, when set.
   compileFailure: { error: undefined as Error | undefined },
 }));
 
@@ -181,7 +180,7 @@ it("keeps the compiler's Programs for the length of a build, and a rebuild start
 
 it("in watch mode, rebuilds after an edit to a Page Object Model module that its tsconfig does not list", async () => {
   const root = await workspace({
-    // As the tsconfig above a project's `.ayme` folder may not list it.
+    // As the tsconfig above a project's `ayme` folder may not list it.
     "tsconfig.json": JSON.stringify({
       ...JSON.parse(tsconfig),
       files: ["main.ts"],
@@ -233,7 +232,7 @@ it("in watch mode, rebuilds after an edit to a Page Object Model module that its
   }
 }, 30_000);
 
-it("resolves the runtime to its absent entry and compiles stand-ins in a build without Ayme, the default", async () => {
+it("resolves the runtime to its absent entry and compiles stand-ins in a build without ayme, the default", async () => {
   const result = await build({
     absWorkingDir: fixtures,
     entryPoints: ["main.ts"],
@@ -254,7 +253,7 @@ it("resolves the runtime to its absent entry and compiles stand-ins in a build w
 
   expect(inputs.some((input) => input.endsWith("/dist/absent.mjs"))).toBe(true);
   expect(inputs.some((input) => input.endsWith("/dist/index.mjs"))).toBe(false);
-  expect(code).toContain("Ayme was removed from this build.");
+  expect(code).toContain("ayme was removed from this build.");
   expect(code).toMatch(
     /absentPageObject\("CounterPage", \{ "actions": \["increment", "setMode"\]/
   );
@@ -263,7 +262,7 @@ it("resolves the runtime to its absent entry and compiles stand-ins in a build w
   expect(code).not.toContain("Waiting for the WebMCP driver.");
 }, 30_000);
 
-it("resolves the framework packages to their absent entries in a build without Ayme", async () => {
+it("resolves the framework packages to their absent entries in a build without ayme", async () => {
   const frameworks = ["vue", "react", "svelte", "angular"];
   // Stand-ins for the installed packages: each entry names itself.
   const root = await workspace({
@@ -422,13 +421,11 @@ ${declaration}
   }
 });
 
-it("reports a diagnostic without a position at its file, one without a file at the module it compiled, one in a file it cannot read at its column, and counts lines as TypeScript does", async () => {
+it("reports a diagnostic without a position at its file, one without a file at the module it compiled, and one with a position at its line, which it does not read again", async () => {
   const root = await workspace({
     "tsconfig.json": tsconfig,
     "main.ts": 'import { Page } from "./Page";\nconsole.log(Page);\n',
     "Page.ts": pomSource("Page"),
-    // Lines: "// a", "b", "c", "d", then "const café = ;".
-    "Lines.ts": "// a\r\nb\rc\u2028d\u2029const café = ;\n",
   });
   // esbuild names a file by its path from the real working directory.
   const real = await realpath(root);
@@ -436,16 +433,12 @@ it("reports a diagnostic without a position at its file, one without a file at t
     { text: "no position", file: path.join(real, "tsconfig.json") },
     { text: "no file" },
     {
-      text: "unreadable",
+      text: "located",
+      // No such file: the diagnostic carries its line.
       file: path.join(real, "Gone.ts"),
-      line: 2,
-      column: 5,
-    },
-    {
-      text: "after line breaks",
-      file: path.join(real, "Lines.ts"),
       line: 5,
       column: 14,
+      lineText: "const café = ;",
     },
   ]);
   try {
@@ -459,10 +452,10 @@ it("reports a diagnostic without a position at its file, one without a file at t
       )
     ).toMatchObject([
       {
-        text: "after line breaks",
+        text: "located",
         // "const café = " is 13 code units and 14 bytes.
         location: {
-          file: "Lines.ts",
+          file: "Gone.ts",
           line: 5,
           column: 14,
           lineText: "const café = ;",
@@ -471,10 +464,6 @@ it("reports a diagnostic without a position at its file, one without a file at t
       // The entry is the first module compiled, so the first to fail.
       { text: "no file", location: { file: "main.ts" } },
       { text: "no position", location: { file: "tsconfig.json", line: 0 } },
-      {
-        text: "unreadable",
-        location: { file: "Gone.ts", line: 2, column: 4 },
-      },
     ]);
   } finally {
     compileFailure.error = undefined;
@@ -518,20 +507,20 @@ it.each([
   [
     "include unset",
     {},
-    "[ayme] Ayme is not in this build: include is not set.",
+    "[ayme] ayme is not in this build: include is not set.",
   ],
   [
     "include false",
     { include: false },
-    "[ayme] Ayme is not in this build: include is false.",
+    "[ayme] ayme is not in this build: include is false.",
   ],
   [
     "include true",
     { include: true },
-    "[ayme] Ayme is in this build: include is true.",
+    "[ayme] ayme is in this build: include is true.",
   ],
 ])(
-  "prints once per build whether Ayme is in it, with %s",
+  "prints once per build whether ayme is in it, with %s",
   async (_, options, line) => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     try {
@@ -552,7 +541,7 @@ it.each([
       expect(
         info.mock.calls
           .map(([message]) => String(message))
-          .filter((message) => message.startsWith("[ayme] Ayme"))
+          .filter((message) => message.startsWith("[ayme] ayme"))
       ).toEqual([line]);
     } finally {
       info.mockRestore();

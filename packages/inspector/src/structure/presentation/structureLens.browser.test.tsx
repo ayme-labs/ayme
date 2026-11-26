@@ -3,22 +3,22 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { StructureTree } from "../domain/structure";
-import { DetailPane } from "../../panel";
+import { DetailPane } from "../../panel/view";
 import {
   type Lens,
   type LensId,
-  Navigator,
   type OnHover,
   pageSelection,
   type RenderRun,
   type Selection,
-} from "../../navigation";
-import { renderPart } from "../../testing/renderPart";
+} from "../../navigation/domain";
+import { Navigator } from "../../navigation/presentation";
+import { renderPart } from "../../../testing/renderPart";
 import {
   DetailPane as DetailPanePart,
   Navigator as NavigatorPart,
   StructureLens,
-} from "../../testing";
+} from "../../../testing";
 import { structureLens } from "./structureLens";
 
 // Component tests: the Structure lens in the navigator and the detail pane,
@@ -559,7 +559,6 @@ it("scrolls sideways only when the deepest row has no room for its ref and role"
       members: [],
       children: [deep, ...(index === 59 ? [{ ...deep, ref: "e61" }] : [])],
     };
-  // Whether the navigator's scroll area is wider than the panel.
   const sideways = async () =>
     (await lens.tree.elementHandle())!.evaluate((tree) => {
       const scroller = tree.closest(".overflow-auto")!;

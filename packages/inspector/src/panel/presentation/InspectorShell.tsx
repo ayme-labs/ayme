@@ -29,7 +29,7 @@ import {
 import { Header, layoutNames } from "../view/Header";
 import { releaseVelocity, type Sample } from "../domain/motion";
 import type { Layout, Preferences } from "../domain/preferences";
-import { resizeGrip, usePointerDrag } from "../../shared";
+import { resizeGrip, usePointerDrag } from "../../shared/presentation";
 import { useGlide } from "./useGlide";
 import { usePointerClick } from "./usePointerClick";
 import { usePresence } from "./usePresence";
@@ -119,7 +119,6 @@ export function InspectorShell({
     () => reserveHost(docked && { dock: docked, size: dockedSize! }),
     [reserveHost, docked, dockedSize]
   );
-  // The room goes back when the shell unmounts.
   useEffect(() => () => reserveHost(undefined), [reserveHost]);
 
   // Collapsing moves focus to the logo and opening moves it back, but only
@@ -191,7 +190,6 @@ export function InspectorShell({
         setSnap(undefined);
         glide.resume();
         if (!moved || !dock) return;
-        // It settles into the dock carrying the speed it was let go at.
         glide.from(releaseVelocity(path, performance.now()));
         onPreferencesChange({ layout: dock });
       },

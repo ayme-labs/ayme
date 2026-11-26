@@ -1,10 +1,10 @@
 # Vue
 
-Everything about Ayme in a Vue app: setup, the provider and the standalone composable, hooks, server rendering with Nuxt, limits and the API of `@ayme-dev/vue`.
+Everything about ayme in a Vue app: setup, the provider and the standalone composable, hooks, server rendering with Nuxt, limits and the API of `@ayme-dev/vue`.
 
 ## Setup
 
-Install Ayme, the Vue package and the build plugin, with the Inspector and the Agent Connection for development, as the [Vue quickstart](../start/quickstart-vue.md) does:
+Install ayme, the Vue package and the build plugin, with the Inspector and the Agent Connection for development, as the [Vue quickstart](../start/quickstart-vue.md) does:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/vue
@@ -23,11 +23,11 @@ export default defineConfig(({ command }) => ({
 }));
 ```
 
-`include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
+`include` keeps ayme in the dev server and out of `vite build`; [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
 Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects.md) shows.
 
-## Start Ayme at the root
+## Start ayme at the root
 
 Wrap the app in `AymeProvider`, with the Inspector and the Agent Connection in development:
 
@@ -102,9 +102,9 @@ Define `navigate` once in `<script setup>`, as above. An inline arrow in the tem
 
 ## Root ownership
 
-One owner runs Ayme for the document: a provider or a standalone `useAyme(options?)`. A second active owner is rejected, including a provider nested in another. Only the owner disposes the session.
+One owner runs ayme for the document: a provider or a standalone `useAyme(options?)`. A second active owner is rejected, including a provider nested in another. Only the owner disposes the session.
 
-Put the owner at the application root, not in a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout.vue` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout.vue`, and the owner with it. Unmounting the owner stops Ayme and closes the agent connection. The agent can lose the answer to its call.
+Put the owner at the application root, not in a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout.vue` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout.vue`, and the owner with it. Unmounting the owner stops ayme and closes the agent connection. The agent can lose the answer to its call.
 
 | Call                                      | Behavior                                                              |
 | ----------------------------------------- | --------------------------------------------------------------------- |
@@ -113,12 +113,12 @@ Put the owner at the application root, not in a route component or a layout that
 | `useAyme(options)` without an owner above | Starts and owns a session with those options.                         |
 | `useAyme(options)` beneath an owner       | Throws; configure the options on the owner.                           |
 
-In the browser, the standalone owner starts at once in its Vue scope and provides its session to descendant components. The owner's own setup can use Page Objects too:
+In the browser, the standalone owner starts at once in its Vue scope and provides its session to descendant components. The owner's own setup can use Page Objects too. The `#pom/*` import is the alias that [The `ayme` folder](../guides/ayme-folder.md#set-the-folder-up-for-page-objects) sets up:
 
 ```ts
 // src/App.vue, <script setup>
 import { useAyme, usePageObject } from "@ayme-dev/vue";
-import { ProjectsPage } from "./pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 useAyme({
   inspector: import.meta.env.DEV,
@@ -135,8 +135,8 @@ Registering a page doesn't tie it to a route. Give each page a `present` that ch
 
 ```ts
 import { useAyme } from "@ayme-dev/vue";
-import { ProjectsPage } from "./pom/ProjectsPage";
-import { SettingsPage } from "./pom/SettingsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
+import { SettingsPage } from "#pom/SettingsPage";
 
 useAyme({
   pageObjects: [ProjectsPage, SettingsPage],
@@ -149,7 +149,7 @@ A component that calls an action gets the session's instance from `usePageObject
 
 ```ts
 import { usePageObject } from "@ayme-dev/vue";
-import { ProjectsPage } from "./pom/ProjectsPage";
+import { ProjectsPage } from "#pom/ProjectsPage";
 
 const pom = usePageObject(ProjectsPage);
 
@@ -208,7 +208,7 @@ export default defineNuxtConfig({
   typescript: {
     tsConfig: { compilerOptions: { experimentalDecorators: true } },
   },
-  // nuxi build sets NODE_ENV to production: Ayme stays in the dev server only.
+  // nuxi build sets NODE_ENV to production: ayme stays in the dev server only.
   vite: { plugins: [ayme({ include: process.env.NODE_ENV !== "production" })] },
 });
 ```
@@ -234,9 +234,9 @@ The [Nuxt example](https://github.com/ayme-labs/ayme/blob/main/apps/example-nuxt
 
 ## Bundle size
 
-Ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in the entry chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
+ayme's runtime adds about 990 kB raw (about 295 kB transferred) to the JavaScript a page loads at start, in a build that includes it. About 860 kB raw of it is in the entry chunk. That is over Vite's 500 kB chunk warning. The Inspector is a separate chunk that loads only when it is on.
 
-A build includes Ayme only with the plugin's `include: true`. The config above keeps Ayme in the dev server and out of `vite build`; see [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
+A build includes ayme only with the plugin's `include: true`. The config above keeps ayme in the dev server and out of `vite build`; see [Include ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
 
 ## Limits
 
@@ -247,7 +247,7 @@ A build includes Ayme only with the plugin's `include: true`. The config above k
 
 | Error                                                                                         | Cause                                                           |
 | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `AymeProvider cannot be nested beneath another Ayme runtime owner.`                           | A second owner beneath the first. Start Ayme once, at the root. |
+| `AymeProvider cannot be nested beneath another ayme runtime owner.`                           | A second owner beneath the first. Start ayme once, at the root. |
 | `The provider options changed while the provider was mounted.`                                | A provider prop changed while mounted.                          |
 | `useAyme(options) received options beneath an existing AymeProvider or useAyme owner.`        | `useAyme(options)` beneath an owner.                            |
 | `useAyme must be called within an active Vue effect scope`, and the same for `usePageObject`  | Called outside `setup` or an effect scope.                      |
@@ -259,7 +259,7 @@ A build includes Ayme only with the plugin's `include: true`. The config above k
 
 | Export                       | Kind       | Does                                                                                                                                                                   |
 | ---------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AymeProvider`               | Component  | Starts and owns Ayme for its subtree. Props are the `createAyme` options.                                                                                              |
-| `useAyme(options?)`          | Composable | Without an owner above, starts and owns Ayme. Returns `{ ayme, webMCP }`.                                                                                              |
+| `AymeProvider`               | Component  | Starts and owns ayme for its subtree. Props are the `createAyme` options.                                                                                              |
+| `useAyme(options?)`          | Composable | Without an owner above, starts and owns ayme. Returns `{ ayme, webMCP }`.                                                                                              |
 | `usePageObject(Model)`       | Composable | Registers the class for the current scope and returns its instance.                                                                                                    |
 | `usePeek(values, name, id?)` | Composable | [Experimental](../reference/experimental-apis.md). Adds the component's instance of the Peek `name` while it is mounted, reading the current values of `values`' refs. |

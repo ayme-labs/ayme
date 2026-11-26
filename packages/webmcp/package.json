@@ -1,7 +1,7 @@
 {
   "name": "@ayme-dev/webmcp",
   "version": "0.2.0",
-  "description": "Publishing Ayme's tools through WebMCP, for agents that run in the browser.",
+  "description": "Publishing ayme's tools through WebMCP, for agents that run in the browser.",
   "keywords": [
     "ai-agent",
     "coding-agent",
@@ -21,7 +21,14 @@
     "directory": "packages/webmcp"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs",
+        "default": "./dist/index.mjs"
+      }
+    }
   },
   "type": "module",
   "sideEffects": false,
@@ -34,15 +41,11 @@
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
     },
-    "./testing": {
-      "types": "./dist/testing.d.mts",
-      "import": "./dist/testing.mjs",
-      "default": "./dist/testing.mjs"
-    }
+    "./testing": "./testing/index.ts"
   },
   "scripts": {
     "build": "tsdown",
-    "lint": "eslint src --max-warnings 0",
+    "lint": "eslint src testing --max-warnings 0",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.browser.config.ts",
     "typecheck": "tsc --noEmit",
@@ -51,14 +54,6 @@
   },
   "dependencies": {
     "webmcp-types": "^0.1.10"
-  },
-  "peerDependencies": {
-    "@playwright/test": ">=1.29 <1.65"
-  },
-  "peerDependenciesMeta": {
-    "@playwright/test": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@ayme-dev/ayme": "workspace:*",

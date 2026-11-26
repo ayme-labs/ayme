@@ -10,7 +10,6 @@ import { callPageTool } from "./callPageTool";
 
 const unknown = (name: string) => errorResult(`Unknown tool "${name}".`);
 const noFailure = async () => undefined;
-const saveImage = vi.fn(async (filename: string) => `/tmp/shots/${filename}`);
 
 it("answers that a name is unknown while only an App Process is paired", async () => {
   const connection = new AgentConnection();
@@ -24,14 +23,7 @@ it("answers that a name is unknown while only an App Process is paired", async (
   ]);
 
   expect(
-    await callPageTool(
-      connection,
-      "peek.node.mail",
-      {},
-      unknown,
-      saveImage,
-      noFailure
-    )
+    await callPageTool(connection, "peek.node.mail", {}, unknown, noFailure)
   ).toEqual(unknown("peek.node.mail"));
 });
 
@@ -41,7 +33,6 @@ it("answers that no page is connected while nothing is paired", async () => {
     "peek.counter",
     {},
     unknown,
-    saveImage,
     noFailure
   );
 
@@ -53,17 +44,21 @@ it("answers that no page is connected while nothing is paired", async () => {
 
 it("answers that no page is connected and that the served Page Objects did not build, while no build has succeeded", async () => {
   const failed = {
-    entry: "/work/.ayme/page-objects.ts",
-    error: "/work/.ayme/pom/PlainPage.ts:3:0: Unexpected end of file",
-    watching: true,
-  };
+    kind: "never-built",
+    entry: "/work/ayme/page-objects.ts",
+    errors: [
+      {
+        text: "Unexpected end of file",
+        location: { file: "/work/ayme/pom/PlainPage.ts", line: 3, column: 0 },
+      },
+    ],
+  } as const;
 
   const result = await callPageTool(
     new AgentConnection(),
     "snapshot",
     {},
     unknown,
-    saveImage,
     async () => failed
   );
 
@@ -72,30 +67,23 @@ it("answers that no page is connected and that the served Page Objects did not b
     {
       type: "text",
       text: expect.stringMatching(
-        /^No page is connected\. The Page Objects entry \/work\/\.ayme\/page-objects\.ts did not build.*The first error: \/work\/\.ayme\/pom\/PlainPage\.ts:3:0: Unexpected end of file\nThe server is watching for changes: it rebuilds the entry when a file it read changes\.$/s
+        /^No page is connected\. The Page Objects entry \/work\/ayme\/page-objects\.ts did not build.*The first error: \/work\/ayme\/pom\/PlainPage\.ts:3:1: Unexpected end of file\nThe server is watching for changes: it rebuilds the entry when a file it read changes\.$/s
       ),
     },
   ]);
 });
 
-it("answers that no page is connected, and why, after the server refused a page whose Ayme it can't work with", async () => {
+it("answers that no page is connected, and why, after the server refused a page whose ayme it can't work with", async () => {
   const connection = new AgentConnection();
   connection.refuseVersion(
-    "Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts."
+    "ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts."
   );
 
   expect(
-    await callPageTool(
-      connection,
-      "peek.counter",
-      {},
-      unknown,
-      saveImage,
-      noFailure
-    )
+    await callPageTool(connection, "peek.counter", {}, unknown, noFailure)
   ).toEqual(
     errorResult(
-      "No page is connected: Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts."
+      "No page is connected: ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts."
     )
   );
 });
@@ -104,67 +92,16 @@ it("answers why no page is connected while only an App Process is paired after t
   const connection = new AgentConnection();
   connection.attachProcess({ process: "server" }).publishTools([]);
   connection.refuseVersion(
-    "Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts."
+    "ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts."
   );
 
   expect(
-    await callPageTool(
-      connection,
-      "peek.counter",
-      {},
-      unknown,
-      saveImage,
-      noFailure
-    )
+    await callPageTool(connection, "peek.counter", {}, unknown, noFailure)
   ).toEqual(
     errorResult(
-      "No page is connected: Ayme 0.2.0 on the page and the Ayme MCP server 0.9.0 speak different pairing contracts."
+      "No page is connected: ayme 0.2.0 on the page and the ayme MCP server 0.9.0 speak different pairing contracts."
     )
   );
-});
-
-it("saves the image a page tool returns and gives it to the agent with its path", async () => {
-  const connection = new AgentConnection();
-  const page = connection.attach(
-    { tab: "a", url: "http://127.0.0.1:5173/" },
-    () => {}
-  )!;
-  page.publishTools([
-    { name: "screenshot", description: "", inputSchema: {}, available: true },
-  ]);
-  const image = {
-    type: "image",
-    subject: "the viewport",
-    filename: "shot.png",
-    mimeType: "image/png",
-    width: 10,
-    height: 10,
-    data: "iVBORw0KGgo=",
-  };
-
-  const result = callPageTool(
-    connection,
-    "screenshot",
-    {},
-    unknown,
-    saveImage,
-    noFailure
-  );
-  for await (const call of page.calls(undefined)) {
-    page.answer({ callId: call.callId, ok: true, result: image });
-    break;
-  }
-
-  expect(await result).toEqual({
-    content: [
-      { type: "image", data: image.data, mimeType: "image/png" },
-      {
-        type: "text",
-        text: "Screenshot of the viewport, 10×10 PNG, saved to /tmp/shots/shot.png.",
-      },
-    ],
-  });
-  expect(saveImage).toHaveBeenCalledWith("shot.png", image.data);
 });
 
 const pageTool = (name: string) => ({
@@ -203,14 +140,7 @@ describe("a call while the tab loads a new document", () => {
   /** Calls `name`, and tells whether the call has been answered yet. */
   const call = (connection: AgentConnection, name = "snapshot") => {
     let answered = false;
-    const result = callPageTool(
-      connection,
-      name,
-      {},
-      unknown,
-      saveImage,
-      noFailure
-    );
+    const result = callPageTool(connection, name, {}, unknown, noFailure);
     void result.then(() => (answered = true));
     return { result, answered: () => answered };
   };
@@ -222,7 +152,7 @@ describe("a call while the tab loads a new document", () => {
     next.publishTools([pageTool("snapshot")]);
   };
   const leftFor = (to: string) =>
-    `The page started loading ${to} and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run Ayme's Agent Connection.`;
+    `The page started loading ${to} and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run ayme's Agent Connection.`;
 
   it("waits for the new page when sent after the page said it is navigating, and runs there", async () => {
     vi.useFakeTimers();
@@ -288,7 +218,7 @@ describe("a call while the tab loads a new document", () => {
 
     expect(await result).toEqual(
       errorResult(
-        "The page started reloading and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run Ayme's Agent Connection."
+        "The page started reloading and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run ayme's Agent Connection."
       )
     );
   });
@@ -437,7 +367,7 @@ describe("a call while the tab loads a new document", () => {
 
     expect(await result).toEqual(
       errorResult(
-        "The Ayme MCP server stopped before the page reconnected, so the call did not run."
+        "The ayme MCP server stopped before the page reconnected, so the call did not run."
       )
     );
   });

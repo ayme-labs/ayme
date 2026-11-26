@@ -1,3 +1,5 @@
+import { withholdTokens } from "./environment.ts";
+
 /**
  * `--flag value` pairs and bare `--switch` flags after an optional leading
  * `--`, as the package scripts pass them. Anything else throws `usage`.
@@ -23,4 +25,29 @@ export function parseFlags(
     index += 1;
   }
   return values;
+}
+
+/** How long the harness may stay alive once it has reported its outcome. */
+const exitGraceMs = 10_000;
+
+/**
+ * Runs a command's `main`, with the exported tokens withheld from every
+ * child process it starts: an error it throws is printed and ends the
+ * harness with exit code 2. Once the outcome is reported the harness ends
+ * within `graceMs`, even when something that never closes would keep it
+ * alive, a connection to a lab stack that went away for one; without it a
+ * job on a runner would wait out its own timeout.
+ */
+export function runMain(main: () => Promise<void>, graceMs = exitGraceMs) {
+  withholdTokens();
+  void main()
+    .catch((error: unknown) => {
+      process.stderr.write(
+        `${error instanceof Error ? error.message : String(error)}\n`
+      );
+      process.exitCode = 2;
+    })
+    .finally(() => {
+      setTimeout(() => process.exit(), graceMs).unref();
+    });
 }

@@ -1,6 +1,6 @@
 import type { ChildRun, Run } from "./run";
-import { runIsOnMember } from "../../structure";
-import type { Selection } from "../../navigation";
+import { runIsOnMember } from "../../structure/domain";
+import type { Selection } from "../../navigation/domain";
 
 /** Which runs belong to the selection, and what Runs calls that scope. */
 export type RunScope = {
@@ -47,7 +47,6 @@ function runScopeOf(
   membersOf: (ref: string) => readonly string[],
   within: (path: string) => ReadonlySet<string>
 ): { label: RunScope["label"]; includes: Includes } {
-  /** Whether a run's object is one of `paths`. */
   const isOn = (paths: ReadonlySet<string>, run: ChildRun) =>
     run.objectPath !== undefined
       ? paths.has(run.objectPath)
