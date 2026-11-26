@@ -28,6 +28,12 @@ test("the e2e suite's Page Objects run as tools, record and replay", async ({
     "true"
   );
 
+  // A call that changes nothing on screen: the recording has no change to
+  // check, so the call running again without failing is its proof.
+  await call("show the Tools lens again", "Navigator_showLens", {
+    name: "Tools",
+  });
+
   await call("open the addItem tool's page", "Inspector_tool", {
     name: "ListPage.addItem",
   });
