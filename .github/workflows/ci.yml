@@ -392,12 +392,14 @@ jobs:
           for version in $versions; do
             echo "::group::Playwright $version"
             # A project with only that Playwright, outside the repository,
-            # and the headless Chromium it launches.
+            # and both Chromium builds it launches: the headless shell, and
+            # Chromium's own, which a browser on a profile of its own needs
+            # for a tab list that follows the active tab.
             project="$RUNNER_TEMP/playwright-$version"
             mkdir -p "$project"
             part install sh -c "cd '$project' && npm init -y > /dev/null \
               && npm install --no-audit --no-fund 'playwright@$version' \
-              && npx --no-install playwright install chromium-headless-shell"
+              && npx --no-install playwright install chromium"
             export AYME_PLAYWRIGHT_PROJECT="$project"
             export AYME_RECORDER_PLAYWRIGHT_PROJECT="$project"
             # Passing is not enough: each suite's own check must also say that

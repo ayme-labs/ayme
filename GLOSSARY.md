@@ -47,6 +47,10 @@ A side that drives a page through Playwright's `Page`: the page's own runtime, o
 One running ayme connected to one browser, started with `ayme open` or `ayme attach`. It runs the project's Page Objects in Node, as the Host of each Tab it works on. An agent reaches it through the `ayme` commands, a developer through the Inspector. A project folder can have several, each with a name.
 _Avoid_: daemon, server, background process, front. Not a Page State Session, which is what ayme remembers of one document. A page that ships ayme is not a Session.
 
+**Tab**:
+One tab of a Session's browser. It shows one page at a time and outlives it: a page load gives the Tab a new page. A Session works on the most recently active Tab unless a command names another.
+_Avoid_: window, target
+
 **Visit**:
 One stretch of a Page State Session between navigations: from document load, or from a same-document navigation, to the next. Interaction history is scoped by Visits.
 
@@ -58,7 +62,7 @@ The class name a Structural Page State shows on a node that is the Page Object R
 _Avoid_: label, POM label, Page Object label
 
 **Page Object Id**:
-The name a caller gives a Page Object of a class with a Page Object Root when it calls one of its Page Object Tools, written `po<n>`. The page numbers its Page Objects in the order it first shows them. The id belongs to the Page Object, its class and the element of its Page Object Root: two classes rooted at one element are two Page Objects with two ids. It is kept while that element stays on the page and is never given to another Page Object. It is not a Structural Ref and neither can stand in for the other. A Structural Page State an agent reads shows it on the Page Object Root beside the Page Object Root Mark.
+The name a caller gives a Page Object of a class with a Page Object Root when it calls one of its Page Object Tools, written `po<n>`. It is unique within the Host that gave it: within one page for a page's own runtime, across all its Tabs for a Session. It is good only with that Host. The id belongs to the Page Object, its class and the element of its Page Object Root: two classes rooted at one element are two Page Objects with two ids. It is kept while that element stays on the page and is never given to another Page Object. A Swap keeps it when the class name and the element are unchanged. It is not a Structural Ref and neither can stand in for the other. A Structural Page State an agent reads shows it on the Page Object Root beside the Page Object Root Mark.
 _Avoid_: Instance Ref, instance id, Page Object ref
 
 **Page Object Tree**:

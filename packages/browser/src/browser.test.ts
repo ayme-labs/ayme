@@ -107,7 +107,7 @@ it("starts Chromium headless, with its DevTools protocol on the debug port it is
   ]);
 });
 
-it("starts Chromium on a profile in the folder it is given, emulating no viewport of its own", async () => {
+it("starts Chromium on a profile in the folder it is given, emulating no viewport of its own, and in Chromium's own headless mode, whose tab list follows the active tab", async () => {
   const { found, asked } = standIn();
 
   const { got: started } = await got(found, {
@@ -120,6 +120,7 @@ it("starts Chromium on a profile in the folder it is given, emulating no viewpor
         "/tmp/ayme-profile",
         {
           headless: true,
+          channel: "chromium",
           args: [],
           viewport: null,
           handleSIGINT: false,

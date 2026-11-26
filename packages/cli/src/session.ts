@@ -26,7 +26,8 @@ async function answerOf(
   if (plan.kind === "list") return listSessions(projectDir);
   const place = { projectDir, name: plan.session };
   if (plan.kind === "ask") return askSession(place, plan.request);
-  if (plan.kind === "call") return askCall(place, plan.tool, plan.params);
+  if (plan.kind === "call")
+    return askCall(place, plan.tool, plan.params, plan.tab);
   return openSession({
     ...place,
     request:

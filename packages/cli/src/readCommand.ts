@@ -6,9 +6,9 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
        ayme capture --cdp=<url>
        ayme open [url] [--headed]
        ayme attach --cdp=<url>
-       ayme page-objects
-       ayme tools
-       ayme call <tool> [--params <json> | --params @<file>]
+       ayme page-objects [--tab=<url>]
+       ayme tools [--tab=<url>]
+       ayme call <tool> [--params <json> | --params @<file>] [--tab=<url>]
        ayme detach
        ayme close
        ayme list
@@ -36,6 +36,10 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  that takes none.
   --params @<file>
                  Read that JSON object from <file>.
+  --tab=<url>    Work on the tab whose page shows <url>, as the first line of
+                 ayme page-objects prints it, and not on the browser's most
+                 recently active tab. A call's Page Object Id chooses its tab
+                 by itself.
   detach         End a Session started with attach, and leave its browser
                  running.
   close          End the Session, and close its browser if ayme opened it.
@@ -93,7 +97,14 @@ export type Command =
   | ({ kind: "ask"; request: SessionRequest; json: boolean } & Named)
   /** `ayme call`: the tool, and its `--params` as given, JSON or
    * `@<file>`. */
-  | ({ kind: "call"; tool: string; params?: string; json: boolean } & Named)
+  | ({
+      kind: "call";
+      tool: string;
+      params?: string;
+      /** The URL of the Tab `--tab` names. */
+      tab?: string;
+      json: boolean;
+    } & Named)
   | { kind: "list"; json: boolean }
   /** The Session's background process, which `open` starts with the
    * options it was given, as JSON. */
@@ -132,10 +143,11 @@ const SESSION_COMMANDS: Readonly<Record<string, SessionRequest | undefined>> = {
   attach: undefined,
   list: undefined,
   call: undefined,
+  // Each asks for the listing of the Tab --tab names.
+  "page-objects": undefined,
+  tools: undefined,
   close: { stop: {} },
   detach: { detach: {} },
-  "page-objects": { pageObjects: {} },
-  tools: { tools: {} },
 };
 
 /** The word the Session's background process is started with. */
@@ -155,6 +167,7 @@ function readSessionCommand(
     cdp?: string;
     session?: string;
     params?: string;
+    tab?: string;
   };
   try {
     ({ positionals, values } = parseArgs({
@@ -171,6 +184,7 @@ function readSessionCommand(
         cdp: { type: "string" },
         session: { type: "string", short: "s" },
         params: { type: "string" },
+        tab: { type: "string" },
       },
     }));
   } catch (error) {
@@ -178,6 +192,10 @@ function readSessionCommand(
   }
   if (values.help) return { kind: "help", text: USAGE };
   if (values.session === "") return fail("Give -s the name of a Session.");
+  if (values.tab === "")
+    return fail(
+      "Give --tab the URL a tab shows, as the first line of ayme page-objects prints it."
+    );
   const [word, url, ...more] = positionals;
   const json = values.json ?? false;
   const session = values.session ?? (fromEnvironment || undefined);
@@ -187,23 +205,35 @@ function readSessionCommand(
       return fail(
         "Give ayme attach the address of the browser's DevTools protocol, such as --cdp=http://127.0.0.1:9222."
       );
-    if (url !== undefined || values.headed)
+    if (url !== undefined || values.headed || values.tab !== undefined)
       return { kind: "error", text: USAGE };
     return { kind: "attach", cdp: values.cdp, json, ...named };
   }
   if (values.cdp !== undefined) return { kind: "error", text: USAGE };
-  const { params } = values;
+  const { params, tab } = values;
+  const onTab = tab === undefined ? {} : { tab };
   if (word === "call")
     return url !== undefined && more.length === 0 && !values.headed
       ? {
           kind: "call",
           tool: url,
           ...(params === undefined ? {} : { params }),
+          ...onTab,
           json,
           ...named,
         }
       : { kind: "error", text: USAGE };
   if (params !== undefined) return { kind: "error", text: USAGE };
+  if (word === "page-objects" || word === "tools")
+    return url === undefined && !values.headed
+      ? {
+          kind: "ask",
+          request: word === "tools" ? { tools: onTab } : { pageObjects: onTab },
+          json,
+          ...named,
+        }
+      : { kind: "error", text: USAGE };
+  if (tab !== undefined) return { kind: "error", text: USAGE };
   if (word === "open" && more.length === 0)
     return {
       kind: "open",

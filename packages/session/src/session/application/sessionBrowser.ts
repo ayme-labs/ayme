@@ -29,6 +29,31 @@ export interface HostedTab {
   ) => Effect.Effect<RunAnswer, RunError>;
 }
 
+/** A Tab of the Session's browser: the same object for as long as the Tab
+ * is open. */
+export interface BrowserTab {
+  /** The URL its page shows now, which names the Tab on the command
+   * line. */
+  readonly url: () => string;
+  /**
+   * Makes the Session the Host of the Tab, with focus emulation on, so that
+   * a Run works the same while the Tab is not in front (rule 6). `given`
+   * hears each Page Object Id the Tab's Host gives out. It reads nothing of
+   * the page, so an open dialog cannot hold it up.
+   */
+  readonly host: (
+    given: (id: string) => void
+  ) => Effect.Effect<HostedTab, TabReadError>;
+}
+
+/** The Tabs of a Session's browser, each to run the built Page Objects
+ * on, with Page Object Ids from one source the Tabs share. */
+export interface BrowserTabs {
+  /** The Tabs open now, the most recently active first, in the order of the
+   * browser's own tab list: it reads no page. */
+  readonly open: Effect.Effect<readonly BrowserTab[], TabReadError>;
+}
+
 /** A browser a Session has. */
 export interface HeldBrowser {
   /** The address of its DevTools protocol, which a browser automation
@@ -37,14 +62,12 @@ export interface HeldBrowser {
   /** Completes when the browser goes away. */
   readonly gone: Effect.Effect<void>;
   /**
-   * Makes the Session the Host of the Tab the browser opened on, or of a
-   * joined browser's first Tab, running
-   * `pageObjects` there. It reads nothing of the page, so an open dialog
-   * cannot hold it up.
+   * Gets ready to be the Host of the browser's Tabs, running `pageObjects`
+   * on each Tab the Session works on. It reads nothing of any page.
    */
   readonly host: (
     pageObjects: BuiltPageObjects
-  ) => Effect.Effect<HostedTab, SessionStartError>;
+  ) => Effect.Effect<BrowserTabs, SessionStartError>;
 }
 
 /**

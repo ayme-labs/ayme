@@ -117,6 +117,29 @@ it("starts Chromium, with its DevTools protocol on the debug port, and a page lo
   );
 });
 
+it("starts Chromium on a profile of its own whose tab list, headless too, names the most recently active tab first", async () => {
+  const debugPort = await freePort();
+  const profile = mkdtempSync(join(tmpdir(), "ayme-profile-"));
+  ends.push(async () => rmSync(profile, { recursive: true, force: true }));
+  const started = await got({ open: { headed: false, debugPort, profile } });
+  const [context] = started.playwrightBrowser.contexts();
+  const first = context!.pages()[0]!;
+  await first.goto("data:text/html,<p>first</p>");
+  const second = await context!.newPage();
+  await second.goto("data:text/html,<p>second</p>");
+  const front = async () => {
+    const list = (await (
+      await fetch(`http://127.0.0.1:${debugPort}/json/list`)
+    ).json()) as { type: string; url: string }[];
+    return list.find(({ type }) => type === "page")?.url;
+  };
+  expect(await front()).toBe("data:text/html,<p>second</p>");
+
+  await first.bringToFront();
+
+  await expect.poll(front).toBe("data:text/html,<p>first</p>");
+});
+
 it("closes a browser it started when it releases it", async () => {
   const debugPort = await freePort();
   const started = await got({ open: { headed: false, debugPort } });

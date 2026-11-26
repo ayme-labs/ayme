@@ -95,7 +95,14 @@ function launch(
     playwright.chromium
       // The browser is shared with the developer's browser automation, so
       // ayme emulates no viewport of its own on its pages.
-      .launchPersistentContext(open.profile, { ...options, viewport: null })
+      .launchPersistentContext(open.profile, {
+        ...options,
+        viewport: null,
+        // Chromium's own build, not its headless shell: headless, it still
+        // keeps its tabs in one window, whose tab list puts the most
+        // recently active first. The shell's list never changes order.
+        channel: "chromium",
+      })
       // A context on a profile belongs to a browser of its own, which
       // Playwright always gives on Chromium.
       .then((context) => context.browser()!)

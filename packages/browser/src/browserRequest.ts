@@ -14,7 +14,7 @@ export type BrowserRequest =
         readonly debugPort?: number | undefined;
         /** Starts Chromium on a profile in this folder, so that every
          * page, those a client that joins opens among them, is in one
-         * context and one window. */
+         * context and one window, also headless. */
         readonly profile?: string | undefined;
       };
     }
