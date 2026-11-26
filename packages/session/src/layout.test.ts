@@ -139,3 +139,31 @@ it(
     ).toEqual([]);
   }
 );
+
+it(
+  "lint lets one slice reach another only through the front door of a layer (ADR-0046)",
+  slow,
+  async () => {
+    for (const [path, code] of [
+      [
+        "src/process/infrastructure/misplaced.ts",
+        'export { stockBrowser } from "../../playwright/infrastructure/live/stockBrowser";\n',
+      ],
+      [
+        "src/playwright/infrastructure/live/misplaced.ts",
+        'export { openSession } from "../../../session/application/session";\n',
+      ],
+      [
+        "src/index.ts",
+        'export { askSession } from "./process/infrastructure/commands";\n',
+      ],
+      [
+        "src/process/infrastructure/misplaced.ts",
+        'export * from "../../session";\n',
+      ],
+    ])
+      expect(await lint(path, code), path).toContainEqual(
+        expect.stringContaining("through the front door of the layer")
+      );
+  }
+);

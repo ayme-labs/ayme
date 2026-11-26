@@ -52,12 +52,15 @@ pairs with a server another test or run has on the machine.
 `@ayme-dev/cli` as a child process, through the `ayme` fixture of
 `aymeCommand.ts`. Each test gets a project folder and a cache folder of its own
 in its output folder, so the command uses the fixture's Playwright and
-`@ayme-dev/ayme` and never finds another test's Session, and a Session the test
-left open is ended with it. The project folder holds a copy of `command/ayme`,
-whose Page Objects a Session builds and runs in Node: they use Playwright only,
-since nothing of them runs in the page. `shop.html` is a page without ayme
-that they describe: `ShopPage`, and `Basket`, which has a Page Object Root and
-whose `clear` is unavailable while the basket is empty. The test's own Playwright
+`@ayme-dev/ayme` and never finds another test's Session, and a temporary folder
+of its own, which every process its commands start names, so each is ended with
+the test, even one that never got as far as its record. The build of the Page
+Objects writes there too, and the three folders are removed after the test.
+The project folder holds a copy of `command/ayme`, whose Page Objects a Session
+builds and runs in Node: they use Playwright only, since nothing of them runs
+in the page. `shop.html` is a page without ayme that they describe:
+`ShopPage`, and `Basket`, which has a Page Object Root and whose `clear` is
+unavailable while the basket is empty. The test's own Playwright
 connection, at the address `ayme open` printed, plays the developer's browser
 automation.
 

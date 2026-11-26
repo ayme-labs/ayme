@@ -20,7 +20,7 @@ import {
 } from "../src/session/domain";
 
 /** The address the scripted browser gives. */
-export const SCRIPTED_ADDRESS = "http://127.0.0.1:9222";
+const SCRIPTED_ADDRESS = "http://127.0.0.1:9222";
 
 /** What the scripted build gives: the project's Page Objects, built. */
 export const SCRIPTED_PAGE_OBJECTS: BuiltPageObjects = Object.freeze({
@@ -44,6 +44,9 @@ export interface ScriptedBrowser {
   open(): void;
   /** A held open fails, for the reason a person reads. */
   failOpen(reason: string): void;
+  /** A held open breaks with an error nobody expected, such as a folder
+   * that could not be made. */
+  breakOpen(defect: Error): void;
   /** A held build finishes: the Page Objects are built. */
   finishBuild(): void;
   /** A held build fails, with the build's errors as `ayme open` prints
@@ -114,20 +117,22 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   });
   const browsers = Layer.succeed(SessionBrowser, {
     get: (asking) =>
+      // The wait for the open is outside the acquire, which cannot be
+      // interrupted, so that a Session can stop a start under way.
       Effect.acquireRelease(
-        Effect.sync(() => asked.push(asking)).pipe(
-          Effect.andThen(Deferred.await(opened)),
-          Effect.as({
-            address: SCRIPTED_ADDRESS,
-            gone: Deferred.await(gone),
-            host: (pageObjects: BuiltPageObjects) =>
-              Effect.sync(() => {
-                hostedWith.push(pageObjects);
-                return tab;
-              }),
-          })
-        ),
+        Effect.sync(() => asked.push(asking)),
         () => Effect.sync(() => (released = true))
+      ).pipe(
+        Effect.andThen(Deferred.await(opened)),
+        Effect.as({
+          address: SCRIPTED_ADDRESS,
+          gone: Deferred.await(gone),
+          host: (pageObjects: BuiltPageObjects) =>
+            Effect.sync(() => {
+              hostedWith.push(pageObjects);
+              return tab;
+            }),
+        })
       ),
   });
 
@@ -142,6 +147,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       open: () => Deferred.doneUnsafe(opened, Exit.void),
       failOpen: (reason) =>
         Deferred.doneUnsafe(opened, Exit.fail(new SessionStartError(reason))),
+      breakOpen: (defect) => Deferred.doneUnsafe(opened, Exit.die(defect)),
       finishBuild: () =>
         Deferred.doneUnsafe(built, Exit.succeed(SCRIPTED_PAGE_OBJECTS)),
       failBuild: (errors) =>

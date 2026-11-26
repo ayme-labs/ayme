@@ -35,6 +35,18 @@ export const openedAnswer = (address: string): SessionAnswer => ({
   data: { address },
 });
 
+/** Why a Session that ended before its start was answered did not start. */
+export function endedAtStart(end: SessionEnd): string {
+  switch (end) {
+    case "stopped":
+      return "ayme close ended the Session before it started.";
+    case "browser gone":
+      return "The browser went away before the Session started.";
+    case "start failed":
+      return "The Session never started.";
+  }
+}
+
 export const failed = (text: string): SessionAnswer => ({ ok: false, text });
 
 /** A tool's lines in `ayme tools`: its name, whether it is unavailable and
