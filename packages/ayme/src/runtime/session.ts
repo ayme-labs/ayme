@@ -786,10 +786,12 @@ export function createAymeOn(
 
   /** A probe of the Page Objects after an action, which never fails the Run. */
   function probeAfterAction(): Promise<void> {
-    return target
-      .registry()
-      .probeRegisteredPomMembers()
-      .catch(() => {});
+    return spikeRunGate.timed("probe", () =>
+      target
+        .registry()
+        .probeRegisteredPomMembers()
+        .catch(() => {})
+    );
   }
 
   /**

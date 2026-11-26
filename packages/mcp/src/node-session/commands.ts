@@ -19,6 +19,7 @@ import {
 const BACKGROUND = "__background";
 const COMMANDS = [
   "attach",
+  "open",
   "detach",
   "page-objects",
   "tools",
@@ -54,6 +55,15 @@ const fail = (text: string) => {
   return 1;
 };
 
+const BACKGROUND_OPTIONS = {
+  cdp: { type: "string" },
+  mark: { type: "string" },
+  "page-objects": { type: "string" },
+  launch: { type: "string" },
+  url: { type: "string" },
+  "cdp-port": { type: "string" },
+} as const;
+
 const notRunning = (folder: string) =>
   `No Ayme process is running for ${folder}. Start one with \`ayme attach --cdp <endpoint> --mark <token>\`.`;
 
@@ -88,15 +98,8 @@ async function request(
 
 /** Starts the background process detached, and waits until it listens or exits. */
 async function attach(folder: string, args: string[]): Promise<number> {
-  const { values } = parseArgs({
-    args,
-    options: {
-      cdp: { type: "string" },
-      mark: { type: "string" },
-      "page-objects": { type: "string" },
-    },
-  });
-  if (!values.cdp || !values.mark)
+  const { values } = parseArgs({ args, options: BACKGROUND_OPTIONS });
+  if (!(values.launch && values.url) && (!values.cdp || !values.mark))
     return fail(
       `attach needs --cdp <endpoint> and --mark <token>.\n\n${SESSION_USAGE}`
     );
@@ -160,6 +163,28 @@ export async function runSessionCommand(args: string[]): Promise<number> {
   try {
     if (word === BACKGROUND) return await background(rest);
     if (word === "attach") return await attach(folder, rest);
+    // Spike (hidden tab): ayme starts the browser: `ayme open <url> [--headless] [--cdp-port <n>]`.
+    if (word === "open") {
+      const { values, positionals } = parseArgs({
+        args: rest,
+        allowPositionals: true,
+        options: {
+          headless: { type: "boolean" },
+          "cdp-port": { type: "string" },
+          "page-objects": { type: "string" },
+        },
+      });
+      return await attach(folder, [
+        "--launch",
+        values.headless ? "headless" : "headed",
+        "--url",
+        positionals[0] ?? "about:blank",
+        ...(values["cdp-port"] ? ["--cdp-port", values["cdp-port"]] : []),
+        ...(values["page-objects"]
+          ? ["--page-objects", values["page-objects"]]
+          : []),
+      ]);
+    }
     if (word === "detach") return await detach(folder);
     if (word === "page-objects")
       return await request(folder, { method: "page_objects" });
@@ -184,21 +209,17 @@ export async function runSessionCommand(args: string[]): Promise<number> {
 
 /** The background process itself: what `attach` starts detached. */
 async function background(args: string[]): Promise<number> {
-  const { values } = parseArgs({
-    args,
-    options: {
-      cdp: { type: "string" },
-      mark: { type: "string" },
-      "page-objects": { type: "string" },
-    },
-  });
+  const { values } = parseArgs({ args, options: BACKGROUND_OPTIONS });
   // Loaded here only: the thin commands never load Playwright or esbuild.
   const { runBackground } = await import("./background");
   try {
     await runBackground({
-      endpoint: values.cdp!,
-      mark: values.mark!,
+      endpoint: values.cdp,
+      mark: values.mark,
       pageObjects: values["page-objects"],
+      launch: values.launch as "headed" | "headless" | undefined,
+      url: values.url,
+      cdpPort: values["cdp-port"],
     });
   } catch (error) {
     fail((error as Error).message);

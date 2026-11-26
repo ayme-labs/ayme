@@ -30,6 +30,7 @@ export type AymePlaywright = {
     onActionEnd: (() => void) | undefined;
     onMethodEnd: ((outcome: string) => void) | undefined;
     onCall: ((call: string, phase: string) => void) | undefined;
+    onPhase: ((part: string, edge: "start" | "end") => void) | undefined;
     scope: { run<T>(execute: () => T): T; active(): boolean } | undefined;
     readonly state: string;
   };

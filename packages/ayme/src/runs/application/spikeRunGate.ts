@@ -90,6 +90,18 @@ export const spikeRunGate = {
   onCall: undefined as ((call: string, phase: string) => void) | undefined,
   /** Heard when a top-level Run's action has ended. */
   onActionEnd: undefined as (() => void) | undefined,
+  /** Spike (hidden tab): heard at the start and end of each part of a Run ayme waits on. */
+  onPhase: undefined as
+    ((part: string, edge: "start" | "end") => void) | undefined,
+  /** Spike (hidden tab): runs `execute` as the part `part` of a Run, heard by `onPhase`. */
+  async timed<T>(part: string, execute: () => Promise<T>): Promise<T> {
+    spikeRunGate.onPhase?.(part, "start");
+    try {
+      return await execute();
+    } finally {
+      spikeRunGate.onPhase?.(part, "end");
+    }
+  },
   /** The reason a refused call throws, while calls are refused. */
   get refusal() {
     return refusal;

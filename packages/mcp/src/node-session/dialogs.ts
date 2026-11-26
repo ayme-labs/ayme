@@ -165,6 +165,8 @@ export async function watchDialogs(page: Page, gate: Gate) {
   };
   gate.onCall = (call, phase) =>
     spikeLog("call", { run: current()?.id, call, phase, gate: gate.state });
+  gate.onPhase = (part, edge) =>
+    spikeLog("phase", { run: current()?.id, part, edge });
   gate.onMethodEnd = (outcome) => {
     const run = current();
     spikeLog("method-end", {
@@ -186,6 +188,20 @@ export async function watchDialogs(page: Page, gate: Gate) {
   spikeLog("watching", { stopMode, ownMode, holds });
 
   return {
+    /**
+     * Spike (hidden tab): ends the Run in progress as a dialog does: its
+     * command answers `text` at once and the action's further calls throw
+     * `refusal`. Whether a Run was in progress.
+     */
+    endCurrent(text: string, refusal: string): boolean {
+      const run = current();
+      if (!run || run.discarded) return false;
+      run.discarded = true;
+      gate.refuse(refusal);
+      spikeLog("hidden-ended", { run: run.id, gate: gate.state });
+      run.onDialog(text);
+      return true;
+    },
     /** The dialog text while a dialog is open in the tab. */
     openText: () => (open ? dialogText(open) : undefined),
     /** Runs `execute` as the call `name`, answered early when it opens a dialog nobody answers. */

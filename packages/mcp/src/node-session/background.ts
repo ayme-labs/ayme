@@ -1,14 +1,18 @@
 // Spike: the background process. It attaches to the browser the developer's
 // automation owns, runs one Ayme session over the marked tab with real
 // Playwright, and answers the thin commands over a local socket.
-import { rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { createServer } from "node:net";
 import { dirname } from "node:path";
 
 import { version } from "../../package.json";
 import { ENTRY_FILE, findPageObjectsEntry } from "../served-page-objects";
+import type { BrowserContext, Page } from "@playwright/test";
+
 import { attach, loadProjectAyme } from "./attach";
-import { watchDialogs } from "./dialogs";
+import { spikeLog, watchDialogs } from "./dialogs";
+import { hiddenMode, hiddenText, watchVisibility } from "./visibility";
 import { loadNodePageObjects } from "./nodePageObjects";
 import type { SessionRequest, SessionResponse } from "./protocol";
 import { removeRecord, socketFile, writeRecord } from "./record";
@@ -37,10 +41,17 @@ export async function runBackground({
   endpoint,
   mark,
   pageObjects,
+  launch,
+  url,
+  cdpPort,
 }: {
-  endpoint: string;
-  mark: string;
+  endpoint?: string;
+  mark?: string;
   pageObjects?: string;
+  /** Spike (hidden tab): `ayme open` starts a browser of its own instead of joining one. */
+  launch?: "headed" | "headless";
+  url?: string;
+  cdpPort?: string;
 }): Promise<void> {
   const folder = process.cwd();
   const entry = findPageObjectsEntry({ folder, named: pageObjects });
@@ -51,8 +62,51 @@ export async function runBackground({
   // Built before the attach: a build that fails never touches the browser.
   const classes = await loadNodePageObjects(entry);
   const project = await loadProjectAyme(dirname(entry));
-  const { page } = await attach(project, endpoint, mark);
+  let page: Page;
+  let owned: BrowserContext | undefined;
+  if (launch) {
+    // Spike (hidden tab): a persistent profile, so a tab opened over CDP's
+    // HTTP endpoint joins the same window, as the user's would.
+    await project.ayme.registerAymeRef(project.playwright.selectors);
+    owned = await project.playwright.chromium.launchPersistentContext(
+      mkdtempSync(`${tmpdir()}/ayme-open-`),
+      {
+        headless: launch === "headless",
+        viewport: null,
+        args: [
+          ...(cdpPort ? [`--remote-debugging-port=${cdpPort}`] : []),
+          "--window-size=480,400",
+          "--window-position=40,40",
+        ],
+      }
+    );
+    page = owned.pages()[0] ?? (await owned.newPage());
+    await page.goto(url!);
+  } else ({ page } = await attach(project, endpoint!, mark!));
+  // Spike (hidden tab), AYME_SPIKE_FOCUS=1: focus emulation on ayme's own
+  // CDP session, as Playwright sets it on every page it owns. Chromium then
+  // counts the Tab as captured, so it stays visible and keeps drawing frames
+  // while another Tab is in front or its window is minimised.
+  const focus =
+    process.env.AYME_SPIKE_FOCUS === "1"
+      ? await page.context().newCDPSession(page)
+      : undefined;
+  await focus?.send("Emulation.setFocusEmulationEnabled", { enabled: true });
   const dialogs = await watchDialogs(page, project.ayme.spikeRunGate);
+  // Spike (hidden tab): hears the Tab's visibility, and ends a Run whose Tab is hidden in "end" mode.
+  const visibility = await watchVisibility(page, (state) => {
+    if (state === "hidden" && hiddenMode === "end")
+      dialogs.endCurrent(
+        hiddenText(true),
+        "the Tab was hidden during the Run, so Ayme stopped the action."
+      );
+  });
+  spikeLog("hidden-mode", {
+    hiddenMode,
+    launch,
+    focus: focus !== undefined,
+    at: visibility.state(),
+  });
   const session = project.ayme.createAyme({ page, pageObjects: classes });
   const stopSession = await session.start();
   // The session lists a Page Object's tools once it has looked at the page,
@@ -75,6 +129,14 @@ export async function runBackground({
     // Only the Page Object Tools and page_objects come through this path.
     if (!offered().some((tool) => tool.name === name))
       return { ok: false, text: `There is no Page Object Tool "${name}".` };
+    spikeLog("command", { name, visibility: visibility.state() });
+    // Spike (hidden tab): the rule already agreed, behind the variant.
+    if (
+      hiddenMode !== "off" &&
+      name !== PAGE_OBJECTS &&
+      visibility.state() === "hidden"
+    )
+      return { ok: false, text: hiddenText(false) };
     return dialogs.wrap(
       name,
       async () => {
@@ -137,8 +199,10 @@ export async function runBackground({
     } catch {
       // The page may be gone already.
     }
-    // Exiting drops the CDP connection; the browser is not Ayme's to close.
-    process.exit(0);
+    // Exiting drops the CDP connection; a joined browser is not Ayme's to
+    // close, one `ayme open` started is.
+    if (owned) void owned.close().finally(() => process.exit(0));
+    else process.exit(0);
   };
   const server = createServer({ allowHalfOpen: true }, (connection) => {
     let received = "";
@@ -165,12 +229,13 @@ export async function runBackground({
   process.on("SIGINT", end);
   page.on("close", end);
   page.context().browser()?.on("disconnected", end);
+  if (owned) owned.on("close", end);
   writeRecord({
     folder,
     socket,
     pid: process.pid,
     version,
-    endpoint,
+    endpoint: endpoint ?? `launched ${launch}`,
     url: page.url(),
     startedAt: new Date().toISOString(),
   });

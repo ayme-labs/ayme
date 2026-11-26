@@ -12,6 +12,7 @@ import { pageObjectsTool } from "../tools/application";
 import type { JsonValue, ToolInfo } from "../shared";
 import { SETTLED_PAGE_DEADLINE_MS } from "@ayme-dev/core/structural-observation";
 import { askPresence, returnedObjectOf } from "../page-objects/application";
+import { spikeRunGate } from "../runs/application";
 
 /** What the source reads of the session, its calls made by one Caller. */
 export type PageObjectToolSession = {
@@ -93,21 +94,27 @@ export function pageObjectToolSource(
       // The tree before, the action and the tree after in the action's own
       // turn: the changes are that action's alone.
       return session.inTurn(async (page) => {
-        const before = await page.readPageObjectTree().catch(() => undefined);
+        const before = await spikeRunGate.timed("read-before", () =>
+          page.readPageObjectTree().catch(() => undefined)
+        );
         const url = page.url();
-        const result = (await page.run(name, input).catch((error: unknown) => {
-          throw withoutChangeRecord(error);
-        })) as ActionResult;
+        const result = (await spikeRunGate
+          .timed("action", () => page.run(name, input))
+          .catch((error: unknown) => {
+            throw withoutChangeRecord(error);
+          })) as ActionResult;
         // Spike: a session that outlives a load answers from the page the
         // action led to once the Page Object it returned is present there.
         // Settled again only when the page changed since it last settled:
         // the action started a load, or the Page Object came after.
         const returned = page.settle && returnedObjectOf(result);
-        const presence = returned && (await presenceBy(returned));
+        const presence =
+          returned &&
+          (await spikeRunGate.timed("presence", () => presenceBy(returned)));
         const settledThere =
           presence === "came" ||
           (presence === "present" && result.loading !== undefined)
-            ? await page.settle!()
+            ? await spikeRunGate.timed("settle-there", () => page.settle!())
             : undefined;
         return answerOf(page, result, before, url, settledThere);
       });
@@ -193,7 +200,9 @@ async function answerOf(
   if (settledThere) answer.settled = settledThere.settled;
   const now = session.url();
   if (now !== url) answer.url = now;
-  const after = await session.readPageObjectTree().catch(() => undefined);
+  const after = await spikeRunGate.timed("read-after", () =>
+    session.readPageObjectTree().catch(() => undefined)
+  );
   const changes = before && after && renderPageObjectTreeChanges(before, after);
   if (changes) answer.changes = changes;
   return answer;
