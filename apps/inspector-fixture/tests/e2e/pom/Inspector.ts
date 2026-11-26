@@ -282,12 +282,18 @@ export class ToolsLens extends Part {
   async listed(): Promise<Partial<Record<ToolGroupLabel, string[]>>> {
     const listed: Partial<Record<ToolGroupLabel, string[]>> = {};
     for (const label of toolGroupLabels) {
-      // The group's own list in the navigator, as the Playwright Page
-      // Object reads it.
-      const names = await panelTexts(
-        this.tab,
-        `nav[aria-label="Navigator"] ul[aria-label=${JSON.stringify(label)}] > li button`
+      // By role, as the Playwright Page Object reads them. Each button is
+      // named by the tool's whole name, which e2e's text reads space apart.
+      const buttons = this.on((root) =>
+        root.getByRole("list", label).getByRole("button")
       );
+      const names: string[] = [];
+      for (let index = 0; index < (await buttons.count()); index += 1)
+        names.push(
+          (await buttons
+            .within((all) => all.nth(index))
+            .getAttribute("aria-label")) ?? ""
+        );
       if (names.length > 0) listed[label] = names;
     }
     return listed;
@@ -353,9 +359,7 @@ export class Navigator extends Part {
   }
 
   async showLens(name: LensName) {
-    await this.on((root) =>
-      root.getByRole("group", "Lens").getByRole("button", name)
-    ).click();
+    await this.lens(name).click();
   }
 
   async search(query: string) {
@@ -594,13 +598,11 @@ export class RefField extends Part {
       await this.chooser.click();
   }
 
-  /** Searches the tree. */
   async find(query: string) {
     await this.open();
     await this.search.fill(query);
   }
 
-  /** Chooses a ref from the tree. */
   async choose(ref: string) {
     await this.find(ref);
     await this.node(ref).click();
@@ -617,7 +619,6 @@ export class RefField extends Part {
     await this.pickButton.click();
   }
 
-  /** Whether it's picking on the page. */
   async isPicking() {
     return (await this.pickButton.getAttribute("aria-pressed")) === "true";
   }
@@ -735,13 +736,8 @@ export class RunCard extends Part {
       .click();
   }
 
-  /** Fills the arguments, picks the item when given, and runs the tool. */
-  async run(
-    args: Readonly<Record<string, ArgumentValue>> = {},
-    { item }: { item?: string } = {}
-  ) {
+  async run(args: Readonly<Record<string, ArgumentValue>> = {}) {
     await this.fill(args);
-    if (item !== undefined) await this.pickItem(item);
     await this.runButton.click();
   }
 }
@@ -790,7 +786,6 @@ export class ToolPage extends Part {
     );
   }
 
-  /** The tool's name. */
   get title(): On {
     return this.on((root) => root.getByRole("heading", { level: 2 }));
   }
@@ -1122,7 +1117,6 @@ export class RunsView extends Part {
     ).click();
   }
 
-  /** Shows every run. */
   async showAll() {
     await this.on((root) =>
       root.getByRole("group", "Runs scope").getByRole("button", "All")

@@ -98,11 +98,6 @@ export const exampleTest = base.extend<{ ignoreAutoPairScan: void }>({
   ignoreAutoPairScan: [
     async ({ browser }, use) => {
       await browser.addInitScript(ignoreAutoPairScanInPage);
-      // The resource timing that `loadedScripts` reads keeps 250 entries by
-      // default, fewer than a dev server can load.
-      await browser.addInitScript(() =>
-        performance.setResourceTimingBufferSize(10_000)
-      );
       await use();
     },
     { auto: true },
@@ -629,6 +624,11 @@ export function agentConnectionTests({
         exampleTest.skip(
           !enabled(),
           "The app turns the Agent Connection off here."
+        );
+        // The resource timing that `loadedScripts` reads keeps 250 entries by
+        // default, fewer than a dev server can load.
+        await browser.addInitScript(() =>
+          performance.setResourceTimingBufferSize(10_000)
         );
         // Outside the range a page's auto-pair scan probes, so another
         // example's page running beside this one never pairs with it.
