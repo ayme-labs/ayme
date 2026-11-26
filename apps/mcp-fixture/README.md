@@ -50,7 +50,9 @@ pairs with a server another test or run has on the machine.
 process, through the `ayme` fixture of `aymeCommand.ts`. Each test gets a
 project folder and a cache folder of its own in its output folder, so the
 command uses the fixture's Playwright and never finds another test's Session,
-and a Session the test left open is ended with it. The test's own Playwright
+and a temporary folder of its own, which every process its commands start
+names, so each is ended with the test, even one that never got as far as its
+record. The test's own Playwright
 connection, at the address `ayme open` printed, plays the developer's browser
 automation.
 

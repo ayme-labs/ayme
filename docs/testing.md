@@ -56,7 +56,7 @@ Code serialized into the page, such as a `locator.evaluate` callback, reads as u
 
 Some code can only be exercised by a real browser: Node's coverage never sees code that runs in the page, and a mutant of code that drives a browser takes a browser to kill. So a folder under a layer's `infrastructure/` decides how its code is measured, and a new file takes its folder's treatment:
 
-- `live/` drives a real browser from Node, as the recorder's stock adapter does. Its compatibility suite on every supported Playwright version is its measure.
+- `live/` drives a real browser from Node, as the recorder's stock adapter does. Its compatibility suite on every supported Playwright version is its measure. The session package has none: the end-to-end tests of the built `ayme` command in [`apps/mcp-fixture`](../apps/mcp-fixture/README.md) run its `live/` code, and their coverage counts in no CRAP score, so it reads as uncovered.
 - `in-page/` is sent into the page as text. It stays trivial: the decisions it needs are plain rules outside the folder, which Node tests and mutates, sent into the page with it.
 - The plain logic beside them stays testable without a browser.
 

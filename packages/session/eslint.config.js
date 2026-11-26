@@ -85,10 +85,10 @@ const frontDoorFromRoot = {
   regex: pastFrontDoor(String.raw`\./`),
   message: frontDoorMessage,
 };
-// Code that drives a real browser is measured by the command's end-to-end
-// tests (docs/testing.md#code-a-real-browser-runs), so plain logic, which
-// unit tests measure, stays out of it: only the layer's front door reaches
-// it, to hand out the adapter.
+// Code that drives a real browser is not measured by the unit tests
+// (docs/testing.md#code-a-real-browser-runs), so plain logic, which they
+// measure, stays out of it: only the layer's front door reaches it, to hand
+// out the adapter.
 const live = "src/playwright/infrastructure/live/**";
 const noLive = {
   regex: String.raw`^\.\.?/(.*/)?live/`,
