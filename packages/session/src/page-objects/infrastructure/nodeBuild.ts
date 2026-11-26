@@ -1,6 +1,5 @@
 // Builds a project's Page Objects for Node, with esbuild and the project's
-// own Page Object compiler, and loads them. Measured by the command's
-// end-to-end tests: it runs the project's own code.
+// own Page Object compiler, and loads them.
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { isBuiltin } from "node:module";
 import { tmpdir } from "node:os";
@@ -9,15 +8,15 @@ import { pathToFileURL } from "node:url";
 import { Effect, Layer } from "effect";
 import * as esbuild from "esbuild";
 
-import { PageObjectsBuild } from "../../../session/application";
-import { SessionStartError } from "../../../session/domain";
+import { PageObjectsBuild } from "../../session/application";
+import { SessionStartError } from "../../session/domain";
 import {
   buildFailed,
   compileErrors,
   pageObjectClasses,
   type PomDiagnostic,
-} from "../builtEntry";
-import { projectAyme, type ProjectAyme } from "../projectAyme";
+} from "./builtEntry";
+import { projectAyme, type ProjectAyme } from "./projectAyme";
 
 /** The project's Page Objects, built and loaded for Node. */
 export type NodePageObjects = {
@@ -160,7 +159,7 @@ const load = (code: string, entry: string) =>
 
 /** Builds the project's Page Objects for Node and loads them, with the
  * project's own `@ayme-dev/ayme`. */
-export const buildForNode = ({
+const buildForNode = ({
   entry,
   compiler,
   nodeHost,
