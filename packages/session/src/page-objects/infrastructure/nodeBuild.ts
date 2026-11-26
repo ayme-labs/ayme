@@ -155,16 +155,29 @@ const bundle = (entry: string, compiler: CompilerEntry) => {
   );
 };
 
+/** Why the start failed when the built module of `entry` could not be
+ * written to a file in `folder`, which Node imports it from. */
+const notWritten = (entry: string, folder: string, cause: unknown) =>
+  new SessionStartError(
+    `ayme could not write the built Page Objects of ${entry} to a file in ${folder}: ${cause instanceof Error ? cause.message : String(cause)}`
+  );
+
 /** Imports `code` as an ES module, from a file of its own that is removed
  * once it loaded. */
 const load = (code: string, entry: string) =>
   Effect.acquireUseRelease(
-    Effect.promise(() => mkdtemp(join(tmpdir(), "ayme-page-objects-"))),
+    Effect.tryPromise({
+      try: () => mkdtemp(join(tmpdir(), "ayme-page-objects-")),
+      catch: (cause) => notWritten(entry, tmpdir(), cause),
+    }),
     (folder) =>
-      Effect.promise(async () => {
-        const file = join(folder, "page-objects.mjs");
-        await writeFile(file, code);
-        return file;
+      Effect.tryPromise({
+        try: async () => {
+          const file = join(folder, "page-objects.mjs");
+          await writeFile(file, code);
+          return file;
+        },
+        catch: (cause) => notWritten(entry, folder, cause),
       }).pipe(
         Effect.flatMap((file) =>
           importFile<{ default?: unknown }>(

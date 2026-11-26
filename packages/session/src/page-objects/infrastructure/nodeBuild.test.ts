@@ -10,11 +10,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Effect } from "effect";
-import { expect, it, onTestFinished } from "vitest";
+import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 
 import { PageObjectsBuild } from "../../session/application";
 import type { NodePageObjects } from "./nodeBuild";
 import { projectPageObjects } from "./nodeBuild";
+
+afterEach(() => void vi.unstubAllEnvs());
 
 /** A folder of the test's own, outside the repository, so no
  * @ayme-dev/ayme resolves from above it. */
@@ -199,5 +201,19 @@ it("an entry whose default export lists no classes fails the start, saying what 
 
   expect(await refusal(dir)).toContain(
     "is not an array of Page Object classes"
+  );
+});
+
+it("a built module that cannot be written to a temporary file fails the start, saying where", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts": "export default [];\n",
+  });
+  const missing = join(dir, "no-such-folder");
+  vi.stubEnv("TMPDIR", missing);
+
+  expect(await refusal(dir)).toMatch(
+    new RegExp(
+      `^ayme could not write the built Page Objects of ${join(dir, "ayme", "page-objects.ts")} to a file in ${missing}: .*ENOENT`
+    )
   );
 });

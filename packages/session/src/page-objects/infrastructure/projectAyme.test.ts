@@ -92,6 +92,18 @@ it.each([
   }
 );
 
+it("refuses an @ayme-dev/ayme whose package.json is damaged, naming the file", async () => {
+  const installed = await installAyme(folder);
+  await writeFile(join(installed, "package.json"), '{ "version": ');
+  await addEntry(folder);
+
+  expect(await refusal(folder)).toMatch(
+    new RegExp(
+      `^The package.json of the @ayme-dev/ayme at ${installed} is not JSON \\(.+\\)\\. Install @ayme-dev/ayme 0\\.3\\.0 again, for example with "npm install -D @ayme-dev/ayme@0\\.3\\.0"\\.$`
+    )
+  );
+});
+
 it("refuses an @ayme-dev/ayme that lacks an entry the Session needs", async () => {
   const installed = await installAyme(folder, {
     version: "0.3.0",
