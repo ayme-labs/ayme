@@ -18,8 +18,14 @@ const startFailed = (what: string) => (cause: unknown) =>
 
 /** A folder of its own for the browser's profile, removed with it. */
 const profileFolder = Effect.acquireRelease(
-  Effect.promise(() => mkdtemp(join(tmpdir(), "ayme-session-"))),
-  (folder) => Effect.promise(() => rm(folder, { recursive: true, force: true }))
+  Effect.tryPromise({
+    try: () => mkdtemp(join(tmpdir(), "ayme-session-")),
+    catch: startFailed("The browser's profile folder could not be made."),
+  }),
+  (folder) =>
+    Effect.promise(() =>
+      rm(folder, { recursive: true, force: true }).catch(() => {})
+    )
 );
 
 /** The address of the browser's DevTools protocol, on the port Chromium
@@ -59,9 +65,13 @@ export const stockBrowser = (projectDir: string): Layer.Layer<SessionBrowser> =>
         // The Tab the browser opened on.
         const page = context.pages()[0]!;
         const { url } = open;
+        // Once the navigation commits: a dialog the page opens while it
+        // loads is the browser automation's to answer, which it can only do
+        // once the start is answered with the address. Playwright's own
+        // navigation timeout bounds a server that never answers.
         if (url !== undefined)
           yield* Effect.tryPromise({
-            try: () => page.goto(url),
+            try: () => page.goto(url, { waitUntil: "commit" }),
             catch: startFailed(`Chromium opened, but ${url} did not load.`),
           });
         return {

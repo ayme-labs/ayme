@@ -1,5 +1,6 @@
 export {
   endAnswer,
+  endedAtStart,
   failed,
   openedAnswer,
   pageObjectsAnswer,
@@ -13,4 +14,4 @@ export {
   type TabName,
 } from "./listing";
 export type { SessionAnswer, SessionEnd, SessionRequest } from "./requests";
-export { SessionStartError } from "./startError";
+export { brokenStart, SessionStartError } from "./startError";
