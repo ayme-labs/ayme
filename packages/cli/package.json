@@ -1,22 +1,21 @@
 {
   "name": "@ayme-dev/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The ayme command. ayme capture records a browser flow on the Playwright your project already has, for a coding agent to turn into page objects and a test.",
   "keywords": [
     "ai-agent",
     "coding-agent",
-    "mcp",
-    "webmcp",
     "browser-automation",
     "playwright",
     "page-object-model",
     "testing",
+    "test-automation",
     "e2e",
     "recorder",
     "codegen"
   ],
   "homepage": "https://ayme.dev",
-  "license": "FSL-1.1-ALv2",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ayme-labs/ayme.git",

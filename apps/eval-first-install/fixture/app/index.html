@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My list</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 40rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      section {
+        border: 1px solid #ddd;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+        border-top: 1px solid #eee;
+      }
+      li:first-child {
+        border-top: 0;
+      }
+      code {
+        color: #777;
+        font-size: 0.75rem;
+      }
+      [role="alert"] {
+        color: #b00;
+      }
+      [role="dialog"] {
+        position: fixed;
+        inset: 30% auto auto 50%;
+        transform: translateX(-50%);
+        background: white;
+        border: 1px solid #999;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        box-shadow: 0 0.5rem 2rem #0004;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section aria-label="My list">
+        <h2>My list</h2>
+        <form id="add-form" aria-label="Add a list item">
+          <label for="new-item">New item</label>
+          <input
+            id="new-item"
+            autocomplete="off"
+            placeholder="e.g. Send the project update"
+          />
+          <button type="submit">Add item</button>
+          <p id="new-item-error" role="alert" hidden></p>
+        </form>
+      </section>
+
+      <section>
+        <h3 id="active-items-heading">Active items</h3>
+        <ul id="active-items" aria-labelledby="active-items-heading"></ul>
+        <p id="no-active-items">No active items. Add one above.</p>
+      </section>
+
+      <section>
+        <h3 id="archived-items-heading">Archived items</h3>
+        <ul id="archived-items" aria-labelledby="archived-items-heading"></ul>
+        <p id="no-archived-items">Archived items will appear here.</p>
+      </section>
+    </main>
+
+    <div
+      id="archive-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="archive-dialog-title"
+      hidden
+    >
+      <h2 id="archive-dialog-title">Archive item</h2>
+      <p>
+        <strong id="archive-dialog-target"></strong> will move to the archived
+        list.
+      </p>
+      <button type="button" id="cancel-archive">Cancel</button>
+      <button type="button" data-action="confirm-archive" id="confirm-archive">
+        Confirm archive
+      </button>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
