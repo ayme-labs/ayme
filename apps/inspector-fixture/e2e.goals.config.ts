@@ -31,7 +31,7 @@ export default {
   ...base,
   tests: "tests/goals/**/*.goal.ts",
   // A goal runs live for up to tens of seconds on a recording run, and one
-  // test (each tool's page, in toolsLens) runs two goals per live tool.
+  // test (each tool's page, in toolsLens) runs a goal per live tool.
   timeout: 900_000,
   // Apart from the default config's, so its recordings and reports stay
   // their own; .e2e/ is gitignored.

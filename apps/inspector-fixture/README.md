@@ -12,6 +12,7 @@ Vite plugin, the way an app's are. The tests live here rather than in
 app/         the fixture pages, their startup code and the Vite config
 ayme/pom/    the fixture app's Page Objects
 tests/       Playwright fixtures (fixtures.ts) and the specs
+tests/goals/ the goal-driven twins of the *.e2e.ts tests
 ```
 
 The pages:
@@ -63,3 +64,14 @@ fixture page that fails to start or a runtime that never lists its tools fails
 before any test assertion, with its own message. WebMCP is experimental, so
 only the test of the Connections popover's WebMCP state installs a WebMCP
 driver, the recording one from `@ayme-dev/webmcp/testing`.
+
+`pnpm test:goals` runs the goal-driven tests (`tests/goals/*.goal.ts`, with
+`e2e.goals.config.ts`), e2e's telemetry off. Each is the `*.e2e.ts` test of
+the same name with every action on the panel written as an `agent.act` goal,
+which Claude Code carries out on this machine's own login. CI has no model, so
+`test:e2e` leaves them out. A first run records each goal into
+`.e2e/goals-cache/`, and later runs replay it without the model. The fixture
+pages and the external placement's `ayme mcp` get ports of this checkout's own
+(`AYME_GOALS_PORT` and `AYME_E2E_MCP_PORT` override them).
+`pnpm check:goal-mirror` fails when a goal file drifts from its `*.e2e.ts`
+twin; `scripts/check-goal-mirror.mjs` lists what it compares.
