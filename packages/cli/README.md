@@ -1,10 +1,10 @@
-# ayme recorder
+# ayme capture
 
-The ayme recorder records a flow you click through in your app: every page you visit, every step, and what each step changed on the page. It saves the recording, with its Playwright trace, in your project. Your coding agent then turns the recording into Playwright page objects and a test.
+ayme capture records a flow you click through in your app: every page you visit, every step, and what each step changed on the page. It saves the recording, with its Playwright trace, in your project. Your coding agent then turns the recording into Playwright page objects and a test.
 
 ![A coding agent starts the recorder; the flow is recorded with the app on the left and the recorder window on the right listing each step and what it changed; the agent then writes a page object and a test from the recording and runs it](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-demo.gif)
 
-The [Recorder guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md) has every command and flag, the warnings and the limits. This page walks you from installing it to a written test.
+The [ayme capture guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md) has every command and flag, the warnings and the limits. This page walks you from installing it to a written test.
 
 ## Install
 
@@ -20,35 +20,35 @@ Add the recorder to your project as a dev dependency:
 npm install -D @ayme-dev/cli
 ```
 
-This gives you the `ayme-recorder` command; run it with `npx ayme-recorder`, from your project's folder. You can also install it globally with `npm install -g @ayme-dev/cli` and run `ayme-recorder`, or run it without installing as `npx @ayme-dev/cli`. Either way, run it in your project's folder: that is where it looks for Playwright and saves recordings.
+This gives you the `ayme` command; record with `npx ayme capture`, from your project's folder. You can also install it globally with `npm install -g @ayme-dev/cli` and run `ayme capture`, or run it without installing as `npx @ayme-dev/cli capture`. Either way, run it in your project's folder: that is where it looks for Playwright and saves recordings. If your project also has `@ayme-dev/mcp`, whose command is also called `ayme`, run `npx @ayme-dev/cli capture`.
 
-Recording needs Chromium for your project's Playwright. Install it once with:
+Recording needs Chromium for your project's Playwright. Install it once with Playwright's own command:
 
 ```sh
-npx ayme-recorder install
+npx playwright install chromium
 ```
 
-To let your coding agent turn recordings into page objects, install the `ayme-recorder` skill in your project with the `skills` CLI, as [Coding agent skills](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/coding-agent-skill.md) describes:
+To let your coding agent turn recordings into page objects, install the `ayme-capture` skill in your project with the `skills` CLI, as [Coding agent skills](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/coding-agent-skill.md) describes:
 
 ```sh
-npx skills add ayme-labs/ayme --skill ayme-recorder
+npx skills add ayme-labs/ayme --skill ayme-capture
 ```
 
 ### Updating
 
-- **Project dependency:** `npm install -D @ayme-dev/cli@latest`. `npx ayme-recorder` runs the version your project pins, so it stays on that version until you update it.
+- **Project dependency:** `npm install -D @ayme-dev/cli@latest`. `npx ayme` runs the version your project pins, so it stays on that version until you update it.
 - **Global install:** `npm install -g @ayme-dev/cli@latest`.
-- **Without installing:** `npx @ayme-dev/cli@latest codegen <url>`. Plain `npx @ayme-dev/cli` can reuse a copy it downloaded earlier.
-- **The skill:** run `npx skills add ayme-labs/ayme --skill ayme-recorder` again.
+- **Without installing:** `npx @ayme-dev/cli@latest capture <url>`. Plain `npx @ayme-dev/cli` can reuse a copy it downloaded earlier.
+- **The skill:** run `npx skills add ayme-labs/ayme --skill ayme-capture` again.
 
-To see which version you have, run `npx ayme-recorder --version`.
+To see which version you have, run `npx ayme --version`.
 
 ## Record a flow
 
-Run the recorder from your project's folder and pass the address where the flow starts:
+Run ayme capture from your project's folder and pass the address where the flow starts:
 
 ```sh
-npx ayme-recorder codegen http://localhost:3000
+npx ayme capture http://localhost:3000
 ```
 
 It opens the page in Chromium, with the recorder window beside it and a small toolbar on the page. The terminal prints the window's address as `Recorder UI: ...`.
@@ -105,17 +105,17 @@ The recorder keeps its data in an `ayme` folder in the folder you run it from:
 - `ayme/recordings/<recording-id>/trace.zip`: the Playwright trace of the recording, with DOM snapshots and network requests. When the trace cannot be written, for example because the browser stopped answering, the recording is saved without it.
 - `ayme/recordings/latest.yaml`: a copy of the latest recording that was saved. A run that recorded nothing leaves it as it was, so use the path printed as `Recording package:` for the run you just made.
 
-The first save lists `recordings/` in `ayme/.gitignore`, and creates the file if the folder has none. That keeps new recordings out of what git picks up, but it cannot untrack files that are already committed. The guide says [when the recorder leaves the file as it is](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#where-recordings-are-stored). To look into a trace, run `npx ayme-recorder trace latest`; the guide explains [what the trace holds](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#trace).
+The first save lists `recordings/` in `ayme/.gitignore`, and creates the file if the folder has none. That keeps new recordings out of what git picks up, but it cannot untrack files that are already committed. The guide says [when the recorder leaves the file as it is](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#where-recordings-are-stored). To look into a trace, open it with `npx playwright trace open ayme/recordings/<recording-id>/trace.zip`; the guide explains [what the trace holds](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#trace).
 
 ## Turn a recording into page objects
 
-The `ayme-recorder` skill teaches your coding agent to read a recording and write page objects and a Playwright test from it. Install it as in [Install](#install), or copy this request into your coding agent:
+The `ayme-capture` skill teaches your coding agent to read a recording and write page objects and a Playwright test from it. Install it as in [Install](#install), or copy this request into your coding agent:
 
-> Install the `ayme-recorder` skill from https://github.com/ayme-labs/ayme/tree/main/skills/ayme-recorder into this project's skill directory, including its references, playbooks and assets.
+> Install the `ayme-capture` skill from https://github.com/ayme-labs/ayme/tree/main/skills/ayme-capture into this project's skill directory, including its references, playbooks and assets.
 
 Then hand it the recording you just saved, with the path the terminal printed as `Recording package:`:
 
-> Turn the recording at `ayme/recordings/<recording-id>/package.yaml` into Playwright page objects and a test, with the `ayme-recorder` skill.
+> Turn the recording at `ayme/recordings/<recording-id>/package.yaml` into Playwright page objects and a test, with the `ayme-capture` skill.
 
 The agent reads the recording, proposes the page objects and the test, and writes them once you agree. You can also ask the agent to record the flow itself, as the guide describes in [Hand a flow to your coding agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#hand-a-flow-to-your-coding-agent).
 
@@ -123,12 +123,12 @@ The agent reads the recording, proposes the page objects and the test, and write
 
 A coding agent wrote Playwright page objects and a passing test for the same flow in two ways:
 
-- **ayme recorder:** the flow was recorded once, and the agent worked from the recording with the `ayme-recorder` skill. The recording was made by a script that gave the steps as input events, not by a person.
+- **ayme capture:** the flow was recorded once, and the agent worked from the recording with the `ayme-recorder` skill. The recording was made by a script that gave the steps as input events, not by a person.
 - **Playwright MCP:** the agent got the flow as written steps and explored the pages itself.
 
 |                | Time to a passing test | Mean | Runs with a failed test run | Cost                  |
 | -------------- | ---------------------- | ---- | --------------------------- | --------------------- |
-| ayme recorder  | 47 s (44 – 56)         | 49 s | 0 of 5                      | $0.39 ($0.35 – $0.43) |
+| ayme capture   | 47 s (44 – 56)         | 49 s | 0 of 5                      | $0.39 ($0.35 – $0.43) |
 | Playwright MCP | 91 s (52 – 147)        | 91 s | 2 of 5                      | $0.41 ($0.33 – $0.46) |
 
 Time and cost show the median of five runs, with the lowest and highest in parentheses. Every run ended with a passing test. The time ranges overlap by one run.
@@ -141,7 +141,7 @@ The flow has nine steps on a GitHub repository page: through its pull requests, 
 
 - **When and where:** once, on 2026-11-23, on a Mac against live github.com. The runs went one at a time, the two sides alternating.
 - **Agent:** Claude Code on Sonnet 5.5 (`claude-sonnet-5-5`) at medium effort.
-- **Recorder:** `@ayme-dev/cli` built from commit [`acaa6d1f3`](https://github.com/ayme-labs/ayme/commit/acaa6d1f39d51686ca9269f9fd5b788b3ec5e400), with the `ayme-recorder` skill of the same commit.
+- **Recorder:** `@ayme-dev/cli` built from commit [`acaa6d1f3`](https://github.com/ayme-labs/ayme/commit/acaa6d1f39d51686ca9269f9fd5b788b3ec5e400), with the `ayme-recorder` skill of the same commit, since renamed `ayme-capture`.
 - **Time:** the agent's working time from the prompt to the first passing run of the test it wrote, without the wait for the one reply each run got to its plan.
 
 The [measurement's write-up](https://github.com/ayme-labs/ayme/issues/1358#issuecomment-7098192006) has each run and the full method.

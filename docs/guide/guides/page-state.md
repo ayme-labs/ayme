@@ -188,6 +188,15 @@ This holds for Browser Tools, Custom Tools and Page Object Tools alike; an agent
 
 Over Playwright in Node, the old document's last capture can fail to reach ayme when the next document commits at once, as from a local server on a busy machine. The answer then has no `page_changed` and no Change Record, and `next` says that what the action changed before the load could not be read. ayme does not see a load that Playwright's own `goto` or `reload` starts, so `navigate` without a router function and `reload` answer once that call returns. These two, `navigate_back` and `navigate_forward` change nothing in the document themselves, so when its last capture does not arrive, the page before the call stands in for it, and they always answer with `page_changed`.
 
+## The Page Object an action returns
+
+When a Page Object Action returns a Page Object whose model declares or inherits [`present`](../reference/ayme.md#page-object-presence), the call answers once that predicate returns `true`. A Caller then finds the screen the action led to, not one still on its way, such as the nearly empty page some apps load after a sign-in before they send the browser on. The wait ends at the Settled Page deadline, counted once from the action's answer: it covers the action returning, which an action that started a full load may still be about to do, and each ask of the predicate after it. Past the deadline the call answers as it would have without the wait.
+
+- An action that returns nothing, a value that is not a Page Object, or a Page Object without a `present` of its own or inherited gets no wait.
+- ayme adds no other wait after an action. Waiting for a navigation or a load as such is the browser automation's, and an action does not wait for the screen it leads to: it returns that screen's Page Object.
+- The answer is the one the action gave; the wait changes when it comes, not what it says. A part of the page that came during the wait is in the next action's `changes_before`.
+- In the browser, where a full load ends ayme with the document, a call that starts one still answers at once. Over Playwright in Node, the call waits through the load for the returned Page Object.
+
 ## A Page Object Tool's answer to an agent
 
 An agent that calls a Page Object Tool through WebMCP or through the ayme MCP server gets a short answer instead of the action result, the same in both:
@@ -214,4 +223,4 @@ An agent that calls a Page Object Tool through WebMCP or through the ayme MCP se
 }
 ```
 
-A refused call answers with its reason alone, such as `RuntimeStateError: Item.archive is unavailable: The item is archived.`, and a failed one with its error and, when the Page Object Tree changed while it ran, `changes:` and that change in the same tree, without the Change Record. ayme adds no wait of its own after the action beyond its Settled Page wait; waiting for a navigation the action started is the browser automation's. `ayme.tools.run` in your code, the Inspector and the Goal Loop keep reading the full action result.
+A refused call answers with its reason alone, such as `RuntimeStateError: Item.archive is unavailable: The item is archived.`, and a failed one with its error and, when the Page Object Tree changed while it ran, `changes:` and that change in the same tree, without the Change Record. Besides its Settled Page wait, ayme waits after the action only for [the Page Object it returns](#the-page-object-an-action-returns). `ayme.tools.run` in your code, the Inspector and the Goal Loop keep reading the full action result.

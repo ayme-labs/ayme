@@ -173,11 +173,9 @@ in-browser agents and the app's own code call on the running page.
   structure. It ends when Finish is
   pressed, the last page is closed or it is stopped from the terminal. A recording that
   was started ends by writing a Recording Package, with its trace beside it, into the
-  project's `ayme/recordings`; without one it ends with "empty". `ayme-recorder trace`
-  opens a recording's trace with the project's own `playwright trace`, and
-  `ayme-recorder install` installs a browser with the project's own Playwright
-- Technology: Node CLI (`ayme-recorder codegen <url>`, `codegen --cdp-endpoint <address>`,
-  `trace` and `install` from `@ayme-dev/cli`), over the engine `@ayme-dev/recorder`, whose
+  project's `ayme/recordings`; without one it ends with "empty"
+- Technology: Node CLI (`ayme capture <url>` and `ayme capture --cdp=<url>`, of the `ayme`
+  command from `@ayme-dev/cli`), over the engine `@ayme-dev/recorder`, whose
   flows are written with Effect; `@ayme-dev/cli` is published and bundles the engine and
   `@ayme-dev/recorder-window`, which stay private. The engine gets its browser through the private
   `@ayme-dev/browser`, bundled into it, which loads Playwright from the project's folder and bundles
@@ -190,7 +188,7 @@ in-browser agents and the app's own code call on the running page.
   one script with React and the design system in a closed shadow root, which the engine
   runs in every recorded document; the toolbar sends commands and pulls the state through
   one page function the engine exposes in the page
-- Evidence: verified: [packages/cli/src/cli.ts](packages/cli/src/cli.ts), [packages/cli/src/codegen.ts](packages/cli/src/codegen.ts), [packages/recorder/src/engine/startRecorder.ts](packages/recorder/src/engine/startRecorder.ts), [packages/recorder/src/session/application/recorderSession.ts](packages/recorder/src/session/application/recorderSession.ts), [packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/domain/timeline.ts](packages/recorder/src/timeline/domain/timeline.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts), [packages/recorder/src/server/infrastructure/windowServer.ts](packages/recorder/src/server/infrastructure/windowServer.ts), [packages/recorder-window/src/app/main.tsx](packages/recorder-window/src/app/main.tsx), [packages/recorder/src/server/infrastructure/toolbarBridge.ts](packages/recorder/src/server/infrastructure/toolbarBridge.ts), [packages/recorder-window/src/app/toolbar.tsx](packages/recorder-window/src/app/toolbar.tsx), [docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md](docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md)
+- Evidence: verified: [packages/cli/src/cli.ts](packages/cli/src/cli.ts), [packages/cli/src/capture.ts](packages/cli/src/capture.ts), [packages/recorder/src/engine/startRecorder.ts](packages/recorder/src/engine/startRecorder.ts), [packages/recorder/src/session/application/recorderSession.ts](packages/recorder/src/session/application/recorderSession.ts), [packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/domain/timeline.ts](packages/recorder/src/timeline/domain/timeline.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts), [packages/recorder/src/server/infrastructure/windowServer.ts](packages/recorder/src/server/infrastructure/windowServer.ts), [packages/recorder-window/src/app/main.tsx](packages/recorder-window/src/app/main.tsx), [packages/recorder/src/server/infrastructure/toolbarBridge.ts](packages/recorder/src/server/infrastructure/toolbarBridge.ts), [packages/recorder-window/src/app/toolbar.tsx](packages/recorder-window/src/app/toolbar.tsx), [docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md](docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md)
 
 ## Communication
 
@@ -233,8 +231,8 @@ in-browser agents and the app's own code call on the running page.
     [packages/inspector/README.md](packages/inspector/README.md)
 - **App developers → Recorder**
   - Flows:
-    - → `ayme-recorder codegen <url>` or `codegen --cdp-endpoint <address>`, started in
-      their project's folder, and the terminal's stop; `ayme-recorder trace <target>`
+    - → `ayme capture <url>` or `ayme capture --cdp=<url>`, started in their project's
+      folder, and the terminal's stop
     - → in the recorder window, Record, Stop, Continue, Assert visibility, Clear, Finish,
       discard and restore of an entry, and the highlight of a hovered entry's or change
       row's element, sent over tRPC on a WebSocket at `/channel`; Record, Stop, Continue
@@ -245,7 +243,7 @@ in-browser agents and the app's own code call on the running page.
     - ← in the recorder window and the toolbar, the recorder's state as it changes: its
       phase, the commands that apply now, the address of the page that is open, and the
       Visits with their entries
-  - Evidence: verified: [packages/cli/src/readCommand.ts](packages/cli/src/readCommand.ts), [packages/cli/src/codegen.ts](packages/cli/src/codegen.ts), [packages/recorder/src/server/infrastructure/windowChannelRouter.ts](packages/recorder/src/server/infrastructure/windowChannelRouter.ts),
+  - Evidence: verified: [packages/cli/src/readCommand.ts](packages/cli/src/readCommand.ts), [packages/cli/src/capture.ts](packages/cli/src/capture.ts), [packages/recorder/src/server/infrastructure/windowChannelRouter.ts](packages/recorder/src/server/infrastructure/windowChannelRouter.ts),
     [packages/recorder-window/src/channel/infrastructure/webSocketRecorderChannel.ts](packages/recorder-window/src/channel/infrastructure/webSocketRecorderChannel.ts), [packages/recorder/src/server/infrastructure/toolbarBridge.ts](packages/recorder/src/server/infrastructure/toolbarBridge.ts)
 - **Playground visitors → Playground**
   - Flows:
@@ -367,7 +365,7 @@ hosting its playground.
     - Evidence: verified: [docs/guide/guides/goals-with-jev.md](docs/guide/guides/goals-with-jev.md)
   - **Playground**: does not run here; it is ayme's own app
     - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
-  - **Recorder**: `npx ayme-recorder codegen <url>` from `@ayme-dev/cli`, run by the
+  - **Recorder**: `npx ayme capture <url>` from `@ayme-dev/cli`, run by the
     developer or their coding agent in the project's folder, with the project's own
     Playwright; optional
     - Deployment node: a Node process on the developer's machine
@@ -459,7 +457,7 @@ hosting its playground.
   - **Playground**: a Vite dev server on port 4190
     - Deployment node: the playground's Vite dev server
     - Evidence: verified: [apps/example-vue/package.json](apps/example-vue/package.json), [apps/example-vue/src/App.vue](apps/example-vue/src/App.vue)
-  - **Recorder**: the workspace build, `node packages/cli/dist/cli.mjs codegen <url>`,
+  - **Recorder**: the workspace build, `node packages/cli/dist/cli.mjs capture <url>`,
     started in a folder with Playwright installed, such as `apps/recorder-fixture`
     - Deployment node: a Node process on the contributor's machine, and the Chromium it
       launches

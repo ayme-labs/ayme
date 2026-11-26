@@ -100,6 +100,9 @@ Whoever starts a top-level Run from outside: an agent through WebMCP or the ayme
 One input given to the page: a click, fill, key press, hover or selection on one element. A Run gives it, or a person does while being recorded. A Run's Interactions are the ones it performed itself; its child Runs have their own.
 _Avoid_: step, page operation, action (on its own)
 
+**ayme capture**:
+The product that records a person driving a page: the `ayme capture` command, the Recorder, and the Recording Packages it writes.
+
 **Recorder**:
 The tool that listens while a person drives a page in a browser, and writes what it saw to a Recording Package.
 

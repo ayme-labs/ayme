@@ -440,6 +440,83 @@ describe("ayme over a Playwright Page", () => {
     expect(JSON.stringify(result)).not.toContain("Second document");
   });
 
+  describe("a Run whose action returns a Page Object, through a full load", () => {
+    /**
+     * A sign-in form whose submit loads `/landing`, a nearly
+     * empty page whose script sends the browser on to `/home` after
+     * `landingMs`; with a session over it whose `SignIn.logIn` submits,
+     * returns `returnAfterMs` later, and returns a Home, present on `/home`.
+     */
+    async function signingIn(landingMs: number, returnAfterMs = 0) {
+      const page = await browser.newPage();
+      await page.route("http://app.test/**", (route) => {
+        const { pathname } = new URL(route.request().url());
+        return route.fulfill({
+          contentType: "text/html",
+          body:
+            pathname === "/landing"
+              ? `<script>setTimeout(() => location.assign("/home"), ${landingMs})</script>`
+              : pathname === "/home"
+                ? "<h1>Home</h1>"
+                : '<form method="post" action="/landing"><button>Log in</button></form>',
+        });
+      });
+      await page.goto("http://app.test/");
+      class Home {
+        constructor(readonly page: Page) {}
+      }
+      built.ayme({
+        present: (self: Home) => new URL(self.page.url()).pathname === "/home",
+      })(Home);
+      class SignIn {
+        constructor(readonly page: Page) {}
+        async logIn() {
+          await this.page.getByRole("button").click();
+          await new Promise((resolve) => setTimeout(resolve, returnAfterMs));
+          return new Home(this.page);
+        }
+      }
+      built.registerCompiledPom(SignIn, {
+        className: "SignIn",
+        members: [],
+        tools: [
+          {
+            methodName: "logIn",
+            toolName: "SignIn.logIn",
+            description: "Log in",
+            parameters: [],
+          },
+        ],
+        components: [],
+      });
+      const ayme = await startedOn(page, { pageObjects: [SignIn] });
+      // A read lists the tool: a session lists none before it reads the page.
+      await snapshot(ayme);
+      return { page, ayme };
+    }
+
+    it("answers once the returned Page Object is present, past the page the load first brought", async () => {
+      const { page, ayme } = await signingIn(600);
+
+      await ayme.tools.run("SignIn.logIn", {});
+
+      expect(page.url()).toBe("http://app.test/home");
+    });
+
+    it("counts the Settled Page deadline once, from the action's answer at the load's start, through the action returning", async () => {
+      // The action returns 1.2 s after the answer; Home comes about 2.6 s
+      // after it: past one deadline from the answer, within one from the
+      // return.
+      const { page, ayme } = await signingIn(2600, 1200);
+      const started = Date.now();
+
+      await ayme.tools.run("SignIn.logIn", {});
+
+      expect(Date.now() - started).toBeGreaterThanOrEqual(1200);
+      expect(page.url()).not.toBe("http://app.test/home");
+    });
+  });
+
   it("answers a navigate, a reload and a move back to another document with what changed before them", async () => {
     const page = await pageServing((url) =>
       url.pathname === "/two"

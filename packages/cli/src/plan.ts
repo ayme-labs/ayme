@@ -1,5 +1,5 @@
 import { version } from "../package.json";
-import type { Command } from "./readCommand";
+import type { CaptureTarget, Command } from "./readCommand";
 
 /** What the command line does for a command it has read. */
 export type Plan =
@@ -9,24 +9,11 @@ export type Plan =
       text: string;
       exitCode: number;
     }
-  | {
-      kind: "codegen";
-      target:
-        | {
-            url: string;
-            headless: boolean | undefined;
-            startRecording?: true;
-            loadStorage?: string;
-            saveStorage?: string;
-          }
-        | { cdpEndpoint: string };
-    }
-  | { kind: "install"; args: string[] }
-  | { kind: "trace"; args: string[] };
+  | { kind: "capture"; target: CaptureTarget };
 
 /**
- * Decides what to do for a command: print and stop, or run one of the four
- * things the command line runs. `cli.ts` only carries the plan out.
+ * Decides what to do for a command: print and stop, or record with
+ * `ayme capture`. `cli.ts` only carries the plan out.
  */
 export function planOf(command: Command): Plan {
   switch (command.kind) {
@@ -51,22 +38,7 @@ export function planOf(command: Command): Plan {
         text: command.text,
         exitCode: 1,
       };
-    case "attach":
-      return { kind: "codegen", target: { cdpEndpoint: command.cdpEndpoint } };
-    case "codegen":
-      return {
-        kind: "codegen",
-        target: {
-          url: command.url,
-          headless: command.headless,
-          ...(command.startRecording ? { startRecording: true as const } : {}),
-          loadStorage: command.loadStorage,
-          saveStorage: command.saveStorage,
-        },
-      };
-    case "install":
-      return { kind: "install", args: command.args };
-    case "trace":
-      return { kind: "trace", args: command.args };
+    case "capture":
+      return { kind: "capture", target: command.target };
   }
 }

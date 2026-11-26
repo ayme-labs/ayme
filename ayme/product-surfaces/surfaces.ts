@@ -225,13 +225,12 @@ export const surfaces = {
     ],
   },
   recorderCommand: {
-    name: "Recorder command (`ayme-recorder`)",
-    what: "The terminal command of @ayme-dev/cli. `codegen` opens the app at an address in Chromium for recording, with options to open it without a window, to start already recording, and to load or save a login; with a DevTools address instead, it records a Chromium that is already running. `trace` opens a recording's trace (the latest, one by id, or a trace file) with the project's own Playwright and passes other trace commands on. `install` installs a browser, Chromium unless another is named. It also prints its help and its version",
+    name: "`ayme capture` command",
+    what: "The `ayme` command of @ayme-dev/cli. `ayme capture` opens the app at an address in Chromium for recording, with options to open it without a window, to start already recording, and to load or save a login; with `--cdp=<url>` instead, it records a Chromium that is already running. When Chromium cannot be opened, it names Playwright's own command that installs it. It also prints its help and its version",
     consumers: {
-      appTester:
-        "Starts a recording, loads or saves a login, installs the browser, and opens the trace of a recording",
+      appTester: "Starts a recording, and loads or saves a login",
       codingAgent:
-        "Runs the recording command for the user when the recorder skill tells it to, then opens a recording's trace while turning it into a test",
+        "Runs the recording command for the user when the ayme-capture skill tells it to",
     },
     sources: [
       "packages/cli",
@@ -257,10 +256,7 @@ export const surfaces = {
       appTester:
         "Finds the latest recording in the project and hands it to the agent",
     },
-    sources: [
-      "packages/recorder/src/contract",
-      "skills/ayme-recorder/SKILL.md",
-    ],
+    sources: ["packages/recorder/src/contract", "skills/ayme-capture/SKILL.md"],
   },
   agentSkills: {
     name: "Coding agent skills",
@@ -273,7 +269,7 @@ export const surfaces = {
     },
     sources: [
       "skills/ayme",
-      "skills/ayme-recorder",
+      "skills/ayme-capture",
       "skills/product-surfaces",
       "docs/guide/guides/coding-agent-skill.md",
     ],

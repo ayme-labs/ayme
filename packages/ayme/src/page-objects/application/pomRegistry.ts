@@ -57,6 +57,7 @@ import {
   type PageObjectRoot,
 } from "./pageObjectIds";
 import { readPageObjectTree as readTree } from "./pageObjectTree";
+import { waitForReturnedPageObject } from "./presenceWait";
 import type { PageObjectTreeRead } from "../domain/pageObjectTreeText";
 import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
 import type { RunContext } from "../../runs/application";
@@ -833,7 +834,7 @@ async function performPageObjectAction(
   { instance, root }: CallTarget,
   tool: ToolManifest,
   args: unknown,
-  { cursor, page, pageStateSession, reach }: RunContext,
+  { cursor, page, pageStateSession, reach, outlivesFullLoads }: RunContext,
   targetName: string
 ): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
@@ -856,9 +857,21 @@ async function performPageObjectAction(
     );
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
-  return pageStateSession.runAction(cursor, { tool: tool.toolName, args }, () =>
-    method.apply(instance, parameters)
+  let returned: Promise<unknown> = Promise.resolve(undefined);
+  const result = await pageStateSession.runAction(
+    cursor,
+    { tool: tool.toolName, args },
+    () => {
+      const value: unknown = method.apply(instance, parameters);
+      returned = Promise.resolve(value);
+      return value;
+    }
   );
+  // A session that ends with its document would lose the answer to a full
+  // load while it waited.
+  if (result.loading === undefined || outlivesFullLoads)
+    await waitForReturnedPageObject(returned);
+  return result;
 }
 
 function isCallable(value: unknown): value is (...args: unknown[]) => unknown {
