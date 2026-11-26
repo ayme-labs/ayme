@@ -293,3 +293,59 @@ it("when the first build fails, no Session starts: the start says why, and the b
   expect(browser.released).toBe(true);
   expect(browser.hostedWith).toEqual([]);
 });
+
+it("a build that fails while the browser still opens ends the start: the start says why, and the browser is let go", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...opening,
+    held: true,
+    heldBuild: true,
+  });
+  await pending(session.started);
+  expect(browser.asked).toHaveLength(1);
+
+  browser.failBuild("The Page Objects did not build.");
+
+  expect(await session.started).toEqual({
+    ok: false,
+    text: "The Page Objects did not build.",
+  });
+  expect(browser.released).toBe(true);
+  expect(await session.ended).toBe("start failed");
+});
+
+it("a browser that fails to open while the build runs ends the start with why", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...opening,
+    held: true,
+    heldBuild: true,
+  });
+
+  browser.failOpen("Playwright could not open Chromium.");
+
+  expect(await session.started).toEqual({
+    ok: false,
+    text: "Playwright could not open Chromium.",
+  });
+  expect(await session.ended).toBe("start failed");
+  expect(browser.hostedWith).toEqual([]);
+});
+
+it("a stop sent while the Page Objects still build ends the start, and the browser ayme opened is closed", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...opening,
+    heldBuild: true,
+  });
+  expect(await pending(session.started)).toBe(true);
+
+  expect(await session.ask({ stop: {} })).toEqual({
+    ok: true,
+    text: "The Session ended and its browser was closed.",
+  });
+  expect(browser.released).toBe(true);
+  expect(await session.started).toEqual({
+    ok: false,
+    text: "ayme close ended the Session before it started.",
+  });
+  expect(await session.ended).toBe("stopped");
+  expect(browser.hostedWith).toEqual([]);
+});
