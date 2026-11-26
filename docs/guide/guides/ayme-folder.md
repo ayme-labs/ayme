@@ -20,7 +20,7 @@ An app that ships ayme needs only `tsconfig.json` and `pom/`. Each other entry a
 
 - `page-objects.ts` and `init-script.js`: [Page Objects on a page without ayme](page-objects-without-ayme.md), which is experimental.
 - `CONVENTIONS.md` and `product-surfaces/`: [Coding agent skills](coding-agent-skill.md).
-- `recordings/`: the Recorder, `ayme-recorder codegen` in `@ayme-dev/cli`.
+- `recordings/`: [ayme capture](recorder.md), `ayme capture` in `@ayme-dev/cli`.
 
 ## Set the folder up for Page Objects
 
