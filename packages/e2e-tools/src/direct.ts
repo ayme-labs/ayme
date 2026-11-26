@@ -548,9 +548,14 @@ export async function itemWithText<Item extends object>(
   );
 }
 
-/** The arguments in the method's own order, with trailing ones left out staying left out. */
+/**
+ * The arguments in the method's own order, with trailing ones left out
+ * staying left out, and a rest parameter's list spread.
+ */
 function positional(tool: Bound, args: Record<string, unknown>): unknown[] {
   const values = tool.parameters.map((parameter) => args[parameter.name]);
+  const rest = tool.parameters.at(-1)?.rest === true ? values.pop() : undefined;
+  if (Array.isArray(rest) && rest.length > 0) return [...values, ...rest];
   while (values.length > 0 && values.at(-1) === undefined) values.pop();
   return values;
 }

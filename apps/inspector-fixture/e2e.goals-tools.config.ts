@@ -61,9 +61,10 @@ export default {
       executor: scripted
         ? scriptedExecutor(
             served,
-            ({ step }) => {
+            ({ step, attempt }) => {
               const calls = goalCalls[step.instruction]?.(
-                (step.params ?? {}) as Record<string, JsonValue>
+                (step.params ?? {}) as Record<string, JsonValue>,
+                { title: attempt.titlePath.at(-1) ?? "" }
               );
               return calls === undefined ? undefined : { calls };
             },

@@ -16,8 +16,10 @@ import type { On, Tab } from "../tab";
 // Page Object study's third arm (`packages/e2e-tools`); this suite calls the
 // methods directly, and the decorators change nothing it sees. The tools are
 // the actions this suite takes on the panel, one per call. Where the suite
-// clicks or picks on a member, as `card.runButton.click()`, a method does the
-// same one call (`pressRun`), so it can be a tool too; reads need none.
+// clicks or picks on a member, as `card.runButton.click()`, or acts on a part
+// it reaches by an argument, as `card.refField("target").open()`, a method
+// of the holder does the same one call (`pressRun`, `openChooser`), so it can
+// be a tool too; reads need none.
 
 export type LensName = "Model" | "Structure" | "Tools";
 
@@ -188,6 +190,30 @@ export class StructureLens extends Part {
         name: new RegExp(`^e\\d+ ${role} ${JSON.stringify(name)}`),
       })
     );
+  }
+
+  @ayme.action({
+    description:
+      'Selects the node tagged with a Page Object member, e.g. "ListPage.addItemButton".',
+  })
+  async selectNode(member: string) {
+    await this.nodeOf(member).click();
+  }
+
+  @ayme.action({
+    description:
+      "Hovers the node tagged with a Page Object member, which highlights it on the page.",
+  })
+  async hoverNode(member: string) {
+    await this.nodeOf(member).hover();
+  }
+
+  @ayme.action({
+    description:
+      'Selects a node by its role and name, e.g. ("checkbox", "Urgent").',
+  })
+  async selectNodeNamed(role: string, name: string) {
+    await this.nodeNamed(role, name).click();
   }
 }
 
@@ -419,6 +445,13 @@ export class Navigator extends Part {
     return this.on((root) => root.getByRole("button", text));
   }
 
+  @ayme.action({
+    description: "Selects an item of the active lens's tree, by its text.",
+  })
+  async selectItem(text: string) {
+    await this.item(text).click();
+  }
+
   lens(name: LensName): On {
     return this.on((root) =>
       root.getByRole("group", "Lens").getByRole("button", name)
@@ -520,6 +553,10 @@ export class FillForm extends Part {
   }
 
   /** Sets a field: text for a textbox, a checked state for a checkbox. */
+  @ayme.action({
+    description:
+      "Sets a field: text for a textbox, true or false for a checkbox.",
+  })
   async set(name: string, value: string | boolean) {
     const control = this.control(name);
     if (typeof value === "string") await control.fill(value);
@@ -528,6 +565,7 @@ export class FillForm extends Part {
   }
 
   /** Undoes the change to one field. */
+  @ayme.action({ description: "Undoes the change to one field." })
   async undo(name: string) {
     await this.on((list) =>
       list.getByRole("button", `Undo the change to ${name}`)
@@ -571,7 +609,18 @@ export class KeyField extends Part {
 }
 
 /** `generate_locator`'s groups of targets, each with the locators a run gave them. */
+@ayme({ present: (self: LocatorGroups) => LocatorGroups.shown(self) })
 export class LocatorGroups extends Part {
+  /** Whether the card shows the groups, for the presence rule. */
+  static shown(groups: LocatorGroups) {
+    if (!groups.tab.inFront())
+      throw new Error("its window is not the one in front");
+    return groups
+      .root(groups.tab.screen)
+      .getByRole("list", "Locator groups")
+      .isVisible();
+  }
+
   /** One group, in the card's list of groups. */
   private group(number: number) {
     return (card: Locator) =>
@@ -584,6 +633,11 @@ export class LocatorGroups extends Part {
     return this.on((card) => card.getByRole("button", "Add group"));
   }
 
+  @ayme.action({ description: "Adds an empty group." })
+  async addGroup() {
+    await this.addGroupButton.click();
+  }
+
   /** The locator the last run gave a target. */
   locator(number: number, ref: string): On {
     return this.on((card) =>
@@ -592,6 +646,10 @@ export class LocatorGroups extends Part {
   }
 
   /** Adds targets from a group's tree, or removes ones it has, by ref. */
+  @ayme.action({
+    description:
+      "Adds targets to a group, by number from 1, from its tree, or removes ones it has, by ref.",
+  })
   async toggleFromTree(number: number, ...refs: string[]) {
     const treeButton = this.on((card) =>
       this.group(number)(card).getByRole("button", "Add from tree")
@@ -752,11 +810,13 @@ export class RunCard extends Part {
   }
 
   /** `generate_locator`'s groups. */
+  @ayme.child
   get locatorGroups(): LocatorGroups {
     return new LocatorGroups(this.tab, this.root);
   }
 
   /** `fill_form`'s form. */
+  @ayme.child
   get fillForm(): FillForm {
     return new FillForm(
       this.tab,
@@ -767,6 +827,22 @@ export class RunCard extends Part {
   /** A ref argument's field, by its path, e.g. "ref". */
   refField(path = "ref"): RefField {
     return new RefField(this.tab, this.root, path);
+  }
+
+  @ayme.action({
+    description:
+      'Opens the chooser of a ref argument, by its path, e.g. "target".',
+  })
+  async openChooser(field: string) {
+    await this.refField(field).open();
+  }
+
+  @ayme.action({
+    description:
+      "Starts picking a ref argument, by its path, by pointing at the page: the next click on the page picks.",
+  })
+  async pickOnPage(field: string) {
+    await this.refField(field).pickOnPage();
   }
 
   /** The items a rooted action can run on. */
@@ -860,7 +936,19 @@ export class RunCard extends Part {
 }
 
 /** A structure node's view in the detail pane. */
+@ayme({ present: (self: NodeView) => NodeView.shown(self) })
 export class NodeView extends Part {
+  /**
+   * Whether the pane shows a Tools section, for the presence rule. The Model
+   * lens's view of the page has one too, and `runTool` runs its cards as well.
+   */
+  static shown(view: NodeView) {
+    if (!view.tab.inFront())
+      throw new Error("its window is not the one in front");
+    return view.root(view.tab.screen).getByRole("region", "Tools").isVisible();
+  }
+
+  @ayme.child
   get modelSees(): WhatTheModelSees {
     return new WhatTheModelSees(this.tab, this.root);
   }
@@ -883,6 +971,14 @@ export class NodeView extends Part {
           .getByRole("form")
       )
     );
+  }
+
+  @ayme.action({
+    description:
+      "Runs one of the tools under Tools in the selected node's view, by name, with the given arguments, filled in by name.",
+  })
+  async runTool(name: string, args: Readonly<Record<string, ArgumentValue>>) {
+    await this.runCard(name).run(args);
   }
 }
 
@@ -929,7 +1025,18 @@ export class ToolPage extends Part {
 }
 
 /** The Model lens's detail: the page, a Page Object or a Page Object Model. */
+@ayme({ present: (self: ModelDetailView) => ModelDetailView.shown(self) })
 export class ModelDetailView extends Part {
+  /** Whether the pane shows members, for the presence rule. */
+  static shown(view: ModelDetailView) {
+    if (!view.tab.inFront())
+      throw new Error("its window is not the one in front");
+    return view
+      .root(view.tab.screen)
+      .getByRole("region", "Members")
+      .isVisible();
+  }
+
   get title(): On {
     return this.on((root) => root.getByRole("heading", { level: 3 }));
   }
@@ -973,6 +1080,7 @@ export class DetailPane extends Part {
     return new ModelDetailView(this.tab, this.root);
   }
 
+  @ayme.child
   get node(): NodeView {
     return new NodeView(this.tab, this.root);
   }
@@ -1254,6 +1362,11 @@ export class RunsView extends Part {
   })
   async hoverInteraction(toolName: string, index: number) {
     await this.latest(toolName).interactionTarget(index).hover();
+  }
+
+  @ayme.action({ description: "Copies the result of a tool's newest run." })
+  async copyResult(toolName: string) {
+    await this.latest(toolName).copyResultButton.click();
   }
 
   @ayme.action({ description: "Clears the Runs timeline." })
