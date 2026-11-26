@@ -2,12 +2,12 @@
 
 Gets ayme a browser: it finds the Playwright the project has installed, holds the one list of supported Playwright versions, starts Chromium, joins a running browser over the DevTools protocol without Playwright's defaults, and releases the browser. It is private: the recorder bundles it, and so `@ayme-dev/cli` carries it. Why it uses the project's Playwright and none of its own: [ADR-0052](../../docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md).
 
-`src/index.ts` is the front door; each file beside it holds one part: finding the project's Playwright ([`projectPlaywright.ts`](src/projectPlaywright.ts)), the range ([`playwrightRange.ts`](src/playwrightRange.ts)), getting and releasing the browser ([`browser.ts`](src/browser.ts)) and the one way that fails ([`browserError.ts`](src/browserError.ts)).
+`src/index.ts` is the front door. Getting and releasing the browser drives a real one, so it sits in [`infrastructure/live/`](src/infrastructure/live/browser.ts), which the [compatibility suite measures](../../docs/testing.md#code-a-real-browser-runs); the rest is plain logic the unit tests measure.
 
 The checks:
 
 - [`eslint.config.js`](eslint.config.js), which [`src/layout.test.ts`](src/layout.test.ts) checks: production code imports Playwright's types only, and only the stable `effect` package.
-- [`tsdown.config.ts`](tsdown.config.ts) keeps Playwright's types out of the built declarations, so a caller's Playwright objects and this package's are one type.
+- [`tsdown.config.ts`](tsdown.config.ts) leaves `playwright-core` external: its declarations import Playwright's types, so a caller's Playwright objects and this package's are one type.
 
 Nothing checks these:
 
@@ -27,4 +27,4 @@ To verify a new Playwright minor, run this package's compatibility suite, the re
 How to run tests here, and what each lane measures: [docs/testing.md](../../docs/testing.md#local-runs-and-ci).
 
 - The unit tests drive the front door on a stand-in for the project's Playwright, a folder with a `node_modules` of its own, as the recorder's start tests do.
-- [The compatibility suite](src/browser.compat.test.ts) runs real Chromium, so it runs with `pnpm test:compat` ([`vitest.compat.config.ts`](vitest.compat.config.ts)), not in `pnpm test`. It tests on the Playwright installed in the folder `AYME_PLAYWRIGHT_PROJECT` names, or else this package's own. A run counts only with its verdict line, which [`compatRunCheck.js`](../test-config/compatRunCheck.js) prints, since a reporter cannot fail a run whose tests were skipped.
+- [The compatibility suite](src/infrastructure/live/browser.compat.test.ts) runs real Chromium, so it runs with `pnpm test:compat` ([`vitest.compat.config.ts`](vitest.compat.config.ts)), not in `pnpm test`. It tests on the Playwright installed in the folder `AYME_PLAYWRIGHT_PROJECT` names, or else this package's own. A run counts only with its verdict line, which [`compatRunCheck.js`](../test-config/compatRunCheck.js) prints, since a reporter cannot fail a run whose tests were skipped.

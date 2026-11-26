@@ -107,6 +107,32 @@ it("fails, naming the version, when the project's Playwright is older than the s
   });
 });
 
+it("fails, naming the broken install, when the project's Playwright cannot be loaded", async () => {
+  const installed = await installPlaywright(folder, "playwright");
+  await rm(join(installed, "index.js"));
+
+  const error = await failure(folder);
+
+  expect(error).toBeInstanceOf(BrowserError);
+  expect(error).toMatchObject({
+    kind: "no Playwright in the project",
+    message: `The Playwright at ${installed} cannot be loaded (Error: Cannot find module '${join(installed, "index.js")}'. Please verify that the package.json has a valid "main" entry).`,
+  });
+});
+
+it("fails, naming the broken install, when the project's Playwright has an unreadable manifest", async () => {
+  const installed = await installPlaywright(folder, "playwright");
+  await writeFile(join(installed, "package.json"), "{");
+
+  const error = await failure(folder);
+
+  expect(error.kind).toBe("no Playwright in the project");
+  expect(error.message).toMatch(
+    `The Playwright at ${installed} cannot be loaded (SyntaxError: `
+  );
+  expect(error.message).not.toContain("\n");
+});
+
 it("finds a Playwright newer than the verified range", async () => {
   await installPlaywright(folder, "playwright", { version: "1.99.0" });
 

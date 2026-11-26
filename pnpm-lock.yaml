@@ -122,9 +122,6 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
-      "@ayme-dev/mcp":
-        specifier: workspace:*
-        version: link:../../packages/mcp
       "@ayme-dev/webmcp":
         specifier: workspace:*
         version: link:../../packages/webmcp
@@ -186,9 +183,6 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../../packages/ayme
-      "@ayme-dev/mcp":
-        specifier: workspace:*
-        version: link:../../packages/mcp
       "@ayme-dev/webmcp":
         specifier: workspace:*
         version: link:../../packages/webmcp
@@ -220,9 +214,6 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
-      "@ayme-dev/mcp":
-        specifier: workspace:*
-        version: link:../../packages/mcp
       "@ayme-dev/react":
         specifier: workspace:*
         version: link:../../packages/react
@@ -281,9 +272,6 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
-      "@ayme-dev/mcp":
-        specifier: workspace:*
-        version: link:../../packages/mcp
       "@ayme-dev/vue":
         specifier: workspace:*
         version: link:../../packages/vue
@@ -336,9 +324,6 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
-      "@ayme-dev/mcp":
-        specifier: workspace:*
-        version: link:../../packages/mcp
       "@ayme-dev/react":
         specifier: workspace:*
         version: link:../../packages/react
@@ -397,9 +382,6 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
-      "@ayme-dev/mcp":
-        specifier: workspace:*
-        version: link:../../packages/mcp
       "@ayme-dev/svelte":
         specifier: workspace:*
         version: link:../../packages/svelte
@@ -461,9 +443,6 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
-      "@ayme-dev/mcp":
-        specifier: workspace:*
-        version: link:../../packages/mcp
       "@ayme-dev/playwright-lite":
         specifier: github:ayme-labs/playwright-lite#2b8849cfb31714353d94e6a33095ac3aa5b898bb
         version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/2b8849cfb31714353d94e6a33095ac3aa5b898bb(@playwright/test@1.64.0)

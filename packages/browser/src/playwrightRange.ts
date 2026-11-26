@@ -16,7 +16,5 @@ export function placeInRange(version: string): "below" | "within" | "above" {
   };
   if (minor(version) < minor(range.floor)) return "below";
   if (minor(version) > minor(range.lastVerified)) return "above";
-  // Callers ask only whether a version is below or above the range.
-  // Stryker disable next-line StringLiteral
   return "within";
 }

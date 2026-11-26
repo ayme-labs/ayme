@@ -11,7 +11,6 @@
   } = useAyme({
     webMCP: { enabled: true },
     inspector: dev,
-    agentConnection: dev,
   });
 </script>
 

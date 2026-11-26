@@ -893,7 +893,7 @@
       },
       {
         "name": "Playground",
-        "responsibility": "the hosted demo app with the Inspector in demo mode, plus the rendered documentation beside it. The \"Try with your own coding agent\" wizard and the Agent Connection are left out of the hosted builds",
+        "responsibility": "the hosted demo app with the Inspector in demo mode, plus the rendered documentation beside it. An agent reaches it through WebMCP publication only",
         "technology": "Vue single-page app built from `apps/example-vue`, with the docs rendered by Jekyll from `docs/guide`",
         "evidence": {
           "text": "verified: `apps/example-vue/src/App.vue`, `.github/workflows/deploy-example-vue.yml`",
@@ -1272,7 +1272,7 @@
           }
         ],
         "evidence": {
-          "text": "verified: `packages/session/src/playwright/infrastructure/live/stockBrowser.ts`, `packages/browser/src/browser.ts`",
+          "text": "verified: `packages/session/src/playwright/infrastructure/live/stockBrowser.ts`, `packages/browser/src/infrastructure/live/browser.ts`",
           "inferred": false,
           "mixed": false
         }
@@ -1661,7 +1661,7 @@
         },
         "containers": {
           "Browser runtime": {
-            "how": "the playground's and the examples' development builds; the playground has WebMCP publication, the Inspector in demo mode and the Agent Connection on, and a `goal` only when its dev server has a model key",
+            "how": "the playground's and the examples' development builds; the playground has WebMCP publication and the Inspector in demo mode, and a `goal` only when its dev server has a model key",
             "node": "the example's page in the contributor's browser",
             "nodeKey": "the example's page in the contributor's browser",
             "runs": true,
@@ -1700,14 +1700,14 @@
             }
           },
           "App Process runtime": {
-            "how": "started by the Next.js example's `instrumentation.ts` and the Nuxt example's Nitro plugin",
-            "node": "the Next.js or Nuxt example's dev server process",
-            "nodeKey": "the Next.js or Nuxt example's dev server process",
-            "runs": true,
-            "nodeKnown": true,
+            "how": "does not run here; no example starts one",
+            "node": "",
+            "nodeKey": "",
+            "runs": false,
+            "nodeKnown": false,
             "optional": false,
             "evidence": {
-              "text": "verified: `apps/example-next/instrumentation.ts`, `apps/example-nuxt/server/plugins/ayme.ts`",
+              "text": "verified: `apps/example-next/README.md`, `apps/example-nuxt/README.md`",
               "inferred": false,
               "mixed": false
             }
@@ -1739,7 +1739,7 @@
             }
           },
           "Playground": {
-            "how": "a Vite dev server on port 4190, with the \"Try with your own coding agent\" wizard unless `VITE_AGENT_CONNECTION=false`",
+            "how": "a Vite dev server on port 4190",
             "node": "the playground's Vite dev server",
             "nodeKey": "the playground's Vite dev server",
             "runs": true,
@@ -1865,14 +1865,14 @@
             }
           },
           "App Process runtime": {
-            "how": "the example dev servers paired in the certification tests",
+            "how": "the MCP fixture's stand-in App Process in its end-to-end tests",
             "node": "a Playwright container on a GitHub Actions runner",
             "nodeKey": "a Playwright container on a GitHub Actions runner",
             "runs": true,
             "nodeKnown": true,
             "optional": false,
             "evidence": {
-              "text": "verified: `apps/example-vue/README.md`",
+              "text": "verified: `apps/mcp-fixture/README.md`",
               "inferred": false,
               "mixed": false
             }
@@ -1991,7 +1991,7 @@
         },
         "containers": {
           "Browser runtime": {
-            "how": "the playground's production build with `webMCP` and `inspector` in demo mode, `agentConnection` off (`VITE_AGENT_CONNECTION=false`), and no `goal` since no Decision Endpoint exists",
+            "how": "the playground's production build with `webMCP` and `inspector` in demo mode, and no `goal` since no Decision Endpoint exists",
             "node": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
             "nodeKey": "the ayme-labs.github.io/ayme GitHub Pages site, and its `/playground/` copy that ayme.dev/playground/ proxies to",
             "runs": true,

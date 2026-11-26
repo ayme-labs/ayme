@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAyme, usePageObject, usePeek } from "@ayme-dev/react";
+import { useAyme, usePageObject } from "@ayme-dev/react";
 import { CounterPage } from "#pom/CounterPage";
 import { SubCounterPage } from "#pom/SubCounterPage";
 
@@ -11,7 +11,6 @@ function Counter() {
   // lifetime, which no URL states (the certification unmounts it on its page).
   const pom = usePageObject(CounterPage);
   usePageObject(SubCounterPage);
-  usePeek({ count }, "counter");
   return (
     <section aria-label="Counter">
       <p>

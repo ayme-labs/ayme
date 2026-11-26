@@ -10,7 +10,7 @@
 - [packages/](packages/): the ayme product. A published package's README is its npm entry point; the consumer docs in [docs/guide/](docs/guide/) own its API and setup.
 - Before adding or moving a source file in a package, read its AGENTS.md: [ayme](packages/ayme/AGENTS.md), [browser](packages/browser/AGENTS.md), [inspector](packages/inspector/AGENTS.md), [mcp](packages/mcp/AGENTS.md), [recorder](packages/recorder/AGENTS.md), [recorder-window](packages/recorder-window/AGENTS.md), [session](packages/session/AGENTS.md).
 - [skills/](skills/): skills shipped to consumers for use in their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
-- [apps/example-vue/](apps/example-vue/): the hosted playground where visitors try ayme before integrating it. A visitor installs only ayme's MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
+- [apps/example-vue/](apps/example-vue/): the hosted playground where visitors try ayme before integrating it. Agents reach it only through WebMCP. Read [its README](apps/example-vue/README.md) before changing the app.
 - [docs/testing.md](docs/testing.md): the test lanes and where test-only code lives. Read it before adding tests or test helpers, and read its [Local runs and CI](docs/testing.md#local-runs-and-ci) section before running anything beyond one package's tests.
 - Before a pull request goes ready, follow the [change-analysis guidance](docs/testing.md#change-analysis).
 - Before a pull request goes ready, review it with the [product-surfaces skill](skills/product-surfaces/SKILL.md), with evidence, and post the review on it: a reviewer sees what each consumer will notice without reading the code.

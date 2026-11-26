@@ -9,7 +9,7 @@ import { Effect, Exit, Scope } from "effect";
 import { chromium, type BrowserContext } from "playwright-core";
 import { afterEach, expect, it } from "vitest";
 
-import { browser, projectPlaywright, type BrowserRequest } from "./index";
+import { browser, projectPlaywright, type BrowserRequest } from "../../index";
 
 // The compatibility suite: this package on each supported Playwright, on
 // real Chromium, starting a browser and joining one. CI runs it once per
@@ -21,7 +21,7 @@ import { browser, projectPlaywright, type BrowserRequest } from "./index";
 // connect.
 const projectDir =
   process.env.AYME_PLAYWRIGHT_PROJECT ??
-  fileURLToPath(new URL("..", import.meta.url));
+  fileURLToPath(new URL("../../..", import.meta.url));
 
 const underTest = await Effect.runPromise(projectPlaywright(projectDir));
 /** The Chromium of the Playwright under test, which starts the running
