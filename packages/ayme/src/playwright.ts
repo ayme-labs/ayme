@@ -47,8 +47,12 @@ export type {
 // The Page Object registry over a Playwright page's in-page module.
 export { ayme } from "./page-objects/domain";
 export {
+  createPageObjectIdSource,
   createPomRegistry,
   registerCompiledPom,
 } from "./page-objects/application";
-export type { PageObjectConstructor } from "./page-objects/application";
+export type {
+  PageObjectConstructor,
+  PageObjectIdSource,
+} from "./page-objects/application";
 export { inPageDriver } from "./page-objects/infrastructure";
