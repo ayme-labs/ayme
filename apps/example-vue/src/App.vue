@@ -10,11 +10,9 @@ import { decisionEndpoint } from "@ayme-dev/ayme";
 import { useAyme } from "@ayme-dev/vue";
 import { ListPage } from "#pom/ListPage";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
-import AgentPanel from "./AgentPanel.vue";
 import { track, trackToolRuns } from "./analytics";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import ListDemo from "./demo/ListDemo.vue";
-import PeekCheck from "./peek/PeekCheck.vue";
 
 // The highlighter loads with the code view, not with the app.
 const PageObjectCode = defineAsyncComponent(
@@ -22,12 +20,8 @@ const PageObjectCode = defineAsyncComponent(
 );
 
 // Ordinary apps call useAyme() without options. This demo keeps its site
-// chrome and the dev server's Peek check out of Structural Page State.
-const notPlayground = "[data-site-chrome], [data-peek-check]";
-const peekCheck = import.meta.env.DEV;
-// `VITE_AGENT_CONNECTION=false` builds the playground without the agent
-// wizard or the Agent Connection, while `@ayme-dev/mcp` is not on npm yet.
-const agentConnection = import.meta.env.VITE_AGENT_CONNECTION !== "false";
+// chrome out of Structural Page State.
+const notPlayground = "[data-site-chrome]";
 const { ayme } = useAyme({
   pageObjects: [ListPage],
   ignore: notPlayground,
@@ -39,11 +33,8 @@ const { ayme } = useAyme({
     : undefined,
   webMCP: { enabled: true },
   // The hosted playground shows the Inspector in demo mode, so visitors can
-  // follow each action, and lets a visitor's coding agent connect;
-  // `--mode inspector-disabled` builds it without either.
+  // follow each action; `--mode inspector-disabled` builds it without it.
   inspector: import.meta.env.MODE !== "inspector-disabled" && { demo: true },
-  agentConnection:
-    agentConnection && import.meta.env.MODE !== "inspector-disabled",
 });
 onScopeDispose(trackToolRuns(ayme.runs));
 
@@ -102,8 +93,7 @@ function followScroll() {
       <div class="min-w-0">
         <!--
           Site chrome is not part of the playground, so `ignore` keeps it out
-          of Structural Page State. The agent wizard's dialog is teleported
-          inside this element for the same reason.
+          of Structural Page State.
         -->
         <header class="mb-6" data-site-chrome>
           <p
@@ -118,16 +108,9 @@ function followScroll() {
             class="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground"
           >
             A small list app whose Page Object actions are published as WebMCP
-            tools.
-            <template v-if="agentConnection">
-              Try it here — from the inspector or your own coding agent — before
-              adding ayme to your project.
-            </template>
-            <template v-else>
-              Try it here from the inspector before adding ayme to your project.
-            </template>
+            tools. Try it here — from the inspector or an agent that reaches the
+            page through WebMCP — before adding ayme to your project.
           </p>
-          <AgentPanel v-if="agentConnection" class="mt-5" />
         </header>
 
         <main
@@ -167,7 +150,6 @@ function followScroll() {
             </div>
           </div>
         </main>
-        <PeekCheck v-if="peekCheck" />
       </div>
     </div>
   </div>

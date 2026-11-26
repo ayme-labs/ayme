@@ -81,8 +81,6 @@ jobs:
       # built once for each place it is served from. Only this copy loads the
       # landing's Google Tag Manager container, so its analytics cover
       # ayme.dev alone.
-      # VITE_AGENT_CONNECTION=false leaves out the "Try with your own coding
-      # agent" wizard until @ayme-dev/mcp is on npm; drop it then.
       - name: Build the playground for ayme.dev/playground/
         run: |
           pnpm exec turbo run build --filter=@ayme-dev/example-vue --only --cache="local:,remote:" --env-mode=strict
@@ -90,12 +88,10 @@ jobs:
         env:
           VITE_BASE_PATH: /playground/
           VITE_GTM_ID: GTM-T3H5D4DX
-          VITE_AGENT_CONNECTION: "false"
       - name: Build the Pages artifact
         run: pnpm exec turbo run build --filter=@ayme-dev/example-vue --only --cache="local:,remote:" --env-mode=strict
         env:
           VITE_BASE_PATH: /ayme/
-          VITE_AGENT_CONNECTION: "false"
       - name: Add the ayme.dev playground to the Pages artifact
         run: |
           mv "$RUNNER_TEMP/playground" apps/example-vue/dist/playground

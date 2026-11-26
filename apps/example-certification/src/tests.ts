@@ -15,50 +15,17 @@ import {
   recordPublishedTools,
   type RecordingDriver,
 } from "@ayme-dev/webmcp/testing";
-import {
-  connectPage,
-  freePort,
-  ignoreAutoPairScan,
-  startAgent,
-} from "@ayme-dev/mcp/testing";
-
-import { agentPort, counterPath, render, server } from "./config";
+import { counterPath, render, server } from "./config";
 
 /**
- * Whether a console error is Chromium reporting a refused probe of the Agent
- * Connection's auto-pair scan: with no ayme MCP server running, a localhost
- * page probes `ws://127.0.0.1:<port>/probe` on each port from 9350 to 9365,
- * and Chromium logs every refused connection, whatever the page does. An
- * example's own page-error checks use it too.
+ * Playwright's `test`, for an example's specs that `test` would fail, such as
+ * Angular's, whose development build logs hydration statistics.
  */
-export function isRefusedAutoPairProbe(text: string) {
-  const port =
-    /^WebSocket connection to 'ws:\/\/127\.0\.0\.1:(\d+)\/probe' failed/.exec(
-      text
-    )?.[1];
-  return port !== undefined && Number(port) >= 9350 && Number(port) <= 9365;
-}
-
-/**
- * Playwright's `test`, whose pages never pair by themselves with an ayme MCP
- * server that runs on this machine, such as another suite's: it answers
- * their auto-pair scan as if none ran (`ignoreAutoPairScan`). Every example
- * spec uses it, or `test`, which builds on it.
- */
-export const exampleTest = base.extend<{ ignoreAutoPairScan: void }>({
-  ignoreAutoPairScan: [
-    async ({ context }, use) => {
-      await ignoreAutoPairScan(context);
-      await use();
-    },
-    { auto: true },
-  ],
-});
+export const exampleTest = base;
 
 /**
  * `exampleTest`, failing any test whose page throws, logs a console error
- * or warns about hydration. An example's own specs use it too. It ignores
- * the auto-pair scan's refused probes (`isRefusedAutoPairProbe`). A
+ * or warns about hydration. An example's own specs use it too. A
  * framework that logs hydration statistics in development, such as Angular,
  * names them in the `hydrationStatistics` option (`test.use`) so they are not
  * counted as a warning.
@@ -74,7 +41,6 @@ export const test = exampleTest.extend<{
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("console", (message) => {
         const text = message.text();
-        if (isRefusedAutoPairProbe(text)) return;
         if (hydrationStatistics?.test(text)) return;
         if (message.type() === "error" || /hydrat/i.test(text))
           errors.push(text);
@@ -318,10 +284,20 @@ export function counterTests({
       await expect(count(page)).toHaveText("1");
     });
 
-    test("runs the Page Object's action through its published tool", async ({
+    test("lets an agent reach the Page Object Tools through WebMCP publication", async ({
       page,
     }) => {
-      await executePublishedTool(page, "CounterPage.increment");
+      // An agent reads the Page Object Tree first, then runs a tool of it.
+      expect(await executePublishedTool(page, "page_objects")).toEqual(
+        expect.stringContaining("CounterPage")
+      );
+      // The click focuses the button, a change in the tree.
+      expect(await executePublishedTool(page, "CounterPage.increment")).toEqual(
+        {
+          settled: true,
+          changes: expect.stringContaining("incrementButton"),
+        }
+      );
       await expect(count(page)).toHaveText("1");
     });
 
@@ -509,251 +485,6 @@ export function devRebuildTests({
         // own reloads aborts ours, it reloads the page all the same.
         while (!(await publishedModeSchema()).includes('"triple"'))
           await page.reload().catch(() => {});
-      }
-    );
-  });
-}
-
-/** The sessionStorage key only the page client's code contains. */
-const agentConnectionMarker = "ayme:agent-connection";
-
-/** Collects the text of every script the page loads from now on. */
-function loadedScripts(page: Page) {
-  const scripts: Promise<string>[] = [];
-  page.on("response", (response) => {
-    if (response.request().resourceType() === "script")
-      scripts.push(response.text().catch(() => ""));
-  });
-  return () => Promise.all(scripts);
-}
-
-/**
- * The Agent Connection, which the app turns on with its own flag. Where
- * `enabled()` holds, a coding agent's MCP client pairs with `/` through a
- * connect link and calls the page's `page_objects` tool, whose tree shows the
- * Page Object `pageObject`. Elsewhere, such as a production build, the page loads no
- * Agent Connection code and opens no WebSocket.
- */
-export function agentConnectionTests({
-  enabled,
-  pageObject,
-  peek = false,
-  appProcess,
-}: {
-  /** Whether the run's app turns the option on; read inside each test. */
-  enabled: () => boolean;
-  /** The class of a Page Object the page at `/` shows. */
-  pageObject: string;
-  /** Whether the counter adds the Peek `counter` with its `{ count }`. */
-  peek?: boolean;
-  /**
-   * Where the app's server runs an App Process wherever it turns the Agent
-   * Connection on, and none elsewhere: its server start reads `agentPort`
-   * from `AYME_EXAMPLE_AGENT_PORT` and adds the one Peek `peek`.
-   */
-  appProcess?: { peek: string };
-}) {
-  // `exampleTest`, not `test`: Angular's development build logs its
-  // hydration statistics, which `test` counts as a hydration warning.
-  exampleTest.describe("agent connection", () => {
-    exampleTest(
-      "pairs a coding agent through a connect link and runs a page tool",
-      async ({ page, baseURL }) => {
-        exampleTest.skip(
-          !enabled(),
-          "The app turns the Agent Connection off here."
-        );
-        const scripts = loadedScripts(page);
-        // Outside the range a page's auto-pair scan probes, so another
-        // example's page running beside this one never pairs with it.
-        const agent = await startAgent("--port", String(await freePort()));
-        try {
-          // A dev server may compile the page on its first request, which
-          // takes over 10 s on CI.
-          await connectPage(agent, page, new URL("/", baseURL).href, {
-            timeout: 45_000,
-          });
-          // The marker the test with the option off looks for is in the client.
-          expect(
-            (await scripts()).some((script) =>
-              script.includes(agentConnectionMarker)
-            )
-          ).toBe(true);
-
-          const { text, isError } = await agent.call("page_objects");
-
-          expect(isError, text).toBe(false);
-          expect(text).toContain(pageObject);
-        } finally {
-          await agent.close();
-        }
-      }
-    );
-
-    for (const alreadyLoaded of [false, true]) {
-      exampleTest(
-        `keeps the tab id across reload after pairing ${alreadyLoaded ? "an already loaded tab" : "as the tab loads"}`,
-        async ({ page, baseURL }) => {
-          exampleTest.skip(
-            !enabled(),
-            "The app turns the Agent Connection off here."
-          );
-          const agent = await startAgent("--port", String(await freePort()));
-          try {
-            const url = new URL("/", baseURL).href;
-            if (alreadyLoaded)
-              await page.goto(url, { waitUntil: "networkidle" });
-            await connectPage(agent, page, url, { timeout: 45_000 });
-            const storedTab = () =>
-              page.evaluate((key) => {
-                return (
-                  JSON.parse(sessionStorage.getItem(key) ?? "") as {
-                    tab: string;
-                  }
-                ).tab;
-              }, agentConnectionMarker);
-            const tab = await storedTab();
-
-            // The agent's own browser automation reloads the page.
-            await page.reload();
-            // Wait for the new document to reconnect before reading its storage.
-            const { text, isError } = await agent.call("page_objects");
-            expect(isError, text).toBe(false);
-            expect(text).toContain(pageObject);
-            expect(await storedTab()).toBe(tab);
-          } finally {
-            await agent.close();
-          }
-        }
-      );
-    }
-
-    exampleTest(
-      "lets a coding agent read the counter's Peek while it is mounted",
-      async ({ page, baseURL }) => {
-        exampleTest.skip(!peek, "The counter adds no Peek here.");
-        exampleTest.skip(
-          !enabled(),
-          "The app turns the Agent Connection off here."
-        );
-        const agent = await startAgent("--port", String(await freePort()));
-        try {
-          await connectPage(agent, page, new URL("/", baseURL).href, {
-            timeout: 45_000,
-          });
-          const readCounter = async () => {
-            const { text, isError } = await agent.call("peek.counter");
-            expect(isError, text).toBe(false);
-            return JSON.parse(text) as unknown;
-          };
-          const counter = (count: number) => ({
-            name: "counter",
-            instances: [{ id: expect.any(String), values: { count } }],
-          });
-
-          await expect.poll(() => agent.toolNames()).toContain("peek.counter");
-          expect(await readCounter()).toEqual(counter(0));
-
-          await page.getByRole("button", { name: "Increment" }).click();
-          await expect(count(page)).toHaveText("1");
-          expect(await readCounter()).toEqual(counter(1));
-
-          await page.getByRole("button", { name: "Unmount counter" }).click();
-          await expect
-            .poll(() => agent.toolNames())
-            .not.toContain("peek.counter");
-        } finally {
-          await agent.close();
-        }
-      }
-    );
-
-    exampleTest(
-      "server rendering leaves the counter's Peek to the browser while the App Process is paired",
-      async ({ page, baseURL }) => {
-        exampleTest.skip(!appProcess, "The server runs no App Process.");
-        exampleTest.skip(
-          !enabled(),
-          "The app turns the Agent Connection off here."
-        );
-        const serverPeek = `peek.node.${appProcess!.peek}`;
-        const agent = await startAgent("--port", String(agentPort));
-        try {
-          // The App Process started with the server, before this agent, and
-          // looks for it again every 3 s.
-          await expect
-            .poll(() => agent.toolNames(), {
-              message: agent.log,
-              timeout: 15_000,
-            })
-            .toContain(serverPeek);
-          const serverRead = await agent.call(serverPeek);
-          expect(serverRead.isError, serverRead.text).toBe(false);
-          expect(JSON.parse(serverRead.text)).toEqual({
-            name: appProcess!.peek,
-            instances: [{ values: expect.anything() }],
-          });
-
-          // The server renders the page; the link's fragment stays in the browser.
-          await connectPage(agent, page, new URL("/", baseURL).href, {
-            timeout: 45_000,
-          });
-          await expect.poll(() => agent.toolNames()).toContain("peek.counter");
-          const { text, isError } = await agent.call("peek.counter");
-          expect(isError, text).toBe(false);
-          expect(JSON.parse(text)).toEqual({
-            name: "counter",
-            instances: [{ id: expect.any(String), values: { count: 0 } }],
-          });
-          // A call to the App Process answers after any tool change it sent
-          // before, so the render's would be listed by now.
-          expect((await agent.call(serverPeek)).isError).toBe(false);
-          expect(await agent.toolNames()).not.toContain("peek.node.counter");
-        } finally {
-          await agent.close();
-        }
-      }
-    );
-
-    exampleTest(
-      "runs no App Process on the server with the option off",
-      async ({ page }) => {
-        exampleTest.skip(!appProcess, "The server runs no App Process.");
-        exampleTest.skip(
-          enabled(),
-          "The app turns the Agent Connection on here."
-        );
-        const agent = await startAgent("--port", String(agentPort));
-        try {
-          await page.goto("/");
-          // Over two of the 3 s rescans an App Process would pair within.
-          await page.waitForTimeout(7_000);
-          expect(await agent.pageToolNames()).toEqual([]);
-        } finally {
-          await agent.close();
-        }
-      }
-    );
-
-    exampleTest(
-      "loads no Agent Connection code with the option off",
-      async ({ page }) => {
-        exampleTest.skip(
-          enabled(),
-          "The app turns the Agent Connection on here."
-        );
-        const sockets: string[] = [];
-        page.on("websocket", (socket) => sockets.push(socket.url()));
-        const scripts = loadedScripts(page);
-
-        await page.goto("/", { waitUntil: "networkidle" });
-
-        expect(
-          (await scripts()).filter((script) =>
-            script.includes(agentConnectionMarker)
-          )
-        ).toEqual([]);
-        expect(sockets).toEqual([]);
       }
     );
   });
