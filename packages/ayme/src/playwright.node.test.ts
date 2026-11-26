@@ -328,6 +328,58 @@ describe("ayme over a Playwright Page", () => {
     );
   });
 
+  describe("Page Object ids", () => {
+    /** The id of the Page Object of `className` that `ayme`'s snapshot shows. */
+    async function idOf(ayme: Playwright.PlaywrightAyme, className: string) {
+      let id: string | undefined;
+      await expect
+        .poll(async () => {
+          id = new RegExp(`${className} (po\\d+)`).exec(
+            await snapshot(ayme)
+          )?.[1];
+          return id;
+        })
+        .toBeDefined();
+      return id!;
+    }
+
+    const counter =
+      '<section id="counter"><output>0</output><button>Add</button></section>';
+
+    it("are numbered per page when the Host gives no source", async () => {
+      const Counter = pageObjectRootedAt("OwnCounter", "#counter");
+      const first = await startedOn(await pageShowing(counter), {
+        pageObjects: [Counter],
+      });
+      const second = await startedOn(await pageShowing(counter), {
+        pageObjects: [Counter],
+      });
+
+      expect(await idOf(first, "OwnCounter")).toBe("po1");
+      expect(await idOf(second, "OwnCounter")).toBe("po1");
+    });
+
+    it("come from the source the Host gives, so two pages that share it never give one id twice", async () => {
+      const Counter = pageObjectRootedAt("SharedCounter", "#counter");
+      const pageObjectIds = built.createPageObjectIdSource();
+      const first = await startedOn(await pageShowing(counter), {
+        pageObjects: [Counter],
+        pageObjectIds,
+      });
+      const second = await startedOn(await pageShowing(counter), {
+        pageObjects: [Counter],
+        pageObjectIds,
+      });
+
+      expect(await idOf(first, "SharedCounter")).toBe("po1");
+      expect(await idOf(second, "SharedCounter")).toBe("po2");
+      await second.tools.run("SharedCounter.press", { id: "po2" } as never);
+      await expect(
+        second.tools.run("SharedCounter.press", { id: "po1" } as never)
+      ).rejects.toThrow(/po1/);
+    });
+  });
+
   /** A page at `http://app.test/` whose documents are what `serve` answers per URL. */
   async function pageServing(
     serve: (url: URL) => string,

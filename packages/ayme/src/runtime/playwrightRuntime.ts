@@ -21,7 +21,10 @@ import {
   providePageObjectProbeOf,
 } from "../page-state/infrastructure";
 import { pomRegistryOf } from "../page-objects/infrastructure";
-import type { PageObjectConstructor } from "../page-objects/application";
+import type {
+  PageObjectConstructor,
+  PageObjectIdSource,
+} from "../page-objects/application";
 import type { ElementFilter } from "../shared";
 import {
   createAymeOn,
@@ -53,6 +56,12 @@ export type PlaywrightAymeOptions = {
   pageObjects?: readonly PageObjectConstructor[];
   /** The application's router navigation, called with a same-origin URL. */
   navigate?: (url: string) => unknown;
+  /**
+   * Where the Page Object ids of `page` come from, so that a Host that gives
+   * one source to several Pages gives no id twice among them. Without one,
+   * the page numbers its own. Read by the first session on `page`.
+   */
+  pageObjectIds?: PageObjectIdSource;
 };
 
 /**
@@ -75,7 +84,7 @@ export function createPlaywrightAyme(
 ): PlaywrightAyme {
   const { page } = options;
   let prepared: PreparedOptions | undefined;
-  const target = playwrightTarget(page, () => prepared!);
+  const target = playwrightTarget(page, () => prepared!, options.pageObjectIds);
   const core = createAymeOn(target, {
     pageObjects: options.pageObjects,
     navigate: options.navigate,
@@ -112,7 +121,8 @@ async function prepare(
 
 function playwrightTarget(
   page: Page,
-  prepared: () => PreparedOptions
+  prepared: () => PreparedOptions,
+  pageObjectIds: PageObjectIdSource | undefined
 ): SessionTarget {
   const host = playwrightPageHost(page);
   const pageState = () => pageStateOf(page, host);
@@ -123,6 +133,7 @@ function playwrightTarget(
           providePageObjectProbeOf(page, probe),
         providePageObjectIds: (idsOf) => providePageObjectIdsOf(page, idsOf),
       },
+      pageObjectIds,
     });
   const sources: ToolSources = {
     // The Goal Loop reads the document: a Node host offers none.
