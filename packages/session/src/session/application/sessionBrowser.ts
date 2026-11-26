@@ -1,6 +1,12 @@
 import { Context, type Effect, type Scope } from "effect";
 
-import type { Listing, SessionStartError, TabReadError } from "../domain";
+import type {
+  Listing,
+  RunAnswer,
+  RunError,
+  SessionStartError,
+  TabReadError,
+} from "../domain";
 import type { BuiltPageObjects } from "./pageObjectsBuild";
 
 /** The browser a Session asks for: one ayme opens, at `url` when given. */
@@ -10,8 +16,16 @@ export type SessionBrowserRequest = {
 
 /** A Tab the Session is the Host of. */
 export interface HostedTab {
-  /** Reads what a listing shows of the Tab now, from its page. */
+  /** Reads what a listing shows of the Tab now, from its page, once the
+   * Run under way on the Tab has ended. */
   readonly listing: Effect.Effect<Listing, TabReadError>;
+  /** Runs the Page Object Tool `tool` with `input` on the Tab, once the Run
+   * under way there has ended, whichever Caller started it. ayme adds no
+   * time limit. */
+  readonly call: (
+    tool: string,
+    input: unknown
+  ) => Effect.Effect<RunAnswer, RunError>;
 }
 
 /** A browser a Session has. */

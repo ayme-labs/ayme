@@ -1,5 +1,6 @@
 import type { ListedTool, Listing, TabName } from "./listing";
 import type { SessionAnswer, SessionEnd } from "./requests";
+import type { RunAnswer, RunError } from "./run";
 
 /** The first line of a listing: the Tab it describes. */
 const tabLine = ({ url, title }: TabName) =>
@@ -95,6 +96,46 @@ export function endAnswer(end: SessionEnd): SessionAnswer {
       };
     case "browser gone":
       return failed("The Session had already ended: its browser went away.");
+    case "start failed":
+      return failed("The Session never started.");
+  }
+}
+
+const changesLines = (changes: string) => ["changes:", changes];
+
+/** The answer to `ayme call`: the Run's short answer, a line for each of
+ * its parts, and the tree of its changes last. */
+export const callAnswer = (answer: RunAnswer): SessionAnswer => ({
+  ok: true,
+  text: [
+    `settled: ${answer.settled}`,
+    ...(answer.result === undefined
+      ? []
+      : [`result: ${JSON.stringify(answer.result)}`]),
+    ...(answer.url === undefined ? [] : [`url: ${answer.url}`]),
+    ...(answer.changes === undefined ? [] : changesLines(answer.changes)),
+  ].join("\n"),
+  data: answer,
+});
+
+/** The answer to `ayme call` when its Run was refused or failed, followed
+ * by the tree of its changes as WebMCP publication tells them. */
+export const runFailed = ({ message, changes }: RunError): SessionAnswer =>
+  failed(
+    changes === undefined
+      ? message
+      : [message, "", ...changesLines(changes)].join("\n")
+  );
+
+/** The answer to a command still waiting when the Session ended. */
+export function endedBeforeAnswer(end: SessionEnd): SessionAnswer {
+  switch (end) {
+    case "stopped":
+      return failed("The Session was closed before it answered this command.");
+    case "browser gone":
+      return failed(
+        "The Session ended before it answered this command: its browser went away."
+      );
     case "start failed":
       return failed("The Session never started.");
   }

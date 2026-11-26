@@ -11,12 +11,15 @@ import {
 
 import {
   brokenStart,
+  callAnswer,
   endAnswer,
   endedAtStart,
+  endedBeforeAnswer,
   failed,
   type Listing,
   openedAnswer,
   pageObjectsAnswer,
+  runFailed,
   toolsAnswer,
   type SessionAnswer,
   type SessionEnd,
@@ -71,7 +74,7 @@ export const openSession = (
     const browserScope = yield* Scope.fork(scope);
     const pageObjects = yield* PageObjectsBuild;
     const start = yield* Deferred.make<Started, SessionStartError>();
-    const ending = yield* Deferred.make<void>();
+    const ending = yield* Deferred.make<SessionEnd>();
     const ended = yield* Deferred.make<SessionEnd>();
 
     // The build reads no page, so it runs while the browser opens; the
@@ -91,7 +94,7 @@ export const openSession = (
     // any later one waits for it.
     const end = (how: SessionEnd) =>
       Effect.gen(function* () {
-        if (yield* Deferred.succeed(ending, undefined)) {
+        if (yield* Deferred.succeed(ending, how)) {
           yield* Fiber.interrupt(starting);
           yield* Deferred.fail(start, new SessionStartError(endedAtStart(how)));
           yield* Scope.close(browserScope, Exit.void);
@@ -152,8 +155,21 @@ export const openSession = (
     ): Effect.Effect<SessionAnswer> => {
       if ("pageObjects" in request) return listed(started, pageObjectsAnswer);
       if ("tools" in request) return listed(started, toolsAnswer);
+      if ("call" in request)
+        return started.tab.call(request.call.tool, request.call.input).pipe(
+          Effect.map(callAnswer),
+          Effect.catch((error) => Effect.succeed(runFailed(error)))
+        );
       return Effect.succeed(unknownRequest);
     };
+
+    // A command still waiting when the Session ends is answered at once,
+    // before its browser closes: a Run or a listing need never end (rule 1).
+    const untilEnd = (answer: Effect.Effect<SessionAnswer>) =>
+      Effect.raceFirst(
+        answer,
+        Deferred.await(ending).pipe(Effect.map(endedBeforeAnswer))
+      );
 
     return {
       // A browser that went away before the start was answered is no
@@ -176,7 +192,7 @@ export const openSession = (
                   : Effect.succeed(endAnswer(how))
               )
             )
-          : afterStart((started) => answerTo(request, started)),
+          : afterStart((started) => untilEnd(answerTo(request, started))),
       events: Stream.never.pipe(Stream.interruptWhen(Deferred.await(ended))),
       ended: Deferred.await(ended),
     };

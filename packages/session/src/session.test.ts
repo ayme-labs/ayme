@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 
+import { RunError } from "./session/domain";
 import { SCRIPTED_PAGE_OBJECTS, startScriptedSession } from "../testing";
 
 it("a Session opens the browser it is asked for and answers its start with the browser's address", async () => {
@@ -348,4 +349,116 @@ it("a stop sent while the Page Objects still build ends the start, and the brows
   });
   expect(await session.ended).toBe("stopped");
   expect(browser.hostedWith).toEqual([]);
+});
+
+it("call starts a Run of the tool on the Tab and answers the short answer: what the action returned, the URL it changed to, and how the Page Object Tree changed", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const answer = {
+    settled: true,
+    result: { total: 2 },
+    url: "http://127.0.0.1:5173/basket.html#full",
+    changes: 'Basket po1\n  items: [] → ["Milk"]',
+  };
+  browser.answerRuns(async () => answer);
+
+  expect(
+    await session.ask({
+      call: {
+        tool: "Basket.add",
+        input: { id: "po1", args: { item: "Milk" } },
+      },
+    })
+  ).toEqual({
+    ok: true,
+    text: [
+      "settled: true",
+      'result: {"total":2}',
+      "url: http://127.0.0.1:5173/basket.html#full",
+      "changes:",
+      "Basket po1",
+      '  items: [] → ["Milk"]',
+    ].join("\n"),
+    data: answer,
+  });
+  expect(browser.runs).toEqual([
+    { tool: "Basket.add", input: { id: "po1", args: { item: "Milk" } } },
+  ]);
+});
+
+it("a Run that returned nothing and changed nothing answers only whether the page settled", async () => {
+  const { session } = await startScriptedSession(opening);
+
+  expect(
+    await session.ask({ call: { tool: "Basket.add", input: {} } })
+  ).toEqual({ ok: true, text: "settled: true", data: { settled: true } });
+});
+
+it("a failed Run is answered with why and how the Page Object Tree changed while it ran, and the Session goes on", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.answerRuns(async () => {
+    throw new RunError(
+      "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+      'Basket po1\n  items: [] → ["Milk"]'
+    );
+  });
+
+  expect(
+    await session.ask({ call: { tool: "Basket.add", input: { id: "po1" } } })
+  ).toEqual({
+    ok: false,
+    text: [
+      "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+      "",
+      "changes:",
+      "Basket po1",
+      '  items: [] → ["Milk"]',
+    ].join("\n"),
+  });
+
+  browser.answerRuns(async () => ({ settled: true, result: "Groceries" }));
+  expect(
+    await session.ask({ call: { tool: "Basket.readHeading", input: {} } })
+  ).toMatchObject({ ok: true, text: 'settled: true\nresult: "Groceries"' });
+});
+
+it("a Run under way when the Session is stopped is answered that the Session was closed", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.answerRuns(() => new Promise(() => {}));
+  const call = session.ask({ call: { tool: "Basket.hold", input: {} } });
+  expect(await pending(call)).toBe(true);
+
+  await session.ask({ stop: {} });
+
+  expect(await call).toEqual({
+    ok: false,
+    text: "The Session was closed before it answered this command.",
+  });
+});
+
+it("a Run under way when the browser goes away is answered so", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.answerRuns(() => new Promise(() => {}));
+  const call = session.ask({ call: { tool: "Basket.hold", input: {} } });
+  expect(await pending(call)).toBe(true);
+
+  browser.goAway();
+
+  expect(await call).toEqual({
+    ok: false,
+    text: "The Session ended before it answered this command: its browser went away.",
+  });
+});
+
+it("a listing that never ends, as behind a presence predicate that never resolves, is answered when the Session is stopped", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.holdReads();
+  const listing = session.ask({ pageObjects: {} });
+  expect(await pending(listing)).toBe(true);
+
+  expect(await session.ask({ stop: {} })).toMatchObject({ ok: true });
+  expect(await listing).toEqual({
+    ok: false,
+    text: "The Session was closed before it answered this command.",
+  });
+  expect(await session.ended).toBe("stopped");
 });

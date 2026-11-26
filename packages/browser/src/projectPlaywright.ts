@@ -7,7 +7,9 @@ import type * as PlaywrightCore from "playwright-core";
 import { BrowserError } from "./browserError";
 import { placeInRange } from "./playwrightRange";
 
-export type Playwright = Pick<typeof PlaywrightCore, "chromium">;
+// `selectors` registers a selector engine on this Playwright, the one the
+// browser is driven with.
+export type Playwright = Pick<typeof PlaywrightCore, "chromium" | "selectors">;
 
 /** The Playwright a project has installed, with its version. */
 export type ProjectPlaywright = {
