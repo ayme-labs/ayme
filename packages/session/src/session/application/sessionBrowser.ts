@@ -9,10 +9,11 @@ import type {
 } from "../domain";
 import type { BuiltPageObjects } from "./pageObjectsBuild";
 
-/** The browser a Session asks for: one ayme opens, at `url` when given. */
-export type SessionBrowserRequest = {
-  readonly open: { readonly url?: string; readonly headed: boolean };
-};
+/** The browser a Session asks for: one ayme opens, at `url` when given, or
+ * a running one it joins at the address of its DevTools protocol. */
+export type SessionBrowserRequest =
+  | { readonly open: { readonly url?: string; readonly headed: boolean } }
+  | { readonly join: { readonly cdp: string } };
 
 /** A Tab the Session is the Host of. */
 export interface HostedTab {
@@ -31,12 +32,13 @@ export interface HostedTab {
 /** A browser a Session has. */
 export interface HeldBrowser {
   /** The address of its DevTools protocol, which a browser automation
-   * connects to. */
+   * connects to: for a joined browser, the one it was joined at. */
   readonly address: string;
   /** Completes when the browser goes away. */
   readonly gone: Effect.Effect<void>;
   /**
-   * Makes the Session the Host of the Tab the browser opened on, running
+   * Makes the Session the Host of the Tab the browser opened on, or of a
+   * joined browser's first Tab, running
    * `pageObjects` there. It reads nothing of the page, so an open dialog
    * cannot hold it up.
    */
@@ -48,7 +50,8 @@ export interface HeldBrowser {
 /**
  * The browser of a Session: one of the Session's two seams, beside the
  * build of its Page Objects. Getting a browser
- * holds it until the scope closes, which closes a browser ayme opened.
+ * holds it until the scope closes, which closes a browser ayme opened and
+ * only lets go of a joined one.
  */
 export class SessionBrowser extends Context.Service<
   SessionBrowser,

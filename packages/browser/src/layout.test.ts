@@ -94,3 +94,39 @@ it(
       ).toEqual([expect.stringContaining("only the stable effect package")]);
   }
 );
+
+it(
+  "lint keeps plain logic out of infrastructure/live, which only the front door reaches",
+  slow,
+  async () => {
+    const reachesLive = [
+      expect.stringContaining(
+        "Only the front door reaches infrastructure/live"
+      ),
+    ];
+    expect(
+      await lint(
+        "src/misplaced.ts",
+        'export { browser } from "./infrastructure/live/browser";\n'
+      )
+    ).toEqual(reachesLive);
+    expect(
+      await lint(
+        "src/infrastructure/misplaced.ts",
+        'export type B = typeof import("./live/browser").browser;\n'
+      )
+    ).toEqual(reachesLive);
+    expect(
+      await lint(
+        "src/index.ts",
+        'export { browser } from "./infrastructure/live/browser";\n'
+      )
+    ).toEqual([]);
+    expect(
+      await lint(
+        "src/infrastructure/live/placed.ts",
+        'export { browser } from "./browser";\n'
+      )
+    ).toEqual([]);
+  }
+);

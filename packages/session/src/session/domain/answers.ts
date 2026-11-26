@@ -36,11 +36,27 @@ export const openedAnswer = (address: string): SessionAnswer => ({
   data: { address },
 });
 
+/** The answer to the command that started a Session on a browser it
+ * joined. */
+export const joinedAnswer = (address: string): SessionAnswer => ({
+  ok: true,
+  text: `A Session started on the browser at ${address}.\nayme detach ends the Session and leaves the browser running.`,
+  data: { address },
+});
+
+/** Why `ayme detach` is refused on a browser ayme opened. */
+export const detachRefused: SessionAnswer = {
+  ok: false,
+  text: "ayme opened this Session's browser, so ayme detach would leave it without an owner. End the Session and close the browser with ayme close.",
+};
+
 /** Why a Session that ended before its start was answered did not start. */
 export function endedAtStart(end: SessionEnd): string {
   switch (end) {
     case "stopped":
       return "ayme close ended the Session before it started.";
+    case "detached":
+      return "ayme detach ended the Session before it started.";
     case "browser gone":
       return "The browser went away before the Session started.";
     case "start failed":
@@ -86,13 +102,17 @@ export const unknownRequest = failed(
   "ayme does not know this request. Update ayme, or run ayme --help."
 );
 
-/** The answer to a command that ended the Session, by how it ended. */
-export function endAnswer(end: SessionEnd): SessionAnswer {
+/** The answer to a command that ended the Session, by how it ended and
+ * whether ayme had opened its browser. */
+export function endAnswer(end: SessionEnd, opened: boolean): SessionAnswer {
   switch (end) {
     case "stopped":
+    case "detached":
       return {
         ok: true,
-        text: "The Session ended and its browser was closed.",
+        text: opened
+          ? "The Session ended and its browser was closed."
+          : "The Session ended. Its browser keeps running.",
       };
     case "browser gone":
       return failed("The Session had already ended: its browser went away.");
@@ -132,6 +152,10 @@ export function endedBeforeAnswer(end: SessionEnd): SessionAnswer {
   switch (end) {
     case "stopped":
       return failed("The Session was closed before it answered this command.");
+    case "detached":
+      return failed(
+        "ayme detach ended the Session before it answered this command."
+      );
     case "browser gone":
       return failed(
         "The Session ended before it answered this command: its browser went away."

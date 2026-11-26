@@ -1,9 +1,13 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { browser, projectPlaywright } from "@ayme-dev/browser";
+import {
+  browser,
+  projectPlaywright,
+  type ProjectPlaywright,
+} from "@ayme-dev/browser";
 import { Effect, Layer } from "effect";
-import type { Browser } from "playwright-core";
+import type { Browser, BrowserContext } from "playwright-core";
 
 import { SessionBrowser } from "../../../session/application";
 import { SessionStartError } from "../../../session/domain";
@@ -42,40 +46,75 @@ const goneFrom = (playwrightBrowser: Browser) =>
     if (!playwrightBrowser.isConnected()) resume(Effect.void);
   });
 
+/** Leaves every dialog of the browser to the developer's browser
+ * automation: Playwright dismisses a dialog nobody listens for at once, so
+ * each context, those made later among them, gets a listener that does
+ * nothing. */
+function leaveDialogsOpen(playwrightBrowser: Browser): void {
+  const listen = (context: BrowserContext) => context.on("dialog", () => {});
+  playwrightBrowser.contexts().forEach(listen);
+  playwrightBrowser.on("context", listen);
+}
+
+/** A browser ayme opens, at `url` when given. */
+const opened = (
+  found: ProjectPlaywright,
+  { url, headed }: { readonly url?: string; readonly headed: boolean }
+) =>
+  Effect.gen(function* () {
+    const profile = yield* profileFolder;
+    // Port 0: Chromium picks a free one, so no other process can take it
+    // in between.
+    const { playwrightBrowser } = yield* browser(found, {
+      open: { headed, debugPort: 0, profile },
+    }).pipe(Effect.mapError(sessionStartError));
+    leaveDialogsOpen(playwrightBrowser);
+    // The Tab the browser opened on.
+    const page = playwrightBrowser.contexts()[0]!.pages()[0]!;
+    // Once the navigation commits: a dialog the page opens while it loads
+    // is the browser automation's to answer, which it can only do once the
+    // start is answered with the address. Playwright's own navigation
+    // timeout bounds a server that never answers.
+    if (url !== undefined)
+      yield* Effect.tryPromise({
+        try: () => page.goto(url, { waitUntil: "commit" }),
+        catch: startFailed(`Chromium opened, but ${url} did not load.`),
+      });
+    return { playwrightBrowser, page, address: yield* addressOf(profile) };
+  });
+
+/** A running browser ayme joins at `cdp`, without Playwright's defaults. */
+const joined = (found: ProjectPlaywright, cdp: string) =>
+  Effect.gen(function* () {
+    const { playwrightBrowser } = yield* browser(found, { join: { cdp } }).pipe(
+      Effect.mapError(sessionStartError)
+    );
+    leaveDialogsOpen(playwrightBrowser);
+    const page = playwrightBrowser.contexts().flatMap((c) => c.pages())[0];
+    if (page === undefined)
+      return yield* Effect.fail(
+        new SessionStartError(
+          `The browser at ${cdp} has no tab open. Open one with your browser automation, then run ayme attach again.`
+        )
+      );
+    return { playwrightBrowser, page, address: cdp };
+  });
+
 /** The browser of a Session, on the Playwright of the project in
  * `projectDir`. */
 export const stockBrowser = (projectDir: string): Layer.Layer<SessionBrowser> =>
   Layer.succeed(SessionBrowser, {
-    get: ({ open }) =>
+    get: (request) =>
       Effect.gen(function* () {
         const found = yield* projectPlaywright(projectDir).pipe(
           Effect.mapError(sessionStartError)
         );
-        const profile = yield* profileFolder;
-        // Port 0: Chromium picks a free one, so no other process can take
-        // it in between.
-        const { playwrightBrowser } = yield* browser(found, {
-          open: { headed: open.headed, debugPort: 0, profile },
-        }).pipe(Effect.mapError(sessionStartError));
-        const context = playwrightBrowser.contexts()[0]!;
-        // A dialog nobody listens for is dismissed by Playwright at once:
-        // this listener leaves every dialog to the developer's browser
-        // automation.
-        context.on("dialog", () => {});
-        // The Tab the browser opened on.
-        const page = context.pages()[0]!;
-        const { url } = open;
-        // Once the navigation commits: a dialog the page opens while it
-        // loads is the browser automation's to answer, which it can only do
-        // once the start is answered with the address. Playwright's own
-        // navigation timeout bounds a server that never answers.
-        if (url !== undefined)
-          yield* Effect.tryPromise({
-            try: () => page.goto(url, { waitUntil: "commit" }),
-            catch: startFailed(`Chromium opened, but ${url} did not load.`),
-          });
+        const { playwrightBrowser, page, address } =
+          "open" in request
+            ? yield* opened(found, request.open)
+            : yield* joined(found, request.join.cdp);
         return {
-          address: yield* addressOf(profile),
+          address,
           gone: goneFrom(playwrightBrowser),
           // The Session hands the Tab the Page Objects the project's build
           // gave.

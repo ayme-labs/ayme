@@ -21,7 +21,8 @@ import {
   type SessionRequest,
 } from "../src/session/domain";
 
-/** The address the scripted browser gives. */
+/** The address the scripted browser gives when it opens; a joined one gives
+ * the address it was joined at. */
 const SCRIPTED_ADDRESS = "http://127.0.0.1:9222";
 
 /** What the scripted build gives: the project's Page Objects, built. */
@@ -40,7 +41,7 @@ export interface ScriptedBrowser {
   /** Every browser the Session asked for, in order. */
   readonly asked: readonly SessionBrowserRequest[];
   /** Whether the Session has let its browser go, which closes a browser
-   * ayme opened. */
+   * ayme opened and only disconnects from a joined one. */
   readonly released: boolean;
   /** A held open finishes: the browser is there. */
   open(): void;
@@ -154,7 +155,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       ).pipe(
         Effect.andThen(Deferred.await(opened)),
         Effect.as({
-          address: SCRIPTED_ADDRESS,
+          address: "join" in asking ? asking.join.cdp : SCRIPTED_ADDRESS,
           gone: Deferred.await(gone),
           host: (pageObjects: BuiltPageObjects) =>
             Effect.sync(() => {

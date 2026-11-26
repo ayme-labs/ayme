@@ -1,9 +1,11 @@
 export {
   callAnswer,
+  detachRefused,
   endAnswer,
   endedBeforeAnswer,
   endedAtStart,
   failed,
+  joinedAnswer,
   openedAnswer,
   pageObjectsAnswer,
   paramsNotJson,

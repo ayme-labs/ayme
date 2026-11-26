@@ -5,16 +5,23 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                     [--load-storage <file>] [--save-storage <file>]
        ayme capture --cdp=<url>
        ayme open [url] [--headed]
+       ayme attach --cdp=<url>
        ayme page-objects
        ayme tools
        ayme call <tool> [--params <json> | --params @<file>]
+       ayme detach
        ayme close
+       ayme list
 
   open [url]     Start a Session in this folder: open Chromium with the
                  Playwright installed in the project this runs in, at <url>
                  when given, and print the address your browser automation
                  connects to.
   --headed       Open that Chromium with a visible window.
+  attach --cdp=<url>
+                 Start a Session in this folder on a Chromium that is
+                 already running, at the address of its DevTools protocol,
+                 such as http://127.0.0.1:9222.
   page-objects   Print the Page Object Tree of the Session's Tab: its Page
                  Objects, each with its id, and how many tools they have.
   tools          List every Page Object Tool of the Session's Tab with its
@@ -29,7 +36,13 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  that takes none.
   --params @<file>
                  Read that JSON object from <file>.
-  close          End this folder's Session and close its browser.
+  detach         End a Session started with attach, and leave its browser
+                 running.
+  close          End the Session, and close its browser if ayme opened it.
+  list           List the Sessions of this folder.
+  -s=<name>      Name the Session a command starts or reaches, so that a
+                 folder can have several. AYME_SESSION names it too; without
+                 either, its name is default.
   --json         Print the answer of a Session's command as JSON.
 
   capture <url>  Record a flow on the page at <url>, opened in Chromium with
@@ -71,15 +84,17 @@ export type CaptureTarget =
  */
 export type Command =
   | { kind: "capture"; target: CaptureTarget }
-  | {
+  | ({
       kind: "open";
       open: { readonly url?: string; readonly headed: boolean };
       json: boolean;
-    }
-  | { kind: "ask"; request: SessionRequest; json: boolean }
+    } & Named)
+  | ({ kind: "attach"; cdp: string; json: boolean } & Named)
+  | ({ kind: "ask"; request: SessionRequest; json: boolean } & Named)
   /** `ayme call`: the tool, and its `--params` as given, JSON or
    * `@<file>`. */
-  | { kind: "call"; tool: string; params?: string; json: boolean }
+  | ({ kind: "call"; tool: string; params?: string; json: boolean } & Named)
+  | { kind: "list"; json: boolean }
   /** The Session's background process, which `open` starts with the
    * options it was given, as JSON. */
   | { kind: "session process"; options: string }
@@ -87,22 +102,36 @@ export type Command =
   | { kind: "version" }
   | { kind: "error"; text: string };
 
-/** The command the arguments (without the node and script paths) ask for. */
-export function readCommand(args: string[]): Command {
+/** The Session a command names, when it names one. */
+type Named = { session?: string };
+
+/** The command the arguments (without the node and script paths) ask for,
+ * with the environment's AYME_SESSION naming a Session that -s does not. */
+export function readCommand(
+  args: string[],
+  { AYME_SESSION }: { AYME_SESSION?: string | undefined } = {}
+): Command {
   // By itself only: beside a command it is an option the command lacks.
   if (args.length === 1 && args[0] === "--version") return { kind: "version" };
   if (args[0] === SESSION_PROCESS && args.length === 2)
     return { kind: "session process", options: args[1]! };
-  const word = args.find((arg) => !arg.startsWith("-"));
+  // The first word that is no option, nor the name after a bare -s.
+  const word = args.find(
+    (arg, at) =>
+      !arg.startsWith("-") && !["-s", "--session"].includes(args[at - 1] ?? "")
+  );
   if (word !== undefined && SESSION_WORDS.has(word))
-    return readSessionCommand(args);
+    return readSessionCommand(args, AYME_SESSION);
   return readCapture(args);
 }
 
 /** The commands of a Session. */
 const SESSION_WORDS = new Set([
   "open",
+  "attach",
+  "detach",
   "close",
+  "list",
   "page-objects",
   "tools",
   "call",
@@ -111,6 +140,7 @@ const SESSION_WORDS = new Set([
 /** What each command that only asks the folder's Session asks it. */
 const ASKED: Record<string, SessionRequest> = {
   close: { stop: {} },
+  detach: { detach: {} },
   "page-objects": { pageObjects: {} },
   tools: { tools: {} },
 };
@@ -118,24 +148,35 @@ const ASKED: Record<string, SessionRequest> = {
 /** The word the Session's background process is started with. */
 export const SESSION_PROCESS = "__session";
 
-/** `open [url] [--headed]`, or a command that only asks the Session, each
- * with the global --json. */
-function readSessionCommand(args: string[]): Command {
+/** `open [url] [--headed]`, `attach --cdp=<url>`, `list`, or a command
+ * that only asks the Session, each with the global --json and -s. */
+function readSessionCommand(
+  args: string[],
+  fromEnvironment: string | undefined
+): Command {
   let positionals: string[];
   let values: {
     help?: boolean;
     headed?: boolean;
     json?: boolean;
+    cdp?: string;
+    session?: string;
     params?: string;
   };
   try {
     ({ positionals, values } = parseArgs({
-      args,
+      // Playwright CLI's `-s=<name>`, which parseArgs reads as the value
+      // "=<name>".
+      args: args.map((arg) =>
+        arg.startsWith("-s=") ? `--session=${arg.slice(3)}` : arg
+      ),
       allowPositionals: true,
       options: {
         help: { type: "boolean", short: "h" },
         headed: { type: "boolean" },
         json: { type: "boolean" },
+        cdp: { type: "string" },
+        session: { type: "string", short: "s" },
         params: { type: "string" },
       },
     }));
@@ -143,8 +184,21 @@ function readSessionCommand(args: string[]): Command {
     return fail((error as Error).message);
   }
   if (values.help) return { kind: "help", text: USAGE };
+  if (values.session === "") return fail("Give -s the name of a Session.");
   const [word, url, ...more] = positionals;
   const json = values.json ?? false;
+  const session = values.session ?? (fromEnvironment || undefined);
+  const named = session === undefined ? {} : { session };
+  if (word === "attach") {
+    if (values.cdp === undefined)
+      return fail(
+        "Give ayme attach the address of the browser's DevTools protocol, such as --cdp=http://127.0.0.1:9222."
+      );
+    if (url !== undefined || values.headed)
+      return { kind: "error", text: USAGE };
+    return { kind: "attach", cdp: values.cdp, json, ...named };
+  }
+  if (values.cdp !== undefined) return { kind: "error", text: USAGE };
   const { params } = values;
   if (word === "call")
     return url !== undefined && more.length === 0 && !values.headed
@@ -153,6 +207,7 @@ function readSessionCommand(args: string[]): Command {
           tool: url,
           ...(params === undefined ? {} : { params }),
           json,
+          ...named,
         }
       : { kind: "error", text: USAGE };
   if (params !== undefined) return { kind: "error", text: USAGE };
@@ -164,10 +219,12 @@ function readSessionCommand(args: string[]): Command {
         headed: values.headed ?? false,
       },
       json,
+      ...named,
     };
+  if (url !== undefined || values.headed) return { kind: "error", text: USAGE };
+  if (word === "list") return { kind: "list", json };
   const asked = word === undefined ? undefined : ASKED[word];
-  if (asked && url === undefined && !values.headed)
-    return { kind: "ask", request: asked, json };
+  if (asked) return { kind: "ask", request: asked, json, ...named };
   return { kind: "error", text: USAGE };
 }
 

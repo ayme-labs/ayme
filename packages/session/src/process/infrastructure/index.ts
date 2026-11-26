@@ -1,2 +1,3 @@
 export { runSessionProcess, serveSession } from "./background";
-export { askCall, askSession, openSession } from "./commands";
+export { askCall, askSession, listSessions, openSession } from "./commands";
+export type { SessionPlace } from "./record";

@@ -19,7 +19,7 @@ import {
   SessionStartError,
   type SessionAnswer,
 } from "../../session/domain";
-import { releaseRecord } from "./record";
+import { releaseRecord, type SessionPlace } from "./record";
 import { listen } from "./wire";
 
 /** What the command that starts a Session tells its process, over the
@@ -28,8 +28,7 @@ import { listen } from "./wire";
 export type FromOpener = { readonly claimed: number };
 
 /** What a Session's process is started with. */
-type ProcessOptions = {
-  readonly projectDir: string;
+type ProcessOptions = SessionPlace & {
   readonly request: SessionBrowserRequest;
   /** The socket to listen on, in a folder of the Session's own. */
   readonly socket: string;
@@ -48,7 +47,7 @@ const messageOf = (cause: unknown) =>
 export const serveSession = ({
   socket,
   request,
-}: Omit<ProcessOptions, "projectDir">): Effect.Effect<
+}: Omit<ProcessOptions, keyof SessionPlace>): Effect.Effect<
   Session,
   SessionStartError,
   SessionBrowser | PageObjectsBuild | Scope.Scope
@@ -130,7 +129,7 @@ export async function runSessionProcess(
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
           rmSync(dirname(options.socket), { recursive: true, force: true });
-          releaseRecord(options.projectDir, generation);
+          releaseRecord(options, generation);
         })
       );
       const session = yield* serveSession(options);

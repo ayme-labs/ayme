@@ -3,7 +3,9 @@
 export {
   askCall,
   askSession,
+  listSessions,
   openSession,
   runSessionProcess,
+  type SessionPlace,
 } from "./process/infrastructure";
 export type { SessionAnswer, SessionRequest } from "./session/domain";
