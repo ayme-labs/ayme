@@ -43,6 +43,10 @@ _Avoid_: injected script (Playwright's own)
 **Host**:
 A side that drives a page through Playwright's `Page`: the page's own runtime, a Node process, or `ayme mcp`.
 
+**Session**:
+One running ayme connected to one browser, started with `ayme open` or `ayme attach`. It runs the project's Page Objects in Node, as the Host of each Tab it works on. An agent reaches it through the `ayme` commands, a developer through the Inspector. A project folder can have several, each with a name.
+_Avoid_: daemon, server, background process, front. Not a Page State Session, which is what ayme remembers of one document. A page that ships ayme is not a Session.
+
 **Visit**:
 One stretch of a Page State Session between navigations: from document load, or from a same-document navigation, to the next. Interaction history is scoped by Visits.
 

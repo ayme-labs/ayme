@@ -191,6 +191,25 @@ in-browser agents and the app's own code call on the running page.
   one page function the engine exposes in the page
 - Evidence: verified: [packages/cli/src/cli.ts](packages/cli/src/cli.ts), [packages/cli/src/capture.ts](packages/cli/src/capture.ts), [packages/recorder/src/engine/startRecorder.ts](packages/recorder/src/engine/startRecorder.ts), [packages/recorder/src/session/application/recorderSession.ts](packages/recorder/src/session/application/recorderSession.ts), [packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/domain/timeline.ts](packages/recorder/src/timeline/domain/timeline.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts), [packages/recorder/src/server/infrastructure/windowServer.ts](packages/recorder/src/server/infrastructure/windowServer.ts), [packages/recorder-window/src/app/main.tsx](packages/recorder-window/src/app/main.tsx), [packages/recorder/src/server/infrastructure/toolbarBridge.ts](packages/recorder/src/server/infrastructure/toolbarBridge.ts), [packages/recorder-window/src/app/toolbar.tsx](packages/recorder-window/src/app/toolbar.tsx), [docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md](docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md)
 
+### Session
+
+- Responsibility: one per project folder: one running ayme connected to one browser,
+  started with `ayme open`, which opens Chromium with the Playwright the developer's
+  project has installed and prints the address the developer's browser automation connects
+  to. It lives in a background process that the `ayme` commands reach, and ends with
+  `ayme close`, which closes that browser, or when the browser goes away. A command sent while
+  it starts waits for the start, and every command gets an answer. It keeps a dialog
+  listener that does nothing, so every dialog stays open for the browser automation to
+  answer. It runs no Page Objects yet
+- Technology: the `ayme` command from `@ayme-dev/cli` (`ayme open [url]` and
+  `ayme close`), over the private `@ayme-dev/session`, bundled into it, whose flows are written
+  with Effect. A command finds its folder's background process through a record in the
+  user's cache folder and sends it one JSON line over a local socket; the background
+  process is the same command, started detached. The Session gets its browser through
+  `@ayme-dev/browser`, on a profile of its own so that every Tab is in one context and one
+  window, with the DevTools protocol on a port Chromium picks
+- Evidence: verified: [packages/cli/src/session.ts](packages/cli/src/session.ts), [packages/session/src/session/application/session.ts](packages/session/src/session/application/session.ts), [packages/session/src/process/infrastructure/background.ts](packages/session/src/process/infrastructure/background.ts), [packages/session/src/process/infrastructure/commands.ts](packages/session/src/process/infrastructure/commands.ts), [packages/session/src/process/infrastructure/record.ts](packages/session/src/process/infrastructure/record.ts), [packages/session/src/playwright/infrastructure/live/stockBrowser.ts](packages/session/src/playwright/infrastructure/live/stockBrowser.ts), [docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md](docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md)
+
 ## Communication
 
 - **App developers → Browser runtime**
@@ -208,6 +227,13 @@ in-browser agents and the app's own code call on the running page.
       the token that admits it
   - Evidence: verified: [packages/mcp/src/server/index.ts](packages/mcp/src/server/index.ts), [packages/mcp/src/server/serverTools.ts](packages/mcp/src/server/serverTools.ts),
     [packages/mcp/src/tools/infrastructure/mcpToolServer.ts](packages/mcp/src/tools/infrastructure/mcpToolServer.ts)
+- **Coding agents → Session**
+  - Flows:
+    - → `ayme open [url]` and `ayme close`, run as commands in the project's folder, with the
+      global `--json`
+    - ← each answer's text, or the answer as JSON for `--json`, on stdout, or on stderr with
+      exit code 1 when it is a failure; the address of the browser `ayme open` started
+  - Evidence: verified: [packages/cli/src/readCommand.ts](packages/cli/src/readCommand.ts), [packages/cli/src/answer.ts](packages/cli/src/answer.ts), [packages/session/src/process/infrastructure/wire.ts](packages/session/src/process/infrastructure/wire.ts)
 - **In-browser agents → WebMCP driver**
   - Flows:
     - → calls to the published tools
@@ -315,6 +341,13 @@ in-browser agents and the app's own code call on the running page.
       assertions Playwright's own recorder reports, the toolbar's commands and requests
       for the state, and the trace's position numbers
   - Evidence: verified: [packages/browser/src/projectPlaywright.ts](packages/browser/src/projectPlaywright.ts), [packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/in-page/gate.ts](packages/recorder/src/playwright/infrastructure/in-page/gate.ts), [packages/recorder/src/playwright/infrastructure/in-page/watches.ts](packages/recorder/src/playwright/infrastructure/in-page/watches.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts)
+- **Session → Host application**
+  - Flows:
+    - → loading the Playwright installed in the project's folder, launching Chromium with it
+      on a profile of its own and opening the URL, and listening for dialogs without
+      answering them
+    - ← the browser going away
+  - Evidence: verified: [packages/session/src/playwright/infrastructure/live/stockBrowser.ts](packages/session/src/playwright/infrastructure/live/stockBrowser.ts), [packages/browser/src/browser.ts](packages/browser/src/browser.ts)
 - **App Process runtime → ayme MCP server**
   - Flows:
     - → pairing without a token, the process's Peek Tools and their changes, read results
@@ -371,6 +404,11 @@ hosting its playground.
     Playwright; optional
     - Deployment node: a Node process on the developer's machine
     - Evidence: verified: [packages/cli/README.md](packages/cli/README.md)
+  - **Session**: `npx ayme open [url]` from `@ayme-dev/cli`, run by the coding agent in the
+    project's folder, with the project's own Playwright; optional
+    - Deployment node: a background Node process on the developer's machine, and the Chromium
+      it launches
+    - Evidence: verified: [packages/session/src/process/infrastructure/commands.ts](packages/session/src/process/infrastructure/commands.ts)
 - External systems:
   - **Host application**: the developer's own app, served by its dev server
     - Evidence: verified: [docs/guide/start/install.md](docs/guide/start/install.md)
@@ -413,6 +451,8 @@ hosting its playground.
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
   - **Recorder**: does not run here; recording is a development tool
     - Evidence: inferred: nothing of the recorder is part of an app's build
+  - **Session**: does not run here; a Session is a development tool
+    - Evidence: inferred: nothing of a Session is part of an app's build
 - External systems:
   - **Host application**: the app itself, in production
     - Evidence: verified: [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md)
@@ -466,6 +506,11 @@ hosting its playground.
     - Deployment node: a Node process on the contributor's machine, and the Chromium it
       launches
     - Evidence: verified: [packages/cli/package.json](packages/cli/package.json), [apps/recorder-fixture/README.md](apps/recorder-fixture/README.md)
+  - **Session**: the workspace build, `node packages/cli/dist/cli.mjs open [url]`, started
+    in a folder with Playwright installed, such as `apps/mcp-fixture`
+    - Deployment node: a background Node process on the contributor's machine, and the
+      Chromium it launches
+    - Evidence: verified: [packages/cli/package.json](packages/cli/package.json), [apps/mcp-fixture/README.md](apps/mcp-fixture/README.md)
 - External systems:
   - **Host application**: the playground's list app on 4190, and the React, Next.js, Nuxt,
     SvelteKit and Angular examples on 4191, 4192, 4193, 4194 and 4196
@@ -515,6 +560,10 @@ hosting its playground.
     and, to record, in the test's own process, with a headless Chromium
     - Deployment node: a Playwright container on a GitHub Actions runner
     - Evidence: verified: [apps/recorder-fixture/tests/fixtures.ts](apps/recorder-fixture/tests/fixtures.ts), [.github/workflows/ci.yml](.github/workflows/ci.yml)
+  - **Session**: started by the MCP fixture's end-to-end tests of the `ayme` command, as a
+    child process, with a headless Chromium
+    - Deployment node: a Playwright container on a GitHub Actions runner
+    - Evidence: verified: [apps/mcp-fixture/tests/aymeCommand.ts](apps/mcp-fixture/tests/aymeCommand.ts), [.github/workflows/ci.yml](.github/workflows/ci.yml)
 - External systems:
   - **Host application**: the fixture and example apps in [apps/](apps/)
     - Evidence: verified: [docs/testing.md](docs/testing.md)
@@ -555,6 +604,8 @@ hosting its playground.
       `/playground/` copy that ayme.dev/playground/ proxies to
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml), [docs/guide/_config.yml](docs/guide/_config.yml)
   - **Recorder**: does not run here; the site is static
+    - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
+  - **Session**: does not run here; the site is static
     - Evidence: verified: [.github/workflows/deploy-example-vue.yml](.github/workflows/deploy-example-vue.yml)
 - External systems:
   - **Host application**: the playground's own list app
