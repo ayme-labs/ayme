@@ -19,21 +19,24 @@ type Automation = {
   readonly page: Page;
 };
 
-const cleanups: (() => Promise<void>)[] = [];
+/** What a test leaves to clean up, each pushed as soon as it exists. They
+ * run newest first, and every one runs even when another fails. */
+const cleanups: (() => Promise<unknown>)[] = [];
 test.afterEach(async () => {
-  for (const cleanup of cleanups.splice(0)) await cleanup();
+  const failures: unknown[] = [];
+  for (const cleanup of cleanups.splice(0).reverse())
+    await cleanup().catch((error: unknown) => failures.push(error));
+  if (failures.length > 0) throw failures[0];
 });
 
 async function automationAt(url: string): Promise<Automation> {
   const profile = await mkdtemp(join(tmpdir(), "ayme-automation-"));
+  cleanups.push(() => rm(profile, { recursive: true, force: true }));
   // Port 0: Chromium picks a free one and writes it into the profile.
   const context = await chromium.launchPersistentContext(profile, {
     args: ["--remote-debugging-port=0"],
   });
-  cleanups.push(async () => {
-    await context.close();
-    await rm(profile, { recursive: true, force: true });
-  });
+  cleanups.push(() => context.close());
   const page = context.pages()[0] ?? (await context.newPage());
   await page.goto(url);
   const port = (

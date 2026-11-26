@@ -433,10 +433,14 @@ const startsAtOnce = [
   'process.once("message", () => process.send({ ok: true, text: "started" }, () => process.disconnect())); setInterval(() => {}, 1e9)',
 ];
 
-/** Ends the process of a place's live Session when the test ends. */
+/** Ends the process of a place's live Session, if it has one, when the
+ * test ends: called before the start, so that the process is ended however
+ * the test goes. */
 function endWithTest(of: SessionPlace) {
-  const record = liveRecord(of);
-  if (record) onTestFinished(() => void process.kill(record.pid));
+  onTestFinished(() => {
+    const record = liveRecord(of);
+    if (record) process.kill(record.pid);
+  });
 }
 
 it("two starts of one name at the same moment: one starts and the other is refused", async () => {
@@ -448,8 +452,8 @@ it("two starts of one name at the same moment: one starts and the other is refus
       processCommand: startsAtOnce,
     });
 
-  const answers = await Promise.all([start(), start()]);
   endWithTest(review);
+  const answers = await Promise.all([start(), start()]);
 
   expect(answers).toEqual(
     expect.arrayContaining([
@@ -473,9 +477,9 @@ it("two starts of different names at the same moment both start", async () => {
       processCommand: startsAtOnce,
     });
 
-  const answers = await Promise.all([start("one"), start("two")]);
   endWithTest({ projectDir, name: "one" });
   endWithTest({ projectDir, name: "two" });
+  const answers = await Promise.all([start("one"), start("two")]);
 
   expect(answers).toEqual([
     { ok: true, text: "started" },
