@@ -1,22 +1,18 @@
 /// <reference types="webmcp-types" preserve="true" />
 // Test support (ADR-0057): a recording WebMCP driver for Playwright
 // tests, which only tests may import. The helpers receive the test's own
-// `Page` and `BrowserContext`. The reference above declares
+// `Page` and `BrowserContext`; `e2e` has the same ones on e2e's `browser`. The reference above declares
 // `document.modelContext` for the tests that import this entry.
 import type { BrowserContext, Page } from "@playwright/test";
 
-export type PublishedTool = {
-  name: string;
-  description: string;
-  inputSchema: unknown;
-  /** Only on a tool marked destructive: `{ consequentialHint: true }`. */
-  annotations?: { consequentialHint?: boolean };
-  execute(args: unknown): Promise<unknown>;
-};
+import {
+  installRecordingDriver,
+  type RecordingDriver,
+} from "./recordingDriver";
 
-export type RecordingDriver = {
-  tools: PublishedTool[];
-};
+export type { PublishedTool, RecordingDriver } from "./recordingDriver";
+/** The same helpers on the e2e runner's `browser`, for its suites. */
+export * as e2e from "./e2e";
 
 /** Install a minimal `document.modelContext` that records what the ayme
  *  runtime publishes, so a test can read and execute the published tools. */
@@ -29,34 +25,6 @@ export async function recordPublishedTools(context: BrowserContext) {
  *  followed by `retryPublication`. */
 export async function recordPublishedToolsLate(page: Page) {
   await page.evaluate(installRecordingDriver);
-}
-
-// Runs in the browser, so it uses nothing from this module's scope.
-function installRecordingDriver() {
-  const publishedTools: PublishedTool[] = [];
-  const driver: RecordingDriver & {
-    registerTool(
-      tool: PublishedTool,
-      options: { signal: AbortSignal }
-    ): Promise<void>;
-  } = {
-    tools: publishedTools,
-    async registerTool(tool, { signal }) {
-      publishedTools.push(tool);
-      signal.addEventListener(
-        "abort",
-        () => {
-          const index = publishedTools.indexOf(tool);
-          if (index >= 0) publishedTools.splice(index, 1);
-        },
-        { once: true }
-      );
-    },
-  };
-  Object.defineProperty(document, "modelContext", {
-    configurable: false,
-    value: driver,
-  });
 }
 
 /** The names of the tools published right now, in publication order. */

@@ -1,7 +1,7 @@
 import { test as base, type Browser, type WebApp } from "@e2e-dev/web";
 import { expect, type Screen } from "e2e";
 import { freePort, startAgent, type Agent } from "@ayme-dev/mcp/testing";
-import { recordPublishedTools } from "@ayme-dev/e2e-testing";
+import { e2e as webmcp } from "@ayme-dev/webmcp/testing";
 
 import type { FixturePage, Placement } from "../fixtures";
 import { AppView } from "./appView";
@@ -122,7 +122,7 @@ export async function openFixture(
   }
   if (webMCP && !recording.has(browser)) {
     recording.add(browser);
-    await recordPublishedTools(browser);
+    await webmcp.recordPublishedTools(browser);
   }
   if (agent) await browser.goto(await connectLink(agent, app, path, external));
   else await app.open(path);

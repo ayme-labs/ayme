@@ -23,7 +23,6 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@ayme-dev/e2e-testing": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@ayme-dev/unplugin-ayme": "workspace:*",
