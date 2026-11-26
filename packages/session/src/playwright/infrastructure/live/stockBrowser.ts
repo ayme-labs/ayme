@@ -13,7 +13,7 @@ import { SessionBrowser } from "../../../session/application";
 import { SessionStartError } from "../../../session/domain";
 import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { sessionStartError } from "../startErrors";
-import { hostTab } from "./tabHost";
+import { hostTabs } from "./tabHost";
 
 const startFailed = (what: string) => (cause: unknown) =>
   new SessionStartError(
@@ -80,7 +80,7 @@ const opened = (
         try: () => page.goto(url, { waitUntil: "commit" }),
         catch: startFailed(`Chromium opened, but ${url} did not load.`),
       });
-    return { playwrightBrowser, page, address: yield* addressOf(profile) };
+    return { playwrightBrowser, address: yield* addressOf(profile) };
   });
 
 /** A running browser ayme joins at `cdp`, without Playwright's defaults. */
@@ -90,14 +90,7 @@ const joined = (found: ProjectPlaywright, cdp: string) =>
       Effect.mapError(sessionStartError)
     );
     leaveDialogsOpen(playwrightBrowser);
-    const page = playwrightBrowser.contexts().flatMap((c) => c.pages())[0];
-    if (page === undefined)
-      return yield* Effect.fail(
-        new SessionStartError(
-          `The browser at ${cdp} has no tab open. Open one with your browser automation, then run ayme attach again.`
-        )
-      );
-    return { playwrightBrowser, page, address: cdp };
+    return { playwrightBrowser, address: cdp };
   });
 
 /** The browser of a Session, on the Playwright of the project in
@@ -109,18 +102,19 @@ export const stockBrowser = (projectDir: string): Layer.Layer<SessionBrowser> =>
         const found = yield* projectPlaywright(projectDir).pipe(
           Effect.mapError(sessionStartError)
         );
-        const { playwrightBrowser, page, address } =
+        const { playwrightBrowser, address } =
           "open" in request
             ? yield* opened(found, request.open)
             : yield* joined(found, request.join.cdp);
         return {
           address,
           gone: goneFrom(playwrightBrowser),
-          // The Session hands the Tab the Page Objects the project's build
+          // The Session hands its Tabs the Page Objects the project's build
           // gave.
           host: (pageObjects) =>
-            hostTab(
-              page,
+            hostTabs(
+              playwrightBrowser,
+              address,
               found.playwright.selectors,
               pageObjects as NodePageObjects
             ),

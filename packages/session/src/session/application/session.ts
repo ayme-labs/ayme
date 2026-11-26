@@ -17,11 +17,16 @@ import {
   endedAtStart,
   endedBeforeAnswer,
   failed,
+  idOnAnotherTab,
   joinedAnswer,
   type Listing,
+  NO_TAB_OPEN,
+  noTabShows,
   openedAnswer,
   pageObjectsAnswer,
+  RunError,
   runFailed,
+  TabReadError,
   toolsAnswer,
   type SessionAnswer,
   type SessionEnd,
@@ -33,13 +38,14 @@ import { PageObjectsBuild } from "./pageObjectsBuild";
 import {
   SessionBrowser,
   type HeldBrowser,
+  type BrowserTab,
+  type BrowserTabs,
   type HostedTab,
   type SessionBrowserRequest,
 } from "./sessionBrowser";
 
-/** What a Session has once it started: its browser, and the Tab it is the
- * Host of. */
-type Started = { readonly held: HeldBrowser; readonly tab: HostedTab };
+/** What a Session has once it started: its browser, and its Tabs. */
+type Started = { readonly held: HeldBrowser; readonly tabs: SessionTabs };
 
 /** What a Session tells as it goes. Nothing yet: the Inspector's events
  * join it. */
@@ -88,7 +94,11 @@ export const openSession = (
       { concurrency: "unbounded" }
     ).pipe(
       Effect.flatMap(([held, built]) =>
-        held.host(built).pipe(Effect.map((tab): Started => ({ held, tab })))
+        held
+          .host(built)
+          .pipe(
+            Effect.map((tabs): Started => ({ held, tabs: sessionTabs(tabs) }))
+          )
       ),
       Scope.provide(browserScope),
       Effect.forkIn(scope)
@@ -143,12 +153,14 @@ export const openSession = (
         })
       );
 
-    /** A listing of the Tab, answered by `answer`. */
+    /** A listing of the Tab `on` names, answered by `answer`. */
     const listed = (
-      { tab }: Started,
+      { tabs }: Started,
+      { tab }: { readonly tab?: string },
       answer: (listing: Listing) => SessionAnswer
     ) =>
-      tab.listing.pipe(
+      tabs.chosen(tab).pipe(
+        Effect.flatMap((hosted) => hosted.listing),
         Effect.map(answer),
         Effect.catch((error) => Effect.succeed(failed(error.message)))
       );
@@ -160,13 +172,19 @@ export const openSession = (
       >,
       started: Started
     ): Effect.Effect<SessionAnswer> => {
-      if ("pageObjects" in request) return listed(started, pageObjectsAnswer);
-      if ("tools" in request) return listed(started, toolsAnswer);
-      if ("call" in request)
-        return started.tab.call(request.call.tool, request.call.input).pipe(
+      if ("pageObjects" in request)
+        return listed(started, request.pageObjects, pageObjectsAnswer);
+      if ("tools" in request)
+        return listed(started, request.tools, toolsAnswer);
+      if ("call" in request) {
+        const { tool, input, tab } = request.call;
+        return started.tabs.chosen(tab, idIn(input)).pipe(
+          Effect.catch((error) => Effect.fail(new RunError(error.message))),
+          Effect.flatMap((hosted) => hosted.call(tool, input)),
           Effect.map(callAnswer),
           Effect.catch((error) => Effect.succeed(runFailed(error)))
         );
+      }
       return Effect.succeed(unknownRequest);
     };
 
@@ -207,6 +225,81 @@ export const openSession = (
       ended: Deferred.await(ended),
     };
   });
+
+/** The Page Object Id a tool's input names, when it names one. */
+const idIn = (input: unknown): string | undefined => {
+  const id = (input as { readonly id?: unknown } | null | undefined)?.id;
+  return typeof id === "string" ? id : undefined;
+};
+
+/** A Session's Tabs, as its requests reach them. */
+type SessionTabs = {
+  /**
+   * The Tab a request works on, with the Session as its Host: the Tab whose
+   * Host gave the Page Object Id `id`, else the most recently active Tab
+   * whose URL is `url`, else the most recently active Tab.
+   */
+  readonly chosen: (
+    url: string | undefined,
+    id?: string
+  ) => Effect.Effect<HostedTab, TabReadError>;
+};
+
+/** The Tabs of `browser`, each hosted once, the first time the Session
+ * works on it, and the Page Object Ids each Tab's Host gave. */
+function sessionTabs(browser: BrowserTabs): SessionTabs {
+  const hosts = new Map<BrowserTab, Effect.Effect<HostedTab, TabReadError>>();
+  // The Tab each id was given on. An id of a closed Tab is gone with it.
+  const owners = new Map<string, BrowserTab>();
+  const forget = (open: readonly BrowserTab[]) => {
+    for (const tab of hosts.keys()) if (!open.includes(tab)) hosts.delete(tab);
+    for (const [id, tab] of owners) if (!open.includes(tab)) owners.delete(id);
+  };
+  const hostOf = (tab: BrowserTab) =>
+    Effect.gen(function* () {
+      const known = hosts.get(tab);
+      if (known) return yield* known;
+      // Cached at once, so two requests that arrive together host the Tab
+      // once; a failed hosting is tried again by the next request.
+      const hosting = yield* Effect.cached(
+        tab.host((id) => owners.set(id, tab))
+      );
+      hosts.set(tab, hosting);
+      return yield* hosting.pipe(
+        Effect.tapError(() => Effect.sync(() => hosts.delete(tab)))
+      );
+    });
+  return {
+    chosen: (url, id) =>
+      browser.open.pipe(
+        Effect.flatMap((open) => {
+          forget(open);
+          const owner = id === undefined ? undefined : owners.get(id);
+          if (owner) {
+            if (url === undefined || owner.url() === url) return hostOf(owner);
+            return Effect.fail(
+              new TabReadError(idOnAnotherTab(id!, owner.url(), url))
+            );
+          }
+          const tab =
+            url === undefined
+              ? open[0]
+              : open.find((each) => each.url() === url);
+          if (tab) return hostOf(tab);
+          return Effect.fail(
+            new TabReadError(
+              open.length === 0
+                ? NO_TAB_OPEN
+                : noTabShows(
+                    url!,
+                    open.map((each) => each.url())
+                  )
+            )
+          );
+        })
+      ),
+  };
+}
 
 /** Why a start failed, also when it broke in a way nobody expected. */
 export const whyNotStarted = (

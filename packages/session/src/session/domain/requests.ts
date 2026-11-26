@@ -11,12 +11,19 @@ export type SessionRequest =
    * running. */
   | { readonly detach: Nothing }
   /** `ayme page-objects`: the Page Object Tree of the Tab. */
-  | { readonly pageObjects: Nothing }
+  | { readonly pageObjects: OnTab }
   /** `ayme tools`: every Page Object Tool of the Tab, with its parameters. */
-  | { readonly tools: Nothing }
+  | { readonly tools: OnTab }
   /** `ayme call`: a Run of the Page Object Tool `tool` with `input`, the
-   * tool's input exactly as `ayme tools` prints its parameters. */
-  | { readonly call: { readonly tool: string; readonly input: unknown } };
+   * tool's input exactly as `ayme tools` prints its parameters. The
+   * Page Object Id in `input` chooses the Tab. */
+  | {
+      readonly call: { readonly tool: string; readonly input: unknown } & OnTab;
+    };
+
+/** The Tab a request names by the URL its page shows, as a listing's first
+ * line prints it; without one, the most recently active Tab. */
+type OnTab = { readonly tab?: string };
 
 /** What a Session answers: the text a command prints, and on success the
  * data `--json` prints with it. */
