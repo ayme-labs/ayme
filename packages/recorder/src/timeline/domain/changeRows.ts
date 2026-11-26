@@ -6,7 +6,6 @@ import type {
 import type { ChangeRow, PropertyChange } from "../../contract";
 import {
   ElementNames,
-  namedInside,
   ownName,
   wordsOf,
   type NamedElement,
@@ -66,7 +65,7 @@ export function foundRows(
     const { kind } = node.status!;
     if (kind === "added" || kind === "removed") {
       const view = kind === "added" ? "after" : "before";
-      const inside = ownName(node) ? [] : namedInside(node);
+      const inside = ownName(node) ? [] : wentWith(node, kind);
       const named =
         inside.length > 0
           ? inside.map((one) => ({ one, element: names.labelOf(one, view) }))
@@ -80,6 +79,9 @@ export function foundRows(
           },
           element,
         });
+      // What the page moved into it was there before: it keeps a status of
+      // its own, and is listed by what changed of it.
+      movedInto(node, kind).forEach(visit);
       return true;
     }
     // Core records how every node it marks as changed stood before; a tree
@@ -96,6 +98,22 @@ export function foundRows(
   for (const root of change.getRootNodes()) visit(root);
   return rows;
 }
+
+/** The named elements inside a node that appeared or was removed that went
+ * with it, the topmost of them, in order. */
+const wentWith = (node: StructuralNode, kind: string): StructuralNode[] =>
+  node.children.flatMap((child) => {
+    if (typeof child === "string" || child.status?.kind !== kind) return [];
+    return ownName(child) ? [child] : wentWith(child, kind);
+  });
+
+/** The topmost nodes inside a node that appeared or was removed that did
+ * not go with it, as one the page moved into a new wrapper, in order. */
+const movedInto = (node: StructuralNode, kind: string): StructuralNode[] =>
+  node.children.flatMap((child) => {
+    if (typeof child === "string") return [];
+    return child.status?.kind === kind ? movedInto(child, kind) : [child];
+  });
 
 const cursorOnly = (changed: readonly PropertyChange[]) =>
   changed.length > 0 && changed.every((one) => one.property === "cursor");
