@@ -64,7 +64,7 @@ test("ayme works on the most recently active Tab, follows the automation to anot
   expect(await ayme("tools", `--tab=${baseURL}/`)).toEqual({
     code: 1,
     stdout: "",
-    stderr: `No tab of the Session's browser shows ${baseURL}/. --tab takes the URL a tab shows, as the first line of ayme page-objects prints it. The open tabs show: ${baseURL}/shop.html, ${baseURL}/sign-in.html.\n`,
+    stderr: `No tab of the Session's browser shows ${baseURL}/. --tab takes the URL a tab shows, as the first line of ayme -s=default page-objects prints it. The open tabs show: ${baseURL}/shop.html, ${baseURL}/sign-in.html.\n`,
   });
 
   await shop.close();

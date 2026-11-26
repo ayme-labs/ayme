@@ -20,6 +20,7 @@ import {
   endedBeforeAnswer,
   liveRecord,
   liveRecords,
+  nameOf,
   notOpen,
   privateFolder,
   processStart,
@@ -72,9 +73,9 @@ const messageOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
 /** The tool's input `params` gives: JSON, the JSON of the file `@<file>`
- * names in `projectDir`, or none when it is not given. */
+ * names in the folder of `place`, or none when it is not given. */
 function inputOf(
-  projectDir: string,
+  place: SessionPlace,
   params: string | undefined
 ): { readonly input: unknown } | SessionAnswer {
   if (params === undefined) return { input: {} };
@@ -82,7 +83,7 @@ function inputOf(
   if (params.startsWith("@")) {
     const file = params.slice(1);
     try {
-      json = readFileSync(resolve(projectDir, file), "utf8");
+      json = readFileSync(resolve(place.projectDir, file), "utf8");
     } catch (error) {
       return paramsUnreadable(file, messageOf(error));
     }
@@ -90,7 +91,7 @@ function inputOf(
   try {
     return { input: JSON.parse(json) as unknown };
   } catch (error) {
-    return paramsNotJson(messageOf(error));
+    return paramsNotJson(messageOf(error), nameOf(place));
   }
 }
 
@@ -103,7 +104,7 @@ export async function askCall(
   params: string | undefined,
   tab?: string
 ): Promise<SessionAnswer> {
-  const read = inputOf(place.projectDir, params);
+  const read = inputOf(place, params);
   return "input" in read
     ? askSession(place, {
         call: {

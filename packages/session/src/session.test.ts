@@ -570,6 +570,15 @@ it("every command a Session's answers tell to run names the Session, so that it 
       /\nThis screen has 1 Page Object Tool: ayme -s=work tools lists it with its parameters\.$/
     ),
   });
+  expect(
+    await opened.session.ask({
+      pageObjects: { tab: "http://127.0.0.1:5173/elsewhere.html" },
+    })
+  ).toMatchObject({
+    text: expect.stringContaining(
+      " as the first line of ayme -s=work page-objects prints it."
+    ),
+  });
 });
 
 const shop = {
@@ -629,7 +638,7 @@ it("--tab naming a URL no Tab shows is answered with the URLs the open Tabs show
     await session.ask({ pageObjects: { tab: "http://127.0.0.1:5173/" } })
   ).toEqual({
     ok: false,
-    text: "No tab of the Session's browser shows http://127.0.0.1:5173/. --tab takes the URL a tab shows, as the first line of ayme page-objects prints it. The open tabs show: http://127.0.0.1:5173/sign-in.html, http://127.0.0.1:5173/shop.html.",
+    text: "No tab of the Session's browser shows http://127.0.0.1:5173/. --tab takes the URL a tab shows, as the first line of ayme -s=default page-objects prints it. The open tabs show: http://127.0.0.1:5173/sign-in.html, http://127.0.0.1:5173/shop.html.",
   });
 });
 

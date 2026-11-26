@@ -424,7 +424,7 @@ it("--params that is not JSON, or names a file that cannot be read, is answered 
   expect(await askCall(place, "Basket.add", "{id: po1}")).toEqual({
     ok: false,
     text: expect.stringMatching(
-      /^--params is not JSON: .+\. Give the tool's input as one JSON object, as ayme tools prints its parameters\.$/
+      /^--params is not JSON: .+\. Give the tool's input as one JSON object, as ayme -s=default tools prints its parameters\.$/
     ),
   });
   expect(await askCall(place, "Basket.add", "@missing.json")).toEqual({

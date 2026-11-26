@@ -96,11 +96,12 @@ export const openSession = (
       { concurrency: "unbounded" }
     ).pipe(
       Effect.flatMap(([held, built]) =>
-        held
-          .host(built)
-          .pipe(
-            Effect.map((tabs): Started => ({ held, tabs: sessionTabs(tabs) }))
-          )
+        held.host(built).pipe(
+          Effect.map((tabs): Started => ({
+            held,
+            tabs: sessionTabs(tabs, name),
+          }))
+        )
       ),
       Scope.provide(browserScope),
       Effect.forkIn(scope)
@@ -251,8 +252,8 @@ type SessionTabs = {
 };
 
 /** The Tabs of `browser`, each hosted once, the first time the Session
- * works on it, and the Page Object Ids each Tab's Host gave. */
-function sessionTabs(browser: BrowserTabs): SessionTabs {
+ * named `name` works on it, and the Page Object Ids each Tab's Host gave. */
+function sessionTabs(browser: BrowserTabs, name: string): SessionTabs {
   const hosts = new Map<BrowserTab, Effect.Effect<HostedTab, TabReadError>>();
   // The Tab each id was given on. An id of a closed Tab is gone with it.
   const owners = new Map<string, BrowserTab>();
@@ -297,7 +298,8 @@ function sessionTabs(browser: BrowserTabs): SessionTabs {
                 ? NO_TAB_OPEN
                 : noTabShows(
                     url!,
-                    open.map((each) => each.url())
+                    open.map((each) => each.url()),
+                    name
                   )
             )
           );

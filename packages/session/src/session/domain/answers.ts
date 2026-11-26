@@ -2,8 +2,8 @@ import type { ListedTool, Listing, TabName } from "./listing";
 import type { SessionAnswer, SessionEnd } from "./requests";
 import type { RunAnswer, RunError } from "./run";
 
-/** The \`ayme\` command line of \`word\` for the Session named \`name\`, for
- * a sentence that tells the user to run it. It names the Session even by
+/** The `ayme` command line of `word` for the Session named `name`, for a
+ * sentence that tells the user to run it. It names the Session even by
  * the default name, so that it reaches this Session however AYME_SESSION is
  * set where it runs. */
 export const commandLine = (name: string, word: string): string =>
@@ -175,10 +175,11 @@ export function endedBeforeAnswer(end: SessionEnd): SessionAnswer {
   }
 }
 
-/** The answer to `ayme call` when its `--params` is not JSON. */
-export const paramsNotJson = (why: string): SessionAnswer =>
+/** The answer to `ayme call` of the Session named `name` when its
+ * `--params` is not JSON. */
+export const paramsNotJson = (why: string, name: string): SessionAnswer =>
   failed(
-    `--params is not JSON: ${why.replace(/\.$/, "")}. Give the tool's input as one JSON object, as ayme tools prints its parameters.`
+    `--params is not JSON: ${why.replace(/\.$/, "")}. Give the tool's input as one JSON object, as ${commandLine(name, "tools")} prints its parameters.`
   );
 
 /** The answer to `ayme call` when the file its `--params @<file>` names
@@ -192,9 +193,14 @@ export const paramsUnreadable = (file: string, why: string): SessionAnswer =>
 export const NO_TAB_OPEN =
   "No tab is open in the Session's browser. Open one with your browser automation, then run ayme again.";
 
-/** Why `--tab` named no open Tab: the URLs the open Tabs show. */
-export const noTabShows = (url: string, shown: readonly string[]): string =>
-  `No tab of the Session's browser shows ${url}. --tab takes the URL a tab shows, as the first line of ayme page-objects prints it. The open tabs show: ${shown.join(", ")}.`;
+/** Why `--tab` named no open Tab of the Session named `name`: the URLs the
+ * open Tabs show. */
+export const noTabShows = (
+  url: string,
+  shown: readonly string[],
+  name: string
+): string =>
+  `No tab of the Session's browser shows ${url}. --tab takes the URL a tab shows, as the first line of ${commandLine(name, "page-objects")} prints it. The open tabs show: ${shown.join(", ")}.`;
 
 /** Why `ayme call` was refused when its Page Object Id is on another Tab
  * than the one `--tab` names: the id chooses the Tab. */
