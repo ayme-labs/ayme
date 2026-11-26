@@ -1,5 +1,5 @@
 diff --git a/dist/agent/act.js b/dist/agent/act.js
-index b0803c351d9af394a7610373c3a9715d6429f19f..0c840562ddb204848ac2c0d5b267b97cf1e8bf22 100644
+index b0803c3..0c84056 100644
 --- a/dist/agent/act.js
 +++ b/dist/agent/act.js
 @@ -461,6 +461,10 @@ class ActDispatch {
@@ -14,10 +14,10 @@ index b0803c351d9af394a7610373c3a9715d6429f19f..0c840562ddb204848ac2c0d5b267b97c
                  this.runtime.steps.replaying(active);
                  this.accounting.replaying(active);
 diff --git a/dist/agent/action-dispatcher.js b/dist/agent/action-dispatcher.js
-index 87b8f96dcc8a3b2d4a7dee2aebdbb5910ac4398d..d176c97bf430a784555ea2957ae939a87f5e6508 100644
+index 87b8f96..96a84e2 100644
 --- a/dist/agent/action-dispatcher.js
 +++ b/dist/agent/action-dispatcher.js
-@@ -348,11 +348,21 @@ export class ActionDispatcher {
+@@ -348,11 +348,34 @@ export class ActionDispatcher {
                  this.accounting.reserveAction();
                  await this.before();
                  this.typedRun = [];
@@ -30,7 +30,21 @@ index 87b8f96dcc8a3b2d4a7dee2aebdbb5910ac4398d..d176c97bf430a784555ea2957ae939a8
 +                    this.options.trace()?.recordGap(call.name);
              }
              const name = `${PROJECT_TOOL_EVENT_PREFIX}${call.name}`;
-             const value = await instrumentPhase(this.runtime, { api: this.accounting.api, kind: 'engine', phase: 'agent.action', name }, body);
+-            const value = await instrumentPhase(this.runtime, { api: this.accounting.api, kind: 'engine', phase: 'agent.action', name }, body);
++            // Patch (ayme): a repeatable call that fails after it started a page action
++            // may have left the page half changed, which no recording sets up again: the
++            // step is not saved, and no fallback is kept for it. One that failed before
++            // any page action left the page as it found it.
++            const actionsBefore = globalThis[Symbol.for('e2e.patch.pageActions')] ?? 0;
++            let value;
++            try {
++                value = await instrumentPhase(this.runtime, { api: this.accounting.api, kind: 'engine', phase: 'agent.action', name }, body);
++            }
++            catch (cause) {
++                if (call.mutates && call.replay !== undefined && (globalThis[Symbol.for('e2e.patch.pageActions')] ?? 0) > actionsBefore)
++                    this.options.trace()?.taint(`${call.name} failed after it acted on the page`);
++                throw cause;
++            }
              if (call.mutates) {
 +                if (call.replay !== undefined) {
 +                    // Patch (ayme): with the version of the Page Object source the call ran.
@@ -41,7 +55,7 @@ index 87b8f96dcc8a3b2d4a7dee2aebdbb5910ac4398d..d176c97bf430a784555ea2957ae939a8
                  await this.notify('tool', (fields) => ({ ...fields, action: `${PROJECT_TOOL_EVENT_PREFIX}${call.name}`, summary: `ran ${call.name}` }));
              }
 diff --git a/dist/agent/default-agent.js b/dist/agent/default-agent.js
-index 56e51968074a53da99a6d6cc597b84af3b933782..1762468be5c326f0655bb6130c43c262252ab727 100644
+index 56e5196..1762468 100644
 --- a/dist/agent/default-agent.js
 +++ b/dist/agent/default-agent.js
 @@ -63,6 +63,13 @@ export function createBuiltInAgent(options = {}) {
@@ -68,7 +82,7 @@ index 56e51968074a53da99a6d6cc597b84af3b933782..1762468be5c326f0655bb6130c43c262
                          if (mutates) {
                              throw new AgentError('POLICY_DENIED', 'only read-only tools may request observations; observe in a separate tool call');
 diff --git a/dist/agent/replay.js b/dist/agent/replay.js
-index d730bf3fb29e6c35b2b371fb3bb0c265d2bb37f9..3a3477244ac2c510598ed5888c5ad212528df09c 100644
+index d730bf3..3a34772 100644
 --- a/dist/agent/replay.js
 +++ b/dist/agent/replay.js
 @@ -28,7 +28,7 @@ function pointEnd({ point, within }) {
@@ -100,7 +114,7 @@ index d730bf3fb29e6c35b2b371fb3bb0c265d2bb37f9..3a3477244ac2c510598ed5888c5ad212
              return { ...stop('gap'), ...(planned.derived === undefined ? {} : { derived: planned.derived }) };
          }
 diff --git a/dist/agent/step-cache.js b/dist/agent/step-cache.js
-index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2c8ba7c35 100644
+index 17a8bf9..3e09be8 100644
 --- a/dist/agent/step-cache.js
 +++ b/dist/agent/step-cache.js
 @@ -60,6 +60,33 @@ const END_WAIT_MARGIN_MS = 10_000;
@@ -137,7 +151,7 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
  export class StepTraceSession {
      host;
      cache;
-@@ -95,6 +122,18 @@ export class StepTraceSession {
+@@ -95,6 +122,20 @@ export class StepTraceSession {
       * nothing and an unconfirmed one still evicts.
       */
      replayedWhole = false;
@@ -149,6 +163,8 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
 +     * the step keeps its recording whatever the executor does after.
 +     */
 +    toolCallFailed;
++    /** Patch (ayme): why this step's run cannot be saved, once a call left the page half changed. */
++    tainted;
 +    /** Patch (ayme): how many recorded actions ran before that tool call failed. */
 +    toolCallFailedAt;
 +    /** Patch (ayme): the entry as stored, before this run's values filled it. */
@@ -156,9 +172,16 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
      /** True once a cached entry's actions were run this step, fully or partly. */
      consumedReplay = false;
      /** True once the store returned an entry for this step, whether or not it replayed. */
-@@ -130,8 +169,9 @@ export class StepTraceSession {
+@@ -129,9 +170,16 @@ export class StepTraceSession {
+     record(action) {
          this.recorder?.record(action);
      }
++    /** Patch (ayme): no recording is saved from this run of the step, nor a fallback kept. */
++    taint(reason) {
++        if (this.tainted === undefined)
++            console.error(`[e2e-patch] "${this.options.instruction}" is not saved: ${reason}`);
++        this.tainted ??= reason;
++    }
      /** Records one mutating project-tool call as a replay-ending gap. */
 -    recordGap(toolName) {
 -        this.recorder?.recordGap(toolName);
@@ -168,7 +191,7 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
      }
      /** Records a fill whose value was this run's data as a replay-ending gap, with the rule that said so. */
      recordDerivedGap(reason) {
-@@ -258,11 +298,41 @@ export class StepTraceSession {
+@@ -258,11 +306,41 @@ export class StepTraceSession {
              case 'no-verdict':
                  return;
              case 'failed':
@@ -212,7 +235,7 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
                      await this.evict();
                  else if (this.replayedWhole) {
                      this.cache.staged.push({
-@@ -304,6 +374,8 @@ export class StepTraceSession {
+@@ -304,6 +382,8 @@ export class StepTraceSession {
          const entry = readTraceEntry(read.entry);
          if (entry === undefined)
              return { status: 'miss', reason: 'invalid-entry' };
@@ -221,7 +244,7 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
          // The stored recording has a slot for each `unique()` value; this call's
          // values fill it. A slot this call cannot fill is an entry recorded for
          // another shape, which the key should have kept apart.
-@@ -366,21 +438,60 @@ export class StepTraceSession {
+@@ -366,21 +446,70 @@ export class StepTraceSession {
              actions: host.actions,
              signal: host.signal,
              remainingMs: () => host.remainingMs(),
@@ -233,7 +256,9 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
 +                        return await host.replayTool(name, input);
 +                    }
 +                    catch (error) {
-+                        this.toolCallFailed ??= name;
++                        // Patch (ayme): only a call that left the page as it found it is a stale tool.
++                        if (this.tainted === undefined)
++                            this.toolCallFailed ??= name;
 +                        throw error;
 +                    }
 +                },
@@ -249,6 +274,12 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
 +        // actions that healed it: those run on from there, without a model, and
 +        // the trace they end with is the one whose end state is checked.
 +        let ended = trace;
++        // Patch (ayme): a call whose input may have reached the app is no stale tool:
++        // the executor gets e2e's hand-off, which says to verify before acting again.
++        if (outcome.stopReason === 'action-uncertain' && this.toolCallFailed !== undefined) {
++            healedLog(`"${this.options.instruction}": ${this.toolCallFailed} may have committed before it failed; no fallback runs`);
++            this.toolCallFailed = undefined;
++        }
 +        if (!outcome.completed && this.toolCallFailed !== undefined) {
 +            this.toolCallFailedAt = outcome.executed;
 +            const healed = trace.healed;
@@ -270,8 +301,10 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
 +        // recorded again from this run, with the version its calls ran.
 +        const changed = outcome.completed && refreshAfterPageObjectChange() && callsOnly(ended.actions) ? changedCall(ended.actions) : undefined;
 +        this.changedSource ??= changed;
++        // Patch (ayme): without the recorded end screen, but still with e2e's check
++        // for an alert the recording did not see.
 +        const end = changed !== undefined
-+            ? { matches: true }
++            ? await this.endStateMatches({ ...ended, endAnchors: [], goneAnchors: [], endPath: undefined }, start, screens)
 +            : outcome.completed && start?.kind === 'semantic' ? await this.endStateMatches(ended, start, screens) : undefined;
          const stopReason = outcome.completed
              ? end?.matches === true
@@ -286,18 +319,30 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
          if (outcome.executed === 0) {
              // A prefix that performed nothing is a miss with a name, not a hand-off:
              // the executor starts from the top and owes the notice nothing.
-@@ -409,6 +520,10 @@ export class StepTraceSession {
-         const arrived = await this.endScreen(trace);
-         if (arrived === undefined)
-             return { matches: false };
-+        // Patch (ayme): a recording of repeatable tool calls alone, with no change
-+        // on screen to check: the calls ran again without failing.
-+        if (callsOnly(trace.actions) && (trace.endAnchors?.length ?? 0) === 0 && (trace.goneAnchors?.length ?? 0) === 0)
-+            return { matches: true };
-         // Both captures may predate a secret the replay resolved; read with the
+@@ -413,7 +542,11 @@ export class StepTraceSession {
          // ledger as it is now, an unchanged node is no change.
          const baseline = baselineScreen(screens, arrived.path);
-@@ -529,7 +644,10 @@ export class StepTraceSession {
+         const baselineNodes = baseline === undefined ? undefined : redactNodesAgain(baseline.nodes, this.redaction);
+-        if (!deltaEvidenced(trace, baselineNodes, inputTargets(trace))) {
++        // Patch (ayme): a recording of repeatable tool calls alone with no change on
++        // screen has no delta to evidence: the calls ran again without failing. The
++        // rest of the check still runs, so a new alert on screen still fails it.
++        const noDeltaCalls = callsOnly(trace.actions) && (trace.endAnchors?.length ?? 0) === 0 && (trace.goneAnchors?.length ?? 0) === 0;
++        if (!noDeltaCalls && !deltaEvidenced(trace, baselineNodes, inputTargets(trace))) {
+             // A recording with no delta fails the evidence too, but nothing of it
+             // showed before the replay acted: that is the generic detail.
+             const recorded = (trace.endAnchors?.length ?? 0) > 0 || (trace.goneAnchors?.length ?? 0) > 0;
+@@ -518,6 +651,9 @@ export class StepTraceSession {
+      * route: a trace without its check would replay on mechanics alone.
+      */
+     async stage(recorder, verdictSummary, recordedBy) {
++        // Patch (ayme)
++        if (this.tainted !== undefined)
++            return 'skipped';
+         if (!this.host.traceEligible || this.startNodes === undefined || recorder.recordedCount === 0)
+             return 'skipped';
+         const observation = await probeScreen(this.host, 'held-still');
+@@ -529,7 +665,10 @@ export class StepTraceSession {
          const startNodes = redactNodesAgain(this.startNodes, this.redaction);
          const routeMoved = this.startPath !== undefined && endPath !== undefined && !sameRoute(this.startPath, endPath);
          const delta = describeDelta(startNodes, endNodes, routeMoved);
@@ -309,7 +354,7 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
              return 'no-change';
          const trace = recorder.finalize({
              executor: this.options.executor,
-@@ -584,6 +702,31 @@ export class StepTraceSession {
+@@ -584,6 +723,31 @@ export class StepTraceSession {
          if (deleted)
              this.cache.staged.push({ kind: 'decided', outcome: 'evicted', keyHash: this.keyHash, stepIndex: this.options.stepIndex });
      }
@@ -342,7 +387,7 @@ index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2
          return this.actionsAtEndMismatch !== undefined && recorder.recordedCount > this.actionsAtEndMismatch;
      }
 diff --git a/dist/agent/tool.js b/dist/agent/tool.js
-index cfd764254c346cdcc4058624b248363d2ff025e7..b05e07915230c8024f6d13c51224738b6299267d 100644
+index cfd7642..b05e079 100644
 --- a/dist/agent/tool.js
 +++ b/dist/agent/tool.js
 @@ -24,6 +24,8 @@ export function defineTool(tool, annotations) {
@@ -354,8 +399,22 @@ index cfd764254c346cdcc4058624b248363d2ff025e7..b05e07915230c8024f6d13c51224738b
              ...(annotations.platforms === undefined ? {} : { platforms: [...annotations.platforms] }),
          },
      };
+diff --git a/dist/cache/decide.js b/dist/cache/decide.js
+index 3898311..4ab06e1 100644
+--- a/dist/cache/decide.js
++++ b/dist/cache/decide.js
+@@ -15,7 +15,8 @@ import { sameRoute } from './route.js';
+  * before the navigate does not depend on the route, so it is passed over.
+  */
+ export function opensWithNavigate(trace) {
+-    return trace.actions.find((action) => action.name !== 'tool' && action.name !== 'resize')?.name === 'navigate';
++    // Patch (ayme): a repeatable tool call acts on the page it finds, so it counts as an action here; only a gap is passed over.
++    return trace.actions.find((action) => !(action.name === 'tool' && (action.tool === undefined || action.input === undefined)) && action.name !== 'resize')?.name === 'navigate';
+ }
+ /**
+  * Decides whether one entry replays for the current step. A trace that does
 diff --git a/dist/cache/recorder.js b/dist/cache/recorder.js
-index 0f017654273f84e84e685b1b03918d86c696a0ad..1f44d266a8cfe7d23913343034abf1e451abf334 100644
+index 0f01765..270b368 100644
 --- a/dist/cache/recorder.js
 +++ b/dist/cache/recorder.js
 @@ -53,8 +53,26 @@ export class TraceRecorder {
@@ -387,8 +446,24 @@ index 0f017654273f84e84e685b1b03918d86c696a0ad..1f44d266a8cfe7d23913343034abf1e4
          this.lastActionAt = Date.now();
      }
      /**
+@@ -83,11 +101,13 @@ export class TraceRecorder {
+             return;
+         // The piece at `index` is itself a gap — a one-time-code field records each
+         // fill as its own gap — so the run is already gaps, not the code: leave them.
+-        if (this.actions[index]?.name === 'tool')
++        // Patch (ayme): a repeatable tool call replays and runs on; only a gap stops replay.
++        const isGap = (action) => action?.name === 'tool' && (action.tool === undefined || action.input === undefined);
++        if (isGap(this.actions[index]))
+             return;
+         // An earlier gap already ends replay before these pieces, so they never
+         // replay: drop them without a new gap rather than keep the code as `type`.
+-        const handedOff = this.actions.slice(0, index).some((action) => action.name === 'tool');
++        const handedOff = this.actions.slice(0, index).some(isGap);
+         this.actions.length = index;
+         if (!handedOff)
+             this.recordDerivedGap(reason);
 diff --git a/dist/cache/trace-read.js b/dist/cache/trace-read.js
-index 6bda203594ced10f1927e9f0e59d759397600a9a..80413e32a3590f0ec01cc6c84e59922cb9156e0f 100644
+index 6bda203..80413e3 100644
 --- a/dist/cache/trace-read.js
 +++ b/dist/cache/trace-read.js
 @@ -110,7 +110,23 @@ function readActionTrace(document) {
@@ -435,7 +510,7 @@ index 6bda203594ced10f1927e9f0e59d759397600a9a..80413e32a3590f0ec01cc6c84e59922c
          default:
              return undefined;
 diff --git a/dist/cache/trace.js b/dist/cache/trace.js
-index fd1b02fbadb9f4aa5d12042c9ab9b0a7aa1b4776..eb506553ee978a67844fbe2937556fc4a3add960 100644
+index fd1b02f..eb50655 100644
 --- a/dist/cache/trace.js
 +++ b/dist/cache/trace.js
 @@ -224,8 +224,13 @@ function mapActionText(action, map) {
@@ -468,8 +543,52 @@ index fd1b02fbadb9f4aa5d12042c9ab9b0a7aa1b4776..eb506553ee978a67844fbe2937556fc4
      const summary = map(trace.summary);
      const startPath = trace.startPath === undefined ? undefined : map(trace.startPath);
      const endPath = trace.endPath === undefined ? undefined : map(trace.endPath);
+diff --git a/dist/locator/engine.js b/dist/locator/engine.js
+index 2ce5f44..0ade8f3 100644
+--- a/dist/locator/engine.js
++++ b/dist/locator/engine.js
+@@ -513,6 +513,8 @@ export class LocatorEngine {
+             throw failure;
+         }
+         try {
++            // Patch (ayme): a page action started, which a failed tool call may have left half done.
++            globalThis[Symbol.for('e2e.patch.pageActions')] = (globalThis[Symbol.for('e2e.patch.pageActions')] ?? 0) + 1;
+             await this.session.performAt(point, action, this.operationWithin(deadline));
+         }
+         catch (cause) {
+@@ -583,6 +585,8 @@ export class LocatorEngine {
+                 throw failure;
+             }
+             try {
++                // Patch (ayme): a page action started, which a failed tool call may have left half done.
++                globalThis[Symbol.for('e2e.patch.pageActions')] = (globalThis[Symbol.for('e2e.patch.pageActions')] ?? 0) + 1;
+                 await this.session.perform(ref, resolved, this.operationWithin(deadline));
+             }
+             catch (cause) {
+diff --git a/dist/locator/screen.js b/dist/locator/screen.js
+index 79ff31a..d3c1cb1 100644
+--- a/dist/locator/screen.js
++++ b/dist/locator/screen.js
+@@ -147,6 +147,8 @@ class ScreenImpl {
+         rejectUnknownOptions('swipe', options, ['direction', 'momentum']);
+         await this.context.steps.run('screen', 'screen.swipe', options.direction, async () => {
+             const { engine } = this.context;
++            // Patch (ayme): a page action started, which a failed tool call may have left half done.
++            globalThis[Symbol.for('e2e.patch.pageActions')] = (globalThis[Symbol.for('e2e.patch.pageActions')] ?? 0) + 1;
+             await engine.session.swipe(options.direction, options.momentum, engine.operation());
+         });
+     }
+@@ -161,7 +163,7 @@ class ScreenImpl {
+         // Every swipe is bounded by the scroll's own deadline, not the action timeout.
+         const scope = this.scope;
+         const swipeStep = (deadline) => scope === undefined
+-            ? engine.session.swipe(direction, momentum, engine.operationWithin(deadline))
++            ? ((globalThis[Symbol.for('e2e.patch.pageActions')] = (globalThis[Symbol.for('e2e.patch.pageActions')] ?? 0) + 1), engine.session.swipe(direction, momentum, engine.operationWithin(deadline)))
+             : engine.performUntil(scope, { kind: 'swipe', direction, momentum }, deadline);
+         const label = describeExpression(internals.expression);
+         await this.context.steps.run('screen', 'screen.scrollUntilVisible', label, async () => {
 diff --git a/dist/run/fixtures.js b/dist/run/fixtures.js
-index 0e1d8d4b9fa8f8e3d5fd5487b3815b61322cebff..e20d91759d06cfa89bcc395529fe1ec62970321f 100644
+index 0e1d8d4..e20d917 100644
 --- a/dist/run/fixtures.js
 +++ b/dist/run/fixtures.js
 @@ -155,6 +155,15 @@ export function createFixtures(environment) {

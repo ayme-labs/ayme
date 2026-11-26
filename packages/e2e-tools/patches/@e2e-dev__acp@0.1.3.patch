@@ -63,7 +63,7 @@ index 95623ef..37c3a8d 100644
          if (slot.active === undefined) {
              // Run in the tail of a step that already ended: no step to fail, so no later step gets this conversation.
 diff --git a/dist/mcp.js b/dist/mcp.js
-index ab28dd4..b80c300 100644
+index ab28dd4..299ceb5 100644
 --- a/dist/mcp.js
 +++ b/dist/mcp.js
 @@ -15,15 +15,51 @@ export const MCP_SERVER_NAME = 'e2e_step';
@@ -86,13 +86,13 @@ index ab28dd4..b80c300 100644
 +        return shown;
 +    };
 +    let announced;
-+    // Patch (ayme): the list is checked only when the agent asks for it. Any other
-+    // request registers every tool, so a call reaches its tool, whose own code
-+    // refuses it when it cannot run now; the list the agent holds is the last one
-+    // it was given.
-+    let listing = true;
-+    const handler = createMcpHandler(async () => {
++    // Patch (ayme): the list is checked only when the request being served asks for
++    // it (`forward` marks it). Any other request registers every tool, so a call
++    // reaches its tool, whose own code refuses it when it cannot run now; the list
++    // the agent holds is the last one it was given.
++    const handler = createMcpHandler(async (context) => {
 +        const server = new McpServer({ name: MCP_SERVER_NAME, version: '1' }, { capabilities: { tools: changing ? { listChanged: true } : {} } });
++        const listing = context?.requestInfo?.headers.get(LISTING_HEADER) === '1';
 +        const shown = changing && listing ? new Set(await shownNow()) : undefined;
 +        if (shown !== undefined)
 +            announced = [...shown].join(',');
@@ -121,36 +121,41 @@ index ab28dd4..b80c300 100644
                  return {
                      content: [
                          { type: 'text', text: result.text },
-@@ -44,7 +80,9 @@ export async function serveTools(tools) {
-             response.writeHead(404).end();
-             return;
-         }
--        void forward(handler.fetch, request, response, error => reportFailure(error));
-+        void forward(handler.fetch, request, response, error => reportFailure(error), (asked) => {
-+            listing = asked === 'tools/list';
-+        });
-     });
-     await new Promise((resolve, reject) => {
-         http.once('error', reject);
-@@ -62,7 +100,7 @@ export async function serveTools(tools) {
+@@ -61,6 +97,25 @@ export async function serveTools(tools) {
+         },
      };
  }
++/** Patch (ayme): the header `forward` sets on a request that only lists the tools. */
++const LISTING_HEADER = 'x-e2e-patch-tools-list';
++/** Patch (ayme): whether a JSON-RPC body (one message or a batch) asks for `tools/list` alone. */
++function asksForList(body) {
++    if (body === undefined)
++        return false;
++    let message;
++    try {
++        message = JSON.parse(Buffer.from(body).toString('utf8'));
++    }
++    catch {
++        return false;
++    }
++    const messages = Array.isArray(message) ? message : [message];
++    const asked = messages.length > 0 && messages.every((one) => one !== null && typeof one === 'object' && one.method === 'tools/list');
++    if (asked && process.env.AYME_E2E_DEBUG !== undefined)
++        console.error('[acp-patch] the agent asked tools/list');
++    return asked;
++}
  /** Hands one Node request to the web-standard handler and streams its response back. */
--async function forward(fetch, incoming, outgoing, reportFailure) {
-+async function forward(fetch, incoming, outgoing, reportFailure, onAsked) {
+ async function forward(fetch, incoming, outgoing, reportFailure) {
      let sourceFailed = false;
-     try {
-         const headers = new Headers();
-@@ -75,6 +113,12 @@ async function forward(fetch, incoming, outgoing, reportFailure) {
+@@ -75,6 +130,11 @@ async function forward(fetch, incoming, outgoing, reportFailure) {
          }
          const method = incoming.method ?? 'GET';
          const body = method === 'GET' || method === 'HEAD' ? undefined : await readAll(incoming);
-+        // Patch (ayme): which method the request asks for, so the server it gets knows
-+        // whether to check the list.
-+        const asked = body === undefined ? undefined : /"method"\s*:\s*"([^"]+)"/.exec(Buffer.from(body).toString('utf8'))?.[1];
-+        onAsked?.(asked);
-+        if (process.env.AYME_E2E_DEBUG !== undefined && (asked === 'tools/list' || asked === 'initialize'))
-+            console.error(`[acp-patch] the agent asked ${asked}`);
++        // Patch (ayme): whether this request asks for the tool list and nothing else,
++        // marked on the request itself, so the server built for it checks the list.
++        headers.delete(LISTING_HEADER);
++        if (asksForList(body))
++            headers.set(LISTING_HEADER, '1');
          const response = await fetch(new Request(`http://127.0.0.1${incoming.url ?? '/'}`, { method, headers, ...(body === undefined ? {} : { body }) }));
          outgoing.writeHead(response.status, Object.fromEntries(response.headers));
          if (response.body === null)
