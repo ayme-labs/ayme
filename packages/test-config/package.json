@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./compat-run-check": {
+      "types": "./compatRunCheck.d.ts",
+      "default": "./compatRunCheck.js"
+    },
     "./stryker": {
       "types": "./stryker.d.ts",
       "default": "./stryker.js"

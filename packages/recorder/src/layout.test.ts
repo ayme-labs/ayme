@@ -142,6 +142,33 @@ it("lint lets only the playwright slice import Playwright", slow, async () => {
 });
 
 it(
+  "lint lets only the playwright slice get a browser from the browser package, and any file read its range",
+  slow,
+  async () => {
+    expect(
+      await lint(
+        "src/engine/misplaced.ts",
+        'export { projectPlaywright } from "@ayme-dev/browser";\n'
+      )
+    ).toEqual([
+      expect.stringContaining("Only the playwright slice imports Playwright"),
+    ]);
+    expect(
+      await lint(
+        "src/playwright/infrastructure/placed.ts",
+        'export { projectPlaywright } from "@ayme-dev/browser";\n'
+      )
+    ).toEqual([]);
+    expect(
+      await lint(
+        "src/placed.test.ts",
+        'import range from "@ayme-dev/browser/playwright-range.json";\nexport { range };\n'
+      )
+    ).toEqual([]);
+  }
+);
+
+it(
   "lint keeps Effect out of the pure rules, the contract and the front door",
   slow,
   async () => {

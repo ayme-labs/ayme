@@ -1,9 +1,9 @@
+import { CompatRunCheck } from "@ayme-dev/test-config/compat-run-check";
 import {
   defineConfig,
   type TestProjectInlineConfiguration,
 } from "vitest/config";
 
-import { CompatRunCheck } from "./compatRunCheck";
 import { compatTests } from "./vitest.config";
 
 // The compatibility suite: the stock adapter on the project's Playwright,

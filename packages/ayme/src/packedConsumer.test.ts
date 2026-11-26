@@ -52,8 +52,8 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 
 // @boundaries-ignore The supported Playwright range is repo-wide data (playwright-range.json).
 import playwrightRange from "../../../playwright-range.json";
-// @boundaries-ignore The recorder's range is data its package states once (playwright-range.json); the packed CLI declares the same range.
-import recorderRange from "../../recorder/playwright-range.json";
+// @boundaries-ignore The recorder's range is data the browser package states once (playwright-range.json); the packed CLI declares the same range.
+import recorderRange from "../../browser/playwright-range.json";
 
 const aymeRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
