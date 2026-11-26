@@ -1,11 +1,11 @@
 ---
-name: ayme-recorder
-description: Record a user flow with the ayme recorder while the user drives their app, then turn the Recording Package into Playwright page objects and a test, or a parameterised automation of the flow.
+name: ayme-capture
+description: Record a user flow with ayme capture while the user drives their app, then turn the Recording Package into Playwright page objects and a test, or a parameterised automation of the flow.
 ---
 
-# ayme recorder
+# ayme capture
 
-The ayme recorder listens while the user drives their app in a browser, and
+ayme capture listens while the user drives their app in a browser, and
 writes what it saw to a Recording Package: the page structure at each visit,
 what changed and every interaction.
 
@@ -15,14 +15,16 @@ holds for every skill, and its `Recorder` section, and follow a line that
 points to another file. It overrides this skill's defaults.
 
 1. **Record.** In the project's folder, run
-   `npx @ayme-dev/cli@latest codegen <url>`, with the URL where the user wants
+   `npx @ayme-dev/cli@latest capture <url>`, with the URL where the user wants
    to start, somewhere it can keep running. The recorder uses the Playwright
-   the project has installed. It opens the page in Chromium with a recorder
+   the project has installed, and records in its Chromium. When the command
+   says Playwright could not open Chromium, install it with Playwright's own
+   `npx playwright install chromium`, then run the command again. It opens the page in Chromium with a recorder
    window beside it and a small toolbar on the page. Recording is off until the
    user presses Record; they perform the flow and press Finish. The command
    then prints `Recording package: <path>`. `ayme/recordings/latest.yaml` is
    a copy of the newest package. To record a Chromium the user
-   already has running, run `codegen --cdp-endpoint <address>` instead, with
+   already has running, run `capture --cdp=<url>` instead, with
    the address of its DevTools protocol, such as `http://127.0.0.1:9222`.
 
    When the user asked for an automation of a flow with new data, add
@@ -33,15 +35,16 @@ points to another file. It overrides this skill's defaults.
    where the replay can take them for the flow's own. To start over, the
    user presses Finish, and you run the command again. Use the browser the
    recorder opens: `--start-recording` does not apply with
-   `--cdp-endpoint`, so a recording there never holds its first page load.
+   `--cdp`, so a recording there never holds its first page load.
 
    `@latest` runs the newest release. When `@ayme-dev/cli` is in the project's
-   `package.json`, the project pins its version: run `npx ayme-recorder` in
-   place of `npx @ayme-dev/cli@latest`. Check first that it is installed, with
-   `npm ls @ayme-dev/cli`. When that fails, lists no version or marks the
-   version `invalid`, ask the user to install the project's dependencies and
-   wait: without the pinned copy, `npx ayme-recorder` runs a different
-   version, or looks on npm for a package of that name, which is not this CLI.
+   `package.json`, the project pins its version: run `npx @ayme-dev/cli` in
+   place of `npx @ayme-dev/cli@latest`, which runs the pinned copy. Check
+   first that it is installed, with `npm ls @ayme-dev/cli`. When that fails,
+   lists no version or marks the version `invalid`, ask the user to install
+   the project's dependencies and wait: without the pinned copy,
+   `npx @ayme-dev/cli` runs a different version. Do not run `npx ayme`:
+   `@ayme-dev/mcp` also has a command called `ayme`, which has no `capture`.
 
 2. **Read** the package, as [Read the package](#read-the-package) describes.
    Leave every discarded entry out of the page objects and the test. A package
@@ -67,7 +70,7 @@ recordingId: rec_…
 mode: structural
 createdAt: 2026-…               # when the recording was stored
 url: https://…                  # where the recording started
-tracePath: ayme/recordings/rec_…/trace.zip   # relative to where codegen ran
+tracePath: ayme/recordings/rec_…/trace.zip   # relative to where ayme capture ran
 visits:                         # one per page: where recording started, a tab that opened, or a navigation to another site or path
   - visitId, url, cause
     baselineTree:               # the page just before the first interaction; with none, the last read

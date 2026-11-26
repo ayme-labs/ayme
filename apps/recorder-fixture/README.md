@@ -12,21 +12,22 @@ tests/       the shared fixtures (fixtures.ts) and one spec per concern
 The pages ship no ayme, so their Page Objects live where ayme's guide for
 that case puts them, [Page Objects on a page without ayme](../../docs/guide/guides/page-objects-without-ayme.md):
 one class per page in `ayme/pom/`, exported from `ayme/page-objects.ts`.
-`ayme mcp`, started in this folder, serves them to a page that loads the
-`ayme/init-script.js` it writes. A spec reaches the pages only through
-them: a Page Object supplies the locator and `person` acts on it with real
-input, and what the spec reads of a page, the Page Object reads.
+A spec reaches the pages only through them: a Page Object supplies the
+locator and `person` acts on it with real input, and what the spec reads of
+a page, the Page Object reads.
 
 This folder is also the project the recorder runs in: it has Playwright
-installed, and the tests start the built `ayme-recorder` command here as a
-child process, as a developer would in their own project. The recorder loads
+installed, and the tests start the built `ayme` command of `@ayme-dev/cli`
+here as a child process, `ayme capture`, as a developer would in their own
+project. It does not install `@ayme-dev/mcp`, whose command is also called
+`ayme`, so the one `ayme` here is the one the tests run. The recorder loads
 this project's Playwright; the command brings none of its own.
 
 Each test serves the fixture pages on a free port (`fixturePages`), so it can
 see which requests the recorder's browser made. Add a spec file for a new
 concern and reuse `fixtures.ts`.
 
-- `codegen.spec.ts` runs the command with `runRecorder`. Assertions go through
+- `capture.spec.ts` runs the command with `runRecorder`. Assertions go through
   what the command prints, its exit code and those requests, and through the
   browser's own list of its pages over `run.debugEndpoint`, which shows the
   recorder window opened in a context of its own.
@@ -47,7 +48,7 @@ concern and reuse `fixtures.ts`.
   with its page open before the recorder comes, and its connection is another
   automation client in that browser. `recordedBrowser: "attach"` has
   `startRecording` attach to such a browser instead of launching one.
-  Two of its tests run the command, `codegen --cdp-endpoint`, with
+  Two of its tests run the command, `ayme capture --cdp=<url>`, with
   `runRecorder`: one shows it does not navigate the page and leaves the
   browser open and usable, the other records the page through the recorder
   window and reads the package the command saved. The third records through
@@ -59,8 +60,7 @@ concern and reuse `fixtures.ts`.
 
 - `trace.spec.ts` opens a recording's trace with the stock `playwright trace`
   of the project's own Playwright (`stockTrace.ts`), as a reader does: by the
-  position numbers the package gives, and through `ayme-recorder trace
-latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
+  position numbers the package gives. `stockTrace.ts` names the flag that picks
   a snapshot's phase by the installed version: `--name` on Playwright 1.62,
   `--phase` from 1.63.
 
@@ -140,7 +140,7 @@ the recorder attaches to; the project `launch` runs every test.
 installed: each test's project is then a folder inside that one, so the
 recorder finds that Playwright. CI runs the first test of that file this way
 once per supported version, in both projects; the range is in
-[`packages/recorder/playwright-range.json`](../../packages/recorder/playwright-range.json).
+[`packages/browser/playwright-range.json`](../../packages/browser/playwright-range.json).
 
 ## Running
 

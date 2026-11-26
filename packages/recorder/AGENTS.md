@@ -5,11 +5,11 @@ The engine of the Recorder: it starts a recorder on the Playwright the project h
 The slices of `src/`, from the bottom up:
 
 - `contract`: the plain data shared with the CLI, the window and the toolbar, types only; the `./contract` entry.
-- `timeline`: Visits, snapshots and Interactions in, the Visits with their entries out as they are produced, and the Recording Package at the end. Its `infrastructure` writes the package and its trace to disk and finds a recording's trace.
+- `timeline`: Visits, snapshots and Interactions in, the Visits with their entries out as they are produced, and the Recording Package at the end. Its `infrastructure` writes the package and its trace to disk.
 - `session`: one live recorder: the lifecycle ([`lifecycle.ts`](src/session/domain/lifecycle.ts)), the queue's one worker ([`recorderSession.ts`](src/session/application/recorderSession.ts)), and the engine's one seam, the recorded browser ([`recordedBrowser.ts`](src/session/application/recordedBrowser.ts)).
-- `playwright`: the stock Playwright adapter of the recorded browser. Its `infrastructure/live/` drives the browser, `infrastructure/in-page/` runs in a recorded page, and the plain logic beside them, such as [`pageRules.ts`](src/playwright/infrastructure/pageRules.ts), decides ([docs/testing.md](../../docs/testing.md#code-a-real-browser-runs)).
+- `playwright`: the stock Playwright adapter of the recorded browser, on a browser it gets from [`@ayme-dev/browser`](../browser/AGENTS.md). Its `infrastructure/live/` drives the browser, `infrastructure/in-page/` runs in a recorded page, and the plain logic beside them, such as [`pageRules.ts`](src/playwright/infrastructure/pageRules.ts), decides ([docs/testing.md](../../docs/testing.md#code-a-real-browser-runs)).
 - `server`: the window's server and the in-page toolbar's bridge.
-- `engine`: the composition root ([`recorder.ts`](src/engine/recorder.ts)), the front door, and the `trace` and `install` commands.
+- `engine`: the composition root ([`recorder.ts`](src/engine/recorder.ts)) and the front door.
 - `testing/`, beside `src/`: the package's test support ([ADR-0057](../../docs/adr/0057-test-support-lives-beside-src-and-is-never-published.md)), imported from source as `@ayme-dev/recorder/testing`, with a real recorder on a scripted browser ([`testing/index.ts`](testing/index.ts)).
 
 The layers inside a slice: `domain` (pure rules and types), `application` (the flows and the ports they use), `infrastructure` (Playwright, the disk, the network).
@@ -74,9 +74,9 @@ The flows and adapters are written with Effect 4; lint keeps it out of the rest.
 
 ## The supported Playwright range
 
-[`playwright-range.json`](playwright-range.json) beside this file states the range: the oldest Playwright the recorder starts on and the newest it is verified on. The adapter, CI's per-version job and the weekly canary read it. It is not the root `playwright-range.json`, which is the published packages' `@playwright/test` range. Below the range, or with no Playwright recorder found, starting fails with an error that names the range; above it, the recorder still records.
+The recorder starts on the range [the browser package](../browser/AGENTS.md#the-supported-playwright-range) states, which also says how to verify a new Playwright minor. Below the range, or with no Playwright recorder found, starting fails with an error that names the range; above it, the recorder still records.
 
-A private part of Playwright that the adapter uses gets a test in the compatibility suite (ADR-0052), which proves the adapter works on each supported Playwright version. To verify a new Playwright minor, run the suite and the main end-to-end test on it, then move `lastVerified`.
+A private part of Playwright that the adapter uses gets a test in the compatibility suite (ADR-0052), which proves the adapter works on each supported Playwright version.
 
 ## Testing
 
@@ -85,7 +85,7 @@ How to run tests here, and what each lane measures: [docs/testing.md](../../docs
 - Add each bug path the lifecycle model finds as a row of [`lifecycle.test.ts`](src/session/domain/lifecycle.test.ts), and, when a row keeps one of the spec's rules, say which, so the table and the model stay matched.
 - Take the expected package text of [`timeline.test.ts`](src/timeline/domain/timeline.test.ts) from [its fixtures](src/timeline/domain/fixtures/README.md), whose README says where each file is from, or write it out in the test, never from the code under test, since text the code made proves nothing about it.
 - In [`outsideEnd.test.ts`](src/outsideEnd.test.ts), end a fixture's recorder with `endWithin`, which moves its clock, since the scripted recorder's clock stands still.
-- Write [the compatibility suite](src/playwright/infrastructure/live/stockBrowser.compat.test.ts) in the words of the recorded browser's seam only: one test per private part of Playwright the adapter uses, and per behaviour of Playwright's recorder the engine relies on. It launches Chromium, so it runs with `pnpm test:compat` ([`vitest.compat.config.ts`](vitest.compat.config.ts)), not in `pnpm test`; [`compatRunCheck.ts`](compatRunCheck.ts) checks each run.
+- Write [the compatibility suite](src/playwright/infrastructure/live/stockBrowser.compat.test.ts) in the words of the recorded browser's seam only: one test per private part of Playwright the adapter uses, and per behaviour of Playwright's recorder the engine relies on. It launches Chromium, so it runs with `pnpm test:compat` ([`vitest.compat.config.ts`](vitest.compat.config.ts)), not in `pnpm test`; [`compatRunCheck.js`](../test-config/compatRunCheck.js) checks each run.
 - The end-to-end tests, which run the built command on real Chromium, live in [`apps/recorder-fixture`](../../apps/recorder-fixture/README.md).
 
 ## The lifecycle model
@@ -94,4 +94,4 @@ Each rule the lifecycle must keep is the comment above its check in [`lifecycle-
 
 ## Known limits
 
-Users read the limits in [the Recorder guide](../../docs/guide/guides/recorder.md#limits), and a coding agent reads what a package holds in [the `ayme-recorder` skill](../../skills/ayme-recorder/SKILL.md). Why one is so is a comment where the code makes it so, or, for one the model reproduces, under [the model's Known limits](lifecycle-model/README.md#known-limits).
+Users read the limits in [the ayme capture guide](../../docs/guide/guides/recorder.md#limits), and a coding agent reads what a package holds in [the `ayme-capture` skill](../../skills/ayme-capture/SKILL.md). Why one is so is a comment where the code makes it so, or, for one the model reproduces, under [the model's Known limits](lifecycle-model/README.md#known-limits).

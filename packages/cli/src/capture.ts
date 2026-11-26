@@ -9,8 +9,10 @@ import {
   type RecordingOutcome,
 } from "@ayme-dev/recorder";
 
+import type { CaptureTarget } from "./readCommand";
+
 /**
- * How `codegen <url>` launches the browser: with a window by default, and
+ * How `ayme capture <url>` opens the browser: with a window by default, and
  * without one for `--headless`; `--start-recording` opens it already
  * recording. The two environment variables are for the tests: they run where
  * there is no screen, so one of them opens the browser without a window too,
@@ -31,18 +33,8 @@ export function launchOptions(
   };
 }
 
-type Target =
-  | {
-      readonly url: string;
-      readonly headless?: boolean | undefined;
-      readonly startRecording?: true;
-      readonly loadStorage?: string;
-      readonly saveStorage?: string;
-    }
-  | { readonly cdpEndpoint: string };
-
 export function browserOf(
-  target: Target,
+  target: CaptureTarget,
   env: NodeJS.ProcessEnv
 ): RecorderOptions["browser"] {
   return "url" in target
@@ -55,12 +47,16 @@ export function browserOf(
             target.startRecording
           ),
           // Playwright's codegen files: the recorder opens the context, so it
-          // loads and saves them itself. Absent, they are undefined.
-          loadStorage: target.loadStorage,
-          saveStorage: target.saveStorage,
+          // loads and saves them itself.
+          ...(target.loadStorage !== undefined
+            ? { loadStorage: target.loadStorage }
+            : {}),
+          ...(target.saveStorage !== undefined
+            ? { saveStorage: target.saveStorage }
+            : {}),
         },
       }
-    : { attach: { cdpEndpoint: target.cdpEndpoint } };
+    : { attach: { cdpEndpoint: target.cdp } };
 }
 
 export function startLine(browser: RecorderOptions["browser"]): string {
@@ -135,10 +131,19 @@ export function outcomeReport(outcome: RecordingOutcome): {
 }
 
 /** What a person is told of an error that stopped the recorder from starting:
- * its own sentence, with no stack trace. Nothing for any other error, which
- * is not theirs to read. */
-export function startFailure(error: unknown): string | undefined {
-  return error instanceof RecorderStartError ? `${error.message}\n` : undefined;
+ * its own sentence, with no stack trace, and Playwright's own command that
+ * installs Chromium when a browser it was to open could not be. Nothing for
+ * any other error, which is not theirs to read. */
+export function startFailure(
+  error: unknown,
+  browser: RecorderOptions["browser"]
+): string | undefined {
+  if (!(error instanceof RecorderStartError)) return undefined;
+  const install =
+    error.reason === "browser-unavailable" && "launch" in browser
+      ? "If Chromium is not installed for the project's Playwright, install it with: npx playwright install chromium\n"
+      : "";
+  return `${error.message}\n${install}`;
 }
 
 /** Starts the recorder in the project the command was started in. A start
@@ -154,7 +159,7 @@ async function start(
       toolbar: { script: toolbarScript(import.meta.url) },
     });
   } catch (error) {
-    const told = startFailure(error);
+    const told = startFailure(error, browser);
     if (told === undefined) throw error;
     process.stderr.write(told);
     return undefined;
@@ -162,12 +167,12 @@ async function start(
 }
 
 /**
- * Runs `codegen <url>`, or `codegen --cdp-endpoint <address>` when given
- * the running browser's address, to its end. Resolves with the process's
+ * Runs `ayme capture <url>`, or `ayme capture --cdp=<url>` when given the
+ * running browser's address, to its end. Resolves with the process's
  * exit code. What it prints and which code it gives are decided above; this
  * is the wiring to the terminal's signals and streams.
  */
-export async function codegen(target: Target): Promise<number> {
+export async function capture(target: CaptureTarget): Promise<number> {
   const browser = browserOf(target, process.env);
   const recorder = await start(browser);
   if (!recorder) return 1;

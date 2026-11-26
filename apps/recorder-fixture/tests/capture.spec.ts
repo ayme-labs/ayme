@@ -13,12 +13,12 @@ import { stockTraceTool } from "./stockTrace";
 const windowUrlOf = (stdout: string) =>
   /^Recorder UI: (http:\/\/127\.0\.0\.1:\d+\/)$/m.exec(stdout)?.[1];
 
-test.describe("codegen <url>", () => {
+test.describe("ayme capture <url>", () => {
   test("opens the page in Chromium and ends with 'empty' when it is stopped from the terminal", async ({
     fixturePages,
     runRecorder,
   }) => {
-    const run = await runRecorder(["codegen", fixturePages.url()]);
+    const run = await runRecorder(["capture", fixturePages.url()]);
     await run.waitForStdout(`Opened ${fixturePages.url()}`);
 
     expect(fixturePages.requests).toContainEqual({
@@ -39,7 +39,7 @@ test.describe("codegen <url>", () => {
     fixturePages,
     runRecorder,
   }) => {
-    const run = await runRecorder(["codegen", fixturePages.url()]);
+    const run = await runRecorder(["capture", fixturePages.url()]);
     await run.waitForStdout("Recorder UI: ");
     const windowUrl = windowUrlOf(run.stdout());
     expect(windowUrl).toBeDefined();
@@ -99,7 +99,7 @@ test.describe("codegen <url>", () => {
     fixturePages,
     runRecorder,
   }) => {
-    const run = await runRecorder(["codegen", fixturePages.url()]);
+    const run = await runRecorder(["capture", fixturePages.url()]);
     await run.waitForStdout(`Opened ${fixturePages.url()}`);
 
     await run.closePage(fixturePages.url());
@@ -115,7 +115,7 @@ test.describe("codegen <url>", () => {
     fixturePages,
     runRecorder,
   }) => {
-    const run = await runRecorder(["codegen", fixturePages.url()]);
+    const run = await runRecorder(["capture", fixturePages.url()]);
     await run.waitForStdout("Recorder UI: ");
     const windowUrl = windowUrlOf(run.stdout())!;
     const browser = await chromium.connectOverCDP(run.debugEndpoint);
@@ -147,7 +147,7 @@ test.describe("codegen <url>", () => {
     fixturePages,
     runRecorder,
   }) => {
-    const run = await runRecorder(["codegen", fixturePages.url()]);
+    const run = await runRecorder(["capture", fixturePages.url()]);
     await run.waitForStdout(`Opened ${fixturePages.url()}`);
 
     run.interrupt();
@@ -169,7 +169,7 @@ test.describe("codegen <url>", () => {
     const project = testInfo.outputPath("project");
     await mkdir(project, { recursive: true });
     const url = fixturePages.url("/cart.html");
-    const run = await runRecorder(["codegen", url, "--start-recording"], {
+    const run = await runRecorder(["capture", url, "--start-recording"], {
       cwd: project,
     });
     await run.waitForStdout("Recorder UI: ");
@@ -225,6 +225,28 @@ test.describe("codegen <url>", () => {
     }
   });
 
+  test("names Playwright's own command that installs Chromium when the project's Playwright has none", async ({
+    fixturePages,
+    runRecorder,
+  }) => {
+    // Playwright looks for its browsers in this empty folder.
+    const browsers = await mkdtemp(join(tmpdir(), "ayme-capture-no-chromium-"));
+    try {
+      const run = await runRecorder(["capture", fixturePages.url()], {
+        env: { PLAYWRIGHT_BROWSERS_PATH: browsers },
+      });
+
+      expect(await run.exit).toEqual({ code: 1, signal: null });
+      expect(run.stderr()).toMatch(/^Playwright could not open Chromium\. /);
+      expect(run.stderr()).toMatch(
+        /\nIf Chromium is not installed for the project's Playwright, install it with: npx playwright install chromium\n$/
+      );
+      expect(fixturePages.requests).toEqual([]);
+    } finally {
+      await rm(browsers, { recursive: true });
+    }
+  });
+
   test("fails with a reason, not a stack trace, in a project with no Playwright installed", async ({
     fixturePages,
     runRecorder,
@@ -235,7 +257,7 @@ test.describe("codegen <url>", () => {
       await mkdtemp(join(tmpdir(), "ayme-recorder-no-playwright-"))
     );
     try {
-      const run = await runRecorder(["codegen", fixturePages.url()], {
+      const run = await runRecorder(["capture", fixturePages.url()], {
         cwd: project,
       });
 

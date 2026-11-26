@@ -1,6 +1,5 @@
 import {
   appendFile,
-  mkdir,
   mkdtemp,
   readdir,
   readFile,
@@ -13,7 +12,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Timeline } from "../domain/timeline";
-import { findTrace, saveRecording } from "./recordingStore";
+import { saveRecording } from "./recordingStore";
 import { pageId, snapshotId } from "../../../testing/ids";
 
 // The store of Recording Packages, on a real folder: what a save leaves
@@ -167,106 +166,5 @@ describe("saving a recording", () => {
     expect(await readFile(join(recordings(), "latest.yaml"), "utf8")).toBe(
       saved
     );
-  });
-});
-
-describe("finding a recording's trace", () => {
-  /** A recording as the recorder leaves it, with this text for its package. */
-  async function recording(id: string, text: string) {
-    await mkdir(join(recordings(), id), { recursive: true });
-    await writeFile(join(recordings(), id, "package.yaml"), text);
-    await writeFile(join(recordings(), "latest.yaml"), text);
-  }
-  const packageOf = (...head: string[]) =>
-    [...head, `visits: []`, ``].join("\n");
-  const tracePath = `ayme/recordings/rec_1/trace.zip`;
-
-  it("finds the file the package names, for `latest` and for the recording's id", async () => {
-    await recording(
-      "rec_1",
-      packageOf(`recordingId: rec_1`, `tracePath: ${tracePath}`)
-    );
-    await writeFile(join(project, tracePath), "a trace");
-    const found = { kind: "found", file: join(project, tracePath) };
-
-    expect(await findTrace(project, "latest")).toEqual(found);
-    expect(await findTrace(project, "rec_1")).toEqual(found);
-  });
-
-  it("reads a package whose lines end as Windows ends them", async () => {
-    await recording(
-      "rec_1",
-      packageOf(`recordingId: rec_1`, `tracePath: ${tracePath}`).replaceAll(
-        "\n",
-        "\r\n"
-      )
-    );
-    await writeFile(join(project, tracePath), "a trace");
-
-    expect(await findTrace(project, "latest")).toEqual({
-      kind: "found",
-      file: join(project, tracePath),
-    });
-  });
-
-  it("reads a field's value as YAML does, without the blanks around it", async () => {
-    await recording(
-      "rec_1",
-      packageOf(`recordingId: rec_1  `, `tracePath:  ${tracePath}\t`)
-    );
-    await writeFile(join(project, tracePath), "a trace");
-
-    expect(await findTrace(project, "latest")).toEqual({
-      kind: "found",
-      file: join(project, tracePath),
-    });
-    await rm(join(project, tracePath));
-    expect(await findTrace(project, "latest")).toMatchObject({
-      reason: `The trace of recording "rec_1" is gone: ${join(project, tracePath)} is not there.`,
-    });
-  });
-
-  it("says that there is no recording, or which one it could not find", async () => {
-    expect(await findTrace(project, "latest")).toEqual({
-      kind: "missing",
-      reason: "No recording found in ayme/recordings. Record a flow first.",
-    });
-    expect(await findTrace(project, "rec_9")).toEqual({
-      kind: "missing",
-      reason: 'No recording "rec_9" found in ayme/recordings.',
-    });
-  });
-
-  it("says that the latest recording has no trace, naming it by the id its package gives", async () => {
-    await recording(
-      "rec_1",
-      packageOf(`recordingId: rec_1`, `tracePath: null`)
-    );
-
-    expect(await findTrace(project, "latest")).toEqual({
-      kind: "missing",
-      reason: 'Recording "rec_1" has no trace.',
-    });
-  });
-
-  it("takes a package without the line for its trace as one with no trace, and names it as it was asked for when its id is missing too", async () => {
-    await recording("rec_1", packageOf(`mode: structural`));
-
-    expect(await findTrace(project, "rec_1")).toEqual({
-      kind: "missing",
-      reason: 'Recording "rec_1" has no trace.',
-    });
-  });
-
-  it("says that a trace the package names is gone, with where it should be", async () => {
-    await recording(
-      "rec_1",
-      packageOf(`recordingId: rec_1`, `tracePath: ${tracePath}`)
-    );
-
-    expect(await findTrace(project, "latest")).toEqual({
-      kind: "missing",
-      reason: `The trace of recording "rec_1" is gone: ${join(project, tracePath)} is not there.`,
-    });
   });
 });

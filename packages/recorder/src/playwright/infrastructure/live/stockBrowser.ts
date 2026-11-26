@@ -6,6 +6,14 @@ import {
   waitForSettled,
   type PageActivitySource,
 } from "@ayme-dev/core/structural-observation";
+import {
+  browser as getBrowser,
+  browserUnavailable,
+  placeInRange,
+  projectPlaywright,
+  projectPlaywrightCli,
+  type BrowserRequest as BrowserToGet,
+} from "@ayme-dev/browser";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -83,13 +91,7 @@ import {
   isAttachAddress,
   notOnePageMessage,
 } from "../attachAddress";
-import {
-  loadProjectPlaywright,
-  placeInRange,
-  projectPlaywrightCli,
-  rangeText,
-  type Playwright,
-} from "../projectPlaywright";
+import { rangeText, recorderStartError } from "../startErrors";
 import { storageStateIn } from "../storageFile";
 import { snapshotPositions } from "../traceTool";
 import {
@@ -183,36 +185,29 @@ export const stockBrowser = (
             attachAddressRule(attach.cdpEndpoint)
           )
         );
-      const { playwright, version } = yield* loadProjectPlaywright(
-        options.projectDir
+      const found = yield* projectPlaywright(options.projectDir).pipe(
+        Effect.mapError(recorderStartError)
       );
+      const { version } = found;
       const launch = attach ? undefined : (options as Launch);
       const storageState = yield* loadedStorage(launch?.loadStorage);
       const signals = yield* Queue.unbounded<BrowserSignal>();
+      const request: BrowserToGet = attach
+        ? { join: { cdp: attach.cdpEndpoint } }
+        : { open: { headed: !launch!.headless, debugPort: launch!.debugPort } };
       const unavailable = (cause: unknown) =>
         new RecorderStartError(
           "browser-unavailable",
           cause instanceof NotOnePage
             ? cause.message
-            : `${attach ? `Playwright could not connect to the browser at ${attach.cdpEndpoint}.` : "Playwright could not open Chromium."} ${cause instanceof Error ? cause.message : String(cause)}`
+            : browserUnavailable(request, cause).message
         );
-      const browser = yield* Effect.acquireRelease(
-        Effect.tryPromise({
-          try: () =>
-            attach
-              ? playwright.chromium.connectOverCDP(attach.cdpEndpoint, {
-                  // The browser is someone else's: its settings stay as
-                  // they are.
-                  noDefaults: true,
-                })
-              : launchIn(playwright, options as Launch),
-          catch: unavailable,
-        }),
-        // A launched browser the person already closed has nothing left to
-        // close. An attached one is only let go: Playwright closes its
-        // connection, not the browser.
-        (browser) => Effect.promise(() => browser.close().catch(() => {}))
-      );
+      // Closing the layer's scope releases the browser: a launched one is
+      // closed, and an attached one is let go.
+      const { playwrightBrowser: browser } = yield* getBrowser(
+        found,
+        request
+      ).pipe(Effect.mapError(recorderStartError));
       const recorded = yield* Effect.tryPromise({
         try: () =>
           openPage(
@@ -271,20 +266,6 @@ export const stockBrowser = (
       });
     })
   );
-
-const launchIn = (playwright: Playwright, options: Launch) =>
-  playwright.chromium.launch({
-    headless: options.headless,
-    args:
-      options.debugPort === undefined
-        ? []
-        : [`--remote-debugging-port=${options.debugPort}`],
-    // Terminal signals belong to the CLI, which ends the recorder.
-    // Left on, Playwright would exit the process on the first one.
-    handleSIGINT: false,
-    handleSIGTERM: false,
-    handleSIGHUP: false,
-  });
 
 /**
  * Opens the recorder window as a second window of a browser the recorder

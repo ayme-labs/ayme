@@ -1,12 +1,10 @@
-import { existsSync, fstatSync, realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  passThroughPlaywrightCli,
-  passThroughTraceTool,
   positionsOfSnapshots,
   runTraceTool,
   snapshotPositions,
@@ -125,18 +123,16 @@ describe("running Playwright's command line", () => {
   });
   afterEach(() => rm(folder, { recursive: true }));
 
-  /** A stand-in `cli.js` that writes its arguments, its folder and its
-   * standard output's identity to `ran.json`, then runs `then`. */
+  /** A stand-in `cli.js` that writes its arguments and its folder to
+   * `ran.json`, then runs `then`. */
   async function cliThat(then: string) {
     const cli = join(folder, "cli.js");
     await writeFile(
       cli,
       `const fs = require("node:fs");
-const out = fs.fstatSync(1);
 fs.writeFileSync(${JSON.stringify(join(folder, "ran.json"))}, JSON.stringify({
   args: process.argv.slice(2),
   cwd: process.cwd(),
-  stdout: [out.dev, out.ino],
 }));
 ${then}\n`
     );
@@ -146,7 +142,6 @@ ${then}\n`
     JSON.parse(await readFile(join(folder, "ran.json"), "utf8")) as {
       args: string[];
       cwd: string;
-      stdout: number[];
     };
 
   it("gives a trace tool's run its exit code and what it printed", async () => {
@@ -178,27 +173,6 @@ ${then}\n`
     const cli = await cliThat(`process.kill(process.pid, "SIGTERM");`);
 
     expect((await runTraceTool(cli, ["actions"], folder)).code).toBe(1);
-  });
-
-  it("passes `trace` and the arguments through, in the folder it is given, with the terminal as the tool's own", async () => {
-    const cli = await cliThat(`process.exit(4);`);
-
-    expect(await passThroughTraceTool(cli, ["open", "t.zip"], folder)).toBe(4);
-    const { args, cwd, stdout } = await ran();
-    expect(args).toEqual(["trace", "open", "t.zip"]);
-    // The folder as the stand-in sees it, which may be a symlinked one.
-    expect(cwd).toContain(folder.split("/").pop()!);
-    // Its standard output is this process's own, not a pipe.
-    const own = fstatSync(1);
-    expect(stdout).toEqual([own.dev, own.ino]);
-  });
-
-  it("answers 1 when the command line cannot even start", async () => {
-    const cli = await cliThat(`process.exit(0);`);
-
-    expect(await passThroughPlaywrightCli(cli, [], join(folder, "gone"))).toBe(
-      1
-    );
   });
 });
 

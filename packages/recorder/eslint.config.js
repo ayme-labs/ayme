@@ -74,8 +74,10 @@ function ownFrontDoors(slice) {
   };
 }
 // Types included: no Playwright type leaves the slice either (ADR-0052).
+// The browser package's front door hands out Playwright's objects, so it
+// counts as Playwright; its range file does not.
 const playwright = {
-  regex: "^(@playwright/|playwright(-core)?(/|$))",
+  regex: "^(@playwright/|playwright(-core)?(/|$)|@ayme-dev/browser$)",
   message:
     "Only the playwright slice imports Playwright (docs/adr/0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md).",
 };

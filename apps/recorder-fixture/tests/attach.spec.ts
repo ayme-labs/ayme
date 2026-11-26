@@ -7,7 +7,7 @@ import { CartPage } from "#pom/CartPage";
 import { expect, test } from "./fixtures";
 
 test.describe("recording a running browser", () => {
-  test("codegen --cdp-endpoint attaches without navigating the page, and the browser stays open and usable when it ends", async ({
+  test("ayme capture --cdp=<url> attaches without navigating the page, and the browser stays open and usable when it ends", async ({
     fixturePages,
     runningBrowser,
     runRecorder,
@@ -19,7 +19,7 @@ test.describe("recording a running browser", () => {
     await cart.addItemButton.click();
     const requests = fixturePages.requests.length;
 
-    const run = await runRecorder(["codegen", "--cdp-endpoint", cdpEndpoint]);
+    const run = await runRecorder(["capture", `--cdp=${cdpEndpoint}`]);
     await run.waitForStdout(`Attached to the browser at ${cdpEndpoint}.`);
     // The window's address is printed, and nothing is opened in the
     // browser: it is someone else's.
@@ -42,7 +42,7 @@ test.describe("recording a running browser", () => {
     await expect(cart.itemCount).toHaveText("Items: 2");
   });
 
-  test("codegen --cdp-endpoint records the running browser's page and saves the package, and the browser goes on", async ({
+  test("ayme capture --cdp=<url> records the running browser's page and saves the package, and the browser goes on", async ({
     fixturePages,
     runningBrowser,
     runRecorder,
@@ -56,7 +56,7 @@ test.describe("recording a running browser", () => {
     // its Playwright and saves there.
     const project = testInfo.outputPath("project");
     await mkdir(project, { recursive: true });
-    const run = await runRecorder(["codegen", "--cdp-endpoint", cdpEndpoint], {
+    const run = await runRecorder(["capture", `--cdp=${cdpEndpoint}`], {
       cwd: project,
     });
     await run.waitForStdout("Recorder UI: http://127.0.0.1:");
