@@ -186,7 +186,7 @@ test("a folder has a Session of each name, ayme list shows them, and -s picks th
   });
   expect(await ayme("close")).toMatchObject({
     code: 1,
-    stderr: `No Session is open in ${project}. Start one with ayme open.\n`,
+    stderr: `No Session named default is open in ${project}. The Sessions open there are named: one, two. Start one with ayme -s=default open.\n`,
   });
   // Its hint names the Session it refused for, so that run as printed it
   // reaches that one and not the default.

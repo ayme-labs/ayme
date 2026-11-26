@@ -40,7 +40,13 @@ export async function askSession(
   if (unusable) return failed(unusable);
   for (;;) {
     const record = liveRecord(place);
-    if (!record) return failed(notOpen(place));
+    if (!record)
+      return failed(
+        notOpen(
+          place,
+          liveRecords(place.projectDir).map(({ name }) => name)
+        )
+      );
     try {
       return await send(record.socket, request);
     } catch (error) {

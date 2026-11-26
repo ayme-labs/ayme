@@ -272,9 +272,15 @@ export const alreadyOpen = (
 ): string =>
   `A ${session(place)} is already open in ${place.projectDir}, in process ${holder.pid}. End it with ${commandFor(place, "close")} first.`;
 
-/** Why a command reaches no Session of `place`. */
-export const notOpen = (place: SessionPlace): string =>
-  `No ${session(place)} is open in ${place.projectDir}. Start one with ${commandFor(place, "open")}.`;
+/** Why a command reaches no Session of `place`, while the Sessions named
+ * `open` are open in its folder. */
+export const notOpen = (
+  place: SessionPlace,
+  open: readonly string[]
+): string =>
+  open.length === 0
+    ? `No ${session(place)} is open in ${place.projectDir}. Start one with ${commandFor(place, "open")}.`
+    : `No Session named ${nameOf(place)} is open in ${place.projectDir}. The Sessions open there are named: ${open.join(", ")}. Start one with ${commandFor(place, "open")}.`;
 
 /** A folder of one Session's own, which only the user can enter: its socket
  * and the log of its process. It is in the system's temporary folder, whose

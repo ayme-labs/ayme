@@ -138,6 +138,24 @@ it("a command in a folder with no Session says so", async () => {
   });
 });
 
+it("a command whose name no open Session has says so, and names the Sessions that are open", async () => {
+  const holder = await otherProcess();
+  claimRecord({ projectDir, name: "two" }, { ...holder, socket: "2.sock" });
+  claimRecord({ projectDir, name: "one" }, { ...holder, socket: "1.sock" });
+
+  expect(await askSession(place, { stop: {} })).toEqual({
+    ok: false,
+    text: `No Session named default is open in ${projectDir}. The Sessions open there are named: one, two. Start one with ayme -s=default open.`,
+  });
+  expect(
+    await askSession({ projectDir, name: "three" }, { stop: {} })
+  ).toMatchObject({
+    text: expect.stringMatching(
+      /^No Session named three is open in .*\. The Sessions open there are named: one, two\. Start one with ayme -s=three open\.$/
+    ),
+  });
+});
+
 it("a command reaches the Session of its folder, and once the Session ends its folder has none", async () => {
   const { served, close } = await claimAndServe();
   if (served._tag !== "Success") throw served.failure;
@@ -351,7 +369,7 @@ it("Sessions of different names run side by side in one folder, and a command re
 
   expect(await askSession(review, { stop: {} })).toEqual({
     ok: false,
-    text: `No Session named review is open in ${projectDir}. Start one with ayme -s=review open.`,
+    text: `No Session named review is open in ${projectDir}. The Sessions open there are named: default. Start one with ayme -s=review open.`,
   });
   expect(liveRecord(place)).toMatchObject({ pid: process.pid });
 });
