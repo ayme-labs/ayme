@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0070
 supersedes: ADR-0054
 ---
 

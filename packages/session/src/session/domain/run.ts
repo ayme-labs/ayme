@@ -1,4 +1,4 @@
-/** What a Run answered: the short answer an agent reads (ADR-0068). */
+/** What a Run answered: the short answer an agent reads (ADR-0070). */
 export type RunAnswer = {
   /** Whether the page settled after the action; not while a new document
    * the action started still loads. */
