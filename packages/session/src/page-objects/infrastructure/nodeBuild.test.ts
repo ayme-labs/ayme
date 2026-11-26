@@ -126,6 +126,21 @@ it("builds the entry with the project's compiler, and loads the classes it lists
   expect(await registeredWith(installed)).toEqual(built.classes);
 });
 
+it("compiles a model the project imports through a tsconfig path alias, which is the project's own source", async () => {
+  const { dir, installed } = await project({
+    "ayme/tsconfig.json": JSON.stringify({
+      compilerOptions: { paths: { "@shop/*": ["./pom/*"] } },
+    }),
+    "ayme/page-objects.ts":
+      'import { Basket } from "@shop/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+
+  const built = await build(dir);
+
+  expect(await registeredWith(installed)).toEqual(built.classes);
+});
+
 it("a module that does not parse fails the build, naming the entry and the file", async () => {
   const { dir } = await project({
     "ayme/page-objects.ts":

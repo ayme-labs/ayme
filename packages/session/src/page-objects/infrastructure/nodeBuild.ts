@@ -53,6 +53,10 @@ const importFile = <A>(file: string, what: string) =>
       ),
   });
 
+/** Whether `file` is in a `node_modules` folder: installed, not the
+ * project's own source. */
+const installed = (file: string) => file.split(sep).includes("node_modules");
+
 /**
  * Compiles each Page Object Model outside `node_modules` with the
  * project's compiler; every other module builds as esbuild builds it.
@@ -65,7 +69,7 @@ const pageObjectModels = ({
   setup(build) {
     const compiler = createPomCompiler({ include: true });
     build.onLoad({ filter: /\.ts$/ }, async ({ path }) => {
-      if (path.split(sep).includes("node_modules")) return undefined;
+      if (installed(path)) return undefined;
       try {
         const pom = compiler.compile(path, await readFile(path, "utf8"), {
           emit: "js",
@@ -80,10 +84,12 @@ const pageObjectModels = ({
 });
 
 /**
- * Leaves every package the Page Objects import out of the build, imported
- * from the file the project installed: Node then loads the project's own
- * copies, the one `@ayme-dev/ayme` the Node Host reads included, wherever
- * the built module is.
+ * Leaves every installed package the Page Objects import out of the build,
+ * imported from the file the project installed: Node then loads the
+ * project's own copies, the one `@ayme-dev/ayme` the Node Host reads
+ * included, wherever the built module is. An import that resolves to the
+ * project's own source, such as one through a tsconfig path alias, is
+ * built with the rest.
  */
 const projectPackages: esbuild.Plugin = {
   name: "ayme-project-packages",
@@ -98,6 +104,7 @@ const projectPackages: esbuild.Plugin = {
         pluginData: projectPackages,
       });
       if (resolved.errors.length > 0) return { errors: resolved.errors };
+      if (!installed(resolved.path)) return { path: resolved.path };
       return { path: pathToFileURL(resolved.path).href, external: true };
     });
   },
