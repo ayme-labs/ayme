@@ -1,0 +1,63 @@
+<!doctype html>
+<!-- Spike: a page whose Tab gets hidden during a Run, and what each step of the Run then does. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hidden tab spike</title>
+  </head>
+  <body>
+    <h1>Hidden tab spike</h1>
+    <button id="popup" type="button">Open popup</button>
+    <a id="newtab" href="popup.html" target="_blank">Open tab</a>
+    <button id="mark" type="button">Mark</button>
+    <button id="reset" type="button">Reset</button>
+    <input id="name" aria-label="Name" />
+    <p id="result">result: none</p>
+    <p id="marks">marks: 0</p>
+    <section id="panel" hidden><h2>Panel</h2></section>
+    <ul id="churn"></ul>
+    <script>
+      const result = document.getElementById("result");
+      const marks = document.getElementById("marks");
+      const panel = document.getElementById("panel");
+      const churn = document.getElementById("churn");
+      let count = 0;
+      window.visLog = [`${Date.now()} ${document.visibilityState}`];
+      document.addEventListener("visibilitychange", () =>
+        window.visLog.push(`${Date.now()} ${document.visibilityState}`)
+      );
+      document.getElementById("popup").onclick = () =>
+        window.open("popup.html", "spikepopup", "width=320,height=240");
+      document.getElementById("mark").onclick = () =>
+        (marks.textContent = `marks: ${++count}`);
+      document.getElementById("reset").onclick = () => {
+        count = 0;
+        marks.textContent = "marks: 0";
+        result.textContent = "result: none";
+        panel.hidden = true;
+        churn.replaceChildren();
+        document.getElementById("name").value = "";
+      };
+      // Each starts work that runs on the page's own timers.
+      window.later = (ms) =>
+        setTimeout(() => (result.textContent = "result: done"), ms);
+      window.panelLater = (ms) => setTimeout(() => (panel.hidden = false), ms);
+      window.moveFor = (ms) =>
+        document
+          .getElementById("mark")
+          .animate(
+            [{ transform: "translateX(0)" }, { transform: "translateX(40px)" }],
+            { duration: ms }
+          );
+      window.churnFor = (ms, every) => {
+        const end = Date.now() + ms;
+        const tick = setInterval(() => {
+          const item = document.createElement("li");
+          item.textContent = String(Date.now());
+          churn.append(item);
+          if (Date.now() >= end) clearInterval(tick);
+        }, every);
+      };
+    </script>
+  </body>
+</html>
