@@ -97,11 +97,17 @@ export async function selfCheck(
   env: NodeJS.ProcessEnv,
   log: (line: string) => void
 ): Promise<void> {
-  const port = await freePort();
-  const mcp = startMcp(project, port, env);
   const require = createRequire(join(project, "package.json"));
   const { chromium } = require("@playwright/test");
-  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  const port = await freePort();
+  const mcp = startMcp(project, port, env);
+  // ayme mcp already runs, so a browser that fails to start stops it.
+  const browser = await chromium
+    .launch({ channel: "chrome", headless: true })
+    .catch((error: unknown) => {
+      mcp.stop();
+      throw error;
+    });
   try {
     await mcp.call("initialize", {
       protocolVersion: "2025-06-18",
@@ -160,7 +166,8 @@ export async function selfCheck(
     await call("ListItem.archive", { id: itemId(tree, `Rye bread ${n}`) });
     await call("page_objects", {});
   } finally {
-    await browser.close();
+    // Before the browser's close, which can throw.
     mcp.stop();
+    await browser.close();
   }
 }

@@ -66,7 +66,7 @@ One row per run:
 - **Plain actions**: clicks, fills, key presses and the like through the browser automation in the task phase.
 - **Restart asked in task**: whether the worker asked to be restarted again during the task.
 - **Browser downloads**: browser install commands, `browser_install` calls, and download output, by phase.
-- **Turns, time, cost**: summed over both phases, from Claude Code's result events.
+- **Turns, time, cost**: over both phases, from Claude Code's result events.
 - **ayme mcp starts (non-zero exits)**: from the recording.
 
 The command classes are heuristics over the transcripts; check a surprising cell against the transcript.

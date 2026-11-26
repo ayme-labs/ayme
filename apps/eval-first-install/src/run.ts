@@ -71,6 +71,9 @@ delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
 
 const runId = `${tool}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 const out = resolve(values.out ?? join(resultsDir, "runs", runId));
+// An earlier run's files would be scored as this run's.
+if (existsSync(out) && readdirSync(out).length > 0)
+  throw new Error(`${out} is not empty; name a new folder`);
 mkdirSync(out, { recursive: true });
 const harnessLog = join(out, "harness.log");
 const log = (line: string) => {
@@ -375,6 +378,10 @@ try {
     );
     log(`task: ${JSON.stringify(task)}`);
     meta.task = task;
+    // A usage limit mid-task fails the harness, not the worker, as in setup.
+    const taskRefused = agentRefusal(join(out, "task.jsonl"));
+    if (taskRefused)
+      throw new Error(`The model stopped answering: ${taskRefused}`);
   }
 } catch (error) {
   exitCode = 1;

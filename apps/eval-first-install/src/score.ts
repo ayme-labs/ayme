@@ -285,7 +285,7 @@ function classify(use: ToolUse): Classified[] {
       continue;
     }
     const at = tokens.findIndex((t) =>
-      /(^|\/)(playwright-cli|agent-browser)$/.test(t)
+      /(^|\/)(playwright-cli|agent-browser)(@[^/]+)?$/.test(t)
     );
     if (at < 0) continue;
     const rest = tokens.slice(at + 1);
@@ -399,6 +399,12 @@ export function scoreRun(dir: string): Score {
     : "?";
 
   const results = [...setup, ...task].filter((e) => e.type === "result");
+  // The task resumes the setup's session, and Claude Code 2.1.326 reports a
+  // resumed session's cost with the earlier calls' included, so each session
+  // counts once, at its last result. Turns and time are per call.
+  const sessionCosts = new Map<string, number>();
+  for (const r of results)
+    sessionCosts.set(r.session_id ?? "", r.total_cost_usd ?? 0);
   const outcomeFile = join(dir, "outcome.json");
   const checked = existsSync(outcomeFile)
     ? JSON.parse(readFileSync(outcomeFile, "utf8"))
@@ -451,7 +457,7 @@ export function scoreRun(dir: string): Score {
     ),
     costUsd:
       Math.round(
-        results.reduce((sum, r) => sum + (r.total_cost_usd ?? 0), 0) * 1000
+        [...sessionCosts.values()].reduce((sum, c) => sum + c, 0) * 1000
       ) / 1000,
     aymeStarts,
     aymeFailedStarts,

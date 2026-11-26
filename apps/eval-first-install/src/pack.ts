@@ -152,6 +152,10 @@ export function pack(ref = DEFAULT_REF, outDir?: string): Packed {
     );
     console.log(`Packed ${ref} at ${short} as ${version} into ${dir}`);
     return packed;
+  } catch (error) {
+    // A half-built pack has no meta.json, so the guard above would refuse a retry.
+    rmSync(dir, { recursive: true, force: true });
+    throw error;
   } finally {
     run("git", ["worktree", "remove", "--force", worktree], root);
     rmSync(throwawayHooks, { recursive: true, force: true });
