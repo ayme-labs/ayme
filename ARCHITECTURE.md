@@ -208,10 +208,13 @@ in-browser agents and the app's own code call on the running page.
   for the browser automation to answer, except one that opens while a join is still under
   way, which Playwright dismisses. At its start it builds the Page Objects of the project's
   ayme folder for Node while it gets the browser; when that build fails, no Session starts
-  and a browser ayme opened closes. It runs them as the Host of the Tab the browser opened
-  on, or of a joined browser's first Tab, through the Node host runtime of the project's own
-  `@ayme-dev/ayme`, lists that Tab's Page Object Tree and Page Object Tools, and runs a Page
-  Object Tool on it as a Run, one Run per Tab at a time and with no time limit of its own.
+  and a browser ayme opened closes. It runs them as the Host of each Tab it works on, through
+  the Node host runtime of the project's own `@ayme-dev/ayme`, and turns focus emulation on
+  for that Tab, the one setting it changes in a browser it joined. It works on the most
+  recently active Tab, unless `--tab` names another by its URL or a Page Object Id chooses
+  the Tab whose Host gave it; it lists that Tab's Page Object Tree and Page Object Tools, and
+  runs a Page Object Tool on it as a Run, one Run per Tab at a time and with no time limit
+  of its own.
   An error Page Object code throws, or leaves for nobody to catch, ends only its Run
 - Technology: the `ayme` command from `@ayme-dev/cli` (`ayme open [url]`,
   `ayme attach --cdp=<url>`, `ayme call`, `ayme detach`, `ayme close` and `ayme list`), over
@@ -249,8 +252,8 @@ in-browser agents and the app's own code call on the running page.
   - Flows:
     - → `ayme open [url]`, `ayme attach --cdp=<url>`, `ayme page-objects`, `ayme tools`,
       `ayme call <tool> --params`, `ayme detach`, `ayme close` and `ayme list`, run as
-      commands in the project's folder, with the global `--json`, and `-s=<name>` or
-      `AYME_SESSION` naming the Session
+      commands in the project's folder, with the global `--json`, `-s=<name>` or
+      `AYME_SESSION` naming the Session, and `--tab=<url>` naming a Tab
     - ← each answer's text, or the answer as JSON for `--json`, on stdout, or on stderr with
       exit code 1 when it is a failure; the address of the browser `ayme open` started or
       `ayme attach` joined; the Page Object Tree and the Page Object Tools of the Tab, each
