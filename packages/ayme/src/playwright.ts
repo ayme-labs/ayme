@@ -4,11 +4,10 @@
 // Playwright Lite, no document, no Inspector.
 import { selectors } from "@playwright/test";
 import {
-  createPlaywrightAyme,
+  createNodeHost,
   type PlaywrightAyme,
   type PlaywrightAymeOptions,
 } from "./runtime";
-import { registerAymeRef } from "./in-page";
 
 export type { PlaywrightAyme, PlaywrightAymeOptions };
 export type { CustomTool } from "./tools/application";
@@ -20,7 +19,7 @@ export type { CustomTool } from "./tools/application";
  * ref a page state prints resolves in the host's own Playwright calls.
  */
 export function createAyme(options: PlaywrightAymeOptions): PlaywrightAyme {
-  return createPlaywrightAyme(options, () => registerAymeRef(selectors));
+  return createNodeHost(options, selectors);
 }
 
 // The in-page module's host side, which a Node host drives over its Page.

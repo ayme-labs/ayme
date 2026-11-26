@@ -1,6 +1,7 @@
 export { constructPageObject, registerCompiledPom } from "./compiledPoms";
 export type { PageObjectConstructor } from "./compiledPoms";
 export { createPomRegistry } from "./pomRegistry";
+export { arrivedAfterLoad } from "./presenceWait";
 export type {
   CallerAwarePomTool,
   PomPageStates,

@@ -13,22 +13,24 @@ const PRESENCE_ASK_INTERVAL_MS = 50;
  * that answered at the start of a full load may still be about to do, and
  * the asks of the presence predicate after it. Only a presence predicate
  * the returned object's model declares or inherits is waited for: any other
- * value, nothing, or a rejection gets no wait.
+ * value, nothing, or a rejection gets no wait. Resolves with whether the
+ * returned Page Object's own presence predicate found it present.
  */
 export async function waitForReturnedPageObject(
   returned: Promise<unknown>
-): Promise<void> {
+): Promise<boolean> {
   const deadline = Date.now() + SETTLED_PAGE_DEADLINE_MS;
   const pageObject = await within(
     returned.catch(() => undefined),
     SETTLED_PAGE_DEADLINE_MS
   );
-  if (typeof pageObject !== "object" || pageObject === null) return;
+  if (typeof pageObject !== "object" || pageObject === null) return false;
   for (;;) {
     // Undefined when the model declares and inherits no presence predicate.
-    if ((await askPresence(pageObject)).present !== false) return;
+    const { present } = await askPresence(pageObject);
+    if (present !== false) return present === true;
     const left = deadline - Date.now();
-    if (left <= 0) return;
+    if (left <= 0) return false;
     await sleep(Math.min(PRESENCE_ASK_INTERVAL_MS, left));
   }
 }
@@ -52,3 +54,20 @@ async function within<T>(
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const arrived = new WeakSet<object>();
+
+/**
+ * Package-internal: whether the Page Object the action that answered
+ * `result` returned was found present in the document a full load the
+ * action started brought, as only a Host that outlives a full load waits
+ * for it.
+ */
+export const arrivedAfterLoad = (result: unknown): boolean =>
+  typeof result === "object" && result !== null && arrived.has(result);
+
+/** Package-internal: `result`'s returned Page Object arrived after its
+ * full load. */
+export function markArrivedAfterLoad(result: object): void {
+  arrived.add(result);
+}

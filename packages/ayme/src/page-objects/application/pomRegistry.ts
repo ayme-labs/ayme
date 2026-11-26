@@ -57,7 +57,10 @@ import {
   type PageObjectRoot,
 } from "./pageObjectIds";
 import { readPageObjectTree as readTree } from "./pageObjectTree";
-import { waitForReturnedPageObject } from "./presenceWait";
+import {
+  markArrivedAfterLoad,
+  waitForReturnedPageObject,
+} from "./presenceWait";
 import type { PageObjectTreeRead } from "../domain/pageObjectTreeText";
 import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
 import type { RunContext } from "../../runs/application";
@@ -869,8 +872,10 @@ async function performPageObjectAction(
   );
   // A session that ends with its document would lose the answer to a full
   // load while it waited.
-  if (result.loading === undefined || outlivesFullLoads)
-    await waitForReturnedPageObject(returned);
+  if (result.loading === undefined || outlivesFullLoads) {
+    const present = await waitForReturnedPageObject(returned);
+    if (present && result.loading !== undefined) markArrivedAfterLoad(result);
+  }
   return result;
 }
 

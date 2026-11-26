@@ -41,7 +41,7 @@ The one per-document instance of ayme's DOM work that every Host binds to. The f
 _Avoid_: injected script (Playwright's own)
 
 **Host**:
-A side that drives a page through Playwright's `Page`: the page's own runtime, a Node process, or `ayme mcp`.
+A side that drives a page through Playwright's `Page`: the page's own runtime, or a Node process such as a Session.
 
 **Session**:
 One running ayme connected to one browser, started with `ayme open` or `ayme attach`. It runs the project's Page Objects in Node, as the Host of each Tab it works on. An agent reaches it through the `ayme` commands, a developer through the Inspector. A project folder can have several, each with a name.
@@ -98,7 +98,7 @@ One execution of a tool, from its start to its outcome. It is started by a Calle
 _Avoid_: tool call, invocation
 
 **Caller**:
-Whoever starts a top-level Run from outside: an agent through WebMCP or the ayme MCP server, the Inspector, or the app's own code. A Caller names itself. A Run started inside another Run has a parent instead.
+Whoever starts a top-level Run from outside: an agent through WebMCP or the `ayme` commands, a developer through the Inspector, or the app's own code. A Caller names itself. A Run started inside another Run has a parent instead.
 
 **Interaction**:
 One input given to the page: a click, fill, key press, hover or selection on one element. A Run gives it, or a person does while being recorded. A Run's Interactions are the ones it performed itself; its child Runs have their own.

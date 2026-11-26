@@ -5,6 +5,7 @@ import type {
   PomRegistry,
 } from "../page-objects/application";
 import {
+  arrivedAfterLoad,
   constructPageObject,
   type PageObjectConstructor,
 } from "../page-objects/application";
@@ -72,7 +73,11 @@ import {
 } from "../runs/application";
 import { instrumentedPage } from "../runs/infrastructure";
 import type { loadWebMcpPublication } from "./webMcp";
-import { pageObjectToolSource } from "./pageObjectToolSource";
+import {
+  pageObjectToolSource,
+  type PageObjectToolSource,
+  type PageObjectToolSourceOptions,
+} from "./pageObjectToolSource";
 import {
   callers,
   checkedToolInput,
@@ -372,6 +377,29 @@ export type AppProcessTools = {
 };
 
 const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
+
+// Keyed by the session's `tools`, which a Node host's session object
+// shares with the core one it spreads.
+const pageObjectToolAnswersBySession = new WeakMap<
+  object,
+  (by: Caller) => PageObjectToolSource
+>();
+
+/**
+ * The session's Page Object Tools as a Caller that offers no other tools
+ * runs them, such as a Session of the `ayme` command: each Run started as
+ * `by`, and answered as the agent channels answer it. Any other tool is
+ * refused as one there is not.
+ */
+export function pageObjectToolAnswersOf(
+  ayme: Pick<Ayme, "tools">,
+  by: string
+): PageObjectToolSource {
+  const answers = pageObjectToolAnswersBySession.get(ayme.tools);
+  if (!answers)
+    throw new RuntimeStateError("This is not an ayme runtime session.");
+  return answers(by as Caller);
+}
 export const appProcessToolsBySession = new WeakMap<Ayme, AppProcessTools>();
 
 /**
@@ -473,6 +501,11 @@ function forAymeMcp(tool: ToolInfo): AymeMcpTool {
  */
 export type SessionTarget = {
   readonly kind: "browser" | "playwright";
+  /**
+   * Whether the session goes on in the document a full load brings, as a
+   * Node host's does; the browser runtime's ends with its document.
+   */
+  readonly outlivesFullLoads: boolean;
   /** The Page the session's stores are keyed by, read when needed: a server renders without one. */
   key(): Page;
   /** The Page the Page Objects are built on and the Runs act on, before the Runs' instrumentation. */
@@ -621,20 +654,27 @@ export function createAymeOn(
    * How the agent channels run the session's tools, their calls made by
    * `by`: the one source WebMCP publication and the ayme MCP server share.
    */
-  const pageObjectToolsFor = (by: Caller) =>
-    pageObjectToolSource({
-      list: () => ayme.tools.list(),
-      run: (name, input) => ayme.tools.run(name, input as never, { by }),
-      inTurn: (turn) =>
-        takeTurn(() =>
-          turn({
-            run: (name, input) =>
-              recordTopLevelRun(name, input, by, probeAfterAction),
-            readPageObjectTree: readPageObjectTreeNow,
-            url: () => target.rawPage().url(),
-          })
-        ),
-    });
+  const pageObjectToolsFor = (
+    by: Caller,
+    sourceOptions?: PageObjectToolSourceOptions
+  ) =>
+    pageObjectToolSource(
+      {
+        list: () => ayme.tools.list(),
+        run: (name, input) => ayme.tools.run(name, input as never, { by }),
+        inTurn: (turn) =>
+          takeTurn(() =>
+            turn({
+              run: (name, input) =>
+                recordTopLevelRun(name, input, by, probeAfterAction),
+              readPageObjectTree: readPageObjectTreeNow,
+              url: () => target.rawPage().url(),
+              arrivedAfterLoad,
+            })
+          ),
+      },
+      sourceOptions
+    );
 
   /**
    * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
@@ -872,7 +912,7 @@ export function createAymeOn(
           renderPageObjectTree((await readPageObjectTreeNow()).objects),
         pageStateSession: target.pageState().session,
         reach,
-        outlivesFullLoads: target.kind === "playwright",
+        outlivesFullLoads: target.outlivesFullLoads,
       });
     } finally {
       // A turn taken now starts once every child started so far has ended.
@@ -1108,6 +1148,9 @@ export function createAymeOn(
   }
 
   appProcessToolsBySession.set(ayme, appProcessTools.tools);
+  pageObjectToolAnswersBySession.set(ayme.tools, (by) =>
+    pageObjectToolsFor(by, { pageObjectToolsOnly: true })
+  );
   setAgentConnectionStatus(ayme, agentConnectionStatus.status);
   return ayme;
 }

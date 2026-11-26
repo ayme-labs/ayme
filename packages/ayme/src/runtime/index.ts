@@ -46,7 +46,9 @@ export type {
 } from "./inspectorContract";
 export { createHighlights } from "./inspectorHighlights";
 export type { Highlightable } from "./inspectorHighlights";
-export { createPlaywrightAyme } from "./playwrightRuntime";
+export { createNodeHost, createPlaywrightAyme } from "./playwrightRuntime";
+export { pageObjectToolAnswersOf } from "./session";
+export type { PageObjectToolSource } from "./pageObjectToolSource";
 export type {
   PlaywrightAyme,
   PlaywrightAymeOptions,
