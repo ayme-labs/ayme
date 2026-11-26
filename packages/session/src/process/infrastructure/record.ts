@@ -307,6 +307,11 @@ export const notOpen = (
     ? `No ${session(place)} is open in ${place.projectDir}. Start one with ${commandFor(place, "open")}.`
     : `No Session named ${nameOf(place)} is open in ${place.projectDir}. The Sessions open there are named: ${open.join(", ")}. Start one with ${commandFor(place, "open")}.`;
 
+/** Why a command that waited for the Session of `record` to listen has no
+ * answer from it. */
+export const endedBeforeAnswer = (record: SessionRecord): string =>
+  `The Session in process ${record.pid} ended before it answered.`;
+
 /** A folder of one Session's own, which only the user can enter: its socket
  * and the log of its process. It is in the system's temporary folder, whose
  * path is short enough for a local socket, which one in the cache folder is

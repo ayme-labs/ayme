@@ -272,6 +272,30 @@ it("a command sent while the Session's process starts, before it listens, waits 
   });
 });
 
+it("a command waiting for a start stays with the claim it found: when another start of the name replaces it, the command is answered about the first, and the replacement goes on", async () => {
+  const first = await otherProcess();
+  const claimed = claimRecord(place, {
+    ...first,
+    socket: sessionFolder().socket,
+  });
+  if (!("generation" in claimed)) throw new Error("not claimed");
+  const answer = askSession(place, { stop: {} });
+  expect(await pendingAfter(answer, 100)).toBe(true);
+
+  // The first start ends before it listens, and a second claims the name
+  // at once.
+  releaseRecord(place, claimed.generation);
+  const { socket } = sessionFolder();
+  claimRecord(place, { ...thisProcess(), socket });
+  await serve({ socket });
+
+  expect(await answer).toEqual({
+    ok: false,
+    text: `The Session in process ${first.pid} ended before it answered.`,
+  });
+  expect(await askSession(place, { tools: {} })).toMatchObject({ ok: true });
+});
+
 it("the start is answered by its process over the IPC channel, in full, however soon the process ends", async () => {
   const text = `${"Your Page Objects did not build. ".repeat(3000)}End.`;
 
