@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { once } from "node:events";
+import { EventEmitter, once } from "node:events";
 import {
   mkdtempSync,
   readdirSync,
@@ -13,7 +13,7 @@ import { Effect, Exit, Scope } from "effect";
 import { beforeEach, expect, it, onTestFinished, vi } from "vitest";
 
 import { scriptedBrowser } from "../../../testing";
-import { serveSession } from "./background";
+import { serveProcess, serveSession, type Opener } from "./background";
 import { askSession, listSessions, openSession } from "./commands";
 import {
   claimAfter,
@@ -28,6 +28,7 @@ import {
   type SessionPlace,
   type SessionRecord,
 } from "./record";
+import type { SessionAnswer } from "../../session/domain";
 import { send } from "./wire";
 
 /** A folder of the test's own, removed when it ends. */
@@ -565,3 +566,82 @@ it.each(["", "two words", "../up", "a/b"])(
     ).toEqual(why);
   }
 );
+
+/** The command that starts a Session's process, as the process sees it
+ * over its IPC channel: the test sends the claim, and goes away, by hand.
+ * `told` resolves with the answer to the start, and `listedWhenTold` with
+ * what ayme list showed at that moment. */
+function scriptedOpener() {
+  const channel = new EventEmitter();
+  let tellStart!: (answer: SessionAnswer) => void;
+  const told = new Promise<SessionAnswer>((resolve) => (tellStart = resolve));
+  let listed: SessionAnswer | undefined;
+  const opener = Object.assign(channel, {
+    connected: true,
+    send: (answer: SessionAnswer, done: () => void) => {
+      listed = listSessions(projectDir);
+      tellStart(answer);
+      done();
+      return true;
+    },
+    disconnect: () => {
+      opener.connected = false;
+      channel.emit("disconnect");
+    },
+  });
+  return {
+    opener: opener as unknown as Opener,
+    told,
+    listedWhenTold: () => listed,
+    claim: (generation: number) =>
+      channel.emit("message", { claimed: generation }),
+    goAway: () => opener.disconnect(),
+  };
+}
+
+/** Claims the folder for this process, as the opening command does, and
+ * runs the Session's process on a scripted browser in this process. */
+function runProcess(opener: Opener) {
+  const { socket } = sessionFolder();
+  const claim = claimRecord(place, { ...thisProcess(), socket });
+  if (!("generation" in claim)) throw new Error("the folder has a Session");
+  const { layer, browser } = scriptedBrowser();
+  const exitCode = serveProcess(
+    { projectDir, socket, request: { open: { headed: false } } },
+    opener,
+    layer
+  );
+  return { generation: claim.generation, exitCode, browser };
+}
+
+it("a start whose opening command goes away right after sending the claim ends, and leaves no browser and no Session", async () => {
+  const { opener, claim, goAway } = scriptedOpener();
+  const { generation, exitCode, browser } = runProcess(opener);
+
+  // Before the process watches for its opener going away.
+  claim(generation);
+  goAway();
+
+  expect(await exitCode).toBe(1);
+  // The start ends before or after it asked for a browser: none is held.
+  expect(browser.asked.length === 0 || browser.released).toBe(true);
+  expect(browser.hostedWith).toEqual([]);
+  expect(liveRecord(place)).toBeUndefined();
+});
+
+it("a Session's process marks its claim started before it answers the start, and serves the Session until it ends", async () => {
+  const { opener, claim, told, listedWhenTold } = scriptedOpener();
+  const { generation, exitCode } = runProcess(opener);
+
+  claim(generation);
+
+  expect(await told).toMatchObject({ ok: true });
+  expect(listedWhenTold()).toMatchObject({
+    data: {
+      sessions: [{ name: "default", pid: process.pid, starting: false }],
+    },
+  });
+  expect(await askSession(place, { stop: {} })).toMatchObject({ ok: true });
+  expect(await exitCode).toBe(0);
+  expect(liveRecord(place)).toBeUndefined();
+});

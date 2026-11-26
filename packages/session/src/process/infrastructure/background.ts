@@ -2,7 +2,7 @@
 // commands of its project folder until the Session ends.
 import { rmSync } from "node:fs";
 import { dirname } from "node:path";
-import { Deferred, Effect, type Scope } from "effect";
+import { Deferred, Effect, Layer, type Scope } from "effect";
 
 import {
   openSession,
@@ -31,6 +31,13 @@ import { listen } from "./wire";
  * process's IPC channel: which claim of the folder is the process's. The
  * process answers with the SessionAnswer to the start. */
 export type FromOpener = { readonly claimed: number };
+
+/** The command that started the process, as the process reaches it: over
+ * the process's IPC channel. */
+export type Opener = Pick<
+  NodeJS.Process,
+  "connected" | "once" | "off" | "send" | "disconnect"
+>;
 
 /** What a Session's process is started with. */
 type ProcessOptions = SessionPlace & {
@@ -93,18 +100,20 @@ export const serveSession = ({
 
 /** The claim the starting command gives this process, or undefined when
  * that command went away first. */
-const claimed = () =>
+const claimed = (opener: Opener) =>
   new Promise<number | undefined>((resolve) => {
-    if (!process.connected) return resolve(undefined);
-    process.once("message", (message: FromOpener) => resolve(message.claimed));
-    process.once("disconnect", () => resolve(undefined));
+    if (!opener.connected) return resolve(undefined);
+    opener.once("message", (message: FromOpener) => resolve(message.claimed));
+    opener.once("disconnect", () => resolve(undefined));
   });
 
 /** Tells the starting command how the start ended, if it is still there. */
-const tell = (answer: SessionAnswer) =>
+const tell = (opener: Opener, answer: SessionAnswer) =>
   Effect.sync(() => {
-    if (process.connected) process.send!(answer, () => process.disconnect());
+    if (opener.connected) opener.send!(answer, () => opener.disconnect());
   });
+
+const SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
 
 /**
  * The background process itself: serves the Session `options` asks for
@@ -113,11 +122,27 @@ const tell = (answer: SessionAnswer) =>
  * every way out of the start. `aymeVersion` is the version of the ayme the
  * process runs, which the project's own `@ayme-dev/ayme` must have.
  */
-export async function runSessionProcess(
+export const runSessionProcess = (
   options: ProcessOptions,
   aymeVersion: string
+): Promise<number> =>
+  serveProcess(
+    options,
+    process,
+    Layer.merge(
+      stockBrowser(options.projectDir),
+      projectPageObjects(options.projectDir, aymeVersion)
+    )
+  );
+
+/** The background process on the browser and build `layer` gives, for the
+ * command `opener` that started it. */
+export async function serveProcess(
+  options: ProcessOptions,
+  opener: Opener,
+  layer: Layer.Layer<SessionBrowser | PageObjectsBuild>
 ): Promise<number> {
-  const generation = await claimed();
+  const generation = await claimed(opener);
   if (generation === undefined) return 1;
   return Effect.runPromise(
     Effect.gen(function* () {
@@ -134,23 +159,28 @@ export async function runSessionProcess(
       // The process is told to end as a Caller's stop, and so is a start
       // whose command went away before its answer.
       const stop = () => void Effect.runPromise(session.ask({ stop: {} }));
-      for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const)
-        process.once(signal, stop);
-      process.once("disconnect", stop);
+      for (const signal of SIGNALS) process.once(signal, stop);
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          for (const signal of SIGNALS) process.off(signal, stop);
+        })
+      );
+      opener.once("disconnect", stop);
+      // An opener gone before that has no disconnect left to tell.
+      if (!opener.connected) stop();
       const answer = yield* session.started;
-      process.off("disconnect", stop);
+      opener.off("disconnect", stop);
       // Before the answer, so that `ayme list` no longer shows it as
       // starting once the start is answered.
       if (answer.ok) markStarted(options, generation);
-      yield* tell(answer);
+      yield* tell(opener, answer);
       yield* session.ended;
       return answer.ok ? 0 : 1;
     }).pipe(
       Effect.catchCause((cause) =>
-        tell(failed(whyNotStarted(cause).message)).pipe(Effect.as(1))
+        tell(opener, failed(whyNotStarted(cause).message)).pipe(Effect.as(1))
       ),
-      Effect.provide(stockBrowser(options.projectDir)),
-      Effect.provide(projectPageObjects(options.projectDir, aymeVersion)),
+      Effect.provide(layer),
       Effect.scoped
     )
   );
