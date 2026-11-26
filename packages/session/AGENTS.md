@@ -4,8 +4,9 @@ The Session of the `ayme` command: one running ayme connected to one browser, in
 
 The slices of `src/`, from the bottom up, each in `domain`, `application` and `infrastructure` layers:
 
-- `session`: the Session itself. `domain` holds what a Caller asks and what it is answered, with the answers' sentences ([`answers.ts`](src/session/domain/answers.ts)); `application` holds the Session ([`session.ts`](src/session/application/session.ts)) and its one seam, the browser it gets ([`sessionBrowser.ts`](src/session/application/sessionBrowser.ts)).
-- `playwright`: that seam on [`@ayme-dev/browser`](../browser/AGENTS.md). Its `infrastructure/live/` drives a real browser; the plain logic beside it, such as the start errors' sentences, is tested without one ([docs/testing.md](../../docs/testing.md#code-a-real-browser-runs)).
+- `session`: the Session itself. `domain` holds what a Caller asks and what it is answered, with the answers' sentences ([`answers.ts`](src/session/domain/answers.ts)); `application` holds the Session ([`session.ts`](src/session/application/session.ts)) and its two seams, the browser it gets ([`sessionBrowser.ts`](src/session/application/sessionBrowser.ts)) and the build of the project's Page Objects ([`pageObjectsBuild.ts`](src/session/application/pageObjectsBuild.ts)).
+- `page-objects`: the build seam, on the project's own `@ayme-dev/ayme` ([`projectAyme.ts`](src/page-objects/infrastructure/projectAyme.ts) says why).
+- `playwright`: the browser seam on [`@ayme-dev/browser`](../browser/AGENTS.md), and the Session as a Tab's Host. Its `infrastructure/live/` drives a real browser; the plain logic beside it, such as the start errors' sentences, is tested without one ([docs/testing.md](../../docs/testing.md#code-a-real-browser-runs)).
 - `process`: the background process and the commands' side of it: the record a folder's Session keeps in the user's cache folder, the local socket, and starting the process.
 - `src/index.ts` is the front door, for the CLI.
 - `testing/`, beside `src/`: a real Session on a scripted browser ([ADR-0057](../../docs/adr/0057-test-support-lives-beside-src-and-is-never-published.md)).
@@ -23,7 +24,7 @@ Nothing checks these:
 ## Adding to a Session
 
 - A command: a member of `SessionRequest` ([`requests.ts`](src/session/domain/requests.ts)), its answer in `ask`, and its word in the CLI's [`readCommand.ts`](../cli/src/readCommand.ts). The process carries any request through unchanged, and the CLI prints every answer through [`answer.ts`](../cli/src/answer.ts).
-- Something the browser does or tells: a member of `SessionBrowser`, carried out by the stock adapter and the scripted browser alike.
+- Something the browser does or tells: a member of `SessionBrowser` or `HostedTab`, carried out by the stock adapter and the scripted browser alike.
 - A rule: in the Session, with a test through its interface on the scripted browser.
 
 ## Testing
@@ -32,4 +33,4 @@ How to run tests here, and what each lane measures: [docs/testing.md](../../docs
 
 - [`src/session.test.ts`](src/session.test.ts) tests the Session through its interface on the scripted browser, `startScriptedSession` from `testing/`: the orderings of a Session's rules, which are slow and unreliable to make happen in a real browser.
 - [`process.test.ts`](src/process/infrastructure/process.test.ts) serves a Session on the scripted browser in the test's own process and reaches it as a command does.
-- The code under `infrastructure/live/` is measured by the end-to-end tests of the built command in [`apps/mcp-fixture`](../../apps/mcp-fixture/README.md), so keep its functions short: the CRAP score counts them as uncovered.
+- The code under `infrastructure/live/` is measured by the end-to-end tests of the built command in [`apps/mcp-fixture`](../../apps/mcp-fixture/README.md), so keep its functions short: the CRAP score counts them as uncovered. So is the build, which needs a project with `@ayme-dev/ayme` installed.

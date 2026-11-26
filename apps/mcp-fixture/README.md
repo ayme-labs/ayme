@@ -8,6 +8,8 @@ app/         the fixture page, its startup code and the Vite config
 ayme/pom/    the page's own Page Objects, which `app/main.ts` registers
 outside/     the ayme folder of a project that keeps its Page Objects outside
              the app: the entry and the Page Object of plain.html it lists
+command/     the ayme folder of the `ayme` command's projects: the entry and
+             the Page Objects of shop.html, written as for a Playwright test
 tests/       the shared fixtures (fixtures.ts), one spec per concern, and
              appProcess.ts, a stand-in App Process
 ```
@@ -46,11 +48,16 @@ with `createAyme({ agentConnection })` and adds one Peek with `ayme.peek`. The
 looks for a server on its test's port only, or pairs by link, so it never
 pairs with a server another test or run has on the machine.
 
-`session.spec.ts` runs the built `ayme` command of `@ayme-dev/cli` as a child
-process, through the `ayme` fixture of `aymeCommand.ts`. Each test gets a
-project folder and a cache folder of its own in its output folder, so the
-command uses the fixture's Playwright and never finds another test's Session,
-and a Session the test left open is ended with it. The test's own Playwright
+`session.spec.ts` and `listings.spec.ts` run the built `ayme` command of
+`@ayme-dev/cli` as a child process, through the `ayme` fixture of
+`aymeCommand.ts`. Each test gets a project folder and a cache folder of its own
+in its output folder, so the command uses the fixture's Playwright and
+`@ayme-dev/ayme` and never finds another test's Session, and a Session the test
+left open is ended with it. The project folder holds a copy of `command/ayme`,
+whose Page Objects a Session builds and runs in Node: they use Playwright only,
+since nothing of them runs in the page. `shop.html` is a page without ayme
+that they describe: `ShopPage`, and `Basket`, which has a Page Object Root and
+whose `clear` is unavailable while the basket is empty. The test's own Playwright
 connection, at the address `ayme open` printed, plays the developer's browser
 automation.
 

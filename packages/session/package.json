@@ -23,7 +23,8 @@
     "test:mutation": "stryker run"
   },
   "dependencies": {
-    "effect": "^4.1.4"
+    "effect": "^4.1.4",
+    "esbuild": "^0.28.2"
   },
   "devDependencies": {
     "@ayme-dev/browser": "workspace:*",

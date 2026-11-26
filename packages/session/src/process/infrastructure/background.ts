@@ -6,10 +6,12 @@ import { Deferred, Effect, type Scope } from "effect";
 
 import {
   openSession,
+  type PageObjectsBuild,
   type Session,
   type SessionBrowser,
   type SessionBrowserRequest,
 } from "../../session/application";
+import { projectPageObjects } from "../../page-objects/infrastructure";
 import { stockBrowser } from "../../playwright/infrastructure";
 import { SessionStartError } from "../../session/domain";
 import { alreadyOpen, claimRecord, releaseRecord, socketFile } from "./record";
@@ -38,7 +40,7 @@ export const serveSession = ({
 }: SessionProcessOptions): Effect.Effect<
   Session,
   SessionStartError,
-  SessionBrowser | Scope.Scope
+  SessionBrowser | PageObjectsBuild | Scope.Scope
 > =>
   Effect.gen(function* () {
     const pid = process.pid;
@@ -81,9 +83,12 @@ export const serveSession = ({
  * The background process itself: serves the Session `options` asks for
  * until it ends, and resolves with the process's exit code. A Session that
  * cannot start is told on stderr, which the starting command reads.
+ * `aymeVersion` is the version of the ayme the process runs, which the
+ * project's own `@ayme-dev/ayme` must have.
  */
 export function runSessionProcess(
-  options: SessionProcessOptions
+  options: SessionProcessOptions,
+  aymeVersion: string
 ): Promise<number> {
   return Effect.runPromise(
     serveSession(options).pipe(
@@ -105,6 +110,7 @@ export function runSessionProcess(
         })
       ),
       Effect.provide(stockBrowser(options.projectDir)),
+      Effect.provide(projectPageObjects(options.projectDir, aymeVersion)),
       Effect.scoped
     )
   );

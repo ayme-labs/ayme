@@ -5,6 +5,7 @@ import {
   type SessionAnswer,
 } from "@ayme-dev/session";
 
+import { version } from "../package.json";
 import { answerReport } from "./answer";
 import type { Plan } from "./plan";
 import { SESSION_PROCESS } from "./readCommand";
@@ -34,7 +35,7 @@ function answerOf(
  * code. */
 export async function session(plan: SessionPlan): Promise<number> {
   if (plan.kind === "session process")
-    return runSessionProcess(JSON.parse(plan.options));
+    return runSessionProcess(JSON.parse(plan.options), version);
   const { stream, text, exitCode } = answerReport(
     await answerOf(plan),
     plan.json

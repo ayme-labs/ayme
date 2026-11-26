@@ -1,4 +1,31 @@
+import type { ListedTool, Listing, TabName } from "./listing";
 import type { SessionAnswer, SessionEnd } from "./requests";
+
+/** The first line of a listing: the Tab it describes. */
+const tabLine = ({ url, title }: TabName) =>
+  title ? `Tab: ${title} (${url})` : `Tab: ${url}`;
+
+const NO_TOOLS = "This screen has no Page Object Tools.";
+
+/** The last line of `ayme page-objects`: how many Page Object Tools the
+ * screen has, and where they are listed. */
+function toolCountLine(count: number): string {
+  if (count === 0) return NO_TOOLS;
+  return count === 1
+    ? "This screen has 1 Page Object Tool: ayme tools lists it with its parameters."
+    : `This screen has ${count} Page Object Tools: ayme tools lists them with their parameters.`;
+}
+
+/** The answer to `ayme page-objects`. */
+export const pageObjectsAnswer = ({
+  tab,
+  pageObjectTree,
+  tools,
+}: Listing): SessionAnswer => ({
+  ok: true,
+  text: [tabLine(tab), pageObjectTree, toolCountLine(tools.length)].join("\n"),
+  data: { tab, pageObjectTree, tools: tools.length },
+});
 
 /** The answer to the command that started a Session on a browser ayme
  * opened. */
@@ -9,6 +36,36 @@ export const openedAnswer = (address: string): SessionAnswer => ({
 });
 
 export const failed = (text: string): SessionAnswer => ({ ok: false, text });
+
+/** A tool's lines in `ayme tools`: its name, whether it is unavailable and
+ * why, its description, and its parameters on the line below. */
+function toolLines({
+  name,
+  description,
+  parameters,
+  available,
+  reason,
+}: ListedTool): string[] {
+  const unavailable = available
+    ? ""
+    : reason === undefined
+      ? " (unavailable)"
+      : ` (unavailable: ${reason})`;
+  return [
+    `${name}${unavailable}${description ? `: ${description}` : ""}`,
+    `  parameters: ${JSON.stringify(parameters)}`,
+  ];
+}
+
+/** The answer to `ayme tools`. */
+export const toolsAnswer = ({ tab, tools }: Listing): SessionAnswer => ({
+  ok: true,
+  text: [
+    tabLine(tab),
+    ...(tools.length === 0 ? [NO_TOOLS] : tools.flatMap(toolLines)),
+  ].join("\n"),
+  data: { tab, tools },
+});
 
 /** The answer to a request of a kind the Session does not have, such as one
  * from an `ayme` command of another version. */

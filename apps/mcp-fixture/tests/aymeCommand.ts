@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { cp, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { runAyme, type AymeRun } from "@ayme-dev/cli/testing";
 import { test as base, expect } from "@playwright/test";
@@ -17,9 +18,14 @@ export function isAlive(pid: number): boolean {
   }
 }
 
+/** The ayme folder of the command's projects: Page Objects written as for
+ * a Playwright test, for `shop.html`. */
+const COMMAND_AYME = fileURLToPath(new URL("../command/ayme", import.meta.url));
+
 export const test = base.extend<{
   /** A project folder of the test's own, inside the fixture, so the
-   * project's Playwright is the fixture's. */
+   * project's Playwright and @ayme-dev/ayme are the fixture's. Its ayme
+   * folder is the command's. */
   project: string;
   /** Runs the built `ayme` command in the project, with a cache folder of
    * the test's own, so it never finds another test's Session. A Session the
@@ -35,6 +41,7 @@ export const test = base.extend<{
   project: async ({}, use, testInfo) => {
     const project = testInfo.outputPath("project");
     await mkdir(project, { recursive: true });
+    await cp(COMMAND_AYME, join(project, "ayme"), { recursive: true });
     await use(project);
   },
   // eslint-disable-next-line no-empty-pattern

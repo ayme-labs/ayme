@@ -903,6 +903,9 @@ importers:
       "@playwright/test":
         specifier: ">=1.62"
         version: 1.64.0
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
@@ -1472,6 +1475,9 @@ importers:
       effect:
         specifier: ^4.1.4
         version: 4.1.4
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
     devDependencies:
       "@ayme-dev/browser":
         specifier: workspace:*

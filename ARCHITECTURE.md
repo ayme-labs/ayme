@@ -199,15 +199,15 @@ in-browser agents and the app's own code call on the running page.
   `ayme close`, which closes that browser, or when the browser goes away. A command sent while
   it starts waits for the start, and every command gets an answer. It keeps a dialog
   listener that does nothing, so every dialog stays open for the browser automation to
-  answer. It runs no Page Objects yet
+  answer. At its start it builds the Page Objects of the project's ayme folder for Node while the browser opens; when that build fails, no Session starts and the browser closes. It runs them as the Host of the Tab the browser opened on, through the Node host runtime of the project's own `@ayme-dev/ayme`, and lists that Tab's Page Object Tree and Page Object Tools
 - Technology: the `ayme` command from `@ayme-dev/cli` (`ayme open [url]` and
   `ayme close`), over the private `@ayme-dev/session`, bundled into it, whose flows are written
   with Effect. A command finds its folder's background process through a record in the
   user's cache folder and sends it one JSON line over a local socket; the background
   process is the same command, started detached. The Session gets its browser through
   `@ayme-dev/browser`, on a profile of its own so that every Tab is in one context and one
-  window, with the DevTools protocol on a port Chromium picks
-- Evidence: verified: [packages/cli/src/session.ts](packages/cli/src/session.ts), [packages/session/src/session/application/session.ts](packages/session/src/session/application/session.ts), [packages/session/src/process/infrastructure/background.ts](packages/session/src/process/infrastructure/background.ts), [packages/session/src/process/infrastructure/commands.ts](packages/session/src/process/infrastructure/commands.ts), [packages/session/src/process/infrastructure/record.ts](packages/session/src/process/infrastructure/record.ts), [packages/session/src/playwright/infrastructure/live/stockBrowser.ts](packages/session/src/playwright/infrastructure/live/stockBrowser.ts), [docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md](docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md)
+  window, with the DevTools protocol on a port Chromium picks. It builds the Page Objects with esbuild and the project's own Page Object compiler, `@ayme-dev/ayme/compiler`, and leaves every package they import to the project's install, so the compiled classes and the Node host runtime share the project's one copy of `@ayme-dev/ayme`
+- Evidence: verified: [packages/cli/src/session.ts](packages/cli/src/session.ts), [packages/session/src/session/application/session.ts](packages/session/src/session/application/session.ts), [packages/session/src/process/infrastructure/background.ts](packages/session/src/process/infrastructure/background.ts), [packages/session/src/process/infrastructure/commands.ts](packages/session/src/process/infrastructure/commands.ts), [packages/session/src/process/infrastructure/record.ts](packages/session/src/process/infrastructure/record.ts), [packages/session/src/playwright/infrastructure/live/stockBrowser.ts](packages/session/src/playwright/infrastructure/live/stockBrowser.ts), [packages/session/src/page-objects/infrastructure/live/nodeBuild.ts](packages/session/src/page-objects/infrastructure/live/nodeBuild.ts), [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md](docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md)
 
 ## Communication
 
@@ -228,10 +228,12 @@ in-browser agents and the app's own code call on the running page.
     [packages/mcp/src/tools/infrastructure/mcpToolServer.ts](packages/mcp/src/tools/infrastructure/mcpToolServer.ts)
 - **Coding agents → Session**
   - Flows:
-    - → `ayme open [url]` and `ayme close`, run as commands in the project's folder, with the
-      global `--json`
+    - → `ayme open [url]`, `ayme page-objects`, `ayme tools` and `ayme close`, run as
+      commands in the project's folder, with the global `--json`
     - ← each answer's text, or the answer as JSON for `--json`, on stdout, or on stderr with
-      exit code 1 when it is a failure; the address of the browser `ayme open` started
+      exit code 1 when it is a failure; the address of the browser `ayme open` started; the
+      Page Object Tree and the Page Object Tools of the Tab, each listing headed by a line that
+      names the Tab
   - Evidence: verified: [packages/cli/src/readCommand.ts](packages/cli/src/readCommand.ts), [packages/cli/src/answer.ts](packages/cli/src/answer.ts), [packages/session/src/process/infrastructure/wire.ts](packages/session/src/process/infrastructure/wire.ts)
 - **In-browser agents → WebMCP driver**
   - Flows:
@@ -347,6 +349,13 @@ in-browser agents and the app's own code call on the running page.
       answering them
     - ← the browser going away
   - Evidence: verified: [packages/session/src/playwright/infrastructure/live/stockBrowser.ts](packages/session/src/playwright/infrastructure/live/stockBrowser.ts), [packages/browser/src/infrastructure/live/browser.ts](packages/browser/src/infrastructure/live/browser.ts)
+- **Session → Node host runtime**
+  - Flows:
+    - → the built Page Object classes and the Tab's Playwright `Page`, to the Node host runtime
+      of the project's own `@ayme-dev/ayme/playwright`, loaded in the Session's process;
+      `page_objects` reads and tool lists, as the `ayme-command` Caller
+    - ← the Page Object Tree as text, and each Page Object Tool with its availability
+  - Evidence: verified: [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [packages/session/src/page-objects/infrastructure/projectAyme.ts](packages/session/src/page-objects/infrastructure/projectAyme.ts)
 - **App Process runtime → ayme MCP server**
   - Flows:
     - → pairing without a token, the process's Peek Tools and their changes, read results

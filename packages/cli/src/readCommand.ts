@@ -5,6 +5,8 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                     [--load-storage <file>] [--save-storage <file>]
        ayme capture --cdp=<url>
        ayme open [url] [--headed]
+       ayme page-objects
+       ayme tools
        ayme close
 
   open [url]     Start a Session in this folder: open Chromium with the
@@ -12,8 +14,12 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  when given, and print the address your browser automation
                  connects to.
   --headed       Open that Chromium with a visible window.
+  page-objects   Print the Page Object Tree of the Session's Tab: its Page
+                 Objects, each with its id, and how many tools they have.
+  tools          List every Page Object Tool of the Session's Tab with its
+                 parameters, and why a tool is unavailable.
   close          End this folder's Session and close its browser.
-  --json         Print the answer of open or close as JSON.
+  --json         Print the answer of a Session's command as JSON.
 
   capture <url>  Record a flow on the page at <url>, opened in Chromium with
                  the Playwright installed in the project this runs in.
@@ -74,14 +80,26 @@ export function readCommand(args: string[]): Command {
   if (args[0] === SESSION_PROCESS && args.length === 2)
     return { kind: "session process", options: args[1]! };
   const word = args.find((arg) => !arg.startsWith("-"));
-  if (word === "open" || word === "close") return readSessionCommand(args);
+  if (word !== undefined && SESSION_WORDS.has(word))
+    return readSessionCommand(args);
   return readCapture(args);
 }
+
+/** The commands of a Session. */
+const SESSION_WORDS = new Set(["open", "close", "page-objects", "tools"]);
+
+/** What each command that only asks the folder's Session asks it. */
+const ASKED: Record<string, SessionRequest> = {
+  close: { stop: {} },
+  "page-objects": { pageObjects: {} },
+  tools: { tools: {} },
+};
 
 /** The word the Session's background process is started with. */
 export const SESSION_PROCESS = "__session";
 
-/** `open [url] [--headed]` or `close`, each with the global --json. */
+/** `open [url] [--headed]`, or a command that only asks the Session, each
+ * with the global --json. */
 function readSessionCommand(args: string[]): Command {
   let positionals: string[];
   let values: { help?: boolean; headed?: boolean; json?: boolean };
@@ -110,8 +128,9 @@ function readSessionCommand(args: string[]): Command {
       },
       json,
     };
-  if (word === "close" && url === undefined && !values.headed)
-    return { kind: "ask", request: { stop: {} }, json };
+  const asked = word === undefined ? undefined : ASKED[word];
+  if (asked && url === undefined && !values.headed)
+    return { kind: "ask", request: asked, json };
   return { kind: "error", text: USAGE };
 }
 
