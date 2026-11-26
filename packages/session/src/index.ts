@@ -4,7 +4,5 @@ export {
   askSession,
   openSession,
   runSessionProcess,
-  type OpenOptions,
-  type SessionProcessOptions,
 } from "./process/infrastructure";
 export type { SessionAnswer, SessionRequest } from "./session/domain";

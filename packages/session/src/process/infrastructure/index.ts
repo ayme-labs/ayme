@@ -1,6 +1,2 @@
-export {
-  runSessionProcess,
-  serveSession,
-  type SessionProcessOptions,
-} from "./background";
-export { askSession, openSession, type OpenOptions } from "./commands";
+export { runSessionProcess, serveSession } from "./background";
+export { askSession, openSession } from "./commands";
