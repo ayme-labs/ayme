@@ -13,6 +13,7 @@
     "test:playwright": "playwright test --reporter=list",
     "test:e2e:e2e": "e2e run",
     "test:tools-check": "e2e-patched run --config e2e.tools-check.config.ts",
+    "test:goals:tools": "e2e-patched run --config e2e.goals-tools.config.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p ayme"
   },
   "dependencies": {
