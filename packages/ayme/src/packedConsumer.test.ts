@@ -362,7 +362,16 @@ it("packed manifests carry the keywords, homepage and description npm shows", ()
     const { description, homepage, keywords } = readManifest(
       packed[`@ayme-dev/${name}`]!.dir
     );
-    expect(keywords, name).toEqual(expect.arrayContaining(SHARED_KEYWORDS));
+    // The recorder serves no MCP and no WebMCP, so it would mislead searches
+    // for them.
+    const expected =
+      name === "cli"
+        ? SHARED_KEYWORDS.filter((k) => k !== "mcp" && k !== "webmcp")
+        : SHARED_KEYWORDS;
+    expect(keywords, name).toEqual(expect.arrayContaining(expected));
+    if (name === "cli")
+      for (const k of ["mcp", "webmcp"])
+        expect(keywords, name).not.toContain(k);
     expect(homepage, name).toBe("https://ayme.dev");
     expect(description?.trim(), name).toBeTruthy();
   }
