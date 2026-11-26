@@ -95,6 +95,7 @@ export function runContext(
       return pageStateSession ?? getPageStateSession(globalThis.document);
     },
     reach,
+    outlivesFullLoads: false,
     run: async (name, input, childCursor = cursor) => {
       const entry = resolveTools({ peeks: true }).get(name);
       if (!entry?.available) throw new Error(`No available tool "${name}".`);

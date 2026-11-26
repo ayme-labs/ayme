@@ -677,6 +677,7 @@ it("runs goal as the application while publication is unavailable", async () => 
       pageStateSession: getPageStateSession(document),
       // A session handed no Reach measures Chromium's geometry.
       reach: pageState.geometryReach,
+      outlivesFullLoads: false,
     });
   } finally {
     goalTool.mockRestore();

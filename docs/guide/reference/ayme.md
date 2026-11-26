@@ -67,7 +67,7 @@ A predicate that reads the URL follows client-side routing and the browser's Bac
 
 A predicate that throws makes the Page Object absent. The console gets the error with the class, such as `ProjectsPage: its present predicate threw TypeError: store is undefined.`, once until the error changes.
 
-Presence adds and withdraws tools. A present Page Object's availability is still measured at its root. [Register Page Objects](../guides/publish-tools.md#register-page-objects) says where a page such as `ProjectsPage` is registered.
+Presence adds and withdraws tools. A present Page Object's availability is still measured at its root. An action that returns a Page Object with `present` answers once it holds; see [The Page Object an action returns](../guides/page-state.md#the-page-object-an-action-returns). [Register Page Objects](../guides/publish-tools.md#register-page-objects) says where a page such as `ProjectsPage` is registered.
 
 #### Typed route parameters
 

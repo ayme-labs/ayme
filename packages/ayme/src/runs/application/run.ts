@@ -44,6 +44,12 @@ export type RunContext = {
   readonly pageStateSession: PageStateSession;
   /** How the Run measures whether its input would reach an element: the runtime's Reach. */
   readonly reach: Reach;
+  /**
+   * Whether the Run's runtime session goes on in the document a full load
+   * brings, as a Node host's does; the browser runtime's ends with its
+   * document.
+   */
+  readonly outlivesFullLoads: boolean;
 };
 
 /**
