@@ -13,6 +13,7 @@
 import type { JsonValue, StepExecutorContext } from "e2e";
 import type { DefinedTool } from "e2e/agent";
 import { budgetsOf, type ServedTool } from "./patched";
+import type { ToolFailure } from "./stale";
 
 type Execute = (input: unknown, options: object) => unknown;
 
@@ -25,7 +26,11 @@ const executeOf = (name: string, defined: DefinedTool): Execute => {
 
 /** The tools as the patched `@e2e-dev/acp`'s `tools` option takes them: `claudeCode({ tools: serveProjectTools(...) })`. */
 export function serveProjectTools(
-  tools: Readonly<Record<string, DefinedTool>>
+  tools: Readonly<Record<string, DefinedTool>>,
+  options: {
+    /** Hears of every call that threw, replayed or live, such as `staleNotes`. */
+    onFailure?: (failure: ToolFailure) => void;
+  } = {}
 ): (ctx: StepExecutorContext) => Promise<ServedTool[]> {
   const served = Object.entries(tools).map(([name, defined]): ServedTool => {
     const execute = executeOf(name, defined);
@@ -37,17 +42,29 @@ export function serveProjectTools(
       description: defined.tool.description ?? name,
       inputSchema: defined.tool.inputSchema,
       readOnly: !mutates,
-      async run(args, { ctx, observe }) {
-        const result = await budgetsOf(ctx).runTool(
-          {
-            name,
-            mutates,
-            ...(repeatable === true
-              ? { replay: { input: args as JsonValue } }
-              : {}),
-          },
-          async () => execute(args, {})
-        );
+      async run(args, { ctx, observe, replaying }) {
+        const result = await budgetsOf(ctx)
+          .runTool(
+            {
+              name,
+              mutates,
+              ...(repeatable === true
+                ? { replay: { input: args as JsonValue } }
+                : {}),
+            },
+            async () => execute(args, {})
+          )
+          .catch((error: unknown) => {
+            options.onFailure?.({
+              tool: name,
+              input: args as JsonValue,
+              error,
+              during: replaying === true ? "replay" : "live",
+              test: ctx.attempt.testId,
+              instruction: ctx.step.instruction,
+            });
+            throw error;
+          });
         const text =
           typeof result === "string" ? result : JSON.stringify(result);
         // After a change, the screen as the action tools report it, so the

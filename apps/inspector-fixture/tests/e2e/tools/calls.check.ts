@@ -13,8 +13,16 @@ test("the e2e suite's Page Objects run as tools, record and replay", async ({
   inspector,
   listPage,
 }) => {
-  const call = (what: string, tool: string, input: object = {}) =>
-    agent.act(what, { params: { tool, input: JSON.stringify(input) } });
+  const call = (
+    what: string,
+    tool: string,
+    input: object = {},
+    // How the scripted executor heals the call when it fails (AYME_E2E_STALE).
+    heal?: string
+  ) =>
+    agent.act(what, {
+      params: { tool, input: JSON.stringify(input), ...(heal && { heal }) },
+    });
 
   await call("show the Model lens", "Navigator_showLens", { name: "Model" });
   await expect(await inspector.navigator.lens("Model").front()).toHaveAttribute(
@@ -51,7 +59,12 @@ test("the e2e suite's Page Objects run as tools, record and replay", async ({
   });
   await expect(await listPage.items.front()).toHaveText(["Bread"]);
 
-  await call("collapse the panel", "Inspector_collapse");
+  await call(
+    "collapse the panel",
+    "Inspector_collapse",
+    {},
+    'button "Collapse inspector"'
+  );
   await expect(await inspector.panel.front()).toHaveCount(0);
 
   await call("open the panel from its logo", "CollapsedLogo_open");

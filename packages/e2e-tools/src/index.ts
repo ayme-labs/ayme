@@ -11,3 +11,4 @@ export {
 } from "./direct";
 export { budgetsOf, type ServedTool } from "./patched";
 export { serveProjectTools } from "./projectTools";
+export { staleNotes, type ToolFailure } from "./stale";
