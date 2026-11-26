@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/ayme-labs/ayme/compare/vue-v0.2.0...vue-v0.3.0) (2026-11-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* a rooted Page Object Tool is called with the Page Object's id instead of the Structural Ref of its root. Before: ayme.tools.run("ListItem.archive", { ref: "e9", args }). After: ayme.tools.run("ListItem.archive", { id: "po3", args }). The screenshot Browser Tool is removed: ayme.tools.run("screenshot", ...) no longer runs.
+
+### Features
+
+* ayme adds Page Object Tools to the browser automation a developer already uses ([#1265](https://github.com/ayme-labs/ayme/issues/1265)) ([6b72ab4](https://github.com/ayme-labs/ayme/commit/6b72ab4ab5ed7cd2846807edfef3bafcc672e6ca))
+* **ayme:** one in-page module per document ([#1169](https://github.com/ayme-labs/ayme/issues/1169)) ([3b742de](https://github.com/ayme-labs/ayme/commit/3b742dec64148b2e47d067a9f9d2396671c9ee0b))
+
 ## [0.2.0](https://github.com/ayme-labs/ayme/compare/vue-v0.1.1...vue-v0.2.0) (2026-11-04)
 
 

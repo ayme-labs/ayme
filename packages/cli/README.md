@@ -148,4 +148,4 @@ The [measurement's write-up](https://github.com/ayme-labs/ayme/issues/1358#issue
 
 ## License
 
-[FSL-1.1-ALv2](https://github.com/ayme-labs/ayme/blob/main/packages/cli/LICENSE). Bundled third-party code keeps its original license; see `dist/THIRD_PARTY_NOTICES.txt` in the package.
+[MIT](https://github.com/ayme-labs/ayme/blob/main/packages/cli/LICENSE), for all of ayme's code in this package, including the code it bundles from other ayme packages. Bundled third-party code keeps its original license; see `dist/THIRD_PARTY_NOTICES.txt` in the package. The ayme name and logos are not covered by the license; see [TRADEMARKS.md](https://github.com/ayme-labs/ayme/blob/main/packages/design-system/TRADEMARKS.md).
