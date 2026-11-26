@@ -3,7 +3,7 @@ import type { JsonValue } from "e2e";
 
 // The recording WebMCP driver of `@ayme-dev/webmcp/testing`, on e2e's
 // `browser`. The two must agree on the driver's shape; this package depends
-// on no Ayme package (a `tooling` package may not), so the type is repeated.
+// on no ayme package (a `tooling` package may not), so the type is repeated.
 
 export type PublishedTool = {
   name: string;
@@ -42,7 +42,7 @@ function installRecordingDriver() {
 }
 
 /**
- * Installs a minimal `document.modelContext` that records what the Ayme
+ * Installs a minimal `document.modelContext` that records what the ayme
  * runtime publishes, in every document the test opens from now on, so a test
  * can read and execute the published tools.
  */

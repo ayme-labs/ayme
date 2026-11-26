@@ -19,7 +19,7 @@ import { counterPath, server } from "./config";
 // them is done here in the page, by init scripts and `browser.evaluate`.
 
 /**
- * In the page: answers the Agent Connection's auto-pair scan as if no Ayme
+ * In the page: answers the Agent Connection's auto-pair scan as if no ayme
  * MCP server ran, so a page under test never pairs by itself with a server
  * another test or suite runs on this machine. The scan probes
  * `ws://127.0.0.1:<port>/probe` on each port from 9350 to 9365 and counts a
@@ -87,7 +87,7 @@ function recordPageErrors(key: string) {
 }
 
 /**
- * e2e's `test`, whose pages never pair by themselves with an Ayme MCP server
+ * e2e's `test`, whose pages never pair by themselves with an ayme MCP server
  * that runs on this machine (`ignoreAutoPairScanInPage`). Every example spec
  * uses it, or `test`, which builds on it.
  */
