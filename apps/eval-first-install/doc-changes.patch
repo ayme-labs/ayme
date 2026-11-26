@@ -1,0 +1,160 @@
+diff --git a/docs/guide/guides/page-objects-without-ayme.md b/docs/guide/guides/page-objects-without-ayme.md
+index 408af4aa..2d17bf39 100644
+--- a/docs/guide/guides/page-objects-without-ayme.md
++++ b/docs/guide/guides/page-objects-without-ayme.md
+@@ -1,10 +1,10 @@
+ # Page Objects on a page without Ayme
+ 
+-How to let `ayme mcp` serve your Page Objects to a page whose app doesn't ship Ayme, through Playwright MCP or Playwright CLI.
++How to let `ayme mcp` serve your Page Objects to a page whose app doesn't ship Ayme, through Playwright MCP, Playwright CLI or agent-browser.
+ 
+ > **Experimental:** this may change in any release. See [Experimental APIs](../reference/experimental-apis.md).
+ 
+-When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme mcp` can build your Page Objects and load them into any page, such as a staging site or an app you can't change. Register `ayme mcp` in your agent as in [Connect an agent](connect-an-agent.md#register-the-server-in-your-agent); you don't turn anything on in the page.
++When your agent drives the browser with Playwright MCP, Playwright CLI or agent-browser, `ayme mcp` can build your Page Objects and load them into any page, such as a staging site or an app you can't change. Register `ayme mcp` in your agent as in [Connect an agent](connect-an-agent.md#register-the-server-in-your-agent); you don't turn anything on in the page.
+ 
+ ## Set it up
+ 
+@@ -19,12 +19,15 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme
+    ```
+ 
+ 2. Start `ayme mcp`, by restarting your agent. It writes `.ayme/init-script.js`, which names its port, and adds it to `.ayme/.gitignore`.
++
++   Playwright MCP refuses to start while that file is missing. When your agent starts both servers at the same restart, write the file first: add `--port <port>`, a port from 9350 to 9365, after `mcp` in the registration, run the registration's command once in a terminal in this folder until it prints `Listening for pages`, and stop it with Ctrl+C. The file stays valid, because every later start uses the same port.
+ 3. Point your browser tool at the init script in its config file. A path in the file is relative to the file's folder.
+ 
+    ```json
+    {
+      "browser": {
+        "initScript": [".ayme/init-script.js"],
++       "launchOptions": { "channel": "chrome" },
+        "contextOptions": {
+          "bypassCSP": true,
+          "permissions": ["local-network-access"]
+@@ -33,12 +36,18 @@ When your agent drives the browser with Playwright MCP or Playwright CLI, `ayme
+    }
+    ```
+ 
+-   Pass it to Playwright MCP with `--config <file>` in its registration, or to Playwright CLI with `playwright-cli open --config <file> <url>`.
++   Pass it to Playwright MCP in its registration, such as `npx -y @playwright/mcp@<version> --config=<file>`, or to Playwright CLI with `playwright-cli open --config <file> <url>`. Playwright CLI reads `.playwright/cli.config.json` by default, without `--config`; from that file, the init script is `../.ayme/init-script.js`.
++
++   `"channel": "chrome"` runs the Chrome installed on the machine. With `"browserName": "chromium"` and no channel, the browser tool runs Playwright's own Chromium, which it downloads first.
++
++   agent-browser takes no config file for this. Start it with the init script instead: `agent-browser --init-script .ayme/init-script.js open <url>`.
+ 
+ 4. Ask the agent to call `ayme_connect` with the page's URL and open the link. The answer adds a line naming the init script, and your Page Objects' tools become the agent's tools. While no build of the entry has succeeded, that line, and the answer to a page tool while no page is connected, give the build's first error instead.
+ 
+ To have the page also publish your Page Objects' tools through WebMCP, for a browser tool that calls a page's WebMCP tools such as Playwright CLI, install `@ayme-dev/webmcp` beside `@ayme-dev/ayme` and add `--webmcp` after `mcp` in the registration, such as `npx -y @ayme-dev/mcp@<version> mcp --webmcp`. It is off by default, and `ayme mcp` refuses to start with it when there are no Page Objects to serve.
+ 
++The page publishes through WebMCP only in a Chrome that supplies `document.modelContext`, and a Chrome your browser tool launches does not by default. Add the feature to its launch arguments: for Playwright MCP and Playwright CLI, `"launchOptions": { "args": ["--enable-features=WebMCP"] }` under `browser` in the config file; for agent-browser, `--args "--enable-features=WebMCP,WebMCPTesting,DevToolsWebMCPSupport"`. Without it, the browser tool reports that the page registers no WebMCP tools. With Playwright CLI, `webmcp-list` is also empty until the first `playwright-cli snapshot`.
++
+ `bypassCSP` lets a page with a Content Security Policy connect to `ayme mcp`. The `local-network-access` permission lets a page on a public site reach `127.0.0.1`; without it, Chrome blocks the connection when headless and waits on a permission prompt when headed.
+ 
+ ## What to expect
+@@ -46,6 +55,5 @@ To have the page also publish your Page Objects' tools through WebMCP, for a bro
+ - Playwright MCP and Playwright CLI refuse to start while the init script is missing, so start `ayme mcp` first in a fresh clone.
+ - The browser reads the init script when it starts. If it can start before `ayme mcp`, or outlive a restart on another port, add `--port <port>` to the `ayme mcp` registration so every start writes the same init script, then restart the browser once.
+ - After an edit, `ayme mcp` rebuilds and the open page swaps in the new Page Objects. A failed build is logged to `ayme mcp`'s standard error, and the page keeps the last good one.
+-- Chromium-based browsers only.
+ - Navigating to another origin needs a new `ayme_connect` link.
+ - On a page whose app already ships Ayme, the app's own tools win over the served ones.
+diff --git a/skills/ayme/references/browser-automation-tools.md b/skills/ayme/references/browser-automation-tools.md
+index 1c40602a..eb0b5eba 100644
+--- a/skills/ayme/references/browser-automation-tools.md
++++ b/skills/ayme/references/browser-automation-tools.md
+@@ -4,6 +4,9 @@ You keep driving the browser with the automation you already use. Ayme adds two
+ things to it for the screen the browser is on: a Page Object Tool for each
+ action of the Page Objects there, and `page_objects`, which lists those Page
+ Objects as a tree with the id (`po<n>`) each rooted Page Object Tool takes.
++A rooted Page Object Tool takes that id and the action's own arguments under
++`args`, such as `{"id": "po3", "args": {"text": "Soy milk"}}`, through any
++channel.
+ [Page tools](page-tools.md) shows how to read the tree and a Page Object Tool's
+ answer.
+ 
+@@ -17,12 +20,26 @@ the server serves the project's Page Objects through the init script your
+ browser automation loads; see
+ [A page that doesn't ship Ayme](browser-setup.md#a-page-that-doesnt-ship-ayme).
+ 
++WebMCP, as a channel, needs a Chrome that supplies `document.modelContext`. A
++Chrome your browser automation launches does not, unless it starts with
++`--enable-features=WebMCP`; each section says where that goes. Without it the
++page publishes nothing, and the automation reports that the page registers no
++WebMCP tools.
++
+ ## Playwright CLI
+ 
+ - **Channel:** WebMCP. `playwright-cli webmcp-list` lists the page's tools and
+   `playwright-cli webmcp-call <name> --params '<json>'` calls them. Call the
+   Page Object Tools this way, even when the `ayme` server lists them too.
+-- **Start:** `mcp --webmcp`.
++- **Browser:** add `"launchOptions": { "args": ["--enable-features=WebMCP"] }`
++  under `browser` in the config file you pass to `playwright-cli open --config`.
++- **First list:** `webmcp-list` is empty until the first snapshot, so run
++  `playwright-cli snapshot --depth=1` before it. `webmcp-call` works without
++  listing first.
++- **Start:** `mcp --webmcp` on a page that doesn't ship Ayme; the server
++  refuses to start with `--webmcp` when it has no Page Objects to serve. A
++  page that ships Ayme with WebMCP publication on publishes its tools itself:
++  start `mcp`.
+ - **After a Page Object Tool:** read `page_objects` and take a snapshot limited
+   to depth 1, chained in the same command:
+   `playwright-cli webmcp-call page_objects && playwright-cli snapshot --depth=1`.
+@@ -39,8 +56,10 @@ browser automation loads; see
+ - **After a Page Object Tool:** read `page_objects` as the next call.
+ - **After a navigation:** on either [error](#errors-after-a-navigation), read
+   `page_objects` again.
+-- **Through WebMCP instead:** start `mcp --webmcp` and leave Playwright MCP's
+-  WebMCP support on. Playwright MCP collects the page's tools with each
++- **Through WebMCP instead:** start `mcp --webmcp`, leave Playwright MCP's
++  WebMCP support on, and add
++  `"launchOptions": { "args": ["--enable-features=WebMCP"] }` under `browser`
++  in its config file. Playwright MCP collects the page's tools with each
+   snapshot and lists each as `webmcp_<name>`, a dot in the name read as an
+   underscore, such as `webmcp_page_objects`. After a Page Object Tool, call
+   `webmcp_page_objects` and `browser_snapshot` with `depth: 1` as the next
+@@ -56,7 +75,9 @@ browser automation loads; see
+ - **After a navigation:** on either [error](#errors-after-a-navigation), read
+   `page_objects` again.
+ - **Through WebMCP instead:** start `mcp --webmcp`, with agent-browser's
+-  WebMCP support on. `agent-browser webmcp list` lists the page's tools and
++  WebMCP support on, and launch it with
++  `--args "--enable-features=WebMCP,WebMCPTesting,DevToolsWebMCPSupport"`.
++  `agent-browser webmcp list` lists the page's tools and
+   `agent-browser webmcp invoke <name> --params '<json>'` calls them. After a
+   Page Object Tool, read `page_objects` and `agent-browser webmcp list` in the
+   same command.
+diff --git a/skills/ayme/references/browser-setup.md b/skills/ayme/references/browser-setup.md
+index 07243feb..e27f949e 100644
+--- a/skills/ayme/references/browser-setup.md
++++ b/skills/ayme/references/browser-setup.md
+@@ -28,6 +28,9 @@ by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
+   the user to open, or to paste into the tab they already have open.
+ - When the page's tools are missing from your tool list after the page
+   pairs, list them with `ayme_list_tools` and run them with `ayme_call`.
++- When a tool answers that no page is connected right after you opened the
++  link from `ayme_connect`, the page is still pairing: call it again after a
++  second or two.
+ - When a tool answers that no page is connected right after your MCP server
+   restarted, and a tab was paired before, wait a few seconds: the tab pairs
+   again by itself, and the page's tools come back with a tool list change.
+@@ -73,14 +76,16 @@ by its id or an unavailable tool's reason, read [Page tools](page-tools.md).
+ 
+ ## A page that doesn't ship Ayme
+ 
+-Experimental. With Playwright MCP or Playwright CLI, `ayme mcp` can serve the
+-project's Page Objects to a page that doesn't ship Ayme. Set it up as
++Experimental. With Playwright MCP, Playwright CLI or agent-browser, `ayme mcp`
++can serve the project's Page Objects to a page that doesn't ship Ayme. Set it up as
+ [Page Objects on a page without Ayme](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-objects-without-ayme.md)
+ describes. When it fails:
+ 
+ - The browser tool fails with `Init script file does not exist`: start
+   `ayme mcp` first, and check the path, which is relative to the config
+-  file's folder. Then restart the browser tool.
++  file's folder. Then restart the browser tool. When your client starts both
++  servers at one restart, write the init script before that restart, as the
++  guide's step 2 describes.
+ - The page never pairs: check the browser tool's config has `bypassCSP` and
+   the `local-network-access` permission, and that the browser started after
+   `ayme mcp`. Otherwise pin the port with `--port` and restart the browser.

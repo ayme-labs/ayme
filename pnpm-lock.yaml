@@ -51,6 +51,8 @@ importers:
         specifier: ^8.68.0
         version: 8.68.0(eslint@10.9.1(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@6.0.3)
 
+  apps/eval-first-install: {}
+
   apps/eval-formbricks:
     devDependencies:
       "@ayme-dev/eslint-config":
