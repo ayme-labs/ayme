@@ -1,8 +1,19 @@
 import { parseArgs } from "node:util";
+import type { SessionRequest } from "@ayme-dev/session";
 
 export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                     [--load-storage <file>] [--save-storage <file>]
        ayme capture --cdp=<url>
+       ayme open [url] [--headed]
+       ayme close
+
+  open [url]     Start a Session in this folder: open Chromium with the
+                 Playwright installed in the project this runs in, at <url>
+                 when given, and print the address your browser automation
+                 connects to.
+  --headed       Open that Chromium with a visible window.
+  close          End this folder's Session and close its browser.
+  --json         Print the answer of open or close as JSON.
 
   capture <url>  Record a flow on the page at <url>, opened in Chromium with
                  the Playwright installed in the project this runs in.
@@ -43,6 +54,15 @@ export type CaptureTarget =
  */
 export type Command =
   | { kind: "capture"; target: CaptureTarget }
+  | {
+      kind: "open";
+      open: { readonly url?: string; readonly headed: boolean };
+      json: boolean;
+    }
+  | { kind: "ask"; request: SessionRequest; json: boolean }
+  /** The Session's background process, which `open` starts with the
+   * options it was given, as JSON. */
+  | { kind: "session process"; options: string }
   | { kind: "help"; text: string }
   | { kind: "version" }
   | { kind: "error"; text: string };
@@ -51,7 +71,48 @@ export type Command =
 export function readCommand(args: string[]): Command {
   // By itself only: beside a command it is an option the command lacks.
   if (args.length === 1 && args[0] === "--version") return { kind: "version" };
+  if (args[0] === SESSION_PROCESS && args.length === 2)
+    return { kind: "session process", options: args[1]! };
+  const word = args.find((arg) => !arg.startsWith("-"));
+  if (word === "open" || word === "close") return readSessionCommand(args);
   return readCapture(args);
+}
+
+/** The word the Session's background process is started with. */
+export const SESSION_PROCESS = "__session";
+
+/** `open [url] [--headed]` or `close`, each with the global --json. */
+function readSessionCommand(args: string[]): Command {
+  let positionals: string[];
+  let values: { help?: boolean; headed?: boolean; json?: boolean };
+  try {
+    ({ positionals, values } = parseArgs({
+      args,
+      allowPositionals: true,
+      options: {
+        help: { type: "boolean", short: "h" },
+        headed: { type: "boolean" },
+        json: { type: "boolean" },
+      },
+    }));
+  } catch (error) {
+    return fail((error as Error).message);
+  }
+  if (values.help) return { kind: "help", text: USAGE };
+  const [word, url, ...more] = positionals;
+  const json = values.json ?? false;
+  if (word === "open" && more.length === 0)
+    return {
+      kind: "open",
+      open: {
+        ...(url !== undefined ? { url } : {}),
+        headed: values.headed ?? false,
+      },
+      json,
+    };
+  if (word === "close" && url === undefined && !values.headed)
+    return { kind: "ask", request: { stop: {} }, json };
+  return { kind: "error", text: USAGE };
 }
 
 /** What `parseArgs` reads of the options `capture` knows. */

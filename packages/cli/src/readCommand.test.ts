@@ -100,7 +100,7 @@ describe("readCommand", () => {
     });
   });
 
-  it("refuses --headed as any unknown option, and no longer lists it", () => {
+  it("refuses --headed for capture as any unknown option, and no longer lists it there", () => {
     const command = readCommand(["capture", "http://localhost", "--headed"]);
 
     expect(command.kind).toBe("error");
@@ -109,7 +109,10 @@ describe("readCommand", () => {
       expect.stringMatching(/^Unknown option '--headed'/)
     );
     expect(command).toHaveProperty("text", expect.stringContaining(USAGE));
-    expect(USAGE).not.toContain("--headed");
+    // `ayme open` takes --headed: it opens Chromium headless by default.
+    expect(
+      USAGE.split("\n").filter((line) => line.includes("ayme capture"))
+    ).not.toContainEqual(expect.stringContaining("--headed"));
   });
 
   it.each([
@@ -233,5 +236,62 @@ describe("readCommand", () => {
       expect.stringMatching(/^Unknown option '--nope'/)
     );
     expect(command).toHaveProperty("text", expect.stringContaining(USAGE));
+  });
+});
+
+describe("readCommand for a Session", () => {
+  it("starts a Session for `open`, headless by default", () => {
+    expect(readCommand(["open"])).toEqual({
+      kind: "open",
+      open: { headed: false },
+      json: false,
+    });
+  });
+
+  it("starts a Session at the URL, with a window for --headed, for `open <url> --headed`", () => {
+    expect(readCommand(["open", "http://localhost:5173/", "--headed"])).toEqual(
+      {
+        kind: "open",
+        open: { url: "http://localhost:5173/", headed: true },
+        json: false,
+      }
+    );
+  });
+
+  it("stops the Session for `close`", () => {
+    expect(readCommand(["close"])).toEqual({
+      kind: "ask",
+      request: { stop: {} },
+      json: false,
+    });
+  });
+
+  it.each([[["--json", "close"]], [["close", "--json"]]])(
+    "asks for the answer as JSON with the global --json: `%s`",
+    (args) => {
+      expect(readCommand(args)).toMatchObject({ json: true });
+    }
+  );
+
+  it.each([
+    [["open", "http://a", "http://b"]],
+    [["close", "now"]],
+    [["close", "--headed"]],
+  ])("refuses what the command does not take: `%s`", (args) => {
+    expect(readCommand(args).kind).toBe("error");
+  });
+
+  it("lists open, close and --json in its usage text", () => {
+    expect(USAGE).toContain("ayme open [url] [--headed]");
+    expect(USAGE).toContain("ayme close");
+    expect(USAGE).toContain("--json");
+  });
+
+  it("runs the Session's background process for its own word, which the usage text does not name", () => {
+    expect(readCommand(["__session", '{"projectDir":"/app"}'])).toEqual({
+      kind: "session process",
+      options: '{"projectDir":"/app"}',
+    });
+    expect(USAGE).not.toContain("__session");
   });
 });
