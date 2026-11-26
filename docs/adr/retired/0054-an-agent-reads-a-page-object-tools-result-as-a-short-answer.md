@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0068
 ---
 
 # An agent reads a Page Object Tool's result as a short answer, and ayme adds no wait
