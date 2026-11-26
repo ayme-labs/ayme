@@ -18,7 +18,7 @@ export function parsePageObjectId(text: unknown): PageObjectId | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
-/** The `n`th Page Object id a page gives out, from 1. */
+/** The `n`th Page Object id a source gives out, from 1. */
 export function pageObjectIdOf(n: number): PageObjectId {
   return PageObjectIdSchema.parse(`po${n}`);
 }
