@@ -1,7 +1,7 @@
 # MCP fixture
 
-The end-to-end tests of `@ayme-dev/mcp` and the fixture app they run against.
-It is private and never published.
+The end-to-end tests of `@ayme-dev/mcp` and of the `ayme` command's Sessions,
+and the fixture app they run against. It is private and never published.
 
 ```
 app/         the fixture page, its startup code and the Vite config
@@ -45,6 +45,14 @@ with `createAyme({ agentConnection })` and adds one Peek with `ayme.peek`. The
 `startStandInAppProcess` fixture runs it and ends it with the test. Each one
 looks for a server on its test's port only, or pairs by link, so it never
 pairs with a server another test or run has on the machine.
+
+`session.spec.ts` runs the built `ayme` command of `@ayme-dev/cli` as a child
+process, through the `ayme` fixture of `aymeCommand.ts`. Each test gets a
+project folder and a cache folder of its own in its output folder, so the
+command uses the fixture's Playwright and never finds another test's Session,
+and a Session the test left open is ended with it. The test's own Playwright
+connection, at the address `ayme open` printed, plays the developer's browser
+automation.
 
 ## Running
 

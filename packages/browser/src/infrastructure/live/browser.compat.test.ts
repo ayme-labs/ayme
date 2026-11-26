@@ -1,7 +1,8 @@
 // The pages' own code, which the tests run there, uses the DOM.
 /// <reference lib="dom" />
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer as createNetServer, type AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Effect, Exit, Scope } from "effect";
@@ -124,6 +125,28 @@ it("closes a browser it started when it releases it", async () => {
 
   await gone;
   expect(started.playwrightBrowser.isConnected()).toBe(false);
+});
+
+it("starts Chromium on a profile of its own, whose one context a client that joins it shares, and closes it when it releases it", async () => {
+  const debugPort = await freePort();
+  const profile = mkdtempSync(join(tmpdir(), "ayme-profile-"));
+  ends.push(async () => rmSync(profile, { recursive: true, force: true }));
+  const started = await got({ open: { headed: false, debugPort, profile } });
+  await started.playwrightBrowser
+    .contexts()[0]!
+    .pages()[0]!
+    .goto("data:text/html,<p>ayme's page</p>");
+
+  const other = await chromium.connectOverCDP(`http://127.0.0.1:${debugPort}`);
+  const gone = new Promise<void>((resolve) =>
+    other.on("disconnected", () => resolve())
+  );
+  expect(
+    other.contexts().map((context) => context.pages().map((page) => page.url()))
+  ).toEqual([["data:text/html,<p>ayme's page</p>"]]);
+
+  await started.release();
+  await gone;
 });
 
 it("joins a running browser at its address, and finds its page", async () => {

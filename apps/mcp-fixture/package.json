@@ -18,6 +18,7 @@
     "@ayme-dev/webmcp": "workspace:*"
   },
   "devDependencies": {
+    "@ayme-dev/cli": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@ayme-dev/unplugin-ayme": "workspace:*",

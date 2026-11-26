@@ -8,6 +8,10 @@ export type BrowserRequest =
         readonly headed: boolean;
         /** Opens the browser's DevTools protocol on this port. */
         readonly debugPort?: number | undefined;
+        /** Starts Chromium on a profile in this folder, so that every
+         * page, those a client that joins opens among them, is in one
+         * context and one window. */
+        readonly profile?: string | undefined;
       };
     }
   | { readonly join: { readonly cdp: string } };

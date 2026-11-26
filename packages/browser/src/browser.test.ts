@@ -29,6 +29,12 @@ function standIn({ refuses }: { refuses?: string } = {}) {
     playwright: {
       chromium: {
         launch: (options: unknown) => answer({ launch: options }),
+        launchPersistentContext: async (folder: string, options: unknown) => {
+          const browser = await answer({
+            launchPersistentContext: [folder, options],
+          });
+          return { browser: () => browser };
+        },
         connectOverCDP: (address: string, options: unknown) =>
           answer({ connectOverCDP: [address, options] }),
       },
@@ -86,6 +92,31 @@ it("starts Chromium headless, with its DevTools protocol on the debug port it is
   ]);
 });
 
+it("starts Chromium on a profile in the folder it is given, emulating no viewport of its own", async () => {
+  const { found, asked } = standIn();
+
+  const { got: started } = await got(found, {
+    open: { headed: false, profile: "/tmp/ayme-profile" },
+  });
+
+  expect(asked).toEqual([
+    {
+      launchPersistentContext: [
+        "/tmp/ayme-profile",
+        {
+          headless: true,
+          args: [],
+          viewport: null,
+          handleSIGINT: false,
+          handleSIGTERM: false,
+          handleSIGHUP: false,
+        },
+      ],
+    },
+  ]);
+  expect(started.opened).toBe(true);
+});
+
 it("joins the browser at the address it is given, without Playwright's defaults", async () => {
   const { found, asked } = standIn();
 
@@ -101,6 +132,7 @@ it("joins the browser at the address it is given, without Playwright's defaults"
 
 it.each<BrowserRequest>([
   { open: { headed: true } },
+  { open: { headed: true, profile: "/tmp/ayme-profile" } },
   { join: { cdp: "http://127.0.0.1:9222" } },
 ])(
   "releases the browser when its scope closes, once, even when it is gone already: %j",

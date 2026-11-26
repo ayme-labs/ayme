@@ -3,7 +3,7 @@ import type { Browser as PlaywrightBrowser } from "playwright-core";
 
 import type { BrowserError } from "../../browserError";
 import { browserUnavailable, type BrowserRequest } from "../../browserRequest";
-import type { ProjectPlaywright } from "../../projectPlaywright";
+import type { Playwright, ProjectPlaywright } from "../../projectPlaywright";
 
 /** A browser ayme has, through the project's Playwright. */
 export interface Browser {
@@ -30,18 +30,7 @@ export const browser = (
               // are.
               noDefaults: true,
             })
-          : playwright.chromium.launch({
-              headless: !request.open.headed,
-              args:
-                request.open.debugPort === undefined
-                  ? []
-                  : [`--remote-debugging-port=${request.open.debugPort}`],
-              // Terminal signals belong to the caller, which ends ayme.
-              // Left on, Playwright would exit the process on the first one.
-              handleSIGINT: false,
-              handleSIGTERM: false,
-              handleSIGHUP: false,
-            }),
+          : launch(playwright, request.open),
       catch: (cause) => browserUnavailable(request, cause),
     }),
     // A started browser the person already closed has nothing left to
@@ -55,3 +44,31 @@ export const browser = (
       opened: "open" in request,
     }))
   );
+
+function launch(
+  playwright: Playwright,
+  open: Extract<BrowserRequest, { open: unknown }>["open"]
+): Promise<PlaywrightBrowser> {
+  const options = {
+    headless: !open.headed,
+    args:
+      open.debugPort === undefined
+        ? []
+        : [`--remote-debugging-port=${open.debugPort}`],
+    // Terminal signals belong to the caller, which ends ayme. Left on,
+    // Playwright would exit the process on the first one.
+    handleSIGINT: false,
+    handleSIGTERM: false,
+    handleSIGHUP: false,
+  };
+  if (open.profile === undefined) return playwright.chromium.launch(options);
+  return (
+    playwright.chromium
+      // The browser is shared with the developer's browser automation, so
+      // ayme emulates no viewport of its own on its pages.
+      .launchPersistentContext(open.profile, { ...options, viewport: null })
+      // A context on a profile belongs to a browser of its own, which
+      // Playwright always gives on Chromium.
+      .then((context) => context.browser()!)
+  );
+}

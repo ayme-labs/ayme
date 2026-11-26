@@ -56,4 +56,12 @@ describe("what the command line does for a command", () => {
       planOf({ kind: "capture", target: { cdp: "http://127.0.0.1:9222" } })
     ).toEqual({ kind: "capture", target: { cdp: "http://127.0.0.1:9222" } });
   });
+
+  it.each([
+    { kind: "open", open: { headed: false }, json: true },
+    { kind: "ask", request: { stop: {} }, json: false },
+    { kind: "session process", options: "{}" },
+  ] as const)("reaches a Session as the command asks: $kind", (command) => {
+    expect(planOf(command)).toEqual(command);
+  });
 });

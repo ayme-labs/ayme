@@ -9,11 +9,12 @@ export type Plan =
       text: string;
       exitCode: number;
     }
-  | { kind: "capture"; target: CaptureTarget };
+  | { kind: "capture"; target: CaptureTarget }
+  | Extract<Command, { kind: "open" | "ask" | "session process" }>;
 
 /**
- * Decides what to do for a command: print and stop, or record with
- * `ayme capture`. `cli.ts` only carries the plan out.
+ * Decides what to do for a command: print and stop, record with
+ * `ayme capture`, or reach a Session. `cli.ts` only carries the plan out.
  */
 export function planOf(command: Command): Plan {
   switch (command.kind) {
@@ -40,5 +41,9 @@ export function planOf(command: Command): Plan {
       };
     case "capture":
       return { kind: "capture", target: command.target };
+    case "open":
+    case "ask":
+    case "session process":
+      return command;
   }
 }
