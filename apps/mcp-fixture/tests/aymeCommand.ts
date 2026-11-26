@@ -10,14 +10,32 @@ import { test as base, expect } from "@playwright/test";
 
 export { expect };
 
-/** Whether a process with `pid` exists. */
-export function isAlive(pid: number): boolean {
+/** The state the system gives the process `pid`, such as "S" or "Z", or
+ * undefined when there is none. */
+function processState(pid: number): string | undefined {
   try {
-    process.kill(pid, 0);
-    return true;
+    if (process.platform === "linux") {
+      // The field after the name, which may hold spaces.
+      const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+      return stat.slice(stat.lastIndexOf(")") + 2).split(" ")[0];
+    }
+    return (
+      execFileSync("ps", ["-o", "stat=", "-p", String(pid)], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim() || undefined
+    );
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+/** Whether a process with `pid` runs. One that ended but was never reaped,
+ * a zombie, does not: in CI's container, which has no init process, an
+ * orphan such as a Session's process stays one for good. */
+export function isAlive(pid: number): boolean {
+  const state = processState(pid);
+  return state !== undefined && !state.startsWith("Z");
 }
 
 /** The ayme folder of the command's projects: Page Objects written as for
