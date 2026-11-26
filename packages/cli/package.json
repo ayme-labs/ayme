@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The ayme Recorder: records a browser flow on the Playwright your project already has, for a coding agent to turn into page objects and a test.",
   "keywords": [
     "ai-agent",
