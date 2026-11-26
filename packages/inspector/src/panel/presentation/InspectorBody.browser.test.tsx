@@ -176,6 +176,16 @@ it("goes back to the default size on a double-click", async () => {
   await expect.poll(async () => (await box(navigator)).width).toBe(290);
 });
 
+it("puts Runs back to its own size on a double-click of its divider", async () => {
+  renderBody("float", { width: 760, height: 700 });
+  await dragBy(runsDivider, 0, -100);
+  await expect.poll(async () => (await box(runs)).height).toBe(350);
+
+  await runsDivider.dblclick();
+
+  await expect.poll(async () => (await box(runs)).height).toBe(250);
+});
+
 it("moves a focused divider with the arrow keys", async () => {
   renderBody("float", { width: 760, height: 700 });
   await expect.poll(async () => (await box(navigator)).width).toBe(290);
