@@ -68,6 +68,23 @@ const otherEffectPackages = {
   message:
     "Production code uses only the stable effect package: no @effect/* package and no effect/unstable module.",
 };
+// A slice reaches another only through the front door of the layer it uses,
+// its layer folder's index.ts, so the layer rule judges each import by its
+// layer (ADR-0046); a slice has no front door of its own. Code in a slice
+// reaches another slice through "../"; the package's front door, beside the
+// slices, through "./".
+const pastFrontDoor = (prefix) =>
+  String.raw`^${prefix}(${slices.join("|")})(/(domain|application|infrastructure)/(?!index(\.[jt]s)?$).+|(/index(\.[jt]s)?)?$)`;
+const frontDoorMessage =
+  "Import another slice through the front door of the layer you use, such as ../../playwright/infrastructure (docs/adr/0046-the-layer-order-holds-across-slices-through-one-front-door-per-layer.md).";
+const frontDoor = {
+  regex: pastFrontDoor(String.raw`(\.\./)+(.*/)?`),
+  message: frontDoorMessage,
+};
+const frontDoorFromRoot = {
+  regex: pastFrontDoor(String.raw`\./`),
+  message: frontDoorMessage,
+};
 // Code that drives a real browser is measured by the command's end-to-end
 // tests (docs/testing.md#code-a-real-browser-runs), so plain logic, which
 // unit tests measure, stays out of it: only the layer's front door reaches
@@ -118,17 +135,37 @@ export default [
   // earlier one for the same file.
   restricted(
     ["src/**/*.ts"],
-    [playwrightTypesOnly, playwrightOutsideItsSlice, otherEffectPackages],
+    [
+      playwrightTypesOnly,
+      playwrightOutsideItsSlice,
+      otherEffectPackages,
+      frontDoor,
+    ],
     { ignores: [...testFiles, "src/playwright/**"] }
   ),
   restricted(
     ["src/playwright/**/*.ts"],
-    [playwrightTypesOnly, otherEffectPackages, noLive],
+    [playwrightTypesOnly, otherEffectPackages, noLive, frontDoor],
     { ignores: [...testFiles, live, "src/playwright/infrastructure/index.ts"] }
   ),
   restricted(
-    ["src/index.ts", "src/*/domain/**/*.ts"],
-    [playwrightTypesOnly, playwrightOutsideItsSlice, anyEffect],
+    [live, "src/playwright/infrastructure/index.ts"],
+    [playwrightTypesOnly, otherEffectPackages, frontDoor],
+    { ignores: testFiles }
+  ),
+  restricted(
+    ["src/*/domain/**/*.ts"],
+    [playwrightTypesOnly, playwrightOutsideItsSlice, anyEffect, frontDoor],
+    { ignores: testFiles }
+  ),
+  restricted(
+    ["src/index.ts"],
+    [
+      playwrightTypesOnly,
+      playwrightOutsideItsSlice,
+      anyEffect,
+      frontDoorFromRoot,
+    ],
     { ignores: testFiles }
   ),
 ];
