@@ -43,7 +43,7 @@ describe("mounted after the runtime started", () => {
   }) => {
     await countClickCues(page);
 
-    await agent.act("open the {tool} tool", {
+    await agent.act("open the {tool} tool in the Tools lens", {
       params: { tool: "ListPage.addItem" },
     });
     await agent.act("run it with the text {text}", {
@@ -79,7 +79,7 @@ describe("with the inspector option on, without demo", () => {
 
     await mcpServer!.call("ListPage.addItem", { text: "Eggs" });
     await expect(await listPage.items.front()).toHaveText(["Eggs"]);
-    await agent.act("open the {tool} tool", {
+    await agent.act("open the {tool} tool in the Tools lens", {
       params: { tool: "ListPage.addItem" },
     });
     await agent.act("run it with the text {text}", {

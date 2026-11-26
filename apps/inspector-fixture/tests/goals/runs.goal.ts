@@ -72,7 +72,7 @@ for (const placement of placements) {
       agent,
       inspector,
     }) => {
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListPage.addItem" },
       });
       await agent.act("run it with the text {text}", {
@@ -166,7 +166,7 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListPage.addItem" },
       });
       await agent.act("run it with the text {text}", {
@@ -199,10 +199,12 @@ for (const placement of placements) {
       // The Add item button's ref, as snapshot gives it.
       const ref = await appView.ref('button "Add item"');
 
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "mark_element" },
       });
-      await agent.act("run it with the ref {ref}", { params: { ref } });
+      await agent.act("choose {ref} as its ref element and run it", {
+        params: { ref },
+      });
 
       await expect(await listPage.addItemButton.front()).toHaveAttribute(
         "data-marked"
@@ -219,7 +221,7 @@ for (const placement of placements) {
       agent,
       inspector,
     }) => {
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListPage.countItems" },
       });
       await agent.act("run it");
@@ -247,7 +249,7 @@ for (const placement of placements) {
     }) => {
       await listPage.addItem("Milk");
 
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "goal" },
       });
       await agent.act(
@@ -282,7 +284,7 @@ for (const placement of placements) {
           text: "Milk",
         });
 
-        await agent.act("open the {tool} tool", {
+        await agent.act("open the {tool} tool in the Tools lens", {
           params: { tool: "ListPage.addItem" },
         });
         await agent.act("run it with the text {text}", {
@@ -319,7 +321,7 @@ for (const placement of placements) {
             { text: "Milk" }
           );
 
-          await agent.act("open the {tool} tool", {
+          await agent.act("open the {tool} tool in the Tools lens", {
             params: { tool: "ListPage.addItem" },
           });
           await agent.act("run it with the text {text}", {
@@ -343,7 +345,7 @@ for (const placement of placements) {
     unpublished(
       "a Page Object tool runs from the panel",
       async ({ agent, inspector, listPage }) => {
-        await agent.act("open the {tool} tool", {
+        await agent.act("open the {tool} tool in the Tools lens", {
           params: { tool: "ListPage.addItem" },
         });
         await agent.act("run it with the text {text}", {
@@ -365,7 +367,7 @@ for (const placement of placements) {
       "a Custom Tool runs from the panel",
       async ({ agent, inspector, listPage }) => {
         // The Add item button's ref, from snapshot run in the panel.
-        await agent.act("open the {tool} tool", {
+        await agent.act("open the {tool} tool in the Tools lens", {
           params: { tool: "snapshot" },
         });
         await agent.act("run it");
@@ -375,10 +377,12 @@ for (const placement of placements) {
         const ref = /(e\d+) button "Add item"/.exec(structure)?.[1];
         if (!ref) throw new Error(`No Add item button in:\n${structure}`);
 
-        await agent.act("open the {tool} tool", {
+        await agent.act("open the {tool} tool in the Tools lens", {
           params: { tool: "mark_element" },
         });
-        await agent.act("run it with the ref {ref}", { params: { ref } });
+        await agent.act("choose {ref} as its ref element and run it", {
+          params: { ref },
+        });
 
         await expect(await listPage.addItemButton.front()).toHaveAttribute(
           "data-marked"
@@ -392,7 +396,7 @@ for (const placement of placements) {
     unpublished(
       "snapshot runs from the panel and shows its result",
       async ({ agent, inspector }) => {
-        await agent.act("open the {tool} tool", {
+        await agent.act("open the {tool} tool in the Tools lens", {
           params: { tool: "snapshot" },
         });
         await agent.act("run it");

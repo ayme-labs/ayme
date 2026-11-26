@@ -15,8 +15,9 @@ const port = process.env.AYME_GOALS_PORT ?? "5199";
 export default {
   ...base,
   tests: "tests/goals/**/*.goal.ts",
-  // A goal runs live for tens of seconds on a recording run.
-  timeout: 300_000,
+  // A goal runs live for up to tens of seconds on a recording run, and one
+  // test (each tool's page, in toolsLens) runs two goals per live tool.
+  timeout: 900_000,
   // Apart from the default config's, so its recordings and reports stay
   // their own; .e2e/ is gitignored.
   output: ".e2e/goals",

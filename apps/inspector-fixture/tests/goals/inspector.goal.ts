@@ -22,7 +22,7 @@ test("running a Page Object tool from the panel acts on the page", async ({
   agent,
   listPage,
 }) => {
-  await agent.act("open the {tool} tool", {
+  await agent.act("open the {tool} tool in the Tools lens", {
     params: { tool: "ListPage.addItem" },
   });
   await agent.act("run it with the text {text}", { params: { text: "Milk" } });
@@ -194,7 +194,7 @@ test("a host member named like one of the panel's controls stays one match, and 
   inspector,
   listPage,
 }) => {
-  await agent.act("open the {tool} tool", {
+  await agent.act("open the {tool} tool in the Tools lens", {
     params: { tool: "ListPage.addItem" },
   });
   await agent.act("run it with the text {text}", { params: { text: "Milk" } });
@@ -340,7 +340,7 @@ describe("on a React host with aggressive global CSS", () => {
   onReact(
     "the panel works beside the host's own React",
     async ({ agent, listPage }) => {
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListPage.addItem" },
       });
       await agent.act("run it with the text {text}", {

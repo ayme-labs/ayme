@@ -35,7 +35,9 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      await agent.act("open the {tool} tool", { params: { tool: "fill" } });
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "fill" },
+      });
       const fill = inspector.detail.runCard();
 
       await pickOnPage(agent, "target", listPage);
@@ -55,7 +57,9 @@ for (const placement of placements) {
       browser,
       listPage,
     }) => {
-      await agent.act("open the {tool} tool", { params: { tool: "click" } });
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "click" },
+      });
 
       await pickOnPage(agent, "target", listPage);
       await listPage.addItemButton.hover();
@@ -73,7 +77,9 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      await agent.act("open the {tool} tool", { params: { tool: "click" } });
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "click" },
+      });
       const ref = inspector.detail.runCard().refField("target");
       await pickOnPage(agent, "target", listPage);
 
@@ -90,7 +96,9 @@ for (const placement of placements) {
       agent,
       inspector,
     }) => {
-      await agent.act("open the {tool} tool", { params: { tool: "fill" } });
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "fill" },
+      });
       const ref = inspector.detail.runCard().refField("target");
 
       await agent.act("open the {field} element chooser", {
@@ -111,7 +119,9 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      await agent.act("open the {tool} tool", { params: { tool: "fill" } });
+      await agent.act("open the {tool} tool in the Tools lens", {
+        params: { tool: "fill" },
+      });
       const ref = inspector.detail.runCard().refField("target");
       await pickOnPage(agent, "target", listPage);
 

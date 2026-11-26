@@ -49,7 +49,7 @@ for (const placement of placements) {
       const definition = await appView.pomDefinitions("ListPage");
       const { toolPage } = inspector.detail;
 
-      await agent.act("open the {tool} tool", {
+      await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListPage.addItem" },
       });
       const card = inspector.detail.runCard();
