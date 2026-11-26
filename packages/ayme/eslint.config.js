@@ -138,11 +138,11 @@ const ownPackage = [
   },
 ];
 
-// typescript is an optional peer that only the ./compiler entry needs.
+// Only the ./compiler entry needs the TypeScript peer and compatibility API.
 const typescriptInCompiler = {
-  regex: "^typescript(/.*)?$",
+  regex: "^(typescript|@typescript/typescript6)(/.*)?$",
   message:
-    "Only compiler imports typescript, an optional peer that only the ./compiler entry needs.",
+    "Only compiler imports typescript or its compatibility API, because only the ./compiler entry needs them.",
 };
 
 function frontDoors(

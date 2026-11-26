@@ -92,7 +92,7 @@ in-browser agents and the app's own code call on the running page.
   its `include` option, off by default, also decides whether a build carries ayme at all
 - Technology: Unplugin package (`@ayme-dev/unplugin-ayme`) with Vite, Angular CLI and
   Turbopack entries, over the Page Object compiler in `@ayme-dev/ayme`'s Node-only
-  `compiler` entry, which runs the project's own TypeScript compiler
+  `compiler` entry
 - Evidence: verified: [packages/unplugin-ayme/src/unplugin.ts](packages/unplugin-ayme/src/unplugin.ts),
   [packages/ayme/src/compiler/pomCompiler.ts](packages/ayme/src/compiler/pomCompiler.ts),
   [packages/ayme/src/compiler/derivePomManifests.ts](packages/ayme/src/compiler/derivePomManifests.ts),

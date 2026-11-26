@@ -1,4 +1,4 @@
-import ts from "typescript";
+import { typeScriptVersion } from "./typescriptApi";
 
 import type { PomManifest } from "../shared";
 
@@ -97,7 +97,7 @@ export type PomCompiler = {
 export function createPomCompiler(
   options: PomCompilerOptions = {}
 ): PomCompiler {
-  assertSupportedTypeScript(ts.version);
+  assertSupportedTypeScript(typeScriptVersion);
   const include = includeOption(options.include);
   const { tsconfigPath, onSkipped } = options;
   const programs: PomPrograms = new Map();
