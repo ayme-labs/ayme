@@ -8,7 +8,7 @@ this repository also uses on its own pull requests.
 Keep setup and API detail in the consumer docs, `docs/guide/`, and link to it. A change to a skill's
 behavior uses the `skills` commit scope.
 
-`ayme` and `ayme-recorder` are about integrating and using ayme.
+`ayme` and `ayme-capture` are about integrating and using ayme.
 `product-surfaces` works in a project with or without ayme, and uses ayme
 where the project has it.
 

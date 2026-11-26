@@ -1,18 +1,18 @@
-# Recorder
+# ayme capture
 
-How to record a flow in your app with the ayme recorder and hand the recording to your coding agent.
+How to record a flow in your app with ayme capture and hand the recording to your coding agent.
 
-The recorder is the `ayme-recorder` command in the npm package `@ayme-dev/cli`. You click through a flow in your app, and it saves each step and what that step changed on the page. Your coding agent then turns the recording into Playwright page objects and a test, with the [`ayme-recorder` skill](coding-agent-skill.md#ayme-recorder).
+ayme capture is the `ayme capture` command of the npm package `@ayme-dev/cli`, and the recorder it starts. You click through a flow in your app, and it saves each step and what that step changed on the page. Your coding agent then turns the recording into Playwright page objects and a test, with the [`ayme-capture` skill](coding-agent-skill.md#ayme-capture).
 
 For a first recording, follow the [package's README](https://github.com/ayme-labs/ayme/blob/main/packages/cli/README.md), which has pictures. This page covers the commands, the controls, where recordings go, the warnings and the limits.
 
-The commands are written `npx ayme-recorder`, for a project that has `@ayme-dev/cli` in its `package.json`. Without it, run `npx @ayme-dev/cli` in its place.
+The commands are written `npx ayme`, for a project that has `@ayme-dev/cli` in its `package.json`. Without it, run `npx @ayme-dev/cli` in its place. Run `npx @ayme-dev/cli` as well when the project also has `@ayme-dev/mcp`, whose command is also called `ayme`.
 
 ## Before you start
 
 - Run every command in your project's folder. The recorder uses that project's Playwright and saves recordings there.
 - The project needs `@playwright/test` (or `playwright`) installed, in a [supported version](#supported-playwright-versions). The recorder brings no Playwright and no browser of its own.
-- Install Chromium once with `npx ayme-recorder install`. The recorder records in Chromium only.
+- Install Chromium once with Playwright's own `npx playwright install chromium`. The recorder records in Chromium only.
 
 ### Supported Playwright versions
 
@@ -24,24 +24,24 @@ The recorder needs Playwright 1.62 or newer, and is verified on 1.62 to 1.65.
 
 ## Hand a flow to your coding agent
 
-With the `ayme-recorder` skill installed, ask your agent to record a flow and say where it starts:
+With the `ayme-capture` skill installed, ask your agent to record a flow and say where it starts:
 
 > Record the checkout flow from http://localhost:3000 and write a Playwright test for it.
 
 The agent starts the recorder at that address. Press **Record**, click through the flow, and press **Finish**. The agent reads the recording, proposes page objects and a test, and writes them once you agree.
 
-You can also record first and hand the recording over afterwards. Run `codegen` yourself, then ask the agent to turn the recording into a test, and give it the path the terminal printed as `Recording package:`. Do not point it at `ayme/recordings/latest.yaml` instead: that file is a copy of the latest recording that was saved, so after a run that recorded nothing it still holds the one before.
+You can also record first and hand the recording over afterwards. Run `ayme capture` yourself, then ask the agent to turn the recording into a test, and give it the path the terminal printed as `Recording package:`. Do not point it at `ayme/recordings/latest.yaml` instead: that file is a copy of the latest recording that was saved, so after a run that recorded nothing it still holds the one before.
 
 ## Commands
 
-`npx ayme-recorder --help` lists every command and flag. `npx ayme-recorder --version` prints the installed version; it works only on its own, with no command or other flag.
+`npx ayme --help` lists every command and flag. `npx ayme --version` prints the installed version; it works only on its own, with no command or other flag.
 
-### `codegen <url>`
+### `ayme capture <url>`
 
 Opens `<url>` in Chromium, with the recorder window beside it and a small toolbar on the page. Recording is off at first, so you can log in or get to your starting point. Press **Record** to start.
 
 ```sh
-npx ayme-recorder codegen http://localhost:3000
+npx ayme capture http://localhost:3000
 ```
 
 The terminal prints the recorder window's address, such as `Recorder UI: http://127.0.0.1:52011/`. When the recording is saved, it prints `Recording package: <path>`. When there was nothing to save, it prints `Recording was empty; no recording package was created.`
@@ -55,12 +55,12 @@ The terminal prints the recorder window's address, such as `Recorder UI: http://
   - To save a login without recording anything: log in, then close the page or press Ctrl+C. **Finish** is offered only after **Record**.
   - If the file cannot be saved, the recorder prints [a warning](#warnings).
 
-### `codegen --cdp-endpoint <address>`
+### `ayme capture --cdp=<url>`
 
 Records a Chromium that is already running, such as one you prepared by hand or one a script drives. Start that browser with its DevTools protocol open, for example with `--remote-debugging-port=9222`, and pass the address:
 
 ```sh
-npx ayme-recorder codegen --cdp-endpoint http://127.0.0.1:9222
+npx ayme capture --cdp=http://127.0.0.1:9222
 ```
 
 - The browser must run on this machine. The address is `http://` or `ws://`, on `localhost`, a `127.x.x.x` address or `[::1]`.
@@ -69,38 +69,6 @@ npx ayme-recorder codegen --cdp-endpoint http://127.0.0.1:9222
 - What a script does in that browser is recorded like your own clicks and typing.
 - To end, press **Finish**, close the page, or press Ctrl+C. Each saves the recording. The recorder removes its toolbar from the page and leaves the browser open.
 - `--headless`, `--start-recording`, `--load-storage` and `--save-storage` do not apply here, and you cannot pass a URL as well.
-
-### `trace`
-
-Opens a recording's trace with your project's own `npx playwright trace`:
-
-```sh
-npx ayme-recorder trace latest                    # the latest recording
-npx ayme-recorder trace rec_20261113T195055354Z   # a recording by its id
-npx ayme-recorder trace ayme/recordings/rec_20261113T195055354Z/trace.zip
-```
-
-`trace open` works the same way. Any other `trace` command, such as `trace actions` or `trace snapshot`, is passed to `npx playwright trace` as it is.
-
-The trace is a standard Playwright trace, so `npx playwright trace` can open it directly too. It holds DOM snapshots and network requests, and no screenshots.
-
-The trace's list of actions shows the recorder's own calls, not your steps. To find a step in the trace, use the position numbers the recording gives for it, as the [`ayme-recorder` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-recorder/SKILL.md#use-the-trace) describes.
-
-### `install`
-
-Installs Chromium with your project's own Playwright:
-
-```sh
-npx ayme-recorder install
-```
-
-Anything you add is passed to `npx playwright install` as it is, so name Chromium when you add a flag. For Chromium with its system dependencies:
-
-```sh
-npx ayme-recorder install chromium --with-deps
-```
-
-`install --with-deps` alone installs Playwright's default browsers, not only Chromium.
 
 ## Record a flow
 
@@ -165,11 +133,11 @@ The recorder always ends, even when the browser stops answering. It waits a few 
 
 ## Record a logged-in app
 
-The recorder does not keep you logged in between recordings. Unless you use the storage flags, each `codegen <url>` opens a browser with no cookies and no local storage, and keeps nothing when it ends. To record an app that needs a login, do one of these:
+The recorder does not keep you logged in between recordings. Unless you use the storage flags, each `ayme capture <url>` opens a browser with no cookies and no local storage, and keeps nothing when it ends. To record an app that needs a login, do one of these:
 
 - **Log in before you press Record.** Recording is off at first, so the login is not recorded.
 - **Load a saved login** with `--load-storage <file>`. You get the file from `--save-storage <file>` (log in, then close the page or press Ctrl+C), from `npx playwright codegen --save-storage <file>`, or from your project's own login setup.
-- **Record a browser that is already logged in**, with `codegen --cdp-endpoint <address>`.
+- **Record a browser that is already logged in**, with `ayme capture --cdp=<url>`.
 
 ## Where recordings are stored
 
@@ -185,9 +153,19 @@ ayme/
       trace.zip                  the Playwright trace of the recording
 ```
 
-`package.yaml` is the file your agent reads. The [`ayme-recorder` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-recorder/SKILL.md#read-the-package) describes every field.
+`package.yaml` is the file your agent reads. The [`ayme-capture` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-capture/SKILL.md#read-the-package) describes every field.
 
 The first save creates `ayme/.gitignore`, which lists `recordings/` and itself. If the folder already has one, such as the one `ayme mcp` writes, a save adds a `recordings/` line at its end. It leaves the file as it is when a line there already names the folder, such as `!recordings/` to commit recordings, and when it cannot write to the file; the recording is saved either way. A `recordings/` line keeps new recordings out of git. It cannot untrack recordings you have already committed.
+
+### Trace
+
+The trace is a standard Playwright trace. Open it with your project's own Playwright:
+
+```sh
+npx playwright trace open ayme/recordings/rec_20261113T195055354Z/trace.zip
+```
+
+It holds DOM snapshots and network requests, and no screenshots. Its list of actions shows the recorder's own calls, not your steps. To find a step in the trace, use the position numbers the recording gives for it, as the [`ayme-capture` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-capture/SKILL.md#use-the-trace) describes.
 
 ## Warnings
 
@@ -203,8 +181,8 @@ A warning is a line in the terminal that starts with `Warning:`. The recording g
 If the recorder cannot start, it prints the reason in one sentence and exits with code 1. It does not start when:
 
 - no Playwright is installed, it is too old, or that version has no Playwright recorder,
-- Chromium could not be opened or reached,
-- the `--cdp-endpoint` address is not on this machine, or the running browser has no page or more than one,
+- Chromium could not be opened or reached; when Chromium could not be opened, it also names `npx playwright install chromium`, which installs it,
+- the `--cdp` address is not on this machine, or the running browser has no page or more than one,
 - the `--load-storage` file cannot be read or holds no storage state,
 - the recorder window could not be served.
 

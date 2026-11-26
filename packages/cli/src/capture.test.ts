@@ -15,9 +15,9 @@ import {
   warningPrinter,
   windowFolder,
   windowLine,
-} from "./codegen";
+} from "./capture";
 
-describe("how codegen launches the browser", () => {
+describe("how ayme capture opens the browser", () => {
   it("opens the URL in a browser with a window", () => {
     expect(launchOptions("http://localhost:5173/cart", {})).toEqual({
       url: "http://localhost:5173/cart",
@@ -173,7 +173,7 @@ describe("which browser a target asks for", () => {
   it("attaches to the running browser at an address", () => {
     expect(
       browserOf(
-        { cdpEndpoint: "http://127.0.0.1:9222" },
+        { cdp: "http://127.0.0.1:9222" },
         { AYME_RECORDER_HEADLESS: "1" }
       )
     ).toEqual({ attach: { cdpEndpoint: "http://127.0.0.1:9222" } });
@@ -197,17 +197,49 @@ describe("what the terminal is told once the recorder has started", () => {
 });
 
 describe("how a start error is told to a person", () => {
+  const launched = { launch: { url: "http://localhost:3000" } };
+  const attached = { attach: { cdpEndpoint: "http://127.0.0.1:9222" } };
+
   it("is the error's own sentence, with no stack trace", () => {
     expect(
       startFailure(
-        new RecorderStartError("playwright-not-found", "No Playwright in /p.")
+        new RecorderStartError("playwright-not-found", "No Playwright in /p."),
+        launched
       )
     ).toBe("No Playwright in /p.\n");
   });
 
+  it("names Playwright's own command that installs Chromium when Chromium could not be opened", () => {
+    expect(
+      startFailure(
+        new RecorderStartError(
+          "browser-unavailable",
+          "Playwright could not open Chromium. Executable doesn't exist."
+        ),
+        launched
+      )
+    ).toBe(
+      "Playwright could not open Chromium. Executable doesn't exist.\nIf Chromium is not installed for the project's Playwright, install it with: npx playwright install chromium\n"
+    );
+  });
+
+  it("names no install command when a running browser could not be reached", () => {
+    expect(
+      startFailure(
+        new RecorderStartError(
+          "browser-unavailable",
+          "Playwright could not connect to the browser at http://127.0.0.1:9222."
+        ),
+        attached
+      )
+    ).toBe(
+      "Playwright could not connect to the browser at http://127.0.0.1:9222.\n"
+    );
+  });
+
   it("is nothing for any other error, which is not the person's to read", () => {
-    expect(startFailure(new Error("boom"))).toBeUndefined();
-    expect(startFailure("boom")).toBeUndefined();
+    expect(startFailure(new Error("boom"), launched)).toBeUndefined();
+    expect(startFailure("boom", launched)).toBeUndefined();
   });
 });
 
