@@ -67,7 +67,9 @@ for (const placement of placements) {
           for (const tool of liveTools) {
             await inspector.navigator.tools.tool(tool.name).click();
             await expect(await toolPage.title.front()).toHaveText(tool.name);
-            await toolPage.modelSees.open();
+            // The section stays open from one tool to the next: the page keeps
+            // its state when the tool changes.
+            if (tool === liveTools[0]) await toolPage.modelSees.open();
             // Counted by e2e's replay cache, so the goal twin's goals are saved.
             await (await toolPage.title.front()).waitFor();
 

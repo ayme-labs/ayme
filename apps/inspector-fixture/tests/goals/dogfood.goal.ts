@@ -68,9 +68,6 @@ describe("dogfood", { timeout: 90_000 }, () => {
   }) => {
     await call(mcpServer!, "Inspector.tool", { name: "Navigator.search" });
     const card = inspector.detail.toolPage.card;
-    await agent.act("show the arguments for {tool} if they are hidden", {
-      params: { tool: "Navigator.search" },
-    });
     await expect(await card.items.front()).toHaveCount(1);
     await expect(await card.items.front()).toHaveAttribute(
       "aria-checked",

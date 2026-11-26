@@ -61,8 +61,6 @@ for (const placement of placements) {
       expect(shown?.interactions).toEqual([]);
       await expect.poll(async () => (await run.read())?.targetGone).toBe(true);
       await reloadFixture(page, "/");
-      await agent.act("open the ayme panel");
-      await agent.act("show all runs in Runs");
       // Counted by e2e's replay cache, so the goal twin's goals are saved.
       await (
         await inspector.runs.runs.within((runs) => runs.first()).front()
@@ -424,9 +422,6 @@ for (const placement of placements) {
       await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "fill_form" },
       });
-      await agent.act("show the arguments for {tool} if they are hidden", {
-        params: { tool: "fill_form" },
-      });
 
       await agent.act("set {field} to {value} in the form", {
         params: { field: "New item", value: "Milk" },
@@ -465,9 +460,6 @@ for (const placement of placements) {
         params: { tool: "generate_locator" },
       });
       const card = inspector.detail.runCard();
-      await agent.act("show the arguments for {tool} if they are hidden", {
-        params: { tool: "generate_locator" },
-      });
       const { locatorGroups } = card;
 
       await agent.act("add {targets} to group {group} from its tree", {

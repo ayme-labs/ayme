@@ -57,8 +57,6 @@ for (const placement of placements) {
       expect(shown?.interactions).toEqual([]);
       await expect.poll(async () => (await run.read())?.targetGone).toBe(true);
       await reloadFixture(page, "/");
-      await inspector.open();
-      await inspector.runs.showAll();
       // Counted by e2e's replay cache, so the goal twin's goals are saved.
       await (
         await inspector.runs.runs.within((runs) => runs.first()).front()
@@ -361,7 +359,6 @@ for (const placement of placements) {
       listPage,
     }) => {
       const card = await inspector.tool("fill_form");
-      await card.openArguments();
       const form = card.fillForm;
 
       await form.set("New item", "Milk");
@@ -391,7 +388,6 @@ for (const placement of placements) {
         [await appView.ref('button "Clear"')],
       ];
       const card = await inspector.tool("generate_locator");
-      await card.openArguments();
       const { locatorGroups } = card;
 
       await locatorGroups.toggleFromTree(1, ...groups[0]!);
