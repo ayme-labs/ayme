@@ -1,0 +1,51 @@
+{
+  "workMs": 0,
+  "clicks": 1,
+  "effect": "Applied 1",
+  "marks": {
+    "started": 188.79999999981374,
+    "clickEntered": 298.8999999994412,
+    "effect": 299,
+    "handlerReturned": 299,
+    "returned": 551.3999999994412
+  },
+  "result": {
+    "page_changed": true,
+    "settled": true,
+    "changes": "- e1 <changed>:\n  - e2 <changed> button \"Apply\" [active]\n  - e3 <changed> paragraph: Applied 1"
+  }
+}
+{
+  "workMs": 1400,
+  "clicks": 1,
+  "effect": "Applied 1",
+  "marks": {
+    "started": 96.5,
+    "clickEntered": 206.70000000018626,
+    "effect": 206.70000000018626,
+    "handlerReturned": 1606.7000000001863,
+    "returned": 1859.800000000745
+  },
+  "error": "TimeoutError: locator.click: Timeout 1000ms exceeded.\nCall log:\n  - waiting for locator('#apply')\n    - locator resolved to <button id=\"apply\">Apply</button>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action",
+  "failureDetails": {
+    "message": "locator.click: Timeout 1000ms exceeded.\nCall log:\n  - waiting for locator('#apply')\n    - locator resolved to <button id=\"apply\">Apply</button>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - performing click action",
+    "name": "TimeoutError",
+    "page_changed": true,
+    "changes": "- e1 <changed>:\n  - e2 <changed> button \"Apply\" [active]\n  - e3 <changed> paragraph: Applied 1"
+  }
+}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: #957 REPRODUCED: click effect in the same timeout result's Change Record
+    at file:///Users/abelenekes/.t3/worktrees/ayme/t3-fd0faacb/packages/ayme/diagnostics/issue-957/run.mjs:32:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.21.0
