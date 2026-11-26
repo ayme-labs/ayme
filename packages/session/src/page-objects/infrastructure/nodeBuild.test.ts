@@ -34,7 +34,11 @@ async function folder(name: string): Promise<string> {
  * compile.
  */
 async function installAyme(root: string): Promise<string> {
-  const installed = join(root, "node_modules", "@ayme-dev", "ayme");
+  return aymePackage(join(root, "node_modules", "@ayme-dev", "ayme"));
+}
+
+/** Writes the stand-in for @ayme-dev/ayme into the folder `installed`. */
+async function aymePackage(installed: string): Promise<string> {
   await mkdir(installed, { recursive: true });
   const files = {
     "package.json": JSON.stringify({
@@ -133,6 +137,24 @@ it("builds the entry with the project's compiler, and loads the classes it lists
   expect(built.classes).toHaveLength(1);
   expect(built.nodeHost).toBe(join(installed, "playwright.mjs"));
   expect(await registeredWith(installed)).toEqual(built.classes);
+});
+
+it("leaves an @ayme-dev/ayme linked into node_modules from elsewhere outside the build, as pnpm and npm link install it", async () => {
+  const dir = await folder("project");
+  // A workspace package, as a monorepo keeps it: no node_modules in its
+  // path.
+  const linked = await aymePackage(join(await folder("workspace"), "ayme"));
+  await mkdir(join(dir, "node_modules", "@ayme-dev"), { recursive: true });
+  await symlink(linked, join(dir, "node_modules", "@ayme-dev", "ayme"));
+  await write(dir, {
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+
+  const built = await build(dir);
+
+  expect(await registeredWith(linked)).toEqual(built.classes);
 });
 
 it("compiles a model the project imports through a tsconfig path alias, which is the project's own source", async () => {

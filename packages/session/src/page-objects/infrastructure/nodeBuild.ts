@@ -1,5 +1,6 @@
 // Builds a project's Page Objects for Node, with esbuild and the project's
 // own Page Object compiler, and loads them.
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { isBuiltin } from "node:module";
 import { tmpdir } from "node:os";
@@ -83,6 +84,22 @@ const pageObjectModels = ({
   },
 });
 
+/**
+ * Whether `specifier` names a package installed for a module in `dir`: one
+ * in the `node_modules` of `dir` or of a folder above it, where Node finds
+ * it, whether it is a folder there or a link to one elsewhere, such as a
+ * workspace package. Anything else a bare specifier reaches, such as a
+ * tsconfig path alias, is the project's own source.
+ */
+function installedPackage(specifier: string, dir: string): boolean {
+  const [scope, name] = specifier.split("/");
+  const folder = scope!.startsWith("@") ? join(scope!, name ?? "") : scope!;
+  for (let at = dir; ; at = dirname(at)) {
+    if (existsSync(join(at, "node_modules", folder))) return true;
+    if (dirname(at) === at) return false;
+  }
+}
+
 /** Marks the resolve `projectPackages` asks esbuild for itself. */
 const RESOLVING = Symbol("ayme-project-packages");
 
@@ -108,14 +125,18 @@ const projectPackages = (projectDir: string): esbuild.Plugin => ({
     build.onResolve({ filter: /^[^./#]/ }, async (args) => {
       if (isBuiltin(args.path)) return { external: true };
       if (args.pluginData === RESOLVING) return undefined;
+      const resolveDir = AYME_IMPORT.test(args.path)
+        ? projectDir
+        : args.resolveDir;
       const resolved = await build.resolve(args.path, {
         kind: args.kind,
         importer: args.importer,
-        resolveDir: AYME_IMPORT.test(args.path) ? projectDir : args.resolveDir,
+        resolveDir,
         pluginData: RESOLVING,
       });
       if (resolved.errors.length > 0) return { errors: resolved.errors };
-      if (!installed(resolved.path)) return { path: resolved.path };
+      if (!installedPackage(args.path, resolveDir))
+        return { path: resolved.path };
       return { path: pathToFileURL(resolved.path).href, external: true };
     });
   },
