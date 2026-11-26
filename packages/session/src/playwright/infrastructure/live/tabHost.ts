@@ -111,7 +111,9 @@ type Hosting = {
 };
 
 /** Makes the Session the Host of `page`, with focus emulation on, telling
- * `given` each Page Object Id its Host gives out. */
+ * `given` each Page Object Id its Host gives out. The Node Host's start sets
+ * up the page's binding and its in-page helper without waiting for either,
+ * so it reads nothing of the page. */
 const hostOn =
   (
     { entry, classes, ids, selectors }: Hosting,

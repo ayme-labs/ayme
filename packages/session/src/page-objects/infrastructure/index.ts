@@ -1,1 +1,1 @@
-export { projectPageObjects, type NodePageObjects } from "./live/nodeBuild";
+export { projectPageObjects, type NodePageObjects } from "./nodeBuild";

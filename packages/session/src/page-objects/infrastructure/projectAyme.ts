@@ -76,9 +76,16 @@ export const projectAyme = (
       return refuse(
         `No @ayme-dev/ayme is installed in ${projectDir}. ayme runs the project's Page Objects with the project's own @ayme-dev/ayme: install version ${aymeVersion} there, for example with ${install(aymeVersion)}.`
       );
-    const manifest = JSON.parse(
-      readFileSync(join(folder, "package.json"), "utf8")
-    ) as Manifest;
+    let manifest: Manifest;
+    try {
+      manifest = JSON.parse(
+        readFileSync(join(folder, "package.json"), "utf8")
+      ) as Manifest;
+    } catch (cause) {
+      return refuse(
+        `The package.json of the @ayme-dev/ayme at ${folder} is not JSON (${(cause as Error).message}). Install @ayme-dev/ayme ${aymeVersion} again, for example with ${install(aymeVersion)}.`
+      );
+    }
     if (manifest.version !== aymeVersion) {
       const has =
         manifest.version === undefined

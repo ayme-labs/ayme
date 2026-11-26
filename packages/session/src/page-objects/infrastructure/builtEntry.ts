@@ -1,6 +1,6 @@
 // The plain rules of building a project's Page Objects for Node: what the
 // entry must export, and how a failed build is told. The build itself is in
-// live/nodeBuild.ts.
+// nodeBuild.ts.
 import { Effect } from "effect";
 import type { PartialMessage } from "esbuild";
 

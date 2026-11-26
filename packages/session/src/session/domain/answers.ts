@@ -9,9 +9,8 @@ const tabLine = ({ url, title }: TabName) =>
 const NO_TOOLS = "This screen has no Page Object Tools.";
 
 /** The last line of `ayme page-objects`: how many Page Object Tools the
- * screen has, and where they are listed. */
+ * screen has, and where they are listed, also when it has none. */
 function toolCountLine(count: number): string {
-  if (count === 0) return NO_TOOLS;
   return count === 1
     ? "This screen has 1 Page Object Tool: ayme tools lists it with its parameters."
     : `This screen has ${count} Page Object Tools: ayme tools lists them with their parameters.`;

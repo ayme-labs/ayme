@@ -131,25 +131,21 @@ export function readCommand(
     (arg, at) =>
       !arg.startsWith("-") && !["-s", "--session"].includes(args[at - 1] ?? "")
   );
-  if (word !== undefined && SESSION_WORDS.has(word))
+  if (word !== undefined && Object.hasOwn(SESSION_COMMANDS, word))
     return readSessionCommand(args, AYME_SESSION);
   return readCapture(args);
 }
 
-/** The commands of a Session. */
-const SESSION_WORDS = new Set([
-  "open",
-  "attach",
-  "detach",
-  "close",
-  "list",
-  "page-objects",
-  "tools",
-  "call",
-]);
-
-/** What each command that only asks the folder's Session asks it. */
-const ASKED: Record<string, SessionRequest> = {
+/** The commands of a Session, each with what it asks the folder's Session
+ * when it only asks it; the others are read on their own. */
+const SESSION_COMMANDS: Readonly<Record<string, SessionRequest | undefined>> = {
+  open: undefined,
+  attach: undefined,
+  list: undefined,
+  call: undefined,
+  // Each asks for the listing of the Tab --tab names.
+  "page-objects": undefined,
+  tools: undefined,
   close: { stop: {} },
   detach: { detach: {} },
 };
@@ -250,7 +246,8 @@ function readSessionCommand(
     };
   if (url !== undefined || values.headed) return { kind: "error", text: USAGE };
   if (word === "list") return { kind: "list", json };
-  const asked = word === undefined ? undefined : ASKED[word];
+  // `word` is one of SESSION_COMMANDS: readCommand sent it here.
+  const asked = SESSION_COMMANDS[word!];
   if (asked) return { kind: "ask", request: asked, json, ...named };
   return { kind: "error", text: USAGE };
 }

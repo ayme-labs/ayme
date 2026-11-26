@@ -1,6 +1,6 @@
 // Builds a project's Page Objects for Node, with esbuild and the project's
-// own Page Object compiler, and loads them. Measured by the command's
-// end-to-end tests: it runs the project's own code.
+// own Page Object compiler, and loads them.
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { isBuiltin } from "node:module";
 import { tmpdir } from "node:os";
@@ -9,15 +9,15 @@ import { pathToFileURL } from "node:url";
 import { Effect, Layer } from "effect";
 import * as esbuild from "esbuild";
 
-import { PageObjectsBuild } from "../../../session/application";
-import { SessionStartError } from "../../../session/domain";
+import { PageObjectsBuild } from "../../session/application";
+import { SessionStartError } from "../../session/domain";
 import {
   buildFailed,
   compileErrors,
   pageObjectClasses,
   type PomDiagnostic,
-} from "../builtEntry";
-import { projectAyme, type ProjectAyme } from "../projectAyme";
+} from "./builtEntry";
+import { projectAyme, type ProjectAyme } from "./projectAyme";
 
 /** The project's Page Objects, built and loaded for Node. */
 export type NodePageObjects = {
@@ -54,6 +54,10 @@ const importFile = <A>(file: string, what: string) =>
       ),
   });
 
+/** Whether `file` is in a `node_modules` folder: installed, not the
+ * project's own source. */
+const installed = (file: string) => file.split(sep).includes("node_modules");
+
 /**
  * Compiles each Page Object Model outside `node_modules` with the
  * project's compiler; every other module builds as esbuild builds it.
@@ -66,7 +70,7 @@ const pageObjectModels = ({
   setup(build) {
     const compiler = createPomCompiler({ include: true });
     build.onLoad({ filter: /\.ts$/ }, async ({ path }) => {
-      if (path.split(sep).includes("node_modules")) return undefined;
+      if (installed(path)) return undefined;
       try {
         const pom = compiler.compile(path, await readFile(path, "utf8"), {
           emit: "js",
@@ -81,37 +85,72 @@ const pageObjectModels = ({
 });
 
 /**
- * Leaves every package the Page Objects import out of the build, imported
- * from the file the project installed: Node then loads the project's own
- * copies, the one `@ayme-dev/ayme` the Node Host reads included, wherever
- * the built module is.
+ * Whether `specifier` names a package installed for a module in `dir`: one
+ * in the `node_modules` of `dir` or of a folder above it, where Node finds
+ * it, whether it is a folder there or a link to one elsewhere, such as a
+ * workspace package. Anything else a bare specifier reaches, such as a
+ * tsconfig path alias, is the project's own source.
  */
-const projectPackages: esbuild.Plugin = {
+function installedPackage(specifier: string, dir: string): boolean {
+  const [scope, name] = specifier.split("/");
+  const folder = scope!.startsWith("@") ? join(scope!, name ?? "") : scope!;
+  for (let at = dir; ; at = dirname(at)) {
+    if (existsSync(join(at, "node_modules", folder))) return true;
+    if (dirname(at) === at) return false;
+  }
+}
+
+/** Marks the resolve `projectPackages` asks esbuild for itself. */
+const RESOLVING = Symbol("ayme-project-packages");
+
+/** An import of `@ayme-dev/ayme` or one of its entries. */
+const AYME_IMPORT = /^@ayme-dev\/ayme(\/|$)/;
+
+/**
+ * Leaves every installed package the Page Objects import out of the build,
+ * imported from the file the project installed: Node then loads the
+ * project's own copies, wherever the built module is. An import that
+ * resolves to the project's own source, such as one through a tsconfig path
+ * alias, is built with the rest.
+ *
+ * `@ayme-dev/ayme` is always the copy installed for `projectDir`, the one
+ * the compiler and the Node Host come from: a class registers with the copy
+ * its module imports, and a model in a linked folder with an install of its
+ * own would otherwise register with that one, which the Node Host never
+ * reads.
+ */
+const projectPackages = (projectDir: string): esbuild.Plugin => ({
   name: "ayme-project-packages",
   setup(build) {
     build.onResolve({ filter: /^[^./#]/ }, async (args) => {
       if (isBuiltin(args.path)) return { external: true };
-      if (args.pluginData === projectPackages) return undefined;
+      if (args.pluginData === RESOLVING) return undefined;
+      const resolveDir = AYME_IMPORT.test(args.path)
+        ? projectDir
+        : args.resolveDir;
       const resolved = await build.resolve(args.path, {
         kind: args.kind,
         importer: args.importer,
-        resolveDir: args.resolveDir,
-        pluginData: projectPackages,
+        resolveDir,
+        pluginData: RESOLVING,
       });
       if (resolved.errors.length > 0) return { errors: resolved.errors };
+      if (!installedPackage(args.path, resolveDir))
+        return { path: resolved.path };
       return { path: pathToFileURL(resolved.path).href, external: true };
     });
   },
-};
+});
 
 /** The entry built into one ES module, or the build's messages. */
-const bundle = (entry: string, compiler: CompilerEntry) =>
-  Effect.tryPromise({
+const bundle = (entry: string, compiler: CompilerEntry) => {
+  // The project folder, which holds the ayme folder.
+  const projectDir = join(dirname(entry), "..");
+  return Effect.tryPromise({
     try: () =>
       esbuild.build({
-        // The project folder, which holds the ayme folder: messages name
-        // files from there.
-        absWorkingDir: join(dirname(entry), ".."),
+        // Messages name files from the project folder.
+        absWorkingDir: projectDir,
         entryPoints: [entry],
         bundle: true,
         platform: "node",
@@ -119,7 +158,7 @@ const bundle = (entry: string, compiler: CompilerEntry) =>
         write: false,
         outfile: "page-objects.mjs",
         logLevel: "silent",
-        plugins: [projectPackages, pageObjectModels(compiler)],
+        plugins: [projectPackages(projectDir), pageObjectModels(compiler)],
       }),
     catch: (failure) => failure as esbuild.BuildFailure,
   }).pipe(
@@ -135,17 +174,31 @@ const bundle = (entry: string, compiler: CompilerEntry) =>
       )
     )
   );
+};
+
+/** Why the start failed when the built module of `entry` could not be
+ * written to a file in `folder`, which Node imports it from. */
+const notWritten = (entry: string, folder: string, cause: unknown) =>
+  new SessionStartError(
+    `ayme could not write the built Page Objects of ${entry} to a file in ${folder}: ${cause instanceof Error ? cause.message : String(cause)}`
+  );
 
 /** Imports `code` as an ES module, from a file of its own that is removed
  * once it loaded. */
 const load = (code: string, entry: string) =>
   Effect.acquireUseRelease(
-    Effect.promise(() => mkdtemp(join(tmpdir(), "ayme-page-objects-"))),
+    Effect.tryPromise({
+      try: () => mkdtemp(join(tmpdir(), "ayme-page-objects-")),
+      catch: (cause) => notWritten(entry, tmpdir(), cause),
+    }),
     (folder) =>
-      Effect.promise(async () => {
-        const file = join(folder, "page-objects.mjs");
-        await writeFile(file, code);
-        return file;
+      Effect.tryPromise({
+        try: async () => {
+          const file = join(folder, "page-objects.mjs");
+          await writeFile(file, code);
+          return file;
+        },
+        catch: (cause) => notWritten(entry, folder, cause),
       }).pipe(
         Effect.flatMap((file) =>
           importFile<{ default?: unknown }>(
@@ -160,7 +213,7 @@ const load = (code: string, entry: string) =>
 
 /** Builds the project's Page Objects for Node and loads them, with the
  * project's own `@ayme-dev/ayme`. */
-export const buildForNode = ({
+const buildForNode = ({
   entry,
   compiler,
   nodeHost,

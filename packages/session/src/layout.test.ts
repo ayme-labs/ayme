@@ -125,18 +125,6 @@ it(
         'export { stockBrowser } from "./live/stockBrowser";\n'
       )
     ).toEqual([]);
-    expect(
-      await lint(
-        "src/page-objects/infrastructure/misplaced.ts",
-        'export { projectPageObjects } from "./live/nodeBuild";\n'
-      )
-    ).toEqual([expect.stringContaining("reaches infrastructure/live")]);
-    expect(
-      await lint(
-        "src/page-objects/infrastructure/index.ts",
-        'export { projectPageObjects } from "./live/nodeBuild";\n'
-      )
-    ).toEqual([]);
   }
 );
 
@@ -166,8 +154,8 @@ it(
         'export { PageObjectsBuild } from "../../session/application/pageObjectsBuild";\n',
       ],
       [
-        "src/page-objects/infrastructure/live/misplaced.ts",
-        'export { SessionStartError } from "../../../session/domain/startError";\n',
+        "src/page-objects/infrastructure/misplaced.ts",
+        'export { SessionStartError } from "../../session/domain/startError";\n',
       ],
       [
         "src/playwright/infrastructure/live/misplaced.ts",

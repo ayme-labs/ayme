@@ -95,19 +95,28 @@ const recordFile = (folder: string, generation: number) =>
 const endedFile = (folder: string, generation: number) =>
   join(folder, `${generation}.ended`);
 
-/** When the process `pid` started, or undefined when there is none. */
+/** When the process `pid` started, or undefined when there is none. A
+ * process that ended but was never reaped, a zombie, is none: in a container
+ * without an init process an orphan stays one for good. */
 export function processStart(pid: number): string | undefined {
   try {
     if (process.platform === "linux") {
-      // The 22nd field, counted after the name, which may hold spaces.
+      // Counted after the name, which may hold spaces: the 3rd field is the
+      // state, the 22nd the start.
       const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
-      return stat.slice(stat.lastIndexOf(")") + 2).split(" ")[19];
+      const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+      return fields[0] === "Z" ? undefined : fields[19];
     }
-    const started = execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    return started || undefined;
+    const [state, ...started] = execFileSync(
+      "ps",
+      ["-o", "stat=", "-o", "lstart=", "-p", String(pid)],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+    )
+      .trim()
+      .split(/\s+/);
+    return state === undefined || state.startsWith("Z")
+      ? undefined
+      : started.join(" ") || undefined;
   } catch {
     return undefined;
   }
