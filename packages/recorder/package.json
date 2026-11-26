@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "The engine of the ayme Recorder: starts a recorder on the project's own Playwright and ends it with an outcome",
-  "license": "FSL-1.1-ALv2",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "exports": {

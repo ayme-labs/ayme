@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/ayme-labs/ayme/compare/webmcp-v0.2.0...webmcp-v0.3.0) (2026-11-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* a rooted Page Object Tool is called with the Page Object's id instead of the Structural Ref of its root. Before: ayme.tools.run("ListItem.archive", { ref: "e9", args }). After: ayme.tools.run("ListItem.archive", { id: "po3", args }). The screenshot Browser Tool is removed: ayme.tools.run("screenshot", ...) no longer runs.
+
+### Features
+
+* ayme adds Page Object Tools to the browser automation a developer already uses ([#1265](https://github.com/ayme-labs/ayme/issues/1265)) ([6b72ab4](https://github.com/ayme-labs/ayme/commit/6b72ab4ab5ed7cd2846807edfef3bafcc672e6ca))
+* mark irreversible actions destructive for agents ([#1321](https://github.com/ayme-labs/ayme/issues/1321)) ([6a6b7d3](https://github.com/ayme-labs/ayme/commit/6a6b7d3971cceb1d8481a313765b8d62101a4bbe))
+
 ## [0.2.0](https://github.com/ayme-labs/ayme/compare/webmcp-v0.1.1...webmcp-v0.2.0) (2026-11-04)
 
 

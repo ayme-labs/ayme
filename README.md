@@ -94,5 +94,9 @@ than a Competing Use, including in your own applications and products. Each
 version becomes available under the Apache License 2.0 two years after its
 release.
 
+The recorder is the exception: `@ayme-dev/cli` and the recorder's source in
+`packages/recorder/` and `packages/recorder-window/` are under the
+[MIT License](packages/cli/LICENSE).
+
 Bundled third-party code keeps its original license; see each package's
 `THIRD_PARTY_NOTICES.txt`.
