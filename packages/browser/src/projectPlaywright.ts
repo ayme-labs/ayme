@@ -4,34 +4,19 @@ import { dirname, join, resolve } from "node:path";
 import { Effect } from "effect";
 import type * as PlaywrightCore from "playwright-core";
 
-// The attribute lets Node load this file from source, as tests that import
-// the package's test support do (ADR-0057).
-import range from "../../../playwright-range.json" with { type: "json" };
-import { RecorderStartError } from "../../session/domain";
+import { BrowserError } from "./browserError";
+import { placeInRange } from "./playwrightRange";
 
 export type Playwright = Pick<typeof PlaywrightCore, "chromium">;
 
-/** The Playwright versions the recorder supports, from the one place that
- * states them: `playwright-range.json` beside this package. */
-export const SUPPORTED_PLAYWRIGHT = range;
+/** The Playwright a project has installed, with its version. */
+export type ProjectPlaywright = {
+  readonly playwright: Playwright;
+  readonly version: string;
+};
 
-/** Where a version stands against the supported range, by its minor. */
-export function placeInRange(version: string): "below" | "within" | "above" {
-  const minor = (stated: string) => {
-    const [major = 0, minor = 0] = stated.split(".").map(Number);
-    return major * 1000 + minor;
-  };
-  if (minor(version) < minor(range.floor)) return "below";
-  if (minor(version) > minor(range.lastVerified)) return "above";
-  // Callers ask only whether a version is below or above the range.
-  // Stryker disable next-line StringLiteral
-  return "within";
-}
-
-export const rangeText = `Playwright ${range.floor} or newer, and is verified on ${range.floor} to ${range.lastVerified}`;
-
-// The names a project installs Playwright under. Each exports the same
-// browser types.
+// The names a project installs Playwright under, in the order they are
+// looked for. Each exports the same browser types.
 const PLAYWRIGHT_PACKAGES = [
   "playwright",
   "@playwright/test",
@@ -56,14 +41,12 @@ function installedIn(projectDir: string, name: string): string | undefined {
 
 /**
  * The Playwright the project has installed: resolved from the project
- * folder, never from the engine's own dependencies (ADR-0052).
+ * folder, never from ayme's own dependencies (ADR-0052). One older than the
+ * supported range is refused; a newer one is not.
  */
-export const loadProjectPlaywright = (
+export const projectPlaywright = (
   projectDir: string
-): Effect.Effect<
-  { readonly playwright: Playwright; readonly version: string },
-  RecorderStartError
-> =>
+): Effect.Effect<ProjectPlaywright, BrowserError> =>
   Effect.suspend(() => {
     for (const name of PLAYWRIGHT_PACKAGES) {
       const folder = installedIn(projectDir, name);
@@ -73,9 +56,9 @@ export const loadProjectPlaywright = (
       ) as { version: string };
       if (placeInRange(version) === "below")
         return Effect.fail(
-          new RecorderStartError(
-            "playwright-too-old",
-            `${projectDir} has Playwright ${version}. The recorder needs ${rangeText}: update the project's Playwright, for example with "npm install -D @playwright/test@latest".`
+          new BrowserError(
+            "unsupported Playwright version",
+            `${projectDir} has Playwright ${version}.`
           )
         );
       return Effect.succeed({
@@ -84,17 +67,17 @@ export const loadProjectPlaywright = (
       });
     }
     return Effect.fail(
-      new RecorderStartError(
-        "playwright-not-found",
-        `No Playwright is installed in ${projectDir}. The recorder uses the project's own Playwright: install it there, for example with "npm install -D @playwright/test".`
+      new BrowserError(
+        "no Playwright in the project",
+        `No Playwright is installed in ${projectDir}.`
       )
     );
   });
 
 /**
  * The command line of the project's Playwright, `cli.js`: it runs the same
- * `playwright trace` and the same `playwright install` the project's own
- * `npx playwright` does. Undefined when none is installed.
+ * commands the project's own `npx playwright` does. Undefined when none is
+ * installed.
  */
 export function projectPlaywrightCli(projectDir: string): string | undefined {
   for (const name of PLAYWRIGHT_PACKAGES) {

@@ -48,7 +48,7 @@ in-browser agents and the app's own code call on the running page.
     the Node processes that pair as App Processes, the Playwright installation the
     Recorder loads, and the project folder a recording is saved in
   - Evidence: verified: [docs/guide/reference/ayme.md](docs/guide/reference/ayme.md), [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md),
-    [packages/recorder/src/playwright/infrastructure/projectPlaywright.ts](packages/recorder/src/playwright/infrastructure/projectPlaywright.ts)
+    [packages/browser/src/projectPlaywright.ts](packages/browser/src/projectPlaywright.ts)
 - **Decision model provider**
   - Provides: Jev, the System One decision model the Goal Loop asks at each step, served by
     TypeSafe directly or through OpenRouter
@@ -180,7 +180,8 @@ in-browser agents and the app's own code call on the running page.
 - Technology: Node CLI (`ayme-recorder codegen <url>`, `codegen --cdp-endpoint <address>`,
   `trace` and `install` from `@ayme-dev/cli`), over the engine `@ayme-dev/recorder`, whose
   flows are written with Effect; `@ayme-dev/cli` is published and bundles the engine and
-  `@ayme-dev/recorder-window`, which stay private. The engine loads Playwright from the project's folder and bundles
+  `@ayme-dev/recorder-window`, which stay private. The engine gets its browser through the private
+  `@ayme-dev/browser`, bundled into it, which loads Playwright from the project's folder and bundles
   none, and runs the project's own `playwright trace` as a separate process. It keeps
   Visits and element identity and compares page structures with `@ayme-dev/core`, which
   also runs its wait for a Settled Page. `@ayme-dev/recorder-window` is the window, React
@@ -315,7 +316,7 @@ in-browser agents and the app's own code call on the running page.
       click or key press the page held back, the page's activity, the Interactions and
       assertions Playwright's own recorder reports, the toolbar's commands and requests
       for the state, and the trace's position numbers
-  - Evidence: verified: [packages/recorder/src/playwright/infrastructure/projectPlaywright.ts](packages/recorder/src/playwright/infrastructure/projectPlaywright.ts), [packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/in-page/gate.ts](packages/recorder/src/playwright/infrastructure/in-page/gate.ts), [packages/recorder/src/playwright/infrastructure/in-page/watches.ts](packages/recorder/src/playwright/infrastructure/in-page/watches.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts)
+  - Evidence: verified: [packages/browser/src/projectPlaywright.ts](packages/browser/src/projectPlaywright.ts), [packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/in-page/gate.ts](packages/recorder/src/playwright/infrastructure/in-page/gate.ts), [packages/recorder/src/playwright/infrastructure/in-page/watches.ts](packages/recorder/src/playwright/infrastructure/in-page/watches.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts)
 - **App Process runtime → ayme MCP server**
   - Flows:
     - → pairing without a token, the process's Peek Tools and their changes, read results

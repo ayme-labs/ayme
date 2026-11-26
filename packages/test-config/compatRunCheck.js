@@ -1,5 +1,3 @@
-import type { Reporter, TestModule } from "vitest/node";
-
 // The compatibility suite runs in several projects, and a test may belong to only
 // some of them: it is skipped in the others, as `it.runIf(attaching)` does.
 // Vitest's own summary cannot tell such a declared skip from an accidental
@@ -17,21 +15,28 @@ import type { Reporter, TestModule } from "vitest/node";
 
 const VERDICT = "Compatibility run: every test ran and passed where it belongs";
 
-export class CompatRunCheck implements Reporter {
-  constructor(private readonly projects: readonly string[]) {}
+/** @implements {import("vitest/node").Reporter} */
+export class CompatRunCheck {
+  /** @param {readonly string[]} projects */
+  constructor(projects) {
+    this.projects = projects;
+  }
 
-  onTestRunEnd(testModules: ReadonlyArray<TestModule>): void {
-    /** Each test's state in each project it was collected in. */
-    const states = new Map<string, Map<string, string>>();
+  /** @param {ReadonlyArray<import("vitest/node").TestModule>} testModules */
+  onTestRunEnd(testModules) {
+    /** Each test's state in each project it was collected in.
+     * @type {Map<string, Map<string, string>>} */
+    const states = new Map();
     for (const module of testModules)
       for (const test of module.children.allTests()) {
         const name = `${module.moduleId} > ${test.fullName}`;
-        const byProject = states.get(name) ?? new Map<string, string>();
+        const byProject = states.get(name) ?? new Map();
         byProject.set(module.project.name, test.result().state);
         states.set(name, byProject);
       }
 
-    const problems: string[] = [];
+    /** @type {string[]} */
+    const problems = [];
     for (const project of this.projects) {
       const passed = [...states.values()].some(
         (byProject) => byProject.get(project) === "passed"

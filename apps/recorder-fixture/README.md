@@ -140,7 +140,7 @@ the recorder attaches to; the project `launch` runs every test.
 installed: each test's project is then a folder inside that one, so the
 recorder finds that Playwright. CI runs the first test of that file this way
 once per supported version, in both projects; the range is in
-[`packages/recorder/playwright-range.json`](../../packages/recorder/playwright-range.json).
+[`packages/browser/playwright-range.json`](../../packages/browser/playwright-range.json).
 
 ## Running
 

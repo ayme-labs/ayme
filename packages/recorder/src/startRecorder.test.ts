@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
-import range from "../playwright-range.json";
+import range from "@ayme-dev/browser/playwright-range.json";
 import { RecorderStartError, startRecorder } from "./index";
 
 // Outside the repository, so no Playwright resolves from it: the engine
