@@ -51,7 +51,9 @@ layout, host CSS, stacking, mounting, motion and dogfooding) run inline only.
 
 Run from this directory inside the repository's Devbox shell. `pnpm test:e2e`
 tests the built packages, so build first; Turbo's `test:e2e` task does. It runs
-Playwright on Chromium against the fixture pages, served on a free port
+the Playwright suite (`test:playwright`), then its port to
+[e2e](https://e2e.com) (`test:e2e:e2e`, the `*.e2e.ts` files with their
+helpers in `tests/e2e/`), each on Chromium against the fixture pages, served on a free port
 (`AYME_E2E_PORT_INSPECTOR` overrides it). A test that calls Page Object Tools
 as a coding agent (`connected`) starts an `ayme mcp` server and opens the page
 through its connect link. The Browser Tools, which the server doesn't list,

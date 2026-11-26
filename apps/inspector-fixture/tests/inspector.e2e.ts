@@ -334,11 +334,14 @@ const lookProperties = [
 
 /** How the panel looks: the styles host CSS would change if it leaked in. */
 async function panelLooks(inspector: Inspector) {
-  // A part the hook can't reach reads null, which must not compare equal.
+  // Waits for each part, as Playwright's `evaluate` on a locator does; a part
+  // the hook can't reach reads null, which must not compare equal.
   const look = async (selector: string) => {
-    const read = await panelLook(inspector.tab, selector, lookProperties);
-    if (!read) throw new Error(`Nothing in the Inspector matches ${selector}.`);
-    return read;
+    const read = () => panelLook(inspector.tab, selector, lookProperties);
+    await expect
+      .poll(read, { message: `Nothing in the Inspector matches ${selector}.` })
+      .not.toBeNull();
+    return (await read())!;
   };
   return {
     panel: await look('[aria-label="ayme"]'),
@@ -379,21 +382,25 @@ plainTest(
     await openFixture({ app, browser, screen }, "/");
 
     // The browser's defaults, which the Inspector's CSS reset would change.
-    const styles = await browser.evaluate(() => {
-      const heading = [...document.querySelectorAll("h1, h2, h3")].find(
-        (candidate) => candidate.textContent?.trim() === "Groceries"
-      )!;
-      const button = [...document.querySelectorAll("main button")].find(
-        (candidate) => candidate.textContent?.trim() === "Add item"
-      )!;
-      return {
-        fontSize: getComputedStyle(heading).fontSize,
-        fontWeight: getComputedStyle(heading).fontWeight,
-        buttonBackground: getComputedStyle(button).backgroundColor,
-      };
-    });
-    expect(styles.fontSize).toBe("32px");
-    expect(styles.fontWeight).toBe("700");
-    expect(styles.buttonBackground).not.toBe("rgba(0, 0, 0, 0)");
+    // Polled, as Playwright's `toHaveCSS` retries.
+    const styles = () =>
+      browser.evaluate(() => {
+        const heading = [...document.querySelectorAll("h1, h2, h3")].find(
+          (candidate) => candidate.textContent?.trim() === "Groceries"
+        )!;
+        const button = [...document.querySelectorAll("main button")].find(
+          (candidate) => candidate.textContent?.trim() === "Add item"
+        )!;
+        return {
+          fontSize: getComputedStyle(heading).fontSize,
+          fontWeight: getComputedStyle(heading).fontWeight,
+          buttonBackground: getComputedStyle(button).backgroundColor,
+        };
+      });
+    await expect.poll(async () => (await styles()).fontSize).toBe("32px");
+    await expect.poll(async () => (await styles()).fontWeight).toBe("700");
+    await expect
+      .poll(async () => (await styles()).buttonBackground)
+      .not.toBe("rgba(0, 0, 0, 0)");
   }
 );
