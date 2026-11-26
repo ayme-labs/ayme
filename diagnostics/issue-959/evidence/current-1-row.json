@@ -1,0 +1,826 @@
+{
+  "head": "d75498f21726055407dfea69b26bfd8cf697bb94",
+  "browser": "156.0.8078.4",
+  "radix": "2.1.16",
+  "react": "19.2.6",
+  "oldAvailabilityApplied": 0,
+  "results": [
+    {
+      "driver": "ayme",
+      "mode": "hover",
+      "iteration": 0,
+      "rows": 1,
+      "gap": 8,
+      "width": 1280,
+      "oldAvailability": false,
+      "openMs": 428.75883299999987,
+      "ms": 499.0558339999998,
+      "openEvents": [
+        {
+          "t": 684.6000000005588,
+          "kind": "dom",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 690.8000000007451,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.6000000005587935
+        },
+        {
+          "t": 690.9000000003725,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 879.8000000007451,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 879.8000000007451,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 1004.1000000005588,
+          "kind": "pointerover",
+          "target": "HTML",
+          "related": null,
+          "x": 10,
+          "y": 10,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1004.1000000005588,
+          "kind": "pointermove",
+          "target": "HTML",
+          "related": null,
+          "x": 10,
+          "y": 10,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1031,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 1031.1000000005588,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 1037.7000000001863,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 1037.7000000001863,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 1081.1000000005588,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 1081.1000000005588,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 1148.1000000005588,
+          "kind": "pointerover",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1149.300000000745,
+          "kind": "pointermove",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1149.800000000745,
+          "kind": "pointerdown",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1166.9000000003725,
+          "kind": "dom",
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1169.4000000003725,
+          "kind": "pointerout",
+          "target": "survey-dropdown-trigger",
+          "related": "HTML",
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1169.4000000003725,
+          "kind": "pointerover",
+          "target": "HTML",
+          "related": "survey-dropdown-trigger",
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1169.6000000005588,
+          "kind": "pointerup",
+          "target": "HTML",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1169.6000000005588,
+          "kind": "click",
+          "target": "HTML",
+          "related": null,
+          "x": 464,
+          "y": 122,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        }
+      ],
+      "events": [
+        {
+          "t": 1443,
+          "kind": "action-start",
+          "mode": "hover"
+        },
+        {
+          "t": 1480.800000000745,
+          "kind": "pointerout",
+          "target": "HTML",
+          "related": "change-status",
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1480.800000000745,
+          "kind": "pointerover",
+          "target": "change-status",
+          "related": "HTML",
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1481.1000000005588,
+          "kind": "pointermove",
+          "target": "change-status",
+          "related": null,
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 1485.5,
+          "kind": "trigger-done",
+          "itemPresent": false
+        },
+        {
+          "t": 1599.800000000745,
+          "kind": "dom",
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 1664.1000000005588,
+          "kind": "pointerout",
+          "target": "change-status",
+          "related": "survey-status-option-completed",
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 1664.6000000005588,
+          "kind": "pointerover",
+          "target": "survey-status-option-completed",
+          "related": "change-status",
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 1664.7000000001863,
+          "kind": "pointermove",
+          "target": "survey-status-option-completed",
+          "related": null,
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 1668.5,
+          "kind": "pointerdown",
+          "target": "survey-status-option-completed",
+          "related": null,
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 1668.9000000003725,
+          "kind": "pointerup",
+          "target": "survey-status-option-completed",
+          "related": null,
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 1669.1000000005588,
+          "kind": "click",
+          "target": "survey-status-option-completed",
+          "related": null,
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 1669.2000000001863,
+          "kind": "selected",
+          "value": "completed"
+        },
+        {
+          "t": 1681.4000000003725,
+          "kind": "dom",
+          "itemPresent": false,
+          "status": "completed"
+        },
+        {
+          "t": 1681.5,
+          "kind": "item-done"
+        },
+        {
+          "t": 1682.6000000005588,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.20000000018626451
+        },
+        {
+          "t": 1682.7000000001863,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 1933.9000000003725,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 1934.1000000005588,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.20000000018626451
+        },
+        {
+          "t": 1936,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 1936.1000000005588,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        }
+      ],
+      "state": {
+        "itemPresent": false,
+        "status": "completed"
+      }
+    },
+    {
+      "driver": "ayme",
+      "mode": "click",
+      "iteration": 0,
+      "rows": 1,
+      "gap": 8,
+      "width": 1280,
+      "oldAvailability": false,
+      "openMs": 405.3367500000004,
+      "ms": 383.759,
+      "openEvents": [
+        {
+          "t": 45.59999999962747,
+          "kind": "dom",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 47.299999999813735,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 47.39999999944121,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 56.89999999944121,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 56.89999999944121,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 142,
+          "kind": "pointerover",
+          "target": "HTML",
+          "related": null,
+          "x": 10,
+          "y": 10,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 142,
+          "kind": "pointermove",
+          "target": "HTML",
+          "related": null,
+          "x": 10,
+          "y": 10,
+          "pointerType": "mouse",
+          "trusted": true,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 144.09999999962747,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 144.19999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 148,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.10000000055879354
+        },
+        {
+          "t": 148,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 209.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.09999999962747097
+        },
+        {
+          "t": 209.69999999925494,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 276.29999999981374,
+          "kind": "pointerover",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 276.59999999962747,
+          "kind": "pointermove",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 276.59999999962747,
+          "kind": "pointerdown",
+          "target": "survey-dropdown-trigger",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 285.29999999981374,
+          "kind": "dom",
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 286.19999999925494,
+          "kind": "pointerout",
+          "target": "survey-dropdown-trigger",
+          "related": "HTML",
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 286.19999999925494,
+          "kind": "pointerover",
+          "target": "HTML",
+          "related": "survey-dropdown-trigger",
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 286.29999999981374,
+          "kind": "pointerup",
+          "target": "HTML",
+          "related": null,
+          "x": 464.3515625,
+          "y": 122.75,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 286.29999999981374,
+          "kind": "click",
+          "target": "HTML",
+          "related": null,
+          "x": 464,
+          "y": 122,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        }
+      ],
+      "events": [
+        {
+          "t": 557.1999999992549,
+          "kind": "action-start",
+          "mode": "click"
+        },
+        {
+          "t": 592.8999999994412,
+          "kind": "pointerout",
+          "target": "HTML",
+          "related": "change-status",
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 592.8999999994412,
+          "kind": "pointerover",
+          "target": "change-status",
+          "related": "HTML",
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 593.2999999998137,
+          "kind": "pointermove",
+          "target": "change-status",
+          "related": null,
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 599,
+          "kind": "pointerdown",
+          "target": "change-status",
+          "related": null,
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 599.0999999996275,
+          "kind": "pointerup",
+          "target": "change-status",
+          "related": null,
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 599.1999999992549,
+          "kind": "click",
+          "target": "change-status",
+          "related": null,
+          "x": 464,
+          "y": 281,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "closed",
+          "itemPresent": false,
+          "status": "inProgress"
+        },
+        {
+          "t": 609.1999999992549,
+          "kind": "dom",
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 609.3999999994412,
+          "kind": "trigger-done",
+          "itemPresent": true
+        },
+        {
+          "t": 659.5,
+          "kind": "pointerout",
+          "target": "change-status",
+          "related": "survey-status-option-completed",
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 659.6999999992549,
+          "kind": "pointerover",
+          "target": "survey-status-option-completed",
+          "related": "change-status",
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 659.7999999998137,
+          "kind": "pointermove",
+          "target": "survey-status-option-completed",
+          "related": null,
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 663.6999999992549,
+          "kind": "pointerdown",
+          "target": "survey-status-option-completed",
+          "related": null,
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 663.8999999994412,
+          "kind": "pointerup",
+          "target": "survey-status-option-completed",
+          "related": null,
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 664,
+          "kind": "click",
+          "target": "survey-status-option-completed",
+          "related": null,
+          "x": 658,
+          "y": 355,
+          "pointerType": "mouse",
+          "trusted": false,
+          "trigger": "open",
+          "itemPresent": true,
+          "status": "inProgress"
+        },
+        {
+          "t": 664,
+          "kind": "selected",
+          "value": "completed"
+        },
+        {
+          "t": 676.6999999992549,
+          "kind": "dom",
+          "itemPresent": false,
+          "status": "completed"
+        },
+        {
+          "t": 676.6999999992549,
+          "kind": "item-done"
+        },
+        {
+          "t": 677.2999999998137,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 677.2999999998137,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        },
+        {
+          "t": 928.8999999994412,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.20000000018626451
+        },
+        {
+          "t": 929.0999999996275,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.20000000018626451
+        },
+        {
+          "t": 932.7999999998137,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0.20000000018626451
+        },
+        {
+          "t": 932.7999999998137,
+          "kind": "predicate",
+          "hidden": false,
+          "ms": 0
+        }
+      ],
+      "state": {
+        "itemPresent": false,
+        "status": "completed"
+      }
+    }
+  ]
+}
