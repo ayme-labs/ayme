@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tabs</title>
+  </head>
+  <body>
+    <h1>Tabs</h1>
+    <button id="open-tab" type="button">Open a tab</button>
+    <button id="mark" type="button">Mark</button>
+    <p role="status">Marks: 0</p>
+    <script>
+      // A tab opened without window features comes to the front, which
+      // hides this one.
+      document.querySelector("#open-tab").onclick = () =>
+        window.open("/plain.html");
+      let marks = 0;
+      document.querySelector("#mark").onclick = () =>
+        (document.querySelector("[role=status]").textContent =
+          `Marks: ${++marks}`);
+    </script>
+  </body>
+</html>
