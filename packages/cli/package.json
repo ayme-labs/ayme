@@ -5,18 +5,17 @@
   "keywords": [
     "ai-agent",
     "coding-agent",
-    "mcp",
-    "webmcp",
     "browser-automation",
     "playwright",
     "page-object-model",
     "testing",
+    "test-automation",
     "e2e",
     "recorder",
     "codegen"
   ],
   "homepage": "https://ayme.dev",
-  "license": "FSL-1.1-ALv2",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ayme-labs/ayme.git",

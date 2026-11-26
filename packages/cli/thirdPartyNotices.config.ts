@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Rolldown } from "tsdown";
 
 /** A third-party package whose code a build holds, as the window's build
@@ -80,6 +81,17 @@ export function thirdPartyNotices(): Rolldown.Plugin {
       const entries = [...packages.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([key, pkg]) => `${key}\n\n${licenceOf(pkg)}\n`);
+      // The design system's components are copied from shadcn/ui, not
+      // installed, so no package above carries their notice.
+      entries.push(
+        readFileSync(
+          join(
+            dirname(fileURLToPath(import.meta.url)),
+            "../design-system/THIRD_PARTY_NOTICES.txt"
+          ),
+          "utf8"
+        )
+      );
       this.emitFile({
         type: "asset",
         fileName: "THIRD_PARTY_NOTICES.txt",

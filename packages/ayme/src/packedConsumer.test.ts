@@ -362,7 +362,16 @@ it("packed manifests carry the keywords, homepage and description npm shows", ()
     const { description, homepage, keywords } = readManifest(
       packed[`@ayme-dev/${name}`]!.dir
     );
-    expect(keywords, name).toEqual(expect.arrayContaining(SHARED_KEYWORDS));
+    // The recorder serves no MCP and no WebMCP, so it would mislead searches
+    // for them.
+    const expected =
+      name === "cli"
+        ? SHARED_KEYWORDS.filter((k) => k !== "mcp" && k !== "webmcp")
+        : SHARED_KEYWORDS;
+    expect(keywords, name).toEqual(expect.arrayContaining(expected));
+    if (name === "cli")
+      for (const k of ["mcp", "webmcp"])
+        expect(keywords, name).not.toContain(k);
     expect(homepage, name).toBe("https://ayme.dev");
     expect(description?.trim(), name).toBeTruthy();
   }
@@ -1761,6 +1770,8 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
   ])
     expect(notices, name).toMatch(new RegExp(`^${name}@\\d`, "m"));
   expect(notices).toContain("Permission is hereby granted, free of charge");
+  // The window's components, copied from shadcn/ui into the design system.
+  expect(notices).toContain("Copyright (c) 2023 shadcn");
 });
 
 it(
