@@ -15,13 +15,14 @@ import {
   alreadyOpen,
   claimRecord,
   liveRecord,
+  liveRecords,
+  notOpen,
   privateFolder,
   processStart,
+  unusableName,
+  type SessionPlace,
 } from "./record";
 import { send } from "./wire";
-
-const noSession = (projectDir: string) =>
-  failed(`No Session is open in ${projectDir}. Start one with ayme open.`);
 
 /** Whether `error` says nobody listens on the socket yet. */
 const notListening = (error: unknown) =>
@@ -29,15 +30,17 @@ const notListening = (error: unknown) =>
     (error as NodeJS.ErrnoException).code ?? ""
   );
 
-/** Sends `request` to the Session of `projectDir`. A Session still
- * starting is waited for, as long as its process runs (rule 10). */
+/** Sends `request` to `place`'s Session. A Session still starting is
+ * waited for, as long as its process runs (rule 10). */
 export async function askSession(
-  projectDir: string,
+  place: SessionPlace,
   request: SessionRequest
 ): Promise<SessionAnswer> {
+  const unusable = unusableName(place);
+  if (unusable) return failed(unusable);
   for (;;) {
-    const record = liveRecord(projectDir);
-    if (!record) return noSession(projectDir);
+    const record = liveRecord(place);
+    if (!record) return failed(notOpen(place));
     try {
       return await send(record.socket, request);
     } catch (error) {
@@ -67,7 +70,7 @@ function printed(log: string): string {
  */
 function startOf(
   child: ChildProcess,
-  projectDir: string,
+  place: SessionPlace,
   socket: string,
   log: string
 ): Promise<SessionAnswer> {
@@ -80,10 +83,10 @@ function startOf(
       const since = processStart(pid);
       // A process already gone is answered by its exit.
       if (since === undefined) return;
-      const claim = claimRecord(projectDir, { pid, since, socket });
+      const claim = claimRecord(place, { pid, since, socket });
       if ("holder" in claim) {
         child.kill();
-        return resolve(failed(alreadyOpen(projectDir, claim.holder)));
+        return resolve(failed(alreadyOpen(place, claim.holder)));
       }
       child.send({ claimed: claim.generation } satisfies FromOpener);
     });
@@ -114,21 +117,24 @@ function startOf(
  */
 export async function openSession({
   projectDir,
+  name,
   request,
   processCommand,
-}: {
-  readonly projectDir: string;
+}: SessionPlace & {
   readonly request: SessionBrowserRequest;
   readonly processCommand: readonly string[];
 }): Promise<SessionAnswer> {
+  const place = { projectDir, name };
+  const unusable = unusableName(place);
+  if (unusable) return failed(unusable);
   // Also refused by the claim: refused here, no process starts.
-  const holder = liveRecord(projectDir);
-  if (holder) return failed(alreadyOpen(projectDir, holder));
+  const holder = liveRecord(place);
+  if (holder) return failed(alreadyOpen(place, holder));
   const { folder, socket, log } = privateFolder();
   const output = openSync(log, "w", 0o600);
   const child = spawn(
     process.execPath,
-    [...processCommand, JSON.stringify({ projectDir, request, socket })],
+    [...processCommand, JSON.stringify({ projectDir, name, request, socket })],
     {
       cwd: projectDir,
       detached: true,
@@ -136,10 +142,30 @@ export async function openSession({
     }
   );
   closeSync(output);
-  const answer = await startOf(child, projectDir, socket, log);
+  const answer = await startOf(child, place, socket, log);
   if (answer.ok) {
     if (child.connected) child.disconnect();
     child.unref();
   } else rmSync(folder, { recursive: true, force: true });
   return answer;
+}
+
+/** The answer to `ayme list`: the live Sessions of `projectDir`, each by
+ * its name and process. */
+export function listSessions(projectDir: string): SessionAnswer {
+  const sessions = liveRecords(projectDir).map(({ name, pid }) => ({
+    name,
+    pid,
+  }));
+  return {
+    ok: true,
+    text:
+      sessions.length === 0
+        ? `No Session is open in ${projectDir}.`
+        : [
+            `Sessions in ${projectDir}:`,
+            ...sessions.map(({ name, pid }) => `${name}, in process ${pid}`),
+          ].join("\n"),
+    data: { sessions },
+  };
 }

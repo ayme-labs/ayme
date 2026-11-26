@@ -1,7 +1,9 @@
 export {
+  detachRefused,
   endAnswer,
   endedAtStart,
   failed,
+  joinedAnswer,
   openedAnswer,
   pageObjectsAnswer,
   toolsAnswer,

@@ -1,5 +1,6 @@
 import {
   askSession,
+  listSessions,
   openSession,
   runSessionProcess,
   type SessionAnswer,
@@ -10,25 +11,27 @@ import { answerReport } from "./answer";
 import type { Plan } from "./plan";
 import { SESSION_PROCESS } from "./readCommand";
 
-/** Whatever reaches a Session: `open`, a request of the folder's Session,
- * or the Session's background process. */
+/** Whatever reaches a Session: `open` and `attach`, a request of the
+ * folder's Session, `list`, or the Session's background process. */
 export type SessionPlan = Extract<
   Plan,
-  { kind: "open" | "ask" | "session process" }
+  { kind: "open" | "attach" | "ask" | "list" | "session process" }
 >;
 
-function answerOf(
+async function answerOf(
   plan: Exclude<SessionPlan, { kind: "session process" }>
 ): Promise<SessionAnswer> {
   const projectDir = process.cwd();
-  return plan.kind === "open"
-    ? openSession({
-        projectDir,
-        request: { open: plan.open },
-        // This same command, run as the Session's background process.
-        processCommand: [process.argv[1]!, SESSION_PROCESS],
-      })
-    : askSession(projectDir, plan.request);
+  if (plan.kind === "list") return listSessions(projectDir);
+  const place = { projectDir, name: plan.session };
+  if (plan.kind === "ask") return askSession(place, plan.request);
+  return openSession({
+    ...place,
+    request:
+      plan.kind === "open" ? { open: plan.open } : { join: { cdp: plan.cdp } },
+    // This same command, run as the Session's background process.
+    processCommand: [process.argv[1]!, SESSION_PROCESS],
+  });
 }
 
 /** Carries out a plan that reaches a Session, and resolves with the exit

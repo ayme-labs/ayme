@@ -1,6 +1,7 @@
 // Where a Session's process says how to reach it, in a cache folder of the
-// user's, as Playwright CLI keeps its session files. Each start of a Session
-// in a project folder claims the next generation of the folder's records:
+// user's, as Playwright CLI keeps its session files. A project folder can
+// have several Sessions, each with a name. Each start of a Session of a name
+// claims the next generation of that name's records in the folder:
 // a claim is the creation of a file no other claim can create, so two
 // starts never both win, and a record whose Session is gone is never
 // removed to make room.
@@ -20,8 +21,33 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
+/** Which Session of which project folder: one name of the folder's, the
+ * default name when none is given. */
+export type SessionPlace = {
+  readonly projectDir: string;
+  readonly name?: string | undefined;
+};
+
+/** The name of a Session started or reached without one, as Playwright
+ * CLI's. */
+export const DEFAULT_NAME = "default";
+
+const nameOf = ({ name }: SessionPlace) => name ?? DEFAULT_NAME;
+
+// A name is shown in hints such as `ayme -s=<name> close`, which a shell
+// must read as one word.
+const USABLE_NAME = /^[\w.-]+$/;
+
+/** Why `place`'s name cannot name a Session, if it cannot. */
+export const unusableName = (place: SessionPlace): string | undefined =>
+  USABLE_NAME.test(nameOf(place))
+    ? undefined
+    : `${JSON.stringify(nameOf(place))} cannot name a Session: a name has letters, digits, ".", "_" and "-" only.`;
+
 /** What the process of a Session is known by while it runs. */
 export type SessionRecord = {
+  /** The Session's name in its project folder. */
+  readonly name: string;
   readonly pid: number;
   /** When the process started, as the system tells it: with `pid`, it
    * tells the process from a later one that was given the same pid. */
@@ -49,17 +75,20 @@ function cacheFolder(): string {
   return join(XDG_CACHE_HOME ?? join(homedir(), ".cache"), "ayme");
 }
 
-/** The folder of the claims of a project folder's Session, named by a hash
- * of the project folder's real path: what a claim is keyed by. */
-const claimFolder = (projectDir: string) =>
-  join(
-    cacheFolder(),
-    "sessions",
-    createHash("sha1")
-      .update(realpathSync(projectDir))
-      .digest("hex")
-      .slice(0, 16)
-  );
+const hash = (text: string) =>
+  createHash("sha1").update(text).digest("hex").slice(0, 16);
+
+const sessionsFolder = () => join(cacheFolder(), "sessions");
+
+/** What the claim folders of a project folder's Sessions start with: a
+ * hash of the project folder's real path. */
+const folderKey = (projectDir: string) => `${hash(realpathSync(projectDir))}-`;
+
+/** The folder of the claims of a Session of a project folder, named by
+ * the project folder's key and a hash of the Session's name: what a claim
+ * is keyed by. */
+const claimFolder = (place: SessionPlace) =>
+  join(sessionsFolder(), folderKey(place.projectDir) + hash(nameOf(place)));
 
 const recordFile = (folder: string, generation: number) =>
   join(folder, `${generation}.json`);
@@ -94,7 +123,7 @@ export function processStart(pid: number): string | undefined {
 }
 
 /** This process, as a record names it. */
-export const thisProcess = (): Omit<SessionRecord, "socket"> => ({
+export const thisProcess = (): Omit<SessionRecord, "socket" | "name"> => ({
   pid: process.pid,
   since: processStart(process.pid)!,
 });
@@ -120,10 +149,13 @@ const generations = (folder: string): number[] => {
   });
 };
 
-/** The newest claim of the folder of `projectDir`'s Session. It is live
- * while its process runs and its Session has not ended. */
-export function readClaim(projectDir: string): Claim {
-  const folder = claimFolder(projectDir);
+/** The newest claim of `place`'s Session. It is live while its process
+ * runs and its Session has not ended. */
+export function readClaim(place: SessionPlace): Claim {
+  return readClaimIn(claimFolder(place));
+}
+
+function readClaimIn(folder: string): Claim {
   const generation = Math.max(0, ...generations(folder));
   if (generation === 0) return { generation, live: false };
   const record = readRecord(recordFile(folder, generation));
@@ -134,12 +166,30 @@ export function readClaim(projectDir: string): Claim {
   return record ? { generation, record, live } : { generation, live };
 }
 
-/** The record of the folder's Session, while it is live. */
+/** The record of `place`'s Session, while it is live. */
 export function liveRecord(
-  projectDir: string
+  place: SessionPlace
 ): (SessionRecord & { readonly generation: number }) | undefined {
-  const { generation, record, live } = readClaim(projectDir);
+  const { generation, record, live } = readClaim(place);
   return live && record ? { ...record, generation } : undefined;
+}
+
+/** The records of the live Sessions of a project folder, by name. */
+export function liveRecords(projectDir: string): readonly SessionRecord[] {
+  const key = folderKey(projectDir);
+  let names: string[];
+  try {
+    names = readdirSync(sessionsFolder());
+  } catch {
+    return [];
+  }
+  return names
+    .filter((name) => name.startsWith(key))
+    .flatMap((name) => {
+      const { record, live } = readClaimIn(join(sessionsFolder(), name));
+      return live && record ? [record] : [];
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -150,11 +200,12 @@ export function liveRecord(
  * gives its own up.
  */
 export function claimAfter(
-  projectDir: string,
+  place: SessionPlace,
   seen: Claim,
-  record: SessionRecord
+  owner: Omit<SessionRecord, "name">
 ): number | undefined {
-  const folder = claimFolder(projectDir);
+  const folder = claimFolder(place);
+  const record: SessionRecord = { name: nameOf(place), ...owner };
   mkdirSync(folder, { recursive: true, mode: PRIVATE_FOLDER });
   const generation = seen.generation + 1;
   const written = join(folder, `${randomUUID()}.tmp`);
@@ -184,26 +235,26 @@ export function claimAfter(
 }
 
 /**
- * Makes `record` the folder's, unless the folder has a live Session: then
- * that Session's record is returned.
+ * Makes `place`'s Session the one of `owner`, unless a live Session has
+ * its name: then that Session's record is returned.
  */
 export function claimRecord(
-  projectDir: string,
-  record: SessionRecord
+  place: SessionPlace,
+  owner: Omit<SessionRecord, "name">
 ): { readonly generation: number } | { readonly holder: SessionRecord } {
   for (;;) {
-    const seen = readClaim(projectDir);
+    const seen = readClaim(place);
     if (seen.live && seen.record) return { holder: seen.record };
-    const generation = claimAfter(projectDir, seen, record);
+    const generation = claimAfter(place, seen, owner);
     if (generation !== undefined) return { generation };
   }
 }
 
-/** Says that the Session of the folder's claim `generation` ended: from
- * then on the folder has no Session of it. */
-export function releaseRecord(projectDir: string, generation: number): void {
+/** Says that the Session of `place`'s claim `generation` ended: from then
+ * on the folder has no Session of it. */
+export function releaseRecord(place: SessionPlace, generation: number): void {
   try {
-    writeFileSync(endedFile(claimFolder(projectDir), generation), "", {
+    writeFileSync(endedFile(claimFolder(place), generation), "", {
       mode: PRIVATE_FILE,
       flag: "wx",
     });
@@ -212,12 +263,26 @@ export function releaseRecord(projectDir: string, generation: number): void {
   }
 }
 
-/** Why a Session cannot start in a folder whose Session `holder` keeps. */
+/** The `ayme` command line of `word` for `place`'s Session. */
+export const commandFor = (place: SessionPlace, word: string) =>
+  nameOf(place) === DEFAULT_NAME
+    ? `ayme ${word}`
+    : `ayme -s=${nameOf(place)} ${word}`;
+
+/** `place`'s Session, as a sentence names it after "A" or "No". */
+const session = (place: SessionPlace) =>
+  nameOf(place) === DEFAULT_NAME ? "Session" : `Session named ${nameOf(place)}`;
+
+/** Why `place`'s Session cannot start while `holder` keeps its name. */
 export const alreadyOpen = (
-  projectDir: string,
+  place: SessionPlace,
   holder: SessionRecord
 ): string =>
-  `A Session is already open in ${projectDir}, in process ${holder.pid}. End it with ayme close first.`;
+  `A ${session(place)} is already open in ${place.projectDir}, in process ${holder.pid}. End it with ${commandFor(place, "close")} first.`;
+
+/** Why a command reaches no Session of `place`. */
+export const notOpen = (place: SessionPlace): string =>
+  `No ${session(place)} is open in ${place.projectDir}. Start one with ${commandFor(place, "open")}.`;
 
 /** A folder of one Session's own, which only the user can enter: its socket
  * and the log of its process. It is in the system's temporary folder, whose

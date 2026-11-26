@@ -11,9 +11,11 @@ import {
 
 import {
   brokenStart,
+  detachRefused,
   endAnswer,
   endedAtStart,
   failed,
+  joinedAnswer,
   type Listing,
   openedAnswer,
   pageObjectsAnswer,
@@ -70,6 +72,8 @@ export const openSession = (
     const scope = yield* Scope.Scope;
     const browserScope = yield* Scope.fork(scope);
     const pageObjects = yield* PageObjectsBuild;
+    // Only a browser ayme opened is closed when the Session ends.
+    const opened = "open" in request;
     const start = yield* Deferred.make<Started, SessionStartError>();
     const ending = yield* Deferred.make<void>();
     const ended = yield* Deferred.make<SessionEnd>();
@@ -147,7 +151,10 @@ export const openSession = (
       );
 
     const answerTo = (
-      request: Exclude<SessionRequest, { readonly stop: unknown }>,
+      request: Exclude<
+        SessionRequest,
+        { readonly stop: unknown } | { readonly detach: unknown }
+      >,
       started: Started
     ): Effect.Effect<SessionAnswer> => {
       if ("pageObjects" in request) return listed(started, pageObjectsAnswer);
@@ -161,22 +168,25 @@ export const openSession = (
       started: afterStart(({ held }) =>
         Effect.gen(function* () {
           if (!(yield* Deferred.isDone(ending)))
-            return openedAnswer(held.address);
+            return (opened ? openedAnswer : joinedAnswer)(held.address);
           return failed(endedAtStart(yield* Deferred.await(ended)));
         })
       ),
-      // A stop ends a start under way at once; any other request waits for
-      // the start.
-      ask: (request) =>
-        "stop" in request
-          ? end("stopped").pipe(
-              Effect.flatMap((how) =>
-                how === "start failed"
-                  ? afterStart(() => Effect.succeed(endAnswer(how)))
-                  : Effect.succeed(endAnswer(how))
-              )
+      // A stop, or a detach from a joined browser, ends a start under way
+      // at once; any other request waits for the start. Detaching from a
+      // browser ayme opened would leave it without an owner (rule 11).
+      ask: (request) => {
+        if ("detach" in request && opened) return Effect.succeed(detachRefused);
+        if ("stop" in request || "detach" in request)
+          return end("stop" in request ? "stopped" : "detached").pipe(
+            Effect.flatMap((how) =>
+              how === "start failed"
+                ? afterStart(() => Effect.succeed(endAnswer(how, opened)))
+                : Effect.succeed(endAnswer(how, opened))
             )
-          : afterStart((started) => answerTo(request, started)),
+          );
+        return afterStart((started) => answerTo(request, started));
+      },
       events: Stream.never.pipe(Stream.interruptWhen(Deferred.await(ended))),
       ended: Deferred.await(ended),
     };

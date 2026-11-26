@@ -349,3 +349,87 @@ it("a stop sent while the Page Objects still build ends the start, and the brows
   expect(await session.ended).toBe("stopped");
   expect(browser.hostedWith).toEqual([]);
 });
+
+const joining = { join: { cdp: "http://127.0.0.1:9333" } } as const;
+
+it("a Session joins the browser it is asked to and answers its start with that browser's address", async () => {
+  const { session, browser } = await startScriptedSession(joining);
+
+  expect(await session.started).toEqual({
+    ok: true,
+    text: "A Session started on the browser at http://127.0.0.1:9333.\nayme detach ends the Session and leaves the browser running.",
+    data: { address: "http://127.0.0.1:9333" },
+  });
+  expect(browser.asked).toEqual([joining]);
+});
+
+it.each([["stop" as const], ["detach" as const]])(
+  "%s on a joined browser ends the Session and leaves the browser running",
+  async (word) => {
+    const { session, browser } = await startScriptedSession(joining);
+    await session.started;
+
+    expect(await session.ask({ [word]: {} } as never)).toEqual({
+      ok: true,
+      text: "The Session ended. Its browser keeps running.",
+    });
+    // A joined browser is only let go of: the stock adapter disconnects.
+    expect(browser.released).toBe(true);
+    expect(await session.ended).toBe(word === "stop" ? "stopped" : "detached");
+  }
+);
+
+it("detach on a browser ayme opened is refused with a pointer to ayme close, and the Session goes on", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  await session.started;
+
+  expect(await session.ask({ detach: {} })).toEqual({
+    ok: false,
+    text: "ayme opened this Session's browser, so ayme detach would leave it without an owner. End the Session and close the browser with ayme close.",
+  });
+  expect(browser.released).toBe(false);
+  expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
+});
+
+it("detach on a browser ayme opens is refused also while the Session starts, and the start goes on", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...opening,
+    held: true,
+  });
+
+  expect(await session.ask({ detach: {} })).toMatchObject({ ok: false });
+  browser.open();
+  expect(await session.started).toMatchObject({ ok: true });
+});
+
+it("a detach sent while a join is under way ends the start, and the start is answered so", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...joining,
+    held: true,
+  });
+  await pending(session.started);
+
+  expect(await session.ask({ detach: {} })).toEqual({
+    ok: true,
+    text: "The Session ended. Its browser keeps running.",
+  });
+  expect(browser.released).toBe(true);
+  expect(await session.started).toEqual({
+    ok: false,
+    text: "ayme detach ended the Session before it started.",
+  });
+  expect(await session.ended).toBe("detached");
+});
+
+it("detach after the joined browser went away says the Session had already ended", async () => {
+  const { session, browser } = await startScriptedSession(joining);
+  await session.started;
+
+  browser.goAway();
+
+  expect(await session.ended).toBe("browser gone");
+  expect(await session.ask({ detach: {} })).toEqual({
+    ok: false,
+    text: "The Session had already ended: its browser went away.",
+  });
+});

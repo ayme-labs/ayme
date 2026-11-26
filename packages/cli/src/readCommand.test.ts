@@ -299,6 +299,94 @@ describe("readCommand for a Session", () => {
     expect(USAGE).toContain("--json");
   });
 
+  it("joins the browser at the address for `attach --cdp=<url>`", () => {
+    expect(readCommand(["attach", "--cdp=http://127.0.0.1:9222"])).toEqual({
+      kind: "attach",
+      cdp: "http://127.0.0.1:9222",
+      json: false,
+    });
+    expect(
+      readCommand(["attach", "--cdp", "http://127.0.0.1:9222", "--json"])
+    ).toMatchObject({ kind: "attach", json: true });
+  });
+
+  it("asks for the address when attach has none", () => {
+    expect(readCommand(["attach"])).toEqual({
+      kind: "error",
+      text: expect.stringMatching(
+        /^Give ayme attach the address of the browser's DevTools protocol, such as --cdp=http:\/\/127\.0\.0\.1:9222\.\n/
+      ),
+    });
+  });
+
+  it.each([
+    [["attach", "--cdp=http://a", "http://b"]],
+    [["attach", "--cdp=http://a", "--headed"]],
+    [["open", "--cdp=http://a"]],
+    [["close", "--cdp=http://a"]],
+  ])(
+    "refuses --cdp where it does not belong, and what attach does not take: `%s`",
+    (args) => {
+      expect(readCommand(args).kind).toBe("error");
+    }
+  );
+
+  it("ends a Session on a joined browser for `detach`", () => {
+    expect(readCommand(["detach"])).toEqual({
+      kind: "ask",
+      request: { detach: {} },
+      json: false,
+    });
+  });
+
+  it("lists the folder's Sessions for `list`", () => {
+    expect(readCommand(["list"])).toEqual({ kind: "list", json: false });
+    expect(readCommand(["list", "--json"])).toEqual({
+      kind: "list",
+      json: true,
+    });
+  });
+
+  it.each([
+    [["-s=review", "close"]],
+    [["-s", "review", "close"]],
+    [["close", "-s=review"]],
+    [["--session=review", "close"]],
+  ])("names the Session with -s: `%s`", (args) => {
+    expect(readCommand(args)).toEqual({
+      kind: "ask",
+      request: { stop: {} },
+      json: false,
+      session: "review",
+    });
+  });
+
+  it("names the Session with AYME_SESSION, unless -s names another", () => {
+    const env = { AYME_SESSION: "review" };
+    expect(readCommand(["open"], env)).toMatchObject({ session: "review" });
+    expect(readCommand(["attach", "--cdp=http://a"], env)).toMatchObject({
+      session: "review",
+    });
+    expect(readCommand(["-s=other", "tools"], env)).toMatchObject({
+      session: "other",
+    });
+    expect(readCommand(["open"], { AYME_SESSION: "" })).not.toHaveProperty(
+      "session"
+    );
+  });
+
+  it("refuses an empty -s", () => {
+    expect(readCommand(["-s=", "close"]).kind).toBe("error");
+  });
+
+  it("lists attach, detach, list and -s in its usage text", () => {
+    expect(USAGE).toContain("ayme attach --cdp=<url>");
+    expect(USAGE).toContain("ayme detach");
+    expect(USAGE).toContain("ayme list");
+    expect(USAGE).toContain("-s=<name>");
+    expect(USAGE).toContain("AYME_SESSION");
+  });
+
   it("runs the Session's background process for its own word, which the usage text does not name", () => {
     expect(readCommand(["__session", '{"projectDir":"/app"}'])).toEqual({
       kind: "session process",
