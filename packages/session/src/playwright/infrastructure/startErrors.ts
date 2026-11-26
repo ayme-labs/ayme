@@ -19,9 +19,13 @@ export function sessionStartError(error: BrowserError): SessionStartError {
         `${error.message}\nIf Chromium is not installed for the project's Playwright, install it with: npx playwright install chromium`
       );
     case "address unreachable":
-      // Playwright's wait for the connection ends at its timeout then.
       return new SessionStartError(
-        `${error.message}\nCheck that the browser runs and that this is the address of its DevTools protocol. Chrome answers no new connection while a dialog is open in one of its pages: answer it, then run ayme attach again.`
+        `${error.message}\nCheck that the browser runs and that this is the address of its DevTools protocol.${
+          // Playwright's wait for the connection ends at its timeout then.
+          error.timedOut
+            ? " Chrome answers no new connection while a dialog is open in one of its pages: answer it, then run ayme attach again."
+            : ""
+        }`
       );
   }
 }

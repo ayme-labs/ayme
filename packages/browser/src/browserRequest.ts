@@ -26,7 +26,9 @@ export function browserUnavailable(
   return "join" in request
     ? new BrowserError(
         "address unreachable",
-        `Playwright could not connect to the browser at ${request.join.cdp}. ${reason}`
+        `Playwright could not connect to the browser at ${request.join.cdp}. ${reason}`,
+        // Playwright's own TimeoutError, which this package does not load.
+        { timedOut: cause instanceof Error && cause.name === "TimeoutError" }
       )
     : new BrowserError(
         "browser did not start",

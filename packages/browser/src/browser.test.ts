@@ -183,6 +183,22 @@ it("fails, naming the address, when the browser there cannot be joined", async (
   });
 });
 
+it("says whether a join that failed waited until Playwright's timeout", async () => {
+  const timeout = Object.assign(
+    new Error("browserType.connectOverCDP: Timeout 30000ms exceeded."),
+    { name: "TimeoutError" }
+  );
+  const join = { join: { cdp: "http://127.0.0.1:9222" } };
+
+  expect(browserUnavailable(join, timeout)).toMatchObject({
+    kind: "address unreachable",
+    timedOut: true,
+  });
+  expect(
+    browserUnavailable(join, new Error("connect ECONNREFUSED"))
+  ).toMatchObject({ timedOut: false });
+});
+
 it("says why a browser is unavailable for a cause that is not an Error", () => {
   expect(browserUnavailable({ open: { headed: true } }, "gone")).toMatchObject({
     kind: "browser did not start",
