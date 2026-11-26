@@ -211,7 +211,7 @@ it("tools lists every Page Object Tool of the Tab with its parameters, an unavai
   });
 });
 
-it("a screen without Page Object Tools says so in both listings", async () => {
+it("a screen without Page Object Tools says so in both listings, and page-objects still ends with the count and where tools are listed", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.show({
     tab: { url: "http://127.0.0.1:5173/plain.html", title: "" },
@@ -220,7 +220,7 @@ it("a screen without Page Object Tools says so in both listings", async () => {
   });
 
   expect(await session.ask({ pageObjects: {} })).toMatchObject({
-    text: "Tab: http://127.0.0.1:5173/plain.html\nNo Page Object is on the page.\nThis screen has no Page Object Tools.",
+    text: "Tab: http://127.0.0.1:5173/plain.html\nNo Page Object is on the page.\nThis screen has 0 Page Object Tools: ayme tools lists them with their parameters.",
   });
   expect(await session.ask({ tools: {} })).toMatchObject({
     text: "Tab: http://127.0.0.1:5173/plain.html\nThis screen has no Page Object Tools.",
