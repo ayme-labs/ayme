@@ -17,6 +17,7 @@ export type LiveTool = {
 /** A Run as the page's Run log has it. */
 export type LoggedRun = {
   tool: string;
+  input?: unknown;
   status: "running" | "succeeded" | "failed";
   result?: unknown;
   error?: string;
@@ -39,7 +40,9 @@ const indented = (text: string) =>
  * The legend's counts from what the runtime gives an agent: the Page
  * Objects `page_objects` lists are live; a single Page Object child that a
  * live one's definition declares (`name: Class`) and `page_objects` leaves
- * out is not on the page; the refs are those `snapshot`'s structure names.
+ * out is not on the page; the refs are the nodes of `snapshot`'s structure,
+ * each line's first token after its dash, whatever its form (`e5`, `s_1`),
+ * where a text line has `text:`.
  */
 export function legendCounts(
   pageObjects: string,
@@ -73,7 +76,12 @@ export function legendCounts(
   return {
     live,
     notOnPage,
-    refs: new Set(structure.match(/\be\d+\b/g)).size,
+    refs: new Set(
+      structure
+        .split("\n")
+        .map((line) => /^\s*- ([^\s:]+)/.exec(line)?.[1])
+        .filter((token) => token !== undefined && token !== "text")
+    ).size,
   };
 }
 
@@ -134,8 +142,9 @@ export class AppView {
       window
         .fixtureAyme!.runs.list()
         .filter((run) => run.parent === undefined)
-        .map(({ tool, status, result, error }) => ({
+        .map(({ tool, input, status, result, error }) => ({
           tool,
+          input,
           status,
           result,
           error,

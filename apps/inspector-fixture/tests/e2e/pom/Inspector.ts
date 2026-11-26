@@ -313,6 +313,14 @@ export class Navigator extends Part {
     return this.on((root) => root.getByRole("group", "Legend"));
   }
 
+  /** The legend's items as the DOM has them, such as "3 live". */
+  legendItems(): Promise<string[]> {
+    return panelTexts(
+      this.tab,
+      'nav[aria-label="Navigator"] [aria-label="Legend"] > span'
+    );
+  }
+
   get searchBox(): On {
     return this.on((root) => root.getByRole("searchbox"));
   }
@@ -482,27 +490,35 @@ export class KeyField extends Part {
 
 /** `generate_locator`'s groups of targets, each with the locators a run gave them. */
 export class LocatorGroups extends Part {
+  /** One group, in the card's list of groups. */
   private group(number: number) {
-    return (groups: Locator) => groups.getByRole("listitem", `Group ${number}`);
+    return (card: Locator) =>
+      card
+        .getByRole("list", "Locator groups")
+        .getByRole("listitem", `Group ${number}`);
+  }
+
+  get addGroupButton(): On {
+    return this.on((card) => card.getByRole("button", "Add group"));
   }
 
   /** The locator the last run gave a target. */
   locator(number: number, ref: string): On {
-    return this.on((groups) =>
-      this.group(number)(groups).getByLabel(`Locator for ${ref}`)
+    return this.on((card) =>
+      this.group(number)(card).getByLabel(`Locator for ${ref}`)
     );
   }
 
   /** Adds targets from a group's tree, or removes ones it has, by ref. */
   async toggleFromTree(number: number, ...refs: string[]) {
-    const treeButton = this.on((groups) =>
-      this.group(number)(groups).getByRole("button", "Add from tree")
+    const treeButton = this.on((card) =>
+      this.group(number)(card).getByRole("button", "Add from tree")
     );
     if ((await treeButton.getAttribute("aria-expanded")) !== "true")
       await treeButton.click();
     for (const ref of refs)
-      await this.on((groups) =>
-        this.group(number)(groups)
+      await this.on((card) =>
+        this.group(number)(card)
           .getByRole("tree", `Add targets to group ${number}`)
           .getByRole("treeitem")
           .filter({ hasText: new RegExp(`^${ref}(?!\\d)`) })
@@ -655,10 +671,7 @@ export class RunCard extends Part {
 
   /** `generate_locator`'s groups. */
   get locatorGroups(): LocatorGroups {
-    return new LocatorGroups(
-      this.tab,
-      this.inside((card) => card.getByRole("list", "Locator groups"))
-    );
+    return new LocatorGroups(this.tab, this.root);
   }
 
   /** `fill_form`'s form. */
@@ -1033,12 +1046,17 @@ export class RunEntry {
     );
   }
 
-  /** Shows or hides its result, on a successful run that returned one. */
   /** Copies its result. */
   get copyResultButton(): On {
     return this.root.within((run) => run.getByRole("button", "Copy").first());
   }
 
+  /** What its card announces, such as "Copied" once a copy landed. */
+  get announced(): On {
+    return this.root.within((run) => run.getByRole("status").first());
+  }
+
+  /** Shows or hides its result, on a successful run that returned one. */
   get resultToggle(): On {
     return this.root.within((run) => run.getByRole("button", "Result").first());
   }

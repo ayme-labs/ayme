@@ -209,15 +209,18 @@ test.describe("connected to an agent", () => {
     agent,
     inspector,
   }) => {
+    // Its own budget: "Not connected" waits out the client's reconnect
+    // window (RECONNECTING_MS in packages/mcp/src/client/index.ts).
+    test.setTimeout(60_000);
     const { pill } = inspector.header.connections;
     await expect(pill).toHaveText(AGENT_CLIENT_NAME);
 
-    await agent!.close();
-
+    // Watched while the server stops, not after.
+    const stopped = agent!.close();
     await expect(pill).toHaveText("Reconnecting");
-    // The tab says it is reconnecting for 10 s, then that its server stopped
-    // answering.
-    await expect(pill).toHaveText("Not connected", { timeout: 15_000 });
+    await stopped;
+
+    await expect(pill).toHaveText("Not connected", { timeout: 30_000 });
   });
 });
 
@@ -360,12 +363,16 @@ test("the panel's CSS does not reach the host", async ({ page }) => {
 });
 
 test("the legend counts what the page's runtime reports", async ({ page }) => {
-  // A page with a Page Object child that is not on it, for all three counts.
-  const { inspector } = await openFixture(page, "/models.html");
-  const { live, notOnPage, refs } = await new AppView(page).legendCounts();
-  const { legend } = inspector.navigator;
+  // The list page has a collection model with no item and no single child
+  // missing; the models page has a single child missing. So a count of the
+  // models not on the page and a count of the Page Object nodes not on it,
+  // which the Model lens implements, differ on the first.
+  for (const path of ["/", "/models.html"] as const) {
+    const { inspector } = await openFixture(page, path);
+    const { live, notOnPage, refs } = await new AppView(page).legendCounts();
 
-  await expect(legend).toContainText(`${live} live`);
-  await expect(legend).toContainText(`${notOnPage} not on page`);
-  await expect(legend).toContainText(`${refs} refs`);
+    await expect(
+      inspector.navigator.legend.locator(":scope > span")
+    ).toHaveText([`${live} live`, `${notOnPage} not on page`, `${refs} refs`]);
+  }
 });
