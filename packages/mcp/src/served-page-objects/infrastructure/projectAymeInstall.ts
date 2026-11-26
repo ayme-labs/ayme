@@ -130,8 +130,10 @@ async function resolveAfresh(
     stdin: {
       contents: specifiers
         .map((s) => `import ${JSON.stringify(s)};`)
-        // Stryker disable next-line StringLiteral: equivalent, each import ends with a semicolon.
-        .join("\n"),
+        .join(
+          // Stryker disable next-line StringLiteral: equivalent, each import ends with a semicolon.
+          "\n"
+        ),
       resolveDir: folder,
     },
     bundle: true,
