@@ -39,6 +39,16 @@ function installedIn(projectDir: string, name: string): string | undefined {
   }
 }
 
+/** The folder of the Playwright installed in the project, under the first of
+ * its names found. */
+function installedPlaywright(projectDir: string): string | undefined {
+  for (const name of PLAYWRIGHT_PACKAGES) {
+    const folder = installedIn(projectDir, name);
+    if (folder) return folder;
+  }
+  return undefined;
+}
+
 /**
  * The Playwright the project has installed: resolved from the project
  * folder, never from ayme's own dependencies (ADR-0052). One older than the
@@ -47,31 +57,41 @@ function installedIn(projectDir: string, name: string): string | undefined {
 export const projectPlaywright = (
   projectDir: string
 ): Effect.Effect<ProjectPlaywright, BrowserError> =>
-  Effect.suspend(() => {
-    for (const name of PLAYWRIGHT_PACKAGES) {
-      const folder = installedIn(projectDir, name);
-      if (!folder) continue;
-      const { version } = JSON.parse(
-        readFileSync(join(folder, "package.json"), "utf8")
-      ) as { version: string };
-      if (placeInRange(version) === "below")
-        return Effect.fail(
+  Effect.gen(function* () {
+    const folder = installedPlaywright(projectDir);
+    if (!folder)
+      return yield* Effect.fail(
+        new BrowserError(
+          "no Playwright in the project",
+          `No Playwright is installed in ${projectDir}.`
+        )
+      );
+    // A broken install, such as one whose entry file is gone, is no
+    // Playwright either: the remedy is to install it again.
+    const load = <A>(read: () => A) =>
+      Effect.try({
+        try: read,
+        catch: (cause) =>
           new BrowserError(
-            "unsupported Playwright version",
-            `${projectDir} has Playwright ${version}.`
-          )
-        );
-      return Effect.succeed({
-        playwright: requireFile(folder) as Playwright,
-        version,
+            "no Playwright in the project",
+            `The Playwright at ${folder} cannot be loaded (${String(cause).split("\n")[0]}).`
+          ),
       });
-    }
-    return Effect.fail(
-      new BrowserError(
-        "no Playwright in the project",
-        `No Playwright is installed in ${projectDir}.`
-      )
+    const { version } = yield* load(
+      () =>
+        JSON.parse(readFileSync(join(folder, "package.json"), "utf8")) as {
+          version: string;
+        }
     );
+    if (placeInRange(version) === "below")
+      return yield* Effect.fail(
+        new BrowserError(
+          "unsupported Playwright version",
+          `${projectDir} has Playwright ${version}.`
+        )
+      );
+    const playwright = yield* load(() => requireFile(folder) as Playwright);
+    return { playwright, version };
   });
 
 /**

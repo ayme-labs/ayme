@@ -1,6 +1,7 @@
 /** Why ayme could not get a browser. */
 export type BrowserErrorKind =
-  /** No Playwright resolves from the project folder. */
+  /** No Playwright resolves from the project folder, or the one that does
+   * cannot be loaded. */
   | "no Playwright in the project"
   /** The project's Playwright is older than the supported range. */
   | "unsupported Playwright version"

@@ -41,6 +41,13 @@ export default [
         ...[playwrightTypesOnly, otherEffectPackages].map(
           ({ regex, message }) => ({ selector: selector(regex), message })
         ),
+        // A module in backticks, which the selectors above do not read.
+        {
+          selector:
+            'ImportExpression[source.type="TemplateLiteral"][source.expressions.length=0]',
+          message:
+            "Write the module in import() as a quoted string, so lint can check it.",
+        },
       ],
     },
   },
