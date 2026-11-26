@@ -17,8 +17,9 @@ A coding agent reaches a project's Page Objects through a Session: one running a
 - The Session runs the project's Page Objects in Node, with the project's own Playwright, as the Host of each Tab it works on, against the browser the developer's browser automation drives. Nothing of ayme has to be in the app.
 - An agent reaches the Session through the `ayme` commands, which it runs beside its browser automation. The automation keeps doing everything else: snapshots, clicks outside Page Objects, navigation and answering dialogs. A developer reaches the Session through the Inspector.
 - The Session lives in a process of its own that the commands talk to, so that what it holds lasts from one command to the next: its browser, its Page Objects, its Page Object Ids and the Run under way on each Tab.
-- A Session always has a browser. It starts with one, which `ayme open` starts or `ayme attach` joins, and it ends when that browser goes away. ayme closes only a browser it started.
+- A Session always has a browser. It starts with one, which ayme either starts or joins, and it ends when that browser goes away. ayme closes only a browser it started.
 - A page that ships ayme is not a Session. An agent reaches it through WebMCP.
+- This adds a route beside the one ADR-0055 and ADR-0066 decide, where a page pairs with a coding agent's MCP server over the Agent Connection. That route still exists; when it is removed, a new ADR supersedes those two.
 
 ## Considered and rejected
 
@@ -32,3 +33,4 @@ A coding agent reaches a project's Page Objects through a Session: one running a
 - The developer's browser automation and ayme have to be connected to one browser: one more step to set up, which differs between automations.
 - A Session is a process that keeps running until it is closed or its browser goes away.
 - The project's Page Objects are built for Node, beside any build that puts them in the app.
+- A browser ayme starts serves the DevTools protocol on the loopback address without authentication, as any browser started for automation does, so any process on the machine can drive it: the developer's browser automation has to be able to connect to it.
