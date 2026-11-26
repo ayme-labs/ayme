@@ -56,6 +56,23 @@ it("fails to start, with a reason, when the project has no Playwright installed"
   });
 });
 
+it("fails to start, naming the install, when the project's Playwright cannot be loaded", async () => {
+  await installPlaywrightWithoutChromium(folder, "playwright");
+  const installed = join(folder, "node_modules", "playwright");
+  await rm(join(installed, "index.js"));
+
+  const failure = await start(folder);
+
+  expect(failure).toBeInstanceOf(RecorderStartError);
+  expect(failure).toMatchObject({
+    reason: "playwright-not-found",
+    message: expect.stringMatching(
+      /^The Playwright at .+ cannot be loaded \(Error: Cannot find module .+\)\. The recorder uses the project's own Playwright: install it there, for example with "npm install -D @playwright\/test"\.$/
+    ),
+  });
+  expect((failure as Error).message).toContain(installed);
+});
+
 it.each(["playwright", "@playwright/test", "playwright-core"])(
   "fails to start, with a reason, when the project's %s cannot launch Chromium",
   async (name) => {
