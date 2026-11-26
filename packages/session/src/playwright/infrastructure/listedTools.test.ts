@@ -17,7 +17,6 @@ it("lists the Page Object Tools alone, each with what an agent reads of it", () 
       {
         name: "Basket.readHeading",
         group: "pageObject",
-        authorDescription: "Read the heading.",
         agentDescription: "Read the heading. Afterwards the page shows Basket.",
         inputSchema: schema,
         available: true,

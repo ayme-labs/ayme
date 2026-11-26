@@ -2,7 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium } from "@playwright/test";
 
-import { expect, isAlive, test } from "./aymeCommand";
+import { expect, test } from "./aymeCommand";
 
 // `ayme page-objects` and `ayme tools`, run as a child process against a
 // real browser: the Session runs the project's Page Objects in Node, on a
@@ -108,28 +108,31 @@ test("ayme puts nothing into the page but through Playwright: the page keeps no 
   const opened = await ayme("open", `${baseURL}/shop.html`);
   await ayme("page-objects");
   const browser = await chromium.connectOverCDP(addressIn(opened.stdout)!);
-  const [page] = browser.contexts()[0]!.pages();
+  try {
+    const [page] = browser.contexts()[0]!.pages();
 
-  // A page load drops what ayme evaluated in the page, and ayme adds no
-  // script of its own to the document: the one script is Vite's client.
-  await page!.reload();
+    // A page load drops what ayme evaluated in the page, and ayme adds no
+    // script of its own to the document: the one script is Vite's client.
+    await page!.reload();
 
-  expect(
-    await page!.evaluate(() =>
-      [...document.scripts].map((script) => script.src || script.text)
-    )
-  ).toEqual([`${baseURL}/@vite/client`]);
-  expect(await ayme("page-objects")).toMatchObject({
-    code: 0,
-    stdout: expect.stringContaining("Basket po"),
-  });
-  await browser.close();
+    expect(
+      await page!.evaluate(() =>
+        [...document.scripts].map((script) => script.src || script.text)
+      )
+    ).toEqual([`${baseURL}/@vite/client`]);
+    expect(await ayme("page-objects")).toMatchObject({
+      code: 0,
+      stdout: expect.stringContaining("Basket po"),
+    });
+  } finally {
+    await browser.close();
+  }
 });
 
 test("when the Page Objects do not build, ayme open prints the build error, and no Session or browser is left", async ({
   ayme,
   project,
-  sessionProcess,
+  processesLeft,
 }) => {
   await writeFile(
     join(project, "ayme", "pom", "ShopPage.ts"),
@@ -143,8 +146,71 @@ test("when the Page Objects do not build, ayme open prints the build error, and 
     `The Page Objects of ${join(project, "ayme", "page-objects.ts")} did not build:`
   );
   expect(opened.stderr).toContain("ayme/pom/ShopPage.ts:");
-  const left = sessionProcess();
-  expect(left === undefined || !isAlive(left)).toBe(true);
+  // Neither the Session's process nor Chromium, whose profile is in the
+  // same temporary folder.
+  await expect.poll(processesLeft).toEqual([]);
+  expect(await ayme("page-objects")).toMatchObject({
+    code: 1,
+    stderr: expect.stringContaining("No Session is open"),
+  });
+});
+
+/** Makes the project's Page Objects entry one whose top-level await never
+ * settles, so its build never finishes loading. */
+const neverLoading = (project: string) =>
+  writeFile(
+    join(project, "ayme", "page-objects.ts"),
+    "await new Promise(() => {});\nexport default [];\n"
+  );
+
+/** Time for the build to reach the import of the entry, which never ends. */
+const intoTheImport = () => new Promise((resolve) => setTimeout(resolve, 1000));
+
+test("ayme close ends a start whose Page Objects never finish loading, and ayme open says so", async ({
+  ayme,
+  project,
+  sessionProcess,
+  processesLeft,
+}) => {
+  await neverLoading(project);
+
+  const opening = ayme("open");
+  await expect.poll(sessionProcess).toBeDefined();
+  await intoTheImport();
+
+  expect(await ayme("close")).toEqual({
+    code: 0,
+    stdout: "The Session ended and its browser was closed.\n",
+    stderr: "",
+  });
+  expect(await opening).toEqual({
+    code: 1,
+    stdout: "",
+    stderr: "ayme close ended the Session before it started.\n",
+  });
+  await expect.poll(processesLeft).toEqual([]);
+});
+
+test("stopping ayme open ends a start whose Page Objects never finish loading, and leaves no Session or browser", async ({
+  ayme,
+  aymeUntil,
+  project,
+  sessionProcess,
+  processesLeft,
+}) => {
+  await neverLoading(project);
+  const stop = new AbortController();
+
+  const opening = aymeUntil(stop.signal, "open");
+  let answered = false;
+  void opening.then(() => (answered = true));
+  await expect.poll(sessionProcess).toBeDefined();
+  await intoTheImport();
+  expect(answered).toBe(false);
+  stop.abort();
+  await opening;
+
+  await expect.poll(processesLeft).toEqual([]);
   expect(await ayme("page-objects")).toMatchObject({
     code: 1,
     stderr: expect.stringContaining("No Session is open"),

@@ -45,7 +45,8 @@ const reason = (cause: unknown) =>
  * Makes the Session the Host of `page`, running `pageObjects` there, on the
  * Playwright whose `selectors` drive the page: the one `@ayme-dev/browser`
  * found, where the Node Host registers its selector engine. The Node Host's
- * start reads nothing of the page.
+ * start sets up the page's binding and its in-page helper without waiting
+ * for either, so it reads nothing of the page.
  */
 export const hostTab = (
   page: Page,

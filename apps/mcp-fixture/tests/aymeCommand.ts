@@ -10,21 +10,39 @@ import { test as base, expect } from "@playwright/test";
 
 export { expect };
 
-/** Whether a process with `pid` exists. */
-export function isAlive(pid: number): boolean {
+/** The state the system gives the process `pid`, such as "S" or "Z", or
+ * undefined when there is none. */
+function processState(pid: number): string | undefined {
   try {
-    process.kill(pid, 0);
-    return true;
+    if (process.platform === "linux") {
+      // The field after the name, which may hold spaces.
+      const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+      return stat.slice(stat.lastIndexOf(")") + 2).split(" ")[0];
+    }
+    return (
+      execFileSync("ps", ["-o", "stat=", "-p", String(pid)], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim() || undefined
+    );
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+/** Whether a process with `pid` runs. One that ended but was never reaped,
+ * a zombie, does not: in CI's container, which has no init process, an
+ * orphan such as a Session's process stays one for good. */
+export function isAlive(pid: number): boolean {
+  const state = processState(pid);
+  return state !== undefined && !state.startsWith("Z");
 }
 
 /** The ayme folder of the command's projects: Page Objects written as for
  * a Playwright test, for `shop.html`. */
 const COMMAND_AYME = fileURLToPath(new URL("../command/ayme", import.meta.url));
 
-/** The processes whose command line names `text`. */
+/** The processes whose command line names `text`. A zombie has none. */
 function processesNaming(text: string): number[] {
   if (process.platform === "linux")
     return readdirSync("/proc").flatMap((name) => {
@@ -80,6 +98,15 @@ export const test = base.extend<{
   project: string;
   /** Runs the built `ayme` command in the project. */
   ayme: (...args: string[]) => Promise<AymeRun>;
+  /** Runs the built `ayme` command in the project until `signal` stops
+   * it, as Ctrl+C would. */
+  aymeUntil: (signal: AbortSignal, ...args: string[]) => Promise<AymeRun>;
+  /** The temporary folder of the test's `ayme` runs, which each process
+   * they start names: the background process in its socket's path and
+   * Chromium in its profile's. */
+  temporary: string;
+  /** The processes the test's `ayme` runs started that still run. */
+  processesLeft: () => number[];
   /** Runs the built `ayme` command in the folder `cwd`, with a cache folder
    * and a temporary folder of the test's own, so it never finds another
    * test's Session. Every process it started is ended with the test, and
@@ -126,21 +153,40 @@ export const test = base.extend<{
     });
   },
   // eslint-disable-next-line no-empty-pattern
-  aymeIn: async ({}, use, testInfo) => {
-    const cache = testInfo.outputPath("cache");
+  temporary: async ({}, use) => {
     // A short folder: a Session's socket lives in it, and a local socket's
     // path is short.
     const temporary = realpathSync(await mkdtemp(join(tmpdir(), "ayme-e2e-")));
+    try {
+      await use(temporary);
+    } finally {
+      await endProcessesIn(temporary);
+      await rm(temporary, { recursive: true, force: true });
+    }
+  },
+  processesLeft: async ({ temporary }, use) => {
+    await use(() => processesNaming(temporary));
+  },
+  aymeIn: async ({ temporary }, use, testInfo) => {
+    const cache = testInfo.outputPath("cache");
     const env = { ...process.env, AYME_CACHE_DIR: cache, TMPDIR: temporary };
     try {
       await use((cwd, ...args) => runAyme(args, { cwd, env }));
     } finally {
-      await endProcessesIn(temporary);
-      await rm(temporary, { recursive: true, force: true });
       await rm(cache, { recursive: true, force: true });
     }
   },
   ayme: async ({ project, aymeIn }, use) => {
     await use((...args) => aymeIn(project, ...args));
+  },
+  aymeUntil: async ({ project, temporary }, use, testInfo) => {
+    const env = {
+      ...process.env,
+      AYME_CACHE_DIR: testInfo.outputPath("cache"),
+      TMPDIR: temporary,
+    };
+    await use((signal, ...args) =>
+      runAyme(args, { cwd: project, env, signal })
+    );
   },
 });

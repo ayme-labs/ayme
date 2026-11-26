@@ -240,6 +240,20 @@ it("a record whose process id now belongs to another process is no Session", asy
   });
 });
 
+it("a record whose process ended but was never reaped, as in a container without an init process, is no Session", async () => {
+  // `sleep 0.3` outlives the shell, which becomes `sleep 60` and never
+  // waits for it: once it ends, it stays as a zombie until `sleep 60` ends.
+  const parent = spawn("sh", ["-c", "sleep 0.3 & echo $!; exec sleep 60"], {
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  onTestFinished(() => void parent.kill());
+  const [printed] = (await once(parent.stdout!, "data")) as [Buffer];
+  const pid = Number(printed.toString());
+  claimRecord(place, { pid, since: processStart(pid)!, socket: "z.sock" });
+
+  await vi.waitFor(() => expect(liveRecord(place)).toBeUndefined());
+});
+
 it("a command sent while the Session's process starts, before it listens, waits for the start", async () => {
   const { socket } = sessionFolder();
   claimRecord(place, { ...thisProcess(), socket });
