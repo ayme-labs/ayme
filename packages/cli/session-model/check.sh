@@ -10,7 +10,7 @@ mkdir "$out"
 node "$here/rules.mjs"
 (cd "$root" && pnpm exec prettier --log-level warn --write "$here"/*.rules.json)
 status=0
-for focus in requests lifecycle ids; do
+for focus in runs lifecycle ids; do
   sh "$root/.agents/skills/stately/scripts/stately-check" check "$here/session.json" \
     --rules "$here/$focus.rules.json" --out "$out/$focus" --compact || status=$?
 done

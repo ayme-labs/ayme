@@ -2,80 +2,119 @@
   "id": "session",
   "type": "parallel",
   "states": {
+    "browser": {
+      "initial": "tabs",
+      "states": {
+        "tabs": {
+          "on": {
+            "DIALOG_OPEN": {
+              "guard": "canOpenDialog",
+              "actions": "openDialog"
+            },
+            "DIALOG_CLOSE": {
+              "guard": "canCloseDialog",
+              "actions": "closeDialog"
+            },
+            "DIALOG_TIMEOUT": {
+              "guard": "dialogAgesOutsideRun",
+              "actions": "ageDialog"
+            },
+            "TAB_SWITCH": {
+              "guard": "canSwitchTab",
+              "actions": "switchTab"
+            },
+            "TAB_OPEN": {
+              "guard": "canOpenTab",
+              "actions": "openTab"
+            },
+            "TAB_CLOSE": {
+              "guard": "canCloseTab",
+              "actions": "closeTab"
+            },
+            "HIDE": {
+              "guard": "canHide",
+              "actions": "hide"
+            },
+            "SHOW": {
+              "guard": "canShow",
+              "actions": "show"
+            },
+            "NAVIGATE": {
+              "guard": "canNavigate",
+              "actions": "navigate"
+            }
+          }
+        }
+      }
+    },
     "life": {
       "initial": "noSession",
       "states": {
         "noSession": {
           "on": {
             "OPEN": {
-              "target": "running",
-              "guard": "canStart",
+              "target": "starting",
+              "guard": "canOpen",
               "actions": "startOwnBrowser"
             },
             "ATTACH": {
-              "target": "running",
-              "guard": "canStart",
+              "target": "starting",
+              "guard": "canAttach",
               "actions": "joinBrowser"
+            },
+            "BROWSER_GONE": {
+              "guard": "browserCanGo",
+              "actions": "browserGone"
+            }
+          }
+        },
+        "starting": {
+          "on": {
+            "FIRST_BUILD": [
+              {
+                "target": "running",
+                "guard": "firstBuildOk",
+                "actions": "startSession"
+              },
+              {
+                "target": "noSession",
+                "guard": "firstBuildFails",
+                "actions": "failStart"
+              }
+            ],
+            "BROWSER_GONE": {
+              "target": "noSession",
+              "guard": "browserCanGo",
+              "actions": "browserGoneDuringStart"
             }
           }
         },
         "running": {
-          "type": "parallel",
           "on": {
             "BROWSER_GONE": {
               "target": "noSession",
               "guard": "browserCanGo",
-              "actions": "browserGone"
+              "actions": "endSessionBrowserGone"
             },
             "STOP_DONE": {
               "target": "noSession",
-              "guard": "stopAsked",
+              "guard": "canEndSession",
               "actions": "endSession"
             },
-            "ORPHAN_DONE": {
-              "guard": "abandonedWorkEnds",
-              "actions": "endAbandonedWork"
+            "STOPPED_END": {
+              "guard": "stoppedActionCanEnd",
+              "actions": "endStoppedAction"
             },
-            "NAVIGATE": { "guard": "canNavigate", "actions": "navigate" },
-            "READ": { "guard": "canRead", "actions": "read" }
+            "READ": {
+              "guard": "canRead",
+              "actions": "read"
+            }
           },
+          "initial": "pageObjects",
           "states": {
-            "browser": {
-              "initial": "starting",
-              "states": {
-                "starting": {
-                  "on": { "BROWSER_READY": { "target": "connected" } }
-                },
-                "connected": {
-                  "on": {
-                    "DIALOG_OPEN": {
-                      "guard": "canOpenDialog",
-                      "actions": "openDialog"
-                    },
-                    "DIALOG_ANSWERED": {
-                      "guard": "dialogIsOpen",
-                      "actions": "answerDialog"
-                    }
-                  }
-                }
-              }
-            },
             "pageObjects": {
-              "initial": "building",
+              "initial": "ready",
               "states": {
-                "building": {
-                  "on": {
-                    "BUILD_DONE": [
-                      {
-                        "target": "ready",
-                        "guard": "buildOk",
-                        "actions": "keepBuild"
-                      },
-                      { "target": "failed", "actions": "failBuild" }
-                    ],
-                    "EDIT": { "guard": "canEdit", "actions": "edit" }
-                  }
-                },
                 "ready": {
                   "on": {
                     "EDIT": {
@@ -89,16 +128,23 @@
                   "on": {
                     "BUILD_DONE": [
                       {
-                        "target": "built",
+                        "target": "waitingToSwap",
                         "guard": "buildOk",
-                        "actions": "keepBuild"
+                        "actions": "buildSucceeded"
                       },
-                      { "target": "failed", "actions": "failBuild" }
+                      {
+                        "target": "ready",
+                        "guard": "buildFails",
+                        "actions": "buildFailed"
+                      }
                     ],
-                    "EDIT": { "guard": "canEdit", "actions": "edit" }
+                    "EDIT": {
+                      "guard": "canEdit",
+                      "actions": "edit"
+                    }
                   }
                 },
-                "built": {
+                "waitingToSwap": {
                   "on": {
                     "SWAP": {
                       "target": "ready",
@@ -111,112 +157,51 @@
                       "actions": "edit"
                     }
                   }
-                },
-                "failed": {
-                  "on": {
-                    "EDIT": {
-                      "target": "rebuilding",
-                      "guard": "canEdit",
-                      "actions": "edit"
-                    }
-                  }
                 }
               }
+            }
+          }
+        }
+      }
+    },
+    "opener": {
+      "initial": "idle",
+      "states": {
+        "idle": {
+          "on": {
+            "OPEN": [
+              {
+                "target": "waiting",
+                "guard": "canOpen"
+              },
+              {
+                "guard": "openNameInUse",
+                "actions": "refuseOpen"
+              }
+            ],
+            "ATTACH": [
+              {
+                "target": "waiting",
+                "guard": "canAttach"
+              },
+              {
+                "guard": "attachNameInUse",
+                "actions": "refuseOpen"
+              }
+            ]
+          }
+        },
+        "waiting": {
+          "on": {
+            "OPENED": {
+              "target": "idle",
+              "guard": "sessionRunning",
+              "actions": "answerOpened"
             },
-            "tab": {
-              "initial": "none",
-              "states": {
-                "none": { "on": { "BROWSER_READY": { "target": "working" } } },
-                "working": {
-                  "on": {
-                    "TAB_SWITCH": {
-                      "guard": "canSwitchTab",
-                      "actions": "switchTab"
-                    },
-                    "TAB_HIDE": {
-                      "target": "hidden",
-                      "guard": "canHideTab",
-                      "actions": "countOutside"
-                    }
-                  }
-                },
-                "hidden": {
-                  "on": {
-                    "TAB_SHOW": {
-                      "target": "working",
-                      "guard": "canHideTab",
-                      "actions": "countOutside"
-                    },
-                    "TAB_SWITCH": {
-                      "target": "working",
-                      "guard": "canSwitchTab",
-                      "actions": "switchTab"
-                    }
-                  }
-                }
-              }
-            },
-            "inspector": {
-              "initial": "noWindow",
-              "states": {
-                "noWindow": {
-                  "on": {
-                    "WINDOW_OPEN": {
-                      "target": "windowOpen",
-                      "guard": "canOpenWindow",
-                      "actions": "openWindow"
-                    }
-                  }
-                },
-                "windowOpen": {
-                  "on": {
-                    "WINDOW_OPEN": {
-                      "guard": "canOpenWindow",
-                      "actions": "openWindow"
-                    },
-                    "WINDOW_CLOSE": [
-                      {
-                        "target": "noWindow",
-                        "guard": "closesLastWindow",
-                        "actions": "closeWindow"
-                      },
-                      { "guard": "closesAWindow", "actions": "closeWindow" }
-                    ],
-                    "PICK_ASK": { "guard": "canAskPick", "actions": "askPick" },
-                    "PICK_BEGIN": {
-                      "target": "picking",
-                      "guard": "pickIsStarting",
-                      "actions": "beginPick"
-                    }
-                  }
-                },
-                "picking": {
-                  "on": {
-                    "WINDOW_OPEN": {
-                      "guard": "canOpenWindow",
-                      "actions": "openWindow"
-                    },
-                    "WINDOW_CLOSE": [
-                      {
-                        "target": "noWindow",
-                        "guard": "closesLastWindow",
-                        "actions": "closeWindowEndPick"
-                      },
-                      {
-                        "target": "windowOpen",
-                        "guard": "closesPicker",
-                        "actions": "closeWindowEndPick"
-                      },
-                      { "guard": "closesAWindow", "actions": "closeWindow" }
-                    ],
-                    "PICK_END": {
-                      "target": "windowOpen",
-                      "guard": "outside",
-                      "actions": "endPick"
-                    }
-                  }
-                }
-              }
+            "OPEN_FAILED": {
+              "target": "idle",
+              "guard": "noSession",
+              "actions": "answerOpenFailed"
             }
           }
         }
@@ -227,118 +212,200 @@
       "states": {
         "idle": {
           "on": {
-            "LIST": [
-              { "guard": "askWithoutSession", "actions": "answerNoSession" },
-              { "target": "listing", "guard": "canAsk", "actions": "askList" }
-            ],
-            "CALL": [
-              { "guard": "askWithoutSession", "actions": "answerNoSession" },
-              { "target": "calling", "guard": "canAsk", "actions": "askCall" }
-            ],
-            "DETACH": [
-              { "guard": "askWithoutSession", "actions": "answerNoSession" },
+            "COMMAND": {
+              "target": "waitingForStart",
+              "guard": "canSendCommand",
+              "actions": "sendCommand"
+            }
+          }
+        },
+        "waitingForStart": {
+          "on": {
+            "A_NO_SESSION": {
+              "target": "idle",
+              "guard": "noSession"
+            },
+            "A_BEGIN": [
               {
-                "target": "stopping",
-                "guard": "canAsk",
-                "actions": "askDetach"
+                "target": "listing",
+                "guard": "beginListing",
+                "actions": "bindAgentTab"
+              },
+              {
+                "target": "waitingForTurn",
+                "guard": "beginRun",
+                "actions": "bindAgentTab"
+              },
+              {
+                "target": "ending",
+                "guard": "beginEnd"
               }
-            ],
-            "CLOSE": [
-              { "guard": "askWithoutSession", "actions": "answerNoSession" },
-              { "target": "stopping", "guard": "canAsk", "actions": "askClose" }
             ]
           }
         },
         "listing": {
           "on": {
-            "A_DIALOG": { "target": "idle", "guard": "agentTabHasDialog" },
+            "A_DIALOG_OPEN": {
+              "target": "idle",
+              "guard": "agentTabHasDialog",
+              "actions": "agentRefusedForDialog"
+            },
+            "A_NO_TAB": {
+              "target": "idle",
+              "guard": "agentTabGone"
+            },
             "A_LIST": {
               "target": "idle",
               "guard": "agentCanList",
-              "actions": "answerList"
+              "actions": "answerListing"
             },
-            "BROWSER_GONE": { "target": "idle", "guard": "browserCanGo" },
-            "STOP_DONE": { "target": "idle", "guard": "stopAsked" }
-          }
-        },
-        "calling": {
-          "on": {
-            "A_HIDDEN": { "target": "idle", "guard": "agentTabHidden" },
-            "A_DIALOG": { "target": "idle", "guard": "agentTabHasDialog" },
-            "A_NO_PAGE_OBJECTS": {
+            "BROWSER_GONE": {
               "target": "idle",
-              "guard": "noGoodPageObjects"
+              "guard": "browserCanGo"
             },
-            "A_START": { "target": "callRunning", "guard": "agentCanStart" },
-            "BROWSER_GONE": { "target": "idle", "guard": "browserCanGo" },
-            "STOP_DONE": { "target": "idle", "guard": "stopAsked" }
+            "STOP_DONE": {
+              "target": "idle",
+              "guard": "canEndSession"
+            }
           }
         },
-        "callRunning": {
+        "waitingForTurn": {
           "on": {
-            "A_DONE": { "target": "idle", "guard": "agentPageFree" },
-            "A_DIALOG": {
+            "A_DIALOG_OPEN": {
               "target": "idle",
               "guard": "agentTabHasDialog",
-              "actions": "abandonAgentCall"
+              "actions": "agentRefusedForDialog"
             },
-            "A_HIDDEN": {
+            "A_NO_TAB": {
+              "target": "idle",
+              "guard": "agentTabGone"
+            },
+            "A_TAB_HIDDEN": {
               "target": "idle",
               "guard": "agentTabHidden",
-              "actions": "abandonAgentCall"
+              "actions": "agentRefusedHidden"
             },
-            "BROWSER_GONE": { "target": "idle", "guard": "browserCanGo" },
-            "STOP_DONE": { "target": "idle", "guard": "stopAsked" }
+            "A_START": {
+              "target": "running",
+              "guard": "agentCanStart"
+            },
+            "BROWSER_GONE": {
+              "target": "idle",
+              "guard": "browserCanGo"
+            },
+            "STOP_DONE": {
+              "target": "idle",
+              "guard": "canEndSession"
+            }
           }
         },
-        "stopping": {
+        "running": {
           "on": {
-            "STOP_DONE": { "target": "idle", "guard": "stopAsked" },
-            "BROWSER_GONE": { "target": "idle", "guard": "browserCanGo" }
+            "A_DONE": {
+              "target": "idle",
+              "guard": "agentRunCanEnd"
+            },
+            "DIALOG_TIMEOUT": {
+              "target": "idle",
+              "guard": "agentRunHitDialog",
+              "actions": "stopAgentAction"
+            },
+            "TAB_CLOSE": {
+              "target": "idle",
+              "guard": "agentTabCloses"
+            },
+            "BROWSER_GONE": {
+              "target": "idle",
+              "guard": "browserCanGo"
+            },
+            "STOP_DONE": {
+              "target": "idle",
+              "guard": "canEndSession"
+            }
+          }
+        },
+        "ending": {
+          "on": {
+            "STOP_DONE": {
+              "target": "idle",
+              "guard": "canEndSession"
+            },
+            "A_REFUSED": {
+              "target": "idle",
+              "guard": "detachRefused"
+            },
+            "BROWSER_GONE": {
+              "target": "idle",
+              "guard": "browserCanGo"
+            }
           }
         }
       }
     },
-    "window": {
+    "inspector": {
       "initial": "idle",
       "states": {
         "idle": {
           "on": {
             "RUN": {
-              "target": "calling",
-              "guard": "canRun",
-              "actions": "askRun"
+              "target": "waitingForTurn",
+              "guard": "canRunFromInspector",
+              "actions": "bindInspectorTab"
             }
           }
         },
-        "calling": {
+        "waitingForTurn": {
           "on": {
-            "W_HIDDEN": { "target": "idle", "guard": "windowTabHidden" },
-            "W_DIALOG": { "target": "idle", "guard": "windowTabHasDialog" },
-            "W_NO_PAGE_OBJECTS": {
+            "I_DIALOG_OPEN": {
               "target": "idle",
-              "guard": "noGoodPageObjects"
+              "guard": "inspectorTabHasDialog",
+              "actions": "inspectorRefusedForDialog"
             },
-            "W_START": { "target": "callRunning", "guard": "windowCanStart" },
-            "BROWSER_GONE": { "target": "idle", "guard": "browserCanGo" },
-            "STOP_DONE": { "target": "idle", "guard": "stopAsked" }
+            "I_NO_TAB": {
+              "target": "idle",
+              "guard": "inspectorTabGone"
+            },
+            "I_TAB_HIDDEN": {
+              "target": "idle",
+              "guard": "inspectorTabHidden"
+            },
+            "I_START": {
+              "target": "running",
+              "guard": "inspectorCanStart"
+            },
+            "BROWSER_GONE": {
+              "target": "idle",
+              "guard": "browserCanGo"
+            },
+            "STOP_DONE": {
+              "target": "idle",
+              "guard": "canEndSession"
+            }
           }
         },
-        "callRunning": {
+        "running": {
           "on": {
-            "W_DONE": { "target": "idle", "guard": "windowPageFree" },
-            "W_DIALOG": {
+            "I_DONE": {
               "target": "idle",
-              "guard": "windowTabHasDialog",
-              "actions": "abandonWindowCall"
+              "guard": "inspectorRunCanEnd"
             },
-            "W_HIDDEN": {
+            "DIALOG_TIMEOUT": {
               "target": "idle",
-              "guard": "windowTabHidden",
-              "actions": "abandonWindowCall"
+              "guard": "inspectorRunHitDialog",
+              "actions": "stopInspectorAction"
             },
-            "BROWSER_GONE": { "target": "idle", "guard": "browserCanGo" },
-            "STOP_DONE": { "target": "idle", "guard": "stopAsked" }
+            "TAB_CLOSE": {
+              "target": "idle",
+              "guard": "inspectorTabCloses"
+            },
+            "BROWSER_GONE": {
+              "target": "idle",
+              "guard": "browserCanGo"
+            },
+            "STOP_DONE": {
+              "target": "idle",
+              "guard": "canEndSession"
+            }
           }
         }
       }

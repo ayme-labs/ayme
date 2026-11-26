@@ -2,354 +2,544 @@
   "context": {
     "ext": {
       "min": 0,
-      "max": 5
+      "max": 6
     },
+    "hiddenStalls": "bool",
+    "listQueues": "bool",
+    "scheme": ["session", "perPage"],
     "owned": "bool",
     "browserUp": "bool",
-    "record": "bool",
+    "t1": "bool",
+    "t2": "bool",
     "active": {
-      "min": 1,
-      "max": 2
-    },
-    "dialog": {
       "min": 0,
       "max": 2
     },
-    "hasGood": "bool",
-    "lastFailed": "bool",
+    "hidden": "bool",
+    "d1": {
+      "min": 0,
+      "max": 2
+    },
+    "d2": {
+      "min": 0,
+      "max": 2
+    },
+    "r1": "bool",
+    "r2": "bool",
+    "s1": {
+      "min": 0,
+      "max": 2
+    },
+    "s2": {
+      "min": 0,
+      "max": 2
+    },
+    "buildFailing": "bool",
+    "renamePending": "bool",
+    "aCmd": ["list", "call", "close", "detach"],
     "aTab": {
-      "min": 1,
+      "min": 0,
       "max": 2
     },
-    "aClose": "bool",
     "wTab": {
-      "min": 1,
-      "max": 2
-    },
-    "orph1": "bool",
-    "orph2": "bool",
-    "win1": "bool",
-    "win2": "bool",
-    "pickBy": {
       "min": 0,
       "max": 2
     },
-    "pickAsk": {
-      "min": 0,
-      "max": 2
-    },
-    "listFirstLine": [
-      "none",
-      "tab",
-      "tabAndFailing",
-      "tabWhileLastBuildFailed"
-    ],
-    "swappedUnderPageWork": "bool",
-    "closedByAyme": ["none", "owned", "notOwned"],
-    "scheme": ["session", "perPage"],
+    "startFail": ["none", "buildError", "browserGone"],
     "id1": {
       "min": 0,
-      "max": 3
+      "max": 7
     },
     "id2": {
       "min": 0,
-      "max": 3
+      "max": 7
     },
-    "g1": {
+    "g": {
       "min": 0,
-      "max": 3
+      "max": 7
     },
-    "g2": {
+    "c1": {
       "min": 0,
-      "max": 3
+      "max": 7
     },
-    "hw": {
+    "c2": {
       "min": 0,
-      "max": 3
+      "max": 7
     },
-    "renamePending": "bool",
-    "idReused": "bool"
+    "sessionHw": {
+      "min": 0,
+      "max": 7
+    },
+    "earlierHw": {
+      "min": 0,
+      "max": 7
+    },
+    "openAnswer": ["none", "started", "buildError", "browserGone", "nameInUse"],
+    "listLine": ["none", "tabOnly", "tabAndFailing"],
+    "closedByAyme": ["none", "owned", "notOwned"],
+    "detachEndedOwn": "bool",
+    "swapDuringRun": "bool",
+    "swapWhileStopped": "bool",
+    "refusedYoung": {
+      "min": 0,
+      "max": 2
+    },
+    "refusedForPassingDialog": "bool",
+    "runKeptAfterDialog": "bool",
+    "refusedHiddenAfterSwitch": "bool",
+    "idReused": "bool",
+    "idRepeatsEarlierSession": "bool"
   },
   "init": [
     {
       "ext": 0,
+      "hiddenStalls": false,
+      "listQueues": false,
+      "scheme": "session",
       "owned": false,
       "browserUp": false,
-      "record": false,
-      "active": 1,
-      "dialog": 0,
-      "hasGood": false,
-      "lastFailed": false,
-      "aTab": 1,
-      "aClose": false,
-      "wTab": 1,
-      "orph1": false,
-      "orph2": false,
-      "win1": false,
-      "win2": false,
-      "pickBy": 0,
-      "pickAsk": 0,
-      "listFirstLine": "none",
-      "swappedUnderPageWork": false,
-      "closedByAyme": "none",
-      "scheme": "session",
+      "t1": false,
+      "t2": false,
+      "active": 0,
+      "hidden": false,
+      "d1": 0,
+      "d2": 0,
+      "r1": false,
+      "r2": false,
+      "s1": 0,
+      "s2": 0,
+      "buildFailing": false,
+      "renamePending": false,
+      "aCmd": "list",
+      "aTab": 0,
+      "wTab": 0,
+      "startFail": "none",
       "id1": 0,
       "id2": 0,
-      "g1": 0,
-      "g2": 0,
-      "hw": 0,
-      "renamePending": false,
-      "idReused": false
+      "g": 0,
+      "c1": 0,
+      "c2": 0,
+      "sessionHw": 0,
+      "earlierHw": 0,
+      "openAnswer": "none",
+      "listLine": "none",
+      "closedByAyme": "none",
+      "detachEndedOwn": false,
+      "swapDuringRun": false,
+      "swapWhileStopped": false,
+      "refusedYoung": 0,
+      "refusedForPassingDialog": false,
+      "runKeptAfterDialog": false,
+      "refusedHiddenAfterSwitch": false,
+      "idReused": false,
+      "idRepeatsEarlierSession": false
     },
     {
       "ext": 0,
+      "hiddenStalls": false,
+      "listQueues": false,
+      "scheme": "perPage",
       "owned": false,
       "browserUp": false,
-      "record": false,
-      "active": 1,
-      "dialog": 0,
-      "hasGood": false,
-      "lastFailed": false,
-      "aTab": 1,
-      "aClose": false,
-      "wTab": 1,
-      "orph1": false,
-      "orph2": false,
-      "win1": false,
-      "win2": false,
-      "pickBy": 0,
-      "pickAsk": 0,
-      "listFirstLine": "none",
-      "swappedUnderPageWork": false,
-      "closedByAyme": "none",
-      "scheme": "perPage",
+      "t1": false,
+      "t2": false,
+      "active": 0,
+      "hidden": false,
+      "d1": 0,
+      "d2": 0,
+      "r1": false,
+      "r2": false,
+      "s1": 0,
+      "s2": 0,
+      "buildFailing": false,
+      "renamePending": false,
+      "aCmd": "list",
+      "aTab": 0,
+      "wTab": 0,
+      "startFail": "none",
       "id1": 0,
       "id2": 0,
-      "g1": 0,
-      "g2": 0,
-      "hw": 0,
-      "renamePending": false,
-      "idReused": false
+      "g": 0,
+      "c1": 0,
+      "c2": 0,
+      "sessionHw": 0,
+      "earlierHw": 0,
+      "openAnswer": "none",
+      "listLine": "none",
+      "closedByAyme": "none",
+      "detachEndedOwn": false,
+      "swapDuringRun": false,
+      "swapWhileStopped": false,
+      "refusedYoung": 0,
+      "refusedForPassingDialog": false,
+      "runKeptAfterDialog": false,
+      "refusedHiddenAfterSwitch": false,
+      "idReused": false,
+      "idRepeatsEarlierSession": false
     }
   ],
   "guards": {
-    "outside": "ext < 5",
-    "canStart": "ext < 5",
-    "browserCanGo": "ext < 5",
-    "stopAsked": "in('agent.stopping') && in('life.running')",
-    "abandonedWorkEnds": "event.tab == 1 ? (orph1 && (in('life.running.tab.working') && active == 1) && dialog != 1) : (orph2 && (in('life.running.tab.working') && active == 2) && dialog != 2)",
-    "canNavigate": "ext < 5 && in('life.running.browser.connected') && (event.tab == 1 ? id1 != 0 : id2 != 0)",
-    "canRead": "in('life.running.browser.connected') && hasGood && (event.tab == 1 ? id1 == 0 : id2 == 0)",
+    "browserCanGo": "ext < 5 && browserUp",
     "canOpenDialog": "false",
-    "dialogIsOpen": "ext < 5 && dialog != 0",
-    "buildOk": "event.ok",
+    "canCloseDialog": "ext < 5 && browserUp && (event.tab == 1 ? d1 : (event.tab == 2 ? d2 : 0)) != 0",
+    "dialogAgesOutsideRun": "browserUp && (event.tab == 1 ? d1 : (event.tab == 2 ? d2 : 0)) == 1 && !((event.tab == 1 ? r1 : (event.tab == 2 ? r2 : false)) && ((in('agent.running') && aTab == event.tab) || (in('inspector.running') && wTab == event.tab)))",
+    "canSwitchTab": "ext < 5 && browserUp && (event.tab == 1 ? t1 : (event.tab == 2 ? t2 : false)) && active != event.tab",
+    "canOpenTab": "ext < 5 && browserUp && !(event.tab == 1 ? t1 : (event.tab == 2 ? t2 : false))",
+    "canCloseTab": "ext < 5 && browserUp && (event.tab == 1 ? t1 : (event.tab == 2 ? t2 : false))",
+    "canHide": "false",
+    "canShow": "false",
+    "canNavigate": "ext < 5 && browserUp && (event.tab == 1 ? t1 : (event.tab == 2 ? t2 : false)) && (event.tab == 1 ? d1 : (event.tab == 2 ? d2 : 0)) == 0",
+    "canOpen": "ext < 5 && in('life.noSession') && in('opener.idle')",
+    "openNameInUse": "ext < 5 && !in('life.noSession')",
+    "canAttach": "false",
+    "attachNameInUse": "false",
+    "firstBuildOk": "event.ok",
+    "firstBuildFails": "!event.ok",
+    "sessionRunning": "in('life.running')",
+    "noSession": "in('life.noSession')",
+    "canEndSession": "in('agent.ending') && in('life.running') && !(aCmd == 'detach' && owned)",
+    "detachRefused": "aCmd == 'detach' && owned",
     "canEdit": "ext < 5",
-    "canSwap": "!in('agent.callRunning') && !in('window.callRunning')",
-    "canSwitchTab": "ext < 5 && event.tab != active",
-    "canHideTab": "false",
-    "canOpenWindow": "false",
-    "closesLastWindow": "ext < 5 && (event.w == 1 ? (win1 && !win2) : (win2 && !win1))",
-    "closesAWindow": "ext < 5 && (event.w == 1 ? win1 : win2)",
-    "closesPicker": "ext < 5 && event.w == pickBy && (event.w == 1 ? win1 : win2)",
-    "canAskPick": "ext < 5 && pickAsk == 0 && (event.w == 1 ? win1 : win2)",
-    "pickIsStarting": "pickAsk != 0",
-    "askWithoutSession": "ext < 5 && in('life.noSession')",
-    "canAsk": "false",
-    "agentTabHasDialog": "dialog != 0 && dialog == aTab",
-    "agentCanList": "in('life.running.browser.connected') && dialog != aTab && (hasGood || in('life.running.pageObjects.failed')) && !((in('agent.callRunning') && aTab == aTab) || (in('window.callRunning') && wTab == aTab) || (aTab == 1 ? orph1 : orph2))",
-    "agentTabHidden": "in('life.running.browser.connected') && !(in('life.running.tab.working') && active == aTab)",
-    "noGoodPageObjects": "in('life.running.pageObjects.failed') && !hasGood",
-    "agentCanStart": "in('life.running.browser.connected') && (in('life.running.tab.working') && active == aTab) && dialog != aTab && hasGood && !((in('agent.callRunning') && aTab == aTab) || (in('window.callRunning') && wTab == aTab) || (aTab == 1 ? orph1 : orph2))",
-    "agentPageFree": "(in('life.running.tab.working') && active == aTab) && dialog != aTab",
-    "canRun": "false",
-    "windowTabHasDialog": "dialog != 0 && dialog == wTab",
-    "windowTabHidden": "in('life.running.browser.connected') && !(in('life.running.tab.working') && active == wTab)",
-    "windowCanStart": "in('life.running.browser.connected') && (in('life.running.tab.working') && active == wTab) && dialog != wTab && hasGood && !((in('agent.callRunning') && aTab == wTab) || (in('window.callRunning') && wTab == wTab) || (wTab == 1 ? orph1 : orph2))",
-    "windowPageFree": "(in('life.running.tab.working') && active == wTab) && dialog != wTab"
+    "buildOk": "event.ok",
+    "buildFails": "!event.ok",
+    "canSwap": "!(((in('agent.running') && aTab == 1) || (in('inspector.running') && wTab == 1)) || ((in('agent.running') && aTab == 2) || (in('inspector.running') && wTab == 2)))",
+    "stoppedActionCanEnd": "(event.tab == 1 ? s1 : (event.tab == 2 ? s2 : 0)) == 2 && (event.tab == 1 ? d1 : (event.tab == 2 ? d2 : 0)) == 0 && (((event.tab == 1 ? t1 : (event.tab == 2 ? t2 : false)) && active == event.tab && !hidden) || !hiddenStalls)",
+    "canRead": "(event.tab == 1 ? t1 : (event.tab == 2 ? t2 : false)) && (event.tab == 1 ? id1 : (event.tab == 2 ? id2 : 0)) == 0 && (event.tab == 1 ? d1 : (event.tab == 2 ? d2 : 0)) == 0",
+    "canSendCommand": "ext < 5",
+    "beginListing": "in('life.running') && aCmd == 'list'",
+    "beginRun": "in('life.running') && aCmd == 'call'",
+    "beginEnd": "in('life.running') && (aCmd == 'close' || aCmd == 'detach')",
+    "agentTabHasDialog": "(aTab == 1 ? d1 : (aTab == 2 ? d2 : 0)) != 0",
+    "agentTabGone": "!(aTab == 1 ? t1 : (aTab == 2 ? t2 : false))",
+    "agentTabHidden": "(aTab == 1 ? t1 : (aTab == 2 ? t2 : false)) && !((aTab == 1 ? t1 : (aTab == 2 ? t2 : false)) && active == aTab && !hidden)",
+    "agentCanList": "(aTab == 1 ? t1 : (aTab == 2 ? t2 : false)) && (aTab == 1 ? d1 : (aTab == 2 ? d2 : 0)) == 0 && (!listQueues || !(((in('agent.running') && aTab == aTab) || (in('inspector.running') && wTab == aTab)) || (aTab == 1 ? s1 : (aTab == 2 ? s2 : 0)) != 0))",
+    "agentCanStart": "((aTab == 1 ? t1 : (aTab == 2 ? t2 : false)) && active == aTab && !hidden) && (aTab == 1 ? d1 : (aTab == 2 ? d2 : 0)) == 0 && !(((in('agent.running') && aTab == aTab) || (in('inspector.running') && wTab == aTab)) || (aTab == 1 ? s1 : (aTab == 2 ? s2 : 0)) != 0)",
+    "agentRunCanEnd": "(aTab == 1 ? d1 : (aTab == 2 ? d2 : 0)) == 0 && (((aTab == 1 ? t1 : (aTab == 2 ? t2 : false)) && active == aTab && !hidden) || !hiddenStalls)",
+    "agentRunHitDialog": "event.tab == aTab && (aTab == 1 ? d1 : (aTab == 2 ? d2 : 0)) == 1 && (aTab == 1 ? r1 : (aTab == 2 ? r2 : false))",
+    "agentTabCloses": "ext < 5 && browserUp && event.tab == aTab && (event.tab == 1 ? t1 : (event.tab == 2 ? t2 : false))",
+    "canRunFromInspector": "false",
+    "inspectorTabHasDialog": "(wTab == 1 ? d1 : (wTab == 2 ? d2 : 0)) != 0",
+    "inspectorTabGone": "!(wTab == 1 ? t1 : (wTab == 2 ? t2 : false))",
+    "inspectorTabHidden": "(wTab == 1 ? t1 : (wTab == 2 ? t2 : false)) && !((wTab == 1 ? t1 : (wTab == 2 ? t2 : false)) && active == wTab && !hidden)",
+    "inspectorCanStart": "((wTab == 1 ? t1 : (wTab == 2 ? t2 : false)) && active == wTab && !hidden) && (wTab == 1 ? d1 : (wTab == 2 ? d2 : 0)) == 0 && !(((in('agent.running') && aTab == wTab) || (in('inspector.running') && wTab == wTab)) || (wTab == 1 ? s1 : (wTab == 2 ? s2 : 0)) != 0)",
+    "inspectorRunCanEnd": "(wTab == 1 ? d1 : (wTab == 2 ? d2 : 0)) == 0 && (((wTab == 1 ? t1 : (wTab == 2 ? t2 : false)) && active == wTab && !hidden) || !hiddenStalls)",
+    "inspectorRunHitDialog": "event.tab == wTab && (wTab == 1 ? d1 : (wTab == 2 ? d2 : 0)) == 1 && (wTab == 1 ? r1 : (wTab == 2 ? r2 : false))",
+    "inspectorTabCloses": "ext < 5 && browserUp && event.tab == wTab && (event.tab == 1 ? t1 : (event.tab == 2 ? t2 : false))"
   },
   "actions": {
-    "countOutside": {
-      "ext": "ext + 1"
-    },
-    "startOwnBrowser": {
-      "ext": "ext + 1",
-      "record": "true",
-      "owned": "true",
-      "browserUp": "true"
-    },
-    "joinBrowser": {
-      "ext": "ext + 1",
-      "record": "true",
-      "owned": "false",
-      "browserUp": "true"
-    },
     "browserGone": {
       "ext": "ext + 1",
-      "dialog": "0",
-      "hasGood": "false",
-      "lastFailed": "false",
-      "orph1": "false",
-      "orph2": "false",
-      "win1": "false",
-      "win2": "false",
-      "pickBy": "0",
-      "pickAsk": "0",
-      "active": "1",
+      "browserUp": "false",
+      "t1": "false",
+      "t2": "false",
+      "active": "0",
+      "d1": "0",
+      "d2": "0"
+    },
+    "browserGoneDuringStart": {
+      "ext": "ext + 1",
+      "browserUp": "false",
+      "t1": "false",
+      "t2": "false",
+      "active": "0",
+      "d1": "0",
+      "d2": "0",
+      "startFail": "'browserGone'"
+    },
+    "endSessionBrowserGone": {
+      "ext": "ext + 1",
+      "browserUp": "false",
+      "t1": "false",
+      "t2": "false",
+      "active": "0",
+      "d1": "0",
+      "d2": "0",
+      "s1": "0",
+      "s2": "0",
+      "r1": "false",
+      "r2": "false",
+      "renamePending": "false",
+      "buildFailing": "false",
       "id1": "0",
       "id2": "0",
-      "g1": "0",
-      "g2": "0",
-      "hw": "max(hw, max(g1, g2))",
-      "renamePending": "false",
-      "record": "false",
-      "browserUp": "false"
-    },
-    "endSession": {
-      "dialog": "0",
-      "hasGood": "false",
-      "lastFailed": "false",
-      "orph1": "false",
-      "orph2": "false",
-      "win1": "false",
-      "win2": "false",
-      "pickBy": "0",
-      "pickAsk": "0",
-      "active": "1",
-      "id1": "0",
-      "id2": "0",
-      "g1": "0",
-      "g2": "0",
-      "hw": "max(hw, max(g1, g2))",
-      "renamePending": "false",
-      "record": "false",
-      "browserUp": "(aClose && owned) ? false : browserUp",
-      "closedByAyme": "aClose ? (owned ? 'owned' : closedByAyme) : closedByAyme"
-    },
-    "endAbandonedWork": {
-      "orph1": "event.tab == 1 ? false : orph1",
-      "orph2": "event.tab == 2 ? false : orph2"
+      "g": "0",
+      "sessionHw": "0",
+      "earlierHw": "max(earlierHw, sessionHw)",
+      "refusedYoung": "0"
     },
     "openDialog": {
       "ext": "ext + 1",
-      "dialog": "event.tab"
+      "d1": "event.tab == 1 ? (1) : d1",
+      "d2": "event.tab == 2 ? (1) : d2",
+      "r1": "event.tab == 1 ? (((in('agent.running') && aTab == event.tab) || (in('inspector.running') && wTab == event.tab))) : r1",
+      "r2": "event.tab == 2 ? (((in('agent.running') && aTab == event.tab) || (in('inspector.running') && wTab == event.tab))) : r2",
+      "s1": "event.tab == 1 ? ((event.tab == 1 ? s1 : (event.tab == 2 ? s2 : 0)) == 2 ? 1 : (event.tab == 1 ? s1 : (event.tab == 2 ? s2 : 0))) : s1",
+      "s2": "event.tab == 2 ? ((event.tab == 1 ? s1 : (event.tab == 2 ? s2 : 0)) == 2 ? 1 : (event.tab == 1 ? s1 : (event.tab == 2 ? s2 : 0))) : s2"
     },
-    "answerDialog": {
+    "closeDialog": {
       "ext": "ext + 1",
-      "dialog": "0"
+      "d1": "event.tab == 1 ? (0) : d1",
+      "d2": "event.tab == 2 ? (0) : d2",
+      "r1": "event.tab == 1 ? (false) : r1",
+      "r2": "event.tab == 2 ? (false) : r2",
+      "s1": "event.tab == 1 ? ((event.tab == 1 ? s1 : (event.tab == 2 ? s2 : 0)) == 1 ? 2 : (event.tab == 1 ? s1 : (event.tab == 2 ? s2 : 0))) : s1",
+      "s2": "event.tab == 2 ? ((event.tab == 1 ? s1 : (event.tab == 2 ? s2 : 0)) == 1 ? 2 : (event.tab == 1 ? s1 : (event.tab == 2 ? s2 : 0))) : s2",
+      "refusedForPassingDialog": "refusedForPassingDialog || (refusedYoung == event.tab && (event.tab == 1 ? d1 : (event.tab == 2 ? d2 : 0)) == 1 && ((in('agent.running') && aTab == event.tab) || (in('inspector.running') && wTab == event.tab)))",
+      "runKeptAfterDialog": "runKeptAfterDialog || ((event.tab == 1 ? d1 : (event.tab == 2 ? d2 : 0)) == 1 && ((in('agent.running') && aTab == event.tab) || (in('inspector.running') && wTab == event.tab)))"
     },
-    "keepBuild": {
-      "hasGood": "true",
-      "lastFailed": "false"
-    },
-    "failBuild": {
-      "lastFailed": "true"
-    },
-    "edit": {
-      "ext": "ext + 1",
-      "renamePending": "renamePending || event.rename"
-    },
-    "swap": {
-      "swappedUnderPageWork": "swappedUnderPageWork || orph1 || orph2",
-      "id1": "renamePending ? 0 : id1",
-      "id2": "renamePending ? 0 : id2",
-      "renamePending": "false"
+    "ageDialog": {
+      "d1": "event.tab == 1 ? (2) : d1",
+      "d2": "event.tab == 2 ? (2) : d2"
     },
     "switchTab": {
       "ext": "ext + 1",
       "active": "event.tab"
     },
-    "openWindow": {
+    "openTab": {
       "ext": "ext + 1",
-      "win1": "event.w == 1 ? true : win1",
-      "win2": "event.w == 2 ? true : win2"
+      "active": "event.tab",
+      "t1": "event.tab == 1 ? (true) : t1",
+      "t2": "event.tab == 2 ? (true) : t2",
+      "d1": "event.tab == 1 ? (0) : d1",
+      "d2": "event.tab == 2 ? (0) : d2",
+      "r1": "event.tab == 1 ? (false) : r1",
+      "r2": "event.tab == 2 ? (false) : r2",
+      "s1": "event.tab == 1 ? (0) : s1",
+      "s2": "event.tab == 2 ? (0) : s2",
+      "id1": "event.tab == 1 ? (0) : id1",
+      "id2": "event.tab == 2 ? (0) : id2",
+      "c1": "event.tab == 1 ? (0) : c1",
+      "c2": "event.tab == 2 ? (0) : c2"
     },
-    "closeWindow": {
+    "closeTab": {
       "ext": "ext + 1",
-      "win1": "event.w == 1 ? false : win1",
-      "win2": "event.w == 2 ? false : win2"
+      "active": "active == event.tab ? (event.tab == 1 ? (t2 ? 2 : 0) : (t1 ? 1 : 0)) : active",
+      "t1": "event.tab == 1 ? (false) : t1",
+      "t2": "event.tab == 2 ? (false) : t2",
+      "d1": "event.tab == 1 ? (0) : d1",
+      "d2": "event.tab == 2 ? (0) : d2",
+      "r1": "event.tab == 1 ? (false) : r1",
+      "r2": "event.tab == 2 ? (false) : r2",
+      "s1": "event.tab == 1 ? (0) : s1",
+      "s2": "event.tab == 2 ? (0) : s2",
+      "id1": "event.tab == 1 ? (0) : id1",
+      "id2": "event.tab == 2 ? (0) : id2",
+      "c1": "event.tab == 1 ? (0) : c1",
+      "c2": "event.tab == 2 ? (0) : c2"
     },
-    "closeWindowEndPick": {
+    "hide": {
       "ext": "ext + 1",
-      "win1": "event.w == 1 ? false : win1",
-      "win2": "event.w == 2 ? false : win2",
-      "pickBy": "0"
+      "hidden": "true"
     },
-    "askPick": {
+    "show": {
       "ext": "ext + 1",
-      "pickAsk": "event.w"
-    },
-    "beginPick": {
-      "pickBy": "pickAsk",
-      "pickAsk": "0"
-    },
-    "endPick": {
-      "ext": "ext + 1",
-      "pickBy": "0"
-    },
-    "answerNoSession": {
-      "ext": "ext + 1"
-    },
-    "askList": {
-      "ext": "ext + 1",
-      "aTab": "event.tab",
-      "listFirstLine": "'none'"
-    },
-    "askCall": {
-      "ext": "ext + 1",
-      "aTab": "event.tab"
-    },
-    "askDetach": {
-      "ext": "ext + 1",
-      "aClose": "false"
-    },
-    "askClose": {
-      "ext": "ext + 1",
-      "aClose": "true"
-    },
-    "answerList": {
-      "listFirstLine": "in('life.running.pageObjects.failed') ? 'tabAndFailing' : (lastFailed ? 'tabWhileLastBuildFailed' : 'tab')"
-    },
-    "abandonAgentCall": {
-      "orph1": "aTab == 1 ? true : orph1",
-      "orph2": "aTab == 2 ? true : orph2"
-    },
-    "askRun": {
-      "ext": "ext + 1",
-      "wTab": "event.tab"
-    },
-    "abandonWindowCall": {
-      "orph1": "wTab == 1 ? true : orph1",
-      "orph2": "wTab == 2 ? true : orph2"
+      "hidden": "false"
     },
     "navigate": {
       "ext": "ext + 1",
-      "id1": "event.tab == 1 ? 0 : id1",
-      "id2": "event.tab == 2 ? 0 : id2"
+      "id1": "event.tab == 1 ? (0) : id1",
+      "id2": "event.tab == 2 ? (0) : id2",
+      "c1": "event.tab == 1 ? (0) : c1",
+      "c2": "event.tab == 2 ? (0) : c2"
+    },
+    "startOwnBrowser": {
+      "ext": "ext + 1",
+      "owned": "true",
+      "browserUp": "true",
+      "startFail": "'none'",
+      "openAnswer": "'none'",
+      "t1": "true",
+      "t2": "true",
+      "active": "1",
+      "hidden": "false",
+      "d1": "0",
+      "d2": "0",
+      "r1": "false",
+      "r2": "false",
+      "id1": "0",
+      "id2": "0",
+      "c1": "0",
+      "c2": "0"
+    },
+    "joinBrowser": {
+      "ext": "ext + 1",
+      "owned": "false",
+      "browserUp": "true",
+      "startFail": "'none'",
+      "openAnswer": "'none'",
+      "t1": "browserUp ? t1 : true",
+      "t2": "browserUp ? t2 : true",
+      "active": "browserUp ? active : 1",
+      "hidden": "browserUp ? hidden : false",
+      "d1": "browserUp ? d1 : 0",
+      "d2": "browserUp ? d2 : 0",
+      "r1": "browserUp ? r1 : false",
+      "r2": "browserUp ? r2 : false",
+      "id1": "browserUp ? id1 : 0",
+      "id2": "browserUp ? id2 : 0",
+      "c1": "browserUp ? c1 : 0",
+      "c2": "browserUp ? c2 : 0"
+    },
+    "startSession": {
+      "buildFailing": "false"
+    },
+    "failStart": {
+      "startFail": "'buildError'",
+      "browserUp": "owned ? false : browserUp",
+      "t1": "owned ? false : t1",
+      "t2": "owned ? false : t2",
+      "active": "owned ? 0 : active",
+      "d1": "owned ? 0 : d1",
+      "d2": "owned ? 0 : d2"
+    },
+    "endSession": {
+      "s1": "0",
+      "s2": "0",
+      "r1": "false",
+      "r2": "false",
+      "renamePending": "false",
+      "buildFailing": "false",
+      "id1": "0",
+      "id2": "0",
+      "g": "0",
+      "sessionHw": "0",
+      "earlierHw": "max(earlierHw, sessionHw)",
+      "refusedYoung": "0",
+      "browserUp": "(aCmd == 'close' && owned) ? false : browserUp",
+      "t1": "(aCmd == 'close' && owned) ? false : t1",
+      "t2": "(aCmd == 'close' && owned) ? false : t2",
+      "active": "(aCmd == 'close' && owned) ? 0 : active",
+      "d1": "(aCmd == 'close' && owned) ? 0 : d1",
+      "d2": "(aCmd == 'close' && owned) ? 0 : d2",
+      "closedByAyme": "(aCmd == 'close' && owned) ? 'owned' : closedByAyme",
+      "detachEndedOwn": "detachEndedOwn || (aCmd == 'detach' && owned)"
+    },
+    "refuseOpen": {
+      "ext": "ext + 1",
+      "openAnswer": "'nameInUse'"
+    },
+    "answerOpened": {
+      "openAnswer": "'started'"
+    },
+    "answerOpenFailed": {
+      "openAnswer": "startFail == 'buildError' ? 'buildError' : 'browserGone'"
+    },
+    "edit": {
+      "ext": "ext + 1",
+      "renamePending": "renamePending || event.rename"
+    },
+    "buildSucceeded": {
+      "buildFailing": "false"
+    },
+    "buildFailed": {
+      "buildFailing": "true",
+      "renamePending": "false"
+    },
+    "swap": {
+      "swapDuringRun": "swapDuringRun || (((in('agent.running') && aTab == 1) || (in('inspector.running') && wTab == 1)) || ((in('agent.running') && aTab == 2) || (in('inspector.running') && wTab == 2)))",
+      "swapWhileStopped": "swapWhileStopped || s1 != 0 || s2 != 0",
+      "id1": "renamePending ? 0 : id1",
+      "id2": "renamePending ? 0 : id2",
+      "renamePending": "false"
+    },
+    "endStoppedAction": {
+      "s1": "event.tab == 1 ? (0) : s1",
+      "s2": "event.tab == 2 ? (0) : s2"
     },
     "read": {
-      "id1": "event.tab == 1 ? (scheme == 'session' ? g1 + 1 : (event.tab == 1 ? g1 + 1 : g2 + 1)) : id1",
-      "id2": "event.tab == 2 ? (scheme == 'session' ? g1 + 1 : (event.tab == 1 ? g1 + 1 : g2 + 1)) : id2",
-      "g1": "(scheme == 'session' || event.tab == 1) ? g1 + 1 : g1",
-      "g2": "(scheme == 'perPage' && event.tab == 2) ? g2 + 1 : g2",
-      "idReused": "idReused || (scheme == 'session' ? g1 + 1 : (event.tab == 1 ? g1 + 1 : g2 + 1)) <= hw"
+      "id1": "event.tab == 1 ? ((scheme == 'session' ? g + 1 : (event.tab == 1 ? c1 + 1 : c2 + 1))) : id1",
+      "id2": "event.tab == 2 ? ((scheme == 'session' ? g + 1 : (event.tab == 1 ? c1 + 1 : c2 + 1))) : id2",
+      "c1": "event.tab == 1 ? ((event.tab == 1 ? c1 : (event.tab == 2 ? c2 : 0)) + 1) : c1",
+      "c2": "event.tab == 2 ? ((event.tab == 1 ? c1 : (event.tab == 2 ? c2 : 0)) + 1) : c2",
+      "g": "g + 1",
+      "sessionHw": "max(sessionHw, (scheme == 'session' ? g + 1 : (event.tab == 1 ? c1 + 1 : c2 + 1)))",
+      "idReused": "idReused || (scheme == 'session' ? g + 1 : (event.tab == 1 ? c1 + 1 : c2 + 1)) <= sessionHw",
+      "idRepeatsEarlierSession": "idRepeatsEarlierSession || (scheme == 'session' ? g + 1 : (event.tab == 1 ? c1 + 1 : c2 + 1)) <= earlierHw"
+    },
+    "sendCommand": {
+      "ext": "ext + 1",
+      "aCmd": "event.c"
+    },
+    "bindAgentTab": {
+      "aTab": "active"
+    },
+    "agentRefusedForDialog": {
+      "refusedYoung": "((aTab == 1 ? d1 : (aTab == 2 ? d2 : 0)) == 1 && (aTab == 1 ? r1 : (aTab == 2 ? r2 : false))) ? aTab : refusedYoung"
+    },
+    "agentRefusedHidden": {
+      "refusedHiddenAfterSwitch": "refusedHiddenAfterSwitch || active != aTab"
+    },
+    "answerListing": {
+      "listLine": "buildFailing ? 'tabAndFailing' : 'tabOnly'"
+    },
+    "stopAgentAction": {
+      "d1": "event.tab == 1 ? (2) : d1",
+      "d2": "event.tab == 2 ? (2) : d2",
+      "s1": "aTab == 1 ? 1 : s1",
+      "s2": "aTab == 2 ? 1 : s2"
+    },
+    "bindInspectorTab": {
+      "ext": "ext + 1",
+      "wTab": "active"
+    },
+    "inspectorRefusedForDialog": {
+      "refusedYoung": "((wTab == 1 ? d1 : (wTab == 2 ? d2 : 0)) == 1 && (wTab == 1 ? r1 : (wTab == 2 ? r2 : false))) ? wTab : refusedYoung"
+    },
+    "stopInspectorAction": {
+      "d1": "event.tab == 1 ? (2) : d1",
+      "d2": "event.tab == 2 ? (2) : d2",
+      "s1": "wTab == 1 ? 1 : s1",
+      "s2": "wTab == 2 ? 1 : s2"
     }
   },
   "events": {
-    "LIST": {
-      "payloads": [
-        {
-          "tab": 1
-        }
-      ]
+    "OPEN": {
+      "payloads": [{}]
     },
-    "CALL": {
+    "ATTACH": {
+      "payloads": [{}]
+    },
+    "COMMAND": {
       "payloads": [
         {
-          "tab": 1
+          "c": "close"
         }
       ]
     },
     "RUN": {
+      "payloads": [{}]
+    },
+    "EDIT": {
+      "payloads": [
+        {
+          "rename": false
+        },
+        {
+          "rename": true
+        }
+      ]
+    },
+    "DIALOG_OPEN": {
+      "payloads": [
+        {
+          "tab": 1
+        },
+        {
+          "tab": 2
+        }
+      ]
+    },
+    "DIALOG_CLOSE": {
+      "payloads": [
+        {
+          "tab": 1
+        },
+        {
+          "tab": 2
+        }
+      ]
+    },
+    "DIALOG_TIMEOUT": {
       "payloads": [
         {
           "tab": 1
@@ -369,7 +559,7 @@
         }
       ]
     },
-    "DIALOG_OPEN": {
+    "TAB_OPEN": {
       "payloads": [
         {
           "tab": 1
@@ -379,7 +569,7 @@
         }
       ]
     },
-    "ORPHAN_DONE": {
+    "TAB_CLOSE": {
       "payloads": [
         {
           "tab": 1
@@ -388,8 +578,47 @@
           "tab": 2
         }
       ]
+    },
+    "HIDE": {
+      "payloads": [{}]
+    },
+    "SHOW": {
+      "payloads": [{}]
     },
     "NAVIGATE": {
+      "payloads": [
+        {
+          "tab": 1
+        },
+        {
+          "tab": 2
+        }
+      ]
+    },
+    "BROWSER_GONE": {
+      "payloads": [{}]
+    },
+    "FIRST_BUILD": {
+      "payloads": [
+        {
+          "ok": true
+        },
+        {
+          "ok": false
+        }
+      ]
+    },
+    "BUILD_DONE": {
+      "payloads": [
+        {
+          "ok": true
+        },
+        {
+          "ok": false
+        }
+      ]
+    },
+    "STOPPED_END": {
       "payloads": [
         {
           "tab": 1
@@ -409,7 +638,7 @@
         }
       ]
     },
-    "BUILD_DONE": {
+    "A_DONE": {
       "payloads": [
         {
           "ok": true
@@ -419,93 +648,85 @@
         }
       ]
     },
-    "EDIT": {
+    "I_DONE": {
       "payloads": [
         {
-          "rename": false
+          "ok": true
         },
         {
-          "rename": true
-        }
-      ]
-    },
-    "WINDOW_OPEN": {
-      "payloads": [
-        {
-          "w": 1
-        },
-        {
-          "w": 2
-        }
-      ]
-    },
-    "WINDOW_CLOSE": {
-      "payloads": [
-        {
-          "w": 1
-        },
-        {
-          "w": 2
-        }
-      ]
-    },
-    "PICK_ASK": {
-      "payloads": [
-        {
-          "w": 1
-        },
-        {
-          "w": 2
+          "ok": false
         }
       ]
     }
   },
   "fairness": {
     "weak": [
-      "BROWSER_READY",
+      "FIRST_BUILD",
+      "OPENED",
+      "OPEN_FAILED",
       "BUILD_DONE",
       "SWAP",
-      "ORPHAN_DONE",
+      "DIALOG_TIMEOUT",
+      "STOPPED_END",
       "READ",
-      "PICK_BEGIN",
       "STOP_DONE",
+      "A_NO_SESSION",
+      "A_BEGIN",
       "A_LIST",
-      "A_DIALOG",
-      "A_HIDDEN",
-      "A_NO_PAGE_OBJECTS",
+      "A_DIALOG_OPEN",
+      "A_NO_TAB",
+      "A_TAB_HIDDEN",
       "A_START",
       "A_DONE",
-      "W_DIALOG",
-      "W_HIDDEN",
-      "W_NO_PAGE_OBJECTS",
-      "W_START",
-      "W_DONE"
+      "A_REFUSED",
+      "I_DIALOG_OPEN",
+      "I_NO_TAB",
+      "I_TAB_HIDDEN",
+      "I_START",
+      "I_DONE"
     ]
   },
   "citations": {
-    "canSwap": "packages/ayme/src/runtime/session.ts:593",
-    "abandonAgentCall": "packages/ayme/src/runs/application/run.ts:85-91",
-    "abandonWindowCall": "packages/ayme/src/runs/application/run.ts:85-91",
+    "agentCanStart": "packages/ayme/src/runtime/session.ts:592-593",
+    "inspectorCanStart": "packages/ayme/src/runtime/session.ts:592-593",
     "read": "packages/ayme/src/page-objects/application/pageObjectIds.ts:16-70"
   },
   "rules": [
     {
-      "id": "R7_UniqueAcrossTabs_SessionCounter",
+      "id": "R8_UniqueAcrossTabs_SessionCounter",
       "kind": "never",
-      "description": "Rule 7 with one counter per session: two tabs never show the same id.",
+      "description": "Rule 8 with one counter per Session: two Tabs never show the same id.",
       "when": "scheme == 'session' && id1 != 0 && id1 == id2"
     },
     {
-      "id": "R7_UniqueAcrossTabs_RuntimePerPageCounter",
+      "id": "R8_NeverReusedInSession_SessionCounter",
       "kind": "never",
-      "description": "Rule 7 with ayme's runtime as it is, one counter per page.",
+      "description": "Rule 8 with one counter per Session: an id is never given to another Page Object in that Session.",
+      "when": "scheme == 'session' && idReused"
+    },
+    {
+      "id": "R8_UniqueAcrossTabs_RuntimePerPageCounter",
+      "kind": "never",
+      "description": "Rule 8 with ayme's runtime as it is, one counter per page.",
       "when": "scheme == 'perPage' && id1 != 0 && id1 == id2"
     },
     {
-      "id": "R7_NotReusedAfterRestart",
+      "id": "R8_NeverReusedInSession_RuntimePerPageCounter",
       "kind": "never",
-      "description": "Rule 7 read across sessions: an id an earlier session gave out is never given to a Page Object of a later session.",
-      "when": "idReused"
+      "description": "Rule 8 with ayme's runtime as it is: an id is never given again in that Session.",
+      "when": "scheme == 'perPage' && idReused"
+    },
+    {
+      "id": "R9_WorksOnMostRecentTab",
+      "kind": "never",
+      "description": "Rule 9: ayme's Tab is open whenever a Tab is open.",
+      "when": "(active == 0 && (t1 || t2)) || (active == 1 && !t1) || (active == 2 && !t2)"
+    },
+    {
+      "id": "Intended_NewSessionRepeatsIds",
+      "kind": "reachable",
+      "description": "Rule 8: a new Session starts its ids again.",
+      "then": "scheme == 'session' && idRepeatsEarlierSession"
     },
     {
       "id": "Reach_BothTabsHaveIds",
@@ -514,22 +735,25 @@
     }
   ],
   "bounds": {
-    "maxStates": 400000,
+    "maxStates": 1500000,
     "timeoutMs": 0
   },
   "assumptions": [
-    "Focus: Page Object ids across reads, rebuilds, navigation, tabs and sessions (rule 7). Two initial states: one id counter for the whole session (`scheme: session`), and ayme's runtime as it is, one counter per page (`scheme: perPage`). Requests, dialogs, windows and close are off.",
-    "Every outside event (a request, an edit, a tab change, a dialog, a window, the browser going away, a start, detach or close) counts against a budget of 5 per run; the session's own steps are free. A liveness rule therefore asks: once the outside world stops acting, does every pending request get its answer from the session alone?",
-    "Weak fairness covers only the session's own steps. A dialog nobody answers and a tab nobody shows again are allowed to stay that way forever.",
-    "Two tabs. ayme works on the tab in front (`active`); the other tab is hidden. TAB_HIDE hides the front tab too (window minimised or covered).",
-    "Two callers: the agent's `ayme` commands (one request at a time) and Inspector windows running a tool. Each queues on ayme's per-page run queue (packages/ayme/src/runtime/session.ts:593).",
-    "A Playwright action on a tab with an open dialog, or on a hidden tab, does not finish until the dialog is answered or the tab is shown again.",
-    "When the session answers a call early (dialog open, tab hidden), the call's page work keeps the tab's turn on the queue until it really ends (`orph1`, `orph2`): ayme's run queue releases a turn only when its promise settles (packages/ayme/src/runs/application/run.ts:85-91).",
-    "A pageObjects listing takes a turn on the page queue, as page_objects does in ayme's runtime, and is modelled as one step. A tools listing would not queue.",
-    "The session swaps rebuilt Page Objects when none of its own call requests is running.",
-    "A listing's first line names its tab and, when the Page Objects state is `build failed`, says so: one line carries both (rules 6 and 8 each claim the first line).",
-    "Request with no session: answered at once by the thin front, in one step. A start's check and its claim of the record are one step.",
-    "A page read gives a Page Object without an id the next id, as packages/ayme/src/page-objects/application/pageObjectIds.ts:53-70 does. NAVIGATE replaces a tab's root element; an edit with `rename` changes a class name, so the swap drops the ids and the next read gives new ones.",
-    "A new session starts its counter at 0; `hw` remembers the highest id an earlier session gave out."
+    "Focus: Page Object Ids across reads, Swaps, navigation, opening and closing Tabs, and Sessions (rules 8 and 9). Two initial states: one id counter for the whole Session (`scheme: session`), and ayme's runtime as it is, one counter per page (`scheme: perPage`). Runs, listings, dialogs, hiding, the Inspector and attach are off.",
+    "Every outside event (a command, a Run from the Inspector, an edit, a Tab change, hiding or showing the window, a dialog opening or closing, a navigation, the browser going away, `ayme open` or `ayme attach`) counts against a budget of 5 per run; the Session's own steps are free. A liveness rule therefore asks: once the outside world stops acting, does every pending command get its answer from the Session alone?",
+    "Weak fairness covers only the Session's own steps and the 100 ms passing. A dialog nobody answers and a window nobody shows again may stay that way forever.",
+    "Two Tabs, both open when a Session starts. `active` is the most recently active Tab; `hidden` means the browser window is minimised or covered, so the active Tab is hidden too. A Tab that is not active is hidden.",
+    "Two Callers: the agent's `ayme` commands and the Inspector. Each has one command pending at a time; `ayme open` and `ayme attach` are a third slot (`opener`), so another command can arrive while a Session starts. A command is bound to the active Tab when the Session begins handling it, and stays bound to that Tab.",
+    "Commands that need the page: `ayme page-objects`, `ayme tools` (both `list` here) and `ayme call` (`call`). `ayme close` and `ayme detach` do not.",
+    "A waiting `ayme call` fails at once when its Tab is hidden, whether it was hidden on arrival or while it waited for its turn (rule 6 read as: a Run never waits for a Tab to be shown).",
+    "A dialog belongs to one Tab. It \"opened during a Run\" when a Run on that same Tab was running when it opened. The 100 ms passing is one step (DIALOG_TIMEOUT).",
+    "A Run's action is blocked while a dialog is open on its Tab. A Run whose Tab has no dialog finishes by itself (its own waits are respected and end), with a result or with an error from Page Object code.",
+    "A stopped action (the action of a Run that a dialog ended) is `1` while blocked under the dialog and `2` once the dialog closed; it then ends by itself because ayme refuses its next Playwright call. A new dialog on that Tab blocks it again.",
+    "A Swap is one step and does not read the page. It waits while any Run is running, on either Tab; it does not wait for a stopped action.",
+    "A command is answered when the Session ends (close, detach, browser gone); `ayme close` ends the Session at once and does not wait for a Run.",
+    "`ayme open` claims the session name in the same step as it checks it.",
+    "When the first build fails, ayme closes the browser it opened.",
+    "No guard cites code: the rules are agreed and the Session is not built. Citations point at ayme's runtime only where the model leans on it.",
+    "A read gives a Page Object without an id the next id, as packages/ayme/src/page-objects/application/pageObjectIds.ts:16-70 does. NAVIGATE replaces a Tab's page and its elements; an edit with `rename` changes a class name, so the Swap drops the ids and the next read gives new ones. A Tab reopened in a closed Tab's slot is a new Tab."
   ]
 }
