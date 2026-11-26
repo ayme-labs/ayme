@@ -51,7 +51,8 @@ export interface HeldBrowser {
  * The browser of a Session: one of the Session's two seams, beside the
  * build of its Page Objects. Getting a browser
  * holds it until the scope closes, which closes a browser ayme opened and
- * only lets go of a joined one.
+ * only lets go of a joined one. Getting one stops at once when interrupted,
+ * so that a stop during the start is answered at once (rule 1).
  */
 export class SessionBrowser extends Context.Service<
   SessionBrowser,

@@ -7,7 +7,7 @@ import {
   type ProjectPlaywright,
 } from "@ayme-dev/browser";
 import { Effect, Layer } from "effect";
-import type { Browser, BrowserContext } from "playwright-core";
+import type { Browser } from "playwright-core";
 
 import { SessionBrowser } from "../../../session/application";
 import { SessionStartError } from "../../../session/domain";
@@ -46,16 +46,6 @@ const goneFrom = (playwrightBrowser: Browser) =>
     if (!playwrightBrowser.isConnected()) resume(Effect.void);
   });
 
-/** Leaves every dialog of the browser to the developer's browser
- * automation: Playwright dismisses a dialog nobody listens for at once, so
- * each context, those made later among them, gets a listener that does
- * nothing. */
-function leaveDialogsOpen(playwrightBrowser: Browser): void {
-  const listen = (context: BrowserContext) => context.on("dialog", () => {});
-  playwrightBrowser.contexts().forEach(listen);
-  playwrightBrowser.on("context", listen);
-}
-
 /** A browser ayme opens, at `url` when given. */
 const opened = (
   found: ProjectPlaywright,
@@ -65,10 +55,10 @@ const opened = (
     const profile = yield* profileFolder;
     // Port 0: Chromium picks a free one, so no other process can take it
     // in between.
+    // Every dialog is the developer's browser automation's to answer.
     const { playwrightBrowser } = yield* browser(found, {
-      open: { headed, debugPort: 0, profile },
+      open: { headed, debugPort: 0, profile, leaveDialogsOpen: true },
     }).pipe(Effect.mapError(sessionStartError));
-    leaveDialogsOpen(playwrightBrowser);
     // The Tab the browser opened on.
     const page = playwrightBrowser.contexts()[0]!.pages()[0]!;
     // Once the navigation commits: a dialog the page opens while it loads
@@ -86,10 +76,9 @@ const opened = (
 /** A running browser ayme joins at `cdp`, without Playwright's defaults. */
 const joined = (found: ProjectPlaywright, cdp: string) =>
   Effect.gen(function* () {
-    const { playwrightBrowser } = yield* browser(found, { join: { cdp } }).pipe(
-      Effect.mapError(sessionStartError)
-    );
-    leaveDialogsOpen(playwrightBrowser);
+    const { playwrightBrowser } = yield* browser(found, {
+      join: { cdp, leaveDialogsOpen: true },
+    }).pipe(Effect.mapError(sessionStartError));
     const page = playwrightBrowser.contexts().flatMap((c) => c.pages())[0];
     if (page === undefined)
       return yield* Effect.fail(

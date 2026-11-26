@@ -1,5 +1,8 @@
 import { Effect, type Scope } from "effect";
-import type { Browser as PlaywrightBrowser } from "playwright-core";
+import type {
+  BrowserContext,
+  Browser as PlaywrightBrowser,
+} from "playwright-core";
 
 import type { BrowserError } from "../../browserError";
 import { browserUnavailable, type BrowserRequest } from "../../browserRequest";
@@ -12,32 +15,58 @@ export interface Browser {
   readonly opened: boolean;
 }
 
+/** Gives each context of the browser, those made later among them, a
+ * dialog listener that does nothing, so that Playwright dismisses none. */
+function leaveDialogsOpen(playwrightBrowser: PlaywrightBrowser) {
+  const listen = (context: BrowserContext) => context.on("dialog", () => {});
+  playwrightBrowser.contexts().forEach(listen);
+  playwrightBrowser.on("context", listen);
+  return playwrightBrowser;
+}
+
+/** Releases a browser: a started one is closed, and one the person already
+ * closed has nothing left to close. A joined one is only let go: Playwright
+ * closes its connection, not the browser. */
+const release = (playwrightBrowser: PlaywrightBrowser) =>
+  playwrightBrowser.close().catch(() => {});
+
 /**
  * Starts or joins a browser with the project's Playwright. Closing the
  * scope releases it: a browser ayme started is closed, and one it joined is
- * only let go, so it stays open.
+ * only let go, so it stays open. Interrupted while Playwright still gets
+ * the browser, it stops at once, as Playwright's own wait has no means to
+ * be stopped and can last until its timeout; a browser Playwright gets
+ * after that is released without any other use. With `leaveDialogsOpen`,
+ * the dialog listeners are added as soon as Playwright hands the browser
+ * over: Playwright's public API has nothing to listen on any sooner.
  */
 export const browser = (
   { playwright }: ProjectPlaywright,
   request: BrowserRequest
 ): Effect.Effect<Browser, BrowserError, Scope.Scope> =>
   Effect.acquireRelease(
-    Effect.tryPromise({
-      try: () =>
+    Effect.suspend(() => {
+      const asked = "join" in request ? request.join : request.open;
+      const got =
         "join" in request
           ? playwright.chromium.connectOverCDP(request.join.cdp, {
               // The browser is someone else's: its settings stay as they
               // are.
               noDefaults: true,
             })
-          : launch(playwright, request.open),
-      catch: (cause) => browserUnavailable(request, cause),
+          : launch(playwright, request.open);
+      const getting = asked.leaveDialogsOpen ? got.then(leaveDialogsOpen) : got;
+      return Effect.tryPromise({
+        try: () => getting,
+        catch: (cause) => browserUnavailable(request, cause),
+      }).pipe(
+        Effect.onInterrupt(() =>
+          Effect.sync(() => void getting.then(release, () => {}))
+        )
+      );
     }),
-    // A started browser the person already closed has nothing left to
-    // close. A joined one is only let go: Playwright closes its connection,
-    // not the browser.
-    (playwrightBrowser) =>
-      Effect.promise(() => playwrightBrowser.close().catch(() => {}))
+    (playwrightBrowser) => Effect.promise(() => release(playwrightBrowser)),
+    { interruptible: true }
   ).pipe(
     Effect.map((playwrightBrowser) => ({
       playwrightBrowser,
