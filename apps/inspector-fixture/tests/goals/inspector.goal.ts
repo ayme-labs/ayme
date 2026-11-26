@@ -1,9 +1,20 @@
+import { describe, test as plainTest } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { testIn } from "../e2e/fixtures";
+import {
+  callOverMcp,
+  openFixture,
+  outline,
+  reloadFixture,
+  testIn,
+} from "../e2e/fixtures";
 
-// Goal-driven twin of ../inspector.e2e.ts: the user's steps are agent goals,
-// the checks read the page with locators.
+// The goal-driven twin of ../inspector.e2e.ts: the same tests, with each
+// action on the panel an agent goal.
+//
+// E2E: the built Inspector on fixture pages with a real Page Object and the
+// ayme runtime, in the inline placement. Each test has one reason to fail;
+// fixture and runtime problems fail first, in openFixture.
 
 const test = testIn("inline");
 
@@ -21,4 +32,326 @@ test("running a Page Object tool from the panel acts on the page", async ({
       .within((items) => items.filter({ hasText: "Milk" }))
       .front()
   ).toHaveCount(1);
+});
+
+test("the layout and its sizes survive a reload", async ({
+  agent,
+  page,
+  inspector,
+}) => {
+  const { header, shell } = inspector;
+  await agent.act(
+    "drag the panel by its header {left} px left and {down} px down",
+    {
+      params: { left: 100, down: 50 },
+    }
+  );
+  await agent.act(
+    "drag the panel's {edge} edge {distance} px to the {direction}",
+    {
+      params: { edge: "left", distance: 60, direction: "left" },
+    }
+  );
+  const floating = await shell.box();
+  await agent.act("set the layout to {layout}", {
+    params: { layout: "Dock left" },
+  });
+  await agent.act(
+    "drag the panel's {edge} edge {distance} px to the {direction}",
+    {
+      params: { edge: "right", distance: 80, direction: "right" },
+    }
+  );
+  const dockedLeft = await shell.box();
+  await agent.act("set the layout to {layout}", {
+    params: { layout: "Dock to bottom" },
+  });
+  await agent.act("drag the panel's {edge} edge {distance} px {direction}", {
+    params: { edge: "top", distance: 60, direction: "up" },
+  });
+  const dockedBottom = await shell.box();
+
+  await reloadFixture(page, "/");
+
+  await expect.poll(() => header.layoutMenu.current()).toBe("Dock to bottom");
+  expect(await shell.box()).toEqual(dockedBottom);
+  await agent.act("set the layout to {layout}", {
+    params: { layout: "Dock left" },
+  });
+  await expect.poll(() => shell.box()).toEqual(dockedLeft);
+  await agent.act("set the layout to {layout}", {
+    params: { layout: "Floating" },
+  });
+  await expect.poll(() => shell.box()).toEqual(floating);
+});
+
+test("a collapsed panel stays collapsed after a reload", async ({
+  agent,
+  page,
+  inspector,
+}) => {
+  await agent.act("collapse the panel");
+
+  await reloadFixture(page, "/");
+
+  await expect(await inspector.logo.root.front()).toBeVisible();
+  await expect(await inspector.panel.front()).toHaveCount(0);
+});
+
+test("a docked panel sits beside the page, and floating it gives the space back", async ({
+  agent,
+  page,
+  inspector,
+}) => {
+  const heading = page.on((screen) => screen.getByRole("heading", "Groceries"));
+  const pageLeft = async () => (await (await heading.front()).boundingBox())!.x;
+  const before = await pageLeft();
+
+  await agent.act("set the layout to {layout}", {
+    params: { layout: "Dock left" },
+  });
+  const panel = await inspector.shell.box();
+  await expect.poll(pageLeft).toBeGreaterThanOrEqual(panel.x + panel.width);
+
+  await agent.act("set the layout to {layout}", {
+    params: { layout: "Floating" },
+  });
+  await expect.poll(pageLeft).toBe(before);
+});
+
+test("the page highlights what's hovered in the panel and what's selected, at once", async ({
+  agent,
+  browser,
+  listPage,
+}) => {
+  await agent.act("search the navigator for {query}", {
+    params: { query: "Add item" },
+  });
+  await agent.act("select the search result {result}", {
+    params: { result: 'button "Add item"' },
+  });
+  await agent.act("search the navigator for {query}", {
+    params: { query: "New item" },
+  });
+  // The new result can render right under the pointer left by the click,
+  // and Chromium 156 sends no mouseenter for that; enter it from outside.
+  await browser.mouse.move(0, 0);
+  await agent.act("hover the search result {result}", {
+    params: { result: 'textbox "New item"' },
+  });
+
+  await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
+  await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
+});
+
+test("the app's DOM gains no attribute while an element is highlighted", async ({
+  agent,
+  browser,
+  listPage,
+}) => {
+  /** Every attribute of every element of the app, outside the panel's host and Playwright's overlay. */
+  const attributes = () =>
+    browser.evaluate(() =>
+      [...document.querySelectorAll("*")]
+        .filter(
+          (element) =>
+            !["ayme-inspector", "x-pw-glass"].includes(element.localName)
+        )
+        .map((element) =>
+          [
+            element.localName,
+            ...[...element.attributes].map(
+              ({ name, value }) => `${name}=${value}`
+            ),
+          ].join(" ")
+        )
+    );
+  const before = await attributes();
+
+  await agent.act("search the navigator for {query}", {
+    params: { query: "Add item" },
+  });
+  await agent.act("select the search result {result}", {
+    params: { result: 'button "Add item"' },
+  });
+  await agent.act("search the navigator for {query}", {
+    params: { query: "New item" },
+  });
+  await browser.mouse.move(0, 0);
+  await agent.act("hover the search result {result}", {
+    params: { result: 'textbox "New item"' },
+  });
+
+  // Both highlights are showing.
+  await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
+  await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
+  expect(await attributes()).toEqual(before);
+});
+
+test("a host member named like one of the panel's controls stays one match, and its tool runs", async ({
+  agent,
+  appView,
+  inspector,
+  listPage,
+}) => {
+  await agent.act("open the {tool} tool", {
+    params: { tool: "ListPage.addItem" },
+  });
+  await agent.act("run it with the text {text}", { params: { text: "Milk" } });
+  await expect(await listPage.items.front()).toHaveCount(1);
+  // The panel now shows its own "Clear" button.
+  await expect(await inspector.runs.clearButton.front()).toBeVisible();
+
+  await expect(await listPage.clearButton.front()).toHaveCount(1);
+  await appView.run("ListPage.clear");
+  await expect(await listPage.items.front()).toHaveCount(0);
+});
+
+test("the Structure view follows typing and text changes on the page", async ({
+  agent,
+  browser,
+  page,
+  inspector,
+  listPage,
+}) => {
+  const structure = () => inspector.structure.treeText();
+  await agent.act("show the {lens} lens", { params: { lens: "Structure" } });
+
+  await listPage.newItemInput.fill("Oat milk");
+  await expect.poll(structure).toContain("Oat milk");
+
+  await page.front();
+  await browser.evaluate(() => {
+    const heading = [...document.querySelectorAll("h1, h2, h3")].find(
+      (candidate) => candidate.textContent?.trim() === "Groceries"
+    )!;
+    heading.textContent = "Groceries for Friday";
+    return null;
+  });
+  await expect.poll(structure).toContain('heading"Groceries for Friday"');
+});
+
+describe("connected to an agent", () => {
+  const connected = testIn("inline", "/", { connected: true });
+
+  connected(
+    "the Inspector's looks at the page leave the agent's view of it alone",
+    async ({ agent, mcpServer, browser, page, inspector }) => {
+      // The panel has looked at the page: its structure shows the heading.
+      await agent.act("show the {lens} lens", {
+        params: { lens: "Structure" },
+      });
+      await expect
+        .poll(() => inspector.structure.treeText())
+        .toContain("Groceries");
+
+      // A toast appears, then the agent's first action changes nothing. Had
+      // the panel's look been recorded, it would be the agent's "before" and
+      // the toast would count as the action's change.
+      await page.front();
+      await browser.evaluate(() => {
+        const toast = document.createElement("p");
+        toast.setAttribute("role", "status");
+        toast.textContent = "Saved";
+        document.body.append(toast);
+        return null;
+      });
+      const result = await callOverMcp(mcpServer!, "ListPage.countItems");
+
+      expect(result).not.toHaveProperty("changes");
+    }
+  );
+});
+
+test("the header's menus and switches work by mouse inside the closed shadow root", async ({
+  agent,
+  inspector,
+}) => {
+  const { header } = inspector;
+
+  // A press inside the panel must not count as a press outside the menu.
+  for (const layout of [
+    "Dock left",
+    "Dock right",
+    "Dock to bottom",
+    "Floating",
+  ] as const) {
+    await agent.act("open the Layout menu");
+    await agent.act("choose {layout} in the Layout menu", {
+      params: { layout },
+    });
+    await expect.poll(() => header.layoutMenu.current()).toBe(layout);
+    await expect(await header.layoutMenu.menu.front()).toHaveCount(0);
+  }
+
+  for (const theme of ["Light", "Dark", "System"] as const) {
+    await agent.act("switch the theme");
+    await expect.poll(() => header.themeSwitch.current()).toBe(theme);
+  }
+
+  await agent.act("collapse the panel");
+  await expect(await inspector.logo.root.front()).toBeVisible();
+  await agent.act("open the panel from the ayme logo");
+  await expect(await inspector.panel.front()).toBeVisible();
+});
+
+plainTest(
+  "with the tools published and no Agent Connection, the header says no agent and WebMCP is published",
+  async ({ agent, app, browser, screen }) => {
+    // The browser's WebMCP, which the runtime publishes its tools to.
+    const { inspector } = await openFixture({ app, browser, screen }, "/", {
+      webMCP: true,
+    });
+    const { connections } = inspector.header;
+
+    await expect(await connections.pill.front()).toHaveText("No agent");
+    await agent.act("open the Connections popover");
+    await expect(await connections.agent.state.front()).toHaveText("Off");
+    await expect(await connections.webMCP.state.front()).toHaveText(
+      "Published"
+    );
+  }
+);
+
+plainTest(
+  "with WebMCP publishing off, the Connections popover says so and offers the option that turns it on",
+  async ({ agent, app, browser, screen }) => {
+    const { inspector } = await openFixture(
+      { app, browser, screen },
+      "/unpublished.html"
+    );
+    const { connections } = inspector.header;
+
+    await agent.act("open the Connections popover");
+
+    await expect(await connections.webMCP.state.front()).toHaveText("Off");
+    await expect(await connections.webMCP.root.front()).toContainText(
+      "webMCP: { enabled: true }"
+    );
+    await expect(await inspector.container.front()).not.toContainText(
+      "can't call"
+    );
+  }
+);
+
+describe("on a React host with aggressive global CSS", () => {
+  const onReact = testIn("inline", "/react.html");
+
+  onReact(
+    "the panel works beside the host's own React",
+    async ({ agent, listPage }) => {
+      await agent.act("open the {tool} tool", {
+        params: { tool: "ListPage.addItem" },
+      });
+      await agent.act("run it with the text {text}", {
+        params: { text: "Eggs" },
+      });
+
+      await expect(
+        await listPage.items
+          .within((items) => items.filter({ hasText: "Eggs" }))
+          .front()
+      ).toHaveCount(1);
+    }
+  );
 });
