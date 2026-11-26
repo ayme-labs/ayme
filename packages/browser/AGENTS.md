@@ -7,7 +7,7 @@ Gets ayme a browser: it finds the Playwright the project has installed, holds th
 The checks:
 
 - [`eslint.config.js`](eslint.config.js), which [`src/layout.test.ts`](src/layout.test.ts) checks: production code imports Playwright's types only, and only the stable `effect` package.
-- [`tsdown.config.ts`](tsdown.config.ts) keeps Playwright's types out of the built declarations, so a caller's Playwright objects and this package's are one type.
+- [`tsdown.config.ts`](tsdown.config.ts) leaves `playwright-core` external: its declarations import Playwright's types, so a caller's Playwright objects and this package's are one type.
 
 Nothing checks these:
 
