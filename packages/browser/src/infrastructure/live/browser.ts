@@ -12,32 +12,45 @@ export interface Browser {
   readonly opened: boolean;
 }
 
+/** Releases a browser: a started one is closed, and one the person already
+ * closed has nothing left to close. A joined one is only let go: Playwright
+ * closes its connection, not the browser. */
+const release = (playwrightBrowser: PlaywrightBrowser) =>
+  playwrightBrowser.close().catch(() => {});
+
 /**
  * Starts or joins a browser with the project's Playwright. Closing the
  * scope releases it: a browser ayme started is closed, and one it joined is
- * only let go, so it stays open.
+ * only let go, so it stays open. Interrupted while Playwright still gets
+ * the browser, it stops at once, as Playwright's own wait has no means to
+ * be stopped and can last until its timeout; a browser Playwright gets
+ * after that is released without any other use.
  */
 export const browser = (
   { playwright }: ProjectPlaywright,
   request: BrowserRequest
 ): Effect.Effect<Browser, BrowserError, Scope.Scope> =>
   Effect.acquireRelease(
-    Effect.tryPromise({
-      try: () =>
+    Effect.suspend(() => {
+      const getting =
         "join" in request
           ? playwright.chromium.connectOverCDP(request.join.cdp, {
               // The browser is someone else's: its settings stay as they
               // are.
               noDefaults: true,
             })
-          : launch(playwright, request.open),
-      catch: (cause) => browserUnavailable(request, cause),
+          : launch(playwright, request.open);
+      return Effect.tryPromise({
+        try: () => getting,
+        catch: (cause) => browserUnavailable(request, cause),
+      }).pipe(
+        Effect.onInterrupt(() =>
+          Effect.sync(() => void getting.then(release, () => {}))
+        )
+      );
     }),
-    // A started browser the person already closed has nothing left to
-    // close. A joined one is only let go: Playwright closes its connection,
-    // not the browser.
-    (playwrightBrowser) =>
-      Effect.promise(() => playwrightBrowser.close().catch(() => {}))
+    (playwrightBrowser) => Effect.promise(() => release(playwrightBrowser)),
+    { interruptible: true }
   ).pipe(
     Effect.map((playwrightBrowser) => ({
       playwrightBrowser,

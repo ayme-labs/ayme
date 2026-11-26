@@ -1,4 +1,4 @@
-import { Effect, Exit, Scope } from "effect";
+import { Effect, Exit, Fiber, Scope } from "effect";
 import { expect, it } from "vitest";
 
 import {
@@ -9,12 +9,18 @@ import {
 } from "./index";
 
 /** A stand-in for the project's Playwright: its Chromium starts or joins a
- * browser that says what it was asked, unless `refuses` says why not. */
-function standIn({ refuses }: { refuses?: string } = {}) {
+ * browser that says what it was asked, unless `refuses` says why not. With
+ * `held`, it answers only once the test calls `answer`. */
+function standIn({ refuses, held }: { refuses?: string; held?: true } = {}) {
   const asked: unknown[] = [];
   const made = { closed: 0 };
+  let release!: () => void;
+  const answered = held
+    ? new Promise<void>((resolve) => (release = resolve))
+    : Promise.resolve();
   const answer = async (call: unknown) => {
     asked.push(call);
+    await answered;
     if (refuses) throw new Error(refuses);
     return {
       close: async () => {
@@ -40,7 +46,16 @@ function standIn({ refuses }: { refuses?: string } = {}) {
       },
     },
   } as unknown as ProjectPlaywright;
-  return { found, asked, made };
+  return { found, asked, made, answer: () => release() };
+}
+
+/** Whether `promise` is still pending once everything ready to run ran. */
+async function pending(promise: Promise<unknown>): Promise<boolean> {
+  let settled = false;
+  void promise.then(() => (settled = true));
+  for (let turn = 0; turn < 20; turn++)
+    await new Promise((resolve) => setImmediate(resolve));
+  return !settled;
 }
 
 /** Gets the browser in a scope of its own, and the means to close it. */
@@ -174,3 +189,24 @@ it("says why a browser is unavailable for a cause that is not an Error", () => {
     message: "Playwright could not open Chromium. gone",
   });
 });
+
+it.each<BrowserRequest>([
+  { open: { headed: true } },
+  { open: { headed: true, profile: "/tmp/ayme-profile" } },
+  { join: { cdp: "http://127.0.0.1:9222" } },
+])(
+  "getting a browser that does not answer yet stops at once when interrupted, and a browser got after that is let go: %j",
+  async (request) => {
+    const { found, asked, made, answer } = standIn({ held: true });
+    const getting = Effect.runFork(Effect.scoped(browser(found, request)));
+    await pending(Promise.resolve());
+    expect(asked).toHaveLength(1);
+
+    const interrupted = Effect.runPromise(Fiber.interrupt(getting));
+
+    expect(await pending(interrupted)).toBe(false);
+    expect(made.closed).toBe(0);
+    answer();
+    await expect.poll(() => made.closed).toBe(1);
+  }
+);

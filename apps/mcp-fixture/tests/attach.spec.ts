@@ -1,5 +1,5 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { createServer, type AddressInfo } from "node:net";
+import { createServer, type AddressInfo, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -50,6 +50,22 @@ async function silentAddress(): Promise<string> {
   );
   const { port } = server.address() as AddressInfo;
   await new Promise((resolve) => server.close(resolve));
+  return `http://127.0.0.1:${port}`;
+}
+
+/** An address on this machine that takes a connection and never answers,
+ * as a browser whose join stalls does. */
+async function stalledAddress(): Promise<string> {
+  const held = new Set<Socket>();
+  const server = createServer((socket) => held.add(socket));
+  await new Promise<void>((resolve) =>
+    server.listen(0, "127.0.0.1", () => resolve())
+  );
+  cleanups.push(async () => {
+    for (const socket of held) socket.destroy();
+    await new Promise((resolve) => server.close(resolve));
+  });
+  const { port } = server.address() as AddressInfo;
   return `http://127.0.0.1:${port}`;
 }
 
@@ -146,6 +162,31 @@ test("ayme attach to an address nothing answers on says so, and starts no Sessio
     stderr: expect.stringContaining(
       `Playwright could not connect to the browser at ${address}.`
     ),
+  });
+  expect(await ayme("list")).toMatchObject({
+    stdout: expect.stringMatching(/^No Session is open in /),
+  });
+});
+
+test("ayme close during a join that stalls ends the Session at once, and ayme attach says so", async ({
+  ayme,
+}) => {
+  const address = await stalledAddress();
+  const attaching = ayme("attach", `--cdp=${address}`);
+  await expect
+    .poll(async () => (await ayme("list")).stdout)
+    .toMatch(/^default, in process \d+, starting$/m);
+
+  const asked = Date.now();
+  expect(await ayme("close")).toMatchObject({
+    code: 0,
+    stdout: "The Session ended. Its browser keeps running.\n",
+  });
+  // Playwright's own wait for the connection lasts 30 seconds.
+  expect(Date.now() - asked).toBeLessThan(15_000);
+  expect(await attaching).toMatchObject({
+    code: 1,
+    stderr: "ayme close ended the Session before it started.\n",
   });
   expect(await ayme("list")).toMatchObject({
     stdout: expect.stringMatching(/^No Session is open in /),
