@@ -1,11 +1,27 @@
 /**
- * What the patched e2e adds, as this package uses it. The patches
- * (`patches/@e2e-dev__core@0.25.0.patch`, `patches/@e2e-dev__acp@0.1.4.patch`)
- * type it in their own `.d.ts`; it is typed again here so this package
- * builds on e2e as published, where the study's other arms run.
+ * What the patched e2e adds, as this package uses it. The patches in
+ * `../patches` change e2e's JavaScript only, as `e2e-patched` loads it, so
+ * the installed e2e and its types stay the published ones; this is their
+ * one typed view.
  */
 
 import type { JsonValue, StepExecutorContext } from "e2e";
+
+/**
+ * Throws unless this process runs e2e patched, that is under `e2e-patched`.
+ * A config that needs the patches calls it, so a plain `e2e run` of it stops
+ * at once instead of failing on the first call.
+ */
+export function assertPatchedE2e(config: string): void {
+  if (
+    (globalThis as Record<symbol, unknown>)[
+      Symbol.for("@ayme-dev/e2e-tools.patched-e2e")
+    ] !== true
+  )
+    throw new Error(
+      `${config} needs the patched e2e: run it with e2e-patched (@ayme-dev/e2e-tools), not e2e`
+    );
+}
 
 /** The step's tool accounting, with the input a call can be repeated with. */
 export type PatchedBudgets = {

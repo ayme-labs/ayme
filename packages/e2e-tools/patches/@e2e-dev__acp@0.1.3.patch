@@ -1,0 +1,210 @@
+diff --git a/dist/executor.js b/dist/executor.js
+index 95623ef..37c3a8d 100644
+--- a/dist/executor.js
++++ b/dist/executor.js
+@@ -47,8 +47,19 @@ function executor(name, options, launch) {
+         name,
+         version: '1',
+         cache: 'inherit',
++        // Patch (ayme): repeats one recorded call of a `tools` option tool during a cached replay (needs the patched @e2e-dev/core).
++        ...(options.tools === undefined
++            ? {}
++            : {
++                async replayTool(ctx, toolName, input) {
++                    const tool = (await options.tools(ctx)).find((listed) => listed.name === toolName);
++                    if (tool === undefined)
++                        throw new Error(`the recording calls ${toolName}, which the tools option does not offer`);
++                    await tool.run(input, { ctx, observe: async () => '', replaying: true });
++                },
++            }),
+         async runStep(ctx) {
+-            const { held, session } = await ready(ctx, launch, memoryKey);
++            const { held, session } = await ready(ctx, launch, memoryKey, options.tools);
+             ctx.signal.throwIfAborted();
+             const active = activeStep(ctx);
+             const text = await untilAborted(stepMessage(active, held.tools, held.introduced ? undefined : [RULES, options.system, ctx.agentContext]), ctx.signal);
+@@ -92,8 +103,10 @@ function executor(name, options, launch) {
+     };
+ }
+ /** The attempt's session once the turn of the step before it stopped, or a fresh one when that turn's end closed it. */
+-async function ready(ctx, launch, memoryKey) {
+-    const held = hold(ctx, launch, memoryKey);
++async function ready(ctx, launch, memoryKey, extraTools) {
++    // Patch (ayme): the `tools` option is read once per session, on the step that starts it.
++    const extra = ctx.attempt.memory.get(memoryKey) === undefined && extraTools !== undefined ? await extraTools(ctx) : [];
++    const held = hold(ctx, launch, memoryKey, extra);
+     let session;
+     try {
+         session = await untilAborted(held.session, ctx.signal);
+@@ -113,7 +126,7 @@ async function ready(ctx, launch, memoryKey) {
+     }
+     // A tool of the agent's own that ran as that turn stopped closed the session and dropped it from the attempt.
+     if (ctx.attempt.memory.get(memoryKey) !== held)
+-        return ready(ctx, launch, memoryKey);
++        return ready(ctx, launch, memoryKey, extraTools);
+     return { held, session };
+ }
+ /** Counts one prompt turn as one model call, with what the agent reported of it. */
+@@ -136,14 +149,14 @@ function recordTurn(ctx, session, report) {
+     });
+ }
+ /** The attempt's session, started on its first step and closed when the attempt ends. */
+-function hold(ctx, launch, memoryKey) {
++function hold(ctx, launch, memoryKey, extra = []) {
+     const existing = ctx.attempt.memory.get(memoryKey);
+     if (existing !== undefined)
+         return existing;
+     let session;
+     let closed = false;
+     const slot = { active: undefined, halt: () => session?.cancel() };
+-    const tools = stepTools(slot, ctx);
++    const tools = stepTools(slot, ctx, extra);
+     const ownTool = (title) => {
+         if (slot.active === undefined) {
+             // Run in the tail of a step that already ended: no step to fail, so no later step gets this conversation.
+diff --git a/dist/mcp.js b/dist/mcp.js
+index ab28dd4..b80c300 100644
+--- a/dist/mcp.js
++++ b/dist/mcp.js
+@@ -15,15 +15,51 @@ export const MCP_SERVER_NAME = 'e2e_step';
+ export async function serveTools(tools) {
+     const { createMcpHandler, McpServer } = await import('@modelcontextprotocol/server');
+     const route = `/${randomUUID()}/mcp`;
+-    const handler = createMcpHandler(() => {
+-        const server = new McpServer({ name: MCP_SERVER_NAME, version: '1' }, { capabilities: { tools: {} } });
++    // Patch (ayme): a tool with `hidden` is listed only while it answers false. Every request
++    // gets a fresh server, so the list follows the screen; the agent is told to read it again
++    // by a notice sent on the answer of the tool call after which the list differs.
++    const changing = tools.some((tool) => tool.hidden !== undefined);
++    const debug = process.env.AYME_E2E_DEBUG !== undefined;
++    const shownNow = async () => {
++        const shown = [];
+         for (const tool of tools) {
++            if (tool.hidden === undefined || !(await Promise.resolve(tool.hidden()).catch(() => true)))
++                shown.push(tool.name);
++        }
++        return shown;
++    };
++    let announced;
++    // Patch (ayme): the list is checked only when the agent asks for it. Any other
++    // request registers every tool, so a call reaches its tool, whose own code
++    // refuses it when it cannot run now; the list the agent holds is the last one
++    // it was given.
++    let listing = true;
++    const handler = createMcpHandler(async () => {
++        const server = new McpServer({ name: MCP_SERVER_NAME, version: '1' }, { capabilities: { tools: changing ? { listChanged: true } : {} } });
++        const shown = changing && listing ? new Set(await shownNow()) : undefined;
++        if (shown !== undefined)
++            announced = [...shown].join(',');
++        for (const tool of tools) {
++            if (shown !== undefined && !shown.has(tool.name))
++                continue;
+             server.registerTool(tool.name, {
+                 description: tool.description,
+                 inputSchema: tool.inputSchema,
+                 annotations: { readOnlyHint: tool.readOnly, openWorldHint: false },
+-            }, async (args) => {
++            }, async (args, call) => {
+                 const result = await tool.run(args);
++                if (changing) {
++                    const now = (await shownNow()).join(',');
++                    if (now !== announced) {
++                        announced = now;
++                        if (debug)
++                            console.error(`[acp-patch] tool list changed after ${tool.name}: ${now.split(',').length} of ${tools.length} tools listed`);
++                        await call?.mcpReq?.notify?.({ method: 'notifications/tools/list_changed' }).catch((error) => {
++                            if (debug)
++                                console.error(`[acp-patch] the notice was not sent: ${error}`);
++                        });
++                    }
++                }
+                 return {
+                     content: [
+                         { type: 'text', text: result.text },
+@@ -44,7 +80,9 @@ export async function serveTools(tools) {
+             response.writeHead(404).end();
+             return;
+         }
+-        void forward(handler.fetch, request, response, error => reportFailure(error));
++        void forward(handler.fetch, request, response, error => reportFailure(error), (asked) => {
++            listing = asked === 'tools/list';
++        });
+     });
+     await new Promise((resolve, reject) => {
+         http.once('error', reject);
+@@ -62,7 +100,7 @@ export async function serveTools(tools) {
+     };
+ }
+ /** Hands one Node request to the web-standard handler and streams its response back. */
+-async function forward(fetch, incoming, outgoing, reportFailure) {
++async function forward(fetch, incoming, outgoing, reportFailure, onAsked) {
+     let sourceFailed = false;
+     try {
+         const headers = new Headers();
+@@ -75,6 +113,12 @@ async function forward(fetch, incoming, outgoing, reportFailure) {
+         }
+         const method = incoming.method ?? 'GET';
+         const body = method === 'GET' || method === 'HEAD' ? undefined : await readAll(incoming);
++        // Patch (ayme): which method the request asks for, so the server it gets knows
++        // whether to check the list.
++        const asked = body === undefined ? undefined : /"method"\s*:\s*"([^"]+)"/.exec(Buffer.from(body).toString('utf8'))?.[1];
++        onAsked?.(asked);
++        if (process.env.AYME_E2E_DEBUG !== undefined && (asked === 'tools/list' || asked === 'initialize'))
++            console.error(`[acp-patch] the agent asked ${asked}`);
+         const response = await fetch(new Request(`http://127.0.0.1${incoming.url ?? '/'}`, { method, headers, ...(body === undefined ? {} : { body }) }));
+         outgoing.writeHead(response.status, Object.fromEntries(response.headers));
+         if (response.body === null)
+diff --git a/dist/tools.js b/dist/tools.js
+index b6edd30..c3032e1 100644
+--- a/dist/tools.js
++++ b/dist/tools.js
+@@ -42,10 +42,10 @@ export async function openingScreen(active) {
+ /** The listed tools the active step does not offer, by the reason it would give. */
+ export function missingTools(active, listed) {
+     const own = toolsOf(active);
+-    return listed.filter((tool) => tool.name !== 'complete_step' && own[tool.name] === undefined).map((tool) => `${tool.name} (${unavailable(tool.name)})`);
++    return listed.filter((tool) => tool.name !== 'complete_step' && tool.extra !== true && own[tool.name] === undefined).map((tool) => `${tool.name} (${unavailable(tool.name)})`);
+ }
+ /** The session's tools, listed from its first step. */
+-export function stepTools(slot, first) {
++export function stepTools(slot, first, extra = []) {
+     const current = (name) => {
+         const active = slot.active;
+         if (active === undefined || stopped(active)) {
+@@ -88,6 +88,36 @@ export function stepTools(slot, first) {
+             }),
+         });
+     }
++    // Patch (ayme): the `tools` option's tools, served beside the action tools under the same guard.
++    for (const tool of extra) {
++        if (tools.some((listed) => listed.name === tool.name) || tool.name === 'complete_step') {
++            throw new Error(`the tools option names ${tool.name}, which a step tool already uses`);
++        }
++        const readOnly = tool.readOnly === true;
++        tools.push({
++            name: tool.name,
++            description: tool.description ?? tool.name,
++            inputSchema: tool.inputSchema,
++            readOnly,
++            extra: true,
++            // Patch (ayme): asked with the test's own step, so a tool can be left out for the rest of it.
++            hidden: tool.hidden === undefined ? undefined : () => tool.hidden(slot.active?.ctx ?? first),
++            run: (args) => guarded(tool.name, async (active) => {
++                if (!readOnly && active.ctx.step.kind === 'assert') {
++                    throw new Error('this step is an assertion: read the screen and conclude, do not change it');
++                }
++                const output = await tool.run(args, {
++                    ctx: active.ctx,
++                    // The screen as the action tools report it: what changed since the agent last saw it.
++                    observe: async () => {
++                        const screen = await run(toolsOf(active), 'observe', {});
++                        return typeof screen === 'string' ? screen : screen.text;
++                    },
++                });
++                return typeof output === 'string' ? { text: output } : output;
++            }),
++        });
++    }
+     const conclusion = createVerdictTool().tool;
+     tools.push({
+         name: 'complete_step',

@@ -86,11 +86,15 @@ export interface ToolSource {
 /** A Page Object class the entry file lists. */
 export type PageObjectClass = new (...args: never[]) => object;
 
-/** Builds a listed class on the attempt's `screen` and its other fixtures, such as the web engine's `browser`. */
+/**
+ * Builds a listed class on the attempt's `screen` and its other fixtures,
+ * such as the web engine's `browser`. Asked again for every call, so it
+ * follows the tabs the test has open.
+ */
 export type Build = (
   PageObject: PageObjectClass,
   fixtures: { readonly screen: object; readonly [name: string]: unknown }
-) => object;
+) => object | Promise<object>;
 
 /** A call the Page Object's own rules ruled out, before anything ran. */
 export class NotAvailable extends Error {
@@ -211,26 +215,18 @@ export function directPageObjects(options: {
   };
 
   let entryModule: Promise<Record<string, unknown>> | undefined;
-  const roots = new WeakMap<object, Map<string, object>>();
   const rootOf = async (tool: Bound) => {
     const { current, fixtures } = screens();
-    let built = roots.get(current);
-    if (built === undefined) roots.set(current, (built = new Map()));
-    let root = built.get(tool.rootClass);
-    if (root === undefined) {
-      const exports = await (entryModule ??= import(
-        pathToFileURL(entry).href
-      ) as Promise<Record<string, unknown>>);
-      const listed = Array.isArray(exports.default)
-        ? (exports.default as PageObjectClass[])
-        : [];
-      const PageObject = listed.find((Class) => Class.name === tool.rootClass);
-      if (PageObject === undefined)
-        throw new Error(`${entry} does not list ${tool.rootClass}`);
-      root = build(PageObject, { ...fixtures, screen: current });
-      built.set(tool.rootClass, root);
-    }
-    return root;
+    const exports = await (entryModule ??= import(
+      pathToFileURL(entry).href
+    ) as Promise<Record<string, unknown>>);
+    const listed = Array.isArray(exports.default)
+      ? (exports.default as PageObjectClass[])
+      : [];
+    const PageObject = listed.find((Class) => Class.name === tool.rootClass);
+    if (PageObject === undefined)
+      throw new Error(`${entry} does not list ${tool.rootClass}`);
+    return build(PageObject, { ...fixtures, screen: current });
   };
 
   const toolNamed = (name: string): Bound => {

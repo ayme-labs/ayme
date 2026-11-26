@@ -1,25 +1,21 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  directPageObjects,
-  NotAvailable,
-  serveProjectTools,
-  staleNotes,
-} from "@ayme-dev/e2e-tools";
+import { assertPatchedE2e } from "@ayme-dev/e2e-tools";
 import { acp } from "@e2e-dev/acp";
-import type { E2EConfig, JsonValue, StepExecutorContext } from "e2e";
+import type { E2EConfig, StepExecutorContext } from "e2e";
 import type { DefinedTool } from "e2e/agent";
 
 import baseConfig from "./e2e.config";
-import { build } from "./tests/e2e/tools/pageObjects";
+import { pageObjects, servedTools } from "./tests/e2e/tools/pageObjects";
+import { scriptedExecutor, type Plan } from "./tests/e2e/tools/scripted";
 
-// Model-free check of the Page Object study's third arm, on the patched e2e
+// Model-free check of the Page Object study's third arm, run with
+// `e2e-patched`, which patches e2e in its own processes only
 // (`packages/e2e-tools/README.md`). A scripted executor makes each call
-// through the tools arm 3 serves its agent, which go through e2e's tool
-// accounting as an agent's call does. Each step's params name the call:
-// `tool`, and `input` as JSON. The first run records each call with its
-// input. Switches, all optional:
+// through the tools arm 3 serves its agent. Each step's params name the
+// call: `tool`, and `input` as JSON. The first run records each call with
+// its input. Switches, all optional:
 // - `AYME_E2E_CACHE=read-only`: every step must replay from the recording;
 //   the executor fails any step that reaches it.
 // - `AYME_E2E_EXECUTOR=acp`: the replay repeats each call through the
@@ -29,11 +25,9 @@ import { build } from "./tests/e2e/tools/pageObjects";
 //   A step whose params carry `heal`, a role and name such as
 //   `button "Model"`, then taps that node instead, as an agent would heal.
 
+assertPatchedE2e("e2e.tools-check.config.ts");
+
 const here = path.dirname(fileURLToPath(import.meta.url));
-const pageObjects = directPageObjects({
-  entry: path.join(here, "tests/e2e/tools/pageObjects.ts"),
-  build,
-});
 const replayOnly = process.env.AYME_E2E_CACHE === "read-only";
 const stale = process.env.AYME_E2E_STALE;
 
@@ -52,70 +46,20 @@ const tools: Record<string, DefinedTool> = Object.fromEntries(
     return [name, { ...defined, tool }];
   })
 );
-// As arm 3 serves them: the agent's list holds the actions that can run on
-// the screen now, and a call that failed on a stale Page Object, or any
-// replayed call that failed, puts its action out of use for the test.
-const served = serveProjectTools(tools, {
-  onFailure: staleNotes(path.join(here, ".e2e/stale-page-objects"), (tool) =>
-    pageObjects.sourceOf(tool)
-  ),
-  hidden: async (tool) => (await pageObjects.ruledOutNow(tool)) !== undefined,
-  dropAfterFailure: (failure) =>
-    failure.during === "replay" || !(failure.error instanceof NotAvailable),
-});
+const served = servedTools(path.join(here, ".e2e/stale-page-objects"), tools);
 
-const call = async (
-  ctx: StepExecutorContext,
-  name: string,
-  input: JsonValue,
-  replaying = false
-) => {
-  const tool = (await served(ctx)).find((listed) => listed.name === name);
-  if (tool === undefined) throw new Error(`no tool ${name}`);
-  await tool.run(input, { ctx, observe: async () => "", replaying });
-};
-
-/** Taps the one node the observation lists with `roleAndName`, e.g. `button "Model"`. */
-async function heal(ctx: StepExecutorContext, roleAndName: string) {
-  const { text } = await ctx.observe();
-  const line = text.split("\n").find((at) => at.includes(` ${roleAndName}`));
-  const id = /^\s*#?(\S+)/.exec(line ?? "")?.[1];
-  if (id === undefined) throw new Error(`no ${roleAndName} on screen to heal`);
-  await ctx.actions.tap({ id });
-}
-
-const scripted = {
-  name: "ayme-scripted",
-  version: "1",
-  async runStep(ctx: StepExecutorContext) {
-    if (replayOnly)
-      return {
-        status: "failed" as const,
-        summary: `"${ctx.step.instruction}" did not replay from the recording`,
-      };
-    const params = (ctx.step.params ?? {}) as Record<string, string>;
-    if (params.tool === undefined)
-      return {
-        status: "blocked" as const,
-        errorCode: "AUTOMATION_UNSUPPORTED" as const,
-        summary: "the step names no tool",
-      };
-    try {
-      await call(ctx, params.tool, JSON.parse(params.input ?? "{}"));
-    } catch (error) {
-      if (params.heal === undefined) throw error;
-      await heal(ctx, params.heal);
-      return { status: "passed" as const, summary: `healed ${params.tool}` };
-    }
-    return { status: "passed" as const, summary: `ran ${params.tool}` };
-  },
-  // The patched e2e's hook: a cached replay repeats a recorded call.
-  async replayTool(ctx: StepExecutorContext, name: string, input: JsonValue) {
-    await call(ctx, name, input, true);
-  },
+/** A step's call, from its params. */
+const fromParams = ({ step }: StepExecutorContext): Plan | undefined => {
+  const params = (step.params ?? {}) as Record<string, string>;
+  if (params.tool === undefined) return undefined;
+  return {
+    calls: [{ tool: params.tool, input: JSON.parse(params.input ?? "{}") }],
+    ...(params.heal === undefined ? {} : { heal: params.heal }),
+  };
 };
 
 // The ACP executor as arm 3 configures it, with an agent that cannot start.
+// The `tools` option is the patched executor's (`patched.ts` in e2e-tools).
 const acpOptions = { command: "false", tools: served };
 
 export default {
@@ -129,7 +73,9 @@ export default {
     default: {
       // e2e keys a recording by the agent entry, not by its executor.
       executor:
-        process.env.AYME_E2E_EXECUTOR === "acp" ? acp(acpOptions) : scripted,
+        process.env.AYME_E2E_EXECUTOR === "acp"
+          ? acp(acpOptions)
+          : scriptedExecutor(served, fromParams, replayOnly),
     },
   },
 } satisfies E2EConfig;

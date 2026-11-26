@@ -1,10 +1,7 @@
-import { fileURLToPath } from "node:url";
-
-import { directPageObjects } from "@ayme-dev/e2e-tools";
 import { expect } from "e2e";
 
 import { testIn } from "../fixtures";
-import { build } from "./pageObjects";
+import { pageObjects } from "./pageObjects";
 
 // Run by `e2e.tools-check.config.ts`, not by the e2e suite: each `agent.act`
 // names one Page Object Tool call, which the scripted executor makes and the
@@ -12,13 +9,9 @@ import { build } from "./pageObjects";
 
 const test = testIn("inline");
 
-/** The same tools, to ask which can run now: arm 3's agent is listed only those. */
-const tools = directPageObjects({
-  entry: fileURLToPath(new URL("pageObjects.ts", import.meta.url)),
-  build,
-});
+/** Whether a tool can run now: arm 3's agent is listed only those. */
 const runsNow = async (tool: string) =>
-  (await tools.ruledOutNow(tool)) === undefined;
+  (await pageObjects.ruledOutNow(tool)) === undefined;
 
 test("the e2e suite's Page Objects run as tools, record and replay", async ({
   agent,

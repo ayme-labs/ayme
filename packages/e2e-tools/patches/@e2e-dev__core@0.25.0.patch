@@ -1,0 +1,505 @@
+diff --git a/dist/agent/act.js b/dist/agent/act.js
+index b0803c351d9af394a7610373c3a9715d6429f19f..0c840562ddb204848ac2c0d5b267b97cf1e8bf22 100644
+--- a/dist/agent/act.js
++++ b/dist/agent/act.js
+@@ -461,6 +461,10 @@ class ActDispatch {
+             actions: this.bindings.actions,
+             signal: this.accounting.signal,
+             remainingMs: () => this.accounting.remainingMs(),
++            // Patch (ayme): an executor that can repeat its own tool calls does so during replay.
++            replayTool: this.agent.executor.replayTool === undefined
++                ? undefined
++                : (name, input) => this.agent.executor.replayTool(this.context(), name, input),
+             replaying: (active) => {
+                 this.runtime.steps.replaying(active);
+                 this.accounting.replaying(active);
+diff --git a/dist/agent/action-dispatcher.js b/dist/agent/action-dispatcher.js
+index 87b8f96dcc8a3b2d4a7dee2aebdbb5910ac4398d..d176c97bf430a784555ea2957ae939a87f5e6508 100644
+--- a/dist/agent/action-dispatcher.js
++++ b/dist/agent/action-dispatcher.js
+@@ -348,11 +348,21 @@ export class ActionDispatcher {
+                 this.accounting.reserveAction();
+                 await this.before();
+                 this.typedRun = [];
+-                this.options.trace()?.recordGap(call.name);
++                // Patch (ayme): a call that says how to repeat itself is recorded below, once it
++                // succeeded. One that failed is not recorded at all: a replay that ran it again
++                // would fail the same way on every run, and the step could never be re-recorded
++                // around it.
++                if (call.replay === undefined)
++                    this.options.trace()?.recordGap(call.name);
+             }
+             const name = `${PROJECT_TOOL_EVENT_PREFIX}${call.name}`;
+             const value = await instrumentPhase(this.runtime, { api: this.accounting.api, kind: 'engine', phase: 'agent.action', name }, body);
+             if (call.mutates) {
++                if (call.replay !== undefined) {
++                    // Patch (ayme): with the version of the Page Object source the call ran.
++                    const source = globalThis[Symbol.for('e2e.patch.toolSourceVersion')]?.(call.name);
++                    this.options.trace()?.recordGap(call.name, { ...call.replay, ...(source === undefined ? {} : { source }) });
++                }
+                 this.armAfter('tool');
+                 await this.notify('tool', (fields) => ({ ...fields, action: `${PROJECT_TOOL_EVENT_PREFIX}${call.name}`, summary: `ran ${call.name}` }));
+             }
+diff --git a/dist/agent/default-agent.js b/dist/agent/default-agent.js
+index 56e51968074a53da99a6d6cc597b84af3b933782..1762468be5c326f0655bb6130c43c262252ab727 100644
+--- a/dist/agent/default-agent.js
++++ b/dist/agent/default-agent.js
+@@ -63,6 +63,13 @@ export function createBuiltInAgent(options = {}) {
+         ...act,
+         vision: true,
+         runStep: (context) => (context.step.kind === 'assert' ? assertion : act).runStep(context),
++        // Patch (ayme): repeats a recorded call of a config tool marked repeatable.
++        replayTool: async (context, name, input) => {
++            const defined = (options.tools ?? {})[name];
++            if (defined === undefined || defined.annotations.repeatable !== true)
++                throw new AgentError('INVALID_STATE', `the recording calls ${name}, which is not a repeatable tool of this agent`);
++            await context.budgets.runTool({ name, mutates: defined.annotations.mutates, replay: { input } }, async () => defined.tool.execute(input, {}));
++        },
+     };
+ }
+ /** The act loop: the whole grammar, the prior-step ledger, and a compacted history. */
+@@ -222,7 +229,7 @@ export function projectTools(context, tools) {
+         wrapped[name] = {
+             ...tool,
+             execute: async (input, executionOptions) => {
+-                const result = await context.budgets.runTool({ name, mutates }, async () => execute(input, withToolContext(executionOptions, {
++                const result = await context.budgets.runTool({ name, mutates, ...(defined.annotations.repeatable === true ? { replay: { input } } : {}) }, async () => execute(input, withToolContext(executionOptions, {
+                     observe: (options) => {
+                         if (mutates) {
+                             throw new AgentError('POLICY_DENIED', 'only read-only tools may request observations; observe in a separate tool call');
+diff --git a/dist/agent/replay.js b/dist/agent/replay.js
+index d730bf3fb29e6c35b2b371fb3bb0c265d2bb37f9..3a3477244ac2c510598ed5888c5ad212528df09c 100644
+--- a/dist/agent/replay.js
++++ b/dist/agent/replay.js
+@@ -28,7 +28,7 @@ function pointEnd({ point, within }) {
+         ? { point }
+         : { point, within: { descriptor: within.target, fx: within.fx, fy: within.fy } };
+ }
+-function planCall(action, actions) {
++function planCall(action, actions, replayTool) {
+     if (isNodeAction(action)) {
+         const { name, modifiers } = action;
+         return {
+@@ -39,6 +39,9 @@ function planCall(action, actions) {
+     }
+     switch (action.name) {
+         case 'tool':
++            // Patch (ayme): a recorded tool call that carries its input runs again through the executor's `replayTool`.
++            if (action.tool !== undefined && action.input !== undefined && replayTool !== undefined)
++                return { kind: 'free', invoke: () => replayTool(action.tool, JSON.parse(action.input)) };
+             return { kind: 'gap', ...(action.derived === undefined ? {} : { derived: action.derived }) };
+         case 'check':
+             return { kind: 'targeted', descriptor: action.target, invoke: (t) => actions.check(t, action.checked) };
+@@ -137,7 +140,7 @@ export async function replayTrace(host, trace, options = {}) {
+         current = { index: position + 1, summary: action.summary };
+         if (!host.traceEligible)
+             return stop('action-failed');
+-        const planned = planCall(action, host.actions);
++        const planned = planCall(action, host.actions, host.replayTool);
+         if (planned.kind === 'gap') {
+             return { ...stop('gap'), ...(planned.derived === undefined ? {} : { derived: planned.derived }) };
+         }
+diff --git a/dist/agent/step-cache.js b/dist/agent/step-cache.js
+index 17a8bf97ef398f0d8f6056bd477888bd7422344a..e12d37e43947d077706352a933550de2c8ba7c35 100644
+--- a/dist/agent/step-cache.js
++++ b/dist/agent/step-cache.js
+@@ -60,6 +60,33 @@ const END_WAIT_MARGIN_MS = 10_000;
+  */
+ const END_PATH_DELAYS_MS = [100, 300, 600, 1_000, 3_000];
+ const END_PATH_TIMEOUT_MS = 15_000;
++/** Patch (ayme): whether every action is a tool call recorded with its input, so a replay runs it again. */
++function callsOnly(actions) {
++    return actions.length > 0 && actions.every((action) => action.name === 'tool' && action.tool !== undefined && action.input !== undefined);
++}
++/**
++ * Patch (ayme): the first recorded tool call whose Page Object source changed
++ * since it was recorded, by the version each call recorded; undefined when
++ * none did or none recorded one.
++ */
++function changedCall(actions) {
++    const now = globalThis[Symbol.for('e2e.patch.toolSourceVersion')];
++    return actions.find((action) => action.name === 'tool' && action.source !== undefined && now?.(action.tool) !== undefined && now(action.tool) !== action.source)?.tool;
++}
++/**
++ * Patch (ayme): `AYME_E2E_REFRESH_AFTER_PO_CHANGE` passes a replayed step of tool
++ * calls alone once every call ran, without its recorded end screen, when their
++ * Page Object source changed since the recording, and records the step again
++ * from that run. Off by default: e2e checks the end screen, and hands a step
++ * whose end screen changed to the model.
++ */
++function refreshAfterPageObjectChange() {
++    return process.env.AYME_E2E_REFRESH_AFTER_PO_CHANGE !== undefined;
++}
++/** Patch (ayme): a step that heals around a stale tool call says so on every run. */
++function healedLog(text) {
++    console.error(`[e2e-patch] healed: ${text}`);
++}
+ export class StepTraceSession {
+     host;
+     cache;
+@@ -95,6 +122,18 @@ export class StepTraceSession {
+      * nothing and an unconfirmed one still evicts.
+      */
+     replayedWhole = false;
++    /** Patch (ayme): a replayed call whose Page Object source changed since it was recorded, so the step is recorded afresh. */
++    changedSource;
++    /**
++     * Patch (ayme): the recorded tool call that failed while this step
++     * replayed, if one did. The tool is what went stale, not the recording:
++     * the step keeps its recording whatever the executor does after.
++     */
++    toolCallFailed;
++    /** Patch (ayme): how many recorded actions ran before that tool call failed. */
++    toolCallFailedAt;
++    /** Patch (ayme): the entry as stored, before this run's values filled it. */
++    storedPayload;
+     /** True once a cached entry's actions were run this step, fully or partly. */
+     consumedReplay = false;
+     /** True once the store returned an entry for this step, whether or not it replayed. */
+@@ -130,8 +169,9 @@ export class StepTraceSession {
+         this.recorder?.record(action);
+     }
+     /** Records one mutating project-tool call as a replay-ending gap. */
+-    recordGap(toolName) {
+-        this.recorder?.recordGap(toolName);
++    recordGap(toolName, replay) {
++        // Patch (ayme): with the input a repeatable call can be run again with.
++        this.recorder?.recordGap(toolName, replay);
+     }
+     /** Records a fill whose value was this run's data as a replay-ending gap, with the rule that said so. */
+     recordDerivedGap(reason) {
+@@ -258,11 +298,41 @@ export class StepTraceSession {
+             case 'no-verdict':
+                 return;
+             case 'failed':
+-                if (this.consumedReplay)
++                // Patch (ayme): a step whose recorded tool call failed keeps its recording.
++                if (this.consumedReplay && this.toolCallFailed === undefined)
+                     await this.evict();
+                 return;
+             case 'passed':
+-                if (this.repairedAfterEndMismatch(recorder))
++                // Patch (ayme): a call whose Page Object source changed ran again: the
++                // step is recorded afresh, with the version its calls ran now.
++                if (this.replayedWhole && this.changedSource !== undefined && await this.stage(recorder, verdictSummary, recordedBy) === 'staged') {
++                    console.error(`[e2e-patch] "${this.options.instruction}": ${this.changedSource}'s Page Objects changed since it was recorded; recorded afresh`);
++                    return;
++                }
++                // Patch (ayme): the executor healed a stale tool call: its actions are
++                // stored beside the call, which stays the recording's first choice.
++                if (this.toolCallFailed !== undefined && !this.replayedWhole && await this.stageHealed(recorder, verdictSummary, recordedBy)) {
++                    return;
++                }
++                // Patch (ayme): the call that once went stale ran again: its fallback goes,
++                // and the step is recorded afresh, with the call's own run.
++                if (this.toolCallFailed === undefined && this.replayedWhole && this.storedPayload?.healed !== undefined) {
++                    const { healed, ...called } = this.storedPayload;
++                    if (await this.stage(recorder, verdictSummary, recordedBy) !== 'staged')
++                        this.cache.staged.push({ kind: 'write', keyHash: this.keyHash, trace: called, stepIndex: this.options.stepIndex });
++                    healedLog(`"${this.options.instruction}": ${healed.tool} runs again; the actions that healed it are dropped`);
++                    return;
++                }
++                if (this.toolCallFailed !== undefined) {
++                    // Patch (ayme): what the executor did around a stale tool is not saved over the recording.
++                    this.cache.staged.push({
++                        kind: 'keep',
++                        keyHash: this.keyHash,
++                        stepIndex: this.options.stepIndex,
++                        recordedFor: recordedProvenance(this.claim.step, this.options.redact),
++                    });
++                }
++                else if (this.repairedAfterEndMismatch(recorder))
+                     await this.evict();
+                 else if (this.replayedWhole) {
+                     this.cache.staged.push({
+@@ -304,6 +374,8 @@ export class StepTraceSession {
+         const entry = readTraceEntry(read.entry);
+         if (entry === undefined)
+             return { status: 'miss', reason: 'invalid-entry' };
++        // Patch (ayme): kept as stored, to write back with its fallback added or dropped.
++        this.storedPayload = entry.payload;
+         // The stored recording has a slot for each `unique()` value; this call's
+         // values fill it. A slot this call cannot fill is an entry recorded for
+         // another shape, which the key should have kept apart.
+@@ -366,21 +438,60 @@ export class StepTraceSession {
+             actions: host.actions,
+             signal: host.signal,
+             remainingMs: () => host.remainingMs(),
++            // Patch (ayme): which recorded tool call failed, if one did.
++            replayTool: host.replayTool === undefined
++                ? undefined
++                : async (name, input) => {
++                    try {
++                        return await host.replayTool(name, input);
++                    }
++                    catch (error) {
++                        this.toolCallFailed ??= name;
++                        throw error;
++                    }
++                },
+         };
+-        const outcome = await replayTrace(watched, trace, {
++        let outcome = await replayTrace(watched, trace, {
+             ...(start?.kind === 'semantic' ? { initial: start } : {}),
+             looksBeforeFree: () => !onEndRoute(screens.at(-1)),
+         });
+         this.consumedReplay = true;
+-        const end = outcome.completed && start?.kind === 'semantic' ? await this.endStateMatches(trace, start, screens) : undefined;
++        // Patch (ayme): a recorded tool call failed where the recording keeps the
++        // actions that healed it: those run on from there, without a model, and
++        // the trace they end with is the one whose end state is checked.
++        let ended = trace;
++        if (!outcome.completed && this.toolCallFailed !== undefined) {
++            this.toolCallFailedAt = outcome.executed;
++            const healed = trace.healed;
++            if (healed !== undefined && healed.at === outcome.executed && healed.tool === this.toolCallFailed) {
++                healedLog(`"${this.options.instruction}": ${healed.tool} failed on replay; replaying the ${healed.trace.actions.length} action(s) that healed it, no model call`);
++                const rest = await replayTrace(watched, healed.trace, { looksBeforeFree: () => !onEndRoute(screens.at(-1)) });
++                ended = healed.trace;
++                outcome = {
++                    ...rest,
++                    executed: outcome.executed + rest.executed,
++                    total: outcome.executed + rest.total,
++                    summaries: [...outcome.summaries, ...rest.summaries],
++                    ...(rest.stoppedAt === undefined ? {} : { stoppedAt: { ...rest.stoppedAt, index: outcome.executed + rest.stoppedAt.index } }),
++                };
++            }
++        }
++        // Patch (ayme): the Page Objects changed and every call ran: the end screen the
++        // recording kept may be what changed, so it is not waited for. The step is
++        // recorded again from this run, with the version its calls ran.
++        const changed = outcome.completed && refreshAfterPageObjectChange() && callsOnly(ended.actions) ? changedCall(ended.actions) : undefined;
++        this.changedSource ??= changed;
++        const end = changed !== undefined
++            ? { matches: true }
++            : outcome.completed && start?.kind === 'semantic' ? await this.endStateMatches(ended, start, screens) : undefined;
+         const stopReason = outcome.completed
+             ? end?.matches === true
+                 ? undefined
+                 : 'end-mismatch'
+             : (outcome.stopReason ?? 'action-failed');
+         if (stopReason === undefined)
+-            return this.selfFinalize(trace, outcome);
+-        const detail = stopDetail(outcome, stopReason, trace, end?.failure);
++            return this.selfFinalize(ended, outcome);
++        const detail = stopDetail(outcome, stopReason, ended, end?.failure);
+         if (outcome.executed === 0) {
+             // A prefix that performed nothing is a miss with a name, not a hand-off:
+             // the executor starts from the top and owes the notice nothing.
+@@ -409,6 +520,10 @@ export class StepTraceSession {
+         const arrived = await this.endScreen(trace);
+         if (arrived === undefined)
+             return { matches: false };
++        // Patch (ayme): a recording of repeatable tool calls alone, with no change
++        // on screen to check: the calls ran again without failing.
++        if (callsOnly(trace.actions) && (trace.endAnchors?.length ?? 0) === 0 && (trace.goneAnchors?.length ?? 0) === 0)
++            return { matches: true };
+         // Both captures may predate a secret the replay resolved; read with the
+         // ledger as it is now, an unchanged node is no change.
+         const baseline = baselineScreen(screens, arrived.path);
+@@ -529,7 +644,10 @@ export class StepTraceSession {
+         const startNodes = redactNodesAgain(this.startNodes, this.redaction);
+         const routeMoved = this.startPath !== undefined && endPath !== undefined && !sameRoute(this.startPath, endPath);
+         const delta = describeDelta(startNodes, endNodes, routeMoved);
+-        if (delta.appeared.length === 0 && delta.gone.length === 0 && !routeMoved)
++        // Patch (ayme): a step made only of repeatable tool calls is saved even
++        // when the screen did not change: a call that runs again without failing
++        // is its proof, where a tap has nothing else to show for itself.
++        if (delta.appeared.length === 0 && delta.gone.length === 0 && !routeMoved && !callsOnly(recorder.actions))
+             return 'no-change';
+         const trace = recorder.finalize({
+             executor: this.options.executor,
+@@ -584,6 +702,31 @@ export class StepTraceSession {
+         if (deleted)
+             this.cache.staged.push({ kind: 'decided', outcome: 'evicted', keyHash: this.keyHash, stepIndex: this.options.stepIndex });
+     }
++    /**
++     * Patch (ayme): stages the recording as it was, its stale tool call
++     * included, with what the executor did from that call on stored beside it
++     * as the call's fallback. False when there is nothing to store that way.
++     */
++    async stageHealed(recorder, verdictSummary, recordedBy) {
++        const stored = this.storedPayload;
++        const at = this.toolCallFailedAt;
++        if (stored === undefined || at === undefined)
++            return false;
++        const staged = await this.stage(recorder, verdictSummary, recordedBy);
++        if (staged !== 'staged')
++            return false;
++        const written = this.cache.staged.pop();
++        const actions = written.trace.actions.slice(at);
++        if (actions.length === 0)
++            return false;
++        const { healed: _previous, ...called } = stored;
++        this.cache.staged.push({
++            ...written,
++            trace: { ...called, healed: { at, tool: this.toolCallFailed, trace: { ...written.trace, actions } } },
++        });
++        healedLog(`"${this.options.instruction}": ${this.toolCallFailed} failed on replay; the ${actions.length} action(s) that healed it are kept beside it`);
++        return true;
++    }
+     repairedAfterEndMismatch(recorder) {
+         return this.actionsAtEndMismatch !== undefined && recorder.recordedCount > this.actionsAtEndMismatch;
+     }
+diff --git a/dist/agent/tool.js b/dist/agent/tool.js
+index cfd764254c346cdcc4058624b248363d2ff025e7..b05e07915230c8024f6d13c51224738b6299267d 100644
+--- a/dist/agent/tool.js
++++ b/dist/agent/tool.js
+@@ -24,6 +24,8 @@ export function defineTool(tool, annotations) {
+         tool,
+         annotations: {
+             mutates: annotations.mutates,
++            // Patch (ayme): a tool whose call can be repeated from its recorded input.
++            ...(annotations.repeatable === true ? { repeatable: true } : {}),
+             ...(annotations.platforms === undefined ? {} : { platforms: [...annotations.platforms] }),
+         },
+     };
+diff --git a/dist/cache/recorder.js b/dist/cache/recorder.js
+index 0f017654273f84e84e685b1b03918d86c696a0ad..1f44d266a8cfe7d23913343034abf1e451abf334 100644
+--- a/dist/cache/recorder.js
++++ b/dist/cache/recorder.js
+@@ -53,8 +53,26 @@ export class TraceRecorder {
+      * than skipping it: the grammar cannot reproduce the mutation, and a replay
+      * that silently dropped a state change would prove nothing.
+      */
+-    recordGap(toolName) {
+-        this.push({ name: 'tool', summary: bound(`tool ${this.redact(toolName)}`, MAX_TRACE_SUMMARY_CHARS) });
++    recordGap(toolName, replay) {
++        // Patch (ayme): a repeatable call keeps the tool's name and its input as
++        // JSON text, under the rule of every replay input: verbatim or nothing.
++        // Without them, or when they cannot be kept whole, the call stays a gap.
++        let repeat = {};
++        if (replay !== undefined) {
++            let input;
++            try {
++                input = JSON.stringify(replay.input ?? {});
++            }
++            catch {
++                input = undefined;
++            }
++            if (input !== undefined && input.length <= MAX_TRACE_INPUT_CHARS && this.redact(input) === input && this.redact(toolName) === toolName) {
++                repeat = { tool: toolName, input };
++            }
++        }
++        // Patch (ayme): the version of the Page Object source the call ran.
++        const source = repeat.tool !== undefined && typeof replay?.source === 'string' && replay.source.length > 0 && replay.source.length <= 128 ? { source: replay.source } : {};
++        this.push({ name: 'tool', summary: bound(`tool ${this.redact(toolName)}`, MAX_TRACE_SUMMARY_CHARS), ...repeat, ...source });
+         this.lastActionAt = Date.now();
+     }
+     /**
+diff --git a/dist/cache/trace-read.js b/dist/cache/trace-read.js
+index 6bda203594ced10f1927e9f0e59d759397600a9a..80413e32a3590f0ec01cc6c84e59922cb9156e0f 100644
+--- a/dist/cache/trace-read.js
++++ b/dist/cache/trace-read.js
+@@ -110,7 +110,23 @@ function readActionTrace(document) {
+     if (actions === undefined)
+         return undefined;
+     const keyedBy = readKeyContext(raw['keyedBy']);
++    // Patch (ayme): the actions that healed a recorded tool call which failed on
++    // replay, kept beside it: where the call stood (`at`), its name, and the
++    // healing as a trace of its own, from that point to the step's end.
++    const healedRaw = raw['healed'];
++    let healed;
++    if (healedRaw !== undefined) {
++        if (typeof healedRaw !== 'object' || healedRaw === null || Array.isArray(healedRaw))
++            return undefined;
++        const at = healedRaw['at'];
++        const tool = healedRaw['tool'];
++        const healedTrace = readActionTrace(healedRaw['trace']);
++        if (!Number.isInteger(at) || at < 0 || typeof tool !== 'string' || tool === '' || healedTrace === undefined || healedTrace.healed !== undefined)
++            return undefined;
++        healed = { at, tool, trace: healedTrace };
++    }
+     return {
++        ...(healed === undefined ? {} : { healed }),
+         actions,
+         executor: {
+             name: executorName,
+@@ -309,7 +325,17 @@ function readRecordedAction(document) {
+             const derived = raw['derived'];
+             if (derived !== undefined && !isDerivedReason(derived))
+                 return undefined;
+-            return { name: 'tool', summary, ...(derived === undefined ? {} : { derived }) };
++            // Patch (ayme): a repeatable tool call carries its name and its input as JSON text; both or neither.
++            const tool = raw['tool'];
++            const input = raw['input'];
++            if ((tool === undefined) !== (input === undefined))
++                return undefined;
++            if (tool !== undefined && (typeof tool !== 'string' || tool === '' || typeof input !== 'string'))
++                return undefined;
++            const source = raw['source'];
++            if (source !== undefined && (tool === undefined || typeof source !== 'string' || source === '' || source.length > 128))
++                return undefined;
++            return { name: 'tool', summary, ...(derived === undefined ? {} : { derived }), ...(tool === undefined ? {} : { tool, input }), ...(source === undefined ? {} : { source }) };
+         }
+         default:
+             return undefined;
+diff --git a/dist/cache/trace.js b/dist/cache/trace.js
+index fd1b02fbadb9f4aa5d12042c9ab9b0a7aa1b4776..eb506553ee978a67844fbe2937556fc4a3add960 100644
+--- a/dist/cache/trace.js
++++ b/dist/cache/trace.js
+@@ -224,8 +224,13 @@ function mapActionText(action, map) {
+         case 'closeTab':
+         case 'pressKey':
+         case 'dismissKeyboard':
+-        case 'tool':
+-            return withSummary(action);
++        case 'tool': {
++            // Patch (ayme): a repeatable tool call's input is a replay input, like a typed value.
++            if (action.input === undefined)
++                return withSummary(action);
++            const input = map(action.input);
++            return input === undefined ? undefined : withSummary({ ...action, input });
++        }
+     }
+ }
+ /**
+@@ -240,6 +245,13 @@ export function mapTraceText(trace, map) {
+     const actions = each(trace.actions, (action) => mapActionText(action, map));
+     if (actions === undefined)
+         return undefined;
++    // Patch (ayme): the healed fallback beside a stale tool call is mapped like the trace.
++    if (trace.healed !== undefined) {
++        const healedTrace = mapTraceText(trace.healed.trace, map);
++        if (healedTrace === undefined)
++            return undefined;
++        trace = { ...trace, healed: { ...trace.healed, trace: healedTrace } };
++    }
+     const summary = map(trace.summary);
+     const startPath = trace.startPath === undefined ? undefined : map(trace.startPath);
+     const endPath = trace.endPath === undefined ? undefined : map(trace.endPath);
+diff --git a/dist/run/fixtures.js b/dist/run/fixtures.js
+index 0e1d8d4b9fa8f8e3d5fd5487b3815b61322cebff..e20d91759d06cfa89bcc395529fe1ec62970321f 100644
+--- a/dist/run/fixtures.js
++++ b/dist/run/fixtures.js
+@@ -155,6 +155,15 @@ export function createFixtures(environment) {
+     for (const [name, create] of Object.entries(factories)) {
+         Object.defineProperty(fixtures, name, { enumerable: true, get: lazily(create) });
+     }
++    // Patch (ayme): the newest attempt's fixtures, for project tools that build page
++    // objects written on e2e's `screen`: `current` is its screen, `fixtures` has an
++    // engine's own (the web engine's `browser`). Both are read lazily, as a test reads them.
++    globalThis[Symbol.for('e2e.patch.screens')] = {
++        fixtures,
++        get current() {
++            return fixtures.screen;
++        },
++    };
+     return { fixtures: gateUnknownFixtures(fixtures, environment), agentRuntime };
+ }
+ /**
+@@ -350,6 +359,14 @@ export function lazyBuiltInAgent(config) {
+             }
+             return executor.runStep(context);
+         },
++        // Patch (ayme): a cached replay may run before the first live step built the delegate.
++        async replayTool(context, name, input) {
++            if (executor === undefined) {
++                const { createBuiltInAgent } = await import('../agent/default-agent.js');
++                executor = createBuiltInAgent({ system: config.system, tools: config.tools });
++            }
++            return executor.replayTool(context, name, input);
++        },
+     };
+ }
+ /** Trusted config context first, then test/group context. */
