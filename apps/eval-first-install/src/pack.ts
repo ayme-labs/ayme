@@ -1,12 +1,9 @@
 /**
  * Builds the ref under test into what a first-time user installs: the
- * `@ayme-dev/*` tarballs at a prerelease version, and the `ayme` skill and
- * the guide with doc-changes.patch applied.
+ * `@ayme-dev/*` tarballs at a prerelease version, and the ref's `ayme` skill
+ * and guide.
  *
- *   node src/pack.ts [--ref <ref>] [--out <dir>] [--no-doc-patch]
- *
- * `--no-doc-patch` packs the ref's skill and guide as they are, for a
- * control round to compare the patch against.
+ *   node src/pack.ts [--ref <ref>] [--out <dir>]
  *
  * The ref is checked out in a throwaway worktree under the main checkout's
  * .claude/worktrees/, which is removed afterwards. A ref that was packed
@@ -26,9 +23,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 
-import { docPatch as docPatchFile, repoRoot, resultsDir } from "./paths.ts";
+import { repoRoot, resultsDir } from "./paths.ts";
 
-export const DEFAULT_REF = "feat/page-object-tools-beside-browser-automation";
+export const DEFAULT_REF = "main";
 
 /** The packages a first-time user's project installs, and the peers they pin. */
 const PACKAGES = ["ayme", "mcp", "webmcp", "inspector"];
@@ -41,8 +38,6 @@ export type Packed = {
   tarballs: string[];
   skillDir: string;
   docsDir: string;
-  /** Whether doc-changes.patch was applied; absent in packs made before. */
-  docPatch?: boolean;
 };
 
 // The ref's `pnpm install` runs the repo's root `prepare`, whose
@@ -83,19 +78,13 @@ function readPacked(dir: string): Packed | undefined {
   return JSON.parse(readFileSync(meta, "utf8")) as Packed;
 }
 
-export function pack(
-  ref = DEFAULT_REF,
-  outDir?: string,
-  docPatch = true
-): Packed {
+export function pack(ref = DEFAULT_REF, outDir?: string): Packed {
   const root = repoRoot();
   const sha = resolveRef(ref, root);
   const short = sha.slice(0, 8);
-  const dir =
-    outDir ??
-    join(resultsDir, "packed", docPatch ? short : `${short}-no-doc-patch`);
+  const dir = outDir ?? join(resultsDir, "packed", short);
   const existing = readPacked(dir);
-  if (existing?.sha === sha && (existing.docPatch ?? true) === docPatch) {
+  if (existing?.sha === sha) {
     console.log(`Reusing the packed ${ref} at ${short} from ${dir}`);
     return existing;
   }
@@ -111,23 +100,6 @@ export function pack(
     run("git", ["worktree", "remove", "--force", worktree], root);
   run("git", ["worktree", "add", "--detach", worktree, sha], root);
   try {
-    // The doc changes under test must apply as they are; a ref they no
-    // longer fit stops the run instead of being adapted.
-    if (docPatch) {
-      try {
-        execFileSync("git", ["apply", "--check", docPatchFile], {
-          cwd: worktree,
-          stdio: "pipe",
-        });
-      } catch (error) {
-        const stderr = (error as { stderr?: Buffer }).stderr?.toString() ?? "";
-        throw new Error(
-          `doc-changes.patch does not apply to ${ref} at ${short}. Stop and update the patch by hand.\n${stderr}`
-        );
-      }
-      run("git", ["apply", docPatchFile], worktree);
-    }
-
     const base = JSON.parse(
       readFileSync(join(worktree, "packages/ayme/package.json"), "utf8")
     ).version.replace(/-.*$/, "");
@@ -172,15 +144,12 @@ export function pack(
       tarballs: readdirSync(tarballDir).filter((f) => f.endsWith(".tgz")),
       skillDir,
       docsDir,
-      docPatch,
     };
     writeFileSync(
       join(dir, "meta.json"),
       `${JSON.stringify(packed, null, 2)}\n`
     );
-    console.log(
-      `Packed ${ref} at ${short} as ${version} into ${dir}, ${docPatch ? "with" : "without"} doc-changes.patch`
-    );
+    console.log(`Packed ${ref} at ${short} as ${version} into ${dir}`);
     return packed;
   } finally {
     run("git", ["worktree", "remove", "--force", worktree], root);
@@ -193,8 +162,7 @@ if (import.meta.filename === process.argv[1]) {
     options: {
       ref: { type: "string" },
       out: { type: "string" },
-      "no-doc-patch": { type: "boolean", default: false },
     },
   });
-  pack(values.ref ?? DEFAULT_REF, values.out, !values["no-doc-patch"]);
+  pack(values.ref ?? DEFAULT_REF, values.out);
 }

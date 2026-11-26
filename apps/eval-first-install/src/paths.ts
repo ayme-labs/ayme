@@ -8,7 +8,6 @@ export const packageDir = resolve(
 );
 export const appDir = join(packageDir, "fixture", "app");
 export const projectTemplateDir = join(packageDir, "fixture", "project");
-export const docPatch = join(packageDir, "doc-changes.patch");
 export const recorder = join(packageDir, "src", "recorder.mjs");
 export const approveMcpJson = join(packageDir, "src", "approve-mcp-json.mjs");
 export const resultsDir = join(packageDir, "results");

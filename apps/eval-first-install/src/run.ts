@@ -262,9 +262,9 @@ function copyWorkerFiles(): void {
       });
     }
   }
-  if (existsSync(join(project, ".ayme", "init-script.js"))) {
+  if (existsSync(join(project, "ayme", "init-script.js"))) {
     cpSync(
-      join(project, ".ayme", "init-script.js"),
+      join(project, "ayme", "init-script.js"),
       join(configs, "init-script.js")
     );
   }
@@ -338,7 +338,7 @@ try {
   writeMeta();
 
   if (values.agent === "none") {
-    await selfCheck(project, packed.version, fixture.url, n, env, log);
+    await selfCheck(project, fixture.url, n, env, log);
   } else {
     const setup = await runClaude(
       "setup",

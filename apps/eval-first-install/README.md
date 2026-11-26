@@ -1,14 +1,14 @@
 # First-install eval
 
-Checks how a developer installing Ayme for the first time gets on with each of three browser automations: Playwright CLI, Playwright MCP and agent-browser. A headless Claude Code worker (Sonnet, medium effort) gets a project folder with Ayme installed and Page Objects in `.ayme/`, is told only which browser automation to use, sets things up, is restarted, and then does a task on a small list app that does not include Ayme. Neither prompt names a channel, a skill or a document.
+Checks how a developer installing Ayme for the first time gets on with each of three browser automations: Playwright CLI, Playwright MCP and agent-browser. A headless Claude Code worker (Sonnet, medium effort) gets a project folder with Ayme installed and Page Objects in `ayme/`, is told only which browser automation to use, sets things up, is restarted, and then does a task on a small list app that does not include Ayme. Neither prompt names a channel, a skill or a document.
 
 It is never part of `pnpm check` or the repo's CI: the package has no build, lint, typecheck or test task. It runs by hand or through [its own workflow](../../.github/workflows/eval-first-install.yml).
 
 ## What a run does
 
-1. **Packs the ref under test** (`src/pack.ts`, default `feat/page-object-tools-beside-browser-automation`): checks it out in a throwaway worktree under the main checkout's `.claude/worktrees/`, sets `@ayme-dev/ayme`, `mcp`, `webmcp` and `inspector` to the prerelease version `<version>-first-install.g<sha>`, builds and packs them, and copies the `ayme` skill and `docs/guide` with [doc-changes.patch](doc-changes.patch) applied. A patch that no longer applies stops the run. A packed ref is reused from `results/packed/<sha>`.
-2. **Starts a local npm registry**: Verdaccio, run with `npx`, holding the packed tarballs and passing everything else through to npmjs. The project's `.npmrc` points at it, so the documented `npx -y @ayme-dev/mcp@<version>` works as for a real user.
-3. **Builds the project** in a fresh temporary folder, outside the repo so the worker finds none of its files: [fixture/project](fixture/project) (a `package.json` pinning the prerelease, `tsconfig.json`, and `.ayme/` with the Page Objects from `apps/example-vue/playwright/pom/`), the skill in `.claude/skills/ayme/`, the guide in `ayme-docs/`, then `npm install`.
+1. **Packs the ref under test** (`src/pack.ts`, default `main`): checks it out in a throwaway worktree under the main checkout's `.claude/worktrees/`, sets `@ayme-dev/ayme`, `mcp`, `webmcp` and `inspector` to the prerelease version `<version>-first-install.g<sha>`, builds and packs them, and copies the ref's `ayme` skill and `docs/guide`. A packed ref is reused from `results/packed/<sha>`.
+2. **Starts a local npm registry**: Verdaccio, run with `npx`, holding the packed tarballs and passing everything else through to npmjs. The project's `.npmrc` points at it, so the project installs the prerelease, and the documented `npx -y @ayme-dev/mcp@<version>` works as for a real user.
+3. **Builds the project** in a fresh temporary folder, outside the repo so the worker finds none of its files: [fixture/project](fixture/project) (a `package.json` pinning the prerelease, `tsconfig.json`, and `ayme/` with its `tsconfig.json`, `page-objects.ts` and the Page Objects from `apps/example-vue/ayme/pom/`), the skill in `.claude/skills/ayme/`, the guide in `ayme-docs/`, then `npm install`.
 4. **Serves the fixture app** ([fixture/app](fixture/app)): a static list app with no Ayme in it, whose DOM matches the Page Objects. Its server keeps the list.
 5. **Runs the worker** twice with `claude -p`: the setup prompt, then, resumed with the project's `.mcp.json`, the task prompt ([src/prompts.ts](src/prompts.ts)). Claude Code asks before any edit of `.mcp.json`, and a headless run declines every question, so a hook ([src/approve-mcp-json.mjs](src/approve-mcp-json.mjs)) answers yes to that one question, as the developer would, and logs it to `approvals.log`.
 6. **Checks the outcome** from the server's list: active items include "Soy milk N" and neither "Oat milk N" nor "Rye bread N", and "Rye bread N" is archived.
@@ -33,7 +33,7 @@ On a shared machine, note that the worker chooses its own ports and browser, and
 
 ## In CI
 
-[eval-first-install.yml](../../.github/workflows/eval-first-install.yml) runs on a push to `t3/validate-real-playwright-evals` that changes [ci.json](ci.json), which names the ref, the tools and the runs per tool. `"docPatch": false` makes it a control round, run on the ref's own skill and guide. A `workflow_dispatch` workflow could not be dispatched from this branch, because GitHub dispatches only workflows on the default branch. One job packs the ref and runs the self-check; then each run gets its own fresh runner, with Claude Code 2.1.326 and the `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK` secret, the eval's second login. The score table goes to the job summary, and each run's folder is uploaded as an artifact.
+[eval-first-install.yml](../../.github/workflows/eval-first-install.yml) runs on a push to `t3/eval-first-install-on-main` that changes [ci.json](ci.json), which names the ref, the tools and the runs per tool. A `workflow_dispatch` workflow could not be dispatched from that branch, because GitHub dispatches only workflows on the default branch. One job packs the ref and runs the self-check; then each run gets its own fresh runner, with Claude Code 2.1.326 and the `CLAUDE_CODE_OAUTH_TOKEN_FALLBACK` secret, the eval's second login. The score table goes to the job summary, and each run's folder is uploaded as an artifact.
 
 ## A run's folder
 
@@ -60,7 +60,7 @@ One row per run:
 - **Claimed**: what the Outcome section of the worker's REPORT.md says.
 - **Skill**: the phases in which the worker loaded the `ayme` skill with the Skill tool.
 - **Docs read**: the skill and guide files the worker read with Read or `cat`/`sed`/`head`-style commands, in order. `skill` is SKILL.md, a bare name is a skill reference, `docs/…` is the guide.
-- **Channel (default)**: how the task's Page Object actions (`ListPage.*`, `ListItem.*`, `ArchiveDialog.*`) were called: `mcp` (the `ayme` server's tools or `ayme_call`), `webmcp` (`playwright-cli webmcp-call`, `agent-browser webmcp invoke`, Playwright MCP's `webmcp_*` tools), `both` or `none`; in brackets, the channel the skill names for that tool and whether the run used it.
+- **Channel (default)**: how the task's Page Object actions (`ListPage.*`, `ListItem.*`, `ArchiveDialog.*`) were called: `mcp` (the `ayme` server's tools or `ayme_call`), `webmcp` (`playwright-cli webmcp-call`, `agent-browser webmcp invoke`, Playwright MCP's `webmcp_*` tools), `both` or `none`; in brackets, the channel the skill names for that tool, `mcp` for all three, and whether the run used it.
 - **PO calls (errors)**: those action calls in the task phase, and how many answered with an error.
 - **Plain actions**: clicks, fills, key presses and the like through the browser automation in the task phase.
 - **Restart asked in task**: whether the worker asked to be restarted again during the task.
@@ -69,7 +69,3 @@ One row per run:
 - **ayme mcp starts (non-zero exits)**: from the recording.
 
 The command classes are heuristics over the transcripts; check a surprising cell against the transcript.
-
-## The doc changes under test
-
-[doc-changes.patch](doc-changes.patch) is applied to the copies of the skill and the guide given to the worker, never to the repo. It is made against the PR head `6b0b4d79`. `node src/pack.ts --no-doc-patch` packs the skill and the guide as the ref has them, for a control round.

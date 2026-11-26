@@ -17,15 +17,11 @@ type Rpc = {
   stop: () => void;
 };
 
-function startMcp(
-  project: string,
-  version: string,
-  port: number,
-  env: NodeJS.ProcessEnv
-): Rpc {
+/** Starts the project's own `@ayme-dev/mcp`, the start command the skill names first. */
+function startMcp(project: string, port: number, env: NodeJS.ProcessEnv): Rpc {
   const child = spawn(
     "npx",
-    ["-y", `@ayme-dev/mcp@${version}`, "mcp", "--port", String(port)],
+    ["--no", "-p", "@ayme-dev/mcp", "ayme", "mcp", "--port", String(port)],
     { cwd: project, env, stdio: ["pipe", "pipe", "inherit"], detached: true }
   );
   let id = 0;
@@ -96,14 +92,13 @@ function itemId(tree: string, name: string): string {
 
 export async function selfCheck(
   project: string,
-  version: string,
   page: string,
   n: string,
   env: NodeJS.ProcessEnv,
   log: (line: string) => void
 ): Promise<void> {
   const port = await freePort();
-  const mcp = startMcp(project, version, port, env);
+  const mcp = startMcp(project, port, env);
   const require = createRequire(join(project, "package.json"));
   const { chromium } = require("@playwright/test");
   const browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -122,10 +117,14 @@ export async function selfCheck(
     log(`ayme_connect: ${connect}`);
     const link = /https?:\/\/\S+#ayme=\S+/.exec(connect)?.[0];
     if (!link) throw new Error(`No connect link in: ${connect}`);
-    const initScript = join(project, ".ayme", "init-script.js");
+    const initScript = join(project, "ayme", "init-script.js");
     if (!existsSync(initScript))
       throw new Error(`ayme mcp wrote no ${initScript}`);
-    const context = await browser.newContext({ bypassCSP: true });
+    // The browser context page-objects-without-ayme.md gives.
+    const context = await browser.newContext({
+      bypassCSP: true,
+      permissions: ["local-network-access"],
+    });
     await context.addInitScript({ path: initScript });
     const tab = await context.newPage();
     await tab.goto(link);

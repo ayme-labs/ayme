@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": [".ayme/**/*.ts"]
+  "include": ["ayme/**/*.ts"]
 }

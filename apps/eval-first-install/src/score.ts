@@ -21,9 +21,13 @@ import { TOOLS, type Tool } from "./prompts.ts";
 
 type Channel = "mcp" | "webmcp";
 
-/** The channel the skill's browser-automation-tools.md names first for each tool. */
+/**
+ * The channel the skill's browser-automation-tools.md names for each tool.
+ * It names `ayme mcp` for all three; a WebMCP call is still counted, as
+ * `webmcp`, should a worker find that way.
+ */
 export const DEFAULT_CHANNEL: Record<Tool, Channel> = {
-  "playwright-cli": "webmcp",
+  "playwright-cli": "mcp",
   "playwright-mcp": "mcp",
   "agent-browser": "mcp",
 };

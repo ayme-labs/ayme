@@ -22,14 +22,14 @@ const environmentFacts = `Facts about this environment:
 - Install into this project (npm install --save-dev), never globally.
 - Run every browser headless.
 - An MCP server goes in ./.mcp.json in this folder (project scope) and is not available to you until you are restarted.
-- Stay inside this folder. Do not read or change anything outside it. Do not change the Page Objects in .ayme/, and do not start, stop or change the app's server.`;
+- Stay inside this folder. Do not read or change anything outside it. Do not change the Page Objects in ayme/, and do not start, stop or change the app's server.`;
 
 export function setupPrompt(tool: Tool, page: string): string {
   return `I just set this project up and this is your first time in it.
 
 ## Brief
 
-The app I work on runs at ${page}. It is a small list app, its server is already running, and its source is not in this folder. The app itself does not include Ayme. This project has Ayme installed, with Page Objects for the app in .ayme/.
+The app I work on runs at ${page}. It is a small list app, its server is already running, and its source is not in this folder. The app itself does not include Ayme. This project has Ayme installed, with Page Objects for the app in ayme/.
 
 I want you to do browser tasks on that page for me with ${TOOL_NAMES[tool]}, using the project's Ayme Page Objects wherever they fit. Get everything ready for that. Install ${tool} at the version named. I will restart you when you are done, and then give you a task.
 
