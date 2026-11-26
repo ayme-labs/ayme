@@ -5,7 +5,11 @@ type Nothing = Readonly<Record<never, never>>;
  * more member: the call and Inspector requests join it.
  */
 export type SessionRequest =
+  /** `ayme close`: ends the Session, and closes a browser ayme opened. */
   | { readonly stop: Nothing }
+  /** `ayme detach`: ends a Session on a joined browser, which keeps
+   * running. */
+  | { readonly detach: Nothing }
   /** `ayme page-objects`: the Page Object Tree of the Tab. */
   | { readonly pageObjects: Nothing }
   /** `ayme tools`: every Page Object Tool of the Tab, with its parameters. */
@@ -17,6 +21,7 @@ export type SessionAnswer =
   | { readonly ok: true; readonly text: string; readonly data?: unknown }
   | { readonly ok: false; readonly text: string };
 
-/** How a Session ended: stopped by a Caller, because its browser went away,
- * or before it ever started. */
-export type SessionEnd = "stopped" | "browser gone" | "start failed";
+/** How a Session ended: stopped or detached by a Caller, because its
+ * browser went away, or before it ever started. */
+export type SessionEnd =
+  "stopped" | "detached" | "browser gone" | "start failed";

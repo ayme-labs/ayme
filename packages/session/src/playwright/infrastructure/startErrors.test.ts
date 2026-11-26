@@ -25,6 +25,13 @@ it.each([
     ),
     "Playwright could not open Chromium. Executable doesn't exist\nIf Chromium is not installed for the project's Playwright, install it with: npx playwright install chromium",
   ],
+  [
+    new BrowserError(
+      "address unreachable",
+      "Playwright could not connect to the browser at http://127.0.0.1:9333. connect ECONNREFUSED 127.0.0.1:9333"
+    ),
+    "Playwright could not connect to the browser at http://127.0.0.1:9333. connect ECONNREFUSED 127.0.0.1:9333\nCheck that the browser runs and that this is the address of its DevTools protocol. Chrome answers no new connection while a dialog is open in one of its pages: answer it, then run ayme attach again.",
+  ],
 ])("says what was found and what to do about it: %s", (error, sentence) => {
   expect(sessionStartError(error).message).toBe(sentence);
 });
