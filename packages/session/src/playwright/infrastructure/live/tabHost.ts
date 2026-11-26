@@ -33,7 +33,8 @@ const reason = (cause: unknown) =>
 
 /**
  * Makes the Session the Host of `page`, running `pageObjects` there. The
- * Node Host's start reads nothing of the page.
+ * Node Host's start sets up the page's binding and its in-page helper
+ * without waiting for either, so it reads nothing of the page.
  */
 export const hostTab = (
   page: Page,

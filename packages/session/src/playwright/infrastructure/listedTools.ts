@@ -5,7 +5,6 @@ export type NodeHostTool = {
   readonly name: string;
   /** Where it comes from: `pageObject` for a Page Object Tool. */
   readonly group: string;
-  readonly authorDescription?: string;
   /** What an agent reads of it, which a listing shows. */
   readonly agentDescription?: string;
   readonly inputSchema: unknown;
