@@ -13,7 +13,7 @@ export default {
     {
       name: "chromium",
       // The panel's reduced motion only fades, so a box read after a change
-      // is where it ends. The motion tests run with full motion.
+      // is where it ends.
       engine: web({ reducedMotion: "reduce" }),
       app: {
         url: "http://127.0.0.1:0",

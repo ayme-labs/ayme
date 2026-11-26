@@ -224,11 +224,6 @@ const toolGroupLabels: readonly ToolGroupLabel[] = [
 
 /** The Tools lens's tree: the live tools, grouped. */
 export class ToolsLens extends Part {
-  /** One group's list. */
-  group(label: ToolGroupLabel): On {
-    return this.on((root) => root.getByRole("list", label));
-  }
-
   /** A tool's entry, by name. Pressing it opens the tool's page. */
   tool(name: string): On {
     return this.on((root) => root.getByRole("button", name));
@@ -966,14 +961,6 @@ export class ThemeSwitch extends Part {
       throw new Error(`The theme switch reads "${name}".`);
     return current;
   }
-
-  async choose(choice: ThemeChoice) {
-    for (let presses = 0; presses < 3; presses += 1) {
-      if ((await this.current()) === choice) return;
-      await this.button.click();
-    }
-    throw new Error(`The theme switch never reached ${choice}.`);
-  }
 }
 
 /** The layout menu: floating, or docked to a side. It opens in the Inspector's portal. */
@@ -1078,16 +1065,6 @@ export class InspectorHeader extends Part {
   /** Drags the panel by its header. */
   async dragBy(deltaX: number, deltaY: number) {
     await dragBy(this.title, deltaX, deltaY, this.tab);
-  }
-
-  /** Drags the panel by its header and drops it at viewport coordinates. */
-  async dropAt(x: number, y: number) {
-    const box = await (await this.title.front()).boundingBox();
-    if (!box) throw new Error("The header is not visible.");
-    await this.dragBy(
-      x - (box.x + box.width / 2),
-      y - (box.y + box.height / 2)
-    );
   }
 }
 

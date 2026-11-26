@@ -209,14 +209,8 @@ export function testIn(
   placement: Placement,
   path: FixturePage = "/",
   {
-    motion = "reduced",
     connected = false,
   }: {
-    /**
-     * The config runs the panel with reduced motion, which only fades, so a
-     * box read after a change is where it ends; "full" turns that off.
-     */
-    motion?: "reduced" | "full";
     /**
      * Whether the inline placement's page is connected to an agent, which
      * the tests then call its Page Object Tools through, as a coding agent
@@ -240,8 +234,6 @@ export function testIn(
       })
       .extend<{ opened: Awaited<ReturnType<typeof openFixture>> }>({
         opened: async ({ mcpServer, app, browser, screen }, use) => {
-          if (motion === "full")
-            await browser.emulateMedia({ reducedMotion: "no-preference" });
           await use(
             await openFixture({ app, browser, screen }, path, {
               agent: mcpServer,
