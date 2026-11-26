@@ -4,6 +4,6 @@ import { agentConnectionTests } from "@ayme-dev/example-certification/e2e/tests"
 // `--mode inspector-disabled`; the tests run the dev server.
 agentConnectionTests({
   enabled: () => true,
-  snapshotText: 'button "Increment"',
+  pageObject: "CounterPage",
   peek: true,
 });

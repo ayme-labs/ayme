@@ -145,9 +145,10 @@ const allCounterTools = [
   "SubCounterPage.setMode",
 ];
 
-/** Ayme's own tools, in publication order: every page that runs Ayme has them. */
+/** ayme's own tools, in publication order: every page that runs ayme has them. */
 const aymeTools = [
   "snapshot",
+  "page_objects",
   "click",
   "hover",
   "type",
@@ -290,7 +291,7 @@ export function counterTests({
           .toEqual(schema);
     });
 
-    test("publishes Ayme's own tools", async ({ browser }) => {
+    test("publishes ayme's own tools", async ({ browser }) => {
       await expect
         .poll(() => publishedToolNames(browser))
         .toContain("CounterPage.increment");
@@ -545,11 +546,12 @@ async function connectPage(
   url: string,
   { timeout = 15_000 }: { timeout?: number } = {}
 ) {
-  const { text: link, isError } = await agent.call("ayme_connect", { url });
-  if (isError) throw new Error(`ayme_connect failed: ${link}`);
-  await browser.goto(link);
+  const { text, isError } = await agent.call("ayme_connect", { url });
+  if (isError) throw new Error(`ayme_connect failed: ${text}`);
+  // The link is the answer's first line; a note may follow it.
+  await browser.goto(text.split("\n")[0]!);
   const deadline = Date.now() + timeout;
-  while (!(await agent.pageToolNames()).includes("snapshot")) {
+  while (!(await agent.pageToolNames()).includes("page_objects")) {
     if (Date.now() > deadline)
       throw new Error(
         `The page's tools never reached the agent. Server log:\n${agent.log}`
@@ -588,19 +590,20 @@ async function nextDocument(browser: Browser) {
 /**
  * The Agent Connection, which the app turns on with its own flag. Where
  * `enabled()` holds, a coding agent's MCP client pairs with `/` through a
- * connect link and calls the page's `snapshot` tool, whose structure contains
- * `snapshotText`. Ported so far: the cases an app with the option always on
+ * connect link and calls the page's `page_objects` tool, whose tree shows the
+ * Page Object `pageObject`. Ported so far: the cases an app with the option always on
  * runs. The App Process cases and "loads no Agent Connection code with the
  * option off" stay in `../tests.ts` until an example that runs them moves.
  */
 export function agentConnectionTests({
   enabled,
-  snapshotText,
+  pageObject,
   peek = false,
 }: {
   /** Whether the run's app turns the option on; read inside each test. */
   enabled: () => boolean;
-  snapshotText: string;
+  /** The class of a Page Object the page at `/` shows. */
+  pageObject: string;
   /** Whether the counter adds the Peek `counter` with its `{ count }`. */
   peek?: boolean;
 }) {
@@ -628,12 +631,10 @@ export function agentConnectionTests({
             )
           ).toBe(true);
 
-          const { text, isError } = await agent.call("snapshot");
+          const { text, isError } = await agent.call("page_objects");
 
           expect(isError, text).toBe(false);
-          expect(
-            (JSON.parse(text) as { structure: string }).structure
-          ).toContain(snapshotText);
+          expect(text).toContain(pageObject);
         } finally {
           await agent.close();
         }
@@ -664,15 +665,14 @@ export function agentConnectionTests({
               }, agentConnectionMarker);
             const tab = await storedTab();
 
+            // The agent's own browser automation reloads the page.
             const navigated = await nextDocument(browser);
-            await agent.call("reload");
+            await browser.reload();
             await navigated();
             // Wait for the new document to reconnect before reading its storage.
-            const { text, isError } = await agent.call("snapshot");
+            const { text, isError } = await agent.call("page_objects");
             expect(isError, text).toBe(false);
-            expect(
-              (JSON.parse(text) as { structure: string }).structure
-            ).toContain(snapshotText);
+            expect(text).toContain(pageObject);
             expect(await storedTab()).toBe(tab);
           } finally {
             await agent.close();
