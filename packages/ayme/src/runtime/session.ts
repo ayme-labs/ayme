@@ -872,6 +872,7 @@ export function createAymeOn(
           renderPageObjectTree((await readPageObjectTreeNow()).objects),
         pageStateSession: target.pageState().session,
         reach,
+        outlivesFullLoads: target.kind === "playwright",
       });
     } finally {
       // A turn taken now starts once every child started so far has ended.

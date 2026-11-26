@@ -1,8 +1,9 @@
 ---
 status: accepted
+supersedes: ADR-0054
 ---
 
-# An agent reads a Page Object Tool's result as a short answer, and ayme adds no wait
+# An agent reads a Page Object Tool's result as a short answer, and ayme waits only for the Page Object an action returns
 
 ## Why
 
@@ -17,7 +18,7 @@ The two agent channels, WebMCP publication and `ayme mcp`, present a Page Object
 - The answer has no availability listing, and `ayme mcp` adds no note of tools that appeared or went away to it. The next answer of another tool still carries that note.
 - Both channels take the Page Object Tools and their answers from one source, so the answer cannot differ between them.
 - A programmatic call from application code (ADR-0031) keeps returning the full action result: application code, the Inspector and the Goal Loop read it. The short answer is a presentation for agents, not a new result type.
-- ayme adds no wait of its own after a Page Object Action beyond its Settled Page wait. Waiting for a navigation the action started belongs to the browser automation.
+- After a Page Object Action, ayme waits for nothing beyond its Settled Page wait and, when the action returns a Page Object with a presence predicate of its own, for that Page Object to be present (ADR-0067). Waiting for a navigation or a load the action started belongs to the browser automation. An agent's answer reads the Page Object Tree after that wait, so, unless the action started a full load, it shows the Page Object the action led to.
 
 ## Considered and rejected
 
