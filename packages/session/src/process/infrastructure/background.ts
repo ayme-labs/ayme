@@ -19,7 +19,12 @@ import {
   SessionStartError,
   type SessionAnswer,
 } from "../../session/domain";
-import { nameOf, releaseRecord, type SessionPlace } from "./record";
+import {
+  markStarted,
+  nameOf,
+  releaseRecord,
+  type SessionPlace,
+} from "./record";
 import { listen } from "./wire";
 
 /** What the command that starts a Session tells its process, over the
@@ -134,6 +139,9 @@ export async function runSessionProcess(
       process.once("disconnect", stop);
       const answer = yield* session.started;
       process.off("disconnect", stop);
+      // Before the answer, so that `ayme list` no longer shows it as
+      // starting once the start is answered.
+      if (answer.ok) markStarted(options, generation);
       yield* tell(answer);
       yield* session.ended;
       return answer.ok ? 0 : 1;

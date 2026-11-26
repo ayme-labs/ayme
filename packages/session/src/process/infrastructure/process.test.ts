@@ -19,6 +19,7 @@ import {
   claimAfter,
   claimRecord,
   liveRecord,
+  markStarted,
   privateFolder,
   processStart,
   readClaim,
@@ -457,11 +458,24 @@ it("two starts of different names at the same moment both start", async () => {
   ]);
 });
 
+/** Claims `of` for `owner`, as a start that succeeded. */
+function startedSession(
+  of: SessionPlace,
+  owner: Omit<SessionRecord, "name">
+): void {
+  const claim = claimRecord(of, owner);
+  if (!("generation" in claim)) throw new Error("the folder has a Session");
+  markStarted(of, claim.generation);
+}
+
 it("list shows the live Sessions of the folder by name, and none of another folder's or one that ended", async () => {
   const holder = await otherProcess();
   const gone = await otherProcess();
-  claimRecord(place, { ...holder, socket: "default.sock" });
-  claimRecord({ projectDir, name: "review" }, { ...holder, socket: "r.sock" });
+  startedSession(place, { ...holder, socket: "default.sock" });
+  startedSession(
+    { projectDir, name: "review" },
+    { ...holder, socket: "r.sock" }
+  );
   claimRecord({ projectDir, name: "old" }, { ...gone, socket: "old.sock" });
   claimRecord(
     { projectDir: folder("other"), name: "elsewhere" },
@@ -478,9 +492,25 @@ it("list shows the live Sessions of the folder by name, and none of another fold
     ].join("\n"),
     data: {
       sessions: [
-        { name: "default", pid: holder.pid },
-        { name: "review", pid: holder.pid },
+        { name: "default", pid: holder.pid, starting: false },
+        { name: "review", pid: holder.pid, starting: false },
       ],
+    },
+  });
+});
+
+it("list shows a Session whose start is still under way as starting", async () => {
+  const holder = await otherProcess();
+  claimRecord(place, { ...holder, socket: "default.sock" });
+
+  expect(listSessions(projectDir)).toEqual({
+    ok: true,
+    text: [
+      `Sessions in ${projectDir}:`,
+      `default, in process ${holder.pid}, starting`,
+    ].join("\n"),
+    data: {
+      sessions: [{ name: "default", pid: holder.pid, starting: true }],
     },
   });
 });

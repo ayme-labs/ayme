@@ -157,11 +157,12 @@ export async function openSession({
 }
 
 /** The answer to `ayme list`: the live Sessions of `projectDir`, each by
- * its name and process. */
+ * its name and process, and whether it is still starting. */
 export function listSessions(projectDir: string): SessionAnswer {
-  const sessions = liveRecords(projectDir).map(({ name, pid }) => ({
+  const sessions = liveRecords(projectDir).map(({ name, pid, starting }) => ({
     name,
     pid,
+    starting,
   }));
   return {
     ok: true,
@@ -170,7 +171,10 @@ export function listSessions(projectDir: string): SessionAnswer {
         ? `No Session is open in ${projectDir}.`
         : [
             `Sessions in ${projectDir}:`,
-            ...sessions.map(({ name, pid }) => `${name}, in process ${pid}`),
+            ...sessions.map(
+              ({ name, pid, starting }) =>
+                `${name}, in process ${pid}${starting ? ", starting" : ""}`
+            ),
           ].join("\n"),
     data: { sessions },
   };

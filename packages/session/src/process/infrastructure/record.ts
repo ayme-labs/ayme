@@ -64,6 +64,8 @@ export type Claim = {
   readonly generation: number;
   readonly record?: SessionRecord;
   readonly live: boolean;
+  /** Whether its Session's start succeeded. */
+  readonly started: boolean;
 };
 
 // Only the user may read or change what a Session keeps.
@@ -97,6 +99,8 @@ const recordFile = (folder: string, generation: number) =>
   join(folder, `${generation}.json`);
 const endedFile = (folder: string, generation: number) =>
   join(folder, `${generation}.ended`);
+const startedFile = (folder: string, generation: number) =>
+  join(folder, `${generation}.started`);
 
 /** When the process `pid` started, or undefined when there is none. */
 export function processStart(pid: number): string | undefined {
@@ -151,13 +155,16 @@ export function readClaim(place: SessionPlace): Claim {
 
 function readClaimIn(folder: string): Claim {
   const generation = Math.max(0, ...generations(folder));
-  if (generation === 0) return { generation, live: false };
+  if (generation === 0) return { generation, live: false, started: false };
   const record = readRecord(recordFile(folder, generation));
   const live =
     record !== undefined &&
     processStart(record.pid) === record.since &&
     !existsSync(endedFile(folder, generation));
-  return record ? { generation, record, live } : { generation, live };
+  const started = existsSync(startedFile(folder, generation));
+  return record
+    ? { generation, record, live, started }
+    : { generation, live, started };
 }
 
 /** The record of `place`'s Session, while it is live. */
@@ -168,8 +175,11 @@ export function liveRecord(
   return live && record ? { ...record, generation } : undefined;
 }
 
-/** The records of the live Sessions of a project folder, by name. */
-export function liveRecords(projectDir: string): readonly SessionRecord[] {
+/** The records of the live Sessions of a project folder, by name, each
+ * with whether its start is still under way. */
+export function liveRecords(
+  projectDir: string
+): readonly (SessionRecord & { readonly starting: boolean })[] {
   const key = folderKey(projectDir);
   let names: string[];
   try {
@@ -180,8 +190,10 @@ export function liveRecords(projectDir: string): readonly SessionRecord[] {
   return names
     .filter((name) => name.startsWith(key))
     .flatMap((name) => {
-      const { record, live } = readClaimIn(join(sessionsFolder(), name));
-      return live && record ? [record] : [];
+      const { record, live, started } = readClaimIn(
+        join(sessionsFolder(), name)
+      );
+      return live && record ? [{ ...record, starting: !started }] : [];
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -224,6 +236,7 @@ export function claimAfter(
   for (const old of all.filter((other) => other < generation)) {
     rmSync(recordFile(folder, old), { force: true });
     rmSync(endedFile(folder, old), { force: true });
+    rmSync(startedFile(folder, old), { force: true });
   }
   return generation;
 }
@@ -241,6 +254,18 @@ export function claimRecord(
     if (seen.live && seen.record) return { holder: seen.record };
     const generation = claimAfter(place, seen, owner);
     if (generation !== undefined) return { generation };
+  }
+}
+
+/** Says that the Session of `place`'s claim `generation` started. */
+export function markStarted(place: SessionPlace, generation: number): void {
+  try {
+    writeFileSync(startedFile(claimFolder(place), generation), "", {
+      mode: PRIVATE_FILE,
+      flag: "wx",
+    });
+  } catch {
+    // Already said, or a later claim cleared the generation.
   }
 }
 
