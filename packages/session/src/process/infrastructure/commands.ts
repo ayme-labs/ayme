@@ -2,11 +2,14 @@
 // process of its folder, sends one request and returns its answer.
 import { spawn, type ChildProcess } from "node:child_process";
 import { closeSync, openSync, readFileSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import type { SessionBrowserRequest } from "../../session/application";
 import {
   failed,
+  paramsNotJson,
+  paramsUnreadable,
   type SessionAnswer,
   type SessionRequest,
 } from "../../session/domain";
@@ -51,6 +54,46 @@ export async function askSession(
     }
     await sleep(25);
   }
+}
+
+const messageOf = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
+/** The tool's input `params` gives: JSON, the JSON of the file `@<file>`
+ * names in `projectDir`, or none when it is not given. */
+function inputOf(
+  projectDir: string,
+  params: string | undefined
+): { readonly input: unknown } | SessionAnswer {
+  if (params === undefined) return { input: {} };
+  let json = params;
+  if (params.startsWith("@")) {
+    const file = params.slice(1);
+    try {
+      json = readFileSync(resolve(projectDir, file), "utf8");
+    } catch (error) {
+      return paramsUnreadable(file, messageOf(error));
+    }
+  }
+  try {
+    return { input: JSON.parse(json) as unknown };
+  } catch (error) {
+    return paramsNotJson(messageOf(error));
+  }
+}
+
+/** Starts a Run of `tool` on the Session at `place`, with the input
+ * `params` gives, as `ayme call --params` takes it: a file it names is read
+ * from the project folder. */
+export async function askCall(
+  place: SessionPlace,
+  tool: string,
+  params: string | undefined
+): Promise<SessionAnswer> {
+  const read = inputOf(place.projectDir, params);
+  return "input" in read
+    ? askSession(place, { call: { tool, input: read.input } })
+    : read;
 }
 
 /** The text the process of a start printed before it ended. */

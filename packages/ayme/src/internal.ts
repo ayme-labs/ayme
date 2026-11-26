@@ -11,7 +11,10 @@
 // run result, where a document keeps it and the bars the Step Decision stops
 // on are here for the playground's goal lane, which reads them from the
 // build it runs: ayme's source needs ayme's own build, so another workspace
-// cannot take them from it.
+// cannot take them from it. The Session of the `ayme` command runs a
+// project's Page Objects through here: it creates its Node Host on the
+// Playwright that drives its browser, and reads a Run's short answer and
+// a listing, each in the Tab's turn.
 export {
   getStartedAyme,
   markRenderSession,
@@ -47,3 +50,5 @@ export type {
   InspectorContractPorts,
   InspectorSession,
 } from "./runtime";
+export { createNodeHost, pageObjectCallerOf } from "./runtime";
+export type { PageObjectCaller } from "./runtime";

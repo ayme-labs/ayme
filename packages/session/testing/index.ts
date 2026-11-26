@@ -11,9 +11,11 @@ import {
   type SessionBrowserRequest,
 } from "../src/session/application";
 import {
+  RunError,
   SessionStartError,
   TabReadError,
   type Listing,
+  type RunAnswer,
   type SessionAnswer,
   type SessionEnd,
   type SessionRequest,
@@ -64,6 +66,17 @@ export interface ScriptedBrowser {
   /** Every read of the Tab's page fails, for the reason a person reads,
    * until the test shows a listing again. */
   failReads(reason: string): void;
+  /** Every read of the Tab's page waits, as behind a presence predicate
+   * that never resolves, until the test shows a listing again. */
+  holdReads(): void;
+  /** Every Run started on the Tab, in order. */
+  readonly runs: readonly { readonly tool: string; readonly input: unknown }[];
+  /** How each Run on the Tab ends from now on: as `answer` resolves, or
+   * fails as it rejects with a RunError. Until then a Run answers that the
+   * page settled. */
+  answerRuns(
+    answer: (tool: string, input: unknown) => Promise<RunAnswer>
+  ): void;
 }
 
 /** What the scripted Tab shows until a test says otherwise. */
@@ -100,7 +113,10 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   const asked: SessionBrowserRequest[] = [];
   const hostedWith: BuiltPageObjects[] = [];
   let released = false;
-  let shown: Listing | TabReadError = EMPTY_LISTING;
+  let shown: Listing | TabReadError | "held" = EMPTY_LISTING;
+  const runs: { tool: string; input: unknown }[] = [];
+  let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
+    Promise.resolve({ settled: true });
   const opened = Deferred.makeUnsafe<void, SessionStartError>();
   const built = Deferred.makeUnsafe<BuiltPageObjects, SessionStartError>();
   const gone = Deferred.makeUnsafe<void>();
@@ -110,8 +126,21 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
 
   const tab = {
     listing: Effect.suspend(() =>
-      shown instanceof TabReadError ? Effect.fail(shown) : Effect.succeed(shown)
+      shown === "held"
+        ? Effect.never
+        : shown instanceof TabReadError
+          ? Effect.fail(shown)
+          : Effect.succeed(shown)
     ),
+    call: (tool: string, input: unknown) =>
+      Effect.tryPromise({
+        try: () => {
+          runs.push({ tool, input });
+          return answerRun(tool, input);
+        },
+        catch: (error) =>
+          error instanceof RunError ? error : new RunError(String(error)),
+      }),
   };
   const build = Layer.succeed(PageObjectsBuild, {
     build: Deferred.await(built),
@@ -156,6 +185,9 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       goAway: () => Deferred.doneUnsafe(gone, Exit.void),
       show: (listing) => (shown = listing),
       failReads: (reason) => (shown = new TabReadError(reason)),
+      holdReads: () => (shown = "held"),
+      runs,
+      answerRuns: (answer) => (answerRun = answer),
     },
   };
 }

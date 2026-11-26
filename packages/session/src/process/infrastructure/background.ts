@@ -98,6 +98,19 @@ const tell = (answer: SessionAnswer) =>
   });
 
 /**
+ * Keeps the process alive through an error or a rejection that nothing
+ * caught, such as one Page Object code left behind: it ends only its own
+ * Run, never the Session (rule 12). Node would otherwise end the process.
+ * Each goes to the process's log.
+ */
+function catchWhatNothingCaught(): void {
+  const log = (error: unknown) =>
+    console.error("ayme caught an error nothing else caught:", error);
+  process.on("uncaughtException", log);
+  process.on("unhandledRejection", log);
+}
+
+/**
  * The background process itself: serves the Session `options` asks for
  * until it ends, and resolves with the process's exit code. The command
  * that started it is told how the start ended over the IPC channel, on
@@ -110,6 +123,7 @@ export async function runSessionProcess(
 ): Promise<number> {
   const generation = await claimed();
   if (generation === undefined) return 1;
+  catchWhatNothingCaught();
   return Effect.runPromise(
     Effect.gen(function* () {
       yield* Effect.addFinalizer(() =>

@@ -199,9 +199,9 @@ in-browser agents and the app's own code call on the running page.
   `ayme close`, which closes that browser, or when the browser goes away. A command sent while
   it starts waits for the start, and every command gets an answer. It keeps a dialog
   listener that does nothing, so every dialog stays open for the browser automation to
-  answer. At its start it builds the Page Objects of the project's ayme folder for Node while the browser opens; when that build fails, no Session starts and the browser closes. It runs them as the Host of the Tab the browser opened on, through the Node host runtime of the project's own `@ayme-dev/ayme`, and lists that Tab's Page Object Tree and Page Object Tools
-- Technology: the `ayme` command from `@ayme-dev/cli` (`ayme open [url]` and
-  `ayme close`), over the private `@ayme-dev/session`, bundled into it, whose flows are written
+  answer. At its start it builds the Page Objects of the project's ayme folder for Node while the browser opens; when that build fails, no Session starts and the browser closes. It runs them as the Host of the Tab the browser opened on, through the Node host runtime of the project's own `@ayme-dev/ayme`, lists that Tab's Page Object Tree and Page Object Tools, and runs a Page Object Tool on it as a Run, one Run per Tab at a time and with no time limit of its own. An error Page Object code throws, or leaves for nobody to catch, ends only its Run
+- Technology: the `ayme` command from `@ayme-dev/cli` (`ayme open [url]`,
+  `ayme call` and `ayme close`), over the private `@ayme-dev/session`, bundled into it, whose flows are written
   with Effect. A command finds its folder's background process through a record in the
   user's cache folder and sends it one JSON line over a local socket; the background
   process is the same command, started detached. The Session gets its browser through
@@ -228,12 +228,12 @@ in-browser agents and the app's own code call on the running page.
     [packages/mcp/src/tools/infrastructure/mcpToolServer.ts](packages/mcp/src/tools/infrastructure/mcpToolServer.ts)
 - **Coding agents → Session**
   - Flows:
-    - → `ayme open [url]`, `ayme page-objects`, `ayme tools` and `ayme close`, run as
-      commands in the project's folder, with the global `--json`
+    - → `ayme open [url]`, `ayme page-objects`, `ayme tools`, `ayme call <tool> --params`
+      and `ayme close`, run as commands in the project's folder, with the global `--json`
     - ← each answer's text, or the answer as JSON for `--json`, on stdout, or on stderr with
       exit code 1 when it is a failure; the address of the browser `ayme open` started; the
       Page Object Tree and the Page Object Tools of the Tab, each listing headed by a line that
-      names the Tab
+      names the Tab; a Run's short answer, or why it was refused or failed
   - Evidence: verified: [packages/cli/src/readCommand.ts](packages/cli/src/readCommand.ts), [packages/cli/src/answer.ts](packages/cli/src/answer.ts), [packages/session/src/process/infrastructure/wire.ts](packages/session/src/process/infrastructure/wire.ts)
 - **In-browser agents → WebMCP driver**
   - Flows:
@@ -352,9 +352,12 @@ in-browser agents and the app's own code call on the running page.
 - **Session → Node host runtime**
   - Flows:
     - → the built Page Object classes and the Tab's Playwright `Page`, to the Node host runtime
-      of the project's own `@ayme-dev/ayme/playwright`, loaded in the Session's process;
-      `page_objects` reads and tool lists, as the `ayme-command` Caller
-    - ← the Page Object Tree as text, and each Page Object Tool with its availability
+      of the project's own `@ayme-dev/ayme`, through its `./internal` entry, loaded in the
+      Session's process, with the selector engine registered on the project's Playwright;
+      listings, each in one turn of the Tab, and Runs of Page Object Tools, as the
+      `ayme-command` Caller
+    - ← the Page Object Tree as text, each Page Object Tool with its availability, and a Run's
+      short answer or its error
   - Evidence: verified: [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [packages/session/src/page-objects/infrastructure/projectAyme.ts](packages/session/src/page-objects/infrastructure/projectAyme.ts)
 - **App Process runtime → ayme MCP server**
   - Flows:

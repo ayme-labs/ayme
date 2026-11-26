@@ -1,4 +1,5 @@
 import {
+  askCall,
   askSession,
   listSessions,
   openSession,
@@ -12,10 +13,10 @@ import type { Plan } from "./plan";
 import { SESSION_PROCESS } from "./readCommand";
 
 /** Whatever reaches a Session: `open` and `attach`, a request of the
- * folder's Session, `list`, or the Session's background process. */
+ * folder's Session, a call, `list`, or the Session's background process. */
 export type SessionPlan = Extract<
   Plan,
-  { kind: "open" | "attach" | "ask" | "list" | "session process" }
+  { kind: "open" | "attach" | "ask" | "call" | "list" | "session process" }
 >;
 
 async function answerOf(
@@ -25,6 +26,7 @@ async function answerOf(
   if (plan.kind === "list") return listSessions(projectDir);
   const place = { projectDir, name: plan.session };
   if (plan.kind === "ask") return askSession(place, plan.request);
+  if (plan.kind === "call") return askCall(place, plan.tool, plan.params);
   return openSession({
     ...place,
     request:

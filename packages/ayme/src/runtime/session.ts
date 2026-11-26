@@ -5,6 +5,7 @@ import type {
   PomRegistry,
 } from "../page-objects/application";
 import {
+  arrivedAfterLoad,
   constructPageObject,
   type PageObjectConstructor,
 } from "../page-objects/application";
@@ -72,7 +73,11 @@ import {
 } from "../runs/application";
 import { instrumentedPage } from "../runs/infrastructure";
 import type { loadWebMcpPublication } from "./webMcp";
-import { pageObjectToolSource } from "./pageObjectToolSource";
+import {
+  pageObjectToolSource,
+  type PageObjectToolSource,
+  type PageObjectToolSourceOptions,
+} from "./pageObjectToolSource";
 import {
   callers,
   checkedToolInput,
@@ -372,6 +377,48 @@ export type AppProcessTools = {
 };
 
 const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
+
+/**
+ * A session's Page Object Tools as one Caller that offers no other tools
+ * reaches them, such as a Session of the `ayme` command.
+ */
+export type PageObjectCaller = {
+  /**
+   * Runs the Page Object Tool `name`, answered as the agent channels answer
+   * it. Any other tool is refused as one there is not.
+   */
+  run: PageObjectToolSource["run"];
+  /**
+   * Reads what a listing shows in one turn on the page's queue, so it waits
+   * for the Run under way and no Run starts before it is complete: the Page
+   * Object Tree as text, read as a Run of the Caller, every tool then, and
+   * the page's URL and title.
+   */
+  listing(): Promise<{
+    readonly pageObjectTree: string;
+    readonly tools: readonly ToolInfo[];
+    readonly url: string;
+    readonly title: string;
+  }>;
+};
+
+// Keyed by the session's `tools`, which a Node host's session object
+// shares with the core one it spreads.
+const pageObjectCallers = new WeakMap<
+  object,
+  (by: Caller) => PageObjectCaller
+>();
+
+/** The session's Page Object Tools as `by` reaches them, its Runs started as `by`. */
+export function pageObjectCallerOf(
+  ayme: Pick<Ayme, "tools">,
+  by: string
+): PageObjectCaller {
+  const caller = pageObjectCallers.get(ayme.tools);
+  if (!caller)
+    throw new RuntimeStateError("This is not an ayme runtime session.");
+  return caller(by as Caller);
+}
 export const appProcessToolsBySession = new WeakMap<Ayme, AppProcessTools>();
 
 /**
@@ -473,6 +520,11 @@ function forAymeMcp(tool: ToolInfo): AymeMcpTool {
  */
 export type SessionTarget = {
   readonly kind: "browser" | "playwright";
+  /**
+   * Whether the session goes on in the document a full load brings, as a
+   * Node host's does; the browser runtime's ends with its document.
+   */
+  readonly outlivesFullLoads: boolean;
   /** The Page the session's stores are keyed by, read when needed: a server renders without one. */
   key(): Page;
   /** The Page the Page Objects are built on and the Runs act on, before the Runs' instrumentation. */
@@ -621,20 +673,27 @@ export function createAymeOn(
    * How the agent channels run the session's tools, their calls made by
    * `by`: the one source WebMCP publication and the ayme MCP server share.
    */
-  const pageObjectToolsFor = (by: Caller) =>
-    pageObjectToolSource({
-      list: () => ayme.tools.list(),
-      run: (name, input) => ayme.tools.run(name, input as never, { by }),
-      inTurn: (turn) =>
-        takeTurn(() =>
-          turn({
-            run: (name, input) =>
-              recordTopLevelRun(name, input, by, probeAfterAction),
-            readPageObjectTree: readPageObjectTreeNow,
-            url: () => target.rawPage().url(),
-          })
-        ),
-    });
+  const pageObjectToolsFor = (
+    by: Caller,
+    sourceOptions?: PageObjectToolSourceOptions
+  ) =>
+    pageObjectToolSource(
+      {
+        list: () => ayme.tools.list(),
+        run: (name, input) => ayme.tools.run(name, input as never, { by }),
+        inTurn: (turn) =>
+          takeTurn(() =>
+            turn({
+              run: (name, input) =>
+                recordTopLevelRun(name, input, by, probeAfterAction),
+              readPageObjectTree: readPageObjectTreeNow,
+              url: () => target.rawPage().url(),
+              arrivedAfterLoad,
+            })
+          ),
+      },
+      sourceOptions
+    );
 
   /**
    * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
@@ -872,7 +931,7 @@ export function createAymeOn(
           renderPageObjectTree((await readPageObjectTreeNow()).objects),
         pageStateSession: target.pageState().session,
         reach,
-        outlivesFullLoads: target.kind === "playwright",
+        outlivesFullLoads: target.outlivesFullLoads,
       });
     } finally {
       // A turn taken now starts once every child started so far has ended.
@@ -1108,6 +1167,22 @@ export function createAymeOn(
   }
 
   appProcessToolsBySession.set(ayme, appProcessTools.tools);
+  pageObjectCallers.set(ayme.tools, (by) => ({
+    run: pageObjectToolsFor(by, { pageObjectToolsOnly: true }).run,
+    listing: () =>
+      takeTurn(async () => {
+        const pageObjectTree = String(
+          await recordTopLevelRun("page_objects", {}, by, probeAfterAction)
+        );
+        const page = target.rawPage();
+        return {
+          pageObjectTree,
+          tools: ayme.tools.list(),
+          url: page.url(),
+          title: await page.title(),
+        };
+      }),
+  }));
   setAgentConnectionStatus(ayme, agentConnectionStatus.status);
   return ayme;
 }

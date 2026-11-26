@@ -55,10 +55,18 @@ function session({
   trees = [list("Milk")],
   urls = ["http://app/list"],
   answer,
+  arrived = () => false,
+  toolsBeforeRead = TOOLS,
 }: {
   trees?: PageObjectTreeRead[];
   urls?: string[];
   answer: () => Promise<unknown>;
+  /** Whether the Page Object a run returned is present after the full
+   * load it started. */
+  arrived?: (result: unknown) => boolean;
+  /** The tools the session lists until a read of the tree probed the
+   * page. */
+  toolsBeforeRead?: readonly ToolInfo[];
 }) {
   let read = 0;
   let at = 0;
@@ -67,13 +75,14 @@ function session({
     async () => trees[Math.min(read++, trees.length - 1)]!
   );
   const stub: PageObjectToolSession = {
-    list: () => TOOLS,
+    list: () => (read === 0 ? toolsBeforeRead : TOOLS),
     run,
     inTurn: (turn) =>
       turn({
         run,
         readPageObjectTree,
         url: () => urls[Math.min(at++, urls.length - 1)]!,
+        arrivedAfterLoad: arrived,
       }),
   };
   return { stub, run, readPageObjectTree };
@@ -110,6 +119,7 @@ function countingPage() {
           run: add,
           readPageObjectTree: async () => tree(),
           url: () => "http://app/list",
+          arrivedAfterLoad: () => false,
         })
       ),
   };
@@ -168,6 +178,32 @@ describe("a Page Object Tool's answer to an agent", () => {
       url: "http://app/item/1",
     });
     expect(readPageObjectTree).toHaveBeenCalledOnce();
+  });
+
+  it("after a full load its Host outlives, once the Page Object the action returned is present, answers from the new page: its URL and how the Page Object Tree changed", async () => {
+    const loaded = {
+      settled: false,
+      page_changed: false,
+      loading: "http://app/item/1",
+      next: "The page is loading http://app/item/1. Call snapshot next to read the new page.",
+    };
+    const { stub } = session({
+      trees: [list("Milk"), list("Milk", "Eggs")],
+      urls: ["http://app/list", "http://app/item/1"],
+      answer: async () => loaded,
+      arrived: (result) => result === loaded,
+    });
+
+    expect(await pageObjectToolSource(stub).run("ListPage.add", {})).toEqual({
+      settled: false,
+      url: "http://app/item/1",
+      changes: [
+        "ListPage",
+        "  items:",
+        "    + Item po2",
+        "        name: text: Eggs",
+      ].join("\n"),
+    });
   });
 
   it("carries the change in the Page Object Tree, a Page Object that appeared in full with its children and id", async () => {
@@ -286,4 +322,31 @@ describe("a Page Object Tool's answer to an agent", () => {
       },
     ]);
   });
+});
+
+describe("a Page Object Tool's answer to a Caller that runs Page Object Tools alone", () => {
+  const only = { pageObjectToolsOnly: true } as const;
+
+  it("runs a Page Object Tool the session lists only once the call's turn has read the page", async () => {
+    const { stub } = session({
+      toolsBeforeRead: [],
+      answer: async () => ({ ...FULL_RECORD, result: 2 }),
+    });
+
+    expect(
+      await pageObjectToolSource(stub, only).run("ListPage.add", {})
+    ).toEqual({ settled: true, result: 2 });
+  });
+
+  it.each(["page_objects", "click"])(
+    "refuses %s, which is not a Page Object Tool, as a tool there is not, and runs nothing",
+    async (name) => {
+      const { stub, run } = session({ answer: async () => FULL_RECORD });
+
+      await expect(
+        pageObjectToolSource(stub, only).run(name, {})
+      ).rejects.toThrow(`There is no tool "${name}".`);
+      expect(run).not.toHaveBeenCalled();
+    }
+  );
 });

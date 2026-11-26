@@ -24,7 +24,7 @@ export type NodePageObjects = {
   /** The classes the entry lists, registered with the project's own
    * `@ayme-dev/ayme`. */
   readonly classes: readonly unknown[];
-  /** The file of the project's `@ayme-dev/ayme/playwright`, which runs
+  /** The file of the project's `@ayme-dev/ayme/internal`, which runs
    * them. */
   readonly nodeHost: string;
 };

@@ -48,12 +48,10 @@ async function aymePackage(installed: string): Promise<string> {
       exports: {
         "./compiler": "./compiler.mjs",
         "./internal": "./internal.mjs",
-        "./playwright": "./playwright.mjs",
       },
     }),
     "internal.mjs":
       "export const registered = [];\nexport const registerCompiledPom = (pom) => registered.push(pom);\n",
-    "playwright.mjs": "export {};\n",
     "compiler.mjs": `
 export class PomCompileError extends Error {
   constructor(diagnostics) {
@@ -135,7 +133,7 @@ it("builds the entry with the project's compiler, and loads the classes it lists
   const built = await build(dir);
 
   expect(built.classes).toHaveLength(1);
-  expect(built.nodeHost).toBe(join(installed, "playwright.mjs"));
+  expect(built.nodeHost).toBe(join(installed, "internal.mjs"));
   expect(await registeredWith(installed)).toEqual(built.classes);
 });
 

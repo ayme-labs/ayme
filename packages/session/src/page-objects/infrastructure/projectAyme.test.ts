@@ -27,7 +27,7 @@ async function installAyme(
       name: "@ayme-dev/ayme",
       exports: {
         "./compiler": { types: "./c.d.mts", import: "./dist/compiler.mjs" },
-        "./playwright": { default: "./dist/playwright.mjs" },
+        "./internal": { default: "./dist/internal.mjs" },
       },
       ...manifest,
     })
@@ -55,7 +55,7 @@ it("finds the project's own @ayme-dev/ayme, its entries, and the project's Page 
   expect(await found(folder)).toEqual({
     entry: join(folder, "ayme", "page-objects.ts"),
     compiler: join(installed, "dist", "compiler.mjs"),
-    nodeHost: join(installed, "dist", "playwright.mjs"),
+    nodeHost: join(installed, "dist", "internal.mjs"),
   });
 });
 
@@ -65,7 +65,7 @@ it("finds an @ayme-dev/ayme installed above the project folder, as in a monorepo
   await addEntry(projectDir);
 
   expect(await found(projectDir)).toMatchObject({
-    nodeHost: join(installed, "dist", "playwright.mjs"),
+    nodeHost: join(installed, "dist", "internal.mjs"),
   });
 });
 
@@ -112,7 +112,7 @@ it("refuses an @ayme-dev/ayme that lacks an entry the Session needs", async () =
   await addEntry(folder);
 
   expect(await refusal(folder)).toBe(
-    `The @ayme-dev/ayme at ${installed} has no ./playwright entry, which ayme runs Page Objects with. Install @ayme-dev/ayme 0.3.0 again, for example with "npm install -D @ayme-dev/ayme@0.3.0".`
+    `The @ayme-dev/ayme at ${installed} has no ./internal entry, which ayme runs Page Objects with. Install @ayme-dev/ayme 0.3.0 again, for example with "npm install -D @ayme-dev/ayme@0.3.0".`
   );
 });
 

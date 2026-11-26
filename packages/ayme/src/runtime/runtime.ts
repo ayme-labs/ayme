@@ -65,6 +65,8 @@ function browserTarget(options: AymeOptions): SessionTarget {
     typeof document === "undefined" ? serverKey : pageOfDocument(document);
   return {
     kind: "browser",
+    // The session ends with its document.
+    outlivesFullLoads: false,
     key,
     rawPage: () => (options.pageFactory ?? createPage)(),
     pageState: () => browserPageState(),
