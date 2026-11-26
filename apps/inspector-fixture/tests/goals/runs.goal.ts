@@ -424,7 +424,9 @@ for (const placement of placements) {
       await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "fill_form" },
       });
-      await agent.act("show its arguments");
+      await agent.act("show the arguments for {tool} if they are hidden", {
+        params: { tool: "fill_form" },
+      });
 
       await agent.act("set {field} to {value} in the form", {
         params: { field: "New item", value: "Milk" },
@@ -463,7 +465,9 @@ for (const placement of placements) {
         params: { tool: "generate_locator" },
       });
       const card = inspector.detail.runCard();
-      await agent.act("show its arguments");
+      await agent.act("show the arguments for {tool} if they are hidden", {
+        params: { tool: "generate_locator" },
+      });
       const { locatorGroups } = card;
 
       await agent.act("add {targets} to group {group} from its tree", {
@@ -624,7 +628,7 @@ for (const placement of placements) {
 
         const run = inspector.runs.latest("snapshot");
         await expect.poll(() => run.status()).toBe("Succeeded");
-        await agent.act("show the result of the latest {tool} run", {
+        await agent.act("open the Result of the latest {tool} run in Runs", {
           params: { tool: "snapshot" },
         });
         // Counted by e2e's replay cache, so the goal twin's goals are saved.
