@@ -7,6 +7,7 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
        ayme open [url] [--headed]
        ayme page-objects
        ayme tools
+       ayme call <tool> [--params <json> | --params @<file>]
        ayme close
 
   open [url]     Start a Session in this folder: open Chromium with the
@@ -18,6 +19,16 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  Objects, each with its id, and how many tools they have.
   tools          List every Page Object Tool of the Session's Tab with its
                  parameters, and why a tool is unavailable.
+  call <tool>    Run the Page Object Tool <tool> and print what its action
+                 returned, the URL when the action changed it, and how the
+                 Page Object Tree changed.
+  --params <json>
+                 The tool's input as one JSON object, as ayme tools prints its
+                 parameters: {"id": "<Page Object Id>", "args": {...}} for a
+                 tool of a Page Object with an id. Leave it out for a tool
+                 that takes none.
+  --params @<file>
+                 Read that JSON object from <file>.
   close          End this folder's Session and close its browser.
   --json         Print the answer of a Session's command as JSON.
 
@@ -66,6 +77,9 @@ export type Command =
       json: boolean;
     }
   | { kind: "ask"; request: SessionRequest; json: boolean }
+  /** `ayme call`: the tool, and its `--params` as given, JSON or
+   * `@<file>`. */
+  | { kind: "call"; tool: string; params?: string; json: boolean }
   /** The Session's background process, which `open` starts with the
    * options it was given, as JSON. */
   | { kind: "session process"; options: string }
@@ -86,7 +100,13 @@ export function readCommand(args: string[]): Command {
 }
 
 /** The commands of a Session. */
-const SESSION_WORDS = new Set(["open", "close", "page-objects", "tools"]);
+const SESSION_WORDS = new Set([
+  "open",
+  "close",
+  "page-objects",
+  "tools",
+  "call",
+]);
 
 /** What each command that only asks the folder's Session asks it. */
 const ASKED: Record<string, SessionRequest> = {
@@ -102,7 +122,12 @@ export const SESSION_PROCESS = "__session";
  * with the global --json. */
 function readSessionCommand(args: string[]): Command {
   let positionals: string[];
-  let values: { help?: boolean; headed?: boolean; json?: boolean };
+  let values: {
+    help?: boolean;
+    headed?: boolean;
+    json?: boolean;
+    params?: string;
+  };
   try {
     ({ positionals, values } = parseArgs({
       args,
@@ -111,6 +136,7 @@ function readSessionCommand(args: string[]): Command {
         help: { type: "boolean", short: "h" },
         headed: { type: "boolean" },
         json: { type: "boolean" },
+        params: { type: "string" },
       },
     }));
   } catch (error) {
@@ -119,6 +145,17 @@ function readSessionCommand(args: string[]): Command {
   if (values.help) return { kind: "help", text: USAGE };
   const [word, url, ...more] = positionals;
   const json = values.json ?? false;
+  const { params } = values;
+  if (word === "call")
+    return url !== undefined && more.length === 0 && !values.headed
+      ? {
+          kind: "call",
+          tool: url,
+          ...(params === undefined ? {} : { params }),
+          json,
+        }
+      : { kind: "error", text: USAGE };
+  if (params !== undefined) return { kind: "error", text: USAGE };
   if (word === "open" && more.length === 0)
     return {
       kind: "open",

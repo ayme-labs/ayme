@@ -1,6 +1,7 @@
 // The front door, for the CLI: promises and plain data only, so the CLI
 // needs neither Effect's nor Playwright's types.
 export {
+  askCall,
   askSession,
   openSession,
   runSessionProcess,

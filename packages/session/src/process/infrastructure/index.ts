@@ -1,2 +1,2 @@
 export { runSessionProcess, serveSession } from "./background";
-export { askSession, openSession } from "./commands";
+export { askCall, askSession, openSession } from "./commands";

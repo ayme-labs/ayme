@@ -140,3 +140,16 @@ export function endedBeforeAnswer(end: SessionEnd): SessionAnswer {
       return failed("The Session never started.");
   }
 }
+
+/** The answer to `ayme call` when its `--params` is not JSON. */
+export const paramsNotJson = (why: string): SessionAnswer =>
+  failed(
+    `--params is not JSON: ${why.replace(/\.$/, "")}. Give the tool's input as one JSON object, as ayme tools prints its parameters.`
+  );
+
+/** The answer to `ayme call` when the file its `--params @<file>` names
+ * cannot be read. */
+export const paramsUnreadable = (file: string, why: string): SessionAnswer =>
+  failed(
+    `--params @${file} names a file ayme cannot read: ${why.replace(/\.$/, "")}.`
+  );

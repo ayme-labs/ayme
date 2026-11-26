@@ -299,6 +299,53 @@ describe("readCommand for a Session", () => {
     expect(USAGE).toContain("--json");
   });
 
+  it.each([
+    [["call", "Basket.add", "--params", '{"id":"po1","args":{"item":"Milk"}}']],
+    [["call", "Basket.add", '--params={"id":"po1","args":{"item":"Milk"}}']],
+  ])("starts a Run of the tool with the parameters given: `%s`", (args) => {
+    expect(readCommand(args)).toEqual({
+      kind: "call",
+      tool: "Basket.add",
+      params: '{"id":"po1","args":{"item":"Milk"}}',
+      json: false,
+    });
+  });
+
+  it("starts a Run with the parameters of a file for `--params @<file>`, and of none without --params", () => {
+    expect(
+      readCommand(["call", "Basket.add", "--params", "@add.json", "--json"])
+    ).toEqual({
+      kind: "call",
+      tool: "Basket.add",
+      params: "@add.json",
+      json: true,
+    });
+    expect(readCommand(["call", "ShopPage.readHeading"])).toEqual({
+      kind: "call",
+      tool: "ShopPage.readHeading",
+      json: false,
+    });
+  });
+
+  it.each([
+    [["call"]],
+    [["call", "Basket.add", "po1"]],
+    [["call", "Basket.add", "--id", "po1"]],
+    [["call", "Basket.add", "--headed"]],
+    [["tools", "--params", "{}"]],
+  ])(
+    "refuses a call it cannot read, and --params beside another command: `%s`",
+    (args) => {
+      expect(readCommand(args).kind).toBe("error");
+    }
+  );
+
+  it("lists call with its --params in its usage text", () => {
+    expect(USAGE).toContain(
+      "ayme call <tool> [--params <json> | --params @<file>]"
+    );
+  });
+
   it("runs the Session's background process for its own word, which the usage text does not name", () => {
     expect(readCommand(["__session", '{"projectDir":"/app"}'])).toEqual({
       kind: "session process",
