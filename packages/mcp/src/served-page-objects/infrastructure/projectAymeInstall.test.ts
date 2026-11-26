@@ -182,6 +182,7 @@ it("calls back for a change to its own files or one that names no file, until it
     ).subscribe(changed, () => {}, []).stop;
   });
   assert(watcher !== undefined);
+  onTestFinished(() => stop());
 
   watcher.emit("change", "change", "other.txt");
   expect(changed).not.toHaveBeenCalled();

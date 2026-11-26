@@ -152,6 +152,20 @@ it("leaves a module that is not a .ts file to esbuild", async () => {
   expect(compile.mock.calls.map(([file]) => file)).toEqual([entry]);
 });
 
+it("builds whatever the callback returns", async () => {
+  const { write } = await fixture();
+  const entry = await write("entry.ts", "export default 1;");
+  const compiler: PomCompilerEntry = {
+    createPomCompiler: () => ({ compile: () => null, invalidate: () => {} }),
+    PomCompileError,
+  };
+  const kinds: string[] = [];
+  onTestFinished(
+    await watchPageObjects(entry, compiler, ({ kind }) => kinds.push(kind))
+  );
+  await expect.poll(() => kinds).toEqual(["building", "built"]);
+});
+
 it("stops rebuilding once closed", async () => {
   const { write } = await fixture();
   const entry = await write("entry.ts", "export default 1;");
@@ -163,25 +177,25 @@ it("stops rebuilding once closed", async () => {
   const close = await watchPageObjects(entry, compiler, ({ kind }) => {
     kinds.closed.push(kind);
   });
+  // Disposing twice is harmless, so teardown covers a failure before the explicit close.
+  onTestFinished(close);
   // A second build of the entry shows when esbuild has seen the change.
-  const closeOpen = await watchPageObjects(entry, compiler, ({ kind }) => {
-    kinds.open.push(kind);
-  });
-  try {
-    await expect
-      .poll(() => kinds)
-      .toEqual({
-        closed: ["building", "built"],
-        open: ["building", "built"],
-      });
-    await close();
+  onTestFinished(
+    await watchPageObjects(entry, compiler, ({ kind }) => {
+      kinds.open.push(kind);
+    })
+  );
+  await expect
+    .poll(() => kinds)
+    .toEqual({
+      closed: ["building", "built"],
+      open: ["building", "built"],
+    });
+  await close();
 
-    await write("entry.ts", "export default 2;");
-    await expect.poll(() => kinds.open).toHaveLength(4);
-    expect(kinds.closed).toEqual(["building", "built"]);
-  } finally {
-    await closeOpen();
-  }
+  await write("entry.ts", "export default 2;");
+  await expect.poll(() => kinds.open).toHaveLength(4);
+  expect(kinds.closed).toEqual(["building", "built"]);
 });
 
 it.each([true, false])(

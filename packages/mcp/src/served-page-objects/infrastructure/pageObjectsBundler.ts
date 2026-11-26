@@ -229,7 +229,10 @@ function buildResults(
   return {
     name: "ayme-served-outcomes",
     setup(build) {
-      build.onStart(() => publish({ kind: "building" }));
+      // esbuild fails a build whose onStart returns a non-object, so nothing publish returns reaches it.
+      build.onStart(() => {
+        publish({ kind: "building" });
+      });
       // Stryker disable next-line ArrayDeclaration: equivalent, a build that writes nothing always has outputFiles; the default is for the type.
       build.onEnd(({ errors, outputFiles = [] }) => {
         if (errors.length === 0) {
