@@ -59,6 +59,10 @@ for (const placement of placements) {
       await reloadFixture(page, "/");
       await inspector.open();
       await inspector.runs.showAll();
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
       await expect
         .poll(async () => (await inspector.runs.latest("click").read())?.toggle)
         .toContain('button "Dismiss notice"');
@@ -68,6 +72,10 @@ for (const placement of placements) {
       inspector,
     }) => {
       await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
 
       const run = inspector.runs.latest("ListPage.addItem");
       await expect.poll(() => run.status()).toBe("Succeeded");
@@ -98,6 +106,10 @@ for (const placement of placements) {
           { name: "Urgent", type: "checkbox", target: urgent, value: "true" },
         ],
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
       const run = inspector.runs.latest("fill_form");
       await expect
         .poll(() => run.interactionList())
@@ -139,6 +151,10 @@ for (const placement of placements) {
       const target = await appView.ref('combobox "Size"');
       await inspector.runs.showAll();
       await appView.run("select_option", { target, values: ["Large"] });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
       const run = inspector.runs.latest("select_option");
       await expect
         .poll(async () => (await run.read())?.toggle)
@@ -162,6 +178,8 @@ for (const placement of placements) {
         .toBe("ListPage.addItemButton");
 
       await run.interactionTarget(1).hover();
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await listPage.addItemButton.front()).waitFor();
 
       // The dashed hover highlight.
       await expect
@@ -430,6 +448,10 @@ for (const placement of placements) {
 
         const addItem = await inspector.tool("ListPage.addItem");
         await addItem.run({ text: "Milk" });
+        // Counted by e2e's replay cache, so the goal twin's goals are saved.
+        await (
+          await inspector.runs.runs.within((runs) => runs.first()).front()
+        ).waitFor();
 
         const run = inspector.runs.latest("ListPage.addItem");
         await expect.poll(() => run.status()).toBe("Failed");
@@ -460,10 +482,13 @@ for (const placement of placements) {
             "ListPage.addItem",
             { text: "Milk" }
           );
-
           await (
             await inspector.tool("ListPage.addItem")
           ).run({ text: "Milk" });
+          // Counted by e2e's replay cache, so the goal twin's goals are saved.
+          await (
+            await inspector.runs.runs.within((runs) => runs.first()).front()
+          ).waitFor();
 
           const run = inspector.runs.latest("ListPage.addItem");
           await expect
@@ -527,6 +552,10 @@ for (const placement of placements) {
         const run = inspector.runs.latest("snapshot");
         await expect.poll(() => run.status()).toBe("Succeeded");
         await run.resultToggle.click();
+        // Counted by e2e's replay cache, so the goal twin's goals are saved.
+        await (
+          await inspector.runs.runs.within((runs) => runs.first()).front()
+        ).waitFor();
         await expect
           .poll(async () => (await run.read())?.result)
           .toContain('"structure"');

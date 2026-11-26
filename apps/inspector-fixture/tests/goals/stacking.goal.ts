@@ -125,6 +125,8 @@ for (const zIndex of [50, 101]) {
 
       for (const layout of layouts) {
         await agent.act("set the layout to {layout}", { params: { layout } });
+        // Counted by e2e's replay cache, so the goal twin's goals are saved.
+        await (await header.layoutMenu.trigger.front()).waitFor();
         await expect.poll(() => header.layoutMenu.current()).toBe(layout);
         expect(await inspectorIsOnTopAt(browser, header.title), layout).toBe(
           true
@@ -193,6 +195,8 @@ for (const zIndex of [50, 101]) {
       await agent.act("set the layout to {layout}", {
         params: { layout: "Dock left" },
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await inspector.header.layoutMenu.trigger.front()).waitFor();
       await expect
         .poll(() => inspector.header.layoutMenu.current())
         .toBe("Dock left");

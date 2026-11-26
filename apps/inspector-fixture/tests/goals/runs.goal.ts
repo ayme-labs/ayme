@@ -63,6 +63,10 @@ for (const placement of placements) {
       await reloadFixture(page, "/");
       await agent.act("open the ayme panel");
       await agent.act("show all runs in Runs");
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
       await expect
         .poll(async () => (await inspector.runs.latest("click").read())?.toggle)
         .toContain('button "Dismiss notice"');
@@ -78,6 +82,10 @@ for (const placement of placements) {
       await agent.act("run it with the text {text}", {
         params: { text: "Milk" },
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
 
       const run = inspector.runs.latest("ListPage.addItem");
       await expect.poll(() => run.status()).toBe("Succeeded");
@@ -109,6 +117,10 @@ for (const placement of placements) {
           { name: "Urgent", type: "checkbox", target: urgent, value: "true" },
         ],
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
       const run = inspector.runs.latest("fill_form");
       await expect
         .poll(() => run.interactionList())
@@ -151,6 +163,10 @@ for (const placement of placements) {
       const target = await appView.ref('combobox "Size"');
       await agent.act("show all runs in Runs");
       await appView.run("select_option", { target, values: ["Large"] });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
       const run = inspector.runs.latest("select_option");
       await expect
         .poll(async () => (await run.read())?.toggle)
@@ -183,6 +199,8 @@ for (const placement of placements) {
         "hover the {position} Interaction of the latest {tool} run in Runs",
         { params: { position: "second", tool: "ListPage.addItem" } }
       );
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await listPage.addItemButton.front()).waitFor();
 
       // The dashed hover highlight.
       await expect
@@ -486,6 +504,10 @@ for (const placement of placements) {
         await agent.act("run it with the text {text}", {
           params: { text: "Milk" },
         });
+        // Counted by e2e's replay cache, so the goal twin's goals are saved.
+        await (
+          await inspector.runs.runs.within((runs) => runs.first()).front()
+        ).waitFor();
 
         const run = inspector.runs.latest("ListPage.addItem");
         await expect.poll(() => run.status()).toBe("Failed");
@@ -516,13 +538,16 @@ for (const placement of placements) {
             "ListPage.addItem",
             { text: "Milk" }
           );
-
           await agent.act("open the {tool} tool in the Tools lens", {
             params: { tool: "ListPage.addItem" },
           });
           await agent.act("run it with the text {text}", {
             params: { text: "Milk" },
           });
+          // Counted by e2e's replay cache, so the goal twin's goals are saved.
+          await (
+            await inspector.runs.runs.within((runs) => runs.first()).front()
+          ).waitFor();
 
           const run = inspector.runs.latest("ListPage.addItem");
           await expect
@@ -602,6 +627,10 @@ for (const placement of placements) {
         await agent.act("show the result of the latest {tool} run", {
           params: { tool: "snapshot" },
         });
+        // Counted by e2e's replay cache, so the goal twin's goals are saved.
+        await (
+          await inspector.runs.runs.within((runs) => runs.first()).front()
+        ).waitFor();
         await expect
           .poll(async () => (await run.read())?.result)
           .toContain('"structure"');

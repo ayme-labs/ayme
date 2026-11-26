@@ -31,6 +31,8 @@ for (const placement of placements) {
       await agent.act("select the {member} node in the Structure lens", {
         params: { member: "ListPage.newItemInput" },
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await listPage.newItemInput.front()).waitFor();
       await inspector.navigator.searchBox.hover();
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("solid");
     });

@@ -25,6 +25,10 @@ for (const placement of placements) {
       const liveTools = await appView.tools();
 
       await inspector.navigator.showLens("Tools");
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.navigator.tools.tool(liveTools[0]!.name).front()
+      ).waitFor();
 
       await expect
         .poll(async () =>
@@ -64,6 +68,8 @@ for (const placement of placements) {
             await inspector.navigator.tools.tool(tool.name).click();
             await expect(await toolPage.title.front()).toHaveText(tool.name);
             await toolPage.modelSees.open();
+            // Counted by e2e's replay cache, so the goal twin's goals are saved.
+            await (await toolPage.title.front()).waitFor();
 
             await expect
               .poll(() => toolPage.descriptionText())
@@ -126,6 +132,8 @@ for (const placement of placements) {
 
       await inspector.tool("ListPage.addItem");
       await toolPage.modelSees.open();
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await toolPage.modelSees.definitions.front()).waitFor();
 
       await expect
         .poll(() => toolPage.modelSees.definitionsText())
@@ -139,6 +147,10 @@ for (const placement of placements) {
           const liveTools = await appView.tools();
 
           await inspector.navigator.showLens("Tools");
+          // Counted by e2e's replay cache, so the goal twin's goals are saved.
+          await (
+            await inspector.navigator.tools.tool(liveTools[0]!.name).front()
+          ).waitFor();
 
           await expect
             .poll(async () =>
@@ -185,6 +197,10 @@ for (const placement of placements) {
       await expect(await card.reason.front()).toHaveText(clear.reason!);
       await expect(await card.runButton.front()).toBeEnabled();
       await card.runButton.click();
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await inspector.runs.runs.within((runs) => runs.first()).front()
+      ).waitFor();
       // The newest run of the tool is the app's until the panel's arrives.
       const run = inspector.runs.latest("ListPage.clear");
       await expect.poll(() => run.caller()).toEqual(INSPECTOR);
@@ -208,6 +224,10 @@ for (const placement of placements) {
             .poll(() => inspector.navigator.tools.peekSections())
             .toEqual({ Browser: peeks });
           await (await inspector.tool("peek.list")).runButton.click();
+          // Counted by e2e's replay cache, so the goal twin's goals are saved.
+          await (
+            await inspector.runs.runs.within((runs) => runs.first()).front()
+          ).waitFor();
 
           const run = inspector.runs.latest("peek.list");
           await expect.poll(() => run.status()).toBe("Succeeded");

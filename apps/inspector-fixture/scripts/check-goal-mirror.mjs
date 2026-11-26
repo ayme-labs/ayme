@@ -147,8 +147,8 @@ function panelActions(node, names, file) {
     ) {
       const receiver = child.expression.expression;
       const root = rootOf(receiver);
-      // \`tool\` acts on the Inspector (it opens a tool's card); a view's
-      // \`tool\` only finds a slot.
+      // `tool` acts on the Inspector (it opens a tool's card); a view's
+      // `tool` only finds a slot.
       const reader =
         child.expression.name.text === "tool" &&
         !/(^|\.)inspector$/.test(
@@ -182,13 +182,25 @@ function goals(node, file) {
   return calls;
 }
 
-/** The statements that assert: those whose call chain starts at `expect`. */
+/** A statement that waits for a locator: `await (await x.front()).waitFor()`. */
+function isWaitFor(statement) {
+  let call = statement.expression;
+  if (ts.isAwaitExpression(call)) call = call.expression;
+  return (
+    ts.isCallExpression(call) &&
+    ts.isPropertyAccessExpression(call.expression) &&
+    call.expression.name.text === "waitFor"
+  );
+}
+
+/** The statements that assert: a locator's `waitFor`, or a call chain that starts at `expect`. */
 function assertions(node, file) {
   const found = [];
   const visit = (child) => {
     if (ts.isExpressionStatement(child)) {
       const root = rootOf(child.expression);
-      if (ts.isIdentifier(root) && root.text === "expect") found.push(child);
+      if ((ts.isIdentifier(root) && root.text === "expect") || isWaitFor(child))
+        found.push(child);
     }
     ts.forEachChild(child, visit);
   };
@@ -197,6 +209,20 @@ function assertions(node, file) {
     statement,
     text: print(statement, file),
   }));
+}
+
+/**
+ * Whether an assertion is one e2e's cache counts: a matcher on a locator,
+ * which the suites hand to `expect` as `await x.front()`, or on the
+ * browser. `expect.poll` and `expect` on a read value do not count.
+ */
+function countsForTheCache(statement, file) {
+  if (isWaitFor(statement)) return true;
+  const root = rootOf(statement.expression);
+  const call = root.parent;
+  if (!ts.isCallExpression(call) || !call.arguments[0]) return false;
+  const subject = call.arguments[0].getText(file);
+  return /\.front\(\)$/.test(subject) || subject === "browser";
 }
 
 /** Every test of a file, with what places it: describes, loops and its `testIn`. */
@@ -342,6 +368,48 @@ for (const stem of [...stems].sort()) {
       assertions(goalTest, goal),
       (node) => goals(node, goal).length > 0
     );
+    // e2e saves a goal's recording only once a later check of the kind it
+    // counts passed (docs/cache.mdx, "When a recording is written"): a
+    // matcher on a locator or the browser, or a locator's `waitFor`. Not
+    // `expect.poll`, nor `expect` on a plain value.
+    const lastGoal = Math.max(
+      ...goals(goalTest, goal).map((call) => call.getStart())
+    );
+    // A helper the test defines counts where the test calls it.
+    const checkingHelpers = new Set();
+    const findHelpers = (node) => {
+      if (
+        ts.isVariableDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.initializer &&
+        isFunction(node.initializer) &&
+        assertions(node.initializer, goal).some(({ statement }) =>
+          countsForTheCache(statement, goal)
+        )
+      )
+        checkingHelpers.add(node.name.text);
+      ts.forEachChild(node, findHelpers);
+    };
+    findHelpers(goalTest);
+    let counting = assertions(goalTest, goal).some(
+      ({ statement }) =>
+        statement.getStart() > lastGoal && countsForTheCache(statement, goal)
+    );
+    const findCalls = (node) => {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        checkingHelpers.has(node.expression.text) &&
+        node.getStart() > lastGoal
+      )
+        counting = true;
+      ts.forEachChild(node, findCalls);
+    };
+    findCalls(goalTest);
+    if (Number.isFinite(lastGoal) && !counting)
+      problems.push(
+        `${label}: no check e2e counts follows its last goal, so its goals are never saved`
+      );
     if (want.acting !== have.acting)
       problems.push(
         `${label}: ${want.acting} acting assertions, ${have.acting}`

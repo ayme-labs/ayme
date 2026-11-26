@@ -71,6 +71,13 @@ for (const placement of placements) {
       await expect.poll(secondItem).toBe("none");
 
       await object.click();
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await page
+          .locator("#todo-items > li")
+          .within((rows) => rows.nth(1))
+          .front()
+      ).waitFor();
       await inspector.header.title.hover();
 
       await expect.poll(secondItem).toBe("solid");
@@ -89,6 +96,8 @@ for (const placement of placements) {
       await inspector.navigator.model.object("TodoPage.items[1]").click();
 
       await inspector.detail.model.member("archiveButton").hover();
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await page.locator("#todo-items > li >> nth=1").front()).waitFor();
 
       await expect.poll(archiveButton).toBe("dashed");
       await expect.poll(item).toBe("solid");

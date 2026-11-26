@@ -22,6 +22,8 @@ for (const placement of placements) {
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
 
       await newItem.click();
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await listPage.newItemInput.front()).waitFor();
       await inspector.navigator.searchBox.hover();
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("solid");
     });

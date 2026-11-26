@@ -67,6 +67,8 @@ for (const placement of placements) {
           .front()
       ).toHaveCount(1);
       await agent.act("open What the model sees");
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await toolPage.modelSees.definitions.front()).waitFor();
       await expect
         .poll(() => toolPage.modelSees.definitionsText())
         .toBe(definition);

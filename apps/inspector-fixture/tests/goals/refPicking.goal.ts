@@ -62,6 +62,8 @@ for (const placement of placements) {
       });
 
       await pickOnPage(agent, "target", listPage);
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await listPage.addItemButton.front()).waitFor();
       await listPage.addItemButton.hover();
 
       // The dashed hover highlight.
@@ -124,6 +126,8 @@ for (const placement of placements) {
       });
       const ref = inspector.detail.runCard().refField("target");
       await pickOnPage(agent, "target", listPage);
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await listPage.addItemButton.front()).waitFor();
 
       await listPage.addItemButton.hover();
       await expect

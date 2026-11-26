@@ -48,6 +48,13 @@ for (const placement of placements) {
       await agent.act("select {object} under On this page in the Model lens", {
         params: { object: "TodoPage.items[1]" },
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (
+        await page
+          .locator("#todo-items > li")
+          .within((rows) => rows.nth(1))
+          .front()
+      ).waitFor();
       await inspector.header.title.hover();
 
       await expect.poll(secondItem).toBe("solid");
@@ -71,6 +78,8 @@ for (const placement of placements) {
       await agent.act("hover its {member} member", {
         params: { member: "archiveButton" },
       });
+      // Counted by e2e's replay cache, so the goal twin's goals are saved.
+      await (await page.locator("#todo-items > li >> nth=1").front()).waitFor();
 
       await expect.poll(archiveButton).toBe("dashed");
       await expect.poll(item).toBe("solid");
