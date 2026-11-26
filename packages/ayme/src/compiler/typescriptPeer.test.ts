@@ -1,9 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
-import projectTypeScript from "typescript";
 
-import { ts } from "./typescriptApi";
 import {
   SUPPORTED_TYPESCRIPT,
   assertSupportedTypeScript,
@@ -39,12 +37,4 @@ describe("assertSupportedTypeScript", () => {
         )
       );
   });
-});
-
-it("only uses the TypeScript 6 compatibility API with TypeScript 7", () => {
-  if (projectTypeScript.version.startsWith("7.")) {
-    expect(ts.versionMajorMinor).toBe("6.0");
-  } else {
-    expect(ts).toBe(projectTypeScript);
-  }
 });

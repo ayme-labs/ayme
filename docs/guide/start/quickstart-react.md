@@ -9,6 +9,12 @@ npm install @ayme-dev/ayme @ayme-dev/react
 npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
 ```
 
+Vite's React template installs TypeScript 7. With TypeScript 7, the build plugin compiles Page Object Models with Microsoft's `@typescript/typescript6` ([supported versions](install.md#supported-versions)), so install it too:
+
+```sh
+npm install -D @typescript/typescript6
+```
+
 ## 2. Add the build plugin
 
 ```ts

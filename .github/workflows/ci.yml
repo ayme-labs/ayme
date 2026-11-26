@@ -143,12 +143,14 @@ jobs:
               pins: react react-dom @types/react@18.3.31 @types/react-dom@18.3.7
               build: "@ayme-dev/ayme... --filter=@ayme-dev/inspector... --filter=@ayme-dev/webmcp"
               browser: true
-            # Pin ayme too because the workspace compiler resolves TypeScript from packages/ayme.
+            # The app installs @typescript/typescript6 beside TypeScript 7, as
+            # a consumer does. Pin ayme too because the workspace compiler
+            # resolves both from packages/ayme.
             - name: TypeScript 7 compatibility
               package: "@ayme-dev/example-react"
               dir: apps/example-react
               version: "7.0.2"
-              pins: typescript
+              pins: typescript @typescript/typescript6@^6.0.2
               linked: packages/ayme
               build: "@ayme-dev/example-react^..."
               compiler: true

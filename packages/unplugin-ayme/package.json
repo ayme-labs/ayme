@@ -64,11 +64,15 @@
     "unplugin": "^3.3.0"
   },
   "peerDependencies": {
+    "@typescript/typescript6": "^6.0.2",
     "esbuild": ">=0.24.0",
     "typescript": ">=5.4 <8",
     "vite": "^7.0.0 || ^8.0.0"
   },
   "peerDependenciesMeta": {
+    "@typescript/typescript6": {
+      "optional": true
+    },
     "esbuild": {
       "optional": true
     },
