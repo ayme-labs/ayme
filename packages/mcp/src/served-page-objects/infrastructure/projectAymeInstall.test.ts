@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import type { FSWatcher } from "node:fs";
 import {
   mkdir,
   mkdtemp,
@@ -13,6 +14,28 @@ import { dirname, join } from "node:path";
 import { expect, it, onTestFinished, vi } from "vitest";
 
 import { projectAymeInstall } from "./projectAymeInstall";
+
+// The real file system, keeping each folder watcher so a test can see it
+// close and send it what only some platforms send: a change that names no
+// file, or the error Windows gives once a watched folder is removed.
+const folderWatchers = vi.hoisted(() => [] as FSWatcher[]);
+vi.mock("node:fs", async (importOriginal) => {
+  const real = await importOriginal<typeof import("node:fs")>();
+  const watch = ((...args: Parameters<typeof real.watch>) => {
+    const watcher = real.watch(...args);
+    vi.spyOn(watcher, "close");
+    folderWatchers.push(watcher);
+    return watcher;
+  }) as typeof real.watch;
+  return { ...real, watch };
+});
+
+/** The folder watchers `subscribe` opens. */
+function watchersOf(subscribe: () => void) {
+  const before = folderWatchers.length;
+  subscribe();
+  return folderWatchers.slice(before);
+}
 
 /**
  * A project with a Page Objects entry, a `package.json` and a pnpm
@@ -145,6 +168,111 @@ it("names the nearest package and lockfile, and keeps watching a deleted lockfil
     stop();
     await remove();
   }
+});
+
+it("calls back for a change to its own files or one that names no file, until it stops", async () => {
+  const { entry, remove } = await aymeProject();
+  onTestFinished(remove);
+  const changed = vi.fn();
+  let stop = () => {};
+  const [watcher] = watchersOf(() => {
+    stop = projectAymeInstall(
+      entry,
+      "0.2.0"
+    ).subscribe(changed, () => {}, []).stop;
+  });
+  assert(watcher !== undefined);
+
+  watcher.emit("change", "change", "other.txt");
+  expect(changed).not.toHaveBeenCalled();
+  watcher.emit("change", "rename", "pnpm-lock.yaml");
+  expect(changed).toHaveBeenCalledOnce();
+  watcher.emit("change", "rename", null);
+  expect(changed).toHaveBeenCalledTimes(2);
+
+  stop();
+  expect(watcher.close).toHaveBeenCalledOnce();
+});
+
+it("stops watching every folder and says so once a watched folder fails", async () => {
+  const { entry, remove } = await aymeProject();
+  onTestFinished(remove);
+  const changed = vi.fn();
+  const failed = vi.fn();
+  const watchers = watchersOf(() => {
+    const { stop } = projectAymeInstall(entry, "0.2.0").subscribe(
+      changed,
+      failed,
+      [join(dirname(entry), "earlier.lock")]
+    );
+    onTestFinished(stop);
+  });
+  expect(watchers).toHaveLength(2);
+
+  watchers[0]?.emit("error", new Error("EPERM: operation not permitted"));
+
+  expect(failed).toHaveBeenCalledOnce();
+  for (const watcher of watchers) expect(watcher.close).toHaveBeenCalled();
+  expect(changed).not.toHaveBeenCalled();
+});
+
+it("throws, leaving nothing watched, when the folder of a file it watched before is gone", async () => {
+  const { project, entry, remove } = await aymeProject();
+  onTestFinished(remove);
+  const lookup = projectAymeInstall(entry, "0.2.0");
+  const watchers = watchersOf(() =>
+    expect(() =>
+      lookup.subscribe(
+        () => {},
+        () => {},
+        [
+          join(dirname(entry), "earlier.lock"),
+          join(project, "gone", "pnpm-lock.yaml"),
+        ]
+      )
+    ).toThrow(/ENOENT/)
+  );
+  expect(watchers).toHaveLength(1);
+  expect(watchers[0]?.close).toHaveBeenCalled();
+});
+
+it("resolves the compiler as Node imports it", async () => {
+  const { project, entry } = await projectWithAyme("0.1.5");
+  const ayme = join(project, "node_modules", "@ayme-dev", "ayme");
+  await writeFile(
+    join(ayme, "package.json"),
+    JSON.stringify({
+      name: "@ayme-dev/ayme",
+      version: "0.1.5",
+      type: "module",
+      exports: {
+        ".": "./dist/index.js",
+        "./compiler": {
+          browser: "./dist/compiler.browser.js",
+          default: "./dist/compiler.js",
+        },
+      },
+    })
+  );
+  try {
+    expect(await projectAymeInstall(entry, "0.1.5").resolve()).toMatchObject({
+      kind: "ready",
+      compiler: join(ayme, "dist", "compiler.js"),
+    });
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+it("installs in the entry's own folder, with npm, when no package.json is above it", async () => {
+  const folder = await realpath(await mkdtemp(join(tmpdir(), "ayme-bare-")));
+  onTestFinished(() => rm(folder, { recursive: true, force: true }));
+  expect(
+    await projectAymeInstall(join(folder, "page-objects.ts"), "0.2.0").resolve()
+  ).toMatchObject({
+    kind: "cannot-start",
+    install: { folder, packageManager: "npm", workspaceRoot: false },
+  });
 });
 
 it("names the missing runtime and a matching release's missing compiler", async () => {

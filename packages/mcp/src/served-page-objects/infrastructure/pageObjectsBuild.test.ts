@@ -1,8 +1,15 @@
+import assert from "node:assert/strict";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { expect, it, vi } from "vitest";
 
-import { startWithInstall } from "./pageObjectsBuild";
+import { startPageObjects, startWithInstall } from "./pageObjectsBuild";
 import type { PageObjectsBuildEvent } from "./pageObjectsBundler";
 import type { ProjectAymeInstall } from "./projectAymeInstall";
+
+type Resolution = Awaited<ReturnType<ProjectAymeInstall["resolve"]>>;
 
 const entry = "/project/ayme/page-objects.ts";
 const install = {
@@ -27,7 +34,7 @@ const ready = {
 const modules = new Map([["entry.js", "export default []"]]);
 
 function start(
-  initial: Awaited<ReturnType<ProjectAymeInstall["resolve"]>> = mismatch,
+  initial: Resolution = mismatch,
   first: PageObjectsBuildEvent = { kind: "built", modules }
 ) {
   let changed = () => {};
@@ -116,6 +123,12 @@ it("keeps watching an install that never resolves", async ({
   change();
 
   await expect.poll(() => subscribe.mock.calls.length).toBe(2);
+  expect(subscribe).toHaveBeenNthCalledWith(
+    1,
+    expect.any(Function),
+    expect.any(Function),
+    []
+  );
   expect(subscribe).toHaveBeenLastCalledWith(
     expect.any(Function),
     expect.any(Function),
@@ -189,6 +202,7 @@ it("stops watching the install files once closed", async () => {
   try {
     change();
     await build.close();
+    expect(vi.getTimerCount()).toBe(0);
     await vi.runAllTimersAsync();
 
     expect(stopWatching).toHaveBeenCalledOnce();
@@ -208,6 +222,8 @@ it("keeps the last good build and logs the errors of a failed rebuild", async ({
   resolve.mockResolvedValue(ready);
   await build.whenSettled();
 
+  publish({ kind: "building" });
+  expect(build.state).toEqual({ kind: "built", entry, modules });
   const errors = [{ text: "Unexpected end of file", location: null }];
   publish({ kind: "failed", errors });
 
@@ -220,6 +236,16 @@ it("keeps the last good build and logs the errors of a failed rebuild", async ({
   expect(log).toHaveBeenLastCalledWith(
     `The Page Objects entry ${entry} did not build. The page gets the last good build.\n  Unexpected end of file`
   );
+
+  publish({ kind: "building" });
+  const next = [{ text: "Expected identifier", location: null }];
+  publish({ kind: "failed", errors: next });
+  expect(build.state).toEqual({
+    kind: "rebuild-failed",
+    entry,
+    modules,
+    errors: next,
+  });
 });
 
 it("logs all first-build errors including one with no location", async ({
@@ -233,7 +259,7 @@ it("logs all first-build errors including one with no location", async ({
     },
     { text: "The service was stopped", location: null },
   ];
-  const { build, log } = start(ready, { kind: "failed", errors });
+  const { build, log, resolve } = start(ready, { kind: "failed", errors });
   onTestFinished(() => build.close());
 
   expect(await build.whenSettled()).toEqual({
@@ -241,7 +267,156 @@ it("logs all first-build errors including one with no location", async ({
     entry,
     errors,
   });
+  expect(resolve).toHaveBeenCalledOnce();
   expect(log).toHaveBeenCalledExactlyOnceWith(
     `The Page Objects entry ${entry} did not build. No build of it has succeeded, so none is served.\n  ${file}:22:1: Unexpected end of file\n  The service was stopped`
   );
+});
+
+it("stops calling a listener once it unsubscribes", async ({
+  onTestFinished,
+}) => {
+  const { build, resolve } = start();
+  onTestFinished(() => build.close());
+  await build.whenSettled();
+  const listener = vi.fn();
+  build.subscribe(listener)();
+
+  resolve.mockResolvedValue(ready);
+  expect(await build.whenSettled()).toEqual({ kind: "built", entry, modules });
+  expect(listener).not.toHaveBeenCalled();
+});
+
+it("checks the install again when asked for an answer after the install watcher stopped", async ({
+  onTestFinished,
+}) => {
+  const { build, resolve, fail } = start();
+  onTestFinished(() => build.close());
+  await build.whenSettled();
+  fail();
+
+  resolve.mockResolvedValue(ready);
+  expect(await build.whenSettled()).toEqual({ kind: "built", entry, modules });
+});
+
+it("ignores the install watcher once the build has started", async ({
+  onTestFinished,
+}) => {
+  const { build, resolve, change, fail, bundle } = start();
+  onTestFinished(() => build.close());
+  await build.whenSettled();
+  resolve.mockResolvedValue(ready);
+  change();
+  await expect.poll(() => build.state.kind).toBe("built");
+  const built = build.state;
+  const checks = resolve.mock.calls.length;
+
+  vi.useFakeTimers();
+  try {
+    // What the watcher reported as the build started.
+    change();
+    fail();
+    await vi.runAllTimersAsync();
+  } finally {
+    vi.useRealTimers();
+  }
+
+  expect(build.state).toBe(built);
+  expect(resolve).toHaveBeenCalledTimes(checks);
+  expect(bundle).toHaveBeenCalledOnce();
+});
+
+it("does not act on an install check the build moved past while it ran", async ({
+  onTestFinished,
+}) => {
+  const { build, resolve, fail } = start();
+  onTestFinished(() => build.close());
+  await build.whenSettled();
+  let check: ((found: Resolution) => void) | undefined;
+  resolve.mockImplementationOnce(
+    () => new Promise((resolved) => (check = resolved))
+  );
+  const answer = build.whenSettled();
+  await expect.poll(() => check).toBeDefined();
+
+  fail();
+  check?.(ready);
+
+  expect(await answer).toEqual({
+    kind: "cannot-start",
+    entry,
+    error: mismatch.error,
+  });
+});
+
+it("neither watches the install nor starts again once closed during a start", async () => {
+  const { build, resolve, change, subscribe } = start();
+  await build.whenSettled();
+  let check: ((found: Resolution) => void) | undefined;
+  resolve.mockImplementationOnce(
+    () => new Promise((resolved) => (check = resolved))
+  );
+  vi.useFakeTimers();
+  try {
+    change();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(build.state.kind).toBe("starting");
+    // A change during the start asks for another once it ends.
+    change();
+    await vi.advanceTimersByTimeAsync(100);
+
+    const closing = build.close();
+    check?.(mismatch);
+    await closing;
+  } finally {
+    vi.useRealTimers();
+  }
+
+  expect(build.state).toEqual({
+    kind: "cannot-start",
+    entry,
+    error: mismatch.error,
+  });
+  expect(resolve).toHaveBeenCalledTimes(3);
+  expect(subscribe).toHaveBeenCalledOnce();
+});
+
+it("builds with the compiler of the project's own install", async () => {
+  const project = await realpath(await mkdtemp(join(tmpdir(), "ayme-start-")));
+  const ayme = join(project, "node_modules", "@ayme-dev", "ayme");
+  await mkdir(ayme, { recursive: true });
+  await writeFile(
+    join(ayme, "package.json"),
+    JSON.stringify({
+      name: "@ayme-dev/ayme",
+      version: "0.2.0",
+      type: "module",
+      exports: { ".": "./index.js", "./compiler": "./compiler.js" },
+    })
+  );
+  await writeFile(join(ayme, "index.js"), "export const ayme = 1;");
+  await writeFile(
+    join(ayme, "compiler.js"),
+    `export class PomCompileError extends Error {}
+export const createPomCompiler = () => ({
+  compile: (_file, source) => ({
+    code: source + 'export const by = "the project compiler";',
+    dependencies: [],
+  }),
+  invalidate() {},
+});`
+  );
+  await writeFile(join(project, "package.json"), "{}");
+  const entry = join(project, "page-objects.ts");
+  await writeFile(entry, "export default [];\n");
+
+  const build = startPageObjects(entry, () => {}, "0.2.0");
+  try {
+    const built = await build.whenSettled();
+    assert(built.kind === "built");
+    expect(built.modules.get("entry.js")).toContain("the project compiler");
+  } finally {
+    await build.close();
+    await rm(project, { recursive: true, force: true });
+  }
 });

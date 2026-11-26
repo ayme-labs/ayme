@@ -58,12 +58,14 @@ async function fixture() {
     },
     async watch(entry: string, compile: Compiler["compile"] = () => null) {
       const outcomes: Outcome[] = [];
+      const kinds: PageObjectsBuildEvent["kind"][] = [];
       const invalidate = vi.fn();
       const createPomCompiler = vi.fn(() => ({ compile, invalidate }));
       close = await watchPageObjects(
         entry,
         { createPomCompiler, PomCompileError },
         (event) => {
+          kinds.push(event.kind);
           if (event.kind !== "building") outcomes.push(event);
         }
       );
@@ -72,6 +74,7 @@ async function fixture() {
       });
       return {
         invalidate,
+        kinds,
         async outcome(number = 1) {
           await expect
             .poll(() => outcomes.length)
@@ -102,7 +105,7 @@ it("serves the entry and project runtime, compiling only the project's TypeScrip
     dependencies: [dependency],
   }));
 
-  const { outcome, invalidate } = await watch(entry, compile);
+  const { outcome, invalidate, kinds } = await watch(entry, compile);
   const first = await outcome();
   assert(first.kind === "built");
   expect(first.modules.get("entry.js")).toContain("compiled");
@@ -117,6 +120,68 @@ it("serves the entry and project runtime, compiling only the project's TypeScrip
   await write("compiler-config.txt", "a different value");
   expect((await outcome(2)).kind).toBe("built");
   expect(invalidate).toHaveBeenCalledTimes(2);
+  expect(kinds).toEqual(["building", "built", "building", "built"]);
+});
+
+it("serves one copy of the runtime, which the entry and runtime.js share", async () => {
+  const { write, watch } = await fixture();
+  const entry = await write(
+    "entry.ts",
+    'export { runtime as default } from "@ayme-dev/ayme";'
+  );
+  const { outcome } = await watch(entry);
+  const built = await outcome();
+  assert(built.kind === "built");
+  expect(
+    [...built.modules.values()].filter((code) =>
+      code.includes("project runtime")
+    )
+  ).toHaveLength(1);
+});
+
+it("leaves a module that is not a .ts file to esbuild", async () => {
+  const { write, watch } = await fixture();
+  await write("view.tsx", "export const view: number = 1;");
+  const entry = await write(
+    "entry.ts",
+    'export { view as default } from "./view.tsx";'
+  );
+  const compile = vi.fn<Compiler["compile"]>(() => null);
+  const { outcome } = await watch(entry, compile);
+  expect((await outcome()).kind).toBe("built");
+  expect(compile.mock.calls.map(([file]) => file)).toEqual([entry]);
+});
+
+it("stops rebuilding once closed", async () => {
+  const { write } = await fixture();
+  const entry = await write("entry.ts", "export default 1;");
+  const compiler: PomCompilerEntry = {
+    createPomCompiler: () => ({ compile: () => null, invalidate: () => {} }),
+    PomCompileError,
+  };
+  const kinds = { closed: [] as string[], open: [] as string[] };
+  const close = await watchPageObjects(entry, compiler, ({ kind }) => {
+    kinds.closed.push(kind);
+  });
+  // A second build of the entry shows when esbuild has seen the change.
+  const closeOpen = await watchPageObjects(entry, compiler, ({ kind }) => {
+    kinds.open.push(kind);
+  });
+  try {
+    await expect
+      .poll(() => kinds)
+      .toEqual({
+        closed: ["building", "built"],
+        open: ["building", "built"],
+      });
+    await close();
+
+    await write("entry.ts", "export default 2;");
+    await expect.poll(() => kinds.open).toHaveLength(4);
+    expect(kinds.closed).toEqual(["building", "built"]);
+  } finally {
+    await closeOpen();
+  }
 });
 
 it.each([true, false])(
@@ -150,10 +215,10 @@ it.each([true, false])(
   }
 );
 
-it("reports compiler diagnostics with the positions they provide, including UTF-8 columns", async () => {
+it("reports compiler diagnostics with the positions they provide, including UTF-8 columns on the first line of a file with a byte order mark", async () => {
   const { write, watch } = await fixture();
   const entry = await write("entry.ts", "class Page {}");
-  const child = await write("Child.ts", "const café = ;\n");
+  const child = await write("Child.ts", "\uFEFFconst café = ;\n");
   const { outcome } = await watch(entry, () => {
     throw new PomCompileError([
       {
@@ -184,21 +249,37 @@ it("reports compiler diagnostics with the positions they provide, including UTF-
 });
 
 it.each([
-  ["\uFEFFconst value = ;", 15],
-  ['export const note = "café ☕ 😀" +;', 34],
+  ["\uFEFFconst value = ;", 1, 15],
+  ["\uFEFFconst first = 1;\nconst value = ;", 2, 15],
+  ['export const note = "café ☕ 😀" +;', 1, 34],
 ] as const)(
-  "reports esbuild's own error in %j at the column an editor counts",
-  async (source, column) => {
+  "reports esbuild's own error in %j at the line and column an editor counts",
+  async (source, line, column) => {
     const { write, watch } = await fixture();
     const entry = await write("entry.ts", source);
     const { outcome } = await watch(entry);
     const result = await outcome();
     assert(result.kind === "failed");
     expect(result.errors.map(buildErrorLine)).toEqual([
-      `${entry}:1:${column}: Unexpected ";"`,
+      `${entry}:${line}:${column}: Unexpected ";"`,
     ]);
   }
 );
+
+it("reports an @ayme-dev/ayme that does not resolve at the column of the runtime's import of it", async () => {
+  const { folder, write, watch } = await fixture();
+  await rm(join(folder, "node_modules"), { recursive: true });
+  const entry = await write("entry.ts", "export default 1;");
+  const { outcome } = await watch(entry);
+  const result = await outcome();
+  assert(result.kind === "failed");
+  expect(result.errors).toMatchObject([
+    {
+      text: 'Could not resolve "@ayme-dev/ayme"',
+      location: { line: 1, column: 14 },
+    },
+  ]);
+});
 
 it("omits generated positions for a failed import and reports source positions again once the file stops compiling", async () => {
   const { write, watch } = await fixture();
@@ -362,4 +443,40 @@ it("keeps a compiler diagnostic's source position when it names another compiled
   const result = await outcome();
   assert(result.kind === "failed");
   expect(result.errors.map(buildErrorLine)).toEqual([`${child}:8:14: ${text}`]);
+});
+
+it("keeps esbuild's error in a JSON file the compiler does not report, on a line it reports in a tsconfig", async () => {
+  const { write, watch } = await fixture();
+  const tsconfig = await write(
+    "tsconfig.json",
+    '{\n  "compilerOptions": {\n    "target": "es2022",,\n  }\n}\n'
+  );
+  const data = await write("data.json", '{\n  "a": 1,\n  "b": 2,,\n}\n');
+  const entry = await write(
+    "entry.ts",
+    'import "./data.json"; import "./Page";'
+  );
+  await write("Page.ts", "class Page {}");
+  const text =
+    "Could not read TypeScript project configuration: Property assignment expected.";
+  const { outcome } = await watch(entry, (file) => {
+    if (file === entry) return null;
+    throw new PomCompileError([
+      {
+        text,
+        file: tsconfig,
+        line: 3,
+        column: 24,
+        lineText: '    "target": "es2022",,',
+      },
+    ]);
+  });
+  const result = await outcome();
+  assert(result.kind === "failed");
+  expect(result.errors.map(buildErrorLine).sort()).toEqual(
+    [
+      `${tsconfig}:3:24: ${text}`,
+      `${data}:3:10: Expected string in JSON but found ","`,
+    ].sort()
+  );
 });
