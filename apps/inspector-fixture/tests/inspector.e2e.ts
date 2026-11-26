@@ -8,6 +8,9 @@ import {
   reloadFixture,
   testIn,
 } from "./e2e/fixtures";
+import { AGENT_CLIENT_NAME } from "@ayme-dev/mcp/testing";
+
+import { AppView } from "./e2e/appView";
 import { panelLook, type Inspector } from "./e2e/pom/Inspector";
 
 // E2E: the built Inspector on fixture pages with a real Page Object and the
@@ -223,6 +226,23 @@ describe("connected to an agent", () => {
       expect(result).not.toHaveProperty("changes");
     }
   );
+
+  connected(
+    "the Connections pill names the agent, then says Reconnecting once its server stops, then Not connected",
+    async ({ mcpServer, inspector }) => {
+      const { pill } = inspector.header.connections;
+      await expect(await pill.front()).toHaveText(AGENT_CLIENT_NAME);
+
+      await mcpServer!.close();
+
+      await expect(await pill.front()).toHaveText("Reconnecting");
+      // The tab says it is reconnecting for 10 s, then that its server
+      // stopped answering.
+      await expect(await pill.front()).toHaveText("Not connected", {
+        timeout: 15_000,
+      });
+    }
+  );
 });
 
 test("the header's menus and switches work by mouse inside the closed shadow root", async ({
@@ -395,5 +415,22 @@ plainTest(
     expect(styles.fontSize).toBe("32px");
     expect(styles.fontWeight).toBe("700");
     expect(styles.buttonBackground).not.toBe("rgba(0, 0, 0, 0)");
+  }
+);
+
+plainTest(
+  "the legend counts what the page's runtime reports",
+  async ({ app, browser, screen }) => {
+    // A page with a Page Object child that is not on it, for all three counts.
+    const { inspector, page } = await openFixture(
+      { app, browser, screen },
+      "/models.html"
+    );
+    const { live, notOnPage, refs } = await new AppView(page).legendCounts();
+    const legend = await inspector.navigator.legend.front();
+
+    await expect(legend).toContainText(`${live} live`);
+    await expect(legend).toContainText(`${notOnPage} not on page`);
+    await expect(legend).toContainText(`${refs} refs`);
   }
 );

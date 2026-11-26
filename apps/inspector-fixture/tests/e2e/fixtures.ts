@@ -224,7 +224,9 @@ export function testIn(
   return (
     base
       // Not `agent`: e2e reserves that name for its own agent.
-      .extend<{ mcpServer: Agent | undefined }>({
+      .extend<{
+        mcpServer: Awaited<ReturnType<typeof startAgent>> | undefined;
+      }>({
         // A fixture with no dependencies.
         // eslint-disable-next-line no-empty-pattern
         mcpServer: async ({}, use) => {

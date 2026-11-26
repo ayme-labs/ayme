@@ -254,6 +254,97 @@ for (const placement of placements) {
       await expect(await listPage.items.front()).toHaveCount(0);
       expect(await run.resultText()).toContain('"reason": "done"');
     });
+
+    test("Clear empties Runs, and a run after it shows", async ({
+      appView,
+      inspector,
+    }) => {
+      const countItems = await inspector.tool("ListPage.countItems");
+      await countItems.runButton.click();
+      await inspector.runs.showAll();
+      await expect(await inspector.runs.runs.front()).toHaveCount(1);
+
+      await inspector.runs.clear();
+      await expect(await inspector.runs.runs.front()).toHaveCount(0);
+      await countItems.runButton.click();
+
+      await expect(await inspector.runs.runs.front()).toHaveCount(1);
+      const newest = (await appView.runs()).at(-1)!;
+      await expect
+        .poll(() => inspector.runs.latest(newest.tool).status())
+        .toBe("Succeeded");
+    });
+
+    test("a run's result copies as the page's Run log has it", async ({
+      appView,
+      inspector,
+      listPage,
+    }) => {
+      // The config grants the clipboard.
+      await listPage.addItem("Milk");
+      await (await inspector.tool("ListPage.countItems")).runButton.click();
+      const run = inspector.runs.latest("ListPage.countItems");
+      await expect.poll(() => run.status()).toBe("Succeeded");
+
+      await run.copyResultButton.click();
+
+      const logged = (await appView.runs()).at(-1)!;
+      await inspector.tab.front();
+      const copied = await inspector.tab.browser.evaluate(() =>
+        navigator.clipboard.readText()
+      );
+      expect(JSON.parse(copied)).toEqual(logged.result);
+    });
+
+    test("press_key presses a key the page reacts to", async ({
+      inspector,
+      listPage,
+    }) => {
+      const pressKey = await inspector.tool("press_key");
+      await pressKey.fill({ key: "F2" });
+      // The fixture's F2 clears the New item field.
+      await listPage.newItemInput.fill("Milk");
+
+      await pressKey.runButton.click();
+
+      await expect(await listPage.newItemInput.front()).toHaveValue("");
+    });
+
+    test("the fill_form editor fills the fields still changed after an undo", async ({
+      inspector,
+      listPage,
+    }) => {
+      const card = await inspector.tool("fill_form");
+      await card.openArguments();
+      const form = card.fillForm;
+
+      await form.set("New item", "Milk");
+      await form.set("Urgent", true);
+      await form.undo("Urgent");
+      await card.runButton.click();
+
+      await expect(await listPage.newItemInput.front()).toHaveValue("Milk");
+      await expect(await listPage.urgentCheckbox.front()).not.toBeChecked();
+    });
+
+    test("generate_locator offers the locator of each target chosen for a group", async ({
+      appView,
+      inspector,
+    }) => {
+      const ref = await appView.ref('button "Add item"');
+      const card = await inspector.tool("generate_locator");
+      await card.openArguments();
+
+      await card.locatorGroups.toggleFromTree(1, ref);
+      await card.runButton.click();
+
+      const { groups } = (await appView.run("generate_locator", {
+        groups: [{ targets: [ref] }],
+      })) as { groups: { locators: { locator: string }[] }[] };
+      await expect(await card.locatorGroups.locator(1, ref).front()).toHaveText(
+        groups[0]!.locators[0]!.locator
+      );
+    });
   });
 
   const connected = testIn(placement, "/", { connected: true });

@@ -7,7 +7,75 @@ export type LiveTool = {
   agentDescription?: string;
   inputSchema: unknown;
   destructive?: true;
+  /** Its group in the Tools lens, such as `pageObject` or `peek`. */
+  group: string;
+  /** Whether a call can run it now; when not, `reason` says why. */
+  available: boolean;
+  reason?: string;
 };
+
+/** A Run as the page's Run log has it. */
+export type LoggedRun = {
+  tool: string;
+  status: "running" | "succeeded" | "failed";
+  result?: unknown;
+  error?: string;
+};
+
+/** The navigator legend's three counts, as the page's runtime gives them. */
+export type LegendCounts = { live: number; notOnPage: number; refs: number };
+
+/** One line of an indented text, by its indent. */
+const indented = (text: string) =>
+  text
+    .split("\n")
+    .filter((line) => line.trim())
+    .map((line) => ({
+      indent: line.length - line.trimStart().length,
+      text: line.trim().replace(/^- /, ""),
+    }));
+
+/**
+ * The legend's counts from what the runtime gives an agent: the Page
+ * Objects `page_objects` lists are live; a single Page Object child that a
+ * live one's definition declares (`name: Class`) and `page_objects` leaves
+ * out is not on the page; the refs are those `snapshot`'s structure names.
+ */
+export function legendCounts(
+  pageObjects: string,
+  definitions: string,
+  structure: string
+): LegendCounts {
+  // The single Page Object children each class declares, from its block.
+  const declared = new Map<string, string[]>();
+  let current: string[] = [];
+  for (const { indent, text } of indented(definitions)) {
+    if (indent === 0) declared.set(text, (current = []));
+    else if (/^\w+: [A-Z]\w*$/.test(text)) current.push(text.split(":")[0]!);
+  }
+  const lines = indented(pageObjects);
+  let live = 0;
+  let notOnPage = 0;
+  lines.forEach(({ indent, text }, at) => {
+    // A Page Object's line names its class: alone, as a child's value, or
+    // as a collection's item, with its id when it has a root.
+    const className = /^(?:\w+: )?([A-Z]\w*)(?: po\d+)?$/.exec(text)?.[1];
+    if (!className || !declared.has(className)) return;
+    live += 1;
+    const end = lines.findIndex((line, i) => i > at && line.indent <= indent);
+    const members = lines
+      .slice(at + 1, end === -1 ? undefined : end)
+      .map((line) => line.text.split(":")[0]);
+    notOnPage += declared
+      .get(className)!
+      .filter((child) => !members.includes(child)).length;
+  });
+  return {
+    live,
+    notOnPage,
+    refs: new Set(structure.match(/\be\d+\b/g)).size,
+  };
+}
 
 /**
  * The fixture page's own runtime, read and run as the app does through
@@ -24,12 +92,63 @@ export class AppView {
     return this.page.evaluate(() =>
       window
         .fixtureAyme!.tools.list()
-        .map(({ name, agentDescription, inputSchema, destructive }) => ({
-          name,
-          agentDescription,
-          inputSchema,
-          destructive,
+        .map(
+          ({
+            name,
+            agentDescription,
+            inputSchema,
+            destructive,
+            group,
+            available,
+            reason,
+          }) => ({
+            name,
+            agentDescription,
+            inputSchema,
+            destructive,
+            group,
+            available,
+            reason,
+          })
+        )
+    );
+  }
+
+  /** The error the app gets when the runtime refuses to run a tool, as text. */
+  refusal(name: string, input: object = {}): Promise<string> {
+    return this.page.evaluate(
+      ([name, input]) =>
+        window.fixtureAyme!.tools.run(name, input as never).then(
+          () => {
+            throw new Error(`${name} ran; it was expected to be refused.`);
+          },
+          (error: Error) => String(error)
+        ),
+      [name, input] as const
+    );
+  }
+
+  /** The page's top-level Runs, oldest first, as its Run log has them. */
+  runs(): Promise<LoggedRun[]> {
+    return this.page.evaluate(() =>
+      window
+        .fixtureAyme!.runs.list()
+        .filter((run) => run.parent === undefined)
+        .map(({ tool, status, result, error }) => ({
+          tool,
+          status,
+          result,
+          error,
         }))
+    );
+  }
+
+  /** The navigator legend's counts, from `page_objects` and `snapshot`. */
+  async legendCounts(): Promise<LegendCounts> {
+    return legendCounts(
+      (await this.run("page_objects")) as string,
+      await this.pomDefinitions(),
+      await this.structure()
     );
   }
 

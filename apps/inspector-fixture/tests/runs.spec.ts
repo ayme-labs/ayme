@@ -336,3 +336,98 @@ async function agentFailure(agent: Agent, name: string, input: object) {
 function firstLine(text: string | null) {
   return (text ?? "").split("\n")[0]!;
 }
+
+test("Clear empties Runs, and a run after it shows", async ({
+  page,
+  inspector,
+}) => {
+  const countItems = await inspector.tool("ListPage.countItems");
+  await countItems.runButton.click();
+  await inspector.runs.showAll();
+  await expect(inspector.runs.runs).toHaveCount(1);
+
+  await inspector.runs.clear();
+  await expect(inspector.runs.runs).toHaveCount(0);
+  await countItems.runButton.click();
+
+  await expect(inspector.runs.runs).toHaveCount(1);
+  const newest = (await new AppView(page).runs()).at(-1)!;
+  await expect
+    .poll(() => inspector.runs.latest(newest.tool).status())
+    .toBe("Succeeded");
+});
+
+test("a run's result copies as the page's Run log has it", async ({
+  page,
+  context,
+  inspector,
+  listPage,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await listPage.addItem("Milk");
+  await (await inspector.tool("ListPage.countItems")).runButton.click();
+  const run = inspector.runs.latest("ListPage.countItems");
+  await expect.poll(() => run.status()).toBe("Succeeded");
+
+  await run.copyResultButton.click();
+
+  const logged = (await new AppView(page).runs()).at(-1)!;
+  const copied = await inspector.panel
+    .page()
+    .evaluate(() => navigator.clipboard.readText());
+  expect(JSON.parse(copied)).toEqual(logged.result);
+});
+
+test("press_key presses a key the page reacts to", async ({
+  inspector,
+  listPage,
+}) => {
+  const pressKey = await inspector.tool("press_key");
+  await pressKey.fill({ key: "F2" });
+  // The fixture's F2 clears the New item field.
+  await listPage.newItemInput.fill("Milk");
+
+  await pressKey.runButton.click();
+
+  await expect(listPage.newItemInput).toHaveValue("");
+});
+
+test("the fill_form editor fills the fields still changed after an undo", async ({
+  page,
+  inspector,
+  listPage,
+}) => {
+  const card = await inspector.tool("fill_form");
+  await card.openArguments();
+  const form = card.fillForm;
+
+  await form.set("New item", "Milk");
+  await form.set("Urgent", true);
+  await form.undo("Urgent");
+  await card.runButton.click();
+
+  await expect(listPage.newItemInput).toHaveValue("Milk");
+  await expect(
+    page.getByRole("checkbox", { name: "Urgent" })
+  ).not.toBeChecked();
+});
+
+test("generate_locator offers the locator of each target chosen for a group", async ({
+  page,
+  inspector,
+}) => {
+  const app = new AppView(page);
+  const ref = await app.ref('button "Add item"');
+  const card = await inspector.tool("generate_locator");
+  await card.openArguments();
+
+  await card.locatorGroups.toggleFromTree(1, ref);
+  await card.runButton.click();
+
+  const { groups } = (await app.run("generate_locator", {
+    groups: [{ targets: [ref] }],
+  })) as { groups: { locators: { locator: string }[] }[] };
+  await expect(card.locatorGroups.locator(1, ref)).toHaveText(
+    groups[0]!.locators[0]!.locator
+  );
+});

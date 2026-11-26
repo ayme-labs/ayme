@@ -2,6 +2,7 @@ import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
 import { callOverMcp, placements, testIn } from "./e2e/fixtures";
+import { panelLook } from "./e2e/pom/Inspector";
 
 // E2E: the panel shows the page's live tools as the runtime lists them, and a
 // Page Object Tool as an agent gets it over ayme MCP, in both placements of
@@ -12,6 +13,9 @@ for (const placement of placements) {
   const test = testIn(placement);
   const connected = testIn(placement, "/", { connected: true });
   const unpublished = testIn(placement, "/unpublished.html");
+  // The session's inspector option turns the page's Peeks on; the other
+  // fixture pages mount the panel themselves.
+  const withInspectorOption = testIn(placement, "/session.html");
 
   describe(placement, () => {
     test("the Tools lens lists every live tool of the page", async ({
@@ -143,6 +147,65 @@ for (const placement of placements) {
                 .sort()
             )
             .toEqual(liveTools.map(({ name }) => name).sort());
+        }
+      );
+    });
+
+    test("a tool that can't run now shows dimmed with its reason, and Run gives the refusal", async ({
+      appView,
+      inspector,
+    }) => {
+      const clear = (await appView.tools()).find(
+        ({ name }) => name === "ListPage.clear"
+      )!;
+      // The fixture's list starts empty, so its ListPage.clear has nothing to
+      // clear.
+      expect(clear.available).toBe(false);
+
+      const card = await inspector.tool("ListPage.clear");
+
+      // e2e has no CSS matcher: the card's computed opacity, read in the panel.
+      await expect
+        .poll(
+          async () =>
+            (
+              await panelLook(inspector.tab, "article[data-tool-page] form", [
+                "opacity",
+              ])
+            )?.opacity
+        )
+        .toBe("0.6");
+      await expect(await card.reason.front()).toHaveText(clear.reason!);
+      await expect(await card.runButton.front()).toBeEnabled();
+      await card.runButton.click();
+      const run = inspector.runs.latest("ListPage.clear");
+      await expect.poll(() => run.status()).toBe("Failed");
+      const refusal = await appView.refusal("ListPage.clear");
+      await expect.poll(async () => (await run.read())?.error).toBe(refusal);
+    });
+
+    describe("with the inspector option on", () => {
+      withInspectorOption(
+        "the page's own Peek lists under Peek tools, and its tool page reads it",
+        async ({ appView, inspector, listPage }) => {
+          const peeks = (await appView.tools())
+            .filter(({ group }) => group === "peek")
+            .map(({ name }) => name);
+          // The fixture's Peek of its list.
+          expect(peeks).toEqual(["peek.list"]);
+          await listPage.addItem("Milk");
+
+          await inspector.navigator.showLens("Tools");
+          await expect
+            .poll(() => inspector.navigator.tools.peekSections())
+            .toEqual({ Browser: peeks });
+          await (await inspector.tool("peek.list")).runButton.click();
+
+          const run = inspector.runs.latest("peek.list");
+          await expect.poll(() => run.status()).toBe("Succeeded");
+          expect(JSON.parse((await run.resultText()) ?? "")).toEqual(
+            await appView.run("peek.list")
+          );
         }
       );
     });

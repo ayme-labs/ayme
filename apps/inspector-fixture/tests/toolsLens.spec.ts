@@ -134,3 +134,57 @@ test.describe("with WebMCP publication off", () => {
       .toEqual(liveTools.map(({ name }) => name).sort());
   });
 });
+
+test("a tool that can't run now shows dimmed with its reason, and Run gives the refusal", async ({
+  page,
+  inspector,
+}) => {
+  const app = new AppView(page);
+  const clear = (await app.tools()).find(
+    ({ name }) => name === "ListPage.clear"
+  )!;
+  // The fixture's list starts empty, so its ListPage.clear has nothing to clear.
+  expect(clear.available).toBe(false);
+
+  const card = await inspector.tool("ListPage.clear");
+
+  await expect(card.root).toHaveCSS("opacity", "0.6");
+  await expect(card.reason).toHaveText(clear.reason!);
+  await expect(card.runButton).toBeEnabled();
+  await card.runButton.click();
+  const run = inspector.runs.latest("ListPage.clear");
+  await expect.poll(() => run.status()).toBe("Failed");
+  await expect(run.error).toHaveText(await app.refusal("ListPage.clear"));
+});
+
+test.describe("with the inspector option on", () => {
+  // The session's inspector option turns the page's Peeks on; the other
+  // fixture pages mount the panel themselves.
+  test.use({ fixturePath: "/session.html" });
+
+  test("the page's own Peek lists under Peek tools, and its tool page reads it", async ({
+    page,
+    inspector,
+    listPage,
+  }) => {
+    const app = new AppView(page);
+    const peeks = (await app.tools())
+      .filter(({ group }) => group === "peek")
+      .map(({ name }) => name);
+    // The fixture's Peek of its list.
+    expect(peeks).toEqual(["peek.list"]);
+    await listPage.addItem("Milk");
+
+    await inspector.navigator.showLens("Tools");
+    await expect
+      .poll(() => inspector.navigator.tools.peekSections())
+      .toEqual({ Browser: peeks });
+    await (await inspector.tool("peek.list")).runButton.click();
+
+    const run = inspector.runs.latest("peek.list");
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(JSON.parse((await run.resultText()) ?? "")).toEqual(
+      await app.run("peek.list")
+    );
+  });
+});

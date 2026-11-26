@@ -8,8 +8,13 @@ import type { On, Tab } from "../tab";
 export class ListPage {
   constructor(private readonly tab: Tab) {}
 
+  // fill_form's editor in the inline Inspector shows fields of the same
+  // names, which e2e's screen reaches too, so the page's own are the ones in
+  // main.
   get newItemInput(): On {
-    return this.tab.on((screen) => screen.getByRole("textbox", "New item"));
+    return this.tab.on((screen) =>
+      screen.getByRole("main").getByRole("textbox", "New item")
+    );
   }
 
   get addItemButton(): On {
@@ -36,7 +41,9 @@ export class ListPage {
   }
 
   get urgentCheckbox(): On {
-    return this.tab.on((screen) => screen.getByRole("checkbox", "Urgent"));
+    return this.tab.on((screen) =>
+      screen.getByRole("main").getByRole("checkbox", "Urgent")
+    );
   }
 
   async addItem(text: string) {

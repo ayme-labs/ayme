@@ -21,6 +21,12 @@ export const SERVER_TOOLS = [
 ];
 
 /**
+ * The name the test agent's MCP client gives the server, which the
+ * Inspector shows as the connected agent's.
+ */
+export const AGENT_CLIENT_NAME = "ayme-e2e";
+
+/**
  * The file of the built `ayme` command, as a consumer gets it, for tests
  * that run it without an MCP client.
  */
@@ -158,7 +164,7 @@ export async function startAgent(
   let stderr = "";
   transport.stderr?.on("data", (chunk: Buffer) => (stderr += String(chunk)));
   const client = new Client(
-    { name: "ayme-e2e", version: "0.0.0" },
+    { name: AGENT_CLIENT_NAME, version: "0.0.0" },
     revision === "2026-07-28"
       ? { versionNegotiation: { mode: { pin: revision } } }
       : undefined

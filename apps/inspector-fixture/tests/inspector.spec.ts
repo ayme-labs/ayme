@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
+import { AGENT_CLIENT_NAME } from "@ayme-dev/mcp/testing";
 import type { Inspector } from "@ayme-dev/inspector/testing";
 
 import { AppView } from "./appView";
@@ -203,6 +204,21 @@ test.describe("connected to an agent", () => {
 
     expect(result).not.toHaveProperty("changes");
   });
+
+  test("the Connections pill names the agent, then says Reconnecting once its server stops, then Not connected", async ({
+    agent,
+    inspector,
+  }) => {
+    const { pill } = inspector.header.connections;
+    await expect(pill).toHaveText(AGENT_CLIENT_NAME);
+
+    await agent!.close();
+
+    await expect(pill).toHaveText("Reconnecting");
+    // The tab says it is reconnecting for 10 s, then that its server stopped
+    // answering.
+    await expect(pill).toHaveText("Not connected", { timeout: 15_000 });
+  });
 });
 
 test("the header's menu and switches work by mouse inside the closed shadow root", async ({
@@ -341,4 +357,15 @@ test("the panel's CSS does not reach the host", async ({ page }) => {
     "background-color",
     "rgba(0, 0, 0, 0)"
   );
+});
+
+test("the legend counts what the page's runtime reports", async ({ page }) => {
+  // A page with a Page Object child that is not on it, for all three counts.
+  const { inspector } = await openFixture(page, "/models.html");
+  const { live, notOnPage, refs } = await new AppView(page).legendCounts();
+  const { legend } = inspector.navigator;
+
+  await expect(legend).toContainText(`${live} live`);
+  await expect(legend).toContainText(`${notOnPage} not on page`);
+  await expect(legend).toContainText(`${refs} refs`);
 });
