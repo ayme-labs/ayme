@@ -24,7 +24,8 @@ Each [framework page](../README.md#frameworks) has the install command for its f
 
 These are ayme's own floors; each framework's own requirements still apply on top, such as the Node.js and TypeScript versions a new Angular or SvelteKit major needs.
 
-CI tests each lower bound together with the current release.
+CI tests each lower bound together with the current release, except the
+TypeScript floor, which comes from a one-time check.
 These are compatibility floors, not security advice: follow each framework's
 own support policy for which releases still receive fixes.
 
