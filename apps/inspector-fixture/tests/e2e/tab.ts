@@ -14,6 +14,11 @@ export class Tab {
     private readonly tab: BrowserTab
   ) {}
 
+  /** Whether this is the active tab, the one e2e's screen reads. */
+  inFront(): boolean {
+    return this.tab.isActive();
+  }
+
   /** Makes this the active tab, if it is not. */
   async front() {
     if (!this.tab.isActive()) await this.tab.activate();

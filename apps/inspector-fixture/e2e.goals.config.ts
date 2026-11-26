@@ -1,3 +1,4 @@
+import { assertUnpatchedE2e } from "@ayme-dev/e2e-tools";
 import { claudeCode } from "@e2e-dev/acp";
 import { web } from "@e2e-dev/web";
 import type { E2EConfig } from "e2e";
@@ -8,6 +9,9 @@ import base from "./e2e.config";
 // `agent.act` goal, run by Claude Code on the machine's own login. CI has no
 // model, so only `e2e run --config e2e.goals.config.ts` reaches these files;
 // `test:e2e` runs e2e.config.ts, whose glob (`*.e2e.ts`) leaves them out.
+
+// Arm 1 runs e2e as published: a run that patches it stops here.
+assertUnpatchedE2e("e2e.goals.config.ts");
 
 /** The fixture server; `AYME_GOALS_PORT` points at one already running. */
 const port = process.env.AYME_GOALS_PORT ?? "5199";

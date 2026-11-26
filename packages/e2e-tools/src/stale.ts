@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { JsonValue } from "e2e";
-import { NotAvailable, type ToolSource } from "./direct";
+import { isNotAvailable, type ToolSource } from "./direct";
 
 /** A call of a tool that threw. */
 export interface ToolFailure {
@@ -34,8 +34,7 @@ export function staleNotes(
   return (failure) => {
     // The agent calling an action whose part is not showing is an ordinary
     // refusal. Only a recording that expected the part is a sign of change.
-    if (failure.during === "live" && failure.error instanceof NotAvailable)
-      return;
+    if (failure.during === "live" && isNotAvailable(failure.error)) return;
     const message = String(
       failure.error instanceof Error ? failure.error.message : failure.error
     );
@@ -54,7 +53,7 @@ export function staleNotes(
           tool: failure.tool,
           pageObject: sourceOf(failure.tool),
           input: failure.input,
-          refused: failure.error instanceof NotAvailable,
+          refused: isNotAvailable(failure.error),
           // With the engine's call log: the locator it waited for.
           error: message.split("\n").slice(0, 12).join("\n"),
           test: decodeURIComponent(failure.test),

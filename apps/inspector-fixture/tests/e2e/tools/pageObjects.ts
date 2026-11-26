@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   directPageObjects,
-  NotAvailable,
+  isNotAvailable,
   serveProjectTools,
   staleNotes,
   type Build,
@@ -61,6 +61,6 @@ export function servedTools(
     onFailure: staleNotes(staleDir, (tool) => pageObjects.sourceOf(tool)),
     hidden: async (tool) => (await pageObjects.ruledOutNow(tool)) !== undefined,
     dropAfterFailure: (failure) =>
-      failure.during === "replay" || !(failure.error instanceof NotAvailable),
+      failure.during === "replay" || !isNotAvailable(failure.error),
   });
 }

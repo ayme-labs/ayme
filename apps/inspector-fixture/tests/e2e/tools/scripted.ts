@@ -39,6 +39,26 @@ export function scriptedExecutor(
       replaying,
     });
   };
+  /**
+   * A call made on the tab in front, as the agent sees it. A Page Object on a
+   * tab in the back is refused, so this switches to the other tab with e2e's
+   * own action and calls again, as an agent would.
+   */
+  const inFront = async (ctx: StepExecutorContext, planned: Call) => {
+    try {
+      await call(ctx, planned);
+    } catch (error) {
+      const { tabs } = await ctx.observe();
+      if (
+        !String(error).includes("not the one in front") ||
+        !tabs ||
+        tabs.count < 2
+      )
+        throw error;
+      await ctx.actions.switchTab(tabs.active === 1 ? tabs.count : 1);
+      await call(ctx, planned);
+    }
+  };
   return {
     name: "ayme-scripted",
     version: "1",
@@ -56,7 +76,7 @@ export function scriptedExecutor(
           summary: `no scripted calls for "${ctx.step.instruction}"`,
         };
       try {
-        for (const planned of plan.calls) await call(ctx, planned);
+        for (const planned of plan.calls) await inFront(ctx, planned);
       } catch (error) {
         if (plan.heal === undefined) throw error;
         await heal(ctx, plan.heal);

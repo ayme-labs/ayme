@@ -33,13 +33,27 @@ abstract class Part {
   ) {}
 
   /**
-   * The part's root on its tab's screen, for ayme's root rule, with the tab
-   * in front: e2e's locators read the active tab, as `On` says. ayme types
-   * the rule for Playwright's Locator; e2e's has what the rule is asked for.
+   * The part's root on its tab's screen, for ayme's root rule. The rule only
+   * reads, so it does not bring the tab forward: e2e's locators read the
+   * active tab, and a part on a tab in the back is not on the screen the
+   * agent sees. ayme types the rule for Playwright's Locator; e2e's has what
+   * the rule is asked for.
    */
-  static async rootOf(part: Part) {
-    await part.tab.front();
+  static rootOf(part: Part) {
+    if (!part.tab.inFront())
+      throw new Error("its window is not the one in front");
     return part.root(part.tab.screen) as never;
+  }
+
+  /** Whether `lens` is the one the navigator shows, for a lens's presence rule. */
+  static async lensShown(part: Part, lens: LensName): Promise<boolean> {
+    if (!part.tab.inFront())
+      throw new Error("its window is not the one in front");
+    return part
+      .root(part.tab.screen)
+      .getByRole("group", "Lens")
+      .getByRole("button", { name: lens, pressed: true })
+      .isVisible();
   }
 
   /** A locator inside this part. */
@@ -135,6 +149,7 @@ async function panelText(tab: Tab, selector: string): Promise<string | null> {
 }
 
 /** The Structure lens's tree, in the navigator. */
+@ayme({ present: (self: Part) => Part.lensShown(self, "Structure") })
 export class StructureLens extends Part {
   private treeOf(root: Locator) {
     return root.getByRole("tree", "Page structure");
@@ -182,6 +197,7 @@ export type ModelPaneName = "On this page" | "Page object models";
  * The Model lens's tree in the navigator: the Page Objects on this page and
  * the Page Object Models the page knows, in two collapsible panes.
  */
+@ayme({ present: (self: Part) => Part.lensShown(self, "Model") })
 export class ModelLens extends Part {
   /** The object tree, "On this page". */
   get objectTree(): On {
@@ -262,6 +278,7 @@ const toolGroupLabels: readonly ToolGroupLabel[] = [
 export type PeekSideLabel = "Browser" | "Node";
 
 /** The Tools lens's tree: the live tools, grouped. */
+@ayme({ present: (self: Part) => Part.lensShown(self, "Tools") })
 export class ToolsLens extends Part {
   /** A tool's entry, by name. Pressing it opens the tool's page. */
   tool(name: string): On {
@@ -1411,9 +1428,16 @@ export class InspectorHeader extends Part {
 }
 
 /** The collapsed Inspector: the ayme logo, which opens the panel. */
-@ayme({ root: (self: CollapsedLogo) => self.root.front() as never })
+@ayme({ root: (self: CollapsedLogo) => CollapsedLogo.rootOf(self) })
 export class CollapsedLogo {
   constructor(private readonly tab: Tab) {}
+
+  /** The logo on its tab's screen, read as `Part.rootOf` reads a part's root. */
+  static rootOf(logo: CollapsedLogo) {
+    if (!logo.tab.inFront())
+      throw new Error("its window is not the one in front");
+    return logo.tab.screen.getByRole("button", "Open ayme") as never;
+  }
 
   get root(): On {
     return this.tab.on((screen) => screen.getByRole("button", "Open ayme"));

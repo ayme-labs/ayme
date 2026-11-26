@@ -1,7 +1,11 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { assertPatchedE2e } from "@ayme-dev/e2e-tools";
+import {
+  assertOwnCacheDir,
+  assertPatchedE2e,
+  importBaseline,
+} from "@ayme-dev/e2e-tools";
 import { acp } from "@e2e-dev/acp";
 import type { E2EConfig, StepExecutorContext } from "e2e";
 import type { DefinedTool } from "e2e/agent";
@@ -21,25 +25,42 @@ import { scriptedExecutor, type Plan } from "./tests/e2e/tools/scripted";
 // - `AYME_E2E_EXECUTOR=acp`: the replay repeats each call through the
 //   patched ACP executor's `tools` option, whose agent command fails if
 //   anything starts it.
-// - `AYME_E2E_STALE=<tool>`: that tool fails as a stale Page Object would.
-//   A step whose params carry `heal`, a role and name such as
-//   `button "Model"`, then taps that node instead, as an agent would heal.
+// - `AYME_E2E_STALE=<tool>`: that tool fails as a stale Page Object would,
+//   before it acts. A step whose params carry `heal`, a role and name such
+//   as `button "Model"`, then taps that node instead, as an agent would heal.
+// - `AYME_E2E_HALF_DONE=<tool>`: that tool acts, then fails, as a call that
+//   breaks halfway does; the patched e2e saves nothing of such a step.
 
-assertPatchedE2e("e2e.tools-check.config.ts");
+await assertPatchedE2e("e2e.tools-check.config.ts");
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const cacheDir = ".e2e/cache-tools-check";
+const { default: goals } = await importBaseline(
+  () => import("./e2e.goals.config")
+);
+assertOwnCacheDir("e2e.tools-check.config.ts", here, cacheDir, [
+  baseConfig,
+  goals,
+]);
 const replayOnly = process.env.AYME_E2E_CACHE === "read-only";
 const stale = process.env.AYME_E2E_STALE;
+const halfDone = process.env.AYME_E2E_HALF_DONE;
 
-/** The tools, with the one `AYME_E2E_STALE` names failing as a stale locator does. */
+type Execute = (input: unknown, options: object) => Promise<unknown>;
+
+/** The tools, with the ones `AYME_E2E_STALE` and `AYME_E2E_HALF_DONE` name failing. */
 const tools: Record<string, DefinedTool> = Object.fromEntries(
   Object.entries(pageObjects.projectTools()).map(([name, defined]) => {
-    if (name !== stale) return [name, defined];
+    if (name !== stale && name !== halfDone) return [name, defined];
+    const execute = (defined.tool as { execute: Execute }).execute;
     const tool = {
       ...defined.tool,
-      execute: () => {
+      execute: async (input: unknown, options: object) => {
+        if (name === halfDone) await execute(input, options);
         throw new Error(
-          `${name}: the Page Object's locator found nothing (AYME_E2E_STALE)`
+          name === halfDone
+            ? `${name}: it acted, then failed (AYME_E2E_HALF_DONE)`
+            : `${name}: the Page Object's locator found nothing (AYME_E2E_STALE)`
         );
       },
     };
@@ -66,7 +87,7 @@ export default {
   ...baseConfig,
   tests: "tests/e2e/tools/**/*.check.ts",
   cache: {
-    dir: ".e2e/cache-tools-check",
+    dir: cacheDir,
     mode: replayOnly ? "read-only" : "read-write",
   },
   agents: {

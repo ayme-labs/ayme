@@ -107,6 +107,18 @@ export class NotAvailable extends Error {
   }
 }
 
+/**
+ * Whether `error` is, or was caused by, a refusal of the Page Object's own
+ * rules: e2e's tool accounting may wrap what a call threw.
+ */
+export function isNotAvailable(error: unknown): boolean {
+  for (let at = error, depth = 0; at !== undefined && depth < 8; depth += 1) {
+    if (at instanceof NotAvailable) return true;
+    at = at instanceof Error ? at.cause : undefined;
+  }
+  return false;
+}
+
 /** The e2e tool name of an action: model providers allow `[a-zA-Z0-9_-]` only. */
 export const toolName = (actionName: string): string =>
   actionName.replaceAll(".", "_");
@@ -124,7 +136,9 @@ async function ruledOut(
     String(error instanceof Error ? error.message : error).split("\n")[0] ?? "";
   const present = modelOption(target.constructor, "present");
   if (present !== undefined) {
-    const answer = await Promise.resolve(present(target as never)).catch(first);
+    const answer = await Promise.resolve()
+      .then(() => present(target as never))
+      .catch(first);
     if (answer !== true)
       return typeof answer === "string"
         ? answer
@@ -132,7 +146,8 @@ async function ruledOut(
   }
   const root = modelOption(target.constructor, "root");
   if (root !== undefined) {
-    const showing = await Promise.resolve(root(target as never))
+    const showing = await Promise.resolve()
+      .then(() => root(target as never))
       .then((locator) => locator.first().isVisible())
       .catch(first);
     if (showing !== true)
@@ -148,9 +163,9 @@ async function ruledOut(
     availabilityPredicateOf(prototype?.[methodName]) ??
     availabilityPredicateOf((target as Record<string, unknown>)[methodName]);
   if (available !== undefined) {
-    const answer = await Promise.resolve(available(target as never)).catch(
-      first
-    );
+    const answer = await Promise.resolve()
+      .then(() => available(target as never))
+      .catch(first);
     if (answer !== true)
       return typeof answer === "string" && answer !== ""
         ? answer
@@ -226,7 +241,13 @@ export function directPageObjects(options: {
     const PageObject = listed.find((Class) => Class.name === tool.rootClass);
     if (PageObject === undefined)
       throw new Error(`${entry} does not list ${tool.rootClass}`);
-    return build(PageObject, { ...fixtures, screen: current });
+    return build(PageObject, {
+      ...fixtures,
+      screen: current,
+      ...(fixtures.browser === undefined
+        ? {}
+        : { browser: countingActions(fixtures.browser as object) }),
+    });
   };
 
   const toolNamed = (name: string): Bound => {
@@ -574,4 +595,52 @@ function onDisk(named: string, from: string): string {
     if (existsSync(linked)) return path.join(realpathSync(linked), rest);
     if (path.dirname(dir) === dir) return named;
   }
+}
+
+/** The members of e2e's web `browser` fixture that only read; any other call may change the page. */
+const BROWSER_READS = new Set([
+  "url",
+  "title",
+  "waitForURL",
+  "locator",
+  "frameLocator",
+  "tabs",
+  "cookies",
+  "waitForResponse",
+]);
+
+/** Counts a page action toward the patched e2e's count, as its engine does for `screen`'s. */
+const countPageAction = () => {
+  const key = Symbol.for("e2e.patch.pageActions");
+  const counts = globalThis as Record<symbol, number | undefined>;
+  counts[key] = (counts[key] ?? 0) + 1;
+};
+
+/**
+ * The web engine's `browser` fixture, counting each call that may change the
+ * page before it runs, keyboard and mouse included. Its locators act through
+ * e2e's engine, which counts their actions itself; `evaluate` counts, since
+ * page code can change anything. The patched e2e tells from the count whether
+ * a failed call left the page as it found it.
+ */
+function countingActions(browser: object): object {
+  const counting = (target: object, all: boolean): object =>
+    new Proxy(target, {
+      get(object, member, receiver) {
+        const value: unknown = Reflect.get(object, member, receiver);
+        if (typeof member !== "string") return value;
+        if (typeof value === "function") {
+          if (!all && BROWSER_READS.has(member)) return value.bind(object);
+          return (...args: unknown[]) => {
+            countPageAction();
+            return (value as (...a: unknown[]) => unknown).apply(object, args);
+          };
+        }
+        // keyboard, mouse and webmcp: every call of theirs counts.
+        if (value !== null && typeof value === "object" && !all)
+          return counting(value, true);
+        return value;
+      },
+    });
+  return counting(browser, false);
 }

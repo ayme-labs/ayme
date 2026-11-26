@@ -56,9 +56,12 @@ test("the e2e suite's Page Objects run as tools, record and replay", async ({
     name: "Tools",
   });
 
-  await call("open the addItem tool's page", "Inspector_tool", {
-    name: "ListPage.addItem",
-  });
+  await call(
+    "open the addItem tool's page",
+    "Inspector_tool",
+    { name: "ListPage.addItem" },
+    'button "ListPage.addItem"'
+  );
   await expect(await inspector.detail.toolPage.title.front()).toHaveText(
     "ListPage.addItem"
   );

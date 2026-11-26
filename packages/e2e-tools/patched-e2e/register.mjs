@@ -38,7 +38,9 @@ function patched(file, source) {
         );
       checked.set(root, installed);
     }
-    return applyHunks(source, hunks, `${name}/${file.slice(root.length)}`);
+    // The patched module marks itself as it runs, so `assertPatchedE2e` can tell
+    // a file loaded through this hook from one loaded before it.
+    return `${applyHunks(source, hunks, `${name}/${file.slice(root.length)}`)}\n;(globalThis[Symbol.for("@ayme-dev/e2e-tools.patched-files")] ??= new Set()).add(${JSON.stringify(file)});\n`;
   }
   return undefined;
 }
@@ -56,5 +58,8 @@ registerHooks({
   },
 });
 
-// What `assertPatchedE2e` reads, in this process.
-globalThis[Symbol.for("@ayme-dev/e2e-tools.patched-e2e")] = true;
+// What `assertPatchedE2e` and `assertUnpatchedE2e` read, in this process: the
+// packages the patches change and the files of each.
+globalThis[Symbol.for("@ayme-dev/e2e-tools.patched-e2e")] = patches.map(
+  ({ name, version, files }) => ({ name, version, files: [...files.keys()] })
+);

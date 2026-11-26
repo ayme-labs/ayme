@@ -105,9 +105,15 @@ export function serveProjectTools(
           });
         const text =
           typeof result === "string" ? result : JSON.stringify(result);
+        if (!mutates) return text;
         // After a change, the screen as the action tools report it, so the
-        // agent can go on with them.
-        return mutates ? [text, await observe()].join("\n\n") : text;
+        // agent can go on with them. The call ran and is recorded whatever
+        // the look does, so a look that fails still answers that it ran.
+        const screen = await observe().catch(
+          (error: unknown) =>
+            `The screen could not be read after the call (${firstLine(error)}).`
+        );
+        return [text, screen].join("\n\n");
       },
     };
   });
