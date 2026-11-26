@@ -84,15 +84,22 @@ function inputOf(
 
 /** Starts a Run of `tool` on the Session at `place`, with the input
  * `params` gives, as `ayme call --params` takes it: a file it names is read
- * from the project folder. */
+ * from the project folder. `tab` is the URL of the Tab `--tab` names. */
 export async function askCall(
   place: SessionPlace,
   tool: string,
-  params: string | undefined
+  params: string | undefined,
+  tab?: string
 ): Promise<SessionAnswer> {
   const read = inputOf(place.projectDir, params);
   return "input" in read
-    ? askSession(place, { call: { tool, input: read.input } })
+    ? askSession(place, {
+        call: {
+          tool,
+          input: read.input,
+          ...(tab === undefined ? {} : { tab }),
+        },
+      })
     : read;
 }
 
