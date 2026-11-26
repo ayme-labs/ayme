@@ -44,6 +44,9 @@ export type Score = {
   matchesDefault: boolean | null;
   poCalls: number;
   poErrors: number;
+  /** Of the `mcp` calls: the page's tool called by name, and through `ayme_call`. */
+  poDirect: number;
+  poAymeCall: number;
   plainActions: number;
   plainActionList: string[];
   restartAskedInTask: boolean;
@@ -227,6 +230,7 @@ const PLAIN_MCP =
 
 type Classified = {
   channel?: Channel;
+  aymeCall?: boolean;
   action?: string;
   plain?: string;
   download?: string;
@@ -247,7 +251,11 @@ function classify(use: ToolUse): Classified[] {
       tool === "ayme_call" &&
       ACTION.test(String(use.input.tool ?? ""))
     ) {
-      found.push({ channel: "mcp", action: String(use.input.tool) });
+      found.push({
+        channel: "mcp",
+        aymeCall: true,
+        action: String(use.input.tool),
+      });
     } else if (PLAIN_MCP.test(tool)) {
       found.push({ plain: tool });
     } else if (tool === "browser_install") {
@@ -345,6 +353,8 @@ export function scoreRun(dir: string): Score {
   const channels = new Set<Channel>();
   let poCalls = 0;
   let poErrors = 0;
+  let poDirect = 0;
+  let poAymeCall = 0;
   const plain: string[] = [];
   const downloads: string[] = [];
   for (const use of uses) {
@@ -354,6 +364,8 @@ export function scoreRun(dir: string): Score {
       if (found.channel) {
         channels.add(found.channel);
         poCalls += 1;
+        if (found.aymeCall) poAymeCall += 1;
+        else if (found.channel === "mcp") poDirect += 1;
         if (
           use.isError ||
           /isError"?\s*:\s*true|not registered|### Error/i.test(use.result)
@@ -422,6 +434,8 @@ export function scoreRun(dir: string): Score {
     matchesDefault: channel === "none" ? null : channel === defaultChannel,
     poCalls,
     poErrors,
+    poDirect,
+    poAymeCall,
     plainActions: plain.length,
     plainActionList: plain,
     restartAskedInTask: assistantTexts(task).some((t) => RESTART_ASK.test(t)),
@@ -449,6 +463,7 @@ export function table(scores: Score[]): string {
     "Docs read",
     "Channel (default)",
     "PO calls (errors)",
+    "mcp direct / ayme_call",
     "Plain actions",
     "Restart asked in task",
     "Browser downloads",
@@ -466,6 +481,7 @@ export function table(scores: Score[]): string {
     s.docs.join(", ") || "none",
     `${s.channel} (${s.defaultChannel}${s.matchesDefault === null ? "" : s.matchesDefault ? ", same" : ", other"})`,
     `${s.poCalls} (${s.poErrors})`,
+    `${s.poDirect} / ${s.poAymeCall}`,
     s.plainActions
       ? `${s.plainActions}: ${[...new Set(s.plainActionList)].join(", ")}`
       : "0",

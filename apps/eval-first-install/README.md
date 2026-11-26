@@ -62,6 +62,7 @@ One row per run:
 - **Docs read**: the skill and guide files the worker read with Read or `cat`/`sed`/`head`-style commands, in order. `skill` is SKILL.md, a bare name is a skill reference, `docs/…` is the guide.
 - **Channel (default)**: how the task's Page Object actions (`ListPage.*`, `ListItem.*`, `ArchiveDialog.*`) were called: `mcp` (the `ayme` server's tools or `ayme_call`), `webmcp` (`playwright-cli webmcp-call`, `agent-browser webmcp invoke`, Playwright MCP's `webmcp_*` tools), `both` or `none`; in brackets, the channel the skill names for that tool, `mcp` for all three, and whether the run used it.
 - **PO calls (errors)**: those action calls in the task phase, and how many answered with an error.
+- **mcp direct / ayme_call**: of the `mcp` calls, how many called the page's tool by its name and how many went through `ayme_call`. The direct call is the intended path; `ayme_call` is the fallback for a client that doesn't follow tool-list changes ([ADR-0066](../../docs/adr/0066-each-coding-agents-ayme-mcp-server-pairs-with-one-page-and-the-apps-processes-and-its-fallback-tools-reach-every-tool-it-lists.md)).
 - **Plain actions**: clicks, fills, key presses and the like through the browser automation in the task phase.
 - **Restart asked in task**: whether the worker asked to be restarted again during the task.
 - **Browser downloads**: browser install commands, `browser_install` calls, and download output, by phase.
