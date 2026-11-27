@@ -2,8 +2,8 @@
 // build plugin's generated code, the inspector-fixture app and the Session
 // of the `ayme` command use: the compiled Page Object registration and
 // manifest the build plugin writes and the runtime reads (both ship
-// together, so it is no public contract), the render-session marker and
-// runtime-options check the framework packages use, and the registry read
+// together, so it is no public contract), the runtime-options check the
+// framework packages use, and the registry read
 // model the framework tests check. The Inspector does not come through here:
 // it reads ./inspector. Its tests do, for the runtime side of the Inspector
 // contract they stand a session in with, and for the in-page module of the

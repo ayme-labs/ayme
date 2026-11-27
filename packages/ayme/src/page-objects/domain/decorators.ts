@@ -75,9 +75,9 @@ export type AymeActionOptions<Self = unknown> = {
   available?: AvailabilityPredicate<Self>;
   /**
    * Marks the action as one that cannot be undone, such as deleting a record
-   * or submitting an order. Its published tool says so in its annotations:
-   * `destructiveHint` over MCP, `consequentialHint` over WebMCP. ayme still
-   * runs it like any other tool. The build reads it from source, so it must
+   * or submitting an order. Its tool published over WebMCP says so with
+   * `consequentialHint`, and the Inspector marks it. ayme still runs it
+   * like any other tool. The build reads it from source, so it must
    * be `true` or `false` as written; `false` is the same as leaving it out.
    */
   destructive?: boolean;
