@@ -885,4 +885,61 @@ describe("a Session's Node Host, through the internal entry", () => {
       changes: "- SignIn (removed)\n+ Home",
     });
   });
+
+  it("answers an action that loads another document without the tree while the old page still shows, though the Page Object it returned is present there too", async () => {
+    const page = await browser.newPage();
+    await page.route("http://app.test/**", async (route) => {
+      const home = new URL(route.request().url()).pathname === "/home";
+      // The new document commits well after the action returned.
+      if (home) await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.fulfill({
+        contentType: "text/html",
+        body: home
+          ? "<h1>Home</h1>"
+          : '<form method="post" action="/home"><button>Log in</button></form>',
+      });
+    });
+    await page.goto("http://app.test/");
+    class Anywhere {
+      constructor(readonly page: Page) {}
+    }
+    built.ayme({ present: () => true })(Anywhere);
+    built.registerCompiledPom(Anywhere, {
+      className: "Anywhere",
+      members: [],
+      tools: [],
+      components: [],
+    });
+    class Submit {
+      constructor(readonly page: Page) {}
+      async logIn() {
+        // Unlike a click, it does not wait for the load to commit.
+        await this.page.evaluate(() => document.forms[0]!.submit());
+        return new Anywhere(this.page);
+      }
+    }
+    built.ayme({
+      present: (self: Submit) => new URL(self.page.url()).pathname === "/",
+    })(Submit);
+    built.registerCompiledPom(Submit, {
+      className: "Submit",
+      members: [],
+      tools: [
+        {
+          methodName: "logIn",
+          toolName: "Submit.logIn",
+          description: "Log in",
+          parameters: [],
+        },
+      ],
+      components: [],
+    });
+    const ayme = await hostOn(page, [Submit]);
+
+    const answer = await internal
+      .pageObjectCallerOf(ayme, "ayme-command")
+      .run("Submit.logIn", {});
+
+    expect(answer).toEqual({ settled: false, url: "http://app.test/home" });
+  });
 });
