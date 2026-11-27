@@ -883,3 +883,16 @@ it("a call whose Page Object Id names its Tab reads no tab list", async () => {
   ).toMatchObject({ ok: true });
   expect(browser.runs).toEqual([add("po1").call, add("po1").call]);
 });
+
+it("the last line of a listing asked for with --tab names that Tab too, quoted for a shell", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const odd = "http://127.0.0.1:5173/shop.html?q=it's&x=1";
+  browser.show({ ...shop, tab: { ...shop.tab, url: odd } });
+  browser.openTab().show(signIn);
+
+  expect(await session.ask({ pageObjects: { tab: odd } })).toMatchObject({
+    text: expect.stringMatching(
+      /\nThis screen has 0 Page Object Tools: ayme -s=default tools --tab='http:\/\/127\.0\.0\.1:5173\/shop\.html\?q=it'\\''s&x=1' lists them with their parameters\.$/
+    ),
+  });
+});

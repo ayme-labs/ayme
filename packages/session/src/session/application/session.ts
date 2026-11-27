@@ -184,7 +184,7 @@ export const openSession = (
     ): Effect.Effect<SessionAnswer> => {
       if ("pageObjects" in request)
         return listed(started, request.pageObjects, (listing) =>
-          pageObjectsAnswer(listing, name)
+          pageObjectsAnswer(listing, name, request.pageObjects.tab)
         );
       if ("tools" in request)
         return listed(started, request.tools, toolsAnswer);
