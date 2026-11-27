@@ -105,10 +105,6 @@ export function getStartedAyme(): Ayme | undefined {
   return undefined;
 }
 
-export function markRenderSession(ayme: Ayme): void {
-  void ayme;
-}
-
 /**
  * The base of the stand-in the build plugin compiles a Page Object Model to
  * in a build without ayme: a class of the same name, whose actions reject

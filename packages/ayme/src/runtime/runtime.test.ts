@@ -12,7 +12,6 @@ import * as navigateToolModule from "../tools/infrastructure";
 import * as pageState from "../page-state/infrastructure";
 import {
   createAyme,
-  markRenderSession,
   measureReachWith,
   sameRuntimeOptions,
   sessionReach,
@@ -344,8 +343,6 @@ it("C9: starts and registers nothing for concurrent render sessions on the serve
   const first = createAyme({ pageFactory: factory, webMCP: { enabled: true } });
   const second = createAyme({ pageFactory: factory });
   sessions.push(first, second);
-  markRenderSession(first);
-  markRenderSession(second);
   const instance = first.pom.register(Model);
   const stopFirst = start(first);
   // A second render session is no owner conflict.

@@ -17,9 +17,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { injectAyme, injectPeek, provideAyme } from "./index";
 
 // injectPeek seam: its contract with `ayme.peek`, which it adapts (ADR-0031).
-// The Peek Tool an agent reads is covered by the runtime's browser tests and
-// the example's Agent Connection suite; here the dev gate stays off, so no
-// Agent Connection loads or scans.
+// The Peek Tool itself is covered by the runtime's browser tests.
 type Page = ReturnType<NonNullable<AymeOptions["pageFactory"]>>;
 const pageFactory = () => ({ url: () => "page" }) as unknown as Page;
 type PeekCall = { read: () => unknown; name: string; id?: string };

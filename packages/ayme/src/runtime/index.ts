@@ -11,7 +11,6 @@ export type {
 export {
   createAyme,
   getStartedAyme,
-  markRenderSession,
   measureReachWith,
   sessionReach,
   subscribeToStartedAyme,

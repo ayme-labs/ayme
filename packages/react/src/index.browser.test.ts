@@ -597,9 +597,7 @@ it("C8: rejects a Page Object Model the compiler did not reach", async () => {
 });
 
 // usePeek seam: the hook's contract with `ayme.peek`, which it adapts
-// (ADR-0031). The Peek Tool an agent reads is covered by the runtime's
-// browser tests and the examples' Agent Connection suite; here the dev gate
-// stays off, so no Agent Connection loads or scans.
+// (ADR-0031). The Peek Tool itself is covered by the runtime's browser tests.
 describe("usePeek", () => {
   type PeekCall = { read: () => unknown; name: string; id?: string };
   let calls: PeekCall[];

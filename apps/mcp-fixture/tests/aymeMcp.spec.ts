@@ -298,7 +298,7 @@ test("an Agent App shows the Inspector of the Session -s names, which runs a Pag
   await expect.poll(() => run.status()).toBe("Succeeded");
   expect(await run.caller()).toEqual({ icon: "Run by you from the Inspector" });
   await expect(shop.getByRole("listitem")).toHaveText(["Milk"]);
-  // No agent reaches a Session through the Agent Connection or WebMCP.
+  // No agent reaches a Session through WebMCP.
   await expect(inspector.header.connections.root).toHaveCount(0);
 });
 

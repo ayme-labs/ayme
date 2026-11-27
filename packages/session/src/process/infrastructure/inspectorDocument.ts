@@ -7,7 +7,7 @@ export const escapeHtml = (text: string): string =>
 /**
  * The Inspector's document for the Session named `name`, around `body`. Its
  * `ayme-session` meta tells the Inspector's script that a Session serves
- * it, which no agent reaches through the Agent Connection or WebMCP.
+ * it, which no agent reaches through WebMCP.
  */
 export const inspectorDocument = (name: string, body: string): string =>
   `<!doctype html>

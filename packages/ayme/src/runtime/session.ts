@@ -265,17 +265,6 @@ export const serverKey = {} as Page;
 const noSuchTool = (name: string) =>
   new RuntimeStateError(`There is no tool "${name}".`);
 
-const renderSessions = new WeakSet<Ayme>();
-
-/**
- * Marks `ayme` as a render session: one a framework integration created to
- * render on the server. Its `start()` starts nothing, so concurrent renders
- * share no owner.
- */
-export function markRenderSession(ayme: Ayme): void {
-  renderSessions.add(ayme);
-}
-
 const handedReaches = new WeakMap<Ayme, Reach>();
 
 /**
@@ -906,7 +895,7 @@ export function createAymeOn(
       return target.peeks()!.addPeek(read, name, id);
     },
     start() {
-      if (renderSessions.has(ayme) || onServer()) return () => {};
+      if (onServer()) return () => {};
       if (owner)
         throw new RuntimeStateError(
           "The ayme runtime already has an active owner.",

@@ -39,8 +39,7 @@ const allowedSlices = {
     "in-page",
     "shared",
   ],
-  // createAyme and its options, WebMCP publication, the Inspector and the
-  // Agent Connection.
+  // createAyme and its options, WebMCP publication and the Inspector.
   runtime: [
     "goal-loop",
     "tools",
