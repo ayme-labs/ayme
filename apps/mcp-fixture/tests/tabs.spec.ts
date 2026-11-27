@@ -184,7 +184,9 @@ async function bareChromium(url: string): Promise<string> {
         await ended;
       }
     } finally {
-      await rm(profile, { recursive: true, force: true });
+      // On Linux, Chromium's helper processes may still write into the
+      // profile after the main one exited, so its removal tries again.
+      await rm(profile, { recursive: true, force: true, maxRetries: 5 });
     }
   });
   const portFile = join(profile, "DevToolsActivePort");
