@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/ayme-labs/ayme/compare/cli-v0.3.1...cli-v0.3.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **cli:** say in the README that the recorder prints warnings and goes on ([#1523](https://github.com/ayme-labs/ayme/issues/1523)) ([a4ab651](https://github.com/ayme-labs/ayme/commit/a4ab651f6839df3cfb3f2d11c16a32b659ee72e0))
+
 ## [0.3.1](https://github.com/ayme-labs/ayme/compare/cli-v0.3.0...cli-v0.3.1) (2026-11-27)
 
 
