@@ -344,14 +344,13 @@ it("C11: returns the session as ayme, so a goal runs through it, and its webMCP 
   expect(handover.reason).toBe("decide_failed");
 });
 
-// Records the options, then starts a session without the Inspector or the
-// Agent Connection: the optional peers may not be built or installed where
-// these tests run.
+// Records the options, then starts a session without the Inspector: the
+// optional peer may not be built or installed where these tests run.
 async function withoutInspectorLoad() {
   const { createAyme: actual } =
     await vi.importActual<typeof import("@ayme-dev/ayme")>("@ayme-dev/ayme");
   vi.mocked(createAyme).mockImplementationOnce((options) =>
-    actual({ ...options, inspector: false, agentConnection: false })
+    actual({ ...options, inspector: false })
   );
 }
 
@@ -367,22 +366,6 @@ it("C1, C4: passes inspector to the runtime session and rejects changing it", as
   await expect(
     act(async () =>
       app.render(h(AymeProvider, { pageFactory, inspector: false }))
-    )
-  ).rejects.toThrow("provider options changed while the provider was mounted");
-});
-
-it("C1, C4: passes agentConnection to the runtime session and rejects changing it", async () => {
-  await withoutInspectorLoad();
-  const app = root();
-  await act(() =>
-    app.render(h(AymeProvider, { pageFactory, agentConnection: true }))
-  );
-  expect(createAyme).toHaveBeenCalledWith(
-    expect.objectContaining({ agentConnection: true })
-  );
-  await expect(
-    act(async () =>
-      app.render(h(AymeProvider, { pageFactory, agentConnection: false }))
     )
   ).rejects.toThrow("provider options changed while the provider was mounted");
 });

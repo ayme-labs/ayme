@@ -2,11 +2,15 @@ import {
   expect,
   test as base,
   selectors,
-  type BrowserContext,
   type Locator,
   type Page,
 } from "@playwright/test";
-import { freePort, startAgent, type Agent } from "@ayme-dev/mcp/testing";
+import {
+  executePublishedTool,
+  publishedToolNames,
+  publishedToolSchema,
+  recordPublishedTools,
+} from "@ayme-dev/webmcp/testing";
 import {
   Inspector,
   registerInspectorSelectors,
@@ -90,37 +94,60 @@ export type FixturePage =
   | "/dogfood.html";
 
 /**
- * Where a project runs the Inspector: `inline`, mounted in the fixture page,
- * or `external`, in a window of its own that `ayme mcp` serves, which the
- * fixture page reaches over the Agent Connection.
+ * An agent in the browser, which calls the page's tools through WebMCP: the
+ * recording driver stands in for the browser's own.
  */
-export type Placement = "inline" | "external";
+export type Agent = {
+  /** The names of the tools the page publishes now. */
+  toolNames(): Promise<string[]>;
+  /** A published tool as the agent reads it; `null` while it is not published. */
+  tool(name: string): ReturnType<typeof publishedToolSchema>;
+  /**
+   * Calls a published tool: its answer as text, JSON unless it is a string,
+   * or its error text with `isError`.
+   */
+  call(
+    name: string,
+    input?: Record<string, unknown>
+  ): Promise<{ text: string; isError: boolean }>;
+};
+
+/** An agent that calls the tools `page` publishes through WebMCP. */
+export function webMcpAgent(page: Page): Agent {
+  return {
+    toolNames: () => publishedToolNames(page),
+    tool: (name) => publishedToolSchema(page, name),
+    async call(name, input = {}) {
+      const result = await executePublishedTool(page, name, input);
+      const failure = result as {
+        isError?: boolean;
+        content?: { text: string }[];
+      } | null;
+      if (failure?.isError)
+        return { text: failure.content?.[0]?.text ?? "", isError: true };
+      return {
+        text: typeof result === "string" ? result : JSON.stringify(result),
+        isError: false,
+      };
+    },
+  };
+}
 
 /**
  * Opens a fixture page and fails with its own message, before any test
  * assertion, when the page's script broke or the runtime never listed its
- * tools. With `agent`, the page is opened through that agent's connect link
- * and waits until the agent lists its tools. With `external` as well, the
- * page is opened for the external placement, and the Inspector is the window
- * the agent's server serves, opened in that context: `inspector` drives that
- * window, and `page` stays the app's.
+ * tools. With `agent`, it also waits until the page publishes its tools.
  */
 export async function openFixture(
   page: Page,
   path: FixturePage,
-  {
-    reload = false,
-    agent,
-    external,
-  }: { reload?: boolean; agent?: Agent; external?: BrowserContext } = {}
+  { reload = false, agent }: { reload?: boolean; agent?: Agent } = {}
 ) {
   await page.addInitScript(openHighlightOverlay);
   const pageErrors: string[] = [];
   const onPageError = (error: Error) => pageErrors.push(error.message);
   page.on("pageerror", onPageError);
   if (reload) await page.reload();
-  else if (agent)
-    await page.goto(await connectLink(agent, path, external !== undefined));
   else await page.goto(path);
 
   const root = page.locator("html");
@@ -151,59 +178,14 @@ export async function openFixture(
     await expect.poll(() => agent.toolNames()).toContain("page_objects");
 
   page.off("pageerror", onPageError);
-  return {
-    inspector: new Inspector(
-      agent && external
-        ? await openInspectorWindow(page, agent, external)
-        : page
-    ),
-    listPage: new ListPage(page),
-  };
-}
-
-/**
- * The link that pairs the fixture page with `agent`, opened for the external
- * placement or, with the Agent Connection on, for the inline one.
- */
-async function connectLink(agent: Agent, path: FixturePage, external: boolean) {
-  const url = new URL(path, baseURL());
-  url.searchParams.set(external ? "external" : "agent", "");
-  const { text, isError } = await agent.call("ayme_connect", {
-    url: url.href,
-  });
-  if (isError) throw new Error(`ayme_connect failed: ${text}`);
-  // The link is the answer's first line; a note may follow it.
-  return text.split("\n")[0]!;
-}
-
-/** The address the fixture pages are served on, which the config picked. */
-function baseURL() {
-  return `http://127.0.0.1:${process.env.AYME_E2E_PORT_INSPECTOR}`;
-}
-
-/**
- * Opens the window `ayme_inspect` names, beside the fixture page. The
- * Inspector in it is already there for a page connected to the server.
- */
-async function openInspectorWindow(
-  page: Page,
-  agent: Agent,
-  context: BrowserContext
-) {
-  const { text: url, isError } = await agent.call("ayme_inspect");
-  if (isError) throw new Error(`ayme_inspect failed: ${url}`);
-  const window = await context.newPage();
-  await window.goto(url);
-  // The fixture page stays the one the person looks at.
-  await page.bringToFront();
-  return window;
+  return { inspector: new Inspector(page), listPage: new ListPage(page) };
 }
 
 /**
  * What a Page Object Tool's call over `agent` answers: its JSON, or its
  * error text with `isError`.
  */
-export async function callOverMcp(
+export async function callAsAgent(
   agent: Agent,
   name: string,
   input: Record<string, unknown> = {}
@@ -217,7 +199,6 @@ export async function callOverMcp(
 export const test = base.extend<
   {
     fixturePath: FixturePage;
-    placement: Placement;
     connected: boolean;
     agent: Agent | undefined;
     opened: Awaited<ReturnType<typeof openFixture>>;
@@ -238,26 +219,16 @@ export const test = base.extend<
     { scope: "worker", auto: true },
   ],
   fixturePath: ["/", { option: true }],
-  placement: ["inline", { option: true }],
-  // Whether the inline placement's page is connected to an agent, which the
-  // tests then call its Page Object Tools through, as a coding agent does.
+  // Whether an agent in the browser reaches the page through WebMCP, which
+  // the tests then call its Page Object Tools through, as an agent does.
   connected: [false, { option: true }],
-  // The agent's ayme MCP server, which the fixture page connects to and, in
-  // the external placement, serves the Inspector. On a port of its own,
-  // outside the range pages scan, so no other test's page pairs with it.
-  agent: async ({ placement, connected }, use) => {
-    if (placement !== "external" && !connected) return use(undefined);
-    const agent = await startAgent("--port", String(await freePort()));
-    await use(agent);
-    await agent.close();
+  agent: async ({ page, context, connected }, use) => {
+    if (!connected) return use(undefined);
+    await recordPublishedTools(context);
+    await use(webMcpAgent(page));
   },
-  opened: async ({ page, context, fixturePath, placement, agent }, use) => {
-    await use(
-      await openFixture(page, fixturePath, {
-        agent,
-        external: placement === "external" ? context : undefined,
-      })
-    );
+  opened: async ({ page, fixturePath, agent }, use) => {
+    await use(await openFixture(page, fixturePath, { agent }));
   },
   inspector: async ({ opened }, use) => {
     await use(opened.inspector);

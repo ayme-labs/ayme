@@ -3,8 +3,6 @@
 // document. Nothing here imports the runtime. The Inspector is a client of this.
 export { inlineInspectorContract, mergeInspectorState } from "./shared";
 export type {
-  AgentConnectionStatus,
-  AppProcessTool,
   InspectorCommandResult,
   InspectorContract,
   InspectorEvent,
@@ -20,11 +18,7 @@ export type {
 // of the plain data it shows and the pure rules over it. The Inspector takes
 // these from here, not from the runtime's root or internal entries (ADR-0049).
 export { EXCLUDE_ATTRIBUTE } from "./shared";
-export type {
-  AgentConnectionStatusSource,
-  AppProcessTools,
-  AymeWebMcpPublicationStatus,
-} from "./runtime";
+export type { AymeWebMcpPublicationStatus } from "./runtime";
 export type {
   PublishedToolGroup,
   BuiltInCaller,

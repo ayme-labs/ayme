@@ -61,7 +61,7 @@ const failedOnItem: Run = {
 const goal: Run = {
   id: "3@2000",
   toolName: "goal",
-  by: "ayme-mcp",
+  by: "webmcp",
   arguments: { goal: "Add milk" },
   status: "succeeded",
   startedAt: 2_000,

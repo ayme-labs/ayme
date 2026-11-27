@@ -80,7 +80,6 @@
   },
   "peerDependencies": {
     "@ayme-dev/inspector": "workspace:*",
-    "@ayme-dev/mcp": "workspace:*",
     "@ayme-dev/webmcp": "workspace:*",
     "@playwright/test": ">=1.29 <1.65",
     "@typescript/typescript6": "^6.0.2",
@@ -91,9 +90,6 @@
       "optional": true
     },
     "@ayme-dev/inspector": {
-      "optional": true
-    },
-    "@ayme-dev/mcp": {
       "optional": true
     },
     "@ayme-dev/webmcp": {
@@ -109,7 +105,6 @@
   "devDependencies": {
     "@ayme-dev/core": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
-    "@ayme-dev/mcp": "workspace:*",
     "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#2b8849cfb31714353d94e6a33095ac3aa5b898bb",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",

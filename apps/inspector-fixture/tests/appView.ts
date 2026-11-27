@@ -11,8 +11,8 @@ export type LiveTool = {
 
 /**
  * The fixture page's own runtime, read and run as the app does through
- * `ayme.tools`: its live tool list, and the Browser Tools and snapshot that
- * no agent's ayme MCP server lists. A run through here is the app's. The e2e
+ * `ayme.tools`: its live tool list, and the Browser Tools and snapshot. A
+ * run through here is the app's. The e2e
  * tests take their expected values from here or from the agent, never from
  * the panel.
  */

@@ -2,7 +2,7 @@
  * What a Build without ayme resolves `@ayme-dev/ayme` and
  * `@ayme-dev/ayme/internal` to: unless the build plugin's configuration
  * includes ayme, its adapters resolve both entries here, so the runtime, the
- * Inspector, WebMCP and the Agent Connection stay out of the output. Setup
+ * Inspector and WebMCP stay out of the output. Setup
  * calls create an inert session, and each Page Object Model the plugin
  * compiles becomes a stand-in from `absentPageObject`. The exports mirror
  * the two entries' values the framework packages and the plugin's generated

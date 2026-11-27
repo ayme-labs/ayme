@@ -27,12 +27,7 @@ import {
   type CustomTool,
   type RegisteredElementTool,
   type PeekRead,
-  type PeekSide,
 } from "../tools/application";
-import {
-  createAgentConnectionStatus,
-  setAgentConnectionStatus,
-} from "./agentConnectionStatus";
 import { configureGoalLoopOf } from "../goal-loop/infrastructure";
 import { type GoalLoopDecisionFunction } from "../goal-loop/application";
 import { assertAvailable, type Cursor } from "../page-state/domain";
@@ -47,18 +42,12 @@ import {
   type Reach,
 } from "../page-state/application";
 import {
-  listPeekToolInfo,
   listTools,
   resolveTools,
   configureStartedPageOf,
   type ToolInfo,
   type ToolSources,
 } from "./toolResolution";
-import type {
-  loadAgentConnection,
-  loadProcessConnection,
-} from "./agentConnection";
-import type { InspectorPort } from "./inspectorChannelPort";
 import type { loadInspector } from "./inspector";
 import {
   callerOf,
@@ -68,7 +57,6 @@ import {
   type ActionCalls,
   type AymeRuns,
   type RunContext,
-  type RunLog,
   type StartChildRun,
   type ToolRunOptions,
 } from "../runs/application";
@@ -83,7 +71,6 @@ import {
   callers,
   checkedToolInput,
   RuntimeStateError,
-  type AppProcessTool,
   type Caller,
   type ElementFilter,
   type NamedFilter,
@@ -132,7 +119,7 @@ export type AymeTools = {
   subscribe(listener: (tools: readonly ToolInfo[]) => void): () => void;
   /**
    * Starts a Run of an available tool for the Caller `by` names, `"app"`
-   * by default. WebMCP and the ayme MCP server start a Page Object Tool's
+   * by default. WebMCP and a Session start a Page Object Tool's
    * Run in the same queue without coming through here, so the trees they
    * read around the action share its turn. Runs take turns, one at a time
    * per page: an action's turn ends once the page has settled, a read's
@@ -173,46 +160,36 @@ export type Ayme = {
   readonly tools: AymeTools;
   /**
    * The document's Run log: the newest 200 top-level Runs started through
-   * `tools.run`, by any Caller, and the App Process tools run from the
-   * page, each with the child Runs a tool started through the `run` in its
+   * `tools.run`, by any Caller, each with the child Runs a tool started through the `run` in its
    * context, oldest first. A new document starts an empty one.
    */
   readonly runs: AymeRuns;
   readonly pom: AymePom;
   /**
-   * Adds a Peek: `read` returns the values of state an agent can read, and
-   * may be async. Its Peek Tool, `peek.<name>` (`peek.node.<name>` in a
-   * Node process), reads every live instance
+   * Adds a Peek: `read` returns the values of state the Inspector shows, and
+   * may be async. Its Peek Tool, `peek.<name>`, reads every live instance
    * when called. There is one instance per (`name`, `id`): a later call with
    * the same id gives that instance the new `read`, and without an id a later
    * call replaces the earlier one. Returns what removes the instance. Throws
    * `RuntimeStateError` when `name` is empty, or when another tool
    * already uses the Peek Tool's name. Does nothing unless the session has
-   * `agentConnection` on, or `inspector` in the browser.
+   * `inspector` on in the browser.
    * @experimental
    */
   peek(read: PeekRead, name: string, id?: string): () => void;
   /**
-   * Makes the session the owner of the place it runs and turns on what its
-   * options ask for; returns the function that stops it. In the browser it
-   * owns the document; in a Node process it owns the process, as its App
-   * Process, which offers its Peek Tools alone and, with `agentConnection`,
-   * pairs with the agent's ayme MCP server beside the page. One session owns
-   * each at a time: a second start while one is started throws
-   * `RuntimeStateError` with `code: "active-owner"`. A session a framework
-   * integration created to render on the server starts nothing.
+   * Makes the session the owner of the document and turns on what its
+   * options ask for; returns the function that stops it. One session owns
+   * the document at a time: a second start while one is started throws
+   * `RuntimeStateError` with `code: "active-owner"`. On the server, where
+   * there is no document, it starts nothing.
    */
   start(): () => void;
 };
 
 /** The object form of the `inspector` option. */
 export type InspectorOptions = {
-  /**
-   * Where the Inspector runs: in the page (`"inline"`, the default) or in a
-   * window outside it that `ayme mcp` serves (`"external"`).
-   */
-  placement?: "inline" | "external";
-  /** Asks for Demo Mode too, in either placement. Off by default. */
+  /** Asks for Demo Mode too. Off by default. */
   demo?: boolean;
 };
 
@@ -245,38 +222,15 @@ export type AymeOptions = {
    * unless set. `true` mounts it in the page, from the optional
    * `@ayme-dev/inspector` package, with no demo; `{ demo: true }` also
    * pauses before each action and shows a click cue, for every call, whoever
-   * makes it. `{ placement: "external" }` mounts no panel: the page serves
-   * the Inspector's contract over its Agent Connection (which it turns on),
-   * and `ayme mcp` serves the Inspector in a window of its own; see
-   * `ayme_inspect` and `ayme inspect`.
+   * makes it.
    */
   inspector?: boolean | InspectorOptions;
-  /**
-   * Connects the session to a coding agent's ayme MCP server through the
-   * optional `@ayme-dev/mcp` package while the session is started: in the
-   * browser, the page, through its page client; in Node, the process, as an
-   * App Process beside the page. Off unless set. An object turns it on and,
-   * for an App Process, says where the server is.
-   */
-  agentConnection?: boolean | AgentConnectionOptions;
   /**
    * The application's router navigation. The `navigate` tool calls it with
    * the resolved URL of a page on the document's own origin instead of
    * loading a new document, so the router keeps its in-memory state.
    */
   navigate?: (url: string) => unknown;
-};
-
-/**
- * Where an App Process finds the agent's ayme MCP server. Without either,
- * it pairs with the one server that answers on the ports from 9350 to 9365.
- * A page ignores them.
- */
-export type AgentConnectionOptions = {
-  /** A connect link from the agent's `ayme_connect`, which names one server. */
-  link?: string;
-  /** The one port to look for a server on, as for `ayme mcp --port`. */
-  port?: number;
 };
 
 /** WebMCP publication, decided where the runtime starts (ADR-0030). */
@@ -311,17 +265,12 @@ export const serverKey = {} as Page;
 const noSuchTool = (name: string) =>
   new RuntimeStateError(`There is no tool "${name}".`);
 
-// One App Process per Node process, whichever session and bundle start it.
-const appProcessHolder = globalThis as typeof globalThis & {
-  __aymeAppProcess?: object;
-};
-
 const renderSessions = new WeakSet<Ayme>();
 
 /**
  * Marks `ayme` as a render session: one a framework integration created to
  * render on the server. Its `start()` starts nothing, so concurrent renders
- * share no owner and none claims the process.
+ * share no owner.
  */
 export function markRenderSession(ayme: Ayme): void {
   renderSessions.add(ayme);
@@ -353,31 +302,6 @@ function createServerPageObject<T extends object>(
   const prototype = (model as unknown as { prototype: object }).prototype;
   return Object.create(prototype) as T;
 }
-
-/** A tool an App Process paired beside the page offers. */
-export type { AppProcessTool };
-
-/**
- * The tools of the App Processes paired with the session's Agent
- * Connection, which its page client hears of from the agent's ayme MCP
- * server, for the Inspector. None while no server is paired.
- */
-export type AppProcessTools = {
-  /** The same array comes back until the list changes. */
-  list(): readonly AppProcessTool[];
-  /** Calls `listener` with the new list after each change. */
-  subscribe(listener: (tools: readonly AppProcessTool[]) => void): () => void;
-  /**
-   * Runs one in its App Process, through the agent's ayme MCP server, and
-   * records it as a Run in the page's Run log for the Caller `by` names,
-   * `"app"` by default. It acts on no page, so it takes no turn on the
-   * page's queue and has no Interactions. Throws its error, or when no
-   * server is paired.
-   */
-  run(name: string, input: unknown, options?: ToolRunOptions): Promise<unknown>;
-};
-
-const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
 
 /**
  * A session's Page Object Tools as one Caller that offers no other tools
@@ -420,60 +344,6 @@ export function pageObjectCallerOf(
     throw new RuntimeStateError("This is not an ayme runtime session.");
   return caller(by as Caller);
 }
-export const appProcessToolsBySession = new WeakMap<Ayme, AppProcessTools>();
-
-/**
- * The session's App Process tools: those of the page client it follows,
- * and none while it follows none.
- */
-export function createAppProcessTools(runLog: () => RunLog) {
-  let followed: AppProcessTools | undefined;
-  let unfollow = () => {};
-  const listeners = new Set<(tools: readonly AppProcessTool[]) => void>();
-  const list = () => followed?.list() ?? NO_PROCESS_TOOLS;
-  const announce = () => {
-    const tools = list();
-    for (const listener of listeners) listener(tools);
-  };
-  const tools: AppProcessTools = {
-    list,
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-    async run(name, input, options) {
-      const by = callerOf(options);
-      const paired = followed;
-      return runLog().record(
-        name,
-        input,
-        { by },
-        () => {
-          if (!paired)
-            throw new RuntimeStateError(
-              "No ayme MCP server is paired with this page."
-            );
-          return paired.run(name, input);
-        },
-        { offPage: true }
-      );
-    },
-  };
-  return {
-    tools,
-    /** Follows the page client's App Process tools, or none. */
-    follow(next: AppProcessTools | undefined) {
-      unfollow();
-      const before = list();
-      followed = next;
-      unfollow = next?.subscribe(announce) ?? (() => {});
-      if (list() !== before) announce();
-    },
-  };
-}
-
 let started: Ayme | undefined;
 const startedListeners = new Set<(ayme: Ayme | undefined) => void>();
 
@@ -498,20 +368,6 @@ export function subscribeToStartedAyme(
 }
 
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
-
-/** A tool as ayme MCP lists it. */
-type AymeMcpTool = ToolInfo & { description?: string };
-
-/**
- * A tool as ayme MCP lists it: its Agent Description as its description,
- * and none when the tool says nothing beyond its name and schema, which MCP
- * allows.
- */
-function forAymeMcp(tool: ToolInfo): AymeMcpTool {
-  return tool.agentDescription === undefined
-    ? tool
-    : { ...tool, description: tool.agentDescription };
-}
 
 /**
  * Where a runtime session runs (ADR-0049): the document of the browser, over
@@ -561,21 +417,17 @@ export type SessionTarget = {
    */
   feedback?(demo: boolean, signal: AbortSignal): void;
   /**
-   * What only the browser runtime has: the optional WebMCP, Inspector and
-   * Agent Connection packages' loaders.
+   * What only the browser runtime has: the optional WebMCP and Inspector
+   * packages' loaders.
    */
   readonly surfaces?: {
     loadWebMcpPublication: typeof loadWebMcpPublication;
     loadInspector: typeof loadInspector;
-    loadAgentConnection: typeof loadAgentConnection;
-    loadProcessConnection: typeof loadProcessConnection;
     /**
      * Publishes the runtime's Inspector contract in the document's slot, for
      * an inline Inspector mounted by this session or by hand.
      */
     publishInspectorContract(): void;
-    /** The contract an Inspector in another window reads, as plain data. */
-    loadExternalInspectorPort(): Promise<InspectorPort | undefined>;
   };
 };
 
@@ -609,12 +461,8 @@ export function createAymeOn(
     ));
   // Publication is decided once, when the session is created.
   const enabled = options.webMCP?.enabled === true;
-  // Peeks reach coding agents and the Inspector only (ADR-0034). The
-  // Inspector mounts only in the browser, so in Node only the Agent
-  // Connection turns them on.
-  const peeks =
-    Boolean(options.agentConnection) ||
-    (inspectorSetting(options).placement !== "off" && !onServer());
+  // Peeks reach the Inspector only, which mounts only in the browser.
+  const peeks = inspectorSetting(options).on && !onServer();
   const initialStatus: AymeWebMcpPublicationStatus = {
     state: enabled ? "waiting" : "disabled",
     message: enabled
@@ -633,19 +481,12 @@ export function createAymeOn(
   let owner: { dispose(): void } | undefined;
   // The Reach the started session measures with, picked on start.
   let reach: Reach = geometryReach;
-  // The session while it runs the process's App Process, which has no
-  // page: it offers its Peek Tools only.
-  let inProcess: { stop(): void } | undefined;
   let controller: AbortController | undefined;
   // The started session's WebMCP publication; while its package loads, the
   // attempt that starts it and the retry that waits for that attempt.
   let publication: { retry(): Promise<void> } | undefined;
   let loading: Promise<typeof publication> | undefined;
   let retryingLoad: Promise<void> | undefined;
-  const appProcessTools = createAppProcessTools(runLog);
-  const agentConnectionStatus = createAgentConnectionStatus(
-    Boolean(options.agentConnection) && !onServer()
-  );
   // One top-level Run at a time on this page, whoever its Caller.
   const takeTurn = createRunQueue();
 
@@ -654,11 +495,7 @@ export function createAymeOn(
     for (const listener of subscribers) listener(status);
   };
   const refreshTools = () => {
-    const next = owner
-      ? listTools({ peeks }, sources)
-      : inProcess && peeks
-        ? listPeekToolInfo(sources)
-        : NO_TOOLS;
+    const next = owner ? listTools({ peeks }, sources) : NO_TOOLS;
     const key = JSON.stringify(next);
     if (key === toolsKey) return;
     tools = next;
@@ -676,7 +513,7 @@ export function createAymeOn(
       .readPageObjectTree((keep) => target.pageState().session.look({ keep }));
   /**
    * How the agent channels run the session's tools, their calls made by
-   * `by`: the one source WebMCP publication and the ayme MCP server share.
+   * `by`: the one source WebMCP publication and a Session share.
    */
   const pageObjectToolsFor = (
     by: Caller,
@@ -835,8 +672,7 @@ export function createAymeOn(
 
   /**
    * Records a top-level Run of the tool `name` for `by` in the log and
-   * executes it, in its turn. A session that runs an App Process keeps no
-   * log: it runs its Peek Tools only.
+   * executes it, in its turn.
    */
   async function recordTopLevelRun(
     name: string,
@@ -844,16 +680,6 @@ export function createAymeOn(
     by: Caller,
     settle: () => Promise<void>
   ): Promise<unknown> {
-    if (inProcess) {
-      // The Peek registry is shared by the process, so a session without
-      // Peeks runs none another session added.
-      const peekTool = peeks
-        ? sources.peekTools().find((tool) => tool.name === name)
-        : undefined;
-      if (!peekTool) throw noSuchTool(name);
-      // A read: it moves no cursor and adds no settle wait.
-      return peekTool.execute(checkedToolInput(peekTool.inputSchema, input));
-    }
     const cursor = cursorsOf(target.key()).of(by);
     return runLog().record(name, input, { by }, (id) => {
       const { tool, checkedInput } = lookUpRun(name, input);
@@ -945,19 +771,6 @@ export function createAymeOn(
     }
   }
 
-  /**
-   * The session's tools as the ayme MCP server's client reaches them: its
-   * Runs are `ayme-mcp`'s, so `@ayme-dev/mcp` names no Caller, and a Page
-   * Object Tool's answered as the agent channels answer it.
-   */
-  const aymeMcpPageObjectTools = pageObjectToolsFor(callers.aymeMcp);
-  const aymeMcpTools = {
-    list: () => ayme.tools.list().map(forAymeMcp),
-    subscribe: (listener: (tools: readonly AymeMcpTool[]) => void) =>
-      ayme.tools.subscribe((tools) => listener(tools.map(forAymeMcp))),
-    run: aymeMcpPageObjectTools.run,
-  };
-
   const pom: AymePom = {
     get<T extends object>(model: PageObjectConstructor<T>): T {
       let instance = instances.get(model) as T | undefined;
@@ -1015,18 +828,15 @@ export function createAymeOn(
       if (typeof name !== "string" || name === "")
         throw new RuntimeStateError("A Peek needs a name.");
       if (!peeks) return () => {};
-      // Node is an App Process's side.
-      const side: PeekSide = onServer() ? "node" : "browser";
-      const toolName = peekToolName(side, name);
+      const toolName = peekToolName(name);
       if (registeredToolNames(sources).has(toolName))
         throw new RuntimeStateError(
           `Cannot add the Peek "${name}": another tool already uses the name ${toolName}.`
         );
-      return target.peeks()!.addPeek(side, read, name, id);
+      return target.peeks()!.addPeek(read, name, id);
     },
     start() {
-      if (renderSessions.has(ayme)) return () => {};
-      if (onServer()) return startInProcess();
+      if (renderSessions.has(ayme) || onServer()) return () => {};
       if (owner)
         throw new RuntimeStateError(
           "The ayme runtime already has an active owner.",
@@ -1066,46 +876,8 @@ export function createAymeOn(
         // The inline Inspector, mounted by this session or by hand, reads the
         // runtime's contract from the slot the session publishes it in.
         surfaces?.publishInspectorContract();
-        if (inspector.placement === "inline" && surfaces)
+        if (inspector.on && surfaces)
           mountInspectorUntil(surfaces.loadInspector, controller.signal);
-        // An Inspector outside the page reaches it over the Agent Connection.
-        const external = inspector.placement === "external";
-        if ((options.agentConnection || external) && surfaces) {
-          const signal = controller.signal;
-          startAgentConnectionUntil(
-            signal,
-            () =>
-              Promise.all([
-                surfaces.loadAgentConnection(),
-                external ? surfaces.loadExternalInspectorPort() : undefined,
-              ]).then(([{ startAgentConnection }, inspectorPort]) => () => {
-                const connection = startAgentConnection({
-                  tools: aymeMcpTools,
-                  inspector: inspectorPort,
-                });
-                // A page client from before App Processes hands over none.
-                appProcessTools.follow(connection.processTools);
-                agentConnectionStatus.follow(connection.status);
-                signal.addEventListener(
-                  "abort",
-                  () => {
-                    appProcessTools.follow(undefined);
-                    agentConnectionStatus.follow(undefined);
-                  },
-                  { once: true }
-                );
-                return connection;
-              }),
-            () => {
-              agentConnectionStatus.failed();
-              signal.addEventListener(
-                "abort",
-                () => agentConnectionStatus.follow(undefined),
-                { once: true }
-              );
-            }
-          );
-        }
       } catch (error) {
         stop();
         throw error;
@@ -1117,62 +889,6 @@ export function createAymeOn(
     },
   };
 
-  /**
-   * Claims the Node process as its App Process: no page and no document. It
-   * offers its Peek Tools and, with `agentConnection`, pairs with the
-   * agent's ayme MCP server beside the page.
-   */
-  function startInProcess(): () => void {
-    if (appProcessHolder.__aymeAppProcess)
-      throw new RuntimeStateError(
-        "The ayme runtime already has an active owner.",
-        { code: "active-owner" }
-      );
-    const processController = new AbortController();
-    // Without the Agent Connection, Node offers no Peeks (ADR-0034).
-    const unsubscribe = peeks
-      ? target.peeks()!.subscribeToPeekTools(refreshTools)
-      : () => {};
-    const session = {
-      stop() {
-        if (inProcess !== session) return;
-        inProcess = undefined;
-        if (appProcessHolder.__aymeAppProcess === session)
-          appProcessHolder.__aymeAppProcess = undefined;
-        processController.abort();
-        unsubscribe();
-        refreshTools();
-      },
-    };
-    inProcess = session;
-    appProcessHolder.__aymeAppProcess = session;
-    refreshTools();
-    const { agentConnection } = options;
-    if (agentConnection) {
-      const where = agentConnection === true ? {} : agentConnection;
-      startAgentConnectionUntil(processController.signal, () =>
-        surfaces!.loadProcessConnection().then(
-          ({ startAgentConnection }) =>
-            () =>
-              // Its tools listed as ayme MCP lists the page's; its calls run
-              // through the session as before.
-              startAgentConnection(
-                {
-                  tools: {
-                    ...ayme.tools,
-                    list: aymeMcpTools.list,
-                    subscribe: aymeMcpTools.subscribe,
-                  },
-                },
-                where
-              )
-        )
-      );
-    }
-    return () => session.stop();
-  }
-
-  appProcessToolsBySession.set(ayme, appProcessTools.tools);
   pageObjectCallers.set(ayme.tools, (by) => ({
     run: pageObjectToolsFor(by, { pageObjectToolsOnly: true }).run,
     listing: () =>
@@ -1189,7 +905,6 @@ export function createAymeOn(
         };
       }),
   }));
-  setAgentConnectionStatus(ayme, agentConnectionStatus.status);
   return ayme;
 }
 
@@ -1214,31 +929,6 @@ function mountInspectorUntil(
     },
     (error: unknown) => {
       if (!signal.aborted) throw error;
-    }
-  );
-}
-
-// Like the Inspector: a load failure while the session runs stays an
-// unhandled rejection, after `onFailure`, and one after it has stopped is
-// dropped. `load` loads the page client or the App Process's side, and
-// resolves with what starts it.
-function startAgentConnectionUntil(
-  signal: AbortSignal,
-  load: () => Promise<() => { dispose(): void }>,
-  onFailure?: () => void
-) {
-  void load().then(
-    (startConnection) => {
-      if (signal.aborted) return;
-      const connection = startConnection();
-      signal.addEventListener("abort", () => connection.dispose(), {
-        once: true,
-      });
-    },
-    (error: unknown) => {
-      if (signal.aborted) return;
-      onFailure?.();
-      throw error;
     }
   );
 }

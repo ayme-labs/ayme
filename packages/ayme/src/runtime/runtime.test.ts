@@ -1,10 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Locator } from "@playwright/test";
 import { ayme } from "../page-objects/domain";
 import { createPage, listRegisteredPoms } from "../page-objects/infrastructure";
 import { registerCompiledPom } from "../page-objects/application";
-import { loadAgentConnection } from "./agentConnection";
-import { getAgentConnectionStatus } from "./agentConnectionStatus";
 import { cursors, getPageStateSession } from "../page-state/infrastructure";
 import { callers, RuntimeStateError } from "../shared";
 import * as goalLoopModule from "../goal-loop/infrastructure";
@@ -14,7 +12,6 @@ import * as navigateToolModule from "../tools/infrastructure";
 import * as pageState from "../page-state/infrastructure";
 import {
   createAyme,
-  type Ayme,
   markRenderSession,
   measureReachWith,
   sameRuntimeOptions,
@@ -37,10 +34,6 @@ vi.mock(
 );
 vi.mock("./webMcp", () => ({ loadWebMcpPublication: vi.fn() }));
 vi.mock("./inspector", () => ({ loadInspector: vi.fn() }));
-vi.mock("./agentConnection", () => ({
-  loadAgentConnection: vi.fn(),
-  loadProcessConnection: vi.fn(),
-}));
 vi.mock("../page-objects/infrastructure/inPageDriver", async () =>
   (await import("../../testing/pageDriver.testSupport")).standInDriverModule()
 );
@@ -139,7 +132,6 @@ it("mounts the Inspector while a session with inspector is started", async () =>
 
 it.each([
   ["Inspector", { inspector: true }],
-  ["Agent Connection", { agentConnection: true }],
   ["WebMCP publication", { webMCP: { enabled: true } }],
 ] as const)(
   "drops a %s load failure once the session has stopped",
@@ -147,7 +139,6 @@ it.each([
     let failLoad!: (error: Error) => void;
     const failing = new Promise<never>((_, reject) => (failLoad = reject));
     vi.mocked(loadInspector).mockReturnValue(failing);
-    vi.mocked(loadAgentConnection).mockReturnValue(failing);
     vi.mocked(loadWebMcpPublication).mockReturnValue(failing);
     const unhandled = vi.fn();
     process.on("unhandledRejection", unhandled);
@@ -166,38 +157,6 @@ it.each([
     }
   }
 );
-
-it("says the page client failed to load while the session runs, and not once it stops", async () => {
-  vi.mocked(loadAgentConnection).mockRejectedValue(
-    new Error("Cannot find package '@ayme-dev/mcp'.")
-  );
-  const unhandled = vi.fn();
-  process.on("unhandledRejection", unhandled);
-  try {
-    const runtime = createAyme({
-      pageFactory: () => page,
-      agentConnection: true,
-    });
-    sessions.push(runtime);
-    const stop = start(runtime);
-    await flush();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(getAgentConnectionStatus(runtime).get()).toEqual({
-      state: "not-connected",
-      reason: "no-client",
-    });
-    // The failure still reaches the console.
-    expect(unhandled).toHaveBeenCalledOnce();
-
-    stop();
-    expect(getAgentConnectionStatus(runtime).get()).toEqual({
-      state: "not-connected",
-    });
-  } finally {
-    process.off("unhandledRejection", unhandled);
-  }
-});
 
 it("mounts the Inspector in demo mode when inspector asks for it", async () => {
   const mountInspector = vi.fn(() => ({ dispose: vi.fn() }));
@@ -223,84 +182,6 @@ it("mounts the Inspector in demo mode when inspector asks for it", async () => {
   expect(mountInspector.mock.calls).toEqual([[], []]);
 });
 
-describe("the Inspector's external placement", () => {
-  const connection = () => ({
-    dispose: vi.fn(),
-    processTools: { list: () => [], subscribe: () => () => {}, run: vi.fn() },
-    status: {
-      get: () => ({ state: "not-connected" as const }),
-      subscribe: () => () => {},
-    },
-  });
-  const startAgentConnection = vi.fn<
-    (options: unknown) => ReturnType<typeof connection>
-  >(() => connection());
-
-  it("mounts no panel, and serves the contract over the Agent Connection", async () => {
-    const mountInspector = vi.fn(() => ({ dispose: vi.fn() }));
-    vi.mocked(loadInspector).mockResolvedValue({ mountInspector });
-    vi.mocked(loadAgentConnection).mockResolvedValue({
-      startAgentConnection: startAgentConnection as never,
-    });
-    const runtime = createAyme({
-      pageFactory: () => page,
-      inspector: { placement: "external" },
-    });
-    sessions.push(runtime);
-
-    start(runtime);
-    // The contract loads on demand, after the page client.
-    await vi.waitFor(() => expect(startAgentConnection).toHaveBeenCalled());
-
-    expect(loadInspector).not.toHaveBeenCalled();
-    expect(mountInspector).not.toHaveBeenCalled();
-    const [{ inspector }] = startAgentConnection.mock.lastCall as unknown as [
-      { inspector: { request: unknown; subscribe: unknown } },
-    ];
-    expect(inspector).toEqual({
-      request: expect.any(Function),
-      subscribe: expect.any(Function),
-    });
-  });
-
-  it("serves no contract for an inline session", async () => {
-    vi.mocked(loadAgentConnection).mockResolvedValue({
-      startAgentConnection: startAgentConnection as never,
-    });
-    const inline = createAyme({
-      pageFactory: () => page,
-      inspector: true,
-      agentConnection: true,
-    });
-    sessions.push(inline);
-    start(inline);
-    await flush();
-
-    expect(startAgentConnection.mock.lastCall).toEqual([
-      expect.objectContaining({ inspector: undefined }),
-    ]);
-  });
-
-  it("asks for Demo Mode through the session option, as an inline one does", async () => {
-    vi.mocked(loadAgentConnection).mockResolvedValue({
-      startAgentConnection: startAgentConnection as never,
-    });
-    const runtime = createAyme({
-      pageFactory: () => page,
-      inspector: { placement: "external", demo: true },
-    });
-    sessions.push(runtime);
-
-    const stop = start(runtime);
-    await flush();
-    const demoWhileStarted = demoModeOptions().beforeActionMs === DEMO_PAUSE_MS;
-    stop();
-
-    expect(demoWhileStarted).toBe(true);
-    expect(demoModeOptions()).toEqual({});
-  });
-});
-
 it("compares the inspector option by what it turns on", () => {
   expect(
     sameRuntimeOptions(
@@ -318,96 +199,6 @@ it("compares the inspector option by what it turns on", () => {
   expect(sameRuntimeOptions({ inspector: true }, { inspector: false })).toBe(
     false
   );
-});
-
-it("starts the Agent Connection while a session with agentConnection is started", async () => {
-  const dispose = vi.fn();
-  const startAgentConnection = vi.fn(() => ({
-    dispose,
-    processTools: { list: () => [], subscribe: () => () => {}, run: vi.fn() },
-    status: {
-      get: () => ({ state: "not-connected" as const }),
-      subscribe: () => () => {},
-    },
-  }));
-  vi.mocked(loadAgentConnection).mockResolvedValue({ startAgentConnection });
-  start(session(false))();
-  expect(loadAgentConnection).not.toHaveBeenCalled();
-
-  const runtime = createAyme({
-    pageFactory: () => page,
-    agentConnection: true,
-  });
-  sessions.push(runtime);
-  const stop = start(runtime);
-  await flush();
-  expect(startAgentConnection).toHaveBeenCalledOnce();
-  // The page client reaches the session's tools, and runs them as ayme-mcp.
-  const [{ tools }] = startAgentConnection.mock.calls[0] as unknown as [
-    { tools: Ayme["tools"] },
-  ];
-  const names = (list: readonly { name: string }[]) =>
-    list.map(({ name }) => name);
-  expect(names(tools.list())).toEqual(names(runtime.tools.list()));
-  // MCP describes each tool by its Agent Description: a bare action has
-  // none, an action says what it shows afterwards, a described one says
-  // what its author wrote. A destructive one carries its mark.
-  class Opener {
-    open() {}
-    close() {}
-    save() {}
-  }
-  registerCompiledPom(Opener, {
-    className: "Opener",
-    components: [],
-    members: [],
-    tools: [
-      {
-        methodName: "open",
-        toolName: "Opener.open",
-        parameters: [],
-        returnPoms: ["Dialog"],
-      },
-      { methodName: "close", toolName: "Opener.close", parameters: [] },
-      {
-        methodName: "save",
-        toolName: "Opener.save",
-        description: "Save the draft.",
-        destructive: true,
-        parameters: [],
-      },
-    ],
-  });
-  runtime.pom.register(Opener);
-  await registryModule.probeRegisteredPomMembers();
-  const listed = (name: string) =>
-    tools.list().find((tool) => tool.name === name);
-  expect(listed("Opener.open")).toMatchObject({
-    description: "Shows Dialog.",
-  });
-  expect(listed("Opener.close")).not.toHaveProperty("description");
-  expect(listed("Opener.close")).not.toHaveProperty("destructive");
-  expect(listed("Opener.save")).toMatchObject({
-    description: "Save the draft.",
-    destructive: true,
-  });
-  runtime.pom.unregister(Opener);
-  const run = vi.spyOn(runtime.tools, "run").mockResolvedValue("ran");
-  await expect(tools.run("snapshot", {})).resolves.toBe("ran");
-  expect(run).toHaveBeenCalledExactlyOnceWith(
-    "snapshot",
-    {},
-    {
-      by: "ayme-mcp",
-    }
-  );
-  stop();
-  expect(dispose).toHaveBeenCalledOnce();
-
-  // Stopped before the page client loaded: no connection starts.
-  start(runtime)();
-  await flush();
-  expect(startAgentConnection).toHaveBeenCalledOnce();
 });
 
 it("threads ignore to page state capture for the session lifetime", () => {

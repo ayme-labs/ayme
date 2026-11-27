@@ -6,4 +6,4 @@ export {
   type RegionSizes,
 } from "./preferences";
 export type { FullscreenState, WindowFullscreen } from "./fullscreen";
-export type { AgentConnectionStatus, PublicationStatus } from "./connections";
+export type { PublicationStatus } from "./connections";

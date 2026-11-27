@@ -41,7 +41,6 @@ describe("Callers of ayme.tools.run in Chromium", () => {
     expect(callers).toEqual({
       app: "app",
       webmcp: "webmcp",
-      aymeMcp: "ayme-mcp",
       inspector: "inspector",
     });
   });

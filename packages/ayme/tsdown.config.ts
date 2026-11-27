@@ -17,10 +17,6 @@ export default defineConfig({
   copy: ["THIRD_PARTY_NOTICES.txt"],
   deps: {
     alwaysBundle: bundled,
-    // The declarations also copy in the page client's types they name, such
-    // as its not-connected reasons, so they never import the optional
-    // `@ayme-dev/mcp`. This list replaces the one above for declarations.
-    dts: { alwaysBundle: [...bundled, "@ayme-dev/mcp/client"] },
   },
   dts: true,
   entry: [
@@ -33,8 +29,8 @@ export default defineConfig({
     "src/server.ts",
     // ayme over a real Playwright Page, for a Node host (ADR-0049).
     "src/playwright.ts",
-    // The Page Object compiler, for Node: the bundler integrations and
-    // `ayme mcp` (ADR-0006: no browser entry ships TypeScript).
+    // The Page Object compiler, for Node: the bundler integrations and a
+    // Session (ADR-0006: no browser entry ships TypeScript).
     "src/compiler.ts",
   ],
   format: ["esm"],

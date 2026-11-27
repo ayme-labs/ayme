@@ -150,7 +150,7 @@ it("lists every Caller's Runs from the page's Run log, newest first, as they sta
 });
 
 it("nests a goal Run's child Runs under it, each with its own Interactions", async () => {
-  const goal = startedAyme.runs.start("goal", { goal: "Save" }, "ayme-mcp");
+  const goal = startedAyme.runs.start("goal", { goal: "Save" }, "webmcp");
   const fill = startedAyme.runs.start(
     "fill",
     { target: "e3", text: "Draft" },
@@ -178,7 +178,7 @@ it("nests a goal Run's child Runs under it, each with its own Interactions", asy
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
   const run = inspector.runs.latest("goal");
   expect(await run.caller()).toEqual({
-    icon: "Run by an agent through ayme MCP",
+    icon: "Run by an agent through WebMCP",
   });
   expect(await run.interactions.count()).toBe(0);
   expect(await run.childTools()).toEqual(["fill", "click"]);
@@ -520,7 +520,7 @@ it("does not invent a generic name for an unnamed target", async () => {
 
 it("shows a tree of Runs in the selection's scope when a child Run is in it", async () => {
   registerEditor();
-  const goal = startedAyme.runs.start("goal", { goal: "Save" }, "ayme-mcp");
+  const goal = startedAyme.runs.start("goal", { goal: "Save" }, "webmcp");
   startedAyme.runs.start("Editor.save", {}, { parent: goal.id }).succeed();
   goal.succeed({ reason: "done" });
   startedAyme.runs.start("click", { target: "e2" }, "webmcp").succeed();
@@ -550,28 +550,6 @@ it("records a Tools panel run in the Run log as the Inspector's", async () => {
   ]);
 });
 
-it("records an App Process tool run from the panel as the Inspector's Run, with no Interactions", async () => {
-  startedAyme.appProcessTools.list.mockReturnValue([
-    {
-      name: "peek.node.jobs",
-      description: "Read the current values of a Peek.",
-      inputSchema: { type: "object" },
-    },
-  ]);
-  startedAyme.appProcessTools.run.mockResolvedValue({ name: "jobs" });
-  renderApp();
-
-  await (await inspector.tool("peek.node.jobs")).run();
-
-  const run = inspector.runs.latest("peek.node.jobs");
-  await expect.poll(() => run.status()).toBe("Succeeded");
-  expect(await run.caller()).toEqual({ icon: "Run by you from the Inspector" });
-  expect(await run.interactions.count()).toBe(0);
-  expect(startedAyme.runs.list()).toEqual([
-    expect.objectContaining({ tool: "peek.node.jobs", by: "inspector" }),
-  ]);
-});
-
 it("keeps every Caller's rows it showed as earlier page rows after a reload", async () => {
   registerEditor();
   startedAyme.tools.run.mockResolvedValue({ saved: true });
@@ -587,12 +565,12 @@ it("keeps every Caller's rows it showed as earlier page rows after a reload", as
   unmountApp();
   startedAyme.runs.newDocument();
   // The new document's first Run, whose id the log starts over with.
-  startedAyme.runs.start("snapshot", {}, "ayme-mcp").succeed({});
+  startedAyme.runs.start("snapshot", {}, "ayme-command").succeed({});
   renderApp();
 
   await expect.poll(() => inspector.runs.runs.count()).toBe(3);
   expect(await callersShown()).toEqual([
-    { icon: "Run by an agent through ayme MCP" },
+    { text: "ayme-command" },
     { icon: "Run by you from the Inspector" },
     { icon: "Run by an agent through WebMCP" },
   ]);
@@ -603,7 +581,7 @@ it("keeps every Caller's rows it showed as earlier page rows after a reload", as
 
 it("scopes every Caller's Runs to the selection", async () => {
   registerEditor();
-  startedAyme.runs.start("Editor.save", {}, "ayme-mcp").succeed();
+  startedAyme.runs.start("Editor.save", {}, "ayme-command").succeed();
   startedAyme.runs.start("click", { target: "e2" }, "webmcp").succeed();
   renderApp();
   await inspector.navigator.showLens("Model");
@@ -612,7 +590,7 @@ it("scopes every Caller's Runs to the selection", async () => {
 
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
   expect(await inspector.runs.run(0).caller()).toEqual({
-    icon: "Run by an agent through ayme MCP",
+    text: "ayme-command",
   });
   await inspector.runs.showAll();
   await expect.poll(() => inspector.runs.runs.count()).toBe(2);

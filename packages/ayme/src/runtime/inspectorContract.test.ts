@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  AgentConnectionStatus,
-  AppProcessTool,
   InspectorEvent,
   InspectorLook,
   InspectorPageObject,
@@ -84,8 +82,6 @@ function setup() {
   const current = {
     tools: [clickTool, unavailable] as readonly ToolInfo[],
     runs: [] as readonly InspectorRun[],
-    processTools: [] as readonly AppProcessTool[],
-    connection: { state: "off" } as AgentConnectionStatus,
   };
   const calls: unknown[][] = [];
   const demoRequests: boolean[] = [];
@@ -131,14 +127,6 @@ function setup() {
     pomDefinitionText: (names) => `text:${names.join(",")}`,
     started: () => session,
     subscribeToStarted: subscribe,
-    appProcessTools: () => ({
-      list: () => current.processTools,
-      subscribe,
-      run: async (name, input, options) => {
-        calls.push(["process", name, input, options]);
-      },
-    }),
-    connectionStatus: () => ({ get: () => current.connection, subscribe }),
     highlights: {
       set: async (layer, refs) => void highlighted.push([layer, refs]),
     },
@@ -163,7 +151,7 @@ function setup() {
 const roundTrip = (value: unknown) => JSON.parse(JSON.stringify(value));
 
 describe("the Inspector contract the runtime serves", () => {
-  it("answers the canonical state: tools, runs, publication and connection", async () => {
+  it("answers the canonical state: tools, runs and publication", async () => {
     const { contract } = setup();
     const state = await contract.getState();
     expect(state.tools.map((tool) => tool.name)).toEqual([
@@ -171,7 +159,6 @@ describe("the Inspector contract the runtime serves", () => {
       "Cart.checkout",
     ]);
     expect(state.publication.state).toBe("disabled");
-    expect(state.agentConnection).toEqual({ state: "off" });
     expect(state.runs).toEqual([]);
   });
 
@@ -275,15 +262,7 @@ describe("the Inspector contract the runtime serves", () => {
   });
 
   it("answers every command result and pushes every event as plain JSON", async () => {
-    const { contract, current, announce } = setup();
-    current.processTools = [
-      {
-        name: "peek.node.x",
-        description: "d",
-        inputSchema: { type: "object" },
-      },
-    ];
-    current.connection = { state: "connected", agent: "claude-code" };
+    const { contract, announce } = setup();
     const events: InspectorEvent[] = [];
     contract.subscribe({
       onEvent: (event) => events.push(event),
@@ -312,12 +291,6 @@ describe("the Inspector contract the runtime serves", () => {
     const none = createInspectorContract({
       started: () => undefined,
       subscribeToStarted: () => () => {},
-      appProcessTools: () => {
-        throw new Error("unused");
-      },
-      connectionStatus: () => {
-        throw new Error("unused");
-      },
       highlights: { set: async () => {} },
       pick: async () => undefined,
       registry: {

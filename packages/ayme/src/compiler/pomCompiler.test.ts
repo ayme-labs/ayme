@@ -256,7 +256,7 @@ describe("createPomCompiler", () => {
       "@ayme-dev/ayme/absent"
     );
     expect(compiler.absentEntry("@ayme-dev/vue")).toBe("@ayme-dev/vue/absent");
-    expect(compiler.absentEntry("@ayme-dev/mcp")).toBeUndefined();
+    expect(compiler.absentEntry("@ayme-dev/webmcp")).toBeUndefined();
   });
 
   it("names the import a compiled module adds", () => {

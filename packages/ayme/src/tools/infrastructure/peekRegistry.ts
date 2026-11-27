@@ -1,10 +1,6 @@
 import type { Page } from "@playwright/test";
 import { pageOfDocument } from "../../page-state/infrastructure";
-import {
-  createPeekRegistry,
-  emptyPeekStore,
-  type PeekStore,
-} from "../application/peek";
+import { createPeekRegistry, emptyPeekStore } from "../application/peek";
 
 type Peeks = ReturnType<typeof createPeekRegistry>;
 
@@ -18,22 +14,9 @@ export function peeksOf(page: Page): Peeks {
   return found;
 }
 
-// A Node process of the app (an App Process) has no Page. Its Peeks are the
-// process's, shared by every copy of the bundle that loads ayme in it, so
-// they live on `globalThis`, the one store outside the in-page module's slot.
-const processStore: PeekStore = ((
-  globalThis as typeof globalThis & { __aymePeekRegistry?: PeekStore }
-).__aymePeekRegistry ??= emptyPeekStore());
-export const processPeeks = createPeekRegistry(processStore);
-
-/**
- * Package-internal: the Peeks of the session that calls: the document's in
- * the browser, the process's in Node.
- */
+/** Package-internal: the Peeks of the document's session. */
 function sessionPeeks(): Peeks {
-  return typeof window === "undefined"
-    ? processPeeks
-    : peeksOf(pageOfDocument(document));
+  return peeksOf(pageOfDocument(document));
 }
 
 export const addPeek: Peeks["addPeek"] = (...args) =>

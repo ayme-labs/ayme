@@ -146,10 +146,10 @@ describe("webSocketInspectorContract", () => {
     const [{ id }] = socket().sent;
     socket().receive({
       id,
-      error: "No page is connected to this ayme MCP server.",
+      error: "This Session has no Tab.",
     });
 
-    await expect(asked).rejects.toThrow("No page is connected");
+    await expect(asked).rejects.toThrow("This Session has no Tab.");
   });
 
   it("reads a recorded page state that is none as undefined", async () => {

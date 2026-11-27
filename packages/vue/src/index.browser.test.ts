@@ -137,14 +137,13 @@ it("C1: passes webMCP to the runtime session", () => {
   });
 });
 
-// Records the options, then starts a session without the Inspector or the
-// Agent Connection: the optional peers may not be built or installed where
-// these tests run.
+// Records the options, then starts a session without the Inspector: the
+// optional peer may not be built or installed where these tests run.
 async function withoutInspectorLoad() {
   const { createAyme: actual } =
     await vi.importActual<typeof import("@ayme-dev/ayme")>("@ayme-dev/ayme");
   vi.mocked(createAyme).mockImplementationOnce((options) =>
-    actual({ ...options, inspector: false, agentConnection: false })
+    actual({ ...options, inspector: false })
   );
 }
 
@@ -155,16 +154,6 @@ it("C1: passes inspector to the runtime session", async () => {
   scope.run(() => useAyme({ pageFactory, inspector: true }));
   expect(createAyme).toHaveBeenCalledWith(
     expect.objectContaining({ inspector: true })
-  );
-});
-
-it("C1: passes agentConnection to the runtime session", async () => {
-  await withoutInspectorLoad();
-  const scope = effectScope();
-  scopes.push(scope);
-  scope.run(() => useAyme({ pageFactory, agentConnection: true }));
-  expect(createAyme).toHaveBeenCalledWith(
-    expect.objectContaining({ agentConnection: true })
   );
 });
 
@@ -807,7 +796,6 @@ describe("AymeProvider props", () => {
     "goalLoop",
     "webMCP",
     "inspector",
-    "agentConnection",
     "navigate",
   ])("warns, naming the provider, when %s has the wrong type", (prop) => {
     // A string is a valid `ignore`, a CSS selector.

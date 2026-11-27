@@ -14,7 +14,6 @@ import {
   MousePointerIcon,
   MoveIcon,
   SquareCheckIcon,
-  SquareTerminalIcon,
   TypeIcon,
   UploadIcon,
   UserIcon,
@@ -494,10 +493,6 @@ const callerIcons = {
   inspector: { Icon: UserIcon, label: "Run by you from the Inspector" },
   app: { Icon: AppWindowIcon, label: "Run by the app" },
   webmcp: { Icon: BotIcon, label: "Run by an agent through WebMCP" },
-  "ayme-mcp": {
-    Icon: SquareTerminalIcon,
-    label: "Run by an agent through ayme MCP",
-  },
 } satisfies Record<BuiltInCaller, { Icon: typeof UserIcon; label: string }>;
 
 /** Who started a run: an icon for ayme's own Callers, the name for another. */

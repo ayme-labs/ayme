@@ -7,7 +7,7 @@ import {
   createPage,
   probeRegisteredPomMembers,
 } from "../page-objects/infrastructure";
-import { peeksOf, processPeeks } from "../tools/infrastructure";
+import { peeksOf } from "../tools/infrastructure";
 import { registerCustomTool } from "../tools/application";
 import {
   browserPageState,
@@ -22,22 +22,17 @@ import {
   installRuntimePageInstrumentation,
   requestDemoMode,
 } from "../runs/infrastructure";
-import { runLogOf } from "../runs/application";
-import { loadAgentConnection, loadProcessConnection } from "./agentConnection";
 import { loadInspector } from "./inspector";
 import { createDocumentInspectorContract } from "./documentInspectorContract";
 import { loadWebMcpPublication } from "./webMcp";
 import { browserToolSources } from "./publishedTools";
 import { publishInspectorContract, type InspectorContract } from "../shared";
 import {
-  appProcessToolsBySession,
   getStartedAyme,
   subscribeToStartedAyme,
-  createAppProcessTools,
   createAymeOn,
   serverKey,
   type Ayme,
-  type AppProcessTools,
   type AymeOptions,
   type SessionTarget,
 } from "./session";
@@ -75,8 +70,8 @@ function browserTarget(options: AymeOptions): SessionTarget {
       probeRegisteredPomMembers: () => probeRegisteredPomMembers(),
     }),
     navigation: () => documentNavigation(document),
-    peeks: () =>
-      typeof window === "undefined" ? processPeeks : peeksOf(key()),
+    // A server renders without Peeks: they reach the Inspector only.
+    peeks: () => (typeof window === "undefined" ? undefined : peeksOf(key())),
     toolSources: browserToolSources,
     claim: (page) => createAymeRuntime(page),
     // A filter is registered here, by this synchronous start: the browser's
@@ -129,21 +124,10 @@ function browserTarget(options: AymeOptions): SessionTarget {
     surfaces: {
       loadWebMcpPublication,
       loadInspector,
-      loadAgentConnection,
-      loadProcessConnection,
       publishInspectorContract: () =>
         publishInspectorContract(runtimeInspectorContract()),
-      loadExternalInspectorPort,
     },
   };
-}
-
-/** The App Process tools of the session `ayme`, for the Inspector. */
-export function getAppProcessTools(ayme: Ayme): AppProcessTools {
-  return (
-    appProcessToolsBySession.get(ayme) ??
-    createAppProcessTools(() => runLogOf(pageOfDocument(document))).tools
-  );
 }
 
 let served: InspectorContract | undefined;
@@ -156,17 +140,5 @@ export function runtimeInspectorContract(): InspectorContract {
   return (served ??= createDocumentInspectorContract({
     started: getStartedAyme,
     subscribeToStarted: subscribeToStartedAyme,
-    appProcessTools: getAppProcessTools,
   }));
-}
-
-// The contract an Inspector outside the page reads, loaded on demand: only
-// a session with the external placement carries it.
-async function loadExternalInspectorPort() {
-  const { externalInspectorPort } = await import("./externalInspector");
-  return externalInspectorPort({
-    started: getStartedAyme,
-    subscribeToStarted: subscribeToStartedAyme,
-    appProcessTools: getAppProcessTools,
-  });
 }

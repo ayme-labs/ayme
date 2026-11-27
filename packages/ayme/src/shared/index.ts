@@ -74,8 +74,6 @@ export {
   publishInspectorContract,
 } from "./inspectorSlot";
 export type {
-  AgentConnectionStatus,
-  AppProcessTool,
   InspectorCommandResult,
   InspectorContract,
   InspectorEvent,

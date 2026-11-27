@@ -146,20 +146,18 @@ describe("Runs", () => {
         aRun({ by: "inspector" }),
         aRun({ by: "app" }),
         aRun({ by: "webmcp" }),
-        aRun({ by: "ayme-mcp" }),
         aRun({ by: "support-assistant" }),
       ],
     });
 
-    await expect.poll(() => runsView.runs.count()).toBe(5);
+    await expect.poll(() => runsView.runs.count()).toBe(4);
     const callers = [];
-    for (let index = 0; index < 5; index++)
+    for (let index = 0; index < 4; index++)
       callers.push(await runsView.run(index).caller());
     expect(callers).toEqual([
       { icon: "Run by you from the Inspector" },
       { icon: "Run by the app" },
       { icon: "Run by an agent through WebMCP" },
-      { icon: "Run by an agent through ayme MCP" },
       { text: "support-assistant" },
     ]);
   });
@@ -258,7 +256,7 @@ describe("Runs", () => {
     renderRuns({
       runs: [
         aRun({ by: "inspector" }),
-        aRun({ by: "ayme-mcp", earlierDocument: true }),
+        aRun({ by: "webmcp", earlierDocument: true }),
       ],
     });
 
@@ -266,7 +264,7 @@ describe("Runs", () => {
     expect(await runsView.run(0).earlierPage.count()).toBe(0);
     expect(await runsView.run(1).earlierPage.count()).toBe(1);
     expect(await runsView.run(1).caller()).toEqual({
-      icon: "Run by an agent through ayme MCP",
+      icon: "Run by an agent through WebMCP",
     });
   });
 
@@ -290,7 +288,7 @@ describe("Runs", () => {
       runs: [
         aRun({
           toolName: "goal",
-          by: "ayme-mcp",
+          by: "webmcp",
           status: "running",
           children: [
             aChildRun({ interactions: [fillText, clickAdd] }),

@@ -4,8 +4,7 @@ import { requestDemoMode } from "../runs/infrastructure";
 import { pageOfDocument } from "../page-state/infrastructure";
 import { getPomDefinitionText } from "../tools/infrastructure";
 import type { InspectorContract } from "../shared";
-import type { AppProcessTools, Ayme } from "./runtime";
-import { getAgentConnectionStatus } from "./agentConnectionStatus";
+import type { Ayme } from "./runtime";
 import { createHighlights } from "./inspectorHighlights";
 import { createInspectorContract } from "./inspectorContract";
 import {
@@ -30,24 +29,19 @@ function askForDemoMode(on: boolean) {
 export type DocumentRuntime = {
   started(): Ayme | undefined;
   subscribeToStarted(listener: () => void): () => void;
-  appProcessTools(session: Ayme): AppProcessTools;
 };
 
 /**
  * The Inspector contract of the document's started session, over the
- * runtime's stores: what an Inspector in the page calls directly, and what
- * the Agent Connection relays to one outside it.
+ * runtime's stores: what an Inspector in the page calls directly.
  */
 export function createDocumentInspectorContract({
   started,
   subscribeToStarted,
-  appProcessTools,
 }: DocumentRuntime): InspectorContract {
   return createInspectorContract({
     started,
     subscribeToStarted: (listener) => subscribeToStarted(() => listener()),
-    appProcessTools,
-    connectionStatus: getAgentConnectionStatus,
     registry: {
       pageObjects: registeredPageObjects,
       pomDefinitions: registeredPomDefinitions,

@@ -83,7 +83,6 @@ const PACKED_PACKAGES = [
   "ayme",
   "cli",
   "inspector",
-  "mcp",
   "webmcp",
   "vue",
   "react",
@@ -516,7 +515,6 @@ it("the Playwright peer is optional in ayme and required by the inspector", () =
     "svelte",
     "angular",
     "inspector",
-    "mcp",
     "unplugin-ayme",
     "webmcp",
   ]) {
@@ -549,9 +547,6 @@ it("no packed package carries test support (ADR-0057)", () => {
       name
     ).toEqual([]);
   }
-  expect(
-    readManifest(packed["@ayme-dev/mcp"]!.dir).dependencies
-  ).not.toHaveProperty("@modelcontextprotocol/client");
 });
 
 it("a package with test support publishes its exports without the testing entry", () => {
@@ -1244,16 +1239,6 @@ it(
     }
     expect(hits, "private package references in dist artifacts").toEqual([]);
 
-    // ── Assert: declarations never import the optional mcp ──────────
-    const mcpImports = textualFiles.filter(
-      (relPath) =>
-        relPath.endsWith(".d.mts") &&
-        fs
-          .readFileSync(path.join(distDir, relPath), "utf-8")
-          .includes('from "@ayme-dev/mcp')
-    );
-    expect(mcpImports, "declarations importing @ayme-dev/mcp").toEqual([]);
-
     // ── Assert: consumer can install and import ─────────────────────
     const consumerDir = path.join(tmp, "webmcp-consumer");
     fs.mkdirSync(consumerDir, { recursive: true });
@@ -1308,7 +1293,6 @@ it(
       "@ayme-dev/react",
       "@ayme-dev/unplugin-ayme",
       "@ayme-dev/inspector",
-      "@ayme-dev/mcp",
     ]);
     fs.writeFileSync(
       path.join(consumer, "package.json"),
@@ -1389,7 +1373,7 @@ function Projects() {
   return <button onClick={() => void pom.createProject('x')}>New project</button>;
 }
 createRoot(document.getElementById('root')!).render(
-  <AymeProvider inspector={import.meta.env.DEV} agentConnection={import.meta.env.DEV}>
+  <AymeProvider inspector={import.meta.env.DEV}>
     <Projects />
   </AymeProvider>
 );

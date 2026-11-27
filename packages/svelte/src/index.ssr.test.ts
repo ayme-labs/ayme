@@ -1,6 +1,6 @@
 // Server tests of the owner and consumer API in Node. Test names cite the rows
 // of the behaviour contract in docs/framework-integrations.md.
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createAyme } from "@ayme-dev/ayme";
 import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
 
@@ -22,14 +22,6 @@ import type { UseAymeOptions, UseAymeResult } from "./index";
 
 type PageFactory = NonNullable<UseAymeOptions["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
-
-// The server's own session holds the process as its App Process, as in a
-// dev server with Peeks: a render whose session claimed it too would throw.
-let stopAppProcess = () => {};
-beforeEach(() => {
-  stopAppProcess = createAyme().start();
-});
-afterEach(() => stopAppProcess());
 
 const pageFactory = vi.fn<PageFactory>(() => {
   throw new Error("The page factory must not run on the server.");
@@ -111,7 +103,7 @@ it("C7: requires an owner for a Page Object", () => {
 it("C12: adds no Peek instance during server rendering", () => {
   const peeks: unknown[] = [];
   void Owner.render({
-    options: { agentConnection: true },
+    options: { inspector: true },
     onInit: ({ ayme }) => {
       vi.spyOn(ayme, "peek").mockImplementation((...args) => {
         peeks.push(args);

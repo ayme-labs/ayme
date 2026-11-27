@@ -49,12 +49,4 @@ describe("listTools", () => {
   it("lists nothing when no tool is live", () => {
     expect(listTools([])).toEqual([]);
   });
-
-  it("lists the page's Peek tools before the App Processes'", () => {
-    const jobs: LiveTool = { ...tool("peek.node.jobs", "peek"), side: "node" };
-
-    const [peeks] = listTools([jobs, tool("peek.cart", "peek")]);
-
-    expect(names(peeks!.tools)).toEqual(["peek.cart", "peek.node.jobs"]);
-  });
 });

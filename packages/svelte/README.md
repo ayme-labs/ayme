@@ -29,7 +29,7 @@ Start ayme in the root `+layout.svelte`, or `App.svelte` without SvelteKit:
 
 > **Experimental:** this may change in any release. See [Experimental APIs](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/experimental-apis.md).
 
-While a coding agent or the Inspector is connected, `peek(read, name, id?)` lets the agent read a component's state through the Peek Tool `peek.<name>`:
+While the Inspector is on, `peek(read, name, id?)` lets you read a component's state in the Inspector's Tools lens, through the Peek Tool `peek.<name>`:
 
 ```svelte
 <script lang="ts">
@@ -42,7 +42,7 @@ While a coding agent or the Inspector is connected, `peek(read, name, id?)` lets
 <button onclick={() => (count += 1)}>{count}</button>
 ```
 
-Call it during component initialisation, beneath a `useAyme` owner. It takes a getter, because the component's script runs once: the agent reads what `read` returns when it asks. Each mounted component is one instance of the Peek, under the `id` you pass or one of its own. The instance is added in `onMount`, so server rendering adds none, and it is removed when the component is destroyed. `peek` calls [`ayme.peek`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek), so it does nothing unless the owner has `agentConnection` or `inspector` on.
+Call it during component initialisation, beneath a `useAyme` owner. It takes a getter, because the component's script runs once: the Inspector reads what `read` returns when you run the tool. Each mounted component is one instance of the Peek, under the `id` you pass or one of its own. The instance is added in `onMount`, so server rendering adds none, and it is removed when the component is destroyed. `peek` calls [`ayme.peek`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek), so it does nothing unless the owner has `inspector` on.
 
 ## Documentation
 

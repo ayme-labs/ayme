@@ -1,5 +1,5 @@
-// How the agent channels, WebMCP publication, `ayme mcp` and a Session's
-// `ayme` commands, run a tool: each builds its source with
+// How the agent channels, WebMCP publication and a Session's `ayme`
+// commands, run a tool: each builds its source with
 // `pageObjectToolSource` over its own Caller, so a Page Object Tool's answer
 // cannot differ between them.
 // `ayme.tools.run` keeps answering the full record, which application code,

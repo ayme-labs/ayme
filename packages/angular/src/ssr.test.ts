@@ -9,9 +9,9 @@ import {
   provideServerRendering,
   renderApplication,
 } from "@angular/platform-server";
-import { createAyme, type Ayme } from "@ayme-dev/ayme";
+import type { Ayme } from "@ayme-dev/ayme";
 import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const { sessions } = vi.hoisted(() => ({ sessions: [] as Ayme[] }));
 vi.mock("@ayme-dev/ayme", async (importOriginal) => {
@@ -35,14 +35,6 @@ import {
 } from "./index";
 
 type PageFactory = NonNullable<AymeOptions["pageFactory"]>;
-// The server's own session holds the process as its App Process, as in a
-// dev server with Peeks: a render whose session claimed it too would throw.
-let stopAppProcess = () => {};
-beforeEach(() => {
-  stopAppProcess = createAyme().start();
-});
-afterEach(() => stopAppProcess());
-
 // Angular 20 passes the server's BootstrapContext on to bootstrapApplication;
 // Angular 19 calls the bootstrap function without one.
 const bootstrap = bootstrapApplication as (
@@ -92,11 +84,11 @@ describe.each([false, true])(
               {
                 providers: [
                   provideServerRendering(),
-                  // agentConnection on, so ayme.peek would add the instance.
+                  // inspector on, so ayme.peek would add the instance.
                   provideAyme({
                     pageFactory,
                     webMCP: { enabled },
-                    agentConnection: true,
+                    inspector: true,
                   }),
                 ],
               },
