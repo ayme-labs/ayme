@@ -7,6 +7,9 @@ type Nothing = Readonly<Record<never, never>>;
 export type InspectorRequest =
   /** `ayme inspect`: where the Session serves its Inspector window. */
   | { readonly window: Nothing }
+  /** `ayme mcp`: the socket the Inspector an Agent App shows in its chat
+   * connects to, with the token that admits it (ADR-0072). */
+  | { readonly agentApp: Nothing }
   /** One call of the window on the Inspector's contract with the runtime,
    * on the Tab the Session works on: `method` names one of the contract's
    * methods, and `params` is its argument, plain data the Session does not
@@ -51,6 +54,23 @@ export const windowAnswer = (address: string, name: string): SessionAnswer => ({
   text: `The Inspector of the Session ${name} is at ${address}.`,
   data: { address },
 });
+
+/** The answer to `ayme mcp` of the Session named `name`, whose window
+ * admits the view in an Agent App's chat at `socket`. Its sentence, which
+ * the model reads, holds no token. */
+export const agentAppAnswer = (
+  socket: string,
+  name: string
+): SessionAnswer => ({
+  ok: true,
+  text: `The Inspector of the Session ${name} shows in this chat when your Agent App shows MCP Apps. ${commandLine(name, "inspect")} opens it in a browser window.`,
+  data: { socket },
+});
+
+/** The Caller ayme's runtime names a Run from the Inspector with:
+ * `callers.inspector` of `@ayme-dev/ayme`, whose type this package does not
+ * import, since it runs the project's own ayme. */
+export const INSPECTOR_CALLER = "inspector";
 
 /** The answer to `ayme inspect` once it opened the window of the Session
  * named `name` at `address` in the person's default browser. */
