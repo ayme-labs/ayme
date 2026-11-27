@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { chromium, type Browser } from "@playwright/test";
+import { chromium, type Browser, type Page } from "@playwright/test";
 import {
   executePublishedTool,
   recordPublishedTools,
@@ -29,11 +29,21 @@ const addressIn = (stdout: string) =>
 
 /** The browser automation, connected to the browser at `address`; the
  * connection closes with the test. */
-async function automation(address: string): Promise<Browser> {
-  const browser = await chromium.connectOverCDP(address);
+async function automation(
+  address: string,
+  options?: { noDefaults: true }
+): Promise<Browser> {
+  const browser = await chromium.connectOverCDP(address, options);
   cleanups.push(() => browser.close());
   return browser;
 }
+
+/** How a page reads whether it is in front. */
+const inFront = (page: Page) =>
+  page.evaluate(() => ({
+    focused: document.hasFocus(),
+    visibility: document.visibilityState,
+  }));
 
 /** The first line of a listing: the Tab it describes. */
 const tabLine = (stdout: string) => stdout.split("\n")[0];
@@ -182,12 +192,32 @@ async function bareChromium(url: string): Promise<string> {
   return `http://127.0.0.1:${readFileSync(portFile, "utf8").split("\n")[0]}`;
 }
 
-test("a Run whose action opens a tab, which hides the Run's own, finishes, on a joined browser without focus emulation of its own", async ({
+test("a Run whose action opens a tab, which hides the Run's own, finishes, on a joined browser without focus emulation of its own; after detach, a background Tab reads as it did before attach", async ({
   ayme,
   baseURL,
 }) => {
   const address = await bareChromium(`${baseURL}/tabs.html`);
+  // Without Playwright's defaults, so it turns no focus emulation on itself.
+  const [context] = (
+    await automation(address, { noDefaults: true })
+  ).contexts();
+  const [tabs] = context!.pages();
+  const background = await context!.newPage();
+  await background.goto(`${baseURL}/sign-in.html`);
+  await tabs!.bringToFront();
+  const before = await inFront(background);
+  expect(before).toEqual({ focused: false, visibility: "hidden" });
+
   expect(await ayme("attach", `--cdp=${address}`)).toMatchObject({ code: 0 });
+  // The Session works on the background Tab, which turns focus emulation on
+  // for it; the Tab in front stays the most recently active one.
+  expect(
+    await ayme("page-objects", `--tab=${baseURL}/sign-in.html`)
+  ).toMatchObject({ code: 0 });
+  expect(await inFront(background)).toEqual({
+    focused: true,
+    visibility: "visible",
+  });
 
   expect(await ayme("call", "TabsPage.openTabThenMark")).toEqual({
     code: 0,
@@ -200,6 +230,9 @@ test("a Run whose action opens a tab, which hides the Run's own, finishes, on a 
     `Tab: Without ayme (${baseURL}/plain.html)`
   );
   expect(await ayme("detach")).toMatchObject({ code: 0 });
+
+  // Chromium let go of the focus emulation with the Session's connection.
+  expect(await inFront(background)).toEqual(before);
 });
 
 test("on an app that ships ayme, the page's own runtime and the Session are two Hosts, each with Page Object Ids of its own", async ({
