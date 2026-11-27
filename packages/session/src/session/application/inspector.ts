@@ -4,7 +4,9 @@
 import { Effect, Fiber, Option, Queue, Stream } from "effect";
 
 import {
+  agentAppAnswer,
   contractAnswer,
+  INSPECTOR_CALLER,
   failed,
   NO_WINDOW,
   showsWindow,
@@ -40,15 +42,18 @@ export const withoutWindow = (
       };
 
 /** Answers `request` of the Session named `name`, whose window is served
- * at `window`, on the Tab `chosen` gives: the Tab the Session works on. */
+ * at `window` and admits an Agent App's view at `agentApp`, on the Tab
+ * `chosen` gives: the Tab the Session works on. */
 export const answerInspector = (
   request: InspectorRequest,
   {
     window,
+    agentApp,
     name,
     chosen,
   }: {
     readonly window: string | undefined;
+    readonly agentApp?: string | undefined;
     readonly name: string;
     readonly chosen: Effect.Effect<HostedTab, Error>;
   }
@@ -57,13 +62,31 @@ export const answerInspector = (
     return Effect.succeed(
       window === undefined ? failed(NO_WINDOW) : windowAnswer(window, name)
     );
+  if ("agentApp" in request)
+    return Effect.succeed(
+      window === undefined || agentApp === undefined
+        ? failed(NO_WINDOW)
+        : agentAppAnswer(agentApp, name)
+    );
   const { method, params } = request.contract;
   return chosen.pipe(
-    Effect.flatMap((hosted) => hosted.inspector.request(method, params)),
+    Effect.flatMap((hosted) =>
+      hosted.inspector.request(
+        method,
+        method === "runTool" ? asInspectorRun(params) : params
+      )
+    ),
     Effect.map(contractAnswer),
     Effect.catch((error) => Effect.succeed(failed(error.message)))
   );
 };
+
+/** A Run's `params` with the Inspector as its Caller: a Run over the
+ * Inspector's socket is the Inspector's, whatever the window names. */
+const asInspectorRun = (params: unknown) => ({
+  ...(typeof params === "object" && params !== null ? params : {}),
+  by: INSPECTOR_CALLER,
+});
 
 /**
  * What the windows of the Session named `name` are told, for one window

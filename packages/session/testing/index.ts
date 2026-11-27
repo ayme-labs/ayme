@@ -179,6 +179,8 @@ export type ScriptedSessionOptions = SessionBrowserRequest &
     /** Where its process serves the Session's Inspector window; none when
      * not given. */
     readonly inspector?: string;
+    /** The socket of that window an Agent App's view connects to. */
+    readonly agentApp?: string;
   };
 
 /** A Tab of the scripted browser, as the Session reaches it and as a test
@@ -396,7 +398,14 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
 export async function startScriptedSession(
   options: ScriptedSessionOptions
 ): Promise<{ session: ScriptedSession; browser: ScriptedBrowser }> {
-  const { held, heldBuild, name = "default", inspector, ...request } = options;
+  const {
+    held,
+    heldBuild,
+    name = "default",
+    inspector,
+    agentApp,
+    ...request
+  } = options;
   const { layer, browser } = scriptedBrowser({
     ...(held ? { held } : {}),
     ...(heldBuild ? { heldBuild } : {}),
@@ -404,11 +413,10 @@ export async function startScriptedSession(
   const scope = Effect.runSync(Scope.make());
   onTestFinished(() => Effect.runPromise(Scope.close(scope, Exit.void)));
   const session = await Effect.runPromise(
-    openSession(
-      request,
-      name,
-      inspector === undefined ? {} : { inspector }
-    ).pipe(Effect.provide(layer), Scope.provide(scope))
+    openSession(request, name, {
+      ...(inspector === undefined ? {} : { inspector }),
+      ...(agentApp === undefined ? {} : { agentApp }),
+    }).pipe(Effect.provide(layer), Scope.provide(scope))
   );
   const run = <A>(effect: Effect.Effect<A>) => Effect.runPromise(effect);
 

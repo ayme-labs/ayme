@@ -30,6 +30,8 @@ export {
 } from "./listing";
 export {
   contractAnswer,
+  agentAppAnswer,
+  INSPECTOR_CALLER,
   NO_WINDOW,
   showsWindow,
   windowAnswer,

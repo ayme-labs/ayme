@@ -47,9 +47,12 @@ test.afterEach(async () => {
 const addressIn = (stdout: string) =>
   /at (http:\/\/127\.0\.0\.1:\d+)\./.exec(stdout)?.[1];
 
-/** The window's address `ayme inspect` printed. */
+/** The window's address `ayme inspect` printed, with the Session's token
+ * in its fragment. */
 const windowIn = (stdout: string) =>
-  /at (http:\/\/127\.0\.0\.1:\d+\/inspector)\.$/m.exec(stdout)?.[1];
+  /at (http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+)\.$/m.exec(
+    stdout
+  )?.[1];
 
 /** The browser automation, connected to the Session's browser that
  * `ayme open` printed the address of; the connection closes with the
@@ -118,7 +121,7 @@ test("with BROWSER=none prints where the window is and opens nothing", async ({
   expect(await inspect("none")).toEqual({
     code: 0,
     stdout: expect.stringMatching(
-      /^The Inspector of the Session default is at http:\/\/127\.0\.0\.1:\d+\/inspector\.\n$/
+      /^The Inspector of the Session default is at http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+\.\n$/
     ),
     stderr: "",
   });

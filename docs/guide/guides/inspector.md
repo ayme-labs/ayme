@@ -55,6 +55,31 @@ The window is served by the Session's own process and opens outside the Session'
 - `-s=<name>` opens the Inspector of the Session of that name, as for the other commands.
 - `BROWSER=none ayme inspect` only prints the window's address. Another `BROWSER` names the program that opens it.
 
+### In your Agent App's chat: `ayme mcp`
+
+An Agent App that shows MCP Apps, such as Cursor, Claude Desktop or T3 Code, shows the same Inspector in its chat. Register `ayme mcp` in your project's MCP configuration, such as `.mcp.json` for Claude Code, and run it [as the other commands](connect-an-agent.md#connect-ayme-and-the-browser-automation-to-one-browser):
+
+```json
+{
+  "mcpServers": {
+    "ayme": {
+      "command": "npx",
+      "args": ["ayme", "mcp"]
+    }
+  }
+}
+```
+
+Then ask the agent to show you the Inspector. It calls `ayme_inspect`, and the Agent App shows the Inspector of the Session under that call, about 600 pixels high, with a fullscreen button where the Agent App offers fullscreen.
+
+- `ayme_inspect` is the only tool `ayme mcp` offers, and it reads nothing from the page and acts on nothing. The agent reaches your Page Object Tools through `ayme page-objects`, `ayme tools` and `ayme call` alone.
+- The Inspector in the chat works as the window of `ayme inspect`: the same lenses and tab, and a tool you run from it is a Run by you from the Inspector.
+- `ayme mcp` can start before any Session: each call of `ayme_inspect` looks for the Session then. With none open, the call and the Inspector in the chat say how to start one; start it, and ask for the Inspector again.
+- `-s=<name>` in the registration's `args`, or `AYME_SESSION` in its `env`, picks the Session of that name.
+- When the Session ends, the Inspector in the chat says so and connects no more. Start a Session and ask for the Inspector again.
+- The page the Agent App shows holds the key that lets it reach the Session, so whoever can read that page can use the Session's Inspector until the Session ends.
+- An Agent App that does not show MCP Apps gets only a sentence from `ayme_inspect`. Run `ayme inspect` for a window.
+
 ### For a page that ships ayme
 
 The panel of a page that runs ayme itself can run outside the page too. Pass `inspector: { placement: "external" }`. The default placement is `"inline"`, which `true` and `{ demo }` also give. With `"external"`, the page mounts no panel. It serves the Inspector over its [Agent Connection](connect-an-agent.md) instead, and the option turns that connection on. So a coding agent's `ayme mcp` has to be running and paired with the tab:
@@ -65,13 +90,10 @@ useAyme({ inspector: { placement: "external" } });
 
 `ayme mcp` serves the Inspector on the server it already runs, with no other server or port. Ask the agent for `ayme_inspect`; it gives the URL, such as `http://127.0.0.1:9350/inspector`. Open it in a browser window beside the app. It shows the same lenses for the page connected to that server, follows the page across reloads, and works while `ayme mcp` runs. Highlighting and picking work across the two windows. A tool's ref field lets you pick an element by pointing at the page. The highlight and the pick happen in the app's tab.
 
-An Agent App that shows MCP Apps, such as Cursor, Claude Desktop or T3 Code, shows the same Inspector in the chat when the agent calls `ayme_inspect`; other agents get the URL. It opens about 600 pixels high, and its header has a fullscreen button where the Agent App offers fullscreen. A run from it acts on the page paired with that agent's `ayme mcp`.
-
 - Install `@ayme-dev/inspector` where `ayme mcp` runs, as in the first section. Without it, `ayme_inspect` says to install it.
 - The page keeps no Inspector code for it; the window loads the Inspector from the server.
 - The window shows the page's host as "page", since it does not know the page's address.
 - A window with no page to show says so: pair a page with that `ayme mcp`, and start the page's session with `placement: "external"`. A page on the default inline placement serves nothing to it.
-- The Inspector in a chat works while the `ayme mcp` that served it runs. After that server restarts, it no longer reaches the page until the agent calls `ayme_inspect` again.
 
 ## Demo mode
 
@@ -123,6 +145,8 @@ The pill after the panel's title says whether a coding agent is connected to the
 | No agent         | `agentConnection` is off                                                      |
 
 Open it for both ways agents reach the page, the Agent Connection and WebMCP: each says whether it is on and working, why not, and the option that turns it on. A mark on the pill's corner means WebMCP is on but cannot publish.
+
+A Session's Inspector, in a window or in a chat, has no pill: no agent reaches a Session through the Agent Connection or WebMCP.
 
 It paints above the page's own UI; only the browser's top layer, such as modal dialogs, popovers and fullscreen, covers it. Outside the panel and the collapsed logo, the page keeps its pointer. When an agent's pointer action targets something under the panel, the action passes through it.
 
