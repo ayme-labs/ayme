@@ -74,17 +74,11 @@ End with `ayme detach`, which leaves the browser running.
 
 ## The Session
 
-- `ayme list` lists the Sessions of the project's folder. When a command
-  answers that no Session is open, start one as above.
+- When a command answers that no Session is open, start one as above.
+  `ayme list` lists the Sessions of the project's folder.
 - `-s=<name>`, or `AYME_SESSION`, names a Session, so that two agents in one
   folder each have their own. Every command of that Session takes the same
-  name. Your automation needs a session of its own too, as
-  [Sessions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#sessions)
-  says.
-- ayme works on the browser's most recently active Tab. It follows the Tab
-  your automation switches to or opens. The first line of `ayme page-objects`
-  and `ayme tools` names that Tab.
-- `ayme detach` ends a Session started with `ayme attach` and leaves the
-  browser running. `ayme close` ends any Session, and closes the browser only
-  when `ayme open` opened it.
-- A Session ends when its browser goes away. Start a new one, as above.
+  name, and your automation needs a session of its own too.
+- [Sessions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#sessions)
+  says how to name your automation's session, which Tab ayme works on, and
+  how a Session ends.

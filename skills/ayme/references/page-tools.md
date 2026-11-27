@@ -5,18 +5,9 @@ The commands are written `ayme <command>`; run them as
 prints its answer and exits. An error goes to standard error with exit
 code 1. Add `--json` for a Session's answer as JSON.
 
-## Prefer the Page Object Tools
-
-Use a Page Object Tool whenever one does the step: one call can do what
-several clicks and keystrokes would. Each is named after its class and
-action, such as `ProjectRow.remove`, across all instances of the class.
-Drive the rest of the page with your browser automation.
-
-- On each new screen, starting with the first one, run `ayme page-objects`
-  before you take a snapshot. When a Page Object Tool does the next step,
-  call it; take a snapshot only when none does.
-- After a navigation, run `ayme page-objects` again. If the step is still to
-  do, call its tool again, with the id the new listing shows.
+A Page Object Tool is named after its class and action, such as
+`ProjectRow.remove`. Drive the rest of the page with your browser
+automation.
 
 ## Read the screen
 
@@ -38,8 +29,9 @@ ProjectsPage
 This screen has 3 Page Object Tools: ayme -s=default tools lists them with their parameters.
 ```
 
-The first line names the Tab ayme works on: the browser's most recently
-active tab. `--tab=<url>` reads another Tab, by the URL that line shows.
+The first line names the Tab ayme works on;
+[Sessions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#sessions)
+says how to read another.
 
 `ayme tools` lists each Page Object Tool of the screen with its parameters,
 and marks a tool that cannot run now: `ProjectRow.remove (unavailable: …)`
@@ -96,5 +88,3 @@ then run `ayme page-objects`.
 - A failed Run answers with what failed, followed by `changes:` when the
   Page Object Tree changed while it ran. It shows how far the action got
   before you call it again.
-- When no Tab is open, a command says so. Open one with your browser
-  automation.
