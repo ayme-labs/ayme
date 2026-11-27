@@ -1,5 +1,6 @@
 import {
   Cause,
+  Context,
   Deferred,
   Effect,
   Exit,
@@ -412,7 +413,11 @@ function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
   const inTurn = <A, E>(work: Effect.Effect<A, E>) =>
     Semaphore.withPermit(
       turn,
-      ending.pipe(Effect.flatMap((ends) => (ends ? Effect.never : work)))
+      Effect.gen(function* () {
+        if (yield* ending) return yield* Effect.never;
+        if ((yield* Answered).answered) return yield* Effect.interrupt;
+        return yield* work;
+      })
     );
   return {
     listing: inTurn(hosted.listing),
@@ -429,6 +434,14 @@ function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
   };
 }
 
+/** Whether the Session already answered the request whose work this is:
+ * work still waiting for the Tab's turn then never starts, since its Caller
+ * may have run the command again meanwhile. */
+const Answered = Context.Reference<{ answered: boolean }>(
+  "@ayme-dev/session/session/Answered",
+  { defaultValue: () => ({ answered: false }) }
+);
+
 const isOpen = (now: TabDialog): now is { readonly open: Dialog } =>
   typeof now === "object";
 
@@ -439,7 +452,8 @@ const isOpen = (now: TabDialog): now is { readonly open: Dialog } =>
  * turn or run. One that arrives while a dialog opens waits until it counts
  * or closes. What a command was answered for goes on in `scope` and keeps
  * the Tab's turn until it ends, so the next Run starts only once a stopped
- * action has ended; nothing reads its outcome. The answers name the Tab by
+ * action has ended; nothing reads its outcome. One still waiting for the
+ * turn never starts. The answers name the Tab by
  * `tab`'s URL, since its title is the page's, which the dialog holds.
  */
 function atDialogs(
@@ -456,13 +470,19 @@ function atDialogs(
       const now = yield* Stream.runHead(counted);
       if (Option.isSome(now) && isOpen(now.value))
         return yield* Effect.fail(refused(now.value.open));
-      const working = yield* Effect.forkIn(work, scope);
+      const request = { answered: false };
+      const working = yield* Effect.forkIn(
+        Effect.provideService(work, Answered, request),
+        scope
+      );
       const opened = counted.pipe(
         Stream.filter(isOpen),
         Stream.runHead,
         Effect.flatMap((open) =>
           Option.isSome(open)
-            ? Effect.fail(refused(open.value.open))
+            ? Effect.sync(() => (request.answered = true)).pipe(
+                Effect.andThen(Effect.fail(refused(open.value.open)))
+              )
             : Effect.never
         )
       );

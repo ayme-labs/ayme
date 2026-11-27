@@ -103,6 +103,8 @@ export interface ScriptedTab {
   /** Every read of the Tab's page waits, as behind a presence predicate
    * that never resolves, until the test shows a listing again. */
   holdReads(): void;
+  /** How many listings of the Tab's page the Session read. */
+  readonly listingsRead: number;
   /** Every Run started on the Tab, in order. */
   readonly runs: readonly { readonly tool: string; readonly input: unknown }[];
   /** How each Run on the Tab ends from now on: as `answer` resolves, or
@@ -205,6 +207,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   };
   let shownUrl = url;
   const runs: { tool: string; input: unknown }[] = [];
+  let listingsRead = 0;
   let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
     Promise.resolve({ settled: true });
   let given: TabIds | undefined;
@@ -219,13 +222,14 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   const setDialog = (now: TabDialog) =>
     Effect.runSync(SubscriptionRef.set(dialog, now));
   const hosted: HostedTab = {
-    listing: Effect.suspend(() =>
-      shown === "held"
+    listing: Effect.suspend(() => {
+      listingsRead += 1;
+      return shown === "held"
         ? Effect.never
         : shown instanceof TabReadError
           ? Effect.fail(shown)
-          : Effect.succeed(shown)
-    ),
+          : Effect.succeed(shown);
+    }),
     call: (tool: string, input: unknown) =>
       Effect.tryPromise({
         try: () => {
@@ -286,6 +290,9 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       },
       failReads: (reason) => (shown = new TabReadError(reason)),
       holdReads: () => (shown = "held"),
+      get listingsRead() {
+        return listingsRead;
+      },
       runs,
       answerRuns: (answer) => (answerRun = answer),
       give: (id, className) => {
@@ -416,6 +423,9 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       },
       get inspectorListeners() {
         return first.control.inspectorListeners;
+      },
+      get listingsRead() {
+        return first.control.listingsRead;
       },
     },
   };

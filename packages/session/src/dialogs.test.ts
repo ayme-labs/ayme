@@ -34,6 +34,16 @@ const shop = {
 const remove = { call: { tool: "Basket.remove", input: { id: "po1" } } };
 const readHeading = { call: { tool: "ShopPage.readHeading", input: {} } };
 
+/** Where the scripted Session's process serves its Inspector window. */
+const WINDOW = "http://127.0.0.1:4444/inspector";
+
+/** A call of the window on the contract of the Session's Tab. */
+const contract = (method: string, params?: unknown) => ({
+  inspector: {
+    contract: { method, ...(params === undefined ? {} : { params }) },
+  },
+});
+
 /** Each Run on `tab` waits until the test ends its action with the function
  * the returned `end` holds: with what it returned, or with what it threw. */
 function holdRuns(tab: ScriptedTab) {
@@ -186,13 +196,19 @@ it("a command that arrives while a dialog opens waits for the 100 ms: it is answ
   expect(browser.runs).toEqual([readHeading.call]);
 });
 
-it("commands waiting for the Tab's turn when a dialog counts are answered at once, and their Runs never start", async () => {
-  const { session, browser } = await startScriptedSession(opening);
-  holdRuns(browser);
+it("commands waiting for the Tab's turn when a dialog counts are answered at once, and never start, also once the stopped action has ended", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...opening,
+    inspector: WINDOW,
+  });
+  const runs = holdRuns(browser);
   const first = session.ask(remove);
   await pending(first);
   const waiting = session.ask(readHeading);
   const listing = session.ask({ pageObjects: {} });
+  const fromWindow = session.ask(
+    contract("runTool", { name: "Basket.clear", input: {}, by: "inspector" })
+  );
   expect(await pending(waiting)).toBe(true);
 
   dialogOpens(browser);
@@ -203,7 +219,16 @@ it("commands waiting for the Tab's turn when a dialog counts are answered at onc
     ok: false,
     text: `Tab: about:blank\n${DIALOG_OPEN}`,
   });
-  expect(browser.runs).toEqual([remove.call]);
+  expect(await fromWindow).toEqual({ ok: false, text: AT_RUN });
+
+  browser.closeDialog();
+  browser.answerRuns(() => Promise.resolve({ settled: true }));
+  runs.end(new RunError("RunStoppedError: the Run stopped at a dialog."));
+  expect(await session.ask(readHeading)).toMatchObject({ ok: true });
+
+  expect(browser.runs).toEqual([remove.call, readHeading.call]);
+  expect(browser.listingsRead).toBe(0);
+  expect(browser.inspectorCalls).toEqual([]);
 });
 
 it("a listing under way when a dialog opens outside a Run is answered that the dialog is open once it counts", async () => {
@@ -270,16 +295,6 @@ it("ayme close while a stopped action holds the Tab's turn ends the Session at o
     text: "The Session was closed before it answered this command.",
   });
   expect(browser.runs).toEqual([remove.call]);
-});
-
-/** Where the scripted Session's process serves its Inspector window. */
-const WINDOW = "http://127.0.0.1:4444/inspector";
-
-/** A call of the window on the contract of the Session's Tab. */
-const contract = (method: string, params?: unknown) => ({
-  inspector: {
-    contract: { method, ...(params === undefined ? {} : { params }) },
-  },
 });
 
 it("a Run from the Inspector window ends at a dialog with the same sentence, and a window's read while one is open is answered at once", async () => {
