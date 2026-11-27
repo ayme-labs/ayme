@@ -219,7 +219,13 @@ function accept(ws: WebSocket, session: Pick<Session, "ask" | "events">) {
       })
     )
   );
-  ws.once("close", () => void Effect.runFork(Fiber.interrupt(hearing)));
+  // The reads it asked for are released with it; a Run it started goes on,
+  // as one an agent started does.
+  const reads = new Set<Fiber.Fiber<void>>();
+  ws.once("close", () => {
+    for (const fiber of [hearing, ...reads])
+      void Effect.runFork(Fiber.interrupt(fiber));
+  });
   ws.on("message", (data) => {
     const request = requestIn(data);
     if (!request) return;
@@ -228,18 +234,24 @@ function accept(ws: WebSocket, session: Pick<Session, "ask" | "events">) {
       listening = method === "subscribe";
       return reply({ id, result: null });
     }
-    void Effect.runPromise(
-      session.ask({
+    const answering = session
+      .ask({
         inspector: {
           contract: { method, params, ...(tab !== undefined && { tab }) },
         },
       })
-    ).then((answer) =>
-      reply(
-        answer.ok
-          ? { id, result: answer.data ?? null }
-          : { id, error: answer.text }
-      )
-    );
+      .pipe(
+        Effect.map((answer) =>
+          reply(
+            answer.ok
+              ? { id, result: answer.data ?? null }
+              : { id, error: answer.text }
+          )
+        )
+      );
+    if (method === "runTool") return void Effect.runFork(answering);
+    const read = Effect.runFork(answering);
+    reads.add(read);
+    read.addObserver(() => reads.delete(read));
   });
 }

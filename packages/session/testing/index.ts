@@ -127,10 +127,15 @@ export interface ScriptedTab {
     readonly params: unknown;
   }[];
   /** How the Tab's Inspector contract answers each call from now on: as
-   * `answer` resolves, or fails as it rejects. Until then it answers with
-   * the method's name. */
+   * `answer` resolves, or fails as it rejects. `released` aborts once the
+   * Session no longer waits for the answer. Until then it answers with the
+   * method's name. */
   answerInspector(
-    answer: (method: string, params: unknown) => Promise<unknown>
+    answer: (
+      method: string,
+      params: unknown,
+      released: AbortSignal
+    ) => Promise<unknown>
   ): void;
   /** How many listen to the events of the Tab's Inspector contract now. */
   readonly inspectorListeners: number;
@@ -202,9 +207,11 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   let given: TabIds | undefined;
   const closed = Deferred.makeUnsafe<void>();
   const inspectorCalls: { method: string; params: unknown }[] = [];
-  let answerInspector: (method: string, params: unknown) => Promise<unknown> = (
-    method
-  ) => Promise.resolve(method);
+  let answerInspector: (
+    method: string,
+    params: unknown,
+    released: AbortSignal
+  ) => Promise<unknown> = (method) => Promise.resolve(method);
   const listeners = new Set<(event: unknown) => void>();
   const hosted: HostedTab = {
     listing: Effect.suspend(() =>
@@ -226,9 +233,9 @@ function scriptedTab(url: string, open: Tab[]): Tab {
     inspector: {
       request: (method, params) =>
         Effect.tryPromise({
-          try: () => {
+          try: (released) => {
             inspectorCalls.push({ method, params });
-            return answerInspector(method, params);
+            return answerInspector(method, params, released);
           },
           catch: (error) =>
             new TabReadError(

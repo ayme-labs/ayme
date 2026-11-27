@@ -214,6 +214,36 @@ it("closing one of two windows keeps the subscription to the Tab's contract, whi
   await expect.poll(() => browser.inspectorListeners).toBe(0);
 });
 
+it("a window that closes releases the reads it started, while a Run it started goes on", async () => {
+  const { address, browser } = await serve();
+  const window = await windowSocket(address);
+  const released = new Map<string, AbortSignal>();
+  let finish = () => {};
+  browser.answerInspector(
+    (method, _params, signal) =>
+      new Promise((resolve) => {
+        released.set(method, signal);
+        if (method === "runTool") finish = () => resolve("ran");
+      })
+  );
+  window.socket.send(JSON.stringify({ id: 1, method: "look", tab: 1 }));
+  window.socket.send(
+    JSON.stringify({
+      id: 2,
+      method: "runTool",
+      params: { name: "Basket.add", input: {} },
+      tab: 1,
+    })
+  );
+  await expect.poll(() => released.size).toBe(2);
+
+  window.socket.close();
+
+  await expect.poll(() => released.get("look")?.aborted).toBe(true);
+  expect(released.get("runTool")?.aborted).toBe(false);
+  finish();
+});
+
 it("tells each window how the Session ended, and then closes it", async () => {
   const { address, session } = await serve();
   const window = await windowSocket(address);
