@@ -230,11 +230,13 @@ export const openSession = (
 
     // A command still waiting when the Session ends is answered at once,
     // before its browser closes: a Run or a listing need never end (rule 1).
-    const untilEnd = (answer: Effect.Effect<SessionAnswer>) =>
-      Effect.raceFirst(
-        answer,
-        Deferred.await(ending).pipe(Effect.map(endedBeforeAnswer))
+    // One that arrives once the Session is ending starts no work.
+    const untilEnd = (answer: Effect.Effect<SessionAnswer>) => {
+      const ended = Deferred.await(ending).pipe(Effect.map(endedBeforeAnswer));
+      return Effect.flatMap(Deferred.isDone(ending), (ends) =>
+        ends ? ended : Effect.raceFirst(answer, ended)
       );
+    };
 
     return {
       // A browser that went away before the start was answered is no
@@ -325,6 +327,8 @@ function sessionTabs(
     Effect.gen(function* () {
       const known = hosts.get(tab);
       if (known) return yield* known;
+      // Hosting starts JavaScript that an interrupt cannot stop.
+      if (yield* ending) return yield* Effect.never;
       // Cached at once, so two requests that arrive together host the Tab
       // once; a failed hosting is tried again by the next request.
       const hosting = yield* Effect.cached(
@@ -439,21 +443,21 @@ function untilClosed(
  */
 function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
   const turn = Semaphore.makeUnsafe(1);
+  const unlessEnding = <A, E>(work: Effect.Effect<A, E>) =>
+    ending.pipe(Effect.flatMap((ends) => (ends ? Effect.never : work)));
   const inTurn = <A, E>(work: Effect.Effect<A, E>) =>
-    Semaphore.withPermit(
-      turn,
-      ending.pipe(Effect.flatMap((ends) => (ends ? Effect.never : work)))
-    );
+    Semaphore.withPermit(turn, unlessEnding(work));
   return {
     listing: inTurn(hosted.listing),
     call: (tool, input) => inTurn(hosted.call(tool, input)),
-    // A Run from the Inspector window takes the turn; its reads do not.
+    // A Run from the Inspector window takes the turn; its reads do not,
+    // and start no JavaScript, which an interrupt cannot stop, once ending.
     inspector: {
       ...hosted.inspector,
       request: (method, params) =>
         method === "runTool"
           ? inTurn(hosted.inspector.request(method, params))
-          : hosted.inspector.request(method, params),
+          : unlessEnding(hosted.inspector.request(method, params)),
     },
   };
 }

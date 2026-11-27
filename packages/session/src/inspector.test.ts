@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { startScriptedSession } from "../testing";
 import type { InspectorEvent } from "./session/domain";
@@ -465,6 +465,69 @@ it("a window's Run and read on a Tab that closes are answered that the tab was c
     await session.ask({ call: { tool: "Basket.add", input: {} } })
   ).toMatchObject({
     ok: true,
+  });
+});
+
+describe("once a joined Session begins to end, which leaves its browser open", () => {
+  const joining = {
+    join: { cdp: "http://127.0.0.1:9222" },
+    inspector: WINDOW,
+  } as const;
+  const detached = {
+    ok: false,
+    text: "ayme detach ended the Session before it answered this command.",
+  };
+
+  it("a window's call is refused before it reads the page", async () => {
+    const { session, browser } = await startScriptedSession(joining);
+    expect(await session.ask(contract("look"))).toMatchObject({ ok: true });
+
+    await session.ask({ detach: {} });
+
+    expect(await session.ask(contract("look"))).toEqual(detached);
+    expect(await session.ask(runFromWindow(1, "Basket.add"))).toEqual(detached);
+    expect(browser.inspectorCalls.map(({ method }) => method)).toEqual([
+      "look",
+    ]);
+  });
+
+  it("a window's call that waited on the tab list neither hosts a Tab nor reads its page", async () => {
+    const { session, browser } = await startScriptedSession(joining);
+    const release = browser.holdTabList();
+    const read = session.ask(contract("look"));
+    await expect.poll(() => browser.tabListReads).toBe(1);
+
+    await session.ask({ detach: {} });
+    release();
+
+    expect(await read).toEqual(detached);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(browser.hosted).toBe(false);
+    expect(browser.inspectorCalls).toEqual([]);
+  });
+
+  it("a window's Run waiting behind another never starts", async () => {
+    const { session, browser } = await startScriptedSession(joining);
+    let finish = () => {};
+    browser.answerInspector(
+      () => new Promise((resolve) => (finish = () => resolve("done")))
+    );
+    const first = session.ask(
+      contract("runTool", { name: "Basket.add", input: {} })
+    );
+    await expect.poll(() => browser.inspectorCalls).toHaveLength(1);
+    const second = session.ask(
+      contract("runTool", { name: "Basket.clear", input: {} })
+    );
+    expect(await pending(second)).toBe(true);
+
+    await session.ask({ detach: {} });
+    finish();
+
+    expect(await first).toEqual(detached);
+    expect(await second).toEqual(detached);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(browser.inspectorCalls).toHaveLength(1);
   });
 });
 
