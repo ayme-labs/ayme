@@ -82,6 +82,10 @@ async function counterHost() {
     selectors
   );
   onTestFinished(await ayme.start());
+  // The Host gives the page its function at its first read of it. Playwright
+  // 1.64 throws outside every promise when the page closes while that call is
+  // under way, so a test that ends at once waits for it here, with a listing.
+  await internal.pageObjectCallerOf(ayme, "ayme-command").listing();
   const port = internal.inspectorPortOf(ayme);
   return { page, ayme, port };
 }
