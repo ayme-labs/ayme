@@ -366,3 +366,24 @@ it("a Tab that closes while a command waits for its dialog to count is answered 
   expect(await onHosted).toEqual(closed);
   expect(await onUnhosted).toEqual(closed);
 });
+
+it("while a dialog is open, a window's requests that need no page are answered as usual: its first state, the recorded page state and a definition", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...opening,
+    inspector: WINDOW,
+  });
+  await session.ask({ tools: {} });
+  dialogOpens(browser);
+
+  for (const method of ["getState", "recordedPageState", "pomDefinitionText"])
+    expect(await session.ask(contract(method))).toMatchObject({ ok: true });
+  expect(await session.ask(contract("look"))).toEqual({
+    ok: false,
+    text: DIALOG_OPEN,
+  });
+  expect(browser.inspectorCalls.map(({ method }) => method)).toEqual([
+    "getState",
+    "recordedPageState",
+    "pomDefinitionText",
+  ]);
+});

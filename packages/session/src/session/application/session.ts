@@ -486,6 +486,11 @@ const Answered = Context.Reference<{ answered: boolean }>(
   { defaultValue: () => ({ answered: false }) }
 );
 
+// The window's requests its Tab's Host answers from what it already holds,
+// without the page a dialog holds: the Runs, the recorded page state and
+// the Page Objects' definitions.
+const offPage = new Set(["getState", "recordedPageState", "pomDefinitionText"]);
+
 const isOpen = (now: TabDialog): now is { readonly open: Dialog } =>
   typeof now === "object";
 
@@ -568,14 +573,18 @@ function atDialogs(
     inspector: {
       ...hosted.inspector,
       request: (method, params) =>
-        atDialog(
-          hosted.inspector.request(method, params),
-          (dialog) =>
-            new TabReadError(
-              method === "runTool" ? atRun(dialog).message : dialogOpen(dialog)
+        offPage.has(method)
+          ? hosted.inspector.request(method, params)
+          : atDialog(
+              hosted.inspector.request(method, params),
+              (dialog) =>
+                new TabReadError(
+                  method === "runTool"
+                    ? atRun(dialog).message
+                    : dialogOpen(dialog)
+                ),
+              new TabReadError(TAB_CLOSED)
             ),
-          new TabReadError(TAB_CLOSED)
-        ),
     },
     dialog: hosted.dialog,
     // A Swap reads no page, so a dialog does not hold it up (rule 7).
