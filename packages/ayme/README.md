@@ -38,7 +38,7 @@ export class ProjectsPage {
 
 ## Start ayme
 
-Your framework package starts ayme at the root of your app: `AymeProvider` in Vue and React, `useAyme` in Svelte, `provideAyme()` in Angular. Without one, create and start the session yourself:
+Your framework package starts ayme at the root of your app: `AymeProvider` in Vue and React, `useAyme` in Svelte, `provideAyme()` in Angular. Without one, create and start the runtime yourself:
 
 ```ts
 import { createAyme } from "@ayme-dev/ayme";
@@ -92,7 +92,7 @@ const removeCart = ayme.peek(() => cartStore.getState(), "cart");
 await ayme.tools.run("peek.cart", {}); // { name: "cart", instances: [{ values: … }] }
 ```
 
-`read` may be async. Pass an id as the third argument for one instance per id, such as one per mounted component; without one, a later call replaces the earlier one. The returned function removes the instance. Peeks do nothing unless the session has `inspector` on, and nothing in Node; no coding agent reads them. The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek) has the details.
+`read` may be async. Pass an id as the third argument for one instance per id, such as one per mounted component; without one, a later call replaces the earlier one. The returned function removes the instance. Peeks do nothing unless the runtime has `inspector` on, and nothing in Node; no agent reads them. The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek) has the details.
 
 ## Documentation
 
