@@ -121,7 +121,6 @@ export const serveSession = ({
       window
         ? {
             inspector: window.address,
-            opening: window.opening,
             agentApp: window.agentAppSocket,
           }
         : {}

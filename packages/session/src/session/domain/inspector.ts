@@ -5,8 +5,7 @@ type Nothing = Readonly<Record<never, never>>;
 
 /** What `ayme inspect` and the Inspector window ask a Session. */
 export type InspectorRequest =
-  /** `ayme inspect`: where the Session serves its Inspector window, with
-   * a one-use code made for this one opening (ADR-0072). */
+  /** `ayme inspect`: where the Session serves its Inspector window. */
   | { readonly window: Nothing }
   /** `ayme mcp`: the socket the Inspector an Agent App shows in its chat
    * connects to, with the token that admits it (ADR-0072). */
@@ -53,18 +52,9 @@ const originOf = (url: string) => {
   }
 };
 
-/** How long the code in the address `ayme inspect` gives admits a window:
- * long enough for a person to paste an address printed with BROWSER=none
- * into a browser, short enough that an address left in a terminal's
- * history no longer opens anything. */
-export const OPENING_CODE_LIFETIME_MS = 5 * 60_000;
-
-/** What a person who opens the address by hand needs to know of its code. */
-const OPENS_ONCE = `The address opens one window, within ${OPENING_CODE_LIFETIME_MS / 60_000} minutes.`;
-
 export const windowAnswer = (address: string, name: string): SessionAnswer => ({
   ok: true,
-  text: `The Inspector of the Session ${name} is at ${address}. ${OPENS_ONCE}`,
+  text: `The Inspector of the Session ${name} is at ${address}.\nOpen that address in a browser. It works until the Session ends.`,
   data: { address },
 });
 
@@ -76,7 +66,7 @@ export const agentAppAnswer = (
   name: string
 ): SessionAnswer => ({
   ok: true,
-  text: `The Inspector of the Session ${name} shows in this chat when your Agent App shows MCP Apps. ${commandLine(name, "inspect")} opens it in a browser window.`,
+  text: `The Inspector of the Session ${name} shows in this chat when your Agent App shows MCP Apps. ${commandLine(name, "inspect")} prints its address, to open in a browser.`,
   data: { socket },
 });
 
@@ -84,27 +74,6 @@ export const agentAppAnswer = (
  * `callers.inspector` of `@ayme-dev/ayme`, whose type this package does not
  * import, since it runs the project's own ayme. */
 export const INSPECTOR_CALLER = "inspector";
-
-/** The answer to `ayme inspect` once it asked the person's browser to open
- * the window of the Session named `name` at `address`: whether the browser
- * showed it, ayme cannot tell. */
-export const windowOpened = (address: string, name: string): SessionAnswer => ({
-  ok: true,
-  text: `ayme asked your browser to open the Inspector of the Session ${name} at ${address}.`,
-  data: { address },
-});
-
-/** The answer to `ayme inspect` when no browser could be asked to open the
- * window of the Session named `name`, for the reason `why`: a failure that
- * still says where the window is, to open by hand. */
-export const windowNotOpened = (
-  address: string,
-  name: string,
-  why: string
-): SessionAnswer => ({
-  ok: false,
-  text: `The Inspector of the Session ${name} is at ${address}. ayme could not open it in a browser: ${why.replace(/\.$/, "")}. Open the address in a browser outside the Session's. ${OPENS_ONCE}`,
-});
 
 /** The answer to a window's call on the contract: what it answered. */
 export const contractAnswer = (result: unknown): SessionAnswer => ({

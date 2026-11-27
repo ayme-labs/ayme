@@ -27,8 +27,8 @@ import type { BrowserTab, BrowserTabs, HostedTab } from "./sessionBrowser";
 const FOLLOW_MS = 250;
 
 /** The Tabs of `browser` without those that show the Inspector window
- * served at `window`, so that the Session never works on it, even when the
- * person's default browser is the Session's own. */
+ * served at `window`, so that the Session never works on it, even when a
+ * person opens it in the Session's own browser. */
 export const withoutWindow = (
   browser: BrowserTabs,
   window: string | undefined
@@ -172,21 +172,20 @@ export function followTabs(
   };
 }
 
-/** Answers `request` of the Session named `name`, whose window `opening`
- * gives the address of, each time with a code of its own, and admits an
- * Agent App's view at `agentApp`. A call on the contract is made on the Tab
+/** Answers `request` of the Session named `name`, whose window is at
+ * `window` and admits an Agent App's view at `agentApp`. A call on the contract is made on the Tab
  * it names, as `shown` gives it; a Run of a tool that takes a Page Object
  * Id is refused when `idElsewhere` says the id is of another Tab. */
 export const answerInspector = (
   request: InspectorRequest,
   {
-    opening,
+    window,
     agentApp,
     name,
     shown,
     idElsewhere,
   }: {
-    readonly opening: (() => string) | undefined;
+    readonly window: string | undefined;
     readonly agentApp: string | undefined;
     readonly name: string;
     readonly shown: ShownTabs["shown"];
@@ -197,8 +196,8 @@ export const answerInspector = (
   }
 ): Effect.Effect<SessionAnswer> => {
   if ("window" in request)
-    return Effect.sync(() =>
-      opening === undefined ? failed(NO_WINDOW) : windowAnswer(opening(), name)
+    return Effect.succeed(
+      window === undefined ? failed(NO_WINDOW) : windowAnswer(window, name)
     );
   if ("agentApp" in request)
     return Effect.succeed(

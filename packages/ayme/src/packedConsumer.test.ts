@@ -1949,8 +1949,6 @@ export class ShopPage {
               ...process.env,
               NODE_PATH: "",
               AYME_CACHE_DIR: path.join(project, ".cache"),
-              // ayme inspect prints the window's address and opens nothing.
-              BROWSER: "none",
             },
           },
           (error, stdout, stderr) =>
@@ -2053,10 +2051,9 @@ export class ShopPage {
       // carries.
       const inspected = await session("inspect");
       expect(inspected, inspected.stderr).toMatchObject({ code: 0 });
-      const address =
-        /at (http:\/\/127\.0\.0\.1:\d+\/inspector#code=[\w-]+)\./.exec(
-          inspected.stdout
-        )?.[1];
+      const address = /at (http:\/\/127\.0\.0\.1:\d+\/inspector)\./.exec(
+        inspected.stdout
+      )?.[1];
       expect(address, inspected.stdout).toBeDefined();
       const script = await fetch(new URL("/inspector/external.mjs", address));
       expect(script.status).toBe(200);

@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import {
   askCall,
   askSession,
-  inspectSession,
   listSessions,
   openSession,
   runSessionProcess,
@@ -33,7 +32,6 @@ async function answerOf(
   if (plan.kind === "ask") return askSession(place, plan.request);
   if (plan.kind === "call")
     return askCall(place, plan.tool, plan.params, plan.tab);
-  if (plan.kind === "inspect") return inspectSession(place, process.env);
   return openSession({
     ...place,
     request:

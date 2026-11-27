@@ -37,22 +37,16 @@ const shownTab = (heard: readonly InspectorEvent[]) =>
   heard.findLast((event) => "tab" in event) as
     { tab: number; noTab?: true } | undefined;
 
-it("ayme inspect is answered with the address of the Session's Inspector window, with a code made for each opening", async () => {
-  let made = 0;
-  const { session } = await startScriptedSession({
-    ...opening,
-    name: "shop",
-    opening: () => `${WINDOW}#code=${++made}`,
-  });
-
-  expect(await session.ask({ inspector: { window: {} } })).toEqual({
+it("ayme inspect is answered with the address of the Session's Inspector window, the same each time", async () => {
+  const { session } = await startScriptedSession({ ...opening, name: "shop" });
+  const answer = {
     ok: true,
-    text: `The Inspector of the Session shop is at ${WINDOW}#code=1. The address opens one window, within 5 minutes.`,
-    data: { address: `${WINDOW}#code=1` },
-  });
-  expect(await session.ask({ inspector: { window: {} } })).toMatchObject({
-    data: { address: `${WINDOW}#code=2` },
-  });
+    text: `The Inspector of the Session shop is at ${WINDOW}.\nOpen that address in a browser. It works until the Session ends.`,
+    data: { address: WINDOW },
+  };
+
+  expect(await session.ask({ inspector: { window: {} } })).toEqual(answer);
+  expect(await session.ask({ inspector: { window: {} } })).toEqual(answer);
 });
 
 it("a window's call on the contract is answered by the Host of the Tab it shows, the most recently active, and follows the browser automation to another", async () => {
@@ -85,7 +79,7 @@ it("a Tab that shows the Inspector window is never the one the Session works on"
     pageObjectTree: "ShopPage",
     tools: [],
   });
-  // The person's default browser was the Session's own.
+  // A person opened the address in the Session's own browser.
   const windowTab = browser.openTab(`${WINDOW}?a=1`);
   const window = await windowOn(session);
 

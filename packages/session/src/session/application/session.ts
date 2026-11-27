@@ -95,8 +95,7 @@ export interface Session {
  * at once, while the Session starts, and the Session ends at the latest
  * when the scope closes. Its answers name it in the commands they tell the
  * user to run. `inspector` is where its process serves its Inspector
- * window, when it serves one, `opening` gives that address with a one-use
- * code for each `ayme inspect`, and `agentApp` is the socket of that window
+ * window, when it serves one, and `agentApp` is the socket of that window
  * an Agent App's view connects to.
  */
 export const openSession = (
@@ -104,11 +103,9 @@ export const openSession = (
   name: string,
   {
     inspector,
-    opening,
     agentApp,
   }: {
     readonly inspector?: string;
-    readonly opening?: () => string;
     readonly agentApp?: string;
   } = {}
 ): Effect.Effect<
@@ -266,7 +263,7 @@ export const openSession = (
       }
       if ("inspector" in request)
         return answerInspector(request.inspector, {
-          opening,
+          window: inspector,
           agentApp,
           name,
           shown: shownTabs.shown,

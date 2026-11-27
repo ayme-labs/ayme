@@ -280,7 +280,7 @@ test("an Agent App shows the Inspector of the Session -s names, which runs a Pag
     content: [
       {
         type: "text",
-        text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect opens it in a browser window.",
+        text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect prints its address, to open in a browser.",
       },
     ],
   });
@@ -342,7 +342,7 @@ for (const [named, args, env] of [
       content: [
         {
           type: "text",
-          text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect opens it in a browser window.",
+          text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect prints its address, to open in a browser.",
         },
       ],
     });
@@ -388,7 +388,7 @@ test("once the Session ends, the Inspector in the chat says so and connects no m
   await expect(inspector.panel).toHaveCount(0);
 });
 
-test("the window ayme inspect opens is admitted by a one-use code and connects again after a reload, the view in the chat by the Session's token, which neither the command's output nor the window's address nor the Session's log holds", async ({
+test("a window at the address ayme inspect prints connects, and again after a reload, with no secret; the view in the chat by the Session's token, which neither the command's output nor the window's address nor the Session's log holds", async ({
   ayme,
   mcp,
   baseURL,
@@ -400,11 +400,10 @@ test("the window ayme inspect opens is admitted by a one-use code and connects a
   await ayme("open", `${baseURL}/shop.html`);
   const inspected = await runAyme(["inspect"], {
     cwd: project,
-    env: { ...commandEnv, BROWSER: "none" },
+    env: commandEnv,
   });
-  const address = /at (http:\/\/\S+#code=[\w-]+)\./.exec(inspected.stdout)?.[1];
-  const code = new URLSearchParams(new URL(address!).hash.slice(1)).get("code");
-  expect(code, inspected.stdout).toMatch(/^[\w-]{32}$/);
+  const address = /at (http:\/\/\S+\/inspector)\./.exec(inspected.stdout)?.[1];
+  expect(address, inspected.stdout).toBeDefined();
 
   const window = await browser.newPage();
   cleanups.push(() => window.close());
@@ -432,10 +431,9 @@ test("the window ayme inspect opens is admitted by a one-use code and connects a
   const token = /token=([\w-]{32})/.exec(page.html)?.[1];
   expect(token).toBeDefined();
   expect(`${inspected.stdout}${inspected.stderr}`).not.toContain(token);
-  expect(window.url()).toBe(address!.split("#")[0]);
+  expect(window.url()).toBe(address);
   await expect(inWindow.header.connections.root).toHaveCount(0);
   expect(sessionLogs(temporary)).not.toContain(token);
-  expect(sessionLogs(temporary)).not.toContain(code);
   // The stand-in Agent App gives the page, token and all, to its own frame
   // alone, as the Agent App gives it to its own.
   const shown = await fetch(inChatAddress);
