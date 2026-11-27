@@ -34,6 +34,9 @@ export const goalCalls: Readonly<
   // The panel
   "collapse the panel": () => one("Inspector_collapse"),
   "open the panel from the ayme logo": () => one("CollapsedLogo_open"),
+  "collapse the panel with the mouse": () => one("Inspector_collapse"),
+  "open the panel from the ayme logo with the mouse": () =>
+    one("CollapsedLogo_open"),
   "drag the panel by its header {left} px left and {down} px down": (p) =>
     one("InspectorHeader_dragBy", {
       deltaX: -Number(p.left),
@@ -107,14 +110,15 @@ export const goalCalls: Readonly<
     one("RunCard_run", { args: { ref: p.ref } }),
   "run it with the goal {goal} and at most {maxSteps} steps": (p) =>
     one("RunCard_run", { args: { goal: p.goal, maxSteps: p.maxSteps } }),
-  "run {tool} with the text {text}": (p) =>
-    one("NodeView_runTool", { name: p.tool, args: { text: p.text } }),
+  "run {tool} from the selected Structure node's card with the text {text}": (
+    p
+  ) => one("NodeView_runTool", { name: p.tool, args: { text: p.text } }),
   "set the key to {key}": (p) => one("RunCard_fill", { args: { key: p.key } }),
-  "pick the {item} item with the mouse": (p) =>
+  "select the {item} item with the mouse": (p) =>
     one("RunCard_pickItem", { label: p.item }),
-  "switch the arguments editor to JSON": () =>
+  "switch the arguments editor to JSON with the mouse": () =>
     one("RunCard_switchEditor", { to: "JSON" }),
-  "switch the arguments editor back to Form": () =>
+  "switch the arguments editor back to Form with the mouse": () =>
     one("RunCard_switchEditor", { to: "Form" }),
   "set the state to {state} with the mouse": (p) =>
     one("RunCard_choose", { path: "state", option: p.state }),
