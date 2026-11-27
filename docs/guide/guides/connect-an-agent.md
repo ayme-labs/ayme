@@ -86,6 +86,8 @@ ayme attach --cdp="$(agent-browser get cdp-url)"
 
 `agent-browser get cdp-url` prints the browser's address.
 
+`ayme attach` also reads the browser's list of tabs over HTTP, at `json/list` under the address, so a DevTools proxy has to serve that path too. A WebSocket address works only when it ends in `/devtools/browser/<id>`.
+
 ### Playwright MCP
 
 Playwright MCP opens the browser on a debugging port you fix in its configuration, and ayme attaches to it. Give Playwright MCP a config file that opens the browser on a free port, such as `9222`:
