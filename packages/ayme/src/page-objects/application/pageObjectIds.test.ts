@@ -223,4 +223,23 @@ describe("Page Object ids from a source a Host gives", () => {
 
     expect(released).toEqual(["po1"]);
   });
+
+  it("tells its source the class of each Page Object it gives an id", async () => {
+    const asked: string[] = [];
+    const numbered = createPageObjectIdSource();
+    const source = {
+      next: (className: string) => {
+        asked.push(className);
+        return numbered.next(className);
+      },
+    };
+    const ids = createPageObjectIds(page("e1").driver, source);
+
+    await ids.rootsOf([
+      { className: "A", ref: "e1" },
+      { className: "B", ref: "e1" },
+    ]);
+
+    expect(asked).toEqual(["A", "B"]);
+  });
 });

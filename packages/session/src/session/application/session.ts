@@ -184,7 +184,7 @@ export const openSession = (
         return listed(started, request.tools, toolsAnswer);
       if ("call" in request) {
         const { tool, input, tab } = request.call;
-        return started.tabs.chosen(tab, idIn(input)).pipe(
+        return started.tabs.chosen(tab, { tool, input }).pipe(
           Effect.catch((error) => Effect.fail(new RunError(error.message))),
           Effect.flatMap((hosted) => hosted.call(tool, input)),
           Effect.map(callAnswer),
@@ -233,22 +233,27 @@ export const openSession = (
     };
   });
 
-/** The Page Object Id a tool's input names, when it names one. */
+/** The `id` a tool's input gives, when it gives a string. */
 const idIn = (input: unknown): string | undefined => {
   const id = (input as { readonly id?: unknown } | null | undefined)?.id;
   return typeof id === "string" ? id : undefined;
 };
 
+/** The class whose Page Object Tool `tool` is: the compiler names each
+ * `<class>.<action>`. */
+const classOf = (tool: string) => tool.slice(0, tool.indexOf("."));
+
 /** A Session's Tabs, as its requests reach them. */
 type SessionTabs = {
   /**
-   * The Tab a request works on, with the Session as its Host: the Tab whose
-   * Host gave the Page Object Id `id`, else the most recently active Tab
-   * whose URL is `url`, else the most recently active Tab.
+   * The Tab a request works on, with the Session as its Host: for a `call`
+   * of a tool that takes a Page Object Id, the Tab whose Host gave the id;
+   * else the most recently active Tab whose URL is `url`, else the most
+   * recently active Tab.
    */
   readonly chosen: (
     url: string | undefined,
-    id?: string
+    call?: { readonly tool: string; readonly input: unknown }
   ) => Effect.Effect<HostedTab, TabReadError>;
 };
 
@@ -263,6 +268,9 @@ function sessionTabs(
   const hosts = new Map<BrowserTab, Effect.Effect<HostedTab, TabReadError>>();
   // The Tab each id was given on, while its Host knows the id.
   const owners = new Map<string, BrowserTab>();
+  // The classes some id was given to: those with a Page Object Root, whose
+  // tools take a Page Object Id.
+  const rooted = new Set<string>();
   const retire = (tab: BrowserTab) =>
     Effect.sync(() => {
       hosts.delete(tab);
@@ -277,7 +285,10 @@ function sessionTabs(
       const hosting = yield* Effect.cached(
         tab
           .host({
-            given: (id) => owners.set(id, tab),
+            given: (id, className) => {
+              owners.set(id, tab);
+              rooted.add(className);
+            },
             released: (id) => owners.delete(id),
           })
           .pipe(
@@ -293,8 +304,10 @@ function sessionTabs(
       );
     });
   return {
-    chosen: (url, id) =>
-      browser.open.pipe(
+    chosen: (url, call) => {
+      const id =
+        call && rooted.has(classOf(call.tool)) ? idIn(call.input) : undefined;
+      return browser.open.pipe(
         Effect.flatMap((open) => {
           const owner = id === undefined ? undefined : owners.get(id);
           if (owner) {
@@ -320,7 +333,8 @@ function sessionTabs(
             )
           );
         })
-      ),
+      );
+    },
   };
 }
 

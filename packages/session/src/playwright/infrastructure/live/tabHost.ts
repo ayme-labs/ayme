@@ -23,7 +23,10 @@ import { pageTargets, tabListAddress } from "../tabList";
 
 /** Where a Node Host's Page Object Ids come from, and what hears that a
  * page forgot one. */
-type IdSource = { next(): string; released?(id: string): void };
+type IdSource = {
+  next(className: string): string;
+  released?(id: string): void;
+};
 
 /** What the Session uses of the project's `@ayme-dev/ayme/internal`. */
 type NodeHostEntry = {
@@ -128,9 +131,9 @@ const hostOn =
         await (
           await devtools(page)
         ).send("Emulation.setFocusEmulationEnabled", { enabled: true });
-        const next = () => {
-          const id = ids.next();
-          tabIds.given(id);
+        const next = (className: string) => {
+          const id = ids.next(className);
+          tabIds.given(id, className);
           return id;
         };
         const ayme = entry.createNodeHost(

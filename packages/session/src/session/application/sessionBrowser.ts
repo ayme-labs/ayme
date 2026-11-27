@@ -31,8 +31,8 @@ export interface HostedTab {
 
 /** What a Tab's Host tells of the Page Object Ids it gives out. */
 export interface TabIds {
-  /** It gave `id` to a Page Object. */
-  readonly given: (id: string) => void;
+  /** It gave `id` to a Page Object of the class `className`. */
+  readonly given: (id: string, className: string) => void;
   /** It forgot `id`, as its element left the page: the id names nothing
    * from now on. */
   readonly released: (id: string) => void;

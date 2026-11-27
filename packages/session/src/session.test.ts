@@ -721,11 +721,11 @@ it("the Page Object Id in a call chooses the Tab whose Host gave it, whichever T
   const { session, browser } = await startScriptedSession(opening);
   browser.show(shop);
   await session.ask({ pageObjects: {} });
-  browser.give("po1");
+  browser.give("po1", "Basket");
   const other = browser.openTab();
   other.show(signIn);
   await session.ask({ pageObjects: {} });
-  other.give("po2");
+  other.give("po2", "Basket");
 
   expect(await session.ask(add("po1"))).toMatchObject({ ok: true });
   expect(await session.ask(add("po2"))).toMatchObject({ ok: true });
@@ -737,7 +737,7 @@ it("the Page Object Id in a call chooses the Tab whose Host gave it, whichever T
 it("a closed Tab's ids are gone: a call with one runs on the most recently active Tab, whose Host does not know it", async () => {
   const { session, browser } = await startScriptedSession(opening);
   await session.ask({ pageObjects: {} });
-  browser.give("po1");
+  browser.give("po1", "Basket");
   const other = browser.openTab();
   browser.activate();
   browser.close();
@@ -752,7 +752,7 @@ it("a call whose --tab names another Tab than its Page Object Id's is refused, a
   const { session, browser } = await startScriptedSession(opening);
   browser.show(shop);
   await session.ask({ pageObjects: {} });
-  browser.give("po1");
+  browser.give("po1", "Basket");
   browser.openTab().show(signIn);
 
   expect(
@@ -776,7 +776,7 @@ it("a read of the tab list made before a Tab opened lets go of none of it: the T
   const other = browser.openTab();
   other.show(signIn);
   expect(await session.ask({ pageObjects: {} })).toMatchObject({ ok: true });
-  other.give("po1");
+  other.give("po1", "Basket");
 
   release();
   expect(await slow).toMatchObject({ ok: true });
@@ -819,11 +819,28 @@ it("an id its Tab's Host forgot, as its element left the page, chooses no Tab an
   const { session, browser } = await startScriptedSession(opening);
   const other = browser.openTab();
   await session.ask({ pageObjects: {} });
-  other.give("po1");
+  other.give("po1", "Basket");
   browser.activate();
 
   other.release("po1");
 
   await session.ask(add("po1"));
   expect([browser.runs, other.runs]).toEqual([[add("po1").call], []]);
+});
+
+it("an id among a call's arguments chooses no Tab when the tool's class has no Page Object Root, so the call runs on the most recently active Tab, and --tab may name it", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  await session.ask({ pageObjects: {} });
+  browser.give("po1", "Basket");
+  const other = browser.openTab();
+  other.show(signIn);
+  const cancel = { tool: "OrderPage.cancel", input: { id: "po1" } };
+
+  expect(await session.ask({ call: cancel })).toMatchObject({ ok: true });
+  expect(
+    await session.ask({ call: { ...cancel, tab: signIn.tab.url } })
+  ).toMatchObject({ ok: true });
+
+  expect([browser.runs, other.runs]).toEqual([[], [cancel, cancel]]);
 });

@@ -6,11 +6,11 @@ export type PageObjectRoot = { className: string; ref: string };
 
 /**
  * Where a Host's Page Object ids come from: each `next()` is an id it never
- * gave before. A Host that shares one across its pages gives no id twice
- * among them.
+ * gave before, for a Page Object of the class `className`. A Host that
+ * shares one across its pages gives no id twice among them.
  */
 export type PageObjectIdSource = {
-  next(): PageObjectId;
+  next(className: string): PageObjectId;
   /** Hears that a page forgot `id`, as its element left the page: the id
    * names nothing from now on. */
   released?(id: PageObjectId): void;
@@ -88,7 +88,7 @@ export function createPageObjectIds(
           const { className } = asked[index]!;
           let id = byKey.get(keyOf(className, root.key));
           if (!id) {
-            id = source.next();
+            id = source.next(className);
             roots.set(id, { className, key: root.key });
             byKey.set(keyOf(className, root.key), id);
           }

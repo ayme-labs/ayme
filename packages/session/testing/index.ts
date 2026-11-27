@@ -98,9 +98,9 @@ export interface ScriptedTab {
   answerRuns(
     answer: (tool: string, input: unknown) => Promise<RunAnswer>
   ): void;
-  /** The Tab's Host gives out the Page Object Id `id`, as it does when a
-   * read first finds a Page Object. */
-  give(id: string): void;
+  /** The Tab's Host gives out the Page Object Id `id` to a Page Object of
+   * the class `className`, as it does when a read first finds one. */
+  give(id: string, className: string): void;
   /** The Tab's Host forgets `id`, as when a read finds its element gone
    * from the page. */
   release(id: string): void;
@@ -200,9 +200,9 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       holdReads: () => (shown = "held"),
       runs,
       answerRuns: (answer) => (answerRun = answer),
-      give: (id) => {
+      give: (id, className) => {
         if (!given) throw new Error("The Session is not this Tab's Host.");
-        given.given(id);
+        given.given(id, className);
       },
       release: (id) => given?.released(id),
       activate: () => {
