@@ -374,7 +374,7 @@ function sessionTabs(
                 .pipe(
                   Effect.map((swapping) =>
                     atDialogs(
-                      untilClosed(inTurns(swapping, turn), tab.closed),
+                      untilClosed(inTurns(swapping, turn, scope), tab.closed),
                       tab,
                       scope
                     )
@@ -500,21 +500,40 @@ function turns(ending: Effect.Effect<boolean>): Turns {
 
 /** `hosted`, whose listings, Runs and Inspector Runs wait for the Tab's
  * turn, as `inTurn` takes it, and whose other Inspector calls start only
- * `unlessEnding`. */
+ * `unlessEnding`. Work of a Run goes on in `scope`. */
 function inTurns(
   hosted: SwappingTab,
-  { inTurn, unlessEnding }: Turns
+  { inTurn, unlessEnding }: Turns,
+  scope: Scope.Scope
 ): SwappingTab {
+  // A Run answered by an error while its own work is still `going` keeps
+  // the turn, in `scope`, until that work ends, as one stopped at a dialog
+  // does: the Swap and the next Run come after it.
+  const run = <A, E extends { readonly going?: Promise<unknown> }>(
+    work: Effect.Effect<A, E>
+  ) =>
+    Effect.gen(function* () {
+      const answer = yield* Deferred.make<A, E>();
+      yield* inTurn(
+        work.pipe(
+          Effect.onExit((exit) => Deferred.done(answer, exit)),
+          Effect.tapError(({ going }) =>
+            going ? Effect.promise(() => going.catch(() => {})) : Effect.void
+          )
+        )
+      ).pipe(Effect.exit, Effect.forkIn(scope));
+      return yield* Deferred.await(answer);
+    });
   return {
     listing: inTurn(hosted.listing),
-    call: (tool, input) => inTurn(hosted.call(tool, input)),
+    call: (tool, input) => run(hosted.call(tool, input)),
     // A Run from the Inspector window takes the turn; its reads do not,
     // and start no JavaScript, which an interrupt cannot stop, once ending.
     inspector: {
       ...hosted.inspector,
       request: (method, params) =>
         method === "runTool"
-          ? inTurn(hosted.inspector.request(method, params))
+          ? run(hosted.inspector.request(method, params))
           : unlessEnding(hosted.inspector.request(method, params)),
     },
     dialog: hosted.dialog,

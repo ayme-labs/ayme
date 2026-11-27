@@ -481,3 +481,24 @@ it("a Run from the Inspector window reads the page in its turn before it runs, a
   await run;
   expect(seen).toEqual([{ swaps: 1, observed: 1 }]);
 });
+
+it("a Run answered early by an error its code left uncaught keeps the Tab's turn until its work ended: the Swap and the next command wait for it", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  let endWork!: () => void;
+  const going = new Promise<void>((resolve) => (endWork = resolve));
+  browser.answerRuns(() =>
+    Promise.reject(new RunError("Error: the timer threw.", undefined, going))
+  );
+  expect(await session.ask(remove)).toMatchObject({ ok: false });
+  const next = session.ask(readHeading);
+
+  await rebuilt(browser, EDITED);
+  await pending(new Promise(() => {}));
+  expect(browser.swappedIn).toEqual([]);
+  expect(browser.runs).toHaveLength(1);
+
+  browser.answerRuns(() => Promise.resolve({ settled: true }));
+  endWork();
+  expect(await next).toMatchObject({ ok: true });
+  expect(browser.swappedIn).toEqual([EDITED]);
+});

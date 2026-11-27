@@ -21,7 +21,7 @@ import {
 import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
-import { failingOnItsUncaught } from "../runUncaught";
+import { failingOnItsUncaught, LeftUncaught } from "../runUncaught";
 import { dialogOpenMs, tabDialogs, type ActionCalls } from "../tabDialogs";
 import { handedOver, readTabOrder, tabListAddress } from "../tabList";
 import { lazyPort, type InspectorPort } from "../inspectorPort";
@@ -182,7 +182,12 @@ const hostedTab = (
     ...inspector,
     request: (method, params) =>
       method === "runTool"
-        ? failingOnItsUncaught(() => inspector.request(method, params))
+        ? failingOnItsUncaught(() => inspector.request(method, params)).catch(
+            (cause: unknown) => {
+              if (!(cause instanceof LeftUncaught)) throw cause;
+              throw new TabReadError(reason(cause.error), cause.ended);
+            }
+          )
         : inspector.request(method, params),
   }),
   dialog: SubscriptionRef.changes(dialog),

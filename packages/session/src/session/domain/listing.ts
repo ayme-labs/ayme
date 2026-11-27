@@ -24,5 +24,14 @@ export type Listing = {
   readonly tools: readonly ListedTool[];
 };
 
-/** Why a Tab could not be read, in a sentence a person reads. */
-export class TabReadError extends Error {}
+/** Why a Tab could not be read, in a sentence a person reads. `going` is
+ * work of a Run from the Inspector window still under way, as after an
+ * error its code left uncaught: it keeps the Tab's turn until it settles. */
+export class TabReadError extends Error {
+  constructor(
+    message: string,
+    readonly going?: Promise<unknown>
+  ) {
+    super(message);
+  }
+}
