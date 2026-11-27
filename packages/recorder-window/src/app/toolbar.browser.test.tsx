@@ -525,6 +525,61 @@ describe("a press on the toolbar, with the page's popovers open", () => {
     expect(open(outer, inner, manual)).toEqual([true, true, true]);
   });
 
+  it("leaves open a submenu that comes earlier in the page than its menu", async () => {
+    const { host } = await pressStop();
+    const menu = await popover("auto");
+    const opener = document.createElement("button");
+    menu.append(opener);
+    const submenu = document.createElement("div");
+    submenu.popover = "auto";
+    document.body.prepend(submenu);
+    removals.push(() => submenu.remove());
+    const toggled = new Promise((resolve) =>
+      submenu.addEventListener("toggle", resolve, { once: true })
+    );
+    submenu.showPopover({ source: opener });
+    await toggled;
+
+    await personClicks(host, toolbar.stopButton);
+
+    expect(open(menu, submenu)).toEqual([true, true]);
+  });
+
+  it("leaves open a popover the page shows while the press lasts", async () => {
+    const outer = await popover("auto");
+    let inner: HTMLElement | undefined;
+    const showInner = () => {
+      inner = document.createElement("div");
+      inner.popover = "auto";
+      outer.append(inner);
+      inner.showPopover();
+    };
+    // Added before the toolbar's, so the page hears the press first, as on
+    // a browser the recorder attached to.
+    addEventListener("pointerdown", showInner, true);
+    removals.push(() => removeEventListener("pointerdown", showInner, true));
+    const { host } = await pressStop();
+
+    await personClicks(host, toolbar.stopButton);
+
+    expect(open(outer, inner!)).toEqual([true, true]);
+  });
+
+  it("goes on after a toggle event the page sends on the window", async () => {
+    const { host } = await pressStop();
+    const errors: string[] = [];
+    const listener = (event: ErrorEvent) => errors.push(event.message);
+    addEventListener("error", listener);
+    removals.push(() => removeEventListener("error", listener));
+    dispatchEvent(new Event("toggle"));
+    const shown = await popover("auto");
+
+    await personClicks(host, toolbar.stopButton);
+
+    expect(errors).toEqual([]);
+    expect(open(shown)).toEqual([true]);
+  });
+
   it("leaves open the popover under one the page closed, or took out while open", async () => {
     const { host } = await pressStop();
     const outer = await popover("auto");
