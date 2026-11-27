@@ -1,6 +1,6 @@
 // The ayme mark as data, for drawing it inline without a separate asset
 // request. `logo/mark.svg` is the same mark as a file; logo.test.ts keeps the
-// two in step. Trademark of ayme labs: see TRADEMARKS.md.
+// two in step. Not covered by the code licences: see TRADEMARKS.md.
 export const AYME_LOGO_VIEWBOX = "0 0 165.84 136";
 export const AYME_LOGO_FILL = "#6936F1";
 export const AYME_LOGO_PATH =

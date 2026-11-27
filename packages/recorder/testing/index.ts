@@ -122,6 +122,9 @@ export interface ScriptedBrowser {
   /** From now on saving the storage state fails, for this reason, as when
    * its file cannot be written. Until then it is saved at once. */
   failStorageSave(reason: string): void;
+  /** From now on the browser breaks as it takes a request of this kind, for
+   * this reason: the request never leaves, and nothing is told of it. */
+  breakOn(kind: BrowserRequest["kind"], reason: string): void;
 }
 
 /** Starts a real recorder on a scripted browser instead of Playwright. Its
@@ -170,6 +173,7 @@ export async function startScriptedRecorder(
   let traceAnswersHeld: (() => void)[] | undefined;
   let silent = false;
   let storageFails: string | undefined;
+  const breaksOn = new Map<BrowserRequest["kind"], string>();
   let confirmationsHeld: (() => void)[] | undefined;
   const asked: BrowserRequest[] = [];
   const traces: string[] = [];
@@ -337,6 +341,9 @@ export async function startScriptedRecorder(
           ask: (request) =>
             Effect.sync(() => {
               asked.push(request);
+              for (const check of [...waiting]) check();
+              const broken = breaksOn.get(request.kind);
+              if (broken !== undefined) throw new Error(broken);
               if (!silent) answer(request);
               for (const check of [...waiting]) check();
             }),
@@ -390,6 +397,9 @@ export async function startScriptedRecorder(
       },
       failStorageSave: (reason) => {
         storageFails = reason;
+      },
+      breakOn: (kind, reason) => {
+        breaksOn.set(kind, reason);
       },
       closePage: ({ pagesLeft }) =>
         tell({ kind: "pageClosed", page, pagesLeft }),

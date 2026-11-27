@@ -1832,6 +1832,18 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
   );
 });
 
+it("the packed Inspector carries the shadcn/ui MIT notice", () => {
+  const notices = fs.readFileSync(
+    path.join(
+      packed["@ayme-dev/inspector"]!.dir,
+      "dist/THIRD_PARTY_NOTICES.txt"
+    ),
+    "utf8"
+  );
+
+  expect(notices).toContain("Copyright (c) 2023 shadcn");
+});
+
 it(
   "a clean project installs the packed CLI, records one flow with ayme capture, lists its Page Objects in a Session, whose Inspector window it serves, and starts ayme mcp",
   { timeout: 150_000 },

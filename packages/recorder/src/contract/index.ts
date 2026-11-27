@@ -179,8 +179,10 @@ export type RecorderWarning = {
    *   position numbers that open its snapshots.
    * - uploadNamesUnknown: an upload is recorded with its first file's name
    *   only, as the names of the others could not be read.
-   * - notRecorded: an assertion, typing, a choice or an upload is left out
-   *   of the recording, as its page could not be read.
+   * - notRecorded: something is left out of the recording: an assertion,
+   *   typing, a choice or an upload whose page could not be read, or a step
+   *   or another part that the recorder itself failed to keep, which the
+   *   message names.
    * - storageNotSaved: the storage state could not be saved to the file the
    *   recorder was asked to save it to; the recording is saved all the same.
    */

@@ -1,6 +1,14 @@
 # Changelog
 
-## [0.3.0](https://github.com/ayme-labs/ayme/compare/cli-v0.2.0...cli-v0.3.0) (2026-11-26)
+## [0.3.1](https://github.com/ayme-labs/ayme/compare/cli-v0.3.0...cli-v0.3.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **recorder:** stop a page that wraps moved content from crashing a recording ([#1512](https://github.com/ayme-labs/ayme/issues/1512)) ([59afc29](https://github.com/ayme-labs/ayme/commit/59afc291c45e6fe0e8710a783aa22fa7e35f95bd))
+* **recorder:** keep one ref per element after a second re-creation, and label by the page after ([#1513](https://github.com/ayme-labs/ayme/issues/1513)) ([c3594e9](https://github.com/ayme-labs/ayme/commit/c3594e93252e0a7e71cdae74d7b4195ae83e48ab))
+
+## 0.3.0 (2026-11-26)
 
 
 ### ⚠ BREAKING CHANGES

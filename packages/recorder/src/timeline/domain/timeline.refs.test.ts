@@ -287,6 +287,124 @@ describe("an element the page re-created, and the original back beside it", () =
       ].join("\n")
     );
   });
+
+  it("name the one that is gone on the page before the change, though it stood there under the first ref", async () => {
+    // The new button is gone and the first one is back under another name:
+    // nothing on the page after the change looks like the one that went.
+    const timeline = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, original),
+      snapshot(snapshotId("snapshot_2"), 20, recreated),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), "e2", original),
+      snapshot(snapshotId("snapshot_3"), 30, both),
+      snapshot(snapshotId("snapshot_4"), 40, page(`- button "Saved" [ref=e2]`)),
+      click(
+        snapshotId("snapshot_2"),
+        snapshotId("snapshot_4"),
+        "e8",
+        recreated
+      ),
+    ]);
+
+    const [, second] = timeline.visits()[0]!.entries;
+    expect(second).toMatchObject({
+      id: entryId("interaction_2"),
+      changes: [
+        { kind: "added", element: 'button "Saved"' },
+        { kind: "removed", element: 'button "Save"' },
+      ],
+    });
+  });
+});
+
+describe("an element the page re-created, and re-created again once the original was back", () => {
+  it("are not under one ref in a Change Tree that holds the second one and the one it stood in for", async () => {
+    const timeline = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, page(`- button "Save" [ref=e2]`)),
+      snapshot(snapshotId("snapshot_2"), 20, page(`- button "Save" [ref=e8]`)),
+      click(
+        snapshotId("snapshot_1"),
+        snapshotId("snapshot_2"),
+        "e2",
+        page(`- button "Save" [ref=e2]`)
+      ),
+      // The new button became a region, beside the first one back; then the
+      // page re-created the region.
+      snapshot(
+        snapshotId("snapshot_3"),
+        30,
+        page(`- region "Results" [ref=e8]`, `- button "Save" [ref=e2]`)
+      ),
+      snapshot(
+        snapshotId("snapshot_4"),
+        40,
+        page(`- region "Results" [ref=e10]`, `- button "Save" [ref=e2]`)
+      ),
+      click(
+        snapshotId("snapshot_2"),
+        snapshotId("snapshot_4"),
+        "e8",
+        page(`- button "Save" [ref=e8]`)
+      ),
+    ]);
+
+    expect(refsTwiceInOneTree((await timeline.package(header))!)).toEqual([]);
+  });
+
+  it("name what went from inside one on the page before, though core matched it under its later ref", async () => {
+    const results = (ref: string, ...inside: string[]) =>
+      [
+        `- region "Results" [ref=${ref}]${inside.length ? ":" : ""}`,
+        ...inside.map((line) => `  ${line}`),
+      ].join("\n");
+    const main = (...elements: string[]) =>
+      page(
+        `- main [ref=e9]:`,
+        ...elements.flatMap((element) =>
+          element.split("\n").map((line) => `  ${line}`)
+        )
+      );
+    const pages = [
+      main(results("e2")),
+      main(results("e3")),
+      main(results("e4")),
+      main(`- region "Original" [ref=e2]`, results("e4")),
+      main(results("e3")),
+      main(
+        results("e4", `- region "Results" [ref=e3]`, `- button "Save" [ref=e5]`)
+      ),
+      // The page re-created the wrapper, and the button inside it is gone.
+      main(results("e6", `- region "Results" [ref=e3]`)),
+    ];
+    const snapshots = pages.map((tree, at) =>
+      snapshot(snapshotId(`snapshot_${at + 1}`), 10 * (at + 1), tree)
+    );
+    const timeline = await timelineOf([
+      visit,
+      snapshots[0]!,
+      snapshots[1]!,
+      click(
+        snapshotId("snapshot_1"),
+        snapshotId("snapshot_2"),
+        "e2",
+        pages[0]!
+      ),
+      ...snapshots.slice(2),
+    ]);
+
+    await timeline.package(header);
+    const changes = timeline
+      .visits()[0]!
+      .entries.flatMap((entry) => entry.changes ?? []);
+    expect(changes).toContainEqual(
+      expect.objectContaining({
+        kind: "removed",
+        element: 'button "Save"',
+        parent: expect.objectContaining({ name: "Results" }),
+      })
+    );
+  });
 });
 
 describe("an element the page re-created, when it changes", () => {

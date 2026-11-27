@@ -6,7 +6,7 @@ consumers compile it, and nothing is published to npm. ayde and ayme-private
 consume it from a git subtree of this repository at `vendor/ayme`, and never edit
 it there. A change lands here first.
 
-The logos are trademarks and are not covered by the code license. See
+The ayme name and logos are not covered by the code license. See
 [TRADEMARKS.md](TRADEMARKS.md). The components and `cn()` are derived from
 shadcn/ui; their upstream MIT notice is in
 [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).

@@ -51,15 +51,6 @@ export function ownName(node: StructuralNode): OwnName | null {
   return NO_ROLE.has(role) ? null : { role, name: "", byText: false };
 }
 
-/** The elements inside a node that have a role or a name, the topmost of
- * them, in order. */
-export function namedInside(node: StructuralNode): StructuralNode[] {
-  return node.children.flatMap((child) => {
-    if (typeof child === "string") return [];
-    return ownName(child) ? [child] : namedInside(child);
-  });
-}
-
 /**
  * Names the elements of one tree: a read, or a Change Tree, whose removed
  * elements are counted against the page before the change, which
@@ -69,11 +60,12 @@ export function namedInside(node: StructuralNode): StructuralNode[] {
  * one naming, as a Change Tree's rows, through one instance.
  */
 export class ElementNames {
-  private after: PageLabels | undefined;
-  /** The page before the change, with its labels once asked; null when
-   * there is none. */
-  private before:
-    { readonly tree: StructuralTree; labels?: PageLabels } | null | undefined;
+  /** The page after the change, and before it, with its labels once
+   * asked; null when there is none before. */
+  private after: Page | undefined;
+  private before: Page | null | undefined;
+  /** The labels of the tree itself, for an element on neither page. */
+  private whole: PageLabels | undefined;
 
   constructor(
     readonly tree: StructuralTree,
@@ -99,17 +91,36 @@ export class ElementNames {
     return place.labels.of(named ?? place.node);
   }
 
+  /** An element's ancestors, nearest first, on the page it is labelled
+   * on: a removed one sat in the page before, not where the Change Tree
+   * puts it. */
+  ancestorsOf(node: StructuralNode, view: PageView) {
+    const place = this.placeOf(node, view);
+    return place.tree.getAncestorsOf(place.node.ref);
+  }
+
   /** The page an element is labelled on, its labels, and the element
-   * there: the page before the change, for one counted against it. */
+   * there: the page before the change, for one counted against it; else
+   * the page after, with no element the change removed, which an element
+   * that held it no longer holds. */
   private placeOf(node: StructuralNode, view: PageView) {
-    const page = view === "before" ? this.builtBefore() : null;
+    const page = view === "before" ? this.builtBefore() : this.builtAfter();
     const there = page?.tree.getNode(node.ref);
     if (page && there) {
       page.labels ??= new PageLabels(page.tree);
       return { tree: page.tree, node: there, labels: page.labels };
     }
-    this.after ??= new PageLabels(this.tree);
-    return { tree: this.tree, node, labels: this.after };
+    this.whole ??= new PageLabels(this.tree);
+    return { tree: this.tree, node, labels: this.whole };
+  }
+
+  private builtAfter() {
+    // A read, or a tree that removed nothing, is the page after as it is.
+    return (this.after ??= {
+      tree: this.tree.getNodesByStatus("removed").length
+        ? this.tree.toCurrentTree()
+        : this.tree,
+    });
   }
 
   private builtBefore() {
@@ -120,6 +131,8 @@ export class ElementNames {
     return this.before;
   }
 }
+
+type Page = { readonly tree: StructuralTree; labels?: PageLabels };
 
 /** An element of a read by its label, a naming of its own:
  * `ElementNames.labelOf`. */
