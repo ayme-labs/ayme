@@ -30,6 +30,10 @@ export type ActionCalls = {
   /** `listener`, which an action hands Playwright to call later, made to
    * run as that action's own code wherever Playwright calls it from. */
   bind<F extends (...args: never[]) => unknown>(listener: F): F;
+  /** For the Run whose code asks, a promise that fails with what its
+   * Caller was answered instead once the Host stopped the Run; undefined
+   * for a Run the Host does not stop. */
+  stopped(): Promise<never> | undefined;
 };
 
 /** How `ayme.tools.run` starts a Run. */

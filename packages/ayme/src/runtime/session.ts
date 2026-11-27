@@ -35,7 +35,7 @@ import {
 } from "./agentConnectionStatus";
 import { configureGoalLoopOf } from "../goal-loop/infrastructure";
 import { type GoalLoopDecisionFunction } from "../goal-loop/application";
-import { assertAvailable, type Cursor } from "../page-state/domain";
+import { assertAvailable, movesUntil, type Cursor } from "../page-state/domain";
 import {
   configurePageStateIgnoreOf,
   cursorsOf,
@@ -825,6 +825,12 @@ export function createAymeOn(
     return takeTurn(() => recordTopLevelRun(name, input, by, probeAfterAction));
   }
 
+  /** The Run log's options for a Run its Host may stop. */
+  function stoppedRun() {
+    const stopped = target.actionCalls?.stopped();
+    return stopped ? { stopped } : undefined;
+  }
+
   /** A probe of the Page Objects after an action, which never fails the Run. */
   function probeAfterAction(): Promise<void> {
     return target
@@ -854,23 +860,30 @@ export function createAymeOn(
       // A read: it moves no cursor and adds no settle wait.
       return peekTool.execute(checkedToolInput(peekTool.inputSchema, input));
     }
-    const cursor = cursorsOf(target.key()).of(by);
-    return runLog().record(name, input, { by }, (id) => {
-      const { tool, checkedInput } = lookUpRun(name, input);
-      return executeTopLevelRun(
-        {
-          reads:
-            tool === getPageContextTool ||
-            tool === pageObjectsTool ||
-            (target.peeks()?.isPeekTool(tool) ?? false),
-        },
-        () =>
-          executeWithChildRuns(id, cursor, (context) =>
-            tool.execute(checkedInput, context)
-          ),
-        settle
-      );
-    });
+    const stopped = target.actionCalls?.stopped();
+    const cursor = movesUntil(cursorsOf(target.key()).of(by), stopped);
+    return runLog().record(
+      name,
+      input,
+      { by },
+      (id) => {
+        const { tool, checkedInput } = lookUpRun(name, input);
+        return executeTopLevelRun(
+          {
+            reads:
+              tool === getPageContextTool ||
+              tool === pageObjectsTool ||
+              (target.peeks()?.isPeekTool(tool) ?? false),
+          },
+          () =>
+            executeWithChildRuns(id, cursor, (context) =>
+              tool.execute(checkedInput, context)
+            ),
+          settle
+        );
+      },
+      stopped ? { stopped } : undefined
+    );
   }
 
   /**
@@ -916,11 +929,16 @@ export function createAymeOn(
     const takeChildTurn = createRunQueue();
     const run: StartChildRun = (name, input, childCursor = cursor) =>
       takeChildTurn(() =>
-        runLog().record(name, input, { parent: id }, (childId) =>
-          executeWithChildRuns(childId, childCursor, (context) => {
-            const { tool, checkedInput } = lookUpRun(name, input);
-            return tool.execute(checkedInput, context);
-          })
+        runLog().record(
+          name,
+          input,
+          { parent: id },
+          (childId) =>
+            executeWithChildRuns(childId, childCursor, (context) => {
+              const { tool, checkedInput } = lookUpRun(name, input);
+              return tool.execute(checkedInput, context);
+            }),
+          stoppedRun()
         )
       );
     try {

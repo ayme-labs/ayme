@@ -160,6 +160,7 @@ function hostDeciding() {
     decision: "start" as "start" | "refuse" | Promise<void>,
     asked: 0,
     run: <T>(action: () => T) => action(),
+    stopped: () => undefined,
     bound: [] as unknown[],
     bind: <F>(listener: F) => {
       host.bound.push(listener);

@@ -3,7 +3,11 @@
 // answered stops (ADR-0073).
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import type { Dialog, TabDialog } from "../../session/domain";
+import {
+  dialogOpenAtRun,
+  type Dialog,
+  type TabDialog,
+} from "../../session/domain";
 
 /** How long a dialog stays open before it counts as open. Some browser
  * automation accepts an alert by itself at once, and an action may answer
@@ -25,11 +29,33 @@ export type ActionCalls = {
   run<T>(action: () => T): T;
   before(answersAtOnce: boolean): Promise<void> | undefined;
   bind<F extends (...args: never[]) => unknown>(listener: F): F;
+  stopped(): Promise<never> | undefined;
 };
 
-/** Whether the dialog stopped a request, once one did: everything the Host
- * does for it carries the same record. */
-type Stop = { stopped: boolean };
+/** Whether the dialog stopped a request, once one did, and the promise
+ * that then fails with what its Caller was answered: everything the Host
+ * does for the request carries the same record. */
+type Stop = {
+  stopped: boolean;
+  readonly why: Promise<never>;
+  readonly stop: (dialog: Dialog) => void;
+};
+
+const stopRecord = (): Stop => {
+  let fail: (why: Error) => void = () => {};
+  const why = new Promise<never>((_, reject) => (fail = reject));
+  why.catch(() => {});
+  const record: Stop = {
+    stopped: false,
+    why,
+    stop: (dialog) => {
+      if (record.stopped) return;
+      record.stopped = true;
+      fail(new Error(dialogOpenAtRun(dialog)));
+    },
+  };
+  return record;
+};
 
 const REFUSED =
   "ayme refused this Playwright call: the action stopped at a dialog it did not answer itself.";
@@ -75,7 +101,7 @@ export function tabDialogs(
   };
   const count = (dialog: Dialog) => {
     counting = undefined;
-    for (const stop of running) stop.stopped = true;
+    for (const stop of running) stop.stop(dialog);
     set({ open: dialog });
     release();
   };
@@ -93,7 +119,7 @@ export function tabDialogs(
   };
   const refuseIfStopped = (stop: Stop) => {
     // Work that goes on while a dialog counts as open is stopped too.
-    if (typeof now === "object") stop.stopped = true;
+    if (typeof now === "object") stop.stop(now.open);
     if (stop.stopped) throw new Error(REFUSED);
   };
   const actionCalls: ActionCalls = {
@@ -105,7 +131,7 @@ export function tabDialogs(
         refuseIfStopped(stop);
         return actions.run(stop, action);
       }
-      const own: Stop = { stopped: false };
+      const own = stopRecord();
       refuseIfStopped(own);
       return whileRunning(own, () => actions.run(own, action));
     },
@@ -117,6 +143,7 @@ export function tabDialogs(
       if (!held || answersAtOnce) return undefined;
       return held.until.then(() => actionCalls.before(false));
     },
+    stopped: () => (actions.getStore() ?? requests.getStore())?.why,
     // Playwright calls a listener from its connection, whose async context
     // is not the action's.
     bind: (listener) => {
@@ -164,7 +191,7 @@ export function tabDialogs(
     /** Runs `work`, all the Host does for one request on the Tab: a
      * dialog that counts while it is under way stops it. */
     request: <T>(work: () => T): T => {
-      const stop: Stop = { stopped: false };
+      const stop = stopRecord();
       return requests.run(stop, () => whileRunning(stop, work));
     },
     actionCalls,

@@ -373,3 +373,23 @@ it("once the Tab's watch ends, as when its page closes, nothing more counts and 
   expect(waits[0]!.cancelled).toBe(true);
   expect(told).toEqual(["opening"]);
 });
+
+it("a request the dialog stopped hears why: what its Caller was answered instead", async () => {
+  const { dialogs, pass } = scripted();
+  const answered = gate();
+  let stopped: Promise<never> | undefined;
+  const request = dialogs.request(async () => {
+    stopped = dialogs.actionCalls.stopped();
+    await answered.opened;
+  });
+
+  dialogs.opened(confirm);
+  pass();
+
+  await expect(stopped).rejects.toThrow(
+    'A confirm dialog is open on the tab: "Remove Milk?".'
+  );
+  answered.open();
+  await request;
+  expect(dialogs.actionCalls.stopped()).toBeUndefined();
+});

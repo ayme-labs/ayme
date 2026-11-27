@@ -827,7 +827,8 @@ describe("a Session's Node Host, through the internal entry", () => {
      * told apart from ayme's reads as a Session tells them. */
     async function hostDeciding(
       page: Page,
-      before: (answersAtOnce: boolean) => Promise<void> | undefined
+      before: (answersAtOnce: boolean) => Promise<void> | undefined,
+      stopped?: Promise<never>
     ) {
       const own = new AsyncLocalStorage<true>();
       const ayme = internal.createNodeHost(
@@ -839,12 +840,15 @@ describe("a Session's Node Host, through the internal entry", () => {
             before: (answersAtOnce) =>
               own.getStore() ? before(answersAtOnce) : undefined,
             bind: (listener) => listener,
+            stopped: () => (own.getStore() ? undefined : stopped),
           },
         },
         selectors
       );
       stops.push(await ayme.start());
-      return internal.pageObjectCallerOf(ayme, "ayme-command");
+      return Object.assign(internal.pageObjectCallerOf(ayme, "ayme-command"), {
+        runs: () => ayme.runs.list(),
+      });
     }
 
     it("go to the Host before they start, each saying whether it answers at once without the browser", async () => {
@@ -857,8 +861,9 @@ describe("a Session's Node Host, through the internal entry", () => {
 
       await caller.run("Counter.press", { id: "po1" });
 
-      // The action's `locator`, `getByRole` and `click`.
-      expect(heard).toEqual([true, true, false]);
+      // The action's `locator`, `getByRole` and `click`, which is asked
+      // again right before it is sent.
+      expect(heard).toEqual([true, true, false, false]);
       expect(await page.locator("output").textContent()).toBe("1");
     });
 
@@ -877,6 +882,41 @@ describe("a Session's Node Host, through the internal entry", () => {
 
       await run;
       expect(await page.locator("output").textContent()).toBe("1");
+    });
+
+    it("a Run its Host stopped is logged failed with why at once, and what its action does afterwards is not: the Run still lasts until the action ends", async () => {
+      const page = await pageShowing(counter);
+      let release = () => {};
+      const held = new Promise<void>((resolve) => (release = resolve));
+      let stop: (why: Error) => void = () => {};
+      const stopped = new Promise<never>((_, reject) => (stop = reject));
+      stopped.catch(() => {});
+      const caller = await hostDeciding(
+        page,
+        (answersAtOnce) => (answersAtOnce ? undefined : held),
+        stopped
+      );
+      let ended = false;
+      const run = caller.run("Counter.press", { id: "po1" });
+      void run.then(
+        () => (ended = true),
+        () => (ended = true)
+      );
+      const log = () => caller.runs();
+      await expect.poll(() => log().at(-1)?.status).toBe("running");
+      stop(new Error("A confirm dialog is open on the tab."));
+      await expect.poll(() => log().at(-1)?.status).toBe("failed");
+      expect(ended).toBe(false);
+
+      release();
+      await run;
+
+      expect(await page.locator("output").textContent()).toBe("1");
+      expect(log().at(-1)).toMatchObject({
+        tool: "Counter.press",
+        status: "failed",
+        error: "A confirm dialog is open on the tab.",
+      });
     });
 
     it("never reach the page when the Host refuses them, and the Run fails with why", async () => {
