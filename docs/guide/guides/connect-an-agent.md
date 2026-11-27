@@ -131,7 +131,7 @@ ProjectsPage
         name: text: Launch plan
     - ProjectRow po2
         name: text: Q4 survey
-This screen has 3 Page Object Tools: ayme tools lists them with their parameters.
+This screen has 3 Page Object Tools: ayme -s=default tools lists them with their parameters.
 ```
 
 `ayme call` takes the tool's input as one JSON object, `--params '<json>'`, or `--params @<file>` to read it from a file. A tool of a Page Object with an id takes the id as `id` and the action's own arguments under `args`:

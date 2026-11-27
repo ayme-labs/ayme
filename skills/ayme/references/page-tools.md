@@ -36,7 +36,7 @@ ProjectsPage
     - ProjectRow po2
         name: text: Q4 survey
         removeButton: button "Remove"
-This screen has 3 Page Object Tools: ayme tools lists them with their parameters.
+This screen has 3 Page Object Tools: ayme -s=default tools lists them with their parameters.
 ```
 
 The first line names the tab ayme works on: the browser's most recently
