@@ -130,30 +130,20 @@ export const surfaces = {
     sources: ["packages/unplugin-ayme", "docs/guide/reference/build-plugin.md"],
   },
   aymeCommand: {
-    name: "`ayme` command",
-    what: "The terminal command of the package @ayme-dev/mcp: `ayme mcp` starts the server for a coding agent, with options to pick its port and, as an experiment, a page objects file to serve; `ayme inspect` prints the Inspector's address for the running server, with an option to pick its port",
+    name: "`ayme` command's Sessions",
+    what: "The Session commands of the `ayme` command of @ayme-dev/cli: `ayme open` and `ayme attach` start a Session on a browser the agent's automation drives, `ayme page-objects`, `ayme tools` and `ayme call` read the screen and run the project's Page Object Tools, `ayme inspect` opens the Session's Inspector in a window, and `ayme mcp` shows it in an Agent App's chat",
     consumers: {
       appDeveloper:
-        "Writes `ayme mcp` into their coding agent's settings and runs `ayme inspect` to get the Inspector's address",
-    },
-    sources: [
-      "packages/mcp/src/cli.ts",
-      "packages/mcp/src/server/readCommand.ts",
-      "packages/mcp/README.md",
-    ],
-  },
-  mcpServer: {
-    name: "MCP server for coding agents",
-    what: "The tools the coding agent calls on the running server, which pairs with one tab of the app and its server processes: connect to a tab, list the page's tools, call one, and show the Inspector",
-    consumers: {
-      appDeveloper: "Opens the connect link or lets the tab pair by itself",
+        "Starts a Session beside their own browser and opens its Inspector",
       codingAgent:
-        "Connects to the app's tab, lists and calls the page's actions, reads Page Objects and Peeks, and hands the page a goal",
+        "Starts a Session on the browser its automation drives, reads the screen's Page Objects and calls their tools",
     },
     sources: [
-      "packages/mcp/src/tools",
-      "packages/mcp/src/connection",
-      "packages/mcp/src/pairing",
+      "packages/cli/src/readCommand.ts",
+      "packages/cli/src/session.ts",
+      "packages/cli/src/mcp.ts",
+      "packages/session",
+      "docs/guide/guides/connect-an-agent.md",
     ],
   },
   webmcpTools: {
@@ -292,7 +282,7 @@ export const surfaces = {
   },
   releasedPackages: {
     name: "Released packages",
-    what: "The ayme packages as published on npm, including @ayme-dev/mcp and @ayme-dev/cli: each one's name, version, readme and what installing it needs, and each version's release notes",
+    what: "The ayme packages as published on npm, including @ayme-dev/cli: each one's name, version, readme and what installing it needs, and each version's release notes",
     consumers: {
       appDeveloper:
         "Installs and updates the packages for their app and the `ayme` command, and reads their readmes and release notes",
@@ -314,7 +304,6 @@ export const surfaces = {
       "packages/unplugin-ayme/README.md",
       "packages/inspector/README.md",
       "packages/webmcp/README.md",
-      "packages/mcp/README.md",
       "packages/cli/README.md",
     ],
   },

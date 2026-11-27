@@ -3,7 +3,6 @@
   "packages/ayme": "0.3.0",
   "packages/cli": "0.3.0",
   "packages/inspector": "0.3.0",
-  "packages/mcp": "0.3.0",
   "packages/react": "0.3.0",
   "packages/svelte": "0.3.0",
   "packages/unplugin-ayme": "0.3.0",

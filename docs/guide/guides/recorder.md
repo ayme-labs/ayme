@@ -6,7 +6,7 @@ ayme capture is the `ayme capture` command of the npm package `@ayme-dev/cli`, a
 
 For a first recording, follow the [package's README](https://github.com/ayme-labs/ayme/blob/main/packages/cli/README.md), which has pictures. This page covers the commands, the controls, where recordings go, the warnings and the limits.
 
-The commands are written `npx ayme`, for a project that has `@ayme-dev/cli` in its `package.json`. Without it, run `npx @ayme-dev/cli` in its place. When the project also has `@ayme-dev/mcp`, uninstall it, as [Connect an agent](connect-an-agent.md#set-up-your-project) says: its command is also called `ayme`.
+The commands are written `npx ayme`, for a project that has `@ayme-dev/cli` in its `package.json`. Without it, run `npx @ayme-dev/cli` in its place.
 
 ## Before you start
 

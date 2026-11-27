@@ -21,8 +21,8 @@ type BrowserWindow = {
  * bar and connects with it once; the Session then tells it its token, which
  * the window connects again with and keeps in its tab for a reload. Where
  * the browser blocks the tab's storage or it is full, a reload needs
- * `ayme inspect` again. A window served without either, by
- * `@ayme-dev/mcp`'s server, connects without.
+ * `ayme inspect` again: a window with neither connects without, which the
+ * Session refuses.
  */
 export function windowAdmission(browser: BrowserWindow): {
   /** The socket to connect to now. */

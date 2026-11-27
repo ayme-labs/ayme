@@ -27,8 +27,8 @@
  *   list item that opens with a code span, by its last name, or a flag by the
  *   flag without its argument, in each package the item names in a later code
  *   span: ``- `ayme.peek(...)` in `@ayme-dev/ayme` `` lists `peek` in
- *   `@ayme-dev/ayme`, and ``- `--page-objects <file>` of `ayme mcp` in
- *   `@ayme-dev/mcp` `` lists `--page-objects` in `@ayme-dev/mcp`. An item
+ *   `@ayme-dev/ayme`, and ``- `--flag <value>` of `ayme capture` in
+ *   `@ayme-dev/cli` `` lists `--flag` in `@ayme-dev/cli`. An item
  *   that names no package fails.
  * - a skill under `skills/` lacks a copy of a shared reference in
  *   `skills/shared/` in its `references/`, or a skill's copy of a guide page

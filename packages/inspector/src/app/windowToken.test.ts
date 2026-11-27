@@ -58,7 +58,7 @@ it("connects with a new code given in the address, before a token the tab kept",
   );
 });
 
-it("without a code or a token, connects without either, as to the server of ayme mcp of @ayme-dev/mcp", () => {
+it("without a code or a token, connects without either, which the Session refuses", () => {
   expect(
     windowAdmission(windowAt("http://127.0.0.1:4444/inspector")).socket()
   ).toBe("ws://127.0.0.1:4444/inspector/ws");
@@ -82,7 +82,7 @@ it("with the tab's storage blocked, still connects with the code, then the token
   );
 });
 
-it("with the tab's storage blocked, connects without a token, as to the server of ayme mcp of @ayme-dev/mcp", () => {
+it("with the tab's storage blocked, a reload connects without a token, which the Session refuses", () => {
   const window = windowAt("http://127.0.0.1:4444/inspector");
   Object.defineProperty(window, "sessionStorage", {
     get() {

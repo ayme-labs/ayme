@@ -31,8 +31,6 @@ The agent's browser automation keeps doing everything else: snapshots, clicks ou
 
    `<version>` is the version of `@ayme-dev/cli`, which `npm ls @ayme-dev/cli` prints.
 
-   If your project has `@ayme-dev/mcp`, uninstall it with `npm uninstall @ayme-dev/mcp`. It is retired, and its command is also called `ayme`, so `npx ayme`, and even `npx @ayme-dev/cli`, can run it instead of this one.
-
 2. Keep your [Page Object Models](ayme-page-objects.md) in the [`ayme` folder](ayme-folder.md), and list them in `ayme/page-objects.ts`. Its default export is an array of your Page Object classes, as the `pageObjects` option of [`createAyme`](../reference/ayme.md#createayme) takes them:
 
    ```ts
