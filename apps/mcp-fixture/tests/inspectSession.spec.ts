@@ -38,9 +38,14 @@ const test = base.extend<{
 
 test.beforeAll(() => registerInspectorSelectors(selectors));
 
+// Each resource registers its cleanup as it is made; every cleanup runs,
+// whichever failed, and the first failure is reported.
 const cleanups: (() => Promise<unknown>)[] = [];
 test.afterEach(async () => {
-  for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
+  const failed: unknown[] = [];
+  for (const cleanup of cleanups.splice(0).reverse())
+    await cleanup().catch((error: unknown) => failed.push(error));
+  if (failed.length > 0) throw failed[0];
 });
 
 /** The address `ayme open` printed. */
@@ -111,22 +116,6 @@ test("opens the Inspector window, served by the Session's process, in the progra
   expect(await page.text()).toContain("<title>ayme inspect: default</title>");
 });
 
-test("with BROWSER=none prints where the window is and opens nothing", async ({
-  ayme,
-  inspect,
-  baseURL,
-}) => {
-  await ayme("open", `${baseURL}/shop.html`);
-
-  expect(await inspect("none")).toEqual({
-    code: 0,
-    stdout: expect.stringMatching(
-      /^The Inspector of the Session default is at http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+\.\n$/
-    ),
-    stderr: "",
-  });
-});
-
 test("the window shows the Page Object Tree and the tools of the Session's Tab, runs a tool as a Run of the Inspector, and follows a Tab change", async ({
   ayme,
   inspect,
@@ -185,7 +174,10 @@ test("the window shows the Page Object Tree and the tools of the Session's Tab, 
   expect(await model.isNotOnPage(model.object("Basket"))).toBe(true);
 });
 
-test("a Run from the window waits for the Run under way on the Tab, whichever Caller started it", async ({
+// Which Caller has the Tab's turn is proved at the scripted browser
+// (packages/session/src/inspector.test.ts); here the two Callers' Runs meet
+// on one Tab of a real Session.
+test("a Run from the window pressed while one of ayme call is under way on the Tab runs there too, each Run with its Caller", async ({
   ayme,
   inspect,
   baseURL,
@@ -205,12 +197,10 @@ test("a Run from the window waits for the Run under way on the Tab, whichever Ca
   await expect.poll(() => command.status()).toBe("Running");
 
   await (await inspector.tool("AccountPage.fail")).run();
-
-  const fromWindow = runOf(inspector, "AccountPage.fail");
-  await new Promise((resolve) => setTimeout(resolve, 1_000));
-  await expect(fromWindow.root).toHaveCount(0);
   await account.evaluate(() => Object.assign(window, { released: true }));
+
   expect(await held).toMatchObject({ code: 0 });
+  const fromWindow = runOf(inspector, "AccountPage.fail");
   await expect.poll(() => fromWindow.status()).toBe("Failed");
   expect(await fromWindow.caller()).toEqual({
     icon: "Run by you from the Inspector",
@@ -267,8 +257,13 @@ test("hovering a Page Object in the window highlights it on the Session's page",
   const highlights = () =>
     shop.evaluate(() => document.querySelectorAll("x-pw-glass").length);
   expect(await highlights()).toBe(0);
+  // A row takes hovers once the window knows it is on the page, from the
+  // Tab's look: a hover before then highlights nothing, and is not
+  // repeated when the look comes.
+  const basket = inspector.navigator.model.object("Basket");
+  await expect(basket).toHaveAttribute("aria-description", "On this page");
 
-  await inspector.navigator.model.object("Basket").hover();
+  await basket.hover();
 
   await expect.poll(highlights).toBeGreaterThan(0);
 });

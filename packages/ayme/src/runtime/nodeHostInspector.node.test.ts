@@ -1,10 +1,12 @@
 // A Node Host's Inspector contract in Node, over real Playwright Chromium and
-// against the built package, as a Session serves it to its Inspector window.
+// against the built package, as a Session serves it to its Inspector window:
+// what only this seam decides. The window, its Runs and its highlights are
+// proved end to end in apps/mcp-fixture's inspectSession.spec.ts.
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { chromium, selectors, type Browser, type Page } from "@playwright/test";
-import { afterAll, beforeAll, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it, onTestFinished } from "vitest";
 
 import type * as Internal from "../internal";
 import type * as Playwright from "../playwright";
@@ -14,7 +16,6 @@ const dist = join(dirname(fileURLToPath(import.meta.url)), "../../dist");
 let built: typeof Playwright;
 let internal: typeof Internal;
 let browser: Browser;
-const stops: (() => void)[] = [];
 
 beforeAll(async () => {
   // The Node lane loads what ships, by path, as builtEntries.test.ts reads it.
@@ -30,12 +31,10 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  for (const stop of stops.splice(0)) stop();
   await browser?.close();
 });
 
-/** A Page Object Model of a counter whose `add` waits until the page's
- * `open` is set, when `gated`, then adds one. */
+/** A Page Object Model of a counter whose `add` adds one. */
 function counterModel() {
   class Counter {
     constructor(readonly page: Page) {}
@@ -46,9 +45,6 @@ function counterModel() {
       return this.root.locator("output");
     }
     async add() {
-      await this.page.waitForFunction(() => !("gated" in window), null, {
-        timeout: 0,
-      });
       await this.root.getByRole("button").click();
     }
   }
@@ -76,6 +72,7 @@ function counterModel() {
  * contract as a window reaches it. */
 async function counterHost() {
   const page = await browser.newPage();
+  onTestFinished(() => page.close());
   await page.setContent(
     '<!doctype html><title>Counter</title><section id="counter"><output>0</output><button>Add</button></section>' +
       "<script>document.querySelector('button').onclick = () => document.querySelector('output').textContent = String(Number(document.querySelector('output').textContent) + 1)</script>"
@@ -84,7 +81,7 @@ async function counterHost() {
     { page, pageObjects: [counterModel()] },
     selectors
   );
-  stops.push(await ayme.start());
+  onTestFinished(await ayme.start());
   const port = internal.inspectorPortOf(ayme);
   return { page, ayme, port };
 }
@@ -95,29 +92,6 @@ type State = {
   pageObjects: { manifest: { className: string } }[];
   runs: { tool: string; by: string; status: string }[];
 };
-
-it("serves the Host's Page Objects and Page Object Tools, and pushes a new state when a Run changes them", async () => {
-  const { ayme, port } = await counterHost();
-  await internal.pageObjectCallerOf(ayme, "ayme-command").listing();
-  const events: State[] = [];
-  const stop = port.subscribe((event) =>
-    events.push((event as { state: State }).state)
-  );
-
-  const state = (await port.request("getState", undefined)) as State;
-
-  expect(state.tools.map(({ name }) => name)).toContain("Counter.add");
-  expect(state.pageObjects.map(({ manifest }) => manifest.className)).toEqual([
-    "Counter",
-  ]);
-  await internal
-    .pageObjectCallerOf(ayme, "ayme-command")
-    .run("Counter.add", { id: "po1" });
-  await expect
-    .poll(() => events.at(-1)?.runs.map(({ tool, by }) => [tool, by]))
-    .toContainEqual(["Counter.add", "ayme-command"]);
-  stop();
-});
 
 it("offers only the Page Object Tools: a Browser Tool is neither listed nor run", async () => {
   const { page, ayme, port } = await counterHost();
@@ -137,55 +111,6 @@ it("offers only the Page Object Tools: a Browser Tool is neither listed nor run"
   expect(answer.error).toBe('There is no tool "click".');
   expect(answer.state.runs.map(({ tool }) => tool)).not.toContain("click");
   expect(await page.locator("output").textContent()).toBe("0");
-});
-
-it("runs a tool as a Run of the Inspector, in the Tab's turn after the Run under way, whichever Caller started that", async () => {
-  const { page, ayme, port } = await counterHost();
-  await page.evaluate(() => Object.assign(window, { gated: true }));
-  const command = internal
-    .pageObjectCallerOf(ayme, "ayme-command")
-    .run("Counter.add", { id: "po1" });
-
-  let answered = false;
-  const fromInspector = port
-    .request("runTool", {
-      name: "Counter.add",
-      input: { id: "po1" },
-      by: "inspector",
-    })
-    .finally(() => (answered = true));
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  expect(answered).toBe(false);
-  expect(ayme.runs.list().map(({ by }) => by)).not.toContain("inspector");
-  await page.evaluate(() => Reflect.deleteProperty(window, "gated"));
-
-  await command;
-  const { state, error } = (await fromInspector) as {
-    state: State;
-    error?: string;
-  };
-  expect(error).toBeUndefined();
-  expect(state.runs.map(({ tool, by, status }) => [tool, by, status])).toEqual([
-    ["Counter.add", "ayme-command", "succeeded"],
-    ["Counter.add", "inspector", "succeeded"],
-  ]);
-  expect(await page.locator("output").textContent()).toBe("2");
-});
-
-it("highlights a Page Object's element on the page through Playwright", async () => {
-  const { page, port } = await counterHost();
-  const { targetsByRef } = (await port.request("look", undefined)) as {
-    targetsByRef: Record<string, string[]>;
-  };
-  const [ref] = Object.entries(targetsByRef).find(([, paths]) =>
-    paths.includes("Counter.output")
-  )!;
-  const highlights = () =>
-    page.evaluate(() => document.querySelectorAll("x-pw-glass").length);
-
-  await port.request("highlight", { layer: "pinned", refs: [ref] });
-
-  expect(await highlights()).toBeGreaterThan(0);
 });
 
 it("answers a pick with no ref at once: a Node Host offers no tool that takes a Structural Ref", async () => {

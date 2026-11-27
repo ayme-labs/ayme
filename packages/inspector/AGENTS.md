@@ -16,4 +16,4 @@ The Inspector's tests drive it through its page objects in [`testing/`](testing/
 
 - Test one part of the panel as a component test: render it with [`renderPart.tsx`](testing/renderPart.tsx) and drive it through the page objects on playwright-lite.
 - Write each page object to run on Playwright and on playwright-lite alike, since component tests run it on one and the end-to-end tests on the other. Drag with [`pointerDrag.ts`](testing/pom/pointerDrag.ts), which says why.
-- Put end-to-end tests in [`apps/inspector-fixture`](../../apps/inspector-fixture/README.md), since its Page Objects are built by the ayme plugin, which depends on this package.
+- Put the panel's end-to-end tests in [`apps/inspector-fixture`](../../apps/inspector-fixture/README.md), since its Page Objects are built by the ayme plugin, which depends on this package. The window a Session serves is tested end to end in [`apps/mcp-fixture`](../../apps/mcp-fixture/tests/inspectSession.spec.ts), since the built `ayme` command serves it.
