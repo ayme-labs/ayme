@@ -68,12 +68,8 @@ async function startMcp(
   return {
     client,
     stderr: () => stderr,
-    /** Calls `ayme_inspect`, and resolves with its text. */
-    async inspect() {
-      const result = await client.callTool({ name: INSPECT, arguments: {} });
-      const [first] = result.content as { type: string; text?: string }[];
-      return { text: first?.text ?? "", isError: result.isError === true };
-    },
+    /** Calls `ayme_inspect`, and resolves with its whole result. */
+    inspect: () => client.callTool({ name: INSPECT, arguments: {} }),
     /** The page `ayme_inspect` points an Agent App to, as the Agent App
      * reads it. */
     async page() {
@@ -233,6 +229,32 @@ for (const revision of REVISIONS)
     expect(resources.map(({ uri }) => uri)).toEqual([
       "ui://ayme/inspector.html",
     ]);
+    // No other route reaches the Session: no prompts, completions or
+    // resource templates. Sent as they are, since the client answers a
+    // listing of what the server does not offer by itself.
+    const capabilities = client.getServerCapabilities();
+    expect(capabilities).not.toHaveProperty("prompts");
+    expect(capabilities).not.toHaveProperty("completions");
+    await expect(
+      client.request({ method: "prompts/list", params: {} })
+    ).rejects.toThrow();
+    await expect(
+      client.request({
+        method: "completion/complete",
+        params: {
+          ref: { type: "ref/resource", uri: "ui://ayme/inspector.html" },
+          argument: { name: "uri", value: "" },
+        },
+      })
+    ).rejects.toThrow();
+    expect(
+      await client
+        .request({ method: "resources/templates/list", params: {} })
+        .then(
+          ({ resourceTemplates }) => resourceTemplates,
+          () => []
+        )
+    ).toEqual([]);
   });
 
 test("an Agent App shows the Inspector of the Session -s names, which runs a Page Object Tool on the Session's Tab as a Run of the Inspector", async ({
@@ -247,8 +269,12 @@ test("an Agent App shows the Inspector of the Session -s names, which runs a Pag
   const agentApp = await mcp(["-s=shop"]);
 
   expect(await agentApp.inspect()).toEqual({
-    text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect opens it in a browser window.",
-    isError: false,
+    content: [
+      {
+        type: "text",
+        text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect opens it in a browser window.",
+      },
+    ],
   });
   const { inspector } = await showInAgentApp(
     browser,
@@ -268,37 +294,66 @@ test("an Agent App shows the Inspector of the Session -s names, which runs a Pag
   await expect(inspector.header.connections.root).toHaveCount(0);
 });
 
-test("AYME_SESSION names the Session, as for every other command", async ({
-  ayme,
-  mcp,
-  baseURL,
-}) => {
-  await ayme("open", "-s=cart", `${baseURL}/shop.html`);
+for (const [named, args, env] of [
+  ["-s=shop", ["-s=shop"], {}],
+  ["AYME_SESSION=shop", [], { AYME_SESSION: "shop" }],
+] as const)
+  test(`started before any Session, with ${named}, the tool and the page say how to start that Session, and once it opens beside a default Session on another page, both reach it`, async ({
+    ayme,
+    mcp,
+    project,
+    baseURL,
+    browser,
+  }) => {
+    const agentApp = await mcp(args, { env });
 
-  const agentApp = await mcp([], { env: { AYME_SESSION: "cart" } });
+    const none = `No Session named shop is open in ${project}. Start one with ayme -s=shop open.`;
+    expect(await agentApp.inspect()).toEqual({
+      content: [{ type: "text", text: none }],
+      isError: true,
+    });
+    const notice = await agentApp.page();
+    expect(notice.html).toContain(
+      `${none} Then ask your agent to show the Inspector again.`
+    );
+    expect(notice.connectDomains).toEqual([]);
 
-  expect(await agentApp.inspect()).toMatchObject({
-    text: expect.stringContaining("The Inspector of the Session cart"),
-    isError: false,
+    await ayme("open", `${baseURL}/sign-in.html`);
+    expect(await agentApp.inspect()).toEqual({
+      content: [
+        {
+          type: "text",
+          text: `No Session named shop is open in ${project}. The Sessions open there are named: default. Start one with ayme -s=shop open.`,
+        },
+      ],
+      isError: true,
+    });
+    await ayme("open", "-s=shop", `${baseURL}/shop.html`);
+
+    expect(await agentApp.inspect()).toEqual({
+      content: [
+        {
+          type: "text",
+          text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect opens it in a browser window.",
+        },
+      ],
+    });
+    const { inspector } = await showInAgentApp(
+      browser,
+      baseURL!,
+      await agentApp.page()
+    );
+    // The Tools lens lists the tools of the Tab the Inspector shows alone.
+    await inspector.navigator.showLens("Tools");
+    await expect
+      .poll(() => inspector.navigator.tools.listed())
+      .toEqual({
+        "Page object tools": expect.arrayContaining(["Basket.add"]),
+      });
+    expect(
+      (await inspector.navigator.tools.listed())["Page object tools"]
+    ).not.toContain("SignInPage.signIn");
   });
-});
-
-test("with no Session open, the tool says how to start one, and the page an Agent App shows says so and connects nowhere", async ({
-  mcp,
-  project,
-}) => {
-  const agentApp = await mcp();
-
-  const inspected = await agentApp.inspect();
-  const { html, connectDomains } = await agentApp.page();
-
-  const why = `No Session is open in ${project}. Start one with ayme -s=default open.`;
-  expect(inspected).toEqual({ text: why, isError: true });
-  expect(html).toContain(
-    `${why} Then ask your agent to show the Inspector again.`
-  );
-  expect(connectDomains).toEqual([]);
-});
 
 test("once the Session ends, the Inspector in the chat says so and connects no more", async ({
   ayme,
