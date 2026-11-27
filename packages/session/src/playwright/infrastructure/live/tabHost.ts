@@ -80,12 +80,20 @@ const devtools = (page: Page) => {
   }
   return session;
 };
-const targetIdOf = async (page: Page) =>
-  (
-    (await (await devtools(page)).send("Target.getTargetInfo")) as {
-      targetInfo: { targetId: string };
-    }
-  ).targetInfo.targetId;
+/** The id of each page's tab, kept from its first lookup that succeeded,
+ * since a page keeps its tab. */
+const targetIds = new WeakMap<Page, Promise<string>>();
+const targetIdOf = (page: Page) => {
+  let id = targetIds.get(page);
+  if (!id) {
+    id = devtools(page)
+      .then((session) => session.send("Target.getTargetInfo"))
+      .then(({ targetInfo }) => targetInfo.targetId);
+    targetIds.set(page, id);
+    id.catch(() => targetIds.delete(page));
+  }
+  return id;
+};
 
 /** The Tab's page as its Host reaches it through `caller`. */
 const hostedTab = (
