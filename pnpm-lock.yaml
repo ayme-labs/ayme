@@ -647,9 +647,6 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
-      "@ayme-dev/mcp":
-        specifier: workspace:*
-        version: link:../../packages/mcp
       "@ayme-dev/webmcp":
         specifier: workspace:*
         version: link:../../packages/webmcp

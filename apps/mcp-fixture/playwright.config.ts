@@ -22,8 +22,7 @@ export const baseURL = `http://127.0.0.1:${port}`;
 export default defineConfig({
   testDir: "./tests",
   reporter: "list",
-  // Each test starts an ayme MCP server, which takes a port of the server's
-  // range; other worktrees' runs use that range too.
+  // Each test starts a Session with a browser of its own, so two at a time.
   workers: 2,
   use: {
     ...devices["Desktop Chrome"],
