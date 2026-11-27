@@ -65,6 +65,8 @@ While recording, **Record** turns into **Stop**: press it to pause, and **Contin
 
 **Finish**, closing the last recorded page and Ctrl+C in the terminal each save the recording. The terminal then prints its path as `Recording package: ...`. If nothing was recorded, it prints `Recording was empty; no recording package was created.` instead.
 
+When the recorder cannot fully record a step, it prints a line that starts with `Warning:` in the terminal and keeps recording. If you ran `codegen` yourself, pass the warning to your agent with the recording. The [Recorder guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#warnings) lists the warnings.
+
 ### What the recorder shows
 
 ![The recorder window during a recording: a page heading, the navigation, and each step with the changes it caused](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-timeline.png)
