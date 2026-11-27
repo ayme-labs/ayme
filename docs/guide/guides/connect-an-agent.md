@@ -18,13 +18,18 @@ The agent's browser automation keeps doing everything else: snapshots, clicks ou
 
 ## Set up your project
 
-1. Install the `ayme` command, `@ayme-dev/cli`, as a dev dependency. It needs `@ayme-dev/ayme` at exactly the same version, and Playwright 1.62 or newer:
+1. Install the `ayme` command, `@ayme-dev/cli`, and Playwright as dev dependencies. The command needs Playwright 1.62 or newer:
 
    ```sh
-   npm install -D @ayme-dev/cli @ayme-dev/ayme @playwright/test
+   npm install -D @ayme-dev/cli @playwright/test
    ```
 
-   The command runs your Page Objects with your project's own `@ayme-dev/ayme` and Playwright. When a version does not fit, it does not start, and says which version to install.
+   The command runs your Page Objects with your project's own `@ayme-dev/ayme` and Playwright, and needs `@ayme-dev/ayme` at exactly its own version. When a version does not fit, it does not start, and says which version to install.
+
+   - If your app already ships ayme, keep `@ayme-dev/ayme` in your `dependencies`, and change only its version: `npm install @ayme-dev/ayme@<version>`, without `-D`. With `-D`, npm moves it to `devDependencies`, and an install of production dependencies leaves it out.
+   - Otherwise, add it as a dev dependency: `npm install -D @ayme-dev/ayme@<version>`.
+
+   `<version>` is the version of `@ayme-dev/cli`, which `npm ls @ayme-dev/cli` prints.
 
    If your project has `@ayme-dev/mcp`, uninstall it with `npm uninstall @ayme-dev/mcp`. It is retired, and its command is also called `ayme`, so `npx ayme`, and even `npx @ayme-dev/cli`, can run it instead of this one.
 
