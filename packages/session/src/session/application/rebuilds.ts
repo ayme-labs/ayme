@@ -61,18 +61,21 @@ export const rebuilding = (
     const rebuild = Effect.gen(function* () {
       yield* Queue.take(edited);
       const built = yield* Effect.exit(builds.build.pipe(Scope.provide(scope)));
-      if ((yield* Queue.size(edited)) > 0) return;
-      if (Exit.isSuccess(built)) {
-        newest = built.value;
-        for (const tab of waiting) tab.pending = built.value;
-        failing = undefined;
-        for (const follower of followers) yield* Effect.forkIn(follower, scope);
-      } else {
+      // Every finished build is the one a listing reports; one a newer edit
+      // overtook while it ran is not swapped in.
+      const overtaken = (yield* Queue.size(edited)) > 0;
+      if (Exit.isFailure(built)) {
         for (const tab of waiting) tab.pending = undefined;
         failing = Option.getOrElse(Cause.findErrorOption(built.cause), () =>
           brokenStart(Cause.squash(built.cause))
         );
+        return;
       }
+      failing = undefined;
+      if (overtaken) return;
+      newest = built.value;
+      for (const tab of waiting) tab.pending = built.value;
+      for (const follower of followers) yield* Effect.forkIn(follower, scope);
     });
     yield* rebuild.pipe(Effect.forever, Effect.forkIn(scope));
 

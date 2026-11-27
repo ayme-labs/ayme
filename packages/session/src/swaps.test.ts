@@ -350,3 +350,24 @@ it("a good build that a later edit broke is dropped on every Tab that had not sw
   expect(second.swappedIn).toEqual([]);
   expect(browser.swappedIn).toEqual([EDITED]);
 });
+
+it("every finished build sets the build line, also one a newer edit overtook while it ran", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  await session.ask({ tools: {} });
+
+  browser.edit();
+  await until(() => browser.builds === 2);
+  browser.edit();
+  await pending(new Promise(() => {}));
+  browser.failBuild(BUILD_ERRORS, FIRST_ERROR);
+  await until(() => browser.builds === 3);
+  expect((await session.ask({ tools: {} })).text).toContain(BUILD_LINE);
+
+  browser.edit();
+  await pending(new Promise(() => {}));
+  browser.finishBuild(EDITED);
+  await until(() => browser.builds === 4);
+  expect((await session.ask({ tools: {} })).text).not.toContain(BUILD_LINE);
+  expect(browser.swappedIn).toEqual([]);
+});
