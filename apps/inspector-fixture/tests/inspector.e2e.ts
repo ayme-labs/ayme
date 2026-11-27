@@ -67,7 +67,14 @@ test("the layout and its sizes survive a reload", async ({
   inspector,
 }) => {
   const { header, shell } = inspector;
+  const start = await shell.box();
   await header.dragBy(-100, 50);
+  await expect
+    .poll(async () => (await shell.box()).x)
+    .toBeCloseTo(start.x - 100, 0);
+  await expect
+    .poll(async () => (await shell.box()).y)
+    .toBeCloseTo(start.y + 50, 0);
   const beforeFloating = await shell.box();
   await shell.resizeBy("left", -60, 0);
   await expect
@@ -140,15 +147,13 @@ test("the page highlights what's hovered in the panel and what's selected, at on
   inspector,
   listPage,
 }) => {
-  const { navigator } = inspector;
-
-  await navigator.search("Add item");
-  await navigator.result('button "Add item"').click();
-  await navigator.search("New item");
+  await inspector.navigator.search("Add item");
+  await inspector.navigator.result('button "Add item"').click();
+  await inspector.navigator.search("New item");
   // The new result can render right under the pointer left by the click,
   // and Chromium 156 sends no mouseenter for that; enter it from outside.
   await browser.mouse.move(0, 0);
-  await navigator.result('textbox "New item"').hover();
+  await inspector.navigator.result('textbox "New item"').hover();
 
   await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
   await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
@@ -178,14 +183,13 @@ test("the app's DOM gains no attribute while an element is highlighted", async (
           ].join(" ")
         )
     );
-  const { navigator } = inspector;
   const before = await attributes();
 
-  await navigator.search("Add item");
-  await navigator.result('button "Add item"').click();
-  await navigator.search("New item");
+  await inspector.navigator.search("Add item");
+  await inspector.navigator.result('button "Add item"').click();
+  await inspector.navigator.search("New item");
   await browser.mouse.move(0, 0);
-  await navigator.result('textbox "New item"').hover();
+  await inspector.navigator.result('textbox "New item"').hover();
 
   // Both highlights are showing.
   await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");

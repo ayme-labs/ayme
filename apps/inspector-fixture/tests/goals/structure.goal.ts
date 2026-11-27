@@ -6,6 +6,7 @@ import {
   placements,
   testIn,
   confirmGoalRecordings,
+  movePointerTo,
 } from "../e2e/fixtures";
 
 // The goal-driven twin of ../structure.e2e.ts: the same tests, with each
@@ -36,7 +37,7 @@ for (const placement of placements) {
       await agent.act("select the node tagged {tag} in the Structure lens", {
         params: { tag: ".newItemInput" },
       });
-      await inspector.navigator.searchBox.hover();
+      await movePointerTo(inspector.navigator.searchBox);
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("solid");
 
       await confirmGoalRecordings(browser);

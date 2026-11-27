@@ -6,6 +6,7 @@ import {
   placements,
   testIn,
   confirmGoalRecordings,
+  movePointerTo,
 } from "./e2e/fixtures";
 
 // E2E: the Structure lens on the fixture page, with the real runtime, in
@@ -21,13 +22,12 @@ for (const placement of placements) {
       listPage,
     }) => {
       await inspector.navigator.showLens("Structure");
-      const newItem = inspector.structure.nodeOf("ListPage.newItemInput");
 
-      await newItem.hover();
+      await inspector.structure.nodeOf("ListPage.newItemInput").hover();
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
 
-      await newItem.click();
-      await inspector.navigator.searchBox.hover();
+      await inspector.structure.nodeOf("ListPage.newItemInput").click();
+      await movePointerTo(inspector.navigator.searchBox);
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("solid");
 
       await confirmGoalRecordings(browser);

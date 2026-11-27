@@ -48,7 +48,8 @@ for (const placement of placements) {
       const definition = await appView.pomDefinitions("ListPage");
       const { toolPage } = inspector.detail;
 
-      const card = await inspector.tool("ListPage.addItem");
+      await inspector.tool("ListPage.addItem");
+      const card = inspector.detail.runCard();
 
       await expect
         .poll(() => toolPage.descriptionText())

@@ -35,7 +35,8 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      const fill = await inspector.tool("fill");
+      await inspector.tool("fill");
+      const fill = inspector.detail.runCard();
 
       await fill.refField("target").pickOnPage();
       await untilThePagePicks(listPage);
@@ -86,7 +87,8 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      const ref = (await inspector.tool("click")).refField("target");
+      await inspector.tool("click");
+      const ref = inspector.detail.runCard().refField("target");
       await ref.pickOnPage();
       await untilThePagePicks(listPage);
 
@@ -105,7 +107,8 @@ for (const placement of placements) {
       browser,
       inspector,
     }) => {
-      const ref = (await inspector.tool("fill")).refField("target");
+      await inspector.tool("fill");
+      const ref = inspector.detail.runCard().refField("target");
 
       await ref.open();
 
@@ -124,7 +127,8 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      const ref = (await inspector.tool("fill")).refField("target");
+      await inspector.tool("fill");
+      const ref = inspector.detail.runCard().refField("target");
       await ref.pickOnPage();
       await untilThePagePicks(listPage);
 

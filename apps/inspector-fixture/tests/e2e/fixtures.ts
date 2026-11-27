@@ -20,15 +20,22 @@ export type { FixturePage, Placement };
 export const INSPECTOR = { icon: "Run by you from the Inspector" } as const;
 
 /**
- * The last line of every test that has a goal twin (`tests/goals/`), in both
- * arms alike. e2e saves an `agent.act` recording only once a later check of
- * the kind it counts passes (its docs/cache.mdx, "When a recording is
- * written"), and polls and checks on read values don't count. It comes last,
- * after the test's own checks passed, and checks nothing itself: any URL
- * matches.
+ * A check e2e counts, so it saves the goals' recordings: e2e saves an
+ * `agent.act` recording only once a later check of that kind passes (its
+ * docs/cache.mdx, "When a recording is written"), and polls and checks on
+ * read values don't count. It checks nothing itself: any URL matches.
  */
 export async function confirmGoalRecordings(browser: Browser) {
   await browser.waitForURL(/^/);
+}
+
+/**
+ * Moves the pointer onto `element`, off what it hovered. Plain code in every
+ * arm, never a goal: it resets the pointer between steps, which no user step
+ * asks for.
+ */
+export async function movePointerTo(element: On) {
+  await element.hover();
 }
 
 /** Both placements, for a spec whose tests run in each. */
@@ -249,7 +256,7 @@ export function testIn(
           const agent = await startAgent("--port", port).catch((error) => {
             if (!fixed) throw error;
             throw new Error(
-              `ayme mcp could not start on port ${port}, from AYME_E2E_MCP_PORT; set it to a free port.`,
+              `ayme mcp failed to start on port ${port}, from AYME_E2E_MCP_PORT; if the port is taken, change it.`,
               { cause: error }
             );
           });

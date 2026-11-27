@@ -70,26 +70,30 @@ state installs a WebMCP driver, the recording one from
 `@ayme-dev/webmcp/testing`.
 
 `pnpm test:goals` runs the goal-driven tests (`tests/goals/**/*.goal.ts`,
-with `e2e.goals.config.ts`), e2e's telemetry off. Each is the `*.e2e.ts` test
-of the same name with every action on the panel written as an `agent.act`
-goal, which Claude Code carries out on this machine's own login. CI has no
-model, so `pnpm e2e` and Turbo's tasks leave them out. In the external
-placement, switching to the Inspector's tab is part of the goal: the agent
-does it as it sees fit. A first run records each goal into
+with `e2e.goals.config.ts`), e2e's telemetry off. Each is its `*.e2e.ts` twin
+with the Page Object actions on the panel written as `agent.act` goals,
+which Claude Code carries out on this machine's own login;
+`scripts/check-goal-mirror.mjs` says exactly what may differ, and a twin test
+with no Page Object action to turn into a goal has no goal test. They never
+run in CI, for the reason beside the `CI` guard in `e2e.goals.config.ts`.
+Moving the pointer off an element between steps (`movePointerTo`) is the
+one thing on the panel that is not a goal: no user step asks for it. In the
+external placement, switching to the Inspector's tab is part of the goal:
+the agent does it as it sees fit. A first run records each goal into
 `.e2e/goals-cache/`, and later runs replay it without the model, except for
 a step that changes no control, such as dragging the panel's edge: e2e saves
 nothing for it, so it calls the model on every run, and a warm run needs the
-login too. The external placement's `ayme mcp` gets a port of this
-checkout's own, which `AYME_E2E_MCP_PORT` overrides. `pnpm lint` also runs
-the mirror check (alone: `pnpm check:goal-mirror`), which fails when a goal file drifts from its
-`*.e2e.ts` twin; `scripts/check-goal-mirror.mjs` says what it compares.
+login too. The external placement's `ayme mcp` gets a port derived from the
+checkout's path, which `AYME_E2E_MCP_PORT` overrides. `pnpm lint` also runs
+the mirror check (alone: `pnpm check:goal-mirror`), and `pnpm test` runs its
+own tests.
 
 The same goal files are the Page Object study's third arm, with the e2e
 suite's Page Objects as tools: `pnpm test:goals:tools`, with its model-free
 runs and what keeps the arms apart in
 [`@ayme-dev/e2e-tools`](../../packages/e2e-tools/README.md).
 
-Known costs of keeping the goal files line for line with their twins:
+Known costs of keeping the goal files to their twins' shape:
 
 - A long test costs more in the agent arms: each tool's page (toolsLens)
   runs 24 goals in one agent session, and the header's menus and switches

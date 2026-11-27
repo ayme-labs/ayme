@@ -366,13 +366,13 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      const pressKey = await inspector.tool("press_key");
+      await inspector.tool("press_key");
 
       // The fixture writes the function key it receives into the New item
       // field; two keys, so a run that always presses the same one fails.
       for (const key of ["F4", "F7"]) {
-        await pressKey.fill({ key });
-        await pressKey.runButton.click();
+        await inspector.detail.runCard().fill({ key });
+        await inspector.detail.runCard().runButton.click();
         await expect(await listPage.newItemInput.front()).toHaveValue(key);
       }
 
@@ -417,7 +417,8 @@ for (const placement of placements) {
         ],
         [await appView.ref('button "Clear"')],
       ];
-      const card = await inspector.tool("generate_locator");
+      await inspector.tool("generate_locator");
+      const card = inspector.detail.runCard();
       const { locatorGroups } = card;
 
       await locatorGroups.toggleFromTree(1, ...groups[0]!);

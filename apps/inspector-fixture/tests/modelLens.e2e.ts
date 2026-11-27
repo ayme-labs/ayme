@@ -8,6 +8,7 @@ import {
   reloadFixture,
   testIn,
   confirmGoalRecordings,
+  movePointerTo,
 } from "./e2e/fixtures";
 import type { Tab } from "./e2e/tab";
 
@@ -59,25 +60,24 @@ for (const placement of placements) {
         page.locator("#todo-items > li").within((rows) => rows.nth(1)),
         browser
       );
-      const object = inspector.navigator.model.object("TodoPage.items[1]");
 
       // The list can still be settling under a resting pointer, which then
       // hovers another row: hover again until it is this one.
-      // Until the test's own timeout, as Playwright's `toPass()` without one.
+      // For up to 30 s.
       await expect
         .poll(
           async () => {
-            await object.hover();
+            await inspector.navigator.model.object("TodoPage.items[1]").hover();
             return secondItem();
           },
           { timeout: 30_000 }
         )
         .toBe("dashed");
-      await inspector.header.title.hover();
+      await movePointerTo(inspector.header.title);
       await expect.poll(secondItem).toBe("none");
 
-      await object.click();
-      await inspector.header.title.hover();
+      await inspector.navigator.model.object("TodoPage.items[1]").click();
+      await movePointerTo(inspector.header.title);
 
       await expect.poll(secondItem).toBe("solid");
 
@@ -100,7 +100,7 @@ for (const placement of placements) {
 
       await expect.poll(archiveButton).toBe("dashed");
       await expect.poll(item).toBe("solid");
-      await inspector.header.title.hover();
+      await movePointerTo(inspector.header.title);
       await expect.poll(archiveButton).toBe("none");
       await expect.poll(item).toBe("solid");
 
@@ -117,7 +117,7 @@ for (const placement of placements) {
       await inspector.navigator.model.object("TodoPage").click();
 
       await detail.member("newItemInput").click();
-      await inspector.header.title.hover();
+      await movePointerTo(inspector.header.title);
 
       await expect.poll(input).toBe("solid");
       await expect(await detail.title.front()).toHaveText(

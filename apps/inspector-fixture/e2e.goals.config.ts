@@ -6,10 +6,11 @@ import type { E2EConfig } from "e2e";
 
 import base from "./e2e.config";
 
-// The goal twins' own config: their steps need a coding agent on this
-// machine's login, which CI does not have, and replays that only a stable
-// setup gives.
+// The goal twins' own config: an agent for their goals, and the stable setup
+// their recordings need to replay.
 
+// Each goal runs a coding agent on a model through this machine's login, and
+// CI has neither, so the goal files never run there.
 if (process.env.CI)
   throw new Error(
     "e2e.goals.config.ts runs an agent on a model, and CI has none: run the goal tests on your own machine."
@@ -25,7 +26,7 @@ export const PANEL_RULES =
 // The external placement's Inspector window is served by `ayme mcp`, and a
 // recording is keyed to the window's origin: one port for every test (they
 // run one at a time) lets them replay. Derived from this checkout's path, so
-// two checkouts' runs don't meet; above the 9350-9365 range pages scan to
+// two checkouts' runs rarely meet; above the 9350-9365 range pages scan to
 // pair (packages/mcp/testing/index.ts), so no page pairs with it unasked.
 const checkout = createHash("sha256")
   .update(import.meta.dirname)
