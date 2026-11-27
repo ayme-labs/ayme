@@ -91,7 +91,7 @@ async function counterHost() {
 
 type State = {
   revision: number;
-  tools: { name: string }[];
+  tools: { name: string; group: string }[];
   pageObjects: { manifest: { className: string } }[];
   runs: { tool: string; by: string; status: string }[];
 };
@@ -117,6 +117,26 @@ it("serves the Host's Page Objects and Page Object Tools, and pushes a new state
     .poll(() => events.at(-1)?.runs.map(({ tool, by }) => [tool, by]))
     .toContainEqual(["Counter.add", "ayme-command"]);
   stop();
+});
+
+it("offers only the Page Object Tools: a Browser Tool is neither listed nor run", async () => {
+  const { page, ayme, port } = await counterHost();
+  await internal.pageObjectCallerOf(ayme, "ayme-command").listing();
+  expect(ayme.tools.list().some(({ group }) => group === "browser")).toBe(true);
+
+  const state = (await port.request("getState", undefined)) as State;
+  const answer = (await port.request("runTool", {
+    name: "click",
+    input: { target: "e1" },
+    by: "inspector",
+  })) as { state: State; error?: string };
+
+  expect(new Set(state.tools.map(({ group }) => group))).toEqual(
+    new Set(["pageObject"])
+  );
+  expect(answer.error).toBe('There is no tool "click".');
+  expect(answer.state.runs.map(({ tool }) => tool)).not.toContain("click");
+  expect(await page.locator("output").textContent()).toBe("0");
 });
 
 it("runs a tool as a Run of the Inspector, in the Tab's turn after the Run under way, whichever Caller started that", async () => {

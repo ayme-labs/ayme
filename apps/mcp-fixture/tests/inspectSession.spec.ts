@@ -146,18 +146,16 @@ test("the window shows the Page Object Tree and the tools of the Session's Tab, 
     .poll(() => inspector.navigator.model.objectPaths())
     .toEqual(expect.arrayContaining(["ShopPage", "Basket"]));
   await inspector.navigator.showLens("Tools");
+  // A Session offers its Page Object Tools alone.
   await expect
-    .poll(
-      async () =>
-        (await inspector.navigator.tools.listed())["Page object tools"]
-    )
-    .toEqual(
-      expect.arrayContaining([
+    .poll(() => inspector.navigator.tools.listed())
+    .toEqual({
+      "Page object tools": expect.arrayContaining([
         "Basket.add",
         "Basket.clear",
         "ShopPage.readHeading",
-      ])
-    );
+      ]),
+    });
 
   await (await inspector.tool("Basket.add")).run({ item: "Milk" });
 
@@ -166,11 +164,9 @@ test("the window shows the Page Object Tree and the tools of the Session's Tab, 
   expect(await run.caller()).toEqual({ icon: "Run by you from the Inspector" });
   await expect(shop.getByRole("listitem")).toHaveText(["Milk"]);
   expect((await ayme("page-objects")).stdout).toContain("listitem: Milk");
-  // A Session offers no tool that takes a Structural Ref, so the panel
-  // offers no picking.
   await expect(
     inspector.container.getByRole("button", {
-      name: "Pick an element on the page",
+      name: /^Pick (an element )?on (the )?page$/,
     })
   ).toHaveCount(0);
 
