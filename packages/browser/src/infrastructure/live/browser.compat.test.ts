@@ -209,9 +209,11 @@ it("joins without Playwright's defaults: the page keeps the browser's own colour
 it("joining a headless browser replaces a tab's own font families with Playwright's", async () => {
   const { address, context } = await running();
   const page = context.pages()[0]!;
-  // Text that a monospace font and any other set at different widths.
+  // Text that a monospace font and any other set at different widths. The
+  // size is given: Chromium sets the keyword `monospace`, which is how CSS
+  // reads Linux's font name, smaller than other text when none is.
   await page.setContent(
-    `<span id="cursive" style="font-family: cursive">iiiiiWWWWW</span><span id="own" style="font-family: ${OWN_FONT}">iiiiiWWWWW</span>`
+    `<style>span { font-size: 16px }</style><span id="cursive" style="font-family: cursive">iiiiiWWWWW</span><span id="own" style="font-family: ${OWN_FONT}">iiiiiWWWWW</span>`
   );
   const cdp = await context.newCDPSession(page);
   await cdp.send("Page.setFontFamilies", {
