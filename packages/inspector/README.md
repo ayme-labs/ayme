@@ -18,7 +18,7 @@ useAyme({ inspector: import.meta.env.DEV });
 
 The runtime loads the Inspector when it starts in the browser and unmounts it when it stops. With the option off, the page requests no Inspector code. To show people what an agent does, `inspector: { demo: true }` also pauses before each action and shows where each click lands.
 
-On a Session of the `ayme` command, `ayme inspect` opens the Inspector in your default browser, and `ayme mcp` shows it in an Agent App's chat, with nothing in the app; `@ayme-dev/cli` brings it.
+On a Session of the `ayme` command, `ayme inspect` prints the address of the Inspector, to open in any browser, and `ayme mcp` shows it in an Agent App's chat, with nothing in the app; `@ayme-dev/cli` brings it.
 
 ## Documentation
 
