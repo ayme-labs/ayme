@@ -1,6 +1,4 @@
-// A Tab's dialogs as a Session counts them (rule 4), and the Playwright
-// calls of the Page Object Actions on the Tab, which a dialog nobody
-// answered stops (ADR-0073).
+// Why a dialog nobody answered stops an action: ADR-0073.
 import { AsyncLocalStorage } from "node:async_hooks";
 
 import {
@@ -61,14 +59,11 @@ const startAfter = (ms: number, then: () => void) => {
 };
 
 /**
- * The dialogs of one Tab, as the browser says each opens and closes, told
- * to `tell` as the Session counts them: "opening" at once, open once
- * `openMs` passed on `wait`'s clock. While one opens, the
- * calls that reach the browser of each action under way wait; once one
- * counts as open, the requests under way are stopped: their actions are
- * never entered, and each later call of theirs is refused, however the
- * dialog is answered. A call outside every action, such as ayme's own read
- * of the page, is neither.
+ * The dialogs of one Tab, told to `tell` as the Session counts them (rule
+ * 4), on `wait`'s clock, which a test moves. While one opens, the calls of
+ * the actions under way wait, as it may close before it counts; once it
+ * counts, the requests under way stop. ayme's own reads of the page are no
+ * action's, so neither happens to them.
  */
 export function tabDialogs(
   tell: (now: TabDialog) => void,
@@ -133,6 +128,8 @@ export function tabDialogs(
       if (ended) throw new Error(UNWATCHED);
       refuseIfStopped(own);
       if (!held || answersAtOnce) return undefined;
+      // A held call asks again once it wakes: the dialog may have counted
+      // meanwhile, or the Tab's watch ended.
       return held.until.then(() => actionCalls.before(false));
     },
     stopped: () => (actions.getStore() ?? requests.getStore())?.why,
@@ -146,7 +143,6 @@ export function tabDialogs(
     },
   };
   return {
-    /** The browser says `dialog` opened on the Tab's page. */
     opened: (dialog: Dialog) => {
       if (ended) return;
       counting?.();
@@ -164,7 +160,6 @@ export function tabDialogs(
       counting?.();
       count(dialog);
     },
-    /** The browser says the Tab's dialog closed, whoever answered it. */
     closed: () => {
       if (ended) return;
       counting?.();

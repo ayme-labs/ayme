@@ -509,15 +509,13 @@ const dialogCounts = (tab: BrowserTab) =>
   );
 
 /**
- * `hosted`, whose listings, Runs and Inspector calls are answered that a
- * dialog is open while one counts as open on its Tab (rules 4 and 5): at
- * once when one is, and the moment one counts while they wait for the Tab's
- * turn or run. One that arrives while a dialog opens waits until it counts
- * or closes. What a command was answered for goes on in `scope` and keeps
- * the Tab's turn until it ends, so the next Run starts only once a stopped
- * action has ended; nothing reads its outcome. One still waiting for the
- * turn never starts. The answers name the Tab by
- * `tab`'s URL, since its title is the page's, which the dialog holds.
+ * `hosted`, whose requests are answered that a dialog is open once one
+ * counts on its Tab (rules 4 and 5), at once or while they wait or run.
+ * Work already under way keeps the Tab's turn in `scope` until it ends, so
+ * the next Run starts only once a stopped action has ended; work still
+ * waiting never starts, since its Caller may run the command again. A
+ * listing names the Tab by `tab`'s URL, since its title is the page's, which
+ * the dialog holds.
  */
 function atDialogs(
   hosted: HostedTab,
@@ -568,7 +566,7 @@ function atDialogs(
   // A command whose work had started may have changed the page; one still
   // waiting can be run again.
   const atRun = (dialog: Dialog, started: boolean) =>
-    new RunError(started ? dialogOpenAtRun(dialog) : dialogOpen(dialog));
+    started ? dialogOpenAtRun(dialog) : dialogOpen(dialog);
   return {
     listing: atDialog(
       hosted.listing,
@@ -576,7 +574,11 @@ function atDialogs(
       new TabReadError(TAB_CLOSED)
     ),
     call: (tool, input) =>
-      atDialog(hosted.call(tool, input), atRun, new RunError(TAB_CLOSED)),
+      atDialog(
+        hosted.call(tool, input),
+        (dialog, started) => new RunError(atRun(dialog, started)),
+        new RunError(TAB_CLOSED)
+      ),
     inspector: {
       ...hosted.inspector,
       request: (method, params) =>
@@ -586,9 +588,7 @@ function atDialogs(
               hosted.inspector.request(method, params),
               (dialog, started) =>
                 new TabReadError(
-                  method === "runTool"
-                    ? atRun(dialog, started).message
-                    : dialogOpen(dialog)
+                  atRun(dialog, method === "runTool" && started)
                 ),
               new TabReadError(TAB_CLOSED)
             ),
