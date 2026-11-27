@@ -1,5 +1,6 @@
 export {
   inputSchemaFor,
+  methodArguments,
   patternViolations,
   requiredDescription,
 } from "./actionTool";

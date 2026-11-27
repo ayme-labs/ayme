@@ -118,15 +118,28 @@ export function assertUnpatchedE2e(config: string): void {
     );
 }
 
-/** The `--cache-dir` this run was started with, if any. */
+/** The `--cache-dir` this run was started with, if any: the last one given, which e2e's CLI takes. */
 function cacheDirFlag(): string | undefined {
   const args = process.argv;
+  let flag: string | undefined;
   for (let at = 0; at < args.length; at += 1) {
     const arg = args[at]!;
-    if (arg === "--cache-dir") return args[at + 1];
-    if (arg.startsWith("--cache-dir=")) return arg.slice("--cache-dir=".length);
+    if (arg === "--cache-dir") flag = args[at + 1];
+    else if (arg.startsWith("--cache-dir="))
+      flag = arg.slice("--cache-dir=".length);
   }
-  return undefined;
+  return flag;
+}
+
+/** `dir` with every symlink on its way resolved, as far as it exists. */
+function realDir(dir: string): string {
+  const missing: string[] = [];
+  let at = dir;
+  while (!existsSync(at) && path.dirname(at) !== at) {
+    missing.unshift(path.basename(at));
+    at = path.dirname(at);
+  }
+  return path.join(realpathSync(at), ...missing);
 }
 
 /**
@@ -146,7 +159,7 @@ export function assertOwnCacheDir(
     (baseline) => (baseline as { cache?: { dir?: string } }).cache?.dir
   );
   const resolve = (dir: string) =>
-    path.resolve(projectRoot, dir.replace(/^~(?=$|\/)/, homedir()));
+    realDir(path.resolve(projectRoot, dir.replace(/^~(?=$|\/)/, homedir())));
   const env = process.env.E2E_CACHE_DIR;
   const dir = resolve(cacheDirFlag() ?? env ?? own ?? ".e2e/cache");
   if (
@@ -199,6 +212,12 @@ export interface ServedTool {
       observe(): Promise<string>;
       /** Set when a cached replay repeats the call. */
       readonly replaying?: boolean;
+      /**
+       * Whether the step has ended, by a verdict or a stop: asked again when
+       * the call's turn in e2e's action queue comes, so a call queued behind
+       * the verdict does not act (the ACP patch's `stepEnded`).
+       */
+      readonly stepEnded?: () => boolean;
     }
   ): Promise<string>;
 }

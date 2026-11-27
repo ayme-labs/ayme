@@ -2,7 +2,7 @@
 // source of each file the patches change, as it loads it. The files on disk
 // stay the published ones, so a process started without this hook, as the
 // study's first two arms are, runs e2e as published. `bin.mjs` loads it into
-// the runner and, through NODE_OPTIONS, into every process the runner starts.
+// the runner, and the `e2e` patch into each test worker the runner forks.
 
 import { readFileSync } from "node:fs";
 import { registerHooks } from "node:module";

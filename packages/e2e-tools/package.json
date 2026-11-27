@@ -11,6 +11,7 @@
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
+    "test": "node --test patched-e2e/*.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

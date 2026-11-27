@@ -11,16 +11,15 @@
  * the part the action belongs to, and calls the method: the Page Object's
  * own calls through e2e's engine, and nothing else.
  *
- * Before a call, the rules the Page Object itself declares are asked in
- * Node: its presence rule, whether its root shows, and the action's
- * availability rule. A call they rule out is refused at once with the
- * reason. That is less than an ayme session measures: it does not check that
- * a click would reach the element.
+ * Before a call, its input is checked against the action's schema, as an
+ * ayme session checks it, live or replayed, and the rules the Page Object
+ * itself declares are asked in Node: its presence rule, whether its root
+ * shows, and the action's availability rule. A call they rule out is refused
+ * at once with the reason. That is less than an ayme session measures: it
+ * does not check that a click would reach the element.
  *
- * Nothing lists the items of a collection, so an action of an item takes
- * text the item shows (`{ item, args }`) and runs on the one item that shows
- * it. Unlike a position, that text names the same item in a later run, so
- * e2e can record the call and repeat it.
+ * An item of a collection would need input that names it, which no study
+ * Page Object has, so the actions of a collection's items are left out.
  */
 
 import { createHash } from "node:crypto";
@@ -28,7 +27,13 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createPomCompiler } from "@ayme-dev/ayme/compiler";
-import { availabilityPredicateOf, modelOption } from "@ayme-dev/ayme/internal";
+import {
+  availabilityPredicateOf,
+  inputSchemaFor,
+  methodArguments,
+  modelOption,
+  patternViolations,
+} from "@ayme-dev/ayme/internal";
 import type { JsonValue } from "e2e";
 import { defineTool, type DefinedTool } from "e2e/agent";
 import { z } from "zod";
@@ -38,39 +43,30 @@ type Manifest = ReturnType<
   ReturnType<typeof createPomCompiler>["derivePomManifests"]
 >[number];
 type Component = Manifest["components"][number];
-type NamedParameter = Extract<
-  Component["tools"][number]["parameters"][number],
-  { name: string }
->;
+type Parameter = Component["tools"][number]["parameters"][number];
 
 /** One member on the way from the listed class to the part an action belongs to. */
 interface Step {
   readonly member: string;
   /** A getter reads like a field. */
   readonly access: "field" | "getter" | "method";
-  readonly collection: boolean;
 }
 
-export interface DirectTool {
+interface Bound {
   /** `Class.method`, or `Parent.member.method` when the class sits in more than one place. */
   readonly name: string;
   readonly description: string;
-  /** JSON Schema of the input: the action's parameters, or `{ item, args }` for an item of a collection. */
+  /** JSON Schema of the input, as an ayme session builds it from the action's parameters. */
   readonly inputSchema: object;
-  /** Whether the action belongs to an item of a collection, picked by text it shows. */
-  readonly collection: boolean;
   /** The members from the listed class to the action's part, as code: `navigator.model`. */
   readonly path: string;
-}
-
-interface Bound extends DirectTool {
   /** The file that declares the class the action belongs to. */
   readonly sourceFile: string;
   readonly className: string;
   readonly rootClass: string;
   readonly steps: readonly Step[];
   readonly methodName: string;
-  readonly parameters: readonly NamedParameter[];
+  readonly parameters: readonly Parameter[];
 }
 
 /** Where a tool's action is written, for a note on a stale Page Object. */
@@ -84,7 +80,7 @@ export interface ToolSource {
 }
 
 /** A Page Object class the entry file lists. */
-export type PageObjectClass = new (...args: never[]) => object;
+type PageObjectClass = new (...args: never[]) => object;
 
 /**
  * Builds a listed class on the attempt's `screen` and its other fixtures,
@@ -120,7 +116,7 @@ export function isNotAvailable(error: unknown): boolean {
 }
 
 /** The e2e tool name of an action: model providers allow `[a-zA-Z0-9_-]` only. */
-export const toolName = (actionName: string): string =>
+const toolName = (actionName: string): string =>
   actionName.replaceAll(".", "_");
 
 /**
@@ -174,11 +170,7 @@ async function ruledOut(
   return undefined;
 }
 
-export interface DirectPageObjects {
-  /** Every tool, as derived from the source. */
-  readonly tools: readonly DirectTool[];
-  /** Calls the Page Object method behind `name` (either spelling) on the newest attempt's screen. */
-  run(name: string, input: JsonValue): Promise<unknown>;
+interface DirectPageObjects {
   /**
    * The tools as e2e config tools, named as `toolName` spells them, each
    * marked `repeatable`: the patched e2e records a call with its input and a
@@ -259,48 +251,38 @@ export function directPageObjects(options: {
   };
 
   /** The part of the Page Object a tool's action belongs to. */
-  const targetOf = async (
-    tool: Bound,
-    item: string | undefined
-  ): Promise<Record<string, unknown>> => {
+  const targetOf = async (tool: Bound): Promise<Record<string, unknown>> => {
     let target = (await rootOf(tool)) as Record<string, unknown>;
     for (const step of tool.steps) {
       const member = target[step.member];
-      const value: unknown =
+      target = (
         step.access === "method"
           ? await (member as () => unknown).call(target)
-          : member;
-      target = (
-        step.collection
-          ? await itemWithText(
-              value as readonly object[] | Promise<readonly object[]>,
-              item ?? "",
-              `${tool.name}: ${step.member}`
-            )
-          : value
+          : member
       ) as Record<string, unknown>;
     }
     return target;
   };
 
+  /**
+   * Every call, live, replayed or scripted, comes through here: the input is
+   * checked before anything runs, so a recorded input the action no longer
+   * takes fails at once instead of acting on part of it.
+   */
   const run = async (name: string, input: JsonValue): Promise<unknown> => {
     const tool = toolNamed(name);
-    const { item, args } = split(tool, input);
-    const target = await targetOf(tool, item);
+    const args = checkedInput(tool, input);
+    const target = await targetOf(tool);
     const reason = await ruledOut(target, tool.methodName);
     if (reason !== undefined) throw new NotAvailable(tool.name, reason);
     const method = target[tool.methodName] as (...a: unknown[]) => unknown;
-    return method.apply(target, positional(tool, args));
+    return method.apply(target, methodArguments(tool.parameters, args));
   };
 
   return {
-    tools: [...bound.values()],
-    run,
     ruledOutNow(name) {
       const tool = toolNamed(name);
-      // An item of a collection is picked only at the call: never ruled out here.
-      if (tool.collection) return Promise.resolve(undefined);
-      return targetOf(tool, undefined).then(
+      return targetOf(tool).then(
         (target) => ruledOut(target, tool.methodName),
         (error: unknown) => String(error).split("\n")[0]
       );
@@ -402,25 +384,7 @@ function deriveTools(
         parent: string,
         onWay: readonly string[]
       ) => {
-        const items = steps.filter((step) => step.collection).length;
         for (const action of component.tools) {
-          // A destructured parameter has no name to pass a value under, and
-          // an item inside an item is not picked by one text: both left out.
-          const parameters = action.parameters.flatMap((parameter) =>
-            "name" in parameter ? [parameter] : []
-          );
-          if (parameters.length !== action.parameters.length || items > 1)
-            continue;
-          const own = {
-            type: "object",
-            properties: Object.fromEntries(
-              parameters.map((parameter) => [parameter.name, parameter.schema])
-            ),
-            required: parameters
-              .filter((parameter) => !parameter.optional)
-              .map((parameter) => parameter.name),
-            additionalProperties: false,
-          };
           const membersPath = steps.map((step) => step.member).join(".");
           found.push({
             className: component.className,
@@ -430,44 +394,21 @@ function deriveTools(
             rootClass: manifest.className,
             steps,
             methodName: action.methodName,
-            parameters,
-            collection: items === 1,
+            parameters: action.parameters,
             path: membersPath,
             description: `${action.description ?? `Page Object Tool ${action.toolName}.`}${membersPath === "" ? "" : ` (${manifest.className}'s ${membersPath})`}`,
-            inputSchema:
-              items === 1
-                ? {
-                    type: "object",
-                    properties: {
-                      item: {
-                        type: "string",
-                        minLength: 1,
-                        description:
-                          "Which item: text it shows that no other item shows, such as its name.",
-                      },
-                      args: own,
-                    },
-                    required: ["item", "args"],
-                    additionalProperties: false,
-                  }
-                : own,
+            inputSchema: inputSchemaFor(action.parameters),
           });
         }
         for (const member of component.members) {
-          if (member.kind !== "component") continue;
+          // An item of a collection is named by no input here: its actions are left out.
+          if (member.kind !== "component" || member.collection) continue;
           const child = classes.get(member.componentClassName);
           // A class that holds itself, directly or not, is followed once.
           if (child === undefined || onWay.includes(child.className)) continue;
           walk(
             child,
-            [
-              ...steps,
-              {
-                member: member.memberName,
-                access: member.access,
-                collection: member.collection,
-              },
-            ],
+            [...steps, { member: member.memberName, access: member.access }],
             `${component.className}.${member.memberName}`,
             [...onWay, child.className]
           );
@@ -490,74 +431,40 @@ function deriveTools(
   }));
 }
 
-/** A call's input as the item's text, when the tool takes one, and the action's own arguments. */
-function split(
-  tool: Bound,
-  input: JsonValue
-): { item: string | undefined; args: Record<string, unknown> } {
-  const given = (input ?? {}) as Record<string, unknown>;
-  return tool.collection
-    ? {
-        item: given.item as string,
-        args: (given.args ?? {}) as Record<string, unknown>,
-      }
-    : { item: undefined, args: given };
+/**
+ * The input as the action's arguments by name, once it holds to the action's
+ * schema and to the rule a defaulted pattern keeps beside it, as an ayme
+ * session checks it; a call that does not is refused before anything runs.
+ */
+function checkedInput(tool: Bound, input: JsonValue): Record<string, unknown> {
+  const parsed = schemaOf(tool).safeParse(input ?? {});
+  const problems = parsed.success
+    ? patternViolations(tool.parameters, parsed.data).map(
+        ({ path: at, message }: { path: string; message: string }) =>
+          `${at} ${message}`
+      )
+    : parsed.error.issues.map(
+        ({ path: at, message }) => `${at.join(".") || "input"}: ${message}`
+      );
+  if (!parsed.success || problems.length > 0)
+    throw new Error(
+      `${tool.name} was called with input it does not take: ${problems.join("; ")}`
+    );
+  return parsed.data;
 }
 
-/** Text as a person reads it: runs of white space as one space, no space at the ends. */
-const readable = (text: string) => text.replace(/\s+/g, " ").trim();
+const schemas = new WeakMap<Bound, z.ZodType<Record<string, unknown>>>();
 
-/**
- * The one item of a collection that shows `text`: the item whose text is
- * exactly that, or else the one item whose text holds it, read from each
- * item's Page Object Root. No item, or more than one, is an error that names
- * what the items show, so a call never runs on a guess.
- */
-export async function itemWithText<Item extends object>(
-  items: readonly Item[] | Promise<readonly Item[]>,
-  text: string,
-  /** What the items are, for the error: `ListPage.entries`. */
-  what = "the collection"
-): Promise<Item> {
-  const listed = await items;
-  const wanted = readable(text);
-  if (wanted === "") throw new Error(`${what}: name the item by text it shows`);
-  const shown = await Promise.all(
-    listed.map(async (item) => {
-      const root = modelOption(item.constructor, "root");
-      if (root === undefined)
-        throw new Error(
-          `${what}: ${item.constructor.name} has no Page Object Root to read its text from`
-        );
-      const first = (await Promise.resolve(root(item as never))).first();
-      return readable((await first.textContent()) ?? "");
-    })
-  );
-  const exact = listed.filter((_, at) => shown[at] === wanted);
-  const holding = listed.filter((_, at) => shown[at]?.includes(wanted));
-  const found = exact.length === 1 ? exact : holding;
-  if (found.length === 1) return found[0] as Item;
-  const seen = shown
-    .slice(0, 10)
-    .map((line) => JSON.stringify(line.slice(0, 60)))
-    .join(", ");
-  throw new Error(
-    found.length === 0
-      ? `${what}: no item shows ${JSON.stringify(wanted)}; the ${listed.length} items show ${seen || "nothing"}`
-      : `${what}: ${found.length} items show ${JSON.stringify(wanted)}; give more of the one item's text (the items show ${seen})`
-  );
-}
-
-/**
- * The arguments in the method's own order, with trailing ones left out
- * staying left out, and a rest parameter's list spread.
- */
-function positional(tool: Bound, args: Record<string, unknown>): unknown[] {
-  const values = tool.parameters.map((parameter) => args[parameter.name]);
-  const rest = tool.parameters.at(-1)?.rest === true ? values.pop() : undefined;
-  if (Array.isArray(rest) && rest.length > 0) return [...values, ...rest];
-  while (values.length > 0 && values.at(-1) === undefined) values.pop();
-  return values;
+/** The tool's input schema as zod reads it, built once per tool. */
+function schemaOf(tool: Bound): z.ZodType<Record<string, unknown>> {
+  let schema = schemas.get(tool);
+  if (schema === undefined) {
+    schema = z.fromJSONSchema(
+      tool.inputSchema as Parameters<typeof z.fromJSONSchema>[0]
+    ) as z.ZodType<Record<string, unknown>>;
+    schemas.set(tool, schema);
+  }
+  return schema;
 }
 
 /** What the action returned, when it is a plain value. */

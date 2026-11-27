@@ -1,8 +1,8 @@
 diff --git a/dist/executor.js b/dist/executor.js
-index 95623ef..37c3a8d 100644
+index 95623ef..20bc301 100644
 --- a/dist/executor.js
 +++ b/dist/executor.js
-@@ -47,8 +47,19 @@ function executor(name, options, launch) {
+@@ -47,11 +47,25 @@ function executor(name, options, launch) {
          name,
          version: '1',
          cache: 'inherit',
@@ -22,8 +22,15 @@ index 95623ef..37c3a8d 100644
 +            const { held, session } = await ready(ctx, launch, memoryKey, options.tools);
              ctx.signal.throwIfAborted();
              const active = activeStep(ctx);
-             const text = await untilAborted(stepMessage(active, held.tools, held.introduced ? undefined : [RULES, options.system, ctx.agentContext]), ctx.signal);
-@@ -92,8 +103,10 @@ function executor(name, options, launch) {
+-            const text = await untilAborted(stepMessage(active, held.tools, held.introduced ? undefined : [RULES, options.system, ctx.agentContext]), ctx.signal);
++            const opening = await untilAborted(stepMessage(active, held.tools, held.introduced ? undefined : [RULES, options.system, ctx.agentContext]), ctx.signal);
++            // Patch (ayme): a list that changed since the agent's last call is named in the step.
++            const relisted = held.introduced ? await session.refreshTools?.() : undefined;
++            const text = relisted === undefined ? opening : `The extra tools you can call changed since your last call. These can run now: ${relisted.join(', ') || 'none'}.\n\n${opening}`;
+             // A step that ended while its screen was read sends no prompt, which no cancel would reach.
+             ctx.signal.throwIfAborted();
+             held.introduced = true;
+@@ -92,8 +106,10 @@ function executor(name, options, launch) {
      };
  }
  /** The attempt's session once the turn of the step before it stopped, or a fresh one when that turn's end closed it. */
@@ -36,7 +43,7 @@ index 95623ef..37c3a8d 100644
      let session;
      try {
          session = await untilAborted(held.session, ctx.signal);
-@@ -113,7 +126,7 @@ async function ready(ctx, launch, memoryKey) {
+@@ -113,7 +129,7 @@ async function ready(ctx, launch, memoryKey) {
      }
      // A tool of the agent's own that ran as that turn stopped closed the session and dropped it from the attempt.
      if (ctx.attempt.memory.get(memoryKey) !== held)
@@ -45,7 +52,7 @@ index 95623ef..37c3a8d 100644
      return { held, session };
  }
  /** Counts one prompt turn as one model call, with what the agent reported of it. */
-@@ -136,14 +149,14 @@ function recordTurn(ctx, session, report) {
+@@ -136,14 +152,14 @@ function recordTurn(ctx, session, report) {
      });
  }
  /** The attempt's session, started on its first step and closed when the attempt ends. */
@@ -63,7 +70,7 @@ index 95623ef..37c3a8d 100644
          if (slot.active === undefined) {
              // Run in the tail of a step that already ended: no step to fail, so no later step gets this conversation.
 diff --git a/dist/mcp.js b/dist/mcp.js
-index ab28dd4..299ceb5 100644
+index ab28dd4..2fb1f25 100644
 --- a/dist/mcp.js
 +++ b/dist/mcp.js
 @@ -15,15 +15,51 @@ export const MCP_SERVER_NAME = 'e2e_step';
@@ -121,7 +128,29 @@ index ab28dd4..299ceb5 100644
                  return {
                      content: [
                          { type: 'text', text: result.text },
-@@ -61,6 +97,25 @@ export async function serveTools(tools) {
+@@ -54,6 +90,21 @@ export async function serveTools(tools) {
+     return {
+         url: `http://127.0.0.1:${port}${route}`,
+         failed,
++        // Patch (ayme): checks the list before a live turn, since a replay or the test
++        // may have changed the screen since the agent's last call. When it changed, a
++        // client listening for changes is told, and the names listed now come back.
++        refresh: async () => {
++            if (!changing || announced === undefined)
++                return undefined;
++            const shown = await shownNow();
++            if (shown.join(',') === announced)
++                return undefined;
++            announced = shown.join(',');
++            if (debug)
++                console.error(`[acp-patch] tool list changed before a turn: ${shown.length} of ${tools.length} tools listed`);
++            handler.notify?.toolsChanged?.();
++            return tools.filter((tool) => tool.hidden !== undefined && shown.includes(tool.name)).map((tool) => tool.name);
++        },
+         close: async () => {
+             await handler.close();
+             http.closeAllConnections();
+@@ -61,6 +112,25 @@ export async function serveTools(tools) {
          },
      };
  }
@@ -147,7 +176,7 @@ index ab28dd4..299ceb5 100644
  /** Hands one Node request to the web-standard handler and streams its response back. */
  async function forward(fetch, incoming, outgoing, reportFailure) {
      let sourceFailed = false;
-@@ -75,6 +130,11 @@ async function forward(fetch, incoming, outgoing, reportFailure) {
+@@ -75,6 +145,11 @@ async function forward(fetch, incoming, outgoing, reportFailure) {
          }
          const method = incoming.method ?? 'GET';
          const body = method === 'GET' || method === 'HEAD' ? undefined : await readAll(incoming);
@@ -159,8 +188,21 @@ index ab28dd4..299ceb5 100644
          const response = await fetch(new Request(`http://127.0.0.1${incoming.url ?? '/'}`, { method, headers, ...(body === undefined ? {} : { body }) }));
          outgoing.writeHead(response.status, Object.fromEntries(response.headers));
          if (response.body === null)
+diff --git a/dist/session.js b/dist/session.js
+index dd8f982..7bd10c7 100644
+--- a/dist/session.js
++++ b/dist/session.js
+@@ -139,6 +139,8 @@ export async function startSession(launch, tools, signal, onOwnTool = () => unde
+     return {
+         modelId,
+         agentName: initialize.agentInfo?.name,
++        // Patch (ayme): the tool list as it is before this turn (`refresh` in mcp.js).
++        refreshTools: () => server?.refresh?.(),
+         async prompt(text) {
+             turn.text = '';
+             turn.own = { allowed: new Set(), rejected: new Map(), ran: new Map() };
 diff --git a/dist/tools.js b/dist/tools.js
-index b6edd30..c3032e1 100644
+index b6edd30..f2c08c4 100644
 --- a/dist/tools.js
 +++ b/dist/tools.js
 @@ -42,10 +42,10 @@ export async function openingScreen(active) {
@@ -176,7 +218,7 @@ index b6edd30..c3032e1 100644
      const current = (name) => {
          const active = slot.active;
          if (active === undefined || stopped(active)) {
-@@ -88,6 +88,36 @@ export function stepTools(slot, first) {
+@@ -88,6 +88,39 @@ export function stepTools(slot, first) {
              }),
          });
      }
@@ -200,6 +242,9 @@ index b6edd30..c3032e1 100644
 +                }
 +                const output = await tool.run(args, {
 +                    ctx: active.ctx,
++                    // Asked again when the call's turn in the action queue comes, as the action
++                    // tools' guard is: a call queued behind the verdict or a stop does not act.
++                    stepEnded: () => stopped(active),
 +                    // The screen as the action tools report it: what changed since the agent last saw it.
 +                    observe: async () => {
 +                        const screen = await run(toolsOf(active), 'observe', {});

@@ -17,13 +17,20 @@ import type { ToolFailure } from "./stale";
 
 type Execute = (input: unknown, options: object) => unknown;
 
-/** The tools that failed in a test and are left out for the rest of it, in the attempt's memory. */
+/** The calls, tool and input, that failed in a test and are refused for the rest of it, in the attempt's memory. */
 const droppedIn = (ctx: StepExecutorContext): Map<string, string> => {
   const key = `ayme-e2e-tools.dropped:${ctx.attempt.testId}`;
   let dropped = ctx.attempt.memory.get(key) as Map<string, string> | undefined;
   if (dropped === undefined) ctx.attempt.memory.set(key, (dropped = new Map()));
   return dropped;
 };
+
+/** A call that waited in the action queue past its step's end, and did not act. */
+class StepEnded extends Error {
+  constructor() {
+    super("The step has ended. Wait for the next instruction.");
+  }
+}
 
 const firstLine = (error: unknown) =>
   String(error instanceof Error ? error.message : error).split("\n")[0] ?? "";
@@ -48,9 +55,9 @@ export function serveProjectTools(
      */
     hidden?: (tool: string) => boolean | Promise<boolean>;
     /**
-     * Whether a failed call takes its tool out of the agent's list for the
-     * rest of the test, and has a later call of it refused at once, replayed
-     * or live.
+     * Whether a failed call has the same call, the tool with the same input,
+     * refused at once for the rest of the test, replayed or live. The tool
+     * stays listed for other input: one misspelled label does not take it.
      */
     dropAfterFailure?: (failure: ToolFailure) => boolean;
   } = {}
@@ -65,18 +72,15 @@ export function serveProjectTools(
       description: defined.tool.description ?? name,
       inputSchema: defined.tool.inputSchema,
       readOnly: !mutates,
-      ...(options.hidden === undefined && options.dropAfterFailure === undefined
+      ...(options.hidden === undefined
         ? {}
-        : {
-            hidden: async (ctx: StepExecutorContext) =>
-              droppedIn(ctx).has(name) ||
-              ((await options.hidden?.(name)) ?? false),
-          }),
-      async run(args, { ctx, observe, replaying }) {
-        const dropped = droppedIn(ctx).get(name);
+        : { hidden: async () => (await options.hidden?.(name)) ?? false }),
+      async run(args, { ctx, observe, replaying, stepEnded }) {
+        const call = `${name} ${JSON.stringify(args ?? {})}`;
+        const dropped = droppedIn(ctx).get(call);
         if (dropped !== undefined)
           throw new Error(
-            `${name} failed earlier in this test (${dropped}) and is out of use until its page object is fixed. Reach the goal with the other action tools.`
+            `${name} failed earlier in this test with this input (${dropped}). Call it with other input, or reach the goal with the other action tools.`
           );
         const result = await budgetsOf(ctx)
           .runTool(
@@ -87,9 +91,14 @@ export function serveProjectTools(
                 ? { replay: { input: args as JsonValue } }
                 : {}),
             },
-            async () => execute(args, {})
+            async () => {
+              // In the queue, before anything acts: a step ended meanwhile is left alone.
+              if (stepEnded?.() === true) throw new StepEnded();
+              return execute(args, {});
+            }
           )
           .catch((error: unknown) => {
+            if (error instanceof StepEnded) throw error;
             const failure: ToolFailure = {
               tool: name,
               input: args as JsonValue,
@@ -100,7 +109,7 @@ export function serveProjectTools(
             };
             options.onFailure?.(failure);
             if (options.dropAfterFailure?.(failure) === true)
-              droppedIn(ctx).set(name, firstLine(error));
+              droppedIn(ctx).set(call, firstLine(error));
             throw error;
           });
         const text =

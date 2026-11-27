@@ -33,9 +33,17 @@ export type {
 } from "./shared";
 // The build plugin's rule for a class with no root.
 export { rootlessClassRefusals } from "./page-objects/domain";
-// The predicates the decorators keep for a class and an action, so
-// @ayme-dev/e2e-tools can ask them in Node, with no ayme session.
-export { availabilityPredicateOf, modelOption } from "./page-objects/domain";
+// The predicates the decorators keep for a class and an action, and the
+// rules that turn an action's input into its arguments, so
+// @ayme-dev/e2e-tools can call Page Objects in Node as a session would,
+// with no ayme session.
+export {
+  availabilityPredicateOf,
+  inputSchemaFor,
+  methodArguments,
+  modelOption,
+  patternViolations,
+} from "./page-objects/domain";
 export { DONE_BAR, LOWER_BAR } from "./goal-loop/application";
 export type {
   GoalLoopRunResult,

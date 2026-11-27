@@ -10,6 +10,7 @@ const dir = fileURLToPath(new URL("../patches/", import.meta.url));
 
 /**
  * @typedef {{ oldStart: number, oldLines: string[], newLines: string[] }} Hunk
+ * @typedef {Hunk & { oldCount: number, newCount: number, file: string }} ParsedHunk
  * @typedef {{ name: string, version: string, files: Map<string, Hunk[]> }} PackagePatch
  */
 
@@ -30,7 +31,7 @@ export function loadPatches() {
       return {
         name: named[1].replace("__", "/"),
         version: named[2],
-        files: parse(readFileSync(path.join(dir, file), "utf8"), file),
+        files: parsePatch(readFileSync(path.join(dir, file), "utf8"), file),
       };
     });
 }
@@ -41,27 +42,40 @@ export function loadPatches() {
  * @param {string} origin
  * @returns {Map<string, Hunk[]>}
  */
-function parse(text, origin) {
+export function parsePatch(text, origin) {
   /** @type {Map<string, Hunk[]>} */
   const files = new Map();
-  /** @type {Hunk[] | undefined} */
+  /** @type {ParsedHunk[] | undefined} */
   let hunks;
-  /** @type {Hunk | undefined} */
+  /** @type {ParsedHunk | undefined} */
   let hunk;
+  /** @type {ParsedHunk[]} */
+  const all = [];
+  /** @type {string | undefined} */
+  let current;
   for (const line of text.split("\n")) {
     const file = /^diff --git a\/(\S+) b\//.exec(line);
     if (file) {
+      current = file[1];
       files.set(file[1], (hunks = []));
       hunk = undefined;
       continue;
     }
-    const header = /^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@/.exec(line);
+    const header = /^@@ -(\d+)(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
     if (header) {
-      if (!hunks)
+      if (!hunks || current === undefined)
         throw new Error(`patched e2e: ${origin} has a hunk outside a file`);
-      hunks.push(
-        (hunk = { oldStart: Number(header[1]), oldLines: [], newLines: [] })
-      );
+      hunk = {
+        oldStart: Number(header[1]),
+        oldLines: [],
+        newLines: [],
+        // A count left out of the header is 1.
+        oldCount: Number(header[2] ?? 1),
+        newCount: Number(header[3] ?? 1),
+        file: current,
+      };
+      hunks.push(hunk);
+      all.push(hunk);
       continue;
     }
     if (!hunk) continue;
@@ -74,6 +88,13 @@ function parse(text, origin) {
     // the next file's header lines carry no change.
     else hunk = undefined;
   }
+  // A hunk cut short still matches the file on its old lines: its header's
+  // counts are what tell.
+  for (const { oldStart, oldLines, newLines, oldCount, newCount, file } of all)
+    if (oldLines.length !== oldCount || newLines.length !== newCount)
+      throw new Error(
+        `patched e2e: ${origin} is damaged: the hunk of ${file} at line ${oldStart} has ${oldLines.length} old and ${newLines.length} new lines, its header says ${oldCount} and ${newCount}`
+      );
   return files;
 }
 
