@@ -88,8 +88,11 @@ then run `ayme page-objects`.
 - A failed Run answers with what failed, followed by `changes:` when the
   Page Object Tree changed while it ran. It shows how far the action got
   before you call it again.
-- When a command prints `A … dialog is open on the tab`, answer the dialog
-  with your browser automation. After `ayme call`, the action that opened
-  it did nothing after the dialog, so check the page and finish the step
-  yourself or call the tool again; any other command did nothing, so run it
-  again.
+- When an answer says a dialog `is open on the tab`, answer the dialog with
+  your browser automation. Then the end of that answer tells you what to do:
+  - `… then run this command again.`: the command did nothing, because the
+    dialog was open before it started. Run it again.
+  - `The action stopped there: …`: the action ran up to the dialog and
+    stopped. Part of it may have happened, so a second call can repeat it.
+    Check the page with your browser automation, and do only what is left
+    of the step.
