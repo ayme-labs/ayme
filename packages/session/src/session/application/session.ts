@@ -261,7 +261,7 @@ function sessionTabs(
   scope: Scope.Scope
 ): SessionTabs {
   const hosts = new Map<BrowserTab, Effect.Effect<HostedTab, TabReadError>>();
-  // The Tab each id was given on. An id of a closed Tab is gone with it.
+  // The Tab each id was given on, while its Host knows the id.
   const owners = new Map<string, BrowserTab>();
   const retire = (tab: BrowserTab) =>
     Effect.sync(() => {
@@ -276,7 +276,10 @@ function sessionTabs(
       // once; a failed hosting is tried again by the next request.
       const hosting = yield* Effect.cached(
         tab
-          .host((id) => owners.set(id, tab))
+          .host({
+            given: (id) => owners.set(id, tab),
+            released: (id) => owners.delete(id),
+          })
           .pipe(
             Effect.map((hosted) => untilClosed(hosted, tab.closed)),
             Effect.tap(() =>

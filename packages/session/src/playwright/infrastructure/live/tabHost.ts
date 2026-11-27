@@ -21,8 +21,9 @@ import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
 import { pageTargets, tabListAddress } from "../tabList";
 
-/** Where a Node Host's Page Object Ids come from. */
-type IdSource = { next(): string };
+/** Where a Node Host's Page Object Ids come from, and what hears that a
+ * page forgot one. */
+type IdSource = { next(): string; released?(id: string): void };
 
 /** What the Session uses of the project's `@ayme-dev/ayme/internal`. */
 type NodeHostEntry = {
@@ -111,7 +112,7 @@ type Hosting = {
 };
 
 /** Makes the Session the Host of `page`, with focus emulation on, telling
- * `given` each Page Object Id its Host gives out. The Node Host's start sets
+ * `tabIds` of each Page Object Id its Host gives out and forgets. The Node Host's start sets
  * up the page's binding and its in-page helper without waiting for either,
  * so it reads nothing of the page. The Host stops when the page closes. */
 const hostOn =
@@ -119,7 +120,7 @@ const hostOn =
     { entry, classes, ids, selectors }: Hosting,
     page: Page
   ): BrowserTab["host"] =>
-  (given) =>
+  (tabIds) =>
     Effect.tryPromise({
       try: async () => {
         // So that a Run works the same while the Tab is not in front
@@ -129,11 +130,15 @@ const hostOn =
         ).send("Emulation.setFocusEmulationEnabled", { enabled: true });
         const next = () => {
           const id = ids.next();
-          given(id);
+          tabIds.given(id);
           return id;
         };
         const ayme = entry.createNodeHost(
-          { page, pageObjects: classes, pageObjectIds: { next } },
+          {
+            page,
+            pageObjects: classes,
+            pageObjectIds: { next, released: tabIds.released },
+          },
           selectors
         );
         const stop = await ayme.start();

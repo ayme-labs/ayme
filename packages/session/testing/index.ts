@@ -11,6 +11,7 @@ import {
   type BuiltPageObjects,
   type HostedTab,
   type SessionBrowserRequest,
+  type TabIds,
 } from "../src/session/application";
 import {
   RunError,
@@ -100,6 +101,9 @@ export interface ScriptedTab {
   /** The Tab's Host gives out the Page Object Id `id`, as it does when a
    * read first finds a Page Object. */
   give(id: string): void;
+  /** The Tab's Host forgets `id`, as when a read finds its element gone
+   * from the page. */
+  release(id: string): void;
   /** The browser automation brings the Tab to the front. */
   activate(): void;
   /** The Tab closes, and Playwright says so. */
@@ -149,7 +153,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   const runs: { tool: string; input: unknown }[] = [];
   let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
     Promise.resolve({ settled: true });
-  let given: ((id: string) => void) | undefined;
+  let given: TabIds | undefined;
   const closed = Deferred.makeUnsafe<void>();
   const hosted: HostedTab = {
     listing: Effect.suspend(() =>
@@ -198,8 +202,9 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       answerRuns: (answer) => (answerRun = answer),
       give: (id) => {
         if (!given) throw new Error("The Session is not this Tab's Host.");
-        given(id);
+        given.given(id);
       },
+      release: (id) => given?.released(id),
       activate: () => {
         open.splice(open.indexOf(tab), 1);
         open.unshift(tab);

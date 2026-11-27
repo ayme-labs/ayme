@@ -29,6 +29,15 @@ export interface HostedTab {
   ) => Effect.Effect<RunAnswer, RunError>;
 }
 
+/** What a Tab's Host tells of the Page Object Ids it gives out. */
+export interface TabIds {
+  /** It gave `id` to a Page Object. */
+  readonly given: (id: string) => void;
+  /** It forgot `id`, as its element left the page: the id names nothing
+   * from now on. */
+  readonly released: (id: string) => void;
+}
+
 /** A Tab of the Session's browser: the same object for as long as the Tab
  * is open. Its Host can be started once, as a page's registry has one
  * owner. */
@@ -40,13 +49,11 @@ export interface BrowserTab {
   readonly closed: Effect.Effect<void>;
   /**
    * Makes the Session the Host of the Tab, with focus emulation on, so that
-   * a Run works the same while the Tab is not in front (rule 6). `given`
-   * hears each Page Object Id the Tab's Host gives out. It reads nothing of
-   * the page, so an open dialog cannot hold it up.
+   * a Run works the same while the Tab is not in front (rule 6). `ids`
+   * hears of each Page Object Id the Tab's Host gives out and forgets. It
+   * reads nothing of the page, so an open dialog cannot hold it up.
    */
-  readonly host: (
-    given: (id: string) => void
-  ) => Effect.Effect<HostedTab, TabReadError>;
+  readonly host: (ids: TabIds) => Effect.Effect<HostedTab, TabReadError>;
 }
 
 /** The Tabs of a Session's browser, each to run the built Page Objects

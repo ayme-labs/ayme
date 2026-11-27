@@ -814,3 +814,16 @@ it("a command waiting on a Tab that closes is answered that the tab was closed, 
     text: expect.stringMatching(/^Tab: Shop \(/),
   });
 });
+
+it("an id its Tab's Host forgot, as its element left the page, chooses no Tab any more", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const other = browser.openTab();
+  await session.ask({ pageObjects: {} });
+  other.give("po1");
+  browser.activate();
+
+  other.release("po1");
+
+  await session.ask(add("po1"));
+  expect([browser.runs, other.runs]).toEqual([[add("po1").call], []]);
+});

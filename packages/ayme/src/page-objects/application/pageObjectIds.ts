@@ -9,7 +9,12 @@ export type PageObjectRoot = { className: string; ref: string };
  * gave before. A Host that shares one across its pages gives no id twice
  * among them.
  */
-export type PageObjectIdSource = { next(): PageObjectId };
+export type PageObjectIdSource = {
+  next(): PageObjectId;
+  /** Hears that a page forgot `id`, as its element left the page: the id
+   * names nothing from now on. */
+  released?(id: PageObjectId): void;
+};
 
 /** A source that numbers its ids from `po1`. */
 export function createPageObjectIdSource(): PageObjectIdSource {
@@ -54,7 +59,10 @@ export function createPageObjectIds(
     known.forEach(([id], index) => {
       const ref = now[index];
       if (ref) refs.set(id, ref);
-      else roots.delete(id);
+      else {
+        roots.delete(id);
+        source.released?.(id);
+      }
     });
     return refs;
   }

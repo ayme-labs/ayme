@@ -204,4 +204,23 @@ describe("Page Object ids from a source a Host gives", () => {
     expect(await first.rootOf("po1")).toBeUndefined();
     expect(await idsOf(second, ["e1"])).toEqual(["po3"]);
   });
+
+  it("tells its source each id it forgets, once a read finds its element gone, and no other", async () => {
+    const released: string[] = [];
+    const numbered = createPageObjectIdSource();
+    const source = {
+      next: () => numbered.next(),
+      released: (id: string) => released.push(id),
+    };
+    const shown = page("e1", "e2");
+    const ids = createPageObjectIds(shown.driver, source);
+    expect(await idsOf(ids, ["e1", "e2"])).toEqual(["po1", "po2"]);
+
+    shown.remove("e1");
+    shown.rename("e2", "e5");
+    expect(released).toEqual([]);
+    expect(await idsOf(ids, ["e5"])).toEqual(["po2"]);
+
+    expect(released).toEqual(["po1"]);
+  });
 });
