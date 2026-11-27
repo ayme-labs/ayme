@@ -53,7 +53,7 @@ pnpm lab:smoke
   - **Editor.** In each of the three editors of the [table below](#page-objects), the actions whose button is missing are refused with their reason, and the others take effect: `fillSurveyForm` changes the name and the question text, `saveAsDraft` stores the name and leaves the survey a draft, `saveAndClose` publishes it, and `save` stores the name, leaves the survey published and keeps the editor open.
   - **Summary.** `ShareSurveyDialog.close` closes the dialog, and `edit` opens the editor. Once the survey has a response, `edit` opens the dialog that asks first, and `EditActiveSurveyDialog.edit` opens the editor.
 
-An action returns without waiting for the screen it leads to, so the test waits for each screen itself. Before that walk, a throwaway user walks the same screens with Playwright alone, because Turbopack compiles each route and each server action on its first use, which takes longer than `save` and `saveAsDraft` wait for theirs (see [Timeouts](#timeouts)).
+An action's Run answers once the browser is on the path of the screen it leads to, which can still be loading (see [Timeouts](#timeouts)), so the test waits for what it checks on each screen itself. Before that walk, a throwaway user walks the same screens with Playwright alone, because Turbopack compiles each route and each server action on its first use, which takes longer than `save` and `saveAsDraft` wait for theirs (see [Timeouts](#timeouts)).
 
 A rooted Page Object Tool is told which Page Object to act on. The test's `named` helper is the one place that says how: by its Page Object Id, which `ayme page-objects` prints after its class name.
 
@@ -75,7 +75,7 @@ The [eval](../eval-formbricks/README.md#the-arms-with-ayme) and the qualificatio
 
 ### Page Objects
 
-The Page Objects cover the screens the eval's missions touch, in [`ayme/pom/`](./ayme/pom), written to ayme's [Page Object design rules](../../skills/ayme/references/page-object-design.md): `SignInPage`, `SurveyNavigationPage`, `SurveyEditorPage` and `SurveySummaryPage`, with the summary's `EditActiveSurveyDialog` and `ShareSurveyDialog`, which composes a generic `Modal`. Each page extends `AppPage`, which makes it present on its own path, so the entry lists all of them and the page offers only the current screen's Page Object Tools. A Page Object knows itself and its own declared children, and nothing of another screen. So an action waits only for what its own page shows of the outcome and then returns: `Modal.close` for its dialog to go, `SurveyEditorPage.save` and `saveAsDraft` for their button to show its name again, `SignInPage.logIn` for its own error message. An action that leads to another screen clicks and returns that screen's Page Object without waiting for it, so its tool description still names the Page Object the page shows next; whatever drives the browser waits for the page to load. The editor has three save actions, and Formbricks shows the button of each only in some states:
+The Page Objects cover the screens the eval's missions touch, in [`ayme/pom/`](./ayme/pom), written to ayme's [Page Object design rules](../../skills/ayme/references/page-object-design.md): `SignInPage`, `SurveyNavigationPage`, `SurveyEditorPage` and `SurveySummaryPage`, with the summary's `EditActiveSurveyDialog` and `ShareSurveyDialog`, which composes a generic `Modal`. Each page extends `AppPage`, which makes it present on its own path, so the entry lists all of them and the page offers only the current screen's Page Object Tools. A Page Object knows itself and its own declared children, and nothing of another screen. So an action waits only for what its own page shows of the outcome and then returns: `Modal.close` for its dialog to go, `SurveyEditorPage.save` and `saveAsDraft` for their button to show its name again, `SignInPage.logIn` for its own error message. An action that leads to another screen clicks and returns that screen's Page Object without waiting for it, so its tool description still names the Page Object the page shows next; its Run then waits for the browser to reach that screen's path, as [Timeouts](#timeouts) says. The editor has three save actions, and Formbricks shows the button of each only in some states:
 
 | Editor                                                      | `save`                    | `saveAndClose`                     | `saveAsDraft`           |
 | ----------------------------------------------------------- | ------------------------- | ---------------------------------- | ----------------------- |
@@ -87,10 +87,12 @@ An action is unavailable where its button is not. Its reason says why and nothin
 
 ### Timeouts
 
-In the page, a click, a fill or a wait gives up after one second, ayme's default action timeout, and the lab app leaves that as it is. No action waits for the screen it leads to, so none needs longer for it. Two waits name a limit of their own:
+In a Session, the Page Objects run on this folder's Playwright in Node, so a click, a fill or a wait gets Playwright's own default timeout. Two waits name a limit of their own:
 
-- `SurveyEditorPage.save` and `saveAsDraft` wait up to five seconds for their save, a round trip to the server that took 0.5 to 0.75 seconds on a warm dev server, too close to one second.
-- `SignInPage.logIn` waits one second for its error message, which a refused sign-in showed after 0.3 seconds, and takes a sign-in without one to have gone through. That is ayme's own limit, named so that Playwright, which has none, waits no longer when it drives the Page Object.
+- `SurveyEditorPage.save` and `saveAsDraft` wait up to five seconds for their save, a round trip to the server that took 0.5 to 0.75 seconds on a warm dev server.
+- `SignInPage.logIn` waits one second for its error message, which a refused sign-in showed after 0.3 seconds, and takes a sign-in without one to have gone through.
+
+Each page is present only on its own path, so when an action returns another screen's Page Object, its Run answers once the browser is on that screen's path, or at the Settled Page deadline, as [The Page Object an action returns](../../docs/guide/guides/page-state.md#the-page-object-an-action-returns) describes. The screen can still be loading then.
 
 On a fresh dev server Turbopack compiles each route and each server action on its first use, which took 15 to 25 seconds per screen when measured on four cores, so visit the screens once before an agent uses the Page Object Tools. `lab:qualify` and the eval's warm-up do.
 
