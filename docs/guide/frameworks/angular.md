@@ -48,7 +48,7 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
+Your coding agent then reaches your Page Objects once you finish [Set up your project](../guides/connect-an-agent.md#set-up-your-project), which also installs Playwright at a version the `ayme` command supports.
 
 Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the `pageObjects` option of `provideAyme`:
 

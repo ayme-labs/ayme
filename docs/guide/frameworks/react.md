@@ -46,7 +46,7 @@ createRoot(document.getElementById("root")!).render(
 );
 ```
 
-The provider takes the [`createAyme` options](../reference/ayme.md#createayme) as props, such as `pageFactory`, `ignore`, `pageObjects` and `inspector`. Your coding agent then reaches your Page Objects as [Connect an agent](../guides/connect-an-agent.md) shows.
+The provider takes the [`createAyme` options](../reference/ayme.md#createayme) as props, such as `pageFactory`, `ignore`, `pageObjects` and `inspector`. Your coding agent then reaches your Page Objects once you finish [Set up your project](../guides/connect-an-agent.md#set-up-your-project), which also installs Playwright at a version the `ayme` command supports.
 
 ## Root ownership
 

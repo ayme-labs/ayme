@@ -64,7 +64,7 @@ useAyme({
 });
 ```
 
-Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore`, `:pageObjects` and `:inspector`. Your coding agent then reaches your Page Objects as [Connect an agent](../guides/connect-an-agent.md) shows. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them.
+Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore`, `:pageObjects` and `:inspector`. Your coding agent then reaches your Page Objects once you finish [Set up your project](../guides/connect-an-agent.md#set-up-your-project), which also installs Playwright at a version the `ayme` command supports. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them.
 
 The `navigate` tool loads a new document by default. To make it move through Vue Router instead, pass a `navigate` function. It gets the absolute URL, and Vue Router's `push` takes the path:
 

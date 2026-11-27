@@ -118,7 +118,7 @@ export class Projects {
 
 Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-To call it from your coding agent, list `ProjectsPage` in `ayme/page-objects.ts` and let the agent start the `ayme` command beside its browser automation, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
+To call it from your coding agent, finish [Set up your project](../guides/connect-an-agent.md#set-up-your-project): it installs Playwright at a version the `ayme` command supports, and you list `ProjectsPage` in `ayme/page-objects.ts`. Then ask the agent to create a project: it starts the `ayme` command beside its browser automation and calls `ProjectsPage.createProject`.
 
 ## Next
 

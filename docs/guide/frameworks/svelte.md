@@ -67,7 +67,7 @@ import { goto } from "$app/navigation";
 useAyme({ navigate: (url) => goto(url), inspector: dev });
 ```
 
-The options are read once; to change them, remount the owner. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
+The options are read once; to change them, remount the owner. Your coding agent then reaches your Page Objects once you finish [Set up your project](../guides/connect-an-agent.md#set-up-your-project), which also installs Playwright at a version the `ayme` command supports.
 
 ## Root ownership
 
