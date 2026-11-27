@@ -77,8 +77,8 @@ export interface ScriptedBrowser extends ScriptedTab {
    * active one, as a Tab the browser automation opens does. */
   openTab(url?: string): ScriptedTab;
   /** Every read of the browser's tab list fails, for the reason a person
-   * reads. */
-  failTabList(reason: string): void;
+   * reads, until the test calls the function it returns. */
+  failTabList(reason: string): () => void;
   /** The next read of the browser's tab list takes the Tabs open now and
    * answers only once the test calls the function it returns, as an HTTP
    * read that is slow to answer. */
@@ -378,7 +378,10 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
         Deferred.doneUnsafe(built, Exit.fail(new SessionStartError(errors))),
       goAway: () => Deferred.doneUnsafe(gone, Exit.void),
       openTab: (url) => openTab(url).control,
-      failTabList: (reason) => (tabList = new TabReadError(reason)),
+      failTabList: (reason) => {
+        tabList = new TabReadError(reason);
+        return () => (tabList = undefined);
+      },
       holdTabList: () => {
         const held = (heldTabList = Deferred.makeUnsafe<void>());
         return () => Deferred.doneUnsafe(held, Exit.void);

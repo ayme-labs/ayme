@@ -284,6 +284,40 @@ it("a window's Run of a tool whose Page Object Id is of another Tab is refused",
   expect(second.inspectorCalls).toEqual([]);
 });
 
+it("a window that listens while no tab is open is told the first Tab that opens, as a new Tab", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.close();
+  const window = session.listen();
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+  expect(await session.ask(contract("getState", undefined, 1))).toEqual({
+    ok: false,
+    text: "No tab is open in the Session's browser. Open one with your browser automation, then run ayme again.",
+  });
+
+  const first = browser.openTab("http://127.0.0.1:5173/shop");
+
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 2 });
+  expect(first.inspectorListeners).toBe(1);
+  expect(await session.ask(contract("getState", undefined, 2))).toMatchObject({
+    ok: true,
+    data: "getState",
+  });
+});
+
+it("a window that listens while the tab list cannot be read is told so, and then the Tab, as a new Tab, once it can", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const readable = browser.failTabList(
+    "ayme could not read the browser's tab list."
+  );
+  const window = session.listen();
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+
+  readable();
+
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 2 });
+  expect(browser.inspectorListeners).toBe(1);
+});
+
 it("a window that stops listening ends the Session's subscription to the Tab's contract, and the Session goes on", async () => {
   const { session, browser } = await startScriptedSession(opening);
   const window = session.listen();
