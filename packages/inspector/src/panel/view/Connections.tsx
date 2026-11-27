@@ -15,7 +15,7 @@ import {
 import { focusRing, pressable, pressableIcon } from "../../shared/view";
 
 const DOCS =
-  "https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md";
+  "https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md";
 
 // Stryker disable StringLiteral,ObjectLiteral: Tailwind classes are styling, which no test reads.
 const dotClass: Record<Tone, string> = {
@@ -100,7 +100,7 @@ export function Connections({
             rel="noreferrer"
             className="text-xs text-primary hover:underline"
           >
-            Connecting an agent, in the docs
+            Publishing tools over WebMCP, in the docs
           </a>
         </Popover.Content>
       </Popover.Portal>
