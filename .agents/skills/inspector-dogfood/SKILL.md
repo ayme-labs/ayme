@@ -130,9 +130,10 @@ its own Page Object Ids.
   `RunCard.run`, has no tool, and neither has an action whose parameters
   have no schema. Use Playwright CLI for those.
 
-This skill drives only the dogfood page. Any other mount, such as the window
-`ayme inspect` opens, puts the panel in a closed shadow root, which the
-fixture's Inspector Page Object does not reach.
+This skill drives only the dogfood page. The fixture's Inspector Page Object
+finds the panel with plain CSS, which pierces the dogfood page's open shadow
+root but not the closed one of any other mount, such as the page
+`ayme inspect` points at.
 
 The page and its tests live in `apps/inspector-fixture`: see
 `apps/inspector-fixture/README.md`, and
