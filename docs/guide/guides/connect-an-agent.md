@@ -64,6 +64,8 @@ The agent runs the commands in your project's folder, as `npx ayme <command>`. T
 
 Connect both before the agent acts on the page. Chrome answers no new DevTools connection while a dialog is open, so an automation that connects after an action opened a dialog cannot answer it.
 
+`ayme attach` reads the browser's list of tabs over HTTP, at `json/list` under the address it joins, so a DevTools proxy has to serve that path too. A WebSocket address works only when it ends in `/devtools/browser/<id>`.
+
 ### Playwright CLI
 
 ayme opens the browser, and Playwright CLI attaches to it:
@@ -85,8 +87,6 @@ ayme attach --cdp="$(agent-browser get cdp-url)"
 ```
 
 `agent-browser get cdp-url` prints the browser's address.
-
-`ayme attach` also reads the browser's list of tabs over HTTP, at `json/list` under the address, so a DevTools proxy has to serve that path too. A WebSocket address works only when it ends in `/devtools/browser/<id>`.
 
 ### Playwright MCP
 
