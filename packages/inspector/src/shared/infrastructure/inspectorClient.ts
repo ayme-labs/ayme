@@ -83,7 +83,7 @@ export function createInspectorClient(
   let held = emptyInspectorState;
   const listeners = new Set<() => void>();
   let stopTransport: (() => void) | undefined;
-  // Windows on one `ayme mcp` share the page's pick ids, so each client's own.
+  // Each client names its own picks, so two windows on one page never share one.
   const pickPrefix = Math.random().toString(36).slice(2, 10);
   let picks = 0;
 

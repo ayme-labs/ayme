@@ -52,7 +52,6 @@ export function startExternalInspector() {
   let mounted: ReturnType<typeof mountExternalInspector> | undefined;
   replaceInspectorTransport(
     webSocketInspectorContract(socket, {
-      followsTabs: true,
       ...(admission && { onToken: admission.admitted }),
       // A new page is a reload as the Inspector in the page has it: it
       // mounts again and picks up what it kept for the tab.
