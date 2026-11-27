@@ -38,8 +38,8 @@ ProjectsPage
 This screen has 3 Page Object Tools: ayme -s=default tools lists them with their parameters.
 ```
 
-The first line names the tab ayme works on: the browser's most recently
-active tab. `--tab=<url>` reads another tab, by the URL that line shows.
+The first line names the Tab ayme works on: the browser's most recently
+active tab. `--tab=<url>` reads another Tab, by the URL that line shows.
 
 `ayme tools` lists each Page Object Tool of the screen with its parameters,
 and marks a tool that cannot run now: `ProjectRow.remove (unavailable: …)`
@@ -63,7 +63,8 @@ Leave `--params` out for a tool that takes none:
 `ayme call ProjectsPage.openNewProjectDialog`. For long input, write the
 object to a file and pass `--params @<file>`.
 
-The id chooses the tab: a call runs on the tab its Page Object is on. An id
+The id chooses the Tab: `ayme call` runs the tool on the Tab its Page
+Object is on. An id
 stays with its Page Object while the Page Object is on the page, and is
 never given to another. When a call answers that the Page Object is not on
 the page, run `ayme page-objects` for the ids there are now.
@@ -92,8 +93,8 @@ then run `ayme page-objects`.
   `RuntimeStateError: ProjectRow "po2" is unavailable: No item is selected.`,
   the app's own reason. Input that does not match the tool's parameters is
   refused before the action runs, with a sentence for each problem.
-- A failed call answers with what failed, followed by `changes:` when the
+- A failed Run answers with what failed, followed by `changes:` when the
   Page Object Tree changed while it ran. It shows how far the action got
   before you call it again.
-- When no tab is open, a command says so. Open one with your browser
+- When no Tab is open, a command says so. Open one with your browser
   automation.

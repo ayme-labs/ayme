@@ -81,9 +81,9 @@ End with `ayme detach`, which leaves the browser running.
   name. Your automation needs a session of its own too, as
   [Sessions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#sessions)
   says.
-- ayme works on the browser's most recently active tab. It follows the tab
+- ayme works on the browser's most recently active Tab. It follows the Tab
   your automation switches to or opens. The first line of `ayme page-objects`
-  and `ayme tools` names that tab.
+  and `ayme tools` names that Tab.
 - `ayme detach` ends a Session started with `ayme attach` and leaves the
   browser running. `ayme close` ends any Session, and closes the browser only
   when `ayme open` opened it.

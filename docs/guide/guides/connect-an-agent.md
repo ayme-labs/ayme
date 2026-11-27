@@ -121,7 +121,7 @@ ayme attach --cdp=http://127.0.0.1:9222
 
 ## Sessions
 
-- **The tab.** ayme works on the browser's most recently active tab, and follows the tab the agent's automation switches to or opens. The first line of `ayme page-objects` and `ayme tools` names that tab. `--tab=<url>` reads another tab, by the URL that line shows. A Page Object Id is unique across a Session's tabs, so a call runs on the tab its Page Object is on.
+- **The Tab.** A Tab is one tab of the Session's browser. ayme works on the most recently active Tab, and follows the Tab the agent's automation switches to or opens. The first line of `ayme page-objects` and `ayme tools` names that Tab. `--tab=<url>` reads another Tab, by the URL that line shows. A Page Object Id is unique across a Session's Tabs, so `ayme call` runs the tool on the Tab its Page Object is on.
 - **Names.** A project folder can have several Sessions, each with a name: `-s=<name>`, or the `AYME_SESSION` environment variable, as in Playwright CLI. Without either, the name is `default`. `ayme list` lists the Sessions of the folder. Two agents in one folder each use a name of their own. A Session's name does not reach the browser automation, so each agent also needs an automation session of its own: `playwright-cli -s=<name>`, `agent-browser --session <name>`, or a debugging port of its own for Playwright MCP. Each agent passes the same one to every command, from opening the browser to closing it.
 - **The end.** `ayme detach` ends a Session started with `ayme attach` and leaves the browser running. `ayme close` ends any Session, and closes the browser only when `ayme open` opened it. A Session also ends when its browser goes away.
 - **Edits.** A Session builds your Page Objects when it starts. After you edit them, end the Session and start it again. When the build fails, the Session does not start, and the command prints the build error.
@@ -156,7 +156,7 @@ A Session's answers are plain text, or JSON with `--json`. The command's own err
 ## Limits
 
 - Chromium only, on the Playwright versions [Set up your project](#set-up-your-project) names.
-- A Session turns focus emulation on for each tab it works on, so that an action works the same on a tab in the background. While a Session is connected, an app that reacts to being hidden does not react.
+- A Session turns focus emulation on for each Tab it works on, so that an action works the same on a Tab in the background. While a Session is connected, an app that reacts to being hidden does not react.
 - A Session offers your Page Object Tools only. It has no Browser Tools, Custom Tools or Goal Loop: the agent's browser automation does the rest.
 
 [Troubleshooting](../troubleshooting.md#the-agent-cannot-reach-the-page) covers the common problems.

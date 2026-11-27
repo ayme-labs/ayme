@@ -39,7 +39,7 @@ A published tool never throws, because WebMCP drops the reason of a rejected cal
 - A call of an unavailable tool is refused the same way, before anything runs, with its reason: `RuntimeStateError: ProjectRow "po2" is unavailable: Only admins can remove projects.` [Action availability](ayme.md#action-availability) shows the `ProjectRow` behind it.
 - The result has no `structuredContent`.
 - Inside the Goal Loop, a failed step does not end the call: the loop records its message in the Handover's history.
-- A coding agent that runs a Page Object Tool with [the `ayme` command](../guides/connect-an-agent.md) gets the same text for a refused or failed call on standard error, with exit code 1. A failed call can go on with `changes:` and how the Page Object Tree changed while it ran. The command's own errors, such as an option it does not know or a Session that does not start, have their own wording.
+- A coding agent that runs a Page Object Tool with [the `ayme` command](../guides/connect-an-agent.md) gets the same text for a refused or failed call on standard error, with exit code 1. A failed Run's answer can go on with `changes:` and how the Page Object Tree changed while it ran. The command's own errors, such as an option it does not know or a Session that does not start, have their own wording.
 
 ## Messages
 
