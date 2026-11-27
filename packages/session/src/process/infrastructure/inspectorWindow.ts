@@ -27,8 +27,9 @@ const PAGE_PATH = "/inspector";
 const SCRIPT_PATH = "/inspector/external.mjs";
 const SOCKET_PATH = "/inspector/ws";
 
-/** How long closing waits for each window to take its last frames: a
- * window that does not read its socket is not waited for. */
+/** How long closing waits for the windows to take their last frames, and
+ * for what else is open: a window that does not read its socket is not
+ * waited for. */
 const FLUSH_LIMIT_MS = 1_000;
 
 /** The window's page, which names the Session `name`. */
@@ -140,8 +141,13 @@ export async function serveInspectorWindow({
   const session = Effect.runPromise(Deferred.await(attached));
   const sockets = new WebSocketServer({ noServer: true });
   const token = newToken();
+  let closing = false;
   const server = createServer((request, response) => {
     const path = pathOf(request);
+    if (closing) {
+      response.shouldKeepAlive = false;
+      return send(response, 503, "text/plain", "The Session is ending.");
+    }
     if (!isLoopback(request))
       return send(response, 403, "text/plain", "Not a loopback request.");
     if (request.method !== "GET" && request.method !== "HEAD")
@@ -162,6 +168,7 @@ export async function serveInspectorWindow({
     );
   });
   server.on("upgrade", (request, socket, head) => {
+    if (closing) return socket.destroy();
     if (
       pathOf(request) !== SOCKET_PATH ||
       !toLoopback(request) ||
@@ -187,18 +194,24 @@ export async function serveInspectorWindow({
     attach: (attaching) =>
       Deferred.doneUnsafe(attached, Exit.succeed(attaching)),
     close: async () => {
-      await Promise.all(
-        [...sockets.clients].map((ws) => {
-          const closed = new Promise((resolve) => ws.once("close", resolve));
-          ws.close();
-          return Promise.race([
-            closed,
-            new Promise((resolve) => setTimeout(resolve, FLUSH_LIMIT_MS)),
-          ]).finally(() => ws.terminate());
-        })
-      );
+      closing = true;
+      const closed = new Promise((resolve) => server.close(resolve));
+      let timer: NodeJS.Timeout | undefined;
+      await Promise.race([
+        Promise.all(
+          [...sockets.clients].map((ws) => {
+            const gone = new Promise((resolve) => ws.once("close", resolve));
+            ws.close();
+            return gone;
+          })
+        ),
+        new Promise((resolve) => (timer = setTimeout(resolve, FLUSH_LIMIT_MS))),
+      ]);
+      clearTimeout(timer);
+      for (const ws of sockets.clients) ws.terminate();
+      server.closeAllConnections();
       sockets.close();
-      await new Promise((resolve) => server.close(resolve));
+      await closed;
     },
   };
 }

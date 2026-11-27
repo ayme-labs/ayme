@@ -1,13 +1,24 @@
 import { once } from "node:events";
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  closeSync,
+  constants,
+  mkdtempSync,
+  openSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Effect, Exit, Scope } from "effect";
-import { expect, it, onTestFinished } from "vitest";
+import { Effect, Exit, Scope, Stream } from "effect";
+import { connect, type Socket } from "node:net";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { WebSocket } from "ws";
 
 import { scriptedBrowser } from "../../../testing";
 import { serveSession } from "./background";
+import { serveInspectorWindow } from "./inspectorWindow";
 import { privateFolder } from "./record";
 
 // The Inspector window a Session's process serves, reached as a browser
@@ -18,11 +29,23 @@ import { privateFolder } from "./record";
 const SCRIPT = "/* the Inspector's external build */";
 
 /** Serves a Session named "shop" on a scripted browser, with its window,
- * until the test ends. */
-async function serve() {
+ * until the test ends; with `heldScript`, a read of the Inspector's script
+ * never ends. */
+async function serve({ heldScript = false } = {}) {
   const made = realpathSync(mkdtempSync(join(tmpdir(), "ayme-window-")));
   const script = join(made, "external.mjs");
-  writeFileSync(script, SCRIPT);
+  if (heldScript) {
+    // A named pipe nobody writes to: a read of it waits until the test
+    // ends, when the pipe is opened and closed to end it.
+    execFileSync("mkfifo", [script]);
+    onTestFinished(() => {
+      try {
+        closeSync(openSync(script, constants.O_WRONLY | constants.O_NONBLOCK));
+      } catch {
+        // Nothing reads it.
+      }
+    });
+  } else writeFileSync(script, SCRIPT);
   const { folder, socket } = privateFolder();
   onTestFinished(() => {
     rmSync(made, { recursive: true, force: true });
@@ -52,14 +75,22 @@ async function serve() {
   };
 }
 
+/** The window's socket at `address`, with the token its fragment holds. */
+function socketUrl(address: string) {
+  const url = new URL("/inspector/ws", address);
+  url.protocol = "ws:";
+  url.search = new URL(address).hash.slice(1);
+  return url;
+}
+
 /** A window's socket to the server at `address`, with the token its
  * fragment holds, sending `origin` when given, and what it was told, in
  * order. */
 async function windowSocket(address: string, origin?: string) {
-  const url = new URL("/inspector/ws", address);
-  url.protocol = "ws:";
-  url.search = new URL(address).hash.slice(1);
-  const socket = new WebSocket(url, origin ? { headers: { origin } } : {});
+  const socket = new WebSocket(
+    socketUrl(address),
+    origin ? { headers: { origin } } : {}
+  );
   onTestFinished(() => socket.terminate());
   const told: unknown[] = [];
   socket.on("message", (data) => told.push(JSON.parse(String(data))));
@@ -256,5 +287,46 @@ it("tells each window how the Session ended, and then closes it", async () => {
   expect(window.told.at(-1)).toEqual({
     ended:
       "The Session shop was closed. Start a Session with ayme open or ayme attach, then run ayme -s=shop inspect to inspect it.",
+  });
+});
+
+describe("closing, within the one limit of how long it waits for the windows", () => {
+  it("takes no window that connects while a window that does not read its socket drains, and still ends", async () => {
+    const window = await serveInspectorWindow({ name: "shop", script: "" });
+    onTestFinished(() => window.close());
+    window.attach({ ask: () => Effect.never, events: Stream.never });
+    const stuck = new WebSocket(socketUrl(window.address));
+    onTestFinished(() => stuck.terminate());
+    await once(stuck, "open");
+    // A window that stops reading never answers the close.
+    (stuck as unknown as { _socket: Socket })._socket.pause();
+
+    const closing = window.close();
+    const late = new WebSocket(socketUrl(window.address));
+    onTestFinished(() => late.terminate());
+    const outcome = await new Promise<string>((resolve) => {
+      late.once("open", () => resolve("open"));
+      late.once("error", (error) => resolve(error.message));
+    });
+
+    expect(outcome).not.toBe("open");
+    await closing;
+  });
+
+  it("ends an HTTP request still open", async () => {
+    const { address, close } = await serve({ heldScript: true });
+    const { port, host } = new URL(address);
+    const held = connect(Number(port), "127.0.0.1");
+    onTestFinished(() => void held.destroy());
+    const ended = new Promise((resolve) => held.once("close", resolve));
+    held.on("error", () => {});
+    await once(held, "connect");
+    // The script's read never ends, so neither does the answer.
+    held.write(`GET /inspector/external.mjs HTTP/1.1\r\nHost: ${host}\r\n\r\n`);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    await close();
+
+    await ended;
   });
 });
