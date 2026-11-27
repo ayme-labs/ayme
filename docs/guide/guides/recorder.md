@@ -193,8 +193,15 @@ The first save creates `ayme/.gitignore`, which lists `recordings/` and itself. 
 
 A warning is a line in the terminal that starts with `Warning:`. The recording goes on. Most warnings come while the recorder runs; the last two come as it ends.
 
+A warning about one step names it by its id in the recording, such as `interaction_4`, because the recording does not mark the step. If you ran `codegen` yourself, pass such a warning on to your agent with the recording, so that it checks the step against the trace.
+
 - **Playwright is newer than the recorder is verified on.** It may miss or misread an input. See [Supported Playwright versions](#supported-playwright-versions).
 - **A step is recorded, but its list of changes may be incomplete.** Playwright reported the input in a form the recorder does not read, or the page could not be read at that moment.
+- **The page could not be read before or after a step.** The step is recorded, and the page as it was last read stands in for the missing read, or an empty page when it had not been read yet. A step with no read after it lists no changes: the next step lists them, or they show as a change without a step. A step with no read before it can also list what the page changed earlier.
+- **A step's changes could not be fully worked out.** The step is recorded with its changes, but an element the page re-created may be under another ref in them, or listed as removed and added. The same can happen to the first picture of a page, its `baselineTree`.
+- **A step's changes cannot be listed in the recorder window.** The window shows the step without them. The recording has them.
+- **A step has no list of changes.** The recorder could not work out what the step changed. The step is recorded with its type, its selector and what you entered, and the trace holds the page before and after it.
+- **Whether the page changed by itself after a step could not be worked out.** The recording lists no such change there.
 - **A step is not recorded.** Its page could not be read. This can happen to typing, a dropdown choice, an upload or an assertion.
 - **An upload is recorded with its first file name only.** The file input was gone, or held other files than Playwright reported, by the time the recorder read it.
 - **Some or all of the trace's snapshots could not be numbered.** The recording has its trace, but lacks the position numbers that open those steps' snapshots.
