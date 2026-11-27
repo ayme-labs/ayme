@@ -222,18 +222,43 @@ entry there: open the `afterSnapshotId` of the interaction before it, or the
 ## Steps a warning names
 
 While it runs, the command may print lines that start with `Warning:` on
-its error output. One that names a step, such as `interaction_4`, or a
-visit's `baselineTree`, says the recorder could not work that part out in
-full, and the package does not mark it. Do not rely on that step's
-`changeTree`, or on its refs matching the rest of the package: an element can
-be under another ref there, and a step without a `changeTree` may still have
-changed the page. Read the page before and after the step from the trace
-instead, by its entry in `traceActionPoints`, as
-[Use the trace](#use-the-trace) describes; a `kind: change` has no entry
-there, so open the snapshots of the interactions around it, as
-[Discarded entries](#discarded-entries) says for a discarded one. The step's
-`type`, its `targetSelector` and the values the user entered are not
-affected.
+its error output. One that names a step, such as `interaction_4`, says the
+recorder could not work that step out in full; the package does not mark the
+step. What to distrust depends on the warning:
+
+- `cannot be listed in the recorder window`: nothing. The step's
+  `changeTree` is as good as any other.
+- `could not be read before`, `after` or `where … picked its element`: the
+  recorder had no read of the page there. The step has no `changeTree`, or,
+  for typing, one that stops at an earlier read. Without the read before it,
+  or the one its element was picked in, its `targetRef` is `null`. No later
+  entry lists what the step changed, and a missing `changeTree` does not
+  mean it changed nothing.
+- `could not be fully worked out`: the `changeTree` is there, but an element
+  can be under another ref than in the rest of the package, or show as
+  `<removed>` and `<added>` though the page kept it.
+- `could not be worked out, so it has no change list`: the step has no
+  `changeTree`, and its `targetRef` can be `null`.
+
+For all but the first, read the page before and after the step from the
+trace, by its entry in `traceActionPoints`, as
+[Use the trace](#use-the-trace) describes. That takes a `tracePath` and the
+entry's position numbers; when the package lacks either, ask the user what
+the step did. In every case the step's `type`, its `targetSelector` and the
+values the user entered are as Playwright reported them.
+
+A warning can also name what is no step:
+
+- A change the page made by itself, by its `timestamp` and the interaction
+  before it, or its visit. Treat its `changeTree` as a named step's. It has
+  no entry in `traceActionPoints`: open the snapshots of the interactions
+  around it, as [Discarded entries](#discarded-entries) says for a discarded
+  one.
+- A visit's `baselineTree`: an element can be under another ref there, or
+  the tree is an earlier read of the page, or empty.
+- A read of the page that could not be kept, by its time and, when the
+  package has position numbers, its position in the trace. The page may have
+  changed by itself around it without an entry for it.
 
 ## Write page objects from the recording
 
