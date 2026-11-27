@@ -75,11 +75,15 @@ export interface BrowserTab {
   readonly url: () => string;
   /** Completes when Playwright says the Tab's page closed. */
   readonly closed: Effect.Effect<void>;
+  /** The Tab's dialog as the Session counts it, watched from when
+   * Playwright handed its page over: known before the Tab is hosted. */
+  readonly dialog: Stream.Stream<TabDialog>;
   /**
    * Makes the Session the Host of the Tab, with focus emulation on, so that
    * a Run works the same while the Tab is not in front (rule 6). `ids`
    * hears of each Page Object Id the Tab's Host gives out and forgets. It
-   * reads nothing of the page, so an open dialog cannot hold it up.
+   * reads no document, but its setup over DevTools waits on the page, so it
+   * fails once the page has not answered within a stated limit.
    */
   readonly host: (ids: TabIds) => Effect.Effect<HostedTab, TabReadError>;
 }

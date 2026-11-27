@@ -153,3 +153,295 @@ it("routes a keyboard and a mouse saved before an instrumentation was installed 
     "raw keyboard c",
   ]);
 });
+
+/** A Host's decision on each call, which a test changes between calls. */
+function hostDeciding() {
+  const host = {
+    decision: "start" as "start" | "refuse" | Promise<void>,
+    asked: 0,
+    heard: [] as boolean[],
+    run: <T>(action: () => T) => action(),
+    stopped: () => undefined,
+    bound: [] as unknown[],
+    bind: <F>(listener: F) => {
+      host.bound.push(listener);
+      return listener;
+    },
+    before: (answersAtOnce: boolean) => {
+      host.asked += 1;
+      host.heard.push(answersAtOnce);
+      if (host.decision === "refuse") throw new Error("refused");
+      return host.decision === "start" ? undefined : host.decision;
+    },
+  };
+  return host;
+}
+
+/** Reading the ref of the next locator's element waits until the test
+ * calls the function this returns. */
+function holdRefRead() {
+  let read = () => {};
+  latestPageStateRefOf.mockImplementationOnce(
+    () => new Promise((resolve) => (read = () => resolve(undefined)))
+  );
+  return () => read();
+}
+
+it("asks its Host again right before an input is sent, after reading its element's ref, and sends none it refuses", async () => {
+  const readRef = holdRefRead();
+  const host = hostDeciding();
+  const heard = vi.fn();
+  const button = instrumentedPage(page, heard, noRef, host).locator("button");
+  host.asked = 0;
+  const click = button.click();
+  await Promise.resolve();
+  expect(host.asked).toBe(1);
+
+  // A dialog counts while the ref is read.
+  host.decision = "refuse";
+  readRef();
+
+  await expect(click).rejects.toThrow("refused");
+  expect(host.asked).toBe(2);
+  expect(clicks).toEqual([]);
+  expect(heard).not.toHaveBeenCalled();
+});
+
+it("holds an input its Host holds right before it is sent, until the Host lets it start", async () => {
+  const readRef = holdRefRead();
+  const host = hostDeciding();
+  const click = instrumentedPage(page, vi.fn(), noRef, host)
+    .locator("button")
+    .click();
+  await Promise.resolve();
+  let letStart = () => {};
+  host.decision = new Promise((resolve) => (letStart = resolve));
+  readRef();
+  for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+  expect(clicks).toEqual([]);
+
+  host.decision = "start";
+  letStart();
+  await click;
+
+  expect(clicks).toEqual(["raw button"]);
+});
+
+/** An object of Playwright's client, which talks to the browser over its
+ * connection: async methods that reach the browser record what they did. */
+function clientObject<T extends object>(type: string, members: T) {
+  return Object.assign(Object.create({}), members, {
+    _guid: `${type}@1`,
+    _type: type,
+    _connection: {},
+  }) as T;
+}
+
+/** A FrameLocator as Playwright makes one: no connection of its own, it
+ * holds the Frame it reaches the browser through. */
+class FakeFrameLocator {
+  constructor(readonly _frame: { click(selector: string): Promise<void> }) {}
+  locator(selector: string) {
+    return clientObject("Locator-holder", {
+      click: async () => void (await this._frame.click(`iframe ${selector}`)),
+    });
+  }
+}
+
+/** A Page with the handles an action may keep: a Frame, an ElementHandle,
+ * the context, a dialog it waits for, and the events it listens to. */
+function pageWithHandles() {
+  const listeners = new Map<string, ((value: unknown) => void)[]>();
+  const frame = clientObject("Frame", {
+    click: async (selector: string) => void clicks.push(`frame ${selector}`),
+    name: () => "main",
+  });
+  const handle = clientObject("ElementHandle", {
+    click: async () => void clicks.push("handle"),
+  });
+  const dialog = clientObject("Dialog", {
+    accept: async () => void clicks.push("dialog accepted"),
+  });
+  const popup = clientObject("Page", {
+    click: async (selector: string) => void clicks.push(`popup ${selector}`),
+  });
+  const raw = {
+    mainFrame: () => frame,
+    frameLocator: () => new FakeFrameLocator(frame),
+    $: async () => handle,
+    waitForEvent: async () => dialog,
+    context: () => clientObject("BrowserContext", { pages: () => [raw] }),
+    on: (event: string, listener: (value: unknown) => void) =>
+      void listeners.set(event, [...(listeners.get(event) ?? []), listener]),
+    off: (event: string, listener: (value: unknown) => void) =>
+      void listeners.set(
+        event,
+        (listeners.get(event) ?? []).filter((each) => each !== listener)
+      ),
+  };
+  const emit = (event: string, value: unknown) => {
+    for (const listener of listeners.get(event) ?? []) listener(value);
+  };
+  return { raw, frame, popup, emit, listeners };
+}
+
+type PageWithHandles = ReturnType<typeof pageWithHandles>["raw"];
+
+it("a Frame, a frame's locator and an ElementHandle an action kept are refused once its Host refuses, like the Page", async () => {
+  const { raw } = pageWithHandles();
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    host
+  ) as unknown as PageWithHandles;
+  const frame = wrapped.mainFrame();
+  const inFrame = wrapped.frameLocator().locator("#mark");
+  const handle = await wrapped.$();
+
+  host.decision = "refuse";
+
+  await expect(frame.click("#save")).rejects.toThrow("refused");
+  await expect(inFrame.click()).rejects.toThrow("refused");
+  await expect(handle!.click()).rejects.toThrow("refused");
+  expect(() => frame.name()).toThrow("refused");
+  expect(clicks).toEqual([]);
+});
+
+it("a kept Frame's call waits while its Host holds it, and its answers stay the same object", async () => {
+  const { raw } = pageWithHandles();
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    host
+  ) as unknown as PageWithHandles;
+  const frame = wrapped.mainFrame();
+  expect(wrapped.mainFrame()).toBe(frame);
+  expect(wrapped.context().pages()).toEqual([wrapped]);
+  let letStart = () => {};
+  host.decision = new Promise((resolve) => (letStart = resolve));
+
+  const click = frame.click("#save");
+  for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+  expect(clicks).toEqual([]);
+  host.decision = "start";
+  letStart();
+  await click;
+
+  expect(clicks).toEqual(["frame #save"]);
+});
+
+it("a Dialog's answer is never held, and is refused once its Host refuses", async () => {
+  const { raw } = pageWithHandles();
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    host
+  ) as unknown as PageWithHandles;
+  const dialog = await wrapped.waitForEvent();
+
+  host.decision = new Promise(() => {});
+  await dialog.accept();
+  host.decision = "refuse";
+
+  await expect(dialog.accept()).rejects.toThrow("refused");
+  expect(clicks).toEqual(["dialog accepted"]);
+});
+
+it("what a listener is handed carries the check, and the listener is removed by the function the action registered", async () => {
+  const { raw, popup, emit, listeners } = pageWithHandles();
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    host
+  ) as unknown as PageWithHandles;
+  const heard: { click(selector: string): Promise<void> }[] = [];
+  const listener = (value: unknown) =>
+    void heard.push(value as (typeof heard)[number]);
+  wrapped.on("popup", listener);
+  expect(host.bound).toEqual([listener]);
+  emit("popup", popup);
+
+  wrapped.off("popup", listener);
+  expect(listeners.get("popup")).toEqual([]);
+
+  host.decision = "refuse";
+  await expect(heard[0]!.click("#buy")).rejects.toThrow("refused");
+  expect(clicks).toEqual([]);
+});
+
+it("without a Host that decides, Playwright's own objects are handed out as they are", () => {
+  const { raw, frame } = pageWithHandles();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef
+  ) as unknown as PageWithHandles;
+
+  expect(wrapped.mainFrame()).toBe(frame);
+});
+
+it("a method of a later Playwright the call tables do not know answers as it always does: never held, only refused", () => {
+  const raw = { ...fakePage("raw"), laterMethod: () => "answered" };
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    host
+  ) as unknown as typeof raw;
+
+  host.decision = new Promise(() => {});
+  expect(wrapped.laterMethod()).toBe("answered");
+  host.decision = "refuse";
+  expect(() => wrapped.laterMethod()).toThrow("refused");
+});
+
+it("an action's calls go to its Host before they start, each saying whether the Host may hold it", async () => {
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(page, undefined, noRef, host);
+
+  await wrapped.locator("button").click();
+
+  // `locator` answers at once; `click` answers later.
+  expect(host.heard).toEqual([true, false]);
+  expect(clicks).toEqual(["raw button"]);
+});
+
+it("an action's call its Host holds starts only once the Host lets it", async () => {
+  const host = hostDeciding();
+  const button = instrumentedPage(page, undefined, noRef, host).locator(
+    "button"
+  );
+  let letStart = () => {};
+  host.decision = new Promise((resolve) => (letStart = resolve));
+  host.asked = 0;
+
+  const click = button.click();
+  expect(host.asked).toBe(1);
+  for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+  expect(clicks).toEqual([]);
+  host.decision = "start";
+  letStart();
+  await click;
+
+  expect(clicks).toEqual(["raw button"]);
+});
+
+it("an action's call its Host refuses never reaches the page, and fails with why", async () => {
+  const host = hostDeciding();
+  const button = instrumentedPage(page, undefined, noRef, host).locator(
+    "button"
+  );
+  host.decision = "refuse";
+
+  await expect(button.click()).rejects.toThrow("refused");
+  expect(clicks).toEqual([]);
+});

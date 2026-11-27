@@ -111,6 +111,8 @@ export interface ScriptedTab {
   /** Every read of the Tab's page waits, as behind a presence predicate
    * that never resolves, until the test shows a listing again. */
   holdReads(): void;
+  /** How many listings of the Tab's page the Session read. */
+  readonly listingsRead: number;
   /** The built Page Objects swapped in on the Tab's Host, in order. */
   readonly swappedIn: readonly BuiltPageObjects[];
   /** Every Run started on the Tab, in order. */
@@ -223,6 +225,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   };
   let shownUrl = url;
   const runs: { tool: string; input: unknown }[] = [];
+  let listingsRead = 0;
   const swappedIn: BuiltPageObjects[] = [];
   let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
     Promise.resolve({ settled: true });
@@ -240,13 +243,14 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   const setDialog = (now: TabDialog) =>
     Effect.runSync(SubscriptionRef.set(dialog, now));
   const hosted: HostedTab = {
-    listing: Effect.suspend(() =>
-      shown === "held"
+    listing: Effect.suspend(() => {
+      listingsRead += 1;
+      return shown === "held"
         ? Effect.never
         : shown instanceof TabReadError
           ? Effect.fail(shown)
-          : Effect.succeed(shown)
-    ),
+          : Effect.succeed(shown);
+    }),
     call: (tool: string, input: unknown) =>
       Effect.tryPromise({
         try: () => {
@@ -286,6 +290,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   const tab: Tab = {
     url: () => shownUrl,
     closed: Deferred.await(closed),
+    dialog: SubscriptionRef.changes(dialog),
     // As a page's registry refuses a second owner.
     host: (giving) =>
       given
@@ -308,6 +313,9 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       },
       failReads: (reason) => (shown = new TabReadError(reason)),
       holdReads: () => (shown = "held"),
+      get listingsRead() {
+        return listingsRead;
+      },
       swappedIn,
       runs,
       answerRuns: (answer) => (answerRun = answer),
@@ -478,6 +486,9 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       },
       get inspectorListeners() {
         return first.control.inspectorListeners;
+      },
+      get listingsRead() {
+        return first.control.listingsRead;
       },
     },
   };

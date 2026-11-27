@@ -67,9 +67,9 @@ also without ayme, each have a Page Object present there alone:
 page's window, throw, or leave an error and a rejection nothing catches.
 `tabs.html`, without ayme, has `TabsPage`, whose action opens a tab, which
 hides its own, and then clicks there. `dialogs.html`, without ayme, has
-`DialogPage`, whose actions click a button that asks a confirm and then click
-Mark: one leaves the confirm to the browser automation, the other answers it
-itself. `GroceryList` is a Session's Page Object
+`DialogPage`, whose action clicks a button that asks a confirm and then clicks
+Mark, leaving the confirm to the browser automation; its link opens
+`alert-at-once.html`, which shows an alert as it loads. `GroceryList` is a Session's Page Object
 on the app page, `/`, which ships ayme, so the page has two Hosts. The test's own Playwright
 connection, at the address `ayme open` printed, plays the developer's browser
 automation. `inspectSession.spec.ts` opens the window `ayme inspect` serves in the

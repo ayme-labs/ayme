@@ -155,18 +155,24 @@ A Session's answers are plain text, or JSON with `--json`. The command's own err
 
 ## Dialogs
 
-ayme never answers a dialog: the agent answers it with its browser automation. Connect the automation before the action that opens the dialog. Chrome answers no DevTools client that connects while a dialog is open, so an automation that connects later cannot answer it.
+ayme never answers a dialog: the agent answers it with its browser automation, which has to be [connected before the action that opens it](#connect-ayme-and-the-browser-automation-to-one-browser).
 
-A dialog counts as open once it has stayed open for 100 ms. While one is open on a tab, every command that needs that tab's page fails at once with the dialog's text. `ayme page-objects` and `ayme tools` still print the tab line first:
+A dialog counts as open once it has stayed open for 100 ms. While one is open on a Tab, every command that needs that Tab's page fails at once with the dialog's text and did nothing, so the agent runs it again once the dialog is answered. `ayme page-objects` and `ayme tools` still print the Tab line first:
 
 ```text
 Tab: http://localhost:5173/projects
-A confirm dialog is open on the tab: "Delete Launch plan?". Answer it with your browser automation, then run ayme again.
+A confirm dialog is open on the tab: "Delete Launch plan?". Answer it with your browser automation, then run this command again.
 ```
 
-A dialog affects only its own tab.
+A dialog affects only its own Tab.
 
-An action stops at a dialog it did not answer itself. When a dialog opens during a Run and stays open for 100 ms, `ayme call` fails at once with the dialog's text, and the action does nothing more on the page, whether the agent then accepts or dismisses the dialog. No later command tells what the stopped action returned or threw. The next Run on that tab starts once the stopped action has ended.
+An action stops at a dialog it did not answer itself. When a dialog opens during a Run and stays open for 100 ms, `ayme call` fails at once:
+
+```text
+A confirm dialog is open on the tab: "Delete Launch plan?". Answer it with your browser automation. The action stopped there: ayme refuses its further calls on the page, however the dialog is answered. Check the page before you choose the next step.
+```
+
+ayme refuses each later Playwright call of the action, whether the agent accepts or dismisses the dialog. A call already sent to the browser when the dialog opened, and work inside one `page.evaluate`, still finish once the dialog is answered. No later command tells what the stopped action returned or threw, and the Inspector shows the Run as failed with the dialog's text. The next Run on that Tab starts once the stopped action has ended.
 
 A dialog closed within the 100 ms does not stop the Run. That covers an `alert` some automations accept by themselves, and an action that answers its own dialog, as a Playwright test does:
 
@@ -176,8 +182,9 @@ this.page.once("dialog", (dialog) => dialog.accept());
 
 ayme cannot stop everything at the dialog:
 
-- Work inside one `page.evaluate`, and a Playwright call already under way when the dialog opened, go on once the dialog is answered.
 - An action that takes longer than 100 ms to answer its own dialog is stopped like any other.
+- ayme checks the calls an action makes through its page and through what the page hands out: locators, frames, element handles, the browser context, other pages, and what Playwright hands a listener, such as a dialog. A Playwright object the action reaches another way, or one handed over inside plain data, such as the source `exposeBinding` passes its function, is not checked, and neither is `page.coverage`.
+- A listener the action adds through its page runs as part of the action. A function the action hands to other code that calls it later, such as a list of callbacks a timer from before the action works through, does not, and its calls are not checked.
 - A dialog listener an earlier Run added and never used answers a later dialog.
 - Playwright dismisses a dialog that opens while ayme joins the browser.
 
