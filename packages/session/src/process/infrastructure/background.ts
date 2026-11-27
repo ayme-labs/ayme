@@ -13,7 +13,7 @@ import {
   type SessionBrowserRequest,
 } from "../../session/application";
 import { projectPageObjects } from "../../page-objects/infrastructure";
-import { stockBrowser } from "../../playwright/infrastructure";
+import { failItsRun, stockBrowser } from "../../playwright/infrastructure";
 import {
   failed,
   SessionStartError,
@@ -142,11 +142,14 @@ const SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
  * Keeps the process alive through an error or a rejection that nothing
  * caught, such as one Page Object code left behind: it ends only its own
  * Run, never the Session (rule 12). Node would otherwise end the process.
- * Each goes to the process's log.
+ * Each fails the Run it came from, if that Run is still under way, and
+ * goes to the process's log.
  */
 function catchWhatNothingCaught(): void {
-  const log = (error: unknown) =>
+  const log = (error: unknown) => {
+    failItsRun(error);
     console.error("ayme caught an error nothing else caught:", error);
+  };
   process.on("uncaughtException", log);
   process.on("unhandledRejection", log);
 }

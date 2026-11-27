@@ -10,6 +10,7 @@ import {
 } from "node:net";
 
 import {
+  unanswerable,
   unknownRequest,
   type SessionAnswer,
   type SessionRequest,
@@ -40,6 +41,20 @@ function firstLine(connection: Socket, onLine: (line: string) => void): void {
   connection.on("data", onData);
 }
 
+const messageOf = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
+/** The line that carries `answering`'s answer: why there is none when it
+ * cannot be made or written as JSON, so the command is answered anyway
+ * (rule 1). */
+async function answerLine(answering: Promise<SessionAnswer>): Promise<string> {
+  try {
+    return JSON.stringify(await answering);
+  } catch (error) {
+    return JSON.stringify(unanswerable(messageOf(error)));
+  }
+}
+
 /** A socket a Session's process listens on. */
 export interface Listening {
   /** Stops listening, closes every connection that is not waiting for an
@@ -65,12 +80,9 @@ export function listen(
     firstLine(connection, (line) => {
       idle.delete(connection);
       const request = objectIn(line) as SessionRequest | undefined;
-      void (request ? answer(request) : Promise.resolve(unknownRequest)).then(
-        (answered) =>
-          connection.end(`${JSON.stringify(answered)}\n`, () =>
-            connection.destroy()
-          )
-      );
+      void answerLine(
+        request ? answer(request) : Promise.resolve(unknownRequest)
+      ).then((line) => connection.end(`${line}\n`, () => connection.destroy()));
     });
   });
   return new Promise((resolve, reject) => {

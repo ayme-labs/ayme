@@ -157,6 +157,13 @@ export const runFailed = ({ message, changes }: RunError): SessionAnswer =>
       : [message, "", ...changesLines(changes)].join("\n")
   );
 
+/** The answer to a command whose answer could not be made or written, such
+ * as a Run's whose returned value throws when it is turned into text. */
+export const unanswerable = (why: string): SessionAnswer =>
+  failed(
+    `ayme could not write the answer to this command: ${why.replace(/\.$/, "")}.`
+  );
+
 /** The answer to a command still waiting when the Session ended. */
 export function endedBeforeAnswer(end: SessionEnd): SessionAnswer {
   switch (end) {
@@ -187,6 +194,20 @@ export const paramsNotJson = (why: string, name: string): SessionAnswer =>
 export const paramsUnreadable = (file: string, why: string): SessionAnswer =>
   failed(
     `--params @${file} names a file ayme cannot read: ${why.replace(/\.$/, "")}.`
+  );
+
+/** The answer to `ayme call` when its `--params @<file>` names something
+ * other than a regular file, such as a named pipe or a folder. */
+export const paramsNotAFile = (file: string): SessionAnswer =>
+  failed(
+    `--params @${file} names something that is not a regular file. Give a file of JSON.`
+  );
+
+/** The answer to `ayme call` when the file its `--params @<file>` names is
+ * larger than `limit` bytes, the most ayme reads. */
+export const paramsTooLarge = (file: string, limit: number): SessionAnswer =>
+  failed(
+    `--params @${file} names a file larger than ${limit / (1024 * 1024)} MB, the most ayme reads for a tool's input.`
   );
 
 /** Why a command that needs a Tab is answered with none (rule 9). */

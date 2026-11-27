@@ -182,6 +182,7 @@ export class PageStateSession {
     return {
       tree,
       pomRootMarks,
+      document: capture.document,
       ...(capture.accepted ? { accepted: acceptedSets(capture.accepted) } : {}),
       ...(capture.renamed
         ? { renamed: new Map(Object.entries(capture.renamed)) }

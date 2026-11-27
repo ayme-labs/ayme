@@ -1977,7 +1977,7 @@ export class ShopPage {
       expect(await session("page-objects")).toMatchObject({
         code: 0,
         stdout: expect.stringMatching(
-          /^Tab: Shop \(.+\)\nShopPage\n[^]*This screen has 1 Page Object Tool: ayme tools lists it with its parameters\.\n$/
+          /^Tab: Shop \(.+\)\nShopPage\n[^]*This screen has 1 Page Object Tool: ayme -s=default tools lists it with its parameters\.\n$/
         ),
       });
     } catch (error) {

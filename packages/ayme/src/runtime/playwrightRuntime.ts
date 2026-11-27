@@ -82,7 +82,7 @@ export const nodeHostTargets = new WeakMap<object, SessionTarget>();
  * registers the `ayme-ref` engine on Playwright's `selectors`, once per
  * process, which the entry that holds the Playwright import hands in.
  */
-export function createPlaywrightAyme(
+function createPlaywrightAyme(
   options: PlaywrightAymeOptions,
   registerSelectors: () => Promise<void>
 ): PlaywrightAyme {
