@@ -125,7 +125,7 @@ Each of these ends the recorder and saves what was recorded:
 - close the last recorded page,
 - press Ctrl+C in the terminal.
 
-If you never pressed **Record**, there is nothing to save.
+If recording never started, by **Record** or `--start-recording`, there is nothing to save.
 
 Do not end by quitting the whole browser. The recorder ends then too, but the recording can be saved without its trace, and `--save-storage` cannot save.
 
