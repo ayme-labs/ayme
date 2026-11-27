@@ -948,6 +948,37 @@ export function createAymeOn(
     },
   };
 
+  hostedPageObjects.set(ayme.tools, {
+    replace(running, rebuilt) {
+      const made = new Map<PageObjectConstructor, object>();
+      for (const model of rebuilt)
+        if (!made.has(model))
+          made.set(
+            model,
+            instances.get(model) ?? constructPageObject(model, getPage())
+          );
+      target.registry().inOneChange(() => {
+        // Every old class leaves before a rebuilt one registers: a rebuilt
+        // class keeps its name, and the registry holds back a second class
+        // of one name, logging the clash, until the first one leaves.
+        for (const model of running) {
+          registrations.get(model)?.active?.dispose();
+          registrations.delete(model);
+          instances.delete(model);
+        }
+        for (const model of rebuilt) {
+          instances.set(model, made.get(model)!);
+          pom.register(model);
+        }
+      });
+    },
+    takesId: (tool) =>
+      target
+        .registry()
+        .listRegisteredPomTools()
+        .some((listed) => listed.tool.name === tool && listed.tool.rooted),
+    observe: () => target.registry().probeRegisteredPomMembers(),
+  });
   pageObjectCallers.set(ayme.tools, (by) => ({
     run: pageObjectToolsFor(by, { pageObjectToolsOnly: true }).run,
     listing: () =>
