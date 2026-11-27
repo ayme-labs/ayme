@@ -452,8 +452,10 @@ hosting its playground.
 #### development
 
 - Purpose: a contributor's machine working in this monorepo: the playground and the framework
-  examples run from the workspace packages, with a coding agent attached
-- Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md), [apps/mcp-fixture/README.md](apps/mcp-fixture/README.md)
+  examples run from the workspace packages, published through WebMCP for an agent in the page;
+  apart from them, a Session of the workspace's `ayme` command serves a coding agent, beside
+  the contributor's own browser automation
+- Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md), [apps/mcp-fixture/tests/inspectSession.spec.ts](apps/mcp-fixture/tests/inspectSession.spec.ts)
 - Containers:
   - **Browser runtime**: the playground's and the examples' development builds; the
     playground has WebMCP publication and the Inspector in demo mode, and a `goal` only
@@ -497,8 +499,9 @@ hosting its playground.
   - **WebMCP driver**: the `@mcp-b/webmcp-polyfill` the playground initializes before the
     Vue app
     - Evidence: verified: [apps/example-vue/src/main.ts](apps/example-vue/src/main.ts)
-  - **Browser automation**: not part of the playground and example setup
-    - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
+  - **Browser automation**: not part of the playground and example setup; beside a Session,
+    the contributor's own, connected to the Session's browser over the DevTools protocol
+    - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md), [apps/mcp-fixture/tests/inspectSession.spec.ts](apps/mcp-fixture/tests/inspectSession.spec.ts)
 
 #### ci
 
@@ -538,11 +541,14 @@ hosting its playground.
     - Evidence: verified: [docs/testing.md](docs/testing.md)
   - **Decision model provider**: the live API in the live goal lane, skipped without a key
     - Evidence: verified: [.github/workflows/ci.yml](.github/workflows/ci.yml)
-  - **WebMCP driver**: a recording driver from `@ayme-dev/webmcp/testing`
-    - Evidence: verified: [packages/webmcp/testing/index.ts](packages/webmcp/testing/index.ts)
+  - **WebMCP driver**: a recording driver from `@ayme-dev/webmcp/testing`, which the Inspector
+    fixture's and the examples' end-to-end tests install; the MCP fixture's tests of a Session
+    use none
+    - Evidence: verified: [packages/webmcp/testing/index.ts](packages/webmcp/testing/index.ts), [apps/inspector-fixture/tests/fixtures.ts](apps/inspector-fixture/tests/fixtures.ts),
+      [apps/example-certification/src/tests.ts](apps/example-certification/src/tests.ts)
   - **Browser automation**: the MCP fixture test's own Playwright connection to a Session's
-    browser, which plays the developer's browser automation
-    - Evidence: verified: [apps/mcp-fixture/README.md](apps/mcp-fixture/README.md), [apps/mcp-fixture/tests/aymeCommand.ts](apps/mcp-fixture/tests/aymeCommand.ts)
+    browser over the DevTools protocol, which plays the developer's browser automation
+    - Evidence: verified: [apps/mcp-fixture/README.md](apps/mcp-fixture/README.md), [apps/mcp-fixture/tests/inspectSession.spec.ts](apps/mcp-fixture/tests/inspectSession.spec.ts)
 
 #### playground
 

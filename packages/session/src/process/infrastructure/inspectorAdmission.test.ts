@@ -212,7 +212,9 @@ it("admits the window and an Agent App's view, from any origin, once each brings
     expect(outcome, origin).toBe("open");
     const told: unknown[] = [];
     ws.on("message", (data) => told.push(JSON.parse(String(data))));
-    ws.send(JSON.stringify({ id: 1, method: "getState" }));
+    // A window's request names the Tab the Session told it.
+    await expect.poll(() => told).toContainEqual({ tab: 1 });
+    ws.send(JSON.stringify({ id: 1, method: "getState", tab: 1 }));
     await expect.poll(() => told).toContainEqual({ id: 1, result: "getState" });
   }
   expect(browser.inspectorCalls).toHaveLength(2);

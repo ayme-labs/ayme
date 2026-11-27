@@ -86,7 +86,7 @@ function requestIn(data: unknown):
       id: string | number;
       method: string;
       params?: unknown;
-      tab?: number;
+      tab: number;
     }
   | undefined {
   try {
@@ -95,14 +95,10 @@ function requestIn(data: unknown):
     if (
       (typeof id === "string" || typeof id === "number") &&
       typeof method === "string" &&
-      method !== ""
+      method !== "" &&
+      typeof tab === "number"
     )
-      return {
-        id,
-        method,
-        params: frame.params,
-        ...(typeof tab === "number" && { tab }),
-      };
+      return { id, method, params: frame.params, tab };
   } catch {
     // Not JSON: no request.
   }
@@ -111,7 +107,7 @@ function requestIn(data: unknown):
 
 function frameOf(event: InspectorEvent, listening: boolean) {
   if ("ended" in event) return { ended: event.ended, inChat: event.inChat };
-  if ("tab" in event) return { tab: event.tab };
+  if ("tab" in event) return event;
   return listening ? { event: event.contract } : undefined;
 }
 
@@ -276,7 +272,7 @@ function accept(ws: WebSocket, session: Pick<Session, "ask" | "events">) {
     const answering = session
       .ask({
         inspector: {
-          contract: { method, params, ...(tab !== undefined && { tab }) },
+          contract: { method, params, tab },
         },
       })
       .pipe(

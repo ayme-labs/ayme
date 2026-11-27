@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { startScriptedSession } from "../testing";
+import { startScriptedSession, windowOn } from "../testing";
 
 // The Inspector an Agent App shows in its chat, and a Run started from any
 // Inspector, through the Session's interface on the scripted browser.
@@ -37,18 +37,14 @@ it("a Run started from an Inspector has the Inspector as its Caller, whatever Ca
     open: { headed: false },
     inspector: WINDOW,
   });
+  const window = await windowOn(session);
 
-  await session.ask({
-    inspector: {
-      contract: {
-        method: "runTool",
-        params: { name: "Basket.add", input: {}, by: "ayme-command" },
-      },
-    },
+  await window.ask("runTool", {
+    name: "Basket.add",
+    input: {},
+    by: "ayme-command",
   });
-  await session.ask({
-    inspector: { contract: { method: "runTool", params: "not an object" } },
-  });
+  await window.ask("runTool", "not an object");
 
   expect(browser.inspectorCalls).toEqual([
     {

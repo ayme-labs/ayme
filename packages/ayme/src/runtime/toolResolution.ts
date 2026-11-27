@@ -158,18 +158,6 @@ export function listTools(
   }
 }
 
-/**
- * Package-internal: the Peek Tools alone, the tools of a Node process of the
- * app, which has no page.
- */
-export function listPeekToolInfo(
-  sources: Pick<ToolSources, "peekTools">
-): readonly ToolInfo[] {
-  return toInfo(
-    sources.peekTools().map((tool) => ({ tool, group: "peek", ...always() }))
-  );
-}
-
 // The started session's page and the Reach it picked, for what reads them
 // outside any Run: the Inspector's element tool targets. A Run is handed
 // its own instead. Kept per Page (ADR-0049).

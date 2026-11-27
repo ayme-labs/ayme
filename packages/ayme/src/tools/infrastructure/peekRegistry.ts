@@ -19,11 +19,5 @@ function sessionPeeks(): Peeks {
   return peeksOf(pageOfDocument(document));
 }
 
-export const addPeek: Peeks["addPeek"] = (...args) =>
-  sessionPeeks().addPeek(...args);
-export const isPeekTool: Peeks["isPeekTool"] = (tool) =>
-  sessionPeeks().isPeekTool(tool);
 export const listPeekTools: Peeks["listPeekTools"] = () =>
   sessionPeeks().listPeekTools();
-export const subscribeToPeekTools: Peeks["subscribeToPeekTools"] = (listener) =>
-  sessionPeeks().subscribeToPeekTools(listener);

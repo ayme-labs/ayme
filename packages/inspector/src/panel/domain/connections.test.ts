@@ -52,13 +52,17 @@ describe("webMcpRow", () => {
       "No ayme runtime session is running, so nothing is published.",
     ],
   ])("says %j as %s, %s", (status, tone, label, line) => {
-    expect(webMcpRow(status, 3)).toMatchObject({ tone, label, lines: [line] });
+    expect(webMcpRow(status, 3)).toMatchObject({
+      tone,
+      label,
+      message: line,
+    });
   });
 
   it("counts one tool as one", () => {
-    expect(webMcpRow({ state: "active", message: "" }, 1).lines).toEqual([
-      "1 tool published to agents in this browser.",
-    ]);
+    expect(webMcpRow({ state: "active", message: "" }, 1).message).toBe(
+      "1 tool published to agents in this browser."
+    );
   });
 
   it("offers the option that turns it on while it is off", () => {

@@ -11,7 +11,7 @@ import {
   Stream,
   SubscriptionRef,
 } from "effect";
-import { onTestFinished } from "vitest";
+import { onTestFinished, vi } from "vitest";
 
 import {
   openSession,
@@ -217,6 +217,44 @@ export interface Listening {
   readonly done: Promise<void>;
   /** Stops listening, as a window that closes. */
   stop(): Promise<void>;
+}
+
+/** An Inspector window on a Session, as its transport is: each call it
+ * makes on the contract names the Tab the Session told it last. */
+export interface WindowOn extends Listening {
+  /** The Tab the Session told the window last. */
+  tab(): number;
+  /** The window's call of the contract's `method` with `params`. */
+  ask(method: string, params?: unknown): Promise<SessionAnswer>;
+}
+
+/** A window that listens to `session`, once the Session told it a Tab. */
+export async function windowOn(session: ScriptedSession): Promise<WindowOn> {
+  const listening = session.listen();
+  const tab = () => {
+    const told = listening.heard.findLast((event) => "tab" in event);
+    if (!told) throw new Error("The Session told the window no Tab yet.");
+    return (told as { readonly tab: number }).tab;
+  };
+  await vi.waitFor(tab);
+  return {
+    get heard() {
+      return listening.heard;
+    },
+    done: listening.done,
+    stop: () => listening.stop(),
+    tab,
+    ask: (method, params) =>
+      session.ask({
+        inspector: {
+          contract: {
+            method,
+            ...(params === undefined ? {} : { params }),
+            tab: tab(),
+          },
+        },
+      }),
+  };
 }
 
 /** How the scripted browser and build behave: each finishes at once

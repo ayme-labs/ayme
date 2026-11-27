@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { startScriptedSession } from "../testing";
+import { startScriptedSession, windowOn } from "../testing";
 import type { InspectorEvent } from "./session/domain";
 
 // The Inspector on a Session, through the Session's interface on the
@@ -21,21 +21,21 @@ async function pending(promise: Promise<unknown>): Promise<boolean> {
   return !settled;
 }
 
-/** A call of the window on the contract of the Session's Tab, or of the
- * Tab the window shows as `tab`. */
-const contract = (method: string, params?: unknown, tab?: number) => ({
+/** A call of the window on the contract of the Tab it shows as `tab`. */
+const contract = (method: string, params: unknown, tab: number) => ({
   inspector: {
     contract: {
       method,
       ...(params === undefined ? {} : { params }),
-      ...(tab === undefined ? {} : { tab }),
+      tab,
     },
   },
 });
 
 /** The Tab the window that heard `heard` was told last. */
 const shownTab = (heard: readonly InspectorEvent[]) =>
-  heard.findLast((event) => "tab" in event) as { tab: number } | undefined;
+  heard.findLast((event) => "tab" in event) as
+    { tab: number; noTab?: true } | undefined;
 
 it("ayme inspect is answered with the address of the Session's Inspector window, with a code made for each opening", async () => {
   let made = 0;
@@ -55,11 +55,12 @@ it("ayme inspect is answered with the address of the Session's Inspector window,
   });
 });
 
-it("a window's call on the contract is answered by the Host of the most recently active Tab, and follows the browser automation to another", async () => {
+it("a window's call on the contract is answered by the Host of the Tab it shows, the most recently active, and follows the browser automation to another", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.answerInspector(async (method) => ({ from: "first", method }));
+  const window = await windowOn(session);
 
-  expect(await session.ask(contract("getState"))).toEqual({
+  expect(await window.ask("getState")).toEqual({
     ok: true,
     text: "",
     data: { from: "first", method: "getState" },
@@ -69,8 +70,9 @@ it("a window's call on the contract is answered by the Host of the most recently
     from: "second",
     params,
   }));
+  await expect.poll(() => window.tab()).toBe(2);
 
-  expect(await session.ask(contract("look", { deep: true }))).toMatchObject({
+  expect(await window.ask("look", { deep: true })).toMatchObject({
     data: { from: "second", params: { deep: true } },
   });
   expect(second.hosted).toBe(true);
@@ -84,7 +86,8 @@ it("a Tab that shows the Inspector window is never the one the Session works on"
     tools: [],
   });
   // The person's default browser was the Session's own.
-  const window = browser.openTab(`${WINDOW}?a=1`);
+  const windowTab = browser.openTab(`${WINDOW}?a=1`);
+  const window = await windowOn(session);
 
   expect(await session.ask({ pageObjects: {} })).toMatchObject({
     ok: true,
@@ -92,21 +95,22 @@ it("a Tab that shows the Inspector window is never the one the Session works on"
       /^Tab: Shop \(http:\/\/127\.0\.0\.1:5173\/shop\)/
     ),
   });
-  expect(await session.ask(contract("getState"))).toMatchObject({ ok: true });
+  expect(await window.ask("getState")).toMatchObject({ ok: true });
   expect(
     await session.ask({ pageObjects: { tab: `${WINDOW}?a=1` } })
   ).toMatchObject({
     ok: false,
   });
-  expect(window.hosted).toBe(false);
-  expect(window.inspectorCalls).toEqual([]);
+  expect(windowTab.hosted).toBe(false);
+  expect(windowTab.inspectorCalls).toEqual([]);
 });
 
 it("a window's call when no tab is open is answered that no tab is open", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.close();
+  const window = await windowOn(session);
 
-  expect(await session.ask(contract("getState"))).toEqual({
+  expect(await window.ask("getState")).toEqual({
     ok: false,
     text: "No tab is open in the Session's browser. Open one with your browser automation, then run ayme again.",
   });
@@ -121,12 +125,15 @@ it("a Run from the window waits for the Run under way on its Tab, and a command'
         (resolve) => (releaseCommand = () => resolve({ settled: true }))
       )
   );
+  const window = await windowOn(session);
   const command = session.ask({ call: { tool: "Basket.add", input: {} } });
   await pending(command);
 
-  const fromWindow = session.ask(
-    contract("runTool", { name: "Basket.clear", input: {}, by: "inspector" })
-  );
+  const fromWindow = window.ask("runTool", {
+    name: "Basket.clear",
+    input: {},
+    by: "inspector",
+  });
 
   expect(await pending(fromWindow)).toBe(true);
   expect(browser.inspectorCalls).toEqual([]);
@@ -160,13 +167,14 @@ it("a Run from the window waits for the Run under way on its Tab, and a command'
 
 it("a window's reads take no turn: they are answered while a Run is under way", async () => {
   const { session, browser } = await startScriptedSession(opening);
+  const window = await windowOn(session);
   browser.answerRuns(() => new Promise(() => {}));
   void session.ask({ call: { tool: "Basket.hold", input: {} } });
   await pending(session.ask({ tools: {} }));
 
-  expect(await session.ask(contract("look"))).toMatchObject({ ok: true });
+  expect(await window.ask("look")).toMatchObject({ ok: true });
   expect(
-    await session.ask(contract("highlight", { layer: "hover", refs: ["e1"] }))
+    await window.ask("highlight", { layer: "hover", refs: ["e1"] })
   ).toMatchObject({
     ok: true,
   });
@@ -177,8 +185,9 @@ it("a window's call the contract fails is answered with why", async () => {
   browser.answerInspector(() =>
     Promise.reject(new Error('The Inspector contract has no "nope".'))
   );
+  const window = await windowOn(session);
 
-  expect(await session.ask(contract("nope"))).toEqual({
+  expect(await window.ask("nope")).toEqual({
     ok: false,
     text: 'The Inspector contract has no "nope".',
   });
@@ -292,11 +301,29 @@ it("a window's Run of a tool whose Page Object Id is of another Tab is refused",
   expect(second.inspectorCalls).toEqual([]);
 });
 
+it("a window that shows a Tab is told it shows no Tab once the last Tab closed, then the next Tab that opens, as a new Tab", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const window = session.listen();
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+
+  browser.close();
+
+  await expect
+    .poll(() => shownTab(window.heard))
+    .toEqual({ tab: 2, noTab: true });
+
+  browser.openTab("http://127.0.0.1:5173/shop");
+
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 3 });
+});
+
 it("a window that listens while no tab is open is told the first Tab that opens, as a new Tab", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.close();
   const window = session.listen();
-  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+  await expect
+    .poll(() => shownTab(window.heard))
+    .toEqual({ tab: 1, noTab: true });
   expect(await session.ask(contract("getState", undefined, 1))).toEqual({
     ok: false,
     text: "No tab is open in the Session's browser. Open one with your browser automation, then run ayme again.",
@@ -305,7 +332,8 @@ it("a window that listens while no tab is open is told the first Tab that opens,
   const first = browser.openTab("http://127.0.0.1:5173/shop");
 
   await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 2 });
-  expect(first.inspectorListeners).toBe(1);
+  // The Session tells the Tab first and subscribes to its Host right after.
+  await expect.poll(() => first.inspectorListeners).toBe(1);
   expect(await session.ask(contract("getState", undefined, 2))).toMatchObject({
     ok: true,
     data: "getState",
@@ -318,7 +346,9 @@ it("a window that listens while the tab list cannot be read is told so, and then
     "ayme could not read the browser's tab list."
   );
   const window = session.listen();
-  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+  await expect
+    .poll(() => shownTab(window.heard))
+    .toEqual({ tab: 1, noTab: true });
 
   readable();
 
@@ -386,7 +416,7 @@ it("a window that stops listening ends the Session's subscription to the Tab's c
   await window.stop();
 
   expect(browser.inspectorListeners).toBe(0);
-  expect(await session.ask(contract("getState"))).toMatchObject({ ok: true });
+  expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
 });
 
 it("when the Session ends, each window is told why, and how to get it back in a window and in an Agent App's chat, with the Session's name in every command; nothing follows", async () => {
@@ -437,9 +467,12 @@ it("a window is told the Session ended when its browser goes away, and one that 
 it("a window's Run still waiting when the Session ends is answered that the Session was closed", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.answerInspector(() => new Promise(() => {}));
-  const fromWindow = session.ask(
-    contract("runTool", { name: "Basket.hold", input: {}, by: "inspector" })
-  );
+  const window = await windowOn(session);
+  const fromWindow = window.ask("runTool", {
+    name: "Basket.hold",
+    input: {},
+    by: "inspector",
+  });
   await pending(fromWindow);
 
   await session.ask({ stop: {} });
@@ -454,12 +487,14 @@ it("a window's Run and read on a Tab that closes are answered that the tab was c
   const { session, browser } = await startScriptedSession(opening);
   const other = browser.openTab("http://127.0.0.1:5173/other");
   other.answerInspector(() => new Promise(() => {}));
-  const window = session.listen();
+  const window = await windowOn(session);
   await expect.poll(() => other.inspectorListeners).toBe(1);
-  const run = session.ask(
-    contract("runTool", { name: "Basket.hold", input: {}, by: "inspector" })
-  );
-  const read = session.ask(contract("look"));
+  const run = window.ask("runTool", {
+    name: "Basket.hold",
+    input: {},
+    by: "inspector",
+  });
+  const read = window.ask("look");
   expect(await pending(run)).toBe(true);
   expect(await pending(read)).toBe(true);
 
@@ -494,30 +529,16 @@ describe("once a joined Session begins to end, which leaves its browser open", (
 
   it("a window's call is refused before it reads the page", async () => {
     const { session, browser } = await startScriptedSession(joining);
-    expect(await session.ask(contract("look"))).toMatchObject({ ok: true });
+    const window = await windowOn(session);
+    expect(await window.ask("look")).toMatchObject({ ok: true });
 
     await session.ask({ detach: {} });
 
-    expect(await session.ask(contract("look"))).toEqual(detached);
+    expect(await window.ask("look")).toEqual(detached);
     expect(await session.ask(runFromWindow(1, "Basket.add"))).toEqual(detached);
     expect(browser.inspectorCalls.map(({ method }) => method)).toEqual([
       "look",
     ]);
-  });
-
-  it("a window's call that waited on the tab list neither hosts a Tab nor reads its page", async () => {
-    const { session, browser } = await startScriptedSession(joining);
-    const release = browser.holdTabList();
-    const read = session.ask(contract("look"));
-    await expect.poll(() => browser.tabListReads).toBe(1);
-
-    await session.ask({ detach: {} });
-    release();
-
-    expect(await read).toEqual(detached);
-    await new Promise((resolve) => setImmediate(resolve));
-    expect(browser.hosted).toBe(false);
-    expect(browser.inspectorCalls).toEqual([]);
   });
 
   it("a window's Run waiting behind another never starts", async () => {
@@ -526,13 +547,10 @@ describe("once a joined Session begins to end, which leaves its browser open", (
     browser.answerInspector(
       () => new Promise((resolve) => (finish = () => resolve("done")))
     );
-    const first = session.ask(
-      contract("runTool", { name: "Basket.add", input: {} })
-    );
+    const window = await windowOn(session);
+    const first = window.ask("runTool", { name: "Basket.add", input: {} });
     await expect.poll(() => browser.inspectorCalls).toHaveLength(1);
-    const second = session.ask(
-      contract("runTool", { name: "Basket.clear", input: {} })
-    );
+    const second = window.ask("runTool", { name: "Basket.clear", input: {} });
     expect(await pending(second)).toBe(true);
 
     await session.ask({ detach: {} });

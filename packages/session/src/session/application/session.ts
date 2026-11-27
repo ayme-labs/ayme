@@ -270,7 +270,6 @@ export const openSession = (
           agentApp,
           name,
           shown: shownTabs.shown,
-          chosen: started.tabs.chosen(undefined),
           idElsewhere: started.tabs.idElsewhere,
         });
       return Effect.succeed(unknownRequest);

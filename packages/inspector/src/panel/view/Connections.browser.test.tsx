@@ -147,3 +147,17 @@ it("offers nothing to copy while WebMCP is on", async () => {
   await expect.poll(() => connections.popover.count()).toBe(1);
   expect(await connections.webMCP.copyButton.count()).toBe(0);
 });
+
+it("links to the guide's page on publishing tools over WebMCP", async () => {
+  renderConnections();
+
+  await connections.open();
+
+  const link = connections.popover.getByRole("link");
+  await expect
+    .poll(() => link.textContent())
+    .toBe("Publishing tools over WebMCP, in the docs");
+  expect(await link.getAttribute("href")).toBe(
+    "https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md"
+  );
+});

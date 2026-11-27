@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import { RunError, type Dialog, type RunAnswer } from "./session/domain";
-import { startScriptedSession, type ScriptedTab } from "../testing";
+import { startScriptedSession, windowOn, type ScriptedTab } from "../testing";
 
 // Dialogs on a Session's Tabs (rules 4 and 5), through the Session's
 // interface on the scripted browser, which plays a dialog opening, its 100
@@ -37,13 +37,6 @@ const readHeading = { call: { tool: "ShopPage.readHeading", input: {} } };
 
 /** Where the scripted Session's process serves its Inspector window. */
 const WINDOW = "http://127.0.0.1:4444/inspector";
-
-/** A call of the window on the contract of the Session's Tab. */
-const contract = (method: string, params?: unknown) => ({
-  inspector: {
-    contract: { method, ...(params === undefined ? {} : { params }) },
-  },
-});
 
 /** Each Run on `tab` waits until the test ends its action with the function
  * the returned `end` holds: with what it returned, or with what it threw. */
@@ -205,14 +198,17 @@ it("commands waiting for the Tab's turn when a dialog counts are answered at onc
     ...opening,
     inspector: WINDOW,
   });
+  const window = await windowOn(session);
   const runs = holdRuns(browser);
   const first = session.ask(remove);
   await pending(first);
   const waiting = session.ask(readHeading);
   const listing = session.ask({ pageObjects: {} });
-  const fromWindow = session.ask(
-    contract("runTool", { name: "Basket.clear", input: {}, by: "inspector" })
-  );
+  const fromWindow = window.ask("runTool", {
+    name: "Basket.clear",
+    input: {},
+    by: "inspector",
+  });
   expect(await pending(waiting)).toBe(true);
 
   dialogOpens(browser);
@@ -307,15 +303,18 @@ it("a Run from the Inspector window ends at a dialog with the same sentence, and
     inspector: WINDOW,
   });
   browser.answerInspector(() => new Promise(() => {}));
-  const fromWindow = session.ask(
-    contract("runTool", { name: "Basket.clear", input: {}, by: "inspector" })
-  );
+  const window = await windowOn(session);
+  const fromWindow = window.ask("runTool", {
+    name: "Basket.clear",
+    input: {},
+    by: "inspector",
+  });
   expect(await pending(fromWindow)).toBe(true);
 
   dialogOpens(browser);
 
   expect(await fromWindow).toEqual({ ok: false, text: AT_RUN });
-  expect(await session.ask(contract("look"))).toEqual({
+  expect(await window.ask("look")).toEqual({
     ok: false,
     text: DIALOG_OPEN,
   });
@@ -377,11 +376,12 @@ it("while a dialog is open, a window's requests that need no page are answered a
     inspector: WINDOW,
   });
   await session.ask({ tools: {} });
+  const window = await windowOn(session);
   dialogOpens(browser);
 
   for (const method of ["getState", "recordedPageState", "pomDefinitionText"])
-    expect(await session.ask(contract(method))).toMatchObject({ ok: true });
-  expect(await session.ask(contract("look"))).toEqual({
+    expect(await window.ask(method)).toMatchObject({ ok: true });
+  expect(await window.ask("look")).toEqual({
     ok: false,
     text: DIALOG_OPEN,
   });
@@ -398,8 +398,9 @@ it("a window's read under way when a dialog counts is answered that the dialog i
     inspector: WINDOW,
   });
   await session.ask({ tools: {} });
+  const window = await windowOn(session);
   browser.answerInspector(() => new Promise(() => {}));
-  const read = session.ask(contract("look"));
+  const read = window.ask("look");
   expect(await pending(read)).toBe(true);
 
   dialogOpens(browser);

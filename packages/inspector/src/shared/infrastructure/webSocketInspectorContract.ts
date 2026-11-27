@@ -10,14 +10,15 @@ import type {
 // contract the inline transport calls directly, over a WebSocket to the
 // Session's process that serves this window from the Tab it works on. A new
 // `{ tab }` says the window shows a new document, whose revisions start
-// again; each request names the Tab the Session told last. The Session tells
+// again; each request names the Tab the Session told last, and `{ tab,
+// noTab }` says it shows none. The Session tells
 // a window a one-use code admitted its `{ token }`, to connect again with.
 
 type Reply =
   | { id: number; result: unknown }
   | { id: number; error: string }
   | { event: InspectorEvent }
-  | { tab: number }
+  | { tab: number; noTab?: true }
   | { token: string }
   | { ended: string; inChat?: string };
 
@@ -42,6 +43,12 @@ export type WebSocketInspectorOptions = {
    * over, as it does across a reload.
    */
   onNewPage?: () => void;
+  /**
+   * Called when the Session tells that the window shows no Tab: no state
+   * comes to replace what the Inspector holds of the Tab before, so it is
+   * the Inspector's to clear.
+   */
+  onNoTab?: () => void;
   /**
    * How many times in a row to connect again before giving the server up
    * for lost. Without it, the transport connects again for ever.
@@ -79,6 +86,7 @@ export function webSocketInspectorContract(
     WebSocket: WebSocketClass = WebSocket,
     reconnectMs = 1000,
     onNewPage,
+    onNoTab,
     retries,
     onLost,
     onToken,
@@ -173,7 +181,8 @@ export function webSocketInspectorContract(
       if ("tab" in reply) {
         const before = shownTab;
         shownTab = reply.tab;
-        if (before !== undefined && before !== reply.tab) reset();
+        if (reply.noTab) onNoTab?.();
+        else if (before !== undefined && before !== reply.tab) reset();
         return flush();
       }
       if ("token" in reply) return onToken?.(reply.token);

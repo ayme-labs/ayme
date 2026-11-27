@@ -11,7 +11,7 @@ import { replaceInspectorTransport } from "../shared/infrastructure";
 
 const page = createPage();
 const hint = page.getByText(
-  "This Session has no Tab yet. Once a tab is open in its browser, the Inspector shows it."
+  "This Session has no Tab open. Once a tab is open in its browser, the Inspector shows it."
 );
 const unmounts: (() => void)[] = [];
 

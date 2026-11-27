@@ -62,7 +62,7 @@ export function InspectorApp({
     () => new Set()
   );
   const { copied, copy } = useCopy();
-  // A window that has heard nothing from its Session has no Tab to show yet.
+  // A window whose Session told it no Tab, or nothing yet, holds no state.
   const client = inspectorClient();
   const heardNothing = useInspectorState(client).revision === 0;
   const unserved = windowed && client.external && heardNothing;
@@ -149,7 +149,7 @@ export function InspectorApp({
   }, [stale, pageStateRead, setViewState]);
   const detail = unserved ? (
     <Empty>
-      This Session has no Tab yet. Once a tab is open in its browser, the
+      This Session has no Tab open. Once a tab is open in its browser, the
       Inspector shows it.
     </Empty>
   ) : (
@@ -158,14 +158,6 @@ export function InspectorApp({
     ))
   );
 
-  const status = windowed ? undefined : (
-    <Connections
-      webMCP={runtime.tools.publication}
-      tools={live}
-      onCopy={copy}
-      copied={copied}
-    />
-  );
   const inspectorBody = (
     <InspectorBody
       layout={windowed ? "bottom" : preferences.layout}
@@ -191,7 +183,6 @@ export function InspectorApp({
         <WindowShell
           theme={preferences.theme}
           onThemeChange={(theme) => updatePreferences({ theme })}
-          status={status}
           fullscreen={fullscreen}
         >
           {inspectorBody}
@@ -201,7 +192,14 @@ export function InspectorApp({
           preferences={preferences}
           onPreferencesChange={updatePreferences}
           reserveHost={reserveHost}
-          status={status}
+          status={
+            <Connections
+              webMCP={runtime.tools.publication}
+              tools={live}
+              onCopy={copy}
+              copied={copied}
+            />
+          }
         >
           {inspectorBody}
         </InspectorShell>
