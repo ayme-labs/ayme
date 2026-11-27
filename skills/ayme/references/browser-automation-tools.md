@@ -12,8 +12,8 @@ the project has `@ayme-dev/cli` in its `package.json`. When the project also
 has `@ayme-dev/mcp`, `npx ayme` can run that package's command instead: ask
 the user to uninstall it, as
 [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#set-up-your-project)
-says. Below, the commands are written `ayme <command>` for short. When the project has no `@ayme-dev/cli`, read
-[Browser setup](browser-setup.md) first.
+says. Below, the commands are written `ayme <command>` for short. When the
+project has no `@ayme-dev/cli`, read [Browser setup](browser-setup.md) first.
 
 ## Connect ayme and your automation to one browser
 
