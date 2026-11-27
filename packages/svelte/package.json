@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/svelte",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Starting ayme in a Svelte app and Page Objects in components.",
   "keywords": [
     "ai-agent",

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/ayme-labs/ayme/compare/ayme-v0.3.0...ayme-v0.3.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **inspector:** carry shadcn/ui's MIT notice in the published package ([#1510](https://github.com/ayme-labs/ayme/issues/1510)) ([93719c9](https://github.com/ayme-labs/ayme/commit/93719c9cbc7753d3beb3752b6dcfd8369437b6fc))
+
 ## [0.3.0](https://github.com/ayme-labs/ayme/compare/ayme-v0.2.0...ayme-v0.3.0) (2026-11-26)
 
 
