@@ -38,9 +38,9 @@ for (const placement of placements) {
         .poll(
           async () => {
             await agent.act(
-              'hover the "{item}" row of the {collection} collection under On this page in the Model lens',
+              'hover the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
               {
-                params: { item: "[1]", collection: "items" },
+                params: { item: "[1]", ordinal: "second", collection: "items" },
               }
             );
             return secondItem();
@@ -52,9 +52,9 @@ for (const placement of placements) {
       await expect.poll(secondItem).toBe("none");
 
       await agent.act(
-        'select the "{item}" row of the {collection} collection under On this page in the Model lens',
+        'select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
         {
-          params: { item: "[1]", collection: "items" },
+          params: { item: "[1]", ordinal: "second", collection: "items" },
         }
       );
       await inspector.header.title.hover();
@@ -76,9 +76,9 @@ for (const placement of placements) {
         browser
       );
       await agent.act(
-        'select the "{item}" row of the {collection} collection under On this page in the Model lens',
+        'select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
         {
-          params: { item: "[1]", collection: "items" },
+          params: { item: "[1]", ordinal: "second", collection: "items" },
         }
       );
 
