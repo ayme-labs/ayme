@@ -1,9 +1,9 @@
 # Formbricks lab app
 
-[Formbricks](https://github.com/formbricks/formbricks) as a lab app: a real product with hard UI to measure agents on. The app itself ships no ayme. It is unmodified Formbricks, a git submodule at [`formbricks/`](./formbricks) pinned to an exact upstream commit. ayme's Page Objects for it live in this folder, and an `ayme mcp` server builds them and loads them into the page from outside.
+[Formbricks](https://github.com/formbricks/formbricks) as a lab app: a real product with hard UI to measure agents on. The app itself ships no ayme. It is unmodified Formbricks, a git submodule at [`formbricks/`](./formbricks) pinned to an exact upstream commit. ayme's Page Objects for it live in this folder. The eval's agents run them with the `ayme` command, in a Session started in this folder; the qualification still has an `ayme mcp` server build them and load them into the page from outside.
 
 ```
-ayme/                  what ayme mcp serves when it starts in this folder
+ayme/                  what a Session, or ayme mcp, runs when it starts in this folder
   page-objects.ts      the entry: the Page Objects of the screens
   pom/                 the Page Objects
 formbricks/            the Formbricks submodule
@@ -31,7 +31,7 @@ pnpm lab:prepare
 pnpm lab:dev
 ```
 
-`lab:prepare` checks out the pinned submodule commit, installs Formbricks's dependencies from its own lockfile with the pnpm version Formbricks declares, and creates its ignored `.env` the first time. It then builds the ayme packages this package depends on, `@ayme-dev/ayme` and `@ayme-dev/mcp`, from this checkout. It refuses to touch a dirty submodule checkout, and puts nothing of ayme into it.
+`lab:prepare` checks out the pinned submodule commit, installs Formbricks's dependencies from its own lockfile with the pnpm version Formbricks declares, and creates its ignored `.env` the first time. It then builds the ayme packages this package depends on, `@ayme-dev/ayme`, `@ayme-dev/cli` and `@ayme-dev/mcp`, from this checkout. It refuses to touch a dirty submodule checkout, and puts nothing of ayme into it.
 
 `lab:dev` starts Formbricks's own dev stack: its services in Docker and the app at http://localhost:3000. It runs until you stop it with `Ctrl+C`. On the first start it also projects Formbricks's data into its authorization store and marks the survey scope ready, the state Formbricks's own CI calls production: a new survey starts restricted, and activating it asks who can view it. The marker lives in the Docker volume, so later starts skip this step.
 
@@ -69,7 +69,11 @@ pnpm lab:stop
 
 ## ayme in the lab app
 
-Formbricks runs as its upstream wrote it, at `8abe0b42`, the `main` of the `ayme-labs/formbricks` fork as of 2026-10-03. Everything of ayme is in this folder and reaches the page from outside:
+Formbricks runs as its upstream wrote it, at `8abe0b42`, the `main` of the `ayme-labs/formbricks` fork as of 2026-10-03. Everything of ayme is in this folder.
+
+The [eval](../eval-formbricks/README.md#the-arms-with-ayme) reaches the Page Objects through the `ayme` command: a Session started in this folder builds [`ayme/page-objects.ts`](./ayme/page-objects.ts) with this checkout's `@ayme-dev/ayme` and runs it in Node with this folder's Playwright, on the browser the agent's automation drives. Nothing reaches the page. `ayme open` here needs Chromium for this folder's Playwright: `pnpm exec playwright install chromium`.
+
+The qualification still reaches them through `ayme mcp`, from outside the page:
 
 1. `ayme mcp`, started in this folder, finds [`ayme/page-objects.ts`](./ayme/page-objects.ts), builds it with the `@ayme-dev/ayme` of this checkout, and serves the build on its own loopback port. It rebuilds after each edit, and an open page swaps the new Page Objects in. Run `lab:prepare` again after changing ayme itself, then restart `ayme mcp`.
 2. As it starts it writes `ayme/init-script.js`, which names its port. Git ignores the file.
