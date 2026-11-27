@@ -63,6 +63,7 @@ These they can:
 - Activating a tab, as a Page Object brings its tab forward, is no page action: it changes which tab is in front, not the app, and the same call activates it again on every replay before it fails.
 - When a stale call fails before any page action and the agent finishes the step with nothing e2e saves, such as a hover alone, no fallback is kept, so that step goes to the model on every run until the Page Object is fixed.
 - Whether the agent's MCP client takes the list's change notice between turns is untested without a model; the turn's message names the change either way, and the first call's answer carries the notice.
+- The source version is one digest over every Page Object file, not each tool's own source. Changing two Page Objects (`ToolPage`'s root and the search result lookup) marked all 302 recorded tool steps outdated, though only 91 call a changed tool and all 302 replayed as recorded; with `AYME_E2E_REFRESH_AFTER_PO_CHANGE` set, all 302 would have been recorded afresh without their end-screen check. A digest per tool's own source would be the narrower rule.
 - No model-free check runs the ACP path live: the check's ACP executor only replays, with an agent that cannot start. So the re-check of a call queued behind the step's verdict (`stepEnded`), the refresh before a turn and the MCP listing are exercised only by a run with the real agent. A fake ACP agent for them needs an ACP agent on stdio and an MCP client over HTTP, more than the check is worth now.
 
 ## Running the model-free check
