@@ -136,18 +136,36 @@ export function readCommand(
   return readCapture(args);
 }
 
-/** The commands of a Session, each with what it asks the folder's Session
- * when it only asks it; the others are read on their own. */
-const SESSION_COMMANDS: Readonly<Record<string, SessionRequest | undefined>> = {
-  open: undefined,
-  attach: undefined,
-  list: undefined,
-  call: undefined,
+/** The options of a Session's commands beyond the global --json and -s. */
+type SessionOption = "headed" | "cdp" | "params" | "tab";
+const SESSION_OPTIONS: readonly SessionOption[] = [
+  "headed",
+  "cdp",
+  "params",
+  "tab",
+];
+
+/** The commands of a Session, each with the options it `takes`, and what
+ * it `asks` the folder's Session when it only asks it; the others are read
+ * on their own. An option a command does not take is refused. */
+const SESSION_COMMANDS: Readonly<
+  Record<
+    string,
+    {
+      readonly takes: readonly SessionOption[];
+      readonly asks?: SessionRequest;
+    }
+  >
+> = {
+  open: { takes: ["headed"] },
+  attach: { takes: ["cdp"] },
+  list: { takes: [] },
+  call: { takes: ["params", "tab"] },
   // Each asks for the listing of the Tab --tab names.
-  "page-objects": undefined,
-  tools: undefined,
-  close: { stop: {} },
-  detach: { detach: {} },
+  "page-objects": { takes: ["tab"] },
+  tools: { takes: ["tab"] },
+  close: { takes: [], asks: { stop: {} } },
+  detach: { takes: [], asks: { detach: {} } },
 };
 
 /** The word the Session's background process is started with. */
@@ -200,20 +218,24 @@ function readSessionCommand(
   const json = values.json ?? false;
   const session = values.session ?? (fromEnvironment || undefined);
   const named = session === undefined ? {} : { session };
-  if (word === "attach") {
-    if (values.cdp === undefined)
-      return fail(
-        "Give ayme attach the address of the browser's DevTools protocol, such as --cdp=http://127.0.0.1:9222."
-      );
-    if (url !== undefined || values.headed || values.tab !== undefined)
-      return { kind: "error", text: USAGE };
-    return { kind: "attach", cdp: values.cdp, json, ...named };
-  }
-  if (values.cdp !== undefined) return { kind: "error", text: USAGE };
-  const { params, tab } = values;
+  if (word === "attach" && values.cdp === undefined)
+    return fail(
+      "Give ayme attach the address of the browser's DevTools protocol, such as --cdp=http://127.0.0.1:9222."
+    );
+  // `word` is one of SESSION_COMMANDS: readCommand sent it here.
+  const { takes, asks } = SESSION_COMMANDS[word!]!;
+  if (
+    SESSION_OPTIONS.some(
+      (option) => values[option] !== undefined && !takes.includes(option)
+    )
+  )
+    return { kind: "error", text: USAGE };
+  const { cdp, params, tab } = values;
   const onTab = tab === undefined ? {} : { tab };
+  if (word === "attach" && url === undefined)
+    return { kind: "attach", cdp: cdp!, json, ...named };
   if (word === "call")
-    return url !== undefined && more.length === 0 && !values.headed
+    return url !== undefined && more.length === 0
       ? {
           kind: "call",
           tool: url,
@@ -223,17 +245,13 @@ function readSessionCommand(
           ...named,
         }
       : { kind: "error", text: USAGE };
-  if (params !== undefined) return { kind: "error", text: USAGE };
-  if (word === "page-objects" || word === "tools")
-    return url === undefined && !values.headed
-      ? {
-          kind: "ask",
-          request: word === "tools" ? { tools: onTab } : { pageObjects: onTab },
-          json,
-          ...named,
-        }
-      : { kind: "error", text: USAGE };
-  if (tab !== undefined) return { kind: "error", text: USAGE };
+  if ((word === "page-objects" || word === "tools") && url === undefined)
+    return {
+      kind: "ask",
+      request: word === "tools" ? { tools: onTab } : { pageObjects: onTab },
+      json,
+      ...named,
+    };
   if (word === "open" && more.length === 0)
     return {
       kind: "open",
@@ -244,11 +262,9 @@ function readSessionCommand(
       json,
       ...named,
     };
-  if (url !== undefined || values.headed) return { kind: "error", text: USAGE };
+  if (url !== undefined) return { kind: "error", text: USAGE };
   if (word === "list") return { kind: "list", json };
-  // `word` is one of SESSION_COMMANDS: readCommand sent it here.
-  const asked = SESSION_COMMANDS[word!];
-  if (asked) return { kind: "ask", request: asked, json, ...named };
+  if (asks) return { kind: "ask", request: asks, json, ...named };
   return { kind: "error", text: USAGE };
 }
 
