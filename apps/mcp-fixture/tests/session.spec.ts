@@ -56,7 +56,7 @@ test.afterEach(async () => {
 test("ayme open <url> starts a browser at the page and prints its address; ayme close ends the Session and closes the browser", async ({
   ayme,
   baseURL,
-  sessionProcess,
+  processesLeft,
 }) => {
   const opened = await ayme("open", `${baseURL}/plain.html`);
 
@@ -70,7 +70,6 @@ test("ayme open <url> starts a browser at the page and prints its address; ayme 
       .flatMap((context) => context.pages().map((page) => page.url()))
   ).toEqual([`${baseURL}/plain.html`]);
   const gone = disconnected(browser);
-  const background = sessionProcess()!;
 
   expect(await ayme("close")).toEqual({
     code: 0,
@@ -78,7 +77,7 @@ test("ayme open <url> starts a browser at the page and prints its address; ayme 
     stderr: "",
   });
   await gone;
-  await expect.poll(() => isAlive(background)).toBe(false);
+  await expect.poll(processesLeft).toEqual([]);
 });
 
 test("--json prints each answer as JSON", async ({ ayme }) => {
@@ -210,12 +209,12 @@ test("a start that fails is answered with why, however soon its process ends", a
 test("ayme close sent while a start waits on a page that never answers ends the start, and ayme open says so", async ({
   ayme,
   sessionProcess,
+  processesLeft,
 }) => {
   const url = await serving(() => {});
 
   const opening = ayme("open", url);
   await expect.poll(sessionProcess).toBeDefined();
-  const background = sessionProcess()!;
 
   expect(await ayme("close")).toEqual({
     code: 0,
@@ -227,5 +226,5 @@ test("ayme close sent while a start waits on a page that never answers ends the 
     stdout: "",
     stderr: "ayme close ended the Session before it started.\n",
   });
-  await expect.poll(() => isAlive(background)).toBe(false);
+  await expect.poll(processesLeft).toEqual([]);
 });
