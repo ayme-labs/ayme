@@ -28,8 +28,8 @@ ayme opens the browser, and Playwright CLI attaches to it:
 2. `playwright-cli attach --cdp=<address>`, with the address `ayme open`
    printed.
 
-End with `playwright-cli detach`, then `ayme close`, which closes the
-browser ayme opened.
+End with `playwright-cli close`, which leaves the attached browser running,
+then `ayme close`, which closes the browser ayme opened.
 
 ### agent-browser
 
