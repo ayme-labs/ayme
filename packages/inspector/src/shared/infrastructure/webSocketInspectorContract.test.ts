@@ -369,30 +369,6 @@ describe("webSocketInspectorContract", () => {
       ]);
     });
 
-    it("hands on the token the Session tells a window a code admitted, and connects again at the address the window gives then", async () => {
-      const tokens: string[] = [];
-      let url = "ws://x/inspector/ws?code=once";
-      webSocketInspectorContract(() => url, {
-        WebSocket: FakeWebSocket as never,
-        onToken(token) {
-          tokens.push(token);
-          url = `ws://x/inspector/ws?token=${token}`;
-        },
-      });
-      const socket = () => FakeWebSocket.instances.at(-1)!;
-      socket().open();
-
-      socket().receive({ token: "secret" });
-      socket().close();
-      await vi.advanceTimersByTimeAsync(1000);
-
-      expect(tokens).toEqual(["secret"]);
-      expect(FakeWebSocket.instances.map((ws) => ws.url)).toEqual([
-        "ws://x/inspector/ws?code=once",
-        "ws://x/inspector/ws?token=secret",
-      ]);
-    });
-
     it("waits for the Tab again after it connects again", async () => {
       const { socket } = await sessionClient();
       socket().receive({ tab: 1 });

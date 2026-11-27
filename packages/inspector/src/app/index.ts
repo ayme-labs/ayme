@@ -5,4 +5,3 @@ export {
   showServerLost,
 } from "./mountExternalInspector";
 export { connectAgentApp } from "./agentApp";
-export { windowAdmission } from "./windowToken";

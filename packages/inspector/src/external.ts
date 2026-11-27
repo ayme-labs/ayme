@@ -11,7 +11,6 @@ import {
   mountExternalInspector,
   sessionLost,
   showServerLost,
-  windowAdmission,
 } from "./app";
 import {
   replaceInspectorTransport,
@@ -42,16 +41,16 @@ const RETRIES = 3;
  */
 export function startExternalInspector() {
   const agentApp = document.getElementById(AGENT_APP_CONFIG_ID);
-  const admission = agentApp ? undefined : windowAdmission(window);
-  const socket = admission
-    ? admission.socket
-    : (JSON.parse(agentApp?.textContent ?? "") as { socket: string }).socket;
+  // A window is admitted by its own origin, the page in a chat by the
+  // Session's token in the socket the page names (ADR-0072).
+  const socket = agentApp
+    ? (JSON.parse(agentApp.textContent ?? "") as { socket: string }).socket
+    : `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/inspector/ws`;
   const fullscreen = agentApp ? connectAgentApp(App) : undefined;
   const sessionName =
     document.querySelector(SESSION_META)?.getAttribute("content") ?? "";
   let mounted: ReturnType<typeof mountExternalInspector> | undefined;
   const contract = webSocketInspectorContract(socket, {
-    ...(admission && { onToken: admission.admitted }),
     // A new page is a reload as the Inspector in the page has it: it
     // mounts again and picks up what it kept for the tab.
     onNewPage() {
