@@ -1,48 +1,57 @@
-// Measures one arm of the Page Object study (README.md, "Running"):
-//
-//   pnpm study:baseline <arm1|arm2|arm3> [--runs <n>] [--cache-from <dir>] [--provisional <why>]
-//   pnpm study:baseline render
-//
-// It serves the fixture pages from one Vite server it starts and warms, runs
-// the arm's own script <n> times (3 by default) one after the other on that
-// server, writes study/baseline/<arm>.json from each run's report.json, and
-// renders study/baseline/README.md from every arm's file. `--provisional`
-// marks the arm's numbers in the table until a run without it replaces them.
-// `--cache-from` first replaces a goal arm's cache with a copy of <dir>, the
-// recordings' source, which the arm's file names beside their digest: git
-// does not carry .e2e/. It measures only a committed tree, and saves nothing
-// if the commit or the recordings changed between runs.
-// `render` only rewrites the README from the arms' files.
+// Measures one arm of the Page Object study: how to run it is in
+// study/baseline/README.md, what a run must be to count in study-report.mjs.
 import { spawn, spawnSync } from "node:child_process";
 import console from "node:console";
 import { createHash } from "node:crypto";
 import {
   cpSync,
+  existsSync,
+  mkdirSync,
+  openSync,
   readdirSync,
   readFileSync,
+  realpathSync,
+  renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { get } from "node:http";
 import { createServer } from "node:net";
-import { basename, join, resolve } from "node:path";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 import process from "node:process";
 import { setTimeout } from "node:timers/promises";
 import { fileURLToPath, URL } from "node:url";
 
 import { chromium } from "playwright";
 
+import { LEFT_OUT } from "./check-goal-mirror.mjs";
+import {
+  cohortOf,
+  digestOf,
+  NotAResult,
+  projectRun,
+  render,
+} from "./study-report.mjs";
+
+// The goal arms' hand-offs need this machine's model login, and CI has none.
+if (process.env.CI) {
+  console.error("study:baseline runs on your own machine, not in CI");
+  process.exit(2);
+}
+
 const here = fileURLToPath(new URL("..", import.meta.url));
+const root = resolve(here, "../..");
 const out = join(here, "study/baseline");
+const RUNS = 3;
 
 /**
- * Each arm's own pnpm script, unchanged, and what this harness adds to it.
- * The goal arms replay read-only, with the agent there for what does not
- * replay, as arm 3's replays in its pull request were run; their `ayme mcp`
- * port is the one their recordings were made on, since the external
- * placement's steps replay only against that origin (e2e.goals.config.ts).
- * One worker everywhere: the goal configs allow no more, and the machine is
- * shared.
+ * Each arm's own pnpm script, unchanged, and the variables it runs with. The
+ * goal arms replay read-only with the agent there for what does not replay;
+ * their `ayme mcp` port is the one their recordings were made on, since the
+ * external placement's steps replay only against that origin
+ * (e2e.goals.config.ts).
  */
 const ARMS = {
   arm1: {
@@ -60,27 +69,40 @@ const ARMS = {
   },
 };
 
+/** Variables that change what a run replays or how; each run gets the arm's values and no others. */
+const PINNED = [
+  "AYME_E2E_REFRESH_AFTER_PO_CHANGE",
+  "AYME_E2E_EXECUTOR",
+  "AYME_E2E_CACHE",
+  "AYME_E2E_DEBUG",
+  "AYME_E2E_MCP_PORT",
+  "AYME_E2E_APP_PORT",
+  "AYME_E2E_STALE",
+  "AYME_E2E_HALF_DONE",
+  "E2E_CACHE_DIR",
+];
+
 const [armId, ...rest] = process.argv.slice(2);
 if (armId === "render") {
   writeReadme();
   process.exit(0);
 }
 const arm = ARMS[armId];
-const runsAt = rest.indexOf("--runs");
-const runs = runsAt === -1 ? 3 : Number(rest[runsAt + 1]);
-const provisionalAt = rest.indexOf("--provisional");
-const provisional = provisionalAt === -1 ? undefined : rest[provisionalAt + 1];
-const cacheFromAt = rest.indexOf("--cache-from");
-const cacheFrom = cacheFromAt === -1 ? undefined : rest[cacheFromAt + 1];
-if (
-  !arm ||
-  !(runs >= 1) ||
-  provisional === "" ||
-  cacheFrom === "" ||
-  (cacheFrom && !arm.cacheDir)
-) {
+const cacheFrom =
+  rest[0] === "--cache-from" && rest.length === 2 ? rest[1] : undefined;
+if (!arm || (rest.length && (!cacheFrom || !arm.cacheDir))) {
   console.error(
-    `usage: pnpm study:baseline <${Object.keys(ARMS).join("|")}> [--runs <n>] [--cache-from <dir>] [--provisional <why>]`
+    "usage: pnpm study:baseline <arm1|arm2|arm3> [--cache-from <dir>] | render"
+  );
+  process.exit(2);
+}
+const inherited = PINNED.filter(
+  (name) =>
+    process.env[name] !== undefined && process.env[name] !== arm.env[name]
+);
+if (inherited.length) {
+  console.error(
+    `unset ${inherited.join(", ")}: the baseline runs ${armId} without ${inherited.length > 1 ? "them" : "it"}`
   );
   process.exit(2);
 }
@@ -91,100 +113,193 @@ if (uncommitted()) {
   console.error(`commit first; uncommitted:\n${uncommitted()}`);
   process.exit(2);
 }
+const commit = git("rev-parse", "HEAD");
+const runEnv = { E2E_TELEMETRY_DISABLED: "1", ...arm.env };
 const cachePath = arm.cacheDir && join(here, arm.cacheDir);
-if (cacheFrom) {
-  rmSync(cachePath, { recursive: true, force: true });
-  cpSync(resolve(cacheFrom), cachePath, { recursive: true });
-}
+const recordings = cachePath && {
+  ...(cacheFrom && { copiedFrom: copyCache(cacheFrom, cachePath) }),
+  digest: digestDir(cachePath),
+};
 
-const free = (port) =>
-  new Promise((resolve) => {
-    const server = createServer()
-      .once("error", () => resolve(undefined))
-      .listen(port, "127.0.0.1", () => {
-        const { port: bound } = server.address();
-        server.close(() => resolve(bound));
-      });
-  });
+// `dist` is ignored by git, and the fixture serves the built packages.
+const build = "turbo run build --filter=@ayme-dev/inspector-fixture^...";
+run(
+  "pnpm",
+  [...build.split(" "), "--concurrency=2", "--output-logs=errors-only"],
+  {
+    cwd: root,
+  }
+);
 
-/** Waits while another checkout's `ayme mcp` holds the port the recordings need: the port is not ours to change. */
-async function recordingPortFree() {
-  const port = arm.env.AYME_E2E_MCP_PORT;
-  if (!port || (await free(+port))) return;
-  console.log(
-    `port ${port}, which ${armId}'s recordings need, is taken: waiting`
-  );
-  while (!(await free(+port))) await setTimeout(10_000);
-}
-
+const { shared, extras } = cohortOf(listTests(), LEFT_OUT);
+const expected = armId === "arm2" ? [...shared, ...extras] : shared;
+const invocation = join(
+  here,
+  ".e2e/study",
+  armId,
+  new Date().toISOString().replace(/[:.]/g, "-")
+);
+mkdirSync(invocation, { recursive: true });
 const appPort = await free(0);
-const app = await startWarmApp(appPort);
-const result = {
+const app = await startWarmApp(appPort, join(invocation, "vite.log"));
+const summary = {
   arm: armId,
   name: arm.name,
-  command: `pnpm study:baseline ${process.argv.slice(2).join(" ")}`,
-  commit: git("rev-parse", "HEAD"),
-  ...(provisional && { provisional }),
-  ...(cachePath && {
-    cacheSource: cacheFrom
-      ? resolve(cacheFrom)
-      : `this checkout's ${arm.cacheDir}`,
-    cacheDigest: digestDir(cachePath),
-  }),
+  command: `pnpm study:baseline ${armId}${cacheFrom ? ` --cache-from <a checkout of ${recordings.copiedFrom.branch}>` : ""}`,
+  commit,
+  build: `pnpm ${build}, before the runs`,
+  env: runEnv,
+  ...(recordings && { recordings }),
+  cohort: {
+    shared: shared.length,
+    others: extras.length,
+    digest: digestOf(shared),
+  },
   runs: [],
 };
 try {
-  for (let i = 0; i < runs; i++) {
-    const output = `.e2e/study/${armId}/run-${i + 1}`;
+  for (let i = 0; i < RUNS; i++) {
+    const output = join(invocation, `run-${i + 1}`);
     await recordingPortFree();
-    console.log(`\n${arm.name}: run ${i + 1} of ${runs}`);
+    console.log(`\n${arm.name}: run ${i + 1} of ${RUNS}`);
+    const startedAt = Date.now();
     const { status } = spawnSync(
       "pnpm",
       ["run", arm.script, "--workers", "1", "--output", output],
       {
         cwd: here,
         stdio: "inherit",
-        env: { ...process.env, ...arm.env, AYME_E2E_APP_PORT: String(appPort) },
+        env: armEnv({ AYME_E2E_APP_PORT: String(appPort) }),
       }
     );
-    const run = summarize(join(here, output, "report.json"), status);
-    // Hand-offs run on this machine's model login. A run that hit its limit
-    // measures the limit, not the arm: keep the arm's last file, and stop.
-    if (run.usageLimit) {
+    const commandWallMs = Date.now() - startedAt;
+    try {
+      summary.runs.push({
+        ...projectRun(join(output, "report.json"), {
+          startedAfter: startedAt,
+          commit,
+          exitCode: status,
+          expected,
+          shared,
+          clean,
+        }),
+        commandWallMs,
+      });
+    } catch (error) {
+      if (!(error instanceof NotAResult)) throw error;
       console.error(
-        `stopped: run ${i + 1} hit the model's usage limit; ${armId}.json is unchanged`
+        `\nstopped: run ${i + 1} is not a result, and ${armId}.json is unchanged:\n${error.message}`
       );
       process.exitCode = 1;
       break;
     }
-    result.runs.push(run);
   }
 } finally {
   app.stop();
 }
 
 const changed = [
-  git("rev-parse", "HEAD") !== result.commit && "the commit",
+  git("rev-parse", "HEAD") !== commit && "the commit",
   uncommitted() && "the working tree",
-  cachePath && digestDir(cachePath) !== result.cacheDigest && "the recordings",
+  recordings && digestDir(cachePath) !== recordings.digest && "the recordings",
 ].filter(Boolean);
 if (changed.length) {
   console.error(`not saved: ${changed.join(" and ")} changed during the runs`);
   process.exitCode = 1;
-} else if (result.runs.length === runs) {
-  writeFileSync(join(out, `${armId}.json`), JSON.stringify(result, null, 2));
+} else if (summary.runs.length === RUNS) {
+  writeFileSync(join(out, `${armId}.json`), JSON.stringify(summary, null, 2));
   writeReadme();
 }
 
-function writeReadme() {
-  writeFileSync(join(out, "README.md"), render());
-  spawnSync("pnpm", ["-w", "exec", "prettier", "--write", out], {
-    stdio: "inherit",
+function armEnv(more = {}) {
+  const env = { ...process.env };
+  for (const name of PINNED) delete env[name];
+  return { ...env, ...runEnv, ...more };
+}
+
+/** Free text in a committed file names no machine: no home, no checkout. */
+function clean(text) {
+  return text
+    .replaceAll(root, "<checkout>")
+    .replaceAll(homedir(), "~")
+    .replace(/http:\/\/127\.0\.0\.1:\d+/g, "http://127.0.0.1:<port>");
+}
+
+/** Copies the recordings in from another checkout, never over themselves, and says which branch and commit that checkout was on. */
+function copyCache(from, to) {
+  const source = resolve(from);
+  if (!existsSync(source) || !statSync(source).isDirectory()) {
+    console.error(`--cache-from: ${source} is not a directory`);
+    process.exit(2);
+  }
+  if (existsSync(to) && realpathSync(source) === realpathSync(to)) {
+    console.error(`--cache-from: ${source} is ${armId}'s own cache`);
+    process.exit(2);
+  }
+  const incoming = `${to}.incoming`;
+  rmSync(incoming, { recursive: true, force: true });
+  cpSync(source, incoming, { recursive: true });
+  if (digestDir(incoming) !== digestDir(source)) {
+    console.error(`--cache-from: ${source} changed while it was copied`);
+    process.exit(1);
+  }
+  rmSync(to, { recursive: true, force: true });
+  renameSync(incoming, to);
+  const at = (...args) =>
+    spawnSync("git", ["-C", source, ...args], {
+      encoding: "utf8",
+    }).stdout.trim();
+  return {
+    branch: at("rev-parse", "--abbrev-ref", "HEAD"),
+    commit: at("rev-parse", "HEAD"),
+  };
+}
+
+/** The tests arm 2's config selects, which every arm's cohort derives from. */
+function listTests() {
+  const { stdout } = run(
+    join(here, "node_modules/.bin/e2e"),
+    ["list", "--config", "e2e.config.ts", "--reporter", "json"],
+    { cwd: here, env: armEnv(), stdio: ["ignore", "pipe", "inherit"] }
+  );
+  return JSON.parse(stdout).pairs;
+}
+
+function free(port) {
+  return new Promise((done) => {
+    const server = createServer()
+      .once("error", () => done(undefined))
+      .listen(port, "127.0.0.1", () => {
+        const { port: bound } = server.address();
+        server.close(() => done(bound));
+      });
   });
 }
 
+/** Waits, for a while, when another checkout's `ayme mcp` holds the port the recordings need: the port is not ours to change. */
+async function recordingPortFree() {
+  const port = arm.env.AYME_E2E_MCP_PORT;
+  if (!port) return;
+  for (let waited = 0; !(await free(+port)); waited += 10_000) {
+    if (waited >= 30 * 60_000) {
+      const holder = spawnSync(
+        "lsof",
+        ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN"],
+        {
+          encoding: "utf8",
+        }
+      ).stdout;
+      throw new Error(
+        `port ${port}, which ${armId}'s recordings need, stayed taken for 30 minutes:\n${holder}\nStop that process or wait for it, then run the arm again.`
+      );
+    }
+    if (!waited) console.log(`port ${port} is taken: waiting`);
+    await setTimeout(10_000);
+  }
+}
+
 /** One Vite server for every run, its module graph loaded once by a browser so no run pays for a cold start. */
-async function startWarmApp(port) {
+async function startWarmApp(port, log) {
   const server = spawn(
     "pnpm",
     [
@@ -199,7 +314,7 @@ async function startWarmApp(port) {
     // What e2e hands its app command (e2e's config reference, `command`).
     {
       cwd: here,
-      stdio: "ignore",
+      stdio: ["ignore", openSync(log, "w"), openSync(log, "a")],
       detached: true,
       env: {
         PATH: process.env.PATH,
@@ -220,12 +335,15 @@ async function startWarmApp(port) {
   for (const signal of ["SIGINT", "SIGTERM"])
     process.on(signal, () => process.exit(130));
   const origin = `http://127.0.0.1:${port}`;
+  const deadline = Date.now() + 60_000;
   for (let ready = false; !ready;) {
-    if (server.exitCode !== null) throw new Error("the fixture server exited");
-    ready = await new Promise((resolve) =>
-      get(origin, (r) => resolve(r.resume().statusCode === 200)).on(
-        "error",
-        () => resolve(false)
+    if (server.exitCode !== null || Date.now() > deadline)
+      throw new Error(
+        `the fixture server did not answer on ${origin} within a minute; its log: ${log}`
+      );
+    ready = await new Promise((done) =>
+      get(origin, (r) => done(r.resume().statusCode === 200)).on("error", () =>
+        done(false)
       )
     );
     if (!ready) await setTimeout(250);
@@ -240,64 +358,6 @@ async function startWarmApp(port) {
   return server;
 }
 
-/** A run's numbers, per test and in total, from e2e's report.json. */
-function summarize(reportPath, exitCode) {
-  const { run } = JSON.parse(readFileSync(reportPath, "utf8"));
-  const tests = run.results.map((result) => {
-    const steps = result.attempts.flatMap((a) => a.steps);
-    const goals = steps.filter((s) => s.kind === "agent");
-    const models = steps.flatMap((s) => (s.model ? [s.model] : []));
-    const sum = (key) => models.reduce((n, m) => n + (m[key] ?? 0), 0);
-    return {
-      test: testKey(result),
-      status: result.status,
-      wallMs: result.attempts.reduce((n, a) => n + a.durationMs, 0),
-      steps: goals.length,
-      stepsWithoutModel: goals.filter((s) => !s.metrics?.modelCalls).length,
-      // inputTokens includes the cached ones (@e2e-dev/acp's inputTokens).
-      tokens: sum("inputTokens") + sum("outputTokens"),
-      inputTokens: sum("inputTokens"),
-      outputTokens: sum("outputTokens"),
-      cacheReadTokens: sum("cacheReadTokens"),
-      cacheWriteTokens: sum("cacheWriteTokens"),
-      estimatedCostUsd: sum("estimatedCostUsd"),
-      modelSteps: goals
-        .filter((s) => s.metrics?.modelCalls)
-        .map((s) => ({
-          step: s.label,
-          line: s.source?.line,
-          cache: s.cache?.mode,
-          reason: s.cache?.reason,
-          detail: s.cache?.detail,
-          tokens: (s.model?.inputTokens ?? 0) + (s.model?.outputTokens ?? 0),
-        })),
-      ...(result.status !== "passed" && {
-        error: result.attempts.at(-1)?.error?.message?.slice(0, 600),
-      }),
-    };
-  });
-  const errors = JSON.stringify([run.errors, tests.map((t) => t.error)]);
-  return {
-    startedAt: run.startedAt,
-    e2e: run.runner.version,
-    exitCode,
-    status: run.status,
-    suiteWallMs: run.durationMs,
-    estimatedCostUsd: run.usage.estimatedCostUsd,
-    // The ACP agent's wording: "You've hit your 5-hour limit".
-    usageLimit: /usage limit|rate limit|hour limit|weekly limit|quota/i.test(
-      errors
-    ),
-    tests,
-  };
-}
-
-/** A test's name in every arm: its file without the arm's suffix, then its title path. */
-function testKey(result) {
-  const file = basename(result.file).replace(/\.(e2e|goal)\.ts$/, "");
-  return [file, ...result.titlePath].join(" › ");
-}
-
 /** What a set of recordings is, so a reader can tell which a baseline replayed. */
 function digestDir(dir) {
   const hash = createHash("sha256");
@@ -306,115 +366,30 @@ function digestDir(dir) {
   return hash.digest("hex");
 }
 
+function run(command, args, options) {
+  const result = spawnSync(command, args, {
+    stdio: "inherit",
+    encoding: "utf8",
+    ...options,
+  });
+  if (result.status !== 0) {
+    console.error(`failed: ${command} ${args.join(" ")}`);
+    process.exit(1);
+  }
+  return result;
+}
+
 function git(...args) {
   return spawnSync("git", args, { cwd: here, encoding: "utf8" }).stdout.trim();
 }
 
-/** The table, from every arm measured so far: the goal files' tests, then arm 2's other tests. */
-function render() {
+function writeReadme() {
   const arms = Object.keys(ARMS).flatMap((id) => {
-    try {
-      return [JSON.parse(readFileSync(join(out, `${id}.json`), "utf8"))];
-    } catch {
-      return [];
-    }
+    const file = join(out, `${id}.json`);
+    return existsSync(file) ? [JSON.parse(readFileSync(file, "utf8"))] : [];
   });
-  const goalArm = arms.find((a) => a.arm !== "arm2");
-  const mirrored = new Set(goalArm?.runs[0]?.tests.map((t) => t.test) ?? []);
-  const range = (values, format = String) => {
-    const lo = format(Math.min(...values));
-    const hi = format(Math.max(...values));
-    return lo === hi ? lo : `${lo}–${hi}`;
-  };
-  const seconds = (ms) => `${(ms / 1000).toFixed(0)} s`;
-  const usd = (n) => `$${n.toFixed(2)}`;
-  const row = (a, keep) => {
-    const per = a.runs.map((r) => r.tests.filter((t) => keep(t.test)));
-    const total = (key) => per.map((ts) => ts.reduce((n, t) => n + t[key], 0));
-    const passed = per.map(
-      (ts) => ts.filter((t) => t.status === "passed").length
-    );
-    const goals = a.arm !== "arm2";
-    return [
-      a.provisional ? `${a.name} (provisional)` : a.name,
-      `${range(passed)} of ${per[0].length}`,
-      range(total("wallMs"), seconds),
-      goals ? range(total("steps")) : "none",
-      goals ? range(total("stepsWithoutModel")) : "none",
-      goals ? range(total("tokens"), (n) => n.toLocaleString("en")) : "none",
-      goals ? range(total("estimatedCostUsd"), usd) : "none",
-      String(a.runs.length),
-    ];
-  };
-  const table = (rows) =>
-    [
-      "| Arm | Tests passed | Test time | Goal steps | With no model call | Tokens | e2e's cost estimate | Runs |",
-      "| --- | --- | --- | --- | --- | --- | --- | --- |",
-      ...rows.map((r) => `| ${r.join(" | ")} |`),
-    ].join("\n");
-  const arm2 = arms.find((a) => a.arm === "arm2");
-  const wholeRuns = [
-    "| Arm | Tests passed | Wall time | Commit | Recordings |",
-    "| --- | --- | --- | --- | --- |",
-    ...arms.map((a) => {
-      const passed = a.runs.map(
-        (r) => r.tests.filter((t) => t.status === "passed").length
-      );
-      return `| ${a.name} | ${range(passed)} of ${a.runs[0].tests.length} | ${range(
-        a.runs.map((r) => r.suiteWallMs),
-        seconds
-      )} | \`${a.commit.slice(0, 9)}\` | ${
-        a.cacheDigest ? `\`${a.cacheDigest.slice(0, 9)}\`` : "none"
-      } |`;
-    }),
-  ].join("\n");
-  const handOffs = arms
-    .filter((a) => a.arm !== "arm2")
-    .map((a) => {
-      // By line: a test can repeat a step's wording.
-      const seen = new Map();
-      a.runs.forEach((r, i) => {
-        for (const t of r.tests)
-          for (const s of t.modelSteps) {
-            // The origin's port differs by arm and machine.
-            const why = [s.cache ?? "no cache", s.reason, s.detail]
-              .filter(Boolean)
-              .join(", ")
-              .replace(/http:\/\/127\.0\.0\.1:\d+/g, "`ayme mcp`'s window ");
-            const key = `${t.test}, line ${s.line}, "${s.step}": ${why}`;
-            seen.set(key, [...(seen.get(key) ?? []), i + 1]);
-          }
-      });
-      const lines = [...seen].map(
-        ([key, inRuns]) => `- ${key}. Runs ${inRuns.join(", ")}.`
-      );
-      return `${a.name}:\n\n${lines.join("\n") || "- none"}`;
-    });
-  return `# Page Object study: baselines
-
-The "before" of the Page Object study (the [fixture's README](../../README.md)): each arm's suite on the Inspector before the redesign, measured by \`pnpm study:baseline <arm1|arm2|arm3>\` ([the script](../../scripts/study-baseline.mjs) says how), which rewrites this page from the data beside it. Each cell is the range over an arm's runs. Per test, and each run's own numbers: \`<arm>.json\`.
-
-## The goal files' tests in every arm
-
-${table(arms.map((a) => row(a, (t) => mirrored.has(t))))}
-${arms
-  .filter((a) => a.provisional)
-  .map((a) => `\nProvisional, ${a.name}: ${a.provisional}.\n`)
-  .join("")}
-## Arm 2's other tests
-
-The tests with no action to turn into a goal (\`LEFT_OUT\` in [the mirror check](../../scripts/check-goal-mirror.mjs)).
-
-${arm2 && mirrored.size ? table([row(arm2, (t) => !mirrored.has(t))]) : "Not measured yet."}
-
-## Whole runs
-
-Each run from e2e's start to its end, every test of the arm included; the tables above sum their tests' times. Recordings: the digest of the arm's cache, whose source \`<arm>.json\` names.
-
-${wholeRuns}
-
-## Goal steps that reached the model
-
-${handOffs.join("\n\n")}
-`;
+  writeFileSync(join(out, "README.md"), render(arms));
+  spawnSync("pnpm", ["-w", "exec", "prettier", "--write", out], {
+    stdio: "inherit",
+  });
 }
