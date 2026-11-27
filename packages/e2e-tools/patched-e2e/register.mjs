@@ -45,6 +45,19 @@ function patched(file, source) {
   return undefined;
 }
 
+/** The config `e2e-patched` was started with, resolved (bin.mjs); unset in the workers. */
+const selectedConfig =
+  globalThis[Symbol.for("@ayme-dev/e2e-tools.selectedConfig")];
+
+/**
+ * The selected config's source with a last statement that fails unless
+ * `assertPatchedE2e` ran while it loaded: a call in a comment, or one never
+ * reached, does not run e2e patched on a config that did not ask for it.
+ */
+function assertingConfig(source) {
+  return `${source}\n;if (globalThis[Symbol.for("@ayme-dev/e2e-tools.asserted")] !== true) throw new Error(${JSON.stringify(`e2e-patched: ${selectedConfig} never called assertPatchedE2e (@ayme-dev/e2e-tools), so it may be a baseline arm's, which runs on e2e as published`)});\n`;
+}
+
 registerHooks({
   load(url, context, nextLoad) {
     const loaded = nextLoad(url, context);
@@ -53,7 +66,10 @@ registerHooks({
       typeof loaded.source === "string"
         ? loaded.source
         : new TextDecoder().decode(loaded.source);
-    const changed = patched(fileURLToPath(url), source);
+    const file = fileURLToPath(url);
+    if (file === selectedConfig)
+      return { ...loaded, source: assertingConfig(source) };
+    const changed = patched(file, source);
     return changed === undefined ? loaded : { ...loaded, source: changed };
   },
 });

@@ -6,10 +6,10 @@ import {
   serveProjectTools,
   staleNotes,
   type Build,
+  type ExecutableTool,
 } from "@ayme-dev/e2e-tools";
 import type { Browser, WebApp } from "@e2e-dev/web";
 import type { Screen } from "e2e";
-import type { DefinedTool } from "e2e/agent";
 
 import { Inspector } from "../pom/Inspector";
 import { Tab } from "../tab";
@@ -55,7 +55,7 @@ export const pageObjects = directPageObjects({
  */
 export function servedTools(
   staleDir: string,
-  tools: Record<string, DefinedTool> = pageObjects.projectTools()
+  tools: Record<string, ExecutableTool> = pageObjects.projectTools()
 ) {
   return serveProjectTools(tools, {
     onFailure: staleNotes(staleDir, (tool) => pageObjects.sourceOf(tool)),

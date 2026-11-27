@@ -5,12 +5,13 @@ import {
   assertOwnCacheDir,
   assertPatchedE2e,
   importBaseline,
+  type ExecutableTool,
 } from "@ayme-dev/e2e-tools";
 import { acp } from "@e2e-dev/acp";
 import type { E2EConfig, StepExecutorContext } from "e2e";
-import type { DefinedTool } from "e2e/agent";
 
 import baseConfig from "./e2e.config";
+import { baselineCaches } from "./tests/e2e/tools/baselines";
 import { pageObjects, servedTools } from "./tests/e2e/tools/pageObjects";
 import { scriptedExecutor, type Plan } from "./tests/e2e/tools/scripted";
 
@@ -38,27 +39,24 @@ const cacheDir = ".e2e/cache-tools-check";
 const { default: goals } = await importBaseline(
   () => import("./e2e.goals.config")
 );
-// Arm 1's cache is pinned by `pnpm test:goals` (--cache-dir), not its config.
-assertOwnCacheDir("e2e.tools-check.config.ts", here, cacheDir, [
-  baseConfig,
-  goals,
-  { cache: { dir: ".e2e/goals-cache" } },
-]);
+assertOwnCacheDir(
+  "e2e.tools-check.config.ts",
+  here,
+  cacheDir,
+  baselineCaches(baseConfig, goals)
+);
 const replayOnly = process.env.AYME_E2E_CACHE === "read-only";
 const stale = process.env.AYME_E2E_STALE;
 const halfDone = process.env.AYME_E2E_HALF_DONE;
 
-type Execute = (input: unknown, options: object) => Promise<unknown>;
-
 /** The tools, with the ones `AYME_E2E_STALE` and `AYME_E2E_HALF_DONE` name failing. */
-const tools: Record<string, DefinedTool> = Object.fromEntries(
-  Object.entries(pageObjects.projectTools()).map(([name, defined]) => {
-    if (name !== stale && name !== halfDone) return [name, defined];
-    const execute = (defined.tool as { execute: Execute }).execute;
-    const tool = {
-      ...defined.tool,
-      execute: async (input: unknown, options: object) => {
-        if (name === halfDone) await execute(input, options);
+const tools: Record<string, ExecutableTool> = Object.fromEntries(
+  Object.entries(pageObjects.projectTools()).map(([name, tool]) => {
+    if (name !== stale && name !== halfDone) return [name, tool];
+    const failing: ExecutableTool = {
+      ...tool,
+      execute: async (input) => {
+        if (name === halfDone) await tool.execute(input);
         throw new Error(
           name === halfDone
             ? `${name}: it acted, then failed (AYME_E2E_HALF_DONE)`
@@ -66,7 +64,7 @@ const tools: Record<string, DefinedTool> = Object.fromEntries(
         );
       },
     };
-    return [name, { ...defined, tool }];
+    return [name, failing];
   })
 );
 const served = servedTools(path.join(here, ".e2e/stale-page-objects"), tools);

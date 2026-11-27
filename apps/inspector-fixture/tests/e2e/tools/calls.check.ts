@@ -72,7 +72,6 @@ test("the e2e suite's Page Objects run as tools, record and replay", async ({
     await inspector.detail.toolPage.card.field("text").front()
   ).toHaveValue("Milk");
 
-  // `run`'s second parameter, its options, left out.
   await call("run the tool with Bread", "RunCard_run", {
     args: { text: "Bread" },
   });
@@ -87,9 +86,8 @@ test("the e2e suite's Page Objects run as tools, record and replay", async ({
   });
   await call("open its arguments", "RunCard_openArguments");
   const addItem = await appView.ref('button "Add item"');
-  const toggle = pageObjects.projectTools().LocatorGroups_toggleFromTree!
-    .tool as { execute: (input: unknown, options: object) => Promise<unknown> };
-  const refused = await toggle.execute({ number: 1, refs: addItem }, {}).then(
+  const toggle = pageObjects.projectTools().LocatorGroups_toggleFromTree!;
+  const refused = await toggle.execute({ number: 1, refs: addItem }).then(
     () => "it ran",
     (error: unknown) => String(error)
   );

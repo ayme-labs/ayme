@@ -23,6 +23,9 @@ assertUnpatchedE2e("e2e.goals.config.ts");
 export const PANEL_RULES =
   "You are testing the ayme Inspector panel. Carry out each goal through the panel's controls, never by acting on the page under it.";
 
+/** The goals' agent's model, in every arm that runs these goals, so a change moves them together. */
+export const GOALS_MODEL = "sonnet";
+
 // The external placement's Inspector window is served by `ayme mcp`, and a
 // recording is keyed to the window's origin: one port for every test (they
 // run one at a time) lets them replay. Derived from this checkout's path, so
@@ -62,7 +65,7 @@ export default {
   agents: {
     default: {
       executor: claudeCode({
-        model: "sonnet",
+        model: GOALS_MODEL,
         system: PANEL_RULES,
       }),
     },
