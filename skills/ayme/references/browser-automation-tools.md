@@ -1,30 +1,87 @@
 # Using ayme with browser automation tools
 
-You keep driving the browser with the automation you already use, such as
-Playwright CLI, Playwright MCP or agent-browser. ayme adds two things to it for
-the screen the browser is on: a Page Object Tool for each action of the Page
-Objects there, and `page_objects`, which lists those Page Objects as a tree
-with the id (`po<n>`) each rooted Page Object Tool takes. A rooted Page Object
-Tool takes that id and the action's own arguments under `args`, such as
-`{"id": "po3", "args": {"text": "Soy milk"}}`. A Page Object Tool of a Page
-Object with no id takes the action's arguments directly, such as
-`{"text": "Soy milk"}`. [Page tools](page-tools.md) shows how to read the tree
-and a Page Object Tool's answer.
+You keep driving the browser with the automation you already use: Playwright
+CLI, Playwright MCP or agent-browser. The `ayme` command adds the project's
+Page Object Tools to it. A Session is one running ayme connected to one
+browser: it runs the project's Page Objects in Node, on the browser your
+automation drives. Your automation keeps doing everything else: snapshots,
+clicks outside Page Objects, navigation, and answering dialogs.
 
-ayme reaches you as its own MCP server, `ayme`, beside your browser
-automation. Its start command is `mcp`, after
-`npx --no -p @ayme-dev/mcp ayme`, registered in your agent as
-[Browser setup](browser-setup.md) describes.
+Run each command in the project's folder. Write it `npx ayme <command>` when
+the project has `@ayme-dev/cli` in its `package.json`. When the project also
+has `@ayme-dev/mcp`, whose command is also called `ayme`, write
+`npx @ayme-dev/cli <command>` instead. Below, the commands are written
+`ayme <command>` for short. When the project has no `@ayme-dev/cli`, read
+[Browser setup](browser-setup.md) first.
 
-On a page that doesn't ship ayme, the server serves the project's Page Objects
-through the init script your browser automation loads; see
-[A page that doesn't ship ayme](browser-setup.md#a-page-that-doesnt-ship-ayme).
-Playwright CLI and Playwright MCP load it from their config file; start
-agent-browser with `--init-script ayme/init-script.js`.
+## Connect ayme and your automation to one browser
 
-- Before you take a full snapshot, check your tool list. When a Page Object
-  Tool does the next step, call it instead; take the snapshot only when none
-  does.
-- After a Page Object Tool, read `page_objects` as the next call.
-- After a navigation, read `page_objects` again. If the step is still to do,
-  call its Page Object Tool again, with the id the fresh `page_objects` shows.
+Connect both before you act on the page. Chrome does not answer a DevTools
+client that connects while a dialog is open, so an automation that connects
+after an action opened a dialog cannot answer it.
+
+### Playwright CLI
+
+ayme opens the browser, and Playwright CLI attaches to it:
+
+1. `ayme open <url>` starts a Session on a new Chromium, without a window,
+   at `<url>`. It prints the browser's address, such as
+   `http://127.0.0.1:49370`. Add `--headed` for a visible window.
+2. `playwright-cli attach --cdp=<address>`, with the address `ayme open`
+   printed.
+
+End with `playwright-cli detach`, then `ayme close`, which closes the
+browser ayme opened.
+
+### agent-browser
+
+agent-browser opens the browser, and ayme attaches to it:
+
+1. Open the page with agent-browser, such as `agent-browser open <url>`.
+2. `ayme attach --cdp="$(agent-browser get cdp-url)"`. `agent-browser get cdp-url`
+   prints the browser's address.
+
+End with `ayme detach`, which leaves the browser running, then
+`agent-browser close`.
+
+### Playwright MCP
+
+Playwright MCP opens the browser, on a debugging port fixed in the project's
+MCP configuration, and ayme attaches to it:
+
+1. Give Playwright MCP a config file that opens the browser on a fixed port,
+   such as `9222`, and pass the file in its registration with
+   `--config=<file>`:
+
+   ```json
+   {
+     "browser": {
+       "launchOptions": { "args": ["--remote-debugging-port=9222"] }
+     }
+   }
+   ```
+
+   A new registration reaches you only after your client restarts. When you
+   cannot register it or restart yourself, give the user the registration and
+   ask them to restart you.
+
+2. Open the page with a Playwright MCP tool, such as `browser_navigate`:
+   Playwright MCP starts the browser on its first call.
+3. `ayme attach --cdp=http://127.0.0.1:9222`.
+
+End with `ayme detach`, which leaves the browser running.
+
+## The Session
+
+- `ayme list` lists the Sessions of the project's folder. When a command
+  answers that no Session is open, start one as above.
+- `-s=<name>`, or `AYME_SESSION`, names a Session, so that two agents in one
+  folder each have their own. Every command of that Session takes the same
+  name.
+- ayme works on the browser's most recently active tab. It follows the tab
+  your automation switches to or opens. The first line of `ayme page-objects`
+  and `ayme tools` names that tab.
+- `ayme detach` ends a Session started with `ayme attach` and leaves the
+  browser running. `ayme close` ends any Session, and closes the browser only
+  when `ayme open` opened it.
+- A Session ends when its browser goes away. Start a new one, as above.

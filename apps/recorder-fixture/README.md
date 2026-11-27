@@ -10,7 +10,7 @@ tests/       the shared fixtures (fixtures.ts) and one spec per concern
 ```
 
 The pages ship no ayme, so their Page Objects live where ayme's guide for
-that case puts them, [Page Objects on a page without ayme](../../docs/guide/guides/page-objects-without-ayme.md):
+that case puts them, [Connect an agent](../../docs/guide/guides/connect-an-agent.md#set-up-your-project):
 one class per page in `ayme/pom/`, exported from `ayme/page-objects.ts`.
 A spec reaches the pages only through them: a Page Object supplies the
 locator and `person` acts on it with real input, and what the spec reads of

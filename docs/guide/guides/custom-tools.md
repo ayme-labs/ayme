@@ -14,7 +14,7 @@ The Goal Loop can choose a Custom Tool too, so a goal like "show me where the bi
 
 ## Register a Custom Tool
 
-A Custom Tool is an operation your app registers for one element at a time. Pass it in `customTools` where ayme starts. One registration publishes it through [WebMCP](publish-tools.md), which is experimental, and makes it an operation the Goal Loop may choose, as the single-element Browser Tools are. [`ayme mcp`](connect-an-agent.md) doesn't list it: a Custom Tool names its element by a Structural Ref, which only ayme's `snapshot` gives, and `ayme mcp` leaves browser driving to the agent's own browser automation. A registration looks like this:
+A Custom Tool is an operation your app registers for one element at a time. Pass it in `customTools` where ayme starts. One registration publishes it through [WebMCP](publish-tools.md), which is experimental, and makes it an operation the Goal Loop may choose, as the single-element Browser Tools are. The [`ayme` command](connect-an-agent.md) doesn't offer it: a Custom Tool names its element by a Structural Ref, which only ayme's `snapshot` gives, and the `ayme` command leaves browser driving to the agent's own browser automation. A registration looks like this:
 
 ```ts
 import type { CustomTool } from "@ayme-dev/ayme";

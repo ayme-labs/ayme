@@ -1,6 +1,6 @@
 # Formbricks lab app
 
-[Formbricks](https://github.com/formbricks/formbricks) as a lab app: a real product with hard UI to measure agents on. The app itself ships no ayme. It is unmodified Formbricks, a git submodule at [`formbricks/`](./formbricks) pinned to an exact upstream commit. ayme's Page Objects for it live in this folder, and an `ayme mcp` server builds them and loads them into the page from outside, as in [Page Objects on a page without ayme](../../docs/guide/guides/page-objects-without-ayme.md).
+[Formbricks](https://github.com/formbricks/formbricks) as a lab app: a real product with hard UI to measure agents on. The app itself ships no ayme. It is unmodified Formbricks, a git submodule at [`formbricks/`](./formbricks) pinned to an exact upstream commit. ayme's Page Objects for it live in this folder, and an `ayme mcp` server builds them and loads them into the page from outside.
 
 ```
 ayme/                  what ayme mcp serves when it starts in this folder
@@ -83,7 +83,7 @@ Formbricks runs as its upstream wrote it, at `8abe0b42`, the `main` of the `ayme
    await context.addInitScript({ path: "ayme/init-script.js" });
    ```
 
-   Playwright MCP and Playwright CLI take the same three settings in their config file, as [the guide](../../docs/guide/guides/page-objects-without-ayme.md#set-it-up) shows.
+   Playwright MCP and Playwright CLI take the same three settings in their config file, as `ayme mcp`'s experimental served Page Objects took them.
 
 4. In the page, the init script loads ayme's runtime and the Page Objects from the server and turns the [Agent Connection](../../docs/guide/guides/connect-an-agent.md) on. On `localhost` the tab then pairs with the server by itself when exactly one ayme MCP server runs, and otherwise through the link `ayme_connect` returns. The screen's Page Object Tools and `page_objects` are then among the agent's MCP tools, beside its own browser automation.
 

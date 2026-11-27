@@ -154,8 +154,6 @@ export const surfaces = {
       "packages/mcp/src/tools",
       "packages/mcp/src/connection",
       "packages/mcp/src/pairing",
-      "docs/guide/guides/connect-an-agent.md",
-      "docs/guide/guides/page-objects-without-ayme.md",
     ],
   },
   webmcpTools: {
@@ -221,7 +219,7 @@ export const surfaces = {
     sources: [
       "https://github.com/microsoft/playwright-mcp",
       "skills/ayme/references/browser-automation-tools.md",
-      "docs/guide/guides/page-objects-without-ayme.md",
+      "docs/guide/guides/connect-an-agent.md",
     ],
   },
   recorderCommand: {

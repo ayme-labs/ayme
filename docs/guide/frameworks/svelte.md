@@ -4,11 +4,11 @@ Everything about ayme in a Svelte or SvelteKit app: setup, starting ayme in the 
 
 ## Setup
 
-Install ayme, the Svelte package and the build plugin, with the Inspector and the Agent Connection for development, as the [Svelte quickstart](../start/quickstart-svelte.md) does:
+Install ayme, the Svelte package and the build plugin, with the Inspector and the `ayme` command for development, as the [Svelte quickstart](../start/quickstart-svelte.md) does:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/svelte
-npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/cli
 ```
 
 Add the plugin after your Svelte plugin, `sveltekit()` or `svelte()`:
@@ -42,7 +42,7 @@ Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects
 
 ## Start ayme at the root
 
-Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without SvelteKit, with the Inspector and the Agent Connection in development:
+Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without SvelteKit, with the Inspector in development:
 
 ```svelte
 <script lang="ts">
@@ -51,7 +51,7 @@ Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without Sv
   import { useAyme } from "@ayme-dev/svelte";
 
   let { children }: { children: Snippet } = $props();
-  useAyme({ inspector: dev, agentConnection: dev });
+  useAyme({ inspector: dev });
 </script>
 
 {@render children()}
@@ -64,7 +64,7 @@ The options are the [`createAyme` options](../reference/ayme.md#createayme), pas
 ```ts
 import { goto } from "$app/navigation";
 
-useAyme({ navigate: (url) => goto(url), inspector: dev, agentConnection: dev });
+useAyme({ navigate: (url) => goto(url), inspector: dev });
 ```
 
 The options are read once; to change them, remount the owner. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
@@ -98,7 +98,6 @@ Registering a page doesn't tie it to a route. Give each page a `present` that ch
   useAyme({
     pageObjects: [ProjectsPage, SettingsPage],
     inspector: dev,
-    agentConnection: dev,
   });
 </script>
 
@@ -132,7 +131,7 @@ npm install @ayme-dev/webmcp
 Then add `webMCP` to the owner's options:
 
 ```ts
-useAyme({ inspector: dev, agentConnection: dev, webMCP: { enabled: true } });
+useAyme({ inspector: dev, webMCP: { enabled: true } });
 ```
 
 `useAyme()` returns `webMCP.publicationStatus` as a readable store. It listens to the session only while it has subscribers. When its `state` is `"unavailable"` (no WebMCP driver found) or `"failed"`, `retryPublication` tries again:
