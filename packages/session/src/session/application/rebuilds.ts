@@ -12,6 +12,13 @@ import {
 import type { BuiltPageObjects, PageObjectsBuild } from "./pageObjectsBuild";
 import type { HostedTab } from "./sessionBrowser";
 
+/** A hosted Tab as the Session's commands reach it, whose Swaps the Session
+ * makes itself. */
+export type SwappingTab = Omit<HostedTab, "swap">;
+
+/** Takes the Tab's turn for `work`: one Run, listing or Swap at a time. */
+export type InTurn = <A, E>(work: Effect.Effect<A, E>) => Effect.Effect<A, E>;
+
 /** The Session's Page Objects as its builds leave them. */
 export interface Rebuilds {
   /** Why the last finished build failed, while it is the last: a build
@@ -20,29 +27,32 @@ export interface Rebuilds {
   /** The newest good build, which a Tab hosted now starts with. */
   readonly newest: () => BuiltPageObjects;
   /**
-   * `hosted`, whose Host started with `startedWith`, swapped to the
-   * Session's newest before each listing, Run and Inspector Run.
-   * Its `swap` swaps them in at once, whatever it is handed, since a build
-   * can be dropped while a Swap waits: put it inside the Tab's turn.
+   * `hosted`, whose Host started with `startedWith`, brought to the newest
+   * good build before each listing, Run and Inspector Run, and in its turn
+   * after each good build, as `inTurn` takes it, until the Tab is
+   * `closed`. Put the listings and Runs it returns in that turn too.
    */
   readonly swapping: (
     hosted: HostedTab,
-    startedWith: BuiltPageObjects
-  ) => HostedTab;
-  /** Swaps on `hosted`, through its `swap`, at once and after each good
-   * build, until the Tab is `closed`. */
-  readonly follow: (
-    hosted: HostedTab,
-    closed: Effect.Effect<void>
-  ) => Effect.Effect<void>;
+    startedWith: BuiltPageObjects,
+    turn: { readonly inTurn: InTurn; readonly closed: Effect.Effect<void> }
+  ) => Effect.Effect<SwappingTab>;
 }
+
+/** A hosted Tab as the builds reach it: the good build it has yet to swap
+ * in, and what wakes its Swaps. */
+type FollowingTab = {
+  pending: BuiltPageObjects | undefined;
+  readonly wake: Queue.Queue<void>;
+};
 
 /**
  * Builds the Session's Page Objects again after each edit `builds` tells
  * of, from the `first` build, in `scope`. The newest edit wins: a build
- * that finishes after a newer edit is dropped, and the next one starts.
- * A good build waits for its Swap until a Tab's turn, and is dropped if a
- * later edit fails to build; a failed build swaps nothing in.
+ * that finishes after a newer edit is not swapped in, and the next one
+ * starts. A good build waits for its Swap until a Tab's turn, and is
+ * dropped on each Tab that has not swapped it in when a later edit fails to
+ * build; a failed build swaps nothing in.
  */
 export const rebuilding = (
   first: BuiltPageObjects,
@@ -50,13 +60,9 @@ export const rebuilding = (
   scope: Scope.Scope
 ): Effect.Effect<Rebuilds> =>
   Effect.gen(function* () {
-    // The newest good build, and on each Tab the good build it has yet to
-    // swap in: a failed build drops those, and a Tab that swapped one in
-    // keeps it.
     let newest = first;
-    const waiting = new Set<{ pending: BuiltPageObjects | undefined }>();
     let failing: SessionStartError | undefined;
-    const followers = new Set<Effect.Effect<void>>();
+    const tabs = new Set<FollowingTab>();
     // One waiting edit stands for every edit since the last build began.
     const edited = yield* Queue.sliding<void>(1);
     yield* builds.edits.pipe(
@@ -70,7 +76,7 @@ export const rebuilding = (
       // overtook while it ran is not swapped in.
       const overtaken = (yield* Queue.size(edited)) > 0;
       if (Exit.isFailure(built)) {
-        for (const tab of waiting) tab.pending = undefined;
+        for (const tab of tabs) tab.pending = undefined;
         failing = Option.getOrElse(Cause.findErrorOption(built.cause), () =>
           brokenStart(Cause.squash(built.cause))
         );
@@ -79,66 +85,65 @@ export const rebuilding = (
       failing = undefined;
       if (overtaken) return;
       newest = built.value;
-      for (const tab of waiting) tab.pending = built.value;
-      for (const follower of followers) yield* Effect.forkIn(follower, scope);
+      for (const tab of tabs) {
+        tab.pending = built.value;
+        yield* Queue.offer(tab.wake, undefined);
+      }
     });
     yield* rebuild.pipe(Effect.forever, Effect.forkIn(scope));
-
-    const swapping = (
-      hosted: HostedTab,
-      startedWith: BuiltPageObjects
-    ): HostedTab => {
-      const tab = {
-        pending:
-          newest === startedWith ? undefined : (newest as BuiltPageObjects),
-      };
-      waiting.add(tab);
-      const upToDate: Effect.Effect<void, TabReadError> = Effect.suspend(() => {
-        const next = tab.pending;
-        if (next === undefined) return Effect.void;
-        return hosted.swap(next).pipe(
-          Effect.map(() => {
-            if (tab.pending === next) tab.pending = undefined;
-          })
-        );
-      });
-      return {
-        listing: Effect.andThen(upToDate, hosted.listing),
-        call: (tool, input) =>
-          upToDate.pipe(
-            Effect.mapError((error) => new RunError(error.message)),
-            Effect.andThen(hosted.call(tool, input))
-          ),
-        inspector: {
-          ...hosted.inspector,
-          request: (method, params) =>
-            method === "runTool"
-              ? Effect.andThen(
-                  upToDate,
-                  hosted.inspector.request(method, params)
-                )
-              : hosted.inspector.request(method, params),
-        },
-        dialog: hosted.dialog,
-        swap: () => upToDate,
-      };
-    };
 
     return {
       failing: () => failing,
       newest: () => newest,
-      swapping,
-      follow: (hosted, closed) =>
+      swapping: (hosted, startedWith, { inTurn, closed }) =>
         Effect.gen(function* () {
-          // A Swap that fails is told by the next listing or Run on the
-          // Tab, which tries it again.
-          const follower = Effect.ignore(hosted.swap(newest));
-          followers.add(follower);
-          yield* closed.pipe(
-            Effect.andThen(Effect.sync(() => followers.delete(follower))),
+          // One wake stands for every good build since the last Swap.
+          const tab: FollowingTab = {
+            pending: newest === startedWith ? undefined : newest,
+            wake: yield* Queue.sliding<void>(1),
+          };
+          tabs.add(tab);
+          const upToDate: Effect.Effect<void, TabReadError> = Effect.suspend(
+            () => {
+              const next = tab.pending;
+              if (next === undefined) return Effect.void;
+              return hosted.swap(next).pipe(
+                Effect.map(() => {
+                  if (tab.pending === next) tab.pending = undefined;
+                })
+              );
+            }
+          );
+          // A Swap that fails is told by the next listing or Run on the Tab,
+          // which tries it again.
+          if (tab.pending !== undefined)
+            yield* Queue.offer(tab.wake, undefined);
+          yield* Queue.take(tab.wake).pipe(
+            Effect.andThen(inTurn(Effect.ignore(upToDate))),
+            Effect.forever,
+            Effect.raceFirst(closed),
+            Effect.ensuring(Effect.sync(() => tabs.delete(tab))),
             Effect.forkIn(scope)
           );
-          yield* Effect.forkIn(follower, scope);
+          return {
+            listing: Effect.andThen(upToDate, hosted.listing),
+            call: (tool, input) =>
+              upToDate.pipe(
+                Effect.mapError((error) => new RunError(error.message)),
+                Effect.andThen(hosted.call(tool, input))
+              ),
+            inspector: {
+              ...hosted.inspector,
+              request: (method, params) =>
+                method === "runTool"
+                  ? Effect.andThen(
+                      upToDate,
+                      hosted.inspector.request(method, params)
+                    )
+                  : hosted.inspector.request(method, params),
+            },
+            dialog: hosted.dialog,
+          } satisfies SwappingTab;
         }),
     };
   });

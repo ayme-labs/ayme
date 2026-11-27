@@ -55,7 +55,7 @@ export const answerInspector = (
     readonly window: string | undefined;
     readonly agentApp?: string | undefined;
     readonly name: string;
-    readonly chosen: Effect.Effect<HostedTab, Error>;
+    readonly chosen: Effect.Effect<Pick<HostedTab, "inspector">, Error>;
   }
 ): Effect.Effect<SessionAnswer> => {
   if ("window" in request)
@@ -97,7 +97,7 @@ const asInspectorRun = (params: unknown) => ({
  * follows.
  */
 export const inspectorEvents = (
-  current: Effect.Effect<HostedTab, unknown>,
+  current: Effect.Effect<Pick<HostedTab, "inspector">, unknown>,
   ending: Effect.Effect<SessionEnd>,
   name: string
 ): Stream.Stream<InspectorEvent> =>
@@ -113,7 +113,8 @@ export const inspectorEvents = (
         Effect.forkScoped
       );
       yield* Effect.yieldNow;
-      let followed: { readonly tab: HostedTab | undefined } | undefined;
+      let followed:
+        { readonly tab: Pick<HostedTab, "inspector"> | undefined } | undefined;
       let hearing: Fiber.Fiber<void> | undefined;
       const follow = Effect.gen(function* () {
         const tab = Option.getOrUndefined(yield* Effect.option(current));

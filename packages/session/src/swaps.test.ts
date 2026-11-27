@@ -374,3 +374,23 @@ it("every finished build sets the build line, also one a newer edit overtook whi
   expect((await session.ask({ tools: {} })).text).not.toContain(BUILD_LINE);
   expect(browser.swappedIn).toEqual([]);
 });
+
+it("a Tab that closed while a Run held it swaps nothing in once the Run ends, however many builds waited", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const runs = holdRuns(browser);
+  const call = session.ask(remove);
+  await until(() => browser.runs.length === 1);
+  const second = browser.openTab(SECOND_TAB);
+  await session.ask({ tools: { tab: SECOND_TAB } });
+
+  await rebuilt(browser, EDITED);
+  await until(() => second.swappedIn.length === 1);
+  await rebuilt(browser, LATER);
+  await until(() => second.swappedIn.length === 2);
+  browser.close();
+  expect(await call).toMatchObject({ ok: false });
+  runs.end();
+
+  expect(await pending(until(() => browser.swappedIn.length > 0))).toBe(true);
+  expect(second.swappedIn).toEqual([EDITED, LATER]);
+});

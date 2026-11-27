@@ -45,13 +45,17 @@ import {
 } from "../domain";
 import { answerInspector, inspectorEvents, withoutWindow } from "./inspector";
 import { PageObjectsBuild } from "./pageObjectsBuild";
-import { rebuilding, type Rebuilds } from "./rebuilds";
+import {
+  rebuilding,
+  type InTurn,
+  type Rebuilds,
+  type SwappingTab,
+} from "./rebuilds";
 import {
   SessionBrowser,
   type HeldBrowser,
   type BrowserTab,
   type BrowserTabs,
-  type HostedTab,
   type SessionBrowserRequest,
 } from "./sessionBrowser";
 
@@ -297,7 +301,7 @@ type SessionTabs = {
   readonly chosen: (
     url: string | undefined,
     call?: { readonly tool: string; readonly input: unknown }
-  ) => Effect.Effect<HostedTab, TabReadError>;
+  ) => Effect.Effect<SwappingTab, TabReadError>;
 };
 
 /** The Tabs of `browser`, each hosted once, the first time the Session
@@ -312,7 +316,7 @@ function sessionTabs(
   ending: Effect.Effect<boolean>,
   rebuilds: Rebuilds
 ): SessionTabs {
-  const hosts = new Map<BrowserTab, Effect.Effect<HostedTab, TabReadError>>();
+  const hosts = new Map<BrowserTab, Effect.Effect<SwappingTab, TabReadError>>();
   // The Tab each id was given on, while its Host knows the id.
   const owners = new Map<string, BrowserTab>();
   // The classes some id was given to: those with a Page Object Root, whose
@@ -343,17 +347,20 @@ function sessionTabs(
             startedWith
           )
           .pipe(
-            Effect.map((hosted) =>
-              atDialogs(
-                untilClosed(
-                  inTurns(rebuilds.swapping(hosted, startedWith), ending),
-                  tab.closed
-                ),
-                tab,
-                scope
-              )
-            ),
-            Effect.tap((hosted) => rebuilds.follow(hosted, tab.closed)),
+            Effect.flatMap((hosted) => {
+              const inTurn = turns(ending);
+              return rebuilds
+                .swapping(hosted, startedWith, { inTurn, closed: tab.closed })
+                .pipe(
+                  Effect.map((swapping) =>
+                    atDialogs(
+                      untilClosed(inTurns(swapping, inTurn), tab.closed),
+                      tab,
+                      scope
+                    )
+                  )
+                );
+            }),
             Effect.tap(() =>
               tab.closed.pipe(Effect.andThen(retire(tab)), Effect.forkIn(scope))
             )
@@ -403,9 +410,9 @@ function sessionTabs(
  * its Tab is `closed`, and whose Inspector events end then: an action
  * inside a wait of its own may go on until that wait ends. */
 function untilClosed(
-  hosted: HostedTab,
+  hosted: SwappingTab,
   closed: Effect.Effect<void>
-): HostedTab {
+): SwappingTab {
   const orClosed = <A, E>(work: Effect.Effect<A, E>, error: E) =>
     Effect.raceFirst(work, closed.pipe(Effect.andThen(Effect.fail(error))));
   return {
@@ -421,23 +428,27 @@ function untilClosed(
       events: hosted.inspector.events.pipe(Stream.interruptWhen(closed)),
     },
     dialog: hosted.dialog,
-    swap: hosted.swap,
   };
 }
 
 /**
- * `hosted`, whose listings and Runs also wait for the Tab's turn in the
- * Session, where the Session's end stops one still waiting: the Host's own
- * wait cannot be stopped, and a joined browser stays open. One whose turn
- * comes once the Session is `ending` never starts; the end answers it.
+ * The turn of one Tab in the Session, where the Session's end stops a
+ * listing or Run still waiting: the Host's own wait cannot be stopped, and
+ * a joined browser stays open. Work whose turn comes once the Session is
+ * `ending` never starts; the end answers it.
  */
-function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
+function turns(ending: Effect.Effect<boolean>): InTurn {
   const turn = Semaphore.makeUnsafe(1);
-  const inTurn = <A, E>(work: Effect.Effect<A, E>) =>
+  return (work) =>
     Semaphore.withPermit(
       turn,
       ending.pipe(Effect.flatMap((ends) => (ends ? Effect.never : work)))
     );
+}
+
+/** `hosted`, whose listings, Runs and Inspector Runs wait for the Tab's
+ * turn, as `inTurn` takes it. */
+function inTurns(hosted: SwappingTab, inTurn: InTurn): SwappingTab {
   return {
     listing: inTurn(hosted.listing),
     call: (tool, input) => inTurn(hosted.call(tool, input)),
@@ -450,8 +461,6 @@ function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
           : hosted.inspector.request(method, params),
     },
     dialog: hosted.dialog,
-    // A Swap takes the turn, so it happens only between Runs (rule 7).
-    swap: (pageObjects) => inTurn(hosted.swap(pageObjects)),
   };
 }
 
@@ -469,10 +478,10 @@ const isOpen = (now: TabDialog): now is { readonly open: Dialog } =>
  * `tab`'s URL, since its title is the page's, which the dialog holds.
  */
 function atDialogs(
-  hosted: HostedTab,
+  hosted: SwappingTab,
   tab: BrowserTab,
   scope: Scope.Scope
-): HostedTab {
+): SwappingTab {
   const counted = hosted.dialog.pipe(Stream.filter((now) => now !== "opening"));
   const atDialog = <A, E>(
     work: Effect.Effect<A, E>,
@@ -521,8 +530,6 @@ function atDialogs(
         ),
     },
     dialog: hosted.dialog,
-    // A Swap reads no page, so a dialog does not hold it up (rule 7).
-    swap: hosted.swap,
   };
 }
 
