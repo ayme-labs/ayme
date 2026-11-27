@@ -6,16 +6,57 @@ export function tabListAddress(address: string): string {
   return `${secure ? "https" : "http"}://${url.host}/json/list`;
 }
 
-/** A target as the browser's tab list gives it. */
-type Target = { readonly id: string; readonly type: string };
+/** Why an answer is no tab list, as a read of one refuses it. */
+class NoTabList extends Error {}
+
+const isTarget = (entry: unknown): entry is { type: string; id?: unknown } =>
+  typeof (entry as { type?: unknown } | null)?.type === "string";
 
 /**
- * The ids of the browser's tabs in the order its tab list gives them:
- * Chromium puts the most recently active first, while its tabs share one
- * window. Workers, frames and other targets are no tabs.
+ * The ids of the browser's tabs in the order its tab list `list` gives
+ * them: Chromium puts the most recently active first, while its tabs share
+ * one window. Workers, frames and other targets are no tabs.
  */
-export const pageTargets = (list: readonly Target[]): string[] =>
-  list.filter(({ type }) => type === "page").map(({ id }) => id);
+export function pageTargets(list: unknown): string[] {
+  if (!Array.isArray(list)) throw new NoTabList("no list");
+  if (!list.every(isTarget)) throw new NoTabList("an entry that is no target");
+  const pages = list.filter(({ type }) => type === "page");
+  if (!pages.every(({ id }) => typeof id === "string"))
+    throw new NoTabList("a page without an id");
+  return pages.map(({ id }) => id as string);
+}
+
+/**
+ * The ids of the browser's tabs, the most recently active first, as its tab
+ * list at `list` answers within `deadline` milliseconds. It stops when
+ * `signal` aborts, as when the Session ends.
+ */
+export async function readTabOrder(
+  list: string,
+  { signal, deadline }: { signal: AbortSignal; deadline: number }
+): Promise<string[]> {
+  const timeout = AbortSignal.timeout(deadline);
+  try {
+    const answer = await fetch(list, {
+      signal: AbortSignal.any([signal, timeout]),
+    });
+    if (!answer.ok)
+      throw new Error(`${list} answered with HTTP status ${answer.status}.`);
+    return pageTargets(await answer.json());
+  } catch (error) {
+    if (timeout.aborted)
+      throw new Error(
+        `${list} did not answer within ${deadline / 1000} seconds.`,
+        { cause: error }
+      );
+    if (error instanceof NoTabList)
+      throw new Error(
+        `${list} answered something other than the browser's tab list: ${error.message}.`,
+        { cause: error }
+      );
+    throw error;
+  }
+}
 
 /** How a read of the listed tabs' pages waits for Playwright. */
 export type Handover = {

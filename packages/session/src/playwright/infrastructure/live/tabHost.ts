@@ -19,7 +19,7 @@ import {
 import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
-import { handedOver, pageTargets, tabListAddress } from "../tabList";
+import { handedOver, readTabOrder, tabListAddress } from "../tabList";
 
 /** Where a Node Host's Page Object Ids come from, and what hears that a
  * page forgot one. */
@@ -57,6 +57,11 @@ type NodeHostEntry = {
 // just opened is worth that wait before ayme chooses another Tab.
 const HANDOVER_WAIT_MS = 2000;
 
+// Chromium answers its tab list in milliseconds; one still unanswered by
+// then is stuck, as behind a proxy that never ends the body. A Run has no
+// such limit: this bounds only ayme's own lookup.
+const TAB_LIST_DEADLINE_MS = 5000;
+
 /** The Caller a Session's commands start their Runs as. */
 const CALLER = "ayme-command";
 
@@ -81,13 +86,6 @@ const targetIdOf = async (page: Page) =>
       targetInfo: { targetId: string };
     }
   ).targetInfo.targetId;
-
-/** The browser's tabs, the most recently active first, as its tab list at
- * `address` gives them. */
-const tabOrder = async (address: string) => {
-  const answer = await fetch(tabListAddress(address));
-  return pageTargets((await answer.json()) as { id: string; type: string }[]);
-};
 
 /** The Tab's page as its Host reaches it through `caller`. */
 const hostedTab = (
@@ -201,17 +199,17 @@ function tabsOf(
   };
   return {
     open: Effect.tryPromise({
-      try: async () => {
+      try: async (signal) => {
+        const order = await readTabOrder(tabListAddress(address), {
+          signal,
+          deadline: TAB_LIST_DEADLINE_MS,
+        });
         const until = Date.now() + HANDOVER_WAIT_MS;
-        const pages = await handedOver(
-          await tabOrder(address),
-          () => pagesByTarget(browser),
-          {
-            pause: () => new Promise((resolve) => setTimeout(resolve, 50)),
-            over: () => Date.now() > until,
-            skipped,
-          }
-        );
+        const pages = await handedOver(order, () => pagesByTarget(browser), {
+          pause: () => new Promise((resolve) => setTimeout(resolve, 50)),
+          over: () => signal.aborted || Date.now() > until,
+          skipped,
+        });
         return pages.map(tabOf);
       },
       catch: (cause) =>

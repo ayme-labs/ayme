@@ -1,6 +1,17 @@
-import { describe, expect, it } from "vitest";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
+import type { AddressInfo } from "node:net";
+import { describe, expect, it, onTestFinished } from "vitest";
 
-import { handedOver, pageTargets, tabListAddress } from "./tabList";
+import {
+  handedOver,
+  pageTargets,
+  readTabOrder,
+  tabListAddress,
+} from "./tabList";
 
 it.each([
   ["http://127.0.0.1:9222", "http://127.0.0.1:9222/json/list"],
@@ -74,5 +85,81 @@ describe("the pages of the listed tabs", () => {
     // Once it is no longer listed, it is forgotten.
     await handedOver(["opener"], read, waiting);
     expect(skipped).toEqual(new Set());
+  });
+});
+
+describe("a read of the tab list", () => {
+  /** A server on a free port that answers each request with `answer`, and
+   * the address of its tab list. */
+  async function serving(
+    answer: (request: IncomingMessage, response: ServerResponse) => void
+  ) {
+    const server = createServer(answer);
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve)
+    );
+    onTestFinished(
+      () =>
+        new Promise<void>((resolve) => {
+          server.closeAllConnections();
+          server.close(() => resolve());
+        })
+    );
+    const { port } = server.address() as AddressInfo;
+    return `http://127.0.0.1:${port}/json/list`;
+  }
+  const reading = { signal: new AbortController().signal, deadline: 5000 };
+
+  it("gives the ids of the tabs the list answers", async () => {
+    const list = await serving((_, response) =>
+      response.end(
+        JSON.stringify([{ id: "A", type: "page", url: "about:blank" }])
+      )
+    );
+
+    expect(await readTabOrder(list, reading)).toEqual(["A"]);
+  });
+
+  it("refuses an answer with a failing HTTP status", async () => {
+    const list = await serving((_, response) => {
+      response.statusCode = 502;
+      response.end("[]");
+    });
+
+    await expect(readTabOrder(list, reading)).rejects.toThrow(
+      `${list} answered with HTTP status 502.`
+    );
+  });
+
+  it.each([
+    ["no list", { id: "A", type: "page" }],
+    ["an entry that is no target", ["A"]],
+    ["a page without an id", [{ type: "page", url: "about:blank" }]],
+  ])("refuses an answer that gives %s", async (_, body) => {
+    const list = await serving((_, response) =>
+      response.end(JSON.stringify(body))
+    );
+
+    await expect(readTabOrder(list, reading)).rejects.toThrow(
+      `${list} answered something other than the browser's tab list: ${_}.`
+    );
+  });
+
+  it("gives up on a list whose body never ends, at its deadline", async () => {
+    const list = await serving((_, response) => response.write("[{"));
+
+    await expect(
+      readTabOrder(list, { ...reading, deadline: 100 })
+    ).rejects.toThrow(`${list} did not answer within 0.1 seconds.`);
+  });
+
+  it("stops when the Session ends", async () => {
+    const list = await serving((_, response) => response.write("[{"));
+    const ending = new AbortController();
+
+    const read = readTabOrder(list, { signal: ending.signal, deadline: 5000 });
+    ending.abort();
+
+    await expect(read).rejects.toThrow();
   });
 });
