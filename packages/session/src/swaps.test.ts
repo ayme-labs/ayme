@@ -452,3 +452,31 @@ it("once a Swap takes a class's root away, an action parameter named id is no Pa
   expect(second.runs).toEqual([open]);
   expect(browser.runs).toEqual([]);
 });
+
+it("a Run from the Inspector window reads the page in its turn before it runs, also the first one after a Swap", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...opening,
+    inspector: "http://127.0.0.1:4500/inspector",
+  });
+  const runs = holdRuns(browser);
+  void session.ask(remove);
+  await until(() => browser.runs.length === 1);
+  const seen: { swaps: number; observed: number }[] = [];
+  browser.answerInspector(async () => {
+    seen.push({ swaps: browser.swappedIn.length, observed: browser.observed });
+    return { ok: true };
+  });
+  const run = session.ask({
+    inspector: {
+      contract: {
+        method: "runTool",
+        params: { name: "Basket.clear", input: {}, by: "inspector" },
+      },
+    },
+  });
+  await rebuilt(browser, EDITED);
+
+  runs.end();
+  await run;
+  expect(seen).toEqual([{ swaps: 1, observed: 1 }]);
+});

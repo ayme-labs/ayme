@@ -9,7 +9,7 @@ import type { HostedTab } from "./sessionBrowser";
 
 /** A hosted Tab as the Session's commands reach it, whose Swaps the Session
  * makes itself. */
-export type SwappingTab = Omit<HostedTab, "swap"> & {
+export type SwappingTab = Omit<HostedTab, "swap" | "observe"> & {
   /** Why the last finished build failed, or why the Tab could not register
    * the last good build it tried, while that is so: what its listings say
    * after their Tab line (rule 7). */
@@ -131,11 +131,14 @@ export const rebuilding = (
               Effect.andThen(upToDate, hosted.call(tool, input)),
             inspector: {
               ...hosted.inspector,
+              // A Run from the Inspector window reads the page first, as a
+              // Run of a command does: Page Objects a Swap just registered
+              // have observed nothing yet.
               request: (method, params) =>
                 method === "runTool"
-                  ? Effect.andThen(
-                      upToDate,
-                      hosted.inspector.request(method, params)
+                  ? upToDate.pipe(
+                      Effect.andThen(hosted.observe),
+                      Effect.andThen(hosted.inspector.request(method, params))
                     )
                   : hosted.inspector.request(method, params),
             },

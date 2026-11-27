@@ -114,6 +114,9 @@ export interface ScriptedTab {
   readonly startedWith: BuiltPageObjects | undefined;
   /** The built Page Objects swapped in on the Tab's Host, in order. */
   readonly swappedIn: readonly BuiltPageObjects[];
+  /** How many times the Tab's Host read its Page Objects on the page for a
+   * Run from the Inspector window. */
+  readonly observed: number;
   /** Every Swap the Session made on the Tab, in order, whether it worked
    * or not. */
   readonly swapsTried: readonly BuiltPageObjects[];
@@ -229,6 +232,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   const runs: { tool: string; input: unknown }[] = [];
   const swappedIn: BuiltPageObjects[] = [];
   const swapsTried: BuiltPageObjects[] = [];
+  let observed = 0;
   let refusing: string | undefined;
   let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
     Promise.resolve({ settled: true });
@@ -288,6 +292,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
     },
     dialog: SubscriptionRef.changes(dialog),
     takesId: (tool) => rooted.has(tool.slice(0, tool.indexOf("."))),
+    observe: Effect.sync(() => void observed++),
     swap: (pageObjects) =>
       Effect.suspend(() => {
         swapsTried.push(pageObjects);
@@ -327,6 +332,9 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       failReads: (reason) => (shown = new TabReadError(reason)),
       holdReads: () => (shown = "held"),
       swappedIn,
+      get observed() {
+        return observed;
+      },
       swapsTried,
       refuseSwaps: (reason) => (refusing = reason),
       runs,
@@ -492,6 +500,9 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       },
       get startedWith() {
         return first.control.startedWith;
+      },
+      get observed() {
+        return first.control.observed;
       },
       get inspectorListeners() {
         return first.control.inspectorListeners;

@@ -51,6 +51,7 @@ type NodeHostEntry = {
     rebuilt: readonly unknown[]
   ): void;
   pageObjectToolTakesId(ayme: unknown, tool: string): boolean;
+  observePageObjects(ayme: unknown): Promise<void>;
   inspectorPortOf(ayme: unknown): InspectorPort;
   pageObjectCallerOf(
     ayme: unknown,
@@ -177,6 +178,11 @@ const hostedTab = (
   inspector: tabInspector(inspector),
   dialog: SubscriptionRef.changes(dialog),
   takesId: (tool) => entry.pageObjectToolTakesId(ayme, tool),
+  observe: Effect.tryPromise({
+    try: () => entry.observePageObjects(ayme),
+    catch: (cause) =>
+      new TabReadError(`ayme could not read the page: ${reason(cause)}`),
+  }),
   swap: (pageObjects) =>
     Effect.try({
       try: () => {

@@ -34,6 +34,9 @@ export interface HostedTab {
   /** The Tab's dialog as the Session counts it now, and again after each
    * change (rule 4). It reads nothing of the page, which a dialog holds. */
   readonly dialog: Stream.Stream<TabDialog>;
+  /** Reads the Page Objects on the Tab's page now, as a Run reads them
+   * before its action, so their tools are what the page shows. */
+  readonly observe: Effect.Effect<void, TabReadError>;
   /** Whether the Page Object Tool `tool`, in the Page Objects the Tab's
    * Host runs now, takes a Page Object Id: its class declares a root. It
    * reads nothing of the page. */
