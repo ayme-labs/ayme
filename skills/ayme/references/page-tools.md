@@ -32,6 +32,9 @@ ProjectsPage
 This screen has 3 Page Object Tools: ayme -s=default tools lists them with their parameters.
 ```
 
+A declared element shows an excerpt of what a snapshot shows of it: at
+most 40 lines, with long lines cut. Take a snapshot for more.
+
 The first line names the Tab ayme works on;
 [Sessions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#sessions)
 says how to read another.
