@@ -1706,6 +1706,57 @@ function filesOf(dir: string) {
 
 const CLI = "@ayme-dev/cli";
 
+/** The names of the tools the MCP server `command` with `args` lists over
+ * stdio, as an Agent App asks for them; the server ends with its input. */
+async function mcpTools(
+  command: string,
+  args: readonly string[],
+  options: { cwd: string; env: NodeJS.ProcessEnv }
+): Promise<string[]> {
+  const server = spawn(command, args, { ...options, stdio: "pipe" });
+  const send = (message: object) =>
+    server.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", ...message })}\n`);
+  let read = "";
+  const answer = (id: number) =>
+    new Promise<{ result?: { tools?: { name: string }[] } }>(
+      (resolve, reject) => {
+        const look = () => {
+          const line = read
+            .split("\n")
+            .find((candidate) => candidate.includes(`"id":${id}`));
+          if (line) resolve(JSON.parse(line));
+        };
+        server.stdout.on("data", (chunk: Buffer) => {
+          read += chunk;
+          look();
+        });
+        server.once("close", () =>
+          reject(new Error(`ayme mcp ended: ${read}`))
+        );
+        look();
+      }
+    );
+  try {
+    send({
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "packed-consumer", version: "0.0.0" },
+      },
+    });
+    await answer(1);
+    send({ method: "notifications/initialized" });
+    send({ id: 2, method: "tools/list", params: {} });
+    const { result } = await answer(2);
+    return (result?.tools ?? []).map(({ name }) => name);
+  } finally {
+    server.stdin.end();
+    server.kill();
+  }
+}
+
 it("the packed CLI carries its engine, its window, its toolbar, its Inspector and their notices, and declares Playwright as the project's own", () => {
   const { dir } = packed[CLI]!;
   const manifest = readManifest(dir) as ReturnType<typeof readManifest> & {
@@ -1713,7 +1764,13 @@ it("the packed CLI carries its engine, its window, its toolbar, its Inspector an
     peerDependenciesMeta?: Record<string, { optional?: boolean }>;
   };
 
-  expect(filesOf(dir)).toEqual([
+  const files = filesOf(dir);
+  const chunks = files.filter((file) => file.startsWith("dist/chunks/"));
+  expect(chunks).toContainEqual(
+    expect.stringMatching(/^dist\/chunks\/mcp-[\w-]+\.mjs$/)
+  );
+  for (const chunk of chunks) expect(chunk).toMatch(/\.mjs$/);
+  expect(files.filter((file) => !chunks.includes(file))).toEqual([
     "LICENSE",
     "README.md",
     "dist/THIRD_PARTY_NOTICES.txt",
@@ -1727,6 +1784,10 @@ it("the packed CLI carries its engine, its window, its toolbar, its Inspector an
     "package.json",
   ]);
   expect(manifest.bin).toEqual({ ayme: "./dist/cli.mjs" });
+  // Only `ayme mcp` loads its MCP server.
+  expect(fs.readFileSync(path.join(dir, "dist/cli.mjs"), "utf8")).not.toContain(
+    "ayme_inspect"
+  );
   // The engine and the window are inside the command: nothing to install
   // beside it but the Playwright the project has, and esbuild, which builds
   // the project's Page Objects for a Session and ships a binary per
@@ -1781,7 +1842,7 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
 });
 
 it(
-  "a clean project installs the packed CLI, records one flow with ayme capture, and lists its Page Objects in a Session, whose Inspector window it serves",
+  "a clean project installs the packed CLI, records one flow with ayme capture, lists its Page Objects in a Session, whose Inspector window it serves, and starts ayme mcp",
   { timeout: 150_000 },
   async () => {
     const project = path.join(tmp, "recorder-project");
@@ -2002,6 +2063,14 @@ export class ShopPage {
           "utf8"
         )
       );
+
+      // `ayme mcp`, which the command loads apart, lists its one tool.
+      expect(
+        await mcpTools(process.execPath, [path.join(installed, ayme!), "mcp"], {
+          cwd: project,
+          env: { ...process.env, NODE_PATH: "" },
+        })
+      ).toEqual(["ayme_inspect"]);
     } catch (error) {
       // What the command printed is the first thing to look at.
       throw new Error(
