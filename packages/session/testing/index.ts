@@ -125,7 +125,11 @@ export type ScriptedOptions = {
   readonly heldBuild?: true;
 };
 
-export type ScriptedSessionOptions = SessionBrowserRequest & ScriptedOptions;
+export type ScriptedSessionOptions = SessionBrowserRequest &
+  ScriptedOptions & {
+    /** The Session's name: "default" when not given. */
+    readonly name?: string;
+  };
 
 /** A Tab of the scripted browser, as the Session reaches it and as a test
  * controls it. */
@@ -280,7 +284,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
 export async function startScriptedSession(
   options: ScriptedSessionOptions
 ): Promise<{ session: ScriptedSession; browser: ScriptedBrowser }> {
-  const { held, heldBuild, ...request } = options;
+  const { held, heldBuild, name = "default", ...request } = options;
   const { layer, browser } = scriptedBrowser({
     ...(held ? { held } : {}),
     ...(heldBuild ? { heldBuild } : {}),
@@ -288,7 +292,7 @@ export async function startScriptedSession(
   const scope = Effect.runSync(Scope.make());
   onTestFinished(() => Effect.runPromise(Scope.close(scope, Exit.void)));
   const session = await Effect.runPromise(
-    openSession(request).pipe(Effect.provide(layer), Scope.provide(scope))
+    openSession(request, name).pipe(Effect.provide(layer), Scope.provide(scope))
   );
   const run = <A>(effect: Effect.Effect<A>) => Effect.runPromise(effect);
 

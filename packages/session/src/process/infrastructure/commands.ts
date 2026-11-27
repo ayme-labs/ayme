@@ -17,11 +17,14 @@ import type { FromOpener } from "./background";
 import {
   alreadyOpen,
   claimRecord,
+  endedBeforeAnswer,
   liveRecord,
   liveRecords,
+  nameOf,
   notOpen,
   privateFolder,
   processStart,
+  readClaim,
   unusableName,
   type SessionPlace,
 } from "./record";
@@ -34,16 +37,23 @@ const notListening = (error: unknown) =>
   );
 
 /** Sends `request` to `place`'s Session. A Session still starting is
- * waited for, as long as its process runs (rule 10). */
+ * waited for, as long as its claim is live (rule 10): the command stays
+ * with the claim it found, and a later start of the name is not its. */
 export async function askSession(
   place: SessionPlace,
   request: SessionRequest
 ): Promise<SessionAnswer> {
   const unusable = unusableName(place);
   if (unusable) return failed(unusable);
+  const record = liveRecord(place);
+  if (!record)
+    return failed(
+      notOpen(
+        place,
+        liveRecords(place.projectDir).map(({ name }) => name)
+      )
+    );
   for (;;) {
-    const record = liveRecord(place);
-    if (!record) return failed(notOpen(place));
     try {
       return await send(record.socket, request);
     } catch (error) {
@@ -53,6 +63,9 @@ export async function askSession(
         );
     }
     await sleep(25);
+    const now = readClaim(place);
+    if (now.generation !== record.generation || !now.live)
+      return failed(endedBeforeAnswer(record));
   }
 }
 
@@ -60,9 +73,9 @@ const messageOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
 /** The tool's input `params` gives: JSON, the JSON of the file `@<file>`
- * names in `projectDir`, or none when it is not given. */
+ * names in the folder of `place`, or none when it is not given. */
 function inputOf(
-  projectDir: string,
+  place: SessionPlace,
   params: string | undefined
 ): { readonly input: unknown } | SessionAnswer {
   if (params === undefined) return { input: {} };
@@ -70,7 +83,7 @@ function inputOf(
   if (params.startsWith("@")) {
     const file = params.slice(1);
     try {
-      json = readFileSync(resolve(projectDir, file), "utf8");
+      json = readFileSync(resolve(place.projectDir, file), "utf8");
     } catch (error) {
       return paramsUnreadable(file, messageOf(error));
     }
@@ -78,7 +91,7 @@ function inputOf(
   try {
     return { input: JSON.parse(json) as unknown };
   } catch (error) {
-    return paramsNotJson(messageOf(error));
+    return paramsNotJson(messageOf(error), nameOf(place));
   }
 }
 
@@ -91,7 +104,7 @@ export async function askCall(
   params: string | undefined,
   tab?: string
 ): Promise<SessionAnswer> {
-  const read = inputOf(place.projectDir, params);
+  const read = inputOf(place, params);
   return "input" in read
     ? askSession(place, {
         call: {
@@ -201,11 +214,12 @@ export async function openSession({
 }
 
 /** The answer to `ayme list`: the live Sessions of `projectDir`, each by
- * its name and process. */
+ * its name and process, and whether it is still starting. */
 export function listSessions(projectDir: string): SessionAnswer {
-  const sessions = liveRecords(projectDir).map(({ name, pid }) => ({
+  const sessions = liveRecords(projectDir).map(({ name, pid, starting }) => ({
     name,
     pid,
+    starting,
   }));
   return {
     ok: true,
@@ -214,7 +228,10 @@ export function listSessions(projectDir: string): SessionAnswer {
         ? `No Session is open in ${projectDir}.`
         : [
             `Sessions in ${projectDir}:`,
-            ...sessions.map(({ name, pid }) => `${name}, in process ${pid}`),
+            ...sessions.map(
+              ({ name, pid, starting }) =>
+                `${name}, in process ${pid}${starting ? ", starting" : ""}`
+            ),
           ].join("\n"),
     data: { sessions },
   };

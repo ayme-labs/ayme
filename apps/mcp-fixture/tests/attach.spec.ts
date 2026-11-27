@@ -1,5 +1,5 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { createServer, type AddressInfo } from "node:net";
+import { createServer, type AddressInfo, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -19,21 +19,24 @@ type Automation = {
   readonly page: Page;
 };
 
-const cleanups: (() => Promise<void>)[] = [];
+/** What a test leaves to clean up, each pushed as soon as it exists. They
+ * run newest first, and every one runs even when another fails. */
+const cleanups: (() => Promise<unknown>)[] = [];
 test.afterEach(async () => {
-  for (const cleanup of cleanups.splice(0)) await cleanup();
+  const failures: unknown[] = [];
+  for (const cleanup of cleanups.splice(0).reverse())
+    await cleanup().catch((error: unknown) => failures.push(error));
+  if (failures.length > 0) throw failures[0];
 });
 
 async function automationAt(url: string): Promise<Automation> {
   const profile = await mkdtemp(join(tmpdir(), "ayme-automation-"));
+  cleanups.push(() => rm(profile, { recursive: true, force: true }));
   // Port 0: Chromium picks a free one and writes it into the profile.
   const context = await chromium.launchPersistentContext(profile, {
     args: ["--remote-debugging-port=0"],
   });
-  cleanups.push(async () => {
-    await context.close();
-    await rm(profile, { recursive: true, force: true });
-  });
+  cleanups.push(() => context.close());
   const page = context.pages()[0] ?? (await context.newPage());
   await page.goto(url);
   const port = (
@@ -53,6 +56,22 @@ async function silentAddress(): Promise<string> {
   return `http://127.0.0.1:${port}`;
 }
 
+/** An address on this machine that takes a connection and never answers,
+ * as a browser whose join stalls does. */
+async function stalledAddress(): Promise<string> {
+  const held = new Set<Socket>();
+  const server = createServer((socket) => held.add(socket));
+  await new Promise<void>((resolve) =>
+    server.listen(0, "127.0.0.1", () => resolve())
+  );
+  cleanups.push(async () => {
+    for (const socket of held) socket.destroy();
+    await new Promise((resolve) => server.close(resolve));
+  });
+  const { port } = server.address() as AddressInfo;
+  return `http://127.0.0.1:${port}`;
+}
+
 test("ayme attach starts a Session on the automation's browser, and ayme detach ends it and leaves the browser running", async ({
   ayme,
   baseURL,
@@ -62,7 +81,7 @@ test("ayme attach starts a Session on the automation's browser, and ayme detach 
 
   expect(await ayme("attach", `--cdp=${address}`)).toEqual({
     code: 0,
-    stdout: `A Session started on the browser at ${address}.\nayme detach ends the Session and leaves the browser running.\n`,
+    stdout: `A Session started on the browser at ${address}.\nayme -s=default detach ends the Session and leaves the browser running.\n`,
     stderr: "",
   });
   expect((await ayme("page-objects")).stdout).toMatch(
@@ -152,6 +171,31 @@ test("ayme attach to an address nothing answers on says so, and starts no Sessio
   });
 });
 
+test("ayme close during a join that stalls ends the Session at once, and ayme attach says so", async ({
+  ayme,
+}) => {
+  const address = await stalledAddress();
+  const attaching = ayme("attach", `--cdp=${address}`);
+  await expect
+    .poll(async () => (await ayme("list")).stdout)
+    .toMatch(/^default, in process \d+, starting$/m);
+
+  const asked = Date.now();
+  expect(await ayme("close")).toMatchObject({
+    code: 0,
+    stdout: "The Session ended. Its browser keeps running.\n",
+  });
+  // Playwright's own wait for the connection lasts 30 seconds.
+  expect(Date.now() - asked).toBeLessThan(15_000);
+  expect(await attaching).toMatchObject({
+    code: 1,
+    stderr: "ayme close ended the Session before it started.\n",
+  });
+  expect(await ayme("list")).toMatchObject({
+    stdout: expect.stringMatching(/^No Session is open in /),
+  });
+});
+
 test("ayme detach on a browser ayme opened is refused with a pointer to ayme close, and the Session goes on", async ({
   ayme,
 }) => {
@@ -161,7 +205,7 @@ test("ayme detach on a browser ayme opened is refused with a pointer to ayme clo
     code: 1,
     stdout: "",
     stderr:
-      "ayme opened this Session's browser, so ayme detach would leave it without an owner. End the Session and close the browser with ayme close.\n",
+      "ayme opened this Session's browser, so ayme detach would leave it without an owner. End the Session and close the browser with ayme -s=default close.\n",
   });
   expect(await ayme("close")).toMatchObject({
     code: 0,
@@ -186,7 +230,13 @@ test("a folder has a Session of each name, ayme list shows them, and -s picks th
   });
   expect(await ayme("close")).toMatchObject({
     code: 1,
-    stderr: `No Session is open in ${project}. Start one with ayme open.\n`,
+    stderr: `No Session named default is open in ${project}. The Sessions open there are named: one, two. Start one with ayme -s=default open.\n`,
+  });
+  // Its hint names the Session it refused for, so that run as printed it
+  // reaches that one and not the default.
+  expect(await ayme("-s=one", "detach")).toMatchObject({
+    code: 1,
+    stderr: expect.stringMatching(/with ayme -s=one close\.\n$/),
   });
   expect(await ayme("-s=one", "close")).toMatchObject({ code: 0 });
   expect(await ayme("list")).toMatchObject({

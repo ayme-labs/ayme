@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { once } from "node:events";
+import { EventEmitter, once } from "node:events";
 import {
   mkdtempSync,
   readdirSync,
@@ -14,12 +14,13 @@ import { Effect, Exit, Scope } from "effect";
 import { beforeEach, expect, it, onTestFinished, vi } from "vitest";
 
 import { scriptedBrowser } from "../../../testing";
-import { serveSession } from "./background";
+import { serveProcess, serveSession, type Opener } from "./background";
 import { askCall, askSession, listSessions, openSession } from "./commands";
 import {
   claimAfter,
   claimRecord,
   liveRecord,
+  markStarted,
   privateFolder,
   processStart,
   readClaim,
@@ -28,6 +29,7 @@ import {
   type SessionPlace,
   type SessionRecord,
 } from "./record";
+import type { SessionAnswer } from "../../session/domain";
 import { send } from "./wire";
 
 /** A folder of the test's own, removed when it ends. */
@@ -64,11 +66,11 @@ async function serve({ socket = sessionFolder().socket } = {}) {
   const scope = Effect.runSync(Scope.make());
   onTestFinished(() => Effect.runPromise(Scope.close(scope, Exit.void)));
   const served = await Effect.runPromise(
-    serveSession({ socket, request: { open: { headed: false } } }).pipe(
-      Effect.provide(layer),
-      Scope.provide(scope),
-      Effect.result
-    )
+    serveSession({
+      socket,
+      request: { open: { headed: false } },
+      name: "default",
+    }).pipe(Effect.provide(layer), Scope.provide(scope), Effect.result)
   );
   return {
     served,
@@ -135,7 +137,25 @@ async function pendingAfter(
 it("a command in a folder with no Session says so", async () => {
   expect(await askSession(place, { stop: {} })).toEqual({
     ok: false,
-    text: `No Session is open in ${projectDir}. Start one with ayme open.`,
+    text: `No Session is open in ${projectDir}. Start one with ayme -s=default open.`,
+  });
+});
+
+it("a command whose name no open Session has says so, and names the Sessions that are open", async () => {
+  const holder = await otherProcess();
+  claimRecord({ projectDir, name: "two" }, { ...holder, socket: "2.sock" });
+  claimRecord({ projectDir, name: "one" }, { ...holder, socket: "1.sock" });
+
+  expect(await askSession(place, { stop: {} })).toEqual({
+    ok: false,
+    text: `No Session named default is open in ${projectDir}. The Sessions open there are named: one, two. Start one with ayme -s=default open.`,
+  });
+  expect(
+    await askSession({ projectDir, name: "three" }, { stop: {} })
+  ).toMatchObject({
+    text: expect.stringMatching(
+      /^No Session named three is open in .*\. The Sessions open there are named: one, two\. Start one with ayme -s=three open\.$/
+    ),
   });
 });
 
@@ -185,7 +205,7 @@ it("opening a Session in a folder that has one is refused before any process sta
 
   expect(answer).toEqual({
     ok: false,
-    text: `A Session is already open in ${projectDir}, in process ${process.pid}. End it with ayme close first.`,
+    text: `A Session is already open in ${projectDir}, in process ${process.pid}. End it with ayme -s=default close first.`,
   });
 });
 
@@ -266,6 +286,30 @@ it("a command sent while the Session's process starts, before it listens, waits 
     ok: true,
     text: "The Session ended and its browser was closed.",
   });
+});
+
+it("a command waiting for a start stays with the claim it found: when another start of the name replaces it, the command is answered about the first, and the replacement goes on", async () => {
+  const first = await otherProcess();
+  const claimed = claimRecord(place, {
+    ...first,
+    socket: sessionFolder().socket,
+  });
+  if (!("generation" in claimed)) throw new Error("not claimed");
+  const answer = askSession(place, { stop: {} });
+  expect(await pendingAfter(answer, 100)).toBe(true);
+
+  // The first start ends before it listens, and a second claims the name
+  // at once.
+  releaseRecord(place, claimed.generation);
+  const { socket } = sessionFolder();
+  claimRecord(place, { ...thisProcess(), socket });
+  await serve({ socket });
+
+  expect(await answer).toEqual({
+    ok: false,
+    text: `The Session in process ${first.pid} ended before it answered.`,
+  });
+  expect(await askSession(place, { tools: {} })).toMatchObject({ ok: true });
 });
 
 it("the start is answered by its process over the IPC channel, in full, however soon the process ends", async () => {
@@ -380,7 +424,7 @@ it("--params that is not JSON, or names a file that cannot be read, is answered 
   expect(await askCall(place, "Basket.add", "{id: po1}")).toEqual({
     ok: false,
     text: expect.stringMatching(
-      /^--params is not JSON: .+\. Give the tool's input as one JSON object, as ayme tools prints its parameters\.$/
+      /^--params is not JSON: .+\. Give the tool's input as one JSON object, as ayme -s=default tools prints its parameters\.$/
     ),
   });
   expect(await askCall(place, "Basket.add", "@missing.json")).toEqual({
@@ -405,7 +449,7 @@ it("Sessions of different names run side by side in one folder, and a command re
 
   expect(await askSession(review, { stop: {} })).toEqual({
     ok: false,
-    text: `No Session named review is open in ${projectDir}. Start one with ayme -s=review open.`,
+    text: `No Session named review is open in ${projectDir}. The Sessions open there are named: default. Start one with ayme -s=review open.`,
   });
   expect(liveRecord(place)).toMatchObject({ pid: process.pid });
 });
@@ -443,10 +487,14 @@ const startsAtOnce = [
   'process.once("message", () => process.send({ ok: true, text: "started" }, () => process.disconnect())); setInterval(() => {}, 1e9)',
 ];
 
-/** Ends the process of a place's live Session when the test ends. */
+/** Ends the process of a place's live Session, if it has one, when the
+ * test ends: called before the start, so that the process is ended however
+ * the test goes. */
 function endWithTest(of: SessionPlace) {
-  const record = liveRecord(of);
-  if (record) onTestFinished(() => void process.kill(record.pid));
+  onTestFinished(() => {
+    const record = liveRecord(of);
+    if (record) process.kill(record.pid);
+  });
 }
 
 it("two starts of one name at the same moment: one starts and the other is refused", async () => {
@@ -458,8 +506,8 @@ it("two starts of one name at the same moment: one starts and the other is refus
       processCommand: startsAtOnce,
     });
 
-  const answers = await Promise.all([start(), start()]);
   endWithTest(review);
+  const answers = await Promise.all([start(), start()]);
 
   expect(answers).toEqual(
     expect.arrayContaining([
@@ -483,9 +531,9 @@ it("two starts of different names at the same moment both start", async () => {
       processCommand: startsAtOnce,
     });
 
-  const answers = await Promise.all([start("one"), start("two")]);
   endWithTest({ projectDir, name: "one" });
   endWithTest({ projectDir, name: "two" });
+  const answers = await Promise.all([start("one"), start("two")]);
 
   expect(answers).toEqual([
     { ok: true, text: "started" },
@@ -493,11 +541,24 @@ it("two starts of different names at the same moment both start", async () => {
   ]);
 });
 
+/** Claims `of` for `owner`, as a start that succeeded. */
+function startedSession(
+  of: SessionPlace,
+  owner: Omit<SessionRecord, "name">
+): void {
+  const claim = claimRecord(of, owner);
+  if (!("generation" in claim)) throw new Error("the folder has a Session");
+  markStarted(of, claim.generation);
+}
+
 it("list shows the live Sessions of the folder by name, and none of another folder's or one that ended", async () => {
   const holder = await otherProcess();
   const gone = await otherProcess();
-  claimRecord(place, { ...holder, socket: "default.sock" });
-  claimRecord({ projectDir, name: "review" }, { ...holder, socket: "r.sock" });
+  startedSession(place, { ...holder, socket: "default.sock" });
+  startedSession(
+    { projectDir, name: "review" },
+    { ...holder, socket: "r.sock" }
+  );
   claimRecord({ projectDir, name: "old" }, { ...gone, socket: "old.sock" });
   claimRecord(
     { projectDir: folder("other"), name: "elsewhere" },
@@ -514,9 +575,25 @@ it("list shows the live Sessions of the folder by name, and none of another fold
     ].join("\n"),
     data: {
       sessions: [
-        { name: "default", pid: holder.pid },
-        { name: "review", pid: holder.pid },
+        { name: "default", pid: holder.pid, starting: false },
+        { name: "review", pid: holder.pid, starting: false },
       ],
+    },
+  });
+});
+
+it("list shows a Session whose start is still under way as starting", async () => {
+  const holder = await otherProcess();
+  claimRecord(place, { ...holder, socket: "default.sock" });
+
+  expect(listSessions(projectDir)).toEqual({
+    ok: true,
+    text: [
+      `Sessions in ${projectDir}:`,
+      `default, in process ${holder.pid}, starting`,
+    ].join("\n"),
+    data: {
+      sessions: [{ name: "default", pid: holder.pid, starting: true }],
     },
   });
 });
@@ -526,6 +603,37 @@ it("list in a folder with no Session says so, and is no failure", () => {
     ok: true,
     text: `No Session is open in ${projectDir}.`,
     data: { sessions: [] },
+  });
+});
+
+it("names that differ only in case are two Sessions, also on a file system that ignores case", async () => {
+  const [upper, lower] = [await otherProcess(), await otherProcess()];
+  claimRecord({ projectDir, name: "Work" }, { ...upper, socket: "W.sock" });
+
+  expect(
+    claimRecord({ projectDir, name: "work" }, { ...lower, socket: "w.sock" })
+  ).toMatchObject({ generation: 1 });
+  expect(liveRecord({ projectDir, name: "Work" })).toMatchObject({
+    pid: upper.pid,
+  });
+  expect(liveRecord({ projectDir, name: "work" })).toMatchObject({
+    pid: lower.pid,
+  });
+});
+
+it("a session name of up to 64 characters is used, and a longer one is refused", async () => {
+  const longest = "n".repeat(64);
+  const holder = await otherProcess();
+  claimRecord({ projectDir, name: longest }, { ...holder, socket: "n.sock" });
+  expect(liveRecord({ projectDir, name: longest })).toMatchObject({
+    name: longest,
+  });
+
+  expect(
+    await askSession({ projectDir, name: `${longest}n` }, { stop: {} })
+  ).toEqual({
+    ok: false,
+    text: `"${longest}n" cannot name a Session: a name has at most 64 characters.`,
   });
 });
 
@@ -547,3 +655,82 @@ it.each(["", "two words", "../up", "a/b"])(
     ).toEqual(why);
   }
 );
+
+/** The command that starts a Session's process, as the process sees it
+ * over its IPC channel: the test sends the claim, and goes away, by hand.
+ * `told` resolves with the answer to the start, and `listedWhenTold` with
+ * what ayme list showed at that moment. */
+function scriptedOpener() {
+  const channel = new EventEmitter();
+  let tellStart!: (answer: SessionAnswer) => void;
+  const told = new Promise<SessionAnswer>((resolve) => (tellStart = resolve));
+  let listed: SessionAnswer | undefined;
+  const opener = Object.assign(channel, {
+    connected: true,
+    send: (answer: SessionAnswer, done: () => void) => {
+      listed = listSessions(projectDir);
+      tellStart(answer);
+      done();
+      return true;
+    },
+    disconnect: () => {
+      opener.connected = false;
+      channel.emit("disconnect");
+    },
+  });
+  return {
+    opener: opener as unknown as Opener,
+    told,
+    listedWhenTold: () => listed,
+    claim: (generation: number) =>
+      channel.emit("message", { claimed: generation }),
+    goAway: () => opener.disconnect(),
+  };
+}
+
+/** Claims the folder for this process, as the opening command does, and
+ * runs the Session's process on a scripted browser in this process. */
+function runProcess(opener: Opener) {
+  const { socket } = sessionFolder();
+  const claim = claimRecord(place, { ...thisProcess(), socket });
+  if (!("generation" in claim)) throw new Error("the folder has a Session");
+  const { layer, browser } = scriptedBrowser();
+  const exitCode = serveProcess(
+    { projectDir, socket, request: { open: { headed: false } } },
+    opener,
+    layer
+  );
+  return { generation: claim.generation, exitCode, browser };
+}
+
+it("a start whose opening command goes away right after sending the claim ends, and leaves no browser and no Session", async () => {
+  const { opener, claim, goAway } = scriptedOpener();
+  const { generation, exitCode, browser } = runProcess(opener);
+
+  // Before the process watches for its opener going away.
+  claim(generation);
+  goAway();
+
+  expect(await exitCode).toBe(1);
+  // The start ends before or after it asked for a browser: none is held.
+  expect(browser.asked.length === 0 || browser.released).toBe(true);
+  expect(browser.hostedWith).toEqual([]);
+  expect(liveRecord(place)).toBeUndefined();
+});
+
+it("a Session's process marks its claim started before it answers the start, and serves the Session until it ends", async () => {
+  const { opener, claim, told, listedWhenTold } = scriptedOpener();
+  const { generation, exitCode } = runProcess(opener);
+
+  claim(generation);
+
+  expect(await told).toMatchObject({ ok: true });
+  expect(listedWhenTold()).toMatchObject({
+    data: {
+      sessions: [{ name: "default", pid: process.pid, starting: false }],
+    },
+  });
+  expect(await askSession(place, { stop: {} })).toMatchObject({ ok: true });
+  expect(await exitCode).toBe(0);
+  expect(liveRecord(place)).toBeUndefined();
+});

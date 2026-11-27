@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Effect, Exit, Scope } from "effect";
-import { chromium, type BrowserContext } from "playwright-core";
+import { chromium, type BrowserContext, type Dialog } from "playwright-core";
 import { afterEach, expect, it } from "vitest";
 
 import { browser, projectPlaywright, type BrowserRequest } from "../../index";
@@ -73,6 +73,10 @@ async function running(): Promise<{
   await context.pages()[0]!.goto("data:text/html,<p>Someone's page</p>");
   return { address: `http://127.0.0.1:${port}`, context };
 }
+
+/** A monospace font installed with the system, which a tab sets as its own
+ * cursive font. */
+const OWN_FONT = process.platform === "darwin" ? "Courier" : "Monospace";
 
 const prefersDark = (page: { evaluate<T>(fn: () => T): Promise<T> }) =>
   page.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches);
@@ -199,6 +203,35 @@ it("joins without Playwright's defaults: the page keeps the browser's own colour
   expect(await prefersDark(context.pages()[0]!)).toBe(true);
 });
 
+// A record of a limit, not a promise: joining without defaults still sends
+// Playwright's own font families to each page of a headless Chromium, which
+// ayme cannot stop. A test that sees them kept means Playwright changed.
+it("joining a headless browser replaces a tab's own font families with Playwright's", async () => {
+  const { address, context } = await running();
+  const page = context.pages()[0]!;
+  // Text that a monospace font and any other set at different widths.
+  await page.setContent(
+    `<span id="cursive" style="font-family: cursive">iiiiiWWWWW</span><span id="own" style="font-family: ${OWN_FONT}">iiiiiWWWWW</span>`
+  );
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Page.setFontFamilies", {
+    fontFamilies: { cursive: OWN_FONT },
+  });
+  const widths = () =>
+    page.evaluate(() =>
+      ["cursive", "own"].map(
+        (id) => document.getElementById(id)!.getBoundingClientRect().width
+      )
+    );
+  const [cursive, own] = await widths();
+  expect(cursive).toBe(own);
+
+  await got({ join: { cdp: address } });
+
+  const [cursiveAfter, ownAfter] = await widths();
+  expect(cursiveAfter).not.toBe(ownAfter);
+});
+
 it("leaves a browser it joined open, with its page where it was, when it releases it", async () => {
   const { address, context } = await running();
   const joined = await got({ join: { cdp: address } });
@@ -212,6 +245,56 @@ it("leaves a browser it joined open, with its page where it was, when it release
   expect(await page!.evaluate(() => document.body.textContent)).toBe(
     "Someone's page"
   );
+});
+
+/** Opens a dialog in `page`, and resolves with what the page's code was
+ * answered. */
+const confirmIn = (page: { evaluate<T>(fn: () => T): Promise<T> }) =>
+  page.evaluate(() => confirm("Leave the page?"));
+
+it("joining with leaveDialogsOpen leaves a dialog a page opens after the join for the automation to answer", async () => {
+  const { address, context } = await running();
+  await got({ join: { cdp: address, leaveDialogsOpen: true } });
+  // The automation's own listener: without one, its Playwright would
+  // dismiss the dialog itself.
+  const shown = new Promise<Dialog>((resolve) =>
+    context.once("dialog", resolve)
+  );
+
+  const answered = confirmIn(context.pages()[0]!);
+  const dialog = await shown;
+  // ayme had the time to answer it, had it answered dialogs.
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  await dialog.accept();
+
+  expect(await answered).toBe(true);
+});
+
+// A record of a limit, not a promise: Playwright listens to a page as soon
+// as the join reaches it, and dismisses a dialog nobody has subscribed to,
+// but its public API gives the joining client no object to subscribe on
+// until the join completes. The join here stalls on a dialog left open in
+// one tab, so the other tab's dialog opens while it is under way.
+it("a dialog a tab opens while the join is under way is dismissed by Playwright before ayme can listen", async () => {
+  const { address, context } = await running();
+  const dialogs: Dialog[] = [];
+  context.on("dialog", (dialog) => dialogs.push(dialog));
+  const other = await context.newPage();
+  const first = confirmIn(context.pages()[0]!);
+  await expect.poll(() => dialogs.length).toBe(1);
+  let joinedYet = false;
+  const joining = got({ join: { cdp: address, leaveDialogsOpen: true } }).then(
+    () => (joinedYet = true)
+  );
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  expect(joinedYet).toBe(false);
+
+  const duringJoin = await confirmIn(other);
+
+  expect(duringJoin).toBe(false);
+  await dialogs[0]!.accept();
+  expect(await first).toBe(true);
+  await joining;
 });
 
 it("fails, naming the address, when no browser answers there", async () => {

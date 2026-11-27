@@ -15,10 +15,16 @@ export type BrowserErrorKind =
  * what was found; a caller adds what to do about it. `kind` is for code.
  */
 export class BrowserError extends Error {
+  /** Whether Playwright gave up at its timeout, which a browser that never
+   * answers makes it do, and a refused connection does not. */
+  readonly timedOut: boolean;
+
   constructor(
     readonly kind: BrowserErrorKind,
-    message: string
+    message: string,
+    { timedOut = false }: { readonly timedOut?: boolean } = {}
   ) {
     super(message);
+    this.timedOut = timedOut;
   }
 }
