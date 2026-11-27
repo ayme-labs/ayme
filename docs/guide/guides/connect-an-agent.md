@@ -189,6 +189,7 @@ ayme cannot stop everything at the dialog:
 ## Limits
 
 - Chromium only, on the Playwright versions [Set up your project](#set-up-your-project) names.
+- A Session runs your actions on your project's Playwright library, without your Playwright Test config or fixtures: an action gets no `baseURL`, test id attribute or login from them. Navigate with absolute URLs, and set up the browser state an action needs, such as a login, with your browser automation.
 - A Session turns focus emulation on for each Tab it works on, so that an action works the same on a Tab in the background. While a Session is connected, an app that reacts to being hidden does not react.
 - A Session offers your Page Object Tools only. It has no Browser Tools, Custom Tools or Goal Loop: the agent's browser automation does the rest.
 
