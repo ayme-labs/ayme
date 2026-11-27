@@ -66,19 +66,32 @@ const recordFile = (folder: string, generation: number) =>
 const endedFile = (folder: string, generation: number) =>
   join(folder, `${generation}.ended`);
 
-/** When the process `pid` started, or undefined when there is none. */
+/** Whether a process state, as the system tells it, is that of a process
+ * that has exited: a zombie, which keeps its pid until its parent reaps it,
+ * as no one does in a container whose first process reaps nothing. */
+const exited = (state: string) => /^[ZX]/.test(state);
+
+/** When the process `pid` started, or undefined when there is none, or it
+ * has exited. */
 export function processStart(pid: number): string | undefined {
   try {
     if (process.platform === "linux") {
-      // The 22nd field, counted after the name, which may hold spaces.
+      // Counted after the name, which may hold spaces: the 3rd field is the
+      // state, the 22nd when it started.
       const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
-      return stat.slice(stat.lastIndexOf(")") + 2).split(" ")[19];
+      const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+      return exited(fields[0]!) ? undefined : fields[19];
     }
-    const started = execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    return started || undefined;
+    const [state, ...started] = execFileSync(
+      "ps",
+      ["-o", "stat=,lstart=", "-p", String(pid)],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+    )
+      .trim()
+      .split(/\s+/);
+    return state === undefined || state === "" || exited(state)
+      ? undefined
+      : started.join(" ");
   } catch {
     return undefined;
   }

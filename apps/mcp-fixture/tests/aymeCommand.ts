@@ -10,11 +10,18 @@ import { test as base, expect } from "@playwright/test";
 
 export { expect };
 
-/** Whether a process with `pid` exists. */
+/** Whether a process with `pid` runs. One that has exited is not running,
+ * though it keeps its pid as a zombie until its parent reaps it: in CI's
+ * container, whose first process reaps nothing, an orphan stays one. */
 export function isAlive(pid: number): boolean {
   try {
-    process.kill(pid, 0);
-    return true;
+    const state =
+      process.platform === "linux"
+        ? readFileSync(`/proc/${pid}/stat`, "utf8").replace(/^.*\) /s, "")
+        : execFileSync("ps", ["-o", "stat=", "-p", String(pid)], {
+            encoding: "utf8",
+          }).trim();
+    return state !== "" && !/^[ZX]/.test(state);
   } catch {
     return false;
   }

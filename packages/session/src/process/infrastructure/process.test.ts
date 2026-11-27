@@ -230,6 +230,32 @@ it("a record whose process id now belongs to another process is no Session", asy
   });
 });
 
+/** A process that has exited but that its parent has not reaped: what an
+ * orphan is in a container whose first process reaps none. */
+async function zombie(): Promise<Omit<SessionRecord, "socket">> {
+  // The shell starts the child, then becomes a sleep that never waits for
+  // it.
+  const parent = spawn("sh", ["-c", "sleep 0.2 & echo $!; exec sleep 30"], {
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  onTestFinished(() => void parent.kill());
+  const [line] = (await once(parent.stdout, "data")) as [Buffer];
+  const pid = Number.parseInt(line.toString(), 10);
+  const since = processStart(pid)!;
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  return { pid, since };
+}
+
+it("a record whose process has exited, though nobody reaped it, is no Session", async () => {
+  claimRecord(projectDir, { ...(await zombie()), socket: "zombie.sock" });
+
+  expect(liveRecord(projectDir)).toBeUndefined();
+  expect(await askSession(projectDir, { stop: {} })).toMatchObject({
+    ok: false,
+    text: expect.stringContaining("No Session is open"),
+  });
+});
+
 it("a command sent while the Session's process starts, before it listens, waits for the start", async () => {
   const { socket } = sessionFolder();
   claimRecord(projectDir, { ...thisProcess(), socket });
