@@ -215,9 +215,10 @@ in-browser agents and the app's own code call on the running page.
   the Tab whose Host gave it; it lists that Tab's Page Object Tree and Page Object Tools, and
   runs a Page Object Tool on it as a Run, one Run per Tab at a time and with no time limit
   of its own.
-  An error Page Object code throws, or leaves for nobody to catch, ends only its Run
+  An error Page Object code throws, or leaves for nobody to catch, ends only its Run. `ayme inspect` opens the Session's Inspector window in the developer's default browser, outside the Session's browser: the background process serves it, and it shows the Tab the Session works on, follows it to another Tab, runs a Page Object Tool there as a Run of the Inspector in that Tab's turn, and says so when the Session ends. A Tab that shows the window is never one the Session works on
 - Technology: the `ayme` command from `@ayme-dev/cli` (`ayme open [url]`,
-  `ayme attach --cdp=<url>`, `ayme call`, `ayme detach`, `ayme close` and `ayme list`), over
+  `ayme attach --cdp=<url>`, `ayme call`, `ayme inspect`, `ayme detach`, `ayme close` and
+  `ayme list`), over
   the private `@ayme-dev/session`, bundled into it, whose flows are written with Effect. A
   command finds the background process of its folder's Session of its name through that
   name's claim in the user's cache folder and sends it one JSON line over a local socket;
@@ -228,8 +229,8 @@ in-browser agents and the app's own code call on the running page.
   Objects with esbuild and the project's own Page Object compiler,
   `@ayme-dev/ayme/compiler`, and leaves every package they import to the project's install,
   so the compiled classes and the Node host runtime share the project's one copy of
-  `@ayme-dev/ayme`
-- Evidence: verified: [packages/cli/src/session.ts](packages/cli/src/session.ts), [packages/session/src/session/application/session.ts](packages/session/src/session/application/session.ts), [packages/session/src/process/infrastructure/background.ts](packages/session/src/process/infrastructure/background.ts), [packages/session/src/process/infrastructure/commands.ts](packages/session/src/process/infrastructure/commands.ts), [packages/session/src/process/infrastructure/record.ts](packages/session/src/process/infrastructure/record.ts), [packages/session/src/playwright/infrastructure/live/stockBrowser.ts](packages/session/src/playwright/infrastructure/live/stockBrowser.ts), [packages/session/src/page-objects/infrastructure/nodeBuild.ts](packages/session/src/page-objects/infrastructure/nodeBuild.ts), [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md](docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md)
+  `@ayme-dev/ayme`. The background process also serves the Inspector window on a port of the loopback address: its page, the Inspector's external build, which the command ships beside itself, and a WebSocket per window
+- Evidence: verified: [packages/cli/src/session.ts](packages/cli/src/session.ts), [packages/session/src/session/application/session.ts](packages/session/src/session/application/session.ts), [packages/session/src/process/infrastructure/background.ts](packages/session/src/process/infrastructure/background.ts), [packages/session/src/process/infrastructure/commands.ts](packages/session/src/process/infrastructure/commands.ts), [packages/session/src/process/infrastructure/record.ts](packages/session/src/process/infrastructure/record.ts), [packages/session/src/playwright/infrastructure/live/stockBrowser.ts](packages/session/src/playwright/infrastructure/live/stockBrowser.ts), [packages/session/src/page-objects/infrastructure/nodeBuild.ts](packages/session/src/page-objects/infrastructure/nodeBuild.ts), [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [packages/session/src/process/infrastructure/inspectorWindow.ts](packages/session/src/process/infrastructure/inspectorWindow.ts), [docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md](docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md)
 
 ## Communication
 
@@ -282,6 +283,11 @@ in-browser agents and the app's own code call on the running page.
     - ← the Inspector page and script, and the answers and events relayed from the paired page
   - Evidence: verified: [packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts](packages/mcp/src/inspector/infrastructure/externalInspectorServer.ts), [packages/mcp/src/inspector/application/inspectorRelay.ts](packages/mcp/src/inspector/application/inspectorRelay.ts),
     [packages/inspector/README.md](packages/inspector/README.md)
+- **App developers → Session**
+  - Flows:
+    - → `ayme inspect`, run in the project's folder, which opens the Inspector window; then the window's requests over a WebSocket at `/inspector/ws`, from the window's own page only
+    - ← the window's address; the Inspector page and script; the answers and events of the Inspector contract of the Tab the Session works on, a new page when that Tab changes, and how the Session ended
+  - Evidence: verified: [packages/session/src/process/infrastructure/inspect.ts](packages/session/src/process/infrastructure/inspect.ts), [packages/session/src/process/infrastructure/inspectorWindow.ts](packages/session/src/process/infrastructure/inspectorWindow.ts), [packages/inspector/src/shared/infrastructure/webSocketInspectorContract.ts](packages/inspector/src/shared/infrastructure/webSocketInspectorContract.ts)
 - **App developers → Recorder**
   - Flows:
     - → `ayme capture <url>` or `ayme capture --cdp=<url>`, started in their project's
@@ -381,9 +387,9 @@ in-browser agents and the app's own code call on the running page.
       of the project's own `@ayme-dev/ayme`, through its `./internal` entry, loaded in the
       Session's process, with the selector engine registered on the project's Playwright;
       listings, each in one turn of the Tab, and Runs of Page Object Tools, as the
-      `ayme-command` Caller
+      `ayme-command` Caller; the Inspector window's calls on the Tab's Inspector contract, served through `inspectorPortOf`, a tool run among them as the `inspector` Caller
     - ← the Page Object Tree as text, each Page Object Tool with its availability, and a Run's
-      short answer or its error
+      short answer or its error; the Inspector contract's answers and events
   - Evidence: verified: [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [packages/session/src/page-objects/infrastructure/projectAyme.ts](packages/session/src/page-objects/infrastructure/projectAyme.ts)
 - **App Process runtime → ayme MCP server**
   - Flows:

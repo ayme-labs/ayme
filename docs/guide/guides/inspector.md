@@ -38,18 +38,36 @@ With Vite, a development build you serve without a dev server, such as static fi
 
 ## In a window of its own
 
-The panel can run outside the page instead of in it. Pass `inspector: { placement: "external" }`. The default placement is `"inline"`, which `true` and `{ demo }` also give. With `"external"`, the page mounts no panel. It serves the Inspector over its [Agent Connection](connect-an-agent.md) instead, and the option turns that connection on. So a coding agent's `ayme mcp` has to be running and paired with the tab:
+### On a Session: `ayme inspect`
+
+With a [Session](connect-an-agent.md) running, `ayme inspect` opens the Inspector on it in your default browser:
+
+```sh
+ayme inspect
+```
+
+The window is served by the Session's own process and opens outside the Session's browser, so it never shows up in your browser automation's snapshots or becomes the tab ayme works on. Nothing has to be in your app, and nothing more to install: the Inspector comes with `@ayme-dev/cli`.
+
+- It shows the Page Objects and the Page Object Tools of the tab the Session works on, and follows the browser to another tab.
+- Run a tool by hand from it. Runs records it as run by you from the Inspector. It is one Run like an agent's `ayme call`: a tab runs one at a time, so it waits for the Run under way there, and a call waits for it.
+- Hovering or selecting a Page Object highlights it on the Session's page. There is no picking: a Session's tools take no element ref.
+- Closing the window leaves the Session as it was. When the Session ends, the window says so; start a new one and run `ayme inspect` again.
+- `-s=<name>` opens the Inspector of the Session of that name, as for the other commands.
+- `BROWSER=none ayme inspect` only prints the window's address. Another `BROWSER` names the program that opens it.
+
+### For a page that ships ayme
+
+The panel of a page that runs ayme itself can run outside the page too. Pass `inspector: { placement: "external" }`. The default placement is `"inline"`, which `true` and `{ demo }` also give. With `"external"`, the page mounts no panel. It serves the Inspector over its [Agent Connection](connect-an-agent.md) instead, and the option turns that connection on. So a coding agent's `ayme mcp` has to be running and paired with the tab:
 
 ```ts
 useAyme({ inspector: { placement: "external" } });
 ```
 
-`ayme mcp` serves the Inspector on the server it already runs, with no other server or port. Ask the agent for `ayme_inspect`, or run `ayme inspect` in a terminal; both give the same URL, such as `http://127.0.0.1:9350/inspector`. Open it in a browser window beside the app. It shows the same lenses for the page connected to that server, follows the page across reloads, and works while `ayme mcp` runs. Highlighting and picking work across the two windows. A tool's ref field lets you pick an element by pointing at the page. The highlight and the pick happen in the app's tab.
+`ayme mcp` serves the Inspector on the server it already runs, with no other server or port. Ask the agent for `ayme_inspect`; it gives the URL, such as `http://127.0.0.1:9350/inspector`. Open it in a browser window beside the app. It shows the same lenses for the page connected to that server, follows the page across reloads, and works while `ayme mcp` runs. Highlighting and picking work across the two windows. A tool's ref field lets you pick an element by pointing at the page. The highlight and the pick happen in the app's tab.
 
 An Agent App that shows MCP Apps, such as Cursor, Claude Desktop or T3 Code, shows the same Inspector in the chat when the agent calls `ayme_inspect`; other agents get the URL. It opens about 600 pixels high, and its header has a fullscreen button where the Agent App offers fullscreen. A run from it acts on the page paired with that agent's `ayme mcp`.
 
-- Install `@ayme-dev/inspector` where `ayme` runs, as in the first section. Without it, `ayme inspect` and `ayme_inspect` say to install it.
-- With several servers running, `ayme inspect` prints a URL for each; `ayme inspect --port <port>` looks on one port only.
+- Install `@ayme-dev/inspector` where `ayme mcp` runs, as in the first section. Without it, `ayme_inspect` says to install it.
 - The page keeps no Inspector code for it; the window loads the Inspector from the server.
 - The window shows the page's host as "page", since it does not know the page's address.
 - A window with no page to show says so: pair a page with that `ayme mcp`, and start the page's session with `placement: "external"`. A page on the default inline placement serves nothing to it.

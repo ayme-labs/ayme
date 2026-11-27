@@ -3,6 +3,7 @@
 export {
   askCall,
   askSession,
+  inspectSession,
   listSessions,
   openSession,
   runSessionProcess,

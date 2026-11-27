@@ -8,18 +8,21 @@ import type {
 
 // The channel transport of the Inspector contract (ADR-0049): the same
 // contract the inline transport calls directly, over a WebSocket to the
-// `ayme mcp` server that serves this window, which relays it to the page.
-// The frames are `@ayme-dev/mcp`'s (its `inspector` slice): requests
-// `{ id, method, params }`, where `method` is a contract method, or
-// `subscribe` / `unsubscribe` for events; replies `{ id, result }` or
-// `{ id, error }`; the pushes `{ event }`; and `{ reset: true }`, which says
-// the page is a new document, whose revisions start again.
+// process that serves this window: `ayme mcp`, which relays it to the page,
+// or a Session's, which serves it from the Tab it works on. Both send the
+// same frames: requests `{ id, method, params }`, where `method` is a
+// contract method, or `subscribe` / `unsubscribe` for events; replies
+// `{ id, result }` or `{ id, error }`; the pushes `{ event }`; and
+// `{ reset: true }`, which says the page is a new document, whose revisions
+// start again. A Session's also sends `{ ended }`, what to say once it
+// ended.
 
 type Reply =
   | { id: number; result: unknown }
   | { id: number; error: string }
   | { event: InspectorEvent }
-  | { reset: true };
+  | { reset: true }
+  | { ended: string };
 
 type Waiting = { resolve(result: unknown): void; reject(error: Error): void };
 
@@ -42,6 +45,10 @@ export type WebSocketInspectorOptions = {
   retries?: number;
   /** Called once, when the server is given up for lost. */
   onLost?: () => void;
+  /** Called once, with what to say, when the server says the Session it
+   * serves ended: the transport connects no more, since no Session comes
+   * back at that address. */
+  onEnded?: (notice: string) => void;
 };
 
 /**
@@ -63,6 +70,7 @@ export function webSocketInspectorContract(
     onNewPage,
     retries,
     onLost,
+    onEnded,
   }: WebSocketInspectorOptions = {}
 ): InspectorContract {
   const observers = new Set<InspectorObserver>();
@@ -76,8 +84,7 @@ export function webSocketInspectorContract(
   // The connections in a row that did not open, and whether it gave up.
   let failed = 0;
   let lost = false;
-  const closed = () =>
-    new Error("The connection to the ayme MCP server closed.");
+  const closed = () => new Error("The connection to ayme's process closed.");
 
   const raise = <T extends { revision: number }>(value: T): T => {
     const revision = value.revision + base;
@@ -143,6 +150,10 @@ export function webSocketInspectorContract(
     socket.onmessage = ({ data }) => {
       const reply = JSON.parse(String(data)) as Reply;
       if ("reset" in reply) return reset();
+      if ("ended" in reply) {
+        lost = true;
+        return onEnded?.(reply.ended);
+      }
       if ("event" in reply) return emit(raiseEvent(reply.event));
       const pending = waiting.get(reply.id);
       waiting.delete(reply.id);
@@ -155,6 +166,7 @@ export function webSocketInspectorContract(
       waiting.clear();
       // What was not sent is not sent to the next connection either.
       outbox.length = 0;
+      if (lost) return;
       if (retries !== undefined && failed >= retries) {
         lost = true;
         return onLost?.();

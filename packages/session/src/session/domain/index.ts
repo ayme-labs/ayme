@@ -27,6 +27,17 @@ export {
   type Listing,
   type TabName,
 } from "./listing";
+export {
+  contractAnswer,
+  NO_WINDOW,
+  showsWindow,
+  windowAnswer,
+  windowEnded,
+  windowNotOpened,
+  windowOpened,
+  type InspectorEvent,
+  type InspectorRequest,
+} from "./inspector";
 export { RunError, type RunAnswer } from "./run";
 export type { SessionAnswer, SessionEnd, SessionRequest } from "./requests";
 export { brokenStart, SessionStartError } from "./startError";

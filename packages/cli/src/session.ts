@@ -1,6 +1,9 @@
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   askCall,
   askSession,
+  inspectSession,
   listSessions,
   openSession,
   runSessionProcess,
@@ -13,11 +16,26 @@ import type { Plan } from "./plan";
 import { SESSION_PROCESS } from "./readCommand";
 
 /** Whatever reaches a Session: `open` and `attach`, a request of the
- * folder's Session, a call, `list`, or the Session's background process. */
+ * folder's Session, a call, `inspect`, `list`, or the Session's background
+ * process. */
 export type SessionPlan = Extract<
   Plan,
-  { kind: "open" | "attach" | "ask" | "call" | "list" | "session process" }
+  {
+    kind:
+      | "open"
+      | "attach"
+      | "ask"
+      | "call"
+      | "inspect"
+      | "list"
+      | "session process";
+  }
 >;
+
+/** The Inspector's external build, which the build puts in an `inspector`
+ * folder beside the command's own file, as it does the recorder window. */
+export const inspectorScript = (commandFile: string): string =>
+  join(dirname(fileURLToPath(commandFile)), "inspector", "external.mjs");
 
 async function answerOf(
   plan: Exclude<SessionPlan, { kind: "session process" }>
@@ -28,6 +46,7 @@ async function answerOf(
   if (plan.kind === "ask") return askSession(place, plan.request);
   if (plan.kind === "call")
     return askCall(place, plan.tool, plan.params, plan.tab);
+  if (plan.kind === "inspect") return inspectSession(place, process.env);
   return openSession({
     ...place,
     request:
@@ -41,7 +60,11 @@ async function answerOf(
  * code. */
 export async function session(plan: SessionPlan): Promise<number> {
   if (plan.kind === "session process")
-    return runSessionProcess(JSON.parse(plan.options), version);
+    return runSessionProcess(
+      JSON.parse(plan.options),
+      version,
+      inspectorScript(import.meta.url)
+    );
   const { stream, text, exitCode } = answerReport(
     await answerOf(plan),
     plan.json

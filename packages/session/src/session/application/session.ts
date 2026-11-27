@@ -19,6 +19,7 @@ import {
   endedBeforeAnswer,
   failed,
   idOnAnotherTab,
+  type InspectorEvent,
   joinedAnswer,
   type Listing,
   NO_TAB_OPEN,
@@ -35,6 +36,7 @@ import {
   SessionStartError,
   unknownRequest,
 } from "../domain";
+import { answerInspector, inspectorEvents, withoutWindow } from "./inspector";
 import { PageObjectsBuild } from "./pageObjectsBuild";
 import {
   SessionBrowser,
@@ -48,10 +50,6 @@ import {
 /** What a Session has once it started: its browser, and its Tabs. */
 type Started = { readonly held: HeldBrowser; readonly tabs: SessionTabs };
 
-/** What a Session tells as it goes. Nothing yet: the Inspector's events
- * join it. */
-export type SessionEvent = never;
-
 /** One running ayme connected to one browser. */
 export interface Session {
   /** The answer to the command that started the Session, once its start
@@ -60,7 +58,9 @@ export interface Session {
   /** Answers one request, after the start: a request that arrives while
    * the Session starts waits for it. Always answers. */
   readonly ask: (request: SessionRequest) => Effect.Effect<SessionAnswer>;
-  readonly events: Stream.Stream<SessionEvent>;
+  /** What it tells its Inspector windows, for one window from when it
+   * starts listening. */
+  readonly events: Stream.Stream<InspectorEvent>;
   readonly ended: Effect.Effect<SessionEnd>;
 }
 
@@ -69,11 +69,13 @@ export interface Session {
  * running the project's Page Objects there once they are built. It returns
  * at once, while the Session starts, and the Session ends at the latest
  * when the scope closes. Its answers name it in the commands they tell the
- * user to run.
+ * user to run. `inspector` is where its process serves its Inspector
+ * window, when it serves one.
  */
 export const openSession = (
   request: SessionBrowserRequest,
-  name: string
+  name: string,
+  { inspector }: { readonly inspector?: string } = {}
 ): Effect.Effect<
   Session,
   never,
@@ -100,7 +102,11 @@ export const openSession = (
         held.host(built).pipe(
           Effect.map((tabs): Started => ({
             held,
-            tabs: sessionTabs(tabs, name, Deferred.isDone(ending)),
+            tabs: sessionTabs(
+              withoutWindow(tabs, inspector),
+              name,
+              Deferred.isDone(ending)
+            ),
           }))
         )
       ),
@@ -191,6 +197,12 @@ export const openSession = (
           Effect.catch((error) => Effect.succeed(runFailed(error)))
         );
       }
+      if ("inspector" in request)
+        return answerInspector(request.inspector, {
+          window: inspector,
+          name,
+          chosen: started.tabs.chosen(undefined),
+        });
       return Effect.succeed(unknownRequest);
     };
 
@@ -228,7 +240,13 @@ export const openSession = (
           );
         return afterStart((started) => untilEnd(answerTo(request, started)));
       },
-      events: Stream.never.pipe(Stream.interruptWhen(Deferred.await(ended))),
+      events: inspectorEvents(
+        Deferred.await(start).pipe(
+          Effect.flatMap(({ tabs }) => tabs.chosen(undefined))
+        ),
+        Deferred.await(ending),
+        name
+      ),
       ended: Deferred.await(ended),
     };
   });
@@ -332,6 +350,14 @@ function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
   return {
     listing: inTurn(hosted.listing),
     call: (tool, input) => inTurn(hosted.call(tool, input)),
+    // A Run from the Inspector window takes the turn; its reads do not.
+    inspector: {
+      ...hosted.inspector,
+      request: (method, params) =>
+        method === "runTool"
+          ? inTurn(hosted.inspector.request(method, params))
+          : hosted.inspector.request(method, params),
+    },
   };
 }
 
