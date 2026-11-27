@@ -113,7 +113,7 @@ type Hosting = {
 /** Makes the Session the Host of `page`, with focus emulation on, telling
  * `given` each Page Object Id its Host gives out. The Node Host's start sets
  * up the page's binding and its in-page helper without waiting for either,
- * so it reads nothing of the page. */
+ * so it reads nothing of the page. The Host stops when the page closes. */
 const hostOn =
   (
     { entry, classes, ids, selectors }: Hosting,
@@ -136,7 +136,9 @@ const hostOn =
           { page, pageObjects: classes, pageObjectIds: { next } },
           selectors
         );
-        await ayme.start();
+        const stop = await ayme.start();
+        if (page.isClosed()) stop();
+        else page.once("close", stop);
         return hostedTab(entry.pageObjectCallerOf(ayme, CALLER));
       },
       catch: (cause) =>

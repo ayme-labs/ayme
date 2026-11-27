@@ -789,3 +789,28 @@ it("a read of the tab list made before a Tab opened lets go of none of it: the T
   expect(await session.ask(add("po1"))).toMatchObject({ ok: true });
   expect([browser.runs, other.runs]).toEqual([[], [add("po1").call]]);
 });
+
+it("a command waiting on a Tab that closes is answered that the tab was closed, while another Tab keeps the Session going", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  const other = browser.openTab();
+  other.answerRuns(() => new Promise(() => {}));
+  const call = session.ask({ call: { tool: "Basket.hold", input: {} } });
+  expect(await pending(call)).toBe(true);
+  other.holdReads();
+  const listing = session.ask({ pageObjects: { tab: "about:blank" } });
+  expect(await pending(listing)).toBe(true);
+
+  other.close();
+
+  const closed = {
+    ok: false,
+    text: "The tab was closed before ayme answered this command.",
+  };
+  expect(await call).toEqual(closed);
+  expect(await listing).toEqual(closed);
+  expect(await session.ask({ pageObjects: {} })).toMatchObject({
+    ok: true,
+    text: expect.stringMatching(/^Tab: Shop \(/),
+  });
+});

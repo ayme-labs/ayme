@@ -15,6 +15,7 @@ export {
   paramsNotJson,
   paramsUnreadable,
   runFailed,
+  TAB_CLOSED,
   toolsAnswer,
   unknownRequest,
 } from "./answers";

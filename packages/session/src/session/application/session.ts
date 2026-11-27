@@ -26,6 +26,7 @@ import {
   pageObjectsAnswer,
   RunError,
   runFailed,
+  TAB_CLOSED,
   TabReadError,
   toolsAnswer,
   type SessionAnswer,
@@ -277,6 +278,7 @@ function sessionTabs(
         tab
           .host((id) => owners.set(id, tab))
           .pipe(
+            Effect.map((hosted) => untilClosed(hosted, tab.closed)),
             Effect.tap(() =>
               tab.closed.pipe(Effect.andThen(retire(tab)), Effect.forkIn(scope))
             )
@@ -316,6 +318,22 @@ function sessionTabs(
           );
         })
       ),
+  };
+}
+
+/** `hosted`, whose listings and Runs are answered once its Tab is
+ * `closed`: an action inside a wait of its own may go on until that wait
+ * ends. */
+function untilClosed(
+  hosted: HostedTab,
+  closed: Effect.Effect<void>
+): HostedTab {
+  const orClosed = <A, E>(work: Effect.Effect<A, E>, error: E) =>
+    Effect.raceFirst(work, closed.pipe(Effect.andThen(Effect.fail(error))));
+  return {
+    listing: orClosed(hosted.listing, new TabReadError(TAB_CLOSED)),
+    call: (tool, input) =>
+      orClosed(hosted.call(tool, input), new RunError(TAB_CLOSED)),
   };
 }
 

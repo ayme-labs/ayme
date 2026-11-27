@@ -193,6 +193,11 @@ export const paramsUnreadable = (file: string, why: string): SessionAnswer =>
 export const NO_TAB_OPEN =
   "No tab is open in the Session's browser. Open one with your browser automation, then run ayme again.";
 
+/** Why a command waiting on a Tab was answered without what it asked for:
+ * the Tab closed meanwhile. */
+export const TAB_CLOSED =
+  "The tab was closed before ayme answered this command.";
+
 /** Why `--tab` named no open Tab of the Session named `name`: the URLs the
  * open Tabs show. */
 export const noTabShows = (
