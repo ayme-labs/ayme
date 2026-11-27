@@ -5,11 +5,19 @@ export class RunCard {
   }
 }
 
+export class DetailPane {
+  get card() {
+    return new RunCard();
+  }
+}
+
 export class Inspector {
-  readonly title = { hover: async () => {} };
+  get detail() {
+    return new DetailPane();
+  }
 
   async tool(name: string) {
-    return name ? new RunCard() : new RunCard();
+    return name;
   }
 
   async collapse() {}

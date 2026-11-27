@@ -1,5 +1,5 @@
-// check-goal-mirror against goal-mirror-fixture/: the pair passes, and each
-// edit below, made in memory to one side, fails for its own reason.
+// check-goal-mirror against goal-mirror-fixture/: the pair, one action to one
+// goal, passes, and each edit below, made in memory, fails for its own reason.
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -27,146 +27,219 @@ function problemsWith(...edits) {
   return check({ root, read }).problems.join("\n");
 }
 
+const open = 'await inspector.tool("add");';
+const openGoal =
+  'await agent.act("open the {tool} tool", { params: { tool: "add" } });';
+const runGoal =
+  'await agent.act("run it with {text}", { params: { text: "Milk" } });';
+const assertion = 'expect(expected).toEqual(["Milk"]);';
+const confirm = "await confirmGoalRecordings(browser);";
+const both = (from, to) => [
+  [twin, from, to],
+  [goal, from, to],
+];
+const STATEMENT = /expected the twin's statement/;
+const GOAL_FOR_NOTHING = /a goal stands only for a Page Object action/;
+const ONE_GOAL = /one goal, `await agent.act/;
+const FIXTURES = /the twin's fixtures, plus `agent`/;
+const LAST = /its last statement must be await confirmGoalRecordings/;
+
 const rejected = [
   [
     "a registrar differs",
-    [goal, 'testIn("inline")', 'testIn("external")'],
-    /expected the twin's statement/,
+    [[goal, 'testIn("inline")', 'testIn("external")']],
+    STATEMENT,
   ],
   [
-    "a test is skipped on one side",
-    [goal, 'test("adds', 'test.skip("adds'],
-    /expected the twin's statement/,
+    "a test is skipped in one arm",
+    [[goal, 'test("adds', 'test.skip("adds']],
+    STATEMENT,
+  ],
+  [
+    "a declaration's value differs",
+    [[goal, '["Milk"];', '["Bread"];']],
+    STATEMENT,
+  ],
+  [
+    "an assertion differs",
+    [[goal, assertion, 'expect(expected).toContain("Milk");']],
+    STATEMENT,
+  ],
+  ["an assertion is dropped", [[goal, assertion, ""]], STATEMENT],
+  [
+    "a declaration hides an action in one arm",
+    [
+      [
+        twin,
+        assertion,
+        `const collapsed = await inspector.collapse();\n  ${assertion}`,
+      ],
+      [goal, "{ browser, agent }", "{ browser, agent, inspector }"],
+    ],
+    STATEMENT,
+  ],
+  [
+    "a test without an action is left out of the goal file",
+    [
+      [
+        twin,
+        confirm + "\n});",
+        `${confirm}\n});\n\ntest("reads", async ({ browser }) => {\n  ${confirm}\n});`,
+      ],
+    ],
+    /expected the twin's statement\n {2}twin: test\("reads"/,
   ],
   [
     "an action gains a condition",
-    [
-      twin,
-      'await card.run("Milk");',
-      'if (expected.length) await card.run("Milk");',
-    ],
-    /goals stand only for Page Object actions/,
+    [[twin, open, `if (expected.length) ${open}`]],
+    GOAL_FOR_NOTHING,
   ],
   [
     "an assertion shares a statement with an action",
     [
-      twin,
-      'await card.run("Milk");',
-      'await card.run("Milk"), expect(1).toBe(1);',
+      [twin, open, open.replace(";", ", expect(1).toBe(1);")],
+      [goal, "{ browser, agent }", "{ browser, agent, inspector }"],
     ],
-    /goals stand only for Page Object actions/,
+    GOAL_FOR_NOTHING,
   ],
   [
-    "a declaration's value differs",
-    [goal, 'const expected = ["Milk"];', 'const expected = ["Bread"];'],
-    /expected the twin's statement/,
+    "an extra goal",
+    [[goal, confirm, `await agent.act("collapse the panel");\n  ${confirm}`]],
+    GOAL_FOR_NOTHING,
+  ],
+  [
+    "an action split into two goals",
+    [[goal, runGoal, `${runGoal}\n  await agent.act("run it again");`]],
+    GOAL_FOR_NOTHING,
+  ],
+  [
+    "two actions folded into one goal",
+    [
+      [
+        goal,
+        `${openGoal}\n  ${runGoal}`,
+        'await agent.act("open add and run it");',
+      ],
+    ],
+    ONE_GOAL,
+  ],
+  [
+    "an action kept as is in the goal file",
+    [
+      [goal, "{ browser, agent }", "{ browser, agent, inspector }"],
+      [goal, openGoal, open],
+    ],
+    ONE_GOAL,
+  ],
+  [
+    "an empty goal",
+    [[goal, openGoal, 'await agent.act("");']],
+    /one non-empty string literal/,
+  ],
+  [
+    "a goal built at run time",
+    [[goal, openGoal, "await agent.act(`open the ${expected[0]} tool`);"]],
+    /one non-empty string literal/,
   ],
   [
     "a panel call inside a goal's arguments",
-    [goal, "{ browser, agent }", "{ browser, agent, inspector }"],
     [
-      goal,
-      'agent.act("run it with Milk")',
-      'agent.act((await inspector.collapse(), "run it with Milk"))',
+      [goal, "{ browser, agent }", "{ browser, agent, inspector }"],
+      [
+        goal,
+        '"open the {tool} tool"',
+        '(await inspector.collapse(), "open the {tool} tool")',
+      ],
     ],
-    /goals stand only for Page Object actions|expected the twin's statement/,
+    /one non-empty string literal/,
   ],
   [
-    "an extra goal outside an action run",
-    [
-      goal,
-      "  await confirmGoalRecordings(browser);",
-      '  await agent.act("collapse the panel");\n  await confirmGoalRecordings(browser);',
-    ],
-    /goals stand only for Page Object actions/,
+    "a call in a goal's options",
+    [[goal, '{ tool: "add" }', "{ tool: String(expected) }"]],
+    /object literal of plain values/,
   ],
   [
-    "a Page Object action kept as is in the goal file",
-    [goal, "{ browser, agent }", "{ browser, agent, inspector }"],
-    [
-      goal,
-      '  await agent.act("open the add tool");\n  await agent.act("run it with Milk");',
-      '  const card = await inspector.tool("add");\n  await card.run("Milk");',
-    ],
-    /a goal for this Page Object action/,
+    "an optional goal call",
+    [[goal, "agent.act(", "agent.act?.("]],
+    /is not `await agent.act/,
   ],
   [
-    "a goal-side declaration that acts",
-    [goal, "{ browser, agent }", "{ browser, agent, inspector }"],
+    "a goal on an agent that is not its test's fixture",
     [
-      goal,
-      "  expect(expected)",
-      "  const sneak = (() => void inspector.collapse())();\n  expect(expected)",
+      ...both(
+        "const test = ",
+        "const agent = { act: async (goal: string, options?: object) => [goal, options] };\nconst test = "
+      ),
+      [goal, "{ browser, agent }", "{ browser }"],
     ],
-    /expected the twin's statement/,
+    /is not on its test's own `agent` fixture/,
+  ],
+  [
+    "a goal on a helper's own agent",
+    [
+      ...both(
+        confirm,
+        `const shared = async (agent: { act: (goal: string) => Promise<void> }) => agent;\n  ${confirm}`
+      ),
+      [
+        goal,
+        runGoal,
+        'await (async (agent: { act: (goal: string) => Promise<void> }) => {\n    await agent.act("run it");\n  })(agent);',
+      ],
+    ],
+    /expected one goal|is not on its test's own `agent` fixture/,
+  ],
+  [
+    "a fixture the twin lacks",
+    [[goal, "{ browser, agent }", "{ browser, agent, page }"]],
+    FIXTURES,
+  ],
+  [
+    "a fixture dropped though more than actions read it",
+    [...both(assertion, `${assertion}\n  expect(inspector).toBeTruthy();`)],
+    FIXTURES,
+  ],
+  [
+    "a goal-file import its twin lacks",
+    [[goal, "{ expect }", "{ test as expect }"]],
+    /imports .* which its twin does not/,
+  ],
+  [
+    "a dropped import more than actions read",
+    [[goal, 'import { expect } from "e2e";', ""]],
+    /lacks its twin's import/,
   ],
   [
     "the helper is not last",
-    [
-      goal,
-      '  expect(expected).toEqual(["Milk"]);\n  await confirmGoalRecordings(browser);',
-      '  await confirmGoalRecordings(browser);\n  expect(expected).toEqual(["Milk"]);',
-    ],
-    /last statement must be await confirmGoalRecordings/,
+    [...both(`${assertion}\n  ${confirm}`, `${confirm}\n  ${assertion}`)],
+    LAST,
+  ],
+  [
+    "a return before the helper",
+    [...both(confirm, `return;\n  ${confirm}`)],
+    LAST,
   ],
   [
     "the helper is not the fixtures' export",
-    ...[twin, goal].flatMap((file) => [
-      [file, "confirmGoalRecordings, testIn", "testIn"],
-      [
-        file,
-        "const test = ",
-        "const confirmGoalRecordings = async (browser: object) => browser;\nconst test = ",
-      ],
-    ]),
-    /last statement must be await confirmGoalRecordings/,
-  ],
-  [
-    "an import does not resolve",
-    [goal, '"../e2e/fixtures"', '"../e2e/fixturez"'],
-    /does not resolve/,
-  ],
-  [
-    "an imported name does not resolve",
     [
-      goal,
-      'import { expect } from "e2e";',
-      'import { expectation as expect } from "e2e";',
+      ...both("confirmGoalRecordings, testIn", "testIn"),
+      ...both(
+        "const test = ",
+        "const confirmGoalRecordings = async (browser: object) => browser;\nconst test = "
+      ),
     ],
-    /does not resolve/,
+    /confirmGoalRecordings must be the one \.\.\/e2e\/fixtures exports/,
   ],
-].map(([name, ...rest]) => [name, rest.slice(0, -1), rest.at(-1)]);
+];
 
-test("the fixture pair mirrors", () => {
+test("the pair, one action to one goal, mirrors", () => {
   assert.equal(problemsWith(), "");
 });
 
 for (const [name, edits, reason] of rejected)
-  test(`rejects: ${name}`, () => {
+  test(`rejects ${name}`, () => {
     assert.match(problemsWith(...edits), reason);
   });
-
-test("accepts a parenthesized goal", () => {
-  assert.equal(
-    problemsWith([
-      goal,
-      'await agent.act("run it with Milk")',
-      'await (agent.act("run it with Milk"))',
-    ]),
-    ""
-  );
-});
-
-test("accepts a renamed inspector fixture on both sides", () => {
-  assert.equal(
-    problemsWith(
-      [twin, "{ browser, inspector }", "{ browser, inspector: panel }"],
-      [twin, "inspector.tool", "panel.tool"],
-      [goal, "{ browser, agent }", "{ browser, agent, inspector: panel }"]
-    ),
-    ""
-  );
-});
 
 test("fails with no goal files", () => {
   const empty = mkdtempSync(join(tmpdir(), "goal-mirror-"));

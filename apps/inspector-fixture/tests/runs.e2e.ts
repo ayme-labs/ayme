@@ -69,7 +69,8 @@ for (const placement of placements) {
       browser,
       inspector,
     }) => {
-      await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+      await inspector.tool("ListPage.addItem");
+      await inspector.detail.runCard().run({ text: "Milk" });
 
       const run = inspector.runs.latest("ListPage.addItem");
       await expect.poll(() => run.status()).toBe("Succeeded");
@@ -162,7 +163,8 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+      await inspector.tool("ListPage.addItem");
+      await inspector.detail.runCard().run({ text: "Milk" });
       const run = inspector.runs.latest("ListPage.addItem");
       await expect.poll(() => run.status()).toBe("Succeeded");
 
@@ -189,7 +191,9 @@ for (const placement of placements) {
       // The Add item button's ref, as snapshot gives it.
       const ref = await appView.ref('button "Add item"');
 
-      await (await inspector.tool("mark_element")).run({ ref });
+      await inspector.tool("mark_element");
+
+      await inspector.detail.runCard().run({ ref });
 
       await expect(await listPage.addItemButton.front()).toHaveAttribute(
         "data-marked"
@@ -211,14 +215,14 @@ for (const placement of placements) {
     }) => {
       await listPage.addItem("Milk");
       await listPage.addItem("Eggs");
-      const mark = await inspector.tool("ListItem.mark");
+      await inspector.tool("ListItem.mark");
 
-      await mark.pickItem("Eggs");
-      await mark.jsonSwitch.click();
-      await mark.formSwitch.click();
+      await inspector.detail.runCard().pickItem("Eggs");
+      await inspector.detail.runCard().jsonSwitch.click();
+      await inspector.detail.runCard().formSwitch.click();
       // "done" is the field's first choice, which it shows before any pick.
-      await mark.field("state").selectOption("todo");
-      await mark.runButton.click();
+      await inspector.detail.runCard().field("state").selectOption("todo");
+      await inspector.detail.runCard().runButton.click();
 
       const item = (text: string) =>
         listPage.items.within((items) => items.filter({ hasText: text }));
@@ -237,7 +241,8 @@ for (const placement of placements) {
       browser,
       inspector,
     }) => {
-      await (await inspector.tool("ListPage.countItems")).runButton.click();
+      await inspector.tool("ListPage.countItems");
+      await inspector.detail.runCard().runButton.click();
       await inspector.navigator.item("ListPage.addItem").click();
       await expect(await inspector.runs.runs.front()).toHaveCount(0);
 
@@ -262,8 +267,10 @@ for (const placement of placements) {
     }) => {
       await listPage.addItem("Milk");
 
-      const pursueGoal = await inspector.tool("goal");
-      await pursueGoal.run({ goal: "Empty the list", maxSteps: 3 });
+      await inspector.tool("goal");
+      await inspector.detail
+        .runCard()
+        .run({ goal: "Empty the list", maxSteps: 3 });
 
       const run = inspector.runs.latest("goal");
       await expect.poll(() => run.status()).toBe("Succeeded");
@@ -285,7 +292,8 @@ for (const placement of placements) {
       appView,
       inspector,
     }) => {
-      await (await inspector.tool("ListPage.countItems")).runButton.click();
+      await inspector.tool("ListPage.countItems");
+      await inspector.detail.runCard().runButton.click();
       await inspector.runs.showAll();
       await expect(await inspector.runs.runs.front()).toHaveCount(1);
 
@@ -293,7 +301,8 @@ for (const placement of placements) {
       await expect(await inspector.runs.runs.front()).toHaveCount(0);
       // Another tool, so the run Runs shows next is told apart from the
       // cleared one.
-      await (await inspector.tool("page_objects")).runButton.click();
+      await inspector.tool("page_objects");
+      await inspector.detail.runCard().runButton.click();
 
       await expect
         .poll(async () => (await appView.runs()).map(({ tool }) => tool))
@@ -337,7 +346,8 @@ for (const placement of placements) {
       await listPage.addItem("Milk");
       // Something else first, so a copy that never lands is told apart.
       await clipboard.write("not copied");
-      await (await inspector.tool("ListPage.countItems")).runButton.click();
+      await inspector.tool("ListPage.countItems");
+      await inspector.detail.runCard().runButton.click();
       const run = inspector.runs.latest("ListPage.countItems");
       await expect.poll(() => run.status()).toBe("Succeeded");
       const logged = (await appView.runs()).at(-1)!;
@@ -385,13 +395,12 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      const card = await inspector.tool("fill_form");
-      const form = card.fillForm;
+      await inspector.tool("fill_form");
 
-      await form.set("New item", "Milk");
-      await form.set("Urgent", true);
-      await form.undo("New item");
-      await card.runButton.click();
+      await inspector.detail.runCard().fillForm.set("New item", "Milk");
+      await inspector.detail.runCard().fillForm.set("Urgent", true);
+      await inspector.detail.runCard().fillForm.undo("New item");
+      await inspector.detail.runCard().runButton.click();
 
       const run = inspector.runs.latest("fill_form");
       await expect.poll(() => run.status()).toBe("Succeeded");
@@ -484,8 +493,8 @@ for (const placement of placements) {
           text: "Milk",
         });
 
-        const addItem = await inspector.tool("ListPage.addItem");
-        await addItem.run({ text: "Milk" });
+        await inspector.tool("ListPage.addItem");
+        await inspector.detail.runCard().run({ text: "Milk" });
 
         const run = inspector.runs.latest("ListPage.addItem");
         // The newest run of the tool is the agent's until the panel's arrives.
@@ -520,9 +529,8 @@ for (const placement of placements) {
             "ListPage.addItem",
             { text: "Milk" }
           );
-          await (
-            await inspector.tool("ListPage.addItem")
-          ).run({ text: "Milk" });
+          await inspector.tool("ListPage.addItem");
+          await inspector.detail.runCard().run({ text: "Milk" });
 
           const run = inspector.runs.latest("ListPage.addItem");
           // The newest run of the tool is the agent's until the panel's arrives.
@@ -545,7 +553,8 @@ for (const placement of placements) {
     unpublished(
       "a Page Object tool runs from the panel",
       async ({ browser, inspector, listPage }) => {
-        await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+        await inspector.tool("ListPage.addItem");
+        await inspector.detail.runCard().run({ text: "Milk" });
 
         await expect(
           await listPage.items
@@ -564,8 +573,8 @@ for (const placement of placements) {
       "a Custom Tool runs from the panel",
       async ({ browser, inspector, listPage }) => {
         // The Add item button's ref, from snapshot run in the panel.
-        const getPageContext = await inspector.tool("snapshot");
-        await getPageContext.runButton.click();
+        await inspector.tool("snapshot");
+        await inspector.detail.runCard().runButton.click();
         const run = inspector.runs.latest("snapshot");
         await expect.poll(() => run.status()).toBe("Succeeded");
         await run.resultToggle.click();
@@ -573,7 +582,9 @@ for (const placement of placements) {
         const ref = /(e\d+) button "Add item"/.exec(structure)?.[1];
         if (!ref) throw new Error(`No Add item button in:\n${structure}`);
 
-        await (await inspector.tool("mark_element")).run({ ref });
+        await inspector.tool("mark_element");
+
+        await inspector.detail.runCard().run({ ref });
 
         await expect(await listPage.addItemButton.front()).toHaveAttribute(
           "data-marked"
@@ -589,8 +600,8 @@ for (const placement of placements) {
     unpublished(
       "snapshot runs from the panel and shows its result",
       async ({ browser, inspector }) => {
-        const getPageContext = await inspector.tool("snapshot");
-        await getPageContext.runButton.click();
+        await inspector.tool("snapshot");
+        await inspector.detail.runCard().runButton.click();
 
         const run = inspector.runs.latest("snapshot");
         await expect.poll(() => run.status()).toBe("Succeeded");

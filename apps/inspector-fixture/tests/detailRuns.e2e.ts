@@ -24,9 +24,8 @@ for (const placement of placements) {
     }) => {
       await inspector.navigator.showLens("Structure");
       await inspector.structure.nodeOf("ListPage.newItemInput").click();
-      const fill = inspector.detail.node.runCard("fill");
 
-      await fill.run({ text: "Bread" });
+      await inspector.detail.node.runCard("fill").run({ text: "Bread" });
 
       await expect(await listPage.newItemInput.front()).toHaveValue("Bread");
       const run = inspector.runs.latest("fill");

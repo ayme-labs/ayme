@@ -34,7 +34,6 @@ for (const placement of placements) {
 
       // The list can still be settling under a resting pointer, which then
       // hovers another row: hover again until it is this one.
-      // For up to 30 s.
       await expect
         .poll(
           async () => {

@@ -6,8 +6,8 @@ const test = testIn("inline");
 
 test("adds an item", async ({ browser, inspector }) => {
   const expected = ["Milk"];
-  const card = await inspector.tool("add");
-  await card.run("Milk");
+  await inspector.tool("add");
+  await inspector.detail.card.run("Milk");
   expect(expected).toEqual(["Milk"]);
   await confirmGoalRecordings(browser);
 });
