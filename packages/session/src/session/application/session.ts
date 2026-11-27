@@ -6,6 +6,7 @@ import {
   Fiber,
   Option,
   Scope,
+  Semaphore,
   Stream,
 } from "effect";
 
@@ -99,7 +100,7 @@ export const openSession = (
         held.host(built).pipe(
           Effect.map((tabs): Started => ({
             held,
-            tabs: sessionTabs(tabs, name),
+            tabs: sessionTabs(tabs, name, Deferred.isDone(ending)),
           }))
         )
       ),
@@ -252,8 +253,13 @@ type SessionTabs = {
 };
 
 /** The Tabs of `browser`, each hosted once, the first time the Session
- * named `name` works on it, and the Page Object Ids each Tab's Host gave. */
-function sessionTabs(browser: BrowserTabs, name: string): SessionTabs {
+ * named `name` works on it, and the Page Object Ids each Tab's Host gave.
+ * None starts work once `ending`. */
+function sessionTabs(
+  browser: BrowserTabs,
+  name: string,
+  ending: Effect.Effect<boolean>
+): SessionTabs {
   const hosts = new Map<BrowserTab, Effect.Effect<HostedTab, TabReadError>>();
   // The Tab each id was given on. An id of a closed Tab is gone with it.
   const owners = new Map<string, BrowserTab>();
@@ -268,7 +274,9 @@ function sessionTabs(browser: BrowserTabs, name: string): SessionTabs {
       // Cached at once, so two requests that arrive together host the Tab
       // once; a failed hosting is tried again by the next request.
       const hosting = yield* Effect.cached(
-        tab.host((id) => owners.set(id, tab))
+        tab
+          .host((id) => owners.set(id, tab))
+          .pipe(Effect.map((hosted) => inTurns(hosted, ending)))
       );
       hosts.set(tab, hosting);
       return yield* hosting.pipe(
@@ -305,6 +313,25 @@ function sessionTabs(browser: BrowserTabs, name: string): SessionTabs {
           );
         })
       ),
+  };
+}
+
+/**
+ * `hosted`, whose listings and Runs also wait for the Tab's turn in the
+ * Session, where the Session's end stops one still waiting: the Host's own
+ * wait cannot be stopped, and a joined browser stays open. One whose turn
+ * comes once the Session is `ending` never starts; the end answers it.
+ */
+function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
+  const turn = Semaphore.makeUnsafe(1);
+  const inTurn = <A, E>(work: Effect.Effect<A, E>) =>
+    Semaphore.withPermit(
+      turn,
+      ending.pipe(Effect.flatMap((ends) => (ends ? Effect.never : work)))
+    );
+  return {
+    listing: inTurn(hosted.listing),
+    call: (tool, input) => inTurn(hosted.call(tool, input)),
   };
 }
 
