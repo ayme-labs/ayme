@@ -74,12 +74,12 @@ An Agent App that shows MCP Apps, such as Cursor, Claude Desktop or T3 Code, sho
 
 Then ask the agent to show you the Inspector. It calls `ayme_inspect`, and the Agent App shows the Inspector of the Session under that call, about 600 pixels high, with a fullscreen button where the Agent App offers fullscreen.
 
-- `ayme_inspect` is the only tool `ayme mcp` offers, and it reads nothing from the page and acts on nothing. The agent reaches your Page Object Tools through `ayme page-objects`, `ayme tools` and `ayme call` alone.
+- `ayme_inspect` is the only tool `ayme mcp` offers, and it reads nothing from the page and acts on nothing. The agent reaches your Page Object Tools through `ayme page-objects`, `ayme tools` and `ayme call`.
 - The Inspector in the chat works as the window of `ayme inspect`: the same lenses and Tab, and a tool you run from it is a Run by you from the Inspector.
 - `ayme mcp` can start before any Session: each call of `ayme_inspect` looks for the Session then. With none open, the call and the Inspector in the chat say how to start one; start it, and ask for the Inspector again.
 - `-s=<name>` in the registration's `args`, or `AYME_SESSION` in its `env`, picks the Session of that name.
 - When the Session ends, the Inspector in the chat says so and connects no more. Start a Session and ask for the Inspector again.
-- The page the Agent App shows holds the key that lets it reach the Session, so whoever can read that page can use the Session's Inspector until the Session ends.
+- The page the Agent App shows holds the key to the Session's Inspector, so whoever can read that page can use the Inspector until the Session ends. An Agent App that lets its model read MCP resources, or records them in a trace, gives the agent that key, and an agent that can also open local network connections could then run your Page Object Tools as Runs listed as run by you from the Inspector.
 - An Agent App that does not show MCP Apps gets only a sentence from `ayme_inspect`. Run `ayme inspect` for a window.
 
 ### For a page that ships ayme
