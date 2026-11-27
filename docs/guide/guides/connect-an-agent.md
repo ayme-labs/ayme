@@ -18,10 +18,10 @@ The agent's browser automation keeps doing everything else: snapshots, clicks ou
 
 ## Set up your project
 
-1. Install the `ayme` command, `@ayme-dev/cli`, and Playwright as dev dependencies. The command needs Playwright 1.62 or newer:
+1. Install the `ayme` command, `@ayme-dev/cli`, and Playwright as dev dependencies. The command supports Playwright 1.62 to 1.64, and the quotes keep npm to that range:
 
    ```sh
-   npm install -D @ayme-dev/cli @playwright/test
+   npm install -D @ayme-dev/cli "@playwright/test@>=1.62 <1.65"
    ```
 
    The command runs your Page Objects with your project's own `@ayme-dev/ayme` and Playwright, and needs `@ayme-dev/ayme` at exactly its own version. When a version does not fit, it does not start, and says which version to install.
@@ -155,7 +155,7 @@ Each command prints plain text, or JSON with `--json`. An error goes to standard
 
 ## Limits
 
-- Chromium only, on Playwright 1.62 or newer.
+- Chromium only, on the Playwright versions [Set up your project](#set-up-your-project) names.
 - A Session turns focus emulation on for each tab it works on, so that an action works the same on a tab in the background. While a Session is connected, an app that reacts to being hidden does not react.
 - A Session offers your Page Object Tools only. It has no Browser Tools, Custom Tools or Goal Loop: the agent's browser automation does the rest.
 
