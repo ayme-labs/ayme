@@ -17,9 +17,6 @@
    [Browser automation tools](browser-automation-tools.md) says, then invoke
    the exposed action with `ayme call`.
 
-When installing the skill elsewhere, keep the references directory and these
-links.
-
 Finish by reporting the packages and wiring changed, the action invoked, and
 its observed effect. If browser or client access is unavailable, distinguish
 successful build checks from the invocation still outstanding.

@@ -56,7 +56,7 @@ A Page Object of a class with a [Page Object Root](../reference/ayme.md#page-obj
 
 A Page Object Tool of such a class takes the id as `id`, for a page, a single child and a collection item alike: `ProjectRow.archive({ id: "po2" })`. An `id` that is not written `po<n>`, a Structural Ref included, is refused with a `ToolInputError`, as is a call that gives `ref`. An id whose Page Object is no longer on the page fails with a `RefResolutionError`: `Cannot call ProjectRow.archive on Page Object "po2": it is not on the page.` So does the id of a Page Object of another class: `it is not a ProjectRow on the page`.
 
-An agent reads the ids without the whole page state from `page_objects`, which answers the Page Objects on the page as a tree: each one's class, its declared children with their values (an element child as an excerpt of its accessibility subtree: at most 40 lines, with a line over 200 characters cut and a note of how many lines it left out; a single element child not on the page is left out), and the id of each Page Object of a class with a root. It carries no tool names, schemas or Page Object definitions:
+An agent reads the ids without the whole page state from `page_objects`, which answers the Page Objects on the page as a tree: each one's class, its declared children with their values (an element child as an excerpt of its accessibility subtree: at most 40 lines, each cut at 200 characters, then a note of how many lines it left out; a single element child that is not on the page is not shown), and the id of each Page Object of a class with a root. It carries no tool names, schemas or Page Object definitions:
 
 ```text
 ShoppingListPage
