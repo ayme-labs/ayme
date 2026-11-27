@@ -52,11 +52,13 @@ async function serve() {
   };
 }
 
-/** A window's socket to the server at `address`, sending `origin` when
- * given, and what it was told, in order. */
+/** A window's socket to the server at `address`, with the token its
+ * fragment holds, sending `origin` when given, and what it was told, in
+ * order. */
 async function windowSocket(address: string, origin?: string) {
   const url = new URL("/inspector/ws", address);
   url.protocol = "ws:";
+  url.search = new URL(address).hash.slice(1);
   const socket = new WebSocket(url, origin ? { headers: { origin } } : {});
   onTestFinished(() => socket.terminate());
   const told: unknown[] = [];
@@ -83,7 +85,9 @@ async function windowSocket(address: string, origin?: string) {
 it("serves the window's page and the Inspector's script on the loopback address, at the address ayme inspect is told", async () => {
   const { address } = await serve();
 
-  expect(address).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/inspector$/);
+  expect(address).toMatch(
+    /^http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+$/
+  );
   const page = await fetch(address);
   expect(page.status).toBe(200);
   const html = await page.text();

@@ -325,6 +325,32 @@ describe("readCommand for a Session", () => {
     expect(USAGE).toContain("ayme inspect");
   });
 
+  it("shows the Inspector of the Session in an Agent App's chat for `mcp`, named by -s or AYME_SESSION", () => {
+    expect(readCommand(["mcp"])).toEqual({ kind: "mcp" });
+    expect(readCommand(["mcp", "-s=shop"])).toEqual({
+      kind: "mcp",
+      session: "shop",
+    });
+    expect(readCommand(["mcp"], { AYME_SESSION: "cart" })).toEqual({
+      kind: "mcp",
+      session: "cart",
+    });
+  });
+
+  it.each([
+    [["mcp", "now"]],
+    [["mcp", "--json"]],
+    [["mcp", "--tab=http://a"]],
+    [["mcp", "--params", "{}"]],
+    [["mcp", "--cdp=http://a"]],
+  ])("refuses what mcp does not take: `%s`", (args) => {
+    expect(readCommand(args).kind).toBe("error");
+  });
+
+  it("lists mcp in its usage text", () => {
+    expect(USAGE).toContain("ayme mcp");
+  });
+
   it("joins the browser at the address for `attach --cdp=<url>`", () => {
     expect(readCommand(["attach", "--cdp=http://127.0.0.1:9222"])).toEqual({
       kind: "attach",

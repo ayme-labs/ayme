@@ -15,6 +15,13 @@ import { WebSocketServer, type WebSocket } from "ws";
 
 import type { Session } from "../../session/application";
 import type { InspectorEvent } from "../../session/domain";
+import {
+  bringsToken,
+  newToken,
+  withToken,
+  withTokenFragment,
+} from "./inspectorToken";
+import { inspectorDocument } from "./inspectorDocument";
 
 const PAGE_PATH = "/inspector";
 const SCRIPT_PATH = "/inspector/external.mjs";
@@ -25,38 +32,25 @@ const SOCKET_PATH = "/inspector/ws";
 const FLUSH_LIMIT_MS = 1_000;
 
 /** The window's page, which names the Session `name`. */
-const page = (name: string) => `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ayme inspect: ${escapeHtml(name)}</title>
-    <style>
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-      }
-    </style>
-  </head>
-  <body>
-    <script type="module" src="${SCRIPT_PATH}"></script>
-  </body>
-</html>
-`;
-
-const escapeHtml = (text: string) =>
-  text.replace(/[&<>"']/g, (character) => `&#${character.charCodeAt(0)};`);
+const page = (name: string) =>
+  inspectorDocument(
+    name,
+    `<script type="module" src="${SCRIPT_PATH}"></script>`
+  );
 
 /** Whether a request is made to the loopback address the server is on,
  * from no page or from the window's own, so that a page which points a
  * name of its own at it, or a page of another origin, reads nothing. */
 function isLoopback(request: IncomingMessage): boolean {
   const { host, origin } = request.headers;
-  // A request with no Host header reads as "undefined": no loopback name.
-  if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(String(host))) return false;
+  if (!toLoopback(request)) return false;
   return origin === undefined || origin === `http://${host}`;
 }
+
+/** Whether a request names the loopback address as its host. */
+const toLoopback = (request: IncomingMessage) =>
+  // A request with no Host header reads as "undefined": no loopback name.
+  /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(String(request.headers.host));
 
 const pathOf = (request: IncomingMessage) => (request.url ?? "/").split("?")[0];
 
@@ -69,6 +63,8 @@ function send(
   response.writeHead(status, {
     "content-type": type,
     "cache-control": "no-store",
+    // No page of another origin frames the window, to click its controls.
+    "content-security-policy": "frame-ancestors 'none'",
   });
   response.end(body);
 }
@@ -102,8 +98,12 @@ function frameOf(event: InspectorEvent, listening: boolean) {
 
 /** The window of one Session, once served. */
 export interface InspectorWindow {
-  /** Where the window is, such as `http://127.0.0.1:53124/inspector`. */
+  /** Where `ayme inspect` opens the window, with the Session's token in
+   * the fragment, such as `http://127.0.0.1:53124/inspector#token=…`. */
   readonly address: string;
+  /** The window's socket with the Session's token, which the Inspector an
+   * Agent App shows in its chat connects to. */
+  readonly agentAppSocket: string;
   /** Hands it the Session. A window's request before then waits. */
   attach(session: Pick<Session, "ask" | "events">): void;
   /** Closes every window, once each took its last frames, then the
@@ -114,8 +114,9 @@ export interface InspectorWindow {
 /**
  * Serves the Inspector window of the Session named `name` at a free port of
  * the loopback address: its page, the Inspector's built `script`, and a
- * socket for each window. Each window hears the Session's events from when
- * it connects, the contract's own while it subscribed, and is closed once
+ * socket for each window that brings the Session's token (ADR-0072),
+ * from any origin. Each window hears the Session's events from when it
+ * connects, the contract's own while it subscribed, and is closed once
  * told the Session ended.
  */
 export async function serveInspectorWindow({
@@ -128,6 +129,7 @@ export async function serveInspectorWindow({
   const attached = Deferred.makeUnsafe<Pick<Session, "ask" | "events">>();
   const session = Effect.runPromise(Deferred.await(attached));
   const sockets = new WebSocketServer({ noServer: true });
+  const token = newToken();
   const server = createServer((request, response) => {
     const path = pathOf(request);
     if (!isLoopback(request))
@@ -150,7 +152,11 @@ export async function serveInspectorWindow({
     );
   });
   server.on("upgrade", (request, socket, head) => {
-    if (pathOf(request) !== SOCKET_PATH || !isLoopback(request))
+    if (
+      pathOf(request) !== SOCKET_PATH ||
+      !toLoopback(request) ||
+      !bringsToken(request, token)
+    )
       return socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
     sockets.handleUpgrade(
       request,
@@ -166,7 +172,8 @@ export async function serveInspectorWindow({
   });
   const { port } = server.address() as AddressInfo;
   return {
-    address: `http://127.0.0.1:${port}${PAGE_PATH}`,
+    address: withTokenFragment(`http://127.0.0.1:${port}${PAGE_PATH}`, token),
+    agentAppSocket: withToken(`ws://127.0.0.1:${port}${SOCKET_PATH}`, token),
     attach: (attaching) =>
       Deferred.doneUnsafe(attached, Exit.succeed(attaching)),
     close: async () => {

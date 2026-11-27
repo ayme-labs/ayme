@@ -64,6 +64,7 @@ describe("what the command line does for a command", () => {
     { kind: "call", tool: "Basket.add", params: "@add.json", json: false },
     { kind: "list", json: false },
     { kind: "session process", options: "{}" },
+    { kind: "mcp", session: "shop" },
   ] as const)("reaches a Session as the command asks: $kind", (command) => {
     expect(planOf(command)).toEqual(command);
   });

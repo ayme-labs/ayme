@@ -19,6 +19,7 @@ export type Plan =
           | "ask"
           | "call"
           | "inspect"
+          | "mcp"
           | "list"
           | "session process";
       }
@@ -26,7 +27,7 @@ export type Plan =
 
 /**
  * Decides what to do for a command: print and stop, record with
- * `ayme capture`, or reach a Session. `cli.ts` only carries the plan out.
+ * `ayme capture`, or reach a Session, `ayme mcp` included. `cli.ts` only carries the plan out.
  */
 export function planOf(command: Command): Plan {
   switch (command.kind) {
@@ -58,6 +59,7 @@ export function planOf(command: Command): Plan {
     case "ask":
     case "call":
     case "inspect":
+    case "mcp":
     case "list":
     case "session process":
       return command;

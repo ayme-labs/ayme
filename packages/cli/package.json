@@ -65,6 +65,7 @@
     "@ayme-dev/session": "workspace:*",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/node": "^24.0.0",
