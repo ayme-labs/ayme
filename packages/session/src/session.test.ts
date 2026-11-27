@@ -844,3 +844,17 @@ it("an id among a call's arguments chooses no Tab when the tool's class has no P
 
   expect([browser.runs, other.runs]).toEqual([[], [cancel, cancel]]);
 });
+
+it("a call whose Page Object Id names its Tab reads no tab list", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  await session.ask({ pageObjects: {} });
+  browser.give("po1", "Basket");
+  browser.failTabList("ayme could not read the browser's tab list.");
+
+  expect(await session.ask(add("po1"))).toMatchObject({ ok: true });
+  expect(
+    await session.ask({ call: { ...add("po1").call, tab: shop.tab.url } })
+  ).toMatchObject({ ok: true });
+  expect(browser.runs).toEqual([add("po1").call, add("po1").call]);
+});

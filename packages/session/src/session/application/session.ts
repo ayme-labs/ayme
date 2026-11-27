@@ -307,15 +307,15 @@ function sessionTabs(
     chosen: (url, call) => {
       const id =
         call && rooted.has(classOf(call.tool)) ? idIn(call.input) : undefined;
+      const owner = id === undefined ? undefined : owners.get(id);
+      if (owner) {
+        if (url === undefined || owner.url() === url) return hostOf(owner);
+        return Effect.fail(
+          new TabReadError(idOnAnotherTab(id!, owner.url(), url))
+        );
+      }
       return browser.open.pipe(
         Effect.flatMap((open) => {
-          const owner = id === undefined ? undefined : owners.get(id);
-          if (owner) {
-            if (url === undefined || owner.url() === url) return hostOf(owner);
-            return Effect.fail(
-              new TabReadError(idOnAnotherTab(id!, owner.url(), url))
-            );
-          }
           const tab =
             url === undefined
               ? open[0]
