@@ -1,6 +1,6 @@
 # Page state
 
-What an agent sees of your page: the Structural Page State, the Structural Refs and Page Object ids it acts through, and the interaction history ayme keeps.
+What ayme's runtime in your page shows an agent: the Structural Page State, the Structural Refs and Page Object ids it acts through, and the interaction history ayme keeps. A coding agent with the [`ayme` command](connect-an-agent.md) reads less: the Page Object Tree and a Page Object Tool's short answer, which this page also describes.
 
 ## Structural Page State
 
@@ -10,7 +10,7 @@ The state an agent reads also prints each Page Object's id on its root, after th
 
 Content that is scrollable or blocked by a modal stays in the state. Page Object subtrees known to be hidden or off-canvas are left out. Being in the state does not mean a node can be interacted with.
 
-Page state works without WebMCP publication. An agent reads it with the `snapshot` tool, which returns the state as `structure` and the definitions of the registered Page Object Models as `pomDefinitions`. Your own code runs the same tool with `ayme.tools.run("snapshot", {})`.
+Page state works without WebMCP publication. An agent in the page reads it with the `snapshot` tool, which returns the state as `structure` and the definitions of the registered Page Object Models as `pomDefinitions`. Your own code runs the same tool with `ayme.tools.run("snapshot", {})`.
 
 ## Structural Refs
 
@@ -154,7 +154,7 @@ Every action returns its Change Record: what changed on the page, in two parts. 
 - Each part is present only when it has a change. `page_changed` is true when either part is present.
 - `settled` says whether the page went quiet after the action.
 
-An agent's Page Object Tool call answers in [a shorter form](#a-page-object-tools-answer-to-an-agent). Its other tools answer with the full result.
+An agent's Page Object Tool call, through WebMCP or with `ayme call`, answers in [a shorter form](#a-page-object-tools-answer-to-an-agent). The page's other tools answer an agent with the full result.
 
 Each Caller name has its own cursor: the page state that Caller last received, from `snapshot` or as the Settled Page after its last action. The Caller names are:
 
@@ -200,7 +200,7 @@ When a Page Object Action returns a Page Object whose model declares or inherits
 
 ## A Page Object Tool's answer to an agent
 
-An agent that calls a Page Object Tool through WebMCP or with `ayme call` through a Session of the [`ayme` command](connect-an-agent.md) gets a short answer instead of the action result, the same in each:
+An agent that calls a Page Object Tool through WebMCP or with `ayme call` through a Session of the [`ayme` command](connect-an-agent.md) gets a short answer instead of the action result, with the same fields in each; after a full load they differ, as described below:
 
 ```ts
 {
