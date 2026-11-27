@@ -68,14 +68,13 @@ state installs a WebMCP driver, the recording one from
 `@ayme-dev/webmcp/testing`.
 
 `pnpm test:goals` runs the goal-driven tests (`tests/goals/**/*.goal.ts`,
-with `e2e.goals.config.ts`), e2e's telemetry off. Each is its `*.e2e.ts` twin
-with the Page Object actions on the panel written as `agent.act` goals,
-which Claude Code carries out on this machine's own login;
-`scripts/check-goal-mirror.mjs` says exactly what may differ, and a twin test
-with no Page Object action to turn into a goal has no goal test. They never
-run in CI, for the reason beside the `CI` guard in `e2e.goals.config.ts`.
-Moving the pointer off an element between steps (`movePointerTo`) is the
-one thing on the panel that is not a goal: no user step asks for it. In the
+with `e2e.goals.config.ts`), e2e's telemetry off: their `*.e2e.ts` twins'
+tests, with each Page Object action a goal that Claude Code carries out on
+this machine's own login. What may differ from the twin is
+[`scripts/check-goal-mirror.mjs`](scripts/check-goal-mirror.mjs)'s to say,
+and why moving the pointer is no goal is
+[`movePointerTo`](tests/e2e/fixtures.ts)'s. They never run in CI, for the
+reason beside the `CI` guard in `e2e.goals.config.ts`. In the
 external placement, switching to the Inspector's tab is part of the goal:
 the agent does it as it sees fit. A first run records each goal into
 `.e2e/goals-cache/`, and later runs replay it without the model, except for
