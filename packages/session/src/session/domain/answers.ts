@@ -2,6 +2,7 @@ import type { Dialog } from "./dialog";
 import type { ListedTool, Listing, TabName } from "./listing";
 import type { SessionAnswer, SessionEnd } from "./requests";
 import type { RunAnswer, RunError } from "./run";
+import type { SessionStartError } from "./startError";
 
 /** The `ayme` command line of `word` for the Session named `name`, for a
  * sentence that tells the user to run it. It names the Session even by
@@ -10,9 +11,36 @@ import type { RunAnswer, RunError } from "./run";
 export const commandLine = (name: string, word: string): string =>
   `ayme -s=${name} ${word}`;
 
+const TAB_LINE = "Tab: ";
+
 /** The first line of a listing: the Tab it describes. */
 const tabLine = ({ url, title }: TabName) =>
-  title ? `Tab: ${title} (${url})` : `Tab: ${url}`;
+  title ? `${TAB_LINE}${title} (${url})` : `${TAB_LINE}${url}`;
+
+/** The line that follows a listing's Tab line while the last finished build
+ * failed, naming the first reason on one line (rule 7). */
+const buildLine = ({ first, message }: SessionStartError) =>
+  `The Page Objects do not build since the last edit: ${first ?? message.split("\n")[0]} The Session keeps the Page Objects it has until they build.`;
+
+/** `answer`, a listing's or the reason it read no page, with the build line
+ * after its Tab line while `failing` says why the last finished build
+ * failed. An answer without a Tab line, such as "no tab is open", gets
+ * none, since the line describes the Page Objects a Tab shows. */
+export function withBuildLine(
+  answer: SessionAnswer,
+  failing: SessionStartError | undefined
+): SessionAnswer {
+  if (!failing || !answer.text.startsWith(TAB_LINE)) return answer;
+  const [tab, ...rest] = answer.text.split("\n");
+  const text = [tab, buildLine(failing), ...rest].join("\n");
+  return answer.ok
+    ? {
+        ...answer,
+        text,
+        data: { ...(answer.data as object), buildFailing: buildLine(failing) },
+      }
+    : { ok: false, text };
+}
 
 const NO_TOOLS = "This screen has no Page Object Tools.";
 

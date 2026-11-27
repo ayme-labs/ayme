@@ -39,6 +39,26 @@ it("says which entry did not build, above the build's own messages", () => {
   );
 });
 
+it("names the first error on one line, with where it is when esbuild says", () => {
+  expect(
+    buildFailed(
+      entry,
+      ["the formatted messages"],
+      [
+        {
+          text: 'Expected ";" but found "basket"',
+          location: { file: "ayme/pom/Basket.ts", line: 3, column: 9 },
+        },
+        { text: "Could not resolve" },
+      ]
+    ).first
+  ).toBe('ayme/pom/Basket.ts:3:9: Expected ";" but found "basket"');
+  expect(buildFailed(entry, ["m"], [{ text: "No entry." }]).first).toBe(
+    "No entry."
+  );
+  expect(buildFailed(entry, ["m"]).first).toBeUndefined();
+});
+
 it("puts each of the compiler's diagnostics where it names, or at the module it compiled", () => {
   expect(
     compileErrors(

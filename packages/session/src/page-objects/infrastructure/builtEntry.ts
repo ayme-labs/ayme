@@ -57,16 +57,27 @@ export function compileErrors(
 }
 
 /** Why the Session did not start: the Page Objects of `entry` did not
- * build, with the build's messages, as esbuild formats them. */
+ * build, with the build's messages, as esbuild formats them, and the first
+ * of its `errors` on one line, where it says where it is. */
 export const buildFailed = (
   entry: string,
-  messages: readonly string[]
+  messages: readonly string[],
+  [first]: readonly PartialMessage[] = []
 ): SessionStartError =>
   new SessionStartError(
     `The Page Objects of ${entry} did not build:\n${messages
       .map((message) => message.trimEnd())
-      .join("\n")}`
+      .join("\n")}`,
+    first?.text === undefined ? undefined : `${placeOf(first)}${first.text}`
   );
+
+/** Where `message` is, as esbuild names a place, followed by ": ". */
+const placeOf = ({ location }: PartialMessage) =>
+  location?.file
+    ? `${[location.file, location.line, location.column]
+        .filter((part) => part !== undefined)
+        .join(":")}: `
+    : "";
 
 /** The Page Object classes the built `entry` lists as its default
  * export. */

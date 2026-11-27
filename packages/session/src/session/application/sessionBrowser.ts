@@ -34,6 +34,12 @@ export interface HostedTab {
   /** The Tab's dialog as the Session counts it now, and again after each
    * change (rule 4). It reads nothing of the page, which a dialog holds. */
   readonly dialog: Stream.Stream<TabDialog>;
+  /** Runs `pageObjects` on the Tab from now on, in place of those it ran,
+   * at once: the Swap, which the Session makes only between Runs (rule 7).
+   * It reads nothing of the page, so an open dialog cannot hold it up. */
+  readonly swap: (
+    pageObjects: BuiltPageObjects
+  ) => Effect.Effect<void, TabReadError>;
 }
 
 /** A Tab's Inspector contract, in the plain data a window sends and
