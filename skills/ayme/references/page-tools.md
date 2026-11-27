@@ -56,7 +56,8 @@ Leave `--params` out for a tool that takes none:
 object to a file and pass `--params @<file>`.
 
 The id chooses the Tab: `ayme call` runs the tool on the Tab its Page
-Object is on. An id
+Object is on, so leave `--tab` out of that call. A tool without an id runs
+on the Tab `--tab` names, or else on the most recently active one. An id
 stays with its Page Object while the Page Object is on the page, and is
 never given to another. When a call answers that the Page Object is not on
 the page, run `ayme page-objects` for the ids there are now.

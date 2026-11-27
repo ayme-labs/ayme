@@ -38,10 +38,11 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  that takes none.
   --params @<file>
                  Read that JSON object from <file>, a file of at most 1 MB.
-  --tab=<url>    Work on the tab whose page shows <url>, as the first line of
-                 ayme page-objects prints it, and not on the browser's most
-                 recently active tab. A call's Page Object Id chooses its tab
-                 by itself.
+  --tab=<url>    Work on the most recently active tab whose page shows
+                 exactly <url>, as the first line of ayme page-objects prints
+                 it, and not on the browser's most recently active tab. A
+                 call of a tool that takes a Page Object Id runs on the tab
+                 of that Page Object: leave --tab out of it.
   inspect        Open the Inspector on the Session in your default browser,
                  outside the Session's browser: the Page Objects and the
                  tools of the Session's tab, to run by hand. BROWSER=none
