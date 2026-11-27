@@ -457,7 +457,9 @@ function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
       turn,
       Effect.gen(function* () {
         if (yield* ending) return yield* Effect.never;
-        if ((yield* Answered).answered) return yield* Effect.interrupt;
+        const request = yield* Answered;
+        if (request.answered) return yield* Effect.interrupt;
+        request.started = true;
         return yield* work;
       })
     );
@@ -478,12 +480,12 @@ function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
   };
 }
 
-/** Whether the Session already answered the request whose work this is:
- * work still waiting for the Tab's turn then never starts, since its Caller
- * may have run the command again meanwhile. */
-const Answered = Context.Reference<{ answered: boolean }>(
+/** Whether the Session already answered the request whose work this is,
+ * and whether that work had the Tab's turn: work still waiting for it then
+ * never starts, since its Caller may have run the command again meanwhile. */
+const Answered = Context.Reference<{ answered: boolean; started: boolean }>(
   "@ayme-dev/session/session/Answered",
-  { defaultValue: () => ({ answered: false }) }
+  { defaultValue: () => ({ answered: false, started: false }) }
 );
 
 // The window's requests its Tab's Host answers from what it already holds,
@@ -525,7 +527,7 @@ function atDialogs(
   const counted = hosted.dialog.pipe(Stream.filter((now) => now !== "opening"));
   const atDialog = <A, E>(
     work: Effect.Effect<A, E>,
-    refused: (dialog: Dialog) => E,
+    refused: (dialog: Dialog, started: boolean) => E,
     closed: E
   ): Effect.Effect<A, E> =>
     Effect.gen(function* () {
@@ -534,8 +536,8 @@ function atDialogs(
         tab.closed.pipe(Effect.andThen(Effect.fail(closed)))
       );
       if (Option.isSome(now) && isOpen(now.value))
-        return yield* Effect.fail(refused(now.value.open));
-      const request = { answered: false };
+        return yield* Effect.fail(refused(now.value.open, false));
+      const request = { answered: false, started: false };
       const working = yield* Effect.forkIn(
         Effect.provideService(work, Answered, request),
         scope
@@ -546,7 +548,9 @@ function atDialogs(
         Effect.flatMap((open) =>
           Option.isSome(open)
             ? Effect.sync(() => (request.answered = true)).pipe(
-                Effect.andThen(Effect.fail(refused(open.value.open)))
+                Effect.andThen(
+                  Effect.fail(refused(open.value.open, request.started))
+                )
               )
             : Effect.never
         )
@@ -561,7 +565,10 @@ function atDialogs(
       );
       return yield* Effect.raceFirst(answer, opened);
     });
-  const atRun = (dialog: Dialog) => new RunError(dialogOpenAtRun(dialog));
+  // A command whose work had started may have changed the page; one still
+  // waiting can be run again.
+  const atRun = (dialog: Dialog, started: boolean) =>
+    new RunError(started ? dialogOpenAtRun(dialog) : dialogOpen(dialog));
   return {
     listing: atDialog(
       hosted.listing,
@@ -577,10 +584,10 @@ function atDialogs(
           ? hosted.inspector.request(method, params)
           : atDialog(
               hosted.inspector.request(method, params),
-              (dialog) =>
+              (dialog, started) =>
                 new TabReadError(
                   method === "runTool"
-                    ? atRun(dialog).message
+                    ? atRun(dialog, started).message
                     : dialogOpen(dialog)
                 ),
               new TabReadError(TAB_CLOSED)

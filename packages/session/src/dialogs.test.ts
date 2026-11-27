@@ -21,9 +21,10 @@ async function pending(promise: Promise<unknown>): Promise<boolean> {
 
 const confirm = { type: "confirm", message: "Remove Milk from the basket?" };
 
-const DIALOG_OPEN =
-  'A confirm dialog is open on the tab: "Remove Milk from the basket?". Answer it with your browser automation, then run ayme again.';
-const AT_RUN = `${DIALOG_OPEN} An action stops at a dialog it does not answer itself: it does nothing more on the page, however the dialog is answered.`;
+const DIALOG =
+  'A confirm dialog is open on the tab: "Remove Milk from the basket?".';
+const DIALOG_OPEN = `${DIALOG} Answer it with your browser automation, then run this command again.`;
+const AT_RUN = `${DIALOG} Answer it with your browser automation. The action stopped there: ayme refuses its further calls on the page, however the dialog is answered. Check the page before you choose the next step.`;
 
 const shop = {
   tab: { url: "http://127.0.0.1:5173/shop.html", title: "Shop" },
@@ -124,7 +125,10 @@ it("while a dialog is open, every command that needs the page is answered at onc
   };
   expect(await session.ask({ pageObjects: {} })).toEqual(inListing);
   expect(await session.ask({ tools: {} })).toEqual(inListing);
-  expect(await session.ask(readHeading)).toEqual({ ok: false, text: AT_RUN });
+  expect(await session.ask(readHeading)).toEqual({
+    ok: false,
+    text: DIALOG_OPEN,
+  });
   expect(browser.runs).toEqual([]);
 
   browser.closeDialog();
@@ -214,12 +218,12 @@ it("commands waiting for the Tab's turn when a dialog counts are answered at onc
   dialogOpens(browser);
 
   expect(await first).toEqual({ ok: false, text: AT_RUN });
-  expect(await waiting).toEqual({ ok: false, text: AT_RUN });
+  expect(await waiting).toEqual({ ok: false, text: DIALOG_OPEN });
   expect(await listing).toEqual({
     ok: false,
     text: `Tab: about:blank\n${DIALOG_OPEN}`,
   });
-  expect(await fromWindow).toEqual({ ok: false, text: AT_RUN });
+  expect(await fromWindow).toEqual({ ok: false, text: DIALOG_OPEN });
 
   browser.closeDialog();
   browser.answerRuns(() => Promise.resolve({ settled: true }));

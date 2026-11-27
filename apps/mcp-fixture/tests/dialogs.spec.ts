@@ -30,9 +30,10 @@ async function automation(opened: string) {
   return { context, page: context.pages()[0]!, dialogs };
 }
 
-const DIALOG_OPEN =
-  'A confirm dialog is open on the tab: "Remove Milk from the basket?". Answer it with your browser automation, then run ayme again.';
-const AT_RUN = `${DIALOG_OPEN} An action stops at a dialog it does not answer itself: it does nothing more on the page, however the dialog is answered.`;
+const DIALOG =
+  'A confirm dialog is open on the tab: "Remove Milk from the basket?".';
+const DIALOG_OPEN = `${DIALOG} Answer it with your browser automation, then run this command again.`;
+const AT_RUN = `${DIALOG} Answer it with your browser automation. The action stopped there: ayme refuses its further calls on the page, however the dialog is answered. Check the page before you choose the next step.`;
 
 test("an action that clicks, gets a confirm and has a second click after it ends at the confirm: ayme call says a dialog is open, and once the automation accepts it, the second click never comes", async ({
   ayme,
@@ -97,7 +98,7 @@ test("a dialog on one Tab leaves a command on another Tab alone, and a command n
   expect(await ayme("call", "DialogPage.removeThenMark", onDialogTab)).toEqual({
     code: 1,
     stdout: "",
-    stderr: `${AT_RUN}\n`,
+    stderr: `${DIALOG_OPEN}\n`,
   });
 
   await dialogs[0]!.dismiss();
@@ -144,7 +145,7 @@ test("a popup that opens a dialog as it loads: a command on it is answered at on
     code: 1,
     stdout: "",
     stderr: expect.stringMatching(
-      /^Tab: \S+\nAn alert dialog is open on the tab: "Saved"\. Answer it with your browser automation, then run/
+      /^Tab: \S+\nAn alert dialog is open on the tab: "Saved"\. Answer it with your browser automation, then run this command again\.\n$/
     ),
   });
 
