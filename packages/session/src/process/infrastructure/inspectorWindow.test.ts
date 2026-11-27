@@ -173,6 +173,54 @@ it("refuses a window's socket from a page of another origin", async () => {
   expect(error.message).toContain("403");
 });
 
+it.each([
+  ["a frame that is not JSON", "not json", 1008],
+  ["a frame that is no request", JSON.stringify({ id: 1 }), 1008],
+  [
+    "a binary frame",
+    Buffer.from(JSON.stringify({ id: 1, method: "look" })),
+    1008,
+  ],
+  ["a frame larger than any request", "x".repeat(2 * 1024 * 1024), 1009],
+] as const)(
+  "closes a window that sends %s, and goes on serving another window",
+  async (_, frame, code) => {
+    const { address } = await serve();
+    const bad = await windowSocket(address);
+
+    bad.socket.send(frame);
+
+    const [closed] = (await once(bad.socket, "close")) as [number];
+    expect(closed).toBe(code);
+    const healthy = await windowSocket(address);
+    expect(await healthy.request("getState")).toEqual({
+      id: 1,
+      result: "getState",
+    });
+  }
+);
+
+it("closes a window that stops reading once what it left unread outgrows its bound", async () => {
+  const { address, browser } = await serve();
+  const window = await windowSocket(address);
+  expect(await window.request("subscribe")).toEqual({ id: 1, result: null });
+  await expect.poll(() => browser.inspectorListeners).toBe(1);
+  // The window's own end of the connection stops reading.
+  const connection = (window.socket as unknown as { _socket: Socket })._socket;
+  connection.pause();
+
+  const told = 40;
+  for (let event = 0; event < told; event += 1)
+    browser.tellInspector({ event, padding: "x".repeat(1024 * 1024) });
+  const closed = once(window.socket, "close");
+  connection.resume();
+
+  await closed;
+  expect(
+    window.told.filter((frame) => Object.hasOwn(frame, "event")).length
+  ).toBeLessThan(told);
+});
+
 it("answers a window's call with what the contract of the Session's Tab answered, and an error with why", async () => {
   const { address, browser } = await serve();
   const window = await windowSocket(address, new URL(address).origin);

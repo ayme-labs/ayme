@@ -32,6 +32,19 @@ const SOCKET_PATH = "/inspector/ws";
  * waited for. */
 const FLUSH_LIMIT_MS = 1_000;
 
+/** The largest frame a window may send: a request carries a method and a
+ * tool's arguments, far below it, so a larger frame is not the
+ * Inspector's. */
+const MAX_REQUEST_BYTES = 1024 * 1024;
+
+/** How much a window may leave unread before it is closed: it bounds what
+ * the Session keeps for a window that stopped reading, well above the
+ * largest state a window is sent. */
+const MAX_UNREAD_BYTES = 16 * 1024 * 1024;
+
+/** The close code of a frame that is no request (RFC 6455, 7.4.1). */
+const NOT_A_REQUEST = 1008;
+
 /** The window's page, which names the Session `name`. */
 const page = (name: string) =>
   inspectorDocument(
@@ -136,7 +149,10 @@ export async function serveInspectorWindow({
 }): Promise<InspectorWindow> {
   const attached = Deferred.makeUnsafe<Pick<Session, "ask" | "events">>();
   const session = Effect.runPromise(Deferred.await(attached));
-  const sockets = new WebSocketServer({ noServer: true });
+  const sockets = new WebSocketServer({
+    noServer: true,
+    maxPayload: MAX_REQUEST_BYTES,
+  });
   const token = newToken();
   let closing = false;
   // Set once the server listens, before it takes a request.
@@ -225,8 +241,14 @@ export async function serveInspectorWindow({
 function accept(ws: WebSocket, session: Pick<Session, "ask" | "events">) {
   let listening = false;
   const reply = (frame: unknown) => {
-    if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(frame));
+    if (ws.readyState !== ws.OPEN) return;
+    if (ws.bufferedAmount > MAX_UNREAD_BYTES) return ws.terminate();
+    ws.send(JSON.stringify(frame));
   };
+  // A frame too large or not a WebSocket's ends this window alone: ws
+  // closes it with the code that says why, and the error, heard here, does
+  // not reach the process.
+  ws.on("error", () => {});
   const hearing = Effect.runFork(
     Stream.runForEach(session.events, (event) =>
       Effect.sync(() => {
@@ -243,9 +265,9 @@ function accept(ws: WebSocket, session: Pick<Session, "ask" | "events">) {
     for (const fiber of [hearing, ...reads])
       void Effect.runFork(Fiber.interrupt(fiber));
   });
-  ws.on("message", (data) => {
-    const request = requestIn(data);
-    if (!request) return;
+  ws.on("message", (data, isBinary) => {
+    const request = isBinary ? undefined : requestIn(data);
+    if (!request) return ws.close(NOT_A_REQUEST, "Not an Inspector request.");
     const { id, method, params, tab } = request;
     if (method === "subscribe" || method === "unsubscribe") {
       listening = method === "subscribe";
