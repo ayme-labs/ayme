@@ -52,7 +52,7 @@ Cannot click "[ref=e36]": the selector matches no element. It writes the Structu
 
 ## Page Object ids
 
-A Page Object of a class with a [Page Object Root](../reference/ayme.md#page-object-root) has an id, written `po<n>`, such as `po3`. The page numbers its Page Objects in the order it first shows them. Two classes rooted at one element are two Page Objects, each with its own id. A Page Object keeps its id while the element of its root stays on the page, and an id is never given to another Page Object.
+A Page Object of a class with a [Page Object Root](../reference/ayme.md#page-object-root) has an id, written `po<n>`, such as `po3`. The Host that runs them, your page's own runtime or a Session of the [`ayme` command](connect-an-agent.md), numbers its Page Objects in the order it first shows them: within one page for the page's runtime, across all its Tabs for a Session. Two classes rooted at one element are two Page Objects, each with its own id. A Page Object keeps its id while the element of its root stays on the page, and an id is never given to another Page Object.
 
 A Page Object Tool of such a class takes the id as `id`, for a page, a single child and a collection item alike: `ProjectRow.archive({ id: "po2" })`. An `id` that is not written `po<n>`, a Structural Ref included, is refused with a `ToolInputError`, as is a call that gives `ref`. An id whose Page Object is no longer on the page fails with a `RefResolutionError`: `Cannot call ProjectRow.archive on Page Object "po2": it is not on the page.` So does the id of a Page Object of another class: `it is not a ProjectRow on the page`.
 
@@ -68,7 +68,7 @@ ShoppingListPage
         name: text: Eggs
 ```
 
-Every id it prints is one that Page Object's tools take. It answers `No Page Object is on the page.` when none is.
+Every id it prints is one that Page Object's tools take, on the same Host. Use an id only with the Host that printed it: ids from `page_objects` or `snapshot` with that runtime's tools, and ids from `ayme page-objects` with `ayme call` on the same Session. Each Host numbers on its own, so `po2` on another Host can be another Page Object. `page_objects` answers `No Page Object is on the page.` when none is.
 
 In TypeScript the id is a `PageObjectId`, exported from `@ayme-dev/ayme`. It is a type of its own: a Structural Ref (`AriaRef`) is not assignable to it, nor it to a Structural Ref.
 
