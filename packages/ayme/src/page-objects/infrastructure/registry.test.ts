@@ -1145,6 +1145,25 @@ describe("live Page Object registry", () => {
       expect(pageObjectToolTakesId(session.ayme, "Basket.add")).toBe(false);
     });
 
+    it("lists the rebuilt classes' tools once a read of the page that began after the Swap ends", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects, observePageObjects } =
+        await import("../../runtime");
+      const running = [compiled(registry, "Shop")];
+      session.register(running[0]!);
+      await vi.runOnlyPendingTimersAsync();
+      replacePageObjects(session.ayme, running, [compiled(registry, "Shop")]);
+      expect(registry.listAvailablePomTools()).toEqual([]);
+
+      const observed = observePageObjects(session.ayme);
+      await vi.runOnlyPendingTimersAsync();
+      await observed;
+
+      expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+        "Shop.open",
+      ]);
+    });
+
     it("lets go of the instances of the classes it replaced", async () => {
       const { registry, session } = await setup();
       const { replacePageObjects } = await import("../../runtime");

@@ -420,6 +420,7 @@ const hostedPageObjects = new WeakMap<
       rebuilt: readonly PageObjectConstructor[]
     ): void;
     takesId(tool: string): boolean;
+    observe(): Promise<void>;
   }
 >();
 
@@ -444,6 +445,12 @@ export function replacePageObjects(
   rebuilt: readonly PageObjectConstructor[]
 ): void {
   hostedPageObjectsOf(ayme).replace(running, rebuilt);
+}
+
+/** Resolves once the session's registered Page Objects were read on the
+ * page as it is now: a probe that began after this call. */
+export function observePageObjects(ayme: Pick<Ayme, "tools">): Promise<void> {
+  return hostedPageObjectsOf(ayme).observe();
 }
 
 /** Whether the session's Page Object Tool `tool` takes a Page Object Id,
@@ -1244,6 +1251,7 @@ export function createAymeOn(
         .registry()
         .listRegisteredPomTools()
         .some((listed) => listed.tool.name === tool && listed.tool.rooted),
+    observe: () => target.registry().probeRegisteredPomMembers(),
   });
   pageObjectCallers.set(ayme.tools, (by) => ({
     run: pageObjectToolsFor(by, { pageObjectToolsOnly: true }).run,

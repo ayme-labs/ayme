@@ -48,6 +48,7 @@ export { createHighlights } from "./inspectorHighlights";
 export type { Highlightable } from "./inspectorHighlights";
 export { createNodeHost } from "./playwrightRuntime";
 export {
+  observePageObjects,
   pageObjectCallerOf,
   pageObjectToolTakesId,
   replacePageObjects,

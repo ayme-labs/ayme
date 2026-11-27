@@ -18,7 +18,8 @@
 // Ids from one source, and reads a Run's short answer and a listing, each in
 // the Tab's turn, serves each Tab's Inspector contract to its Inspector
 // window, and replaces a Tab's Page Objects with a rebuild of them, asking
-// which of its tools take a Page Object Id.
+// which of its tools take a Page Object Id and reading them on the page
+// before a Run from that window.
 export {
   getStartedAyme,
   markRenderSession,
@@ -60,6 +61,7 @@ export type {
 export {
   createNodeHost,
   inspectorPortOf,
+  observePageObjects,
   pageObjectCallerOf,
   pageObjectToolTakesId,
   replacePageObjects,
