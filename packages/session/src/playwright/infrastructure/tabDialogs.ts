@@ -26,9 +26,9 @@ export type ActionCalls = {
   before(answersAtOnce: boolean): Promise<void> | undefined;
 };
 
-/** A Page Object Action under way on the Tab, and the dialog that stopped
- * it, once one did. */
-type Action = { stoppedBy?: Dialog };
+/** Whether the dialog stopped a request, once one did: everything the Host
+ * does for it carries the same record. */
+type Stop = { stopped: boolean };
 
 const REFUSED =
   "ayme refused this Playwright call: the action stopped at a dialog it did not answer itself.";
@@ -43,17 +43,19 @@ const startAfter = (ms: number, then: () => void) => {
  * to `tell` as the Session counts them: "opening" at once, open once
  * `openMs` passed on `wait`'s clock. While one opens, the
  * calls that reach the browser of each action under way wait; once one
- * counts as open, the actions under way are stopped: each later call of
- * theirs is refused, however the dialog is answered. A call outside every
- * action, such as ayme's own read of the page, is neither.
+ * counts as open, the requests under way are stopped: their actions are
+ * never entered, and each later call of theirs is refused, however the
+ * dialog is answered. A call outside every action, such as ayme's own read
+ * of the page, is neither.
  */
 export function tabDialogs(
   tell: (now: TabDialog) => void,
   wait: (ms: number, then: () => void) => () => void = startAfter,
   openMs = DIALOG_OPEN_MS
 ) {
-  const actions = new AsyncLocalStorage<Action>();
-  const running = new Set<Action>();
+  const requests = new AsyncLocalStorage<Stop>();
+  const actions = new AsyncLocalStorage<Stop>();
+  const running = new Set<Stop>();
   let now: TabDialog = "none";
   let counting: (() => void) | undefined;
   let held:
@@ -66,26 +68,40 @@ export function tabDialogs(
     held?.end();
     held = undefined;
   };
+  const whileRunning = <T>(stop: Stop, work: () => T): T => {
+    running.add(stop);
+    const ended = () => running.delete(stop);
+    try {
+      const value = work();
+      void Promise.resolve(value).then(ended, ended);
+      return value;
+    } catch (error) {
+      ended();
+      throw error;
+    }
+  };
+  const refuseIfStopped = (stop: Stop) => {
+    // Work that goes on while a dialog counts as open is stopped too.
+    if (typeof now === "object") stop.stopped = true;
+    if (stop.stopped) throw new Error(REFUSED);
+  };
   const actionCalls: ActionCalls = {
     run: (action) => {
-      const own: Action = {};
-      running.add(own);
-      const ended = () => running.delete(own);
-      try {
-        const value = actions.run(own, action);
-        void Promise.resolve(value).then(ended, ended);
-        return value;
-      } catch (error) {
-        ended();
-        throw error;
+      // A child Run's action, or the action of a request, is stopped with
+      // its parent or its request.
+      const stop = actions.getStore() ?? requests.getStore();
+      if (stop) {
+        refuseIfStopped(stop);
+        return actions.run(stop, action);
       }
+      const own: Stop = { stopped: false };
+      refuseIfStopped(own);
+      return whileRunning(own, () => actions.run(own, action));
     },
     before: (answersAtOnce) => {
       const own = actions.getStore();
       if (!own) return undefined;
-      // An action that starts while a dialog counts as open is stopped too.
-      if (typeof now === "object") own.stoppedBy ??= now.open;
-      if (own.stoppedBy) throw new Error(REFUSED);
+      refuseIfStopped(own);
       if (!held || answersAtOnce) return undefined;
       return held.until.then(() => actionCalls.before(false));
     },
@@ -101,7 +117,7 @@ export function tabDialogs(
       set("opening");
       counting = wait(openMs, () => {
         counting = undefined;
-        for (const action of running) action.stoppedBy ??= dialog;
+        for (const stop of running) stop.stopped = true;
         set({ open: dialog });
         release();
       });
@@ -112,6 +128,12 @@ export function tabDialogs(
       counting = undefined;
       set("none");
       release();
+    },
+    /** Runs `work`, all the Host does for one request on the Tab: a
+     * dialog that counts while it is under way stops it. */
+    request: <T>(work: () => T): T => {
+      const stop: Stop = { stopped: false };
+      return requests.run(stop, () => whileRunning(stop, work));
     },
     actionCalls,
   };

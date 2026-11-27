@@ -90,15 +90,13 @@ const devtools = (page: Page) => {
 /** Each page's dialogs as the Session counts them, watched over ayme's own
  * DevTools session from the first time the Session reads the page's tab:
  * Playwright tells no dialog closing. */
-const watched = new WeakMap<
-  Page,
-  {
-    readonly dialogs: ReturnType<typeof tabDialogs>;
-    readonly dialog: SubscriptionRef.SubscriptionRef<TabDialog>;
-    /** Settles once the browser tells the session of the page's dialogs. */
-    readonly started: Promise<unknown>;
-  }
->();
+type Watch = {
+  readonly dialogs: ReturnType<typeof tabDialogs>;
+  readonly dialog: SubscriptionRef.SubscriptionRef<TabDialog>;
+  /** Settles once the browser tells the session of the page's dialogs. */
+  readonly started: Promise<unknown>;
+};
+const watched = new WeakMap<Page, Watch>();
 const dialogsOf = (page: Page) => {
   let watch = watched.get(page);
   if (!watch) {
@@ -145,11 +143,12 @@ const targetIdOf = (page: Page) => {
   return id;
 };
 
-/** The Tab's page as its Host reaches it through `caller`. */
+/** The Tab's page as its Host reaches it through `caller`, each Run a
+ * request of `dialogs`, which a dialog stops. */
 const hostedTab = (
   caller: ReturnType<NodeHostEntry["pageObjectCallerOf"]>,
   inspector: InspectorPort,
-  dialog: SubscriptionRef.SubscriptionRef<TabDialog>
+  { dialogs, dialog }: Pick<Watch, "dialogs" | "dialog">
 ): HostedTab => ({
   // Each takes the Tab's turn, so it waits for the Run under way.
   listing: Effect.tryPromise({
@@ -162,10 +161,19 @@ const hostedTab = (
   }),
   call: (tool, input) =>
     Effect.tryPromise({
-      try: () => failingOnItsUncaught(() => caller.run(tool, input)),
+      try: () =>
+        dialogs.request(() =>
+          failingOnItsUncaught(() => caller.run(tool, input))
+        ),
       catch: runErrorOf,
     }),
-  inspector: tabInspector(inspector),
+  inspector: tabInspector({
+    ...inspector,
+    request: (method, params) =>
+      method === "runTool"
+        ? dialogs.request(() => inspector.request(method, params))
+        : inspector.request(method, params),
+  }),
   dialog: SubscriptionRef.changes(dialog),
 });
 
@@ -200,7 +208,8 @@ const hostOn =
           tabIds.given(id, className);
           return id;
         };
-        const { dialogs, dialog, started } = dialogsOf(page);
+        const watch = dialogsOf(page);
+        const { dialogs, started } = watch;
         // So that the first dialog a Run's action opens is heard.
         await started;
         const ayme = entry.createNodeHost(
@@ -218,7 +227,7 @@ const hostOn =
         return hostedTab(
           entry.pageObjectCallerOf(ayme, CALLER),
           entry.inspectorPortOf(ayme),
-          dialog
+          watch
         );
       },
       catch: (cause) =>

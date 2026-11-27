@@ -17,7 +17,8 @@ import { callers, RuntimeStateError, type Caller } from "../../shared";
  */
 export type ActionCalls = {
   /** Runs a Page Object Action's method: the calls its code makes, at once
-   * or later, are the action's own. */
+   * or later, are the action's own. Throws, without running it, to refuse
+   * the action. */
   run<T>(action: () => T): T;
   /**
    * Heard before each call through the runtime's Page, its locators and
