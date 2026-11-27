@@ -97,3 +97,53 @@ it("a failed build keeps what the last one read watched, and the file a failed i
   await writeFile(join(dir, "Basket.ts"), "export class Basket { a = 1 }\n");
   await expect(edited).resolves.toBeDefined();
 });
+
+/** A watch on `files`, with its checks for edits as they end, each with
+ * whether it found one. */
+function checkedWatch(files: readonly string[], failed = false) {
+  const checks: boolean[] = [];
+  const waiting: (() => void)[] = [];
+  const watch = sourceWatch({
+    quietMs: 200,
+    checked: (edit) => {
+      checks.push(edit);
+      waiting.splice(0).forEach((resolve) => resolve());
+    },
+  });
+  onTestFinished(watch.close);
+  watch.began();
+  for (const file of files) watch.reads(file);
+  watch.finished(failed);
+  return {
+    checks,
+    /** Resolves once the next check ends. */
+    nextCheck: () => new Promise<void>((resolve) => waiting.push(resolve)),
+  };
+}
+
+it("a burst of writes, as a save and a formatter's write after it, is one edit, told once the source was quiet", async () => {
+  const dir = await folder({ "Basket.ts": "export class Basket {}\n" });
+  const { checks, nextCheck } = checkedWatch([join(dir, "Basket.ts")]);
+  await nextCheck();
+  const checked = nextCheck();
+
+  await writeFile(join(dir, "Basket.ts"), "export class Basket {a=1}\n");
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  await writeFile(join(dir, "Basket.ts"), "export class Basket { a = 1 }\n");
+  await checked;
+
+  expect(checks).toEqual([false, true]);
+});
+
+it("a write that leaves every input as the build read it is no edit, also after a failed build", async () => {
+  const dir = await folder({ "Basket.ts": "export class Basket {}\n" });
+  const { checks, nextCheck } = checkedWatch([join(dir, "Basket.ts")], true);
+  await nextCheck();
+  const checked = nextCheck();
+
+  await writeFile(join(dir, "Basket.ts"), "export class Basket {}\n");
+  await writeFile(join(dir, "Basket.js"), "// built beside its source\n");
+  await checked;
+
+  expect(checks).toEqual([false, false]);
+});
