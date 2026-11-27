@@ -35,27 +35,26 @@ abstract class Part {
   ) {}
 
   /**
-   * The part's root on its tab's screen, for ayme's root rule. The rule only
-   * reads, so it does not bring the tab forward: e2e's locators read the
-   * active tab, and a part on a tab in the back is not on the screen the
-   * agent sees. ayme types the rule for Playwright's Locator; e2e's has what
-   * the rule is asked for.
+   * The part's root on its tab's screen, for ayme's root rule (the rules
+   * read without bringing the tab forward: `Tab.screenInFront`). ayme types
+   * the rule for Playwright's Locator; e2e's has what the rule is asked for.
    */
   static rootOf(part: Part) {
-    if (!part.tab.inFront())
-      throw new Error("its window is not the one in front");
-    return part.root(part.tab.screen) as never;
+    return part.root(part.tab.screenInFront()) as never;
+  }
+
+  /** Whether `query` finds a visible element in the part, for a presence rule. */
+  static shows(part: Part, query: (root: Locator) => Locator) {
+    return query(part.root(part.tab.screenInFront())).isVisible();
   }
 
   /** Whether `lens` is the one the navigator shows, for a lens's presence rule. */
-  static async lensShown(part: Part, lens: LensName): Promise<boolean> {
-    if (!part.tab.inFront())
-      throw new Error("its window is not the one in front");
-    return part
-      .root(part.tab.screen)
-      .getByRole("group", "Lens")
-      .getByRole("button", { name: lens, pressed: true })
-      .isVisible();
+  static lensShown(part: Part, lens: LensName): Promise<boolean> {
+    return Part.shows(part, (root) =>
+      root
+        .getByRole("group", "Lens")
+        .getByRole("button", { name: lens, pressed: true })
+    );
   }
 
   /** A locator inside this part. */
@@ -609,18 +608,11 @@ export class KeyField extends Part {
 }
 
 /** `generate_locator`'s groups of targets, each with the locators a run gave them. */
-@ayme({ present: (self: LocatorGroups) => LocatorGroups.shown(self) })
+@ayme({
+  present: (self: Part) =>
+    Part.shows(self, (card) => card.getByRole("list", "Locator groups")),
+})
 export class LocatorGroups extends Part {
-  /** Whether the card shows the groups, for the presence rule. */
-  static shown(groups: LocatorGroups) {
-    if (!groups.tab.inFront())
-      throw new Error("its window is not the one in front");
-    return groups
-      .root(groups.tab.screen)
-      .getByRole("list", "Locator groups")
-      .isVisible();
-  }
-
   /** One group, in the card's list of groups. */
   private group(number: number) {
     return (card: Locator) =>
@@ -936,18 +928,13 @@ export class RunCard extends Part {
 }
 
 /** A structure node's view in the detail pane. */
-@ayme({ present: (self: NodeView) => NodeView.shown(self) })
+// The Model lens's view of the page has a Tools section too, and `runTool`
+// runs its cards as well.
+@ayme({
+  present: (self: Part) =>
+    Part.shows(self, (view) => view.getByRole("region", "Tools")),
+})
 export class NodeView extends Part {
-  /**
-   * Whether the pane shows a Tools section, for the presence rule. The Model
-   * lens's view of the page has one too, and `runTool` runs its cards as well.
-   */
-  static shown(view: NodeView) {
-    if (!view.tab.inFront())
-      throw new Error("its window is not the one in front");
-    return view.root(view.tab.screen).getByRole("region", "Tools").isVisible();
-  }
-
   @ayme.child
   get modelSees(): WhatTheModelSees {
     return new WhatTheModelSees(this.tab, this.root);
@@ -1025,18 +1012,11 @@ export class ToolPage extends Part {
 }
 
 /** The Model lens's detail: the page, a Page Object or a Page Object Model. */
-@ayme({ present: (self: ModelDetailView) => ModelDetailView.shown(self) })
+@ayme({
+  present: (self: Part) =>
+    Part.shows(self, (view) => view.getByRole("region", "Members")),
+})
 export class ModelDetailView extends Part {
-  /** Whether the pane shows members, for the presence rule. */
-  static shown(view: ModelDetailView) {
-    if (!view.tab.inFront())
-      throw new Error("its window is not the one in front");
-    return view
-      .root(view.tab.screen)
-      .getByRole("region", "Members")
-      .isVisible();
-  }
-
   get title(): On {
     return this.on((root) => root.getByRole("heading", { level: 3 }));
   }
@@ -1479,7 +1459,19 @@ export class LayoutMenu extends Part {
     await this.trigger.click();
   }
 
-  @ayme.action({ description: "Picks a layout in the open layout menu." })
+  /** Whether the menu is open, for `pick`'s availability rule. */
+  static async isOpen(menu: LayoutMenu): Promise<true | string> {
+    const open = await menu.tab
+      .screenInFront()
+      .getByRole("menu", { name: /layout/i })
+      .isVisible();
+    return open || "the layout menu is closed";
+  }
+
+  @ayme.action({
+    description: "Picks a layout in the open layout menu.",
+    available: (self: LayoutMenu) => LayoutMenu.isOpen(self),
+  })
   async pick(choice: LayoutChoice) {
     await this.option(choice).click();
   }
@@ -1582,9 +1574,7 @@ export class CollapsedLogo {
 
   /** The logo on its tab's screen, read as `Part.rootOf` reads a part's root. */
   static rootOf(logo: CollapsedLogo) {
-    if (!logo.tab.inFront())
-      throw new Error("its window is not the one in front");
-    return logo.tab.screen.getByRole("button", "Open ayme") as never;
+    return logo.tab.screenInFront().getByRole("button", "Open ayme") as never;
   }
 
   get root(): On {

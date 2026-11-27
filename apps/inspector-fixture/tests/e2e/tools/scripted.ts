@@ -11,11 +11,16 @@ export type Call = { readonly tool: string; readonly input: object };
 /** The calls that answer a step, and the node to tap if they fail (`button "Model"`), as an agent would heal. */
 export type Plan = { readonly calls: readonly Call[]; readonly heal?: string };
 
-/** Taps the one node the observation lists with `roleAndName`, e.g. `button "Model"`. */
-async function heal(ctx: StepExecutorContext, roleAndName: string) {
+/** The id of the node the observation lists with `roleAndName`, e.g. `button "Model"`. */
+async function nodeId(ctx: StepExecutorContext, roleAndName: string) {
   const { text } = await ctx.observe();
   const line = text.split("\n").find((at) => at.includes(` ${roleAndName}`));
-  const id = /^\s*#?(\S+)/.exec(line ?? "")?.[1];
+  return /^\s*#?(\S+)/.exec(line ?? "")?.[1];
+}
+
+/** Taps the one node the observation lists with `roleAndName`. */
+async function heal(ctx: StepExecutorContext, roleAndName: string) {
+  const id = await nodeId(ctx, roleAndName);
   if (id === undefined) throw new Error(`no ${roleAndName} on screen to heal`);
   await ctx.actions.tap({ id });
 }
@@ -74,6 +79,18 @@ export function scriptedExecutor(
           status: "blocked" as const,
           errorCode: "AUTOMATION_UNSUPPORTED" as const,
           summary: `no scripted calls for "${ctx.step.instruction}"`,
+        };
+      // After e2e's uncertain-action hand-off, an agent checks the screen
+      // before acting again: with the node it would heal on gone, the call
+      // that failed took effect.
+      if (
+        ctx.replayedPrefix?.uncertainAction !== undefined &&
+        plan.heal !== undefined &&
+        (await nodeId(ctx, plan.heal)) === undefined
+      )
+        return {
+          status: "passed" as const,
+          summary: `${ctx.replayedPrefix.uncertainAction} took effect before it failed`,
         };
       try {
         for (const planned of plan.calls) await inFront(ctx, planned);

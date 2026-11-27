@@ -50,8 +50,8 @@ export const pageObjects = directPageObjects({
 /**
  * The tools as arm 3 serves its agent: the list holds the actions that can
  * run on the screen now; a call that failed on a stale Page Object, or any
- * replayed call that failed, puts its action out of use for the test; and
- * each failed call leaves a note in `staleDir`.
+ * replayed call that failed, is refused with the same input for the rest of
+ * the test; and each failed call leaves a note in `staleDir`.
  */
 export function servedTools(
   staleDir: string,

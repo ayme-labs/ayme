@@ -15,6 +15,7 @@ const runsNow = async (tool: string) =>
 
 test("the e2e suite's Page Objects run as tools, record and replay", async ({
   agent,
+  appView,
   inspector,
   listPage,
 }) => {
@@ -71,12 +72,44 @@ test("the e2e suite's Page Objects run as tools, record and replay", async ({
     await inspector.detail.toolPage.card.field("text").front()
   ).toHaveValue("Milk");
 
+  // `run`'s second parameter, its options, left out.
   await call("run the tool with Bread", "RunCard_run", {
     args: { text: "Bread" },
   });
   await expect(await listPage.items.front()).toHaveText(["Bread"]);
   expect(await runsNow("RunCard_run")).toBe(true);
   expect(await runsNow("CollapsedLogo_open")).toBe(false);
+
+  // A rest parameter takes its list; any other value is refused before the
+  // call acts, live, replayed or scripted alike.
+  await call("open generate_locator's page", "Inspector_tool", {
+    name: "generate_locator",
+  });
+  await call("open its arguments", "RunCard_openArguments");
+  const addItem = await appView.ref('button "Add item"');
+  const toggle = pageObjects.projectTools().LocatorGroups_toggleFromTree!
+    .tool as { execute: (input: unknown, options: object) => Promise<unknown> };
+  const refused = await toggle.execute({ number: 1, refs: addItem }, {}).then(
+    () => "it ran",
+    (error: unknown) => String(error)
+  );
+  expect(refused).toMatch(
+    /LocatorGroups\.toggleFromTree was called with input it does not take: refs: /
+  );
+  await call(
+    "add the Add item button to group 1",
+    "LocatorGroups_toggleFromTree",
+    {
+      number: 1,
+      refs: [addItem],
+    }
+  );
+  await call("run generate_locator", "RunCard_pressRun");
+  await expect(
+    await inspector.detail.toolPage.card.locatorGroups
+      .locator(1, addItem)
+      .front()
+  ).toHaveCount(1);
 
   await call(
     "collapse the panel",

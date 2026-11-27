@@ -5,7 +5,6 @@ import {
   assertOwnCacheDir,
   assertPatchedE2e,
   importBaseline,
-  PAGE_OBJECT_RULES,
 } from "@ayme-dev/e2e-tools";
 import { claudeCode } from "@e2e-dev/acp";
 import type { E2EConfig, JsonValue } from "e2e";
@@ -13,17 +12,15 @@ import type { E2EConfig, JsonValue } from "e2e";
 import base from "./e2e.config";
 import { goalCalls } from "./tests/e2e/tools/goalCalls";
 import { servedTools } from "./tests/e2e/tools/pageObjects";
+import { PAGE_OBJECT_RULES } from "./tests/e2e/tools/rules";
 import { scriptedExecutor } from "./tests/e2e/tools/scripted";
 
-// The Page Object study's third arm: the goal tests of the first
-// (e2e.goals.config.ts, tests/goals/), the same files, run by the same agent
-// and model, with the e2e suite's Page Objects as tools beside e2e's own
-// action tools. e2e records each Page Object Tool call and replays it with
-// no model. It needs the patched e2e, in this run only:
-// `pnpm test:goals:tools` starts it with `e2e-patched`
-// (packages/e2e-tools/README.md). `AYME_E2E_EXECUTOR=scripted` answers each
-// goal with the calls tests/e2e/tools/goalCalls.ts names instead, to try the
-// wiring with no model; its recordings are kept apart from the agent's.
+// The Page Object study's third arm: the first arm's goal tests and settings
+// (e2e.goals.config.ts) with the e2e suite's Page Objects as tools beside
+// e2e's own action tools, on the patched e2e (packages/e2e-tools/README.md).
+// `AYME_E2E_EXECUTOR=scripted` answers each goal with the calls
+// tests/e2e/tools/goalCalls.ts names instead, with no model, and keeps its
+// recordings apart from the agent's.
 
 await assertPatchedE2e("e2e.goals-tools.config.ts");
 const { default: goals } = await importBaseline(
