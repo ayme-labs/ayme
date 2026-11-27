@@ -34,7 +34,7 @@ A build without ayme resolves `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` to 
 
 A subclass inherits each from the nearest class in its chain that declares it, with or without a decorator of its own. It may declare its own. `root` and `present` are inherited separately, so a subclass can override one and keep the other.
 
-They can run at any time, but never as part of a tool call. So they must only read: they must not scroll, click, focus or change the page. They never run on the server.
+ayme asks them at any time, also during a tool call: a call asks `present` while it waits for the Page Object its action returned. So they must only read: they must not scroll, click, focus or change the page. They never run on the server.
 
 ### Page Object presence
 
@@ -67,7 +67,7 @@ A predicate that reads the URL follows client-side routing and the browser's Bac
 
 A predicate that throws makes the Page Object absent. The console gets the error with the class, such as `ProjectsPage: its present predicate threw TypeError: store is undefined.`, once until the error changes.
 
-Presence adds and withdraws tools. A present Page Object's availability is still measured at its root. An action that returns a Page Object with `present` answers once it holds; see [The Page Object an action returns](../guides/page-state.md#the-page-object-an-action-returns). [Register Page Objects](../guides/publish-tools.md#register-page-objects) says where a page such as `ProjectsPage` is registered.
+Presence adds and withdraws tools. A present Page Object's availability is still measured at its root. An action that returns a Page Object with `present` answers once it holds, or at the Settled Page deadline; see [The Page Object an action returns](../guides/page-state.md#the-page-object-an-action-returns). [Register Page Objects](../guides/publish-tools.md#register-page-objects) says where a page such as `ProjectsPage` is registered.
 
 #### Typed route parameters
 
