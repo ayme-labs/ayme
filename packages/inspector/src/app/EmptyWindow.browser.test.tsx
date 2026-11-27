@@ -34,12 +34,13 @@ function silentTransport(): InspectorContract {
   };
 }
 
-function render(windowed: boolean, external: boolean) {
+function render(windowed: boolean, external: boolean, session = false) {
   replaceInspectorTransport(silentTransport(), { external });
   const host = document.createElement("div");
   document.body.append(host);
   const unmount = renderInspector(host.attachShadow({ mode: "open" }), {
     windowed,
+    session,
   });
   unmounts.push(() => {
     unmount();
@@ -54,6 +55,21 @@ it("tells the external window to pair a page and start its session with the exte
   expect(
     await page.getByText('inspector: { placement: "external" }').count()
   ).toBe(1);
+});
+
+it("tells a Session's window, before it heard of a Tab, that the Session has none yet, not to pair a page", async () => {
+  render(true, true, true);
+
+  await expect
+    .poll(() =>
+      page
+        .getByText(
+          "This Session has no Tab yet. Once a tab is open in its browser, the Inspector shows it."
+        )
+        .isVisible()
+    )
+    .toBe(true);
+  expect(await hint.count()).toBe(0);
 });
 
 it("says nothing in the inline panel", async () => {

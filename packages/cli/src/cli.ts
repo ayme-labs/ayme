@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { capture } from "./capture";
-import { serveMcp } from "./mcp";
 import { planOf } from "./plan";
 import { readCommand } from "./readCommand";
 import { inspectorScript, session } from "./session";
@@ -12,6 +11,8 @@ if (plan.kind === "print") {
 } else if (plan.kind === "capture") {
   process.exitCode = await capture(plan.target);
 } else if (plan.kind === "mcp") {
+  // Loaded here alone, so no other command loads the MCP server.
+  const { serveMcp } = await import("./mcp");
   await serveMcp(
     { projectDir: process.cwd(), name: plan.session },
     inspectorScript(import.meta.url)

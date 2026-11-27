@@ -8,7 +8,8 @@ import { webSocketInspectorContract } from "./webSocketInspectorContract";
 // Unit tests: the channel transport of the Inspector contract against a
 // WebSocket the test drives, the way `ayme mcp` relays it. Frames are the
 // server's: requests `{ id, method, params }`; replies `{ id, result }`,
-// `{ id, error }`, `{ event }`, `{ reset: true }`, `{ tab }` and `{ ended }`.
+// `{ id, error }`, `{ event }`, `{ reset: true }`, `{ tab }`, `{ token }` and
+// `{ ended }`.
 
 class FakeWebSocket {
   static readonly instances: FakeWebSocket[] = [];
@@ -356,6 +357,31 @@ describe("webSocketInspectorContract", () => {
       ]);
     });
 
+    it("hands on the token the Session tells a window a code admitted, and connects again at the address the window gives then", async () => {
+      const tokens: string[] = [];
+      let url = "ws://x/inspector/ws?code=once";
+      webSocketInspectorContract(() => url, {
+        WebSocket: FakeWebSocket as never,
+        followsTabs: true,
+        onToken(token) {
+          tokens.push(token);
+          url = `ws://x/inspector/ws?token=${token}`;
+        },
+      });
+      const socket = () => FakeWebSocket.instances.at(-1)!;
+      socket().open();
+
+      socket().receive({ token: "secret" });
+      socket().close();
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(tokens).toEqual(["secret"]);
+      expect(FakeWebSocket.instances.map((ws) => ws.url)).toEqual([
+        "ws://x/inspector/ws?code=once",
+        "ws://x/inspector/ws?token=secret",
+      ]);
+    });
+
     it("waits for the Tab again after it connects again", async () => {
       const { socket } = await sessionClient();
       socket().receive({ tab: 1 });
@@ -372,13 +398,13 @@ describe("webSocketInspectorContract", () => {
 
   describe("when the Session behind the server ends", () => {
     it("says why, connects no more when the server goes, and fails every request from then on", async () => {
-      const ended: string[] = [];
+      const ended: unknown[] = [];
       const contract = webSocketInspectorContract(
         "ws://127.0.0.1:9351/inspector/ws",
         {
           WebSocket: FakeWebSocket as never,
           reconnectMs: 1000,
-          onEnded: (notice) => ended.push(notice),
+          onEnded: (notice, inChat) => ended.push([notice, inChat]),
         }
       );
       const socket = FakeWebSocket.instances.at(-1)!;
@@ -386,11 +412,19 @@ describe("webSocketInspectorContract", () => {
       const waiting = contract.getState();
       const rejected = expect(waiting).rejects.toThrow("closed");
 
-      socket.receive({ ended: "The Session shop was closed." });
+      socket.receive({
+        ended: "The Session shop was closed. Run ayme inspect.",
+        inChat: "The Session shop was closed. Ask your agent.",
+      });
       socket.close();
       await vi.advanceTimersByTimeAsync(5000);
 
-      expect(ended).toEqual(["The Session shop was closed."]);
+      expect(ended).toEqual([
+        [
+          "The Session shop was closed. Run ayme inspect.",
+          "The Session shop was closed. Ask your agent.",
+        ],
+      ]);
       await rejected;
       expect(FakeWebSocket.instances).toHaveLength(1);
       await expect(contract.getState()).rejects.toThrow("closed");

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -68,12 +69,8 @@ async function startMcp(
   return {
     client,
     stderr: () => stderr,
-    /** Calls `ayme_inspect`, and resolves with its text. */
-    async inspect() {
-      const result = await client.callTool({ name: INSPECT, arguments: {} });
-      const [first] = result.content as { type: string; text?: string }[];
-      return { text: first?.text ?? "", isError: result.isError === true };
-    },
+    /** Calls `ayme_inspect`, and resolves with its whole result. */
+    inspect: () => client.callTool({ name: INSPECT, arguments: {} }),
     /** The page `ayme_inspect` points an Agent App to, as the Agent App
      * reads it. */
     async page() {
@@ -165,30 +162,37 @@ async function showInAgentApp(
   baseURL: string,
   app: { html: string; connectDomains: string[] }
 ) {
-  const frameServer = createServer((_, response) =>
-    response
-      .writeHead(200, {
-        "content-type": "text/html; charset=utf-8",
-        "content-security-policy": [
-          "default-src 'none'",
-          "script-src 'unsafe-inline'",
-          "style-src 'unsafe-inline'",
-          "img-src data: blob:",
-          "font-src data:",
-          "media-src data: blob:",
-          `connect-src ${app.connectDomains.join(" ") || "'none'"}`,
-          "frame-src 'none'",
-          "object-src 'none'",
-          "base-uri 'none'",
-          "form-action 'none'",
-        ].join("; "),
-      })
-      .end(app.html)
+  // The page holds the Session's token: it goes to the frame at an address
+  // no other local client can guess, and is kept nowhere.
+  const path = `/${randomBytes(16).toString("hex")}`;
+  const frameServer = createServer((request, response) =>
+    request.url !== path
+      ? response.writeHead(404).end()
+      : response
+          .writeHead(200, {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store",
+            "content-security-policy": [
+              "default-src 'none'",
+              "script-src 'unsafe-inline'",
+              "style-src 'unsafe-inline'",
+              "img-src data: blob:",
+              "font-src data:",
+              "media-src data: blob:",
+              `connect-src ${app.connectDomains.join(" ") || "'none'"}`,
+              "frame-src 'none'",
+              "object-src 'none'",
+              "base-uri 'none'",
+              "form-action 'none'",
+            ].join("; "),
+          })
+          .end(app.html)
   );
   await new Promise<void>((resolve) =>
     frameServer.listen(0, "127.0.0.1", resolve)
   );
   const { port } = frameServer.address() as AddressInfo;
+  const frameAddress = `http://127.0.0.1:${port}${path}`;
   const context = await browser.newContext();
   cleanups.push(async () => {
     await context.close();
@@ -196,14 +200,14 @@ async function showInAgentApp(
   });
   const page = await context.newPage();
   await page.goto(
-    `${baseURL}/agent-app.html?modes=inline&announce=1&resize=1&frame=${encodeURIComponent(`http://127.0.0.1:${port}/`)}`
+    `${baseURL}/agent-app.html?modes=inline&announce=1&resize=1&frame=${encodeURIComponent(frameAddress)}`
   );
   const frame = page.frameLocator("#app");
   const inspector = new Inspector(
     page,
     frame.locator(`${INSPECTOR_SELECTOR_ENGINE}=[data-ayme-inspector-root]`)
   );
-  return { frame, inspector };
+  return { frame, inspector, address: frameAddress };
 }
 
 function closeServer(server: Server) {
@@ -233,6 +237,32 @@ for (const revision of REVISIONS)
     expect(resources.map(({ uri }) => uri)).toEqual([
       "ui://ayme/inspector.html",
     ]);
+    // No other route reaches the Session: no prompts, completions or
+    // resource templates. Sent as they are, since the client answers a
+    // listing of what the server does not offer by itself.
+    const capabilities = client.getServerCapabilities();
+    expect(capabilities).not.toHaveProperty("prompts");
+    expect(capabilities).not.toHaveProperty("completions");
+    await expect(
+      client.request({ method: "prompts/list", params: {} })
+    ).rejects.toThrow();
+    await expect(
+      client.request({
+        method: "completion/complete",
+        params: {
+          ref: { type: "ref/resource", uri: "ui://ayme/inspector.html" },
+          argument: { name: "uri", value: "" },
+        },
+      })
+    ).rejects.toThrow();
+    expect(
+      await client
+        .request({ method: "resources/templates/list", params: {} })
+        .then(
+          ({ resourceTemplates }) => resourceTemplates,
+          () => []
+        )
+    ).toEqual([]);
   });
 
 test("an Agent App shows the Inspector of the Session -s names, which runs a Page Object Tool on the Session's Tab as a Run of the Inspector", async ({
@@ -247,8 +277,12 @@ test("an Agent App shows the Inspector of the Session -s names, which runs a Pag
   const agentApp = await mcp(["-s=shop"]);
 
   expect(await agentApp.inspect()).toEqual({
-    text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect opens it in a browser window.",
-    isError: false,
+    content: [
+      {
+        type: "text",
+        text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect opens it in a browser window.",
+      },
+    ],
   });
   const { inspector } = await showInAgentApp(
     browser,
@@ -268,37 +302,66 @@ test("an Agent App shows the Inspector of the Session -s names, which runs a Pag
   await expect(inspector.header.connections.root).toHaveCount(0);
 });
 
-test("AYME_SESSION names the Session, as for every other command", async ({
-  ayme,
-  mcp,
-  baseURL,
-}) => {
-  await ayme("open", "-s=cart", `${baseURL}/shop.html`);
+for (const [named, args, env] of [
+  ["-s=shop", ["-s=shop"], {}],
+  ["AYME_SESSION=shop", [], { AYME_SESSION: "shop" }],
+] as const)
+  test(`started before any Session, with ${named}, the tool and the page say how to start that Session, and once it opens beside a default Session on another page, both reach it`, async ({
+    ayme,
+    mcp,
+    project,
+    baseURL,
+    browser,
+  }) => {
+    const agentApp = await mcp(args, { env });
 
-  const agentApp = await mcp([], { env: { AYME_SESSION: "cart" } });
+    const none = `No Session named shop is open in ${project}. Start one with ayme -s=shop open.`;
+    expect(await agentApp.inspect()).toEqual({
+      content: [{ type: "text", text: none }],
+      isError: true,
+    });
+    const notice = await agentApp.page();
+    expect(notice.html).toContain(
+      `${none} Then ask your agent to show the Inspector again.`
+    );
+    expect(notice.connectDomains).toEqual([]);
 
-  expect(await agentApp.inspect()).toMatchObject({
-    text: expect.stringContaining("The Inspector of the Session cart"),
-    isError: false,
+    await ayme("open", `${baseURL}/sign-in.html`);
+    expect(await agentApp.inspect()).toEqual({
+      content: [
+        {
+          type: "text",
+          text: `No Session named shop is open in ${project}. The Sessions open there are named: default. Start one with ayme -s=shop open.`,
+        },
+      ],
+      isError: true,
+    });
+    await ayme("open", "-s=shop", `${baseURL}/shop.html`);
+
+    expect(await agentApp.inspect()).toEqual({
+      content: [
+        {
+          type: "text",
+          text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect opens it in a browser window.",
+        },
+      ],
+    });
+    const { inspector } = await showInAgentApp(
+      browser,
+      baseURL!,
+      await agentApp.page()
+    );
+    // The Tools lens lists the tools of the Tab the Inspector shows alone.
+    await inspector.navigator.showLens("Tools");
+    await expect
+      .poll(() => inspector.navigator.tools.listed())
+      .toEqual({
+        "Page object tools": expect.arrayContaining(["Basket.add"]),
+      });
+    expect(
+      (await inspector.navigator.tools.listed())["Page object tools"]
+    ).not.toContain("SignInPage.signIn");
   });
-});
-
-test("with no Session open, the tool says how to start one, and the page an Agent App shows says so and connects nowhere", async ({
-  mcp,
-  project,
-}) => {
-  const agentApp = await mcp();
-
-  const inspected = await agentApp.inspect();
-  const { html, connectDomains } = await agentApp.page();
-
-  const why = `No Session is open in ${project}. Start one with ayme -s=default open.`;
-  expect(inspected).toEqual({ text: why, isError: true });
-  expect(html).toContain(
-    `${why} Then ask your agent to show the Inspector again.`
-  );
-  expect(connectDomains).toEqual([]);
-});
 
 test("once the Session ends, the Inspector in the chat says so and connects no more", async ({
   ayme,
@@ -320,12 +383,12 @@ test("once the Session ends, the Inspector in the chat says so and connects no m
   await ayme("close");
 
   await expect(frame.getByRole("status")).toHaveText(
-    "The Session default was closed. Start a Session with ayme open or ayme attach, then run ayme -s=default inspect to inspect it."
+    "The Session default was closed. Start a Session with ayme -s=default open or ayme -s=default attach, then ask your agent to show the Inspector again."
   );
   await expect(inspector.panel).toHaveCount(0);
 });
 
-test("the window ayme inspect opens and the view in the chat each bring the Session's token, which leaves no trace in the window's address or the Session's log", async ({
+test("the window ayme inspect opens is admitted by a one-use code and connects again after a reload, the view in the chat by the Session's token, which neither the command's output nor the window's address nor the Session's log holds", async ({
   ayme,
   mcp,
   baseURL,
@@ -339,11 +402,9 @@ test("the window ayme inspect opens and the view in the chat each bring the Sess
     cwd: project,
     env: { ...commandEnv, BROWSER: "none" },
   });
-  const address = /at (http:\S+)\.$/m.exec(inspected.stdout)?.[1];
-  const token = new URLSearchParams(new URL(address!).hash.slice(1)).get(
-    "token"
-  );
-  expect(token, inspected.stdout).toMatch(/^[\w-]{32}$/);
+  const address = /at (http:\/\/\S+#code=[\w-]+)\./.exec(inspected.stdout)?.[1];
+  const code = new URLSearchParams(new URL(address!).hash.slice(1)).get("code");
+  expect(code, inspected.stdout).toMatch(/^[\w-]{32}$/);
 
   const window = await browser.newPage();
   cleanups.push(() => window.close());
@@ -353,14 +414,31 @@ test("the window ayme inspect opens and the view in the chat each bring the Sess
   await expect
     .poll(() => inWindow.navigator.model.objectPaths())
     .toContain("Basket");
+  await window.reload();
+  await inWindow.open();
+  await expect
+    .poll(() => inWindow.navigator.model.objectPaths())
+    .toContain("Basket");
   const page = await (await mcp()).page();
-  const { inspector: inChat } = await showInAgentApp(browser, baseURL!, page);
+  const { inspector: inChat, address: inChatAddress } = await showInAgentApp(
+    browser,
+    baseURL!,
+    page
+  );
   await expect
     .poll(() => inChat.navigator.model.objectPaths())
     .toContain("Basket");
 
-  expect(page.html).toContain(`token=${token}`);
+  const token = /token=([\w-]{32})/.exec(page.html)?.[1];
+  expect(token).toBeDefined();
+  expect(`${inspected.stdout}${inspected.stderr}`).not.toContain(token);
   expect(window.url()).toBe(address!.split("#")[0]);
   await expect(inWindow.header.connections.root).toHaveCount(0);
   expect(sessionLogs(temporary)).not.toContain(token);
+  expect(sessionLogs(temporary)).not.toContain(code);
+  // The stand-in Agent App gives the page, token and all, to its own frame
+  // alone, as the Agent App gives it to its own.
+  const shown = await fetch(inChatAddress);
+  expect(shown.headers.get("cache-control")).toBe("no-store");
+  expect((await fetch(new URL("/", inChatAddress))).status).toBe(404);
 });

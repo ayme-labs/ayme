@@ -4,11 +4,11 @@ import { exposeInspectorShadowRoot } from "../shared/infrastructure";
 
 /**
  * Mounts the Inspector into the window it owns (ADR-0049): the external
- * placement, in a page that `ayme mcp` serves. It fills the window, and shows
- * a page that is not this document, so it hears none of its DOM events: the
- * contract client it reads through is the channel's (`external`). Shown in
- * an Agent App's chat, it offers the `fullscreen` the Agent App offers. A
- * `session` says a Session serves it.
+ * placement, in a page that `@ayme-dev/mcp`'s server or a Session's process
+ * serves. It fills the window, and shows a page that is not this document,
+ * so it hears none of its DOM events: the contract client it reads through
+ * is the channel's (`external`). Shown in an Agent App's chat, it offers the
+ * `fullscreen` the Agent App offers.
  */
 export function mountExternalInspector({
   fullscreen,
@@ -33,9 +33,15 @@ export function mountExternalInspector({
   };
 }
 
-/** What a window says once its server is gone for good. */
+/** What a window of `@ayme-dev/mcp`'s server says once that server is gone
+ * for good. */
 export const SERVER_LOST_NOTICE =
   "This Inspector lost its ayme MCP server. Ask the agent to open the Inspector again.";
+
+/** What the Inspector of the Session named `name` says once it can no
+ * longer reach it: in a window, or in an Agent App's chat. */
+export const sessionLost = (name: string, inChat: boolean): string =>
+  `This Inspector lost the Session ${name}. Start it again with ayme -s=${name} open, then ${inChat ? "ask your agent to show the Inspector again" : `run ayme -s=${name} inspect`}.`;
 
 /**
  * Says `text` in place of the Inspector: by default, that the server this

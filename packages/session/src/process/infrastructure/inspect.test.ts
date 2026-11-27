@@ -6,6 +6,7 @@ import { beforeEach, expect, it, onTestFinished, vi } from "vitest";
 
 import { scriptedBrowser } from "../../../testing";
 import { serveSession } from "./background";
+import { askSession } from "./commands";
 import { inspectSession } from "./inspect";
 import {
   claimRecord,
@@ -49,8 +50,8 @@ async function serveShop() {
   );
 }
 
-const WINDOW = /^http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+$/;
-const WINDOW_IN_TEXT = /http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+/;
+const WINDOW = /^http:\/\/127\.0\.0\.1:\d+\/inspector#code=[\w-]+$/;
+const WINDOW_IN_TEXT = /http:\/\/127\.0\.0\.1:\d+\/inspector#code=[\w-]+/;
 
 it("asks the person's default browser to open the Session's Inspector window, and says where it is", async () => {
   await serveShop();
@@ -74,6 +75,24 @@ it("asks the person's default browser to open the Session's Inspector window, an
   expect(opened[0]!.args.at(-1)).toBe(address);
 });
 
+it("neither what it prints nor what it hands the opener holds the Session's token", async () => {
+  await serveShop();
+  const opened: { command: string; args: readonly string[] }[] = [];
+  const answer = await inspectSession(place, {}, async (opener) => {
+    opened.push(opener);
+    return undefined;
+  });
+
+  const agentApp = await askSession(place, { inspector: { agentApp: {} } });
+  if (!agentApp.ok) throw new Error(agentApp.text);
+  const token = new URL(
+    (agentApp.data as { socket: string }).socket
+  ).searchParams.get("token");
+  expect(token).toMatch(/^[\w-]{32}$/);
+  expect(JSON.stringify(answer)).not.toContain(token);
+  expect(JSON.stringify(opened)).not.toContain(token);
+});
+
 it("only says where the window is when BROWSER is none", async () => {
   await serveShop();
   const open = vi.fn();
@@ -83,7 +102,7 @@ it("only says where the window is when BROWSER is none", async () => {
   expect(answer).toMatchObject({
     ok: true,
     text: expect.stringMatching(
-      /^The Inspector of the Session shop is at http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+\.$/
+      /^The Inspector of the Session shop is at http:\/\/127\.0\.0\.1:\d+\/inspector#code=[\w-]+\. The address opens one window, within 5 minutes\.$/
     ),
   });
   expect(open).not.toHaveBeenCalled();
@@ -101,7 +120,7 @@ it("fails, and says where the window is and why no browser opened it, when the o
   expect(answer).toMatchObject({
     ok: false,
     text: expect.stringMatching(
-      /^The Inspector of the Session shop is at http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+\. ayme could not open it in a browser: spawn xdg-open ENOENT\. Open the address in a browser outside the Session's\.$/
+      /^The Inspector of the Session shop is at http:\/\/127\.0\.0\.1:\d+\/inspector#code=[\w-]+\. ayme could not open it in a browser: spawn xdg-open ENOENT\. Open the address in a browser outside the Session's\. The address opens one window, within 5 minutes\.$/
     ),
   });
 });
