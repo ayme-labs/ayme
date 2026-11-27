@@ -92,11 +92,20 @@ async function windowSocket(url: string, origin?: string) {
   return {
     socket,
     told: told as object[],
-    /** Sends a request, on the Tab `tab` when given, and resolves with
-     * its reply. */
+    /** Sends a request, on the Tab `tab`, or else on the Tab the Session
+     * told the window last, as the window does, and resolves with its
+     * reply. */
     async request(method: string, params?: unknown, tab?: number) {
       const asked = ++id;
-      socket.send(JSON.stringify({ id: asked, method, params, tab }));
+      const toldTab = () =>
+        (
+          told.findLast((frame) => Object.hasOwn(frame as object, "tab")) as
+            { tab: number } | undefined
+        )?.tab;
+      await expect.poll(toldTab).toBeDefined();
+      socket.send(
+        JSON.stringify({ id: asked, method, params, tab: tab ?? toldTab() })
+      );
       await expect
         .poll(() =>
           told.find((frame) => (frame as { id?: number }).id === asked)
@@ -168,8 +177,13 @@ it.each([
   ["a frame that is not JSON", "not json", 1008],
   ["a frame that is no request", JSON.stringify({ id: 1 }), 1008],
   [
+    "a request that names no Tab",
+    JSON.stringify({ id: 1, method: "look" }),
+    1008,
+  ],
+  [
     "a binary frame",
-    Buffer.from(JSON.stringify({ id: 1, method: "look" })),
+    Buffer.from(JSON.stringify({ id: 1, method: "look", tab: 1 })),
     1008,
   ],
   ["a frame larger than any request", "x".repeat(2 * 1024 * 1024), 1009],

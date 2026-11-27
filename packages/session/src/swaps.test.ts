@@ -6,6 +6,7 @@ import {
   startScriptedSession,
   type ScriptedBrowser,
   type ScriptedTab,
+  windowOn,
 } from "../testing";
 
 // Rebuilds and Swaps (rule 7), through the Session's interface on the
@@ -447,6 +448,7 @@ it("a Run from the Inspector window reads the page in its turn before it runs, a
     ...opening,
     inspector: "http://127.0.0.1:4500/inspector",
   });
+  const window = await windowOn(session);
   const runs = holdRuns(browser);
   void session.ask(remove);
   await browser.until(() => browser.runs.length === 1);
@@ -455,13 +457,10 @@ it("a Run from the Inspector window reads the page in its turn before it runs, a
     seen.push({ swaps: browser.swappedIn.length, observed: browser.observed });
     return { ok: true };
   });
-  const run = session.ask({
-    inspector: {
-      contract: {
-        method: "runTool",
-        params: { name: "Basket.clear", input: {}, by: "inspector" },
-      },
-    },
+  const run = window.ask("runTool", {
+    name: "Basket.clear",
+    input: {},
+    by: "inspector",
   });
   await rebuilt(browser, EDITED);
 

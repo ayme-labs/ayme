@@ -14,13 +14,12 @@ export type InspectorRequest =
   /** One call of the window on the Inspector's contract with the runtime:
    * `method` names one of the contract's methods, and `params` is its
    * argument, plain data the Session does not read. `tab` is the Tab the
-   * window shows, as the Session told it; without it, the call is made on
-   * the Tab the Session works on now. */
+   * window shows, as the Session told it. */
   | {
       readonly contract: {
         readonly method: string;
         readonly params?: unknown;
-        readonly tab?: number;
+        readonly tab: number;
       };
     };
 

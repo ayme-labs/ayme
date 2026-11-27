@@ -175,9 +175,8 @@ export function followTabs(
 /** Answers `request` of the Session named `name`, whose window `opening`
  * gives the address of, each time with a code of its own, and admits an
  * Agent App's view at `agentApp`. A call on the contract is made on the Tab
- * it names, as `shown` gives it, or on the Tab `chosen` gives, the one the
- * Session works on, when it names none; a Run of a tool that takes a Page
- * Object Id is refused when `idElsewhere` says the id is of another Tab. */
+ * it names, as `shown` gives it; a Run of a tool that takes a Page Object
+ * Id is refused when `idElsewhere` says the id is of another Tab. */
 export const answerInspector = (
   request: InspectorRequest,
   {
@@ -185,14 +184,12 @@ export const answerInspector = (
     agentApp,
     name,
     shown,
-    chosen,
     idElsewhere,
   }: {
     readonly opening: (() => string) | undefined;
     readonly agentApp: string | undefined;
     readonly name: string;
     readonly shown: ShownTabs["shown"];
-    readonly chosen: Effect.Effect<Pick<HostedTab, "inspector">, Error>;
     readonly idElsewhere: (
       on: BrowserTab,
       call: { readonly tool: string; readonly input: unknown }
@@ -210,22 +207,17 @@ export const answerInspector = (
         : agentAppAnswer(agentApp, name)
     );
   const { method, params, tab } = request.contract;
-  const on: Effect.Effect<Pick<HostedTab, "inspector">, Error> = tab ===
-  undefined
-    ? chosen
-    : shown(tab).pipe(
-        Effect.flatMap((showing) => {
-          if (!showing) return Effect.fail(new TabReadError(NO_TAB_OPEN));
-          const elsewhere =
-            method === "runTool"
-              ? idElsewhere(showing.tab, toolCallOf(params))
-              : undefined;
-          return elsewhere === undefined
-            ? Effect.succeed(showing.hosted)
-            : Effect.fail(new TabReadError(elsewhere));
-        })
-      );
-  return on.pipe(
+  return shown(tab).pipe(
+    Effect.flatMap((showing) => {
+      if (!showing) return Effect.fail(new TabReadError(NO_TAB_OPEN));
+      const elsewhere =
+        method === "runTool"
+          ? idElsewhere(showing.tab, toolCallOf(params))
+          : undefined;
+      return elsewhere === undefined
+        ? Effect.succeed(showing.hosted)
+        : Effect.fail(new TabReadError(elsewhere));
+    }),
     Effect.flatMap((hosted) =>
       hosted.inspector.request(
         method,
