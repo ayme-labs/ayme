@@ -68,6 +68,8 @@ It opens the page in Chromium, with the Recorder beside it and a small toolbar o
 
 The [ayme capture guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md) covers the controls, a logged-in app, the files a recording saves, its trace, the warnings and the limits.
 
+When the Recorder cannot fully record a step, it prints a line that starts with `Warning:` in the terminal and keeps recording. If you ran ayme capture yourself, pass the warning to your agent with the recording. The guide [lists the warnings](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#warnings).
+
 ### Turn a recording into page objects
 
 The `ayme-capture` skill teaches your coding agent to read a recording and write page objects and a Playwright test from it. Install it as in [Install](#install), or copy this request into your coding agent:
