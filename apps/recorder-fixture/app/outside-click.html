@@ -20,12 +20,22 @@
       [role="group"][hidden] {
         display: none;
       }
+      /* Shown in place, under the button that opens it, and hidden as the
+         browser hides it when closed, which [role="group"] above undoes. */
+      [popover] {
+        position: static;
+        margin: 0;
+      }
+      [popover]:not(:popover-open) {
+        display: none;
+      }
     </style>
   </head>
   <body>
     <h1>Outside click</h1>
-    <!-- Four panels, each closed when a press lands outside it, in one of
-         the ways pages listen for that. -->
+    <!-- Panels, each closed when a press lands outside it: four in one of
+         the ways pages listen for that, and a popover by the browser
+         itself. -->
 
     <section>
       <button id="open-click">Open click panel</button>
@@ -68,6 +78,20 @@
         hidden
       >
         <button>Inside focusout panel</button>
+      </div>
+    </section>
+
+    <section>
+      <button id="open-popover" popovertarget="panel-popover">
+        Open popover
+      </button>
+      <div
+        id="panel-popover"
+        popover="auto"
+        role="group"
+        aria-label="Popover panel"
+      >
+        <button>Inside popover</button>
       </div>
     </section>
 

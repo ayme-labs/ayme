@@ -75,8 +75,8 @@ function createHost() {
   return host;
 }
 
-/** The host's closed root, with the toolbar's stylesheet and the element
- * React renders into. */
+/** The host's closed root, with the toolbar's stylesheet, the element React
+ * renders into, and the invoker around it (`targetTopmostPopover`). */
 function shadowRootFor(host: HTMLElement) {
   const root = host.attachShadow({ mode: "closed" });
   (host as unknown as Record<symbol, ShadowRoot>)[Symbol.for(SHADOW_ROOT_KEY)] =
@@ -84,11 +84,57 @@ function shadowRootFor(host: HTMLElement) {
   const sheet = new CSSStyleSheet();
   sheet.replaceSync(css);
   root.adoptedStyleSheets = [sheet];
+  const invoker = document.createElement("button");
+  invoker.tabIndex = -1;
+  invoker.style.cssText = "all: unset; display: contents";
+  // Chromium hands it the click the toolbar gives a button inside it: it
+  // must not show or hide the page's popover.
+  invoker.addEventListener("click", (event) => event.preventDefault());
   const container = document.createElement("div");
   // At the top centre of the page, as the released toolbar.
   container.className = "fixed top-3 left-1/2 -translate-x-1/2 font-sans";
-  root.append(container);
-  return { root, container };
+  invoker.append(container);
+  root.append(invoker);
+  return { root, container, invoker };
+}
+
+/**
+ * Keeps `invoker`, around the toolbar, targeting the page's topmost open
+ * popover. The browser closes a popover on a press outside it before any
+ * listener hears of it, but not on a press inside a button that targets it,
+ * nor on one inside a button that targets a popover above it. It keeps the
+ * order of its popovers to itself, so this follows the order they toggle
+ * in. Only the document's popovers: one in a shadow root tells nothing
+ * outside it, and cannot be the toolbar's target either.
+ */
+function targetTopmostPopover(invoker: HTMLButtonElement) {
+  let shown: HTMLElement[] = [];
+  const follow = () => {
+    // Drops a popover taken out of the page while open, which closes with
+    // no toggle. Adds, in the document's order, those open with no toggle
+    // heard yet: shown on this press, or before the toolbar came, as on a
+    // browser it attached to, where a submenu earlier in the document than
+    // its menu is taken for the lower one.
+    const open = [...document.querySelectorAll<HTMLElement>(":popover-open")];
+    shown = [
+      ...shown.filter((each) => open.includes(each)),
+      ...open.filter((each) => !shown.includes(each)),
+    ];
+    invoker.popoverTargetElement =
+      shown.findLast((each) => each.popover !== "manual") ?? null;
+  };
+  // Any toggle, of a popover or not: `follow` keeps only the open popovers.
+  // Also while a press lasts, as the browser decides at its release.
+  const onToggle = ({ target }: Event) => {
+    shown = [...shown.filter((each) => each !== target), target as HTMLElement];
+    follow();
+  };
+  window.addEventListener("toggle", onToggle, true);
+  return {
+    follow,
+    // Stryker disable next-line all: a listener left behind only targets a popover from a toolbar that is gone
+    stop: () => window.removeEventListener("toggle", onToggle, true),
+  };
 }
 
 const buttonAt = (root: ShadowRoot, { clientX, clientY }: MouseEvent) => {
@@ -103,18 +149,33 @@ const buttonAt = (root: ShadowRoot, { clientX, clientY }: MouseEvent) => {
  * the closed root: the page's listeners and Playwright's recorder hear none
  * of it, so a panel the page closes on a click elsewhere stays open.
  */
-function stopperFor(host: HTMLElement, root: ShadowRoot) {
+function stopperFor(
+  host: HTMLElement,
+  root: ShadowRoot,
+  popovers: ReturnType<typeof targetTopmostPopover>
+) {
   const press = (event: MouseEvent) => {
     const button = buttonAt(root, event);
     if (button && !button.disabled)
       button.dispatchEvent(
-        new MouseEvent("click", { bubbles: true, composed: false })
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          composed: false,
+        })
       );
   };
   const afterStopping: Partial<Record<string, (event: Event) => void>> = {
+    // In time: the browser decides which popovers a press closes at its
+    // release or its click.
+    pointerdown: popovers.follow,
     // The page keeps its focus.
     mousedown: (event) => event.preventDefault(),
-    click: (event) => press(event as MouseEvent),
+    click: (event) => {
+      // The invoker shows or hides no popover of the page.
+      event.preventDefault();
+      press(event as MouseEvent);
+    },
   };
   const onToolbar = (event: Event) =>
     event.isTrusted && event.composedPath().includes(host);
@@ -146,9 +207,10 @@ function keepInDocument(host: HTMLElement) {
  */
 export function mountToolbar(call: ToolbarCall): HTMLElement {
   const host = createHost();
-  const { root, container } = shadowRootFor(host);
+  const { root, container, invoker } = shadowRootFor(host);
+  const popovers = targetTopmostPopover(invoker);
 
-  const stop = stopperFor(host, root);
+  const stop = stopperFor(host, root, popovers);
   for (const type of INPUT_TYPES) window.addEventListener(type, stop, true);
   const keep = keepInDocument(host);
 
@@ -160,6 +222,7 @@ export function mountToolbar(call: ToolbarCall): HTMLElement {
 
   host.addEventListener(TOOLBAR_REMOVE, () => {
     keep.disconnect();
+    popovers.stop();
     for (const type of INPUT_TYPES)
       // Stryker disable next-line CallExpression,BooleanLiteral: a listener left behind never matches a host that is gone
       window.removeEventListener(type, stop, true);

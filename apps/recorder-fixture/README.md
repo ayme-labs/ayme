@@ -103,9 +103,10 @@ latest`, a recording id and a path. `stockTrace.ts` names the flag that picks
 
 - `outsideClick.spec.ts` presses Assert visibility on the toolbar with a
   panel open on `app/outside-click.html`, which closes it on a press outside
-  in one of four ways: a click on the document, a pointerdown or a mousedown
-  on it in the capture phase, and the focus leaving it. The panel stays open
-  and what is inside it is asserted.
+  in one of five ways: a click on the document, a pointerdown or a mousedown
+  on it in the capture phase, the focus leaving it, and the browser's own
+  light dismiss of a `popover="auto"`. The panel stays open and what is
+  inside it is asserted.
 
 - `review.spec.ts` discards and restores entries while recording and while paused, through the
   engine's handle on real Chromium, and reads the package from disk.

@@ -3,8 +3,9 @@ import { ayme } from "@ayme-dev/ayme";
 import { FixturePage } from "./FixturePage";
 
 /** Panels a press outside closes, each heard in another way: a click on the
- * document, a pointerdown or a mousedown on it in the capture phase, and the
- * focus leaving the panel. */
+ * document, a pointerdown or a mousedown on it in the capture phase, the
+ * focus leaving the panel, and the browser's own light dismiss of a
+ * popover. */
 export class OutsideClickPage extends FixturePage {
   readonly path = "/outside-click.html";
 
@@ -98,5 +99,23 @@ export class OutsideClickPage extends FixturePage {
     return this.page.getByRole("button", {
       name: "Inside focusout panel",
     });
+  }
+
+  @ayme.child
+  get openPopoverButton() {
+    return this.page.getByRole("button", { name: "Open popover" });
+  }
+
+  @ayme.child({
+    description:
+      'A popover="auto", which the browser closes on a press outside it.',
+  })
+  get popoverPanel() {
+    return this.page.getByRole("group", { name: "Popover panel" });
+  }
+
+  @ayme.child
+  get insidePopoverButton() {
+    return this.page.getByRole("button", { name: "Inside popover" });
   }
 }
