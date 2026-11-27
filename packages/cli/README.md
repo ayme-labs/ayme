@@ -31,10 +31,12 @@ To update, install `@ayme-dev/cli@latest`, with `@ayme-dev/ayme` at the same ver
 
 Your coding agent starts a Session: one running ayme connected to the browser its browser automation drives, such as Playwright CLI, Playwright MCP or agent-browser. The Session runs the Page Objects your project lists in `ayme/page-objects.ts`, in Node, on your project's Playwright. Nothing of ayme has to be in your app.
 
+With the [quickstart](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/install.md)'s `ProjectsPage` listed in `ayme/page-objects.ts`, as [Set up your project](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#set-up-your-project) shows:
+
 ```sh
 npx ayme open http://localhost:5173/
 npx ayme page-objects
-npx ayme call ProjectRow.rename --params '{"id": "po1", "args": {"name": "Launch plan v2"}}'
+npx ayme call ProjectsPage.createProject --params '{"name": "Launch plan"}'
 npx ayme close
 ```
 

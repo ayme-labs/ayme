@@ -62,17 +62,7 @@ From your project's files and your agent's settings:
 | `ayme-recorder install [browser]`, with any flags                                                                                              | `npx playwright install` with the same arguments, or `npx playwright install chromium` without any                                                                                                                                                                                                                         |
 | `ayme-recorder --version`                                                                                                                      | `ayme --version`                                                                                                                                                                                                                                                                                                           |
 
-The new way in, with Playwright CLI as the browser automation:
-
-```sh
-npx ayme open http://localhost:5173/
-playwright-cli attach --cdp=http://127.0.0.1:49370
-npx ayme page-objects
-npx ayme call ProjectRow.rename --params '{"id": "po1", "args": {"name": "Launch plan v2"}}'
-npx ayme close
-```
-
-`ayme open` prints the address Playwright CLI attaches to; `http://127.0.0.1:49370` stands for it. `ayme page-objects` prints each Page Object with its id, such as `po1`. [Connect an agent](guides/connect-an-agent.md#connect-ayme-and-the-browser-automation-to-one-browser) shows agent-browser and Playwright MCP.
+To start, open a Session as [Connect an agent](guides/connect-an-agent.md#connect-ayme-and-the-browser-automation-to-one-browser) shows for your browser automation, then run `ayme tools` to see what your Page Objects offer.
 
 ### 4. What has no replacement
 
