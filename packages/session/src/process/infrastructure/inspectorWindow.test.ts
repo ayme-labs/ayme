@@ -193,6 +193,27 @@ it("a window that closes ends the Session's subscription to the Tab's contract, 
   });
 });
 
+it("closing one of two windows keeps the subscription to the Tab's contract, which ends the windows' highlights only with the last", async () => {
+  const { address, browser } = await serve();
+  const first = await windowSocket(address);
+  const second = await windowSocket(address);
+  await first.request("subscribe");
+  await second.request("subscribe");
+  await expect.poll(() => browser.inspectorListeners).toBe(1);
+  await second.request("highlight", { layer: "pinned", refs: ["e1"] }, 1);
+
+  second.socket.close();
+  await once(second.socket, "close");
+  browser.tellInspector({ type: "state" });
+
+  await expect
+    .poll(() => first.told)
+    .toContainEqual({ event: { type: "state" } });
+  expect(browser.inspectorListeners).toBe(1);
+  first.socket.close();
+  await expect.poll(() => browser.inspectorListeners).toBe(0);
+});
+
 it("tells each window how the Session ended, and then closes it", async () => {
   const { address, session } = await serve();
   const window = await windowSocket(address);
