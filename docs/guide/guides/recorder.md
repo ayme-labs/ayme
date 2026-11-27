@@ -196,6 +196,7 @@ A warning is a line in the terminal that starts with `Warning:`. The recording g
 - **Playwright is newer than the recorder is verified on.** It may miss or misread an input. See [Supported Playwright versions](#supported-playwright-versions).
 - **A step is recorded, but its list of changes may be incomplete.** Playwright reported the input in a form the recorder does not read, or the page could not be read at that moment.
 - **A step is not recorded.** Its page could not be read. This can happen to typing, a dropdown choice, an upload or an assertion.
+- **A step, or something else, is missing from the recording.** The recorder itself failed to keep it. The warning names the step when a step is missing, and ends with the recorder's own error. The trace still holds what happened on the page.
 - **An upload is recorded with its first file name only.** The file input was gone, or held other files than Playwright reported, by the time the recorder read it.
 - **Some or all of the trace's snapshots could not be numbered.** The recording has its trace, but lacks the position numbers that open those steps' snapshots.
 - **The storage state could not be saved.** `--save-storage` could not write its file, the browser was quit or did not answer within half a minute, or the recorder broke down while saving. The recording ends as it would have without the save.
