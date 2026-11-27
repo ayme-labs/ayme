@@ -46,10 +46,10 @@ With a [Session](connect-an-agent.md) running, `ayme inspect` opens the Inspecto
 ayme inspect
 ```
 
-The window is served by the Session's own process and usually opens outside the Session's browser, so it never shows up in your browser automation's snapshots. When the Session joined your default browser with `ayme attach`, the window opens there as one more tab, which your browser automation can see but ayme never takes for the tab it works on. Nothing has to be in your app, and nothing more to install: the Inspector comes with `@ayme-dev/cli`.
+The window is served by the Session's own process and usually opens outside the Session's browser, so it never shows up in your browser automation's snapshots. When the Session joined your default browser with `ayme attach`, the window opens there as one more tab, which your browser automation can see but ayme never takes for its Tab. Nothing has to be in your app, and nothing more to install: the Inspector comes with `@ayme-dev/cli`.
 
-- It shows the Page Objects and the Page Object Tools of the tab the Session works on, and follows the browser to another tab.
-- Run a tool by hand from it. Runs records it as run by you from the Inspector. It is one Run like an agent's `ayme call`: a tab runs one at a time, so it waits for the Run under way there, and a call waits for it.
+- It shows the Page Objects and the Page Object Tools of the Session's Tab, and follows the browser to another Tab.
+- Run a tool by hand from it. Runs records it as run by you from the Inspector. It is one Run like an agent's `ayme call`: a Tab runs one at a time, so it waits for the Run under way there, and a call waits for it.
 - Hovering or selecting a Page Object highlights it on the Session's page. There is no picking: a Session's tools take no element ref.
 - Closing the window leaves the Session as it was. When the Session ends, the window says so; start a new one and run `ayme inspect` again.
 - `-s=<name>` opens the Inspector of the Session of that name, as for the other commands.
@@ -75,7 +75,7 @@ An Agent App that shows MCP Apps, such as Cursor, Claude Desktop or T3 Code, sho
 Then ask the agent to show you the Inspector. It calls `ayme_inspect`, and the Agent App shows the Inspector of the Session under that call, about 600 pixels high, with a fullscreen button where the Agent App offers fullscreen.
 
 - `ayme_inspect` is the only tool `ayme mcp` offers, and it reads nothing from the page and acts on nothing. The agent reaches your Page Object Tools through `ayme page-objects`, `ayme tools` and `ayme call` alone.
-- The Inspector in the chat works as the window of `ayme inspect`: the same lenses and tab, and a tool you run from it is a Run by you from the Inspector.
+- The Inspector in the chat works as the window of `ayme inspect`: the same lenses and Tab, and a tool you run from it is a Run by you from the Inspector.
 - `ayme mcp` can start before any Session: each call of `ayme_inspect` looks for the Session then. With none open, the call and the Inspector in the chat say how to start one; start it, and ask for the Inspector again.
 - `-s=<name>` in the registration's `args`, or `AYME_SESSION` in its `env`, picks the Session of that name.
 - When the Session ends, the Inspector in the chat says so and connects no more. Start a Session and ask for the Inspector again.
