@@ -14,7 +14,9 @@ export type SnapshotRef = AriaRef & { readonly __brand: "SnapshotRef" };
 
 /**
  * The ref an element had in the first snapshot of its Visit that lists it:
- * the one the package and the window name it by, in every tree of the Visit.
+ * the one the package and the window name it by, in every tree of the Visit
+ * but one that could not be renamed, which is under the refs the page gave
+ * and which a warning names.
  */
 export type FirstRef = AriaRef & { readonly __brand: "FirstRef" };
 
