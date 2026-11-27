@@ -92,6 +92,8 @@ In the page, a click, a fill or a wait gives up after one second, ayme's default
 - `SurveyEditorPage.save` and `saveAsDraft` wait up to five seconds for their save, a round trip to the server that took 0.5 to 0.75 seconds on a warm dev server, too close to one second.
 - `SignInPage.logIn` waits one second for its error message, which a refused sign-in showed after 0.3 seconds, and takes a sign-in without one to have gone through. That is ayme's own limit, named so that Playwright, which has none, waits no longer when it drives the Page Object.
 
+The one-second default is the limit of ayme's runtime in the page. In a Session, the Page Objects run on the project's Playwright in Node, with Playwright's own timeouts.
+
 On a fresh dev server Turbopack compiles each route and each server action on its first use, which took 15 to 25 seconds per screen when measured on four cores, so visit the screens once before an agent uses the Page Object Tools. `lab:qualify` and the eval's warm-up do.
 
 The lab app has no Goal Loop, no Decision Endpoint and no lab switch. The `ayme-lab-page-objects` and `ayme-lab-goal-loop` cookies went with the ayme overlay: Formbricks reads neither, so setting them changes nothing.
