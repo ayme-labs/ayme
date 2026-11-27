@@ -26,7 +26,7 @@ The agent's browser automation keeps doing everything else: snapshots, clicks ou
 
    The command runs your Page Objects with your project's own `@ayme-dev/ayme` and Playwright, and needs `@ayme-dev/ayme` at exactly its own version. When a version does not fit, it does not start, and says which version to install.
 
-   - If your app already ships ayme, keep `@ayme-dev/ayme` in your `dependencies`, and change only its version: `npm install @ayme-dev/ayme@<version>`, without `-D`. With `-D`, npm moves it to `devDependencies`, and an install of production dependencies leaves it out.
+   - If your app already ships ayme, keep `@ayme-dev/ayme` in your `dependencies`, and change only its version: `npm install @ayme-dev/ayme@<version>`, without `-D`. With `-D`, npm moves it to `devDependencies`, and an install of production dependencies leaves it out. The page your app serves must run that version too: a Session cannot read or act on a page that runs ayme of another version.
    - Otherwise, add it as a dev dependency: `npm install -D @ayme-dev/ayme@<version>`.
 
    `<version>` is the version of `@ayme-dev/cli`, which `npm ls @ayme-dev/cli` prints.
