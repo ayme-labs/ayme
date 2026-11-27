@@ -317,6 +317,42 @@ describe("an element the page re-created, and the original back beside it", () =
   });
 });
 
+describe("an element the page re-created, and re-created again once the original was back", () => {
+  it("are not under one ref in a Change Tree that holds the second one and the one it stood in for", async () => {
+    const timeline = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, page(`- button "Save" [ref=e2]`)),
+      snapshot(snapshotId("snapshot_2"), 20, page(`- button "Save" [ref=e8]`)),
+      click(
+        snapshotId("snapshot_1"),
+        snapshotId("snapshot_2"),
+        "e2",
+        page(`- button "Save" [ref=e2]`)
+      ),
+      // The new button became a region, beside the first one back; then the
+      // page re-created the region.
+      snapshot(
+        snapshotId("snapshot_3"),
+        30,
+        page(`- region "Results" [ref=e8]`, `- button "Save" [ref=e2]`)
+      ),
+      snapshot(
+        snapshotId("snapshot_4"),
+        40,
+        page(`- region "Results" [ref=e10]`, `- button "Save" [ref=e2]`)
+      ),
+      click(
+        snapshotId("snapshot_2"),
+        snapshotId("snapshot_4"),
+        "e8",
+        page(`- button "Save" [ref=e8]`)
+      ),
+    ]);
+
+    expect(refsTwiceInOneTree((await timeline.package(header))!)).toEqual([]);
+  });
+});
+
 describe("an element the page re-created, when it changes", () => {
   it("is told with how it stood before, under the first ref the package keeps for it", async () => {
     const original = page(`- button "Save" [ref=e2]`);

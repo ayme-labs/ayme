@@ -423,6 +423,34 @@ describe("the change rows of a Change Tree", () => {
     ]);
   });
 
+  it("name an element whose text changed by that text when what else was inside it is gone", () => {
+    const rows = changeRows(
+      changeFrom(
+        page(
+          `- main [ref=e2]:`,
+          `  - generic [ref=e3]:`,
+          `    - text: Loading`,
+          `    - heading "Saving" [level=2] [ref=e4]`
+        ),
+        page(
+          `- main [ref=e2]:`,
+          `  - region "Results" [ref=e5]:`,
+          `    - generic [ref=e3]: Done`
+        )
+      )
+    );
+
+    expect(rows).toEqual([
+      { kind: "added", element: 'region "Results"', role: "region" },
+      // Not "Results": the heading was inside it only before the change.
+      {
+        kind: "changed",
+        element: '"Done"',
+        changed: [{ property: "text", from: "Loading", to: "Done" }],
+      },
+    ]);
+  });
+
   it("name an element with no role and no name by its nearest named ancestor when nothing named went with it", () => {
     const rows = changeRows(
       changeFrom(

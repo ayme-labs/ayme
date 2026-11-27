@@ -60,11 +60,12 @@ export function ownName(node: StructuralNode): OwnName | null {
  * one naming, as a Change Tree's rows, through one instance.
  */
 export class ElementNames {
-  private after: PageLabels | undefined;
-  /** The page before the change, with its labels once asked; null when
-   * there is none. */
-  private before:
-    { readonly tree: StructuralTree; labels?: PageLabels } | null | undefined;
+  /** The page after the change, and before it, with its labels once
+   * asked; null when there is none before. */
+  private after: Page | undefined;
+  private before: Page | null | undefined;
+  /** The labels of the tree itself, for an element on neither page. */
+  private whole: PageLabels | undefined;
 
   constructor(
     readonly tree: StructuralTree,
@@ -99,16 +100,22 @@ export class ElementNames {
   }
 
   /** The page an element is labelled on, its labels, and the element
-   * there: the page before the change, for one counted against it. */
+   * there: the page before the change, for one counted against it; else
+   * the page after, with no element the change removed, which an element
+   * that held it no longer holds. */
   private placeOf(node: StructuralNode, view: PageView) {
-    const page = view === "before" ? this.builtBefore() : null;
+    const page = view === "before" ? this.builtBefore() : this.builtAfter();
     const there = page?.tree.getNode(node.ref);
     if (page && there) {
       page.labels ??= new PageLabels(page.tree);
       return { tree: page.tree, node: there, labels: page.labels };
     }
-    this.after ??= new PageLabels(this.tree);
-    return { tree: this.tree, node, labels: this.after };
+    this.whole ??= new PageLabels(this.tree);
+    return { tree: this.tree, node, labels: this.whole };
+  }
+
+  private builtAfter() {
+    return (this.after ??= { tree: this.tree.toCurrentTree() });
   }
 
   private builtBefore() {
@@ -119,6 +126,8 @@ export class ElementNames {
     return this.before;
   }
 }
+
+type Page = { readonly tree: StructuralTree; labels?: PageLabels };
 
 /** An element of a read by its label, a naming of its own:
  * `ElementNames.labelOf`. */

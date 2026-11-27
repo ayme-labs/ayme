@@ -623,14 +623,18 @@ export class Timeline {
    * snapshots can hold an element that stood under another's first ref in
    * the earlier one beside that other, as when the page re-created an
    * element and the original is back. The element that first had the ref
-   * keeps it there, and the other is written under its own. How each node
-   * of a Change Tree stood before goes with it, under its new ref.
+   * keeps it there, and the other is written under its own, or under a new
+   * one when another element of the tree has its own as a first ref, as
+   * when the page re-created it in turn. How each node of a Change Tree
+   * stood before goes with it, under its new ref.
    *
    * `given` holds the ref each element of a tree renamed earlier through it
    * was given, by its own ref, and gets this tree's. An element that tree
    * had keeps the ref it was given there: the page before a change names a
    * removed element under its ref in the Change Tree, which can differ from
-   * the one it would hold among that page's elements alone.
+   * the one it would hold among that page's elements alone. Core keeps
+   * every element of the page before in the Change Tree, so that page has
+   * no element without one.
    */
   private underFirstRefs(
     tree: StructuralTree,
@@ -646,9 +650,6 @@ export class Timeline {
     for (const ref of owns)
       if (!holder.has(first(ref)) || isFirst(ref, first(ref)))
         holder.set(first(ref), ref);
-    // The refs this tree's elements keep from the earlier tree: another
-    // element of this tree cannot have one too.
-    const kept = new Set(owns.flatMap((own) => given.get(own) ?? []));
     const beforeByRef = new Map<AriaRef, StructuralNode>();
     const rename = (node: StructuralNode): StructuralNode => {
       const own = snapshotRef(node.ref);
@@ -656,7 +657,8 @@ export class Timeline {
       const chosen =
         holder.get(first(own)) === own ? first(own) : firstRef(own);
       const ref =
-        given.get(own) ?? (kept.has(chosen) ? this.refs.create() : chosen);
+        given.get(own) ??
+        ((holder.get(chosen) ?? own) === own ? chosen : this.refs.create());
       given.set(own, ref);
       const before = tree.getBeforeNode(node.ref);
       // Stryker disable next-line ConditionalExpression: equivalent, since core reads a node recorded as null and one not recorded alike
