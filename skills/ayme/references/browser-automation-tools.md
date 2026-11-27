@@ -1,20 +1,19 @@
-# Using ayme with browser automation tools
+# Browser automation tools
 
 Start a Session on the browser your automation already drives: Playwright
 CLI, Playwright MCP or agent-browser. The Session runs the project's Page
 Objects in Node. Your automation keeps doing everything else: snapshots,
 clicks outside Page Objects, navigation, and answering dialogs.
 
-Run each command in the project's folder. Write it `npx ayme <command>` when
-the project has `@ayme-dev/cli` in its `package.json`. Below, the commands
-are written `ayme <command>` for short. When the project has no
+Run each command in the project's folder, as `npx ayme <command>`; here
+they are written `ayme <command>`. When the project's `package.json` has no
 `@ayme-dev/cli`, read [Browser setup](browser-setup.md) first.
 
 ## Connect ayme and your automation to one browser
 
-Connect both before you act on the page. Chrome does not answer a DevTools
-client that connects while a dialog is open, so an automation that connects
-after an action opened a dialog cannot answer it.
+Connect both before you act on the page: Chrome answers no new DevTools
+connection while a dialog is open, so an automation that connects after an
+action opened a dialog cannot answer it.
 
 ### Playwright CLI
 
@@ -72,8 +71,7 @@ End with `ayme detach`, which leaves the browser running.
 - When a command answers that no Session is open, start one as above.
   `ayme list` lists the Sessions of the project's folder.
 - `-s=<name>`, or `AYME_SESSION`, names a Session, so that two agents in one
-  folder each have their own. Every command of that Session takes the same
-  name, and your automation needs a session of its own too.
-- [Sessions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#sessions)
-  says how to name your automation's session, which Tab ayme works on, and
-  how a Session ends.
+  folder each have their own. Pass the same name to every command of that
+  Session, and give your automation a session of its own too, as
+  [Sessions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#sessions)
+  shows for each automation.

@@ -1,22 +1,19 @@
 # Runtime integration
 
-[Page Object Models](ayme-page-objects.md)
-covers marking, tool names, and Page Object Children; the page for the project's
-framework, linked from the
+This is about ayme in the app itself. [Page Object Models](ayme-page-objects.md)
+covers marking, tool names and Page Object Children, and
+[Page object design](page-object-design.md) members, roots and action
+returns. The page for the project's framework, linked from the
 [documentation index](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md),
-covers starting ayme and registering Page Objects. Follow
-[Page object design](page-object-design.md) and
-[Page Object Models](ayme-page-objects.md) for members, roots, and action
-returns.
+covers starting ayme and registering Page Objects.
 
 ## Register top-level POMs at setup
 
 Register every page POM once, at app setup: list it in the `pageObjects`
 option where ayme starts (`createAyme`, `AymeProvider`, `useAyme` or
-`provideAyme`). A page is
-present by its URL through the page base class of
-[Page Object Models](ayme-page-objects.md#ayme),
-so its tools come and go with the browser's location.
+`provideAyme`). A page POM states its presence from the URL, through the
+page base class of [Page Object Models](ayme-page-objects.md#ayme), so its
+tools come and go with the browser's location.
 [Register Page Objects](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md#register-page-objects)
 is the rule; the framework page shows the call in its idiom.
 
@@ -37,8 +34,8 @@ and a marked class that no registered POM reaches.
 
 ## Keep one runtime owner at the root
 
-One owner per document starts ayme. Put it at the application root, not in a
-per-route or per-page layout, as each framework page explains:
+The owner is the code that starts ayme, and a document has one. Put it at
+the application root, not in a per-route or per-page layout, as each framework page explains:
 [Vue](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/vue.md#root-ownership),
 [React](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/react.md#root-ownership),
 [Svelte](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/svelte.md#limits)
@@ -70,7 +67,7 @@ On a page the POM is present on, check the tools and the page state:
 - The [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md)'s
   Model and Tools lenses show the Page Objects on the page and their tools; an
   unavailable tool shows dimmed with its reason.
-- `await ayme.tools.run("page_objects", {})` returns the Page Object tree an
-  agent reads, with each Page Object's id.
+- `await ayme.tools.run("page_objects", {})` returns the Page Object Tree,
+  with the id of each Page Object that has a root.
 
 Confirm that the intended POM, its declared children, and its tools appear.
