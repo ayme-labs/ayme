@@ -2,52 +2,63 @@ import type { ListedTool, Listing, TabName } from "./listing";
 import type { SessionAnswer, SessionEnd } from "./requests";
 import type { RunAnswer, RunError } from "./run";
 
+/** The `ayme` command line of `word` for the Session named `name`, for a
+ * sentence that tells the user to run it. It names the Session even by
+ * the default name, so that it reaches this Session however AYME_SESSION is
+ * set where it runs. */
+export const commandLine = (name: string, word: string): string =>
+  `ayme -s=${name} ${word}`;
+
 /** The first line of a listing: the Tab it describes. */
 const tabLine = ({ url, title }: TabName) =>
   title ? `Tab: ${title} (${url})` : `Tab: ${url}`;
 
 const NO_TOOLS = "This screen has no Page Object Tools.";
 
-/** The last line of `ayme page-objects`: how many Page Object Tools the
- * screen has, and where they are listed, also when it has none. */
-function toolCountLine(count: number): string {
+/** The last line of `ayme page-objects` of the Session named `name`: how
+ * many Page Object Tools the screen has, and where they are listed, also
+ * when it has none. */
+function toolCountLine(count: number, name: string): string {
+  const tools = commandLine(name, "tools");
   return count === 1
-    ? "This screen has 1 Page Object Tool: ayme tools lists it with its parameters."
-    : `This screen has ${count} Page Object Tools: ayme tools lists them with their parameters.`;
+    ? `This screen has 1 Page Object Tool: ${tools} lists it with its parameters.`
+    : `This screen has ${count} Page Object Tools: ${tools} lists them with their parameters.`;
 }
 
-/** The answer to `ayme page-objects`. */
-export const pageObjectsAnswer = ({
-  tab,
-  pageObjectTree,
-  tools,
-}: Listing): SessionAnswer => ({
+/** The answer to `ayme page-objects` of the Session named `name`. */
+export const pageObjectsAnswer = (
+  { tab, pageObjectTree, tools }: Listing,
+  name: string
+): SessionAnswer => ({
   ok: true,
-  text: [tabLine(tab), pageObjectTree, toolCountLine(tools.length)].join("\n"),
+  text: [tabLine(tab), pageObjectTree, toolCountLine(tools.length, name)].join(
+    "\n"
+  ),
   data: { tab, pageObjectTree, tools: tools.length },
 });
 
-/** The answer to the command that started a Session on a browser ayme
- * opened. */
-export const openedAnswer = (address: string): SessionAnswer => ({
+/** The answer to the command that started the Session named `name` on a
+ * browser ayme opened. */
+export const openedAnswer = (address: string, name: string): SessionAnswer => ({
   ok: true,
-  text: `A Session started on a new browser at ${address}.\nConnect your browser automation to that address. ayme close ends the Session and closes the browser.`,
+  text: `A Session started on a new browser at ${address}.\nConnect your browser automation to that address. ${commandLine(name, "close")} ends the Session and closes the browser.`,
   data: { address },
 });
 
-/** The answer to the command that started a Session on a browser it
- * joined. */
-export const joinedAnswer = (address: string): SessionAnswer => ({
+/** The answer to the command that started the Session named `name` on a
+ * browser it joined. */
+export const joinedAnswer = (address: string, name: string): SessionAnswer => ({
   ok: true,
-  text: `A Session started on the browser at ${address}.\nayme detach ends the Session and leaves the browser running.`,
+  text: `A Session started on the browser at ${address}.\n${commandLine(name, "detach")} ends the Session and leaves the browser running.`,
   data: { address },
 });
 
-/** Why `ayme detach` is refused on a browser ayme opened. */
-export const detachRefused: SessionAnswer = {
+/** Why `ayme detach` is refused on the Session named `name`, whose browser
+ * ayme opened. */
+export const detachRefused = (name: string): SessionAnswer => ({
   ok: false,
-  text: "ayme opened this Session's browser, so ayme detach would leave it without an owner. End the Session and close the browser with ayme close.",
-};
+  text: `ayme opened this Session's browser, so ayme detach would leave it without an owner. End the Session and close the browser with ${commandLine(name, "close")}.`,
+});
 
 /** Why a Session that ended before its start was answered did not start. */
 export function endedAtStart(end: SessionEnd): string {
@@ -171,10 +182,11 @@ export function endedBeforeAnswer(end: SessionEnd): SessionAnswer {
   }
 }
 
-/** The answer to `ayme call` when its `--params` is not JSON. */
-export const paramsNotJson = (why: string): SessionAnswer =>
+/** The answer to `ayme call` of the Session named `name` when its
+ * `--params` is not JSON. */
+export const paramsNotJson = (why: string, name: string): SessionAnswer =>
   failed(
-    `--params is not JSON: ${why.replace(/\.$/, "")}. Give the tool's input as one JSON object, as ayme tools prints its parameters.`
+    `--params is not JSON: ${why.replace(/\.$/, "")}. Give the tool's input as one JSON object, as ${commandLine(name, "tools")} prints its parameters.`
   );
 
 /** The answer to `ayme call` when the file its `--params @<file>` names
@@ -188,9 +200,14 @@ export const paramsUnreadable = (file: string, why: string): SessionAnswer =>
 export const NO_TAB_OPEN =
   "No tab is open in the Session's browser. Open one with your browser automation, then run ayme again.";
 
-/** Why `--tab` named no open Tab: the URLs the open Tabs show. */
-export const noTabShows = (url: string, shown: readonly string[]): string =>
-  `No tab of the Session's browser shows ${url}. --tab takes the URL a tab shows, as the first line of ayme page-objects prints it. The open tabs show: ${shown.join(", ")}.`;
+/** Why `--tab` named no open Tab of the Session named `name`: the URLs the
+ * open Tabs show. */
+export const noTabShows = (
+  url: string,
+  shown: readonly string[],
+  name: string
+): string =>
+  `No tab of the Session's browser shows ${url}. --tab takes the URL a tab shows, as the first line of ${commandLine(name, "page-objects")} prints it. The open tabs show: ${shown.join(", ")}.`;
 
 /** Why `ayme call` was refused when its Page Object Id is on another Tab
  * than the one `--tab` names: the id chooses the Tab. */

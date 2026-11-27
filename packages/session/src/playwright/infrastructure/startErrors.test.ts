@@ -30,7 +30,15 @@ it.each([
       "address unreachable",
       "Playwright could not connect to the browser at http://127.0.0.1:9333. connect ECONNREFUSED 127.0.0.1:9333"
     ),
-    "Playwright could not connect to the browser at http://127.0.0.1:9333. connect ECONNREFUSED 127.0.0.1:9333\nCheck that the browser runs and that this is the address of its DevTools protocol. Chrome answers no new connection while a dialog is open in one of its pages: answer it, then run ayme attach again.",
+    "Playwright could not connect to the browser at http://127.0.0.1:9333. connect ECONNREFUSED 127.0.0.1:9333\nCheck that the browser runs and that this is the address of its DevTools protocol.",
+  ],
+  [
+    new BrowserError(
+      "address unreachable",
+      "Playwright could not connect to the browser at http://127.0.0.1:9333. browserType.connectOverCDP: Timeout 30000ms exceeded.",
+      { timedOut: true }
+    ),
+    "Playwright could not connect to the browser at http://127.0.0.1:9333. browserType.connectOverCDP: Timeout 30000ms exceeded.\nCheck that the browser runs and that this is the address of its DevTools protocol. Chrome answers no new connection while a dialog is open in one of its pages: answer it, then run ayme attach again.",
   ],
 ])("says what was found and what to do about it: %s", (error, sentence) => {
   expect(sessionStartError(error).message).toBe(sentence);

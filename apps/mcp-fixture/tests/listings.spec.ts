@@ -28,7 +28,7 @@ test("ayme page-objects prints the Page Object Tree of the Tab, between the Tab'
       '  heading: heading "Shop" [level=1]',
       "Basket po1",
       "  items: []",
-      "This screen has 3 Page Object Tools: ayme tools lists them with their parameters.",
+      "This screen has 3 Page Object Tools: ayme -s=default tools lists them with their parameters.",
       "",
     ].join("\n"),
     stderr: "",

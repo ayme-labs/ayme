@@ -1,5 +1,6 @@
 export {
   callAnswer,
+  commandLine,
   detachRefused,
   endAnswer,
   endedBeforeAnswer,
