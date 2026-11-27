@@ -131,19 +131,21 @@ export const surfaces = {
   },
   aymeCommand: {
     name: "`ayme` command's Sessions",
-    what: "The Session commands of the `ayme` command of @ayme-dev/cli: `ayme open` and `ayme attach` start a Session on a browser the agent's automation drives, `ayme page-objects`, `ayme tools` and `ayme call` read the screen and run the project's Page Object Tools, `ayme inspect` opens the Session's Inspector in a window, and `ayme mcp` shows it in an Agent App's chat",
+    what: "The Session commands of the `ayme` command of @ayme-dev/cli: `ayme open` and `ayme attach` start a Session on a browser the agent's automation drives; `ayme page-objects`, `ayme tools` and `ayme call` read the screen and run the project's Page Object Tools, on the Tab `--tab` names or the active one, and answer that a dialog is open when one is; `ayme detach` and `ayme close` end a Session and `ayme list` lists a folder's Sessions, each named with `-s=<name>` or `AYME_SESSION`; `--json` prints a Session's answers as JSON; `ayme inspect` opens the Session's Inspector in a window, and `ayme mcp` shows it in an Agent App's chat",
     consumers: {
       appDeveloper:
-        "Starts a Session beside their own browser and opens its Inspector",
+        "Starts and ends a Session beside their own browser, opens its Inspector, and registers `ayme mcp` in their Agent App",
       codingAgent:
-        "Starts a Session on the browser its automation drives, reads the screen's Page Objects and calls their tools",
+        "Starts a Session on the browser its automation drives, reads the screen's Page Objects, calls their tools, and answers a dialog the Session reports with its own automation",
     },
     sources: [
       "packages/cli/src/readCommand.ts",
       "packages/cli/src/session.ts",
+      "packages/cli/src/answer.ts",
       "packages/cli/src/mcp.ts",
       "packages/session",
       "docs/guide/guides/connect-an-agent.md",
+      "docs/guide/guides/inspector.md",
     ],
   },
   webmcpTools: {
