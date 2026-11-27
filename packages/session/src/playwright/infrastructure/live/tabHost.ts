@@ -3,7 +3,7 @@
 // the built Page Objects there. ayme reaches a page only through that page,
 // from Node.
 import { pathToFileURL } from "node:url";
-import { Effect } from "effect";
+import { Effect, SubscriptionRef } from "effect";
 import type { Browser, CDPSession, Page } from "playwright-core";
 
 import type {
@@ -16,11 +16,13 @@ import {
   showsWindow,
   TabReadError,
   type RunAnswer,
+  type TabDialog,
 } from "../../../session/domain";
 import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
 import { failingOnItsUncaught } from "../runUncaught";
+import { dialogOpenMs, tabDialogs, type ActionCalls } from "../tabDialogs";
 import { handedOver, readTabOrder, tabListAddress } from "../tabList";
 import { tabInspector, type InspectorPort } from "./tabInspector";
 
@@ -38,6 +40,7 @@ type NodeHostEntry = {
       page: Page;
       pageObjects: readonly unknown[];
       pageObjectIds: IdSource;
+      actionCalls: ActionCalls;
     },
     selectors: unknown
   ): { start(): Promise<() => void> };
@@ -84,12 +87,55 @@ const devtools = (page: Page) => {
   }
   return session;
 };
+/** Each page's dialogs as the Session counts them, watched over ayme's own
+ * DevTools session from the first time the Session reads the page's tab:
+ * Playwright tells no dialog closing. */
+const watched = new WeakMap<
+  Page,
+  {
+    readonly dialogs: ReturnType<typeof tabDialogs>;
+    readonly dialog: SubscriptionRef.SubscriptionRef<TabDialog>;
+    /** Settles once the browser tells the session of the page's dialogs. */
+    readonly started: Promise<unknown>;
+  }
+>();
+const dialogsOf = (page: Page) => {
+  let watch = watched.get(page);
+  if (!watch) {
+    const dialog = Effect.runSync(SubscriptionRef.make<TabDialog>("none"));
+    const dialogs = tabDialogs(
+      (now) => Effect.runSync(SubscriptionRef.set(dialog, now)),
+      undefined,
+      dialogOpenMs(process.env)
+    );
+    const started = devtools(page)
+      .then((session) => {
+        session.on("Page.javascriptDialogOpening", (opened) =>
+          dialogs.opened({
+            type: opened.type,
+            message: opened.message,
+            ...(opened.type === "prompt" && opened.defaultPrompt
+              ? { defaultValue: opened.defaultPrompt }
+              : {}),
+          })
+        );
+        session.on("Page.javascriptDialogClosed", () => dialogs.closed());
+        return session.send("Page.enable");
+      })
+      .catch(() => {});
+    watch = { dialogs, dialog, started };
+    watched.set(page, watch);
+  }
+  return watch;
+};
+
 /** The id of each page's tab, kept from its first lookup that succeeded,
  * since a page keeps its tab. */
 const targetIds = new WeakMap<Page, Promise<string>>();
 const targetIdOf = (page: Page) => {
   let id = targetIds.get(page);
   if (!id) {
+    dialogsOf(page);
     id = devtools(page)
       .then((session) => session.send("Target.getTargetInfo"))
       .then(({ targetInfo }) => targetInfo.targetId);
@@ -102,7 +148,8 @@ const targetIdOf = (page: Page) => {
 /** The Tab's page as its Host reaches it through `caller`. */
 const hostedTab = (
   caller: ReturnType<NodeHostEntry["pageObjectCallerOf"]>,
-  inspector: InspectorPort
+  inspector: InspectorPort,
+  dialog: SubscriptionRef.SubscriptionRef<TabDialog>
 ): HostedTab => ({
   // Each takes the Tab's turn, so it waits for the Run under way.
   listing: Effect.tryPromise({
@@ -119,6 +166,7 @@ const hostedTab = (
       catch: runErrorOf,
     }),
   inspector: tabInspector(inspector),
+  dialog: SubscriptionRef.changes(dialog),
 });
 
 /** What every Tab's Host shares: the project's entry, the built classes,
@@ -152,11 +200,15 @@ const hostOn =
           tabIds.given(id, className);
           return id;
         };
+        const { dialogs, dialog, started } = dialogsOf(page);
+        // So that the first dialog a Run's action opens is heard.
+        await started;
         const ayme = entry.createNodeHost(
           {
             page,
             pageObjects: classes,
             pageObjectIds: { next, released: tabIds.released },
+            actionCalls: dialogs.actionCalls,
           },
           selectors
         );
@@ -165,7 +217,8 @@ const hostOn =
         else page.once("close", stop);
         return hostedTab(
           entry.pageObjectCallerOf(ayme, CALLER),
-          entry.inspectorPortOf(ayme)
+          entry.inspectorPortOf(ayme),
+          dialog
         );
       },
       catch: (cause) =>

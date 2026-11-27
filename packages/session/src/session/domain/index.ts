@@ -2,6 +2,9 @@ export {
   callAnswer,
   commandLine,
   detachRefused,
+  dialogOpen,
+  dialogOpenAtRun,
+  dialogOpenInListing,
   endAnswer,
   endedBeforeAnswer,
   endedAtStart,
@@ -41,6 +44,7 @@ export {
   type InspectorEvent,
   type InspectorRequest,
 } from "./inspector";
+export type { Dialog, TabDialog } from "./dialog";
 export { RunError, type RunAnswer } from "./run";
 export type { SessionAnswer, SessionEnd, SessionRequest } from "./requests";
 export { brokenStart, SessionStartError } from "./startError";

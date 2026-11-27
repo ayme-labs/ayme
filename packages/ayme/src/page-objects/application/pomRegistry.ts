@@ -838,7 +838,14 @@ async function performPageObjectAction(
   { instance, root }: CallTarget,
   tool: ToolManifest,
   args: unknown,
-  { cursor, page, pageStateSession, reach, outlivesFullLoads }: RunContext,
+  {
+    cursor,
+    page,
+    pageStateSession,
+    reach,
+    outlivesFullLoads,
+    actionCalls,
+  }: RunContext,
   targetName: string
 ): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
@@ -866,7 +873,8 @@ async function performPageObjectAction(
     cursor,
     { tool: tool.toolName, args },
     () => {
-      const value: unknown = method.apply(instance, parameters);
+      const act = (): unknown => method.apply(instance, parameters);
+      const value = actionCalls ? actionCalls.run(act) : act();
       returned = Promise.resolve(value);
       return value;
     }

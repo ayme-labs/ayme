@@ -153,6 +153,34 @@ A Session's answers are plain text, or JSON with `--json`. The command's own err
 
 `ayme --help` lists every command and option.
 
+## Dialogs
+
+ayme never answers a dialog: the agent answers it with its browser automation. Connect the automation before the action that opens the dialog. Chrome answers no DevTools client that connects while a dialog is open, so an automation that connects later cannot answer it.
+
+A dialog counts as open once it has stayed open for 100 ms. While one is open on a tab, every command that needs that tab's page fails at once with the dialog's text. `ayme page-objects` and `ayme tools` still print the tab line first:
+
+```text
+Tab: http://localhost:5173/projects
+A confirm dialog is open on the tab: "Delete Launch plan?". Answer it with your browser automation, then run ayme again.
+```
+
+A dialog affects only its own tab.
+
+An action stops at a dialog it did not answer itself. When a dialog opens during a Run and stays open for 100 ms, `ayme call` fails at once with the dialog's text, and the action does nothing more on the page, whether the agent then accepts or dismisses the dialog. No later command tells what the stopped action returned or threw. The next Run on that tab starts once the stopped action has ended.
+
+A dialog closed within the 100 ms does not stop the Run. That covers an `alert` some automations accept by themselves, and an action that answers its own dialog, as a Playwright test does:
+
+```ts
+this.page.once("dialog", (dialog) => dialog.accept());
+```
+
+ayme cannot stop everything at the dialog:
+
+- Work inside one `page.evaluate`, and a Playwright call already under way when the dialog opened, go on once the dialog is answered.
+- An action that takes longer than 100 ms to answer its own dialog is stopped like any other.
+- A dialog listener an earlier Run added and never used answers a later dialog.
+- Playwright dismisses a dialog that opens while ayme joins the browser.
+
 ## Limits
 
 - Chromium only, on the Playwright versions [Set up your project](#set-up-your-project) names.

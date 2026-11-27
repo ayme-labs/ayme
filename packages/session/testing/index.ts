@@ -9,6 +9,7 @@ import {
   Queue,
   Scope,
   Stream,
+  SubscriptionRef,
 } from "effect";
 import { onTestFinished } from "vitest";
 
@@ -26,12 +27,14 @@ import {
   RunError,
   SessionStartError,
   TabReadError,
+  type Dialog,
   type InspectorEvent,
   type Listing,
   type RunAnswer,
   type SessionAnswer,
   type SessionEnd,
   type SessionRequest,
+  type TabDialog,
 } from "../src/session/domain";
 
 /** The address the scripted browser gives when it opens; a joined one gives
@@ -134,6 +137,13 @@ export interface ScriptedTab {
   readonly inspectorListeners: number;
   /** The Tab's Inspector contract tells its listeners `event`. */
   tellInspector(event: unknown): void;
+  /** A dialog opens on the Tab's page. It does not count as open until the
+   * test says it has stayed open long enough. */
+  openDialog(dialog: Dialog): void;
+  /** The dialog has been open for 100 ms, so it counts as open. */
+  dialogStaysOpen(): void;
+  /** The dialog closes, answered by whoever answered it. */
+  closeDialog(): void;
 }
 
 /** What the scripted Tab shows until a test says otherwise. */
@@ -204,6 +214,10 @@ function scriptedTab(url: string, open: Tab[]): Tab {
     method
   ) => Promise.resolve(method);
   const listeners = new Set<(event: unknown) => void>();
+  const dialog = Effect.runSync(SubscriptionRef.make<TabDialog>("none"));
+  let opening: Dialog | undefined;
+  const setDialog = (now: TabDialog) =>
+    Effect.runSync(SubscriptionRef.set(dialog, now));
   const hosted: HostedTab = {
     listing: Effect.suspend(() =>
       shown === "held"
@@ -245,6 +259,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
         )
       ),
     },
+    dialog: SubscriptionRef.changes(dialog),
   };
   const tab: Tab = {
     url: () => shownUrl,
@@ -293,6 +308,18 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       },
       tellInspector: (event) => {
         for (const listener of listeners) listener(event);
+      },
+      openDialog: (opened) => {
+        opening = opened;
+        setDialog("opening");
+      },
+      dialogStaysOpen: () => {
+        if (!opening) throw new Error("No dialog is opening on this Tab.");
+        setDialog({ open: opening });
+      },
+      closeDialog: () => {
+        opening = undefined;
+        setDialog("none");
       },
     },
   };

@@ -14,6 +14,10 @@ import {
   brokenStart,
   callAnswer,
   detachRefused,
+  type Dialog,
+  dialogOpen,
+  dialogOpenAtRun,
+  dialogOpenInListing,
   endAnswer,
   endedAtStart,
   endedBeforeAnswer,
@@ -35,6 +39,7 @@ import {
   type SessionEnd,
   type SessionRequest,
   SessionStartError,
+  type TabDialog,
   unknownRequest,
 } from "../domain";
 import { answerInspector, inspectorEvents, withoutWindow } from "./inspector";
@@ -320,7 +325,11 @@ function sessionTabs(
           })
           .pipe(
             Effect.map((hosted) =>
-              untilClosed(inTurns(hosted, ending), tab.closed)
+              atDialogs(
+                untilClosed(inTurns(hosted, ending), tab.closed),
+                tab,
+                scope
+              )
             ),
             Effect.tap(() =>
               tab.closed.pipe(Effect.andThen(retire(tab)), Effect.forkIn(scope))
@@ -388,6 +397,7 @@ function untilClosed(
         ),
       events: hosted.inspector.events.pipe(Stream.interruptWhen(closed)),
     },
+    dialog: hosted.dialog,
   };
 }
 
@@ -415,6 +425,76 @@ function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
           ? inTurn(hosted.inspector.request(method, params))
           : hosted.inspector.request(method, params),
     },
+    dialog: hosted.dialog,
+  };
+}
+
+const isOpen = (now: TabDialog): now is { readonly open: Dialog } =>
+  typeof now === "object";
+
+/**
+ * `hosted`, whose listings, Runs and Inspector calls are answered that a
+ * dialog is open while one counts as open on its Tab (rules 4 and 5): at
+ * once when one is, and the moment one counts while they wait for the Tab's
+ * turn or run. One that arrives while a dialog opens waits until it counts
+ * or closes. What a command was answered for goes on in `scope` and keeps
+ * the Tab's turn until it ends, so the next Run starts only once a stopped
+ * action has ended; nothing reads its outcome. The answers name the Tab by
+ * `tab`'s URL, since its title is the page's, which the dialog holds.
+ */
+function atDialogs(
+  hosted: HostedTab,
+  tab: BrowserTab,
+  scope: Scope.Scope
+): HostedTab {
+  const counted = hosted.dialog.pipe(Stream.filter((now) => now !== "opening"));
+  const atDialog = <A, E>(
+    work: Effect.Effect<A, E>,
+    refused: (dialog: Dialog) => E
+  ): Effect.Effect<A, E> =>
+    Effect.gen(function* () {
+      const now = yield* Stream.runHead(counted);
+      if (Option.isSome(now) && isOpen(now.value))
+        return yield* Effect.fail(refused(now.value.open));
+      const working = yield* Effect.forkIn(work, scope);
+      const opened = counted.pipe(
+        Stream.filter(isOpen),
+        Stream.runHead,
+        Effect.flatMap((open) =>
+          Option.isSome(open)
+            ? Effect.fail(refused(open.value.open))
+            : Effect.never
+        )
+      );
+      // Work the Session's end interrupted is answered by that end.
+      const answer = Fiber.join(working).pipe(
+        Effect.catchCause((cause) =>
+          Cause.hasInterruptsOnly(cause)
+            ? Effect.never
+            : Effect.failCause(cause)
+        )
+      );
+      return yield* Effect.raceFirst(answer, opened);
+    });
+  const atRun = (dialog: Dialog) => new RunError(dialogOpenAtRun(dialog));
+  return {
+    listing: atDialog(
+      hosted.listing,
+      (dialog) => new TabReadError(dialogOpenInListing(tab.url(), dialog))
+    ),
+    call: (tool, input) => atDialog(hosted.call(tool, input), atRun),
+    inspector: {
+      ...hosted.inspector,
+      request: (method, params) =>
+        atDialog(
+          hosted.inspector.request(method, params),
+          (dialog) =>
+            new TabReadError(
+              method === "runTool" ? atRun(dialog).message : dialogOpen(dialog)
+            )
+        ),
+    },
+    dialog: hosted.dialog,
   };
 }
 
