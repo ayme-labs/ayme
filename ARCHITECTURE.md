@@ -217,7 +217,7 @@ in-browser agents and the app's own code call on the running page.
   of its own.
   An error Page Object code throws, or leaves for nobody to catch, ends only its Run. `ayme inspect` opens the Session's Inspector window in the developer's default browser, outside the Session's browser: the background process serves it, and it shows the Tab the Session works on, follows it to another Tab, runs a Page Object Tool there as a Run of the Inspector in that Tab's turn, and says so when the Session ends. A Tab that shows the window is never one the Session works on
 - Technology: the `ayme` command from `@ayme-dev/cli` (`ayme open [url]`,
-  `ayme attach --cdp=<url>`, `ayme call`, `ayme inspect`, `ayme detach`, `ayme close` and
+  `ayme attach --cdp=<url>`, `ayme call`, `ayme inspect`, `ayme mcp`, `ayme detach`, `ayme close` and
   `ayme list`), over
   the private `@ayme-dev/session`, bundled into it, whose flows are written with Effect. A
   command finds the background process of its folder's Session of its name through that
@@ -229,7 +229,7 @@ in-browser agents and the app's own code call on the running page.
   Objects with esbuild and the project's own Page Object compiler,
   `@ayme-dev/ayme/compiler`, and leaves every package they import to the project's install,
   so the compiled classes and the Node host runtime share the project's one copy of
-  `@ayme-dev/ayme`. The background process also serves the Inspector window on a port of the loopback address: its page, the Inspector's external build, which the command ships beside itself, and a WebSocket per window
+  `@ayme-dev/ayme`. The background process also serves the Inspector window on a port of the loopback address: its page, the Inspector's external build, which the command ships beside itself, and a WebSocket per window, which admits only a client that brings the Session's token. `ayme mcp` is an MCP server over stdio that an Agent App starts: its one tool, `ayme_inspect`, points the Agent App to a page that holds the Inspector's external build and that WebSocket's address with the token
 - Evidence: verified: [packages/cli/src/session.ts](packages/cli/src/session.ts), [packages/session/src/session/application/session.ts](packages/session/src/session/application/session.ts), [packages/session/src/process/infrastructure/background.ts](packages/session/src/process/infrastructure/background.ts), [packages/session/src/process/infrastructure/commands.ts](packages/session/src/process/infrastructure/commands.ts), [packages/session/src/process/infrastructure/record.ts](packages/session/src/process/infrastructure/record.ts), [packages/session/src/playwright/infrastructure/live/stockBrowser.ts](packages/session/src/playwright/infrastructure/live/stockBrowser.ts), [packages/session/src/page-objects/infrastructure/nodeBuild.ts](packages/session/src/page-objects/infrastructure/nodeBuild.ts), [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [packages/session/src/process/infrastructure/inspectorWindow.ts](packages/session/src/process/infrastructure/inspectorWindow.ts), [docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md](docs/adr/0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md)
 
 ## Communication
@@ -260,7 +260,11 @@ in-browser agents and the app's own code call on the running page.
       `ayme attach` joined; the Page Object Tree and the Page Object Tools of the Tab, each
       listing headed by a line that names the Tab; a Run's short answer, or why it was
       refused or failed; the folder's Sessions by name
-  - Evidence: verified: [packages/cli/src/readCommand.ts](packages/cli/src/readCommand.ts), [packages/cli/src/answer.ts](packages/cli/src/answer.ts), [packages/session/src/process/infrastructure/wire.ts](packages/session/src/process/infrastructure/wire.ts)
+    - → `ayme mcp`, which the agent's Agent App starts: `ayme_inspect` over stdio, and the
+      read of the Inspector's page it points to
+    - ← the Inspector's page, with the Inspector's script, the address of the Session's
+      Inspector WebSocket and the token that admits it inside
+  - Evidence: verified: [packages/cli/src/readCommand.ts](packages/cli/src/readCommand.ts), [packages/cli/src/answer.ts](packages/cli/src/answer.ts), [packages/session/src/process/infrastructure/wire.ts](packages/session/src/process/infrastructure/wire.ts), [packages/cli/src/mcp.ts](packages/cli/src/mcp.ts), [packages/session/src/process/infrastructure/agentAppPage.ts](packages/session/src/process/infrastructure/agentAppPage.ts)
 - **In-browser agents → WebMCP driver**
   - Flows:
     - → calls to the published tools
@@ -285,7 +289,7 @@ in-browser agents and the app's own code call on the running page.
     [packages/inspector/README.md](packages/inspector/README.md)
 - **App developers → Session**
   - Flows:
-    - → `ayme inspect`, run in the project's folder, which opens the Inspector window; then the window's requests over a WebSocket at `/inspector/ws`, from the window's own page only
+    - → `ayme inspect`, run in the project's folder, which opens the Inspector window; then the window's requests over a WebSocket at `/inspector/ws`, admitted by the Session's token, which `ayme inspect` puts in the window's address after `#`; from the Inspector an Agent App shows in its chat, the same requests over the same WebSocket, admitted by the same token from the Agent App's origin
     - ← the window's address; the Inspector page and script; the answers and events of the Inspector contract of the Tab the Session works on, a new page when that Tab changes, and how the Session ended
   - Evidence: verified: [packages/session/src/process/infrastructure/inspect.ts](packages/session/src/process/infrastructure/inspect.ts), [packages/session/src/process/infrastructure/inspectorWindow.ts](packages/session/src/process/infrastructure/inspectorWindow.ts), [packages/inspector/src/shared/infrastructure/webSocketInspectorContract.ts](packages/inspector/src/shared/infrastructure/webSocketInspectorContract.ts)
 - **App developers → Recorder**
