@@ -1235,6 +1235,9 @@ export function createAymeOn(
             instances.get(model) ?? constructPageObject(model, getPage())
           );
       target.registry().inOneChange(() => {
+        // Every old class leaves before a rebuilt one registers: a rebuilt
+        // class keeps its name, and the registry holds back a second class
+        // of one name, logging the clash, until the first one leaves.
         for (const model of running) {
           registrations.get(model)?.active?.dispose();
           registrations.delete(model);
