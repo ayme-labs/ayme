@@ -6,5 +6,5 @@ export {
   importBaseline,
   type ServedTool,
 } from "./patched";
-export { serveProjectTools } from "./projectTools";
+export { serveProjectTools, type ExecutableTool } from "./projectTools";
 export { staleNotes } from "./stale";

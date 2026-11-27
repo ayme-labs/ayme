@@ -10,6 +10,7 @@ import { claudeCode } from "@e2e-dev/acp";
 import type { E2EConfig, JsonValue } from "e2e";
 
 import base from "./e2e.config";
+import { baselineCaches } from "./tests/e2e/tools/baselines";
 import { goalCalls } from "./tests/e2e/tools/goalCalls";
 import { servedTools } from "./tests/e2e/tools/pageObjects";
 import { PAGE_OBJECT_RULES } from "./tests/e2e/tools/rules";
@@ -23,21 +24,23 @@ import { scriptedExecutor } from "./tests/e2e/tools/scripted";
 // recordings apart from the agent's.
 
 await assertPatchedE2e("e2e.goals-tools.config.ts");
-const { default: goals, PANEL_RULES } = await importBaseline(
-  () => import("./e2e.goals.config")
-);
+const {
+  default: goals,
+  GOALS_MODEL,
+  PANEL_RULES,
+} = await importBaseline(() => import("./e2e.goals.config"));
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const scripted = process.env.AYME_E2E_EXECUTOR === "scripted";
 const cacheDir = scripted
   ? ".e2e/goals-tools-scripted-cache"
   : ".e2e/goals-tools-cache";
-// Arm 1's cache is pinned by `pnpm test:goals` (--cache-dir), not its config.
-assertOwnCacheDir("e2e.goals-tools.config.ts", here, cacheDir, [
-  base,
-  goals,
-  { cache: { dir: ".e2e/goals-cache" } },
-]);
+assertOwnCacheDir(
+  "e2e.goals-tools.config.ts",
+  here,
+  cacheDir,
+  baselineCaches(base, goals)
+);
 const replayOnly = process.env.AYME_E2E_CACHE === "read-only";
 const served = servedTools(
   path.join(here, ".e2e/goals-tools/stale-page-objects")
@@ -46,7 +49,7 @@ const served = servedTools(
 // The ACP executor's `tools` option is the patched executor's (`patched.ts`
 // in e2e-tools); the model is the first arm's.
 const agentOptions = {
-  model: "sonnet",
+  model: GOALS_MODEL,
   // The goals-only arm's rules, then this arm's own about its tools.
   system: `${PANEL_RULES}\n\n${PAGE_OBJECT_RULES}`,
   tools: served,

@@ -87,7 +87,7 @@ index d730bf3..3a34772 100644
              return { ...stop('gap'), ...(planned.derived === undefined ? {} : { derived: planned.derived }) };
          }
 diff --git a/dist/agent/step-cache.js b/dist/agent/step-cache.js
-index 17a8bf9..a6d5303 100644
+index 17a8bf9..9f1f984 100644
 --- a/dist/agent/step-cache.js
 +++ b/dist/agent/step-cache.js
 @@ -21,6 +21,7 @@ import { targetLabel } from '../cache/trace.js';
@@ -174,14 +174,15 @@ index 17a8bf9..a6d5303 100644
      }
      /** Records a fill whose value was this run's data as a replay-ending gap, with the rule that said so. */
      recordDerivedGap(reason) {
-@@ -254,15 +305,53 @@ export class StepTraceSession {
+@@ -254,15 +305,54 @@ export class StepTraceSession {
              return;
          if (this.handedOffMs !== undefined)
              this.executorCompletedMs = Date.now();
-+        // Patch (ayme): a call that failed after it acted, in the recording, its
-+        // fallback or the executor's own run, may have left the page half changed:
-+        // the entry this step read goes, fallback and all, and nothing is saved.
-+        if (this.tainted !== undefined && outcome !== 'no-verdict') {
++        // Patch (ayme): a call that may have changed the page before it failed, in the
++        // recording, its fallback or the executor's own run, may have left it half
++        // changed: the entry this step read goes, fallback and all, whatever the
++        // verdict, and nothing is saved.
++        if (this.tainted !== undefined) {
 +            if (this.readEntryHit)
 +                await this.evict();
 +            return;
@@ -230,7 +231,7 @@ index 17a8bf9..a6d5303 100644
                      await this.evict();
                  else if (this.replayedWhole) {
                      this.cache.staged.push({
-@@ -304,6 +393,8 @@ export class StepTraceSession {
+@@ -304,6 +394,8 @@ export class StepTraceSession {
          const entry = readTraceEntry(read.entry);
          if (entry === undefined)
              return { status: 'miss', reason: 'invalid-entry' };
@@ -239,7 +240,7 @@ index 17a8bf9..a6d5303 100644
          // The stored recording has a slot for each `unique()` value; this call's
          // values fill it. A slot this call cannot fill is an entry recorded for
          // another shape, which the key should have kept apart.
-@@ -366,22 +457,82 @@ export class StepTraceSession {
+@@ -366,22 +458,84 @@ export class StepTraceSession {
              actions: host.actions,
              signal: host.signal,
              remainingMs: () => host.remainingMs(),
@@ -259,6 +260,7 @@ index 17a8bf9..a6d5303 100644
 +                        // completed. Only a call that left the page as it found it is a stale tool.
 +                        if ((globalThis[Symbol.for('e2e.patch.pageActions')] ?? 0) > actionsBefore || hasCause(error, ({ code }) => code === 'ACTION_MAY_HAVE_COMMITTED')) {
 +                            this.uncertainToolCall = name;
++                            this.taint(`${name} may have changed the page before it failed on replay`);
 +                            throw Object.assign(new Error(`${name} failed after it acted on the page`, { cause: error }), { code: 'ACTION_MAY_HAVE_COMMITTED' });
 +                        }
 +                        if (this.tainted === undefined)
@@ -307,10 +309,11 @@ index 17a8bf9..a6d5303 100644
 +        const changed = outcome.completed && refreshAfterPageObjectChange() && callsOnly(ran) ? changedCall(ran) : undefined;
 +        this.changedSource ??= changed;
 +        // Patch (ayme): without the recorded end screen, but still with e2e's check
-+        // for an alert the recording did not see.
++        // for an alert the recording did not see. The evidence check counts every
++        // action this replay ran, the recording's before a fallback included.
 +        const end = changed !== undefined
-+            ? await this.endStateMatches({ ...ended, endAnchors: [], goneAnchors: [], endPath: undefined }, start, screens)
-+            : outcome.completed && start?.kind === 'semantic' ? await this.endStateMatches(ended, start, screens) : undefined;
++            ? await this.endStateMatches({ ...ended, actions: ran, endAnchors: [], goneAnchors: [], endPath: undefined }, start, screens)
++            : outcome.completed && start?.kind === 'semantic' ? await this.endStateMatches({ ...ended, actions: ran }, start, screens) : undefined;
          const stopReason = outcome.completed
              ? end?.matches === true
                  ? undefined
@@ -327,7 +330,7 @@ index 17a8bf9..a6d5303 100644
              // A prefix that performed nothing is a miss with a name, not a hand-off:
              // the executor starts from the top and owes the notice nothing.
              this.info = this.missed(stopReason, outcome.total, outcome.derived, detail);
-@@ -413,7 +564,16 @@ export class StepTraceSession {
+@@ -413,7 +567,16 @@ export class StepTraceSession {
          // ledger as it is now, an unchanged node is no change.
          const baseline = baselineScreen(screens, arrived.path);
          const baselineNodes = baseline === undefined ? undefined : redactNodesAgain(baseline.nodes, this.redaction);
@@ -345,7 +348,7 @@ index 17a8bf9..a6d5303 100644
              // A recording with no delta fails the evidence too, but nothing of it
              // showed before the replay acted: that is the generic detail.
              const recorded = (trace.endAnchors?.length ?? 0) > 0 || (trace.goneAnchors?.length ?? 0) > 0;
-@@ -518,6 +678,9 @@ export class StepTraceSession {
+@@ -518,6 +681,9 @@ export class StepTraceSession {
       * route: a trace without its check would replay on mechanics alone.
       */
      async stage(recorder, verdictSummary, recordedBy) {
@@ -355,7 +358,7 @@ index 17a8bf9..a6d5303 100644
          if (!this.host.traceEligible || this.startNodes === undefined || recorder.recordedCount === 0)
              return 'skipped';
          const observation = await probeScreen(this.host, 'held-still');
-@@ -529,7 +692,10 @@ export class StepTraceSession {
+@@ -529,7 +695,10 @@ export class StepTraceSession {
          const startNodes = redactNodesAgain(this.startNodes, this.redaction);
          const routeMoved = this.startPath !== undefined && endPath !== undefined && !sameRoute(this.startPath, endPath);
          const delta = describeDelta(startNodes, endNodes, routeMoved);
@@ -367,7 +370,7 @@ index 17a8bf9..a6d5303 100644
              return 'no-change';
          const trace = recorder.finalize({
              executor: this.options.executor,
-@@ -584,6 +750,31 @@ export class StepTraceSession {
+@@ -584,6 +753,31 @@ export class StepTraceSession {
          if (deleted)
              this.cache.staged.push({ kind: 'decided', outcome: 'evicted', keyHash: this.keyHash, stepIndex: this.options.stepIndex });
      }
@@ -399,19 +402,6 @@ index 17a8bf9..a6d5303 100644
      repairedAfterEndMismatch(recorder) {
          return this.actionsAtEndMismatch !== undefined && recorder.recordedCount > this.actionsAtEndMismatch;
      }
-diff --git a/dist/agent/tool.js b/dist/agent/tool.js
-index cfd7642..b05e079 100644
---- a/dist/agent/tool.js
-+++ b/dist/agent/tool.js
-@@ -24,6 +24,8 @@ export function defineTool(tool, annotations) {
-         tool,
-         annotations: {
-             mutates: annotations.mutates,
-+            // Patch (ayme): a tool whose call can be repeated from its recorded input.
-+            ...(annotations.repeatable === true ? { repeatable: true } : {}),
-             ...(annotations.platforms === undefined ? {} : { platforms: [...annotations.platforms] }),
-         },
-     };
 diff --git a/dist/cache/decide.js b/dist/cache/decide.js
 index 3898311..4ab06e1 100644
 --- a/dist/cache/decide.js

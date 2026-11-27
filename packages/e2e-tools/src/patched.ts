@@ -77,6 +77,10 @@ export async function assertPatchedE2e(config: string): Promise<void> {
     throw new Error(
       `${config}: these files run unpatched, loaded before the patching hook or from another copy: ${unpatched.join(", ")}`
     );
+  // What `e2e-patched` checks as the config finishes loading (register.mjs).
+  (globalThis as Record<symbol, unknown>)[
+    Symbol.for("@ayme-dev/e2e-tools.asserted")
+  ] = true;
 }
 
 const IMPORTING_BASELINE = Symbol.for("@ayme-dev/e2e-tools.importing-baseline");
@@ -118,15 +122,14 @@ export function assertUnpatchedE2e(config: string): void {
     );
 }
 
-/** The `--cache-dir` this run was started with, if any: the last one given, which e2e's CLI takes. */
-function cacheDirFlag(): string | undefined {
+/** A flag this run was started with, if any: the last one given, which e2e's CLI takes. */
+function lastFlag(name: string): string | undefined {
   const args = process.argv;
   let flag: string | undefined;
   for (let at = 0; at < args.length; at += 1) {
     const arg = args[at]!;
-    if (arg === "--cache-dir") flag = args[at + 1];
-    else if (arg.startsWith("--cache-dir="))
-      flag = arg.slice("--cache-dir=".length);
+    if (arg === name) flag = args[at + 1];
+    else if (arg.startsWith(`${name}=`)) flag = arg.slice(name.length + 1);
   }
   return flag;
 }
@@ -144,8 +147,9 @@ function realDir(dir: string): string {
 
 /**
  * Throws unless this run's replay cache is `own`, as e2e picks it:
- * `--cache-dir`, else `E2E_CACHE_DIR`, else `cache.dir`, from the project
- * root; and if it is one a baseline config uses. An arm 3 config calls it,
+ * `--cache-dir`, else a non-blank `E2E_CACHE_DIR`, else `cache.dir`, from
+ * the project root, which is the folder of `--config` as given, symlink and
+ * all, else `projectRoot`; and if it is one a baseline config uses. An arm 3 config calls it,
  * so its recordings never mix with a baseline arm's, nor its scripted runs'
  * with its agent's.
  */
@@ -159,10 +163,18 @@ export function assertOwnCacheDir(
   const baselines = baselineConfigs.map(
     (baseline) => (baseline as { cache?: { dir?: string } }).cache?.dir
   );
+  const configFlag = lastFlag("--config");
+  const root =
+    configFlag === undefined
+      ? projectRoot
+      : path.dirname(path.resolve(configFlag));
   const resolve = (dir: string) =>
-    realDir(path.resolve(projectRoot, dir.replace(/^~(?=$|\/)/, homedir())));
-  const env = process.env.E2E_CACHE_DIR;
-  const dir = resolve(cacheDirFlag() ?? env ?? own);
+    realDir(path.resolve(root, dir.replace(/^~(?=$|\/)/, homedir())));
+  // e2e reads a blank variable as unset.
+  const env = process.env.E2E_CACHE_DIR?.trim()
+    ? process.env.E2E_CACHE_DIR
+    : undefined;
+  const dir = resolve(lastFlag("--cache-dir") ?? env ?? own);
   if (dir !== resolve(own))
     throw new Error(
       `${config} would record into ${dir}, not its own ${own}: leave out --cache-dir and E2E_CACHE_DIR, or give it ${own}`

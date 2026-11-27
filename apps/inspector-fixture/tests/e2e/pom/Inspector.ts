@@ -415,19 +415,28 @@ export class Navigator extends Part {
     return this.on((root) => root.getByRole("searchbox"));
   }
 
-  /** A search result, by its label. */
+  /**
+   * A search result, by its label (`button "Add item"`) or the row's whole
+   * text as the screen reads it (`Ref e8 button "Add item" ListPage.addItemButton`).
+   * The row's kind, label and description are separate elements, whose text
+   * runs together without spaces, so any space in `label` may match none.
+   */
   result(label: string): On {
+    const words = label
+      .trim()
+      .split(/\s+/)
+      .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
     return this.on((root) =>
       root
         .getByRole("list", "Search results")
         .getByRole("button")
-        .filter({ hasText: label })
+        .filter({ hasText: new RegExp(words.join("\\s*"), "i") })
     );
   }
 
   @ayme.action({
     description:
-      "Selects a search result, by its label, e.g. 'button \"Add item\"'.",
+      "Selects a search result, by its label, e.g. 'button \"Add item\"', or the row's whole text as the screen shows it.",
   })
   async selectResult(label: string) {
     await this.result(label).click();
@@ -435,7 +444,7 @@ export class Navigator extends Part {
 
   @ayme.action({
     description:
-      "Hovers a search result, by its label, which highlights it on the page.",
+      "Hovers a search result, by its label or the row's whole text as for selectResult, which highlights it on the page.",
   })
   async hoverResult(label: string) {
     await this.result(label).hover();
@@ -960,7 +969,13 @@ export class NodeView extends Part {
 /** A tool's page in the detail pane: an article named after the tool. */
 export class ToolPage extends Part {
   constructor(tab: Tab, detail: Root) {
-    super(tab, (screen) => detail(screen).getByRole("article"));
+    // A Structure node's view is an article too. The page's own marker,
+    // `data-tool-page`, is CSS only e2e's `e2e-roots=` reaches, from which no
+    // role query goes on into the closed root, so the node's article is
+    // left out by its name.
+    super(tab, (screen) =>
+      detail(screen).getByRole("article", { name: /^(?!Structure node$)/ })
+    );
   }
 
   @ayme.child

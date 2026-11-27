@@ -1,33 +1,28 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { applyHunks, loadPatches, parsePatch } from "./patches.mjs";
 
-const core = readFileSync(
-  new URL("../patches/@e2e-dev__core@0.25.0.patch", import.meta.url),
-  "utf8"
-);
-
-test("every patch loads whole", () => {
-  for (const { name, files } of loadPatches())
+test("the three patches load, each with a hunk for every file it names", () => {
+  const patches = loadPatches();
+  assert.deepEqual(patches.map(({ name }) => name).sort(), [
+    "@e2e-dev/acp",
+    "@e2e-dev/core",
+    "e2e",
+  ]);
+  for (const { name, files } of patches) {
     assert.ok(files.size > 0, `${name} changes no file`);
+    for (const [file, hunks] of files)
+      assert.ok(hunks.length > 0, `${name}'s ${file} has no hunk`);
+  }
 });
 
-test("a hunk with its last added line deleted fails to load", () => {
-  const lines = core.split("\n");
-  const firstHunk = lines.findIndex((line) => line.startsWith("@@"));
-  const nextHunk = lines.findIndex(
-    (line, at) =>
-      at > firstHunk && (line.startsWith("@@") || line.startsWith("diff --git"))
-  );
-  const lastAdded = lines.findLastIndex(
-    (line, at) => at > firstHunk && at < nextHunk && line.startsWith("+")
-  );
-  lines.splice(lastAdded, 1);
+test("a hunk with fewer added lines than its header says fails to load", () => {
+  // The header says one old line and two new; the hunk adds none.
+  const truncated = "diff --git a/f.js b/f.js\n@@ -2,1 +2,2 @@\n b\n";
   assert.throws(
-    () => parsePatch(lines.join("\n"), "truncated"),
-    /truncated is damaged: the hunk of \S+ at line \d+ has \d+ old and \d+ new lines/
+    () => parsePatch(truncated, "truncated"),
+    /truncated is damaged: the hunk of f\.js at line 2 has 1 old and 1 new lines, its header says 1 and 2/
   );
 });
 

@@ -35,9 +35,9 @@ import {
   patternViolations,
 } from "@ayme-dev/ayme/internal";
 import type { JsonValue } from "e2e";
-import { defineTool, type DefinedTool } from "e2e/agent";
 import { z } from "zod";
 import { patchedScreens } from "./patched";
+import type { ExecutableTool } from "./projectTools";
 
 type Manifest = ReturnType<
   ReturnType<typeof createPomCompiler>["derivePomManifests"]
@@ -171,12 +171,8 @@ async function ruledOut(
 }
 
 interface DirectPageObjects {
-  /**
-   * The tools as e2e config tools, named as `toolName` spells them, each
-   * marked `repeatable`: the patched e2e records a call with its input and a
-   * cached replay runs it again.
-   */
-  projectTools(): Record<string, DefinedTool>;
+  /** The tools as `serveProjectTools` takes them, named as `toolName` spells them. */
+  projectTools(): Record<string, ExecutableTool>;
   /** Why a tool's action cannot run on the screen now; undefined when it can. */
   ruledOutNow(name: string): Promise<string | undefined>;
   /** Where a tool's action is written, by the tool's name in either spelling. */
@@ -304,20 +300,12 @@ export function directPageObjects(options: {
       return Object.fromEntries(
         [...bound.values()].map((tool) => [
           toolName(tool.name),
-          defineTool(
-            {
-              description: tool.description,
-              inputSchema: z.fromJSONSchema(
-                tool.inputSchema as Parameters<typeof z.fromJSONSchema>[0]
-              ),
-              execute: async (input: JsonValue) =>
-                `${toolName(tool.name)} ran${returned(await run(tool.name, input))}.`,
-            } as unknown as Parameters<typeof defineTool>[0],
-            // `repeatable` is the patched e2e's annotation (`patched.ts`).
-            { mutates: true, repeatable: true } as Parameters<
-              typeof defineTool
-            >[1]
-          ),
+          {
+            description: tool.description,
+            inputSchema: schemaOf(tool),
+            execute: async (input: JsonValue) =>
+              `${toolName(tool.name)} ran${returned(await run(tool.name, input))}.`,
+          },
         ])
       );
     },

@@ -4,7 +4,7 @@
 // directory's project resolves, and only with a config that asks for the
 // patches: e2e's default config may be a baseline arm's.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -21,16 +21,17 @@ function configArg(args) {
 }
 
 const config = configArg(process.argv.slice(2));
-const source =
-  config !== undefined && existsSync(config)
-    ? readFileSync(config, "utf8")
-    : "";
-if (!/\bassertPatchedE2e\s*\(/.test(source)) {
+if (config === undefined || !existsSync(config)) {
   process.stderr.write(
-    `e2e-patched: give it --config with a config that calls assertPatchedE2e (@ayme-dev/e2e-tools)${config === undefined ? "" : `; ${config} does not`}. Any other config may be a baseline arm's, which runs on e2e as published.\n`
+    `e2e-patched: give it --config with a config that calls assertPatchedE2e (@ayme-dev/e2e-tools)${config === undefined ? "" : `; ${config} does not exist`}. e2e's default config may be a baseline arm's, which runs on e2e as published.\n`
   );
   process.exit(2);
 }
+// The hook checks, as this config finishes loading, that it called
+// assertPatchedE2e (register.mjs).
+globalThis[Symbol.for("@ayme-dev/e2e-tools.selectedConfig")] = realpathSync(
+  path.resolve(config)
+);
 
 const register = new URL("./register.mjs", import.meta.url).href;
 await import(register);
