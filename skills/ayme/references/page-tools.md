@@ -3,7 +3,10 @@
 The commands are written `ayme <command>`; run them as
 [Browser automation tools](browser-automation-tools.md) says. Each one
 prints its answer and exits. An error goes to standard error with exit
-code 1. Add `--json` for a Session's answer as JSON.
+code 1. Add `--json` for a Session's answer as JSON: read its fields under
+`data`, as
+[What the agent sees](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#what-the-agent-sees)
+shows.
 
 A Page Object Tool is named after its class and action, such as
 `ProjectRow.remove`. Drive the rest of the page with your browser
@@ -71,7 +74,7 @@ the page, run `ayme page-objects` for the ids there are now.
 - `settled`: whether the page settled after the action. It is `false` after
   an action that started loading a new document, even when the answer
   already comes from the new page.
-- `result`: what the action returned, when it returned something.
+- `result`: what the action returned, when that is a JSON value.
 - `url`: the new URL, when the action changed it.
 - `changes`: how the Page Object Tree changed. A Page Object that appeared
   is shown in full, with its children and its id; one that went away is

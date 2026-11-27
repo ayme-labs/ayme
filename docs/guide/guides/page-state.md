@@ -205,7 +205,7 @@ An agent that calls a Page Object Tool through WebMCP or with `ayme call` throug
 ```ts
 {
   settled: boolean;   // whether the page settled after the action; false while a new document loads
-  result?: unknown;   // what the action returned, when it returned something
+  result?: unknown;   // what the action returned, when that is a JSON value
   url?: string;       // the page's URL, when the action changed it
   changes?: string;   // how the Page Objects on the page changed
 }

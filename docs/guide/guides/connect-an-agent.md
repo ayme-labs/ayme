@@ -147,7 +147,7 @@ ayme call ProjectRow.rename --params '{"id": "po1", "args": {"name": "Launch pla
 
 It answers with whether the page settled, what the action returned, the URL when the action changed it, and how the Page Object Tree changed: [a Page Object Tool's answer to an agent](page-state.md#a-page-object-tools-answer-to-an-agent).
 
-A Session's answers are plain text, or JSON with `--json`. The command's own errors, such as an option it does not know, and `--help` are plain text. An error goes to standard error, with exit code 1. A tool that cannot run now is listed as unavailable, with its reason when the app gives one, and a call to it is refused.
+A Session's answers are plain text, or JSON with `--json`. In JSON, an answer is `{"ok": true, "text": …, "data": …}` on standard output, where `data`, when present, holds its fields, such as a call's `settled`, `result`, `url` and `changes`; a failure is `{"ok": false, "text": …}` on standard error. The command's own errors, such as an option it does not know, and `--help` are plain text, also with `--json`, and `ayme mcp` refuses `--json`. An error goes to standard error, with exit code 1. A tool that cannot run now is listed as unavailable, with its reason when the app gives one, and a call to it is refused.
 
 `ayme --help` lists every command and option.
 
