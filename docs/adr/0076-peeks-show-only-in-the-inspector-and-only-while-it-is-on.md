@@ -11,4 +11,4 @@ A Peek's Peek Tool is listed and run in the Inspector, and no agent reaches it: 
 
 We rejected publishing Peek Tools like every other tool and leaving production to the application's WebMCP setting (ADR-0030): one setting would then decide both what an in-browser agent may do and what internal state it may read. Whether Peeks reach an agent through WebMCP in development is open in [#1505 "Peeks reach a coding agent through WebMCP in development"](https://github.com/ayme-labs/ayme/issues/1505).
 
-The cost: nothing outside the page reads a Peek any more, since the Agent Connection that carried Peek Tools to coding agents is gone (ADR-0074). And an app that turns the Inspector on in a build makes its Peeks live in that build.
+The cost: nothing outside the page reads a Peek any more, since the Agent Connection that carried Peek Tools to coding agents is gone (ADR-0074). An app that turns the Inspector on in a build makes its Peeks live in that build. And the runtime's tool list holds a live Peek's tool, so an app that hands that list to an assistant of its own leaves Peek Tools out itself.
