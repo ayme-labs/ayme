@@ -22,7 +22,7 @@ import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
 import { failingOnItsUncaught } from "../runUncaught";
-import { tabDialogs, type ActionCalls } from "../tabDialogs";
+import { dialogOpenMs, tabDialogs, type ActionCalls } from "../tabDialogs";
 import { handedOver, readTabOrder, tabListAddress } from "../tabList";
 import { tabInspector, type InspectorPort } from "./tabInspector";
 
@@ -95,19 +95,20 @@ const watched = new WeakMap<
   {
     readonly dialogs: ReturnType<typeof tabDialogs>;
     readonly dialog: SubscriptionRef.SubscriptionRef<TabDialog>;
+    /** Settles once the browser tells the session of the page's dialogs. */
+    readonly started: Promise<unknown>;
   }
 >();
 const dialogsOf = (page: Page) => {
   let watch = watched.get(page);
   if (!watch) {
     const dialog = Effect.runSync(SubscriptionRef.make<TabDialog>("none"));
-    const dialogs = tabDialogs((now) =>
-      Effect.runSync(SubscriptionRef.set(dialog, now))
+    const dialogs = tabDialogs(
+      (now) => Effect.runSync(SubscriptionRef.set(dialog, now)),
+      undefined,
+      dialogOpenMs(process.env)
     );
-    watch = { dialogs, dialog };
-    watched.set(page, watch);
-    // Not awaited: no command waits for the watch to start.
-    void devtools(page)
+    const started = devtools(page)
       .then((session) => {
         session.on("Page.javascriptDialogOpening", (opened) =>
           dialogs.opened({
@@ -122,6 +123,8 @@ const dialogsOf = (page: Page) => {
         return session.send("Page.enable");
       })
       .catch(() => {});
+    watch = { dialogs, dialog, started };
+    watched.set(page, watch);
   }
   return watch;
 };
@@ -197,7 +200,9 @@ const hostOn =
           tabIds.given(id, className);
           return id;
         };
-        const { dialogs, dialog } = dialogsOf(page);
+        const { dialogs, dialog, started } = dialogsOf(page);
+        // So that the first dialog a Run's action opens is heard.
+        await started;
         const ayme = entry.createNodeHost(
           {
             page,

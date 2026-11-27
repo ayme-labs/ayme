@@ -11,6 +11,14 @@ import type { Dialog, TabDialog } from "../../session/domain";
  * happened. */
 export const DIALOG_OPEN_MS = 100;
 
+/** {@link DIALOG_OPEN_MS}, unless `env` sets AYME_DIALOG_OPEN_MS to a
+ * number of milliseconds: an end-to-end test sets a longer one, so that an
+ * action that answers its own dialog does so in time on a slow machine. */
+export function dialogOpenMs(env: NodeJS.ProcessEnv): number {
+  const ms = Number(env["AYME_DIALOG_OPEN_MS"]);
+  return Number.isFinite(ms) && ms > 0 ? ms : DIALOG_OPEN_MS;
+}
+
 /** What the project's Node Host asks of its Host about a Page Object
  * Action's own Playwright calls: `ActionCalls` of `@ayme-dev/ayme`. */
 export type ActionCalls = {
@@ -33,7 +41,7 @@ const startAfter = (ms: number, then: () => void) => {
 /**
  * The dialogs of one Tab, as the browser says each opens and closes, told
  * to `tell` as the Session counts them: "opening" at once, open once
- * {@link DIALOG_OPEN_MS} passed on `wait`'s clock. While one opens, the
+ * `openMs` passed on `wait`'s clock. While one opens, the
  * calls that reach the browser of each action under way wait; once one
  * counts as open, the actions under way are stopped: each later call of
  * theirs is refused, however the dialog is answered. A call outside every
@@ -41,7 +49,8 @@ const startAfter = (ms: number, then: () => void) => {
  */
 export function tabDialogs(
   tell: (now: TabDialog) => void,
-  wait: (ms: number, then: () => void) => () => void = startAfter
+  wait: (ms: number, then: () => void) => () => void = startAfter,
+  openMs = DIALOG_OPEN_MS
 ) {
   const actions = new AsyncLocalStorage<Action>();
   const running = new Set<Action>();
@@ -90,7 +99,7 @@ export function tabDialogs(
         held = { until: new Promise<void>((resolve) => (end = resolve)), end };
       }
       set("opening");
-      counting = wait(DIALOG_OPEN_MS, () => {
+      counting = wait(openMs, () => {
         counting = undefined;
         for (const action of running) action.stoppedBy ??= dialog;
         set({ open: dialog });

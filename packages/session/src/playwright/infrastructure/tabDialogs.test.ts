@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import type { TabDialog } from "../../session/domain";
-import { DIALOG_OPEN_MS, tabDialogs } from "./tabDialogs";
+import { DIALOG_OPEN_MS, dialogOpenMs, tabDialogs } from "./tabDialogs";
 
 const confirm = { type: "confirm", message: "Remove Milk?" };
 
@@ -203,4 +203,11 @@ it("a call that answers at once is never held while a dialog opens", async () =>
   await Promise.resolve();
 
   expect(await settled(calls[0]!)).toBe("started");
+});
+
+it("a dialog counts after 100 ms, unless AYME_DIALOG_OPEN_MS sets another number of milliseconds", () => {
+  expect(dialogOpenMs({})).toBe(100);
+  expect(dialogOpenMs({ AYME_DIALOG_OPEN_MS: "3000" })).toBe(3000);
+  expect(dialogOpenMs({ AYME_DIALOG_OPEN_MS: "soon" })).toBe(100);
+  expect(dialogOpenMs({ AYME_DIALOG_OPEN_MS: "0" })).toBe(100);
 });
