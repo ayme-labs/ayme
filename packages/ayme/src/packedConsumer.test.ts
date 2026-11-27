@@ -1823,6 +1823,13 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
   expect(notices).toContain("Permission is hereby granted, free of charge");
   // The window's components, copied from shadcn/ui into the design system.
   expect(notices).toContain("Copyright (c) 2023 shadcn");
+  // The Inspector's build, which the command serves to a Session's window.
+  expect(notices).toContain(
+    fs.readFileSync(
+      path.join(packagesRoot, "inspector/THIRD_PARTY_NOTICES.txt"),
+      "utf8"
+    )
+  );
 });
 
 it(
