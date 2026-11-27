@@ -2,7 +2,7 @@
 
 How to record a flow in your app with ayme capture and hand the recording to your coding agent.
 
-ayme capture is the `ayme capture` command of the npm package `@ayme-dev/cli`, and the recorder it starts. You click through a flow in your app, and it saves each step and what that step changed on the page. Your coding agent then turns the recording into Playwright page objects and a test, with the [`ayme-capture` skill](coding-agent-skill.md#ayme-capture).
+ayme capture is the `ayme capture` command of the npm package `@ayme-dev/cli`, and the Recorder it starts. You click through a flow in your app, and it saves each step and what that step changed on the page. Your coding agent then turns the recording into Playwright page objects and a test, with the [`ayme-capture` skill](coding-agent-skill.md#ayme-capture).
 
 For a first recording, follow the [package's README](https://github.com/ayme-labs/ayme/blob/main/packages/cli/README.md), which has pictures. This page covers the commands, the controls, where recordings go, the warnings and the limits.
 
@@ -10,15 +10,15 @@ The commands are written `npx ayme`, for a project that has `@ayme-dev/cli` in i
 
 ## Before you start
 
-- Run every command in your project's folder. The recorder uses that project's Playwright and saves recordings there.
-- The project needs `@playwright/test` (or `playwright`) installed, in a [supported version](#supported-playwright-versions). The recorder brings no Playwright and no browser of its own.
-- Install Chromium once with Playwright's own `npx playwright install chromium`. The recorder records in Chromium only.
+- Run every command in your project's folder. The Recorder uses that project's Playwright and saves recordings there.
+- The project needs `@playwright/test` (or `playwright`) installed, in a [supported version](#supported-playwright-versions). The Recorder brings no Playwright and no browser of its own.
+- Install Chromium once with Playwright's own `npx playwright install chromium`. The Recorder records in Chromium only.
 
 ### Supported Playwright versions
 
-The recorder needs Playwright 1.62 or newer, and is verified on 1.62 to 1.65.
+The Recorder needs Playwright 1.62 or newer, and is verified on 1.62 to 1.65.
 
-- **Older than 1.62:** the recorder does not start, and tells you the range.
+- **Older than 1.62:** the Recorder does not start, and tells you the range.
 - **Newer than 1.65:** it records, and warns that it may miss or misread an input.
 - **No Playwright installed:** it does not start, and tells you how to install it.
 
@@ -28,7 +28,7 @@ With the `ayme-capture` skill installed, ask your agent to record a flow and say
 
 > Record the checkout flow from http://localhost:3000 and write a Playwright test for it.
 
-The agent starts the recorder at that address. Press **Record**, click through the flow, and press **Finish**. The agent reads the recording, proposes page objects and a test, and writes them once you agree.
+The agent starts the Recorder at that address. Press **Record**, click through the flow, and press **Finish**. The agent reads the recording, proposes page objects and a test, and writes them once you agree.
 
 You can also record first and hand the recording over afterwards. Run `ayme capture` yourself, then ask the agent to turn the recording into a test, and give it the path the terminal printed as `Recording package:`. Do not point it at `ayme/recordings/latest.yaml` instead: that file is a copy of the latest recording that was saved, so after a run that recorded nothing it still holds the one before.
 
@@ -38,22 +38,22 @@ You can also record first and hand the recording over afterwards. Run `ayme capt
 
 ### `ayme capture <url>`
 
-Opens `<url>` in Chromium, with the recorder window beside it and a small toolbar on the page. Recording is off at first, so you can log in or get to your starting point. Press **Record** to start.
+Opens `<url>` in Chromium, with the Recorder beside it and a small toolbar on the page. Recording is off at first, so you can log in or get to your starting point. Press **Record** to start.
 
 ```sh
 npx ayme capture http://localhost:3000
 ```
 
-The terminal prints the recorder window's address, such as `Recorder UI: http://127.0.0.1:52011/`. When the recording is saved, it prints `Recording package: <path>`. When there was nothing to save, it prints `Recording was empty; no recording package was created.`
+The terminal prints the Recorder's address, such as `Recorder UI: http://127.0.0.1:52011/`. When the recording is saved, it prints `Recording package: <path>`. When there was nothing to save, it prints `Recording was empty; no recording package was created.`
 
 - `--headless`: runs Chromium without a window. Open the printed `Recorder UI` address in a browser to control the recording.
 - `--start-recording`: starts recording before the page loads, so the recording and its trace include the first page load and its network requests. The page opens blank and then goes to `<url>`. Wait for it to open before you do anything: what you do on the blank page is not recorded. After **Clear**, the next recording starts from the page as it is then.
-- `--load-storage <file>`: opens the page with the cookies and local storage from `<file>`, a Playwright storage state file. You get such a file from `--save-storage` here, from `npx playwright codegen --save-storage`, or from your project's own login setup (`context.storageState()`). If the file cannot be read or holds no storage state, the recorder does not start.
-- `--save-storage <file>`: when the recorder ends, saves the browser's cookies and local storage to `<file>`, as `npx playwright codegen --save-storage` does.
+- `--load-storage <file>`: opens the page with the cookies and local storage from `<file>`, a Playwright storage state file. You get such a file from `--save-storage` here, from `npx playwright codegen --save-storage`, or from your project's own login setup (`context.storageState()`). If the file cannot be read or holds no storage state, the Recorder does not start.
+- `--save-storage <file>`: when the Recorder ends, saves the browser's cookies and local storage to `<file>`, as `npx playwright codegen --save-storage` does.
   - It saves when you press **Finish**, close the last recorded page, or press Ctrl+C. It saves even if nothing was recorded, or if the recording itself could not be saved.
   - It cannot save if you quit the whole browser.
   - To save a login without recording anything: log in, then close the page or press Ctrl+C. **Finish** is offered only after **Record**.
-  - If the file cannot be saved, the recorder prints [a warning](#warnings).
+  - If the file cannot be saved, the Recorder prints [a warning](#warnings).
 
 ### `ayme capture --cdp=<url>`
 
@@ -64,17 +64,17 @@ npx ayme capture --cdp=http://127.0.0.1:9222
 ```
 
 - The browser must run on this machine. The address is `http://` or `ws://`, on `localhost`, a `127.x.x.x` address or `[::1]`.
-- The browser must have exactly one page open. The recorder records that page and does not navigate it.
-- The recorder window does not open by itself. Open the printed `Recorder UI` address in any browser.
+- The browser must have exactly one page open. The Recorder records that page and does not navigate it.
+- The Recorder does not open by itself. Open the printed `Recorder UI` address in any browser.
 - What a script does in that browser is recorded like your own clicks and typing.
-- To end, press **Finish**, close the page, or press Ctrl+C. Each saves the recording. The recorder removes its toolbar from the page and leaves the browser open.
+- To end, press **Finish**, close the page, or press Ctrl+C. Each saves the recording. The Recorder removes its toolbar from the page and leaves the browser open.
 - `--headless`, `--start-recording`, `--load-storage` and `--save-storage` do not apply here, and you cannot pass a URL as well.
 
 ## Record a flow
 
-The recorder window has every control. The toolbar on the page has two: the button that records, stops and continues, and **Assert visibility**. Both always show the same state, so use whichever is closer.
+The Recorder has every control. The toolbar on the page has two: the button that records, stops and continues, and **Assert visibility**. Both always show the same state, so use whichever is closer.
 
-![The recorder window's controls: Stop, Assert visibility (the eye), Clear and Finish](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-controls.png)
+![The Recorder's controls: Stop, Assert visibility (the eye), Clear and Finish](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-controls.png)
 
 The pictures on this page are from an earlier version: the settings button beside **Finish** is gone.
 
@@ -85,13 +85,13 @@ The pictures on this page are from an earlier version: the settings button besid
 - **Clear** throws away everything recorded so far, so you can start over.
 - **Finish** saves the recording, including your last step. You do not need to press **Stop** first.
 
-After **Stop**, **Clear** or **Finish**, the recorder may need a moment to finish the step in progress. Until it has, the window shows a status that starts with **Wrapping up**, the toolbar shows a spinner, and the buttons wait.
+After **Stop**, **Clear** or **Finish**, the Recorder may need a moment to finish the step in progress. Until it has, the window shows a status that starts with **Wrapping up**, the toolbar shows a spinner, and the buttons wait.
 
 ### What the window shows
 
 The window lists what you record as you go.
 
-![The recorder window during a recording: a page heading, the navigation, and each step with what it changed](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-timeline.png)
+![The Recorder during a recording: a page heading, the navigation, and each step with what it changed](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-timeline.png)
 
 - **Pages.** A heading with the page's address starts each Visit. A Visit starts when you press **Record**, when a new tab or window opens, and when a page goes to another site or another path. A reload, or a change of only the address's query or hash, stays in the same Visit.
 - **Steps.** Each click, typed text, key press, dropdown choice and upload, with the element it acted on. Typed text shows while you type.
@@ -119,7 +119,7 @@ To leave a step out of the recording, hover it and press **Discard**. You can do
 
 ## End a recording
 
-Each of these ends the recorder and saves what was recorded:
+Each of these ends the Recorder and saves what was recorded:
 
 - press **Finish**,
 - close the last recorded page,
@@ -127,13 +127,13 @@ Each of these ends the recorder and saves what was recorded:
 
 If recording never started, by **Record** or `--start-recording`, there is nothing to save.
 
-Do not end by quitting the whole browser. The recorder ends then too, but the recording can be saved without its trace, and `--save-storage` cannot save.
+Do not end by quitting the whole browser. The Recorder ends then too, but the recording can be saved without its trace, and `--save-storage` cannot save.
 
-The recorder always ends, even when the browser stops answering. It waits a few seconds, leaves out the steps that were not complete, and saves the rest. If the trace cannot be written either, it saves the recording without its trace after a minute.
+The Recorder always ends, even when the browser stops answering. It waits a few seconds, leaves out the steps that were not complete, and saves the rest. If the trace cannot be written either, it saves the recording without its trace after a minute.
 
 ## Record a logged-in app
 
-The recorder does not keep you logged in between recordings. Unless you use the storage flags, each `ayme capture <url>` opens a browser with no cookies and no local storage, and keeps nothing when it ends. To record an app that needs a login, do one of these:
+The Recorder does not keep you logged in between recordings. Unless you use the storage flags, each `ayme capture <url>` opens a browser with no cookies and no local storage, and keeps nothing when it ends. To record an app that needs a login, do one of these:
 
 - **Log in before you press Record.** Recording is off at first, so the login is not recorded.
 - **Load a saved login** with `--load-storage <file>`. You get the file from `--save-storage <file>` (log in, then close the page or press Ctrl+C), from `npx playwright codegen --save-storage <file>`, or from your project's own login setup.
@@ -165,34 +165,34 @@ The trace is a standard Playwright trace. Open it with your project's own Playwr
 npx playwright trace open ayme/recordings/rec_20261113T195055354Z/trace.zip
 ```
 
-It holds DOM snapshots and network requests, and no screenshots. Its list of actions shows the recorder's own calls, not your steps. To find a step in the trace, use the position numbers the recording gives for it, as the [`ayme-capture` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-capture/SKILL.md#use-the-trace) describes.
+It holds DOM snapshots and network requests, and no screenshots. Its list of actions shows the Recorder's own calls, not your steps. To find a step in the trace, use the position numbers the recording gives for it, as the [`ayme-capture` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-capture/SKILL.md#use-the-trace) describes.
 
 ## Warnings
 
-A warning is a line in the terminal that starts with `Warning:`. The recording goes on. Most warnings come while the recorder runs; the last two come as it ends.
+A warning is a line in the terminal that starts with `Warning:`. The recording goes on. Most warnings come while the Recorder runs; the last two come as it ends.
 
-- **Playwright is newer than the recorder is verified on.** It may miss or misread an input. See [Supported Playwright versions](#supported-playwright-versions).
-- **A step is recorded, but its list of changes may be incomplete.** Playwright reported the input in a form the recorder does not read, or the page could not be read at that moment.
+- **Playwright is newer than the Recorder is verified on.** It may miss or misread an input. See [Supported Playwright versions](#supported-playwright-versions).
+- **A step is recorded, but its list of changes may be incomplete.** Playwright reported the input in a form the Recorder does not read, or the page could not be read at that moment.
 - **A step is not recorded.** Its page could not be read. This can happen to typing, a dropdown choice, an upload or an assertion.
-- **An upload is recorded with its first file name only.** The file input was gone, or held other files than Playwright reported, by the time the recorder read it.
+- **An upload is recorded with its first file name only.** The file input was gone, or held other files than Playwright reported, by the time the Recorder read it.
 - **Some or all of the trace's snapshots could not be numbered.** The recording has its trace, but lacks the position numbers that open those steps' snapshots.
-- **The storage state could not be saved.** `--save-storage` could not write its file, the browser was quit or did not answer within half a minute, or the recorder broke down while saving. The recording ends as it would have without the save.
+- **The storage state could not be saved.** `--save-storage` could not write its file, the browser was quit or did not answer within half a minute, or the Recorder broke down while saving. The recording ends as it would have without the save.
 
-If the recorder cannot start, it prints the reason in one sentence and exits with code 1. It does not start when:
+If the Recorder cannot start, it prints the reason in one sentence and exits with code 1. It does not start when:
 
 - no Playwright is installed, it is too old, or that version has no Playwright recorder,
 - Chromium could not be opened or reached; when Chromium could not be opened, it also names `npx playwright install chromium`, which installs it,
 - the `--cdp` address is not on this machine, or the running browser has no page or more than one,
 - the `--load-storage` file cannot be read or holds no storage state,
-- the recorder window could not be served.
+- the Recorder could not be served.
 
 ## Limits
 
 - **The trace keeps running while paused.** It runs from the first **Record** to **Finish**, so what is on the page while paused, including what you type, can show in it. Do not type a secret while paused and expect it to be left out.
-- **Closing the page right after your last click can lose that click.** End with **Finish** instead, which saves your last step. After such a close, the recorder can also take about five seconds to end.
+- **Closing the page right after your last click can lose that click.** End with **Finish** instead, which saves your last step. After such a close, the Recorder can also take about five seconds to end.
 - **A double click can reach the page as a single click.** It depends on timing, and a slow page or a busy machine makes it more likely.
-- **Pasted text, and text from an input method that composes it, may not reach the page exactly as you gave it.** This affects the first thing you type after **Record**, and what you type while an earlier step is still being recorded. The recorder holds those keys back for a moment and sends them again.
+- **Pasted text, and text from an input method that composes it, may not reach the page exactly as you gave it.** This affects the first thing you type after **Record**, and what you type while an earlier step is still being recorded. The Recorder holds those keys back for a moment and sends them again.
 - **In a form that moves the focus by itself, a change can be listed under the step before.** In a verification code with one box per character, for example, typing into the next box before the page is quiet can list that change under the box before. The same can happen when you type right after a dropdown choice or an upload.
-- **The toolbar on the page does not work with the browser's own popover or modal dialog.** Pressing **Assert visibility** on the toolbar closes an element shown with the `popover` attribute, and the toolbar cannot be pressed at all while a `<dialog>` is open as a modal. Press **Assert visibility** in the recorder window instead: the popover or dialog stays open, and you can pick an element inside it. Dialogs, popovers and menus that a UI library draws from ordinary elements are not affected.
+- **The toolbar on the page does not work with the browser's own popover or modal dialog.** Pressing **Assert visibility** on the toolbar closes an element shown with the `popover` attribute, and the toolbar cannot be pressed at all while a `<dialog>` is open as a modal. Press **Assert visibility** in the Recorder instead: the popover or dialog stays open, and you can pick an element inside it. Dialogs, popovers and menus that a UI library draws from ordinary elements are not affected.
 - **Cross-origin iframes and transformed iframes were not tested.** Same-origin iframes and open shadow roots are.
-- **Very large pages make the recorder lag.** It reads the page at each click and at the first key you type after **Record** or on a new page. That takes 10 to 40 ms on an ordinary page, and about a second on a page with tens of thousands of elements, such as the Wikipedia article "World War II". The recorder window lags with it.
+- **Very large pages make the Recorder lag.** It reads the page at each click and at the first key you type after **Record** or on a new page. That takes 10 to 40 ms on an ordinary page, and about a second on a page with tens of thousands of elements, such as the Wikipedia article "World War II". The Recorder lags with it.

@@ -48,7 +48,7 @@ ayme runs entirely in your app: in its page, and in its own Node processes where
 
 ## The Inspector
 
-The Inspector is an in-page panel that shows your page's Page Objects, its Structural Page State and its tools, and lets you run those tools by hand. The [Inspector guide](../guides/inspector.md) shows how to turn it on.
+The Inspector shows your page's Page Objects, its Structural Page State and its tools, and lets you run those tools by hand. It opens as a panel in your app, or shows a Session in a window of its own or in your Agent App's chat. The [Inspector guide](../guides/inspector.md) shows how to open each.
 
 ![The ayme playground with the Inspector open on its Model lens](../images/inspector-model.png)
 
