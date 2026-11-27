@@ -59,12 +59,12 @@ test("a failed build keeps the Page Objects, and listings say the build is faili
 
   await expect
     .poll(async () => (await ayme("tools")).stdout.split("\n")[1])
-    .toMatch(/^The Page Objects do not build since the last edit/);
+    .toMatch(/^Page Object rebuild failed\./);
   const tools = await ayme("tools");
   const [tab, building] = tools.stdout.split("\n");
   expect(tab).toBe(tabLine);
   expect(building).toMatch(
-    /^The Page Objects do not build since the last edit, so the Session keeps the ones it has: ayme\/pom\/Basket\.ts:\d+:\d+: \S.*$/
+    /^Page Object rebuild failed\. Keeping the current Page Objects\. ayme\/pom\/Basket\.ts:\d+:\d+: \S.*$/
   );
   expect(tools.stdout).toContain("Basket.clear");
   const listed = (await ayme("page-objects")).stdout.split("\n");

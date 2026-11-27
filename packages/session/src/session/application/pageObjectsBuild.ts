@@ -27,5 +27,8 @@ export class PageObjectsBuild extends Context.Service<
     /** Each edit to the source the last finished build read, from when
      * the stream runs. */
     readonly edits: Stream.Stream<void>;
+    /** Why the source cannot be watched, while it cannot: an edit there
+     * may go untold. */
+    readonly unwatched: () => string | undefined;
   }
 >()("@ayme-dev/session/session/PageObjectsBuild") {}

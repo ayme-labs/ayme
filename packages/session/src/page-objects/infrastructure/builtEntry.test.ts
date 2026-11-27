@@ -28,6 +28,21 @@ it.each([[{}], [{ default: Basket }], [{ default: [Basket, "Checkout"] }]])(
   }
 );
 
+it("refuses an entry that lists two different classes of one name, and takes one listed twice", async () => {
+  const Cart = { Basket: class {} }.Basket;
+  const error = await Effect.runPromise(
+    Effect.flip(pageObjectClasses({ default: [Basket, Cart] }, entry))
+  );
+  expect(error.message).toBe(
+    "The default export of /app/ayme/page-objects.ts lists two different classes named Basket. ayme tells Page Object classes apart by name: rename one of them."
+  );
+  expect(
+    await Effect.runPromise(
+      pageObjectClasses({ default: [Basket, Basket] }, entry)
+    )
+  ).toEqual([Basket, Basket]);
+});
+
 it("says which entry did not build, above the build's own messages", () => {
   expect(
     buildFailed(entry, [
@@ -39,7 +54,7 @@ it("says which entry did not build, above the build's own messages", () => {
   );
 });
 
-it("names the first error on one line, with where it is when esbuild says", () => {
+it("names the first error on one line, with where it is as an editor counts it, from 1 and in characters, as far as esbuild knows", () => {
   expect(
     buildFailed(
       entry,
@@ -47,12 +62,25 @@ it("names the first error on one line, with where it is when esbuild says", () =
       [
         {
           text: 'Expected ";" but found "basket"',
-          location: { file: "ayme/pom/Basket.ts", line: 3, column: 9 },
+          location: {
+            file: "ayme/pom/Basket.ts",
+            line: 3,
+            // The UTF-8 bytes of "é ", which are two characters.
+            column: 3,
+            lineText: "é basket = 1;",
+          },
         },
         { text: "Could not resolve" },
       ]
     ).first
-  ).toBe('ayme/pom/Basket.ts:3:9: Expected ";" but found "basket"');
+  ).toBe('ayme/pom/Basket.ts:3:3: Expected ";" but found "basket"');
+  expect(
+    buildFailed(
+      entry,
+      ["m"],
+      [{ text: "Wrong.", location: { file: "a.ts", line: 2, column: 4 } }]
+    ).first
+  ).toBe("a.ts:2: Wrong.");
   expect(buildFailed(entry, ["m"], [{ text: "No entry." }]).first).toBe(
     "No entry."
   );

@@ -12,11 +12,14 @@ export type RunAnswer = {
 };
 
 /** Why a Run was refused or failed, in the sentence an agent reads today,
- * with how the Page Object Tree changed while it ran, when it changed. */
+ * with how the Page Object Tree changed while it ran, when it changed.
+ * `going` is the Run's own work when it is still under way, as after an
+ * error its code left uncaught: it keeps the Tab's turn until it settles. */
 export class RunError extends Error {
   constructor(
     message: string,
-    readonly changes?: string
+    readonly changes?: string,
+    readonly going?: Promise<unknown>
   ) {
     super(message);
   }

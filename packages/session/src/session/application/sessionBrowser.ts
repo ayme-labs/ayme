@@ -34,9 +34,18 @@ export interface HostedTab {
   /** The Tab's dialog as the Session counts it now, and again after each
    * change (rule 4). It reads nothing of the page, which a dialog holds. */
   readonly dialog: Stream.Stream<TabDialog>;
+  /** Reads the Page Objects on the Tab's page now, as a Run reads them
+   * before its action, so their tools are what the page shows. */
+  readonly observe: Effect.Effect<void, TabReadError>;
+  /** Whether the Page Object Tool `tool`, in the Page Objects the Tab's
+   * Host runs now, takes a Page Object Id: its class declares a root. It
+   * reads nothing of the page. */
+  readonly takesId: (tool: string) => boolean;
   /** Runs `pageObjects` on the Tab from now on, in place of those it ran,
    * at once: the Swap, which the Session makes only between Runs (rule 7).
-   * It reads nothing of the page, so an open dialog cannot hold it up. */
+   * It waits for nothing on the page: registering the classes starts reads
+   * of it that may fail, and waits for none, so an open dialog cannot hold
+   * it up. */
   readonly swap: (
     pageObjects: BuiltPageObjects
   ) => Effect.Effect<void, TabReadError>;
@@ -79,13 +88,17 @@ export interface BrowserTab {
    * Playwright handed its page over: known before the Tab is hosted. */
   readonly dialog: Stream.Stream<TabDialog>;
   /**
-   * Makes the Session the Host of the Tab, with focus emulation on, so that
-   * a Run works the same while the Tab is not in front (rule 6). `ids`
-   * hears of each Page Object Id the Tab's Host gives out and forgets. It
-   * reads no document, but its setup over DevTools waits on the page, so it
-   * fails once the page has not answered within a stated limit.
+   * Makes the Session the Host of the Tab, running `pageObjects`, with focus
+   * emulation on, so that a Run works the same while the Tab is not in
+   * front (rule 6). `ids` hears of each Page Object Id the Tab's Host gives
+   * out and forgets. It reads no document, but its setup over DevTools
+   * waits on the page, so it fails once the page has not answered within a
+   * stated limit.
    */
-  readonly host: (ids: TabIds) => Effect.Effect<HostedTab, TabReadError>;
+  readonly host: (
+    ids: TabIds,
+    pageObjects: BuiltPageObjects
+  ) => Effect.Effect<HostedTab, TabReadError>;
 }
 
 /** The Tabs of a Session's browser, each to run the built Page Objects
@@ -106,8 +119,8 @@ export interface HeldBrowser {
   /** Completes when the browser goes away. */
   readonly gone: Effect.Effect<void>;
   /**
-   * Gets ready to be the Host of the browser's Tabs, running `pageObjects`
-   * on each Tab the Session works on. It reads nothing of any page. A tab
+   * Gets ready to be the Host of the browser's Tabs, on the runtime the
+   * built `pageObjects` run on. It reads nothing of any page. A tab
    * that shows the Inspector window served at `window` is none of its Tabs,
    * and no read of them waits for it.
    */

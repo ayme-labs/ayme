@@ -24,6 +24,9 @@ export {
   toolsAnswer,
   unanswerable,
   unknownRequest,
+  rebuildFailedLine,
+  swapRefusedLine,
+  unwatchedLine,
   withBuildLine,
 } from "./answers";
 export {
@@ -51,4 +54,4 @@ export {
 export { TabDialogOpen, type Dialog, type TabDialog } from "./dialog";
 export { RunError, type RunAnswer } from "./run";
 export type { SessionAnswer, SessionEnd, SessionRequest } from "./requests";
-export { brokenStart, SessionStartError } from "./startError";
+export { brokenRebuild, brokenStart, SessionStartError } from "./startError";

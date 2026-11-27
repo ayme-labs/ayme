@@ -17,28 +17,39 @@ const TAB_LINE = "Tab: ";
 const tabLine = ({ url, title }: TabName) =>
   title ? `${TAB_LINE}${title} (${url})` : `${TAB_LINE}${url}`;
 
-/** The line that follows a listing's Tab line while the last finished build
- * failed, naming the first error whole on one line, or else the first line
- * of the reason, whose later lines are a stack (rule 7). */
-const buildLine = ({ first, message }: SessionStartError) =>
-  `The Page Objects do not build since the last edit, so the Session keeps the ones it has: ${first === undefined ? message.split("\n")[0] : first.replace(/\s*\n\s*/g, " ")}`;
+/** The first line of what `reason` says, which a stack may follow. */
+const firstLine = (reason: string) => reason.split("\n")[0]!;
 
-/** `answer`, a listing's or the reason it read no page, with the build line
- * after its Tab line while `failing` says why the last finished build
- * failed. An answer without a Tab line, such as "no tab is open", gets
- * none, since the line describes the Page Objects a Tab shows. */
+/** The build line while the last finished build failed: its first error,
+ * whole, on one line, or else the first line of the reason (rule 7). */
+export const rebuildFailedLine = ({ first, message }: SessionStartError) =>
+  `Page Object rebuild failed. Keeping the current Page Objects. ${first === undefined ? firstLine(message) : first.replace(/\s*\n\s*/g, " ")}`;
+
+/** The build line while a Tab could not take the last good build it was
+ * handed, for `reason`. */
+export const swapRefusedLine = (reason: string) =>
+  `Page Object rebuild failed on this Tab. Keeping its current Page Objects. ${firstLine(reason)}`;
+
+/** The build line while the source cannot be watched, for `reason`. */
+export const unwatchedLine = (reason: string) =>
+  `The Page Objects' source cannot be watched, so an edit may not be rebuilt. ${firstLine(reason)}`;
+
+/** `answer`, a listing's or the reason it read no page, with `line`, the
+ * build line, after its Tab line, in its text and its data alike. An
+ * answer without a Tab line, such as "no tab is open", gets none, since the
+ * line describes the Page Objects a Tab shows. */
 export function withBuildLine(
   answer: SessionAnswer,
-  failing: SessionStartError | undefined
+  line: string | undefined
 ): SessionAnswer {
-  if (!failing || !answer.text.startsWith(TAB_LINE)) return answer;
+  if (line === undefined || !answer.text.startsWith(TAB_LINE)) return answer;
   const [tab, ...rest] = answer.text.split("\n");
-  const text = [tab, buildLine(failing), ...rest].join("\n");
+  const text = [tab, line, ...rest].join("\n");
   return answer.ok
     ? {
         ...answer,
         text,
-        data: { ...(answer.data as object), buildFailing: buildLine(failing) },
+        data: { ...(answer.data as object), buildFailing: line },
       }
     : { ok: false, text };
 }

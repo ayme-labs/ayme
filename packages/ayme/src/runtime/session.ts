@@ -410,6 +410,58 @@ const pageObjectCallers = new WeakMap<
   (by: Caller) => PageObjectCaller
 >();
 
+// What a Session of the `ayme` command does with a Node Host's Page
+// Objects, keyed by the session's `tools`, as `pageObjectCallers` is.
+const hostedPageObjects = new WeakMap<
+  object,
+  {
+    replace(
+      running: readonly PageObjectConstructor[],
+      rebuilt: readonly PageObjectConstructor[]
+    ): void;
+    takesId(tool: string): boolean;
+    observe(): Promise<void>;
+  }
+>();
+
+const hostedPageObjectsOf = (ayme: Pick<Ayme, "tools">) => {
+  const hosted = hostedPageObjects.get(ayme.tools);
+  if (!hosted)
+    throw new RuntimeStateError("This is not an ayme runtime session.");
+  return hosted;
+};
+
+/**
+ * Replaces the Page Object classes `running`, which the session registered,
+ * with `rebuilt`, as one change, the way a Session swaps a rebuild in on a
+ * Node Host: every rebuilt class is made first, so one whose constructor
+ * throws changes nothing and the error is thrown; the registry's
+ * subscribers then hear of the whole change once. The replaced classes'
+ * instances are let go.
+ */
+export function replacePageObjects(
+  ayme: Pick<Ayme, "tools">,
+  running: readonly PageObjectConstructor[],
+  rebuilt: readonly PageObjectConstructor[]
+): void {
+  hostedPageObjectsOf(ayme).replace(running, rebuilt);
+}
+
+/** Resolves once the session's registered Page Objects were read on the
+ * page as it is now: a probe that began after this call. */
+export function observePageObjects(ayme: Pick<Ayme, "tools">): Promise<void> {
+  return hostedPageObjectsOf(ayme).observe();
+}
+
+/** Whether the session's Page Object Tool `tool` takes a Page Object Id,
+ * as the classes registered now declare: its class declares a root. */
+export function pageObjectToolTakesId(
+  ayme: Pick<Ayme, "tools">,
+  tool: string
+): boolean {
+  return hostedPageObjectsOf(ayme).takesId(tool);
+}
+
 /** The session's Page Object Tools as `by` reaches them, its Runs started as `by`. */
 export function pageObjectCallerOf(
   ayme: Pick<Ayme, "tools">,
@@ -1191,6 +1243,37 @@ export function createAymeOn(
   }
 
   appProcessToolsBySession.set(ayme, appProcessTools.tools);
+  hostedPageObjects.set(ayme.tools, {
+    replace(running, rebuilt) {
+      const made = new Map<PageObjectConstructor, object>();
+      for (const model of rebuilt)
+        if (!made.has(model))
+          made.set(
+            model,
+            instances.get(model) ?? constructPageObject(model, getPage())
+          );
+      target.registry().inOneChange(() => {
+        // Every old class leaves before a rebuilt one registers: a rebuilt
+        // class keeps its name, and the registry holds back a second class
+        // of one name, logging the clash, until the first one leaves.
+        for (const model of running) {
+          registrations.get(model)?.active?.dispose();
+          registrations.delete(model);
+          instances.delete(model);
+        }
+        for (const model of rebuilt) {
+          instances.set(model, made.get(model)!);
+          pom.register(model);
+        }
+      });
+    },
+    takesId: (tool) =>
+      target
+        .registry()
+        .listRegisteredPomTools()
+        .some((listed) => listed.tool.name === tool && listed.tool.rooted),
+    observe: () => target.registry().probeRegisteredPomMembers(),
+  });
   pageObjectCallers.set(ayme.tools, (by) => ({
     run: pageObjectToolsFor(by, { pageObjectToolsOnly: true }).run,
     listing: () =>

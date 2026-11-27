@@ -27,8 +27,7 @@ import {
 import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
-import { swapClasses, type NodeHostPom } from "../swapClasses";
-import { failingOnItsUncaught } from "../runUncaught";
+import { failingOnItsUncaught, LeftUncaught } from "../runUncaught";
 import { tabDialogs, type ActionCalls } from "../tabDialogs";
 import { handedOver, readTabOrder, tabListAddress } from "../tabList";
 import { lazyPort, type InspectorPort } from "../inspectorPort";
@@ -51,8 +50,15 @@ type NodeHostEntry = {
       actionCalls: ActionCalls;
     },
     selectors: unknown
-  ): { start(): Promise<() => void>; readonly pom: NodeHostPom };
+  ): { start(): Promise<() => void> };
   createPageObjectIdSource(): IdSource;
+  replacePageObjects(
+    ayme: unknown,
+    running: readonly unknown[],
+    rebuilt: readonly unknown[]
+  ): void;
+  pageObjectToolTakesId(ayme: unknown, tool: string): boolean;
+  observePageObjects(ayme: unknown): Promise<void>;
   inspectorPortOf(ayme: unknown): InspectorPort;
   pageObjectCallerOf(
     ayme: unknown,
@@ -258,13 +264,13 @@ const targetIdOf = (page: Page) => {
 };
 
 /** The Tab's page as its Host reaches it through `caller`, running
- * `classes` on `pom`, each Run a request of `dialogs`, which a dialog
- * stops. */
+ * `classes` on the Node Host `ayme` of `entry`, each Run a request of
+ * `dialogs`, which a dialog stops. */
 const hostedTab = (
   caller: ReturnType<NodeHostEntry["pageObjectCallerOf"]>,
   inspector: InspectorPort,
   { dialogs, dialog }: Pick<Watch, "dialogs" | "dialog">,
-  pom: NodeHostPom,
+  { entry, ayme }: { readonly entry: NodeHostEntry; readonly ayme: unknown },
   classes: readonly unknown[]
 ): HostedTab => ({
   // Each takes the Tab's turn, so it waits for the Run under way.
@@ -291,46 +297,52 @@ const hostedTab = (
     request: (method, params) =>
       method === "runTool"
         ? dialogs.request(() =>
-            failingOnItsUncaught(() => inspector.request(method, params))
+            failingOnItsUncaught(() => inspector.request(method, params)).catch(
+              (cause: unknown) => {
+                if (!(cause instanceof LeftUncaught)) throw cause;
+                throw new TabReadError(reason(cause.error), cause.ended);
+              }
+            )
           )
         : inspector.request(method, params),
   }),
   dialog: SubscriptionRef.changes(dialog),
+  takesId: (tool) => entry.pageObjectToolTakesId(ayme, tool),
+  observe: Effect.tryPromise({
+    try: () => entry.observePageObjects(ayme),
+    catch: (cause) =>
+      new TabReadError(`ayme could not read the page: ${reason(cause)}`),
+  }),
   swap: (pageObjects) =>
     Effect.try({
       try: () => {
         const rebuilt = (pageObjects as NodePageObjects).classes;
-        swapClasses(pom, classes, rebuilt);
+        entry.replacePageObjects(ayme, classes, rebuilt);
         classes = rebuilt;
       },
-      catch: (cause) =>
-        new TabReadError(
-          `ayme could not swap the rebuilt Page Objects in on the tab: ${reason(cause)}`
-        ),
+      catch: (cause) => new TabReadError(reason(cause)),
     }),
 });
 
-/** What every Tab's Host shares: the project's entry, the built classes,
- * the one source of Page Object Ids, and Playwright's selectors. */
+/** What every Tab's Host shares: the project's entry, the one source of
+ * Page Object Ids, and Playwright's selectors. */
 type Hosting = {
   readonly entry: NodeHostEntry;
-  readonly classes: readonly unknown[];
   readonly ids: IdSource;
   readonly selectors: unknown;
 };
 
-/** Makes the Session the Host of `page`, with focus emulation on, telling
- * `tabIds` of each Page Object Id its Host gives out and forgets. The Node Host's start sets
+/** Makes the Session the Host of `page`, running the built Page Objects it
+ * is handed, with focus emulation on, telling `tabIds` of each Page Object
+ * Id its Host gives out and forgets. The Node Host's start sets
  * up the page's binding and its in-page helper without waiting for either,
  * so it reads nothing of the page. The Host stops when the page closes. */
 const hostOn =
-  (
-    { entry, classes, ids, selectors }: Hosting,
-    page: Page
-  ): BrowserTab["host"] =>
-  (tabIds) =>
+  ({ entry, ids, selectors }: Hosting, page: Page): BrowserTab["host"] =>
+  (tabIds, pageObjects) =>
     Effect.tryPromise({
       try: async (signal) => {
+        const { classes } = pageObjects as NodePageObjects;
         const watch = dialogsOf(page);
         // So that the Tab's dialog is known before it is hosted, and the
         // first dialog a Run's action opens is heard.
@@ -369,7 +381,7 @@ const hostOn =
           entry.pageObjectCallerOf(ayme, CALLER),
           lazyPort(() => entry.inspectorPortOf(ayme)),
           watch,
-          ayme.pom,
+          { entry, ayme },
           classes
         );
       },
@@ -453,8 +465,9 @@ function tabsOf(
 
 /**
  * Gets ready to be the Host of the Tabs of `browser`, whose DevTools
- * protocol is at `address`, running `pageObjects` on each Tab the Session
- * works on, on the Playwright whose `selectors` drive the pages. Every
+ * protocol is at `address`, on the Node Host of the `@ayme-dev/ayme` the
+ * built `pageObjects` run on and the Playwright whose `selectors` drive the
+ * pages. Every
  * Tab's Host takes its Page Object Ids from one source. Reads no page.
  * Refuses an address that tells nothing of where the browser lists its
  * tabs, since every command needs that list. A tab that shows the Inspector
@@ -464,7 +477,7 @@ export const hostTabs = (
   browser: Browser,
   address: string,
   selectors: unknown,
-  { classes, nodeHost }: NodePageObjects,
+  { nodeHost }: NodePageObjects,
   window: string | undefined
 ): Effect.Effect<BrowserTabs, SessionStartError> =>
   Effect.tryPromise({
@@ -483,7 +496,6 @@ export const hostTabs = (
             tabListAddress(address),
             {
               entry,
-              classes,
               ids: entry.createPageObjectIdSource(),
               selectors,
             },

@@ -10,12 +10,28 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 const runs = new AsyncLocalStorage<(error: unknown) => void>();
 
-/** `run`, which also fails with an error nothing caught that code it
- * started throws before it settles. */
+/** An error nothing caught that a Run's code threw, which failed the Run
+ * while its own work goes on until `ended` settles. */
+export class LeftUncaught {
+  constructor(
+    readonly error: unknown,
+    readonly ended: Promise<unknown>
+  ) {}
+}
+
+/** `run`, which also fails, with a {@link LeftUncaught}, on an error
+ * nothing caught that code it started throws before it settles. */
 export function failingOnItsUncaught<T>(run: () => Promise<T>): Promise<T> {
-  return new Promise<T>((resolve, reject) =>
-    runs.run(reject, () => void run().then(resolve, reject))
-  );
+  return new Promise<T>((resolve, reject) => {
+    let running: Promise<T> | undefined;
+    runs.run(
+      (error) => reject(new LeftUncaught(error, running ?? Promise.resolve())),
+      () => {
+        running = run();
+        running.then(resolve, reject);
+      }
+    );
+  });
 }
 
 /** Fails the Run `error` came from, if it came from one. A Run that has
