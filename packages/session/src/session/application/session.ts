@@ -556,9 +556,10 @@ const isOpen = (now: TabDialog): now is { readonly open: Dialog } =>
  * dialog is open while one counts as open on its Tab (rules 4 and 5): at
  * once when one is, and the moment one counts while they wait for the Tab's
  * turn or run. One that arrives while a dialog opens waits until it counts
- * or closes. What a command was answered for goes on in `scope` and keeps
+ * or closes. A Run a command was answered for goes on in `scope` and keeps
  * the Tab's turn until it ends, so the next Run starts only once a stopped
- * action has ended; nothing reads its outcome. The answers name the Tab by
+ * action has ended; nothing reads its outcome. A listing's read stops when
+ * it is answered. The answers name the Tab by
  * `tab`'s URL, since its title is the page's, which the dialog holds.
  */
 function atDialogs(
@@ -595,17 +596,24 @@ function atDialogs(
         )
       );
       const raced = Effect.raceFirst(answer, opened);
-      // A read is released with whoever asked for it, such as a window that
-      // closed; a Run goes on, as it does once a dialog answered its Caller.
+      // A read is ayme's own work, not an action: it is released with
+      // whoever asked for it, such as a window that closed, and once a
+      // dialog answered them, so it holds no Swap behind the dialog. A Run
+      // goes on, as it does once a dialog answered its Caller.
       return yield* read
-        ? raced.pipe(Effect.onInterrupt(() => Fiber.interrupt(working)))
+        ? raced.pipe(
+            Effect.onExit((exit) =>
+              Exit.isSuccess(exit) ? Effect.void : Fiber.interrupt(working)
+            )
+          )
         : raced;
     });
   const atRun = (dialog: Dialog) => new RunError(dialogOpenAtRun(dialog));
   return {
     listing: atDialog(
       hosted.listing,
-      (dialog) => new TabReadError(dialogOpenInListing(tab.url(), dialog))
+      (dialog) => new TabReadError(dialogOpenInListing(tab.url(), dialog)),
+      true
     ),
     call: (tool, input) => atDialog(hosted.call(tool, input), atRun),
     inspector: {

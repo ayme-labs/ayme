@@ -43,7 +43,9 @@ export interface HostedTab {
   readonly takesId: (tool: string) => boolean;
   /** Runs `pageObjects` on the Tab from now on, in place of those it ran,
    * at once: the Swap, which the Session makes only between Runs (rule 7).
-   * It reads nothing of the page, so an open dialog cannot hold it up. */
+   * It waits for nothing on the page: registering the classes starts reads
+   * of it that may fail, and waits for none, so an open dialog cannot hold
+   * it up. */
   readonly swap: (
     pageObjects: BuiltPageObjects
   ) => Effect.Effect<void, TabReadError>;

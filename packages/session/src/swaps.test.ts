@@ -522,3 +522,19 @@ it("a listing says so after its Tab line while the source cannot be watched", as
   browser.loseWatch(undefined);
   expect((await session.ask({ tools: {} })).text).not.toContain("EMFILE");
 });
+
+it("a listing answered that a dialog is open leaves the Tab's turn, so a Swap comes while the dialog is still open", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  await session.ask({ tools: {} });
+  browser.holdReads();
+  const listing = session.ask({ tools: {} });
+  browser.openDialog(confirm);
+  browser.dialogStaysOpen();
+  expect(await listing).toMatchObject({ ok: false });
+
+  await rebuilt(browser, EDITED);
+
+  await browser.until(() => browser.swappedIn.length === 1);
+  expect(browser.swappedIn).toEqual([EDITED]);
+});
