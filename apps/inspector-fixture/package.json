@@ -7,6 +7,8 @@
     "#pom/*": "./ayme/pom/*.ts"
   },
   "scripts": {
+    "ayme": "node ../../packages/cli/dist/cli.mjs",
+    "playwright-cli": "npx -y @playwright/cli@0.1.25",
     "dev": "vite --config app/vite.config.ts",
     "lint": "eslint . --max-warnings 0",
     "test:e2e": "playwright test --reporter=list",

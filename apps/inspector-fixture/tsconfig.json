@@ -2,16 +2,7 @@
   "extends": "@ayme-dev/typescript-config/react-library.json",
   "compilerOptions": {
     "experimentalDecorators": true,
-    "types": ["node"],
-    // The Inspector's Page Object, which the dogfood page registers, as a
-    // file of this project: the ayme plugin derives a Page Object's metadata
-    // only then, and reaching it by the package's name alone leaves it
-    // without (the dogfood page fails to start).
-    "paths": {
-      "@ayme-dev/inspector/testing": [
-        "../../packages/inspector/testing/index.ts"
-      ]
-    }
+    "types": ["node"]
   },
   "include": ["app", "tests", "*.ts"]
 }
