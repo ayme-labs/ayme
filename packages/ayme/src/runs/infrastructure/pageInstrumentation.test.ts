@@ -153,3 +153,68 @@ it("routes a keyboard and a mouse saved before an instrumentation was installed 
     "raw keyboard c",
   ]);
 });
+
+/** A Host's decision on each call, which a test changes between calls. */
+function hostDeciding() {
+  const host = {
+    decision: "start" as "start" | "refuse" | Promise<void>,
+    asked: 0,
+    run: <T>(action: () => T) => action(),
+    before: () => {
+      host.asked += 1;
+      if (host.decision === "refuse") throw new Error("refused");
+      return host.decision === "start" ? undefined : host.decision;
+    },
+  };
+  return host;
+}
+
+/** Reading the ref of the next locator's element waits until the test
+ * calls the function this returns. */
+function holdRefRead() {
+  let read = () => {};
+  latestPageStateRefOf.mockImplementationOnce(
+    () => new Promise((resolve) => (read = () => resolve(undefined)))
+  );
+  return () => read();
+}
+
+it("asks its Host again right before an input is sent, after reading its element's ref, and sends none it refuses", async () => {
+  const readRef = holdRefRead();
+  const host = hostDeciding();
+  const heard = vi.fn();
+  const button = instrumentedPage(page, heard, noRef, host).locator("button");
+  host.asked = 0;
+  const click = button.click();
+  await Promise.resolve();
+  expect(host.asked).toBe(1);
+
+  // A dialog counts while the ref is read.
+  host.decision = "refuse";
+  readRef();
+
+  await expect(click).rejects.toThrow("refused");
+  expect(host.asked).toBe(2);
+  expect(clicks).toEqual([]);
+  expect(heard).not.toHaveBeenCalled();
+});
+
+it("holds an input its Host holds right before it is sent, until the Host lets it start", async () => {
+  const readRef = holdRefRead();
+  const host = hostDeciding();
+  const click = instrumentedPage(page, vi.fn(), noRef, host)
+    .locator("button")
+    .click();
+  await Promise.resolve();
+  let letStart = () => {};
+  host.decision = new Promise((resolve) => (letStart = resolve));
+  readRef();
+  for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+  expect(clicks).toEqual([]);
+
+  host.decision = "start";
+  letStart();
+  await click;
+
+  expect(clicks).toEqual(["raw button"]);
+});

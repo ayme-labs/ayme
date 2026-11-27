@@ -56,6 +56,17 @@ export function instrumentedPage(
       instrumented = instrumentation(instrumented);
     return instrumented;
   };
+  // Starts `call` once the Host lets an action's call start: a refused call
+  // fails as Playwright's own calls do, it rejects.
+  const afterAsking = <T>(call: () => T): T | Promise<T> => {
+    if (!actionCalls) return call();
+    try {
+      const waiting = actionCalls.before(false);
+      return waiting ? waiting.then(call) : call();
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  };
   let resolvePage = derivePage;
   const isPage = (value: unknown) => value === page || value === resolvePage();
   const devices = new Map<string | symbol, object>();
@@ -137,11 +148,15 @@ export function instrumentedPage(
             return run();
           }
           // Every Interaction on an element is asynchronous, so its ref is
-          // read in the page before the input reaches the element.
-          return refOfLocator(locator, latestRefOf).then((ref) => {
-            onInteraction!(ref ? { ...interaction, ref } : interaction);
-            return run();
-          });
+          // read in the page before the input reaches the element. The Host
+          // is asked again once it is read, as it may have stopped the
+          // action meanwhile.
+          return refOfLocator(locator, latestRefOf)
+            .then((ref) => afterAsking(() => ref))
+            .then((ref) => {
+              onInteraction!(ref ? { ...interaction, ref } : interaction);
+              return run();
+            });
         };
         if (!actionCalls) return (...args: unknown[]) => perform(args);
         const atOnce = answersAtOnce(subject, property);
@@ -150,13 +165,7 @@ export function instrumentedPage(
             void actionCalls.before(true);
             return perform(args);
           }
-          // A refused call fails as Playwright's own calls do: it rejects.
-          try {
-            const waiting = actionCalls.before(false);
-            return waiting ? waiting.then(() => perform(args)) : perform(args);
-          } catch (error) {
-            return Promise.reject(error);
-          }
+          return afterAsking(() => perform(args));
         };
       },
     });
