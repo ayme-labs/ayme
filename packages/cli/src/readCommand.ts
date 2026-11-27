@@ -76,9 +76,11 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  a storage state as Playwright writes it, such as one saved
                  with npx playwright codegen --save-storage.
   --save-storage <file>
-                 When the recorder ends, however it ends, save the browser's
-                 cookies and local storage to <file>, in the same format,
-                 also when nothing was recorded.
+                 When the recorder ends with Finish, with its last recorded
+                 page closed or with Ctrl+C, save the browser's cookies and
+                 local storage to <file>, in the same format, also when
+                 nothing was recorded. When the browser was quit or the save
+                 fails, it prints a warning instead.
   --cdp=<url>    Record the page of a Chromium that is already running, at
                  the address of its DevTools protocol on this machine, such
                  as http://127.0.0.1:9222. The page is not navigated, and the
