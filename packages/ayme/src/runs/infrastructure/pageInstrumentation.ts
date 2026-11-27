@@ -6,7 +6,8 @@ import {
   type CallSubject,
   type Interaction,
 } from "../domain/interactions";
-import { elementsOf } from "../domain/playwrightCalls";
+import { answersAtOnce, elementsOf } from "../domain/playwrightCalls";
+import type { ActionCalls } from "../application/run";
 
 type PageInstrumentation = (page: Page) => Page;
 
@@ -41,11 +42,13 @@ export function installRuntimePageInstrumentation(
  * once the ref of the element it acts on is read in the page, when its
  * locator names none. `latestRefOf` reads that ref: the latest recorded page
  * state's of the document in the browser, of the session's Page in Node.
+ * `actionCalls`, a Host's, decides when each call starts, or refuses it.
  */
 export function instrumentedPage(
   page: Page,
   onInteraction: ((interaction: Interaction) => void) | undefined,
-  latestRefOf: (locator: Locator) => Promise<AriaRef | undefined>
+  latestRefOf: (locator: Locator) => Promise<AriaRef | undefined>,
+  actionCalls?: ActionCalls
 ): Page {
   const derivePage = () => {
     let instrumented = page;
@@ -121,7 +124,7 @@ export function instrumentedPage(
         )
           return device(property);
         if (typeof member !== "function") return member;
-        return (...args: unknown[]) => {
+        const perform = (args: unknown[]) => {
           const target = resolve();
           const run = () =>
             bindResult(call(target, property, args), property, args);
@@ -139,6 +142,21 @@ export function instrumentedPage(
             onInteraction!(ref ? { ...interaction, ref } : interaction);
             return run();
           });
+        };
+        if (!actionCalls) return (...args: unknown[]) => perform(args);
+        const atOnce = answersAtOnce(subject, property);
+        return (...args: unknown[]) => {
+          if (atOnce) {
+            void actionCalls.before(true);
+            return perform(args);
+          }
+          // A refused call fails as Playwright's own calls do: it rejects.
+          try {
+            const waiting = actionCalls.before(false);
+            return waiting ? waiting.then(() => perform(args)) : perform(args);
+          } catch (error) {
+            return Promise.reject(error);
+          }
         };
       },
     });

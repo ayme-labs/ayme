@@ -1,6 +1,8 @@
+import type { Dialog } from "./dialog";
 import type { ListedTool, Listing, TabName } from "./listing";
 import type { SessionAnswer, SessionEnd } from "./requests";
 import type { RunAnswer, RunError } from "./run";
+import type { SessionStartError } from "./startError";
 
 /** The `ayme` command line of `word` for the Session named `name`, for a
  * sentence that tells the user to run it. It names the Session even by
@@ -9,9 +11,37 @@ import type { RunAnswer, RunError } from "./run";
 export const commandLine = (name: string, word: string): string =>
   `ayme -s=${name} ${word}`;
 
+const TAB_LINE = "Tab: ";
+
 /** The first line of a listing: the Tab it describes. */
 const tabLine = ({ url, title }: TabName) =>
-  title ? `Tab: ${title} (${url})` : `Tab: ${url}`;
+  title ? `${TAB_LINE}${title} (${url})` : `${TAB_LINE}${url}`;
+
+/** The line that follows a listing's Tab line while the last finished build
+ * failed, naming the first error whole on one line, or else the first line
+ * of the reason, whose later lines are a stack (rule 7). */
+const buildLine = ({ first, message }: SessionStartError) =>
+  `The Page Objects do not build since the last edit, so the Session keeps the ones it has: ${first === undefined ? message.split("\n")[0] : first.replace(/\s*\n\s*/g, " ")}`;
+
+/** `answer`, a listing's or the reason it read no page, with the build line
+ * after its Tab line while `failing` says why the last finished build
+ * failed. An answer without a Tab line, such as "no tab is open", gets
+ * none, since the line describes the Page Objects a Tab shows. */
+export function withBuildLine(
+  answer: SessionAnswer,
+  failing: SessionStartError | undefined
+): SessionAnswer {
+  if (!failing || !answer.text.startsWith(TAB_LINE)) return answer;
+  const [tab, ...rest] = answer.text.split("\n");
+  const text = [tab, buildLine(failing), ...rest].join("\n");
+  return answer.ok
+    ? {
+        ...answer,
+        text,
+        data: { ...(answer.data as object), buildFailing: buildLine(failing) },
+      }
+    : { ok: false, text };
+}
 
 const NO_TOOLS = "This screen has no Page Object Tools.";
 
@@ -246,3 +276,31 @@ export const noTabShows = (
  * than the one `--tab` names: the id chooses the Tab. */
 export const idOnAnotherTab = (id: string, on: string, named: string): string =>
   `${id} is a Page Object of the tab that shows ${on}, not of the one that shows ${named}. Leave out --tab: the Page Object Id chooses the tab.`;
+
+/** The dialog `dialog` names itself in the first sentence of every answer
+ * while it is open, with what an agent does about it. */
+function dialogSentences({ type, message, defaultValue }: Dialog): string {
+  const article = /^[aeiou]/i.test(type) ? "An" : "A";
+  return [
+    `${article} ${type} dialog is open on the tab: ${JSON.stringify(message)}.`,
+    ...(defaultValue
+      ? [`Its default value is ${JSON.stringify(defaultValue)}.`]
+      : []),
+    "Answer it with your browser automation, then run ayme again.",
+  ].join(" ");
+}
+
+/** Why a read of a Tab's page, such as an Inspector window's, was answered
+ * without the page: a dialog is open on the Tab (rule 5). */
+export const dialogOpen = (dialog: Dialog): string => dialogSentences(dialog);
+
+/** Why a listing of the Tab at `url` was answered without the page: a
+ * dialog is open on the Tab. It still starts with the Tab line (rule 5). */
+export const dialogOpenInListing = (url: string, dialog: Dialog): string =>
+  `${tabLine({ url, title: "" })}\n${dialogSentences(dialog)}`;
+
+/** Why a Run ended at a dialog, or never started: one is open on its Tab
+ * (rule 4). The action does nothing more, so the agent knows that answering
+ * the dialog does not finish it. */
+export const dialogOpenAtRun = (dialog: Dialog): string =>
+  `${dialogSentences(dialog)} An action stops at a dialog it does not answer itself: it does nothing more on the page, however the dialog is answered.`;

@@ -203,10 +203,13 @@ it("joins without Playwright's defaults: the page keeps the browser's own colour
   expect(await prefersDark(context.pages()[0]!)).toBe(true);
 });
 
-// A record of a limit, not a promise: joining without defaults still sends
-// Playwright's own font families to each page of a headless Chromium, which
-// ayme cannot stop. A test that sees them kept means Playwright changed.
-it("joining a headless browser replaces a tab's own font families with Playwright's", async () => {
+// A record of a limit, not a promise: before 1.65 a join without defaults
+// still sends Playwright's own font families to each page of a headless
+// Chromium, which ayme cannot stop. Playwright 1.65 stopped sending them.
+const [major, minor] = underTest.version.split(".").map(Number);
+const keepsFonts = major! > 1 || minor! >= 65;
+
+it("joining a headless browser replaces a tab's own font families with Playwright's before 1.65, and keeps them from 1.65", async () => {
   const { address, context } = await running();
   const page = context.pages()[0]!;
   // Text that a monospace font and any other set at different widths. The
@@ -231,7 +234,7 @@ it("joining a headless browser replaces a tab's own font families with Playwrigh
   await got({ join: { cdp: address } });
 
   const [cursiveAfter, ownAfter] = await widths();
-  expect(cursiveAfter).not.toBe(ownAfter);
+  expect(cursiveAfter === ownAfter).toBe(keepsFonts);
 });
 
 it("leaves a browser it joined open, with its page where it was, when it releases it", async () => {

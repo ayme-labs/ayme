@@ -124,7 +124,7 @@ ayme attach --cdp=http://127.0.0.1:9222
 - **The Tab.** A Tab is one tab of the Session's browser. ayme works on the most recently active Tab, and follows the Tab the agent's automation switches to or opens. The first line of `ayme page-objects` and `ayme tools` names that Tab. `--tab=<url>` reads another Tab, by the URL that line shows. A Page Object Id is unique across a Session's Tabs, so `ayme call` runs the tool on the Tab its Page Object is on.
 - **Names.** A project folder can have several Sessions, each with a name: `-s=<name>`, or the `AYME_SESSION` environment variable, as in Playwright CLI. Without either, the name is `default`. `ayme list` lists the Sessions of the folder. Two agents in one folder each use a name of their own. A Session's name does not reach the browser automation, so each agent also needs an automation session of its own: `playwright-cli -s=<name>`, `agent-browser --session <name>`, or a debugging port of its own for Playwright MCP. Each agent passes the same one to every command, from opening the browser to closing it.
 - **The end.** `ayme detach` ends a Session started with `ayme attach` and leaves the browser running. `ayme close` ends any Session, and closes the browser only when `ayme open` opened it. A Session also ends when its browser goes away.
-- **Edits.** A Session builds your Page Objects when it starts. After you edit them, end the Session and start it again. When the build fails, the Session does not start, and the command prints the build error.
+- **Edits.** A Session builds your Page Objects when it starts, and again each time you save an edit to them. It swaps the rebuilt ones in between Runs, never during one, so there is no need to start it again. A Page Object keeps its id across an edit when its class name and its element are unchanged. When the first build fails, the Session does not start, and the command prints the build error. When a later build fails, the Session keeps the Page Objects it has, and `ayme page-objects` and `ayme tools` say so on their second line, with the first error, until a build succeeds.
 
 ## What the agent sees
 
@@ -152,6 +152,34 @@ It answers with whether the page settled, what the action returned, the URL when
 A Session's answers are plain text, or JSON with `--json`. The command's own errors, such as an option it does not know, and `--help` are plain text. An error goes to standard error, with exit code 1. A tool that cannot run now is listed as unavailable, with its reason when the app gives one, and a call to it is refused.
 
 `ayme --help` lists every command and option.
+
+## Dialogs
+
+ayme never answers a dialog: the agent answers it with its browser automation. Connect the automation before the action that opens the dialog. Chrome answers no DevTools client that connects while a dialog is open, so an automation that connects later cannot answer it.
+
+A dialog counts as open once it has stayed open for 100 ms. While one is open on a tab, every command that needs that tab's page fails at once with the dialog's text. `ayme page-objects` and `ayme tools` still print the tab line first:
+
+```text
+Tab: http://localhost:5173/projects
+A confirm dialog is open on the tab: "Delete Launch plan?". Answer it with your browser automation, then run ayme again.
+```
+
+A dialog affects only its own tab.
+
+An action stops at a dialog it did not answer itself. When a dialog opens during a Run and stays open for 100 ms, `ayme call` fails at once with the dialog's text, and the action does nothing more on the page, whether the agent then accepts or dismisses the dialog. No later command tells what the stopped action returned or threw. The next Run on that tab starts once the stopped action has ended.
+
+A dialog closed within the 100 ms does not stop the Run. That covers an `alert` some automations accept by themselves, and an action that answers its own dialog, as a Playwright test does:
+
+```ts
+this.page.once("dialog", (dialog) => dialog.accept());
+```
+
+ayme cannot stop everything at the dialog:
+
+- Work inside one `page.evaluate`, and a Playwright call already under way when the dialog opened, go on once the dialog is answered.
+- An action that takes longer than 100 ms to answer its own dialog is stopped like any other.
+- A dialog listener an earlier Run added and never used answers a later dialog.
+- Playwright dismisses a dialog that opens while ayme joins the browser.
 
 ## Limits
 

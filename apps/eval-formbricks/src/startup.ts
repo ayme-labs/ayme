@@ -12,12 +12,7 @@ import { cp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { agentAccess } from "./agents.ts";
-import {
-  aymeServerName,
-  aymeSkillDirectory,
-  aymeSkillName,
-  aymeSkillSource,
-} from "./ayme.ts";
+import { aymeSkillDirectory, aymeSkillName, aymeSkillSource } from "./ayme.ts";
 import { parseFlags, runMain } from "./cli.ts";
 import {
   agentEffort,
@@ -53,6 +48,8 @@ const agentTools = {
 };
 
 const stubServerPath = path.join(evalRoot, "src/stubMcpServer.ts");
+/** The stub's name in the agent's configuration, so its tools are `mcp__ayme__<tool>`, as `ayme mcp`'s were. */
+const stubServerName = "ayme";
 
 export type StartupOptions = {
   scenario: StartupScenario;
@@ -202,7 +199,7 @@ async function runStartupOn(
     await writeJson(mcpConfigPath, {
       mcpServers: scenario.tools
         ? {
-            [aymeServerName]: {
+            [stubServerName]: {
               command: process.execPath,
               args: [stubServerPath, JSON.stringify(scenario.tools)],
             },

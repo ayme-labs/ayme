@@ -65,6 +65,7 @@ import {
   createRunQueue,
   executeTopLevelRun,
   runLogOf,
+  type ActionCalls,
   type AymeRuns,
   type RunContext,
   type RunLog,
@@ -550,6 +551,9 @@ export type SessionTarget = {
   prepare(options: AymeOptions, page: Page): PreparedOptions;
   /** The ref the session's latest page state gave the element a Locator matches. */
   latestRefOf(locator: Locator): Promise<AriaRef | undefined>;
+  /** What the Host decides about a Page Object Action's own Playwright
+   * calls, when it decides: a Node host's Session does. */
+  readonly actionCalls?: ActionCalls;
   /**
    * Lets the session's Pages pace and cue each call while anyone asks for
    * Demo Mode (`demo` is this session's own `inspector` option), until
@@ -600,7 +604,8 @@ export function createAymeOn(
     (resolvedPage ??= instrumentedPage(
       target.rawPage(),
       runLog().interact,
-      target.latestRefOf
+      target.latestRefOf,
+      target.actionCalls
     ));
   // Publication is decided once, when the session is created.
   const enabled = options.webMCP?.enabled === true;
@@ -932,6 +937,7 @@ export function createAymeOn(
         pageStateSession: target.pageState().session,
         reach,
         outlivesFullLoads: target.outlivesFullLoads,
+        ...(target.actionCalls ? { actionCalls: target.actionCalls } : {}),
       });
     } finally {
       // A turn taken now starts once every child started so far has ended.

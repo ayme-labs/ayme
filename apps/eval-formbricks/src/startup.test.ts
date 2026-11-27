@@ -8,7 +8,7 @@ import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
-import type { McpServer } from "./arms.ts";
+import type { CommandMcpServer } from "./arms.ts";
 import { aymeSkillSource } from "./ayme.ts";
 import { labRoot } from "./paths.ts";
 import {
@@ -114,7 +114,7 @@ describe("runStartup", () => {
     });
     expect(result.pass).toBe(true);
     const { mcpServers } = JSON.parse(await stored("mcp.json")) as {
-      mcpServers: Record<string, McpServer>;
+      mcpServers: Record<string, CommandMcpServer>;
     };
     expect(Object.keys(mcpServers)).toEqual(["ayme"]);
 

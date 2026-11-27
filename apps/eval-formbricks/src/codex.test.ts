@@ -114,6 +114,24 @@ describe("codexConfig", () => {
       ].join("\n")
     );
   });
+
+  it("lists a server the harness started by its URL", () => {
+    expect(
+      codexConfig({
+        model: "gpt-6-luna",
+        mcpServers: {
+          playwright: { type: "http", url: "http://127.0.0.1:4000/mcp" },
+        },
+        readable: [],
+      })
+    ).toContain(
+      [
+        '[mcp_servers."playwright"]',
+        'url = "http://127.0.0.1:4000/mcp"',
+        'default_tools_approval_mode = "approve"',
+      ].join("\n")
+    );
+  });
 });
 
 describe("codexRules", () => {
@@ -124,21 +142,48 @@ describe("codexRules", () => {
     return { folder, searchPath: `${folder}${path.delimiter}/usr/bin` };
   }
 
+  /** A search path whose first folder holds a file of each name. */
+  async function pathWithAll(...names: string[]) {
+    const folder = await mkdtemp(path.join(os.tmpdir(), "codex-rules-"));
+    for (const name of names) writeFileSync(path.join(folder, name), "");
+    return { folder, searchPath: `${folder}${path.delimiter}/usr/bin` };
+  }
+
   it("lets the arm's command line out of the sandbox, as the file on the agent's PATH alone, and refuses what the arm denies", async () => {
     const { folder, searchPath } = await pathWith("agent-browser");
     try {
-      expect(
-        codexRules(arms["agent-browser-with-ayme"], searchPath).split("\n")
-      ).toEqual([
-        `host_executable(name="agent-browser", paths=["${folder}/agent-browser"])`,
-        'prefix_rule(pattern=["agent-browser"], decision="allow")',
-        'prefix_rule(pattern=["npx"], decision="forbidden")',
-        'prefix_rule(pattern=["agent-browser", "install"], decision="forbidden")',
-        'prefix_rule(pattern=["agent-browser", "upgrade"], decision="forbidden")',
-        'prefix_rule(pattern=["agent-browser", "doctor", "--fix"], decision="forbidden")',
-        'prefix_rule(pattern=["agent-browser", "close", "--all"], decision="forbidden")',
-        "",
-      ]);
+      expect(codexRules(arms["agent-browser"], searchPath).split("\n")).toEqual(
+        [
+          `host_executable(name="agent-browser", paths=["${folder}/agent-browser"])`,
+          'prefix_rule(pattern=["agent-browser"], decision="allow")',
+          'prefix_rule(pattern=["npx"], decision="forbidden")',
+          'prefix_rule(pattern=["agent-browser", "install"], decision="forbidden")',
+          'prefix_rule(pattern=["agent-browser", "upgrade"], decision="forbidden")',
+          'prefix_rule(pattern=["agent-browser", "doctor", "--fix"], decision="forbidden")',
+          'prefix_rule(pattern=["agent-browser", "close", "--all"], decision="forbidden")',
+          "",
+        ]
+      );
+    } finally {
+      await rm(folder, { recursive: true, force: true });
+    }
+  });
+
+  it("lets the ayme command out beside the browser automation's, and refuses the ayme commands the arm denies", async () => {
+    const { folder, searchPath } = await pathWithAll("agent-browser", "ayme");
+    try {
+      const rules = codexRules(
+        arms["agent-browser-with-ayme"],
+        searchPath
+      ).split("\n");
+      expect(rules).toEqual(
+        expect.arrayContaining([
+          `host_executable(name="ayme", paths=["${folder}/ayme"])`,
+          'prefix_rule(pattern=["ayme"], decision="allow")',
+          'prefix_rule(pattern=["ayme", "close"], decision="forbidden")',
+          'prefix_rule(pattern=["ayme", "attach"], decision="forbidden")',
+        ])
+      );
     } finally {
       await rm(folder, { recursive: true, force: true });
     }
@@ -151,7 +196,7 @@ describe("codexRules", () => {
   });
 
   it("has no rule for an arm without a command line: every command stays in the sandbox", () => {
-    expect(codexRules(arms["playwright-mcp-with-ayme"], "")).toBe("");
+    expect(codexRules(arms["playwright-mcp"], "")).toBe("");
   });
 });
 
