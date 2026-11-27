@@ -67,13 +67,25 @@ WebMCP is experimental, so only the test of the Connections popover's WebMCP
 state installs a WebMCP driver, the recording one from
 `@ayme-dev/webmcp/testing`.
 
-`pnpm test:goals` runs the goal-driven tests (`tests/goals/*.goal.ts`, with
-`e2e.goals.config.ts`), e2e's telemetry off. Each is the `*.e2e.ts` test of
-the same name with every action on the panel written as an `agent.act` goal,
-which Claude Code carries out on this machine's own login. CI has no model, so
-`pnpm e2e` and Turbo's tasks leave them out. A first run records each goal into
-`.e2e/goals-cache/`, and later runs replay it without the model. The fixture
-pages and the external placement's `ayme mcp` get ports of this checkout's own
-(`AYME_GOALS_PORT` and `AYME_E2E_MCP_PORT` override them).
-`pnpm check:goal-mirror` fails when a goal file drifts from its `*.e2e.ts`
-twin; `scripts/check-goal-mirror.mjs` lists what it compares.
+`pnpm test:goals` runs the goal-driven tests (`tests/goals/**/*.goal.ts`,
+with `e2e.goals.config.ts`), e2e's telemetry off. Each is the `*.e2e.ts` test
+of the same name with every action on the panel written as an `agent.act`
+goal, which Claude Code carries out on this machine's own login. CI has no
+model, so `pnpm e2e` and Turbo's tasks leave them out. In the external
+placement, switching to the Inspector's tab is part of the goal: the agent
+does it as it sees fit. A first run records each goal into
+`.e2e/goals-cache/`, and later runs replay it without the model, except for
+a step that changes no control, such as dragging the panel's edge: e2e saves
+nothing for it, so it calls the model on every run, and a warm run needs the
+login too. The external placement's `ayme mcp` gets a port of this
+checkout's own, which `AYME_E2E_MCP_PORT` overrides. `pnpm lint` also runs
+the mirror check (alone: `pnpm check:goal-mirror`), which fails when a goal file drifts from its
+`*.e2e.ts` twin; `scripts/check-goal-mirror.mjs` says what it compares.
+
+Known costs of keeping the goal files line for line with their twins:
+
+- A long test costs more in the agent arms: each tool's page (toolsLens)
+  runs 24 goals in one agent session, and the header's menus and switches
+  (inspector) 13.
+- The Model lens hover goal runs inside its twin's `expect.poll`, so on a
+  slow turn the poll's time limit can cut it off.

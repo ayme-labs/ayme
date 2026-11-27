@@ -244,9 +244,15 @@ export function testIn(
           if (placement !== "external" && !connected) return use(undefined);
           // A fixed port when the run names one: the goal tests' recordings
           // are keyed to the Inspector window's origin (e2e.goals.config.ts).
-          const port =
-            process.env.AYME_E2E_MCP_PORT ?? String(await freePort());
-          const agent = await startAgent("--port", port);
+          const fixed = process.env.AYME_E2E_MCP_PORT;
+          const port = fixed ?? String(await freePort());
+          const agent = await startAgent("--port", port).catch((error) => {
+            if (!fixed) throw error;
+            throw new Error(
+              `ayme mcp could not start on port ${port}, from AYME_E2E_MCP_PORT; set it to a free port.`,
+              { cause: error }
+            );
+          });
           await use(agent);
           await agent.close();
         },

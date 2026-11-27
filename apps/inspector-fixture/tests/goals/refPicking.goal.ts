@@ -9,7 +9,6 @@ import {
   confirmGoalRecordings,
   INSPECTOR,
 } from "../e2e/fixtures";
-import type { Agent } from "e2e";
 
 import type { ListPage } from "../e2e/pom/ListPage";
 
@@ -21,14 +20,11 @@ import type { ListPage } from "../e2e/pom/ListPage";
 // run card is the single-element Browser Tools' own view.
 
 /**
- * Starts picking for the run card's `field` and waits until the page picks too. The panel
- * shows picking at once; the page starts when the request reaches it, which
- * for an Inspector in a window of its own goes through `ayme mcp`.
+ * Waits until the page picks too, once picking started in the panel. The
+ * panel shows picking at once; the page starts when the request reaches it,
+ * which for an Inspector in a window of its own goes through `ayme mcp`.
  */
-async function pickOnPage(agent: Agent, field: string, listPage: ListPage) {
-  await agent.act("start picking the {field} element on the page", {
-    params: { field },
-  });
+async function untilThePagePicks(listPage: ListPage) {
   // The page's crosshair cursor.
   await expect.poll(() => listPage.newItemInputCursor()).toBe("crosshair");
 }
@@ -49,7 +45,10 @@ for (const placement of placements) {
       });
       const fill = inspector.detail.runCard();
 
-      await pickOnPage(agent, "target", listPage);
+      await agent.act("start picking the {field} element on the page", {
+        params: { field: "target" },
+      });
+      await untilThePagePicks(listPage);
       await listPage.newItemInput.click();
       await expect
         .poll(() => fill.refField("target").value())
@@ -83,7 +82,10 @@ for (const placement of placements) {
         params: { tool: "click" },
       });
 
-      await pickOnPage(agent, "target", listPage);
+      await agent.act("start picking the {field} element on the page", {
+        params: { field: "target" },
+      });
+      await untilThePagePicks(listPage);
       await listPage.addItemButton.hover();
 
       // The dashed hover highlight.
@@ -105,7 +107,10 @@ for (const placement of placements) {
         params: { tool: "click" },
       });
       const ref = inspector.detail.runCard().refField("target");
-      await pickOnPage(agent, "target", listPage);
+      await agent.act("start picking the {field} element on the page", {
+        params: { field: "target" },
+      });
+      await untilThePagePicks(listPage);
 
       await page.front();
       await browser.keyboard.press("Escape");
@@ -152,7 +157,10 @@ for (const placement of placements) {
         params: { tool: "fill" },
       });
       const ref = inspector.detail.runCard().refField("target");
-      await pickOnPage(agent, "target", listPage);
+      await agent.act("start picking the {field} element on the page", {
+        params: { field: "target" },
+      });
+      await untilThePagePicks(listPage);
 
       await listPage.addItemButton.hover();
       await expect

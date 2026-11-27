@@ -70,14 +70,14 @@ describe("dogfood", { timeout: 90_000 }, () => {
     mcpServer,
     inspector,
   }) => {
-    const agent = mcpServer!;
-    const toolNames = () => agent.pageToolNames();
+    const mcp = mcpServer!;
+    const toolNames = () => mcp.pageToolNames();
     const card = "RunCard";
     /** Opens a tool's card and its form, whose tools then list. */
     const openForm = async (tool: string, ...actions: string[]) => {
-      await call(agent, "Inspector.tool", { name: tool });
+      await call(mcp, "Inspector.tool", { name: tool });
       await expect.poll(toolNames).toContain(`${card}.openArguments`);
-      await call(agent, `${card}.openArguments`, {
+      await call(mcp, `${card}.openArguments`, {
         id: await appView.id("RunCard"),
       });
       await expect
@@ -92,7 +92,7 @@ describe("dogfood", { timeout: 90_000 }, () => {
     await expect(await form.control("Urgent").front()).not.toBeChecked();
     // The editor's root surrounds the list that stays out of page state.
     const editorId = await appView.id("FillForm");
-    await call(agent, `FillForm.set`, {
+    await call(mcp, `FillForm.set`, {
       id: editorId,
       args: { name: "Urgent", value: true },
     });
