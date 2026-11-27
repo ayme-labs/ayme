@@ -158,14 +158,6 @@ export function InspectorApp({
     ))
   );
 
-  const status = windowed ? undefined : (
-    <Connections
-      webMCP={runtime.tools.publication}
-      tools={live}
-      onCopy={copy}
-      copied={copied}
-    />
-  );
   const inspectorBody = (
     <InspectorBody
       layout={windowed ? "bottom" : preferences.layout}
@@ -191,7 +183,6 @@ export function InspectorApp({
         <WindowShell
           theme={preferences.theme}
           onThemeChange={(theme) => updatePreferences({ theme })}
-          status={status}
           fullscreen={fullscreen}
         >
           {inspectorBody}
@@ -201,7 +192,14 @@ export function InspectorApp({
           preferences={preferences}
           onPreferencesChange={updatePreferences}
           reserveHost={reserveHost}
-          status={status}
+          status={
+            <Connections
+              webMCP={runtime.tools.publication}
+              tools={live}
+              onCopy={copy}
+              copied={copied}
+            />
+          }
         >
           {inspectorBody}
         </InspectorShell>

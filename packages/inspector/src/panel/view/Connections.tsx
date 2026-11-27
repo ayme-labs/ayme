@@ -93,7 +93,7 @@ export function Connections({
           className="z-50 flex w-78 max-w-(--radix-popover-content-available-width) origin-(--radix-popover-content-transform-origin) flex-col gap-3 rounded-lg border bg-popover p-4 pt-3.5 text-popover-foreground shadow-lg outline-none transition-[opacity,scale] duration-(--duration-fast) ease-(--ease-out) starting:opacity-0 motion-safe:starting:scale-[0.97]"
         >
           <h3 className="text-sm font-semibold">Connections</h3>
-          <Row name="WebMCP" row={row} onCopy={onCopy} copied={copied} />
+          <Row row={row} onCopy={onCopy} copied={copied} />
           <a
             href={DOCS}
             target="_blank"
@@ -108,26 +108,24 @@ export function Connections({
   );
 }
 
-/** One path: its dot, name and state, what that means, and its option when off. */
+/** WebMCP's row: its dot and state, what that means, and its option when off. */
 function Row({
-  name,
   row,
   onCopy,
   copied,
 }: {
-  name: string;
   row: ConnectionRow;
   onCopy: (text: string) => void;
   copied: string | undefined;
 }) {
   return (
     <section
-      aria-label={name}
+      aria-label="WebMCP"
       className="flex flex-col gap-1.5 rounded-lg border px-3 py-2.5"
     >
       <div className="flex items-center gap-2">
         <Dot tone={row.tone} />
-        <h4 className="flex-1 text-xs font-semibold">{name}</h4>
+        <h4 className="flex-1 text-xs font-semibold">WebMCP</h4>
         <span
           // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
           className={cn("text-xs font-medium", labelClass[row.tone])}
@@ -135,24 +133,21 @@ function Row({
           {row.label}
         </span>
       </div>
-      {row.lines.map((line, index) => (
-        <p
-          key={line}
-          className={cn(
-            // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-            "text-xs break-words",
-            // What went wrong reads stronger than its fix.
-            // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator: Tailwind classes are styling, which no test reads.
-            index === 0 && row.tone !== "off" && row.tone !== "ok"
-              ? // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-                "text-foreground"
-              : // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
-                "text-muted-foreground"
-          )}
-        >
-          {line}
-        </p>
-      ))}
+      <p
+        className={cn(
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+          "text-xs break-words",
+          // What went wrong reads stronger than a state that is fine.
+          // Stryker disable next-line StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator: Tailwind classes are styling, which no test reads.
+          row.tone !== "off" && row.tone !== "ok"
+            ? // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+              "text-foreground"
+            : // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+              "text-muted-foreground"
+        )}
+      >
+        {row.message}
+      </p>
       {row.snippet && (
         <div className="flex items-center gap-1.5">
           <span role="status" className="sr-only">
