@@ -314,3 +314,28 @@ test("closing the window leaves the Session as it was; when the Session ends, th
   );
   await expect(second.inspector.panel).toHaveCount(0);
 });
+
+test("a window whose Session's process was killed stops trying to connect, and says so", async ({
+  ayme,
+  inspect,
+  baseURL,
+  browser,
+  sessionProcess,
+}) => {
+  await ayme("open", `${baseURL}/shop.html`);
+  const { window, inspector } = await openWindow(
+    browser,
+    windowIn((await inspect("none")).stdout)!
+  );
+  await expect
+    .poll(() => inspector.navigator.model.objectPaths())
+    .toContain("Basket");
+
+  process.kill(sessionProcess()!, "SIGKILL");
+
+  await expect(window.getByRole("status")).toHaveText(
+    "This Inspector lost its ayme MCP server. Ask the agent to open the Inspector again.",
+    { timeout: 15_000 }
+  );
+  await expect(inspector.panel).toHaveCount(0);
+});
