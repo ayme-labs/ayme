@@ -239,7 +239,10 @@ test("a Session started in the lab app's folder lists the sign-in screen's Page 
 }) => {
   // `ayme open` opened the sign-in page. Each page is present on its own
   // path, so the Session lists only the current screen's Page Object Tools.
-  expect((await agent.toolNames()).sort()).toEqual(["SignInPage.logIn"]);
+  // Waits for the exact list, so a slow start passes and an extra screen fails.
+  await expect
+    .poll(async () => (await agent.toolNames()).sort())
+    .toEqual(["SignInPage.logIn"]);
 });
 
 test("each page object locator resolves exactly once in its intended state, and every action called through the ayme command takes effect", async ({
