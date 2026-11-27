@@ -36,16 +36,12 @@ These are for a coding agent that runs your Page Object Tools with the `ayme` co
 - **`No tab is open in the Session's browser.`**: open one with the browser automation.
 - **`ayme open` cannot start Chromium**: install it for the project's Playwright with `npx playwright install chromium`.
 
-## A Peek Tool is missing
+## A Peek is missing from the Inspector
 
-These are for [Peeks](reference/ayme.md#aymepeek), which reach a coding agent through ayme's MCP server and the Inspector only.
+These are for [Peeks](reference/ayme.md#aymepeek), which only the Inspector shows.
 
-- **No `peek.<name>` tool**: `ayme.peek` does nothing unless the session has `agentConnection` on, or `inspector` in the browser. A component's Peek appears once the component has mounted, and goes when its last instance unmounts. An agent that does not follow tool-list changes finds it with `ayme_list_tools`.
-- **No `peek.node.<name>` tool**: in Node, only `agentConnection` turns Peeks on, and the process must have started its session and paired. It pairs by itself only when exactly one ayme MCP server answers on the ports from 9350 to 9365; with several running, name one with `agentConnection: { link }` or `{ port }`. See [In Node](reference/ayme.md#in-node).
-- **A `peek.node.<name>` in Next.js answers with old code, or misses what request code changed**: the Peek was added in `instrumentation.ts`, which `next dev` evaluates once, with its own copies of the modules it imports. Add it from a module request code imports. See [In Node](reference/ayme.md#in-node).
+- **No `peek.<name>` tool**: `ayme.peek` does nothing unless the session has `inspector` on, and nothing in Node. A component's Peek appears once the component has mounted, and goes when its last instance unmounts.
 - **`[ayme] peek.<name> is hidden: another tool uses that name.`**: another of the page's tools took the Peek Tool's name, and keeps it. Rename the Peek.
-- **`[ayme] peek.node.<name> is hidden: another App Process offers a tool with the same name.`**, in the process's terminal: two App Processes offer one name, and the one that connected first keeps it.
-- **`The Peek "node.<name>" would be read through peek.node.<name>, which names an App Process's Peek.`**: a Peek in the browser has a name starting with `node.`. Rename it.
 
 ## In-browser agents see no tools
 

@@ -159,7 +159,6 @@ An agent's Page Object Tool call answers in [a shorter form](#a-page-object-tool
 Each Caller name has its own cursor: the page state that Caller last received, from `snapshot` or as the Settled Page after its last action. The Caller names are:
 
 - `webmcp`, an agent calling through WebMCP;
-- `ayme-mcp`, an agent calling through the ayme MCP server;
 - `ayme-command`, an agent calling with `ayme call` through a Session of the [`ayme` command](connect-an-agent.md);
 - `inspector`, the Inspector;
 - `app`, your app's `ayme.tools.run`, or the name it passes as `by`.
@@ -201,7 +200,7 @@ When a Page Object Action returns a Page Object whose model declares or inherits
 
 ## A Page Object Tool's answer to an agent
 
-An agent that calls a Page Object Tool through WebMCP, through the ayme MCP server, or with `ayme call` through a Session of the [`ayme` command](connect-an-agent.md) gets a short answer instead of the action result, the same in each:
+An agent that calls a Page Object Tool through WebMCP or with `ayme call` through a Session of the [`ayme` command](connect-an-agent.md) gets a short answer instead of the action result, the same in each:
 
 ```ts
 {
@@ -212,7 +211,7 @@ An agent that calls a Page Object Tool through WebMCP, through the ayme MCP serv
 }
 ```
 
-`changes` is in the notation of `page_objects`, not a Change Record: a Page Object that went away is marked `(removed)`, one that appeared is shown in full after `+`, with its declared children and its id, and a declared child whose value changed reads `old → new`. It is absent when the Page Objects did not change. When the action starts loading a new document, `settled` is `false`. In a Session, when the action returned a Page Object that is present on the new document, the answer comes from the new page: `url` is its URL when that changed, and `changes` is how the Page Objects changed from the old page to the new one. Otherwise, and always through WebMCP and the ayme MCP server, whose ayme ends with the document, `url` is the URL the action loads when that differs from the page's, as it does not for a reload, and `changes` is absent.
+`changes` is in the notation of `page_objects`, not a Change Record: a Page Object that went away is marked `(removed)`, one that appeared is shown in full after `+`, with its declared children and its id, and a declared child whose value changed reads `old → new`. It is absent when the Page Objects did not change. When the action starts loading a new document, `settled` is `false`. In a Session, when the action returned a Page Object that is present on the new document, the answer comes from the new page: `url` is its URL when that changed, and `changes` is how the Page Objects changed from the old page to the new one. Otherwise, and always through WebMCP, whose ayme ends with the document, `url` is the URL the action loads when that differs from the page's, as it does not for a reload, and `changes` is absent.
 
 ```ts
 {

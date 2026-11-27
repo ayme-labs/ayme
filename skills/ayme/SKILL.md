@@ -1,6 +1,6 @@
 ---
 name: ayme
-description: Set up ayme in a consumer project, expose existing Page Object Actions, design Page Object Models for ayme, run the project's Page Object Tools with the `ayme` command beside Playwright CLI, Playwright MCP or agent-browser, or read app state the page does not show through Peek Tools.
+description: Set up ayme in a consumer project, expose existing Page Object Actions, design Page Object Models for ayme, run the project's Page Object Tools with the `ayme` command beside Playwright CLI, Playwright MCP or agent-browser.
 ---
 
 # ayme
@@ -43,11 +43,6 @@ skill, which [Coding agent skills](https://github.com/ayme-labs/ayme/blob/main/d
 For registering Page Objects, placing or configuring the runtime owner, or
 checking which tools are live, read
 [Runtime integration](references/runtime-integration.md).
-
-When debugging needs state the page does not show, such as unsaved edits,
-component state or server data, or to add a Peek, read
-[Peeks](references/peeks.md) before inferring that state from the page or the
-source.
 
 Follow the consumer project's existing POM conventions. The
 [ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md) owns the APIs and the framework wiring;

@@ -22,7 +22,7 @@ useAyme({ inspector: import.meta.env.DEV });
 - If the package cannot be loaded, the error names `@ayme-dev/inspector`.
 - The Inspector reaches Page Objects constructed before it loaded.
 - It works whether WebMCP publication is on or off.
-- It turns the page's [Peeks](../reference/ayme.md#aymepeek) on, as `agentConnection` does.
+- It turns the page's [Peeks](../reference/ayme.md#aymepeek) on, and is the only place they show.
 
 ### The development flag per framework
 
@@ -37,6 +37,8 @@ useAyme({ inspector: import.meta.env.DEV });
 With Vite, a development build you serve without a dev server, such as static files, comes from `NODE_ENV=development vite build`. `vite build --mode development` alone still builds with `NODE_ENV=production`, so `import.meta.env.DEV` is `false` and the Inspector stays off.
 
 ## In a window of its own
+
+For a page that ships ayme, the Inspector is the panel in the page. A window of its own shows a [Session](connect-an-agent.md)'s Inspector.
 
 ### On a Session: `ayme inspect`
 
@@ -82,21 +84,6 @@ Then ask the agent to show you the Inspector. It calls `ayme_inspect`, and the A
 - The page the Agent App shows holds the key to the Session's Inspector, so whoever can read that page can use the Inspector until the Session ends. An Agent App that lets its model read MCP resources, or records them in a trace, gives the agent that key, and an agent that can also open local network connections could then run your Page Object Tools as Runs listed as run by you from the Inspector.
 - An Agent App that does not show MCP Apps gets only a sentence from `ayme_inspect`. Run `ayme inspect` for a window.
 
-### For a page that ships ayme
-
-The panel of a page that runs ayme itself can run outside the page too. Pass `inspector: { placement: "external" }`. The default placement is `"inline"`, which `true` and `{ demo }` also give. With `"external"`, the page mounts no panel. It serves the Inspector over its [Agent Connection](connect-an-agent.md) instead, and the option turns that connection on. So a coding agent's `ayme mcp` has to be running and paired with the tab:
-
-```ts
-useAyme({ inspector: { placement: "external" } });
-```
-
-`ayme mcp` serves the Inspector on the server it already runs, with no other server or port. Ask the agent for `ayme_inspect`; it gives the URL, such as `http://127.0.0.1:9350/inspector`. Open it in a browser window beside the app. It shows the same lenses for the page connected to that server, follows the page across reloads, and works while `ayme mcp` runs. Highlighting and picking work across the two windows. A tool's ref field lets you pick an element by pointing at the page. The highlight and the pick happen in the app's tab.
-
-- Install `@ayme-dev/inspector` where `ayme mcp` runs, as in the first section. Without it, `ayme_inspect` says to install it.
-- The page keeps no Inspector code for it; the window loads the Inspector from the server.
-- The window shows the page's host as "page", since it does not know the page's address.
-- A window with no page to show says so: pair a page with that `ayme mcp`, and start the page's session with `placement: "external"`. A page on the default inline placement serves nothing to it.
-
 ## Demo mode
 
 To show people what an agent does, pass `inspector: { demo: true }`:
@@ -105,7 +92,7 @@ To show people what an agent does, pass `inspector: { demo: true }`:
 useAyme({ inspector: { demo: true } });
 ```
 
-Demo mode works in either placement. It pauses briefly before each action, though not before a scroll, and shows a cue where each click lands. It applies to every call while it is on, whether it comes from the panel, an agent or WebMCP. `inspector: true` turns the Inspector on without it, so calls run at full speed; Runs records them either way.
+It pauses briefly before each action, though not before a scroll, and shows a cue where each click lands. It applies to every call while it is on, whether it comes from the panel, an agent or WebMCP. `inspector: true` turns the Inspector on without it, so calls run at full speed; Runs records them either way.
 
 ## The three lenses
 
@@ -113,7 +100,7 @@ The navigator has three lenses:
 
 - **Model**: the Page Objects on the page and the Page Object Models it knows, with their declared [Page Object Children](ayme-page-objects.md#aymechild), each with its description and its state on the page, such as `3 matches`.
 - **Structure**: the Structural Page State an agent receives, each node tagged with the member it maps to; an element of a Locator collection by its index, such as `filterChips[1]`.
-- **Tools**: every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. A tool marked [destructive](../reference/ayme.md#destructive-actions) shows a warning icon in the list and a Destructive mark beside its name, and so does its action in the Model lens; Run runs it like any other. Peek tools lists the page's own [Peeks](../reference/ayme.md#aymepeek) under Browser. While the tab is paired with a coding agent's ayme MCP server, it also lists the Peeks of the App Processes paired beside it, under Node. The panel runs those through that server.
+- **Tools**: every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. A tool marked [destructive](../reference/ayme.md#destructive-actions) shows a warning icon in the list and a Destructive mark beside its name, and so does its action in the Model lens; Run runs it like any other. Peek tools lists the page's [Peeks](../reference/ayme.md#aymepeek).
 
 Selecting anything opens its detail. A tool's page and a structure node's detail also show what the model sees of them: the definitions, page state and schemas an agent gets.
 
@@ -137,18 +124,9 @@ Captured target names stay readable after the element disappears or the page rel
 
 The panel floats, docks to the left, right or bottom of the page, or collapses to the ayme logo. It remembers its layout, sizes, positions and theme per site. Within a tab, a reload brings back the open lens, the selection, the Runs region and the newest 50 runs. A selected structure node goes back to the page, because its ref can name another element after a reload. Its theme follows the system until you change it. While docked, it pads the page's root on that side so the panel sits beside the page.
 
-The pill after the panel's title says whether a coding agent is connected to the tab through the Agent Connection, and names it: Claude Code, Codex, Cursor, or the name any other agent's MCP client gives. It reads:
+The pill after the panel's title, WebMCP, says by its dot whether the page publishes its tools through [WebMCP](publish-tools.md): grey while publication is off or stopped, green while it is on or published, amber when the browser has no WebMCP, and red when publication failed. Open it for why, and for the option that turns it on.
 
-| Pill             | When                                                                          |
-| ---------------- | ----------------------------------------------------------------------------- |
-| the agent's name | an agent is connected                                                         |
-| Not connected    | `agentConnection` is on and no agent is connected                             |
-| Reconnecting     | up to 10 seconds after the tab loses its agent's server, while it tries again |
-| No agent         | `agentConnection` is off                                                      |
-
-Open it for both ways agents reach the page, the Agent Connection and WebMCP: each says whether it is on and working, why not, and the option that turns it on. A mark on the pill's corner means WebMCP is on but cannot publish.
-
-A Session's Inspector, in a window or in a chat, has no pill: no agent reaches a Session through the Agent Connection or WebMCP.
+A Session's Inspector, in a window or in a chat, has no pill: no agent reaches a Session through WebMCP.
 
 It paints above the page's own UI; only the browser's top layer, such as modal dialogs, popovers and fullscreen, covers it. Outside the panel and the collapsed logo, the page keeps its pointer. When an agent's pointer action targets something under the panel, the action passes through it.
 

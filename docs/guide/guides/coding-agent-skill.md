@@ -12,7 +12,7 @@ Name the skill with `--skill`, once for each skill you want. Without it, the CLI
 
 ## `ayme`
 
-Sets up ayme in your project: the agent follows the quickstart for your framework, exposes one of your existing Page Object Actions, and calls that action with the `ayme` command, beside its browser automation. After setup, it helps you design Page Object Models, use the page's tools and add Peeks. It tells the agent how to connect the `ayme` command and Playwright CLI, Playwright MCP or agent-browser to one browser, as [Connect an agent](connect-an-agent.md) shows. [Read the `ayme` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme/SKILL.md); its [onboarding steps](https://github.com/ayme-labs/ayme/blob/main/skills/ayme/references/onboarding.md) list exactly what setup does.
+Sets up ayme in your project: the agent follows the quickstart for your framework, exposes one of your existing Page Object Actions, and calls that action with the `ayme` command, beside its browser automation. After setup, it helps you design Page Object Models and use the page's tools. It tells the agent how to connect the `ayme` command and Playwright CLI, Playwright MCP or agent-browser to one browser, as [Connect an agent](connect-an-agent.md) shows. [Read the `ayme` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme/SKILL.md); its [onboarding steps](https://github.com/ayme-labs/ayme/blob/main/skills/ayme/references/onboarding.md) list exactly what setup does.
 
 ## `ayme-capture`
 

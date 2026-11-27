@@ -120,7 +120,7 @@ The loader reports the tsconfig and source files the compiler read, so Turbopack
 
 `include` decides whether a build has ayme in it. It defaults to `false`. Without `include: true`, a build or dev server is a build without ayme:
 
-- `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` resolve to a small absent entry. The runtime, Playwright in the browser, the Inspector, WebMCP and the Agent Connection are left out of the output.
+- `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` resolve to a small absent entry. The runtime, Playwright in the browser, the Inspector and WebMCP are left out of the output.
 - Each Page Object Model the plugin compiles becomes a stand-in. A stand-in has the model's class name and exports, but not the imports only the model used. The rest of the model's module stays.
 - `@ayme-dev/vue`, `@ayme-dev/react`, `@ayme-dev/svelte` and `@ayme-dev/angular` each resolve to an absent entry of their own. It has the package's names and types, so a component tree renders as before.
 - `AymeProvider`, `useAyme` and `provideAyme` hand out an inert session. Its publication status stays `disabled`, and its tool list is empty.
