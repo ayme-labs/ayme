@@ -146,7 +146,9 @@ const notReadAfter = (id: string) =>
 const lostRead = (visitId: string, where: string) =>
   `pageNotRead: A read of the page in ${visitId}, ${where}, could not be kept: whether the page changed by itself around it is not known.`;
 const lostStart = (visitId: string, where: string) =>
-  `pageNotRead: The page could not be read where ${visitId} starts in the recording, ${where}: its baselineTree is the last read of the page before that, or empty when there was none.`;
+  `pageNotRead: The page could not be read where ${visitId} starts in the recording, ${where}: its baselineTree is empty.`;
+const notReadWhereItLed = (id: string, visitId: string) =>
+  `pageNotRead: The page ${id} led to, in ${visitId}, could not be read at first: what it showed then is not known.`;
 
 describe("a read of the page that cannot be kept", () => {
   it("holds its place and is compared with nothing: the step that ends at it and the step that starts at it have no Change Tree, and the steps after are as ever", async () => {
@@ -259,7 +261,7 @@ describe("a read of the page that cannot be kept", () => {
     expect(messages(timeline)).toEqual([notReadAfter("interaction_1")]);
   });
 
-  it("starts its Visit's first tree from the last read of that page before it, never from another page's, and says where the trace holds it", async () => {
+  it("leaves a Visit that starts at it with an empty first tree also when the page was read before it: no earlier read stands in for it, and the warning says where the trace holds it", async () => {
     const other = pageId("page_2");
     const otherUrl = "http://shop.test/other";
     const read = (id: SnapshotId, at: number, tree: string) => ({
@@ -297,7 +299,7 @@ describe("a read of the page that cannot be kept", () => {
       tracePositions({ snapshot_3: "33" })
     ))!;
 
-    expect(baselineOf(text, "visit_2")).toContain("Count 7");
+    expect(baselineOf(text, "visit_2")).toBe(" []");
     expect(changeTreesOf(text)).toEqual([
       {
         kind: "interaction",
@@ -360,6 +362,84 @@ describe("a read of the page that cannot be kept", () => {
     expect(messages(timeline)).toEqual([lostStart("visit_2", "at 20")]);
   });
 
+  it("carries nothing over a pause it could not read the end of, neither the page before it as a Visit's first tree nor that page's refs: the page may have loaded again while paused", async () => {
+    // The page as it loaded again: the same button, under a ref of its own.
+    const reloaded = (count: number) =>
+      page(
+        `- button "Add" [ref=e7]`,
+        `- paragraph [ref=e8]: Count ${count}`,
+        `- status [ref=e9]: Loaded again`
+      );
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, counter(0)),
+      // Paused, and the page loaded again. Neither the read where
+      // recording resumes nor the read before the first click is kept.
+      { ...snapshot(s(2), 20, unreadable), resumes: true },
+      snapshot(s(3), 30, unreadable),
+      snapshot(s(4), 40, reloaded(1)),
+      click(s(3), s(4), 35),
+      snapshot(s(5), 50, reloaded(2)),
+      click(s(4), s(5), 45),
+    ]);
+
+    const text = (await timeline.package(header))!;
+
+    expect(baselineOf(text, "visit_1")).toBe(" []");
+    expect(changeTreesOf(text)).toEqual([
+      { kind: "interaction", changeTree: null },
+      {
+        kind: "interaction",
+        changeTree: changed(`[ref=e8] paragraph: Count 2`),
+      },
+    ]);
+    // Not e2, the ref of the button on the page before the pause.
+    expect(text).toContain(
+      [
+        `          id: interaction_2`,
+        `          type: click`,
+        `          targetRef: e7`,
+      ].join("\n")
+    );
+    expect(messages(timeline)).toEqual([
+      notReadBefore("interaction_1"),
+      lostRead("visit_1", "at 20"),
+      lostStart("visit_1", "at 30"),
+    ]);
+  });
+
+  it("is warned of once for a step that starts and ends at reads that could not be kept", async () => {
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, unreadable),
+      snapshot(s(2), 20, unreadable),
+      click(s(1), s(2), 15),
+    ]);
+
+    expect(messages(timeline)).toEqual([
+      "pageNotRead: The page could not be read before interaction_1 or after it, so its target is known by its selector only and it has no change list.",
+    ]);
+  });
+
+  it("is warned of when a click led to it on another page that was read again before anything else was done", async () => {
+    const next = "http://shop.test/next";
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, counter(0)),
+      { kind: "visit", page: pageId("page_1"), url: next, cause: "navigate" },
+      snapshot(s(2), 20, unreadable, next),
+      click(s(1), s(2), 15),
+      snapshot(s(3), 30, counter(7), next),
+    ]);
+
+    const text = (await timeline.package(header))!;
+
+    expect(baselineOf(text, "visit_2")).toContain("Count 7");
+    expect(messages(timeline)).toEqual([
+      notReadWhereItLed("interaction_1", "visit_2"),
+    ]);
+  });
+
   describe("where recording resumes after a pause", () => {
     const banner = (count: number) =>
       page(
@@ -400,6 +480,30 @@ describe("a read of the page that cannot be kept", () => {
       ]);
       expect(text).not.toContain("<added>");
       expect(messages(timeline)).toEqual([notReadBefore("interaction_2")]);
+    });
+
+    it("leaves the refs of a recording whose read there was kept as they were: an element re-created before the pause keeps its first ref after it", async () => {
+      const recreated = (count: number) =>
+        page(`- button "Add" [ref=e9]`, `- paragraph [ref=e3]: Count ${count}`);
+      const timeline = await timelineOf([
+        visit,
+        snapshot(s(1), 10, counter(0)),
+        snapshot(s(2), 20, recreated(1)),
+        click(s(1), s(2), 15),
+        { ...snapshot(s(3), 30, recreated(1)), resumes: true },
+        snapshot(s(4), 40, recreated(1)),
+        snapshot(s(5), 50, recreated(2)),
+        click(s(4), s(5), 45),
+      ]);
+
+      expect(await timeline.package(header)).toContain(
+        [
+          `          id: interaction_2`,
+          `          type: click`,
+          `          targetRef: e2`,
+        ].join("\n")
+      );
+      expect(messages(timeline)).toEqual([]);
     });
 
     it("makes the first read kept after it the point to compare from: a click that starts there shows its own change only", async () => {
@@ -460,7 +564,7 @@ describe("a read of the page that cannot be kept", () => {
         `- paragraph [ref=e3]: Up to 40 letters`
       );
 
-    it("stays as it was reported, with its latest text, when the read before it could not be kept either", async () => {
+    it("stays as it was reported, with its latest text, when the read before it is the one that could not be kept: no read after it makes up for that", async () => {
       const timeline = await timelineOf([
         visit,
         snapshot(s(1), 10, unreadable),
@@ -545,6 +649,60 @@ describe("a read of the page that cannot be kept", () => {
     });
   });
 
+  it("moves a fill's place in the trace on to it when it is the fill's latest read, also when nothing else of the fill is new", async () => {
+    const fill = (after: SnapshotId): TimelineAddition => ({
+      kind: "interaction",
+      key: "fill_1",
+      interaction: {
+        page: pageId("page_1"),
+        report: {
+          type: "fill",
+          selector: 'internal:role=textbox[name="Item"i]',
+          target: null,
+          values: { text: "m" },
+        },
+        before: s(1),
+        after,
+        at: 15,
+      },
+    });
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, page(`- textbox "Item" [ref=e2]`)),
+      // The fill ends at the read it started at, the Visit's first.
+      fill(s(1)),
+      fill(s(1)),
+    ]);
+    const positions = tracePositions({
+      snapshot_1: "11",
+      snapshot_2: "22",
+      snapshot_3: "33",
+    });
+
+    expect(await timeline.package(header, positions)).toContain(
+      [
+        `    afterSnapshotId: "11"`,
+        `    startedAt: 15`,
+        `    endedAt: 10`,
+      ].join("\n")
+    );
+
+    await timeline.add(
+      snapshot(s(2), 20, page(`- textbox "Item" [ref=e2]: m`))
+    );
+    await timeline.add(fill(s(2)));
+    await timeline.add(snapshot(s(3), 30, unreadable));
+    await timeline.add(fill(s(3)));
+
+    expect(await timeline.package(header, positions)).toContain(
+      [
+        `    afterSnapshotId: "33"`,
+        `    startedAt: 15`,
+        `    endedAt: 30`,
+      ].join("\n")
+    );
+  });
+
   it("leaves an assertion whose element was picked in it with its selector only: a ref of an earlier read may name another element", async () => {
     const saved = page(
       `- button "Save" [ref=e2]`,
@@ -625,7 +783,7 @@ describe("a read of the page that cannot be kept", () => {
     );
   });
 
-  it("leaves the other steps as they are with the read kept: an element it was the first to show re-created keeps its first ref in the steps after", async () => {
+  it("costs the next click the focus its press moved, which shows against the read before it; an element the lost read was the first to show re-created still keeps its first ref", async () => {
     const recording = cart();
     // The read after the second click: the first to show "Add item"
     // re-created, under e7.
@@ -924,10 +1082,11 @@ describe("a change of the page's own that a warning is about", () => {
       snapshot(s(1), 10, counter(0)),
       snapshot(s(2), 20, counter(1)),
       click(s(1), s(2), 15),
-      // The page went on by itself.
+      // The page went on by itself, twice.
       snapshot(s(3), 30, counter(5)),
-      snapshot(s(4), 40, counter(6)),
-      click(s(3), s(4), 35),
+      snapshot(s(5), 32, counter(7)),
+      snapshot(s(4), 40, counter(8)),
+      click(s(5), s(4), 35),
     ]);
 
     expect(await timeline.package(header)).toContain(
@@ -936,6 +1095,7 @@ describe("a change of the page's own that a warning is about", () => {
     expect(messages(timeline)).toEqual([
       notListed("The changes of interaction_1"),
       notListed("The page's own change at 30 after interaction_1"),
+      notListed("The page's own change at 32 after interaction_1"),
       notListed("The changes of interaction_2"),
     ]);
   });

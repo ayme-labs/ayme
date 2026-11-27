@@ -53,7 +53,8 @@ export type { PackageHeader } from "./packageText";
 
 /** A read of a page, in its place among its Visit's. */
 type Read = {
-  readonly snapshot: PageSnapshot;
+  /** Its id, and when it was read. */
+  readonly snapshot: Pick<PageSnapshot, "id" | "at">;
   /** Recording resumes here after a pause: what changed from the snapshot
    * before it is not the recording's. */
   readonly resumes: boolean;
@@ -61,6 +62,7 @@ type Read = {
 
 /** A snapshot as the timeline keeps it. */
 type Kept = Read & {
+  readonly snapshot: PageSnapshot;
   readonly observation: StructuralObservationEntry;
   /** The tree as the browser named it. */
   readonly tree: StructuralTree;
@@ -72,10 +74,11 @@ type Kept = Read & {
 /**
  * A read that could not be kept, as one core's parser refuses or one with a
  * ref on two elements. It holds its place: its id, its position in the
- * trace, and the numbering of the steps around it. It has no tree, so
- * nothing is compared with it: a step that starts or ends at it has no
- * Change Tree, and a warning says so, since a package may leave out what is
- * not known and must not tell what did not happen.
+ * trace, and the numbering of the steps around it. It has no tree, and no
+ * other read stands in for it, so nothing is compared with it: a step that
+ * starts or ends at it has no Change Tree, and a warning says so, since a
+ * package may leave out what is not known and must not tell what did not
+ * happen.
  */
 type Lost = Read & { readonly lost: true };
 
@@ -444,6 +447,15 @@ export class Timeline {
     );
     if (!visit) return;
     const resumes = addition.resumes === true;
+    // Recording resumed at a read that could not be kept, and no read was
+    // kept since: whether the page is still at the document it was at
+    // before the pause is not known, as when it loaded again while paused.
+    // Its elements are named afresh from here, by the refs the page gives
+    // now, as nothing is compared across that read either.
+    const unreadSince = visit.snapshots.slice(
+      visit.snapshots.findLastIndex(isKept) + 1
+    );
+    if (unreadSince.some((read) => read.resumes)) visit.firstRefs.clear();
     visit.snapshots.push(
       await this.keep(visit, addition.snapshot).then(
         (read): Kept => ({ ...read, resumes }),
@@ -451,7 +463,11 @@ export class Timeline {
         // elements refuses, core's session still has the observation, which
         // it takes before that record sees it: the record skips it, and
         // matches the next read with the last one it took.
-        (): Lost => ({ snapshot: addition.snapshot, resumes, lost: true })
+        (): Lost => ({
+          snapshot: { id: addition.snapshot.id, at: addition.snapshot.at },
+          resumes,
+          lost: true,
+        })
       )
     );
   }
@@ -515,6 +531,17 @@ export class Timeline {
         : interaction.after;
     const end = placeIn(visit, after);
     this.warnOfReads(visit, written.id, interaction);
+    // The trace holds the page of its latest read in its Visit, also of
+    // one that could not be kept, whatever else of it is new.
+    const inVisit = (snapshot: SnapshotId | null) =>
+      placeIn(visit, snapshot) >= 0;
+    const traced = inVisit(interaction.after) ? interaction.after : after;
+    const place = this.recorded.findIndex((one) => one.id === written.id);
+    this.recorded[place] = {
+      ...this.recorded[place]!,
+      after: traced,
+      afterInVisit: inVisit(traced) ? traced : null,
+    };
     const sameAfter = last?.after === after;
     // Nothing new, as a fill's final write after its last update: the list
     // stays the one told.
@@ -542,16 +569,6 @@ export class Timeline {
       index === visit.entries.length - 1
         ? Math.max(written.throughAtStart, end)
         : Math.max(visit.through, end);
-    const place = this.recorded.findIndex((one) => one.id === written.id);
-    // The trace holds the page of its latest read in its Visit, also of
-    // one that could not be kept.
-    const traced =
-      placeIn(visit, interaction.after) < 0 ? after : interaction.after;
-    this.recorded[place] = {
-      ...this.recorded[place]!,
-      after: traced,
-      afterInVisit: placeIn(visit, traced) < 0 ? null : traced,
-    };
     this.tell();
   }
 
@@ -683,27 +700,38 @@ export class Timeline {
     };
   }
 
-  /** Warns, once, of a read an Interaction starts at, ends at or picked
-   * its element in that could not be kept: the package does not mark the
-   * step. */
+  /**
+   * Warns, once, of a read an Interaction starts at, ends at or picked its
+   * element in that could not be kept: the package does not mark the step.
+   * One that could be read neither before nor after has one warning, since
+   * the second read adds nothing to what the first cost it.
+   */
   private warnOfReads(
     visit: Visit,
     id: EntryId,
     { before, after, targetRead }: RecordedInteraction
   ) {
-    const lost = (snapshot: SnapshotId | null) =>
-      visit.snapshots[placeIn(visit, snapshot)]?.lost;
-    if (lost(before))
+    /** The Visit a read is of, when it could not be kept: an Interaction
+     * that left its page ends at a read of the next Visit. */
+    const lostIn = (snapshot: SnapshotId | null) =>
+      this.all.find((one) => one.snapshots[placeIn(one, snapshot)]?.lost);
+    const led = lostIn(after);
+    if (lostIn(before))
       this.warn(
         "pageNotRead",
-        `The page could not be read before ${id}, so its target is known by its selector only and it has no change list.`
+        `The page could not be read before ${id}${led === visit ? " or after it" : ""}, so its target is known by its selector only and it has no change list.`
       );
-    if (lost(after))
+    else if (led === visit)
       this.warn(
         "pageNotRead",
         `The page could not be read after ${id}, so its change list is missing, or stops at the last read before that.`
       );
-    if (lost(targetRead ?? null))
+    if (led && led !== visit)
+      this.warn(
+        "pageNotRead",
+        `The page ${id} led to, in ${led.id}, could not be read at first: what it showed then is not known.`
+      );
+    if (lostIn(targetRead ?? null))
       this.warn(
         "pageNotRead",
         `The page could not be read where ${id} picked its element, so its target is known by its selector only.`
@@ -732,7 +760,7 @@ export class Timeline {
       if (place === start)
         this.warn(
           "pageNotRead",
-          `The page could not be read where ${visit.id} starts in the recording, ${where}: its baselineTree is the last read of the page before that, or empty when there was none.`
+          `The page could not be read where ${visit.id} starts in the recording, ${where}: its baselineTree is empty.`
         );
       else if (!ends.has(read.snapshot.id))
         this.warn(
@@ -1503,13 +1531,14 @@ export class Timeline {
 
   /**
    * A Visit's first tree as the package writes it: the page at the read
-   * the Visit starts at, or at the last one kept before that when it could
-   * not be kept, which the warning of that read says; empty with none. It
-   * is under its elements' first refs, or under the refs the page gave,
-   * with a warning, when it cannot be renamed.
+   * the Visit starts at, and empty when that read could not be kept, which
+   * its warning says. No earlier read stands in for it: the page may be at
+   * another document since, as after it loaded again while paused. It is
+   * under its elements' first refs, or under the refs the page gave, with
+   * a warning, when it cannot be renamed.
    */
   private firstTree(visit: Visit, start: number): string {
-    const first = visit.snapshots.slice(0, start + 1).findLast(isKept);
+    const first = comparable(visit.snapshots[start]);
     if (!first) return "";
     const renamed = this.renamed(first.tree, first.firstRefs);
     if (!renamed)
