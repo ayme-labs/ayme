@@ -76,24 +76,25 @@ export const agentAppAnswer = (
  * import, since it runs the project's own ayme. */
 export const INSPECTOR_CALLER = "inspector";
 
-/** The answer to `ayme inspect` once it opened the window of the Session
- * named `name` at `address` in the person's default browser. */
+/** The answer to `ayme inspect` once it asked the person's browser to open
+ * the window of the Session named `name` at `address`: whether the browser
+ * showed it, ayme cannot tell. */
 export const windowOpened = (address: string, name: string): SessionAnswer => ({
   ok: true,
-  text: `The Inspector of the Session ${name} opened in your default browser at ${address}.`,
+  text: `ayme asked your browser to open the Inspector of the Session ${name} at ${address}.`,
   data: { address },
 });
 
-/** The answer to `ayme inspect` when the person's default browser did not
- * open at the window of the Session named `name`, for the reason `why`. */
+/** The answer to `ayme inspect` when no browser could be asked to open the
+ * window of the Session named `name`, for the reason `why`: a failure that
+ * still says where the window is, to open by hand. */
 export const windowNotOpened = (
   address: string,
   name: string,
   why: string
 ): SessionAnswer => ({
-  ok: true,
-  text: `The Inspector of the Session ${name} is at ${address}. ayme could not open your default browser: ${why.replace(/\.$/, "")}. Open the address in a browser outside the Session's.`,
-  data: { address },
+  ok: false,
+  text: `The Inspector of the Session ${name} is at ${address}. ayme could not open it in a browser: ${why.replace(/\.$/, "")}. Open the address in a browser outside the Session's.`,
 });
 
 /** The answer to a window's call on the contract: what it answered. */

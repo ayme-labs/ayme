@@ -101,7 +101,7 @@ test("opens the Inspector window, served by the Session's process, in the progra
   const address = windowIn(inspected.stdout);
   expect(inspected).toEqual({
     code: 0,
-    stdout: `The Inspector of the Session default opened in your default browser at ${address}.\n`,
+    stdout: `ayme asked your browser to open the Inspector of the Session default at ${address}.\n`,
     stderr: "",
   });
   await expect
