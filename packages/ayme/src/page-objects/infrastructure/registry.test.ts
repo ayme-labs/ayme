@@ -1057,6 +1057,89 @@ describe("live Page Object registry", () => {
     expect(rootedNow()).toEqual([["Basket.add", true]]);
   });
 
+  describe("a Host's Page Objects replaced by a rebuild", () => {
+    /** A compiled class named `className`, as a rebuild loads it, whose
+     * constructor runs `made`. */
+    function compiled(
+      registry: { registerCompiledPom(model: object, manifest: object): void },
+      className: string,
+      made: () => void = () => {}
+    ) {
+      const PomClass = {
+        [className]: class {
+          constructor() {
+            made();
+          }
+        },
+      }[className]!;
+      registry.registerCompiledPom(PomClass, {
+        ...emptyManifest(className),
+        tools: [{ ...action("open"), toolName: `${className}.open` }],
+      });
+      return PomClass;
+    }
+
+    it("replaces them all at once, and its subscribers hear of it once", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop"), compiled(registry, "Cart")];
+      for (const model of running) session.register(model);
+      const rebuilt = [compiled(registry, "Shop"), compiled(registry, "Cart")];
+      const heard = vi.fn();
+      registry.subscribeToRegisteredPoms(heard);
+
+      replacePageObjects(session.ayme, running, rebuilt);
+
+      expect(
+        registry
+          .listRegisteredPoms()
+          .map(({ instance }) => instance.constructor)
+      ).toEqual(rebuilt);
+      expect(heard).toHaveBeenCalledOnce();
+    });
+
+    it("changes nothing when a rebuilt class cannot be made, also once another was", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop"), compiled(registry, "Cart")];
+      for (const model of running) session.register(model);
+      const made = vi.fn();
+      const rebuilt = [
+        compiled(registry, "Shop", made),
+        compiled(registry, "Cart", () => {
+          throw new Error("Cart could not be made.");
+        }),
+      ];
+      const heard = vi.fn();
+      registry.subscribeToRegisteredPoms(heard);
+
+      expect(() => replacePageObjects(session.ayme, running, rebuilt)).toThrow(
+        "Cart could not be made."
+      );
+
+      expect(made).toHaveBeenCalledOnce();
+      expect(
+        registry
+          .listRegisteredPoms()
+          .map(({ instance }) => instance.constructor)
+      ).toEqual(running);
+      expect(heard).not.toHaveBeenCalled();
+    });
+
+    it("lets go of the instances of the classes it replaced", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop")];
+      session.register(running[0]!);
+      const instance = session.ayme.pom.get(running[0]!);
+      const rebuilt = [compiled(registry, "Shop")];
+
+      replacePageObjects(session.ayme, running, rebuilt);
+
+      expect(session.ayme.pom.get(running[0]!)).not.toBe(instance);
+    });
+  });
+
   it("reports an observation error for a manifest-declared locator without a brand", async () => {
     const { registry, session } = await setup();
 

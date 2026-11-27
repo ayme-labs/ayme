@@ -410,6 +410,34 @@ const pageObjectCallers = new WeakMap<
   (by: Caller) => PageObjectCaller
 >();
 
+// Keyed by the session's `tools`, as `pageObjectCallers` is.
+const pageObjectReplacers = new WeakMap<
+  object,
+  (
+    running: readonly PageObjectConstructor[],
+    rebuilt: readonly PageObjectConstructor[]
+  ) => void
+>();
+
+/**
+ * Replaces the Page Object classes `running`, which the session registered,
+ * with `rebuilt`, as one change, the way a Session swaps a rebuild in on a
+ * Node Host: every rebuilt class is made first, so one whose constructor
+ * throws changes nothing and the error is thrown; the registry's
+ * subscribers then hear of the whole change once. The replaced classes'
+ * instances are let go.
+ */
+export function replacePageObjects(
+  ayme: Pick<Ayme, "tools">,
+  running: readonly PageObjectConstructor[],
+  rebuilt: readonly PageObjectConstructor[]
+): void {
+  const replace = pageObjectReplacers.get(ayme.tools);
+  if (!replace)
+    throw new RuntimeStateError("This is not an ayme runtime session.");
+  replace(running, rebuilt);
+}
+
 /** The session's Page Object Tools as `by` reaches them, its Runs started as `by`. */
 export function pageObjectCallerOf(
   ayme: Pick<Ayme, "tools">,
@@ -1173,6 +1201,26 @@ export function createAymeOn(
   }
 
   appProcessToolsBySession.set(ayme, appProcessTools.tools);
+  pageObjectReplacers.set(ayme.tools, (running, rebuilt) => {
+    const made = new Map<PageObjectConstructor, object>();
+    for (const model of rebuilt)
+      if (!made.has(model))
+        made.set(
+          model,
+          instances.get(model) ?? constructPageObject(model, getPage())
+        );
+    target.registry().inOneChange(() => {
+      for (const model of running) {
+        registrations.get(model)?.active?.dispose();
+        registrations.delete(model);
+        instances.delete(model);
+      }
+      for (const model of rebuilt) {
+        instances.set(model, made.get(model)!);
+        pom.register(model);
+      }
+    });
+  });
   pageObjectCallers.set(ayme.tools, (by) => ({
     run: pageObjectToolsFor(by, { pageObjectToolsOnly: true }).run,
     listing: () =>
