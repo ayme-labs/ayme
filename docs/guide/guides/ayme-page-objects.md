@@ -179,7 +179,7 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-`ProjectRow.remove` stays listed, because it can run on Launch plan. For a member who is not an admin of any project, no row shows Remove. The tool then stays listed with `available: false` and `reason: "Only admins can remove projects"`. An agent reads that reason with the other tool changes it is told about.
+`ProjectRow.remove` stays listed, because it can run on Launch plan. For a member who is not an admin of any project, no row shows Remove. The tool then stays listed with `available: false` and `reason: "Only admins can remove projects"`. An agent reads that reason in `ayme tools`, or in the refusal when it calls the tool.
 
 Like `present`, keep the predicate to reads.
 
