@@ -61,7 +61,7 @@ in-browser agents and the app's own code call on the running page.
   - Provides: the tool that drives the browser, such as Playwright MCP, Playwright CLI or
     a Playwright script. It loads the init script `ayme mcp` writes into every page it
     opens
-  - Evidence: verified: [docs/guide/guides/page-objects-without-ayme.md](docs/guide/guides/page-objects-without-ayme.md), [packages/mcp/src/served-page-objects/domain/servedPageObjects.ts](packages/mcp/src/served-page-objects/domain/servedPageObjects.ts),
+  - Evidence: verified: [packages/mcp/src/served-page-objects/domain/servedPageObjects.ts](packages/mcp/src/served-page-objects/domain/servedPageObjects.ts),
     [apps/mcp-fixture/tests/servedPageObjects.spec.ts](apps/mcp-fixture/tests/servedPageObjects.spec.ts)
 
 ## Containers
@@ -338,7 +338,7 @@ in-browser agents and the app's own code call on the running page.
 - **Browser automation → Host application**
   - Flows:
     - → the init script, loaded into each page before the page's own scripts
-  - Evidence: verified: [packages/mcp/src/served-page-objects/domain/servedPageObjects.ts](packages/mcp/src/served-page-objects/domain/servedPageObjects.ts), [docs/guide/guides/page-objects-without-ayme.md](docs/guide/guides/page-objects-without-ayme.md)
+  - Evidence: verified: [packages/mcp/src/served-page-objects/domain/servedPageObjects.ts](packages/mcp/src/served-page-objects/domain/servedPageObjects.ts)
 - **Browser runtime → Host application**
   - Flows:
     - → DOM reads, clicks, fills and key presses
@@ -456,7 +456,7 @@ hosting its playground.
     - Evidence: verified: [docs/guide/guides/publish-tools.md](docs/guide/guides/publish-tools.md)
   - **Browser automation**: Playwright MCP, Playwright CLI or a Playwright script pointed at
     `ayme/init-script.js`; optional, present only with served Page Objects
-    - Evidence: verified: [docs/guide/guides/page-objects-without-ayme.md](docs/guide/guides/page-objects-without-ayme.md)
+    - Evidence: verified: [packages/mcp/src/served-page-objects/domain/servedPageObjects.ts](packages/mcp/src/served-page-objects/domain/servedPageObjects.ts)
 
 #### production
 
