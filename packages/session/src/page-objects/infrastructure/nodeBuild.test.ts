@@ -31,8 +31,10 @@ async function folder(name: string): Promise<string> {
  * Installs a stand-in for @ayme-dev/ayme in `root`. Its compiler compiles a
  * module that marks a class `@pom`: the class registers with the copy the
  * compiled module imports, as the real compiler's output does, and every
- * other module is left to esbuild. A module that says `// broken` does not
- * compile.
+ * other module is left to esbuild. A module that says `// types from
+ * <file>` reads the types of its tools from that file, which esbuild never
+ * loads, as an `import type` does. A module that says `// broken`, or
+ * whose types file does, does not compile.
  */
 async function installAyme(root: string): Promise<string> {
   return aymePackage(join(root, "node_modules", "@ayme-dev", "ayme"));
@@ -54,6 +56,8 @@ async function aymePackage(installed: string): Promise<string> {
     "internal.mjs":
       "export const registered = [];\nexport const registerCompiledPom = (pom) => registered.push(pom);\n",
     "compiler.mjs": `
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 export class PomCompileError extends Error {
   constructor(diagnostics) {
     super("The module did not compile.");
@@ -61,8 +65,16 @@ export class PomCompileError extends Error {
   }
 }
 export const createPomCompiler = () => ({
-  compile(fileName, source) {
-    if (source.includes("// broken"))
+  compile(fileName, source, { onDependencies } = {}) {
+    const types = [...source.matchAll(/[/][/] types from ([^ \\n]+)/g)].map(
+      (match) => join(dirname(fileName), match[1])
+    );
+    onDependencies?.(types);
+    if (
+      [source, ...types.map((file) => readFileSync(file, "utf8"))].some(
+        (text) => text.includes("// broken")
+      )
+    )
       throw new PomCompileError([{ text: "This Page Object does not compile." }]);
     const pom = /@pom\\s+export class (\\w+)/.exec(source);
     if (!pom) return null;
@@ -350,5 +362,22 @@ it("a failed import is repaired by adding the missing file alone, in a folder no
   ]);
 
   expect(outcomes[1]).toContain('Could not resolve "./cart/Cart"');
+  expect(outcomes[2]).toHaveLength(1);
+}, 15_000);
+
+it("an edit to a file only the Page Object compiler reads, as an import type, is an edit, and so is its repair", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": `// types from ./item.ts\n${BASKET}`,
+    "ayme/pom/item.ts": "export type Item = string;\n",
+  });
+
+  const outcomes = await buildsAcross(dir, [
+    () => write(dir, { "ayme/pom/item.ts": "// broken\n" }),
+    () => write(dir, { "ayme/pom/item.ts": "export type Item = number;\n" }),
+  ]);
+
+  expect(outcomes[1]).toContain("This Page Object does not compile.");
   expect(outcomes[2]).toHaveLength(1);
 }, 15_000);

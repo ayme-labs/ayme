@@ -36,7 +36,10 @@ type CompilerEntry = {
     compile(
       fileName: string,
       source: string,
-      options: { emit: "js" }
+      options: {
+        emit: "js";
+        onDependencies: (dependencies: readonly string[]) => void;
+      }
     ): { code: string } | null;
   };
   PomCompileError: new (...args: never[]) => Error & {
@@ -62,11 +65,13 @@ const installed = (file: string) => file.split(sep).includes("node_modules");
 /**
  * Compiles each Page Object Model outside `node_modules` with the
  * project's compiler; every other module builds as esbuild builds it.
+ * `reads` hears of each file of the project the compiler reads, such as a
+ * type an `import type` brings, which esbuild never loads.
  */
-const pageObjectModels = ({
-  createPomCompiler,
-  PomCompileError,
-}: CompilerEntry): esbuild.Plugin => ({
+const pageObjectModels = (
+  { createPomCompiler, PomCompileError }: CompilerEntry,
+  reads: (file: string) => void
+): esbuild.Plugin => ({
   name: "ayme-page-object-models",
   setup(build) {
     const compiler = createPomCompiler({ include: true });
@@ -75,6 +80,9 @@ const pageObjectModels = ({
       try {
         const pom = compiler.compile(path, await readFile(path, "utf8"), {
           emit: "js",
+          onDependencies: (dependencies) => {
+            for (const file of dependencies) if (!installed(file)) reads(file);
+          },
         });
         return pom === null ? undefined : { contents: pom.code, loader: "js" };
       } catch (error) {
@@ -201,7 +209,7 @@ const bundle = (
         plugins: [
           readFiles(reads),
           projectPackages(projectDir),
-          pageObjectModels(compiler),
+          pageObjectModels(compiler, reads),
         ],
       }),
     catch: (failure) => failure as esbuild.BuildFailure,
