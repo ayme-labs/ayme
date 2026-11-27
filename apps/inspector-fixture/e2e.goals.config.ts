@@ -45,7 +45,11 @@ export default {
   // Apart from the default config's, so its reports stay their own; .e2e/
   // is gitignored. The cache's directory is pinned by `pnpm test:goals`.
   output: ".e2e/goals",
-  cache: { mode: "read-write" },
+  // `AYME_E2E_CACHE=read-only` replays without writing, as arm 3's does.
+  cache: {
+    mode:
+      process.env.AYME_E2E_CACHE === "read-only" ? "read-only" : "read-write",
+  },
   workers: 1,
   targets: [
     {

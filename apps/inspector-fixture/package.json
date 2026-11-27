@@ -16,6 +16,7 @@
     "test:goals:tools": "E2E_TELEMETRY_DISABLED=1 e2e-patched run --config e2e.goals-tools.config.ts --cache-dir .e2e/goals-tools-cache",
     "test:goals:tools:scripted": "AYME_E2E_EXECUTOR=scripted E2E_TELEMETRY_DISABLED=1 e2e-patched run --config e2e.goals-tools.config.ts --cache-dir .e2e/goals-tools-scripted-cache",
     "test:tools-check": "E2E_TELEMETRY_DISABLED=1 e2e-patched run --config e2e.tools-check.config.ts",
+    "study:baseline": "node scripts/study-baseline.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p ayme",
     "test": "node --test scripts/check-goal-mirror.test.mjs"
   },
