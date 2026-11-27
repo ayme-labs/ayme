@@ -1,6 +1,6 @@
 # Page state
 
-What ayme's runtime in your page shows an agent: the Structural Page State, the Structural Refs and Page Object ids it acts through, and the interaction history ayme keeps. A coding agent with the [`ayme` command](connect-an-agent.md) reads less: the Page Object Tree and a Page Object Tool's short answer, which this page also describes.
+What ayme's runtime in your page shows an agent, from the Structural Page State and the refs and ids it acts through to the interaction history ayme keeps, and the part a coding agent reads with the [`ayme` command](connect-an-agent.md): the Page Object Tree and a Page Object Tool's short answer.
 
 ## Structural Page State
 
