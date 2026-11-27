@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -161,30 +162,37 @@ async function showInAgentApp(
   baseURL: string,
   app: { html: string; connectDomains: string[] }
 ) {
-  const frameServer = createServer((_, response) =>
-    response
-      .writeHead(200, {
-        "content-type": "text/html; charset=utf-8",
-        "content-security-policy": [
-          "default-src 'none'",
-          "script-src 'unsafe-inline'",
-          "style-src 'unsafe-inline'",
-          "img-src data: blob:",
-          "font-src data:",
-          "media-src data: blob:",
-          `connect-src ${app.connectDomains.join(" ") || "'none'"}`,
-          "frame-src 'none'",
-          "object-src 'none'",
-          "base-uri 'none'",
-          "form-action 'none'",
-        ].join("; "),
-      })
-      .end(app.html)
+  // The page holds the Session's token: it goes to the frame at an address
+  // no other local client can guess, and is kept nowhere.
+  const path = `/${randomBytes(16).toString("hex")}`;
+  const frameServer = createServer((request, response) =>
+    request.url !== path
+      ? response.writeHead(404).end()
+      : response
+          .writeHead(200, {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store",
+            "content-security-policy": [
+              "default-src 'none'",
+              "script-src 'unsafe-inline'",
+              "style-src 'unsafe-inline'",
+              "img-src data: blob:",
+              "font-src data:",
+              "media-src data: blob:",
+              `connect-src ${app.connectDomains.join(" ") || "'none'"}`,
+              "frame-src 'none'",
+              "object-src 'none'",
+              "base-uri 'none'",
+              "form-action 'none'",
+            ].join("; "),
+          })
+          .end(app.html)
   );
   await new Promise<void>((resolve) =>
     frameServer.listen(0, "127.0.0.1", resolve)
   );
   const { port } = frameServer.address() as AddressInfo;
+  const frameAddress = `http://127.0.0.1:${port}${path}`;
   const context = await browser.newContext();
   cleanups.push(async () => {
     await context.close();
@@ -192,14 +200,14 @@ async function showInAgentApp(
   });
   const page = await context.newPage();
   await page.goto(
-    `${baseURL}/agent-app.html?modes=inline&announce=1&resize=1&frame=${encodeURIComponent(`http://127.0.0.1:${port}/`)}`
+    `${baseURL}/agent-app.html?modes=inline&announce=1&resize=1&frame=${encodeURIComponent(frameAddress)}`
   );
   const frame = page.frameLocator("#app");
   const inspector = new Inspector(
     page,
     frame.locator(`${INSPECTOR_SELECTOR_ENGINE}=[data-ayme-inspector-root]`)
   );
-  return { frame, inspector };
+  return { frame, inspector, address: frameAddress };
 }
 
 function closeServer(server: Server) {
@@ -412,7 +420,11 @@ test("the window ayme inspect opens is admitted by a one-use code and connects a
     .poll(() => inWindow.navigator.model.objectPaths())
     .toContain("Basket");
   const page = await (await mcp()).page();
-  const { inspector: inChat } = await showInAgentApp(browser, baseURL!, page);
+  const { inspector: inChat, address: inChatAddress } = await showInAgentApp(
+    browser,
+    baseURL!,
+    page
+  );
   await expect
     .poll(() => inChat.navigator.model.objectPaths())
     .toContain("Basket");
@@ -424,4 +436,9 @@ test("the window ayme inspect opens is admitted by a one-use code and connects a
   await expect(inWindow.header.connections.root).toHaveCount(0);
   expect(sessionLogs(temporary)).not.toContain(token);
   expect(sessionLogs(temporary)).not.toContain(code);
+  // The stand-in Agent App gives the page, token and all, to its own frame
+  // alone, as the Agent App gives it to its own.
+  const shown = await fetch(inChatAddress);
+  expect(shown.headers.get("cache-control")).toBe("no-store");
+  expect((await fetch(new URL("/", inChatAddress))).status).toBe(404);
 });
