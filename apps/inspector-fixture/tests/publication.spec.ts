@@ -1,5 +1,6 @@
 import type { RecordingDriver } from "@ayme-dev/webmcp/testing";
 
+import { AppView } from "./appView";
 import { callAsAgent, expect, test } from "./fixtures";
 
 // E2E: what the page publishes over WebMCP, read through the recording
@@ -48,4 +49,41 @@ test("an unavailable Page Object Tool stays published, refuses its call with its
     text: `RuntimeStateError: ${CLEAR} is unavailable: Nothing to clear.`,
   });
   expect(await stillPublished()).toBe(true);
+});
+
+test.describe("on a page whose session has the Inspector on", () => {
+  test.use({ fixturePath: "/session.html" });
+
+  test("a Peek runs in the panel and is never published", async ({
+    page,
+    agent,
+    inspector,
+  }) => {
+    await page.evaluate(() => {
+      window.fixtureAyme!.peek(
+        () => ({ items: document.querySelectorAll("li").length }),
+        "list"
+      );
+    });
+
+    await (await inspector.tool("peek.list")).run();
+    const run = inspector.runs.latest("peek.list");
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(JSON.parse((await run.resultText())!)).toEqual({
+      name: "list",
+      instances: [{ values: { items: 0 } }],
+    });
+
+    // The runtime lists the Peek beside the tools the page publishes.
+    const listed = await new AppView(page).tools();
+    expect(listed.map(({ name }) => name)).toContain("peek.list");
+    await expect
+      .poll(async () => (await agent!.toolNames()).sort())
+      .toEqual(
+        listed
+          .map(({ name }) => name)
+          .filter((name) => name !== "peek.list")
+          .sort()
+      );
+  });
 });
