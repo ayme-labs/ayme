@@ -18,6 +18,7 @@ import {
 import { assertLocatorReachable } from "../../page-state/infrastructure";
 import {
   asSentence,
+  isJsonValue,
   RefResolutionError,
   refuseViolations,
   RuntimeStateError,
@@ -870,12 +871,17 @@ async function performPageObjectAction(
       return value;
     }
   );
-  // A session that ends with its document would lose the answer to a full
-  // load while it waited.
-  if (result.loading === undefined || outlivesFullLoads) {
-    const present = await waitForReturnedPageObject(returned);
-    if (present && result.loading !== undefined) markArrivedAfterLoad(result);
-  }
+  const loaded = result.loading !== undefined;
+  // A session that ends with its document answers at the load's start: it
+  // would lose the answer while it waited.
+  if (loaded && !outlivesFullLoads) return result;
+  // The Run lasts until the action returns, past a load it started, with
+  // what it returns or throws: ayme adds no time limit to a Run.
+  const value = await returned;
+  if (loaded && value !== undefined && isJsonValue(value))
+    result.result = value;
+  const present = await waitForReturnedPageObject(value);
+  if (present && loaded) markArrivedAfterLoad(result);
   return result;
 }
 

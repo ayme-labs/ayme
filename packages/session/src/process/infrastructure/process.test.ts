@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { EventEmitter, once } from "node:events";
 import {
   mkdtempSync,
@@ -15,7 +15,13 @@ import { beforeEach, expect, it, onTestFinished, vi } from "vitest";
 
 import { scriptedBrowser } from "../../../testing";
 import { serveProcess, serveSession, type Opener } from "./background";
-import { askCall, askSession, listSessions, openSession } from "./commands";
+import {
+  askCall,
+  askSession,
+  listSessions,
+  openSession,
+  PARAMS_FILE_LIMIT_BYTES,
+} from "./commands";
 import {
   claimAfter,
   claimRecord,
@@ -434,6 +440,45 @@ it("--params that is not JSON, or names a file that cannot be read, is answered 
     ),
   });
   expect(browser.runs).toEqual([]);
+});
+
+it("--params @<file> reads only a regular file up to its size limit, and refuses a named pipe or a larger file at once with why", async () => {
+  const { served, browser } = await claimAndServe();
+  if (served._tag !== "Success") throw served.failure;
+  // Nothing ever writes to the pipe: reading it would block for ever.
+  execFileSync("mkfifo", [join(projectDir, "pipe")]);
+  writeFileSync(
+    join(projectDir, "large.json"),
+    `"${"x".repeat(PARAMS_FILE_LIMIT_BYTES)}"`
+  );
+
+  expect(await askCall(place, "Basket.add", "@pipe")).toEqual({
+    ok: false,
+    text: "--params @pipe names something that is not a regular file. Give a file of JSON.",
+  });
+  expect(await askCall(place, "Basket.add", "@large.json")).toEqual({
+    ok: false,
+    text: "--params @large.json names a file larger than 1 MB, the most ayme reads for a tool's input.",
+  });
+  expect(browser.runs).toEqual([]);
+});
+
+it("a command whose answer cannot be turned into text is answered with why, and the Session goes on", async () => {
+  const { served, browser } = await claimAndServe();
+  if (served._tag !== "Success") throw served.failure;
+  // A value a Page Object returned, which throws when it is written out.
+  const result = Object.defineProperty({}, "toJSON", {
+    value: () => {
+      throw new Error("This value cannot be written.");
+    },
+  });
+  browser.answerRuns(async () => ({ settled: true, result }));
+
+  expect(await askCall(place, "Basket.add", undefined)).toEqual({
+    ok: false,
+    text: "ayme could not write the answer to this command: This value cannot be written.",
+  });
+  expect(await askSession(place, { stop: {} })).toMatchObject({ ok: true });
 });
 
 it("Sessions of different names run side by side in one folder, and a command reaches the one it names", async () => {

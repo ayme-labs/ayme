@@ -431,6 +431,9 @@ describe("readCommand for a Session", () => {
     [["call", "Basket.add", "--headed"]],
     [["call", "Basket.add", "--cdp=http://a"]],
     [["tools", "--params", "{}"]],
+    [["attach", "--cdp=http://127.0.0.1:9222", "--params", "{}"]],
+    [["open", "--params", "{}"]],
+    [["close", "--params", "{}"]],
   ])(
     "refuses a call it cannot read, and --params beside another command: `%s`",
     (args) => {

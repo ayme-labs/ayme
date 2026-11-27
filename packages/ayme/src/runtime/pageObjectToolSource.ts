@@ -160,17 +160,22 @@ async function answerOf(
     settled,
     ...(result === undefined ? {} : { result }),
   };
+  const read = () => session.readPageObjectTree().catch(() => undefined);
+  let after: PageObjectTreeRead | undefined;
   // A full load ends this document, and the page has not settled until the
   // new one has loaded. Its tree is read again only from the new document,
-  // once the Page Object the action returned is present there.
+  // once the Page Object the action returned is present there: a presence
+  // predicate that also holds on the old page can pass before the load
+  // commits, so only a read of another document counts.
   if (loading !== undefined) {
     answer.settled = false;
-    if (!session.arrivedAfterLoad(actionResult))
+    if (session.arrivedAfterLoad(actionResult)) after = await read();
+    if (!after || !before || after.document === before.document)
       return { ...answer, ...(loading === url ? {} : { url: loading }) };
   }
   const now = session.url();
   if (now !== url) answer.url = now;
-  const after = await session.readPageObjectTree().catch(() => undefined);
+  after ??= await read();
   const changes = before && after && renderPageObjectTreeChanges(before, after);
   if (changes) answer.changes = changes;
   return answer;

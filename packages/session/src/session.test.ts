@@ -469,6 +469,31 @@ it("a listing that never ends, as behind a presence predicate that never resolve
 
 const joining = { join: { cdp: "http://127.0.0.1:9333" } } as const;
 
+it("a Run still waiting for its turn when the Session ends never reaches the page, though the joined browser stays", async () => {
+  const { session, browser } = await startScriptedSession(joining);
+  let release = () => {};
+  browser.answerRuns(
+    () => new Promise((resolve) => (release = () => resolve({ settled: true })))
+  );
+  const first = session.ask({ call: { tool: "Basket.hold", input: {} } });
+  const late = session.ask({ call: { tool: "Basket.add", input: {} } });
+  expect(await pending(late)).toBe(true);
+
+  await session.ask({ stop: {} });
+  release();
+
+  const closed = {
+    ok: false,
+    text: "The Session was closed before it answered this command.",
+  };
+  expect(await first).toEqual(closed);
+  expect(await late).toEqual(closed);
+  // The late Run gets every chance to start.
+  for (let turn = 0; turn < 20; turn++)
+    await new Promise((resolve) => setImmediate(resolve));
+  expect(browser.runs.map(({ tool }) => tool)).toEqual(["Basket.hold"]);
+});
+
 it("a Session joins the browser it is asked to and answers its start with that browser's address", async () => {
   const { session, browser } = await startScriptedSession(joining);
 

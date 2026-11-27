@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PageObjectId, PageObjectTreeRead } from "../page-objects/domain";
 import { treeRead } from "../../testing/pageObjectTree.testSupport";
 import { InPageVersionError } from "../in-page";
-import type { ToolInfo } from "../shared";
+import type { DocumentToken, ToolInfo } from "../shared";
 import {
   pageObjectToolSource,
   type PageObjectToolSession,
@@ -47,6 +47,12 @@ const list = (...names: string[]): PageObjectTreeRead =>
       },
     ]
   );
+
+/** `read` as read from the document `document`. */
+const inDocument = (
+  read: PageObjectTreeRead,
+  document: string
+): PageObjectTreeRead => ({ ...read, document: document as DocumentToken });
 
 /**
  * A session whose page shows `trees` one after the other, a read at a
@@ -189,7 +195,10 @@ describe("a Page Object Tool's answer to an agent", () => {
       next: "The page is loading http://app/item/1. Call snapshot next to read the new page.",
     };
     const { stub } = session({
-      trees: [list("Milk"), list("Milk", "Eggs")],
+      trees: [
+        inDocument(list("Milk"), "old"),
+        inDocument(list("Milk", "Eggs"), "new"),
+      ],
       urls: ["http://app/list", "http://app/item/1"],
       answer: async () => loaded,
       arrived: (result) => result === loaded,
@@ -204,6 +213,28 @@ describe("a Page Object Tool's answer to an agent", () => {
         "    + Item po2",
         "        name: text: Eggs",
       ].join("\n"),
+    });
+  });
+
+  it("after a full load, answers without the tree while the read still finds the old document, though the Page Object the action returned is present", async () => {
+    const loaded = {
+      settled: false,
+      page_changed: false,
+      loading: "http://app/item/1",
+    };
+    const { stub } = session({
+      trees: [
+        inDocument(list("Milk"), "old"),
+        inDocument(list("Milk", "Eggs"), "old"),
+      ],
+      urls: ["http://app/list", "http://app/list"],
+      answer: async () => loaded,
+      arrived: (result) => result === loaded,
+    });
+
+    expect(await pageObjectToolSource(stub).run("ListPage.add", {})).toEqual({
+      settled: false,
+      url: "http://app/item/1",
     });
   });
 

@@ -13,10 +13,13 @@ export {
   openedAnswer,
   pageObjectsAnswer,
   paramsNotJson,
+  paramsNotAFile,
+  paramsTooLarge,
   paramsUnreadable,
   runFailed,
   TAB_CLOSED,
   toolsAnswer,
+  unanswerable,
   unknownRequest,
 } from "./answers";
 export {

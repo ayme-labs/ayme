@@ -6,6 +6,7 @@ import {
   Fiber,
   Option,
   Scope,
+  Semaphore,
   Stream,
 } from "effect";
 
@@ -100,7 +101,12 @@ export const openSession = (
         held.host(built).pipe(
           Effect.map((tabs): Started => ({
             held,
-            tabs: sessionTabs(tabs, name, browserScope),
+            tabs: sessionTabs(
+              tabs,
+              name,
+              browserScope,
+              Deferred.isDone(ending)
+            ),
           }))
         )
       ),
@@ -259,11 +265,13 @@ type SessionTabs = {
 
 /** The Tabs of `browser`, each hosted once, the first time the Session
  * named `name` works on it, and the Page Object Ids each Tab's Host gave.
- * A Tab is let go when its page closes, in `scope`. */
+ * A Tab is let go when its page closes, in `scope`. None starts work once
+ * `ending`. */
 function sessionTabs(
   browser: BrowserTabs,
   name: string,
-  scope: Scope.Scope
+  scope: Scope.Scope,
+  ending: Effect.Effect<boolean>
 ): SessionTabs {
   const hosts = new Map<BrowserTab, Effect.Effect<HostedTab, TabReadError>>();
   // The Tab each id was given on, while its Host knows the id.
@@ -292,7 +300,9 @@ function sessionTabs(
             released: (id) => owners.delete(id),
           })
           .pipe(
-            Effect.map((hosted) => untilClosed(hosted, tab.closed)),
+            Effect.map((hosted) =>
+              untilClosed(inTurns(hosted, ending), tab.closed)
+            ),
             Effect.tap(() =>
               tab.closed.pipe(Effect.andThen(retire(tab)), Effect.forkIn(scope))
             )
@@ -351,6 +361,25 @@ function untilClosed(
     listing: orClosed(hosted.listing, new TabReadError(TAB_CLOSED)),
     call: (tool, input) =>
       orClosed(hosted.call(tool, input), new RunError(TAB_CLOSED)),
+  };
+}
+
+/**
+ * `hosted`, whose listings and Runs also wait for the Tab's turn in the
+ * Session, where the Session's end stops one still waiting: the Host's own
+ * wait cannot be stopped, and a joined browser stays open. One whose turn
+ * comes once the Session is `ending` never starts; the end answers it.
+ */
+function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
+  const turn = Semaphore.makeUnsafe(1);
+  const inTurn = <A, E>(work: Effect.Effect<A, E>) =>
+    Semaphore.withPermit(
+      turn,
+      ending.pipe(Effect.flatMap((ends) => (ends ? Effect.never : work)))
+    );
+  return {
+    listing: inTurn(hosted.listing),
+    call: (tool, input) => inTurn(hosted.call(tool, input)),
   };
 }
 
