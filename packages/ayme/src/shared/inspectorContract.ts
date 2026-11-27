@@ -1,5 +1,4 @@
 import type { ProjectedStructuralNodeForest } from "@ayme-dev/core/structural-observation";
-import type { NotConnectedReason } from "@ayme-dev/mcp/client";
 
 import type { Caller } from "./callers";
 import type {
@@ -65,30 +64,6 @@ export type PublishedToolInfo = Readonly<{
  */
 export type ToolInfo = PublishedToolInfo &
   Readonly<{ available: boolean; reason?: string }>;
-
-/**
- * Whether the session's page is connected to a coding agent through the
- * agent's ayme MCP server, for the Inspector: `off` without the
- * `agentConnection` option, else as the page client reports it.
- * `not-connected` says why once the tab knows, `no-client` when the page
- * client failed to load; `connected` names the agent when its MCP client
- * gave a name, such as `claude-code`.
- */
-export type AgentConnectionStatus = Readonly<
-  | { state: "off" }
-  | {
-      state: "not-connected";
-      reason?: NotConnectedReason | "no-client";
-    }
-  | { state: "connected"; agent?: string }
->;
-
-/** A tool of an App Process paired beside the page, read in Node. */
-export type AppProcessTool = Readonly<{
-  name: string;
-  description?: string;
-  inputSchema: Readonly<Record<string, unknown>>;
-}>;
 
 /** A session's WebMCP publication status. */
 export type InspectorPublication = Readonly<{
@@ -221,9 +196,7 @@ export type InspectorState = Readonly<{
   revision: number;
   /** Every tool the session lists, in publication order. */
   tools: readonly ToolInfo[];
-  appProcessTools: readonly AppProcessTool[];
   publication: InspectorPublication;
-  agentConnection: AgentConnectionStatus;
   /** The document's Run log, oldest first. */
   runs: readonly InspectorRun[];
   /** The registered Page Objects, whether or not they are on the page. */

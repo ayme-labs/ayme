@@ -46,7 +46,7 @@ createRoot(document.getElementById("root")!).render(
 );
 ```
 
-The provider takes the [`createAyme` options](../reference/ayme.md#createayme) as props, such as `pageFactory`, `ignore`, `pageObjects`, `inspector` and `agentConnection`. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
+The provider takes the [`createAyme` options](../reference/ayme.md#createayme) as props, such as `pageFactory`, `ignore`, `pageObjects` and `inspector`. Your coding agent then reaches your Page Objects as [Connect an agent](../guides/connect-an-agent.md) shows.
 
 ## Root ownership
 
@@ -56,7 +56,7 @@ Only one owner can run ayme in a document. A provider nested inside another prov
 
 Strict Mode's effect replay in development keeps the session's Page and Page Objects.
 
-Wrap the application root, not a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout`, and the provider with it. Unmounting the provider stops ayme and closes the agent connection. The agent can lose the answer to its call.
+Wrap the application root, not a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout`, and the provider with it. Unmounting the provider stops ayme and withdraws the tools it publishes through WebMCP. The agent can lose the answer to its call.
 
 ## Hooks
 

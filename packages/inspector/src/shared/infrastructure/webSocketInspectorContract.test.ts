@@ -6,9 +6,9 @@ import { createInspectorClient, emptyInspectorState } from "./inspectorClient";
 import { webSocketInspectorContract } from "./webSocketInspectorContract";
 
 // Unit tests: the channel transport of the Inspector contract against a
-// WebSocket the test drives, the way `ayme mcp` relays it. Frames are the
-// server's: requests `{ id, method, params }`; replies `{ id, result }`,
-// `{ id, error }`, `{ event }`, `{ reset: true }`, `{ tab }`, `{ token }` and
+// WebSocket the test drives, the way a Session's process serves it. Frames
+// are the server's: requests `{ id, method, params, tab }`; replies
+// `{ id, result }`, `{ id, error }`, `{ event }`, `{ tab }`, `{ token }` and
 // `{ ended }`.
 
 class FakeWebSocket {
@@ -40,6 +40,11 @@ class FakeWebSocket {
   open() {
     this.readyState = FakeWebSocket.OPEN;
     this.onopen?.();
+  }
+  /** The server accepts the connection and tells the Tab `1`. */
+  openOnTab() {
+    this.open();
+    this.receive({ tab: 1 });
   }
   /** The server says something. */
   receive(frame: unknown) {
@@ -93,7 +98,7 @@ describe("webSocketInspectorContract", () => {
   it("connects to the given URL and asks for the state", async () => {
     const { contract, socket } = connect();
     const asked = contract.getState();
-    socket().open();
+    socket().openOnTab();
 
     socket().answer("getState", state(4));
 
@@ -106,7 +111,7 @@ describe("webSocketInspectorContract", () => {
 
     void contract.pick({ id: "pick-1", refs: ["e1"] });
     void contract.cancelPick({ id: "pick-1" });
-    socket().open();
+    socket().openOnTab();
     void contract.highlight({ layer: "hover", refs: [] });
 
     expect(socket().sent).toEqual([
@@ -114,23 +119,26 @@ describe("webSocketInspectorContract", () => {
         id: expect.any(Number),
         method: "pick",
         params: { id: "pick-1", refs: ["e1"] },
+        tab: 1,
       },
       {
         id: expect.any(Number),
         method: "cancelPick",
         params: { id: "pick-1" },
+        tab: 1,
       },
       {
         id: expect.any(Number),
         method: "highlight",
         params: { layer: "hover", refs: [] },
+        tab: 1,
       },
     ]);
   });
 
   it("answers each command with the state after it, and a pick with its ref", async () => {
     const { contract, socket } = connect();
-    socket().open();
+    socket().openOnTab();
 
     const picked = contract.pick({ id: "pick-1", refs: ["e1"] });
     socket().answer("pick", { state: state(2), ref: "e1" });
@@ -140,21 +148,21 @@ describe("webSocketInspectorContract", () => {
 
   it("rejects a request the server answers with an error", async () => {
     const { contract, socket } = connect();
-    socket().open();
+    socket().openOnTab();
 
     const asked = contract.getState();
     const [{ id }] = socket().sent;
     socket().receive({
       id,
-      error: "No page is connected to this ayme MCP server.",
+      error: "This Session has no Tab.",
     });
 
-    await expect(asked).rejects.toThrow("No page is connected");
+    await expect(asked).rejects.toThrow("This Session has no Tab.");
   });
 
   it("reads a recorded page state that is none as undefined", async () => {
     const { contract, socket } = connect();
-    socket().open();
+    socket().openOnTab();
 
     const asked = contract.recordedPageState();
     socket().answer("recordedPageState", null);
@@ -164,7 +172,7 @@ describe("webSocketInspectorContract", () => {
 
   it("subscribes the server once for all observers, and gives each the events", () => {
     const { contract, socket } = connect();
-    socket().open();
+    socket().openOnTab();
     const first: unknown[] = [];
     const second: unknown[] = [];
 
@@ -187,27 +195,11 @@ describe("webSocketInspectorContract", () => {
     expect(socket().methods()).toEqual(["subscribe", "unsubscribe"]);
   });
 
-  it("tells when the page is a new document, before it reads its state", () => {
-    const calls: string[] = [];
-    webSocketInspectorContract("ws://x/inspector/ws", {
-      WebSocket: FakeWebSocket as never,
-      onNewPage: () =>
-        calls.push(`new page after ${socketOf().methods().length} requests`),
-    });
-    const socketOf = () => FakeWebSocket.instances.at(-1)!;
-    socketOf().open();
-
-    socketOf().receive({ reset: true });
-
-    expect(calls).toEqual(["new page after 0 requests"]);
-    expect(socketOf().methods()).toEqual(["getState"]);
-  });
-
-  describe("a new page", () => {
+  describe("a new Tab", () => {
     /** A client of the transport that showed the page at revision 7. */
     async function clientAt7() {
       const { contract, socket } = connect();
-      socket().open();
+      socket().openOnTab();
       const client = createInspectorClient(contract);
       client.subscribe(() => {});
       socket().answer("getState", state(7, "old"));
@@ -219,7 +211,7 @@ describe("webSocketInspectorContract", () => {
     it("shows its state although its revisions start again", async () => {
       const { client, socket } = await clientAt7();
 
-      socket().receive({ reset: true });
+      socket().receive({ tab: 2 });
       // The transport reads the new page's state.
       socket().answer("getState", state(1, "new"));
       await vi.advanceTimersByTimeAsync(0);
@@ -231,7 +223,7 @@ describe("webSocketInspectorContract", () => {
 
     it("still never lets an event with a lower revision replace newer state", async () => {
       const { client, socket } = await clientAt7();
-      socket().receive({ reset: true });
+      socket().receive({ tab: 2 });
       socket().answer("getState", state(1, "new"));
       await vi.advanceTimersByTimeAsync(0);
       socket().receive({ event: { type: "state", state: state(3, "three") } });
@@ -243,7 +235,7 @@ describe("webSocketInspectorContract", () => {
 
     it("moves the revision of an image run and a command's state the same way", async () => {
       const { client, socket } = await clientAt7();
-      socket().receive({ reset: true });
+      socket().receive({ tab: 2 });
       socket().answer("getState", state(1));
       await vi.advanceTimersByTimeAsync(0);
 
@@ -258,7 +250,7 @@ describe("webSocketInspectorContract", () => {
   describe("when the server goes away", () => {
     it("rejects the requests still waiting", async () => {
       const { contract, socket } = connect();
-      socket().open();
+      socket().openOnTab();
       const asked = contract.pick({ id: "pick-1", refs: [] });
       const rejected = expect(asked).rejects.toThrow("closed");
 
@@ -269,7 +261,7 @@ describe("webSocketInspectorContract", () => {
 
     it("connects again, subscribes again and reads the state again", async () => {
       const { contract, socket } = connect();
-      socket().open();
+      socket().openOnTab();
       const events: unknown[] = [];
       contract.subscribe({ onEvent: (e) => events.push(e), onError: () => {} });
       const first = socket();
@@ -278,7 +270,7 @@ describe("webSocketInspectorContract", () => {
       await vi.advanceTimersByTimeAsync(1000);
       const second = socket();
       expect(second).not.toBe(first);
-      second.open();
+      second.openOnTab();
       await vi.advanceTimersByTimeAsync(0);
       second.answer("getState", state(1));
       await vi.advanceTimersByTimeAsync(0);
@@ -295,7 +287,6 @@ describe("webSocketInspectorContract", () => {
       const newPages: number[] = [];
       const contract = webSocketInspectorContract("ws://x/inspector/ws", {
         WebSocket: FakeWebSocket as never,
-        followsTabs: true,
         onNewPage: () => newPages.push(newPages.length + 1),
       });
       const socket = () => FakeWebSocket.instances.at(-1)!;
@@ -362,7 +353,6 @@ describe("webSocketInspectorContract", () => {
       let url = "ws://x/inspector/ws?code=once";
       webSocketInspectorContract(() => url, {
         WebSocket: FakeWebSocket as never,
-        followsTabs: true,
         onToken(token) {
           tokens.push(token);
           url = `ws://x/inspector/ws?token=${token}`;
@@ -408,7 +398,7 @@ describe("webSocketInspectorContract", () => {
         }
       );
       const socket = FakeWebSocket.instances.at(-1)!;
-      socket.open();
+      socket.openOnTab();
       const waiting = contract.getState();
       const rejected = expect(waiting).rejects.toThrow("closed");
 

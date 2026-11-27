@@ -54,12 +54,10 @@ it("takes any Caller name as by, keeping the built-in names for suggestions", ()
   void run("TodoPage.addTodo", { title: "Milk" }, {});
   // @ts-expect-error a Caller name is a string.
   void run("click", { target: "e1" }, { by: 1 });
-  expectTypeOf<BuiltInCaller>().toEqualTypeOf<
-    "app" | "webmcp" | "ayme-mcp" | "inspector"
-  >();
+  expectTypeOf<BuiltInCaller>().toEqualTypeOf<"app" | "webmcp" | "inspector">();
   // The literals survive beside any other string, so editors offer them.
   expectTypeOf<Extract<Caller, BuiltInCaller>>().toEqualTypeOf<
-    "app" | "webmcp" | "ayme-mcp" | "inspector"
+    "app" | "webmcp" | "inspector"
   >();
   expectTypeOf<string>().toExtend<Caller>();
 });

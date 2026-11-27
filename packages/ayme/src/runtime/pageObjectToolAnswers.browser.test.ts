@@ -7,18 +7,16 @@ import { callers, errorText, type ToolInfo } from "../shared";
 import { createAyme } from "./runtime";
 
 // Runtime seam: a Page Object Tool as an agent calls it through WebMCP
-// publication and through the ayme MCP server's page client, each reached
-// through the source the session hands that channel's package.
+// publication, reached through the source the session hands that package.
 
 type Source = {
   list(): readonly ToolInfo[];
   run(name: string, input: unknown): Promise<unknown>;
 };
 
-// The two packages load as stand-ins that keep the source they are handed.
+// The package loads as a stand-in that keeps the source it is handed.
 const handed = vi.hoisted(() => ({
   webMcp: undefined as Source | undefined,
-  aymeMcp: undefined as Source | undefined,
 }));
 vi.mock("./webMcp", () => ({
   loadWebMcpPublication: async () => ({
@@ -26,17 +24,6 @@ vi.mock("./webMcp", () => ({
       handed.webMcp = tools;
       return { retry: async () => {} };
     },
-  }),
-}));
-vi.mock("./agentConnection", () => ({
-  loadAgentConnection: async () => ({
-    startAgentConnection: ({ tools }: { tools: Source }) => {
-      handed.aymeMcp = tools;
-      return { dispose() {} };
-    },
-  }),
-  loadProcessConnection: async () => ({
-    startAgentConnection: () => ({ dispose() {} }),
   }),
 }));
 
@@ -47,17 +34,17 @@ const action = (toolName: string) => ({
   returnPoms: [],
 });
 
-describe("a Page Object Tool's answer through both agent channels", () => {
+describe("a Page Object Tool's answer through WebMCP", () => {
   let stop = () => {};
   afterEach(() => {
     stop();
-    handed.webMcp = handed.aymeMcp = undefined;
+    handed.webMcp = undefined;
     document.body.innerHTML = "";
   });
 
   /**
    * A shopping list whose `add` adds a row, `archive` removes its own and
-   * `rename` fails, started with both channels, once each has its source.
+   * `rename` fails, started with WebMCP publication, once it has its source.
    */
   async function shoppingList(...names: string[]) {
     document.body.innerHTML = `<h1>Groceries</h1><ul>${names
@@ -141,20 +128,16 @@ describe("a Page Object Tool's answer through both agent channels", () => {
     const ayme = createAyme({
       pageFactory: () => page,
       webMCP: { enabled: true },
-      agentConnection: true,
       pageObjects: [ShoppingListPage],
     });
     stop = ayme.start();
-    await vi.waitFor(() => {
-      expect(handed.webMcp).toBeDefined();
-      expect(handed.aymeMcp).toBeDefined();
-    });
+    await vi.waitFor(() => expect(handed.webMcp).toBeDefined());
     await vi.waitFor(() =>
       expect(ayme.tools.list().map(({ name }) => name)).toContain(
         "ShoppingListPage.add"
       )
     );
-    return { ayme, webMcp: handed.webMcp!, aymeMcp: handed.aymeMcp! };
+    return { ayme, webMcp: handed.webMcp! };
   }
 
   /** The id `page_objects` shows for the row named `name`. */
@@ -182,14 +165,14 @@ describe("a Page Object Tool's answer through both agent channels", () => {
     );
   });
 
-  it("is the same short answer through WebMCP and through ayme mcp: settled, the result, and the Page Object that appeared in full with its id", async () => {
-    const { ayme, webMcp, aymeMcp } = await shoppingList("Milk");
+  it("is the short answer: settled, the result, and the Page Object that appeared in full with its id", async () => {
+    const { ayme, webMcp } = await shoppingList("Milk");
 
-    const throughWebMcp = await webMcp.run("ShoppingListPage.add", {
+    const first = await webMcp.run("ShoppingListPage.add", {
       name: "Eggs",
     });
     const eggs = await idOf(ayme, "Eggs");
-    const throughAymeMcp = await aymeMcp.run("ShoppingListPage.add", {
+    const second = await webMcp.run("ShoppingListPage.add", {
       name: "Bread",
     });
     const bread = await idOf(ayme, "Bread");
@@ -204,18 +187,18 @@ describe("a Page Object Tool's answer through both agent channels", () => {
         `        name: text: ${name}`,
       ].join("\n"),
     });
-    expect(throughWebMcp).toEqual(added(eggs, "Eggs", 2));
-    expect(throughAymeMcp).toEqual(added(bread, "Bread", 3));
+    expect(first).toEqual(added(eggs, "Eggs", 2));
+    expect(second).toEqual(added(bread, "Bread", 3));
   });
 
   it("marks a Page Object that went away, and leaves out the URL and loading while neither changed", async () => {
-    const { ayme, webMcp, aymeMcp } = await shoppingList("Milk", "Eggs", "Tea");
+    const { ayme, webMcp } = await shoppingList("Milk", "Eggs", "Tea");
     const milk = await idOf(ayme, "Milk");
     const eggs = await idOf(ayme, "Eggs");
 
     const answers = [
       await webMcp.run("Item.archive", { id: milk }),
-      await aymeMcp.run("Item.archive", { id: eggs }),
+      await webMcp.run("Item.archive", { id: eggs }),
     ];
 
     expect(answers).toEqual([
@@ -230,8 +213,8 @@ describe("a Page Object Tool's answer through both agent channels", () => {
     ]);
   });
 
-  it("refuses with the reason alone, and fails with what failed and how the Page Object Tree changed while it ran, in both channels", async () => {
-    const { ayme, webMcp, aymeMcp } = await shoppingList("Milk", "Eggs");
+  it("refuses with the reason alone, and fails with what failed and how the Page Object Tree changed while it ran", async () => {
+    const { ayme, webMcp } = await shoppingList("Milk", "Eggs");
     const milk = await idOf(ayme, "Milk");
     await ayme.tools.run("Item.archive", { id: milk });
     const failureOf = (call: Promise<unknown>) =>
@@ -242,30 +225,28 @@ describe("a Page Object Tool's answer through both agent channels", () => {
         (error: unknown) => errorText(error)
       );
 
-    for (const channel of [webMcp, aymeMcp]) {
-      const gone = await failureOf(channel.run("Item.archive", { id: milk }));
-      expect(gone).toMatch(new RegExp(`${milk}`));
-      expect(gone).not.toMatch(/changes|snapshot|page_objects|\n/);
+    const gone = await failureOf(webMcp.run("Item.archive", { id: milk }));
+    expect(gone).toMatch(new RegExp(`${milk}`));
+    expect(gone).not.toMatch(/changes|snapshot|page_objects|\n/);
 
-      document.querySelector("h1")!.textContent = "Groceries";
-      const failure: unknown = await channel
-        .run("ShoppingListPage.rename", {})
-        .then(
-          () => {
-            throw new Error("Expected the call to fail.");
-          },
-          (error: unknown) => error
-        );
-      expect(errorText(failure)).toBe("The list cannot be renamed.");
-      expect({ ...(failure as object) }).toEqual({
-        changes: [
-          "ShoppingListPage",
-          "  title:",
-          '    - heading "Groceries" [level=1] (removed)',
-          '    + - heading "Errands" [level=1]',
-        ].join("\n"),
-      });
-    }
+    document.querySelector("h1")!.textContent = "Groceries";
+    const failure: unknown = await webMcp
+      .run("ShoppingListPage.rename", {})
+      .then(
+        () => {
+          throw new Error("Expected the call to fail.");
+        },
+        (error: unknown) => error
+      );
+    expect(errorText(failure)).toBe("The list cannot be renamed.");
+    expect({ ...(failure as object) }).toEqual({
+      changes: [
+        "ShoppingListPage",
+        "  title:",
+        '    - heading "Groceries" [level=1] (removed)',
+        '    + - heading "Errands" [level=1]',
+      ].join("\n"),
+    });
   });
 
   it("shows only what an action changed inside an element child, by each node's identity", async () => {
@@ -398,11 +379,10 @@ describe("a Page Object Tool's answer through both agent channels", () => {
     const ayme = createAyme({
       pageFactory: () => page,
       webMCP: { enabled: true },
-      agentConnection: true,
       pageObjects: [ShellPage],
     });
     stop = ayme.start();
-    await vi.waitFor(() => expect(handed.aymeMcp).toBeDefined());
+    await vi.waitFor(() => expect(handed.webMcp).toBeDefined());
     await vi.waitFor(() =>
       expect(
         ayme.tools.list().find(({ name }) => name === "Panel.close")?.available
@@ -421,7 +401,7 @@ describe("a Page Object Tool's answer through both agent channels", () => {
         '        heading: heading "B" [level=2]',
       ].join("\n")
     );
-    expect(await handed.aymeMcp!.run("Panel.close", { id: b })).toEqual({
+    expect(await handed.webMcp!.run("Panel.close", { id: b })).toEqual({
       settled: true,
       changes: `ShellPage\n  shell:\n    - Panel ${b} (removed)`,
     });

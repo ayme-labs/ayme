@@ -30,7 +30,7 @@ import App from "./App.vue";
 
 > **Experimental:** this may change in any release. See [Experimental APIs](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/experimental-apis.md).
 
-While a coding agent or the Inspector is connected, `usePeek(values, name, id?)` lets the agent read a component's state through the Peek Tool `peek.<name>`:
+While the Inspector is on, `usePeek(values, name, id?)` lets you read a component's state in the Inspector's Tools lens, through the Peek Tool `peek.<name>`:
 
 ```vue
 <script setup lang="ts">
@@ -46,7 +46,7 @@ usePeek({ count }, "counter");
 </template>
 ```
 
-`values` may be a ref, a reactive object or an object of refs; the agent reads their current values when it calls the tool. Each mounted component is one instance of the Peek, under the `id` you pass or one from the component instance. The instance is added in `onMounted`, so server rendering adds none, and it is removed on unmount. `usePeek` calls [`ayme.peek`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek), so it does nothing unless the owner has `agentConnection` or `inspector` on.
+`values` may be a ref, a reactive object or an object of refs; the Inspector reads their current values when you run the tool. Each mounted component is one instance of the Peek, under the `id` you pass or one from the component instance. The instance is added in `onMounted`, so server rendering adds none, and it is removed on unmount. `usePeek` calls [`ayme.peek`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek), so it does nothing unless the owner has `inspector` on.
 
 ## Documentation
 

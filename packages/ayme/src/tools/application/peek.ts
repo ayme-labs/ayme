@@ -25,12 +25,6 @@ export type PeekTool = {
   execute(input: unknown): Promise<JsonValue>;
 };
 
-/**
- * Where a Peek is added: the browser, or a Node process of the app (an App
- * Process). The runtime tells which.
- */
-export type PeekSide = "browser" | "node";
-
 /** One live instance of a Peek. */
 type Instance = { read: PeekRead };
 
@@ -40,10 +34,7 @@ type Peek = {
   instances: Map<string | undefined, Instance>;
 };
 
-/**
- * Package-internal: the state of a set of Peeks. Its shape is shared by
- * every bundle that loads ayme in one process, so it changes only with care.
- */
+/** Package-internal: the state of a set of Peeks. */
 export type PeekStore = {
   /** By Peek name. A Peek stays here while it has an instance. */
   peeks: Map<string, Peek>;
@@ -59,15 +50,10 @@ export function emptyPeekStore(): PeekStore {
 
 /** Package-internal: the Peek operations on `store`. */
 export function createPeekRegistry(store: PeekStore) {
-  function peekNamed(side: PeekSide, name: string): Peek {
+  function peekNamed(name: string): Peek {
     const existing = store.peeks.get(name);
     if (existing) return existing;
-    const toolName = peekToolName(side, name);
-    // `peek.node.` is the App Processes' side; a browser Peek may not read as one.
-    if (side === "browser" && toolName.startsWith("peek.node."))
-      throw new RuntimeStateError(
-        `The Peek "${name}" would be read through ${toolName}, which names an App Process's Peek.`
-      );
+    const toolName = peekToolName(name);
     for (const [otherName, other] of store.peeks)
       if (other.tool.name === toolName)
         throw new RuntimeStateError(
@@ -98,19 +84,14 @@ export function createPeekRegistry(store: PeekStore) {
 
   return {
     /**
-     * Adds the instance (`name`, `id`) of a Peek on `side`. With an id, a
+     * Adds the instance (`name`, `id`) of a Peek. With an id, a
      * later call updates that instance's read, so every call's remover
      * removes it. Without one, a later call replaces the instance, so the
      * earlier call's remover does nothing, such as a reloaded module's old
      * one. `ayme.peek` checks `name` and the dev gate first.
      */
-    addPeek(
-      side: PeekSide,
-      read: PeekRead,
-      name: string,
-      id?: string
-    ): () => void {
-      const peek = peekNamed(side, name);
+    addPeek(read: PeekRead, name: string, id?: string): () => void {
+      const peek = peekNamed(name);
       let instance = id === undefined ? undefined : peek.instances.get(id);
       if (instance) instance.read = read;
       else {
@@ -140,15 +121,9 @@ export function createPeekRegistry(store: PeekStore) {
   };
 }
 
-/**
- * Package-internal: the Peek Tool name for a Peek name on `side`:
- * `peek.<name>` in the browser, and `peek.node.<name>` in a Node process of
- * the app (an App Process), so the agent tells the two sides apart and a
- * Peek both register under one name gives two tools.
- */
-export function peekToolName(side: PeekSide, name: string) {
-  const prefix = side === "node" ? "peek.node." : "peek.";
-  return prefix + name.replace(/[^A-Za-z0-9_.-]/g, "_");
+/** Package-internal: the Peek Tool name for a Peek name, `peek.<name>`. */
+export function peekToolName(name: string) {
+  return "peek." + name.replace(/[^A-Za-z0-9_.-]/g, "_");
 }
 
 function createPeekTool(

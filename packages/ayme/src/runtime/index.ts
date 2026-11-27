@@ -1,8 +1,3 @@
-export { getAgentConnectionStatus } from "./agentConnectionStatus";
-export type {
-  AgentConnectionStatus,
-  AgentConnectionStatusSource,
-} from "./agentConnectionStatus";
 export {
   listElementToolTargets,
   listTools,
@@ -15,17 +10,12 @@ export type {
 } from "./publishedTools";
 export {
   createAyme,
-  getAppProcessTools,
   getStartedAyme,
-  markRenderSession,
   measureReachWith,
   sessionReach,
   subscribeToStartedAyme,
 } from "./runtime";
 export type {
-  AgentConnectionOptions,
-  AppProcessTool,
-  AppProcessTools,
   Ayme,
   AymeOptions,
   InspectorOptions,

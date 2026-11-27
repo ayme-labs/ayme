@@ -46,7 +46,7 @@ async function runTool(name: string, input: object) {
 }
 ```
 
-The list holds `snapshot`, your Page Object Tools, the Browser Tools and your [Custom Tools](custom-tools.md). It also holds `goal` when the Goal Loop is configured, and the [Peek Tools](../reference/ayme.md#aymepeek) while the Inspector or the Agent Connection is on. The entry for the quickstart's `createProject` reads:
+The list holds `snapshot`, your Page Object Tools, the Browser Tools and your [Custom Tools](custom-tools.md). It also holds `goal` when the Goal Loop is configured, and the [Peek Tools](../reference/ayme.md#aymepeek) while the Inspector is on. The entry for the quickstart's `createProject` reads:
 
 ```ts
 {

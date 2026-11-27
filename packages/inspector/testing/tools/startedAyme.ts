@@ -18,10 +18,6 @@ import {
   type InspectorSession,
 } from "@ayme-dev/ayme/internal";
 import {
-  type AgentConnectionStatus,
-  type AgentConnectionStatusSource,
-  type AppProcessTool,
-  type AppProcessTools,
   type InspectorLook,
   type InspectorPageObject,
   type InspectorRecordedPageState,
@@ -35,11 +31,7 @@ import { replaceInspectorTransport } from "../../src/shared/infrastructure/inspe
 
 // One list until a test sets another, as the session keeps it until it changes.
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
-const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
 const listeners = new Set<(tools: readonly ToolInfo[]) => void>();
-const processListeners = new Set<(tools: readonly AppProcessTool[]) => void>();
-const connectionListeners = new Set<(status: AgentConnectionStatus) => void>();
-const AGENT_OFF: AgentConnectionStatus = Object.freeze({ state: "off" });
 
 /**
  * A stand-in for the document's Run log, as `ayme.runs` gives it: a Run is
@@ -285,27 +277,8 @@ export const startedAyme = {
     subscribe: () => () => {},
   },
   /**
-   * The tools of the App Processes paired beside the page, as
-   * `getAppProcessTools` gives them: tests set them, mock `run`, and
-   * announce a change.
-   */
-  appProcessTools: {
-    list: vi.fn((): readonly AppProcessTool[] => NO_PROCESS_TOOLS),
-    subscribe: (listener: (tools: readonly AppProcessTool[]) => void) => {
-      processListeners.add(listener);
-      return () => void processListeners.delete(listener);
-    },
-    run: vi.fn<(name: string, input: unknown) => Promise<unknown>>(),
-  },
-  /**
-   * Whether the page is connected to an agent, as
-   * `getAgentConnectionStatus` gives it: tests set it and announce a
-   * change.
-   */
-  agentConnection: AGENT_OFF as AgentConnectionStatus,
-  /**
-   * The document's Run log. `tools.run` and `appProcessTools.run`, as the
-   * session gives them, record their Runs here for the Caller they name;
+   * The document's Run log. `tools.run`, as the session gives it, records
+   * its Runs here for the Caller it names;
    * the mocks see the tool's name and input.
    */
   runs: runLog,
@@ -320,10 +293,6 @@ export const startedAyme = {
   /** Tells subscribers the tools or the status changed. */
   announce() {
     for (const listener of listeners) listener(startedAyme.tools.list());
-    for (const listener of processListeners)
-      listener(startedAyme.appProcessTools.list());
-    for (const listener of connectionListeners)
-      listener(startedAyme.agentConnection);
   },
   /** Back to no tools, an active publication and no listeners. */
   reset() {
@@ -333,14 +302,7 @@ export const startedAyme = {
     startedAyme.demo = false;
     startedAyme.tools.list.mockReset().mockReturnValue(NO_TOOLS);
     startedAyme.tools.run.mockReset();
-    startedAyme.appProcessTools.list
-      .mockReset()
-      .mockReturnValue(NO_PROCESS_TOOLS);
-    startedAyme.appProcessTools.run.mockReset();
-    processListeners.clear();
     startedAyme.webMCP.publicationStatus = { state: "active", message: "" };
-    startedAyme.agentConnection = AGENT_OFF;
-    connectionListeners.clear();
     listeners.clear();
     runLog.newDocument();
   },
@@ -348,8 +310,7 @@ export const startedAyme = {
 
 const byOf = (options: ToolRunOptions | undefined) => options?.by ?? "app";
 
-// The session and its App Process tools as the runtime gives them: each run
-// is recorded in the Run log.
+// The session as the runtime gives it: each run is recorded in the Run log.
 const session = {
   get webMCP() {
     return startedAyme.webMCP;
@@ -364,35 +325,8 @@ const session = {
   },
   runs: { list: runLog.list, subscribe: runLog.subscribe },
 };
-const sessionAppProcessTools: AppProcessTools = {
-  list: () => startedAyme.appProcessTools.list(),
-  subscribe: startedAyme.appProcessTools.subscribe,
-  run: (name, input, options) =>
-    runLog.record(name, input, byOf(options), () =>
-      startedAyme.appProcessTools.run(name, input)
-    ),
-};
-
 /** The stand-in as `getStartedAyme` returns it. */
 export const asStartedAyme = () => session as unknown as Ayme;
-
-/** The stand-in's App Process tools, as `getAppProcessTools` returns them. */
-export const appProcessToolsOf = (): AppProcessTools => sessionAppProcessTools;
-
-const sessionAgentConnection: AgentConnectionStatusSource = {
-  get: () => startedAyme.agentConnection,
-  subscribe(listener) {
-    connectionListeners.add(listener);
-    return () => void connectionListeners.delete(listener);
-  },
-};
-
-/**
- * The stand-in's Agent Connection status, as `getAgentConnectionStatus`
- * returns it.
- */
-export const agentConnectionOf = (): AgentConnectionStatusSource =>
-  sessionAgentConnection;
 
 // The Inspector reads the stand-in through the contract the runtime serves,
 // built over it with the runtime's own service: so the lenses are tested
@@ -413,8 +347,6 @@ replaceInspectorTransport(
     pomDefinitionText: () => "",
     started: () => session as unknown as InspectorSession,
     subscribeToStarted: () => () => {},
-    appProcessTools: () => sessionAppProcessTools,
-    connectionStatus: () => sessionAgentConnection,
     highlights: createHighlights((ref) => startedAyme.locate(ref)),
     pick: async () => undefined,
   })

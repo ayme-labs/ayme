@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it } from "vitest";
 
 import type { Ayme, ToolInfo } from "@ayme-dev/ayme";
 import {
@@ -10,12 +10,7 @@ import {
 
 import { createInspectorClient } from "../../shared/infrastructure";
 import { useLiveTools, type LiveTools } from "./liveTools";
-import {
-  agentConnectionOf,
-  appProcessToolsOf,
-  asStartedAyme,
-  startedAyme,
-} from "../../../testing/tools/startedAyme";
+import { asStartedAyme, startedAyme } from "../../../testing/tools/startedAyme";
 
 // Unit tests: the Inspector's one source of the tools the panel can run, read
 // through the contract client over a stand-in started session that the test
@@ -42,16 +37,9 @@ const getPageContext: ToolInfo = {
   available: true,
 };
 
-const jobsPeek = {
-  name: "peek.node.jobs",
-  description: 'Read the current values of the Peek "jobs".',
-  inputSchema: { type: "object" },
-};
-
 const unmounts: (() => void)[] = [];
 let session: Ayme | undefined = asStartedAyme();
 let announceSession: (ayme: Ayme | undefined) => void = () => {};
-let connection = agentConnectionOf();
 const client = createInspectorClient(
   createInspectorContract({
     started: () => session as unknown as InspectorSession | undefined,
@@ -59,8 +47,6 @@ const client = createInspectorClient(
       announceSession = listener;
       return () => {};
     },
-    appProcessTools: appProcessToolsOf,
-    connectionStatus: () => connection,
     highlights: { set: async () => {} },
     pick: async () => undefined,
     registry: {
@@ -114,37 +100,8 @@ it("gives the live tools and the publication status", async () => {
 
   expect(seen.at(-1)).toEqual({
     live: [getPageContext, addItem],
-    appProcess: [],
     publication: { state: "active", message: "" },
-    agentConnection: { state: "off" },
   });
-});
-
-it("gives the Agent Connection status, and follows it", async () => {
-  publish([getPageContext]);
-  const seen = await renderReader();
-
-  startedAyme.agentConnection = { state: "connected", agent: "claude-code" };
-  await act(async () => announce());
-
-  expect(seen.at(-1)?.agentConnection).toEqual({
-    state: "connected",
-    agent: "claude-code",
-  });
-});
-
-it("stops following the Agent Connection once nothing reads the tools", async () => {
-  const unsubscribe = vi.fn();
-  connection = {
-    get: () => startedAyme.agentConnection,
-    subscribe: () => unsubscribe,
-  };
-  await renderReader();
-
-  for (const unmount of unmounts.splice(0)) act(unmount);
-
-  expect(unsubscribe).toHaveBeenCalledOnce();
-  connection = agentConnectionOf();
 });
 
 it("follows a change of the publication status alone", async () => {
@@ -174,30 +131,6 @@ it("keeps a listed tool that is unavailable, with its reason", async () => {
   expect(seen.at(-1)?.live).toEqual([getPageContext, clear]);
 });
 
-it("gives the App Processes' tools beside the page's, and follows them", async () => {
-  publish([getPageContext]);
-  const seen = await renderReader();
-
-  startedAyme.appProcessTools.list.mockReturnValue([jobsPeek]);
-  await act(async () => announce());
-
-  expect(seen.at(-1)).toMatchObject({
-    live: [getPageContext],
-    appProcess: [
-      {
-        name: jobsPeek.name,
-        // An App Process's tool says what its author wrote, to agents too.
-        authorDescription: jobsPeek.description,
-        agentDescription: jobsPeek.description,
-        inputSchema: jobsPeek.inputSchema,
-        group: "peek",
-        side: "node",
-      },
-    ],
-  });
-  expect(seen.at(-1)?.appProcess[0]).not.toHaveProperty("description");
-});
-
 it("keeps the live tools when publication fails, with its error", async () => {
   publish([getPageContext]);
   const seen = await renderReader();
@@ -211,12 +144,10 @@ it("keeps the live tools when publication fails, with its error", async () => {
 
   expect(seen.at(-1)).toEqual({
     live: [getPageContext, addItem],
-    appProcess: [],
     publication: {
       state: "failed",
       message: "Publication failed: a name is taken.",
     },
-    agentConnection: { state: "off" },
   });
 });
 
@@ -236,12 +167,10 @@ it("gives no tools while no session is started, and follows the next one", async
   const seen = await renderReader();
   expect(seen.at(-1)).toEqual({
     live: [],
-    appProcess: [],
     publication: {
       state: "disposed",
       message: "No ayme runtime session has started.",
     },
-    agentConnection: { state: "off" },
   });
 
   session = asStartedAyme();

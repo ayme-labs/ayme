@@ -8,18 +8,15 @@ import type {
 
 // The channel transport of the Inspector contract (ADR-0049): the same
 // contract the inline transport calls directly, over a WebSocket to the
-// process that serves this window: `ayme mcp`, which relays it to the page,
-// or a Session's, which serves it from the Tab it works on. `{ reset: true }`
-// and a Session's `{ tab }` both say the window shows a new document, whose
-// revisions start again; a Session's requests name the Tab it told last. A
-// Session tells a window a one-use code admitted its `{ token }`, to connect
-// again with.
+// Session's process that serves this window from the Tab it works on. A new
+// `{ tab }` says the window shows a new document, whose revisions start
+// again; each request names the Tab the Session told last. The Session tells
+// a window a one-use code admitted its `{ token }`, to connect again with.
 
 type Reply =
   | { id: number; result: unknown }
   | { id: number; error: string }
   | { event: InspectorEvent }
-  | { reset: true }
   | { tab: number }
   | { token: string }
   | { ended: string; inChat?: string };
@@ -39,8 +36,8 @@ export type WebSocketInspectorOptions = {
   /** How long to wait before connecting again after the connection closed. */
   reconnectMs?: number;
   /**
-   * Called when the page the server relays is a new document (it reloaded
-   * or was replaced) or the server connected again, before the new state is
+   * Called when the Session tells a new Tab or the server connected again,
+   * before the new state is
    * read: what the Inspector kept of the old page is the Inspector's to carry
    * over, as it does across a reload.
    */
@@ -59,21 +56,17 @@ export type WebSocketInspectorOptions = {
    * when the server says the Session it serves ended: the transport
    * connects no more, since no Session comes back at that address. */
   onEnded?: (notice: string, inChat: string | undefined) => void;
-  /**
-   * Whether the server tells the Tab the window shows, as a Session's
-   * does: each request waits until it did, and names that Tab, so the
-   * Session refuses one made for a Tab it no longer shows; an answer to a
-   * request made on the Tab before is dropped. A new Tab is a new page.
-   */
-  followsTabs?: boolean;
 };
 
 /**
  * The Inspector contract over the channel at `url`, read again for each
  * connection when it is a function. Requests leave in the
  * order they are made, those made before the socket opens too, so a
- * `cancelPick` never overtakes its `pick`. When the page behind the server
- * changes, its revisions start again; the transport raises them past the
+ * `cancelPick` never overtakes its `pick`. Each request waits until the
+ * Session told the Tab the window shows, and names that Tab, so the Session
+ * refuses one made for a Tab it no longer shows; an answer to a request made
+ * on the Tab before is dropped. A new Tab is a new page: its revisions start
+ * again; the transport raises them past the
  * newest it gave, so the client, which never lets a lower revision replace a
  * newer state, shows the new page. When the connection closes, the requests
  * waiting fail and the transport connects again, as for a new page. After
@@ -90,7 +83,6 @@ export function webSocketInspectorContract(
     onLost,
     onToken,
     onEnded,
-    followsTabs = false,
   }: WebSocketInspectorOptions = {}
 ): InspectorContract {
   const observers = new Set<InspectorObserver>();
@@ -135,18 +127,16 @@ export function webSocketInspectorContract(
       outbox.push({ id, method, params });
       flush();
     });
-  // Requests wait here, in order, until the socket is open and, on a
-  // Session, until it told the Tab they name.
+  // Requests wait here, in order, until the socket is open and the Session
+  // told the Tab they name.
   const outbox: Request[] = [];
   const flush = () => {
     if (socket.readyState !== WebSocketClass.OPEN) return;
-    if (followsTabs && shownTab === undefined) return;
+    if (shownTab === undefined) return;
     for (const request of outbox.splice(0)) {
       const pending = waiting.get(request.id);
-      if (pending && followsTabs) pending.tab = shownTab;
-      socket.send(
-        JSON.stringify(followsTabs ? { ...request, tab: shownTab } : request)
-      );
+      if (pending) pending.tab = shownTab;
+      socket.send(JSON.stringify({ ...request, tab: shownTab }));
     }
   };
 
@@ -180,7 +170,6 @@ export function webSocketInspectorContract(
     };
     socket.onmessage = ({ data }) => {
       const reply = JSON.parse(String(data)) as Reply;
-      if ("reset" in reply) return reset();
       if ("tab" in reply) {
         const before = shownTab;
         shownTab = reply.tab;
@@ -195,8 +184,7 @@ export function webSocketInspectorContract(
       if ("event" in reply) return emit(raiseEvent(reply.event));
       const pending = waiting.get(reply.id);
       waiting.delete(reply.id);
-      if (followsTabs && pending && pending.tab !== shownTab)
-        pending.reject(anotherTab());
+      if (pending && pending.tab !== shownTab) pending.reject(anotherTab());
       else if ("error" in reply) pending?.reject(new Error(reply.error));
       else pending?.resolve(reply.result);
     };

@@ -46,7 +46,7 @@ const odd = [
     pass: false,
     wallTimeMs: 30_000,
     tokens: { input: 30, cacheCreation: 3000, cacheRead: 27000, output: 270 },
-    filesRead: ["references/page-tools.md", "references/peeks.md"],
+    filesRead: ["references/page-tools.md", "references/browser-setup.md"],
   }),
   run({
     runId: "c",
@@ -84,7 +84,7 @@ describe("a scenario of three runs", () => {
   it("says how many runs read each file, the most read first", () => {
     expect(scenario?.filesRead).toEqual([
       { file: "references/page-tools.md", runs: 3 },
-      { file: "references/peeks.md", runs: 1 },
+      { file: "references/browser-setup.md", runs: 1 },
     ]);
   });
 
@@ -97,7 +97,7 @@ describe("a scenario of three runs", () => {
       "| drive-the-open-page | references/page-tools.md | 3 of 3 |"
     );
     expect(markdown).toContain(
-      "| drive-the-open-page | references/peeks.md | 1 of 3 |"
+      "| drive-the-open-page | references/browser-setup.md | 1 of 3 |"
     );
   });
 });

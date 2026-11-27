@@ -64,7 +64,7 @@ useAyme({
 });
 ```
 
-Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore`, `:pageObjects`, `:inspector` and `:agentConnection`. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them.
+Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore`, `:pageObjects` and `:inspector`. Your coding agent then reaches your Page Objects as [Connect an agent](../guides/connect-an-agent.md) shows. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them.
 
 The `navigate` tool loads a new document by default. To make it move through Vue Router instead, pass a `navigate` function. It gets the absolute URL, and Vue Router's `push` takes the path:
 
@@ -103,7 +103,7 @@ Define `navigate` once in `<script setup>`, as above. An inline arrow in the tem
 
 One owner runs ayme for the document: a provider or a standalone `useAyme(options?)`. A second active owner is rejected, including a provider nested in another. Only the owner disposes the session.
 
-Put the owner at the application root, not in a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout.vue` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout.vue`, and the owner with it. Unmounting the owner stops ayme and closes the agent connection. The agent can lose the answer to its call.
+Put the owner at the application root, not in a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout.vue` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout.vue`, and the owner with it. Unmounting the owner stops ayme and withdraws the tools it publishes through WebMCP. The agent can lose the answer to its call.
 
 | Call                                      | Behavior                                                              |
 | ----------------------------------------- | --------------------------------------------------------------------- |

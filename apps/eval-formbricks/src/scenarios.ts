@@ -4,8 +4,6 @@
  * the skill's folder. Adding a scenario is adding an entry to
  * `startupScenarios`.
  */
-export type StubTool = { name: string; description: string };
-
 export type StartupScenario = {
   id: string;
   /** Frames the task; it names no reference, so routing stays the skill's job. */
@@ -16,46 +14,12 @@ export type StartupScenario = {
   forbidden?: string[];
   /** Ignored by the verdict: read or not, neither expected nor surplus. The summary still counts them. */
   allowed?: string[];
-  /** Listed by a stub `ayme` server, so the agent sees a connected page's tools; without them no server starts. */
-  tools?: StubTool[];
 };
 
-/** What a connected page lists: the server's own tools, `page_objects` and two Page Object Tools. */
-const connectedPageTools: StubTool[] = [
-  {
-    name: "ayme_connect",
-    description:
-      "Returns a link that connects a browser tab to this ayme MCP server.",
-  },
-  {
-    name: "ayme_list_tools",
-    description: "Lists the current tools of the connected page.",
-  },
-  {
-    name: "ayme_call",
-    description: "Runs one of the tools of the connected page by name.",
-  },
-  {
-    name: "page_objects",
-    description:
-      "Returns the Page Objects on the page now as a tree: each one's class, its declared children with their values, and the id (po<n>) of each one that has a root.",
-  },
-  {
-    name: "SurveyEditorPage.fillSurveyForm",
-    description:
-      "Replaces the survey's name and the text of the question open in the editor, the first one when the editor opens. Leave out what stays as it is.",
-  },
-  {
-    name: "SurveyEditorPage.saveAndClose",
-    description:
-      "Publishes a draft survey, so it starts collecting responses; saves a published one.",
-  },
-];
-
 const driveFraming =
-  "Get ready to drive the web page that is already open and connected through ayme.";
+  "Get ready to drive the web page that is already open in the browser your automation drives, with a Session of the ayme command connected to it.";
 
-/** The framing says the page is connected and its tools are listed, so browser setup has no part in it. */
+/** The framing says a Session is open on the page, so browser setup has no part in it. */
 const notForDriving = [
   "references/browser-setup.md",
   "references/onboarding.md",
@@ -63,7 +27,6 @@ const notForDriving = [
   "references/ayme-page-objects.md",
   "references/live-mapping.md",
   "references/runtime-integration.md",
-  "references/peeks.md",
 ];
 
 /** An agent that isn't driving a page never carries the driving guidance. */
@@ -76,7 +39,6 @@ export const startupScenarios: Record<string, StartupScenario> = {
   "drive-the-open-page": {
     id: "drive-the-open-page",
     framing: driveFraming,
-    tools: connectedPageTools,
     expected: ["references/page-tools.md"],
     forbidden: notForDriving,
   },

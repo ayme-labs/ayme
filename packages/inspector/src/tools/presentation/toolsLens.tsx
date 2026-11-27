@@ -1,7 +1,5 @@
 import { BracesIcon, ChevronRightIcon, ZapIcon } from "lucide-react";
 
-import { Badge } from "@ayme-dev/design-system/components/badge";
-import { Separator } from "@ayme-dev/design-system/components/separator";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import {
@@ -17,20 +15,13 @@ import {
   type Selection,
 } from "../../navigation/domain";
 import { NavItem } from "../../navigation/view";
-import {
-  listTools,
-  peekSideLabels,
-  toolKindLabels,
-  type LiveTool,
-} from "../domain/toolGroups";
+import { listTools, toolKindLabels, type LiveTool } from "../domain/toolGroups";
 
 /**
  * The Tools lens: every live tool, the ones the panel can run now whether
  * WebMCP publishes them or not, grouped as Page object tools, Custom tools, Browser tools,
- * Peek tools and Agent tools. The Peek tools list the page's (Browser),
- * then, set apart by a separator, the App Processes' (Node), each row
- * badged with its side. A tool's page is its description, the run slot and
- * what the model sees of it.
+ * Peek tools and Agent tools. A tool's page is its description, the run slot
+ * and what the model sees of it.
  */
 export function toolsLens({
   tools,
@@ -65,61 +56,32 @@ export function toolsLens({
               {label} · {tools.length}
             </h3>
             <ul aria-label={label}>
-              {tools.map((tool, index) => {
-                const side =
-                  tool.group === "peek" ? (tool.side ?? "browser") : undefined;
-                // The App Processes' Peek tools come after the page's.
-                const separated =
-                  side === "node" &&
-                  index > 0 &&
-                  tools[index - 1]!.side !== "node";
-                return (
-                  <li key={tool.name} className="relative">
-                    {separated && (
-                      <Separator
-                        data-peek-separator
-                        className="mx-2 my-1 w-auto!"
+              {tools.map((tool) => (
+                <li key={tool.name} className="relative">
+                  <NavItem
+                    // Named by the name whole: its two parts would read apart.
+                    aria-label={tool.name}
+                    aria-description={
+                      tool.destructive ? "Destructive" : undefined
+                    }
+                    selected={tool.name === selectedTool}
+                    onClick={() => onSelect({ kind: "tool", name: tool.name })}
+                  >
+                    {tool.destructive ? (
+                      <DestructiveIcon />
+                    ) : (
+                      <ZapIcon
+                        className="size-3.5 flex-none text-muted-foreground"
+                        aria-hidden
                       />
                     )}
-                    <NavItem
-                      // Named by the name whole: its two parts would read apart.
-                      aria-label={tool.name}
-                      aria-description={
-                        tool.destructive ? "Destructive" : undefined
-                      }
-                      selected={tool.name === selectedTool}
-                      onClick={() =>
-                        onSelect({ kind: "tool", name: tool.name })
-                      }
-                      className={side && "pr-20"}
-                    >
-                      {tool.destructive ? (
-                        <DestructiveIcon />
-                      ) : (
-                        <ZapIcon
-                          className="size-3.5 flex-none text-muted-foreground"
-                          aria-hidden
-                        />
-                      )}
-                      <QualifiedName
-                        name={tool.name}
-                        className="font-mono text-xs"
-                      />
-                    </NavItem>
-                    {side && (
-                      // Beside the row's button, so the tool's name stays the
-                      // button's name.
-                      <Badge
-                        variant={side === "node" ? "default" : "secondary"}
-                        data-peek-side
-                        className="pointer-events-none absolute right-2 bottom-1.5"
-                      >
-                        {peekSideLabels[side]}
-                      </Badge>
-                    )}
-                  </li>
-                );
-              })}
+                    <QualifiedName
+                      name={tool.name}
+                      className="font-mono text-xs"
+                    />
+                  </NavItem>
+                </li>
+              ))}
             </ul>
           </section>
         ))}
@@ -214,11 +176,7 @@ function ToolPage({
             <ChevronRightIcon className="size-3" aria-hidden />
           </button>
         )}
-        <span data-tool-kind>
-          {tool.group === "peek"
-            ? `${peekSideLabels[tool.side ?? "browser"]} ${toolKindLabels.peek}`
-            : toolKindLabels[tool.group]}
-        </span>
+        <span data-tool-kind>{toolKindLabels[tool.group]}</span>
       </div>
       {tool.agentDescription ? (
         <p className="mt-2 mb-3 text-xs leading-normal text-muted-foreground [overflow-wrap:anywhere]">

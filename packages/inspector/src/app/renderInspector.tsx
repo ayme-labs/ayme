@@ -14,19 +14,13 @@ export function renderInspector(
   {
     windowed = false,
     fullscreen,
-    session = false,
   }: {
     windowed?: boolean;
     fullscreen?: WindowFullscreen;
-    session?: boolean;
   } = {}
 ) {
   return renderInShadowRoot(
     shadowRoot,
-    <InspectorApp
-      windowed={windowed}
-      fullscreen={fullscreen}
-      session={session}
-    />
+    <InspectorApp windowed={windowed} fullscreen={fullscreen} />
   );
 }

@@ -1,7 +1,7 @@
 import type { InspectorContract } from "../shared";
 
 /** The Inspector contract as plain data, for an Inspector outside the page:
- * what the Agent Connection relays and what a Session serves its window. */
+ * what a Session serves its window. */
 export type InspectorPort = {
   /**
    * Starts the contract's command or read `method` with `params`, at once
@@ -14,11 +14,11 @@ export type InspectorPort = {
 };
 
 /**
- * The page's Inspector contract (ADR-0049) as plain data for the Agent
- * Connection to relay: a request names a contract method and carries its
- * argument, and the answer and the events are the contract's own. This is
- * how the runtime serves an Inspector outside the page; the contract does
- * not know it is called this way.
+ * An Inspector contract (ADR-0049) as plain data for a channel to relay: a
+ * request names a contract method and carries its argument, and the answer
+ * and the events are the contract's own. This is how a Node Host serves an
+ * Inspector outside the page; the contract does not know it is called this
+ * way.
  *
  * Each request calls the contract before it returns, so requests start in
  * the order they arrive: a `cancelPick` finds the `pick` it cancels.

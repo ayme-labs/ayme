@@ -45,10 +45,6 @@ export const providerProps = {
     type: [Boolean, Object] as PropType<AymeOptions["inspector"]>,
     default: undefined,
   },
-  agentConnection: {
-    type: [Boolean, Object] as PropType<AymeOptions["agentConnection"]>,
-    default: undefined,
-  },
   navigate: {
     type: Function as PropType<NonNullable<AymeOptions["navigate"]>>,
     required: false,

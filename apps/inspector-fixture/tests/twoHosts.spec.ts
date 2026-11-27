@@ -12,7 +12,6 @@ import {
   registerCompiledPom,
   type PlaywrightAyme,
 } from "@ayme-dev/ayme/playwright";
-import { ignoreAutoPairScan } from "@ayme-dev/mcp/testing";
 
 import { AppView } from "./appView";
 
@@ -111,11 +110,9 @@ function refOf(structure: string, text: string) {
 
 test("a Node host and the page's own runtime share one ref world over a hundred additions", async ({
   page,
-  context,
   baseURL,
 }) => {
   test.setTimeout(600_000);
-  await ignoreAutoPairScan(context);
   // Before the page loads, so its frames know the Node host's `ayme-ref`.
   await registerAymeRef(selectors);
   // The app in the page: it runs tools on the page's runtime.

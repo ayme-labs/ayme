@@ -5,12 +5,7 @@ import { inPage } from "../in-page";
 import { renderPomDefinitions } from "../page-objects/domain";
 import { getPomDefinitionsOf } from "../page-objects/infrastructure";
 import { existingPageState } from "../page-state/infrastructure";
-import {
-  callers,
-  type AgentConnectionStatus,
-  type AppProcessTool,
-  type ToolInfo,
-} from "../shared";
+import { callers, type ToolInfo } from "../shared";
 import {
   createInspectorContract,
   type InspectorSession,
@@ -29,8 +24,6 @@ import {
 import { nodeHostTargets } from "./playwrightRuntime";
 import { pageObjectCallerOf } from "./session";
 
-const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
-const OFF: AgentConnectionStatus = Object.freeze({ state: "off" });
 const nothing = () => () => {};
 
 /** `ayme` with its Page Object Tools alone, which a Run of the Caller it
@@ -66,8 +59,7 @@ function pageObjectToolsOf(ayme: InspectorSession): InspectorSession {
  * The Inspector contract of the Node Host `ayme`, as plain data for a
  * window outside its page: the same contract as the page's own runtime
  * serves, read from the Page the Host drives, with its Page Object Tools
- * alone. A Node Host has no App Processes, no Agent Connection, no Demo
- * Mode and no picking: none of its Page Object Tools takes a Structural
+ * alone. A Node Host has no Demo Mode and no picking: none of its Page Object Tools takes a Structural
  * Ref, so a pick answers at once with none. Stopping the last subscription
  * ends the highlights the windows asked for.
  */
@@ -80,12 +72,6 @@ export function inspectorPortOf(ayme: InspectorSession): InspectorPort {
     createInspectorContract({
       started: () => session,
       subscribeToStarted: nothing,
-      appProcessTools: () => ({
-        list: () => NO_PROCESS_TOOLS,
-        subscribe: nothing,
-        run: () => Promise.reject(new Error("A Node Host has no App Process.")),
-      }),
-      connectionStatus: () => ({ get: () => OFF, subscribe: nothing }),
       highlights: createHighlights((ref) => page.locator(`ayme-ref=${ref}`)),
       registry: {
         pageObjects: () => registeredPageObjects(target.registry()),

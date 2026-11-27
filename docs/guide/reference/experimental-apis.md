@@ -20,7 +20,3 @@ An experimental API belongs to a feature ayme keeps but whose shape is not settl
 ## WebMCP publication
 
 - `webMCP` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the session option that publishes the session's tools through WebMCP, to an agent that runs in the browser, in [Publish tools](../guides/publish-tools.md).
-
-## Page Objects that `ayme mcp` serves
-
-- `--page-objects <file>` of `ayme mcp` in `@ayme-dev/mcp`: names the entry `ayme mcp` serves to a page. The `ayme` command replaces it, and runs `ayme/page-objects.ts` on any page; see [Connect an agent](../guides/connect-an-agent.md).

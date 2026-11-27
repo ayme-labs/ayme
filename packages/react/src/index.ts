@@ -17,7 +17,6 @@ import {
   type AymeWebMcp,
 } from "@ayme-dev/ayme";
 import {
-  markRenderSession,
   sameRuntimeOptions,
   snapshotRuntimeOptions,
   type PageObjectConstructor,
@@ -36,9 +35,6 @@ export function AymeProvider({
   const [setup] = useState(() => {
     const snapshot = snapshotRuntimeOptions(options);
     const runtime = createAyme(snapshot);
-    // Without a window, React renders on the server, where the session must
-    // never claim the process.
-    if (typeof window === "undefined") markRenderSession(runtime);
     return { options: snapshot, runtime };
   });
   if (ancestor)

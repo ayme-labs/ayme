@@ -43,8 +43,7 @@ points to another file. It overrides this skill's defaults.
    first that it is installed, with `npm ls @ayme-dev/cli`. When that fails,
    lists no version or marks the version `invalid`, ask the user to install
    the project's dependencies and wait: without the pinned copy,
-   `npx @ayme-dev/cli` runs a different version. Do not run `npx ayme`:
-   `@ayme-dev/mcp` also has a command called `ayme`, which has no `capture`.
+   `npx @ayme-dev/cli` runs a different version.
 
 2. **Read** the package, as [Read the package](#read-the-package) describes.
    Leave every discarded entry out of the page objects and the test. A package

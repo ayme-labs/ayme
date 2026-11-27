@@ -6,7 +6,7 @@ ayme capture is the `ayme capture` command of the npm package `@ayme-dev/cli`, a
 
 For a first recording, follow the [package's README](https://github.com/ayme-labs/ayme/blob/main/packages/cli/README.md), which has pictures. This page covers the commands, the controls, where recordings go, the warnings and the limits.
 
-The commands are written `npx ayme`, for a project that has `@ayme-dev/cli` in its `package.json`. Without it, run `npx @ayme-dev/cli` in its place. When the project also has `@ayme-dev/mcp`, uninstall it, as [Connect an agent](connect-an-agent.md#set-up-your-project) says: its command is also called `ayme`.
+The commands are written `npx ayme`, for a project that has `@ayme-dev/cli` in its `package.json`. Without it, run `npx @ayme-dev/cli` in its place.
 
 ## Before you start
 
@@ -155,7 +155,7 @@ ayme/
 
 `package.yaml` is the file your agent reads. The [`ayme-capture` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-capture/SKILL.md#read-the-package) describes every field.
 
-The first save creates `ayme/.gitignore`, which lists `recordings/` and itself. If the folder already has one, such as the one `ayme mcp` writes, a save adds a `recordings/` line at its end. It leaves the file as it is when a line there already names the folder, such as `!recordings/` to commit recordings, and when it cannot write to the file; the recording is saved either way. A `recordings/` line keeps new recordings out of git. It cannot untrack recordings you have already committed.
+The first save creates `ayme/.gitignore`, which lists `recordings/` and itself. If the folder already has one, a save adds a `recordings/` line at its end. It leaves the file as it is when a line there already names the folder, such as `!recordings/` to commit recordings, and when it cannot write to the file; the recording is saved either way. A `recordings/` line keeps new recordings out of git. It cannot untrack recordings you have already committed.
 
 ### Trace
 

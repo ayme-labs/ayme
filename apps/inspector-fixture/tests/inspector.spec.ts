@@ -3,7 +3,7 @@ import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
 import type { Inspector } from "@ayme-dev/inspector/testing";
 
 import { AppView } from "./appView";
-import { callOverMcp, expect, openFixture, outline, test } from "./fixtures";
+import { callAsAgent, expect, openFixture, outline, test } from "./fixtures";
 
 // E2E: the built Inspector on fixture pages with a real Page Object and the
 // ayme runtime. Each test has one reason to fail; fixture and runtime
@@ -199,7 +199,7 @@ test.describe("connected to an agent", () => {
       toast.textContent = "Saved";
       document.body.append(toast);
     });
-    const result = await callOverMcp(agent!, "ListPage.countItems");
+    const result = await callAsAgent(agent!, "ListPage.countItems");
 
     expect(result).not.toHaveProperty("changes");
   });
@@ -234,7 +234,7 @@ test("the header's menu and switches work by mouse inside the closed shadow root
   await expect(inspector.panel).toBeVisible();
 });
 
-test("with the tools published and no Agent Connection, the header says no agent and WebMCP is published", async ({
+test("with the tools published, the header says WebMCP is published", async ({
   page,
   context,
 }) => {
@@ -243,9 +243,11 @@ test("with the tools published and no Agent Connection, the header says no agent
   const { inspector } = await openFixture(page, "/");
   const { connections } = inspector.header;
 
-  await expect(connections.pill).toHaveText("No agent");
+  await expect(connections.pill).toHaveAttribute(
+    "aria-label",
+    "Connections: WebMCP published"
+  );
   await connections.open();
-  await expect(connections.agent.state).toHaveText("Off");
   await expect(connections.webMCP.state).toHaveText("Published");
 });
 

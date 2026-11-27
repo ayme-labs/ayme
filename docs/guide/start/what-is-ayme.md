@@ -17,7 +17,7 @@ A coding agent such as Claude Code, Codex or Cursor runs your Page Objects with 
 
 The agent keeps driving the browser with its own browser automation, and ayme adds your Page Objects to it. A Page Object Tool answers the agent with its result, whether the page settled, and how the Page Objects changed.
 
-While you develop, a coding agent can also read app state the page does not show, such as unsaved edits, a store or what your server holds, through the Peek Tools of the [Peeks](../reference/ayme.md#aymepeek) your app adds, in the page and in its own Node processes. WebMCP never publishes them.
+While you develop, the [Inspector](../guides/inspector.md) also shows app state the page does not, such as unsaved edits or a store, through the [Peeks](../reference/ayme.md#aymepeek) your app adds in the page. No agent reads them.
 
 An agent that runs in the browser gets its tools through WebMCP, the browser's standard for offering tools on a page to agents, when you turn on publication, which is experimental. It has no browser automation of its own, so beside the Page Object Tools and `page_objects` it also sees:
 

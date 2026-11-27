@@ -19,9 +19,8 @@ a page, the Page Object reads.
 This folder is also the project the recorder runs in: it has Playwright
 installed, and the tests start the built `ayme` command of `@ayme-dev/cli`
 here as a child process, `ayme capture`, as a developer would in their own
-project. It does not install `@ayme-dev/mcp`, whose command is also called
-`ayme`, so the one `ayme` here is the one the tests run. The recorder loads
-this project's Playwright; the command brings none of its own.
+project. The recorder loads this project's Playwright; the command brings
+none of its own.
 
 Each test serves the fixture pages on a free port (`fixturePages`), so it can
 see which requests the recorder's browser made. Add a spec file for a new

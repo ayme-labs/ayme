@@ -39,7 +39,6 @@ export type {
 export type { CreatePageOptions } from "./page-objects/infrastructure";
 export { createAyme } from "./runtime";
 export type {
-  AgentConnectionOptions,
   Ayme,
   AymeOptions,
   InspectorOptions,

@@ -46,7 +46,7 @@ function licenceOf(pkg: BundledPackage): string {
 /**
  * Writes `THIRD_PARTY_NOTICES.txt`: each third-party package whose code the
  * command's file, the window's script or the toolbar's holds, with the
- * licence it ships. The window's and the toolbar's packages come from the
+ * licence it ships, and the notices of the Inspector's build. The window's and the toolbar's packages come from the
  * lists their builds write, which the window package exports as
  * `@ayme-dev/recorder-window/bundled-packages.json` and
  * `@ayme-dev/recorder-window/toolbar-bundled-packages.json`. ayme's own packages are
@@ -81,17 +81,15 @@ export function thirdPartyNotices(): Rolldown.Plugin {
       const entries = [...packages.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([key, pkg]) => `${key}\n\n${licenceOf(pkg)}\n`);
+      const here = dirname(fileURLToPath(import.meta.url));
       // The design system's components are copied from shadcn/ui, not
-      // installed, so no package above carries their notice.
-      entries.push(
-        readFileSync(
-          join(
-            dirname(fileURLToPath(import.meta.url)),
-            "../design-system/THIRD_PARTY_NOTICES.txt"
-          ),
-          "utf8"
-        )
-      );
+      // installed, so no package above carries their notice. The Inspector's
+      // build, copied in whole beside the command, comes with its own.
+      for (const notices of [
+        "../design-system/THIRD_PARTY_NOTICES.txt",
+        "../inspector/THIRD_PARTY_NOTICES.txt",
+      ])
+        entries.push(readFileSync(join(here, notices), "utf8"));
       this.emitFile({
         type: "asset",
         fileName: "THIRD_PARTY_NOTICES.txt",

@@ -8,10 +8,7 @@ import {
   type AymeWebMcp,
   type AymeWebMcpPublicationStatus,
 } from "@ayme-dev/ayme";
-import {
-  markRenderSession,
-  type PageObjectConstructor,
-} from "@ayme-dev/ayme/internal";
+import { type PageObjectConstructor } from "@ayme-dev/ayme/internal";
 
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
 /** The options of `createAyme`, passed to it unchanged. */
@@ -31,9 +28,6 @@ const runtimeKey = Symbol("ayme runtime");
 
 function ownRuntime(options: UseAymeOptions | undefined): UseAymeResult {
   const ayme = createAyme(options);
-  // Without a window, Svelte renders on the server, where the session must
-  // never claim the process.
-  if (typeof window === "undefined") markRenderSession(ayme);
   // Start during initialisation, not in onMount: a descendant's onMount runs
   // before the owner's and must already see a started runtime. A render
   // session starts nothing.

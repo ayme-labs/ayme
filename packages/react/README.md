@@ -30,7 +30,7 @@ createRoot(document.getElementById("root")!).render(
 
 > **Experimental:** this may change in any release. See [Experimental APIs](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/experimental-apis.md).
 
-While a coding agent or the Inspector is connected, `usePeek(values, name, id?)` lets the agent read a component's state through the Peek Tool `peek.<name>`:
+While the Inspector is on, `usePeek(values, name, id?)` lets you read a component's state in the Inspector's Tools lens, through the Peek Tool `peek.<name>`:
 
 ```tsx
 import { useState } from "react";
@@ -43,7 +43,7 @@ function Counter() {
 }
 ```
 
-Each mounted component is one instance of the Peek, under the `id` you pass or one from `useId`. The agent reads `values` from the component's latest committed render. The instance is added after mount, so server rendering adds none, and it is removed on unmount; a StrictMode remount keeps the tool. `usePeek` calls [`ayme.peek`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek), so it does nothing unless the provider has `agentConnection` or `inspector` on.
+Each mounted component is one instance of the Peek, under the `id` you pass or one from `useId`. The Inspector reads `values` from the component's latest committed render. The instance is added after mount, so server rendering adds none, and it is removed on unmount; a StrictMode remount keeps the tool. `usePeek` calls [`ayme.peek`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek), so it does nothing unless the provider has `inspector` on.
 
 ## Documentation
 

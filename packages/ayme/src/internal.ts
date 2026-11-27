@@ -22,7 +22,6 @@
 // before a Run from that window.
 export {
   getStartedAyme,
-  markRenderSession,
   sameRuntimeOptions,
   snapshotRuntimeOptions,
 } from "./runtime";

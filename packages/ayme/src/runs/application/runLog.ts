@@ -138,9 +138,7 @@ function createRunLog() {
   const log: AymeRuns & {
     /**
      * Records `execute` as a Run of `tool`, started by `origin`, and returns
-     * its answer. `execute` is handed the Run's id. A Run `offPage` acts on
-     * no page, such as an App Process tool's: it takes no Interactions, so
-     * one made meanwhile stays the page Run's. A Run its Host stopped is
+     * its answer. `execute` is handed the Run's id. A Run its Host stopped is
      * recorded failed with why the moment `stopped` fails, and what it
      * answers later is not recorded: its Caller never received it.
      */
@@ -149,7 +147,7 @@ function createRunLog() {
       input: unknown,
       origin: RunOrigin,
       execute: (id: string) => Promise<T>,
-      options?: { offPage?: boolean; stopped?: Promise<never> }
+      options?: { stopped?: Promise<never> }
     ): Promise<T>;
     /**
      * Records `interaction` as the innermost running Run's. Outside every
@@ -164,13 +162,7 @@ function createRunLog() {
         listeners.delete(listener);
       };
     },
-    async record(
-      tool,
-      input,
-      origin,
-      execute,
-      { offPage = false, stopped } = {}
-    ) {
+    async record(tool, input, origin, execute, { stopped } = {}) {
       const id = String(nextId++);
       const started = performance.now();
       publish(
@@ -190,12 +182,12 @@ function createRunLog() {
           ) as Run,
         ])
       );
-      if (!offPage) running.push(id);
+      running.push(id);
       let over = false;
       const end = (ended: Partial<RunFields>) => {
         if (over) return;
         over = true;
-        if (!offPage) running.splice(running.lastIndexOf(id), 1);
+        running.splice(running.lastIndexOf(id), 1);
         publish(
           runs.map((run) =>
             run.id === id

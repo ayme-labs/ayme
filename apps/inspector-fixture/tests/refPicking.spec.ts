@@ -9,8 +9,7 @@ import { expect, highlightOf, outline, test } from "./fixtures";
 
 /**
  * Starts picking with `field` and waits until the page picks too. The panel
- * shows picking at once; the page starts when the request reaches it, which
- * for an Inspector in a window of its own goes through `ayme mcp`.
+ * shows picking at once; the page starts when the request reaches it.
  */
 async function pickOnPage(field: RefField, listPage: ListPage) {
   await field.pickOnPage();

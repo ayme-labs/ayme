@@ -17,7 +17,6 @@ export {
   isPeekTool,
   listPeekTools,
   peeksOf,
-  processPeeks,
   subscribeToPeekTools,
 } from "./peekRegistry";
 export {

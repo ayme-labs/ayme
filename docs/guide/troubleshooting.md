@@ -25,7 +25,6 @@ The common reasons an ayme setup fails, by what you see.
 These are for a coding agent that runs your Page Object Tools with the `ayme` command, as [Connect an agent](guides/connect-an-agent.md) sets up.
 
 - **`No Session is open in <folder>.`**, or **`No Session named <name> is open in <folder>.`**: no Session runs in that folder under that name. When other Sessions run there, the message goes on with their names: `The Sessions open there are named: …`. Start one with `ayme open` or `ayme attach`, in the project's folder and with the same `-s=<name>` as the command, or use the name of one that runs. `ayme list` prints `No Session is open in <folder>.` too, as its answer rather than an error, when the folder has none.
-- **`npx ayme` has no `open`, `attach` or `page-objects`**: the project also has `@ayme-dev/mcp`, whose command is also called `ayme`, and `npx` ran that one. Uninstall it, as [Set up your project](guides/connect-an-agent.md#set-up-your-project) says.
 - **The Session does not start, and names a package**: the project has no `@ayme-dev/ayme`, has it at another version than `@ayme-dev/cli`, or has no Playwright, or one older than the range [Connect an agent](guides/connect-an-agent.md#set-up-your-project) gives. Install the version the message names; for Playwright, one in that range.
 - **`<folder> has no ayme/page-objects.ts.`**: list your Page Object classes there; see [Connect an agent](guides/connect-an-agent.md#set-up-your-project).
 - **`The Page Objects of … did not build:`**: the build error follows, and no Session started. Fix it, then start the Session again.
@@ -37,16 +36,12 @@ These are for a coding agent that runs your Page Object Tools with the `ayme` co
 - **`No tab is open in the Session's browser.`**: open one with the browser automation.
 - **`ayme open` cannot start Chromium**: install it for the project's Playwright with `npx playwright install chromium`.
 
-## A Peek Tool is missing
+## A Peek is missing from the Inspector
 
-These are for [Peeks](reference/ayme.md#aymepeek), which reach a coding agent through ayme's MCP server and the Inspector only.
+These are for [Peeks](reference/ayme.md#aymepeek), which only the Inspector shows.
 
-- **No `peek.<name>` tool**: `ayme.peek` does nothing unless the session has `agentConnection` on, or `inspector` in the browser. A component's Peek appears once the component has mounted, and goes when its last instance unmounts. An agent that does not follow tool-list changes finds it with `ayme_list_tools`.
-- **No `peek.node.<name>` tool**: in Node, only `agentConnection` turns Peeks on, and the process must have started its session and paired. It pairs by itself only when exactly one ayme MCP server answers on the ports from 9350 to 9365; with several running, name one with `agentConnection: { link }` or `{ port }`. See [In Node](reference/ayme.md#in-node).
-- **A `peek.node.<name>` in Next.js answers with old code, or misses what request code changed**: the Peek was added in `instrumentation.ts`, which `next dev` evaluates once, with its own copies of the modules it imports. Add it from a module request code imports. See [In Node](reference/ayme.md#in-node).
+- **No `peek.<name>` tool**: `ayme.peek` does nothing unless the session has `inspector` on, and nothing in Node. A component's Peek appears once the component has mounted, and goes when its last instance unmounts.
 - **`[ayme] peek.<name> is hidden: another tool uses that name.`**: another of the page's tools took the Peek Tool's name, and keeps it. Rename the Peek.
-- **`[ayme] peek.node.<name> is hidden: another App Process offers a tool with the same name.`**, in the process's terminal: two App Processes offer one name, and the one that connected first keeps it.
-- **`The Peek "node.<name>" would be read through peek.node.<name>, which names an App Process's Peek.`**: a Peek in the browser has a name starting with `node.`. Rename it.
 
 ## In-browser agents see no tools
 

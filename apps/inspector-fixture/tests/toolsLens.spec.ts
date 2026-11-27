@@ -1,8 +1,8 @@
 import { AppView } from "./appView";
-import { callOverMcp, expect, test } from "./fixtures";
+import { callAsAgent, expect, test } from "./fixtures";
 
 // E2E: the panel shows the page's live tools as the runtime lists them, and a
-// Page Object Tool as an agent gets it over ayme MCP. The expected values
+// Page Object Tool as an agent gets it through WebMCP. The expected values
 // come from the page's runtime and the agent, never from the panel.
 
 test("the Tools lens lists every live tool of the page", async ({
@@ -31,23 +31,23 @@ test.describe("connected to an agent", () => {
     agent,
   }) => {
     const liveTools = await new AppView(page).tools();
-    // The Page Object Tools reach the agent as the runtime lists them.
-    const { tools: agentTools } = await agent!.client.listTools();
+    // The Page Object Tools reach the agent as the runtime lists them; WebMCP
+    // needs a description, so a tool without one is named by its action.
     const pageObjectTools = liveTools.filter(({ name }) =>
       name.startsWith("ListPage.")
     );
-    expect(
-      agentTools.filter(({ name }) => name.startsWith("ListPage."))
-    ).toEqual(
-      pageObjectTools.map(
-        ({ name, agentDescription, inputSchema, destructive }) => ({
-          name,
-          ...(agentDescription && { description: agentDescription }),
-          inputSchema,
-          ...(destructive && { annotations: { destructiveHint: true } }),
-        })
-      )
-    );
+    for (const {
+      name,
+      agentDescription,
+      inputSchema,
+      destructive,
+    } of pageObjectTools)
+      expect(await agent!.tool(name)).toEqual({
+        name,
+        description: agentDescription ?? `Run ${name.split(".").at(-1)}.`,
+        inputSchema,
+        ...(destructive && { annotations: { consequentialHint: true } }),
+      });
     const { toolPage } = inspector.detail;
     await inspector.navigator.showLens("Tools");
 
@@ -93,7 +93,7 @@ test.describe("connected to an agent", () => {
       toast.textContent = "Saved";
       document.body.append(toast);
     });
-    const result = await callOverMcp(agent!, "ListPage.countItems");
+    const result = await callAsAgent(agent!, "ListPage.countItems");
 
     expect(result).not.toHaveProperty("changes");
   });

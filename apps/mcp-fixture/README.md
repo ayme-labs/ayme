@@ -1,56 +1,19 @@
 # MCP fixture
 
-The end-to-end tests of `@ayme-dev/mcp` and of the `ayme` command's Sessions,
-and the fixture app they run against. It is private and never published.
+The end-to-end tests of the `ayme` command's Sessions, and the fixture app
+they run against. It is private and never published. Its name is older than
+its job: it held the tests of `@ayme-dev/mcp`, which is gone.
 
 ```
-app/         the fixture page, its startup code and the Vite config
-ayme/pom/    the page's own Page Objects, which `app/main.ts` registers
-outside/     the ayme folder of a project that keeps its Page Objects outside
-             the app: the entry and the Page Object of plain.html it lists
+app/         the fixture pages, the stand-in Agent App and the Vite config
+ayme/pom/    the app page's own Page Objects, which `app/main.ts` registers
 command/     the ayme folder of the `ayme` command's projects: the entry and
-             the Page Objects of shop.html, written as for a Playwright test
-tests/       the shared fixtures (fixtures.ts), one spec per concern, and
-             appProcess.ts, a stand-in App Process
+             the Page Objects of its pages, written as for a Playwright test
+tests/       the `ayme` fixture (aymeCommand.ts) and one spec per concern
 ```
 
-The page starts the ayme runtime with `agentConnection: true` and registers
-its own Page Object, `GroceriesPage` (`OtherPage` on `/other`, so a
-navigation changes the tools). Their `readHeading` tells the tests which page
-is paired, and `hold` never answers, to keep a call in flight;
-`GroceriesPage` also has `fail`, which throws, and actions that load another
-document. The page's Custom Tool `read_text` shows that `ayme mcp` lists none
-of ayme's own browser driving. Its Show basket and Hide basket buttons register and unregister the `Basket` Page
-Object, so a Page Object Tool comes and goes on demand. `plain.html` is a
-document of the same origin without ayme. WebMCP publication is off unless the
-URL has `?webmcp`, so the tests show the Agent Connection works without it.
-`?peek=<name>` adds a Peek of that name, which reads `{ "value": "page" }`. `?inspector` mounts the Inspector, whose
-spec drives it through `@ayme-dev/inspector/testing`. `?strict-csp` serves any
-page with a Content Security Policy that allows scripts and connections only to
-the page's own origin.
-
-Each test starts the built `ayme mcp` command as a child process and talks to
-it through an MCP SDK client over stdio, as a coding agent does. The `connect`
-fixture calls `ayme_connect`, opens the link in the Playwright page and waits
-until the page's tools are MCP tools. Assertions go through the MCP client, and
-through the page only for what the page itself shows, such as its address bar.
-Add a spec file for a new concern and reuse `fixtures.ts`.
-
-`servedPageObjects.spec.ts` copies `outside/ayme` into its test's output
-folder, starts `ayme mcp` there, and opens `plain.html` in a context whose
-init script is the `ayme/init-script.js` the server wrote, so the page gets
-the runtime and the Page Objects the server serves. `servedPageObjectsCsp.spec.ts` does the same through `startServingAgent`, and
-opens `plain.html?strict-csp`, with and without `bypassCSP`.
-
-`appProcess.ts` stands in for an App Process: a Node script that starts ayme
-with `createAyme({ agentConnection })` and adds one Peek with `ayme.peek`. The
-`startStandInAppProcess` fixture runs it and ends it with the test. Each one
-looks for a server on its test's port only, or pairs by link, so it never
-pairs with a server another test or run has on the machine.
-
-`session.spec.ts`, `listings.spec.ts`, `call.spec.ts`, `tabs.spec.ts`, `dialogs.spec.ts`, `inspectSession.spec.ts` and `aymeMcp.spec.ts` run the built `ayme` command of
-`@ayme-dev/cli` as a child process, through the `ayme` fixture of
-`aymeCommand.ts`. Each test gets a project folder and a cache folder of its own
+Every spec runs the built `ayme` command of `@ayme-dev/cli` as a child
+process, through the `ayme` fixture of `aymeCommand.ts`. Each test gets a project folder and a cache folder of its own
 in its output folder, so the command uses the fixture's Playwright and
 `@ayme-dev/ayme` and never finds another test's Session, and a temporary folder
 of its own, which every process its commands start names, so each is ended with
@@ -69,8 +32,11 @@ page's window, throw, or leave an error and a rejection nothing catches.
 hides its own, and then clicks there. `dialogs.html`, without ayme, has
 `DialogPage`, whose action clicks a button that asks a confirm and then clicks
 Mark, leaving the confirm to the browser automation; its link opens
-`alert-at-once.html`, which shows an alert as it loads. `GroceryList` is a Session's Page Object
-on the app page, `/`, which ships ayme, so the page has two Hosts. The test's own Playwright
+`alert-at-once.html`, which shows an alert as it loads. `GroceryList` is a
+Session's Page Object on the app page, `/`, which ships ayme, so the page has
+two Hosts: the page's own runtime registers `GroceriesPage`, and `Basket`
+while Show basket has shown it, and publishes through WebMCP with `?webmcp`.
+`plain.html` is a document of the same origin without ayme. The test's own Playwright
 connection, at the address `ayme open` printed, plays the developer's browser
 automation. `inspectSession.spec.ts` opens the window `ayme inspect` serves in the
 test's own browser, which stands in for the person's default browser, and
@@ -78,18 +44,10 @@ drives it through `@ayme-dev/inspector/testing`; it gives `ayme inspect` a
 `BROWSER` of its own, so no window opens on the machine. `aymeMcp.spec.ts` starts
 the command's `ayme mcp` as an Agent App does and talks to it through an MCP SDK
 client over stdio; it shows the page `ayme_inspect` points to in the stand-in
-Agent App, `agent-app.html`, as `inspectorApp.spec.ts` does for `@ayme-dev/mcp`.
+Agent App, `agent-app.html` with `agentApp.ts`.
 
 ## Running
 
 Run from this directory inside the repository's Devbox shell. `pnpm test:e2e`
 tests the built packages, so build first; Turbo's `test:e2e` task does. The
-fixture page is served on a free port (`AYME_E2E_PORT_MCP` overrides it). Each
-test's server listens on a free port outside 9350 to 9365, the range a page's
-auto-pair scan probes, so a localhost page of another suite running beside this
-one, such as an example app's, never pairs with it by itself. Only the
-auto-pair spec's servers (`inScanRange`) take the first free port of the range;
-the suite runs two workers, and a test starts at most two servers, so it needs
-at most four of them. A page's auto-pair scan finds only the servers a test
-adds to `scanReaches`, so it never pairs with another test's server, or another
-run's.
+fixture pages are served on a free port (`AYME_E2E_PORT_MCP` overrides it).

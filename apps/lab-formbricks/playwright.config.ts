@@ -8,8 +8,8 @@ export default defineConfig({
   testDir: "./tests",
   testMatch: "*.qualify.ts",
   fullyParallel: false,
-  // Each test starts an ayme MCP server the page pairs with by itself, which
-  // it does only while exactly one runs.
+  // The tests share the one lab app, whose dev server compiles each screen on
+  // its first request; the second test compiles them before it starts.
   workers: 1,
   retries: 0,
   // Turbopack compiles each page on its first request, which can take a minute.
@@ -18,12 +18,6 @@ export default defineConfig({
   reporter: "list",
   use: {
     ...devices["Desktop Chrome"],
-    // What the init script of `ayme mcp` needs of the browser, as the guide to
-    // Page Objects on a page without ayme sets it up: Formbricks's content
-    // security policy allows neither the served modules nor the server's
-    // loopback WebSocket.
-    bypassCSP: true,
-    permissions: ["local-network-access"],
     baseURL: "http://localhost:3000",
     trace: "retain-on-failure",
   },

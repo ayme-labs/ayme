@@ -88,7 +88,7 @@ describe("The two parts of a Change Record, in Chromium", () => {
     start();
     await ayme.tools.run("snapshot", {}, { by: callers.inspector });
 
-    await add(callers.aymeMcp);
+    await add(callers.webmcp);
     const result = await add(callers.inspector);
 
     expect(result.changes_before).toContain("Item 1");

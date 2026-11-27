@@ -6,18 +6,20 @@ import type { InspectorContract } from "@ayme-dev/ayme/inspector";
 import { renderInspector } from "./renderInspector";
 import { replaceInspectorTransport } from "../shared/infrastructure";
 
-// Component tests: what the Inspector's own window says while no page serves
-// the contract, over a transport the test drives.
+// Component tests: what the Inspector's own window says while its Session
+// has told it of no Tab, over a transport the test drives.
 
 const page = createPage();
-const hint = page.getByText("No page is serving the Inspector.");
+const hint = page.getByText(
+  "This Session has no Tab yet. Once a tab is open in its browser, the Inspector shows it."
+);
 const unmounts: (() => void)[] = [];
 
 afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
 });
 
-/** A transport whose page never answers, as a paired inline session does not. */
+/** A transport that never answers, as a Session without a Tab does not. */
 function silentTransport(): InspectorContract {
   const never = () => new Promise<never>(() => {});
   return {
@@ -34,13 +36,12 @@ function silentTransport(): InspectorContract {
   };
 }
 
-function render(windowed: boolean, external: boolean, session = false) {
+function render(windowed: boolean, external: boolean) {
   replaceInspectorTransport(silentTransport(), { external });
   const host = document.createElement("div");
   document.body.append(host);
   const unmount = renderInspector(host.attachShadow({ mode: "open" }), {
     windowed,
-    session,
   });
   unmounts.push(() => {
     unmount();
@@ -48,28 +49,10 @@ function render(windowed: boolean, external: boolean, session = false) {
   });
 }
 
-it("tells the external window to pair a page and start its session with the external placement", async () => {
+it("tells a Session's window, before it heard of a Tab, that the Session has none yet", async () => {
   render(true, true);
 
   await expect.poll(() => hint.isVisible()).toBe(true);
-  expect(
-    await page.getByText('inspector: { placement: "external" }').count()
-  ).toBe(1);
-});
-
-it("tells a Session's window, before it heard of a Tab, that the Session has none yet, not to pair a page", async () => {
-  render(true, true, true);
-
-  await expect
-    .poll(() =>
-      page
-        .getByText(
-          "This Session has no Tab yet. Once a tab is open in its browser, the Inspector shows it."
-        )
-        .isVisible()
-    )
-    .toBe(true);
-  expect(await hint.count()).toBe(0);
 });
 
 it("says nothing in the inline panel", async () => {
