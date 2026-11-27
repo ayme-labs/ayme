@@ -72,18 +72,19 @@ the page, run `ayme page-objects` for the ids there are now.
 
 `ayme call` answers in a few lines:
 
-- `settled`: whether the page settled after the action. `false` means it was
-  still changing when the call answered, or a new document was still
-  loading: wait with your browser automation before you read the page.
+- `settled`: whether the page settled after the action. It is `false` after
+  an action that started loading a new document, even when the answer
+  already comes from the new page.
 - `result`: what the action returned, when it returned something.
 - `url`: the new URL, when the action changed it.
 - `changes`: how the Page Object Tree changed. A Page Object that appeared
   is shown in full, with its children and its id; one that went away is
   marked removed; a value that changed reads old → new.
 
-When `changes` shows the effect you expected, move on. When the answer is
-inconclusive, run `ayme page-objects`, or read the page with your browser
-automation.
+Read `url` and `changes` before you wait for anything. When they show the
+effect you expected, move on, whatever `settled` says. When they do not,
+or `changes` is missing after a load, wait with your browser automation,
+then run `ayme page-objects`.
 
 ## Refused and failed calls
 
