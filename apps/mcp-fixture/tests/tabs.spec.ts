@@ -157,11 +157,25 @@ async function bareChromium(url: string): Promise<string> {
     ],
     { stdio: "ignore" }
   );
+  // Heard from the start: Chromium may exit, or never start, before the
+  // test ends, and an unheard "error" would end the test's worker.
+  const ended = new Promise<void>((resolve) => {
+    child.once("exit", () => resolve());
+    child.once("error", () => resolve());
+  });
   cleanups.push(async () => {
-    const exited = new Promise((resolve) => child.once("exit", resolve));
-    child.kill();
-    await exited;
-    await rm(profile, { recursive: true, force: true });
+    try {
+      const running =
+        child.pid !== undefined &&
+        child.exitCode === null &&
+        child.signalCode === null;
+      if (running) {
+        child.kill();
+        await ended;
+      }
+    } finally {
+      await rm(profile, { recursive: true, force: true });
+    }
   });
   const portFile = join(profile, "DevToolsActivePort");
   await expect.poll(() => existsSync(portFile)).toBe(true);
