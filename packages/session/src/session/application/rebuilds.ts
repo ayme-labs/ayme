@@ -17,13 +17,18 @@ export interface Rebuilds {
   /** Why the last finished build failed, while it is the last: a build
    * still under way changes nothing yet. */
   readonly failing: () => SessionStartError | undefined;
+  /** The newest good build, which a Tab hosted now starts with. */
+  readonly newest: () => BuiltPageObjects;
   /**
-   * `hosted`, whose Host runs the Page Objects of the first build, swapped
-   * to the Session's newest before each listing, Run and Inspector Run.
+   * `hosted`, whose Host started with `startedWith`, swapped to the
+   * Session's newest before each listing, Run and Inspector Run.
    * Its `swap` swaps them in at once, whatever it is handed, since a build
    * can be dropped while a Swap waits: put it inside the Tab's turn.
    */
-  readonly swapping: (hosted: HostedTab) => HostedTab;
+  readonly swapping: (
+    hosted: HostedTab,
+    startedWith: BuiltPageObjects
+  ) => HostedTab;
   /** Swaps on `hosted`, through its `swap`, at once and after each good
    * build, until the Tab is `closed`. */
   readonly follow: (
@@ -79,9 +84,13 @@ export const rebuilding = (
     });
     yield* rebuild.pipe(Effect.forever, Effect.forkIn(scope));
 
-    const swapping = (hosted: HostedTab): HostedTab => {
+    const swapping = (
+      hosted: HostedTab,
+      startedWith: BuiltPageObjects
+    ): HostedTab => {
       const tab = {
-        pending: newest === first ? undefined : (newest as BuiltPageObjects),
+        pending:
+          newest === startedWith ? undefined : (newest as BuiltPageObjects),
       };
       waiting.add(tab);
       const upToDate: Effect.Effect<void, TabReadError> = Effect.suspend(() => {
@@ -117,6 +126,7 @@ export const rebuilding = (
 
     return {
       failing: () => failing,
+      newest: () => newest,
       swapping,
       follow: (hosted, closed) =>
         Effect.gen(function* () {

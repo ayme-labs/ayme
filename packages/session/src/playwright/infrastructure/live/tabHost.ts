@@ -185,27 +185,25 @@ const hostedTab = (
     }),
 });
 
-/** What every Tab's Host shares: the project's entry, the built classes,
- * the one source of Page Object Ids, and Playwright's selectors. */
+/** What every Tab's Host shares: the project's entry, the one source of
+ * Page Object Ids, and Playwright's selectors. */
 type Hosting = {
   readonly entry: NodeHostEntry;
-  readonly classes: readonly unknown[];
   readonly ids: IdSource;
   readonly selectors: unknown;
 };
 
-/** Makes the Session the Host of `page`, with focus emulation on, telling
- * `tabIds` of each Page Object Id its Host gives out and forgets. The Node Host's start sets
+/** Makes the Session the Host of `page`, running the built Page Objects it
+ * is handed, with focus emulation on, telling `tabIds` of each Page Object
+ * Id its Host gives out and forgets. The Node Host's start sets
  * up the page's binding and its in-page helper without waiting for either,
  * so it reads nothing of the page. The Host stops when the page closes. */
 const hostOn =
-  (
-    { entry, classes, ids, selectors }: Hosting,
-    page: Page
-  ): BrowserTab["host"] =>
-  (tabIds) =>
+  ({ entry, ids, selectors }: Hosting, page: Page): BrowserTab["host"] =>
+  (tabIds, pageObjects) =>
     Effect.tryPromise({
       try: async () => {
+        const { classes } = pageObjects as NodePageObjects;
         // So that a Run works the same while the Tab is not in front
         // (ADR-0071).
         await (
@@ -313,8 +311,9 @@ function tabsOf(
 
 /**
  * Gets ready to be the Host of the Tabs of `browser`, whose DevTools
- * protocol is at `address`, running `pageObjects` on each Tab the Session
- * works on, on the Playwright whose `selectors` drive the pages. Every
+ * protocol is at `address`, on the Node Host of the `@ayme-dev/ayme` the
+ * built `pageObjects` run on and the Playwright whose `selectors` drive the
+ * pages. Every
  * Tab's Host takes its Page Object Ids from one source. Reads no page.
  * Refuses an address that tells nothing of where the browser lists its
  * tabs, since every command needs that list. A tab that shows the Inspector
@@ -324,7 +323,7 @@ export const hostTabs = (
   browser: Browser,
   address: string,
   selectors: unknown,
-  { classes, nodeHost }: NodePageObjects,
+  { nodeHost }: NodePageObjects,
   window: string | undefined
 ): Effect.Effect<BrowserTabs, SessionStartError> =>
   Effect.tryPromise({
@@ -343,7 +342,6 @@ export const hostTabs = (
             tabListAddress(address),
             {
               entry,
-              classes,
               ids: entry.createPageObjectIdSource(),
               selectors,
             },

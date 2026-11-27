@@ -76,12 +76,16 @@ export interface BrowserTab {
   /** Completes when Playwright says the Tab's page closed. */
   readonly closed: Effect.Effect<void>;
   /**
-   * Makes the Session the Host of the Tab, with focus emulation on, so that
-   * a Run works the same while the Tab is not in front (rule 6). `ids`
-   * hears of each Page Object Id the Tab's Host gives out and forgets. It
-   * reads nothing of the page, so an open dialog cannot hold it up.
+   * Makes the Session the Host of the Tab, running `pageObjects`, with focus
+   * emulation on, so that a Run works the same while the Tab is not in
+   * front (rule 6). `ids` hears of each Page Object Id the Tab's Host gives
+   * out and forgets. It reads nothing of the page, so an open dialog cannot
+   * hold it up.
    */
-  readonly host: (ids: TabIds) => Effect.Effect<HostedTab, TabReadError>;
+  readonly host: (
+    ids: TabIds,
+    pageObjects: BuiltPageObjects
+  ) => Effect.Effect<HostedTab, TabReadError>;
 }
 
 /** The Tabs of a Session's browser, each to run the built Page Objects
@@ -102,8 +106,8 @@ export interface HeldBrowser {
   /** Completes when the browser goes away. */
   readonly gone: Effect.Effect<void>;
   /**
-   * Gets ready to be the Host of the browser's Tabs, running `pageObjects`
-   * on each Tab the Session works on. It reads nothing of any page. A tab
+   * Gets ready to be the Host of the browser's Tabs, on the runtime the
+   * built `pageObjects` run on. It reads nothing of any page. A tab
    * that shows the Inspector window served at `window` is none of its Tabs,
    * and no read of them waits for it.
    */

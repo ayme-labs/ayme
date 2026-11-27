@@ -329,20 +329,24 @@ function sessionTabs(
       if (known) return yield* known;
       // Cached at once, so two requests that arrive together host the Tab
       // once; a failed hosting is tried again by the next request.
+      const startedWith = rebuilds.newest();
       const hosting = yield* Effect.cached(
         tab
-          .host({
-            given: (id, className) => {
-              owners.set(id, tab);
-              rooted.add(className);
+          .host(
+            {
+              given: (id, className) => {
+                owners.set(id, tab);
+                rooted.add(className);
+              },
+              released: (id) => owners.delete(id),
             },
-            released: (id) => owners.delete(id),
-          })
+            startedWith
+          )
           .pipe(
             Effect.map((hosted) =>
               atDialogs(
                 untilClosed(
-                  inTurns(rebuilds.swapping(hosted), ending),
+                  inTurns(rebuilds.swapping(hosted, startedWith), ending),
                   tab.closed
                 ),
                 tab,

@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 
 import { RunError, type RunAnswer } from "./session/domain";
 import {
+  SCRIPTED_PAGE_OBJECTS,
   startScriptedSession,
   type ScriptedBrowser,
   type ScriptedTab,
@@ -290,7 +291,9 @@ it("a Tab the Session works on for the first time after a Swap runs the rebuilt 
 
   const popup = browser.openTab("http://127.0.0.1:5173/popup.html");
   await session.ask({ tools: {} });
-  expect(popup.swappedIn).toEqual([EDITED]);
+  expect(popup.startedWith).toBe(EDITED);
+  expect(popup.swappedIn).toEqual([]);
+  expect(browser.startedWith).toBe(SCRIPTED_PAGE_OBJECTS);
 });
 
 it("an id given before a Swap still chooses its Tab after it", async () => {

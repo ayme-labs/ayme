@@ -109,6 +109,9 @@ export interface ScriptedTab {
   /** Every read of the Tab's page waits, as behind a presence predicate
    * that never resolves, until the test shows a listing again. */
   holdReads(): void;
+  /** The built Page Objects the Tab's Host started with, once it is
+   * hosted. */
+  readonly startedWith: BuiltPageObjects | undefined;
   /** The built Page Objects swapped in on the Tab's Host, in order. */
   readonly swappedIn: readonly BuiltPageObjects[];
   /** Every Run started on the Tab, in order. */
@@ -217,6 +220,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
     Promise.resolve({ settled: true });
   let given: TabIds | undefined;
+  let startedWith: BuiltPageObjects | undefined;
   const closed = Deferred.makeUnsafe<void>();
   const inspectorCalls: { method: string; params: unknown }[] = [];
   let answerInspector: (method: string, params: unknown) => Promise<unknown> = (
@@ -275,7 +279,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
     url: () => shownUrl,
     closed: Deferred.await(closed),
     // As a page's registry refuses a second owner.
-    host: (giving) =>
+    host: (giving, pageObjects) =>
       given
         ? Effect.fail(
             new TabReadError(
@@ -284,11 +288,15 @@ function scriptedTab(url: string, open: Tab[]): Tab {
           )
         : Effect.sync(() => {
             given = giving;
+            startedWith = pageObjects;
             return hosted;
           }),
     control: {
       get hosted() {
         return given !== undefined;
+      },
+      get startedWith() {
+        return startedWith;
       },
       show: (listing) => {
         shown = listing;
@@ -455,6 +463,9 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       ...first.control,
       get hosted() {
         return first.control.hosted;
+      },
+      get startedWith() {
+        return first.control.startedWith;
       },
       get inspectorListeners() {
         return first.control.inspectorListeners;
