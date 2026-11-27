@@ -509,17 +509,94 @@ describe("ayme over a Playwright Page", () => {
       expect(page.url()).toBe("http://app.test/home");
     });
 
-    it("counts the Settled Page deadline once, from the action's answer at the load's start, through the action returning", async () => {
-      // The action returns 1.2 s after the answer; Home comes about 2.6 s
-      // after it: past one deadline from the answer, within one from the
-      // return.
-      const { page, ayme } = await signingIn(2600, 1200);
+    it("counts the Settled Page deadline from the action's return, however long after the load's start it returns", async () => {
+      // The action returns 2.5 s after the load starts, past one deadline;
+      // Home comes about a second after that.
+      const { page, ayme } = await signingIn(3500, 2500);
       const started = Date.now();
 
       await ayme.tools.run("SignIn.logIn", {});
 
-      expect(Date.now() - started).toBeGreaterThanOrEqual(1200);
-      expect(page.url()).not.toBe("http://app.test/home");
+      expect(Date.now() - started).toBeGreaterThanOrEqual(2500);
+      expect(page.url()).toBe("http://app.test/home");
+    });
+  });
+
+  describe("a Run whose action goes on after it started a full load", () => {
+    /**
+     * A sign-in form whose submit loads `/next`, whose button says it was
+     * pressed; with a session over it whose `SignIn.logIn` submits, waits
+     * three seconds, past the Settled Page deadline, and then does `after`.
+     */
+    async function signingIn(after: (page: Page) => Promise<unknown>) {
+      const page = await browser.newPage();
+      await page.route("http://app.test/**", (route) =>
+        route.fulfill({
+          contentType: "text/html",
+          body:
+            new URL(route.request().url()).pathname === "/next"
+              ? "<title>Next</title><button onclick=\"document.title = 'pressed'\">Go</button>"
+              : '<title>Sign in</title><form method="post" action="/next"><button>Log in</button></form>',
+        })
+      );
+      await page.goto("http://app.test/");
+      class SignIn {
+        constructor(readonly page: Page) {}
+        async logIn() {
+          await this.page.getByRole("button").click();
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          return after(this.page);
+        }
+      }
+      built.registerCompiledPom(SignIn, {
+        className: "SignIn",
+        members: [],
+        tools: [
+          {
+            methodName: "logIn",
+            toolName: "SignIn.logIn",
+            description: "Log in",
+            parameters: [],
+          },
+        ],
+        components: [],
+      });
+      const ayme = await startedOn(page, { pageObjects: [SignIn] });
+      await snapshot(ayme);
+      return { page, ayme };
+    }
+
+    it("lasts until the action returns: the next Run starts after the action's last click", async () => {
+      const { page, ayme } = await signingIn((next) =>
+        next.getByRole("button").click()
+      );
+
+      const run = ayme.tools.run("SignIn.logIn", {});
+      // Queued behind the first Run, it reads the title once its turn
+      // comes.
+      const next = ayme.tools.run("snapshot", {}).then(() => page.title());
+
+      await run;
+      expect(await next).toBe("pressed");
+    });
+
+    it("keeps what the action returns after the load", async () => {
+      const { ayme } = await signingIn(async () => "signed in");
+
+      expect(await ayme.tools.run("SignIn.logIn", {})).toMatchObject({
+        loading: "http://app.test/next",
+        result: "signed in",
+      });
+    });
+
+    it("fails with the error the action throws after the load", async () => {
+      const { ayme } = await signingIn(async () => {
+        throw new Error("The next page refused the sign-in.");
+      });
+
+      await expect(ayme.tools.run("SignIn.logIn", {})).rejects.toThrow(
+        "The next page refused the sign-in."
+      );
     });
   });
 
@@ -807,5 +884,62 @@ describe("a Session's Node Host, through the internal entry", () => {
       url: "http://app.test/home",
       changes: "- SignIn (removed)\n+ Home",
     });
+  });
+
+  it("answers an action that loads another document without the tree while the old page still shows, though the Page Object it returned is present there too", async () => {
+    const page = await browser.newPage();
+    await page.route("http://app.test/**", async (route) => {
+      const home = new URL(route.request().url()).pathname === "/home";
+      // The new document commits well after the action returned.
+      if (home) await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.fulfill({
+        contentType: "text/html",
+        body: home
+          ? "<h1>Home</h1>"
+          : '<form method="post" action="/home"><button>Log in</button></form>',
+      });
+    });
+    await page.goto("http://app.test/");
+    class Anywhere {
+      constructor(readonly page: Page) {}
+    }
+    built.ayme({ present: () => true })(Anywhere);
+    built.registerCompiledPom(Anywhere, {
+      className: "Anywhere",
+      members: [],
+      tools: [],
+      components: [],
+    });
+    class Submit {
+      constructor(readonly page: Page) {}
+      async logIn() {
+        // Unlike a click, it does not wait for the load to commit.
+        await this.page.evaluate(() => document.forms[0]!.submit());
+        return new Anywhere(this.page);
+      }
+    }
+    built.ayme({
+      present: (self: Submit) => new URL(self.page.url()).pathname === "/",
+    })(Submit);
+    built.registerCompiledPom(Submit, {
+      className: "Submit",
+      members: [],
+      tools: [
+        {
+          methodName: "logIn",
+          toolName: "Submit.logIn",
+          description: "Log in",
+          parameters: [],
+        },
+      ],
+      components: [],
+    });
+    const ayme = await hostOn(page, [Submit]);
+
+    const answer = await internal
+      .pageObjectCallerOf(ayme, "ayme-command")
+      .run("Submit.logIn", {});
+
+    expect(answer).toEqual({ settled: false, url: "http://app.test/home" });
   });
 });

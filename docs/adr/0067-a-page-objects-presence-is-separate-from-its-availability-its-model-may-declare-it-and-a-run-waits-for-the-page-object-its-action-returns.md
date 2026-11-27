@@ -26,10 +26,10 @@ Page Object Presence and Page Object Availability are separate results of one ob
 - An app can name the Page Objects of its pages in one place at setup, beside registering a Page Object in a component. A model whose presence is a component's lifetime still registers in that component.
 - The Structural Page State leaves out the captured subtree of a root known not to be present. A root that resolves to several elements establishes no Page Object and no tool, and removes nothing from the capture.
 - ayme's Page Object registry owns the one completed observation, with both results and the identity of each root's element. Measuring them does not extend the browser adapter's contract.
-- A Run whose Page Object Action returns a Page Object with a presence predicate of its own, declared or inherited, answers once that predicate holds, or at the Settled Page deadline. The deadline is counted once, from the action's answer. It covers the time the action still needs to return, which can be after its answer when it started a full load, and the asks of the predicate after that. This holds for every Caller and every Host.
+- A Run whose Page Object Action returns a Page Object with a presence predicate of its own, declared or inherited, answers once that predicate holds, or at the Settled Page deadline counted from the action's return. This holds for every Caller and every Host.
   - A Page Object without a presence predicate of its own, an action that returns nothing, and any other value an action returns get no wait.
-  - The wait changes when the Run answers, not what it answers: the action's result stays the one it gave after its Settled Page wait.
-  - A Host whose runtime ends with its document, as the browser runtime's does at a full load, does not wait after an action that started one, since the wait would lose the answer with the document. A Host in Node, whose session outlives the load, waits through it.
+  - The wait changes when the Run answers, not what it answers: the Change Record stays the one the action's Settled Page wait gave.
+  - An action that starts a full load answers at the load's start. A Host whose runtime ends with its document, as the browser runtime's does, ends the Run there and does not wait, since the wait would lose the answer with the document. A Host whose session outlives the load, as a Host in Node does, keeps the Run until the action returns, with what it returns or throws, and waits from that return. ayme adds no time limit to a Run: an action's own waits are respected, and the next Run on the page starts only once the action has returned.
 
 ## Considered and rejected
 
@@ -39,10 +39,10 @@ Page Object Presence and Page Object Availability are separate results of one ob
 - A route or URL helper shipped by ayme. The app's router already knows its routes.
 - A wait after every action, for a load or for the page to change. Built and measured on a prototype: every eval arm got several seconds slower, and the answers did not improve.
 - An action that waits for the screen it leads to. A Page Object knows itself and its own children; the screen it leads to is named only as its return value, and that screen's own presence predicate already says when it is there.
-- A deadline for the action returning and another for the predicate. A Run could then wait twice the Settled Page deadline.
+- One deadline from the action's answer at a load's start, for the action returning and the predicate together. A Run then ended while its action went on: the next Run could act on the page at the same time, and what the action returned or threw after the load was lost.
 
 ## Cost
 
 A hidden sidebar loses its content, its marks and its tools until it reopens, and a Structural Ref left out of the current capture does not resolve through it. A Page Object below the fold that only a cover blocks reads as available until a call scrolls to it (ADR-0062). A Child Collection item without a root is refused: at build time where the build can prove the root is missing, at run time otherwise. A model its presence predicate withdraws costs one call per observation, since the predicate runs before the model's members are read. ayme's conventions are recommendations in the guide rather than assumptions in the runtime.
 
-A Run whose returned Page Object never becomes present answers up to the Settled Page deadline later than before. What the page shows by the time the Run answers but did not show when it settled is not in that Run's Change Record; the Caller reads it as changes before its next action. In the browser runtime, an action that starts a full load still answers before the Page Object it returns is there.
+A Run whose returned Page Object never becomes present answers up to the Settled Page deadline later than before. On a Host that outlives a full load, an action that goes on waiting after the load holds its page's Runs for as long as it waits. What the page shows by the time the Run answers but did not show when it settled is not in that Run's Change Record; the Caller reads it as changes before its next action. In the browser runtime, an action that starts a full load still answers before the Page Object it returns is there.

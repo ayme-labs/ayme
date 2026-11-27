@@ -19,6 +19,7 @@ import {
 import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
+import { failingOnItsUncaught } from "../runUncaught";
 import { pageTargets, tabListAddress } from "../tabList";
 
 /** Where a Node Host's Page Object Ids come from. */
@@ -96,7 +97,7 @@ const hostedTab = (
   }),
   call: (tool, input) =>
     Effect.tryPromise({
-      try: () => caller.run(tool, input),
+      try: () => failingOnItsUncaught(() => caller.run(tool, input)),
       catch: runErrorOf,
     }),
 });

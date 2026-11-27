@@ -29,6 +29,10 @@ abstract class AppPage {}
 ayme({ present: () => homeShown })(AppPage);
 class Dashboard extends AppPage {}
 
+// A presence predicate that never answers.
+class Stuck {}
+ayme({ present: () => new Promise<boolean>(() => {}) })(Stuck);
+
 // No presence predicate of its own: decorated without one, or with a root alone.
 class Plain {}
 ayme(Plain);
@@ -106,6 +110,15 @@ describe("a Run whose action returns a Page Object", () => {
     const took = Date.now() - started;
     expect(took).toBeGreaterThanOrEqual(SETTLED_PAGE_DEADLINE_MS);
     expect(took).toBeLessThan(2 * SETTLED_PAGE_DEADLINE_MS);
+  });
+
+  it("answers at the Settled Page deadline when the predicate never answers", async () => {
+    logIn = async () => new Stuck();
+    const started = Date.now();
+
+    await session.tools.run("SignIn.logIn", {});
+
+    expect(Date.now() - started).toBeLessThan(2 * SETTLED_PAGE_DEADLINE_MS);
   });
 
   it("answers at the start of a full load without waiting, since the browser runtime ends with its document", async () => {

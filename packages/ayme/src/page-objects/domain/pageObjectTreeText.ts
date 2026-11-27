@@ -7,6 +7,7 @@
 import { StructuralTree } from "@ayme-dev/core/structural-observation";
 import { elementChanges, type ChildElement } from "./elementText";
 import type { PageObjectId } from "./pageObjectId";
+import type { DocumentToken } from "../../shared";
 
 /** One Page Object in the tree. */
 export type PageObjectTreeNode = {
@@ -25,6 +26,8 @@ export type PageObjectTreeNode = {
 export type PageObjectTreeRead = {
   objects: readonly PageObjectTreeNode[];
   tree: StructuralTree;
+  /** The document the capture is of, when the host tells it. */
+  document?: DocumentToken;
 };
 
 export type PageObjectTreeChild =
