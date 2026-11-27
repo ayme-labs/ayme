@@ -251,6 +251,90 @@ export const playwrightCalls: Record<
   mouse: mouseCalls,
 };
 
+/** The names of `T`'s methods that return no promise: they answer at once,
+ * without the browser, such as building a locator or adding a listener. */
+type AtOnce<T> = {
+  [K in Methods<T>]: T[K] extends (...args: never[]) => infer R
+    ? R extends PromiseLike<unknown>
+      ? never
+      : K
+    : never;
+}[Methods<T>];
+
+// Every method of Locator and Page that answers at once, so a Playwright
+// release that adds one fails typecheck here until it is listed.
+const locatorAtOnce = {
+  and: true,
+  contentFrame: true,
+  describe: true,
+  description: true,
+  filter: true,
+  first: true,
+  frameLocator: true,
+  getByAltText: true,
+  getByLabel: true,
+  getByPlaceholder: true,
+  getByRole: true,
+  getByTestId: true,
+  getByText: true,
+  getByTitle: true,
+  last: true,
+  locator: true,
+  nth: true,
+  or: true,
+  page: true,
+  toString: true,
+  visible: true,
+  within: true,
+} as const satisfies Record<AtOnce<Locator>, true>;
+
+const pageAtOnce = {
+  addListener: true,
+  context: true,
+  frame: true,
+  frameLocator: true,
+  frames: true,
+  getByAltText: true,
+  getByLabel: true,
+  getByPlaceholder: true,
+  getByRef: true,
+  getByRole: true,
+  getByTestId: true,
+  getByText: true,
+  getByTitle: true,
+  isClosed: true,
+  locator: true,
+  mainFrame: true,
+  off: true,
+  on: true,
+  once: true,
+  prependListener: true,
+  removeListener: true,
+  setDefaultNavigationTimeout: true,
+  setDefaultTimeout: true,
+  url: true,
+  video: true,
+  viewportSize: true,
+  workers: true,
+} as const satisfies Record<AtOnce<Page>, true>;
+
+const atOnce: Record<CallSubject, Readonly<Record<string, true>>> = {
+  locator: locatorAtOnce,
+  page: pageAtOnce,
+  // Every call of the input devices reaches the browser.
+  keyboard: {} satisfies Record<AtOnce<Keyboard>, true>,
+  mouse: {} satisfies Record<AtOnce<Mouse>, true>,
+};
+
+/** Whether a call answers at once, without the browser: a Host can refuse
+ * it but cannot hold it, since its caller reads its answer at once. */
+export function answersAtOnce(
+  subject: CallSubject,
+  method: string | symbol
+): boolean {
+  return Object.hasOwn(atOnce[subject], method);
+}
+
 /** What a call does, or undefined for a symbol-keyed or unknown method, which runs as it is. */
 export function kindOf(
   subject: CallSubject,

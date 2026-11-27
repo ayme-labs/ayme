@@ -1,5 +1,6 @@
 // The `./playwright` entry in Node, over real Playwright Chromium and against
 // the built package: ayme over a Page a Node host was handed (ADR-0049).
+import { AsyncLocalStorage } from "node:async_hooks";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -814,6 +815,80 @@ describe("a Session's Node Host, through the internal entry", () => {
     expect(ayme.runs.list().at(-1)).toMatchObject({
       tool: "page_objects",
       by: "ayme-command",
+    });
+  });
+
+  describe("the Playwright calls of a Page Object Action's own code", () => {
+    const counter =
+      '<section id="counter"><output>0</output><button>Add</button></section>' +
+      "<script>document.querySelector('button').onclick = () => document.querySelector('output').textContent = '1'</script>";
+
+    /** A Node Host whose `before` hears each call of an action's own code,
+     * told apart from ayme's reads as a Session tells them. */
+    async function hostDeciding(
+      page: Page,
+      before: (answersAtOnce: boolean) => Promise<void> | undefined
+    ) {
+      const own = new AsyncLocalStorage<true>();
+      const ayme = internal.createNodeHost(
+        {
+          page,
+          pageObjects: [pageObjectRootedAt("Counter", "#counter")],
+          actionCalls: {
+            run: (action) => own.run(true, action),
+            before: (answersAtOnce) =>
+              own.getStore() ? before(answersAtOnce) : undefined,
+          },
+        },
+        selectors
+      );
+      stops.push(await ayme.start());
+      return internal.pageObjectCallerOf(ayme, "ayme-command");
+    }
+
+    it("go to the Host before they start, each saying whether it answers at once without the browser", async () => {
+      const page = await pageShowing(counter);
+      const heard: boolean[] = [];
+      const caller = await hostDeciding(page, (answersAtOnce) => {
+        heard.push(answersAtOnce);
+        return undefined;
+      });
+
+      await caller.run("Counter.press", { id: "po1" });
+
+      // The action's `locator`, `getByRole` and `click`.
+      expect(heard).toEqual([true, true, false]);
+      expect(await page.locator("output").textContent()).toBe("1");
+    });
+
+    it("start only once the Host lets them", async () => {
+      const page = await pageShowing(counter);
+      let release = () => {};
+      const held = new Promise<void>((resolve) => (release = resolve));
+      const caller = await hostDeciding(page, (answersAtOnce) =>
+        answersAtOnce ? undefined : held
+      );
+
+      const run = caller.run("Counter.press", { id: "po1" });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(await page.locator("output").textContent()).toBe("0");
+      release();
+
+      await run;
+      expect(await page.locator("output").textContent()).toBe("1");
+    });
+
+    it("never reach the page when the Host refuses them, and the Run fails with why", async () => {
+      const page = await pageShowing(counter);
+      const caller = await hostDeciding(page, (answersAtOnce) => {
+        if (answersAtOnce) return undefined;
+        throw new Error("The Host refused the call.");
+      });
+
+      await expect(caller.run("Counter.press", { id: "po1" })).rejects.toThrow(
+        "The Host refused the call."
+      );
+      expect(await page.locator("output").textContent()).toBe("0");
     });
   });
 

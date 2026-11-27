@@ -8,6 +8,26 @@ import type {
 import type { PomDefinitionsResult } from "../../shared";
 import { callers, RuntimeStateError, type Caller } from "../../shared";
 
+/**
+ * What a Host decides about the Playwright calls of a Page Object Action's
+ * own code, told apart from ayme's own reads of the page. A Session holds
+ * them while a dialog opens on its Tab and refuses them once one counts as
+ * open: an action never goes on past a dialog it did not answer itself
+ * (ADR-0073).
+ */
+export type ActionCalls = {
+  /** Runs a Page Object Action's method: the calls its code makes, at once
+   * or later, are the action's own. */
+  run<T>(action: () => T): T;
+  /**
+   * Heard before each call through the runtime's Page, its locators and
+   * input devices, whoever makes it. Returns nothing to let the call start
+   * now, a promise to start it once that resolves, or throws to refuse it.
+   * A call that `answersAtOnce`, such as building a locator, cannot wait.
+   */
+  before(answersAtOnce: boolean): Promise<void> | undefined;
+};
+
 /** How `ayme.tools.run` starts a Run. */
 export type ToolRunOptions = {
   /** The Run's Caller; `"app"` when absent. */
@@ -50,6 +70,9 @@ export type RunContext = {
    * document.
    */
   readonly outlivesFullLoads: boolean;
+  /** What its Host decides about its Page Object Action's own Playwright
+   * calls, when it decides. */
+  readonly actionCalls?: ActionCalls;
 };
 
 /**

@@ -26,6 +26,7 @@ import type {
   PageObjectIdSource,
 } from "../page-objects/application";
 import type { ElementFilter } from "../shared";
+import type { ActionCalls } from "../runs/application";
 import {
   createAymeOn,
   type Ayme,
@@ -62,6 +63,12 @@ export type PlaywrightAymeOptions = {
    * the page numbers its own. Read by the first session on `page`.
    */
   pageObjectIds?: PageObjectIdSource;
+  /**
+   * What the host decides about each Playwright call of a Page Object
+   * Action's own code: when it starts, or that it is refused. A Session
+   * holds and refuses them at a dialog nobody answered (ADR-0073).
+   */
+  actionCalls?: ActionCalls;
 };
 
 /**
@@ -88,7 +95,12 @@ function createPlaywrightAyme(
 ): PlaywrightAyme {
   const { page } = options;
   let prepared: PreparedOptions | undefined;
-  const target = playwrightTarget(page, () => prepared!, options.pageObjectIds);
+  const target = playwrightTarget(
+    page,
+    () => prepared!,
+    options.pageObjectIds,
+    options.actionCalls
+  );
   const core = createAymeOn(target, {
     pageObjects: options.pageObjects,
     navigate: options.navigate,
@@ -139,7 +151,8 @@ async function prepare(
 function playwrightTarget(
   page: Page,
   prepared: () => PreparedOptions,
-  pageObjectIds: PageObjectIdSource | undefined
+  pageObjectIds: PageObjectIdSource | undefined,
+  actionCalls: ActionCalls | undefined
 ): SessionTarget {
   const host = playwrightPageHost(page);
   const pageState = () => pageStateOf(page, host);
@@ -175,5 +188,6 @@ function playwrightTarget(
     prepare: () => prepared(),
     latestRefOf: (locator: Locator) =>
       latestRefOfLocator(page, inPage(page), locator),
+    ...(actionCalls ? { actionCalls } : {}),
   };
 }
