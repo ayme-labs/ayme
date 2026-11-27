@@ -1,8 +1,7 @@
 /**
  * Scores a run from its files alone: the two stream-json transcripts, the
- * harness's outcome check, the worker's REPORT.md and the `ayme mcp`
- * recording. Works on any folder with setup.jsonl and task.jsonl, so older
- * hand-run rounds score the same way.
+ * harness's outcome check, the worker's REPORT.md and package.json, and the
+ * recording of its `ayme` commands.
  *
  *   node src/score.ts <run dir>... [--json <file>]
  */
@@ -17,20 +16,16 @@ import {
 } from "node:path";
 import { parseArgs } from "node:util";
 
-import { TOOLS, type Tool } from "./prompts.ts";
+/** How a Page Object action was called: `ayme call`, which the skill names
+ * for every browser automation, or a page's WebMCP tool, should a worker
+ * find that way. */
+type Channel = "ayme" | "webmcp";
 
-type Channel = "mcp" | "webmcp";
+type Phase = "setup" | "task";
 
-/**
- * The channel the skill's browser-automation-tools.md names for each tool.
- * It names `ayme mcp` for all three; a WebMCP call is still counted, as
- * `webmcp`, should a worker find that way.
- */
-export const DEFAULT_CHANNEL: Record<Tool, Channel> = {
-  "playwright-cli": "mcp",
-  "playwright-mcp": "mcp",
-  "agent-browser": "mcp",
-};
+/** Of one `ayme` command in one phase: how often it ran, and how often it
+ * exited with an error or never answered. */
+type CommandCount = { count: number; failed: number };
 
 export type Score = {
   run: string;
@@ -39,14 +34,15 @@ export type Score = {
   claimed: string;
   skill: string;
   docs: string[];
+  /** The project's `@ayme-dev/*` packages as the run left them; null
+   * without the run's copy of its package.json. */
+  aymePackages: string[] | null;
   channel: string;
-  defaultChannel: string;
-  matchesDefault: boolean | null;
   poCalls: number;
   poErrors: number;
-  /** Of the `mcp` calls: the page's tool called by name, and through `ayme_call`. */
-  poDirect: number;
-  poAymeCall: number;
+  /** Each phase's `ayme` commands, by the command's name; null without a
+   * recording. */
+  aymeCommands: Record<Phase, Record<string, CommandCount>> | null;
   plainActions: number;
   plainActionList: string[];
   restartAskedInTask: boolean;
@@ -54,15 +50,14 @@ export type Score = {
   turns: number;
   seconds: number;
   costUsd: number;
-  aymeStarts: number | null;
-  aymeFailedStarts: number | null;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Claude Code's stream-json events have no published types.
 type Event = Record<string, any>;
 type ToolUse = {
-  phase: "setup" | "task";
+  phase: Phase;
   name: string;
-  input: any;
+  input: Record<string, unknown>;
   result: string;
   isError: boolean;
 };
@@ -90,7 +85,7 @@ function resultText(content: unknown): string {
   return "";
 }
 
-function toolUses(events: Event[], phase: "setup" | "task"): ToolUse[] {
+function toolUses(events: Event[], phase: Phase): ToolUse[] {
   const uses: ToolUse[] = [];
   const byId = new Map<string, ToolUse>();
   for (const event of events) {
@@ -122,16 +117,21 @@ function assistantTexts(events: Event[]): string[] {
   return events.flatMap((event) =>
     event.type === "assistant"
       ? (event.message?.content ?? [])
-          .filter((p: any) => p.type === "text")
-          .map((p: any) => p.text as string)
+          .filter((p: Event) => p.type === "text")
+          .map((p: Event) => p.text as string)
       : []
   );
 }
 
-/** A Bash command split into simple commands, with `X=...tool...` variables resolved. */
+/** A Bash command split into simple commands, with `X=...tool...` variables
+ * resolved and the bodies of heredocs left out: they are text, such as a
+ * REPORT.md that quotes the commands it ran. */
 function segments(command: string): { cwd: string; tokens: string[] }[] {
-  let text = command;
-  for (const match of command.matchAll(
+  let text = command.replace(
+    /(<<-?\s*(["']?)(\w+)\2[^\n]*)\n[\s\S]*?\n\s*\3[ \t]*(?=\n|$)/g,
+    "$1"
+  );
+  for (const match of text.matchAll(
     /(?:^|[\s;&(])([A-Za-z_]\w*)=("[^"]*"|'[^']*'|\S+)/g
   )) {
     const value = match[2]!.replace(/^["']|["']$/g, "");
@@ -232,14 +232,14 @@ const PLAIN_MCP =
   /^browser_(click|type|fill_form|press_key|select_option|hover|drag)$/;
 
 type Classified = {
-  channel?: Channel;
-  aymeCall?: boolean;
-  action?: string;
+  webmcp?: string;
   plain?: string;
   download?: string;
 };
 
-/** What one tool call did: a Page Object action through a channel, a plain browser action, or a browser download. */
+/** What one tool call did: a page's WebMCP tool called through the browser
+ * automation, a plain browser action, or a browser download. The `ayme`
+ * commands are read from their recording instead. */
 function classify(use: ToolUse): Classified[] {
   const found: Classified[] = [];
   const mcp = /^mcp__(.+?)__(.+)$/.exec(use.name);
@@ -247,18 +247,7 @@ function classify(use: ToolUse): Classified[] {
     const tool = mcp[2]!;
     if (tool.startsWith("webmcp_")) {
       const name = tool.slice("webmcp_".length);
-      if (ACTION.test(name)) found.push({ channel: "webmcp", action: name });
-    } else if (ACTION.test(tool)) {
-      found.push({ channel: "mcp", action: tool });
-    } else if (
-      tool === "ayme_call" &&
-      ACTION.test(String(use.input.tool ?? ""))
-    ) {
-      found.push({
-        channel: "mcp",
-        aymeCall: true,
-        action: String(use.input.tool),
-      });
+      if (ACTION.test(name)) found.push({ webmcp: name });
     } else if (PLAIN_MCP.test(tool)) {
       found.push({ plain: tool });
     } else if (tool === "browser_install") {
@@ -268,11 +257,15 @@ function classify(use: ToolUse): Classified[] {
   }
   if (use.name !== "Bash") return found;
   for (const { tokens } of segments(String(use.input.command ?? ""))) {
+    // `playwright-cli install` sets up a workspace, and its skills with
+    // --skills: no browser of its own; `install-browser` is the browser.
     const install = tokens.findIndex(
       (t, i) =>
         t === "install-browser" ||
         (t === "install" &&
-          /playwright|agent-browser|cli\.js$/.test(tokens[i - 1] ?? ""))
+          /^(playwright|agent-browser)(@\S*)?$|^cli\.js$/.test(
+            basename(tokens[i - 1] ?? "")
+          ))
     );
     // `install --help` only reads the command's help.
     if (install >= 0 && !tokens.some((t) => t === "--help" || t === "-h")) {
@@ -304,7 +297,7 @@ function classify(use: ToolUse): Classified[] {
       (verb === "webmcp" && rest[verbAt + 1] === "invoke")
     ) {
       const name = rest.slice(verbAt + 1).find((t) => ACTION.test(t));
-      if (name) found.push({ channel: "webmcp", action: name });
+      if (name) found.push({ webmcp: name });
     } else if (PLAIN_VERBS.has(verb)) {
       found.push({ plain: `${tool} ${verb}` });
     } else if (verb === "find" && rest.some((t) => PLAIN_VERBS.has(t))) {
@@ -317,12 +310,77 @@ function classify(use: ToolUse): Classified[] {
 }
 
 const DOWNLOAD_OUTPUT =
-  /(Downloading (Google Chrome|Chrome|Chromium|chrome-headless-shell|Firefox|Webkit|FFMPEG)[^\n]*|Chrome for Testing[^\n]*(downloaded|installed)[^\n]*)/i;
+  /(Downloading (Google Chrome|Chrome|Chromium|chrome-headless-shell|Firefox|Webkit)[^\n]*|Chrome for Testing[^\n]*(downloaded|installed)[^\n]*)/i;
 
 // Asked of the user: "restart me", "please restart". Not "restart the agent",
 // which is how workers describe the documented start step and quote the docs.
 const RESTART_ASK =
   /\b(restart (me|claude)|please restart|need(s)? (a|another|one more) restart|restart needed|after (a|another) restart)\b/i;
+
+/** One `ayme` command the recorder saw: its phase, its name, the tool it
+ * called, and whether it exited with an error or never answered. */
+type RecordedCommand = {
+  phase: Phase;
+  name: string;
+  tool?: string;
+  failed: boolean;
+};
+
+/** The options of the `ayme` command that take the next argument as their
+ * value when it is not joined with `=`. */
+const AYME_VALUE_OPTIONS = new Set([
+  "-s",
+  "--session",
+  "--params",
+  "--tab",
+  "--cdp",
+]);
+
+/** The `ayme` commands in the recording `file`, read as the command reads
+ * its arguments; undefined without a recording. */
+function recordedCommands(file: string): RecordedCommand[] | undefined {
+  if (!existsSync(file)) return undefined;
+  const lines = readJsonl(file);
+  const ends = new Map(
+    lines.filter((l) => l.event === "end").map((l) => [l.pid, l])
+  );
+  return lines
+    .filter((l) => l.event === "start")
+    .map((start) => {
+      const args: string[] = start.args ?? [];
+      const words = args.filter(
+        (arg, at) =>
+          !arg.startsWith("-") && !AYME_VALUE_OPTIONS.has(args[at - 1] ?? "")
+      );
+      const name = words[0] ?? args[0] ?? "(no arguments)";
+      const end = ends.get(start.pid);
+      return {
+        phase: start.phase === "setup" ? "setup" : "task",
+        name,
+        tool: name === "call" ? words[1] : undefined,
+        failed: end === undefined || end.code !== 0,
+      };
+    });
+}
+
+/** The `@ayme-dev/*` packages in the package.json `file`, each with its
+ * version and its section; null without the file. */
+function aymePackages(file: string): string[] | null {
+  if (!existsSync(file)) return null;
+  const manifest = JSON.parse(readFileSync(file, "utf8"));
+  return (
+    [
+      ["dependencies", ""],
+      ["devDependencies", " (dev)"],
+      ["peerDependencies", " (peer)"],
+      ["optionalDependencies", " (optional)"],
+    ] as const
+  ).flatMap(([section, label]) =>
+    Object.entries((manifest[section] ?? {}) as Record<string, string>)
+      .filter(([name]) => name.startsWith("@ayme-dev/"))
+      .map(([name, version]) => `${name}@${version}${label}`)
+  );
+}
 
 function claimedOutcome(report: string): string {
   // The Outcome section only, up to the next heading: a later section can
@@ -355,22 +413,25 @@ export function scoreRun(dir: string): Score {
     ),
   ];
 
+  const commands = recordedCommands(join(dir, "ayme-record.jsonl"));
   const channels = new Set<Channel>();
   let poCalls = 0;
   let poErrors = 0;
-  let poDirect = 0;
-  let poAymeCall = 0;
+  for (const command of commands ?? []) {
+    if (command.phase !== "task" || !ACTION.test(command.tool ?? "")) continue;
+    channels.add("ayme");
+    poCalls += 1;
+    if (command.failed) poErrors += 1;
+  }
   const plain: string[] = [];
   const downloads: string[] = [];
   for (const use of uses) {
     for (const found of classify(use)) {
       if (found.download) downloads.push(`${use.phase}: ${found.download}`);
       if (use.phase !== "task") continue;
-      if (found.channel) {
-        channels.add(found.channel);
+      if (found.webmcp) {
+        channels.add("webmcp");
         poCalls += 1;
-        if (found.aymeCall) poAymeCall += 1;
-        else if (found.channel === "mcp") poDirect += 1;
         if (
           use.isError ||
           /isError"?\s*:\s*true|not registered|### Error/i.test(use.result)
@@ -394,9 +455,6 @@ export function scoreRun(dir: string): Score {
       : channels.size === 2
         ? "both"
         : [...channels][0]!;
-  const defaultChannel = TOOLS.includes(tool as Tool)
-    ? DEFAULT_CHANNEL[tool as Tool]
-    : "?";
 
   const results = [...setup, ...task].filter((e) => e.type === "result");
   // The task resumes the setup's session, and Claude Code 2.1.326 reports a
@@ -420,15 +478,14 @@ export function scoreRun(dir: string): Score {
         : "fail";
   const reportFile = join(dir, "REPORT.md");
 
-  const record = join(dir, "ayme-record.jsonl");
-  let aymeStarts: number | null = null;
-  let aymeFailedStarts: number | null = null;
-  if (existsSync(record)) {
-    const lines = readJsonl(record);
-    aymeStarts = lines.filter((l) => l.dir === "start").length;
-    aymeFailedStarts = lines.filter(
-      (l) => l.dir === "exit" && l.line !== "0"
-    ).length;
+  let aymeCommands: Score["aymeCommands"] = null;
+  if (commands) {
+    aymeCommands = { setup: {}, task: {} };
+    for (const { phase, name, failed } of commands) {
+      const counted = (aymeCommands[phase][name] ??= { count: 0, failed: 0 });
+      counted.count += 1;
+      if (failed) counted.failed += 1;
+    }
   }
 
   return {
@@ -440,13 +497,11 @@ export function scoreRun(dir: string): Score {
       : "no report",
     skill: skillPhases.length ? skillPhases.join("+") : "no",
     docs: docsRead(uses),
+    aymePackages: aymePackages(join(dir, "configs", "package.json")),
     channel,
-    defaultChannel,
-    matchesDefault: channel === "none" ? null : channel === defaultChannel,
     poCalls,
     poErrors,
-    poDirect,
-    poAymeCall,
+    aymeCommands,
     plainActions: plain.length,
     plainActionList: plain,
     restartAskedInTask: assistantTexts(task).some((t) => RESTART_ASK.test(t)),
@@ -459,9 +514,17 @@ export function scoreRun(dir: string): Score {
       Math.round(
         [...sessionCosts.values()].reduce((sum, c) => sum + c, 0) * 1000
       ) / 1000,
-    aymeStarts,
-    aymeFailedStarts,
   };
+}
+
+/** One phase's `ayme` commands, such as `open 1, call 4 (1 failed)`. */
+function commandsCell(commands: Record<string, CommandCount>): string {
+  return Object.entries(commands)
+    .map(
+      ([name, { count, failed }]) =>
+        `${name} ${count}${failed ? ` (${failed} failed)` : ""}`
+    )
+    .join(", ");
 }
 
 export function table(scores: Score[]): string {
@@ -472,16 +535,16 @@ export function table(scores: Score[]): string {
     "Claimed",
     "Skill",
     "Docs read",
-    "Channel (default)",
+    "ayme packages",
+    "Channel",
     "PO calls (errors)",
-    "mcp direct / ayme_call",
+    "ayme commands",
     "Plain actions",
     "Restart asked in task",
     "Browser downloads",
     "Turns",
     "Time (s)",
     "Cost ($)",
-    "ayme mcp starts (non-zero exits)",
   ];
   const rows = scores.map((s) => [
     s.run,
@@ -490,9 +553,15 @@ export function table(scores: Score[]): string {
     s.claimed,
     s.skill,
     s.docs.join(", ") || "none",
-    `${s.channel} (${s.defaultChannel}${s.matchesDefault === null ? "" : s.matchesDefault ? ", same" : ", other"})`,
+    s.aymePackages === null ? "n/a" : s.aymePackages.join(", ") || "none",
+    s.channel,
     `${s.poCalls} (${s.poErrors})`,
-    `${s.poDirect} / ${s.poAymeCall}`,
+    s.aymeCommands === null
+      ? "n/a"
+      : (["setup", "task"] as const)
+          .filter((phase) => Object.keys(s.aymeCommands![phase]).length > 0)
+          .map((phase) => `${phase}: ${commandsCell(s.aymeCommands![phase])}`)
+          .join("; ") || "none",
     s.plainActions
       ? `${s.plainActions}: ${[...new Set(s.plainActionList)].join(", ")}`
       : "0",
@@ -501,7 +570,6 @@ export function table(scores: Score[]): string {
     String(s.turns),
     String(s.seconds),
     s.costUsd.toFixed(2),
-    s.aymeStarts === null ? "n/a" : `${s.aymeStarts} (${s.aymeFailedStarts})`,
   ]);
   const total = scores.reduce((sum, s) => sum + s.costUsd, 0);
   const passed = scores.filter((s) => s.outcome === "pass").length;
