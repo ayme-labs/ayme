@@ -119,7 +119,11 @@ export const serveSession = ({
       request,
       name,
       window
-        ? { inspector: window.address, agentApp: window.agentAppSocket }
+        ? {
+            inspector: window.address,
+            opening: window.opening,
+            agentApp: window.agentAppSocket,
+          }
         : {}
     );
     yield* Deferred.succeed(served, session);

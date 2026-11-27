@@ -5,7 +5,8 @@ type Nothing = Readonly<Record<never, never>>;
 
 /** What `ayme inspect` and the Inspector window ask a Session. */
 export type InspectorRequest =
-  /** `ayme inspect`: where the Session serves its Inspector window. */
+  /** `ayme inspect`: where the Session serves its Inspector window, with
+   * a one-use code made for this one opening (ADR-0072). */
   | { readonly window: Nothing }
   /** `ayme mcp`: the socket the Inspector an Agent App shows in its chat
    * connects to, with the token that admits it (ADR-0072). */
@@ -51,9 +52,18 @@ const originOf = (url: string) => {
   }
 };
 
+/** How long the code in the address `ayme inspect` gives admits a window:
+ * long enough for a person to paste an address printed with BROWSER=none
+ * into a browser, short enough that an address left in a terminal's
+ * history no longer opens anything. */
+export const OPENING_CODE_LIFETIME_MS = 5 * 60_000;
+
+/** What a person who opens the address by hand needs to know of its code. */
+const OPENS_ONCE = `The address opens one window, within ${OPENING_CODE_LIFETIME_MS / 60_000} minutes.`;
+
 export const windowAnswer = (address: string, name: string): SessionAnswer => ({
   ok: true,
-  text: `The Inspector of the Session ${name} is at ${address}.`,
+  text: `The Inspector of the Session ${name} is at ${address}. ${OPENS_ONCE}`,
   data: { address },
 });
 
@@ -92,7 +102,7 @@ export const windowNotOpened = (
   why: string
 ): SessionAnswer => ({
   ok: false,
-  text: `The Inspector of the Session ${name} is at ${address}. ayme could not open it in a browser: ${why.replace(/\.$/, "")}. Open the address in a browser outside the Session's.`,
+  text: `The Inspector of the Session ${name} is at ${address}. ayme could not open it in a browser: ${why.replace(/\.$/, "")}. Open the address in a browser outside the Session's. ${OPENS_ONCE}`,
 });
 
 /** The answer to a window's call on the contract: what it answered. */

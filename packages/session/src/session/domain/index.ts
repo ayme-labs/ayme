@@ -39,6 +39,7 @@ export {
   agentAppAnswer,
   INSPECTOR_CALLER,
   NO_WINDOW,
+  OPENING_CODE_LIFETIME_MS,
   showsWindow,
   windowAnswer,
   windowEnded,

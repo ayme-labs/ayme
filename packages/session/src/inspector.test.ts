@@ -37,13 +37,21 @@ const contract = (method: string, params?: unknown, tab?: number) => ({
 const shownTab = (heard: readonly InspectorEvent[]) =>
   heard.findLast((event) => "tab" in event) as { tab: number } | undefined;
 
-it("ayme inspect is answered with the address of the Session's Inspector window", async () => {
-  const { session } = await startScriptedSession({ ...opening, name: "shop" });
+it("ayme inspect is answered with the address of the Session's Inspector window, with a code made for each opening", async () => {
+  let made = 0;
+  const { session } = await startScriptedSession({
+    ...opening,
+    name: "shop",
+    opening: () => `${WINDOW}#code=${++made}`,
+  });
 
   expect(await session.ask({ inspector: { window: {} } })).toEqual({
     ok: true,
-    text: `The Inspector of the Session shop is at ${WINDOW}.`,
-    data: { address: WINDOW },
+    text: `The Inspector of the Session shop is at ${WINDOW}#code=1. The address opens one window, within 5 minutes.`,
+    data: { address: `${WINDOW}#code=1` },
+  });
+  expect(await session.ask({ inspector: { window: {} } })).toMatchObject({
+    data: { address: `${WINDOW}#code=2` },
   });
 });
 

@@ -4,4 +4,4 @@ export {
   showServerLost,
 } from "./mountExternalInspector";
 export { connectAgentApp } from "./agentApp";
-export { sessionSocket } from "./windowToken";
+export { windowAdmission } from "./windowToken";

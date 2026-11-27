@@ -170,24 +170,24 @@ export function followTabs(
   };
 }
 
-/** Answers `request` of the Session named `name`, whose window is served
- * at `window` and admits an Agent App's view at `agentApp`. A call on the
- * contract is made on the Tab it names, as `shown` gives it, or on the Tab
- * `chosen` gives, the one the Session works on, when it names none; a Run
- * of a tool that takes a Page Object Id is refused when `idElsewhere` says
- * the id is of another Tab. */
+/** Answers `request` of the Session named `name`, whose window `opening`
+ * gives the address of, each time with a code of its own, and admits an
+ * Agent App's view at `agentApp`. A call on the contract is made on the Tab
+ * it names, as `shown` gives it, or on the Tab `chosen` gives, the one the
+ * Session works on, when it names none; a Run of a tool that takes a Page
+ * Object Id is refused when `idElsewhere` says the id is of another Tab. */
 export const answerInspector = (
   request: InspectorRequest,
   {
-    window,
+    opening,
     agentApp,
     name,
     shown,
     chosen,
     idElsewhere,
   }: {
-    readonly window: string | undefined;
-    readonly agentApp?: string | undefined;
+    readonly opening: (() => string) | undefined;
+    readonly agentApp: string | undefined;
     readonly name: string;
     readonly shown: ShownTabs["shown"];
     readonly chosen: Effect.Effect<HostedTab, Error>;
@@ -198,12 +198,12 @@ export const answerInspector = (
   }
 ): Effect.Effect<SessionAnswer> => {
   if ("window" in request)
-    return Effect.succeed(
-      window === undefined ? failed(NO_WINDOW) : windowAnswer(window, name)
+    return Effect.sync(() =>
+      opening === undefined ? failed(NO_WINDOW) : windowAnswer(opening(), name)
     );
   if ("agentApp" in request)
     return Effect.succeed(
-      window === undefined || agentApp === undefined
+      agentApp === undefined
         ? failed(NO_WINDOW)
         : agentAppAnswer(agentApp, name)
     );

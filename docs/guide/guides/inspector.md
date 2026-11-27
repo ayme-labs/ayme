@@ -54,6 +54,7 @@ The window is served by the Session's own process and usually opens outside the 
 - Closing the window leaves the Session as it was. When the Session ends, the window says so; start a new one and run `ayme inspect` again.
 - `-s=<name>` opens the Inspector of the Session of that name, as for the other commands.
 - `BROWSER=none ayme inspect` only prints the window's address. Another `BROWSER` names the program that opens it.
+- The address opens one window, within five minutes. That window stays connected when you reload it; for another window, run `ayme inspect` again.
 - When the program that opens it cannot start, or fails within two seconds, `ayme inspect` exits with code 1 and prints the address to open by hand.
 
 ### In your Agent App's chat: `ayme mcp`

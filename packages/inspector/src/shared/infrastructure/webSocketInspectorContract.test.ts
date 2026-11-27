@@ -8,7 +8,8 @@ import { webSocketInspectorContract } from "./webSocketInspectorContract";
 // Unit tests: the channel transport of the Inspector contract against a
 // WebSocket the test drives, the way `ayme mcp` relays it. Frames are the
 // server's: requests `{ id, method, params }`; replies `{ id, result }`,
-// `{ id, error }`, `{ event }`, `{ reset: true }`, `{ tab }` and `{ ended }`.
+// `{ id, error }`, `{ event }`, `{ reset: true }`, `{ tab }`, `{ token }` and
+// `{ ended }`.
 
 class FakeWebSocket {
   static readonly instances: FakeWebSocket[] = [];
@@ -353,6 +354,31 @@ describe("webSocketInspectorContract", () => {
       await dropped;
       expect(client.current().tools.map(({ name }) => name)).toEqual([
         "second Tab",
+      ]);
+    });
+
+    it("hands on the token the Session tells a window a code admitted, and connects again at the address the window gives then", async () => {
+      const tokens: string[] = [];
+      let url = "ws://x/inspector/ws?code=once";
+      webSocketInspectorContract(() => url, {
+        WebSocket: FakeWebSocket as never,
+        followsTabs: true,
+        onToken(token) {
+          tokens.push(token);
+          url = `ws://x/inspector/ws?token=${token}`;
+        },
+      });
+      const socket = () => FakeWebSocket.instances.at(-1)!;
+      socket().open();
+
+      socket().receive({ token: "secret" });
+      socket().close();
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(tokens).toEqual(["secret"]);
+      expect(FakeWebSocket.instances.map((ws) => ws.url)).toEqual([
+        "ws://x/inspector/ws?code=once",
+        "ws://x/inspector/ws?token=secret",
       ]);
     });
 

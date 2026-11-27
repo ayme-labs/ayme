@@ -1990,7 +1990,7 @@ export class ShopPage {
       const inspected = await session("inspect");
       expect(inspected, inspected.stderr).toMatchObject({ code: 0 });
       const address =
-        /at (http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+)\.$/m.exec(
+        /at (http:\/\/127\.0\.0\.1:\d+\/inspector#code=[\w-]+)\./.exec(
           inspected.stdout
         )?.[1];
       expect(address, inspected.stdout).toBeDefined();
