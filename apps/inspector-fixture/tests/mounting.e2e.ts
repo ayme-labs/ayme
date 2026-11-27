@@ -1,7 +1,7 @@
 import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { testIn } from "./e2e/fixtures";
+import { testIn, confirmGoalRecordings } from "./e2e/fixtures";
 import type { Tab } from "./e2e/tab";
 
 // E2E: when the Inspector mounts relative to the runtime session, and what
@@ -34,6 +34,7 @@ describe("mounted after the runtime started", () => {
   const test = testIn("inline", "/late.html");
 
   test("records a run on a Page Object built before it and shows its click cue in demo mode", async ({
+    browser,
     page,
     inspector,
   }) => {
@@ -53,6 +54,8 @@ describe("mounted after the runtime started", () => {
       "data-click-cues",
       "1"
     );
+
+    await confirmGoalRecordings(browser);
   });
 });
 
@@ -87,6 +90,7 @@ describe("with the inspector option on, without demo", () => {
   const test = testIn("inline", "/session.html", { connected: true });
 
   test("adds no click cue to an agent's call or a run, and records the run", async ({
+    browser,
     mcpServer,
     page,
     inspector,
@@ -105,6 +109,8 @@ describe("with the inspector option on, without demo", () => {
       "data-click-cues",
       "0"
     );
+
+    await confirmGoalRecordings(browser);
   });
 });
 

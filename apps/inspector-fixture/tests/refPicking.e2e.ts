@@ -1,7 +1,14 @@
 import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { highlightOf, outline, placements, testIn } from "./e2e/fixtures";
+import {
+  highlightOf,
+  outline,
+  placements,
+  testIn,
+  confirmGoalRecordings,
+  INSPECTOR,
+} from "./e2e/fixtures";
 import type { RefField } from "./e2e/pom/Inspector";
 import type { ListPage } from "./e2e/pom/ListPage";
 
@@ -25,6 +32,8 @@ for (const placement of placements) {
 
   describe(placement, () => {
     test("a ref picked by clicking the page is the element the tool acts on", async ({
+      browser,
+      appView,
       inspector,
       listPage,
     }) => {
@@ -38,6 +47,19 @@ for (const placement of placements) {
       await fill.run({ text: "Milk" });
 
       await expect(await listPage.newItemInput.front()).toHaveValue("Milk");
+
+      // The panel's own run, on the element picked.
+      await expect
+        .poll(() => inspector.runs.latest("fill").caller())
+        .toEqual(INSPECTOR);
+      const { tool, input } = (await appView.runs()).at(-1)!;
+      expect(tool).toBe("fill");
+      expect(input).toEqual({
+        target: await appView.ref('textbox "New item"'),
+        text: "Milk",
+      });
+
+      await confirmGoalRecordings(browser);
     });
 
     test("while picking, the element under the pointer is highlighted", async ({
@@ -48,14 +70,14 @@ for (const placement of placements) {
       const click = await inspector.tool("click");
 
       await pickOnPage(click.refField("target"), listPage);
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await listPage.addItemButton.front()).waitFor();
       await listPage.addItemButton.hover();
 
       // The dashed hover highlight.
       await expect
         .poll(outline(listPage.addItemButton, browser))
         .toBe("dashed");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("Esc cancels picking, and clicks reach the page again", async ({
@@ -74,9 +96,12 @@ for (const placement of placements) {
 
       await expect(await listPage.newItemInput.front()).toBeFocused();
       expect(await ref.value()).toBeUndefined();
+
+      await confirmGoalRecordings(browser);
     });
 
     test("fill's structure leaves a button out and offers the text field", async ({
+      browser,
       inspector,
     }) => {
       const ref = (await inspector.tool("fill")).refField("target");
@@ -89,6 +114,8 @@ for (const placement of placements) {
       await expect(
         await ref.nodeNamed("button", "Add item").front()
       ).toHaveCount(0);
+
+      await confirmGoalRecordings(browser);
     });
 
     test("picking a button for fill greys it and doesn't pick it", async ({
@@ -98,8 +125,6 @@ for (const placement of placements) {
     }) => {
       const ref = (await inspector.tool("fill")).refField("target");
       await pickOnPage(ref, listPage);
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await listPage.addItemButton.front()).waitFor();
 
       await listPage.addItemButton.hover();
       await expect
@@ -109,6 +134,8 @@ for (const placement of placements) {
 
       expect(await ref.isPicking()).toBe(true);
       expect(await ref.value()).toBeUndefined();
+
+      await confirmGoalRecordings(browser);
     });
   });
 }

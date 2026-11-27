@@ -1064,10 +1064,8 @@ export class RunEntry {
     return this.root.within((run) => run.getByRole("button", "Result").first());
   }
 
-  /** Its result as Runs shows it, opened first if it isn't. */
+  /** Its result as Runs shows it, or null while its Result is closed. */
   async resultText() {
-    if ((await this.resultToggle.getAttribute("aria-expanded")) === "false")
-      await this.resultToggle.click();
     return (await this.read())?.result ?? null;
   }
 

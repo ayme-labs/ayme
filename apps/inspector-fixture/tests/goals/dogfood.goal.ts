@@ -2,7 +2,7 @@ import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 import type { Agent } from "@ayme-dev/mcp/testing";
 
-import { testIn } from "../e2e/fixtures";
+import { testIn, confirmGoalRecordings, INSPECTOR } from "../e2e/fixtures";
 
 // The goal-driven twin of ../dogfood.e2e.ts: the same tests, with each
 // action on the panel an agent goal.
@@ -23,6 +23,7 @@ async function call(agent: Agent, name: string, input: object) {
 // TypeScript Program per class, which takes the dev server a while.
 describe("dogfood", { timeout: 90_000 }, () => {
   test("an agent finds the forms' actions, and sets a fill_form field to a boolean through one", async ({
+    browser,
     agent,
     appView,
     mcpServer,
@@ -59,9 +60,12 @@ describe("dogfood", { timeout: 90_000 }, () => {
 
     await openForm("generate_locator", `LocatorGroups.toggleFromTree`);
     await openForm("goal", `ValueRows.fill`);
+
+    await confirmGoalRecordings(browser);
   });
 
   test("a rooted single instance is preselected and runs from the panel", async ({
+    browser,
     agent,
     mcpServer,
     inspector,
@@ -79,9 +83,17 @@ describe("dogfood", { timeout: 90_000 }, () => {
     await expect(await inspector.navigator.searchBox.front()).toHaveValue(
       "ListPage.addItem"
     );
+
+    // The panel's own run.
+    await expect
+      .poll(() => inspector.runs.latest("Navigator.search").caller())
+      .toEqual(INSPECTOR);
+
+    await confirmGoalRecordings(browser);
   });
 
   test("the panel's renderings of the page stay out of the page state", async ({
+    browser,
     agent,
     appView,
     inspector,
@@ -107,5 +119,7 @@ describe("dogfood", { timeout: 90_000 }, () => {
     // Over a look: the count must hold, so there is no state to wait for.
     await new Promise((resolve) => setTimeout(resolve, 2_500));
     await expect(await results.front()).toHaveCount(1);
+
+    await confirmGoalRecordings(browser);
   });
 });

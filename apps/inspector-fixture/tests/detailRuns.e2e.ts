@@ -1,7 +1,12 @@
 import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { INSPECTOR, placements, testIn } from "./e2e/fixtures";
+import {
+  INSPECTOR,
+  placements,
+  testIn,
+  confirmGoalRecordings,
+} from "./e2e/fixtures";
 
 // E2E: the lenses, the run card, Runs and What the model sees working
 // together on the fixture page, with the real runtime, in both placements of
@@ -13,6 +18,7 @@ for (const placement of placements) {
 
   describe(placement, () => {
     test("a structure node's Browser tool runs on that node, and Runs shows the run as yours", async ({
+      browser,
       inspector,
       listPage,
     }) => {
@@ -26,9 +32,12 @@ for (const placement of placements) {
       const run = inspector.runs.latest("fill");
       await expect.poll(() => run.status()).toBe("Succeeded");
       expect(await run.caller()).toEqual(INSPECTOR);
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives", async ({
+      browser,
       appView,
       inspector,
       listPage,
@@ -52,14 +61,15 @@ for (const placement of placements) {
           .front()
       ).toHaveCount(1);
       await toolPage.modelSees.open();
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await toolPage.modelSees.definitions.front()).waitFor();
       await expect
         .poll(() => toolPage.modelSees.definitionsText())
         .toBe(definition);
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a checked checkbox reads as checked in its node's What the model sees, as in the page state snapshot gives", async ({
+      browser,
       appView,
       inspector,
       listPage,
@@ -78,6 +88,8 @@ for (const placement of placements) {
       const snapshotLines = structure.split("\n").map((line) => line.trim());
       const [nodeLine] = (await modelSees.pageStateText())!.split("\n");
       expect(snapshotLines).toContain(nodeLine);
+
+      await confirmGoalRecordings(browser);
     });
   });
 }

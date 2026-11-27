@@ -2,7 +2,7 @@ import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 import type { Agent } from "@ayme-dev/mcp/testing";
 
-import { testIn } from "./e2e/fixtures";
+import { testIn, confirmGoalRecordings, INSPECTOR } from "./e2e/fixtures";
 
 // E2E: on the dogfood page the Inspector's own Page Object is a Page Object
 // Model like any other: an agent lists its tools over ayme MCP, drives the
@@ -65,6 +65,7 @@ describe("dogfood", { timeout: 90_000 }, () => {
   });
 
   test("an agent finds the forms' actions, and sets a fill_form field to a boolean through one", async ({
+    browser,
     appView,
     mcpServer,
     inspector,
@@ -99,9 +100,12 @@ describe("dogfood", { timeout: 90_000 }, () => {
 
     await openForm("generate_locator", `LocatorGroups.toggleFromTree`);
     await openForm("goal", `ValueRows.fill`);
+
+    await confirmGoalRecordings(browser);
   });
 
   test("a rooted single instance is preselected and runs from the panel", async ({
+    browser,
     mcpServer,
     inspector,
   }) => {
@@ -116,6 +120,13 @@ describe("dogfood", { timeout: 90_000 }, () => {
     await expect(await inspector.navigator.searchBox.front()).toHaveValue(
       "ListPage.addItem"
     );
+
+    // The panel's own run.
+    await expect
+      .poll(() => inspector.runs.latest("Navigator.search").caller())
+      .toEqual(INSPECTOR);
+
+    await confirmGoalRecordings(browser);
   });
 
   test("the page state snapshot gives includes the panel", async ({
@@ -128,6 +139,7 @@ describe("dogfood", { timeout: 90_000 }, () => {
   });
 
   test("the panel's renderings of the page stay out of the page state", async ({
+    browser,
     appView,
     inspector,
   }) => {
@@ -150,5 +162,7 @@ describe("dogfood", { timeout: 90_000 }, () => {
     // Over a look: the count must hold, so there is no state to wait for.
     await new Promise((resolve) => setTimeout(resolve, 2_500));
     await expect(await results.front()).toHaveCount(1);
+
+    await confirmGoalRecordings(browser);
   });
 });

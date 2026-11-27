@@ -1,7 +1,7 @@
 import { describe, type Browser } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { testIn } from "./e2e/fixtures";
+import { testIn, confirmGoalRecordings } from "./e2e/fixtures";
 import type { LayoutChoice } from "./e2e/pom/Inspector";
 import type { On, Tab } from "./e2e/tab";
 
@@ -121,13 +121,13 @@ for (const zIndex of [50, 101]) {
 
       for (const layout of layouts) {
         await header.layoutMenu.choose(layout);
-        // Counted by e2e's replay cache, so the goal twin's goals are saved.
-        await (await header.layoutMenu.trigger.front()).waitFor();
         await expect.poll(() => header.layoutMenu.current()).toBe(layout);
         expect(await inspectorIsOnTopAt(browser, header.title), layout).toBe(
           true
         );
       }
+
+      await confirmGoalRecordings(browser);
     });
 
     test("the collapsed logo stays on top and opens the panel", async ({
@@ -142,9 +142,12 @@ for (const zIndex of [50, 101]) {
       await inspector.logo.open();
 
       await expect(await inspector.panel.front()).toBeVisible();
+
+      await confirmGoalRecordings(browser);
     });
 
     test("clicks outside the Inspector reach the page in every layout", async ({
+      browser,
       page,
       inspector,
     }) => {
@@ -168,6 +171,8 @@ for (const zIndex of [50, 101]) {
       }
       await inspector.collapse();
       await clickOutside(inspector.logo.root);
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a click Browser Tool reaches a page button under the panel", async ({
@@ -186,11 +191,11 @@ for (const zIndex of [50, 101]) {
       await expect(await button.front()).toHaveAttribute("data-clicks", "1");
       expect(await inspectorIsOnTopAt(browser, button)).toBe(true);
       await inspector.header.layoutMenu.choose("Dock left");
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await inspector.header.layoutMenu.trigger.front()).waitFor();
       await expect
         .poll(() => inspector.header.layoutMenu.current())
         .toBe("Dock left");
+
+      await confirmGoalRecordings(browser);
     });
   });
 }

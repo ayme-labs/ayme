@@ -19,6 +19,18 @@ export type { FixturePage, Placement };
 /** The Caller mark of a run made from the panel, as Runs shows it. */
 export const INSPECTOR = { icon: "Run by you from the Inspector" } as const;
 
+/**
+ * The last line of every test that has a goal twin (`tests/goals/`), in both
+ * arms alike. e2e saves an `agent.act` recording only once a later check of
+ * the kind it counts passes (its docs/cache.mdx, "When a recording is
+ * written"), and polls and checks on read values don't count. It comes last,
+ * after the test's own checks passed, and checks nothing itself: any URL
+ * matches.
+ */
+export async function confirmGoalRecordings(browser: Browser) {
+  await browser.waitForURL(/^/);
+}
+
 /** Both placements, for a spec whose tests run in each. */
 export const placements: readonly Placement[] = ["inline", "external"];
 

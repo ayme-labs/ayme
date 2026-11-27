@@ -8,6 +8,7 @@ import {
   placements,
   reloadFixture,
   testIn,
+  confirmGoalRecordings,
 } from "./e2e/fixtures";
 
 // E2E: running tools from the panel, on the fixture page with the real
@@ -57,23 +58,18 @@ for (const placement of placements) {
       expect(shown?.interactions).toEqual([]);
       await expect.poll(async () => (await run.read())?.targetGone).toBe(true);
       await reloadFixture(page, "/");
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (
-        await inspector.runs.runs.within((runs) => runs.first()).front()
-      ).waitFor();
       await expect
         .poll(async () => (await inspector.runs.latest("click").read())?.toggle)
         .toContain('button "Dismiss notice"');
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a Page Object Tool run from the panel shows in Runs as the Inspector's, with its Interactions", async ({
+      browser,
       inspector,
     }) => {
       await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (
-        await inspector.runs.runs.within((runs) => runs.first()).front()
-      ).waitFor();
 
       const run = inspector.runs.latest("ListPage.addItem");
       await expect.poll(() => run.status()).toBe("Succeeded");
@@ -89,9 +85,12 @@ for (const placement of placements) {
           },
           { operation: "click", target: "ListPage.addItemButton" },
         ]);
+
+      await confirmGoalRecordings(browser);
     });
 
     test("form fields keep their names and values without repeating their refs", async ({
+      browser,
       appView,
       inspector,
     }) => {
@@ -104,10 +103,6 @@ for (const placement of placements) {
           { name: "Urgent", type: "checkbox", target: urgent, value: "true" },
         ],
       });
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (
-        await inspector.runs.runs.within((runs) => runs.first()).front()
-      ).waitFor();
       const run = inspector.runs.latest("fill_form");
       await expect
         .poll(() => run.interactionList())
@@ -125,6 +120,8 @@ for (const placement of placements) {
           { name: "Urgent", type: "checkbox", value: "true" },
         ],
       });
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a selection's chosen values show beside its readable target", async ({
@@ -149,10 +146,6 @@ for (const placement of placements) {
       const target = await appView.ref('combobox "Size"');
       await inspector.runs.showAll();
       await appView.run("select_option", { target, values: ["Large"] });
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (
-        await inspector.runs.runs.within((runs) => runs.first()).front()
-      ).waitFor();
       const run = inspector.runs.latest("select_option");
       await expect
         .poll(async () => (await run.read())?.toggle)
@@ -160,6 +153,8 @@ for (const placement of placements) {
       const shown = await run.read();
       expect(shown?.toggle).toContain('combobox "Size"');
       expect(shown?.arguments).toBeNull();
+
+      await confirmGoalRecordings(browser);
     });
 
     test("hovering a run's Interaction highlights its element on the page", async ({
@@ -176,16 +171,17 @@ for (const placement of placements) {
         .toBe("ListPage.addItemButton");
 
       await run.interactionTarget(1).hover();
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await listPage.addItemButton.front()).waitFor();
 
       // The dashed hover highlight.
       await expect
         .poll(outline(listPage.addItemButton, browser))
         .toBe("dashed");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a Custom Tool runs from the panel and shows in Runs", async ({
+      browser,
       appView,
       inspector,
       listPage,
@@ -201,12 +197,15 @@ for (const placement of placements) {
       const run = inspector.runs.latest("mark_element");
       await expect.poll(() => run.status()).toBe("Succeeded");
       expect(await run.caller()).toEqual(INSPECTOR);
+
+      await confirmGoalRecordings(browser);
     });
 
     // The run card's and Runs' own choices, made with the mouse in the closed
     // shadow root the Inspector mounts in. None of them is a popup that could
     // close before the press lands.
     test("a collection action runs on the item and choice picked with the mouse", async ({
+      browser,
       inspector,
       listPage,
     }) => {
@@ -230,9 +229,12 @@ for (const placement of placements) {
       await expect(await item("Milk").front()).not.toHaveAttribute(
         "data-state"
       );
+
+      await confirmGoalRecordings(browser);
     });
 
     test("Runs switches between the selection's runs and all runs with the mouse", async ({
+      browser,
       inspector,
     }) => {
       await (await inspector.tool("ListPage.countItems")).runButton.click();
@@ -246,12 +248,15 @@ for (const placement of placements) {
 
       await inspector.runs.showSelection();
       await expect(await inspector.runs.runs.front()).toHaveCount(0);
+
+      await confirmGoalRecordings(browser);
     });
 
     // The fixture stubs the Goal Loop's decision (clear the list, then judge
     // the goal met), so this covers the panel's run, not the model's
     // judgement.
     test("goal runs from the panel and shows in Runs with the Runs its steps executed and its Handover result", async ({
+      browser,
       inspector,
       listPage,
     }) => {
@@ -269,10 +274,14 @@ for (const placement of placements) {
         .poll(() => run.child("ListPage.clear").interactionList())
         .toEqual([{ operation: "click", target: "ListPage.clearButton" }]);
       await expect(await listPage.items.front()).toHaveCount(0);
+      await run.resultToggle.click();
       expect(await run.resultText()).toContain('"reason": "done"');
+
+      await confirmGoalRecordings(browser);
     });
 
     test("Clear empties Runs, and the run after it is the only one shown", async ({
+      browser,
       appView,
       inspector,
     }) => {
@@ -298,9 +307,12 @@ for (const placement of placements) {
       await expect
         .poll(() => inspector.runs.latest(newest.tool).status())
         .toBe("Succeeded");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a run's result copies as the page's Run log has it", async ({
+      browser,
       appView,
       inspector,
       listPage,
@@ -331,10 +343,6 @@ for (const placement of placements) {
       const logged = (await appView.runs()).at(-1)!;
 
       await run.copyResultButton.click();
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (
-        await inspector.runs.runs.within((runs) => runs.first()).front()
-      ).waitFor();
 
       // The write is asynchronous, so the clipboard is read until it lands,
       // with the Inspector's tab in front. The panel's "Copied" status
@@ -349,9 +357,12 @@ for (const placement of placements) {
           }
         })
         .toEqual(logged.result);
+
+      await confirmGoalRecordings(browser);
     });
 
     test("press_key presses the key the page receives", async ({
+      browser,
       inspector,
       listPage,
     }) => {
@@ -364,9 +375,12 @@ for (const placement of placements) {
         await pressKey.runButton.click();
         await expect(await listPage.newItemInput.front()).toHaveValue(key);
       }
+
+      await confirmGoalRecordings(browser);
     });
 
     test("the fill_form editor fills only the fields still changed after an undo", async ({
+      browser,
       appView,
       inspector,
       listPage,
@@ -387,9 +401,12 @@ for (const placement of placements) {
       ).toEqual(["Urgent"]);
       await expect(await listPage.urgentCheckbox.front()).toBeChecked();
       await expect(await listPage.newItemInput.front()).toHaveValue("");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("generate_locator offers the locator of each target in each group", async ({
+      browser,
       appView,
       inspector,
     }) => {
@@ -425,6 +442,8 @@ for (const placement of placements) {
           await expect(
             await locatorGroups.locator(index + 1, target).front()
           ).toHaveText(locator);
+
+      await confirmGoalRecordings(browser);
     });
   });
 
@@ -457,7 +476,7 @@ for (const placement of placements) {
 
     connected(
       "a tool that fails on the page shows its error",
-      async ({ mcpServer, inspector, listPage }) => {
+      async ({ browser, mcpServer, inspector, listPage }) => {
         // The tool's target is gone: the page no longer has its Add item button.
         await listPage.removeAddItemButton();
         const agentError = await agentFailure(mcpServer!, "ListPage.addItem", {
@@ -466,10 +485,6 @@ for (const placement of placements) {
 
         const addItem = await inspector.tool("ListPage.addItem");
         await addItem.run({ text: "Milk" });
-        // Counted by e2e's replay cache, so the goal twin's goals are saved.
-        await (
-          await inspector.runs.runs.within((runs) => runs.first()).front()
-        ).waitFor();
 
         const run = inspector.runs.latest("ListPage.addItem");
         // The newest run of the tool is the agent's until the panel's arrives.
@@ -482,6 +497,8 @@ for (const placement of placements) {
         await expect
           .poll(async () => firstLine((await run.read())?.error))
           .toBe(firstLine(agentError));
+
+        await confirmGoalRecordings(browser);
       }
     );
   });
@@ -495,7 +512,7 @@ for (const placement of placements) {
     describe("connected to an agent", () => {
       unpublishedConnected(
         "a Page Object tool that fails gives the text an agent gets for the same call",
-        async ({ mcpServer, inspector, listPage }) => {
+        async ({ browser, mcpServer, inspector, listPage }) => {
           await listPage.removeAddItemButton();
           const agentError = await agentFailure(
             mcpServer!,
@@ -505,10 +522,6 @@ for (const placement of placements) {
           await (
             await inspector.tool("ListPage.addItem")
           ).run({ text: "Milk" });
-          // Counted by e2e's replay cache, so the goal twin's goals are saved.
-          await (
-            await inspector.runs.runs.within((runs) => runs.first()).front()
-          ).waitFor();
 
           const run = inspector.runs.latest("ListPage.addItem");
           // The newest run of the tool is the agent's until the panel's arrives.
@@ -522,13 +535,15 @@ for (const placement of placements) {
           await expect
             .poll(async () => firstLine((await run.read())?.error))
             .toBe(firstLine(agentError));
+
+          await confirmGoalRecordings(browser);
         }
       );
     });
 
     unpublished(
       "a Page Object tool runs from the panel",
-      async ({ inspector, listPage }) => {
+      async ({ browser, inspector, listPage }) => {
         await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
 
         await expect(
@@ -539,17 +554,20 @@ for (const placement of placements) {
         await expect
           .poll(() => inspector.runs.latest("ListPage.addItem").status())
           .toBe("Succeeded");
+
+        await confirmGoalRecordings(browser);
       }
     );
 
     unpublished(
       "a Custom Tool runs from the panel",
-      async ({ inspector, listPage }) => {
+      async ({ browser, inspector, listPage }) => {
         // The Add item button's ref, from snapshot run in the panel.
         const getPageContext = await inspector.tool("snapshot");
         await getPageContext.runButton.click();
         const run = inspector.runs.latest("snapshot");
         await expect.poll(() => run.status()).toBe("Succeeded");
+        await run.resultToggle.click();
         const structure = (await run.resultText()) ?? "";
         const ref = /(e\d+) button "Add item"/.exec(structure)?.[1];
         if (!ref) throw new Error(`No Add item button in:\n${structure}`);
@@ -562,25 +580,25 @@ for (const placement of placements) {
         await expect
           .poll(() => inspector.runs.latest("mark_element").status())
           .toBe("Succeeded");
+
+        await confirmGoalRecordings(browser);
       }
     );
 
     unpublished(
       "snapshot runs from the panel and shows its result",
-      async ({ inspector }) => {
+      async ({ browser, inspector }) => {
         const getPageContext = await inspector.tool("snapshot");
         await getPageContext.runButton.click();
 
         const run = inspector.runs.latest("snapshot");
         await expect.poll(() => run.status()).toBe("Succeeded");
         await run.resultToggle.click();
-        // Counted by e2e's replay cache, so the goal twin's goals are saved.
-        await (
-          await inspector.runs.runs.within((runs) => runs.first()).front()
-        ).waitFor();
         await expect
           .poll(async () => (await run.read())?.result)
           .toContain('"structure"');
+
+        await confirmGoalRecordings(browser);
       }
     );
   });
