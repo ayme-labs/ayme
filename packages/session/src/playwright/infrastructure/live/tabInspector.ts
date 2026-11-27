@@ -3,13 +3,7 @@ import { Effect, Queue, Stream } from "effect";
 
 import type { TabInspector } from "../../../session/application";
 import { TabReadError } from "../../../session/domain";
-
-/** What the Session uses of the Inspector contract the project's
- * `@ayme-dev/ayme/internal` serves for a Node Host. */
-export type InspectorPort = {
-  request(method: string, params: unknown): Promise<unknown>;
-  subscribe(listener: (event: unknown) => void): () => void;
-};
+import type { InspectorPort } from "../inspectorPort";
 
 /** The Tab's Inspector contract over `port`. */
 export const tabInspector = (port: InspectorPort): TabInspector => ({

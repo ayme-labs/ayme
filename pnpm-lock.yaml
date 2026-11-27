@@ -1506,6 +1506,9 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
     devDependencies:
+      "@ayme-dev/ayme":
+        specifier: workspace:*
+        version: link:../ayme
       "@ayme-dev/browser":
         specifier: workspace:*
         version: link:../browser

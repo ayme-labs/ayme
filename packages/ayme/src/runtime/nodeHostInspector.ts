@@ -15,7 +15,10 @@ import {
   createInspectorContract,
   type InspectorSession,
 } from "./inspectorContract";
-import { inspectorChannelPort } from "./inspectorChannelPort";
+import {
+  inspectorChannelPort,
+  type InspectorPort,
+} from "./inspectorChannelPort";
 import { createHighlights } from "./inspectorHighlights";
 import {
   lookAtInspectorStateOf,
@@ -68,7 +71,7 @@ function pageObjectToolsOf(ayme: InspectorSession): InspectorSession {
  * Ref, so a pick answers at once with none. Stopping the last subscription
  * ends the highlights the windows asked for.
  */
-export function inspectorPortOf(ayme: InspectorSession) {
+export function inspectorPortOf(ayme: InspectorSession): InspectorPort {
   const target = nodeHostTargets.get(ayme.tools);
   if (!target) throw new Error("This is not a Node Host's session.");
   const page = target.rawPage();
