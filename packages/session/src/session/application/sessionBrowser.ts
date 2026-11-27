@@ -5,6 +5,7 @@ import type {
   RunAnswer,
   RunError,
   SessionStartError,
+  TabDialog,
   TabReadError,
 } from "../domain";
 import type { BuiltPageObjects } from "./pageObjectsBuild";
@@ -30,6 +31,9 @@ export interface HostedTab {
   /** The Inspector's contract with the runtime on the Tab's page, as its
    * Host serves it to a window outside the page. */
   readonly inspector: TabInspector;
+  /** The Tab's dialog as the Session counts it now, and again after each
+   * change (rule 4). It reads nothing of the page, which a dialog holds. */
+  readonly dialog: Stream.Stream<TabDialog>;
 }
 
 /** A Tab's Inspector contract, in the plain data a window sends and
