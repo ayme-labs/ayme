@@ -1,6 +1,6 @@
 ---
 name: ayme
-description: Set up ayme in a consumer project, expose existing Page Object Actions, design Page Object Models for ayme, connect a coding agent to the app's page through ayme's MCP server and use its tools, or read app state the page does not show through Peek Tools.
+description: Set up ayme in a consumer project, expose existing Page Object Actions, design Page Object Models for ayme, run the project's Page Object Tools with the `ayme` command beside Playwright CLI, Playwright MCP or agent-browser, or read app state the page does not show through Peek Tools.
 ---
 
 # ayme
@@ -15,18 +15,17 @@ it is missing: never credentials or real data.
 For package installation, application integration, or exposing an existing POM,
 read [Onboarding](references/onboarding.md).
 
-To connect yourself to the app's page with `ayme_connect`, when the page's tools
-are missing from your tool list, or after a call the page didn't answer because
-it reloaded, navigated or closed, or to give a page that doesn't ship ayme
-the project's Page Objects through Playwright MCP, Playwright CLI or
-agent-browser, read [Browser setup](references/browser-setup.md). A connected
-page with its tools listed needs no Browser setup.
+The `ayme` command runs the project's Page Objects beside the browser
+automation you drive the browser with: Playwright CLI, Playwright MCP or
+agent-browser. To start it and connect it to the same browser as your
+automation, or when a command answers that no Session is open, read
+[Browser automation tools](references/browser-automation-tools.md). When the
+project is not set up for the command yet, or a Session does not start,
+read [Browser setup](references/browser-setup.md).
 
-When you use the page's tools, or a tool answers that it is unavailable or
-gone, read [Page tools](references/page-tools.md).
-
-When Playwright CLI, Playwright MCP or agent-browser drives the browser, read
-[Browser automation tools](references/browser-automation-tools.md).
+On each new screen, starting with the first one, run `ayme page-objects`
+before you take a snapshot. When you use the Page Object Tools, or a command
+answers that a tool is unavailable, read [Page tools](references/page-tools.md).
 
 For designing or restructuring Page Object Models, read
 [Page object design](references/page-object-design.md) and
