@@ -25,6 +25,7 @@ import {
   releaseRecord,
   type SessionPlace,
 } from "./record";
+import { serveInspectorWindow } from "./inspectorWindow";
 import { listen } from "./wire";
 
 /** What the command that starts a Session tells its process, over the
@@ -54,15 +55,18 @@ const messageOf = (cause: unknown) =>
 
 /**
  * Starts the Session named `name` and serves it on `socket`: once this
- * returns, commands reach it there, and a request waits for the start. The
- * scope ends it.
+ * returns, commands reach it there, and a request waits for the start. With
+ * `inspectorScript`, the Inspector's built script, it also serves the
+ * Session's Inspector window. The scope ends it.
  */
 export const serveSession = ({
   socket,
   request,
   name,
+  inspectorScript,
 }: Omit<ProcessOptions, keyof SessionPlace> & {
   readonly name: string;
+  readonly inspectorScript?: string;
 }): Effect.Effect<
   Session,
   SessionStartError,
@@ -93,7 +97,26 @@ export const serveSession = ({
       }),
       (listening) => Effect.promise(() => listening.close())
     );
-    const session = yield* openSession(request, name);
+    const window =
+      inspectorScript === undefined
+        ? undefined
+        : yield* Effect.acquireRelease(
+            Effect.tryPromise({
+              try: () =>
+                serveInspectorWindow({ name, script: inspectorScript }),
+              catch: (cause) =>
+                new SessionStartError(
+                  `ayme could not serve the Session's Inspector window: ${messageOf(cause)}`
+                ),
+            }),
+            (served) => Effect.promise(() => served.close())
+          );
+    const session = yield* openSession(
+      request,
+      name,
+      window ? { inspector: window.address } : {}
+    );
+    window?.attach(session);
     yield* Deferred.succeed(served, session);
     return session;
   });
@@ -133,14 +156,16 @@ function catchWhatNothingCaught(): void {
  * until it ends, and resolves with the process's exit code. The command
  * that started it is told how the start ended over the IPC channel, on
  * every way out of the start. `aymeVersion` is the version of the ayme the
- * process runs, which the project's own `@ayme-dev/ayme` must have.
+ * process runs, which the project's own `@ayme-dev/ayme` must have, and
+ * `inspectorScript` the Inspector's built script, which its window loads.
  */
 export const runSessionProcess = (
   options: ProcessOptions,
-  aymeVersion: string
+  aymeVersion: string,
+  inspectorScript: string
 ): Promise<number> =>
   serveProcess(
-    options,
+    { ...options, inspectorScript },
     process,
     Layer.merge(
       stockBrowser(options.projectDir),
@@ -151,7 +176,7 @@ export const runSessionProcess = (
 /** The background process on the browser and build `layer` gives, for the
  * command `opener` that started it. */
 export async function serveProcess(
-  options: ProcessOptions,
+  options: ProcessOptions & { readonly inspectorScript?: string },
   opener: Opener,
   layer: Layer.Layer<SessionBrowser | PageObjectsBuild>
 ): Promise<number> {

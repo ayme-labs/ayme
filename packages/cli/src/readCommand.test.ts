@@ -299,6 +299,32 @@ describe("readCommand for a Session", () => {
     expect(USAGE).toContain("--json");
   });
 
+  it("opens the Inspector on the Session for `inspect`, named by -s or AYME_SESSION", () => {
+    expect(readCommand(["inspect"])).toEqual({ kind: "inspect", json: false });
+    expect(readCommand(["inspect", "-s=shop", "--json"])).toEqual({
+      kind: "inspect",
+      json: true,
+      session: "shop",
+    });
+    expect(readCommand(["inspect"], { AYME_SESSION: "cart" })).toMatchObject({
+      session: "cart",
+    });
+  });
+
+  it.each([
+    [["inspect", "now"]],
+    [["inspect", "--headed"]],
+    [["inspect", "--tab=http://a"]],
+    [["inspect", "--params", "{}"]],
+    [["inspect", "--cdp=http://a"]],
+  ])("refuses what inspect does not take: `%s`", (args) => {
+    expect(readCommand(args).kind).toBe("error");
+  });
+
+  it("lists inspect in its usage text", () => {
+    expect(USAGE).toContain("ayme inspect");
+  });
+
   it("joins the browser at the address for `attach --cdp=<url>`", () => {
     expect(readCommand(["attach", "--cdp=http://127.0.0.1:9222"])).toEqual({
       kind: "attach",

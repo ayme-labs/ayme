@@ -52,6 +52,26 @@ export const windowAnswer = (address: string, name: string): SessionAnswer => ({
   data: { address },
 });
 
+/** The answer to `ayme inspect` once it opened the window of the Session
+ * named `name` at `address` in the person's default browser. */
+export const windowOpened = (address: string, name: string): SessionAnswer => ({
+  ok: true,
+  text: `The Inspector of the Session ${name} opened in your default browser at ${address}.`,
+  data: { address },
+});
+
+/** The answer to `ayme inspect` when the person's default browser did not
+ * open at the window of the Session named `name`, for the reason `why`. */
+export const windowNotOpened = (
+  address: string,
+  name: string,
+  why: string
+): SessionAnswer => ({
+  ok: true,
+  text: `The Inspector of the Session ${name} is at ${address}. ayme could not open your default browser: ${why.replace(/\.$/, "")}. Open the address in a browser outside the Session's.`,
+  data: { address },
+});
+
 /** The answer to a window's call on the contract: what it answered. */
 export const contractAnswer = (result: unknown): SessionAnswer => ({
   ok: true,

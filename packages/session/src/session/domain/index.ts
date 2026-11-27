@@ -30,6 +30,8 @@ export {
   showsWindow,
   windowAnswer,
   windowEnded,
+  windowNotOpened,
+  windowOpened,
   type InspectorEvent,
   type InspectorRequest,
 } from "./inspector";
