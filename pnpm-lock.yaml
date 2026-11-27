@@ -53,12 +53,18 @@ importers:
 
   apps/eval-first-install:
     devDependencies:
+      "@ayme-dev/ayme":
+        specifier: workspace:*
+        version: link:../../packages/ayme
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../../packages/eslint-config
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
+      "@playwright/test":
+        specifier: ^1.64.0
+        version: 1.64.0
       "@types/node":
         specifier: ^24.0.0
         version: 24.13.3
