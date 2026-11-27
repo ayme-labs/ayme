@@ -288,10 +288,6 @@ const idIn = (input: unknown): string | undefined => {
   return typeof id === "string" ? id : undefined;
 };
 
-/** The class whose Page Object Tool `tool` is: the compiler names each
- * `<class>.<action>`. */
-const classOf = (tool: string) => tool.slice(0, tool.indexOf("."));
-
 /** A Session's Tabs, as its requests reach them. */
 type SessionTabs = {
   /**
@@ -321,9 +317,6 @@ function sessionTabs(
   const hosts = new Map<BrowserTab, Effect.Effect<SwappingTab, TabReadError>>();
   // The Tab each id was given on, while its Host knows the id.
   const owners = new Map<string, BrowserTab>();
-  // The classes some id was given to: those with a Page Object Root, whose
-  // tools take a Page Object Id.
-  const rooted = new Set<string>();
   const retire = (tab: BrowserTab) =>
     Effect.sync(() => {
       hosts.delete(tab);
@@ -340,10 +333,7 @@ function sessionTabs(
         tab
           .host(
             {
-              given: (id, className) => {
-                owners.set(id, tab);
-                rooted.add(className);
-              },
+              given: (id) => owners.set(id, tab),
               released: (id) => owners.delete(id),
             },
             startedWith
@@ -373,34 +363,40 @@ function sessionTabs(
         Effect.tapError(() => Effect.sync(() => hosts.delete(tab)))
       );
     });
+  /** The most recently active Tab whose URL is `url`, else the most
+   * recently active Tab. */
+  const byUrl = (url: string | undefined) =>
+    browser.open.pipe(
+      Effect.flatMap((open) => {
+        const tab =
+          url === undefined ? open[0] : open.find((each) => each.url() === url);
+        if (tab) return hostOf(tab);
+        return Effect.fail(
+          new TabReadError(
+            open.length === 0
+              ? NO_TAB_OPEN
+              : noTabShows(
+                  url!,
+                  open.map((each) => each.url()),
+                  name
+                )
+          )
+        );
+      })
+    );
   return {
     chosen: (url, call) => {
-      const id =
-        call && rooted.has(classOf(call.tool)) ? idIn(call.input) : undefined;
+      const id = call && idIn(call.input);
       const owner = id === undefined ? undefined : owners.get(id);
-      if (owner) {
-        if (url === undefined || owner.url() === url) return hostOf(owner);
-        return Effect.fail(
-          new TabReadError(idOnAnotherTab(id!, owner.url(), url))
-        );
-      }
-      return browser.open.pipe(
-        Effect.flatMap((open) => {
-          const tab =
-            url === undefined
-              ? open[0]
-              : open.find((each) => each.url() === url);
-          if (tab) return hostOf(tab);
+      if (!call || !owner) return byUrl(url);
+      // Only an id the tool takes, in the build its Tab runs, chooses it.
+      return hostOf(owner).pipe(
+        Effect.flatMap((hosted) => {
+          if (!hosted.takesId(call.tool)) return byUrl(url);
+          if (url === undefined || owner.url() === url)
+            return Effect.succeed(hosted);
           return Effect.fail(
-            new TabReadError(
-              open.length === 0
-                ? NO_TAB_OPEN
-                : noTabShows(
-                    url!,
-                    open.map((each) => each.url()),
-                    name
-                  )
-            )
+            new TabReadError(idOnAnotherTab(id!, owner.url(), url))
           );
         })
       );
@@ -430,6 +426,7 @@ function untilClosed(
       events: hosted.inspector.events.pipe(Stream.interruptWhen(closed)),
     },
     dialog: hosted.dialog,
+    takesId: hosted.takesId,
     failing: hosted.failing,
   };
 }
@@ -464,6 +461,7 @@ function inTurns(hosted: SwappingTab, inTurn: InTurn): SwappingTab {
           : hosted.inspector.request(method, params),
     },
     dialog: hosted.dialog,
+    takesId: hosted.takesId,
     failing: hosted.failing,
   };
 }
@@ -534,6 +532,7 @@ function atDialogs(
         ),
     },
     dialog: hosted.dialog,
+    takesId: hosted.takesId,
     failing: hosted.failing,
   };
 }

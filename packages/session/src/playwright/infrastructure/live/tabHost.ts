@@ -50,6 +50,7 @@ type NodeHostEntry = {
     running: readonly unknown[],
     rebuilt: readonly unknown[]
   ): void;
+  pageObjectToolTakesId(ayme: unknown, tool: string): boolean;
   inspectorPortOf(ayme: unknown): InspectorPort;
   pageObjectCallerOf(
     ayme: unknown,
@@ -175,6 +176,7 @@ const hostedTab = (
     }),
   inspector: tabInspector(inspector),
   dialog: SubscriptionRef.changes(dialog),
+  takesId: (tool) => entry.pageObjectToolTakesId(ayme, tool),
   swap: (pageObjects) =>
     Effect.try({
       try: () => {

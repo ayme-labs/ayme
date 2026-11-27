@@ -134,6 +134,11 @@ export interface ScriptedTab {
   /** The Tab's Host forgets `id`, as when a read finds its element gone
    * from the page. */
   release(id: string): void;
+  /** The tools of the class `className` take no Page Object Id on the Tab
+   * from now on, as after a Swap of a build whose class declares no root.
+   * Until then a class's tools take one once its Host gave one of its Page
+   * Objects an id. */
+  rootless(className: string): void;
   /** The browser automation brings the Tab to the front. */
   activate(): void;
   /** The Tab closes, and Playwright says so. */
@@ -228,6 +233,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
     Promise.resolve({ settled: true });
   let given: TabIds | undefined;
+  const rooted = new Set<string>();
   let startedWith: BuiltPageObjects | undefined;
   const closed = Deferred.makeUnsafe<void>();
   const inspectorCalls: { method: string; params: unknown }[] = [];
@@ -281,6 +287,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       ),
     },
     dialog: SubscriptionRef.changes(dialog),
+    takesId: (tool) => rooted.has(tool.slice(0, tool.indexOf("."))),
     swap: (pageObjects) =>
       Effect.suspend(() => {
         swapsTried.push(pageObjects);
@@ -326,9 +333,11 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       answerRuns: (answer) => (answerRun = answer),
       give: (id, className) => {
         if (!given) throw new Error("The Session is not this Tab's Host.");
+        rooted.add(className);
         given.given(id, className);
       },
       release: (id) => given?.released(id),
+      rootless: (className) => rooted.delete(className),
       activate: () => {
         open.splice(open.indexOf(tab), 1);
         open.unshift(tab);

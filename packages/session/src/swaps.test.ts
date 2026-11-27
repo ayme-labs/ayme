@@ -435,3 +435,20 @@ it("a build a Tab cannot register counts there as a failed build: the Tab keeps 
   ).not.toContain(NO_BASKET);
   expect(browser.swappedIn).toEqual([LATER]);
 });
+
+it("once a Swap takes a class's root away, an action parameter named id is no Page Object Id and chooses no Tab", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  await session.ask({ tools: {} });
+  browser.give("po1", "Panel");
+  const second = browser.openTab(SECOND_TAB);
+  await session.ask({ tools: {} });
+
+  await rebuilt(browser, EDITED);
+  await until(() => browser.swappedIn.length > 0);
+  browser.rootless("Panel");
+  const open = { tool: "Panel.open", input: { id: "po1" } };
+  expect(await session.ask({ call: open })).toMatchObject({ ok: true });
+
+  expect(second.runs).toEqual([open]);
+  expect(browser.runs).toEqual([]);
+});

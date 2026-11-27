@@ -140,6 +140,7 @@ export const rebuilding = (
                   : hosted.inspector.request(method, params),
             },
             dialog: hosted.dialog,
+            takesId: hosted.takesId,
             failing: () => failing ?? tab.refused,
           } satisfies SwappingTab;
         }),
