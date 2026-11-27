@@ -77,7 +77,7 @@ npx ayme close
 ### 4. What has no replacement
 
 - **Pairing with a page that ships ayme.** No coding agent reaches the ayme inside your app. It reaches your Page Objects through a Session, which runs them itself. An agent that runs in the page reaches the page's tools through [WebMCP publication](guides/publish-tools.md).
-- **Peeks for an agent.** A Peek shows only in the Inspector, and only while `inspector` is on where ayme starts. No agent reads it.
+- **Peeks for an agent.** A Peek exists only while `inspector` is on where ayme starts: you run it in the Inspector, and your app's code can run it through `ayme.tools`. ayme gives it to no agent.
 - **Reading your server's state.** App Processes are gone: no Node process of your app offers anything to an agent.
 
 ### 5. What works differently

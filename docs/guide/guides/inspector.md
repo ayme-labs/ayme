@@ -22,7 +22,7 @@ useAyme({ inspector: import.meta.env.DEV });
 - If the package cannot be loaded, the error names `@ayme-dev/inspector`.
 - The Inspector reaches Page Objects constructed before it loaded.
 - It works whether WebMCP publication is on or off.
-- It turns the page's [Peeks](../reference/ayme.md#aymepeek) on, and is the only place they show.
+- It turns the page's [Peeks](../reference/ayme.md#aymepeek) on. You run them in the Inspector, and your app's code can through `ayme.tools`; ayme gives them to no agent.
 
 ### The development flag per framework
 

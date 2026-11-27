@@ -39,7 +39,7 @@ These are for a coding agent that runs your Page Object Tools with the `ayme` co
 
 ## A Peek is missing from the Inspector
 
-These are for [Peeks](reference/ayme.md#aymepeek), which only the Inspector shows.
+These are for [Peeks](reference/ayme.md#aymepeek), which exist only while the Inspector is on.
 
 - **No `peek.<name>` tool**: `ayme.peek` does nothing unless the session has `inspector` on, and nothing in Node. A component's Peek appears once the component has mounted, and goes when its last instance unmounts.
 - **`[ayme] peek.<name> is hidden: another tool uses that name.`**: another of the page's tools took the Peek Tool's name, and keeps it. Rename the Peek.
