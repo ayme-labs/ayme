@@ -24,7 +24,7 @@ if [[ ! -f "${FORMBRICKS_DIR}/.env" ]]; then
   formbricks_pnpm dev:setup
 fi
 
-# A Session, and ayme mcp, run the Page Objects in ayme/ with the ayme packages of this checkout,
+# A Session runs the Page Objects in ayme/ with the ayme packages of this checkout,
 # so build the ones this package depends on.
 printf 'Building the ayme packages from %s.\n' "$(git -C "${REPO_ROOT}" rev-parse --short HEAD)"
 pnpm --dir "${REPO_ROOT}" exec turbo run build --filter='@ayme-dev/lab-formbricks^...' --output-logs=errors-only

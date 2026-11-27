@@ -622,9 +622,6 @@ importers:
       "@ayme-dev/cli":
         specifier: workspace:*
         version: link:../../packages/cli
-      "@ayme-dev/mcp":
-        specifier: workspace:*
-        version: link:../../packages/mcp
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*

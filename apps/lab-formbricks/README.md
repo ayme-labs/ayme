@@ -1,9 +1,9 @@
 # Formbricks lab app
 
-[Formbricks](https://github.com/formbricks/formbricks) as a lab app: a real product with hard UI to measure agents on. The app itself ships no ayme. It is unmodified Formbricks, a git submodule at [`formbricks/`](./formbricks) pinned to an exact upstream commit. ayme's Page Objects for it live in this folder. The eval's agents run them with the `ayme` command, in a Session started in this folder; the qualification still has an `ayme mcp` server build them and load them into the page from outside.
+[Formbricks](https://github.com/formbricks/formbricks) as a lab app: a real product with hard UI to measure agents on. The app itself ships no ayme. It is unmodified Formbricks, a git submodule at [`formbricks/`](./formbricks) pinned to an exact upstream commit. ayme's Page Objects for it live in this folder. The eval's agents and the qualification run them with the `ayme` command, in a Session started in this folder.
 
 ```
-ayme/                  what a Session, or ayme mcp, runs when it starts in this folder
+ayme/                  what a Session runs when it starts in this folder
   page-objects.ts      the entry: the Page Objects of the screens
   pom/                 the Page Objects
 formbricks/            the Formbricks submodule
@@ -31,7 +31,7 @@ pnpm lab:prepare
 pnpm lab:dev
 ```
 
-`lab:prepare` checks out the pinned submodule commit, installs Formbricks's dependencies from its own lockfile with the pnpm version Formbricks declares, and creates its ignored `.env` the first time. It then builds the ayme packages this package depends on, `@ayme-dev/ayme`, `@ayme-dev/cli` and `@ayme-dev/mcp`, from this checkout. It refuses to touch a dirty submodule checkout, and puts nothing of ayme into it.
+`lab:prepare` checks out the pinned submodule commit, installs Formbricks's dependencies from its own lockfile with the pnpm version Formbricks declares, and creates its ignored `.env` the first time. It then builds the ayme packages this package depends on, `@ayme-dev/ayme` and `@ayme-dev/cli`, from this checkout. It refuses to touch a dirty submodule checkout, and puts nothing of ayme into it.
 
 `lab:dev` starts Formbricks's own dev stack: its services in Docker and the app at http://localhost:3000. It runs until you stop it with `Ctrl+C`. On the first start it also projects Formbricks's data into its authorization store and marks the survey scope ready, the state Formbricks's own CI calls production: a new survey starts restricted, and activating it asks who can view it. The marker lives in the Docker volume, so later starts skip this step.
 
@@ -44,10 +44,10 @@ pnpm lab:qualify
 pnpm lab:smoke
 ```
 
-`lab:qualify` qualifies the Page Objects against the running app with this repository's Playwright, whose Chromium `pnpm exec playwright install chromium` installs. Each test starts an `ayme mcp` server in this folder and runs the init script it writes in every page, as [ayme in the lab app](#ayme-in-the-lab-app) describes. No other ayme MCP server may listen on ports 9350 to 9365 while it runs, since a page pairs by itself only with exactly one. It has two tests:
+`lab:qualify` qualifies the Page Objects against the running app with this repository's Playwright, whose Chromium `pnpm exec playwright install chromium` installs. Each test starts a Session in this folder with `ayme open`, as [ayme in the lab app](#ayme-in-the-lab-app) describes, and its own Playwright connection to that browser plays the agent's browser automation. The Session keeps its record in the test's output folder, so it never finds a Session of yours in this folder. It has two tests:
 
-- The unmodified sign-in page pairs with the server by itself, and the server lists the sign-in screen's Page Object Tool and no other screen's.
-- Every Page Object locator resolves to exactly one visible element on its screen, and every Page Object Action, called through the server as an agent calls it, takes effect. The test seeds an isolated user, organization and workspace through Formbricks's database package ([`tests/seed.ts`](./tests/seed.ts)) and waits until Formbricks has copied them into its authorization store. It then walks the screens:
+- On the unmodified sign-in page, `ayme tools` lists the sign-in screen's Page Object Tool and no other screen's.
+- Every Page Object locator resolves to exactly one visible element on its screen, and every Page Object Action, called with `ayme call` as an agent calls it, takes effect. The test seeds an isolated user, organization and workspace through Formbricks's database package ([`tests/seed.ts`](./tests/seed.ts)) and waits until Formbricks has copied them into its authorization store. It then walks the screens:
   - **Sign-in.** `logIn` with a wrong password stays on the page with its error message; with the right one it leaves.
   - **First survey.** `startFromScratch` creates a survey and opens its editor.
   - **Editor.** In each of the three editors of the [table below](#page-objects), the actions whose button is missing are refused with their reason, and the others take effect: `fillSurveyForm` changes the name and the question text, `saveAsDraft` stores the name and leaves the survey a draft, `saveAndClose` publishes it, and `save` stores the name, leaves the survey published and keeps the editor open.
@@ -55,7 +55,7 @@ pnpm lab:smoke
 
 An action returns without waiting for the screen it leads to, so the test waits for each screen itself. Before that walk, a throwaway user walks the same screens with Playwright alone, because Turbopack compiles each route and each server action on its first use, which takes longer than `save` and `saveAsDraft` wait for theirs (see [Timeouts](#timeouts)).
 
-A rooted Page Object Tool is told which Page Object to act on. The test's `named` helper is the one place that says how: by its Page Object Id, which `page_objects` prints after its class name.
+A rooted Page Object Tool is told which Page Object to act on. The test's `named` helper is the one place that says how: by its Page Object Id, which `ayme page-objects` prints after its class name.
 
 `lab:smoke` runs Formbricks's own start-from-scratch Playwright scenario against the running app, with Formbricks's own Playwright. At the pinned revision it can fail at sign-in: the scenario writes its user to Postgres and signs in at once, while Formbricks's background worker copies the user into the authorization store a second or more later. When it is sent to "create organization", that race is the cause, not the lab app. Formbricks's own CI runs the scenario against a production build. `lab:qualify` waits for that copy before it signs in.
 
@@ -71,25 +71,7 @@ pnpm lab:stop
 
 Formbricks runs as its upstream wrote it, at `8abe0b42`, the `main` of the `ayme-labs/formbricks` fork as of 2026-10-03. Everything of ayme is in this folder.
 
-The [eval](../eval-formbricks/README.md#the-arms-with-ayme) reaches the Page Objects through the `ayme` command: a Session started in this folder builds [`ayme/page-objects.ts`](./ayme/page-objects.ts) with this checkout's `@ayme-dev/ayme` and runs it in Node with this folder's Playwright, on the browser the agent's automation drives. Nothing reaches the page. `ayme open` here needs Chromium for this folder's Playwright: `pnpm exec playwright install chromium`.
-
-The qualification still reaches them through `ayme mcp`, from outside the page:
-
-1. `ayme mcp`, started in this folder, finds [`ayme/page-objects.ts`](./ayme/page-objects.ts), builds it with the `@ayme-dev/ayme` of this checkout, and serves the build on its own loopback port. It rebuilds after each edit, and an open page swaps the new Page Objects in. Run `lab:prepare` again after changing ayme itself, then restart `ayme mcp`.
-2. As it starts it writes `ayme/init-script.js`, which names its port. Git ignores the file.
-3. The browser tool that opens the lab app runs that init script in every page, with `bypassCSP` on and the `local-network-access` permission granted. Formbricks's content security policy allows neither the served modules nor the server's loopback WebSocket, which is why `bypassCSP` is needed. With Playwright:
-
-   ```ts
-   const context = await browser.newContext({
-     bypassCSP: true,
-     permissions: ["local-network-access"],
-   });
-   await context.addInitScript({ path: "ayme/init-script.js" });
-   ```
-
-   Playwright MCP and Playwright CLI take the same three settings in their config file, as `ayme mcp`'s experimental served Page Objects took them.
-
-4. In the page, the init script loads ayme's runtime and the Page Objects from the server and turns the [Agent Connection](../../docs/guide/guides/connect-an-agent.md) on. On `localhost` the tab then pairs with the server by itself when exactly one ayme MCP server runs, and otherwise through the link `ayme_connect` returns. The screen's Page Object Tools and `page_objects` are then among the agent's MCP tools, beside its own browser automation.
+The [eval](../eval-formbricks/README.md#the-arms-with-ayme) and the qualification reach the Page Objects through the `ayme` command: a Session started in this folder builds [`ayme/page-objects.ts`](./ayme/page-objects.ts) with this checkout's `@ayme-dev/ayme` and runs it in Node with this folder's Playwright, on the browser the agent's automation drives. Nothing reaches the page. `ayme open` here needs Chromium for this folder's Playwright: `pnpm exec playwright install chromium`.
 
 ### Page Objects
 
