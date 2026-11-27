@@ -115,7 +115,12 @@ export class ElementNames {
   }
 
   private builtAfter() {
-    return (this.after ??= { tree: this.tree.toCurrentTree() });
+    // A read, or a tree that removed nothing, is the page after as it is.
+    return (this.after ??= {
+      tree: this.tree.getNodesByStatus("removed").length
+        ? this.tree.toCurrentTree()
+        : this.tree,
+    });
   }
 
   private builtBefore() {

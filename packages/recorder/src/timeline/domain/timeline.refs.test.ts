@@ -351,6 +351,60 @@ describe("an element the page re-created, and re-created again once the original
 
     expect(refsTwiceInOneTree((await timeline.package(header))!)).toEqual([]);
   });
+
+  it("name what went from inside one on the page before, though core matched it under its later ref", async () => {
+    const results = (ref: string, ...inside: string[]) =>
+      [
+        `- region "Results" [ref=${ref}]${inside.length ? ":" : ""}`,
+        ...inside.map((line) => `  ${line}`),
+      ].join("\n");
+    const main = (...elements: string[]) =>
+      page(
+        `- main [ref=e9]:`,
+        ...elements.flatMap((element) =>
+          element.split("\n").map((line) => `  ${line}`)
+        )
+      );
+    const pages = [
+      main(results("e2")),
+      main(results("e3")),
+      main(results("e4")),
+      main(`- region "Original" [ref=e2]`, results("e4")),
+      main(results("e3")),
+      main(
+        results("e4", `- region "Results" [ref=e3]`, `- button "Save" [ref=e5]`)
+      ),
+      // The page re-created the wrapper, and the button inside it is gone.
+      main(results("e6", `- region "Results" [ref=e3]`)),
+    ];
+    const snapshots = pages.map((tree, at) =>
+      snapshot(snapshotId(`snapshot_${at + 1}`), 10 * (at + 1), tree)
+    );
+    const timeline = await timelineOf([
+      visit,
+      snapshots[0]!,
+      snapshots[1]!,
+      click(
+        snapshotId("snapshot_1"),
+        snapshotId("snapshot_2"),
+        "e2",
+        pages[0]!
+      ),
+      ...snapshots.slice(2),
+    ]);
+
+    await timeline.package(header);
+    const changes = timeline
+      .visits()[0]!
+      .entries.flatMap((entry) => entry.changes ?? []);
+    expect(changes).toContainEqual(
+      expect.objectContaining({
+        kind: "removed",
+        element: 'button "Save"',
+        parent: expect.objectContaining({ name: "Results" }),
+      })
+    );
+  });
 });
 
 describe("an element the page re-created, when it changes", () => {

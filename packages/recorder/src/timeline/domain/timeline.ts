@@ -632,9 +632,7 @@ export class Timeline {
    * was given, by its own ref, and gets this tree's. An element that tree
    * had keeps the ref it was given there: the page before a change names a
    * removed element under its ref in the Change Tree, which can differ from
-   * the one it would hold among that page's elements alone. Core keeps
-   * every element of the page before in the Change Tree, so that page has
-   * no element without one.
+   * the one it would hold among that page's elements alone.
    */
   private underFirstRefs(
     tree: StructuralTree,
@@ -650,15 +648,19 @@ export class Timeline {
     for (const ref of owns)
       if (!holder.has(first(ref)) || isFirst(ref, first(ref)))
         holder.set(first(ref), ref);
+    // The refs this tree's elements keep from the earlier tree: another
+    // element of this tree cannot have one too. Core keeps the later ref of
+    // an element matched under two, so the page before can hold an element
+    // the earlier tree had under another ref.
+    const kept = new Set(owns.flatMap((own) => given.get(own) ?? []));
     const beforeByRef = new Map<AriaRef, StructuralNode>();
     const rename = (node: StructuralNode): StructuralNode => {
       const own = snapshotRef(node.ref);
       // One that does not hold its first ref keeps its own from here on.
       const chosen =
         holder.get(first(own)) === own ? first(own) : firstRef(own);
-      const ref =
-        given.get(own) ??
-        ((holder.get(chosen) ?? own) === own ? chosen : this.refs.create());
+      const free = !kept.has(chosen) && (holder.get(chosen) ?? own) === own;
+      const ref = given.get(own) ?? (free ? chosen : this.refs.create());
       given.set(own, ref);
       const before = tree.getBeforeNode(node.ref);
       // Stryker disable next-line ConditionalExpression: equivalent, since core reads a node recorded as null and one not recorded alike
