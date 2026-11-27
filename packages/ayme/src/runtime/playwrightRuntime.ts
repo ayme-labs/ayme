@@ -63,11 +63,15 @@ export type PlaywrightAymeOptions = {
    * the page numbers its own. Read by the first session on `page`.
    */
   pageObjectIds?: PageObjectIdSource;
-  /**
-   * What the host decides about each Playwright call of a Page Object
-   * Action's own code: when it starts, or that it is refused. A Session
-   * holds and refuses them at a dialog nobody answered (ADR-0073).
-   */
+};
+
+/**
+ * What the internal entry's Node Host is created with: a session's options,
+ * and what its Host decides about each Playwright call of a Page Object
+ * Action's own code. Only a Session decides: it holds and refuses them at a
+ * dialog nobody answered (ADR-0073).
+ */
+export type NodeHostOptions = PlaywrightAymeOptions & {
   actionCalls?: ActionCalls;
 };
 
@@ -90,7 +94,7 @@ export const nodeHostTargets = new WeakMap<object, SessionTarget>();
  * process, which the entry that holds the Playwright import hands in.
  */
 function createPlaywrightAyme(
-  options: PlaywrightAymeOptions,
+  options: NodeHostOptions,
   registerSelectors: () => Promise<void>
 ): PlaywrightAyme {
   const { page } = options;
@@ -122,7 +126,7 @@ function createPlaywrightAyme(
  * `ayme-ref` engine once.
  */
 export function createNodeHost(
-  options: PlaywrightAymeOptions,
+  options: NodeHostOptions,
   selectors: Selectors
 ): PlaywrightAyme {
   return createPlaywrightAyme(options, () => registerAymeRef(selectors));

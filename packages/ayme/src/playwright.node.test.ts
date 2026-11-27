@@ -818,6 +818,15 @@ describe("a Session's Node Host, through the internal entry", () => {
     });
   });
 
+  it("takes no Host's say over an action's calls on the public options: only the internal Node Host does", () => {
+    const options: Playwright.PlaywrightAymeOptions = {
+      page: undefined as unknown as Page,
+      // @ts-expect-error The public options have no actionCalls.
+      actionCalls: undefined,
+    };
+    expect(options).not.toHaveProperty("actionCalls", expect.anything());
+  });
+
   describe("the Playwright calls of a Page Object Action's own code", () => {
     const counter =
       '<section id="counter"><output>0</output><button>Add</button></section>' +
