@@ -34,6 +34,9 @@ type Stop = { stopped: boolean };
 const REFUSED =
   "ayme refused this Playwright call: the action stopped at a dialog it did not answer itself.";
 
+const UNWATCHED =
+  "ayme refused this Playwright call: ayme no longer watches the tab's dialogs, as the tab closed or the Session ended.";
+
 const startAfter = (ms: number, then: () => void) => {
   const timer = setTimeout(then, ms);
   return () => clearTimeout(timer);
@@ -59,6 +62,7 @@ export function tabDialogs(
   const running = new Set<Stop>();
   let now: TabDialog = "none";
   let counting: (() => void) | undefined;
+  let ended = false;
   let held:
     { readonly until: Promise<void>; readonly end: () => void } | undefined;
   const set = (next: TabDialog) => {
@@ -108,6 +112,7 @@ export function tabDialogs(
     before: (answersAtOnce) => {
       const own = actions.getStore();
       if (!own) return undefined;
+      if (ended) throw new Error(UNWATCHED);
       refuseIfStopped(own);
       if (!held || answersAtOnce) return undefined;
       return held.until.then(() => actionCalls.before(false));
@@ -124,6 +129,7 @@ export function tabDialogs(
   return {
     /** The browser says `dialog` opened on the Tab's page. */
     opened: (dialog: Dialog) => {
+      if (ended) return;
       counting?.();
       if (!held) {
         let end = () => {};
@@ -135,14 +141,24 @@ export function tabDialogs(
     /** The browser says `dialog` was open before the Tab was watched: it
      * counts at once, as nobody knows how long it has been open. */
     alreadyOpen: (dialog: Dialog) => {
+      if (ended) return;
       counting?.();
       count(dialog);
     },
     /** The browser says the Tab's dialog closed, whoever answered it. */
     closed: () => {
+      if (ended) return;
       counting?.();
       counting = undefined;
       set("none");
+      release();
+    },
+    /** The Tab is no longer watched, as its page closed: nothing more
+     * counts, and the action calls it held are refused. */
+    end: () => {
+      ended = true;
+      counting?.();
+      counting = undefined;
       release();
     },
     /** Runs `work`, all the Host does for one request on the Tab: a

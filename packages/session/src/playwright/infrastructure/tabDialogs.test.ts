@@ -354,3 +354,22 @@ it("a dialog that was open before the Tab was watched counts as open at once, an
   expect(await settled(request)).toBe(REFUSED);
   expect(entered).toBe(false);
 });
+
+it("once the Tab's watch ends, as when its page closes, nothing more counts and the calls it held are refused", async () => {
+  const { dialogs, told, waits } = scripted();
+  const calls: Promise<unknown>[] = [];
+  action(dialogs, () => later(dialogs, calls));
+  dialogs.opened(confirm);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  dialogs.end();
+  dialogs.opened(confirm);
+
+  expect(await settled(calls[0]!)).toBe(
+    "refused: ayme refused this Playwright call: ayme no longer watches the tab's dialogs, as the tab closed or the Session ended."
+  );
+  expect(waits).toHaveLength(1);
+  expect(waits[0]!.cancelled).toBe(true);
+  expect(told).toEqual(["opening"]);
+});

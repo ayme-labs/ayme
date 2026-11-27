@@ -115,8 +115,15 @@ const devtools = (page: Page) => {
     const making = page.context().newCDPSession(page);
     const made = withinSetup(making, "ayme's DevTools session");
     devtoolsOf.set(page, made);
-    made.catch(() => {
+    const forget = () => {
       if (devtoolsOf.get(page) === made) devtoolsOf.delete(page);
+    };
+    void made.then(
+      (ended) => ended.once("close", forget),
+      () => {}
+    );
+    made.catch(() => {
+      forget();
       void making.then(
         (late) => late.detach(),
         () => {}
@@ -183,10 +190,25 @@ const dialogsOf = (page: Page): Watch => {
     dialogs.alreadyOpen(dialogOf(opened));
   };
   const closing = () => dialogs.closed();
+  // The watch ends with the page, with ayme's DevTools session, and with
+  // the Session, whose end closes its connection and so every page of it;
+  // one that failed to start is forgotten too, so the next command watches
+  // the page again.
+  const end = () => {
+    dialogs.end();
+    page.off("dialog", told);
+    page.off("close", end);
+    session?.off("Page.javascriptDialogOpening", opening);
+    session?.off("Page.javascriptDialogClosed", closing);
+    session?.off("close", end);
+    if (watched.get(page) === watch) watched.delete(page);
+  };
   page.on("dialog", told);
+  page.once("close", end);
   const started = devtools(page)
     .then((made) => {
       session = made;
+      made.once("close", end);
       made.on("Page.javascriptDialogOpening", opening);
       made.on("Page.javascriptDialogClosed", closing);
       return made.send("Page.enable");
@@ -198,14 +220,7 @@ const dialogsOf = (page: Page): Watch => {
     });
   const watch: Watch = { dialogs, dialog, started };
   watched.set(page, watch);
-  // A watch that failed to start is forgotten, so the next command watches
-  // the page again.
-  started.catch(() => {
-    page.off("dialog", told);
-    session?.off("Page.javascriptDialogOpening", opening);
-    session?.off("Page.javascriptDialogClosed", closing);
-    if (watched.get(page) === watch) watched.delete(page);
-  });
+  started.catch(end);
   return watch;
 };
 
@@ -392,9 +407,12 @@ function tabsOf(
   const tabOf = (page: Page) => {
     const tab = tabs.get(page) ?? {
       url: () => page.url(),
+      // Each wait for the close lets go of its listener once it is over.
       closed: Effect.callback<void>((resume) => {
-        page.once("close", () => resume(Effect.void));
-        if (page.isClosed()) resume(Effect.void);
+        const closed = () => resume(Effect.void);
+        page.once("close", closed);
+        if (page.isClosed()) closed();
+        return Effect.sync(() => page.off("close", closed));
       }),
       dialog: Stream.unwrap(
         Effect.sync(() => SubscriptionRef.changes(dialogsOf(page).dialog))

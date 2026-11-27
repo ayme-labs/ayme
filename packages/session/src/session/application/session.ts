@@ -339,8 +339,13 @@ function sessionTabs(
       if (known) return yield* known;
       // Hosting a Tab waits on its page, which a dialog holds: a Tab whose
       // dialog counts as open is answered with it, and hosted later.
-      const now = yield* Stream.runHead(
-        tab.dialog.pipe(Stream.filter((now) => now !== "opening"))
+      const now = yield* Effect.raceFirst(
+        Stream.runHead(
+          tab.dialog.pipe(Stream.filter((now) => now !== "opening"))
+        ),
+        tab.closed.pipe(
+          Effect.andThen(Effect.fail(new TabReadError(TAB_CLOSED)))
+        )
       );
       if (Option.isSome(now) && isOpen(now.value))
         return yield* Effect.fail(new TabDialogOpen(tab.url(), now.value.open));
@@ -515,10 +520,14 @@ function atDialogs(
   const counted = hosted.dialog.pipe(Stream.filter((now) => now !== "opening"));
   const atDialog = <A, E>(
     work: Effect.Effect<A, E>,
-    refused: (dialog: Dialog) => E
+    refused: (dialog: Dialog) => E,
+    closed: E
   ): Effect.Effect<A, E> =>
     Effect.gen(function* () {
-      const now = yield* Stream.runHead(counted);
+      const now = yield* Effect.raceFirst(
+        Stream.runHead(counted),
+        tab.closed.pipe(Effect.andThen(Effect.fail(closed)))
+      );
       if (Option.isSome(now) && isOpen(now.value))
         return yield* Effect.fail(refused(now.value.open));
       const request = { answered: false };
@@ -551,9 +560,11 @@ function atDialogs(
   return {
     listing: atDialog(
       hosted.listing,
-      (dialog) => new TabReadError(dialogOpenInListing(tab.url(), dialog))
+      (dialog) => new TabReadError(dialogOpenInListing(tab.url(), dialog)),
+      new TabReadError(TAB_CLOSED)
     ),
-    call: (tool, input) => atDialog(hosted.call(tool, input), atRun),
+    call: (tool, input) =>
+      atDialog(hosted.call(tool, input), atRun, new RunError(TAB_CLOSED)),
     inspector: {
       ...hosted.inspector,
       request: (method, params) =>
@@ -562,7 +573,8 @@ function atDialogs(
           (dialog) =>
             new TabReadError(
               method === "runTool" ? atRun(dialog).message : dialogOpen(dialog)
-            )
+            ),
+          new TabReadError(TAB_CLOSED)
         ),
     },
     dialog: hosted.dialog,

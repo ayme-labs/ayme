@@ -344,3 +344,25 @@ it("a dialog already open on a Tab no command touched yet is answered at once, a
   expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
   expect(browser.hosted).toBe(true);
 });
+
+it("a Tab that closes while a command waits for its dialog to count is answered that it closed, hosted or not", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const other = browser.openTab("http://127.0.0.1:5173/sign-in.html");
+  await session.ask({ tools: {} });
+  other.openDialog(confirm);
+  browser.openDialog(confirm);
+  const onHosted = session.ask({ tools: {} });
+  const onUnhosted = session.ask({ tools: { tab: "about:blank" } });
+  expect(await pending(onHosted)).toBe(true);
+  expect(await pending(onUnhosted)).toBe(true);
+
+  other.close();
+  browser.close();
+
+  const closed = {
+    ok: false,
+    text: "The tab was closed before ayme answered this command.",
+  };
+  expect(await onHosted).toEqual(closed);
+  expect(await onUnhosted).toEqual(closed);
+});
