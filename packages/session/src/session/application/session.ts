@@ -18,6 +18,7 @@ import {
   endedAtStart,
   endedBeforeAnswer,
   failed,
+  idNotOnShownTab,
   idOnAnotherTab,
   type InspectorEvent,
   joinedAnswer,
@@ -37,7 +38,12 @@ import {
   SessionStartError,
   unknownRequest,
 } from "../domain";
-import { answerInspector, inspectorEvents, withoutWindow } from "./inspector";
+import {
+  answerInspector,
+  followTabs,
+  withoutWindow,
+  type ShowableTab,
+} from "./inspector";
 import { PageObjectsBuild } from "./pageObjectsBuild";
 import {
   SessionBrowser,
@@ -159,6 +165,13 @@ export const openSession = (
       Effect.forkIn(scope)
     );
 
+    const shownTabs = followTabs(
+      Deferred.await(start).pipe(Effect.flatMap(({ tabs }) => tabs.active)),
+      Deferred.await(ending),
+      name,
+      scope
+    );
+
     const afterStart = (
       answer: (started: Started) => Effect.Effect<SessionAnswer>
     ) =>
@@ -208,7 +221,9 @@ export const openSession = (
           window: inspector,
           agentApp,
           name,
+          shown: shownTabs.shown,
           chosen: started.tabs.chosen(undefined),
+          idElsewhere: started.tabs.idElsewhere,
         });
       return Effect.succeed(unknownRequest);
     };
@@ -247,13 +262,7 @@ export const openSession = (
           );
         return afterStart((started) => untilEnd(answerTo(request, started)));
       },
-      events: inspectorEvents(
-        Deferred.await(start).pipe(
-          Effect.flatMap(({ tabs }) => tabs.chosen(undefined))
-        ),
-        Deferred.await(ending),
-        name
-      ),
+      events: shownTabs.events,
       ended: Deferred.await(ended),
     };
   });
@@ -280,6 +289,15 @@ type SessionTabs = {
     url: string | undefined,
     call?: { readonly tool: string; readonly input: unknown }
   ) => Effect.Effect<HostedTab, TabReadError>;
+  /** The most recently active Tab, with the Session as its Host; none when
+   * no tab is open. */
+  readonly active: Effect.Effect<ShowableTab | undefined, TabReadError>;
+  /** Why a `call` on the Tab `on` cannot run: the Page Object Id it takes
+   * is of another Tab. */
+  readonly idElsewhere: (
+    on: BrowserTab,
+    call: { readonly tool: string; readonly input: unknown }
+  ) => string | undefined;
 };
 
 /** The Tabs of `browser`, each hosted once, the first time the Session
@@ -332,11 +350,33 @@ function sessionTabs(
         Effect.tapError(() => Effect.sync(() => hosts.delete(tab)))
       );
     });
+  /** The Tab whose Host gave the Page Object Id that `call` takes. */
+  const ownerOf = (call?: {
+    readonly tool: string;
+    readonly input: unknown;
+  }) => {
+    const id =
+      call && rooted.has(classOf(call.tool)) ? idIn(call.input) : undefined;
+    return id === undefined ? undefined : { id, tab: owners.get(id) };
+  };
   return {
+    active: browser.open.pipe(
+      Effect.flatMap(([tab]) =>
+        tab
+          ? hostOf(tab).pipe(Effect.map((hosted) => ({ tab, hosted })))
+          : Effect.succeed(undefined)
+      )
+    ),
+    idElsewhere: (on, call) => {
+      const owned = ownerOf(call);
+      return owned?.tab && owned.tab !== on
+        ? idNotOnShownTab(owned.id, owned.tab.url())
+        : undefined;
+    },
     chosen: (url, call) => {
-      const id =
-        call && rooted.has(classOf(call.tool)) ? idIn(call.input) : undefined;
-      const owner = id === undefined ? undefined : owners.get(id);
+      const owned = ownerOf(call);
+      const id = owned?.id;
+      const owner = owned?.tab;
       if (owner) {
         if (url === undefined || owner.url() === url) return hostOf(owner);
         return Effect.fail(

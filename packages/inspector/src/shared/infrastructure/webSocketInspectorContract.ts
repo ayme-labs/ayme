@@ -14,17 +14,25 @@ import type {
 // contract method, or `subscribe` / `unsubscribe` for events; replies
 // `{ id, result }` or `{ id, error }`; the pushes `{ event }`; and
 // `{ reset: true }`, which says the page is a new document, whose revisions
-// start again. A Session's also sends `{ ended }`, what to say once it
-// ended.
+// start again. A Session's also sends `{ tab }`, the Tab the window shows,
+// which its requests name, and `{ ended }`, what to say once it ended.
 
 type Reply =
   | { id: number; result: unknown }
   | { id: number; error: string }
   | { event: InspectorEvent }
   | { reset: true }
+  | { tab: number }
   | { ended: string };
 
-type Waiting = { resolve(result: unknown): void; reject(error: Error): void };
+type Waiting = {
+  resolve(result: unknown): void;
+  reject(error: Error): void;
+  /** The Tab its request named. */
+  tab?: number;
+};
+
+type Request = { id: number; method: string; params?: unknown };
 
 export type WebSocketInspectorOptions = {
   /** The WebSocket class to connect with; the global one unless given. */
@@ -49,6 +57,13 @@ export type WebSocketInspectorOptions = {
    * serves ended: the transport connects no more, since no Session comes
    * back at that address. */
   onEnded?: (notice: string) => void;
+  /**
+   * Whether the server tells the Tab the window shows, as a Session's
+   * does: each request waits until it did, and names that Tab, so the
+   * Session refuses one made for a Tab it no longer shows; an answer to a
+   * request made on the Tab before is dropped. A new Tab is a new page.
+   */
+  followsTabs?: boolean;
 };
 
 /**
@@ -71,6 +86,7 @@ export function webSocketInspectorContract(
     retries,
     onLost,
     onEnded,
+    followsTabs = false,
   }: WebSocketInspectorOptions = {}
 ): InspectorContract {
   const observers = new Set<InspectorObserver>();
@@ -84,7 +100,10 @@ export function webSocketInspectorContract(
   // The connections in a row that did not open, and whether it gave up.
   let failed = 0;
   let lost = false;
+  // The Tab the window shows, as this connection's server told it.
+  let shownTab: number | undefined;
   const closed = () => new Error("The connection to ayme's process closed.");
+  const anotherTab = () => new Error("The Inspector shows another Tab now.");
 
   const raise = <T extends { revision: number }>(value: T): T => {
     const revision = value.revision + base;
@@ -109,14 +128,22 @@ export function webSocketInspectorContract(
       if (lost) return reject(closed());
       const id = nextId++;
       waiting.set(id, { resolve, reject });
-      transmit(JSON.stringify({ id, method, params }));
+      outbox.push({ id, method, params });
+      flush();
     });
-  // Frames wait here until the socket is open, in order.
-  const outbox: string[] = [];
-  const transmit = (frame: string) => {
-    if (socket.readyState === WebSocketClass.OPEN && outbox.length === 0)
-      socket.send(frame);
-    else outbox.push(frame);
+  // Requests wait here, in order, until the socket is open and, on a
+  // Session, until it told the Tab they name.
+  const outbox: Request[] = [];
+  const flush = () => {
+    if (socket.readyState !== WebSocketClass.OPEN) return;
+    if (followsTabs && shownTab === undefined) return;
+    for (const request of outbox.splice(0)) {
+      const pending = waiting.get(request.id);
+      if (pending && followsTabs) pending.tab = shownTab;
+      socket.send(
+        JSON.stringify(followsTabs ? { ...request, tab: shownTab } : request)
+      );
+    }
   };
 
   /** The page is new: its state is read and given as an event. */
@@ -141,7 +168,7 @@ export function webSocketInspectorContract(
     socket = new WebSocketClass(url);
     socket.onopen = () => {
       failed = 0;
-      for (const frame of outbox.splice(0)) socket.send(frame);
+      flush();
       if (!reconnected) return;
       // The server knows nothing of this connection's subscription.
       if (observers.size > 0) void send("subscribe");
@@ -150,6 +177,12 @@ export function webSocketInspectorContract(
     socket.onmessage = ({ data }) => {
       const reply = JSON.parse(String(data)) as Reply;
       if ("reset" in reply) return reset();
+      if ("tab" in reply) {
+        const before = shownTab;
+        shownTab = reply.tab;
+        if (before !== undefined && before !== reply.tab) reset();
+        return flush();
+      }
       if ("ended" in reply) {
         lost = true;
         return onEnded?.(reply.ended);
@@ -157,7 +190,9 @@ export function webSocketInspectorContract(
       if ("event" in reply) return emit(raiseEvent(reply.event));
       const pending = waiting.get(reply.id);
       waiting.delete(reply.id);
-      if ("error" in reply) pending?.reject(new Error(reply.error));
+      if (followsTabs && pending && pending.tab !== shownTab)
+        pending.reject(anotherTab());
+      else if ("error" in reply) pending?.reject(new Error(reply.error));
       else pending?.resolve(reply.result);
     };
     socket.onclose = () => {
@@ -166,6 +201,7 @@ export function webSocketInspectorContract(
       waiting.clear();
       // What was not sent is not sent to the next connection either.
       outbox.length = 0;
+      shownTab = undefined;
       if (lost) return;
       if (retries !== undefined && failed >= retries) {
         lost = true;

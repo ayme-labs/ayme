@@ -10,14 +10,16 @@ export type InspectorRequest =
   /** `ayme mcp`: the socket the Inspector an Agent App shows in its chat
    * connects to, with the token that admits it (ADR-0072). */
   | { readonly agentApp: Nothing }
-  /** One call of the window on the Inspector's contract with the runtime,
-   * on the Tab the Session works on: `method` names one of the contract's
-   * methods, and `params` is its argument, plain data the Session does not
-   * read. */
+  /** One call of the window on the Inspector's contract with the runtime:
+   * `method` names one of the contract's methods, and `params` is its
+   * argument, plain data the Session does not read. `tab` is the Tab the
+   * window shows, as the Session told it; without it, the call is made on
+   * the Tab the Session works on now. */
   | {
       readonly contract: {
         readonly method: string;
         readonly params?: unknown;
+        readonly tab?: number;
       };
     };
 
@@ -26,9 +28,11 @@ export type InspectorEvent =
   /** An event of the contract of the Tab the Session works on, plain data
    * the Session does not read. */
   | { readonly contract: unknown }
-  /** The Session works on another Tab from now on: what the window showed
-   * is of the Tab before, and the contract's revisions start again. */
-  | { readonly newTab: Nothing }
+  /** The Tab the windows show from now on, by a number that rises on each
+   * change, which the window's calls name: what a window showed before is
+   * of the Tab before, and the contract's revisions start again. A window
+   * hears it first when it starts listening. */
+  | { readonly tab: number }
   /** The Session ended: what the window says in place of the Inspector.
    * Nothing follows it. */
   | { readonly ended: string };
@@ -98,6 +102,16 @@ export const contractAnswer = (result: unknown): SessionAnswer => ({
   text: "",
   data: result,
 });
+
+/** Why a window's call was refused before any work on the page: it names
+ * a Tab the Session no longer shows, as the window has yet to hear. */
+export const ANOTHER_TAB_SHOWN =
+  "The Inspector shows another Tab now, so ayme did not carry out this call on the Tab the window showed.";
+
+/** Why a window's Run of a tool that takes the Page Object Id `id` was
+ * refused: the id is of the tab at `url`, not of the Tab the window shows. */
+export const idNotOnShownTab = (id: string, url: string): string =>
+  `${id} is a Page Object of the tab that shows ${url}, not of the Tab the Inspector shows.`;
 
 /** Why `ayme inspect` finds no window: a Session served without one, as in
  * a test of its process. */

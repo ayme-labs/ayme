@@ -67,11 +67,12 @@ async function windowSocket(address: string, origin?: string) {
   let id = 0;
   return {
     socket,
-    told,
-    /** Sends a request and resolves with its reply. */
-    async request(method: string, params?: unknown) {
+    told: told as object[],
+    /** Sends a request, on the Tab `tab` when given, and resolves with
+     * its reply. */
+    async request(method: string, params?: unknown, tab?: number) {
       const asked = ++id;
-      socket.send(JSON.stringify({ id: asked, method, params }));
+      socket.send(JSON.stringify({ id: asked, method, params, tab }));
       await expect
         .poll(() =>
           told.find((frame) => (frame as { id?: number }).id === asked)
@@ -154,18 +155,28 @@ it("answers a window's call with what the contract of the Session's Tab answered
   ]);
 });
 
-it("tells a window that subscribed the contract's events, and a new page when the Session works on another Tab", async () => {
+it("tells a window the Tab it shows, the contract's events once it subscribed, and each new Tab, which its calls name", async () => {
   const { address, browser } = await serve();
   const window = await windowSocket(address);
 
   expect(await window.request("subscribe")).toEqual({ id: 1, result: null });
   await expect.poll(() => browser.inspectorListeners).toBe(1);
   browser.tellInspector({ type: "state" });
-  browser.openTab("http://127.0.0.1:5173/other");
+  const other = browser.openTab("http://127.0.0.1:5173/other");
 
   await expect
-    .poll(() => window.told.slice(1))
-    .toEqual([{ event: { type: "state" } }, { reset: true }]);
+    .poll(() => window.told.filter((frame) => !Object.hasOwn(frame, "id")))
+    .toEqual([{ tab: 1 }, { event: { type: "state" } }, { tab: 2 }]);
+  expect(await window.request("look", undefined, 1)).toEqual({
+    id: 2,
+    error:
+      "The Inspector shows another Tab now, so ayme did not carry out this call on the Tab the window showed.",
+  });
+  expect(await window.request("look", undefined, 2)).toEqual({
+    id: 3,
+    result: "look",
+  });
+  expect(other.inspectorCalls.map(({ method }) => method)).toEqual(["look"]);
 });
 
 it("a window that closes ends the Session's subscription to the Tab's contract, and the Session goes on", async () => {

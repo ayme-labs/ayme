@@ -69,19 +69,29 @@ function send(
   response.end(body);
 }
 
-/** A window's request, if `data` holds one: `{ id, method, params }`. */
-function requestIn(
-  data: unknown
-): { id: string | number; method: string; params?: unknown } | undefined {
+/** A window's request, if `data` holds one: `{ id, method, params, tab }`. */
+function requestIn(data: unknown):
+  | {
+      id: string | number;
+      method: string;
+      params?: unknown;
+      tab?: number;
+    }
+  | undefined {
   try {
     const frame = JSON.parse(String(data)) as Record<string, unknown>;
-    const { id, method } = frame;
+    const { id, method, tab } = frame;
     if (
       (typeof id === "string" || typeof id === "number") &&
       typeof method === "string" &&
       method !== ""
     )
-      return { id, method, params: frame.params };
+      return {
+        id,
+        method,
+        params: frame.params,
+        ...(typeof tab === "number" && { tab }),
+      };
   } catch {
     // Not JSON: no request.
   }
@@ -92,7 +102,7 @@ function requestIn(
  * events or not. */
 function frameOf(event: InspectorEvent, listening: boolean) {
   if ("ended" in event) return { ended: event.ended };
-  if ("newTab" in event) return { reset: true };
+  if ("tab" in event) return { tab: event.tab };
   return listening ? { event: event.contract } : undefined;
 }
 
@@ -213,13 +223,17 @@ function accept(ws: WebSocket, session: Pick<Session, "ask" | "events">) {
   ws.on("message", (data) => {
     const request = requestIn(data);
     if (!request) return;
-    const { id, method, params } = request;
+    const { id, method, params, tab } = request;
     if (method === "subscribe" || method === "unsubscribe") {
       listening = method === "subscribe";
       return reply({ id, result: null });
     }
     void Effect.runPromise(
-      session.ask({ inspector: { contract: { method, params } } })
+      session.ask({
+        inspector: {
+          contract: { method, params, ...(tab !== undefined && { tab }) },
+        },
+      })
     ).then((answer) =>
       reply(
         answer.ok

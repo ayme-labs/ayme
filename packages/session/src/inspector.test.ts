@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 
 import { startScriptedSession } from "../testing";
+import type { InspectorEvent } from "./session/domain";
 
 // The Inspector on a Session, through the Session's interface on the
 // scripted browser: what `ayme inspect` and the Inspector window ask, and
@@ -20,12 +21,21 @@ async function pending(promise: Promise<unknown>): Promise<boolean> {
   return !settled;
 }
 
-/** A call of the window on the contract of the Session's Tab. */
-const contract = (method: string, params?: unknown) => ({
+/** A call of the window on the contract of the Session's Tab, or of the
+ * Tab the window shows as `tab`. */
+const contract = (method: string, params?: unknown, tab?: number) => ({
   inspector: {
-    contract: { method, ...(params === undefined ? {} : { params }) },
+    contract: {
+      method,
+      ...(params === undefined ? {} : { params }),
+      ...(tab === undefined ? {} : { tab }),
+    },
   },
 });
+
+/** The Tab the window that heard `heard` was told last. */
+const shownTab = (heard: readonly InspectorEvent[]) =>
+  heard.findLast((event) => "tab" in event) as { tab: number } | undefined;
 
 it("ayme inspect is answered with the address of the Session's Inspector window", async () => {
   const { session } = await startScriptedSession({ ...opening, name: "shop" });
@@ -180,11 +190,98 @@ it("a window hears the contract's events of the Tab the Session works on, and is
   await expect
     .poll(() => window.heard)
     .toEqual([
+      { tab: 1 },
       { contract: { revision: 1 } },
-      { newTab: {} },
+      { tab: 2 },
       { contract: { revision: 1, tab: "second" } },
     ]);
   expect(browser.inspectorListeners).toBe(0);
+});
+
+/** A Run of `name` from the window, on the Tab it shows as `tab`. */
+const runFromWindow = (tab: number, name: string, input: unknown = {}) =>
+  contract("runTool", { name, input, by: "inspector" }, tab);
+
+it("a window's call is made on the Tab the window shows, even when the browser automation brought another to the front before the Session read its tab list", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const window = session.listen();
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+  const release = browser.holdTabList();
+  const second = browser.openTab("http://127.0.0.1:5173/other");
+
+  expect(await session.ask(runFromWindow(1, "Basket.add"))).toMatchObject({
+    ok: true,
+  });
+
+  expect(browser.inspectorCalls.map(({ method }) => method)).toEqual([
+    "runTool",
+  ]);
+  expect(second.inspectorCalls).toEqual([]);
+  release();
+});
+
+it("a window's call that names a Tab the Session no longer shows is refused before any work on the page", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const window = session.listen();
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+  // The window opened a tool's form; the browser automation brings another
+  // Tab forward before the developer presses Run.
+  const second = browser.openTab("http://127.0.0.1:5173/other");
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 2 });
+
+  expect(await session.ask(runFromWindow(1, "Basket.add"))).toEqual({
+    ok: false,
+    text: "The Inspector shows another Tab now, so ayme did not carry out this call on the Tab the window showed.",
+  });
+  expect(await session.ask(contract("look", undefined, 1))).toMatchObject({
+    ok: false,
+  });
+
+  expect(browser.inspectorCalls).toEqual([]);
+  expect(second.inspectorCalls).toEqual([]);
+  expect(await session.ask(contract("look", undefined, 2))).toMatchObject({
+    ok: true,
+    data: "look",
+  });
+});
+
+it("a window's Run that started finishes on its own Tab when the Session shows another", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const window = session.listen();
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+  let finish = () => {};
+  browser.answerInspector(
+    () => new Promise((resolve) => (finish = () => resolve("first's Run")))
+  );
+  const run = session.ask(runFromWindow(1, "Basket.add"));
+  await expect.poll(() => browser.inspectorCalls).toHaveLength(1);
+
+  const second = browser.openTab("http://127.0.0.1:5173/other");
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 2 });
+  finish();
+
+  expect(await run).toEqual({ ok: true, text: "", data: "first's Run" });
+  expect(second.inspectorCalls).toEqual([]);
+});
+
+it("a window's Run of a tool whose Page Object Id is of another Tab is refused", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const second = browser.openTab("http://127.0.0.1:5173/other");
+  expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
+  second.give("po9", "Basket");
+  second.activate();
+  browser.activate();
+  const window = session.listen();
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+
+  expect(
+    await session.ask(runFromWindow(1, "Basket.add", { id: "po9" }))
+  ).toEqual({
+    ok: false,
+    text: "po9 is a Page Object of the tab that shows http://127.0.0.1:5173/other, not of the Tab the Inspector shows.",
+  });
+  expect(browser.inspectorCalls).toEqual([]);
+  expect(second.inspectorCalls).toEqual([]);
 });
 
 it("a window that stops listening ends the Session's subscription to the Tab's contract, and the Session goes on", async () => {
@@ -210,6 +307,7 @@ it("when the Session ends, each window is told why, and nothing follows", async 
 
   await window.done;
   expect(window.heard).toEqual([
+    { tab: 1 },
     {
       ended:
         "The Session shop was closed. Start a Session with ayme open or ayme attach, then run ayme -s=shop inspect to inspect it.",
@@ -276,7 +374,7 @@ it("a window's Run and read on a Tab that closes are answered that the tab was c
   expect(await read).toEqual(closed);
   expect(other.inspectorListeners).toBe(0);
   await expect.poll(() => browser.inspectorListeners).toBe(1);
-  expect(window.heard).toEqual([{ newTab: {} }]);
+  expect(window.heard).toEqual([{ tab: 1 }, { tab: 2 }]);
   // The closed Tab's Run gave back the turn.
   expect(
     await session.ask({ call: { tool: "Basket.add", input: {} } })
