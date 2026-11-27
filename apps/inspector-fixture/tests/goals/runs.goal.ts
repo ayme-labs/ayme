@@ -242,11 +242,13 @@ for (const placement of placements) {
         params: { tool: "ListItem.mark" },
       });
 
-      await agent.act("pick the {item} item with the mouse", {
+      await agent.act("select the {item} item with the mouse", {
         params: { item: "Eggs" },
       });
-      await agent.act("switch the arguments editor to JSON");
-      await agent.act("switch the arguments editor back to Form");
+      await agent.act("switch the arguments editor to JSON with the mouse");
+      await agent.act(
+        "switch the arguments editor back to Form with the mouse"
+      );
       // "done" is the field's first choice, which it shows before any pick.
       await agent.act("set the state to {state} with the mouse", {
         params: { state: "todo" },

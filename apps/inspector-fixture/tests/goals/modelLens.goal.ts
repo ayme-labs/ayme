@@ -7,6 +7,7 @@ import {
   reloadFixture,
   testIn,
   confirmGoalRecordings,
+  movePointerTo,
 } from "../e2e/fixtures";
 
 // The goal-driven twin of ../modelLens.e2e.ts: the same tests, with each
@@ -33,7 +34,7 @@ for (const placement of placements) {
 
       // The list can still be settling under a resting pointer, which then
       // hovers another row: hover again until it is this one.
-      // Until the test's own timeout, as Playwright's `toPass()` without one.
+      // For up to 30 s.
       await expect
         .poll(
           async () => {
@@ -48,7 +49,7 @@ for (const placement of placements) {
           { timeout: 30_000 }
         )
         .toBe("dashed");
-      await inspector.header.title.hover();
+      await movePointerTo(inspector.header.title);
       await expect.poll(secondItem).toBe("none");
 
       await agent.act(
@@ -57,7 +58,7 @@ for (const placement of placements) {
           params: { item: "[1]", ordinal: "second", collection: "items" },
         }
       );
-      await inspector.header.title.hover();
+      await movePointerTo(inspector.header.title);
 
       await expect.poll(secondItem).toBe("solid");
 
@@ -88,7 +89,7 @@ for (const placement of placements) {
 
       await expect.poll(archiveButton).toBe("dashed");
       await expect.poll(item).toBe("solid");
-      await inspector.header.title.hover();
+      await movePointerTo(inspector.header.title);
       await expect.poll(archiveButton).toBe("none");
       await expect.poll(item).toBe("solid");
 
@@ -110,7 +111,7 @@ for (const placement of placements) {
       await agent.act("select its {member} member", {
         params: { member: "newItemInput" },
       });
-      await inspector.header.title.hover();
+      await movePointerTo(inspector.header.title);
 
       await expect.poll(input).toBe("solid");
       await expect(await detail.title.front()).toHaveText(

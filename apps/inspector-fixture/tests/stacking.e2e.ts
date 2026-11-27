@@ -167,6 +167,9 @@ for (const zIndex of [50, 101]) {
         await expect(
           await inspector.header.layoutMenu.menu.front()
         ).toBeHidden();
+        await expect
+          .poll(() => inspector.header.layoutMenu.current())
+          .toBe(layout);
         await clickOutside(inspector.panel);
       }
       await inspector.collapse();

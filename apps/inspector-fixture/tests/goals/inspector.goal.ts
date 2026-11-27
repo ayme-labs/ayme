@@ -52,12 +52,19 @@ test("the layout and its sizes survive a reload", async ({
   inspector,
 }) => {
   const { header, shell } = inspector;
+  const start = await shell.box();
   await agent.act(
     "drag the panel by its header {left} px left and {down} px down",
     {
       params: { left: 100, down: 50 },
     }
   );
+  await expect
+    .poll(async () => (await shell.box()).x)
+    .toBeCloseTo(start.x - 100, 0);
+  await expect
+    .poll(async () => (await shell.box()).y)
+    .toBeCloseTo(start.y + 50, 0);
   const beforeFloating = await shell.box();
   await agent.act(
     "drag the panel's {edge} edge {distance} px to the {direction}",
@@ -333,9 +340,9 @@ test("the header's menus and switches work by mouse inside the closed shadow roo
     await expect.poll(() => header.themeSwitch.current()).toBe(theme);
   }
 
-  await agent.act("collapse the panel");
+  await agent.act("collapse the panel with the mouse");
   await expect(await inspector.logo.root.front()).toBeVisible();
-  await agent.act("open the panel from the ayme logo");
+  await agent.act("open the panel from the ayme logo with the mouse");
   await expect(await inspector.panel.front()).toBeVisible();
 
   await confirmGoalRecordings(browser);

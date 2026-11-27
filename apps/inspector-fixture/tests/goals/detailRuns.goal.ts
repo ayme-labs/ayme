@@ -33,9 +33,12 @@ for (const placement of placements) {
         params: { tag: ".newItemInput" },
       });
 
-      await agent.act("run {tool} with the text {text}", {
-        params: { tool: "fill", text: "Bread" },
-      });
+      await agent.act(
+        "run {tool} from the selected Structure node's card with the text {text}",
+        {
+          params: { tool: "fill", text: "Bread" },
+        }
+      );
 
       await expect(await listPage.newItemInput.front()).toHaveValue("Bread");
       const run = inspector.runs.latest("fill");

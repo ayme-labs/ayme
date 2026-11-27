@@ -184,7 +184,8 @@ for (const placement of placements) {
       // Asked before the panel runs it: the app's own run is a Run too.
       const refusal = await appView.refusal("ListPage.clear");
 
-      const card = await inspector.tool("ListPage.clear");
+      await inspector.tool("ListPage.clear");
+      const card = inspector.detail.runCard();
 
       // The tool's run card is dimmed and gives the reason; its row in the
       // Tools lens's list shows neither.
