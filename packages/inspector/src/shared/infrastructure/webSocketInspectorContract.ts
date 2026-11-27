@@ -11,7 +11,9 @@ import type {
 // process that serves this window: `ayme mcp`, which relays it to the page,
 // or a Session's, which serves it from the Tab it works on. `{ reset: true }`
 // and a Session's `{ tab }` both say the window shows a new document, whose
-// revisions start again; a Session's requests name the Tab it told last.
+// revisions start again; a Session's requests name the Tab it told last. A
+// Session tells a window a one-use code admitted its `{ token }`, to connect
+// again with.
 
 type Reply =
   | { id: number; result: unknown }
@@ -19,7 +21,8 @@ type Reply =
   | { event: InspectorEvent }
   | { reset: true }
   | { tab: number }
-  | { ended: string };
+  | { token: string }
+  | { ended: string; inChat?: string };
 
 type Waiting = {
   resolve(result: unknown): void;
@@ -49,10 +52,13 @@ export type WebSocketInspectorOptions = {
   retries?: number;
   /** Called once, when the server is given up for lost. */
   onLost?: () => void;
-  /** Called once, with what to say, when the server says the Session it
-   * serves ended: the transport connects no more, since no Session comes
-   * back at that address. */
-  onEnded?: (notice: string) => void;
+  /** Called with the token a Session tells a window a one-use code
+   * admitted, which the window connects again with. */
+  onToken?: (token: string) => void;
+  /** Called once, with what to say in a window and in an Agent App's chat,
+   * when the server says the Session it serves ended: the transport
+   * connects no more, since no Session comes back at that address. */
+  onEnded?: (notice: string, inChat: string | undefined) => void;
   /**
    * Whether the server tells the Tab the window shows, as a Session's
    * does: each request waits until it did, and names that Tab, so the
@@ -63,7 +69,8 @@ export type WebSocketInspectorOptions = {
 };
 
 /**
- * The Inspector contract over the channel at `url`. Requests leave in the
+ * The Inspector contract over the channel at `url`, read again for each
+ * connection when it is a function. Requests leave in the
  * order they are made, those made before the socket opens too, so a
  * `cancelPick` never overtakes its `pick`. When the page behind the server
  * changes, its revisions start again; the transport raises them past the
@@ -74,13 +81,14 @@ export type WebSocketInspectorOptions = {
  * fails from then on.
  */
 export function webSocketInspectorContract(
-  url: string,
+  url: string | (() => string),
   {
     WebSocket: WebSocketClass = WebSocket,
     reconnectMs = 1000,
     onNewPage,
     retries,
     onLost,
+    onToken,
     onEnded,
     followsTabs = false,
   }: WebSocketInspectorOptions = {}
@@ -161,7 +169,7 @@ export function webSocketInspectorContract(
   };
 
   const connect = (reconnected: boolean) => {
-    socket = new WebSocketClass(url);
+    socket = new WebSocketClass(typeof url === "string" ? url : url());
     socket.onopen = () => {
       failed = 0;
       flush();
@@ -179,9 +187,10 @@ export function webSocketInspectorContract(
         if (before !== undefined && before !== reply.tab) reset();
         return flush();
       }
+      if ("token" in reply) return onToken?.(reply.token);
       if ("ended" in reply) {
         lost = true;
-        return onEnded?.(reply.ended);
+        return onEnded?.(reply.ended, reply.inChat);
       }
       if ("event" in reply) return emit(raiseEvent(reply.event));
       const pending = waiting.get(reply.id);

@@ -50,9 +50,7 @@ const addressIn = (stdout: string) =>
   /at (http:\/\/127\.0\.0\.1:\d+)\./.exec(stdout)?.[1];
 
 const windowIn = (stdout: string) =>
-  /at (http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+)\.$/m.exec(
-    stdout
-  )?.[1];
+  /at (http:\/\/127\.0\.0\.1:\d+\/inspector#code=[\w-]+)\./.exec(stdout)?.[1];
 
 /** The browser automation, connected to the Session's browser that
  * `ayme open` printed the address of; the connection closes with the
@@ -285,8 +283,10 @@ test("closing the window leaves the Session as it was; when the Session ends, th
   browser,
 }) => {
   await ayme("open", `${baseURL}/shop.html`);
-  const address = windowIn((await inspect("none")).stdout)!;
-  const first = await openWindow(browser, address);
+  const first = await openWindow(
+    browser,
+    windowIn((await inspect("none")).stdout)!
+  );
   await expect
     .poll(() => first.inspector.navigator.model.objectPaths())
     .toContain("Basket");
@@ -297,10 +297,13 @@ test("closing the window leaves the Session as it was; when the Session ends, th
     code: 0,
     stdout: expect.stringContaining('result: "Shop"'),
   });
-  const second = await openWindow(browser, address);
+  const second = await openWindow(
+    browser,
+    windowIn((await inspect("none")).stdout)!
+  );
   await ayme("close");
   await expect(second.window.getByRole("status")).toHaveText(
-    "The Session default was closed. Start a Session with ayme open or ayme attach, then run ayme -s=default inspect to inspect it."
+    "The Session default was closed. Start a Session with ayme -s=default open or ayme -s=default attach, then run ayme -s=default inspect to inspect it."
   );
   await expect(second.inspector.panel).toHaveCount(0);
 });
@@ -324,7 +327,7 @@ test("a window whose Session's process was killed stops trying to connect, and s
   process.kill(sessionProcess()!, "SIGKILL");
 
   await expect(window.getByRole("status")).toHaveText(
-    "This Inspector lost its ayme MCP server. Ask the agent to open the Inspector again.",
+    "This Inspector lost the Session default. Start it again with ayme -s=default open, then run ayme -s=default inspect.",
     { timeout: 15_000 }
   );
   await expect(inspector.panel).toHaveCount(0);

@@ -10,8 +10,9 @@ import { App } from "@modelcontextprotocol/ext-apps/app-with-deps";
 import {
   connectAgentApp,
   mountExternalInspector,
-  sessionSocket,
+  sessionLost,
   showServerLost,
+  windowAdmission,
 } from "./app";
 import {
   replaceInspectorTransport,
@@ -45,32 +46,39 @@ const RETRIES = 3;
  */
 export function startExternalInspector() {
   const agentApp = document.getElementById(AGENT_APP_CONFIG_ID);
-  const socket = agentApp
-    ? (JSON.parse(agentApp.textContent ?? "") as { socket: string }).socket
-    : sessionSocket(window);
+  const admission = agentApp ? undefined : windowAdmission(window);
+  const socket = admission
+    ? admission.socket
+    : (JSON.parse(agentApp?.textContent ?? "") as { socket: string }).socket;
   const fullscreen = agentApp ? connectAgentApp(App) : undefined;
-  const session = document.querySelector(SESSION_META) !== null;
+  const sessionName = document
+    .querySelector(SESSION_META)
+    ?.getAttribute("content");
+  const session = sessionName !== undefined && sessionName !== null;
   let mounted: ReturnType<typeof mountExternalInspector> | undefined;
   replaceInspectorTransport(
     webSocketInspectorContract(socket, {
       followsTabs: session,
+      ...(admission && { onToken: admission.admitted }),
       // A new page is a reload as the Inspector in the page has it: it
       // mounts again and picks up what it kept for the tab.
       onNewPage() {
         mounted?.dispose();
         mounted = mountExternalInspector({ fullscreen, session });
       },
-      onEnded(notice) {
+      onEnded(notice, inChat) {
         mounted?.dispose();
         mounted = undefined;
-        showServerLost(notice);
+        showServerLost((agentApp && inChat) || notice);
       },
       ...((agentApp || session) && {
         retries: RETRIES,
         onLost() {
           mounted?.dispose();
           mounted = undefined;
-          showServerLost();
+          showServerLost(
+            session ? sessionLost(sessionName, agentApp !== null) : undefined
+          );
         },
       }),
     }),

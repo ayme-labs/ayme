@@ -8,6 +8,9 @@ export default defineConfig({
   inputOptions: { experimental: { attachDebugInfo: "none" } },
   // The `ayme` command, which runs in Node.
   entry: { cli: "src/cli.ts" },
+  // What only some commands load, such as `ayme mcp`'s server, and what
+  // they share with the entry, in a folder of its own beside it.
+  outputOptions: { chunkFileNames: "chunks/[name]-[hash].mjs" },
   format: ["esm"],
   platform: "node",
   // The bundle holds Effect, whose documentation comments are most of its

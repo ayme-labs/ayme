@@ -10,7 +10,6 @@ import {
 
 import { version } from "../package.json";
 
-/** The address of the page an Agent App shows in its chat. */
 const INSPECTOR_URI = "ui://ayme/inspector.html";
 
 /** The MIME type of a page an Agent App shows (MCP Apps), as
@@ -18,8 +17,6 @@ const INSPECTOR_URI = "ui://ayme/inspector.html";
  * this and the tool's `_meta` below, so the command bundles none of it. */
 const MCP_APP_MIME_TYPE = "text/html;profile=mcp-app";
 
-/** Where a Session is: the folder `ayme mcp` runs in, and the name -s or
- * AYME_SESSION gives. */
 type Place = { readonly projectDir: string; readonly name?: string };
 
 /**
@@ -36,7 +33,7 @@ export function inspectorServer(place: Place, script: string): McpServer {
     "ayme_inspect",
     {
       description:
-        "Shows the developer the ayme Inspector of the Session in this chat, when the Agent App shows MCP Apps: the Page Objects and Page Object Tools of the Session's Tab, to watch and run by hand. It reads nothing from the page for you and acts on nothing: run ayme page-objects, ayme tools and ayme call for that.",
+        "Shows the developer the Inspector of the Session in this chat, when the Agent App shows MCP Apps: the Page Objects and Page Object Tools of the Session's Tab, to watch and run by hand. It reads nothing from the page for you and acts on nothing: run ayme page-objects, ayme tools and ayme call for that.",
       annotations: { readOnlyHint: true, openWorldHint: false },
       // The flat key is the one Agent Apps read before `ui` was nested.
       _meta: {
@@ -55,7 +52,7 @@ export function inspectorServer(place: Place, script: string): McpServer {
     }
   );
   server.registerResource(
-    "ayme Inspector",
+    "Inspector",
     INSPECTOR_URI,
     { mimeType: MCP_APP_MIME_TYPE },
     async () => {
