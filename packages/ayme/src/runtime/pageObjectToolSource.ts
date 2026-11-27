@@ -8,6 +8,7 @@ import {
   renderPageObjectTreeChanges,
   type PageObjectTreeRead,
 } from "../page-objects/domain";
+import { InPageVersionError } from "../in-page";
 import type { ActionFailure, ActionResult } from "../page-state/domain";
 import { RuntimeStateError, type JsonValue, type ToolInfo } from "../shared";
 
@@ -92,7 +93,14 @@ export function pageObjectToolSource(
       // The tree before, the action and the tree after in the action's own
       // turn: the changes are that action's alone.
       return session.inTurn(async (page) => {
-        const before = await page.readPageObjectTree().catch(() => undefined);
+        // A page of another in-page version runs no tool, so its error is
+        // the answer; any other failed read only leaves out the changes.
+        const before = await page
+          .readPageObjectTree()
+          .catch((error: unknown) => {
+            if (error instanceof InPageVersionError) throw error;
+            return undefined;
+          });
         // That read probed the page, so the list is current. A name it
         // does not have is refused by the Run itself.
         const listed = listedTool(session, name);
