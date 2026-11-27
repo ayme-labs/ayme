@@ -25,7 +25,6 @@
 
 Skills for agents working on this repository live in [.agents/skills/](.agents/skills/) (`.claude/skills` is a symlink to it). [skills/](skills/) holds the skills ayme ships to consumers.
 
-- [inspector-dogfood](.agents/skills/inspector-dogfood/SKILL.md): verify a change under `packages/inspector` by driving the Inspector itself through `ayme mcp`, before showing the change to the user.
 - [verify-recorder-lifecycle](.agents/skills/verify-recorder-lifecycle/SKILL.md): check a change under `packages/recorder/src` against the Recorder's TLA+ lifecycle model when it alters the order of events, what the recorder waits for, or a promise it makes, before showing the change to the user.
 - [update-playwright-lite](.agents/skills/update-playwright-lite/SKILL.md): repin the Playwright Lite fork, or decide whether a Lite change goes upstream or into the fork.
 - Refresh the vendored skills, those [skills-lock.json](skills-lock.json) lists, with `npx skills update -p` and review the change; leave them unedited otherwise, because a refresh can replace a hand edit. Keep [LICENSE-pstack](.agents/skills/LICENSE-pstack) in step with pstack's licence.
