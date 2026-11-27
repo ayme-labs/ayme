@@ -39,13 +39,18 @@ import { decodeViewState, viewStateKey, withSelection } from "./viewState";
  * keeps where the person was in it for the tab. `windowed` fills a window of
  * the Inspector's own, outside the page it shows, in place of the dockable
  * panel; `fullscreen` is what an Agent App that shows that window offers.
+ * `session` says a Session serves the window, which no agent reaches
+ * through the Agent Connection or WebMCP, so the header leaves out the
+ * Connections pill that tells of them.
  */
 export function InspectorApp({
   windowed = false,
   fullscreen,
+  session = false,
 }: {
   windowed?: boolean;
   fullscreen?: WindowFullscreen;
+  session?: boolean;
 }) {
   const [preferences, updatePreferences] = usePreferences();
   const reserveHost = useHostReservation();
@@ -162,7 +167,7 @@ export function InspectorApp({
     ))
   );
 
-  const status = (
+  const status = session ? undefined : (
     <Connections
       agent={runtime.tools.agentConnection}
       webMCP={runtime.tools.publication}

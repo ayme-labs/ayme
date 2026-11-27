@@ -7,17 +7,26 @@ import { InspectorApp } from "./InspectorApp";
  * React and the stylesheet stay inside the shadow root: nothing is added to
  * the host document's head, and the host's own React, if any, is untouched.
  * `windowed` fills a window of the Inspector's own, which an Agent App may
- * offer `fullscreen`.
+ * offer `fullscreen`, and which a `session` may serve.
  */
 export function renderInspector(
   shadowRoot: ShadowRoot,
   {
     windowed = false,
     fullscreen,
-  }: { windowed?: boolean; fullscreen?: WindowFullscreen } = {}
+    session = false,
+  }: {
+    windowed?: boolean;
+    fullscreen?: WindowFullscreen;
+    session?: boolean;
+  } = {}
 ) {
   return renderInShadowRoot(
     shadowRoot,
-    <InspectorApp windowed={windowed} fullscreen={fullscreen} />
+    <InspectorApp
+      windowed={windowed}
+      fullscreen={fullscreen}
+      session={session}
+    />
   );
 }

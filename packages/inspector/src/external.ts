@@ -2,12 +2,17 @@
 // `ayme mcp` or a Session's process serves, which shows the Inspector's
 // lenses for the page paired with that server or the Tab the Session works
 // on. It reads the contract over a WebSocket to that server, where the
-// inline Inspector calls the runtime's own. `ayme mcp` serves it to a
-// browser window, and, with this script inside the page, to an agent app
-// that shows it in its chat as an MCP App; a Session to a browser window.
+// inline Inspector calls the runtime's own. Each serves it to a browser
+// window, and, with this script inside the page, to an agent app that
+// shows it in its chat as an MCP App.
 import { App } from "@modelcontextprotocol/ext-apps/app-with-deps";
 
-import { connectAgentApp, mountExternalInspector, showServerLost } from "./app";
+import {
+  connectAgentApp,
+  mountExternalInspector,
+  sessionSocket,
+  showServerLost,
+} from "./app";
 import {
   replaceInspectorTransport,
   webSocketInspectorContract,
@@ -19,6 +24,10 @@ import {
  * the page's own address is the Agent App's, not the server's.
  */
 const AGENT_APP_CONFIG_ID = "ayme-inspector-app";
+
+/** The meta element a Session's pages carry, which no page of
+ * `@ayme-dev/mcp`'s server does. */
+const SESSION_META = 'meta[name="ayme-session"]';
 
 /** How many times in a row a window in an Agent App connects again. */
 const AGENT_APP_RETRIES = 3;
@@ -34,11 +43,11 @@ const AGENT_APP_RETRIES = 3;
  */
 export function startExternalInspector() {
   const agentApp = document.getElementById(AGENT_APP_CONFIG_ID);
-  const { protocol, host } = window.location;
   const socket = agentApp
     ? (JSON.parse(agentApp.textContent ?? "") as { socket: string }).socket
-    : `${protocol === "https:" ? "wss:" : "ws:"}//${host}/inspector/ws`;
+    : sessionSocket(window);
   const fullscreen = agentApp ? connectAgentApp(App) : undefined;
+  const session = document.querySelector(SESSION_META) !== null;
   let mounted: ReturnType<typeof mountExternalInspector> | undefined;
   replaceInspectorTransport(
     webSocketInspectorContract(socket, {
@@ -46,7 +55,7 @@ export function startExternalInspector() {
       // mounts again and picks up what it kept for the tab.
       onNewPage() {
         mounted?.dispose();
-        mounted = mountExternalInspector({ fullscreen });
+        mounted = mountExternalInspector({ fullscreen, session });
       },
       onEnded(notice) {
         mounted?.dispose();
@@ -64,7 +73,7 @@ export function startExternalInspector() {
     }),
     { external: true }
   );
-  mounted = mountExternalInspector({ fullscreen });
+  mounted = mountExternalInspector({ fullscreen, session });
   return {
     dispose() {
       mounted?.dispose();

@@ -7,11 +7,13 @@ import { exposeInspectorShadowRoot } from "../shared/infrastructure";
  * placement, in a page that `ayme mcp` serves. It fills the window, and shows
  * a page that is not this document, so it hears none of its DOM events: the
  * contract client it reads through is the channel's (`external`). Shown in
- * an Agent App's chat, it offers the `fullscreen` the Agent App offers.
+ * an Agent App's chat, it offers the `fullscreen` the Agent App offers. A
+ * `session` says a Session serves it.
  */
 export function mountExternalInspector({
   fullscreen,
-}: { fullscreen?: WindowFullscreen } = {}) {
+  session = false,
+}: { fullscreen?: WindowFullscreen; session?: boolean } = {}) {
   const host = document.createElement("ayme-inspector");
   host.dataset.aymeInspectorHost = "";
   // Closed, as inline: tests reach the root through the hook.
@@ -21,6 +23,7 @@ export function mountExternalInspector({
   const unmount = renderInspector(shadowRoot, {
     windowed: true,
     fullscreen,
+    session,
   });
   return {
     dispose() {

@@ -29,7 +29,6 @@ A replaced or deprecated ADR lives in [retired/](retired/), its text unchanged.
 - [ADR-0052: The recorder runs on stock Playwright and uses its private parts only under test](0052-the-recorder-runs-on-stock-playwright-and-uses-its-private-parts-only-under-test.md)
 - [ADR-0053: A change is breaking when something a developer wrote stops working](0053-a-change-is-breaking-when-something-a-developer-wrote-stops-working.md)
 - [ADR-0055: ayme adds Page Object Tools to the developer's browser automation, and `ayme mcp` offers only that](0055-ayme-adds-page-object-tools-to-the-developers-browser-automation.md)
-- [ADR-0056: A token admits the Inspector that an Agent App shows in its chat](0056-a-token-admits-the-inspector-an-agent-app-shows-in-its-chat.md)
 - [ADR-0057: Test support lives beside src and is never published](0057-test-support-lives-beside-src-and-is-never-published.md)
 - [ADR-0060: A project keeps everything ayme in one `ayme` folder, without a dot](0060-a-project-keeps-everything-ayme-in-one-ayme-folder-without-a-dot.md)
 - [ADR-0062: An unavailable tool stays listed and can say why, and reach is tested as Playwright's click tests it](0062-a-tool-stays-listed-when-unavailable-and-says-why-and-reach-is-tested-as-the-click-tests-it.md)
@@ -41,3 +40,4 @@ A replaced or deprecated ADR lives in [retired/](retired/), its text unchanged.
 - [ADR-0069: A project's Page Objects run in Node, in a Session beside the developer's browser automation](0069-a-projects-page-objects-run-in-node-in-a-session-beside-the-developers-browser-automation.md)
 - [ADR-0070: An agent reads a Page Object Tool's result as a short answer, from the new page when its Host outlives a full load](0070-an-agent-reads-a-page-object-tools-result-as-a-short-answer-from-the-new-page-when-its-host-outlives-a-full-load.md)
 - [ADR-0071: A Session turns focus emulation on for each Tab it works on, the one exception to joining without Playwright's defaults](0071-a-session-turns-focus-emulation-on-for-each-tab-it-works-on-the-one-exception-to-joining-without-playwrights-defaults.md)
+- [ADR-0072: One token per Session admits its Inspector, in a browser window and in an Agent App's chat](0072-one-token-per-session-admits-its-inspector-in-a-browser-window-and-in-an-agent-apps-chat.md)

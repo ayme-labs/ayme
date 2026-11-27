@@ -114,7 +114,9 @@ export const serveSession = ({
     const session = yield* openSession(
       request,
       name,
-      window ? { inspector: window.address } : {}
+      window
+        ? { inspector: window.address, agentApp: window.agentAppSocket }
+        : {}
     );
     window?.attach(session);
     yield* Deferred.succeed(served, session);

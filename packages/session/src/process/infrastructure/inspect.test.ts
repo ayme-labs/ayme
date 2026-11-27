@@ -49,7 +49,7 @@ async function serveShop() {
   );
 }
 
-const WINDOW = /^http:\/\/127\.0\.0\.1:\d+\/inspector$/;
+const WINDOW = /^http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+$/;
 
 it("opens the Session's Inspector window in the person's default browser, and says where it is", async () => {
   await serveShop();
@@ -82,7 +82,7 @@ it("only says where the window is when BROWSER is none", async () => {
   expect(answer).toMatchObject({
     ok: true,
     text: expect.stringMatching(
-      /^The Inspector of the Session shop is at http:\/\/127\.0\.0\.1:\d+\/inspector\.$/
+      /^The Inspector of the Session shop is at http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+\.$/
     ),
   });
   expect(open).not.toHaveBeenCalled();
@@ -100,7 +100,7 @@ it("says where the window is and why the browser did not open, when it could not
   expect(answer).toMatchObject({
     ok: true,
     text: expect.stringMatching(
-      /^The Inspector of the Session shop is at http:\/\/127\.0\.0\.1:\d+\/inspector\. ayme could not open your default browser: spawn xdg-open ENOENT\. Open the address in a browser outside the Session's\.$/
+      /^The Inspector of the Session shop is at http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+\. ayme could not open your default browser: spawn xdg-open ENOENT\. Open the address in a browser outside the Session's\.$/
     ),
   });
 });

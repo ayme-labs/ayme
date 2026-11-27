@@ -10,6 +10,7 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
        ayme tools [--tab=<url>]
        ayme call <tool> [--params <json> | --params @<file>] [--tab=<url>]
        ayme inspect
+       ayme mcp
        ayme detach
        ayme close
        ayme list
@@ -46,6 +47,11 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  tools of the Session's tab, to run by hand. BROWSER=none
                  only prints its address; another BROWSER names the program
                  that opens it.
+  mcp            Serve MCP over stdio, for an Agent App to start: it shows
+                 the Inspector on the Session in the Agent App's chat, if
+                 the Agent App shows MCP Apps. It offers no tool that reads
+                 or acts on the page: run ayme page-objects, ayme tools and
+                 ayme call for that.
   detach         End a Session started with attach, and leave its browser
                  running.
   close          End the Session, and close its browser if ayme opened it.
@@ -114,6 +120,8 @@ export type Command =
   | { kind: "list"; json: boolean }
   /** `ayme inspect`: the Inspector window of the Session. */
   | ({ kind: "inspect"; json: boolean } & Named)
+  /** `ayme mcp`: the Inspector of the Session in an Agent App's chat. */
+  | ({ kind: "mcp" } & Named)
   /** The Session's background process, which `open` starts with the
    * options it was given, as JSON. */
   | { kind: "session process"; options: string }
@@ -170,6 +178,7 @@ const SESSION_COMMANDS: Readonly<
   list: { takes: [] },
   call: { takes: ["params", "tab"] },
   inspect: { takes: [] },
+  mcp: { takes: [] },
   // Each asks for the listing of the Tab --tab names.
   "page-objects": { takes: ["tab"] },
   tools: { takes: ["tab"] },
@@ -274,6 +283,9 @@ function readSessionCommand(
   if (url !== undefined) return { kind: "error", text: USAGE };
   if (word === "list") return { kind: "list", json };
   if (word === "inspect") return { kind: "inspect", json, ...named };
+  // Its answers go to an Agent App, which reads MCP, not --json.
+  if (word === "mcp")
+    return json ? { kind: "error", text: USAGE } : { kind: "mcp", ...named };
   if (asks) return { kind: "ask", request: asks, json, ...named };
   return { kind: "error", text: USAGE };
 }
