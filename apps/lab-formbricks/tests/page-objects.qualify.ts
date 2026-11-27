@@ -34,6 +34,13 @@ const LAB_DIR = fileURLToPath(new URL("..", import.meta.url));
 /** What one `ayme` command answered with `--json`. */
 type Answer = { ok: boolean; text: string; data?: unknown };
 
+/**
+ * How long one `ayme` command may run before the test stops it: `open`
+ * waits for the dev server to compile the sign-in page, which can take a
+ * minute.
+ */
+const COMMAND_LIMIT_MS = 120_000;
+
 /** The `ayme` command, run in the lab app's folder on the test's Session. */
 type Agent = {
   /** The address of the Session's browser, which `ayme open` printed. */
@@ -47,46 +54,67 @@ type Agent = {
 
 const test = base.extend<{
   /**
-   * The `ayme` command on a Session the test opened in the lab app's folder,
-   * with a cache folder of the test's own, so it never finds a developer's
-   * own Session there. The Session is closed, and its browser with it, after
-   * the test.
+   * Runs the `ayme` command in the lab app's folder with `--json`, with a
+   * cache folder of the test's own, so it never finds a developer's own
+   * Session there. After the test it closes the test's Session, and its
+   * browser with it, also one still starting or one whose start failed.
    */
+  ayme: (...args: string[]) => Promise<Answer>;
+  /** The `ayme` command on a Session the test opened on the sign-in page. */
   agent: Agent;
   /** The Session's page, as the test's browser automation reaches it. */
   page: Page;
 }>({
-  agent: async ({ baseURL }, use, testInfo) => {
+  // Playwright reads a fixture's dependencies from this pattern.
+  // eslint-disable-next-line no-empty-pattern
+  ayme: async ({}, use, testInfo) => {
     const env = {
       ...process.env,
       AYME_CACHE_DIR: testInfo.outputPath("cache"),
     };
     const run = async (...args: string[]): Promise<Answer> => {
+      const command = `ayme ${args.join(" ")}`;
       const { code, stdout, stderr } = await runAyme([...args, "--json"], {
         cwd: LAB_DIR,
         env,
+        signal: AbortSignal.timeout(COMMAND_LIMIT_MS),
       });
-      return JSON.parse(code === 0 ? stdout : stderr) as Answer;
+      try {
+        return JSON.parse(code === 0 ? stdout : stderr) as Answer;
+      } catch {
+        throw new Error(
+          `${command} exited with ${code} and answered no JSON.\nstdout: ${stdout}\nstderr: ${stderr}`
+        );
+      }
     };
-    const opened = await run("open", new URL("/auth/login", baseURL).href);
+    await use(run);
+    await test.step("close the Session", async () => {
+      const closed = await run("close");
+      if (closed.ok) return;
+      // No Session to close: it ended, or never started.
+      const listed = await run("list");
+      expect(
+        (listed.data as { sessions: unknown[] } | undefined)?.sessions,
+        `ayme close answered: ${closed.text}\nayme list answered: ${listed.text}`
+      ).toEqual([]);
+    });
+  },
+  agent: async ({ ayme, baseURL }, use) => {
+    const opened = await ayme("open", new URL("/auth/login", baseURL).href);
     expect(opened.ok, opened.text).toBe(true);
-    try {
-      await use({
-        address: (opened.data as { address: string }).address,
-        run,
-        call: (name, params = {}) =>
-          run("call", name, "--params", JSON.stringify(params)),
-        async toolNames() {
-          const listed = await run("tools");
-          expect(listed.ok, listed.text).toBe(true);
-          return (listed.data as { tools: { name: string }[] }).tools.map(
-            (tool) => tool.name
-          );
-        },
-      });
-    } finally {
-      await run("close");
-    }
+    await use({
+      address: (opened.data as { address: string }).address,
+      run: ayme,
+      call: (name, params = {}) =>
+        ayme("call", name, "--params", JSON.stringify(params)),
+      async toolNames() {
+        const listed = await ayme("tools");
+        expect(listed.ok, listed.text).toBe(true);
+        return (listed.data as { tools: { name: string }[] }).tools.map(
+          (tool) => tool.name
+        );
+      },
+    });
   },
   page: async ({ agent }, use) => {
     const browser = await chromium.connectOverCDP(agent.address);
