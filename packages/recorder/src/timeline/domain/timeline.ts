@@ -625,24 +625,39 @@ export class Timeline {
    * element and the original is back. The element that first had the ref
    * keeps it there, and the other is written under its own. How each node
    * of a Change Tree stood before goes with it, under its new ref.
+   *
+   * `given` holds the ref each element of a tree renamed earlier through it
+   * was given, by its own ref, and gets this tree's. An element that tree
+   * had keeps the ref it was given there: the page before a change names a
+   * removed element under its ref in the Change Tree, which can differ from
+   * the one it would hold among that page's elements alone.
    */
   private underFirstRefs(
     tree: StructuralTree,
-    firstRefs: ReadonlyMap<SnapshotRef, FirstRef>
+    firstRefs: ReadonlyMap<SnapshotRef, FirstRef>,
+    given = new Map<SnapshotRef, AriaRef>()
   ): StructuralTree {
     // A ref no earlier snapshot of the Visit had is the element's first.
     const first = (ref: SnapshotRef) => firstRefs.get(ref) ?? firstRef(ref);
+    const owns = tree.getAllRefs().map(snapshotRef);
     // The first to claim a ref holds it, unless the element whose own ref it
     // is comes after: that one first had it, and takes it.
     const holder = new Map<FirstRef, SnapshotRef>();
-    for (const ref of tree.getAllRefs().map(snapshotRef))
+    for (const ref of owns)
       if (!holder.has(first(ref)) || isFirst(ref, first(ref)))
         holder.set(first(ref), ref);
+    // The refs this tree's elements keep from the earlier tree: another
+    // element of this tree cannot have one too.
+    const kept = new Set(owns.flatMap((own) => given.get(own) ?? []));
     const beforeByRef = new Map<AriaRef, StructuralNode>();
     const rename = (node: StructuralNode): StructuralNode => {
       const own = snapshotRef(node.ref);
       // One that does not hold its first ref keeps its own from here on.
-      const ref = holder.get(first(own)) === own ? first(own) : firstRef(own);
+      const chosen =
+        holder.get(first(own)) === own ? first(own) : firstRef(own);
+      const ref =
+        given.get(own) ?? (kept.has(chosen) ? this.refs.create() : chosen);
+      given.set(own, ref);
       const before = tree.getBeforeNode(node.ref);
       // Stryker disable next-line ConditionalExpression: equivalent, since core reads a node recorded as null and one not recorded alike
       if (before) beforeByRef.set(ref, before);
@@ -694,9 +709,12 @@ export class Timeline {
             ledger.sameIdentity(beforeRef, afterRef),
         })
     );
-    const tree = this.underFirstRefs(change, firstRefs);
+    // A removed element is looked up on the page before by its ref in the
+    // Change Tree: both are named under the same refs.
+    const given = new Map<SnapshotRef, AriaRef>();
+    const tree = this.underFirstRefs(change, firstRefs, given);
     const found = foundRows(tree, () =>
-      this.underFirstRefs(fromTree, firstRefs)
+      this.underFirstRefs(fromTree, firstRefs, given)
     );
     this.named.set(tree, {
       changes: found.map(({ row }) => row),

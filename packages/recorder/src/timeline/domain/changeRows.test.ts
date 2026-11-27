@@ -330,6 +330,99 @@ describe("the change rows of a Change Tree", () => {
     ]);
   });
 
+  it("leave out of an element that appeared what the page moved into it, and list what changed inside that on its own", () => {
+    // As GitHub's list of pull requests renders: a new wrapper around the
+    // old content, whose loading heading is gone.
+    const rows = changeRows(
+      changeFrom(
+        page(
+          `- main [ref=e2]:`,
+          `  - heading "Pull requests" [level=1] [ref=e7]`,
+          `  - generic [ref=e3]:`,
+          `    - heading "Loading pull requests" [level=2] [ref=e4]`,
+          `    - list "Pull requests" [ref=e5]`
+        ),
+        page(
+          `- main [ref=e2]:`,
+          `  - heading "Pull requests" [level=1] [ref=e7]`,
+          `  - generic [ref=e6]:`,
+          `    - generic [ref=e3]:`,
+          `      - list "Pull requests" [ref=e5]`
+        )
+      )
+    );
+
+    expect(rows).toEqual([
+      // Nothing named went with it: the list was there before.
+      { kind: "added", element: "main", role: "generic" },
+      {
+        kind: "removed",
+        element: 'heading "Loading pull requests"',
+        role: "heading",
+      },
+    ]);
+  });
+
+  it("say of an element removed from content the page moved into a new wrapper the named ancestor it had before", () => {
+    const rows = changeRows(
+      changeFrom(
+        page(
+          `- main "Main" [ref=e2]:`,
+          `  - generic [ref=e3]:`,
+          `    - heading "Loading" [level=2] [ref=e4]`,
+          `    - list "Items" [ref=e5]`
+        ),
+        page(
+          `- main "Main" [ref=e2]:`,
+          `  - region "Results" [ref=e6]:`,
+          `    - generic [ref=e3]:`,
+          `      - list "Items" [ref=e5]`
+        )
+      )
+    );
+
+    expect(rows).toEqual([
+      {
+        kind: "added",
+        element: 'region "Results"',
+        role: "region",
+        parent: { ref: "e2", name: "Main" },
+      },
+      // Not "Results": the heading was gone before the wrapper came.
+      {
+        kind: "removed",
+        element: 'heading "Loading"',
+        role: "heading",
+        parent: { ref: "e2", name: "Main" },
+      },
+    ]);
+  });
+
+  it("list what changed in content the page moved into a new wrapper and what went with the wrapper in the order of the page", () => {
+    const rows = changeRows(
+      changeFrom(
+        page(
+          `- main [ref=e2]:`,
+          `  - generic [ref=e3]:`,
+          `    - heading "Loading" [level=2] [ref=e4]`,
+          `    - list "Items" [ref=e5]`
+        ),
+        page(
+          `- main [ref=e2]:`,
+          `  - generic [ref=e6]:`,
+          `    - generic [ref=e3]:`,
+          `      - list "Items" [ref=e5]`,
+          `    - heading "Done" [level=2] [ref=e7]`
+        )
+      )
+    );
+
+    expect(rows).toEqual([
+      { kind: "removed", element: 'heading "Loading"', role: "heading" },
+      { kind: "added", element: 'heading "Done"', role: "heading" },
+    ]);
+  });
+
   it("name an element with no role and no name by its nearest named ancestor when nothing named went with it", () => {
     const rows = changeRows(
       changeFrom(

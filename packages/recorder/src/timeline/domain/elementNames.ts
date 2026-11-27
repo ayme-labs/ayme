@@ -51,15 +51,6 @@ export function ownName(node: StructuralNode): OwnName | null {
   return NO_ROLE.has(role) ? null : { role, name: "", byText: false };
 }
 
-/** The elements inside a node that have a role or a name, the topmost of
- * them, in order. */
-export function namedInside(node: StructuralNode): StructuralNode[] {
-  return node.children.flatMap((child) => {
-    if (typeof child === "string") return [];
-    return ownName(child) ? [child] : namedInside(child);
-  });
-}
-
 /**
  * Names the elements of one tree: a read, or a Change Tree, whose removed
  * elements are counted against the page before the change, which
@@ -97,6 +88,14 @@ export class ElementNames {
       ...place.tree.getAncestorsOf(place.node.ref),
     ].find((one) => ownName(one) !== null);
     return place.labels.of(named ?? place.node);
+  }
+
+  /** An element's ancestors, nearest first, on the page it is labelled
+   * on: a removed one sat in the page before, not where the Change Tree
+   * puts it. */
+  ancestorsOf(node: StructuralNode, view: PageView) {
+    const place = this.placeOf(node, view);
+    return place.tree.getAncestorsOf(place.node.ref);
   }
 
   /** The page an element is labelled on, its labels, and the element

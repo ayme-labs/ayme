@@ -287,6 +287,34 @@ describe("an element the page re-created, and the original back beside it", () =
       ].join("\n")
     );
   });
+
+  it("name the one that is gone on the page before the change, though it stood there under the first ref", async () => {
+    // The new button is gone and the first one is back under another name:
+    // nothing on the page after the change looks like the one that went.
+    const timeline = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, original),
+      snapshot(snapshotId("snapshot_2"), 20, recreated),
+      click(snapshotId("snapshot_1"), snapshotId("snapshot_2"), "e2", original),
+      snapshot(snapshotId("snapshot_3"), 30, both),
+      snapshot(snapshotId("snapshot_4"), 40, page(`- button "Saved" [ref=e2]`)),
+      click(
+        snapshotId("snapshot_2"),
+        snapshotId("snapshot_4"),
+        "e8",
+        recreated
+      ),
+    ]);
+
+    const [, second] = timeline.visits()[0]!.entries;
+    expect(second).toMatchObject({
+      id: entryId("interaction_2"),
+      changes: [
+        { kind: "added", element: 'button "Saved"' },
+        { kind: "removed", element: 'button "Save"' },
+      ],
+    });
+  });
 });
 
 describe("an element the page re-created, when it changes", () => {
