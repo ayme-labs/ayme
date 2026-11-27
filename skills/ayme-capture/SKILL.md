@@ -9,54 +9,54 @@ ayme capture listens while the user drives their app in a browser, and
 writes what it saw to a Recording Package: the page structure at each visit,
 what changed and every interaction.
 
-Read `ayme/CONVENTIONS.md` first, when it exists: what the user settled for
-how ayme and its skills work in this repository. Read its opening part, which
-holds for every skill, and its `Recorder` section, and follow a line that
-points to another file. It overrides this skill's defaults.
+Read `ayme/CONVENTIONS.md` first, when it exists. It holds what the user
+settled for ayme and its skills in this repository, and it overrides this
+skill's defaults. Read its opening part, which holds for every skill, and its
+`Recorder` section, and follow any line that points to another file.
 
-1. **Record.** First choose the command. When `@ayme-dev/cli` is not in the
-   project's `package.json`, it is `npx @ayme-dev/cli@latest`, the newest
-   release. When it is, the project pins its version: check with
-   `npm ls @ayme-dev/cli` that the pinned copy is installed. When that fails,
-   lists no version or marks the version `invalid`, ask the user to install
-   the project's dependencies and wait: without the pinned copy,
-   `npx @ayme-dev/cli` runs another version. A version before 0.4 is the old
-   recorder, `ayme-recorder`, which has no `capture`: ask the user to upgrade
-   it, as
-   [Upgrade](https://github.com/ayme-labs/ayme/blob/main/docs/guide/upgrade.md)
-   describes, and wait. Otherwise the command is `npx @ayme-dev/cli`, which
-   runs the pinned copy.
+1. **Choose the command.** When the project's `package.json` has no
+   `@ayme-dev/cli`, the command is `npx @ayme-dev/cli@latest`, the newest
+   release. When it has one, the project pins its version, and the command is
+   `npx @ayme-dev/cli`, which runs the pinned copy. Check that copy first with
+   `npm ls @ayme-dev/cli`:
+   - When that fails, lists no version or marks the version `invalid`, the
+     pinned copy is not installed, and `npx @ayme-dev/cli` would run another
+     version. Ask the user to install the project's dependencies, and wait.
+   - When it lists a version before 0.4, that is the old recorder,
+     `ayme-recorder`, which has no `capture`. Ask the user to upgrade, as
+     [Upgrade](https://github.com/ayme-labs/ayme/blob/main/docs/guide/upgrade.md)
+     describes, and wait.
 
-   In the project's folder, run `npx @ayme-dev/cli@latest capture <url>`, or
-   `npx @ayme-dev/cli capture <url>` for a pinned copy, with the URL where the
-   user wants to start, somewhere it can keep running. The recorder uses the
-   Playwright the project has installed, and records in its Chromium. When the
-   command says Playwright could not open Chromium, install it with
-   Playwright's own `npx playwright install chromium`, then run the command
-   again. It opens the page in Chromium with the Recorder window beside it and
-   a small toolbar on the page. Recording is off until the user presses
-   Record; they perform the flow and press Finish. The command then prints
-   `Recording package: <path>`. `ayme/recordings/latest.yaml` is a copy of
-   the newest package. To record a Chromium the user already has running,
-   run `npx @ayme-dev/cli@latest capture --cdp=<url>` instead, or
-   `npx @ayme-dev/cli capture --cdp=<url>` for a pinned copy, with the
-   address of its DevTools protocol, such as `http://127.0.0.1:9222`.
+   Below, `<ayme>` stands for the command you chose.
 
-   When the user asked for an automation of a flow with new data, add
-   `--start-recording`: the recorder then opens already recording, so the
-   package holds the first page load, which the replay test needs. Tell the
-   user not to press Clear or Stop during this recording: Clear throws the
-   first page load away, and requests made while paused stay in the trace,
-   where the replay can take them for the flow's own. To start over, the
-   user presses Finish, and you run the command again. Use the browser the
-   recorder opens: `--start-recording` does not apply with
-   `--cdp`, so a recording there never holds its first page load.
+2. **Record.** In the project's folder, run `<ayme> capture <url>`, with the
+   URL where the user wants to start, somewhere it can keep running. It opens
+   the page in Chromium, with the Recorder window beside it and a small
+   toolbar on the page. Recording is off until the user presses Record; they
+   perform the flow and press Finish. The command then prints
+   `Recording package: <path>`, and `ayme/recordings/latest.yaml` is a copy
+   of the newest package.
+   - The Recorder uses the project's own Playwright and records in its
+     Chromium. When the command says Playwright could not open Chromium, run
+     `npx playwright install chromium`, then the command again.
+   - To record a Chromium the user already has running, run
+     `<ayme> capture --cdp=<url>` instead, with the address of its DevTools
+     protocol, such as `http://127.0.0.1:9222`.
+   - When the user asked for an automation of a flow with new data, add
+     `--start-recording`: the Recorder then opens already recording, so the
+     package holds the first page load, which the replay test needs. Tell
+     the user not to press Clear or Stop during this recording: Clear throws
+     the first page load away, and requests made while paused stay in the
+     trace, where the replay can take them for the flow's own. To start
+     over, the user presses Finish, and you run the command again.
+     `--start-recording` does not apply with `--cdp`, so use the browser the
+     Recorder opens.
 
-2. **Read** the package, as [Read the package](#read-the-package) describes.
+3. **Read** the package, as [Read the package](#read-the-package) describes.
    Leave every discarded entry out of the page objects and the test. A package
    with no kept entry has no flow to implement: tell the user whether it
    captured nothing or every entry is a stub, and stop.
-3. **Follow** the playbook the user's request calls for, and ask when it is
+4. **Follow** the playbook the user's request calls for, and ask when it is
    unclear:
    - [Mirroring test](playbooks/mirroring-test.md): a test that replays the
      flow against the user's app.
@@ -90,17 +90,17 @@ traceActionPoints:              # where the trace holds each interaction
   - interactionId, pageId, beforeSnapshotId, afterSnapshotId, startedAt, endedAt
 ```
 
-Timestamps are milliseconds on the monotonic clock of the recorder's Node
+Timestamps are milliseconds on the monotonic clock of the Recorder's Node
 process, counted from when that process started; compare them only with each
 other. An interaction's `timestamp`, and
 its trace point's `startedAt`, is when its input reached the page; for typing,
-a select or an upload, which the recorder does not hold back, it is when the
-recorder read the page just before it. A `kind: change` entry's `timestamp` is
-when the recorder read the page that showed the change. A trace point's
+a select or an upload, which the Recorder does not hold back, it is when the
+Recorder read the page just before it. A `kind: change` entry's `timestamp` is
+when the Recorder read the page that showed the change. A trace point's
 `endedAt` is when the interaction's "after" was read. A step that left the
-page before the recorder read the page again has an `endedAt` but no
+page before the Recorder read the page again has an `endedAt` but no
 `afterSnapshotId`: its "after" is the next visit's. Typing that made the page
-navigate after the recorder had read the page during it keeps that last read
+navigate after the Recorder had read the page during it keeps that last read
 of its own page as its "after", with its `afterSnapshotId` and `endedAt`.
 With no "after" at all, `endedAt` equals `startedAt`.
 
@@ -129,10 +129,10 @@ in another visit is another element. Copy refs exactly as they are written.
 
 An element keeps its ref for the whole visit while the page keeps it, also
 when its name, text or state changes. When the page re-creates an element in
-the same place with the same role and name, the recorder takes it for the
+the same place with the same role and name, the Recorder takes it for the
 same element and it keeps its ref too: a button the page re-renders after a
 click is still `e5`. An element the page re-creates with another name is a
-new element to the recorder: it gets a new ref, and the old one is
+new element to the Recorder: it gets a new ref, and the old one is
 `<removed>`.
 
 A `changeTree` holds only the paths down to what changed. `<added>`,
@@ -182,16 +182,15 @@ names the element the user picked in the same way. `targetRef` is `null` with
 the selector present when a key was pressed while nothing on the page had
 focus, as the key then goes to the page's body, which the tree does not list.
 
-A `kind: change` entry is a change the recorder could not tie to an
+A `kind: change` entry is a change the Recorder could not tie to an
 interaction. Read it together with the steps around it. It is usually the
 late result of an earlier step, such as data that finished loading. The
 focus a click's press moved to the clicked element, and away from the one
 before, is in that click's own change tree, not a change before it, nor in
 the change tree of the step just before it, such as the typing before a
 click. A page's first click can lack it, when another element, such as a
-field the page focused by itself, had the focus. A change that no recorded action explains can also come from a
-hover. It can come from something the page does
-on its own in between, too, such as an async update.
+field the page focused by itself, had the focus. A change no recorded action explains can also come from a hover, or from
+something the page does on its own in between, such as an async update.
 
 A recording can have pauses: the user pressed Stop, did something, and pressed
 Continue. What the page changed during a pause is not in the package at all,
@@ -281,16 +280,16 @@ shows its full URL.
 `traceActionPoints` says where each interaction is in the trace. Its
 `beforeSnapshotId` and `afterSnapshotId` are position numbers, the numbers the
 tool's `trace actions` list prints. Pass them to `trace snapshot`. Open both
-with the `after` phase: each number points at a small step the recorder made
+with the `after` phase: each number points at a small step the Recorder made
 just after reading the page, so its `after` is the page at that moment. The
 flag that picks the phase is `--phase` from Playwright 1.63 and `--name`
 on 1.62; check the version with `npx playwright --version`.
 
 Do not look for the user's steps by name in `trace actions`. The list shows
-the recorder's own calls: its reads of the page (`Aria snapshot`, then a
+the Recorder's own calls: its reads of the page (`Aria snapshot`, then a
 `snapshot_<n>` group whose one call inside has the number the package
 gives), and the mouse moves, presses and releases of the clicks it held
-back and sent on. Keys the recorder held back show as key presses; text the
+back and sent on. Keys the Recorder held back show as key presses; text the
 user typed or pasted otherwise is not an action there. Go to a step by the
 package's position numbers.
 
@@ -322,7 +321,7 @@ first, then read it in a single call, as above: one `eval` can return many
 elements.
 
 For a first look at a page whose selectors you do not know yet, read its body
-without the elements that are not the app's: the recorder's toolbar
+without the elements that are not the app's: the Recorder's toolbar
 (`ayme-recorder-toolbar`) and highlight (`ayme-recorder-highlight`), and
 Playwright's own `x-pw-glass` and `template` elements, whose styles fill the
 output.
@@ -362,7 +361,7 @@ element.
 a snapshot with refs of its own; they are not the package's refs.
 
 A click that leaves the page shows its result in the next visit's baseline.
-It has no `afterSnapshotId` when the page left before the recorder read it
+It has no `afterSnapshotId` when the page left before the Recorder read it
 again. When the page was slower to leave, as an app that loads the next page
 in the background is, the click has an `afterSnapshotId`: that snapshot is of
 the page it was on, not of where it led. An `assert*`
