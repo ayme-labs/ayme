@@ -51,37 +51,39 @@ import { locateTarget } from "./target";
 
 export type { PackageHeader } from "./packageText";
 
-/** A snapshot as the timeline keeps it. */
-type Kept = {
+/** A read of a page, in its place among its Visit's. */
+type Read = {
   readonly snapshot: PageSnapshot;
+  /** Recording resumes here after a pause: what changed from the snapshot
+   * before it is not the recording's. */
+  readonly resumes: boolean;
+};
+
+/** A snapshot as the timeline keeps it. */
+type Kept = Read & {
   readonly observation: StructuralObservationEntry;
   /** The tree as the browser named it. */
   readonly tree: StructuralTree;
   /** From each ref the browser used here to the first ref its element had. */
   readonly firstRefs: ReadonlyMap<SnapshotRef, FirstRef>;
-  /** Recording resumes here after a pause: what changed from the snapshot
-   * before it is not the recording's. */
-  readonly resumes: boolean;
-  /** The read could not be kept: the read before it in its Visit stands in
-   * for it, or an empty page when it is the Visit's first. */
-  readonly standsIn?: true;
+  readonly lost?: undefined;
 };
 
-/** A read of a page as core's observation session takes it. */
-function observed(
-  snapshot: PageSnapshot,
-  tree: StructuralTree
-): StructuralObservationEntry {
-  const pageId = PageIdSchema.parse(snapshot.page);
-  const at = MonotonicTimeMsSchema.parse(snapshot.at);
-  return {
-    // Stryker disable next-line StringLiteral: equivalent, since core reads an entry's kind only for a Visit's or an action's evidence, which the timeline never asks for
-    kind: "observation",
-    at,
-    pageId,
-    tree: { pageId, capturedAt: at, resolve: () => Promise.resolve(tree) },
-  };
-}
+/**
+ * A read that could not be kept, as one core's parser refuses or one with a
+ * ref on two elements. It holds its place: its id, its position in the
+ * trace, and the numbering of the steps around it. It has no tree, so
+ * nothing is compared with it: a step that starts or ends at it has no
+ * Change Tree, and a warning says so, since a package may leave out what is
+ * not known and must not tell what did not happen.
+ */
+type Lost = Read & { readonly lost: true };
+
+const isKept = (read: Kept | Lost): read is Kept => !read.lost;
+
+/** A read to compare with: none for one that could not be kept. */
+const comparable = (read: Kept | Lost | undefined) =>
+  read && isKept(read) ? read : undefined;
 
 /** An Interaction that has no entry yet. */
 type Waiting = RecordedInteraction & {
@@ -105,7 +107,7 @@ type Pictured = {
 type Written = {
   readonly visit: Visit;
   readonly id: EntryId;
-  readonly from: Kept;
+  readonly from: Kept | Lost;
   /** As it was first added: its report holds the picture it is measured
    * from. */
   readonly first: RecordedInteraction;
@@ -127,6 +129,12 @@ type Written = {
   };
 };
 
+/** An entry that can be measured: the page was read before it. */
+type Measurable = Written & { readonly from: Kept };
+
+const measurable = (written: Written): written is Measurable =>
+  isKept(written.from);
+
 /** What an Interaction's entry is measured as. */
 type Measured = {
   readonly target: FirstRef | undefined;
@@ -134,13 +142,18 @@ type Measured = {
   readonly change: StructuralTree | null;
 };
 
+/** An Interaction nothing of which can be measured: it stays in the
+ * recording with what Playwright reported of it, since the person did it
+ * and a test of the flow needs the step. */
+const NOT_MEASURED: Measured = { target: undefined, named: null, change: null };
+
 type Visit = {
   readonly id: string;
   /** The page it is a Visit of. */
   readonly page: PageId;
   readonly url: string;
   readonly cause: VisitCause;
-  readonly snapshots: Kept[];
+  readonly snapshots: (Kept | Lost)[];
   /** The Interactions that have no entry yet. */
   readonly waiting: Waiting[];
   /** The entries produced so far, in order. */
@@ -200,17 +213,16 @@ type Rows = {
 
 /** The ref the Visit's latest snapshot gives an element known by its first
  * ref: none once the page has left the Visit, whose refs name nothing in
- * the document it has now, and none core made up, which name no element of
- * the page. */
+ * the document it has now, none core made up, which name no element of
+ * the page, and none when that snapshot could not be kept. */
 function refNow(
   visit: Visit,
   first: string | null | undefined,
   left: boolean
 ): ElementLookup | null {
-  if (left || !first) return null;
-  const now = [...visit.snapshots.at(-1)!.firstRefs].find(
-    ([, kept]) => kept === first
-  )?.[0];
+  const latest = comparable(visit.snapshots.at(-1));
+  if (left || !first || !latest) return null;
+  const now = [...latest.firstRefs].find(([, kept]) => kept === first)?.[0];
   return now && !isSyntheticRef(now) ? { by: "ref", ref: now } : null;
 }
 
@@ -262,6 +274,22 @@ const PRESSED = new Set(["click", "check", "uncheck"]);
 
 const sameReport = (one: InteractionReport, other: InteractionReport) =>
   one === other || JSON.stringify(one) === JSON.stringify(other);
+
+/**
+ * Where a change of the page's own is, in what the package has of one: its
+ * time, and the Interaction before it, or else its Visit. The package
+ * writes no id for one, so a warning cannot name it by its id.
+ */
+function ownChangeAt(
+  visit: Visit,
+  at: number,
+  before: readonly Entry[] = visit.entries
+) {
+  const interaction = before.findLast(
+    ({ entry }) => entry.kind === "interaction"
+  );
+  return `at ${at} ${interaction ? `after ${interaction.entry.id}` : `in ${visit.id}`}`;
+}
 
 /** The place of a snapshot among a Visit's; negative when it is not there. */
 const placeIn = (visit: Visit, snapshot: SnapshotId | null) =>
@@ -414,13 +442,18 @@ export class Timeline {
     const visit = this.all.findLast(
       (started) => started.page === page && sameDocument(started.url, url)
     );
-    if (visit)
-      visit.snapshots.push({
-        ...(await this.keep(visit, addition.snapshot).catch(() =>
-          this.standIn(visit, addition.snapshot)
-        )),
-        resumes: addition.resumes === true,
-      });
+    if (!visit) return;
+    const resumes = addition.resumes === true;
+    visit.snapshots.push(
+      await this.keep(visit, addition.snapshot).then(
+        (read): Kept => ({ ...read, resumes }),
+        // It holds its place, as `Lost` says. Of a read its record of the
+        // elements refuses, core's session still has the observation, which
+        // it takes before that record sees it: the record skips it, and
+        // matches the next read with the last one it took.
+        (): Lost => ({ snapshot: addition.snapshot, resumes, lost: true })
+      )
+    );
   }
 
   /** An Interaction: a new one waits in the Visit it started in, and
@@ -454,7 +487,7 @@ export class Timeline {
       afterInVisit:
         placeIn(visit, interaction.after) >= 0 ? interaction.after : null,
     });
-    this.warnOfStandIns(visit, recorded.id, interaction);
+    this.warnOfReads(visit, recorded.id, interaction);
     // Everything up to it is settled now: what changed before it, and what
     // it changed.
     await this.produce(visit, start);
@@ -470,17 +503,18 @@ export class Timeline {
     // Stryker disable next-line ConditionalExpression: an entry once written stays; the check is for the type
     if (index < 0) return;
     const last = written.measured;
+    const keptAt = (snapshot: SnapshotId | null) =>
+      comparable(visit.snapshots[placeIn(visit, snapshot)]) !== undefined;
     // A read of the page it went on to, as when its typing submitted a
-    // form, has nothing of its own Visit: what it showed up to the last
-    // read of its page stays.
+    // form, has nothing of its own Visit, and a read that could not be kept
+    // shows nothing: what it showed up to the last kept read of its page
+    // stays.
     const after =
-      placeIn(visit, interaction.after) < 0 &&
-      last &&
-      placeIn(visit, last.after) >= 0
+      !keptAt(interaction.after) && last && keptAt(last.after)
         ? last.after
         : interaction.after;
     const end = placeIn(visit, after);
-    this.warnOfStandIns(visit, written.id, { ...interaction, after });
+    this.warnOfReads(visit, written.id, interaction);
     const sameAfter = last?.after === after;
     // Nothing new, as a fill's final write after its last update: the list
     // stays the one told.
@@ -509,10 +543,14 @@ export class Timeline {
         ? Math.max(written.throughAtStart, end)
         : Math.max(visit.through, end);
     const place = this.recorded.findIndex((one) => one.id === written.id);
+    // The trace holds the page of its latest read in its Visit, also of
+    // one that could not be kept.
+    const traced =
+      placeIn(visit, interaction.after) < 0 ? after : interaction.after;
     this.recorded[place] = {
       ...this.recorded[place]!,
-      after,
-      afterInVisit: end < 0 ? null : after,
+      after: traced,
+      afterInVisit: placeIn(visit, traced) < 0 ? null : traced,
     };
     this.tell();
   }
@@ -594,14 +632,20 @@ export class Timeline {
   ): Promise<Omit<Kept, "resumes">> {
     // Stryker disable next-line MethodExpression: equivalent, since the clock only gives core's own timeline the time of a navigation, which the timeline never reads back
     this.latestAt = Math.max(this.latestAt, snapshot.at);
+    const pageId = PageIdSchema.parse(snapshot.page);
     const tree = StructuralTree.fromAriaSnapshotYaml(snapshot.tree, this.refs);
-    const observation = this.session.recordObservation(
-      observed(snapshot, tree)
-    );
+    const at = MonotonicTimeMsSchema.parse(snapshot.at);
+    const observation = this.session.recordObservation({
+      // Stryker disable next-line StringLiteral: equivalent, since core reads an entry's kind only for a Visit's or an action's evidence, which the timeline never asks for
+      kind: "observation",
+      at,
+      pageId,
+      tree: { pageId, capturedAt: at, resolve: () => Promise.resolve(tree) },
+    });
     // Core says which element of this snapshot is which element of the
     // earlier ones; the package names each by the first ref it had.
     const firstRefs = await this.session.readIdentityLedger(
-      observation.pageId,
+      pageId,
       (ledger) => {
         const now = new Map<SnapshotRef, FirstRef>();
         /** The element of this snapshot each first ref names: one only. */
@@ -639,47 +683,63 @@ export class Timeline {
     };
   }
 
-  /**
-   * What is kept for a read that cannot be kept itself, as one core's
-   * parser refuses or one with a ref on two elements: the read before it in
-   * its Visit under this read's id, or an empty page for the Visit's first.
-   * The step that ends at it then shows no change and the next one shows
-   * what both changed, where leaving the read out would lose an Interaction
-   * that starts or ends at it. Core's session is told nothing of it, so
-   * the reads after it are matched as they would be without it.
-   */
-  private standIn(visit: Visit, snapshot: PageSnapshot): Omit<Kept, "resumes"> {
-    const earlier = visit.snapshots.at(-1);
-    if (earlier) return { ...earlier, snapshot, standsIn: true };
-    const tree = StructuralTree.fromAriaSnapshotYaml("", this.refs);
-    return {
-      snapshot,
-      observation: observed(snapshot, tree),
-      tree,
-      firstRefs: new Map(),
-      standsIn: true,
-    };
-  }
-
-  /** Warns, once, of a read an Interaction starts or ends at that another
-   * stands in for: the package does not mark the step. */
-  private warnOfStandIns(
+  /** Warns, once, of a read an Interaction starts at, ends at or picked
+   * its element in that could not be kept: the package does not mark the
+   * step. */
+  private warnOfReads(
     visit: Visit,
     id: EntryId,
-    { before, after }: RecordedInteraction
+    { before, after, targetRead }: RecordedInteraction
   ) {
-    const standsIn = (snapshot: SnapshotId | null) =>
-      visit.snapshots[placeIn(visit, snapshot)]?.standsIn;
-    if (standsIn(before))
+    const lost = (snapshot: SnapshotId | null) =>
+      visit.snapshots[placeIn(visit, snapshot)]?.lost;
+    if (lost(before))
       this.warn(
         "pageNotRead",
-        `The page could not be read before ${id}. Its changes can include what the page changed before it.`
+        `The page could not be read before ${id}, so its target is known by its selector only and it has no change list.`
       );
-    if (standsIn(after))
+    if (lost(after))
       this.warn(
         "pageNotRead",
-        `The page could not be read after ${id}. What it changed is listed with the next step, or as a change without a step.`
+        `The page could not be read after ${id}, so its change list is missing, or stops at the last read before that.`
       );
+    if (lost(targetRead ?? null))
+      this.warn(
+        "pageNotRead",
+        `The page could not be read where ${id} picked its element, so its target is known by its selector only.`
+      );
+  }
+
+  /**
+   * Warns of the reads of a Visit that could not be kept and that no
+   * Interaction starts or ends at, when the package is made: only then is
+   * it known where the trace holds each.
+   */
+  private warnOfLostReads(
+    visit: Visit,
+    start: number,
+    positions: Readonly<Record<SnapshotId, TracePosition>>
+  ) {
+    const ends = new Set(
+      this.recorded.flatMap(({ before, after }) => [before, after])
+    );
+    visit.snapshots.forEach((read, place) => {
+      if (!read.lost) return;
+      const position = positions[read.snapshot.id];
+      const where =
+        `at ${read.snapshot.at}` +
+        (position === undefined ? "" : ` (trace position ${position})`);
+      if (place === start)
+        this.warn(
+          "pageNotRead",
+          `The page could not be read where ${visit.id} starts in the recording, ${where}: its baselineTree is the last read of the page before that, or empty when there was none.`
+        );
+      else if (!ends.has(read.snapshot.id))
+        this.warn(
+          "pageNotRead",
+          `A read of the page in ${visit.id}, ${where}, could not be kept: whether the page changed by itself around it is not known.`
+        );
+    });
   }
 
   /** Keeps a warning, unless it is kept already: an entry measured again
@@ -800,6 +860,7 @@ export class Timeline {
         // its default answer would take any two that look alike for one.
         // Core's record of the elements is neither read nor written.
         return StructuralTree.reconcile(fromTree, toTree, {
+          // Stryker disable next-line ArrowFunction: equivalent, since core takes no answer for "not the same"
           sameIdentity: () => false,
         });
       });
@@ -845,18 +906,18 @@ export class Timeline {
     return null;
   }
 
-  /** Warns of how an entry's Change Tree falls short, by the entry's id:
-   * the package does not mark the entry. */
-  private warnOfShortfall(id: EntryId, { otherRefs, unlisted }: Rows) {
+  /** Warns of how an entry's Change Tree falls short, naming the entry by
+   * what the package has of it (`subject`): the package does not mark it. */
+  private warnOfShortfall(subject: string, { otherRefs, unlisted }: Rows) {
     if (otherRefs)
       this.warn(
         "changesNotWorkedOut",
-        `The changes of ${id} could not be fully worked out. An element the page re-created may be listed under another ref, or as removed and added.`
+        `${subject} could not be fully worked out. An element the page re-created may be listed under another ref, or as removed and added.`
       );
     if (unlisted)
       this.warn(
         "changesNotWorkedOut",
-        `The changes of ${id} cannot be listed in the recorder window. The recording package is not affected.`
+        `${subject} cannot be listed in the recorder window. The recording package is not affected.`
       );
   }
 
@@ -875,17 +936,14 @@ export class Timeline {
   private warnOfNoChangeList(id: EntryId) {
     this.warn(
       "changesNotWorkedOut",
-      `The changes of ${id} could not be worked out, so it has no change list. The trace holds the page before and after it.`
+      `The changes of ${id} could not be worked out, so it has no change list.`
     );
   }
 
-  /** What an Interaction is measured as when nothing of it can be: it
-   * stays in the recording with what Playwright reported of it, since the
-   * person did it and a test of the flow needs the step. */
+  /** Not measured, and warned of: something broke while it was. */
   private unmeasured(id: EntryId): Measured {
     this.warnOfNoChangeList(id);
-    // Stryker disable next-line ObjectLiteral: equivalent, since an entry reads a target, a name and a change that are absent as it reads none
-    return { target: undefined, named: null, change: null };
+    return NOT_MEASURED;
   }
 
   /** The rows of a Change Tree as an entry tells them, and their elements,
@@ -1036,7 +1094,7 @@ export class Timeline {
    * trees do. It keeps its place and id; its rows can change with what the
    * later read tells, as a group that turns out to be named.
    */
-  private async tie(written: Written, to: Kept) {
+  private async tie(written: Measurable, to: Kept) {
     const { from, pictured, first, visit } = written;
     // Stryker disable next-line OptionalChaining: only an input with a picture is tied; the check is for the type
     const target = first.report.target;
@@ -1073,16 +1131,21 @@ export class Timeline {
     const index = visit.entries.findIndex(
       ({ entry }) => entry.id === written.changedBefore
     );
-    const kept = visit.entries[index]!;
+    const ahead = visit.entries[index]!;
     const before = await this.changedBefore(
       from,
       pictured,
       new Map([...from.firstRefs, ...to.firstRefs])
     );
-    const { changes, rows } = this.rowsOf(before);
+    const told = this.rowsOf(before);
+    const { changes, rows } = told;
+    this.warnOfShortfall(
+      `The page's own change ${ownChangeAt(visit, written.first.at, visit.entries.slice(0, index))}`,
+      told
+    );
     visit.entries[index] = {
-      ...kept,
-      entry: { ...kept.entry, kind: "change", changes },
+      ...ahead,
+      entry: { ...ahead.entry, kind: "change", changes },
       change: before,
       rows,
     };
@@ -1091,8 +1154,14 @@ export class Timeline {
   /** An Interaction measured (`measureExactly`), or, whatever breaks
    * there, not measured, so that it stays in the recording each time it is
    * measured: when it is written, and again with each key of its typing. */
-  private measure(written: Written, to: Kept | undefined): Promise<Measured> {
-    return this.measureExactly(written, to).catch(() =>
+  private async measure(
+    written: Written,
+    to: Kept | Lost | undefined
+  ): Promise<Measured> {
+    // The page was not read before it: the warning of that read says so.
+    if (!measurable(written)) return NOT_MEASURED;
+    // A read after it that could not be kept is no "after" to measure to.
+    return this.measureExactly(written, comparable(to)).catch(() =>
       this.unmeasured(written.id)
     );
   }
@@ -1103,7 +1172,7 @@ export class Timeline {
    * Visit.
    */
   private async measureExactly(
-    written: Written,
+    written: Measurable,
     to: Kept | undefined,
     toTree = to && (this.beforePress.get(to.snapshot.id) ?? to.tree)
   ): Promise<Measured> {
@@ -1135,7 +1204,7 @@ export class Timeline {
   /** An Interaction the gate held, or one with no picture, from its
    * "before" to its "after". */
   private async measureHeld(
-    written: Written,
+    written: Measurable,
     to: Kept | undefined,
     toTree: StructuralTree | undefined
   ): Promise<Measured> {
@@ -1144,14 +1213,19 @@ export class Timeline {
     // an earlier one.
     const read =
       written.visit.snapshots.find(
-        (kept) => kept.snapshot.id === first.targetRead
+        (one) => one.snapshot.id === first.targetRead
       ) ?? from;
-    const located = locateTarget(read.tree, first.report);
+    // A read that could not be kept shows no element, and a ref the page
+    // gave there may name another element in the read before: its selector
+    // alone names the target then.
+    const located = isKept(read)
+      ? locateTarget(read.tree, first.report)
+      : undefined;
     const pressed = this.beforePress.get(from.snapshot.id);
     return {
       // Every ref of a kept snapshot has its first ref.
-      target: located && read.firstRefs.get(located),
-      named: namedTarget(read.tree, located),
+      target: located && comparable(read)!.firstRefs.get(located),
+      named: isKept(read) ? namedTarget(read.tree, located) : null,
       change: to
         ? await this.changeOf(
             written.id,
@@ -1171,7 +1245,7 @@ export class Timeline {
     written.named = named;
     const changed = change && changedSomething(change) ? change : null;
     const told = changed && this.rowsOf(changed);
-    if (told) this.warnOfShortfall(written.id, told);
+    if (told) this.warnOfShortfall(`The changes of ${written.id}`, told);
     return {
       entry: {
         kind: "interaction",
@@ -1273,8 +1347,11 @@ export class Timeline {
     held: Written,
     end: number
   ): Promise<[Written, Measured]> {
+    // The page was not read before it: the warning of that read says so.
+    if (!measurable(held)) return [held, NOT_MEASURED];
     const { visit, from } = held;
-    const to = visit.snapshots[end];
+    // A read after it that could not be kept is no "after" either.
+    const to = comparable(visit.snapshots[end]);
     if (!interaction.beforeFromReport)
       await this.pressedAfter(visit, from, interaction);
     const written = interaction.beforeFromReport
@@ -1298,7 +1375,7 @@ export class Timeline {
     const id = from.snapshot.id;
     // A step of its own before it took the read as it stood already.
     if (this.beforePress.has(id) || from.resumes) return;
-    const previous = visit.snapshots[placeIn(visit, id) - 1];
+    const previous = comparable(visit.snapshots[placeIn(visit, id) - 1]);
     const pressed =
       previous && this.beforeItsPress(previous, from, click.report);
     if (!pressed) return;
@@ -1332,14 +1409,16 @@ export class Timeline {
     // Stryker disable next-line EqualityOperator: ">" is equivalent, since at `upTo` itself an Interaction starts, or the Visit ends
     const reached = visit.through >= upTo;
     if (reached || !next) return false;
-    // A step that cannot be told is passed over, so that the entries get
-    // to the Interactions after it. An entry is written before every step.
-    await this.tellStep(visit, through, next).catch(() =>
-      this.warn(
-        "changesNotWorkedOut",
-        `Whether the page changed by itself after ${visit.entries.at(-1)!.entry.id} could not be worked out: no such change is listed.`
-      )
-    );
+    // A step to or from a read that could not be kept is told nothing of,
+    // and one that cannot be told is passed over with a warning, so that
+    // the entries get to the Interactions after it.
+    if (isKept(through) && isKept(next))
+      await this.tellStep(visit, through, next).catch(() =>
+        this.warn(
+          "changesNotWorkedOut",
+          `Whether the page changed by itself ${ownChangeAt(visit, next.snapshot.at)} could not be worked out: no such change is listed.`
+        )
+      );
     visit.through += 1;
     return true;
   }
@@ -1375,7 +1454,10 @@ export class Timeline {
     const id = `change_${++this.changes}` as EntryId;
     const told = this.rowsOf(change);
     const { changes, rows } = told;
-    this.warnOfShortfall(id, told);
+    this.warnOfShortfall(
+      `The page's own change ${ownChangeAt(visit, at)}`,
+      told
+    );
     visit.entries.push({
       entry: { kind: "change", id, timestamp: at, changes },
       change,
@@ -1406,29 +1488,36 @@ export class Timeline {
       if (visit.snapshots.length === 0) continue;
       if (visit.start === null)
         visit.through = visit.start = visit.snapshots.length - 1;
-      const first = visit.snapshots[visit.start]!;
       await this.produce(visit);
+      this.warnOfLostReads(visit, visit.start, positions);
       visits.push({
         visitId: visit.id,
         url: visit.url,
         cause: visit.cause,
         entries: visit.entries,
-        baselineTree: wholeTreeText(this.firstTree(visit, first)),
+        baselineTree: this.firstTree(visit, visit.start),
       });
     }
     return renderPackage(header, visits, this.tracePoints(positions));
   }
 
-  /** A Visit's first tree, under its elements' first refs, or under the
-   * refs the page gave, with a warning, when it cannot be renamed. */
-  private firstTree(visit: Visit, first: Kept): StructuralTree {
+  /**
+   * A Visit's first tree as the package writes it: the page at the read
+   * the Visit starts at, or at the last one kept before that when it could
+   * not be kept, which the warning of that read says; empty with none. It
+   * is under its elements' first refs, or under the refs the page gave,
+   * with a warning, when it cannot be renamed.
+   */
+  private firstTree(visit: Visit, start: number): string {
+    const first = visit.snapshots.slice(0, start + 1).findLast(isKept);
+    if (!first) return "";
     const renamed = this.renamed(first.tree, first.firstRefs);
     if (!renamed)
       this.warn(
         "changesNotWorkedOut",
         `The baselineTree of ${visit.id} could not be fully worked out. An element the page re-created before its first step may be listed under another ref.`
       );
-    return renamed ?? first.tree;
+    return wholeTreeText(renamed ?? first.tree);
   }
 
   /** Where the trace holds each Interaction: the position of its "before"

@@ -183,9 +183,8 @@ export type RecorderWarning = {
    *   of the recording, as its page could not be read.
    * - storageNotSaved: the storage state could not be saved to the file the
    *   recorder was asked to save it to; the recording is saved all the same.
-   * - pageNotRead: a read of the page could not be kept, so the step the
-   *   message names is compared with an earlier read, or with an empty
-   *   page.
+   * - pageNotRead: a read of the page could not be kept, so what the
+   *   message names is missing what that read would have shown.
    * - changesNotWorkedOut: what a step changed, or a Visit's first tree,
    *   could not be worked out in full, or at all; the message names it and
    *   says which.

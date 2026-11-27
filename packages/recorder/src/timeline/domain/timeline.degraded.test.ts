@@ -20,12 +20,14 @@ import {
   entryId,
   pageId,
   snapshotId,
+  snapshotRefOf,
   tracePositions,
 } from "../../../testing/ids";
 
 // A recording goes on when a read of the page cannot be kept or a step's
 // changes cannot be worked out: the step stays, with as much as can be told
-// of it, and a warning names it.
+// of it, and a warning names it. A read that cannot be kept holds its place
+// and is never compared: what is not known is left out, never made up.
 
 /** A click on the "Add" button, held by the gate between two reads. */
 const click = (
@@ -52,8 +54,20 @@ const click = (
 const counter = (count: number) =>
   page(`- button "Add" [ref=e2]`, `- paragraph [ref=e3]: Count ${count}`);
 
-/** A read core's parser refuses: its first line lacks the leading "- ". */
-const unreadable = `generic [ref=e1]:\n  - button "Add" [ref=e2]`;
+/**
+ * A read core's parser refuses, as Playwright 1.64 returned it for
+ * `<main><label for="note">Note</label><input id="note"
+ * placeholder="First line\u2028second line"><button>Save</button></main>`:
+ * the placeholder holds a line separator (U+2028), which the parser's
+ * pattern for a property line does not match.
+ */
+const unreadable = [
+  `- main [ref=e2]:`,
+  `  - text: Note`,
+  `  - textbox "Note" [ref=e3]:`,
+  `    - /placeholder: First line\u2028second line`,
+  `  - button "Save" [ref=e4]`,
+].join("\n");
 
 const fixture = (name: string) =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
@@ -94,11 +108,15 @@ async function cartBeforeItsSecondClick() {
 }
 
 const notWorkedOut = (id: string) =>
-  `The changes of ${id} could not be worked out, so it has no change list. The trace holds the page before and after it.`;
-const notFullyWorkedOut = (id: string) =>
-  `The changes of ${id} could not be fully worked out. An element the page re-created may be listed under another ref, or as removed and added.`;
-const maybeChangedAfter = (id: string) =>
-  `Whether the page changed by itself after ${id} could not be worked out: no such change is listed.`;
+  `changesNotWorkedOut: The changes of ${id} could not be worked out, so it has no change list.`;
+/** `subject` names an Interaction's changes by its id, and a change of the
+ * page's own by its time and the Interaction before it, or its Visit. */
+const notFullyWorkedOut = (subject: string) =>
+  `changesNotWorkedOut: ${subject} could not be fully worked out. An element the page re-created may be listed under another ref, or as removed and added.`;
+const notListed = (subject: string) =>
+  `changesNotWorkedOut: ${subject} cannot be listed in the recorder window. The recording package is not affected.`;
+const maybeChanged = (where: string) =>
+  `changesNotWorkedOut: Whether the page changed by itself ${where} could not be worked out: no such change is listed.`;
 
 /** Whether core marked what changed on the tree's nodes: a read has no
  * marks. */
@@ -107,8 +125,9 @@ const isChangeTree = (tree: StructuralTree) =>
 
 const s = (number: number) => snapshotId(`snapshot_${number}`);
 
+/** The timeline's warnings, each as its kind and its message. */
 const messages = (timeline: Timeline) =>
-  timeline.warnings().map((warning) => warning.message);
+  timeline.warnings().map(({ kind, message }) => `${kind}: ${message}`);
 
 /** The package's text from a Visit's first tree to its entries. */
 const baselineOf = (text: string, visitId: string) =>
@@ -120,8 +139,17 @@ const baselineOf = (text: string, visitId: string) =>
 const changed = (...rows: string[]) =>
   [`- [ref=e1]:`, ...rows.map((row) => `  - <changed> ${row}`)].join("\n");
 
+const notReadBefore = (id: string) =>
+  `pageNotRead: The page could not be read before ${id}, so its target is known by its selector only and it has no change list.`;
+const notReadAfter = (id: string) =>
+  `pageNotRead: The page could not be read after ${id}, so its change list is missing, or stops at the last read before that.`;
+const lostRead = (visitId: string, where: string) =>
+  `pageNotRead: A read of the page in ${visitId}, ${where}, could not be kept: whether the page changed by itself around it is not known.`;
+const lostStart = (visitId: string, where: string) =>
+  `pageNotRead: The page could not be read where ${visitId} starts in the recording, ${where}: its baselineTree is the last read of the page before that, or empty when there was none.`;
+
 describe("a read of the page that cannot be kept", () => {
-  it("is stood in for by the read before it: the step it ends has no Change Tree, and the next step tells what both changed", async () => {
+  it("holds its place and is compared with nothing: the step that ends at it and the step that starts at it have no Change Tree, and the steps after are as ever", async () => {
     const timeline = await timelineOf([
       visit,
       snapshot(s(1), 10, counter(0)),
@@ -137,31 +165,35 @@ describe("a read of the page that cannot be kept", () => {
 
     expect(changeTreesOf(text)).toEqual([
       { kind: "interaction", changeTree: null },
-      {
-        kind: "interaction",
-        changeTree: changed(`[ref=e3] paragraph: Count 2`),
-      },
+      { kind: "interaction", changeTree: null },
       {
         kind: "interaction",
         changeTree: changed(`[ref=e3] paragraph: Count 3`),
       },
     ]);
-    expect(text).toContain("id: interaction_1");
-    expect(timeline.warnings()).toEqual([
-      {
-        kind: "pageNotRead",
-        message:
-          "The page could not be read after interaction_1. What it changed is listed with the next step, or as a change without a step.",
-      },
-      {
-        kind: "pageNotRead",
-        message:
-          "The page could not be read before interaction_2. Its changes can include what the page changed before it.",
-      },
+    // The first is found on the page before it; the second has no page
+    // before it.
+    expect(text).toContain(
+      [
+        `          id: interaction_1`,
+        `          type: click`,
+        `          targetRef: e2`,
+      ].join("\n")
+    );
+    expect(text).toContain(
+      [
+        `          id: interaction_2`,
+        `          type: click`,
+        `          targetRef: null`,
+      ].join("\n")
+    );
+    expect(messages(timeline)).toEqual([
+      notReadAfter("interaction_1"),
+      notReadBefore("interaction_2"),
     ]);
   });
 
-  it("leaves what the step changed to a change of its own when the next Interaction starts at a later read", async () => {
+  it("gives what the page showed at the next read to no step: neither the step it ends nor a change of the page's own", async () => {
     const timeline = await timelineOf([
       visit,
       snapshot(s(1), 10, counter(0)),
@@ -174,18 +206,15 @@ describe("a read of the page that cannot be kept", () => {
 
     expect(changeTreesOf((await timeline.package(header))!)).toEqual([
       { kind: "interaction", changeTree: null },
-      { kind: "change", changeTree: changed(`[ref=e3] paragraph: Count 1`) },
       {
         kind: "interaction",
         changeTree: changed(`[ref=e3] paragraph: Count 2`),
       },
     ]);
-    expect(messages(timeline)).toEqual([
-      "The page could not be read after interaction_1. What it changed is listed with the next step, or as a change without a step.",
-    ]);
+    expect(messages(timeline)).toEqual([notReadAfter("interaction_1")]);
   });
 
-  it("is stood in for by an empty page when it is its Visit's first: the Visit starts empty, and its first step lists the page as added", async () => {
+  it("leaves a Visit that starts at it with an empty first tree, and warned of", async () => {
     const timeline = await timelineOf([
       visit,
       snapshot(s(1), 10, unreadable),
@@ -197,21 +226,15 @@ describe("a read of the page that cannot be kept", () => {
 
     expect(baselineOf(text, "visit_1")).toBe(" []");
     expect(changeTreesOf(text)).toEqual([
-      {
-        kind: "interaction",
-        changeTree: [
-          `- <added> [ref=e1]:`,
-          `  - <added> [ref=e2] button "Add"`,
-          `  - <added> [ref=e3] paragraph: Count 1`,
-        ].join("\n"),
-      },
+      { kind: "interaction", changeTree: null },
     ]);
     expect(messages(timeline)).toEqual([
-      "The page could not be read before interaction_1. Its changes can include what the page changed before it.",
+      notReadBefore("interaction_1"),
+      lostStart("visit_1", "at 10"),
     ]);
   });
 
-  it("is stood in for when one ref names two of its elements, which core's record of the elements refuses", async () => {
+  it("holds its place when one ref names two of its elements, which core's record of the elements refuses", async () => {
     const timeline = await timelineOf([
       visit,
       snapshot(s(1), 10, counter(0)),
@@ -222,19 +245,21 @@ describe("a read of the page that cannot be kept", () => {
       ),
       click(s(1), s(2), 15),
       snapshot(s(3), 30, counter(2)),
-      click(s(2), s(3), 25),
+      snapshot(s(4), 40, counter(3)),
+      click(s(3), s(4), 35),
     ]);
 
     expect(changeTreesOf((await timeline.package(header))!)).toEqual([
       { kind: "interaction", changeTree: null },
       {
         kind: "interaction",
-        changeTree: changed(`[ref=e3] paragraph: Count 2`),
+        changeTree: changed(`[ref=e3] paragraph: Count 3`),
       },
     ]);
+    expect(messages(timeline)).toEqual([notReadAfter("interaction_1")]);
   });
 
-  it("is stood in for by a read of its own page, never by another page's", async () => {
+  it("starts its Visit's first tree from the last read of that page before it, never from another page's, and says where the trace holds it", async () => {
     const other = pageId("page_2");
     const otherUrl = "http://shop.test/other";
     const read = (id: SnapshotId, at: number, tree: string) => ({
@@ -267,7 +292,10 @@ describe("a read of the page that cannot be kept", () => {
       },
     ]);
 
-    const text = (await timeline.package(header))!;
+    const text = (await timeline.package(
+      header,
+      tracePositions({ snapshot_3: "33" })
+    ))!;
 
     expect(baselineOf(text, "visit_2")).toContain("Count 7");
     expect(changeTreesOf(text)).toEqual([
@@ -275,14 +303,303 @@ describe("a read of the page that cannot be kept", () => {
         kind: "interaction",
         changeTree: changed(`[ref=e3] paragraph: Count 1`),
       },
+      { kind: "interaction", changeTree: null },
+    ]);
+    expect(messages(timeline)).toEqual([
+      notReadBefore("interaction_2"),
+      lostStart("visit_2", "at 30 (trace position 33)"),
+    ]);
+  });
+
+  it("is warned of at the end when no Interaction starts or ends at it: the step before it and the step after it are as ever, and what the page changed by itself around it is not listed", async () => {
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, counter(0)),
+      snapshot(s(2), 20, counter(1)),
+      click(s(1), s(2), 15),
+      snapshot(s(3), 30, unreadable),
+      // The page went on by itself.
+      snapshot(s(4), 40, counter(5)),
+      snapshot(s(5), 50, counter(6)),
+      click(s(4), s(5), 45),
+    ]);
+
+    const text = (await timeline.package(
+      header,
+      tracePositions({ snapshot_3: "33" })
+    ))!;
+
+    expect(changeTreesOf(text)).toEqual([
       {
         kind: "interaction",
-        changeTree: changed(`[ref=e3] paragraph: Count 8`),
+        changeTree: changed(`[ref=e3] paragraph: Count 1`),
+      },
+      {
+        kind: "interaction",
+        changeTree: changed(`[ref=e3] paragraph: Count 6`),
       },
     ]);
     expect(messages(timeline)).toEqual([
-      "The page could not be read before interaction_2. Its changes can include what the page changed before it.",
+      lostRead("visit_1", "at 30 (trace position 33)"),
     ]);
+  });
+
+  it("is warned of when a Visit nothing was done in starts at it, as the page a click went on to", async () => {
+    const next = "http://shop.test/next";
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, counter(0)),
+      click(s(1), s(2), 15),
+      { kind: "visit", page: pageId("page_1"), url: next, cause: "navigate" },
+      snapshot(s(2), 20, unreadable, next),
+    ]);
+
+    const text = (await timeline.package(header))!;
+
+    expect(baselineOf(text, "visit_2")).toBe(" []");
+    expect(messages(timeline)).toEqual([lostStart("visit_2", "at 20")]);
+  });
+
+  describe("where recording resumes after a pause", () => {
+    const banner = (count: number) =>
+      page(
+        `- button "Add" [ref=e2]`,
+        `- paragraph [ref=e3]: Count ${count}`,
+        `- status [ref=e4]: Synced while paused`
+      );
+    const first = [
+      visit,
+      snapshot(s(1), 10, counter(0)),
+      snapshot(s(2), 20, counter(1)),
+      click(s(1), s(2), 15),
+      // While paused the count went to 5 and a status appeared.
+      { ...snapshot(s(3), 30, unreadable), resumes: true },
+    ] satisfies TimelineAddition[];
+
+    it("leaves a click that starts at it with no Change Tree: nothing is compared across the pause", async () => {
+      const timeline = await timelineOf([
+        ...first,
+        snapshot(s(4), 40, banner(6)),
+        click(s(3), s(4), 35),
+        snapshot(s(5), 50, banner(7)),
+        click(s(4), s(5), 45),
+      ]);
+
+      const text = (await timeline.package(header))!;
+
+      expect(changeTreesOf(text)).toEqual([
+        {
+          kind: "interaction",
+          changeTree: changed(`[ref=e3] paragraph: Count 1`),
+        },
+        { kind: "interaction", changeTree: null },
+        {
+          kind: "interaction",
+          changeTree: changed(`[ref=e3] paragraph: Count 7`),
+        },
+      ]);
+      expect(text).not.toContain("<added>");
+      expect(messages(timeline)).toEqual([notReadBefore("interaction_2")]);
+    });
+
+    it("makes the first read kept after it the point to compare from: a click that starts there shows its own change only", async () => {
+      const timeline = await timelineOf([
+        ...first,
+        snapshot(s(4), 40, banner(5)),
+        snapshot(s(5), 50, banner(6)),
+        click(s(4), s(5), 45),
+      ]);
+
+      const text = (await timeline.package(header))!;
+
+      expect(changeTreesOf(text)).toEqual([
+        {
+          kind: "interaction",
+          changeTree: changed(`[ref=e3] paragraph: Count 1`),
+        },
+        {
+          kind: "interaction",
+          changeTree: changed(`[ref=e3] paragraph: Count 6`),
+        },
+      ]);
+      expect(messages(timeline)).toEqual([lostRead("visit_1", "at 30")]);
+    });
+  });
+
+  describe("after typing", () => {
+    const empty = page(`- textbox "Item" [ref=e2]`);
+    /** Typing under a key. Its picture of the page at the first key shows
+     * a help text the page had just rendered. */
+    const typing = (after: SnapshotId, text: string): TimelineAddition => ({
+      kind: "interaction",
+      key: "fill_1",
+      interaction: {
+        page: pageId("page_1"),
+        report: {
+          type: "fill",
+          selector: 'internal:role=textbox[name="Item"i]',
+          target: {
+            ref: pictureRef("e21"),
+            tree: [
+              `- generic [ref=e20]:`,
+              `  - textbox "Item" [ref=e21]: m`,
+              `  - paragraph [ref=e22]: Up to 40 letters`,
+            ].join("\n"),
+          },
+          values: { text },
+        },
+        before: s(1),
+        after,
+        at: 15,
+        beforeFromReport: true,
+      },
+    });
+    const withHelp = (text: string) =>
+      page(
+        `- textbox "Item" [ref=e2]: ${text}`,
+        `- paragraph [ref=e3]: Up to 40 letters`
+      );
+
+    it("stays as it was reported, with its latest text, when the read before it could not be kept either", async () => {
+      const timeline = await timelineOf([
+        visit,
+        snapshot(s(1), 10, unreadable),
+        snapshot(s(2), 20, withHelp("m")),
+        typing(s(2), "m"),
+        snapshot(s(3), 30, withHelp("mi")),
+        typing(s(3), "mi"),
+      ]);
+
+      const text = (await timeline.package(header))!;
+
+      expect(text).toContain(
+        [
+          `          targetRef: null`,
+          `          targetSelector: internal:role=textbox[name="Item"i]`,
+          `          text: mi`,
+        ].join("\n")
+      );
+      expect(changeTreesOf(text)).toEqual([
+        { kind: "interaction", changeTree: null },
+      ]);
+      expect(messages(timeline)).toEqual([
+        notReadBefore("interaction_1"),
+        lostStart("visit_1", "at 10"),
+      ]);
+    });
+
+    it("invents no change: what its picture shows is compared with no earlier page", async () => {
+      const timeline = await timelineOf([
+        visit,
+        snapshot(s(1), 10, empty),
+        snapshot(s(2), 20, unreadable),
+        typing(s(2), "m"),
+      ]);
+
+      const text = (await timeline.package(header))!;
+
+      expect(text).not.toContain("<removed>");
+      expect(changeTreesOf(text).at(-1)).toEqual({
+        kind: "interaction",
+        changeTree: null,
+      });
+      expect(messages(timeline)).toEqual([notReadAfter("interaction_1")]);
+    });
+
+    it("keeps what it changed up to its last kept read, with its latest text and the failed read's place in the trace, and is measured again at the next kept read", async () => {
+      const timeline = await timelineOf([
+        visit,
+        snapshot(s(1), 10, empty),
+        snapshot(s(2), 20, withHelp("m")),
+        typing(s(2), "m"),
+        snapshot(s(3), 30, unreadable),
+        typing(s(3), "mi"),
+        typing(s(3), "mil"),
+      ]);
+      const positions = tracePositions({
+        snapshot_1: "11",
+        snapshot_2: "22",
+        snapshot_3: "33",
+        snapshot_4: "44",
+      });
+
+      const lost = (await timeline.package(header, positions))!;
+
+      expect(lost).toContain("text: mil");
+      expect(changeTreesOf(lost).at(-1)).toEqual({
+        kind: "interaction",
+        changeTree: changed(`[ref=e2] textbox "Item": m`),
+      });
+      expect(lost).toContain(`    afterSnapshotId: "33"`);
+      expect(messages(timeline)).toEqual([notReadAfter("interaction_1")]);
+
+      await timeline.add(snapshot(s(4), 40, withHelp("milk")));
+      await timeline.add(typing(s(4), "milk"));
+
+      expect(
+        changeTreesOf((await timeline.package(header, positions))!).at(-1)
+      ).toEqual({
+        kind: "interaction",
+        changeTree: changed(`[ref=e2] textbox "Item": milk`),
+      });
+    });
+  });
+
+  it("leaves an assertion whose element was picked in it with its selector only: a ref of an earlier read may name another element", async () => {
+    const saved = page(
+      `- button "Save" [ref=e2]`,
+      `- paragraph [ref=e3]: Saved`
+    );
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, saved),
+      snapshot(s(2), 20, unreadable),
+      {
+        kind: "interaction",
+        interaction: {
+          page: pageId("page_1"),
+          report: {
+            type: "assertVisible",
+            selector: 'internal:role=paragraph >> internal:has-text="Saved"i',
+            target: null,
+            // The read before has an element under this ref too.
+            snapshotTarget: snapshotRefOf("e3"),
+            locator: "getByRole('paragraph').filter({ hasText: 'Saved' })",
+            values: {},
+          },
+          before: s(1),
+          after: s(1),
+          at: 10,
+          targetRead: s(2),
+        },
+      },
+    ]);
+
+    expect(timeline.visits()[0]!.entries[0]).toMatchObject({
+      interaction: {
+        targetRef: null,
+        targetSelector: 'internal:role=paragraph >> internal:has-text="Saved"i',
+      },
+      targetElement: "getByRole('paragraph').filter({ hasText: 'Saved' })",
+    });
+    expect(messages(timeline)).toEqual([
+      "pageNotRead: The page could not be read where interaction_1 picked its element, so its target is known by its selector only.",
+    ]);
+  });
+
+  it("finds an entry's target by its selector while it is the page's latest read: no ref of an earlier read is asked for", async () => {
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, counter(0)),
+      snapshot(s(2), 20, counter(1)),
+      click(s(1), s(2), 15),
+      snapshot(s(3), 30, unreadable),
+    ]);
+
+    expect(timeline.liveTarget(entryId("interaction_1"))).toEqual({
+      page: pageId("page_1"),
+      find: { by: "selector", selector: 'internal:role=button[name="Add"i]' },
+    });
   });
 
   it("keeps its place in the trace, which still holds the page it could not keep", async () => {
@@ -308,58 +625,10 @@ describe("a read of the page that cannot be kept", () => {
     );
   });
 
-  it("is warned of once when typing goes on past it: the text is the latest, and its changes are those up to the read before", async () => {
-    const typed = (text: string) => page(`- textbox "Item" [ref=e2]: ${text}`);
-    const typing = (after: SnapshotId, text: string): TimelineAddition => ({
-      kind: "interaction",
-      key: "fill_1",
-      interaction: {
-        page: pageId("page_1"),
-        report: {
-          type: "fill",
-          selector: 'internal:role=textbox[name="Item"i]',
-          target: {
-            ref: pictureRef("e2"),
-            tree: page(`- textbox "Item" [ref=e2]`),
-          },
-          values: { text },
-        },
-        before: s(1),
-        after,
-        at: 15,
-        beforeFromReport: true,
-      },
-    });
-    const timeline = await timelineOf([
-      visit,
-      snapshot(s(1), 10, page(`- textbox "Item" [ref=e2]`)),
-      snapshot(s(2), 20, typed("m")),
-      typing(s(2), "m"),
-      snapshot(s(3), 30, unreadable),
-      typing(s(3), "mi"),
-      typing(s(3), "mil"),
-    ]);
-
-    const text = (await timeline.package(header))!;
-
-    expect(text).toContain("text: mil");
-    expect(changeTreesOf(text)).toEqual([
-      {
-        kind: "interaction",
-        changeTree: changed(`[ref=e2] textbox "Item": m`),
-      },
-    ]);
-    expect(messages(timeline)).toEqual([
-      "The page could not be read after interaction_1. What it changed is listed with the next step, or as a change without a step.",
-    ]);
-  });
-
   it("leaves the other steps as they are with the read kept: an element it was the first to show re-created keeps its first ref in the steps after", async () => {
     const recording = cart();
     // The read after the second click: the first to show "Add item"
-    // re-created, under e7. That is all it shows beyond the read before
-    // it, and a re-created element is no change: so the package is the
-    // released one.
+    // re-created, under e7.
     const timeline = await timelineOf(
       recording.additions.map((addition) =>
         addition.kind === "snapshot" && addition.snapshot.id === s(4)
@@ -372,13 +641,45 @@ describe("a read of the page that cannot be kept", () => {
     );
 
     expect(await timeline.package(recording.header)).toBe(
-      fixture("cart-flow.package.txt")
+      cartPackage((released, nth) =>
+        nth === 1
+          ? released
+          : nth === 2
+            ? withoutChangeTree(released)
+            : // The focus its press moved shows against the read before
+              // it, which is the one that could not be kept.
+              released
+                .replace(
+                  `            - <changed> [ref=e5] button "Add item" [active]\n`,
+                  ""
+                )
+                .replace(
+                  `            - <changed> [ref=e6] button "Redraw"\n`,
+                  ""
+                )
+      )
     );
-    expect(messages(timeline)).toEqual([
-      "The page could not be read after interaction_2. What it changed is listed with the next step, or as a change without a step.",
-    ]);
+    expect(messages(timeline)).toEqual([notReadAfter("interaction_2")]);
   });
 });
+
+/** Makes core's comparison of two trees fail: `always`, or only where it
+ * is told which elements are the same by more than their refs. */
+const comparisonFails = (always: boolean) => {
+  const reconcile = StructuralTree.reconcile.bind(StructuralTree);
+  vi.spyOn(StructuralTree, "reconcile").mockImplementation(
+    (before, after, options) => {
+      // Told of no identities: core's own record of the elements.
+      if (!options) return reconcile(before, after);
+      const sameByMore = options.sameIdentity!(
+        "e5" as AriaRef,
+        "e7" as AriaRef
+      );
+      if (always || sameByMore) throw new Error("no comparison");
+      return reconcile(before, after, options);
+    }
+  );
+};
 
 // The three stages a step's changes are worked out in have no input known
 // to break them: the pages that did are fixed. So each is broken here where
@@ -405,11 +706,10 @@ describe("a step whose changes cannot be worked out", () => {
     expect(timeline.visits()[0]!.entries.map((entry) => entry.changes)).toEqual(
       [[], [], []]
     );
-    expect(timeline.warnings()).toEqual(
-      [1, 2, 3].map((nth) => ({
-        kind: "changesNotWorkedOut",
-        message: `The changes of interaction_${nth} cannot be listed in the recorder window. The recording package is not affected.`,
-      }))
+    // It has no row to find an element by either.
+    expect(timeline.liveTarget(entryId("interaction_3"), 0)).toBeNull();
+    expect(messages(timeline)).toEqual(
+      [1, 2, 3].map((nth) => notListed(`The changes of interaction_${nth}`))
     );
   });
 
@@ -419,10 +719,9 @@ describe("a step whose changes cannot be worked out", () => {
       `<changed> [ref=e5] button "Add item"`,
       `<changed> [ref=e7] button "Add item"`
     );
-    const warned = [1, 2, 3].map((nth) => ({
-      kind: "changesNotWorkedOut",
-      message: notFullyWorkedOut(`interaction_${nth}`),
-    }));
+    const warned = [1, 2, 3].map((nth) =>
+      notFullyWorkedOut(`The changes of interaction_${nth}`)
+    );
 
     it("keeps core's Change Tree under the refs the page gave: a re-created element shows under its new ref, and the target under its first", async () => {
       const beforeNode = StructuralTree.prototype.getBeforeNode;
@@ -443,7 +742,7 @@ describe("a step whose changes cannot be worked out", () => {
       const timeline = await timelineOf(additions);
 
       expect(await timeline.package(header)).toBe(underOwnRefs);
-      expect(timeline.warnings()).toEqual(warned);
+      expect(messages(timeline)).toEqual(warned);
     });
 
     it("does the same when the renaming leaves one ref on two elements", async () => {
@@ -460,7 +759,7 @@ describe("a step whose changes cannot be worked out", () => {
       const timeline = await timelineOf(additions);
 
       expect(await timeline.package(header)).toBe(underOwnRefs);
-      expect(timeline.warnings()).toEqual(warned);
+      expect(messages(timeline)).toEqual(warned);
     });
 
     it("still answers where a row's element is now, by the selector of its label", async () => {
@@ -486,24 +785,6 @@ describe("a step whose changes cannot be worked out", () => {
     });
   });
 
-  /** Makes core's comparison of two trees fail: `always`, or only where it
-   * is told which elements are the same by more than their refs. */
-  const comparisonFails = (always: boolean) => {
-    const reconcile = StructuralTree.reconcile.bind(StructuralTree);
-    vi.spyOn(StructuralTree, "reconcile").mockImplementation(
-      (before, after, options) => {
-        // Told of no identities: core's own record of the elements.
-        if (!options) return reconcile(before, after);
-        const sameByMore = options.sameIdentity!(
-          "e5" as AriaRef,
-          "e7" as AriaRef
-        );
-        if (always || sameByMore) throw new Error("no comparison");
-        return reconcile(before, after, options);
-      }
-    );
-  };
-
   it("is compared again with only an element under the same ref taken for the same one: a re-created element shows as removed and added", async () => {
     const { header, timeline, rest } = await cartBeforeItsSecondClick();
     comparisonFails(false);
@@ -524,8 +805,8 @@ describe("a step whose changes cannot be worked out", () => {
       )
     );
     expect(messages(timeline)).toEqual([
-      notFullyWorkedOut("interaction_2"),
-      notFullyWorkedOut("interaction_3"),
+      notFullyWorkedOut("The changes of interaction_2"),
+      notFullyWorkedOut("The changes of interaction_3"),
     ]);
   });
 
@@ -542,11 +823,11 @@ describe("a step whose changes cannot be worked out", () => {
     // A step between two reads that no Interaction spans cannot be
     // compared either: whether the page changed there is not known.
     expect(messages(timeline)).toEqual([
-      maybeChangedAfter("interaction_1"),
+      maybeChanged("at 2942.489 after interaction_1"),
       notWorkedOut("interaction_2"),
-      maybeChangedAfter("interaction_2"),
+      maybeChanged("at 4556.149 after interaction_2"),
       notWorkedOut("interaction_3"),
-      maybeChangedAfter("interaction_3"),
+      maybeChanged("at 6939.468 after interaction_3"),
     ]);
   });
 
@@ -585,6 +866,132 @@ describe("a step whose changes cannot be worked out", () => {
     expect(messages(timeline)).toEqual([
       notWorkedOut("interaction_2"),
       notWorkedOut("interaction_3"),
+    ]);
+  });
+});
+
+describe("a change of the page's own that a warning is about", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** Makes the rows of every Change Tree impossible to name. */
+  const rowsCannotBeNamed = () => {
+    const ancestorsOf = StructuralTree.prototype.getAncestorsOf;
+    vi.spyOn(StructuralTree.prototype, "getAncestorsOf").mockImplementation(
+      function (this: StructuralTree, ref) {
+        if (isChangeTree(this))
+          throw new Error("Structural tree contains a parent cycle at e5");
+        return ancestorsOf.call(this, ref);
+      }
+    );
+  };
+  /** Typing "m" under a key. Its picture of the page at the first key
+   * shows a help text the read before it does not have. */
+  const typing = (after: SnapshotId | null): TimelineAddition => ({
+    kind: "interaction",
+    key: "fill_1",
+    interaction: {
+      page: pageId("page_1"),
+      report: {
+        type: "fill",
+        selector: 'internal:role=textbox[name="Item"i]',
+        target: {
+          ref: pictureRef("e21"),
+          tree: [
+            `- generic [ref=e20]:`,
+            `  - textbox "Item" [ref=e21]: m`,
+            `  - paragraph [ref=e22]: Up to 40 letters`,
+          ].join("\n"),
+        },
+        values: { text: "m" },
+      },
+      before: s(1),
+      after,
+      at: 15,
+      beforeFromReport: true,
+    },
+  });
+  const empty = page(`- textbox "Item" [ref=e2]`);
+  const withHelp = page(
+    `- textbox "Item" [ref=e2]: m`,
+    `- paragraph [ref=e3]: Up to 40 letters`
+  );
+
+  it("is named by its time and the Interaction before it: the package writes no id for one", async () => {
+    rowsCannotBeNamed();
+
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, counter(0)),
+      snapshot(s(2), 20, counter(1)),
+      click(s(1), s(2), 15),
+      // The page went on by itself.
+      snapshot(s(3), 30, counter(5)),
+      snapshot(s(4), 40, counter(6)),
+      click(s(3), s(4), 35),
+    ]);
+
+    expect(await timeline.package(header)).toContain(
+      [`      - kind: change`, `        timestamp: 30`].join("\n")
+    );
+    expect(messages(timeline)).toEqual([
+      notListed("The changes of interaction_1"),
+      notListed("The page's own change at 30 after interaction_1"),
+      notListed("The changes of interaction_2"),
+    ]);
+  });
+
+  it("is named by its time and its Visit when no Interaction is before it, as what had changed by the first key of typing", async () => {
+    rowsCannotBeNamed();
+
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, empty),
+      typing(null),
+    ]);
+
+    expect(messages(timeline)).toEqual([
+      notListed("The page's own change at 15 in visit_1"),
+    ]);
+  });
+
+  it("is warned of when a later read names its elements and its rows cannot be named again", async () => {
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, empty),
+      typing(null),
+    ]);
+    rowsCannotBeNamed();
+    await timeline.add(snapshot(s(2), 20, withHelp));
+    await timeline.add(typing(s(2)));
+
+    expect(
+      timeline.visits()[0]!.entries.map((entry) => [entry.kind, entry.changes])
+    ).toEqual([
+      ["change", []],
+      ["interaction", []],
+    ]);
+    expect(messages(timeline)).toEqual([
+      notListed("The page's own change at 15 in visit_1"),
+      notListed("The changes of interaction_1"),
+    ]);
+  });
+
+  it("is told apart from another after the same Interaction, by its time, when neither can be worked out", async () => {
+    const timeline = await timelineOf([
+      visit,
+      snapshot(s(1), 10, counter(0)),
+      snapshot(s(2), 20, counter(1)),
+      click(s(1), s(2), 15),
+    ]);
+    comparisonFails(true);
+    await timeline.add(snapshot(s(3), 30, counter(2)));
+    await timeline.add(snapshot(s(4), 40, counter(3)));
+
+    await timeline.package(header);
+
+    expect(messages(timeline)).toEqual([
+      maybeChanged("at 30 after interaction_1"),
+      maybeChanged("at 40 after interaction_1"),
     ]);
   });
 });
@@ -673,12 +1080,8 @@ describe("a Visit's first tree that cannot be written under its elements' first 
       ].join("\n")
     );
     expect(text).toContain("targetRef: e2");
-    expect(timeline.warnings()).toEqual([
-      {
-        kind: "changesNotWorkedOut",
-        message:
-          "The baselineTree of visit_1 could not be fully worked out. An element the page re-created before its first step may be listed under another ref.",
-      },
+    expect(messages(timeline)).toEqual([
+      "changesNotWorkedOut: The baselineTree of visit_1 could not be fully worked out. An element the page re-created before its first step may be listed under another ref.",
     ]);
   });
 });
