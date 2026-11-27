@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/ayme-labs/ayme/compare/ayme-v0.3.1...ayme-v0.3.2) (2026-11-27)
+
+
+### Miscellaneous Chores
+
+* **ayme:** Synchronize ayme versions
+
 ## [0.3.1](https://github.com/ayme-labs/ayme/compare/ayme-v0.3.0...ayme-v0.3.1) (2026-11-27)
 
 
