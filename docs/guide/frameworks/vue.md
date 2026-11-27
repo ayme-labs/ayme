@@ -4,11 +4,11 @@ Everything about ayme in a Vue app: setup, the provider and the standalone compo
 
 ## Setup
 
-Install ayme, the Vue package and the build plugin, with the Inspector and the Agent Connection for development, as the [Vue quickstart](../start/quickstart-vue.md) does:
+Install ayme, the Vue package and the build plugin, with the Inspector and the `ayme` command for development, as the [Vue quickstart](../start/quickstart-vue.md) does:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/vue
-npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/cli
 ```
 
 Add the plugin alongside `@vitejs/plugin-vue`:
@@ -29,7 +29,7 @@ Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects
 
 ## Start ayme at the root
 
-Wrap the app in `AymeProvider`, with the Inspector and the Agent Connection in development:
+Wrap the app in `AymeProvider`, with the Inspector in development:
 
 ```vue
 <!-- src/Root.vue -->
@@ -41,7 +41,7 @@ const dev = import.meta.env.DEV;
 </script>
 
 <template>
-  <AymeProvider :inspector="dev" :agentConnection="dev"><App /></AymeProvider>
+  <AymeProvider :inspector="dev"><App /></AymeProvider>
 </template>
 ```
 
@@ -61,7 +61,6 @@ import { useAyme } from "@ayme-dev/vue";
 
 useAyme({
   inspector: import.meta.env.DEV,
-  agentConnection: import.meta.env.DEV,
 });
 ```
 
@@ -83,7 +82,7 @@ const dev = import.meta.env.DEV;
 </script>
 
 <template>
-  <AymeProvider :navigate="navigate" :inspector="dev" :agentConnection="dev">
+  <AymeProvider :navigate="navigate" :inspector="dev">
     <App />
   </AymeProvider>
 </template>
@@ -122,7 +121,6 @@ import { ProjectsPage } from "#pom/ProjectsPage";
 
 useAyme({
   inspector: import.meta.env.DEV,
-  agentConnection: import.meta.env.DEV,
 });
 const pom = usePageObject(ProjectsPage);
 ```
@@ -141,7 +139,6 @@ import { SettingsPage } from "#pom/SettingsPage";
 useAyme({
   pageObjects: [ProjectsPage, SettingsPage],
   inspector: import.meta.env.DEV,
-  agentConnection: import.meta.env.DEV,
 });
 ```
 
@@ -174,7 +171,6 @@ Then add `webMCP` to the owner's options, `:webMCP="{ enabled: true }"` on the p
 ```ts
 useAyme({
   inspector: import.meta.env.DEV,
-  agentConnection: import.meta.env.DEV,
   webMCP: { enabled: true },
 });
 ```
@@ -224,7 +220,7 @@ const dev = import.meta.dev;
 </script>
 
 <template>
-  <AymeProvider :inspector="dev" :agentConnection="dev">
+  <AymeProvider :inspector="dev">
     <NuxtPage />
   </AymeProvider>
 </template>

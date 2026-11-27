@@ -4,11 +4,11 @@ Everything about ayme in a React app: setup, the provider, hooks, server renderi
 
 ## Setup
 
-Install ayme, the React package and the build plugin, with the Inspector and the Agent Connection for development, as the [React quickstart](../start/quickstart-react.md) does:
+Install ayme, the React package and the build plugin, with the Inspector and the `ayme` command for development, as the [React quickstart](../start/quickstart-react.md) does:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/react
-npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/cli
 ```
 
 On Vite, add the plugin alongside the React plugin:
@@ -29,7 +29,7 @@ On Next.js, use the Turbopack loader, as the [build plugin reference](../referen
 
 ## Start ayme at the root
 
-Wrap the app in `AymeProvider`, with the Inspector and the Agent Connection in development:
+Wrap the app in `AymeProvider`, with the Inspector in development:
 
 ```tsx
 import { StrictMode } from "react";
@@ -39,10 +39,7 @@ import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AymeProvider
-      inspector={import.meta.env.DEV}
-      agentConnection={import.meta.env.DEV}
-    >
+    <AymeProvider inspector={import.meta.env.DEV}>
       <App />
     </AymeProvider>
   </StrictMode>
@@ -78,7 +75,6 @@ createRoot(document.getElementById("root")!).render(
     <AymeProvider
       pageObjects={[ProjectsPage, SettingsPage]}
       inspector={import.meta.env.DEV}
-      agentConnection={import.meta.env.DEV}
     >
       <App />
     </AymeProvider>
@@ -128,11 +124,7 @@ npm install @ayme-dev/webmcp
 Then add `webMCP` to the provider's props:
 
 ```tsx
-<AymeProvider
-  inspector={import.meta.env.DEV}
-  agentConnection={import.meta.env.DEV}
-  webMCP={{ enabled: true }}
->
+<AymeProvider inspector={import.meta.env.DEV} webMCP={{ enabled: true }}>
   <App />
 </AymeProvider>
 ```
@@ -169,10 +161,7 @@ import { AymeProvider } from "@ayme-dev/react";
 
 export default function AymeRuntime({ children }: { children: ReactNode }) {
   return (
-    <AymeProvider
-      inspector={process.env.NODE_ENV === "development"}
-      agentConnection={process.env.NODE_ENV === "development"}
-    >
+    <AymeProvider inspector={process.env.NODE_ENV === "development"}>
       {children}
     </AymeProvider>
   );

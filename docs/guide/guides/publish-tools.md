@@ -41,7 +41,7 @@ A registration counts, so a class registered at setup and in a component stays r
 
 ## Turn publication on
 
-> **Experimental:** WebMCP publication may change in any release. See [Experimental APIs](../reference/experimental-apis.md). A coding agent that drives the browser from outside it connects through [ayme's MCP server](connect-an-agent.md) instead.
+> **Experimental:** WebMCP publication may change in any release. See [Experimental APIs](../reference/experimental-apis.md). A coding agent that drives the browser from outside it runs your Page Object Tools with [the `ayme` command](connect-an-agent.md) instead.
 
 Publication lives in its own package. Install it beside `@ayme-dev/ayme`, which declares it as an optional peer dependency:
 
@@ -58,7 +58,7 @@ The call that starts ayme decides whether its tools are published through WebMCP
 createAyme({ webMCP: { enabled: true, toolNamePrefix: "shop_" } });
 ```
 
-WebMCP publication is for agents that run in the browser and read the page's `document.modelContext`. A coding agent such as Claude Code, Codex or Cursor connects through ayme's MCP server instead, with or without publication; see [Connect an agent](connect-an-agent.md).
+WebMCP publication is for agents that run in the browser and read the page's `document.modelContext`. A coding agent such as Claude Code, Codex or Cursor runs your Page Object Tools with the `ayme` command instead, with or without publication; see [Connect an agent](connect-an-agent.md).
 
 ## Give the page WebMCP
 

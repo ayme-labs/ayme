@@ -2,7 +2,7 @@
 
 Every built-in tool ayme publishes, with its input.
 
-They reach an agent that runs in the page through [WebMCP publication](experimental-apis.md), which is experimental. `ayme mcp` lists only `page_objects` of them: a coding agent drives the browser with its own browser automation; see [What the agent sees](../guides/connect-an-agent.md#what-the-agent-sees).
+They reach an agent that runs in the page through [WebMCP publication](experimental-apis.md), which is experimental. A coding agent drives the browser with its own browser automation, and the [`ayme` command](../guides/connect-an-agent.md) offers it none of them: `ayme page-objects` prints what `page_objects` returns.
 
 ## Browser Tools
 

@@ -1,145 +1,155 @@
 # Connect an agent
 
-How to let Claude Code, Codex, Cursor or another coding agent call your app's tools through ayme's MCP server.
+How to let Claude Code, Codex, Cursor or another coding agent call your Page Object Tools with the `ayme` command, beside the browser automation it already uses.
 
-## How the connection works
+## How it works
 
-Each coding agent starts its own ayme MCP server, `ayme mcp` from `@ayme-dev/mcp`, like any other stdio MCP server. The server does not launch or manage a browser. The agent calls `ayme_connect` with your app's URL and gets back a link to that page. Opening the link, in the agent's browser tool or in yours, pairs that tab with the agent's server: an Agent Connection. The page's tools then become the agent's MCP tools. Your app's own Node processes, such as its dev server, can pair with the same server beside the tab as App Processes, and offer the Peek Tools of their server-side state; see [In Node](../reference/ayme.md#in-node).
+A coding agent drives the browser with its own browser automation, such as Playwright CLI, Playwright MCP or agent-browser. The `ayme` command adds your Page Object Tools to it.
 
-Because every agent runs its own server, Claude Code and Codex on the same machine, or one agent per worktree, each connect to their own page without sharing a port or settings.
+The agent starts a Session with `ayme open` or `ayme attach`. A Session is one running ayme connected to one browser: the same browser the agent's automation drives. It runs your project's Page Objects in Node, on your project's own Playwright. Nothing of ayme has to be in your app, so it works on any page, whether your app ships ayme or not.
 
-To see what an agent experiences before setting up your own app, open the [ayme playground](https://ayme-labs.github.io/ayme/) and choose **Try with your own coding agent**.
+The agent then reads the screen and acts through your Page Objects:
 
-## Turn it on in the page
+- `ayme page-objects` prints the Page Object Tree of the screen, with the id each rooted Page Object Tool takes.
+- `ayme tools` lists the screen's Page Object Tools with their parameters.
+- `ayme call <tool>` runs one, and prints what the action returned and how the Page Object Tree changed.
 
-Install `@ayme-dev/mcp` beside `@ayme-dev/ayme`, which declares it as an optional peer dependency:
+The agent's browser automation keeps doing everything else: snapshots, clicks outside your Page Objects, navigation, and answering dialogs.
+
+## Set up your project
+
+1. Install the `ayme` command, `@ayme-dev/cli`, as a dev dependency. It needs `@ayme-dev/ayme` at exactly the same version, and Playwright 1.62 or newer:
+
+   ```sh
+   npm install -D @ayme-dev/cli @ayme-dev/ayme @playwright/test
+   ```
+
+   The command runs your Page Objects with your project's own `@ayme-dev/ayme` and Playwright. When a version does not fit, it does not start, and says which version to install.
+
+2. Keep your [Page Object Models](ayme-page-objects.md) in the [`ayme` folder](ayme-folder.md), and list them in `ayme/page-objects.ts`. Its default export is an array of your Page Object classes, as the `pageObjects` option of [`createAyme`](../reference/ayme.md#createayme) takes them:
+
+   ```ts
+   // ayme/page-objects.ts
+   import type { AymeOptions } from "@ayme-dev/ayme";
+
+   import { ProjectsPage } from "./pom/ProjectsPage";
+
+   export default [ProjectsPage] satisfies AymeOptions["pageObjects"];
+   ```
+
+   If your app ships ayme, list the same classes it registers.
+
+3. For `ayme open`, which starts its own browser, install Chromium for your project's Playwright once:
+
+   ```sh
+   npx playwright install chromium
+   ```
+
+4. Install the [`ayme` skill](coding-agent-skill.md#ayme) in your project. It tells your agent how to connect ayme and its browser automation to one browser, and when to read the screen:
+
+   ```sh
+   npx skills add ayme-labs/ayme --skill ayme
+   ```
+
+Then ask your agent to call one of your Page Object Tools, and to confirm the effect in your app.
+
+## Connect ayme and the browser automation to one browser
+
+The agent runs the commands in your project's folder, as `npx ayme <command>`. If your project also has `@ayme-dev/mcp`, whose command is also called `ayme`, it runs `npx @ayme-dev/cli <command>` instead. The commands below are written `ayme <command>` for short.
+
+Connect both before the agent acts on the page. Chrome answers no new DevTools connection while a dialog is open, so an automation that connects after an action opened a dialog cannot answer it.
+
+### Playwright CLI
+
+ayme opens the browser, and Playwright CLI attaches to it:
 
 ```sh
-npm install -D @ayme-dev/mcp
+ayme open http://localhost:5173/
+playwright-cli attach --cdp=http://127.0.0.1:49370
 ```
 
-Then pass `agentConnection: true` where ayme starts: `useAyme` or `AymeProvider` in Vue, `AymeProvider` in React, `useAyme` in Svelte, `provideAyme` in Angular, or `createAyme`. Both `agentConnection` and the [Inspector](inspector.md) are development tools, so gate them with your framework's development flag:
+`ayme open` starts Chromium without a window, and prints the address Playwright CLI attaches to; `http://127.0.0.1:49370` stands for it. `--headed` opens a visible window.
 
-```ts
-useAyme({
-  inspector: import.meta.env.DEV,
-  agentConnection: import.meta.env.DEV,
-});
-```
+### agent-browser
 
-- The option is off unless `true`, and there is no production guard: you decide when it is on.
-- While it is on, the session loads the page client from `@ayme-dev/mcp` when it starts in the browser, and ends the connection when it stops. With the option off, the page requests none of its code.
-- If the package cannot be loaded, the error names `@ayme-dev/mcp`.
-- It works whether [WebMCP publication](publish-tools.md) is on or off.
-
-### The development flag per framework
-
-| Framework                | Development flag                                            | Setup                                                                                                                                                                |
-| ------------------------ | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vite: React, Vue, Svelte | `import.meta.env.DEV`                                       | [React](../frameworks/react.md#start-ayme-at-the-root), [Vue](../frameworks/vue.md#start-ayme-at-the-root), [Svelte](../frameworks/svelte.md#start-ayme-at-the-root) |
-| Angular                  | `isDevMode()` from `@angular/core`                          | [Angular](../frameworks/angular.md#start-ayme-in-the-application-config)                                                                                             |
-| SvelteKit                | `dev` from `$app/environment`, or `$app/env` on SvelteKit 3 | [Svelte](../frameworks/svelte.md#start-ayme-at-the-root)                                                                                                             |
-| Next.js                  | `process.env.NODE_ENV === "development"`                    | [React: Server rendering](../frameworks/react.md#server-rendering)                                                                                                   |
-| Nuxt                     | `import.meta.dev`                                           | [Vue: Server rendering](../frameworks/vue.md#server-rendering)                                                                                                       |
-
-With Vite, a development build you serve without a dev server, such as static files, comes from `NODE_ENV=development vite build`. `vite build --mode development` alone still builds with `NODE_ENV=production`, so `import.meta.env.DEV` is `false` and both features stay off.
-
-## Register the server in your agent
-
-Register the copy of `@ayme-dev/mcp` your app installed. It always matches the page client in your app, and nothing is downloaded again. The command is `npx` with the arguments `--no -p @ayme-dev/mcp ayme mcp`, and the agent has to start it in the app's folder, as an agent you run from that folder does. `--no` stops `npx` from downloading anything, so started from any other folder, the server fails to start instead of running another version.
-
-Claude Code:
+agent-browser opens the browser, and ayme attaches to it:
 
 ```sh
-claude mcp add ayme -- npx --no -p @ayme-dev/mcp ayme mcp
+agent-browser open http://localhost:5173/
+ayme attach --cdp="$(agent-browser get cdp-url)"
 ```
 
-Add `--scope project` before `ayme` to share the server with your team through the project's `.mcp.json`.
+`agent-browser get cdp-url` prints the browser's address.
 
-Codex:
+### Playwright MCP
 
-```sh
-codex mcp add ayme -- npx --no -p @ayme-dev/mcp ayme mcp
+Playwright MCP opens the browser on a debugging port you fix in its configuration, and ayme attaches to it. Give Playwright MCP a config file that opens the browser on a free port, such as `9222`:
+
+```json
+{
+  "browser": {
+    "launchOptions": { "args": ["--remote-debugging-port=9222"] }
+  }
+}
 ```
 
-Or add it to `.codex/config.toml` in a trusted project:
-
-```toml
-[mcp_servers.ayme]
-command = "npx"
-args = ["--no", "-p", "@ayme-dev/mcp", "ayme", "mcp"]
-```
-
-Cursor, in the project's `.cursor/mcp.json`:
+Pass the file in Playwright MCP's registration in your project's MCP configuration, such as `.mcp.json` for Claude Code:
 
 ```json
 {
   "mcpServers": {
-    "ayme": {
-      "type": "stdio",
+    "playwright": {
       "command": "npx",
-      "args": ["--no", "-p", "@ayme-dev/mcp", "ayme", "mcp"]
+      "args": ["@playwright/mcp@latest", "--config=playwright-mcp.json"]
     }
   }
 }
 ```
 
-Any other MCP client takes the same command, `npx`, with the arguments `--no -p @ayme-dev/mcp ayme mcp`. Restart the agent after registering, so it starts the server and lists `ayme_connect`.
+Playwright MCP starts the browser at its first tool call, such as `browser_navigate`. The agent then attaches:
 
-If your agent starts its servers in another folder, as one registered for every project may, pin the server to the version your app installed instead, so it still matches the page client. `npm ls @ayme-dev/mcp` prints that version. The command is `npx` with the arguments `-y @ayme-dev/mcp@<version> mcp`, such as `claude mcp add ayme -- npx -y @ayme-dev/mcp@<version> mcp`. `npx` downloads that version the first time.
+```sh
+ayme attach --cdp=http://127.0.0.1:9222
+```
 
-### Options
+## Sessions
 
-Options go after `mcp`, in the command or the client's `args` list:
-
-| Option                  | What it adds                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `--port <port>`         | Listens on that port only; see [Ports](#ports).                                                                          |
-| `--page-objects <file>` | Experimental: serves that entry's Page Objects; see [Page Objects on a page without ayme](page-objects-without-ayme.md). |
-
-`ayme mcp --help` prints the options and what each adds.
-
-## Connect a tab
-
-Run your dev server and ask the agent to connect to the page, giving it the URL, such as `http://localhost:5173/`. The agent calls `ayme_connect` and gets back that URL with `#ayme=...` appended, which carries the server's address and a token.
-
-- The agent can open the link in its own browser tool, or give it to you to open in yours.
-- Pasting the link into a tab that already shows the app changes only its hash, so the page does not reload and keeps its state. The page removes the fragment from the address bar once it has read it.
-- On `localhost` or `127.0.0.1`, an open tab with no link pairs by itself when exactly one ayme MCP server is running. It looks when the page loads and again each time the tab gains focus, so a tab opened before the agent started pairs once you switch back to it. With several servers running, it stays unpaired until you paste a link, so it never pairs with the wrong agent.
-- A server already working with a tab ignores other tabs that look for a server; only its connect link moves it. The newest tab wins: opening the link in a second tab moves the agent there, and the first tab is no longer connected.
-
-A duplicated tab keeps presenting the original tab's id, unlike a fresh second tab, and reopening a link with the same address and token does not give it a new id.
+- **The tab.** ayme works on the browser's most recently active tab, and follows the tab the agent's automation switches to or opens. The first line of `ayme page-objects` and `ayme tools` names that tab. `--tab=<url>` reads another tab, by the URL that line shows. A Page Object Id is unique across a Session's tabs, so a call runs on the tab its Page Object is on.
+- **Names.** A project folder can have several Sessions, each with a name: `-s=<name>`, or the `AYME_SESSION` environment variable, as in Playwright CLI. Without either, the name is `default`. `ayme list` lists the Sessions of the folder. Two agents in one folder each use a name of their own.
+- **The end.** `ayme detach` ends a Session started with `ayme attach` and leaves the browser running. `ayme close` ends any Session, and closes the browser only when `ayme open` opened it. A Session also ends when its browser goes away.
+- **Edits.** A Session builds your Page Objects when it starts. After you edit them, end the Session and start it again. When the build fails, the Session does not start, and the command prints the build error.
 
 ## What the agent sees
 
-Once a tab is paired, the page's tools are the agent's MCP tools, under the names the page gives them: the Page Object Tools of every Page Object on the page, `page_objects`, and the Peek Tools of the page's [Peeks](../reference/ayme.md#aymepeek), `peek.<name>`. Each App Process paired beside the tab adds its own Peek Tools, `peek.node.<name>`. The agent clicks, types and reads the page with its own browser automation, such as Playwright MCP, Playwright CLI or agent-browser, and ayme adds your Page Objects to it.
+`ayme page-objects` on a page with a `ProjectsPage` that holds a collection of `ProjectRow`:
 
-The server lists none of ayme's own browser driving: not `snapshot`, the [Browser Tools](../reference/browser-tools.md), your Custom Tools or `goal`. An agent without browser automation of its own needs one, such as Playwright MCP, before it can work with the page.
+```text
+Tab: Projects (http://localhost:5173/projects)
+ProjectsPage
+  projects:
+    - ProjectRow po1
+        name: text: Launch plan
+    - ProjectRow po2
+        name: text: Q4 survey
+This screen has 3 Page Object Tools: ayme tools lists them with their parameters.
+```
 
-A good first check is to ask the agent to call one of your Page Object Tools and confirm the effect in the app.
+`ayme call` takes the tool's input as one JSON object, `--params '<json>'`, or `--params @<file>` to read it from a file. A tool of a Page Object with an id takes the id as `id` and the action's own arguments under `args`:
 
-A Peek's values reach the agent, and its model provider, unchanged, so return only what you want it to see; see [What a Peek exposes](../reference/ayme.md#what-a-peek-exposes).
+```sh
+ayme call ProjectRow.rename --params '{"id": "po1", "args": {"name": "Launch plan v2"}}'
+```
 
-Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now stays listed, and a call to it is refused with its reason. [`@ayme.action`](ayme-page-objects.md#aymeaction) shows one. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, which changed their parameters, description or annotations, and which became available or unavailable, with the reason. A Page Object Tool's result says none of this. It is [its short answer](page-state.md#a-page-object-tools-answer-to-an-agent) alone, and the next result of another tool says what changed. A tool marked [destructive](../reference/ayme.md#destructive-actions) is listed with `annotations: { destructiveHint: true }`, and every other page tool without annotations.
+It answers with whether the page settled, what the action returned, the URL when the action changed it, and how the Page Object Tree changed: [a Page Object Tool's answer to an agent](page-state.md#a-page-object-tools-answer-to-an-agent).
 
-`ayme_inspect` returns the URL of the [Inspector in a window of its own](inspector.md#in-a-window-of-its-own), which the same server serves, and `ayme inspect` prints it from a terminal. An Agent App that shows MCP Apps shows that Inspector in the chat. Both need the optional `@ayme-dev/inspector` package, and say to install it when it is missing.
+Each command prints plain text, or JSON with `--json`. An error goes to standard error, with exit code 1. A tool that cannot run now is listed with its reason, and a call to it is refused with that reason.
 
-Some agents read the tool list once, when they start, so they never see the page's tools, which arrive later. For them, `ayme_list_tools` lists the page's current tools with their input schemas, whether each is available and why not, and `ayme_call` runs any of them by name, with the tool's name as `tool` and its input as `input`. A failed tool call answers with an error result. Input that does not match a tool's input schema, the schema of `ayme_connect`, `ayme_list_tools`, `ayme_call` or `ayme_inspect` included, is refused before the tool runs, with a sentence for each problem: `ToolInputError: Input property name is not supported. Input property tool is required.` While neither a tab nor an App Process is paired, every page tool and fallback tool answers that no page is connected. Right after `ayme_connect`, though, a call of a page tool or `ayme_list_tools` waits up to 10 seconds for the page its link opens to pair, since the agent opens the link only once it has the answer.
-
-## Reloads, navigation and closed tabs
-
-The connection follows its tab through reloads and through navigation to other pages of the same origin: the new document pairs again by itself and the agent sees its tools. Every call gets an answer: when the page reloads, navigates or closes before a call finishes, the agent gets an error that says what happened and that the call's outcome is unknown.
-
-A closed tab, or navigation to another origin, ends the connection. Ask the agent to call `ayme_connect` again and open the new link.
-
-## Ports
-
-The server listens on the loopback interface only, on the first free port from 9350 to 9365, the range an open tab looks through. To use another port, add `--port <port>` after `mcp` in the registration; the server then fails to start if that port is taken. The connect link carries the port, so the page needs no setting, but a tab pairs with a server outside the range only through its link.
+`ayme --help` lists every command and option.
 
 ## Limits
 
-- A page whose app doesn't ship ayme never pairs. With Playwright MCP, Playwright CLI or agent-browser, `ayme mcp` can serve your Page Objects to it; see [Page Objects on a page without ayme](page-objects-without-ayme.md).
-- The agent and the browser must run on the same machine. Remote agents, such as an agent on another machine driving a browser on your computer, are not supported.
-- From an origin other than `localhost` or `127.0.0.1`, such as a deployed preview, a tab pairs only through a link, and Chrome may ask you to allow local network access before the page can reach the server. Allow it and reload.
+- Chromium only, on Playwright 1.62 or newer.
+- A Session turns focus emulation on for each tab it works on, so that an action works the same on a tab in the background. While a Session is connected, an app that reacts to being hidden does not react.
+- A Session offers your Page Object Tools only. It has no Browser Tools, Custom Tools or Goal Loop: the agent's browser automation does the rest.
 
 [Troubleshooting](../troubleshooting.md#the-agent-cannot-reach-the-page) covers the common problems.

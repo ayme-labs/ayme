@@ -368,12 +368,12 @@ export class ProjectRow extends AppComponent {
 
 The mark reaches agents only as the tool's standard annotation. ayme still lists and runs the tool like any other: it never asks for confirmation, refuses a call or hides the tool. What to do about the mark is up to whoever calls the tool.
 
-| Where the tool is published                 | What a marked tool carries                                                                                                                                 |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`ayme mcp`](../guides/connect-an-agent.md) | `annotations: { destructiveHint: true }`, in the tool list and in `ayme_list_tools`                                                                        |
-| [WebMCP](../guides/publish-tools.md)        | `annotations: { consequentialHint: true }`. WebMCP has no destructive hint; its consequential one is for actions that are significant or cannot be undone. |
-| [`ayme.tools.list()`](#toolinfo)            | `destructive: true`                                                                                                                                        |
-| The [Inspector](../guides/inspector.md)     | A warning icon in the Tools list and a Destructive mark beside the tool's name                                                                             |
+| Where the tool is published             | What a marked tool carries                                                                                                                                 |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ayme mcp`                              | `annotations: { destructiveHint: true }`, in the tool list and in `ayme_list_tools`                                                                        |
+| [WebMCP](../guides/publish-tools.md)    | `annotations: { consequentialHint: true }`. WebMCP has no destructive hint; its consequential one is for actions that are significant or cannot be undone. |
+| [`ayme.tools.list()`](#toolinfo)        | `destructive: true`                                                                                                                                        |
+| The [Inspector](../guides/inspector.md) | A warning icon in the Tools list and a Destructive mark beside the tool's name                                                                             |
 
 A tool without the mark carries no annotations at all, so ayme never says a tool is safe. MCP takes a tool without annotations as possibly destructive.
 
