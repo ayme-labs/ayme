@@ -86,12 +86,14 @@ export interface ScriptedBrowser extends ScriptedTab {
    * active one, as a Tab the browser automation opens does. */
   openTab(url?: string): ScriptedTab;
   /** Every read of the browser's tab list fails, for the reason a person
-   * reads. */
-  failTabList(reason: string): void;
+   * reads, until the test calls the function it returns. */
+  failTabList(reason: string): () => void;
   /** The next read of the browser's tab list takes the Tabs open now and
    * answers only once the test calls the function it returns, as an HTTP
    * read that is slow to answer. */
   holdTabList(): () => void;
+  /** How many reads of the browser's tab list began so far. */
+  readonly tabListReads: number;
 }
 
 /** The remote control of one Tab of the scripted browser. The scripted
@@ -137,10 +139,10 @@ export interface ScriptedTab {
   /** The Tab's Host forgets `id`, as when a read finds its element gone
    * from the page. */
   release(id: string): void;
-  /** The tools of the class `className` take no Page Object Id on the Tab
-   * from now on, as after a Swap of a build whose class declares no root.
-   * Until then a class's tools take one once its Host gave one of its Page
-   * Objects an id. */
+  /** The tools of the class `className` take no Page Object Id from now
+   * on, on every Tab, as after a Swap of a build whose class declares no
+   * root. Until then a class's tools take one once a Tab's Host gave one of
+   * its Page Objects an id. */
   rootless(className: string): void;
   /** The browser automation brings the Tab to the front. */
   activate(): void;
@@ -153,10 +155,15 @@ export interface ScriptedTab {
     readonly params: unknown;
   }[];
   /** How the Tab's Inspector contract answers each call from now on: as
-   * `answer` resolves, or fails as it rejects. Until then it answers with
-   * the method's name. */
+   * `answer` resolves, or fails as it rejects. `released` aborts once the
+   * Session no longer waits for the answer. Until then it answers with the
+   * method's name. */
   answerInspector(
-    answer: (method: string, params: unknown) => Promise<unknown>
+    answer: (
+      method: string,
+      params: unknown,
+      released: AbortSignal
+    ) => Promise<unknown>
   ): void;
   /** How many listen to the events of the Tab's Inspector contract now. */
   readonly inspectorListeners: number;
@@ -222,8 +229,9 @@ export type ScriptedSessionOptions = SessionBrowserRequest &
  * controls it. */
 type Tab = BrowserTab & { readonly control: ScriptedTab };
 
-/** A scripted Tab at `url`, among the browser's `open` Tabs. */
-function scriptedTab(url: string, open: Tab[]): Tab {
+/** A scripted Tab at `url`, among the browser's `open` Tabs, whose classes
+ * in `rooted` declare a root. */
+function scriptedTab(url: string, open: Tab[], rooted: Set<string>): Tab {
   let shown: Listing | TabReadError | "held" = {
     ...EMPTY_LISTING,
     tab: { url, title: "" },
@@ -237,13 +245,14 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
     Promise.resolve({ settled: true });
   let given: TabIds | undefined;
-  const rooted = new Set<string>();
   let startedWith: BuiltPageObjects | undefined;
   const closed = Deferred.makeUnsafe<void>();
   const inspectorCalls: { method: string; params: unknown }[] = [];
-  let answerInspector: (method: string, params: unknown) => Promise<unknown> = (
-    method
-  ) => Promise.resolve(method);
+  let answerInspector: (
+    method: string,
+    params: unknown,
+    released: AbortSignal
+  ) => Promise<unknown> = (method) => Promise.resolve(method);
   const listeners = new Set<(event: unknown) => void>();
   const dialog = Effect.runSync(SubscriptionRef.make<TabDialog>("none"));
   let opening: Dialog | undefined;
@@ -269,9 +278,9 @@ function scriptedTab(url: string, open: Tab[]): Tab {
     inspector: {
       request: (method, params) =>
         Effect.tryPromise({
-          try: () => {
+          try: (released) => {
             inspectorCalls.push({ method, params });
-            return answerInspector(method, params);
+            return answerInspector(method, params, released);
           },
           catch: (error) =>
             new TabReadError(
@@ -390,8 +399,11 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   let released = false;
   // The open Tabs, the most recently active first.
   const open: Tab[] = [];
+  // The classes that declare a root, in the build every Tab runs.
+  const rooted = new Set<string>();
   let tabList: TabReadError | undefined;
   let heldTabList: Deferred.Deferred<void> | undefined;
+  let tabListReads = 0;
   const opened = Deferred.makeUnsafe<void, SessionStartError>();
   // Each build the Session started, in order; the first is made at once, so
   // a test can finish it before the Session starts it.
@@ -409,13 +421,14 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
     Deferred.doneUnsafe(builds[0]!, Exit.succeed(SCRIPTED_PAGE_OBJECTS));
 
   const openTab = (url = "about:blank") => {
-    const tab = scriptedTab(url, open);
+    const tab = scriptedTab(url, open, rooted);
     open.unshift(tab);
     return tab;
   };
   const first = openTab();
   const tabs = {
     open: Effect.suspend(() => {
+      tabListReads++;
       if (tabList) return Effect.fail(tabList);
       const now = [...open];
       const held = heldTabList;
@@ -489,10 +502,16 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       },
       goAway: () => Deferred.doneUnsafe(gone, Exit.void),
       openTab: (url) => openTab(url).control,
-      failTabList: (reason) => (tabList = new TabReadError(reason)),
+      failTabList: (reason) => {
+        tabList = new TabReadError(reason);
+        return () => (tabList = undefined);
+      },
       holdTabList: () => {
         const held = (heldTabList = Deferred.makeUnsafe<void>());
         return () => Deferred.doneUnsafe(held, Exit.void);
+      },
+      get tabListReads() {
+        return tabListReads;
       },
       ...first.control,
       get hosted() {

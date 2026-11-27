@@ -323,8 +323,9 @@ it("an open Inspector window keeps its Tab across a Swap, whose Host tells it th
   await until(() => browser.swappedIn.length > 0);
   browser.tellInspector({ registry: "the swapped Page Objects" });
 
-  await until(() => window.heard.length > 0);
+  await until(() => window.heard.some((event) => "contract" in event));
   expect(window.heard).toEqual([
+    { tab: 1 },
     { contract: { registry: "the swapped Page Objects" } },
   ]);
 });

@@ -50,8 +50,9 @@ async function serveShop() {
 }
 
 const WINDOW = /^http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+$/;
+const WINDOW_IN_TEXT = /http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+/;
 
-it("opens the Session's Inspector window in the person's default browser, and says where it is", async () => {
+it("asks the person's default browser to open the Session's Inspector window, and says where it is", async () => {
   await serveShop();
   const opened: { command: string; args: readonly string[] }[] = [];
 
@@ -66,7 +67,7 @@ it("opens the Session's Inspector window in the person's default browser, and sa
   expect(address).toMatch(WINDOW);
   expect(answer).toEqual({
     ok: true,
-    text: `The Inspector of the Session shop opened in your default browser at ${address}.`,
+    text: `ayme asked your browser to open the Inspector of the Session shop at ${address}.`,
     data: { address },
   });
   expect(opened).toHaveLength(1);
@@ -88,7 +89,7 @@ it("only says where the window is when BROWSER is none", async () => {
   expect(open).not.toHaveBeenCalled();
 });
 
-it("says where the window is and why the browser did not open, when it could not", async () => {
+it("fails, and says where the window is and why no browser opened it, when the opener could not", async () => {
   await serveShop();
 
   const answer = await inspectSession(
@@ -98,12 +99,28 @@ it("says where the window is and why the browser did not open, when it could not
   );
 
   expect(answer).toMatchObject({
-    ok: true,
+    ok: false,
     text: expect.stringMatching(
-      /^The Inspector of the Session shop is at http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+\. ayme could not open your default browser: spawn xdg-open ENOENT\. Open the address in a browser outside the Session's\.$/
+      /^The Inspector of the Session shop is at http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+\. ayme could not open it in a browser: spawn xdg-open ENOENT\. Open the address in a browser outside the Session's\.$/
     ),
   });
 });
+
+it.each([
+  ["does not exist", "/no/such/browser", "ENOENT"],
+  ["exits with a failure", "false", "false exited with code 1"],
+])(
+  "fails, and still says where the window is, when the program BROWSER names %s",
+  async (_, BROWSER, why) => {
+    await serveShop();
+
+    const answer = await inspectSession(place, { BROWSER });
+
+    expect(answer.ok).toBe(false);
+    expect(answer.text).toMatch(WINDOW_IN_TEXT);
+    expect(answer.text).toContain(why);
+  }
+);
 
 it("opens nothing when the folder has no Session of that name, and says so", async () => {
   const open = vi.fn();

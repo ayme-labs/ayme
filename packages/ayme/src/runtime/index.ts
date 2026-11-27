@@ -54,6 +54,7 @@ export {
   replacePageObjects,
 } from "./session";
 export { inspectorPortOf } from "./nodeHostInspector";
+export type { InspectorPort } from "./inspectorChannelPort";
 export type {
   PlaywrightAyme,
   PlaywrightAymeOptions,

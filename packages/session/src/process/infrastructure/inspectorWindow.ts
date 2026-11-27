@@ -1,8 +1,5 @@
-// The Inspector window a Session's process serves: the page that loads the
-// Inspector's external build, and a WebSocket per window that carries the
-// Inspector's contract between the window and the Session. The window
-// talks in the frames the Inspector's transport sends and reads
-// (`webSocketInspectorContract` in @ayme-dev/inspector).
+// The Inspector window a Session's process serves, whose socket speaks the
+// frames of `webSocketInspectorContract` in @ayme-dev/inspector.
 import { readFile } from "node:fs/promises";
 import {
   createServer,
@@ -10,7 +7,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import type { AddressInfo } from "node:net";
-import { Deferred, Effect, Exit, Fiber, Stream } from "effect";
+import { Effect, Fiber, Stream } from "effect";
 import { WebSocketServer, type WebSocket } from "ws";
 
 import type { Session } from "../../session/application";
@@ -27,30 +24,40 @@ const PAGE_PATH = "/inspector";
 const SCRIPT_PATH = "/inspector/external.mjs";
 const SOCKET_PATH = "/inspector/ws";
 
-/** How long closing waits for each window to take its last frames: a
- * window that does not read its socket is not waited for. */
+/** How long closing waits for the windows to take their last frames, and
+ * for what else is open: a window that does not read its socket is not
+ * waited for. */
 const FLUSH_LIMIT_MS = 1_000;
 
-/** The window's page, which names the Session `name`. */
+/** The largest frame a window may send: a request carries a method and a
+ * tool's arguments, far below it, so a larger frame is not the
+ * Inspector's. */
+const MAX_REQUEST_BYTES = 1024 * 1024;
+
+/** How much a window may leave unread before it is closed: it bounds what
+ * the Session keeps for a window that stopped reading, well above the
+ * largest state a window is sent. */
+const MAX_UNREAD_BYTES = 16 * 1024 * 1024;
+
+/** The close code of a frame that is no request (RFC 6455, 7.4.1). */
+const NOT_A_REQUEST = 1008;
+
 const page = (name: string) =>
   inspectorDocument(
     name,
     `<script type="module" src="${SCRIPT_PATH}"></script>`
   );
 
-/** Whether a request is made to the loopback address the server is on,
- * from no page or from the window's own, so that a page which points a
- * name of its own at it, or a page of another origin, reads nothing. */
-function isLoopback(request: IncomingMessage): boolean {
-  const { host, origin } = request.headers;
-  if (!toLoopback(request)) return false;
+/** Whether a request names `host`, the address the server printed, and
+ * comes from no page or from the window's own: a page that points a name
+ * of its own at it, or a page of another origin, reads nothing, and a tab
+ * of the window is always at the address the Session tells apart from its
+ * Tabs (`showsWindow`). */
+function isOwn(request: IncomingMessage, host: string): boolean {
+  const { origin } = request.headers;
+  if (request.headers.host !== host) return false;
   return origin === undefined || origin === `http://${host}`;
 }
-
-/** Whether a request names the loopback address as its host. */
-const toLoopback = (request: IncomingMessage) =>
-  // A request with no Host header reads as "undefined": no loopback name.
-  /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(String(request.headers.host));
 
 const pathOf = (request: IncomingMessage) => (request.url ?? "/").split("?")[0];
 
@@ -69,30 +76,37 @@ function send(
   response.end(body);
 }
 
-/** A window's request, if `data` holds one: `{ id, method, params }`. */
-function requestIn(
-  data: unknown
-): { id: string | number; method: string; params?: unknown } | undefined {
+function requestIn(data: unknown):
+  | {
+      id: string | number;
+      method: string;
+      params?: unknown;
+      tab?: number;
+    }
+  | undefined {
   try {
     const frame = JSON.parse(String(data)) as Record<string, unknown>;
-    const { id, method } = frame;
+    const { id, method, tab } = frame;
     if (
       (typeof id === "string" || typeof id === "number") &&
       typeof method === "string" &&
       method !== ""
     )
-      return { id, method, params: frame.params };
+      return {
+        id,
+        method,
+        params: frame.params,
+        ...(typeof tab === "number" && { tab }),
+      };
   } catch {
     // Not JSON: no request.
   }
   return undefined;
 }
 
-/** What a window is sent for `event`, if it listens to the contract's
- * events or not. */
 function frameOf(event: InspectorEvent, listening: boolean) {
   if ("ended" in event) return { ended: event.ended };
-  if ("newTab" in event) return { reset: true };
+  if ("tab" in event) return { tab: event.tab };
   return listening ? { event: event.contract } : undefined;
 }
 
@@ -104,8 +118,6 @@ export interface InspectorWindow {
   /** The window's socket with the Session's token, which the Inspector an
    * Agent App shows in its chat connects to. */
   readonly agentAppSocket: string;
-  /** Hands it the Session. A window's request before then waits. */
-  attach(session: Pick<Session, "ask" | "events">): void;
   /** Closes every window, once each took its last frames, then the
    * server. */
   close(): Promise<void>;
@@ -117,23 +129,40 @@ export interface InspectorWindow {
  * socket for each window that brings the Session's token (ADR-0072),
  * from any origin. Each window hears the Session's events from when it
  * connects, the contract's own while it subscribed, and is closed once
- * told the Session ended.
+ * told the Session ended. A window that connects before the Session
+ * `started` waits for it.
  */
 export async function serveInspectorWindow({
   name,
   script,
+  started,
 }: {
   readonly name: string;
   readonly script: string;
+  readonly started: Effect.Effect<Pick<Session, "ask" | "events">>;
 }): Promise<InspectorWindow> {
-  const attached = Deferred.makeUnsafe<Pick<Session, "ask" | "events">>();
-  const session = Effect.runPromise(Deferred.await(attached));
-  const sockets = new WebSocketServer({ noServer: true });
+  const session = Effect.runPromise(started);
+  const sockets = new WebSocketServer({
+    noServer: true,
+    maxPayload: MAX_REQUEST_BYTES,
+  });
   const token = newToken();
+  let closing = false;
+  // Set once the server listens, before it takes a request.
+  let host = "";
   const server = createServer((request, response) => {
     const path = pathOf(request);
-    if (!isLoopback(request))
-      return send(response, 403, "text/plain", "Not a loopback request.");
+    if (closing) {
+      response.shouldKeepAlive = false;
+      return send(response, 503, "text/plain", "The Session is ending.");
+    }
+    if (!isOwn(request, host))
+      return send(
+        response,
+        403,
+        "text/plain",
+        "Not a request to this address."
+      );
     if (request.method !== "GET" && request.method !== "HEAD")
       return send(response, 405, "text/plain", "Only GET is served here.");
     if (path === PAGE_PATH || path === `${PAGE_PATH}/`)
@@ -152,9 +181,10 @@ export async function serveInspectorWindow({
     );
   });
   server.on("upgrade", (request, socket, head) => {
+    if (closing) return socket.destroy();
     if (
       pathOf(request) !== SOCKET_PATH ||
-      !toLoopback(request) ||
+      request.headers.host !== host ||
       !bringsToken(request, token)
     )
       return socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
@@ -170,25 +200,29 @@ export async function serveInspectorWindow({
     server.once("error", reject);
     server.listen(0, "127.0.0.1", () => resolve());
   });
-  const { port } = server.address() as AddressInfo;
+  host = `127.0.0.1:${(server.address() as AddressInfo).port}`;
   return {
-    address: withTokenFragment(`http://127.0.0.1:${port}${PAGE_PATH}`, token),
-    agentAppSocket: withToken(`ws://127.0.0.1:${port}${SOCKET_PATH}`, token),
-    attach: (attaching) =>
-      Deferred.doneUnsafe(attached, Exit.succeed(attaching)),
+    address: withTokenFragment(`http://${host}${PAGE_PATH}`, token),
+    agentAppSocket: withToken(`ws://${host}${SOCKET_PATH}`, token),
     close: async () => {
-      await Promise.all(
-        [...sockets.clients].map((ws) => {
-          const closed = new Promise((resolve) => ws.once("close", resolve));
-          ws.close();
-          return Promise.race([
-            closed,
-            new Promise((resolve) => setTimeout(resolve, FLUSH_LIMIT_MS)),
-          ]).finally(() => ws.terminate());
-        })
-      );
+      closing = true;
+      const closed = new Promise((resolve) => server.close(resolve));
+      let timer: NodeJS.Timeout | undefined;
+      await Promise.race([
+        Promise.all(
+          [...sockets.clients].map((ws) => {
+            const gone = new Promise((resolve) => ws.once("close", resolve));
+            ws.close();
+            return gone;
+          })
+        ),
+        new Promise((resolve) => (timer = setTimeout(resolve, FLUSH_LIMIT_MS))),
+      ]);
+      clearTimeout(timer);
+      for (const ws of sockets.clients) ws.terminate();
+      server.closeAllConnections();
       sockets.close();
-      await new Promise((resolve) => server.close(resolve));
+      await closed;
     },
   };
 }
@@ -198,8 +232,14 @@ export async function serveInspectorWindow({
 function accept(ws: WebSocket, session: Pick<Session, "ask" | "events">) {
   let listening = false;
   const reply = (frame: unknown) => {
-    if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(frame));
+    if (ws.readyState !== ws.OPEN) return;
+    if (ws.bufferedAmount > MAX_UNREAD_BYTES) return ws.terminate();
+    ws.send(JSON.stringify(frame));
   };
+  // A frame too large or not a WebSocket's ends this window alone: ws
+  // closes it with the code that says why, and the error, heard here, does
+  // not reach the process.
+  ws.on("error", () => {});
   const hearing = Effect.runFork(
     Stream.runForEach(session.events, (event) =>
       Effect.sync(() => {
@@ -209,23 +249,39 @@ function accept(ws: WebSocket, session: Pick<Session, "ask" | "events">) {
       })
     )
   );
-  ws.once("close", () => void Effect.runFork(Fiber.interrupt(hearing)));
-  ws.on("message", (data) => {
-    const request = requestIn(data);
-    if (!request) return;
-    const { id, method, params } = request;
+  // The reads it asked for are released with it; a Run it started goes on,
+  // as one an agent started does.
+  const reads = new Set<Fiber.Fiber<void>>();
+  ws.once("close", () => {
+    for (const fiber of [hearing, ...reads])
+      void Effect.runFork(Fiber.interrupt(fiber));
+  });
+  ws.on("message", (data, isBinary) => {
+    const request = isBinary ? undefined : requestIn(data);
+    if (!request) return ws.close(NOT_A_REQUEST, "Not an Inspector request.");
+    const { id, method, params, tab } = request;
     if (method === "subscribe" || method === "unsubscribe") {
       listening = method === "subscribe";
       return reply({ id, result: null });
     }
-    void Effect.runPromise(
-      session.ask({ inspector: { contract: { method, params } } })
-    ).then((answer) =>
-      reply(
-        answer.ok
-          ? { id, result: answer.data ?? null }
-          : { id, error: answer.text }
-      )
-    );
+    const answering = session
+      .ask({
+        inspector: {
+          contract: { method, params, ...(tab !== undefined && { tab }) },
+        },
+      })
+      .pipe(
+        Effect.map((answer) =>
+          reply(
+            answer.ok
+              ? { id, result: answer.data ?? null }
+              : { id, error: answer.text }
+          )
+        )
+      );
+    if (method === "runTool") return void Effect.runFork(answering);
+    const read = Effect.runFork(answering);
+    reads.add(read);
+    read.addObserver(() => reads.delete(read));
   });
 }

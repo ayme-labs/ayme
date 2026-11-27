@@ -66,3 +66,4 @@ export {
   pageObjectToolTakesId,
   replacePageObjects,
 } from "./runtime";
+export type { InspectorPort } from "./runtime";

@@ -8,12 +8,17 @@ import { webSocketInspectorContract } from "./webSocketInspectorContract";
 // Unit tests: the channel transport of the Inspector contract against a
 // WebSocket the test drives, the way `ayme mcp` relays it. Frames are the
 // server's: requests `{ id, method, params }`; replies `{ id, result }`,
-// `{ id, error }`, `{ event }`, `{ reset: true }` and `{ ended }`.
+// `{ id, error }`, `{ event }`, `{ reset: true }`, `{ tab }` and `{ ended }`.
 
 class FakeWebSocket {
   static readonly instances: FakeWebSocket[] = [];
   static readonly OPEN = 1;
-  readonly sent: { id: number; method: string; params?: unknown }[] = [];
+  readonly sent: {
+    id: number;
+    method: string;
+    params?: unknown;
+    tab?: number;
+  }[] = [];
   readyState = 0;
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
@@ -279,6 +284,89 @@ describe("webSocketInspectorContract", () => {
 
       expect(second.methods()).toEqual(["subscribe", "getState"]);
       expect(events).toEqual([{ type: "state", state: state(1) }]);
+    });
+  });
+
+  describe("on a Session, which tells the Tab the window shows", () => {
+    /** A client of a Session's transport that shows the Tab `1` at
+     * revision 7. */
+    async function sessionClient() {
+      const newPages: number[] = [];
+      const contract = webSocketInspectorContract("ws://x/inspector/ws", {
+        WebSocket: FakeWebSocket as never,
+        followsTabs: true,
+        onNewPage: () => newPages.push(newPages.length + 1),
+      });
+      const socket = () => FakeWebSocket.instances.at(-1)!;
+      const client = createInspectorClient(contract);
+      client.subscribe(() => {});
+      socket().open();
+      return { contract, client, socket, newPages };
+    }
+
+    it("sends nothing until the Session told the Tab, then names it in every request", async () => {
+      const { contract, socket, newPages } = await sessionClient();
+      void contract.look();
+
+      expect(socket().sent).toEqual([]);
+      socket().receive({ tab: 1 });
+
+      expect(socket().sent).toEqual([
+        { id: expect.any(Number), method: "subscribe", tab: 1 },
+        { id: expect.any(Number), method: "getState", tab: 1 },
+        { id: expect.any(Number), method: "look", tab: 1 },
+      ]);
+      expect(newPages).toEqual([]);
+    });
+
+    it("reads a new Tab as a new page, and names it from then on", async () => {
+      const { contract, socket, newPages } = await sessionClient();
+      socket().receive({ tab: 1 });
+
+      socket().receive({ tab: 2 });
+      void contract.look();
+
+      expect(newPages).toEqual([1]);
+      expect(socket().sent.slice(-2)).toEqual([
+        { id: expect.any(Number), method: "getState", tab: 2 },
+        { id: expect.any(Number), method: "look", tab: 2 },
+      ]);
+    });
+
+    it("drops the answer to a request made on the Tab before, so it never reaches what the window shows of the new one", async () => {
+      const { contract, client, socket } = await sessionClient();
+      socket().receive({ tab: 1 });
+      socket().answer("getState", state(7, "first Tab"));
+      await vi.advanceTimersByTimeAsync(0);
+      const run = contract.runTool({ name: "Basket.add", input: {} });
+      const dropped = expect(run).rejects.toThrow(
+        "The Inspector shows another Tab now."
+      );
+      const ran = socket().sent.at(-1)!;
+
+      socket().receive({ tab: 2 });
+      socket().answer("getState", state(1, "second Tab"));
+      await vi.advanceTimersByTimeAsync(0);
+      socket().receive({ id: ran.id, result: { state: state(8, "late") } });
+      await vi.advanceTimersByTimeAsync(0);
+
+      await dropped;
+      expect(client.current().tools.map(({ name }) => name)).toEqual([
+        "second Tab",
+      ]);
+    });
+
+    it("waits for the Tab again after it connects again", async () => {
+      const { socket } = await sessionClient();
+      socket().receive({ tab: 1 });
+      socket().close();
+      await vi.advanceTimersByTimeAsync(1000);
+
+      socket().open();
+
+      expect(socket().sent).toEqual([]);
+      socket().receive({ tab: 3 });
+      expect(socket().methods()).toEqual(["subscribe", "getState"]);
     });
   });
 

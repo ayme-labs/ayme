@@ -24,7 +24,8 @@ import { runErrorOf } from "../runError";
 import { failingOnItsUncaught } from "../runUncaught";
 import { dialogOpenMs, tabDialogs, type ActionCalls } from "../tabDialogs";
 import { handedOver, readTabOrder, tabListAddress } from "../tabList";
-import { tabInspector, type InspectorPort } from "./tabInspector";
+import { lazyPort, type InspectorPort } from "../inspectorPort";
+import { tabInspector } from "./tabInspector";
 
 /** Where a Node Host's Page Object Ids come from, and what hears that a
  * page forgot one. */
@@ -175,7 +176,15 @@ const hostedTab = (
       try: () => failingOnItsUncaught(() => caller.run(tool, input)),
       catch: runErrorOf,
     }),
-  inspector: tabInspector(inspector),
+  // A Run from the window fails on what its code left uncaught, as a
+  // command's does.
+  inspector: tabInspector({
+    ...inspector,
+    request: (method, params) =>
+      method === "runTool"
+        ? failingOnItsUncaught(() => inspector.request(method, params))
+        : inspector.request(method, params),
+  }),
   dialog: SubscriptionRef.changes(dialog),
   takesId: (tool) => entry.pageObjectToolTakesId(ayme, tool),
   observe: Effect.tryPromise({
@@ -243,7 +252,7 @@ const hostOn =
         else page.once("close", stop);
         return hostedTab(
           entry.pageObjectCallerOf(ayme, CALLER),
-          entry.inspectorPortOf(ayme),
+          lazyPort(() => entry.inspectorPortOf(ayme)),
           dialog,
           { entry, ayme },
           classes
