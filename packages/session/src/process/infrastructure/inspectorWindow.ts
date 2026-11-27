@@ -1,8 +1,5 @@
-// The Inspector window a Session's process serves: the page that loads the
-// Inspector's external build, and a WebSocket per window that carries the
-// Inspector's contract between the window and the Session. The window
-// talks in the frames the Inspector's transport sends and reads
-// (`webSocketInspectorContract` in @ayme-dev/inspector).
+// The Inspector window a Session's process serves, whose socket speaks the
+// frames of `webSocketInspectorContract` in @ayme-dev/inspector.
 import { readFile } from "node:fs/promises";
 import {
   createServer,
@@ -10,7 +7,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import type { AddressInfo } from "node:net";
-import { Deferred, Effect, Exit, Fiber, Stream } from "effect";
+import { Effect, Fiber, Stream } from "effect";
 import { WebSocketServer, type WebSocket } from "ws";
 
 import type { Session } from "../../session/application";
@@ -45,7 +42,6 @@ const MAX_UNREAD_BYTES = 16 * 1024 * 1024;
 /** The close code of a frame that is no request (RFC 6455, 7.4.1). */
 const NOT_A_REQUEST = 1008;
 
-/** The window's page, which names the Session `name`. */
 const page = (name: string) =>
   inspectorDocument(
     name,
@@ -80,7 +76,6 @@ function send(
   response.end(body);
 }
 
-/** A window's request, if `data` holds one: `{ id, method, params, tab }`. */
 function requestIn(data: unknown):
   | {
       id: string | number;
@@ -109,8 +104,6 @@ function requestIn(data: unknown):
   return undefined;
 }
 
-/** What a window is sent for `event`, if it listens to the contract's
- * events or not. */
 function frameOf(event: InspectorEvent, listening: boolean) {
   if ("ended" in event) return { ended: event.ended };
   if ("tab" in event) return { tab: event.tab };
@@ -125,8 +118,6 @@ export interface InspectorWindow {
   /** The window's socket with the Session's token, which the Inspector an
    * Agent App shows in its chat connects to. */
   readonly agentAppSocket: string;
-  /** Hands it the Session. A window's request before then waits. */
-  attach(session: Pick<Session, "ask" | "events">): void;
   /** Closes every window, once each took its last frames, then the
    * server. */
   close(): Promise<void>;
@@ -138,17 +129,19 @@ export interface InspectorWindow {
  * socket for each window that brings the Session's token (ADR-0072),
  * from any origin. Each window hears the Session's events from when it
  * connects, the contract's own while it subscribed, and is closed once
- * told the Session ended.
+ * told the Session ended. A window that connects before the Session
+ * `started` waits for it.
  */
 export async function serveInspectorWindow({
   name,
   script,
+  started,
 }: {
   readonly name: string;
   readonly script: string;
+  readonly started: Effect.Effect<Pick<Session, "ask" | "events">>;
 }): Promise<InspectorWindow> {
-  const attached = Deferred.makeUnsafe<Pick<Session, "ask" | "events">>();
-  const session = Effect.runPromise(Deferred.await(attached));
+  const session = Effect.runPromise(started);
   const sockets = new WebSocketServer({
     noServer: true,
     maxPayload: MAX_REQUEST_BYTES,
@@ -211,8 +204,6 @@ export async function serveInspectorWindow({
   return {
     address: withTokenFragment(`http://${host}${PAGE_PATH}`, token),
     agentAppSocket: withToken(`ws://${host}${SOCKET_PATH}`, token),
-    attach: (attaching) =>
-      Deferred.doneUnsafe(attached, Exit.succeed(attaching)),
     close: async () => {
       closing = true;
       const closed = new Promise((resolve) => server.close(resolve));

@@ -15,9 +15,6 @@ import { expect, test as base } from "./aymeCommand";
 // the Session's browser plays the developer's browser automation. The
 // Inspector renders into a closed shadow root; its page objects reach it
 // through these selectors.
-/** The command's fixtures, and `inspect`, which runs `ayme inspect` in the
- * project with the BROWSER the test gives, as the Session's other commands
- * run. */
 const test = base.extend<{
   inspect: (browserProgram: string) => ReturnType<typeof runAyme>;
 }>({
@@ -48,12 +45,9 @@ test.afterEach(async () => {
   if (failed.length > 0) throw failed[0];
 });
 
-/** The address `ayme open` printed. */
 const addressIn = (stdout: string) =>
   /at (http:\/\/127\.0\.0\.1:\d+)\./.exec(stdout)?.[1];
 
-/** The window's address `ayme inspect` printed, with the Session's token
- * in its fragment. */
 const windowIn = (stdout: string) =>
   /at (http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+)\.$/m.exec(
     stdout

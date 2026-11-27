@@ -51,8 +51,6 @@ const originOf = (url: string) => {
   }
 };
 
-/** The answer to `ayme inspect` of the Session named `name`, whose window
- * is at `address`. */
 export const windowAnswer = (address: string, name: string): SessionAnswer => ({
   ok: true,
   text: `The Inspector of the Session ${name} is at ${address}.`,

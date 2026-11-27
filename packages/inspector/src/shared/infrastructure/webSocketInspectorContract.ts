@@ -9,13 +9,9 @@ import type {
 // The channel transport of the Inspector contract (ADR-0049): the same
 // contract the inline transport calls directly, over a WebSocket to the
 // process that serves this window: `ayme mcp`, which relays it to the page,
-// or a Session's, which serves it from the Tab it works on. Both send the
-// same frames: requests `{ id, method, params }`, where `method` is a
-// contract method, or `subscribe` / `unsubscribe` for events; replies
-// `{ id, result }` or `{ id, error }`; the pushes `{ event }`; and
-// `{ reset: true }`, which says the page is a new document, whose revisions
-// start again. A Session's also sends `{ tab }`, the Tab the window shows,
-// which its requests name, and `{ ended }`, what to say once it ended.
+// or a Session's, which serves it from the Tab it works on. `{ reset: true }`
+// and a Session's `{ tab }` both say the window shows a new document, whose
+// revisions start again; a Session's requests name the Tab it told last.
 
 type Reply =
   | { id: number; result: unknown }

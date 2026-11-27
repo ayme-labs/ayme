@@ -343,9 +343,15 @@ it("tells each window how the Session ended, and then closes it", async () => {
 
 describe("closing, within the one limit of how long it waits for the windows", () => {
   it("takes no window that connects while a window that does not read its socket drains, and still ends", async () => {
-    const window = await serveInspectorWindow({ name: "shop", script: "" });
+    const window = await serveInspectorWindow({
+      name: "shop",
+      script: "",
+      started: Effect.succeed({
+        ask: () => Effect.never,
+        events: Stream.never,
+      }),
+    });
     onTestFinished(() => window.close());
-    window.attach({ ask: () => Effect.never, events: Stream.never });
     const stuck = new WebSocket(socketUrl(window.address));
     onTestFinished(() => stuck.terminate());
     await once(stuck, "open");
