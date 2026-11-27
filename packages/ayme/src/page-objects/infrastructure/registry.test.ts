@@ -1126,6 +1126,25 @@ describe("live Page Object registry", () => {
       expect(heard).not.toHaveBeenCalled();
     });
 
+    it("says a tool takes a Page Object Id while its class, as registered now, declares a root", async () => {
+      const { registry, session, ayme, rootOf } = await setup();
+      const { replacePageObjects, pageObjectToolTakesId } =
+        await import("../../runtime");
+      const rooted = compiled(registry, "Panel");
+      ayme({ root: rootOf })(rooted);
+      registry.registerCompiledPom(rooted, {
+        ...emptyManifest("Panel"),
+        tools: [{ ...action("open"), toolName: "Panel.open" }],
+      });
+      session.register(rooted);
+      expect(pageObjectToolTakesId(session.ayme, "Panel.open")).toBe(true);
+
+      replacePageObjects(session.ayme, [rooted], [compiled(registry, "Panel")]);
+
+      expect(pageObjectToolTakesId(session.ayme, "Panel.open")).toBe(false);
+      expect(pageObjectToolTakesId(session.ayme, "Basket.add")).toBe(false);
+    });
+
     it("lets go of the instances of the classes it replaced", async () => {
       const { registry, session } = await setup();
       const { replacePageObjects } = await import("../../runtime");

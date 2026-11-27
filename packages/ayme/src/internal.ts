@@ -17,7 +17,8 @@
 // Playwright that drives its browser, all of them taking their Page Object
 // Ids from one source, and reads a Run's short answer and a listing, each in
 // the Tab's turn, serves each Tab's Inspector contract to its Inspector
-// window, and replaces a Tab's Page Objects with a rebuild of them.
+// window, and replaces a Tab's Page Objects with a rebuild of them, asking
+// which of its tools take a Page Object Id.
 export {
   getStartedAyme,
   markRenderSession,
@@ -60,5 +61,6 @@ export {
   createNodeHost,
   inspectorPortOf,
   pageObjectCallerOf,
+  pageObjectToolTakesId,
   replacePageObjects,
 } from "./runtime";
