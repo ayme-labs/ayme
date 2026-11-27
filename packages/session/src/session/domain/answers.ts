@@ -18,9 +18,10 @@ const tabLine = ({ url, title }: TabName) =>
   title ? `${TAB_LINE}${title} (${url})` : `${TAB_LINE}${url}`;
 
 /** The line that follows a listing's Tab line while the last finished build
- * failed, naming the first reason on one line (rule 7). */
+ * failed, naming the first error whole on one line, or else the first line
+ * of the reason, whose later lines are a stack (rule 7). */
 const buildLine = ({ first, message }: SessionStartError) =>
-  `The Page Objects do not build since the last edit: ${first ?? message.split("\n")[0]} The Session keeps the Page Objects it has until they build.`;
+  `The Page Objects do not build since the last edit, so the Session keeps the ones it has: ${first === undefined ? message.split("\n")[0] : first.replace(/\s*\n\s*/g, " ")}`;
 
 /** `answer`, a listing's or the reason it read no page, with the build line
  * after its Tab line while `failing` says why the last finished build

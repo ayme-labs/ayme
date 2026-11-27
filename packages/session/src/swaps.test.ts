@@ -55,7 +55,27 @@ const confirm = { type: "confirm", message: "Remove Milk from the basket?" };
 const BUILD_ERRORS =
   'The Page Objects of /app/ayme/page-objects.ts did not build:\n✘ [ERROR] Expected ";" but found "basket"\n\n    ayme/pom/Basket.ts:3:9:';
 const FIRST_ERROR = 'ayme/pom/Basket.ts:3:9: Expected ";" but found "basket"';
-const BUILD_LINE = `The Page Objects do not build since the last edit: ${FIRST_ERROR} The Session keeps the Page Objects it has until they build.`;
+
+const BUILD_LINE = `The Page Objects do not build since the last edit, so the Session keeps the ones it has: ${FIRST_ERROR}`;
+
+it("the build line names the first error whole on one line, and a failure without one by the first line of its message", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  await session.started;
+  browser.edit();
+  await until(() => browser.builds === 2);
+  browser.failBuild(BUILD_ERRORS, `${FIRST_ERROR} in {\n  more of it\n}`);
+  expect((await session.ask({ tools: {} })).text.split("\n")[1]).toBe(
+    `${BUILD_LINE} in { more of it }`
+  );
+
+  browser.edit();
+  await until(() => browser.builds === 3);
+  browser.failBuild("The Page Objects did not load: x is not defined\nat …");
+  expect((await session.ask({ tools: {} })).text.split("\n")[1]).toBe(
+    "The Page Objects do not build since the last edit, so the Session keeps the ones it has: The Page Objects did not load: x is not defined"
+  );
+});
 
 /** Whether `promise` is still pending once everything ready to run ran. */
 async function pending(promise: Promise<unknown>): Promise<boolean> {
