@@ -44,11 +44,13 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  it, and not on the browser's most recently active tab. A
                  call of a tool that takes a Page Object Id runs on the tab
                  of that Page Object: leave --tab out of it.
-  inspect        Open the Inspector on the Session in your default browser,
-                 outside the Session's browser: the Page Objects and the
-                 tools of the Session's tab, to run by hand. BROWSER=none
-                 only prints its address; another BROWSER names the program
-                 that opens it.
+  inspect        Ask your default browser to open the Inspector on the
+                 Session: the Page Objects and the tools of the Session's
+                 tab, to run by hand. When it opens in the Session's browser,
+                 ayme leaves its tab out of the Session's tabs. The address
+                 opens one window, within five minutes: run ayme inspect
+                 again for another. BROWSER=none only prints the address;
+                 another BROWSER names the program that opens it.
   mcp            Serve MCP over stdio, for an Agent App to start: it shows
                  the Inspector on the Session in the Agent App's chat, if
                  the Agent App shows MCP Apps. It offers no tool that reads

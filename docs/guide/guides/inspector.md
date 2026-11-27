@@ -48,7 +48,7 @@ With a [Session](connect-an-agent.md) running, `ayme inspect` opens the Inspecto
 ayme inspect
 ```
 
-The window is served by the Session's own process and usually opens outside the Session's browser, so it never shows up in your browser automation's snapshots. When the Session joined your default browser with `ayme attach`, the window opens there as one more tab, which your browser automation can see but ayme never takes for its Tab. Nothing has to be in your app, and nothing more to install: the Inspector comes with `@ayme-dev/cli`.
+The window is served by the Session's own process. When your default browser is not the Session's browser, your browser automation never sees the window. When the Session joined your default browser with `ayme attach`, the window opens there as one more tab, which your browser automation can see but ayme never takes for its Tab. Nothing has to be in your app, and nothing more to install: the Inspector comes with `@ayme-dev/cli`.
 
 - It shows the Page Objects and the Page Object Tools of the Session's Tab, and follows the browser to another Tab.
 - Run a tool by hand from it. Runs records it as run by you from the Inspector. It is one Run like an agent's `ayme call`: a Tab runs one at a time, so it waits for the Run under way there, and a call waits for it.
