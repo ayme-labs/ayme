@@ -393,6 +393,7 @@ describe.each(aymeArmIds)("the %s arm", (armId) => {
       "detach",
       "inspect",
       "capture",
+      "mcp",
     ])
       expect(arm.disallowedTools).toEqual(
         expect.arrayContaining([

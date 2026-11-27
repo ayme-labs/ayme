@@ -97,7 +97,8 @@ export const aymeAllowedTools = ["Bash(ayme:*)", `Skill(${aymeSkillName})`];
 
 /**
  * The `ayme` commands that stay denied: the setup started the run's Session,
- * which must last the run; `inspect` and `capture` open windows outside it.
+ * which must last the run; `inspect` and `capture` open windows outside it;
+ * `mcp` is an MCP server for an Agent App's chat, which waits on its stdin.
  */
 export const aymeDisallowedTools = [
   "open",
@@ -106,6 +107,7 @@ export const aymeDisallowedTools = [
   "detach",
   "inspect",
   "capture",
+  "mcp",
 ].flatMap((command) => bashCommand(`ayme ${command}`));
 
 /** The run's own Session records, so no other run's command, nor a developer's own Session in the lab app's folder, is found. */
