@@ -47,28 +47,40 @@ export interface TabInspector {
   readonly events: Stream.Stream<unknown>;
 }
 
+/** What a Tab's Host tells of the Page Object Ids it gives out. */
+export interface TabIds {
+  /** It gave `id` to a Page Object of the class `className`. */
+  readonly given: (id: string, className: string) => void;
+  /** It forgot `id`, as its element left the page: the id names nothing
+   * from now on. */
+  readonly released: (id: string) => void;
+}
+
 /** A Tab of the Session's browser: the same object for as long as the Tab
- * is open. */
+ * is open. Its Host can be started once, as a page's registry has one
+ * owner. */
 export interface BrowserTab {
   /** The URL its page shows now, which names the Tab on the command
    * line. */
   readonly url: () => string;
+  /** Completes when Playwright says the Tab's page closed. */
+  readonly closed: Effect.Effect<void>;
   /**
    * Makes the Session the Host of the Tab, with focus emulation on, so that
-   * a Run works the same while the Tab is not in front (rule 6). `given`
-   * hears each Page Object Id the Tab's Host gives out. It reads nothing of
-   * the page, so an open dialog cannot hold it up.
+   * a Run works the same while the Tab is not in front (rule 6). `ids`
+   * hears of each Page Object Id the Tab's Host gives out and forgets. It
+   * reads nothing of the page, so an open dialog cannot hold it up.
    */
-  readonly host: (
-    given: (id: string) => void
-  ) => Effect.Effect<HostedTab, TabReadError>;
+  readonly host: (ids: TabIds) => Effect.Effect<HostedTab, TabReadError>;
 }
 
 /** The Tabs of a Session's browser, each to run the built Page Objects
  * on, with Page Object Ids from one source the Tabs share. */
 export interface BrowserTabs {
   /** The Tabs open now, the most recently active first, in the order of the
-   * browser's own tab list: it reads no page. */
+   * browser's own tab list: it reads no page. A read made before a Tab
+   * opened lacks it, so a read only chooses a Tab; `closed` says one is
+   * gone. */
   readonly open: Effect.Effect<readonly BrowserTab[], TabReadError>;
 }
 
@@ -81,10 +93,13 @@ export interface HeldBrowser {
   readonly gone: Effect.Effect<void>;
   /**
    * Gets ready to be the Host of the browser's Tabs, running `pageObjects`
-   * on each Tab the Session works on. It reads nothing of any page.
+   * on each Tab the Session works on. It reads nothing of any page. A tab
+   * that shows the Inspector window served at `window` is none of its Tabs,
+   * and no read of them waits for it.
    */
   readonly host: (
-    pageObjects: BuiltPageObjects
+    pageObjects: BuiltPageObjects,
+    options: { readonly window: string | undefined }
   ) => Effect.Effect<BrowserTabs, SessionStartError>;
 }
 

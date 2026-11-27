@@ -253,6 +253,38 @@ it("a window's Run still waiting when the Session ends is answered that the Sess
   });
 });
 
+it("a window's Run and read on a Tab that closes are answered that the tab was closed, and the window follows the Tab the Session works on next", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const other = browser.openTab("http://127.0.0.1:5173/other");
+  other.answerInspector(() => new Promise(() => {}));
+  const window = session.listen();
+  await expect.poll(() => other.inspectorListeners).toBe(1);
+  const run = session.ask(
+    contract("runTool", { name: "Basket.hold", input: {}, by: "inspector" })
+  );
+  const read = session.ask(contract("look"));
+  expect(await pending(run)).toBe(true);
+  expect(await pending(read)).toBe(true);
+
+  other.close();
+
+  const closed = {
+    ok: false,
+    text: "The tab was closed before ayme answered this command.",
+  };
+  expect(await run).toEqual(closed);
+  expect(await read).toEqual(closed);
+  expect(other.inspectorListeners).toBe(0);
+  await expect.poll(() => browser.inspectorListeners).toBe(1);
+  expect(window.heard).toEqual([{ newTab: {} }]);
+  // The closed Tab's Run gave back the turn.
+  expect(
+    await session.ask({ call: { tool: "Basket.add", input: {} } })
+  ).toMatchObject({
+    ok: true,
+  });
+});
+
 it("a Session served without a window says so to ayme inspect", async () => {
   const { session } = await startScriptedSession({ open: { headed: false } });
 
