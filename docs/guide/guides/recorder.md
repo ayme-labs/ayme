@@ -191,10 +191,21 @@ The first save creates `ayme/.gitignore`, which lists `recordings/` and itself. 
 
 ## Warnings
 
-A warning is a line in the terminal that starts with `Warning:`. The recording goes on. Most warnings come while the recorder runs; the last two come as it ends.
+A warning is a line in the terminal that starts with `Warning:`. The recording goes on. Most warnings come while the recorder runs; some come as it ends.
+
+A warning about one step names it by its id in the recording, such as `interaction_4`, because the recording does not mark the step. A warning about a change the page made by itself names it by its time and the step before it. If you ran `codegen` yourself, pass such a warning on to your agent with the recording, so that it checks that part against the trace.
 
 - **Playwright is newer than the recorder is verified on.** It may miss or misread an input. See [Supported Playwright versions](#supported-playwright-versions).
 - **A step is recorded, but its list of changes may be incomplete.** Playwright reported the input in a form the recorder does not read, or the page could not be read at that moment.
+- **The page could not be read before or after a step.** The step is recorded with what Playwright reported of it. With no read after it, it lists no changes; typing lists those up to its last read that worked. With no read before it, it also names its element by its selector only. No other step lists what the missing read would have shown.
+- **The page could not be read where a step picked its element.** An assertion then names its element by its selector only.
+- **The page a step led to could not be read at first.** The step is recorded as ever. What that page showed right then is not in the recording.
+- **A read of the page could not be kept.** No step starts or ends at that read. If the page changed by itself around it, the recording does not list that change. The warning gives the time of the read, and its position in the trace when the recording has position numbers. When recording resumed at that read after a pause, the page may have loaded again, so the recording names its elements anew from the next read on.
+- **The page could not be read where a Visit starts in the recording.** The Visit's first picture, its `baselineTree`, is empty.
+- **A step's changes could not be fully worked out.** The step is recorded with its changes, but an element the page re-created may be under another ref in them, or listed as removed and added. The same can happen to a change the page made by itself, and to a Visit's `baselineTree`.
+- **A step's changes cannot be listed in the recorder window.** The window shows the step without them. The recording has them.
+- **A step has no list of changes.** The recorder could not work out what the step changed. The step is recorded with its type, its selector and what you entered. If the recording has a trace and position numbers for the step, the trace holds the page before and after it.
+- **Whether the page changed by itself could not be worked out.** The recording lists no such change at the time the warning gives.
 - **A step is not recorded.** Its page could not be read. This can happen to typing, a dropdown choice, an upload or an assertion.
 - **A step, or something else, is missing from the recording.** The recorder itself failed to keep it. The warning names the step when a step is missing, and ends with the recorder's own error. The trace still holds what happened on the page.
 - **An upload is recorded with its first file name only.** The file input was gone, or held other files than Playwright reported, by the time the recorder read it.
