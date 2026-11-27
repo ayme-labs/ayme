@@ -928,6 +928,9 @@ importers:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../eslint-config
+      "@ayme-dev/inspector":
+        specifier: workspace:*
+        version: link:../inspector
       "@ayme-dev/recorder":
         specifier: workspace:*
         version: link:../recorder
@@ -1496,6 +1499,9 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      ws:
+        specifier: ^8.22.0
+        version: 8.22.0
     devDependencies:
       "@ayme-dev/browser":
         specifier: workspace:*
@@ -1518,6 +1524,9 @@ importers:
       "@types/node":
         specifier: ^24.0.0
         version: 24.13.3
+      "@types/ws":
+        specifier: ^8.18.2
+        version: 8.18.2
       "@vitest/coverage-v8":
         specifier: ^5.1.0
         version: 5.1.0(@vitest/browser@5.1.0)(vitest@5.1.0)

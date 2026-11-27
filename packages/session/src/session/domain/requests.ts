@@ -1,8 +1,10 @@
+import type { InspectorRequest } from "./inspector";
+
 type Nothing = Readonly<Record<never, never>>;
 
 /**
  * What a Caller asks a Session. Each kind is one key, so a later kind is one
- * more member: the Inspector's requests join it.
+ * more member.
  */
 export type SessionRequest =
   /** `ayme close`: ends the Session, and closes a browser ayme opened. */
@@ -19,7 +21,9 @@ export type SessionRequest =
    * Page Object Id in `input` chooses the Tab. */
   | {
       readonly call: { readonly tool: string; readonly input: unknown } & OnTab;
-    };
+    }
+  /** `ayme inspect` and the Inspector window. */
+  | { readonly inspector: InspectorRequest };
 
 /** The Tab a request names by the URL its page shows, as a listing's first
  * line prints it; without one, the most recently active Tab. */

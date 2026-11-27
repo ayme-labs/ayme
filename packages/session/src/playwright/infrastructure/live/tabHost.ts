@@ -21,6 +21,7 @@ import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
 import { failingOnItsUncaught } from "../runUncaught";
 import { pageTargets, tabListAddress } from "../tabList";
+import { tabInspector, type InspectorPort } from "./tabInspector";
 
 /** Where a Node Host's Page Object Ids come from. */
 type IdSource = { next(): string };
@@ -36,6 +37,7 @@ type NodeHostEntry = {
     selectors: unknown
   ): { start(): Promise<() => void> };
   createPageObjectIdSource(): IdSource;
+  inspectorPortOf(ayme: unknown): InspectorPort;
   pageObjectCallerOf(
     ayme: unknown,
     by: string
@@ -84,7 +86,8 @@ const tabOrder = async (address: string) => {
 
 /** The Tab's page as its Host reaches it through `caller`. */
 const hostedTab = (
-  caller: ReturnType<NodeHostEntry["pageObjectCallerOf"]>
+  caller: ReturnType<NodeHostEntry["pageObjectCallerOf"]>,
+  inspector: InspectorPort
 ): HostedTab => ({
   // Each takes the Tab's turn, so it waits for the Run under way.
   listing: Effect.tryPromise({
@@ -100,6 +103,7 @@ const hostedTab = (
       try: () => failingOnItsUncaught(() => caller.run(tool, input)),
       catch: runErrorOf,
     }),
+  inspector: tabInspector(inspector),
 });
 
 /** What every Tab's Host shares: the project's entry, the built classes,
@@ -138,7 +142,10 @@ const hostOn =
           selectors
         );
         await ayme.start();
-        return hostedTab(entry.pageObjectCallerOf(ayme, CALLER));
+        return hostedTab(
+          entry.pageObjectCallerOf(ayme, CALLER),
+          entry.inspectorPortOf(ayme)
+        );
       },
       catch: (cause) =>
         new TabReadError(

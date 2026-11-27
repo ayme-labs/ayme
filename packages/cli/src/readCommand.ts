@@ -9,6 +9,7 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
        ayme page-objects [--tab=<url>]
        ayme tools [--tab=<url>]
        ayme call <tool> [--params <json> | --params @<file>] [--tab=<url>]
+       ayme inspect
        ayme detach
        ayme close
        ayme list
@@ -40,6 +41,11 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  ayme page-objects prints it, and not on the browser's most
                  recently active tab. A call's Page Object Id chooses its tab
                  by itself.
+  inspect        Open the Inspector on the Session in your default browser,
+                 outside the Session's browser: the Page Objects and the
+                 tools of the Session's tab, to run by hand. BROWSER=none
+                 only prints its address; another BROWSER names the program
+                 that opens it.
   detach         End a Session started with attach, and leave its browser
                  running.
   close          End the Session, and close its browser if ayme opened it.
@@ -106,6 +112,8 @@ export type Command =
       json: boolean;
     } & Named)
   | { kind: "list"; json: boolean }
+  /** `ayme inspect`: the Inspector window of the Session. */
+  | ({ kind: "inspect"; json: boolean } & Named)
   /** The Session's background process, which `open` starts with the
    * options it was given, as JSON. */
   | { kind: "session process"; options: string }
@@ -161,6 +169,7 @@ const SESSION_COMMANDS: Readonly<
   attach: { takes: ["cdp"] },
   list: { takes: [] },
   call: { takes: ["params", "tab"] },
+  inspect: { takes: [] },
   // Each asks for the listing of the Tab --tab names.
   "page-objects": { takes: ["tab"] },
   tools: { takes: ["tab"] },
@@ -264,6 +273,7 @@ function readSessionCommand(
     };
   if (url !== undefined) return { kind: "error", text: USAGE };
   if (word === "list") return { kind: "list", json };
+  if (word === "inspect") return { kind: "inspect", json, ...named };
   if (asks) return { kind: "ask", request: asks, json, ...named };
   return { kind: "error", text: USAGE };
 }
