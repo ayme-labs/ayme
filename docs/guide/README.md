@@ -43,6 +43,10 @@ How to turn your app's Page Object Models into tools that coding agents and your
 - [Errors](reference/errors.md): the errors ayme's packages throw and how an agent sees a failure.
 - [Playwright in the browser](reference/playwright-in-the-browser.md): which Playwright calls a Page Object Model can make when ayme runs it in your app.
 
+## Upgrade
+
+- [Upgrade](upgrade.md): what to change in your project when you move to a new release, from 0.3 to 0.4 first.
+
 ## Troubleshooting
 
 - [Troubleshooting](troubleshooting.md): the common reasons an ayme setup fails, by what you see.
