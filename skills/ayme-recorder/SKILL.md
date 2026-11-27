@@ -145,7 +145,10 @@ would show `<changed> [ref=e4] button "Cart, 2 items"` instead.
 
 An interaction names its target by `targetRef`, a node in the visit's baseline
 tree or one `<added>` earlier in the same visit, or a node a discarded change
-added; [Discarded entries](#discarded-entries) says how to read that one. Its
+added; [Discarded entries](#discarded-entries) says how to read that one.
+After a read the recorder could not keep, which a warning says, a `targetRef`
+can name a node none of these lists: find the element by `targetSelector`
+then, as [Steps a warning names](#steps-a-warning-names) describes. Its
 other fields, such as a fill's `text`, are the values the user entered. A
 click's `button` says which mouse button it was: `left`; `right` for a
 right-click, which the user made to open a menu; or `middle` for a middle
@@ -234,6 +237,9 @@ step. What to distrust depends on the warning:
   or the one its element was picked in, its `targetRef` is `null`. No later
   entry lists what the step changed, and a missing `changeTree` does not
   mean it changed nothing.
+- `led to … could not be read at first`: the step is whole. What the page
+  it led to showed right then is not in the package: the next visit's
+  `baselineTree` is a later read of that page, or empty.
 - `could not be fully worked out`: the `changeTree` is there, but an element
   can be under another ref than in the rest of the package, or show as
   `<removed>` and `<added>` though the page kept it.
@@ -244,8 +250,11 @@ For all but the first, read the page before and after the step from the
 trace, by its entry in `traceActionPoints`, as
 [Use the trace](#use-the-trace) describes. That takes a `tracePath` and the
 entry's position numbers; when the package lacks either, ask the user what
-the step did. In every case the step's `type`, its `targetSelector` and the
-values the user entered are as Playwright reported them.
+the step did. A step that `picked its element` in a read that failed has the
+positions of the read it was placed at, not of that one: open the position a
+`could not be kept` warning gives for the failed read, when one does. In
+every case the step's `type`, its `targetSelector` and the values the user
+entered are as Playwright reported them.
 
 A warning can also name what is no step:
 
@@ -255,10 +264,14 @@ A warning can also name what is no step:
   around it, as [Discarded entries](#discarded-entries) says for a discarded
   one.
 - A visit's `baselineTree`: an element can be under another ref there, or
-  the tree is an earlier read of the page, or empty.
+  the tree is empty because the page could not be read where the visit
+  starts. With an empty one, a ref of that visit first shows in a
+  `changeTree`, or as a `targetRef` alone.
 - A read of the page that could not be kept, by its time and, when the
   package has position numbers, its position in the trace. The page may have
-  changed by itself around it without an entry for it.
+  changed by itself around it without an entry for it. When recording
+  resumed at that read after a pause, the page may have loaded again: the
+  same element can have another ref after it than before.
 
 ## Write page objects from the recording
 
