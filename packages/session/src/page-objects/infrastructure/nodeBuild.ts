@@ -48,15 +48,28 @@ type CompilerEntry = {
 };
 
 /** Imports `file`; what it throws as it loads fails the start, saying
- * `what` did not load. */
-const importFile = <A>(file: string, what: string) =>
+ * `what` did not load, and then what `advice` gives for it. */
+const importFile = <A>(
+  file: string,
+  what: string,
+  advice: (cause: unknown) => string = () => ""
+) =>
   Effect.tryPromise({
     try: () => import(pathToFileURL(file).href) as Promise<A>,
     catch: (cause) =>
       new SessionStartError(
-        `${what} did not load: ${cause instanceof Error ? cause.message : String(cause)}`
+        `${what} did not load: ${cause instanceof Error ? cause.message : String(cause)}${advice(cause)}`
       ),
   });
+
+/** What to install when the compiler did not load because the project has
+ * no TypeScript: an optional peer of @ayme-dev/ayme, so nothing installs it
+ * for the project. */
+const typeScriptAdvice = (cause: unknown) =>
+  cause instanceof Error &&
+  /Cannot find (?:package|module) 'typescript'/.test(cause.message)
+    ? `. The compiler runs on the project's own TypeScript: install it, for example with "npm install -D typescript".`
+    : "";
 
 /** Whether `file` is in a `node_modules` folder: installed, not the
  * project's own source. */
@@ -274,7 +287,8 @@ const buildForNode = (
 ): Effect.Effect<NodePageObjects, SessionStartError> =>
   importFile<CompilerEntry>(
     compiler,
-    `The Page Object compiler of the project's @ayme-dev/ayme, ${compiler},`
+    `The Page Object compiler of the project's @ayme-dev/ayme, ${compiler},`,
+    typeScriptAdvice
   ).pipe(
     Effect.flatMap((compilerEntry) => bundle(entry, compilerEntry, reads)),
     Effect.flatMap((code) => load(code, entry)),

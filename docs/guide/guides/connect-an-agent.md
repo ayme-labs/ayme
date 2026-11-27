@@ -29,6 +29,8 @@ The agent's browser automation keeps doing everything else: snapshots, clicks ou
    - If your app already ships ayme, bring every `@ayme-dev/*` package it has to `<version>`: `@ayme-dev/ayme`, your framework package such as `@ayme-dev/react`, `@ayme-dev/unplugin-ayme`, and `@ayme-dev/inspector` or `@ayme-dev/webmcp` if you use them. Install each with `npm install <package>@<version>`, without `-D`, which keeps it in the dependency section it is in; with `-D`, npm moves `@ayme-dev/ayme` to `devDependencies`, and an install of production dependencies leaves it out. Then rebuild and restart your app. npm does not warn about a package left at another version: the framework packages, the build plugin and the Inspector each depend on `@ayme-dev/ayme` at exactly their own version, so one left behind brings its own copy, and your page runs that copy. A Session refuses such a page: `This document runs ayme's in-page module 0.3.0; this host is 0.4.0.`
    - Otherwise, add it as a dev dependency: `npm install -D @ayme-dev/ayme@<version>`.
 
+   The command compiles your Page Object Models with your project's own TypeScript, at a version [Install](../start/install.md#supported-versions) lists. If your project has none, install it: `npm install -D typescript`. With TypeScript 7, also install `@typescript/typescript6`.
+
 2. Keep your [Page Object Models](ayme-page-objects.md) in the [`ayme` folder](ayme-folder.md), and list them in `ayme/page-objects.ts`. Its default export is an array of your Page Object classes, as the `pageObjects` option of [`createAyme`](../reference/ayme.md#createayme) takes them:
 
    ```ts
