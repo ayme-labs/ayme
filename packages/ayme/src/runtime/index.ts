@@ -49,6 +49,7 @@ export type { Highlightable } from "./inspectorHighlights";
 export { createNodeHost } from "./playwrightRuntime";
 export { pageObjectCallerOf } from "./session";
 export { inspectorPortOf } from "./nodeHostInspector";
+export type { InspectorPort } from "./inspectorChannelPort";
 export type {
   PlaywrightAyme,
   PlaywrightAymeOptions,

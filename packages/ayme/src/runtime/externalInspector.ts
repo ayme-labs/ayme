@@ -1,11 +1,12 @@
-import type { InspectorPort } from "@ayme-dev/mcp/client";
-
 import type { InspectorContract } from "../shared";
 import {
   createDocumentInspectorContract,
   type DocumentRuntime,
 } from "./documentInspectorContract";
-import { inspectorChannelPort } from "./inspectorChannelPort";
+import {
+  inspectorChannelPort,
+  type InspectorPort,
+} from "./inspectorChannelPort";
 
 let served: InspectorContract | undefined;
 

@@ -28,6 +28,7 @@
     "ws": "^8.22.0"
   },
   "devDependencies": {
+    "@ayme-dev/ayme": "workspace:*",
     "@ayme-dev/browser": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/test-config": "workspace:*",

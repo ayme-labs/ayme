@@ -16,9 +16,6 @@ import { expect, test as base } from "./aymeCommand";
 // the Session's browser plays the developer's browser automation. The
 // Inspector renders into a closed shadow root; its page objects reach it
 // through these selectors.
-/** The command's fixtures, and `inspect`, which runs `ayme inspect` in the
- * project with the BROWSER the test gives, as the Session's other commands
- * run. */
 const test = base.extend<{
   inspect: (browserProgram: string) => ReturnType<typeof runAyme>;
 }>({
@@ -39,21 +36,21 @@ const test = base.extend<{
 
 test.beforeAll(() => registerInspectorSelectors(selectors));
 
+// Each resource registers its cleanup as it is made; every cleanup runs,
+// whichever failed, and the first failure is reported.
 const cleanups: (() => Promise<unknown>)[] = [];
 test.afterEach(async () => {
-  for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
+  const failed: unknown[] = [];
+  for (const cleanup of cleanups.splice(0).reverse())
+    await cleanup().catch((error: unknown) => failed.push(error));
+  if (failed.length > 0) throw failed[0];
 });
 
-/** The address `ayme open` printed. */
 const addressIn = (stdout: string) =>
   /at (http:\/\/127\.0\.0\.1:\d+)\./.exec(stdout)?.[1];
 
-/** The window's address `ayme inspect` printed, with the Session's token
- * in its fragment. */
 const windowIn = (stdout: string) =>
-  /at (http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+)\.$/m.exec(
-    stdout
-  )?.[1];
+  /at (http:\/\/127\.0\.0\.1:\d+\/inspector#code=[\w-]+)\./.exec(stdout)?.[1];
 
 /** The browser automation, connected to the Session's browser that
  * `ayme open` printed the address of; the connection closes with the
@@ -102,7 +99,7 @@ test("opens the Inspector window, served by the Session's process, in the progra
   const address = windowIn(inspected.stdout);
   expect(inspected).toEqual({
     code: 0,
-    stdout: `The Inspector of the Session default opened in your default browser at ${address}.\n`,
+    stdout: `ayme asked your browser to open the Inspector of the Session default at ${address}.\n`,
     stderr: "",
   });
   await expect
@@ -110,22 +107,6 @@ test("opens the Inspector window, served by the Session's process, in the progra
     .toBe(address);
   const page = await fetch(address!);
   expect(await page.text()).toContain("<title>ayme inspect: default</title>");
-});
-
-test("with BROWSER=none prints where the window is and opens nothing", async ({
-  ayme,
-  inspect,
-  baseURL,
-}) => {
-  await ayme("open", `${baseURL}/shop.html`);
-
-  expect(await inspect("none")).toEqual({
-    code: 0,
-    stdout: expect.stringMatching(
-      /^The Inspector of the Session default is at http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+\.\n$/
-    ),
-    stderr: "",
-  });
 });
 
 test("the window shows the Page Object Tree and the tools of the Session's Tab, runs a tool as a Run of the Inspector, and follows a Tab change", async ({
@@ -147,18 +128,16 @@ test("the window shows the Page Object Tree and the tools of the Session's Tab, 
     .poll(() => inspector.navigator.model.objectPaths())
     .toEqual(expect.arrayContaining(["ShopPage", "Basket"]));
   await inspector.navigator.showLens("Tools");
+  // A Session offers its Page Object Tools alone.
   await expect
-    .poll(
-      async () =>
-        (await inspector.navigator.tools.listed())["Page object tools"]
-    )
-    .toEqual(
-      expect.arrayContaining([
+    .poll(() => inspector.navigator.tools.listed())
+    .toEqual({
+      "Page object tools": expect.arrayContaining([
         "Basket.add",
         "Basket.clear",
         "ShopPage.readHeading",
-      ])
-    );
+      ]),
+    });
 
   await (await inspector.tool("Basket.add")).run({ item: "Milk" });
 
@@ -167,11 +146,9 @@ test("the window shows the Page Object Tree and the tools of the Session's Tab, 
   expect(await run.caller()).toEqual({ icon: "Run by you from the Inspector" });
   await expect(shop.getByRole("listitem")).toHaveText(["Milk"]);
   expect((await ayme("page-objects")).stdout).toContain("listitem: Milk");
-  // A Session offers no tool that takes a Structural Ref, so the panel
-  // offers no picking.
   await expect(
     inspector.container.getByRole("button", {
-      name: "Pick an element on the page",
+      name: /^Pick (an element )?on (the )?page$/,
     })
   ).toHaveCount(0);
 
@@ -190,7 +167,10 @@ test("the window shows the Page Object Tree and the tools of the Session's Tab, 
   expect(await model.isNotOnPage(model.object("Basket"))).toBe(true);
 });
 
-test("a Run from the window waits for the Run under way on the Tab, whichever Caller started it", async ({
+// Which Caller has the Tab's turn is proved at the scripted browser
+// (packages/session/src/inspector.test.ts); here the two Callers' Runs meet
+// on one Tab of a real Session.
+test("a Run from the window pressed while one of ayme call is under way on the Tab runs there too, each Run with its Caller", async ({
   ayme,
   inspect,
   baseURL,
@@ -210,12 +190,10 @@ test("a Run from the window waits for the Run under way on the Tab, whichever Ca
   await expect.poll(() => command.status()).toBe("Running");
 
   await (await inspector.tool("AccountPage.fail")).run();
-
-  const fromWindow = runOf(inspector, "AccountPage.fail");
-  await new Promise((resolve) => setTimeout(resolve, 1_000));
-  await expect(fromWindow.root).toHaveCount(0);
   await account.evaluate(() => Object.assign(window, { released: true }));
+
   expect(await held).toMatchObject({ code: 0 });
+  const fromWindow = runOf(inspector, "AccountPage.fail");
   await expect.poll(() => fromWindow.status()).toBe("Failed");
   expect(await fromWindow.caller()).toEqual({
     icon: "Run by you from the Inspector",
@@ -224,6 +202,37 @@ test("a Run from the window waits for the Run under way on the Tab, whichever Ca
   await inspector.runs.allScope.click();
   expect(await command.status()).toBe("Succeeded");
   expect(await command.caller()).toEqual({ text: "ayme-command" });
+});
+
+test("a Run from the window whose action waits on a callback that threw is answered with that error, as ayme call is", async ({
+  ayme,
+  inspect,
+  baseURL,
+  browser,
+}) => {
+  await ayme("open", `${baseURL}/account.html`);
+  const { window, inspector } = await openWindow(
+    browser,
+    windowIn((await inspect("none")).stdout)!
+  );
+  const errors: string[] = [];
+  window.on("websocket", (socket) =>
+    socket.on("framereceived", ({ payload }) => {
+      const { error } = JSON.parse(String(payload)) as { error?: string };
+      if (error !== undefined) errors.push(error);
+    })
+  );
+  await window.reload();
+  await inspector.open();
+  await expect
+    .poll(() => inspector.navigator.model.objectPaths())
+    .toContain("AccountPage");
+
+  await (await inspector.tool("AccountPage.throwInTimer")).run();
+
+  await expect
+    .poll(() => errors)
+    .toContain("The timer the action waits on failed.");
 });
 
 test("hovering a Page Object in the window highlights it on the Session's page", async ({
@@ -241,8 +250,13 @@ test("hovering a Page Object in the window highlights it on the Session's page",
   const highlights = () =>
     shop.evaluate(() => document.querySelectorAll("x-pw-glass").length);
   expect(await highlights()).toBe(0);
+  // A row takes hovers once the window knows it is on the page, from the
+  // Tab's look: a hover before then highlights nothing, and is not
+  // repeated when the look comes.
+  const basket = inspector.navigator.model.object("Basket");
+  await expect(basket).toHaveAttribute("aria-description", "On this page");
 
-  await inspector.navigator.model.object("Basket").hover();
+  await basket.hover();
 
   await expect.poll(highlights).toBeGreaterThan(0);
 });
@@ -269,8 +283,10 @@ test("closing the window leaves the Session as it was; when the Session ends, th
   browser,
 }) => {
   await ayme("open", `${baseURL}/shop.html`);
-  const address = windowIn((await inspect("none")).stdout)!;
-  const first = await openWindow(browser, address);
+  const first = await openWindow(
+    browser,
+    windowIn((await inspect("none")).stdout)!
+  );
   await expect
     .poll(() => first.inspector.navigator.model.objectPaths())
     .toContain("Basket");
@@ -281,12 +297,40 @@ test("closing the window leaves the Session as it was; when the Session ends, th
     code: 0,
     stdout: expect.stringContaining('result: "Shop"'),
   });
-  const second = await openWindow(browser, address);
+  const second = await openWindow(
+    browser,
+    windowIn((await inspect("none")).stdout)!
+  );
   await ayme("close");
   await expect(second.window.getByRole("status")).toHaveText(
-    "The Session default was closed. Start a Session with ayme open or ayme attach, then run ayme -s=default inspect to inspect it."
+    "The Session default was closed. Start a Session with ayme -s=default open or ayme -s=default attach, then run ayme -s=default inspect to inspect it."
   );
   await expect(second.inspector.panel).toHaveCount(0);
+});
+
+test("a window whose Session's process was killed stops trying to connect, and says so", async ({
+  ayme,
+  inspect,
+  baseURL,
+  browser,
+  sessionProcess,
+}) => {
+  await ayme("open", `${baseURL}/shop.html`);
+  const { window, inspector } = await openWindow(
+    browser,
+    windowIn((await inspect("none")).stdout)!
+  );
+  await expect
+    .poll(() => inspector.navigator.model.objectPaths())
+    .toContain("Basket");
+
+  process.kill(sessionProcess()!, "SIGKILL");
+
+  await expect(window.getByRole("status")).toHaveText(
+    "This Inspector lost the Session default. Start it again with ayme -s=default open, then run ayme -s=default inspect.",
+    { timeout: 15_000 }
+  );
+  await expect(inspector.panel).toHaveCount(0);
 });
 
 test("an open window shows the Page Objects a Swap brings in, without being opened again", async ({

@@ -103,7 +103,11 @@ export const serveSession = ({
         : yield* Effect.acquireRelease(
             Effect.tryPromise({
               try: () =>
-                serveInspectorWindow({ name, script: inspectorScript }),
+                serveInspectorWindow({
+                  name,
+                  script: inspectorScript,
+                  started: Deferred.await(served),
+                }),
               catch: (cause) =>
                 new SessionStartError(
                   `ayme could not serve the Session's Inspector window: ${messageOf(cause)}`
@@ -115,10 +119,13 @@ export const serveSession = ({
       request,
       name,
       window
-        ? { inspector: window.address, agentApp: window.agentAppSocket }
+        ? {
+            inspector: window.address,
+            opening: window.opening,
+            agentApp: window.agentAppSocket,
+          }
         : {}
     );
-    window?.attach(session);
     yield* Deferred.succeed(served, session);
     return session;
   });

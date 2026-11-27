@@ -31,7 +31,8 @@ import { swapClasses, type NodeHostPom } from "../swapClasses";
 import { failingOnItsUncaught } from "../runUncaught";
 import { tabDialogs, type ActionCalls } from "../tabDialogs";
 import { handedOver, readTabOrder, tabListAddress } from "../tabList";
-import { tabInspector, type InspectorPort } from "./tabInspector";
+import { lazyPort, type InspectorPort } from "../inspectorPort";
+import { tabInspector } from "./tabInspector";
 
 /** Where a Node Host's Page Object Ids come from, and what hears that a
  * page forgot one. */
@@ -283,11 +284,15 @@ const hostedTab = (
         ),
       catch: runErrorOf,
     }),
+  // A Run from the window fails on what its code left uncaught, as a
+  // command's does.
   inspector: tabInspector({
     ...inspector,
     request: (method, params) =>
       method === "runTool"
-        ? dialogs.request(() => inspector.request(method, params))
+        ? dialogs.request(() =>
+            failingOnItsUncaught(() => inspector.request(method, params))
+          )
         : inspector.request(method, params),
   }),
   dialog: SubscriptionRef.changes(dialog),
@@ -362,7 +367,7 @@ const hostOn =
         else page.once("close", stop);
         return hostedTab(
           entry.pageObjectCallerOf(ayme, CALLER),
-          entry.inspectorPortOf(ayme),
+          lazyPort(() => entry.inspectorPortOf(ayme)),
           watch,
           ayme.pom,
           classes

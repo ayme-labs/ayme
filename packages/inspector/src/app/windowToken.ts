@@ -1,3 +1,5 @@
+import { readStored, tabStorage, writeStored } from "../shared/infrastructure";
+
 /** Where the window keeps the Session's token in its tab, so a reload still
  * connects. */
 const TOKEN_KEY = "ayme:inspector-token";
@@ -13,26 +15,40 @@ type BrowserWindow = {
 };
 
 /**
- * The socket of the server that served this browser window, with the
- * Session's token that admits it (ADR-0072). `ayme inspect` opens the
- * window with the token in the fragment, which reaches no server: the
- * window keeps it in its tab and takes it out of the address bar and the
- * history entry. A window served without one, by `@ayme-dev/mcp`'s server,
- * connects without it.
+ * How this browser window reaches the socket of the server that served it
+ * (ADR-0072). `ayme inspect` opens the window with a one-use code in the
+ * fragment, which reaches no server: the window takes it out of the address
+ * bar and connects with it once; the Session then tells it its token, which
+ * the window connects again with and keeps in its tab for a reload. Where
+ * the browser blocks the tab's storage or it is full, a reload needs
+ * `ayme inspect` again. A window served without either, by
+ * `@ayme-dev/mcp`'s server, connects without.
  */
-export function sessionSocket({
-  location,
-  history,
-  sessionStorage,
-}: BrowserWindow): string {
-  const given = new URLSearchParams(location.hash.slice(1)).get("token");
-  if (given !== null) {
-    sessionStorage.setItem(TOKEN_KEY, given);
+export function windowAdmission(browser: BrowserWindow): {
+  /** The socket to connect to now. */
+  readonly socket: () => string;
+  /** Keeps `token`, which the Session told the window once admitted. */
+  readonly admitted: (token: string) => void;
+} {
+  const { location, history } = browser;
+  const code = new URLSearchParams(location.hash.slice(1)).get("code");
+  if (code !== null)
     history.replaceState(null, "", location.pathname + location.search);
-  }
-  const token = given ?? sessionStorage.getItem(TOKEN_KEY);
+  const storage = tabStorage(browser);
+  const kept = code === null ? readStored(storage, TOKEN_KEY) : undefined;
+  let token = typeof kept === "string" ? kept : undefined;
   const socket = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/inspector/ws`;
-  return token === null
-    ? socket
-    : `${socket}?token=${encodeURIComponent(token)}`;
+  return {
+    socket: () => {
+      if (token !== undefined)
+        return `${socket}?token=${encodeURIComponent(token)}`;
+      return code === null
+        ? socket
+        : `${socket}?code=${encodeURIComponent(code)}`;
+    },
+    admitted: (given) => {
+      token = given;
+      writeStored(storage, TOKEN_KEY, given);
+    },
+  };
 }

@@ -5,7 +5,7 @@ import { startScriptedSession } from "../testing";
 // The Inspector an Agent App shows in its chat, and a Run started from any
 // Inspector, through the Session's interface on the scripted browser.
 
-const WINDOW = "http://127.0.0.1:4444/inspector#token=secret";
+const WINDOW = "http://127.0.0.1:4444/inspector";
 const SOCKET = "ws://127.0.0.1:4444/inspector/ws?token=secret";
 
 it("ayme mcp is answered with the socket an Agent App's view connects to, and a sentence that holds no token", async () => {

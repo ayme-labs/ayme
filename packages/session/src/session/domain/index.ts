@@ -33,13 +33,16 @@ export {
   type TabName,
 } from "./listing";
 export {
+  ANOTHER_TAB_SHOWN,
   contractAnswer,
+  idNotOnShownTab,
   agentAppAnswer,
   INSPECTOR_CALLER,
   NO_WINDOW,
+  OPENING_CODE_LIFETIME_MS,
   showsWindow,
   windowAnswer,
-  windowEnded,
+  inspectorEnded,
   windowNotOpened,
   windowOpened,
   type InspectorEvent,

@@ -40,11 +40,10 @@ const inline = (script: string) =>
   script.replace(/<(\/script|!--)/gi, "\\u003C$1");
 
 /**
- * The page an Agent App shows for `place`'s Session: the Inspector's built
- * `script` inside it, since an Agent App loads no script from elsewhere,
- * and the socket of the Session's window, which it may reach. Asked each
- * time the Agent App reads the page, so it follows a Session started
- * since. Without that Session, it says why.
+ * The Inspector's built `script` goes inside the page, since an Agent App
+ * loads no script from elsewhere. The Session is asked each time the Agent
+ * App reads the page, so the page follows a Session started since; without
+ * one, it says why.
  */
 export async function agentAppPage(
   place: SessionPlace,

@@ -15,22 +15,9 @@ import { answerReport } from "./answer";
 import type { Plan } from "./plan";
 import { SESSION_PROCESS } from "./readCommand";
 
-/** Whatever reaches a Session: `open` and `attach`, a request of the
- * folder's Session, a call, `inspect`, `list`, or the Session's background
- * process. */
-export type SessionPlan = Extract<
-  Plan,
-  {
-    kind:
-      | "open"
-      | "attach"
-      | "ask"
-      | "call"
-      | "inspect"
-      | "list"
-      | "session process";
-  }
->;
+/** Whatever reaches a Session but `ayme mcp`, which stays to serve the
+ * Agent App. */
+export type SessionPlan = Exclude<Plan, { kind: "print" | "capture" | "mcp" }>;
 
 /** The Inspector's external build, which the build puts in an `inspector`
  * folder beside the command's own file, as it does the recorder window. */

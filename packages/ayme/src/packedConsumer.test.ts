@@ -1706,18 +1706,77 @@ function filesOf(dir: string) {
 
 const CLI = "@ayme-dev/cli";
 
-it("the packed CLI carries its engine, its window, its toolbar and its notices, and declares Playwright as the project's own", () => {
+/** The names of the tools the MCP server `command` with `args` lists over
+ * stdio, as an Agent App asks for them; the server ends with its input. */
+async function mcpTools(
+  command: string,
+  args: readonly string[],
+  options: { cwd: string; env: NodeJS.ProcessEnv }
+): Promise<string[]> {
+  const server = spawn(command, args, { ...options, stdio: "pipe" });
+  const send = (message: object) =>
+    server.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", ...message })}\n`);
+  let read = "";
+  const answer = (id: number) =>
+    new Promise<{ result?: { tools?: { name: string }[] } }>(
+      (resolve, reject) => {
+        const look = () => {
+          const line = read
+            .split("\n")
+            .find((candidate) => candidate.includes(`"id":${id}`));
+          if (line) resolve(JSON.parse(line));
+        };
+        server.stdout.on("data", (chunk: Buffer) => {
+          read += chunk;
+          look();
+        });
+        server.once("close", () =>
+          reject(new Error(`ayme mcp ended: ${read}`))
+        );
+        look();
+      }
+    );
+  try {
+    send({
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "packed-consumer", version: "0.0.0" },
+      },
+    });
+    await answer(1);
+    send({ method: "notifications/initialized" });
+    send({ id: 2, method: "tools/list", params: {} });
+    const { result } = await answer(2);
+    return (result?.tools ?? []).map(({ name }) => name);
+  } finally {
+    server.stdin.end();
+    server.kill();
+  }
+}
+
+it("the packed CLI carries its engine, its window, its toolbar, its Inspector and their notices, and declares Playwright as the project's own", () => {
   const { dir } = packed[CLI]!;
   const manifest = readManifest(dir) as ReturnType<typeof readManifest> & {
     bin?: Record<string, string>;
     peerDependenciesMeta?: Record<string, { optional?: boolean }>;
   };
 
-  expect(filesOf(dir)).toEqual([
+  const files = filesOf(dir);
+  const chunks = files.filter((file) => file.startsWith("dist/chunks/"));
+  expect(chunks).toContainEqual(
+    expect.stringMatching(/^dist\/chunks\/mcp-[\w-]+\.mjs$/)
+  );
+  for (const chunk of chunks) expect(chunk).toMatch(/\.mjs$/);
+  expect(files.filter((file) => !chunks.includes(file))).toEqual([
     "LICENSE",
     "README.md",
     "dist/THIRD_PARTY_NOTICES.txt",
     "dist/cli.mjs",
+    "dist/inspector/THIRD_PARTY_NOTICES.txt",
+    "dist/inspector/external.mjs",
     "dist/toolbar/toolbar.js",
     "dist/window/index.html",
     "dist/window/mark-small.svg",
@@ -1725,6 +1784,10 @@ it("the packed CLI carries its engine, its window, its toolbar and its notices, 
     "package.json",
   ]);
   expect(manifest.bin).toEqual({ ayme: "./dist/cli.mjs" });
+  // Only `ayme mcp` loads its MCP server.
+  expect(fs.readFileSync(path.join(dir, "dist/cli.mjs"), "utf8")).not.toContain(
+    "ayme_inspect"
+  );
   // The engine and the window are inside the command: nothing to install
   // beside it but the Playwright the project has, and esbuild, which builds
   // the project's Page Objects for a Session and ships a binary per
@@ -1779,7 +1842,7 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
 });
 
 it(
-  "a clean project installs the packed CLI, records one flow with ayme capture, and lists its Page Objects in a Session",
+  "a clean project installs the packed CLI, records one flow with ayme capture, lists its Page Objects in a Session, whose Inspector window it serves, and starts ayme mcp",
   { timeout: 150_000 },
   async () => {
     const project = path.join(tmp, "recorder-project");
@@ -1883,6 +1946,8 @@ export class ShopPage {
               ...process.env,
               NODE_PATH: "",
               AYME_CACHE_DIR: path.join(project, ".cache"),
+              // ayme inspect prints the window's address and opens nothing.
+              BROWSER: "none",
             },
           },
           (error, stdout, stderr) =>
@@ -1980,6 +2045,32 @@ export class ShopPage {
           /^Tab: Shop \(.+\)\nShopPage\n[^]*This screen has 1 Page Object Tool: ayme -s=default tools lists it with its parameters\.\n$/
         ),
       });
+
+      // The Session serves its Inspector window with the script the CLI
+      // carries.
+      const inspected = await session("inspect");
+      expect(inspected, inspected.stderr).toMatchObject({ code: 0 });
+      const address =
+        /at (http:\/\/127\.0\.0\.1:\d+\/inspector#code=[\w-]+)\./.exec(
+          inspected.stdout
+        )?.[1];
+      expect(address, inspected.stdout).toBeDefined();
+      const script = await fetch(new URL("/inspector/external.mjs", address));
+      expect(script.status).toBe(200);
+      expect(await script.text()).toBe(
+        fs.readFileSync(
+          path.join(installed, "dist/inspector/external.mjs"),
+          "utf8"
+        )
+      );
+
+      // `ayme mcp`, which the command loads apart, lists its one tool.
+      expect(
+        await mcpTools(process.execPath, [path.join(installed, ayme!), "mcp"], {
+          cwd: project,
+          env: { ...process.env, NODE_PATH: "" },
+        })
+      ).toEqual(["ayme_inspect"]);
     } catch (error) {
       // What the command printed is the first thing to look at.
       throw new Error(

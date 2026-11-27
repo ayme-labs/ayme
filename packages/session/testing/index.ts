@@ -86,12 +86,14 @@ export interface ScriptedBrowser extends ScriptedTab {
    * active one, as a Tab the browser automation opens does. */
   openTab(url?: string): ScriptedTab;
   /** Every read of the browser's tab list fails, for the reason a person
-   * reads. */
-  failTabList(reason: string): void;
+   * reads, until the test calls the function it returns. */
+  failTabList(reason: string): () => void;
   /** The next read of the browser's tab list takes the Tabs open now and
    * answers only once the test calls the function it returns, as an HTTP
    * read that is slow to answer. */
   holdTabList(): () => void;
+  /** How many reads of the browser's tab list began so far. */
+  readonly tabListReads: number;
 }
 
 /** The remote control of one Tab of the scripted browser. The scripted
@@ -138,10 +140,15 @@ export interface ScriptedTab {
     readonly params: unknown;
   }[];
   /** How the Tab's Inspector contract answers each call from now on: as
-   * `answer` resolves, or fails as it rejects. Until then it answers with
-   * the method's name. */
+   * `answer` resolves, or fails as it rejects. `released` aborts once the
+   * Session no longer waits for the answer. Until then it answers with the
+   * method's name. */
   answerInspector(
-    answer: (method: string, params: unknown) => Promise<unknown>
+    answer: (
+      method: string,
+      params: unknown,
+      released: AbortSignal
+    ) => Promise<unknown>
   ): void;
   /** How many listen to the events of the Tab's Inspector contract now. */
   readonly inspectorListeners: number;
@@ -199,6 +206,9 @@ export type ScriptedSessionOptions = SessionBrowserRequest &
     /** Where its process serves the Session's Inspector window; none when
      * not given. */
     readonly inspector?: string;
+    /** The address each `ayme inspect` is given: `inspector` when not
+     * given. */
+    readonly opening?: () => string;
     /** The socket of that window an Agent App's view connects to. */
     readonly agentApp?: string;
   };
@@ -222,9 +232,11 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   let given: TabIds | undefined;
   const closed = Deferred.makeUnsafe<void>();
   const inspectorCalls: { method: string; params: unknown }[] = [];
-  let answerInspector: (method: string, params: unknown) => Promise<unknown> = (
-    method
-  ) => Promise.resolve(method);
+  let answerInspector: (
+    method: string,
+    params: unknown,
+    released: AbortSignal
+  ) => Promise<unknown> = (method) => Promise.resolve(method);
   const listeners = new Set<(event: unknown) => void>();
   const dialog = Effect.runSync(SubscriptionRef.make<TabDialog>("none"));
   let opening: Dialog | undefined;
@@ -251,9 +263,9 @@ function scriptedTab(url: string, open: Tab[]): Tab {
     inspector: {
       request: (method, params) =>
         Effect.tryPromise({
-          try: () => {
+          try: (released) => {
             inspectorCalls.push({ method, params });
-            return answerInspector(method, params);
+            return answerInspector(method, params, released);
           },
           catch: (error) =>
             new TabReadError(
@@ -358,6 +370,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   const open: Tab[] = [];
   let tabList: TabReadError | undefined;
   let heldTabList: Deferred.Deferred<void> | undefined;
+  let tabListReads = 0;
   const opened = Deferred.makeUnsafe<void, SessionStartError>();
   // Each build the Session started, in order; the first is made at once, so
   // a test can finish it before the Session starts it.
@@ -382,6 +395,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   const first = openTab();
   const tabs = {
     open: Effect.suspend(() => {
+      tabListReads++;
       if (tabList) return Effect.fail(tabList);
       const now = [...open];
       const held = heldTabList;
@@ -455,10 +469,16 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       },
       goAway: () => Deferred.doneUnsafe(gone, Exit.void),
       openTab: (url) => openTab(url).control,
-      failTabList: (reason) => (tabList = new TabReadError(reason)),
+      failTabList: (reason) => {
+        tabList = new TabReadError(reason);
+        return () => (tabList = undefined);
+      },
       holdTabList: () => {
         const held = (heldTabList = Deferred.makeUnsafe<void>());
         return () => Deferred.doneUnsafe(held, Exit.void);
+      },
+      get tabListReads() {
+        return tabListReads;
       },
       ...first.control,
       get hosted() {
@@ -483,6 +503,7 @@ export async function startScriptedSession(
     heldBuild,
     name = "default",
     inspector,
+    opening = inspector === undefined ? undefined : () => inspector,
     agentApp,
     ...request
   } = options;
@@ -495,6 +516,7 @@ export async function startScriptedSession(
   const session = await Effect.runPromise(
     openSession(request, name, {
       ...(inspector === undefined ? {} : { inspector }),
+      ...(opening === undefined ? {} : { opening }),
       ...(agentApp === undefined ? {} : { agentApp }),
     }).pipe(Effect.provide(layer), Scope.provide(scope))
   );

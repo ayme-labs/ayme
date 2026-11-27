@@ -57,3 +57,4 @@ export type {
   InspectorSession,
 } from "./runtime";
 export { createNodeHost, inspectorPortOf, pageObjectCallerOf } from "./runtime";
+export type { InspectorPort } from "./runtime";

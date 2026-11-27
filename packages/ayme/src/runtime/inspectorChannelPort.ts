@@ -1,6 +1,17 @@
-import type { InspectorPort } from "@ayme-dev/mcp/client";
-
 import type { InspectorContract } from "../shared";
+
+/** The Inspector contract as plain data, for an Inspector outside the page:
+ * what the Agent Connection relays and what a Session serves its window. */
+export type InspectorPort = {
+  /**
+   * Starts the contract's command or read `method` with `params`, at once
+   * (before it returns), so requests start in the order they come. Rejects,
+   * or throws, with the reason it failed.
+   */
+  request(method: string, params: unknown): Promise<unknown>;
+  /** Calls `listener` with each event the contract pushes; returns what stops it. */
+  subscribe(listener: (event: unknown) => void): () => void;
+};
 
 /**
  * The page's Inspector contract (ADR-0049) as plain data for the Agent

@@ -1,6 +1,6 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { openerOf } from "./openWindow";
+import { openerOf, startOpener } from "./openWindow";
 
 const URL_ = "http://127.0.0.1:4444/inspector";
 
@@ -24,4 +24,31 @@ it("opens it with the program BROWSER names, as other development tools do", () 
 
 it("opens nothing when BROWSER is none", () => {
   expect(openerOf(URL_, { BROWSER: "none" }, "darwin")).toBeUndefined();
+});
+
+describe("starting the opener", () => {
+  it("says why when its program does not exist", async () => {
+    expect(
+      await startOpener({ command: "/no/such/opener", args: [URL_] })
+    ).toContain("ENOENT");
+  });
+
+  it("says why when its program exits with a failure", async () => {
+    expect(await startOpener({ command: "false", args: [] })).toBe(
+      "false exited with code 1."
+    );
+  });
+
+  it("says nothing when its program ends well", async () => {
+    expect(await startOpener({ command: "true", args: [] })).toBeUndefined();
+  });
+
+  it("waits only its short time for a program that stays open, as a browser BROWSER names may", async () => {
+    const started = Date.now();
+
+    expect(
+      await startOpener({ command: "sleep", args: ["2"] }, 100)
+    ).toBeUndefined();
+    expect(Date.now() - started).toBeLessThan(1_000);
+  });
 });
