@@ -1,6 +1,6 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { pageTargets, tabListAddress } from "./tabList";
+import { handedOver, pageTargets, tabListAddress } from "./tabList";
 
 it.each([
   ["http://127.0.0.1:9222", "http://127.0.0.1:9222/json/list"],
@@ -28,4 +28,51 @@ it("keeps the browser's order of its tabs, most recently active first, and leave
   ];
 
   expect(pageTargets(list)).toEqual(["C", "A", "B"]);
+});
+
+describe("the pages of the listed tabs", () => {
+  /** Reads that hand over `each` in turn, the last one again and again. */
+  const reads = (...each: Record<string, string>[]) => {
+    let read = 0;
+    return async () =>
+      new Map(Object.entries(each[Math.min(read++, each.length - 1)]!));
+  };
+
+  it("waits for a listed tab Playwright has not handed over yet, such as a popup that just opened", async () => {
+    const pages = await handedOver(
+      ["popup", "opener"],
+      reads(
+        { opener: "opener page" },
+        { opener: "opener page", popup: "popup page" }
+      ),
+      { pause: async () => {}, over: () => false, skipped: new Set() }
+    );
+
+    expect(pages).toEqual(["popup page", "opener page"]);
+  });
+
+  it("leaves out a tab not handed over when the wait is over, and waits for it no more", async () => {
+    const skipped = new Set<string>();
+    let pauses = 0;
+    const waiting = {
+      pause: async () => void pauses++,
+      over: () => pauses === 2,
+      skipped,
+    };
+    const read = reads({ opener: "opener page" });
+
+    expect(await handedOver(["other", "opener"], read, waiting)).toEqual([
+      "opener page",
+    ]);
+    expect(pauses).toBe(2);
+
+    expect(await handedOver(["other", "opener"], read, waiting)).toEqual([
+      "opener page",
+    ]);
+    expect(pauses).toBe(2);
+
+    // Once it is no longer listed, it is forgotten.
+    await handedOver(["opener"], read, waiting);
+    expect(skipped).toEqual(new Set());
+  });
 });

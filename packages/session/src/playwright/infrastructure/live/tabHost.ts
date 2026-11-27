@@ -19,7 +19,7 @@ import {
 import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
-import { pageTargets, tabListAddress } from "../tabList";
+import { handedOver, pageTargets, tabListAddress } from "../tabList";
 
 /** Where a Node Host's Page Object Ids come from, and what hears that a
  * page forgot one. */
@@ -52,6 +52,10 @@ type NodeHostEntry = {
     }>;
   };
 };
+
+// Playwright hands a new tab's page over within moments; a popup an action
+// just opened is worth that wait before ayme chooses another Tab.
+const HANDOVER_WAIT_MS = 2000;
 
 /** The Caller a Session's commands start their Runs as. */
 const CALLER = "ayme-command";
@@ -182,6 +186,7 @@ function tabsOf(
   hosting: Hosting
 ): BrowserTabs {
   const tabs = new WeakMap<Page, BrowserTab>();
+  const skipped = new Set<string>();
   const tabOf = (page: Page) => {
     const tab = tabs.get(page) ?? {
       url: () => page.url(),
@@ -197,16 +202,17 @@ function tabsOf(
   return {
     open: Effect.tryPromise({
       try: async () => {
-        const [order, pages] = await Promise.all([
-          tabOrder(address),
-          pagesByTarget(browser),
-        ]);
-        // A tab Playwright has not attached to yet, which it does a moment
-        // after the tab opens, is no Tab yet.
-        return order.flatMap((id) => {
-          const page = pages.get(id);
-          return page ? [tabOf(page)] : [];
-        });
+        const until = Date.now() + HANDOVER_WAIT_MS;
+        const pages = await handedOver(
+          await tabOrder(address),
+          () => pagesByTarget(browser),
+          {
+            pause: () => new Promise((resolve) => setTimeout(resolve, 50)),
+            over: () => Date.now() > until,
+            skipped,
+          }
+        );
+        return pages.map(tabOf);
       },
       catch: (cause) =>
         new TabReadError(
