@@ -1,6 +1,6 @@
 // Measures one arm of the Page Object study (README.md, "Running"):
 //
-//   pnpm study:baseline <arm1|arm2|arm3> [--runs <n>] [--provisional <why>]
+//   pnpm study:baseline <arm1|arm2|arm3> [--runs <n>] [--cache-from <dir>] [--provisional <why>]
 //   pnpm study:baseline render
 //
 // It serves the fixture pages from one Vite server it starts and warms, runs
@@ -8,14 +8,24 @@
 // server, writes study/baseline/<arm>.json from each run's report.json, and
 // renders study/baseline/README.md from every arm's file. `--provisional`
 // marks the arm's numbers in the table until a run without it replaces them.
+// `--cache-from` first replaces a goal arm's cache with a copy of <dir>, the
+// recordings' source, which the arm's file names beside their digest: git
+// does not carry .e2e/. It measures only a committed tree, and saves nothing
+// if the commit or the recordings changed between runs.
 // `render` only rewrites the README from the arms' files.
 import { spawn, spawnSync } from "node:child_process";
 import console from "node:console";
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { get } from "node:http";
 import { createServer } from "node:net";
-import { basename, join } from "node:path";
+import { basename, join, resolve } from "node:path";
 import process from "node:process";
 import { setTimeout } from "node:timers/promises";
 import { fileURLToPath, URL } from "node:url";
@@ -60,11 +70,31 @@ const runsAt = rest.indexOf("--runs");
 const runs = runsAt === -1 ? 3 : Number(rest[runsAt + 1]);
 const provisionalAt = rest.indexOf("--provisional");
 const provisional = provisionalAt === -1 ? undefined : rest[provisionalAt + 1];
-if (!arm || !(runs >= 1) || provisional === "") {
+const cacheFromAt = rest.indexOf("--cache-from");
+const cacheFrom = cacheFromAt === -1 ? undefined : rest[cacheFromAt + 1];
+if (
+  !arm ||
+  !(runs >= 1) ||
+  provisional === "" ||
+  cacheFrom === "" ||
+  (cacheFrom && !arm.cacheDir)
+) {
   console.error(
-    `usage: pnpm study:baseline <${Object.keys(ARMS).join("|")}> [--runs <n>] [--provisional <why>]`
+    `usage: pnpm study:baseline <${Object.keys(ARMS).join("|")}> [--runs <n>] [--cache-from <dir>] [--provisional <why>]`
   );
   process.exit(2);
+}
+// A number belongs to a commit only if nothing uncommitted ran with it.
+// study/ is this script's own output.
+const uncommitted = () => git("status", "--porcelain", "--", ":/", ":!study");
+if (uncommitted()) {
+  console.error(`commit first; uncommitted:\n${uncommitted()}`);
+  process.exit(2);
+}
+const cachePath = arm.cacheDir && join(here, arm.cacheDir);
+if (cacheFrom) {
+  rmSync(cachePath, { recursive: true, force: true });
+  cpSync(resolve(cacheFrom), cachePath, { recursive: true });
 }
 
 const free = (port) =>
@@ -92,10 +122,15 @@ const app = await startWarmApp(appPort);
 const result = {
   arm: armId,
   name: arm.name,
-  command: `pnpm study:baseline ${armId}`,
+  command: `pnpm study:baseline ${process.argv.slice(2).join(" ")}`,
   commit: git("rev-parse", "HEAD"),
   ...(provisional && { provisional }),
-  ...(arm.cacheDir && { cacheDigest: digestDir(join(here, arm.cacheDir)) }),
+  ...(cachePath && {
+    cacheSource: cacheFrom
+      ? resolve(cacheFrom)
+      : `this checkout's ${arm.cacheDir}`,
+    cacheDigest: digestDir(cachePath),
+  }),
   runs: [],
 };
 try {
@@ -128,7 +163,15 @@ try {
   app.stop();
 }
 
-if (result.runs.length === runs) {
+const changed = [
+  git("rev-parse", "HEAD") !== result.commit && "the commit",
+  uncommitted() && "the working tree",
+  cachePath && digestDir(cachePath) !== result.cacheDigest && "the recordings",
+].filter(Boolean);
+if (changed.length) {
+  console.error(`not saved: ${changed.join(" and ")} changed during the runs`);
+  process.exitCode = 1;
+} else if (result.runs.length === runs) {
   writeFileSync(join(out, `${armId}.json`), JSON.stringify(result, null, 2));
   writeReadme();
 }
@@ -310,6 +353,21 @@ function render() {
       ...rows.map((r) => `| ${r.join(" | ")} |`),
     ].join("\n");
   const arm2 = arms.find((a) => a.arm === "arm2");
+  const wholeRuns = [
+    "| Arm | Tests passed | Wall time | Commit | Recordings |",
+    "| --- | --- | --- | --- | --- |",
+    ...arms.map((a) => {
+      const passed = a.runs.map(
+        (r) => r.tests.filter((t) => t.status === "passed").length
+      );
+      return `| ${a.name} | ${range(passed)} of ${a.runs[0].tests.length} | ${range(
+        a.runs.map((r) => r.suiteWallMs),
+        seconds
+      )} | \`${a.commit.slice(0, 9)}\` | ${
+        a.cacheDigest ? `\`${a.cacheDigest.slice(0, 9)}\`` : "none"
+      } |`;
+    }),
+  ].join("\n");
   const handOffs = arms
     .filter((a) => a.arm !== "arm2")
     .map((a) => {
@@ -341,6 +399,12 @@ ${arms
 The tests with no action to turn into a goal (\`LEFT_OUT\` in [the mirror check](../../scripts/check-goal-mirror.mjs)).
 
 ${arm2 && mirrored.size ? table([row(arm2, (t) => !mirrored.has(t))]) : "Not measured yet."}
+
+## Whole runs
+
+Each run from e2e's start to its end, every test of the arm included; the tables above sum their tests' times. Recordings: the digest of the arm's cache, whose source \`<arm>.json\` names.
+
+${wholeRuns}
 
 ## Goal steps that reached the model
 
