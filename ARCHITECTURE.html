@@ -1547,9 +1547,9 @@
         "group": "ayme",
         "label": "development",
         "sub": "contributor's machine",
-        "purpose": "a contributor's machine working in this monorepo: the playground and the framework examples run from the workspace packages, with a coding agent attached",
+        "purpose": "a contributor's machine working in this monorepo: the playground and the framework examples run from the workspace packages, published through WebMCP for an agent in the page; apart from them, a Session of the workspace's `ayme` command serves a coding agent, beside the contributor's own browser automation",
         "evidence": {
-          "text": "verified: `apps/example-vue/README.md`, `apps/mcp-fixture/README.md`",
+          "text": "verified: `apps/example-vue/README.md`, `apps/mcp-fixture/tests/inspectSession.spec.ts`",
           "inferred": false,
           "mixed": false
         },
@@ -1672,9 +1672,9 @@
             }
           },
           "Browser automation": {
-            "how": "not part of the playground and example setup",
+            "how": "not part of the playground and example setup; beside a Session, the contributor's own, connected to the Session's browser over the DevTools protocol",
             "evidence": {
-              "text": "verified: `apps/example-vue/README.md`",
+              "text": "verified: `apps/example-vue/README.md`, `apps/mcp-fixture/tests/inspectSession.spec.ts`",
               "inferred": false,
               "mixed": false
             }
@@ -1803,17 +1803,17 @@
             }
           },
           "WebMCP driver": {
-            "how": "a recording driver from `@ayme-dev/webmcp/testing`",
+            "how": "a recording driver from `@ayme-dev/webmcp/testing`, which the Inspector fixture's and the examples' end-to-end tests install; the MCP fixture's tests of a Session use none",
             "evidence": {
-              "text": "verified: `packages/webmcp/testing/index.ts`",
+              "text": "verified: `packages/webmcp/testing/index.ts`, `apps/inspector-fixture/tests/fixtures.ts`, `apps/example-certification/src/tests.ts`",
               "inferred": false,
               "mixed": false
             }
           },
           "Browser automation": {
-            "how": "the MCP fixture test's own Playwright connection to a Session's browser, which plays the developer's browser automation",
+            "how": "the MCP fixture test's own Playwright connection to a Session's browser over the DevTools protocol, which plays the developer's browser automation",
             "evidence": {
-              "text": "verified: `apps/mcp-fixture/README.md`, `apps/mcp-fixture/tests/aymeCommand.ts`",
+              "text": "verified: `apps/mcp-fixture/README.md`, `apps/mcp-fixture/tests/inspectSession.spec.ts`",
               "inferred": false,
               "mixed": false
             }
