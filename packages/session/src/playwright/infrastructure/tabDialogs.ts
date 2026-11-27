@@ -69,6 +69,12 @@ export function tabDialogs(
     held?.end();
     held = undefined;
   };
+  const count = (dialog: Dialog) => {
+    counting = undefined;
+    for (const stop of running) stop.stopped = true;
+    set({ open: dialog });
+    release();
+  };
   const whileRunning = <T>(stop: Stop, work: () => T): T => {
     running.add(stop);
     const ended = () => running.delete(stop);
@@ -124,12 +130,13 @@ export function tabDialogs(
         held = { until: new Promise<void>((resolve) => (end = resolve)), end };
       }
       set("opening");
-      counting = wait(openMs, () => {
-        counting = undefined;
-        for (const stop of running) stop.stopped = true;
-        set({ open: dialog });
-        release();
-      });
+      counting = wait(openMs, () => count(dialog));
+    },
+    /** The browser says `dialog` was open before the Tab was watched: it
+     * counts at once, as nobody knows how long it has been open. */
+    alreadyOpen: (dialog: Dialog) => {
+      counting?.();
+      count(dialog);
     },
     /** The browser says the Tab's dialog closed, whoever answered it. */
     closed: () => {

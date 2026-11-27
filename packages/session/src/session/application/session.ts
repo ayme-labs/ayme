@@ -41,6 +41,7 @@ import {
   type SessionRequest,
   SessionStartError,
   type TabDialog,
+  TabDialogOpen,
   unknownRequest,
 } from "../domain";
 import { answerInspector, inspectorEvents, withoutWindow } from "./inspector";
@@ -184,7 +185,15 @@ export const openSession = (
       tabs.chosen(tab).pipe(
         Effect.flatMap((hosted) => hosted.listing),
         Effect.map(answer),
-        Effect.catch((error) => Effect.succeed(failed(error.message)))
+        Effect.catch((error) =>
+          Effect.succeed(
+            failed(
+              error instanceof TabDialogOpen
+                ? dialogOpenInListing(error.url, error.dialog)
+                : error.message
+            )
+          )
+        )
       );
 
     const answerTo = (
@@ -313,29 +322,37 @@ function sessionTabs(
     Effect.gen(function* () {
       const known = hosts.get(tab);
       if (known) return yield* known;
+      // Hosting a Tab waits on its page, which a dialog holds: a Tab whose
+      // dialog counts as open is answered with it, and hosted later.
+      const now = yield* Stream.runHead(
+        tab.dialog.pipe(Stream.filter((now) => now !== "opening"))
+      );
+      if (Option.isSome(now) && isOpen(now.value))
+        return yield* Effect.fail(new TabDialogOpen(tab.url(), now.value.open));
       // Cached at once, so two requests that arrive together host the Tab
       // once; a failed hosting is tried again by the next request.
       const hosting = yield* Effect.cached(
-        tab
-          .host({
+        Effect.raceFirst(
+          tab.host({
             given: (id, className) => {
               owners.set(id, tab);
               rooted.add(className);
             },
             released: (id) => owners.delete(id),
-          })
-          .pipe(
-            Effect.map((hosted) =>
-              atDialogs(
-                untilClosed(inTurns(hosted, ending), tab.closed),
-                tab,
-                scope
-              )
-            ),
-            Effect.tap(() =>
-              tab.closed.pipe(Effect.andThen(retire(tab)), Effect.forkIn(scope))
+          }),
+          dialogCounts(tab)
+        ).pipe(
+          Effect.map((hosted) =>
+            atDialogs(
+              untilClosed(inTurns(hosted, ending), tab.closed),
+              tab,
+              scope
             )
+          ),
+          Effect.tap(() =>
+            tab.closed.pipe(Effect.andThen(retire(tab)), Effect.forkIn(scope))
           )
+        )
       );
       hosts.set(tab, hosting);
       return yield* hosting.pipe(
@@ -444,6 +461,18 @@ const Answered = Context.Reference<{ answered: boolean }>(
 
 const isOpen = (now: TabDialog): now is { readonly open: Dialog } =>
   typeof now === "object";
+
+/** Fails with `tab`'s dialog once one counts as open there. */
+const dialogCounts = (tab: BrowserTab) =>
+  tab.dialog.pipe(
+    Stream.filter(isOpen),
+    Stream.runHead,
+    Effect.flatMap((open) =>
+      Option.isSome(open)
+        ? Effect.fail(new TabDialogOpen(tab.url(), open.value.open))
+        : Effect.never
+    )
+  );
 
 /**
  * `hosted`, whose listings, Runs and Inspector calls are answered that a

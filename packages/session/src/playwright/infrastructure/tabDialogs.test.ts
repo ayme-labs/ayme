@@ -335,3 +335,22 @@ it("a listener registered outside every action stays as it is", () => {
 
   expect(dialogs.actionCalls.bind(listener)).toBe(listener);
 });
+
+it("a dialog that was open before the Tab was watched counts as open at once, and stops the requests under way", async () => {
+  const { dialogs, told, waits } = scripted();
+  const after = gate();
+  let entered = false;
+  const request = dialogs.request(async () => {
+    await after.opened;
+    return dialogs.actionCalls.run(() => (entered = true));
+  });
+
+  dialogs.alreadyOpen(confirm);
+  dialogs.closed();
+  after.open();
+
+  expect(told).toEqual([{ open: confirm }, "none"]);
+  expect(waits).toEqual([]);
+  expect(await settled(request)).toBe(REFUSED);
+  expect(entered).toBe(false);
+});

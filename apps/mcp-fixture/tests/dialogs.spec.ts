@@ -135,3 +135,50 @@ test("a dialog on one Tab leaves a command on another Tab alone, and a command n
   expect(await page.locator("#answer").textContent()).toBe("dismissed");
   expect(await page.locator("#marks").textContent()).toBe("0");
 });
+
+test("a dialog the page opened before any command touched its Tab is answered at once", async ({
+  ayme,
+  baseURL,
+}) => {
+  const opened = await ayme("open", `${baseURL}/dialogs.html`);
+  const { page, dialogs } = await automation(opened.stdout);
+  // A click of the automation's own would wait for the confirm's answer.
+  await page.evaluate(() =>
+    setTimeout(() => document.getElementById("remove")!.click())
+  );
+  await expect.poll(() => dialogs.length).toBe(1);
+
+  expect(await ayme("tools")).toEqual({
+    code: 1,
+    stdout: "",
+    stderr: `Tab: ${baseURL}/dialogs.html\n${DIALOG_OPEN}\n`,
+  });
+
+  await dialogs[0]!.dismiss();
+  // ayme hears the dialog close on a connection of its own.
+  await expect.poll(async () => (await ayme("tools")).code).toBe(0);
+});
+
+test("a popup that opens a dialog as it loads: a command on it is answered at once that the dialog is open", async ({
+  ayme,
+  baseURL,
+}) => {
+  const opened = await ayme("open", `${baseURL}/dialogs.html`);
+  const { page, dialogs } = await automation(opened.stdout);
+
+  await page.locator("#popup").click();
+  await expect.poll(() => dialogs.length).toBe(1);
+
+  expect(await ayme("tools")).toEqual({
+    code: 1,
+    stdout: "",
+    stderr: expect.stringMatching(
+      /^Tab: \S+\nAn alert dialog is open on the tab: "Saved"\. Answer it with your browser automation, then run/
+    ),
+  });
+
+  await dialogs[0]!.accept();
+  await expect
+    .poll(async () => (await ayme("tools")).stdout)
+    .toMatch(/^Tab: Alert \(/);
+});

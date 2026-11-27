@@ -3,8 +3,14 @@
 // the built Page Objects there. ayme reaches a page only through that page,
 // from Node.
 import { pathToFileURL } from "node:url";
-import { Effect, SubscriptionRef } from "effect";
-import type { Browser, CDPSession, Page } from "playwright-core";
+import { Effect, Stream, SubscriptionRef } from "effect";
+import type {
+  Browser,
+  BrowserContext,
+  CDPSession,
+  Dialog as PlaywrightDialog,
+  Page,
+} from "playwright-core";
 
 import type {
   BrowserTab,
@@ -22,7 +28,7 @@ import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
 import { failingOnItsUncaught } from "../runUncaught";
-import { dialogOpenMs, tabDialogs, type ActionCalls } from "../tabDialogs";
+import { tabDialogs, type ActionCalls } from "../tabDialogs";
 import { handedOver, readTabOrder, tabListAddress } from "../tabList";
 import { tabInspector, type InspectorPort } from "./tabInspector";
 
@@ -75,57 +81,143 @@ const CALLER = "ayme-command";
 const reason = (cause: unknown) =>
   cause instanceof Error ? cause.message : String(cause);
 
+// ayme's own setup on a page over DevTools answers in milliseconds; a page
+// that has not answered by then, as one Chromium holds behind a dialog,
+// holds no command for longer, nor the commands of other Tabs. A Run has no
+// such limit.
+const SETUP_DEADLINE_MS = 5000;
+
+/** `work`, failed once the page has not answered `what` within the
+ * limit. */
+const withinSetup = <T>(work: Promise<T>, what: string): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            `the tab did not answer ${what} within ${SETUP_DEADLINE_MS / 1000} seconds`
+          )
+        ),
+      SETUP_DEADLINE_MS
+    );
+    void work.then(resolve, reject).finally(() => clearTimeout(timer));
+  });
+
 /** One DevTools session of ayme's own per page: it names the page's tab in
  * the browser's tab list, and holds the page's focus emulation, which
- * Chromium keeps only while the session that set it stays. */
+ * Chromium keeps only while the session that set it stays. One that failed
+ * is made again by the next use. */
 const devtoolsOf = new WeakMap<Page, Promise<CDPSession>>();
 const devtools = (page: Page) => {
   let session = devtoolsOf.get(page);
   if (!session) {
-    session = page.context().newCDPSession(page);
-    devtoolsOf.set(page, session);
+    const making = page.context().newCDPSession(page);
+    const made = withinSetup(making, "ayme's DevTools session");
+    devtoolsOf.set(page, made);
+    made.catch(() => {
+      if (devtoolsOf.get(page) === made) devtoolsOf.delete(page);
+      void making.then(
+        (late) => late.detach(),
+        () => {}
+      );
+    });
+    session = made;
   }
   return session;
 };
-/** Each page's dialogs as the Session counts them, watched over ayme's own
- * DevTools session from the first time the Session reads the page's tab:
- * Playwright tells no dialog closing. */
+
+/** Each page's dialogs as the Session counts them, watched from when
+ * Playwright hands the page over: ayme's own DevTools session tells each
+ * dialog opening and closing, which Playwright does not. */
 type Watch = {
   readonly dialogs: ReturnType<typeof tabDialogs>;
   readonly dialog: SubscriptionRef.SubscriptionRef<TabDialog>;
   /** Settles once the browser tells the session of the page's dialogs. */
-  readonly started: Promise<unknown>;
+  readonly started: Promise<void>;
 };
 const watched = new WeakMap<Page, Watch>();
-const dialogsOf = (page: Page) => {
-  let watch = watched.get(page);
-  if (!watch) {
-    const dialog = Effect.runSync(SubscriptionRef.make<TabDialog>("none"));
-    const dialogs = tabDialogs(
-      (now) => Effect.runSync(SubscriptionRef.set(dialog, now)),
-      undefined,
-      dialogOpenMs(process.env)
-    );
-    const started = devtools(page)
-      .then((session) => {
-        session.on("Page.javascriptDialogOpening", (opened) =>
-          dialogs.opened({
-            type: opened.type,
-            message: opened.message,
-            ...(opened.type === "prompt" && opened.defaultPrompt
-              ? { defaultValue: opened.defaultPrompt }
-              : {}),
-          })
-        );
-        session.on("Page.javascriptDialogClosed", () => dialogs.closed());
-        return session.send("Page.enable");
+/** A dialog as Chromium tells of it opening. */
+type Opening = {
+  readonly type: string;
+  readonly message: string;
+  readonly defaultPrompt?: string;
+};
+const dialogOf = ({ type, message, defaultPrompt }: Opening) => ({
+  type,
+  message,
+  ...(type === "prompt" && defaultPrompt
+    ? { defaultValue: defaultPrompt }
+    : {}),
+});
+const dialogsOf = (page: Page): Watch => {
+  const known = watched.get(page);
+  if (known) return known;
+  const dialog = Effect.runSync(SubscriptionRef.make<TabDialog>("none"));
+  const dialogs = tabDialogs((now) =>
+    Effect.runSync(SubscriptionRef.set(dialog, now))
+  );
+  let enabled = false;
+  let heard = false;
+  let replayed = false;
+  let session: CDPSession | undefined;
+  // Chromium answers Page.enable for no session that attached while a
+  // dialog is open, as on a popup that opens one as it loads; Playwright's
+  // own session attached before the page ran, so it tells of that dialog.
+  const told = (shown: PlaywrightDialog) => {
+    if (enabled) return;
+    heard = true;
+    dialogs.opened(
+      dialogOf({
+        type: shown.type(),
+        message: shown.message(),
+        defaultPrompt: shown.defaultValue(),
       })
-      .catch(() => {});
-    watch = { dialogs, dialog, started };
-    watched.set(page, watch);
-  }
+    );
+  };
+  // A dialog the browser tells of before it answered Page.enable was open
+  // before the watch began.
+  const opening = (opened: Opening) => {
+    if (enabled) return dialogs.opened(dialogOf(opened));
+    replayed = true;
+    dialogs.alreadyOpen(dialogOf(opened));
+  };
+  const closing = () => dialogs.closed();
+  page.on("dialog", told);
+  const started = devtools(page)
+    .then((made) => {
+      session = made;
+      made.on("Page.javascriptDialogOpening", opening);
+      made.on("Page.javascriptDialogClosed", closing);
+      return made.send("Page.enable");
+    })
+    .then(() => {
+      enabled = true;
+      // The dialog Playwright told of held Page.enable until it closed.
+      if (heard && !replayed) dialogs.closed();
+    });
+  const watch: Watch = { dialogs, dialog, started };
+  watched.set(page, watch);
+  // A watch that failed to start is forgotten, so the next command watches
+  // the page again.
+  started.catch(() => {
+    page.off("dialog", told);
+    session?.off("Page.javascriptDialogOpening", opening);
+    session?.off("Page.javascriptDialogClosed", closing);
+    if (watched.get(page) === watch) watched.delete(page);
+  });
   return watch;
 };
+
+/** Watches the dialogs of each page of `browser` from when Playwright hands
+ * it over, those of contexts made later among them. */
+export function watchDialogs(browser: Browser): void {
+  const watchContext = (context: BrowserContext) => {
+    context.pages().forEach(dialogsOf);
+    context.on("page", dialogsOf);
+  };
+  browser.contexts().forEach(watchContext);
+  browser.on("context", watchContext);
+}
 
 /** The id of each page's tab, kept from its first lookup that succeeded,
  * since a page keeps its tab. */
@@ -135,7 +227,12 @@ const targetIdOf = (page: Page) => {
   if (!id) {
     dialogsOf(page);
     id = devtools(page)
-      .then((session) => session.send("Target.getTargetInfo"))
+      .then((session) =>
+        withinSetup(
+          session.send("Target.getTargetInfo"),
+          "ayme's lookup of its tab"
+        )
+      )
       .then(({ targetInfo }) => targetInfo.targetId);
     targetIds.set(page, id);
     id.catch(() => targetIds.delete(page));
@@ -197,21 +294,29 @@ const hostOn =
   ): BrowserTab["host"] =>
   (tabIds) =>
     Effect.tryPromise({
-      try: async () => {
+      try: async (signal) => {
+        const watch = dialogsOf(page);
+        // So that the Tab's dialog is known before it is hosted, and the
+        // first dialog a Run's action opens is heard.
+        await withinSetup(watch.started, "ayme's watch of its dialogs");
+        signal.throwIfAborted();
         // So that a Run works the same while the Tab is not in front
         // (ADR-0071).
-        await (
-          await devtools(page)
-        ).send("Emulation.setFocusEmulationEnabled", { enabled: true });
+        await withinSetup(
+          (await devtools(page)).send("Emulation.setFocusEmulationEnabled", {
+            enabled: true,
+          }),
+          "ayme's focus emulation"
+        );
+        // The Session stopped hosting the Tab, as its dialog counts: no Node
+        // Host takes the page.
+        signal.throwIfAborted();
         const next = (className: string) => {
           const id = ids.next(className);
           tabIds.given(id, className);
           return id;
         };
-        const watch = dialogsOf(page);
-        const { dialogs, started } = watch;
-        // So that the first dialog a Run's action opens is heard.
-        await started;
+        const { dialogs } = watch;
         const ayme = entry.createNodeHost(
           {
             page,
@@ -273,6 +378,9 @@ function tabsOf(
         page.once("close", () => resume(Effect.void));
         if (page.isClosed()) resume(Effect.void);
       }),
+      dialog: Stream.unwrap(
+        Effect.sync(() => SubscriptionRef.changes(dialogsOf(page).dialog))
+      ),
       host: hostOn(hosting, page),
     };
     tabs.set(page, tab);

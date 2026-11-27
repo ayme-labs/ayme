@@ -322,3 +322,25 @@ it("a Run from the Inspector window ends at a dialog with the same sentence, and
     ok: true,
   });
 });
+
+it("a dialog already open on a Tab no command touched yet is answered at once, and the Session does not host the Tab", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+
+  dialogOpens(browser);
+
+  expect(await session.ask({ tools: {} })).toEqual({
+    ok: false,
+    text: `Tab: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
+  });
+  expect(await session.ask(readHeading)).toEqual({
+    ok: false,
+    text: DIALOG_OPEN,
+  });
+  expect(browser.hosted).toBe(false);
+  expect(browser.runs).toEqual([]);
+
+  browser.closeDialog();
+  expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
+  expect(browser.hosted).toBe(true);
+});

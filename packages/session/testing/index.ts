@@ -268,6 +268,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   const tab: Tab = {
     url: () => shownUrl,
     closed: Deferred.await(closed),
+    dialog: SubscriptionRef.changes(dialog),
     // As a page's registry refuses a second owner.
     host: (giving) =>
       given
