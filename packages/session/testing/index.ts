@@ -114,6 +114,12 @@ export interface ScriptedTab {
   readonly startedWith: BuiltPageObjects | undefined;
   /** The built Page Objects swapped in on the Tab's Host, in order. */
   readonly swappedIn: readonly BuiltPageObjects[];
+  /** Every Swap the Session made on the Tab, in order, whether it worked
+   * or not. */
+  readonly swapsTried: readonly BuiltPageObjects[];
+  /** Every Swap on the Tab fails from now on, for `reason`, as a rebuilt
+   * class that cannot be made there; none does once it is undefined. */
+  refuseSwaps(reason: string | undefined): void;
   /** Every Run started on the Tab, in order. */
   readonly runs: readonly { readonly tool: string; readonly input: unknown }[];
   /** How each Run on the Tab ends from now on: as `answer` resolves, or
@@ -217,6 +223,8 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   let shownUrl = url;
   const runs: { tool: string; input: unknown }[] = [];
   const swappedIn: BuiltPageObjects[] = [];
+  const swapsTried: BuiltPageObjects[] = [];
+  let refusing: string | undefined;
   let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
     Promise.resolve({ settled: true });
   let given: TabIds | undefined;
@@ -273,7 +281,14 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       ),
     },
     dialog: SubscriptionRef.changes(dialog),
-    swap: (pageObjects) => Effect.sync(() => void swappedIn.push(pageObjects)),
+    swap: (pageObjects) =>
+      Effect.suspend(() => {
+        swapsTried.push(pageObjects);
+        if (refusing !== undefined)
+          return Effect.fail(new TabReadError(refusing));
+        swappedIn.push(pageObjects);
+        return Effect.void;
+      }),
   };
   const tab: Tab = {
     url: () => shownUrl,
@@ -305,6 +320,8 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       failReads: (reason) => (shown = new TabReadError(reason)),
       holdReads: () => (shown = "held"),
       swappedIn,
+      swapsTried,
+      refuseSwaps: (reason) => (refusing = reason),
       runs,
       answerRuns: (answer) => (answerRun = answer),
       give: (id, className) => {

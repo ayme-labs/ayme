@@ -3,27 +3,24 @@
 // (rule 7).
 import { Cause, Effect, Exit, Option, Queue, Scope, Stream } from "effect";
 
-import {
-  brokenStart,
-  RunError,
-  type SessionStartError,
-  type TabReadError,
-} from "../domain";
+import { brokenStart, SessionStartError } from "../domain";
 import type { BuiltPageObjects, PageObjectsBuild } from "./pageObjectsBuild";
 import type { HostedTab } from "./sessionBrowser";
 
 /** A hosted Tab as the Session's commands reach it, whose Swaps the Session
  * makes itself. */
-export type SwappingTab = Omit<HostedTab, "swap">;
+export type SwappingTab = Omit<HostedTab, "swap"> & {
+  /** Why the last finished build failed, or why the Tab could not register
+   * the last good build it tried, while that is so: what its listings say
+   * after their Tab line (rule 7). */
+  readonly failing: () => SessionStartError | undefined;
+};
 
 /** Takes the Tab's turn for `work`: one Run, listing or Swap at a time. */
 export type InTurn = <A, E>(work: Effect.Effect<A, E>) => Effect.Effect<A, E>;
 
 /** The Session's Page Objects as its builds leave them. */
 export interface Rebuilds {
-  /** Why the last finished build failed, while it is the last: a build
-   * still under way changes nothing yet. */
-  readonly failing: () => SessionStartError | undefined;
   /** The newest good build, which a Tab hosted now starts with. */
   readonly newest: () => BuiltPageObjects;
   /**
@@ -40,9 +37,11 @@ export interface Rebuilds {
 }
 
 /** A hosted Tab as the builds reach it: the good build it has yet to swap
- * in, and what wakes its Swaps. */
+ * in, why it could not register the last one it tried, and what wakes its
+ * Swaps. */
 type FollowingTab = {
   pending: BuiltPageObjects | undefined;
+  refused: SessionStartError | undefined;
   readonly wake: Queue.Queue<void>;
 };
 
@@ -93,33 +92,34 @@ export const rebuilding = (
     yield* rebuild.pipe(Effect.forever, Effect.forkIn(scope));
 
     return {
-      failing: () => failing,
       newest: () => newest,
       swapping: (hosted, startedWith, { inTurn, closed }) =>
         Effect.gen(function* () {
           // One wake stands for every good build since the last Swap.
           const tab: FollowingTab = {
             pending: newest === startedWith ? undefined : newest,
+            refused: undefined,
             wake: yield* Queue.sliding<void>(1),
           };
           tabs.add(tab);
-          const upToDate: Effect.Effect<void, TabReadError> = Effect.suspend(
-            () => {
-              const next = tab.pending;
-              if (next === undefined) return Effect.void;
-              return hosted.swap(next).pipe(
-                Effect.map(() => {
-                  if (tab.pending === next) tab.pending = undefined;
-                })
-              );
-            }
-          );
-          // A Swap that fails is told by the next listing or Run on the Tab,
-          // which tries it again.
+          // A build the Tab cannot register is a failed build there: the
+          // Tab keeps its classes and does not try that build again.
+          const upToDate: Effect.Effect<void> = Effect.suspend(() => {
+            const next = tab.pending;
+            if (next === undefined) return Effect.void;
+            tab.pending = undefined;
+            return hosted.swap(next).pipe(
+              Effect.match({
+                onSuccess: () => (tab.refused = undefined),
+                onFailure: (error) =>
+                  (tab.refused = new SessionStartError(error.message)),
+              })
+            );
+          });
           if (tab.pending !== undefined)
             yield* Queue.offer(tab.wake, undefined);
           yield* Queue.take(tab.wake).pipe(
-            Effect.andThen(inTurn(Effect.ignore(upToDate))),
+            Effect.andThen(inTurn(upToDate)),
             Effect.forever,
             Effect.raceFirst(closed),
             Effect.ensuring(Effect.sync(() => tabs.delete(tab))),
@@ -128,10 +128,7 @@ export const rebuilding = (
           return {
             listing: Effect.andThen(upToDate, hosted.listing),
             call: (tool, input) =>
-              upToDate.pipe(
-                Effect.mapError((error) => new RunError(error.message)),
-                Effect.andThen(hosted.call(tool, input))
-              ),
+              Effect.andThen(upToDate, hosted.call(tool, input)),
             inspector: {
               ...hosted.inspector,
               request: (method, params) =>
@@ -143,6 +140,7 @@ export const rebuilding = (
                   : hosted.inspector.request(method, params),
             },
             dialog: hosted.dialog,
+            failing: () => failing ?? tab.refused,
           } satisfies SwappingTab;
         }),
     };

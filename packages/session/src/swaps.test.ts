@@ -391,6 +391,47 @@ it("a Tab that closed while a Run held it swaps nothing in once the Run ends, ho
   expect(await call).toMatchObject({ ok: false });
   runs.end();
 
-  expect(await pending(until(() => browser.swappedIn.length > 0))).toBe(true);
+  await pending(new Promise(() => {}));
+  expect(browser.swappedIn).toEqual([]);
   expect(second.swappedIn).toEqual([EDITED, LATER]);
+});
+
+const NO_BASKET = "Basket could not be made: this page has no basket.";
+
+it("a build a Tab cannot register counts there as a failed build: the Tab keeps its classes, its commands work, its listings say why, and it is not tried again", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  await session.ask({ tools: {} });
+  const second = browser.openTab(SECOND_TAB);
+  await session.ask({ tools: { tab: SECOND_TAB } });
+  browser.refuseSwaps(NO_BASKET);
+
+  await rebuilt(browser, EDITED);
+  await until(() => browser.swapsTried.length === 1);
+  await until(() => second.swappedIn.length === 1);
+
+  expect(await session.ask({ tools: { tab: shop.tab.url } })).toEqual({
+    ok: true,
+    text: `Tab: Shop (http://127.0.0.1:5173/shop.html)\nThe Page Objects do not build since the last edit, so the Session keeps the ones it has: ${NO_BASKET}\nThis screen has no Page Object Tools.`,
+    data: {
+      tab: shop.tab,
+      tools: [],
+      buildFailing: `The Page Objects do not build since the last edit, so the Session keeps the ones it has: ${NO_BASKET}`,
+    },
+  });
+  expect(
+    await session.ask({ call: { ...readHeading.call, tab: shop.tab.url } })
+  ).toMatchObject({ ok: true });
+  expect(browser.swapsTried).toEqual([EDITED]);
+  expect(
+    (await session.ask({ tools: { tab: SECOND_TAB } })).text
+  ).not.toContain(NO_BASKET);
+
+  browser.refuseSwaps(undefined);
+  await rebuilt(browser, LATER);
+  await until(() => browser.swappedIn.length === 1);
+  expect(
+    (await session.ask({ tools: { tab: shop.tab.url } })).text
+  ).not.toContain(NO_BASKET);
+  expect(browser.swappedIn).toEqual([LATER]);
 });

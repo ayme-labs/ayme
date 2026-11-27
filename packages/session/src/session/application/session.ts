@@ -59,12 +59,10 @@ import {
   type SessionBrowserRequest,
 } from "./sessionBrowser";
 
-/** What a Session has once it started: its browser, its Tabs, and its
- * Page Objects as its builds leave them. */
+/** What a Session has once it started: its browser and its Tabs. */
 type Started = {
   readonly held: HeldBrowser;
   readonly tabs: SessionTabs;
-  readonly rebuilds: Rebuilds;
 };
 
 /** One running ayme connected to one browser. */
@@ -126,7 +124,6 @@ export const openSession = (
         ]).pipe(
           Effect.map(([tabs, rebuilds]): Started => ({
             held,
-            rebuilds,
             tabs: sessionTabs(
               withoutWindow(tabs, inspector),
               name,
@@ -190,17 +187,22 @@ export const openSession = (
         })
       );
 
-    /** A listing of the Tab `on` names, answered by `answer`. */
+    /** A listing of the Tab `on` names, answered by `answer`, with the
+     * build line its Tab has after its listing. */
     const listed = (
-      { tabs, rebuilds }: Started,
+      { tabs }: Started,
       { tab }: { readonly tab?: string },
       answer: (listing: Listing) => SessionAnswer
     ) =>
       tabs.chosen(tab).pipe(
-        Effect.flatMap((hosted) => hosted.listing),
-        Effect.map(answer),
-        Effect.catch((error) => Effect.succeed(failed(error.message))),
-        Effect.map((answer) => withBuildLine(answer, rebuilds.failing()))
+        Effect.flatMap((hosted) =>
+          hosted.listing.pipe(
+            Effect.map(answer),
+            Effect.catch((error) => Effect.succeed(failed(error.message))),
+            Effect.map((answer) => withBuildLine(answer, hosted.failing()))
+          )
+        ),
+        Effect.catch((error) => Effect.succeed(failed(error.message)))
       );
 
     const answerTo = (
@@ -428,6 +430,7 @@ function untilClosed(
       events: hosted.inspector.events.pipe(Stream.interruptWhen(closed)),
     },
     dialog: hosted.dialog,
+    failing: hosted.failing,
   };
 }
 
@@ -461,6 +464,7 @@ function inTurns(hosted: SwappingTab, inTurn: InTurn): SwappingTab {
           : hosted.inspector.request(method, params),
     },
     dialog: hosted.dialog,
+    failing: hosted.failing,
   };
 }
 
@@ -530,6 +534,7 @@ function atDialogs(
         ),
     },
     dialog: hosted.dialog,
+    failing: hosted.failing,
   };
 }
 
