@@ -100,7 +100,7 @@ The navigator has three lenses:
 
 - **Model**: the Page Objects on the page and the Page Object Models it knows, with their declared [Page Object Children](ayme-page-objects.md#aymechild), each with its description and its state on the page, such as `3 matches`.
 - **Structure**: the Structural Page State an agent receives, each node tagged with the member it maps to; an element of a Locator collection by its index, such as `filterChips[1]`.
-- **Tools**: every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. A tool marked [destructive](../reference/ayme.md#destructive-actions) shows a warning icon in the list and a Destructive mark beside its name, and so does its action in the Model lens; Run runs it like any other. Peek tools lists the page's [Peeks](../reference/ayme.md#aymepeek).
+- **Tools**: in the panel in the page, every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. On a Session, the Page Object Tools alone, since a Session offers no other tool. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. A tool marked [destructive](../reference/ayme.md#destructive-actions) shows a warning icon in the list and a Destructive mark beside its name, and so does its action in the Model lens; Run runs it like any other. Peek tools lists the page's [Peeks](../reference/ayme.md#aymepeek).
 
 Selecting anything opens its detail. A tool's page and a structure node's detail also show what the model sees of them: the definitions, page state and schemas an agent gets.
 
