@@ -6,6 +6,9 @@
 ### Bug Fixes
 
 * **cli:** say in the README that the recorder prints warnings and goes on ([#1523](https://github.com/ayme-labs/ayme/issues/1523)) ([a4ab651](https://github.com/ayme-labs/ayme/commit/a4ab651f6839df3cfb3f2d11c16a32b659ee72e0))
+* **recorder:** keep the page's open popover open on a press on the toolbar ([#1515](https://github.com/ayme-labs/ayme/issues/1515)) ([04708ab](https://github.com/ayme-labs/ayme/commit/04708ab66d0ae4051859bede8ad40fd9128301aa))
+* **recorder:** keep recording when a piece of the worker's own work throws ([#1519](https://github.com/ayme-labs/ayme/issues/1519)) ([84c4b66](https://github.com/ayme-labs/ayme/commit/84c4b66e454c07df459b403902cfa79236227088))
+* **recorder:** keep a recording going when a page read or a step's changes cannot be worked out ([#1520](https://github.com/ayme-labs/ayme/issues/1520)) ([e1ae18b](https://github.com/ayme-labs/ayme/commit/e1ae18b7df50981454058b5e6c4583f14cce0811))
 
 ## [0.3.1](https://github.com/ayme-labs/ayme/compare/cli-v0.3.0...cli-v0.3.1) (2026-11-27)
 
