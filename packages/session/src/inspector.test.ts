@@ -318,6 +318,57 @@ it("a window that listens while the tab list cannot be read is told so, and then
   expect(browser.inspectorListeners).toBe(1);
 });
 
+it("one reading of the tab list and one subscription to the Tab's Host serve every window, and stop with the last one", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const first = session.listen();
+  const second = session.listen();
+  await expect.poll(() => shownTab(second.heard)).toEqual({ tab: 1 });
+  expect(shownTab(first.heard)).toEqual({ tab: 1 });
+  expect(browser.inspectorListeners).toBe(1);
+  const reads = browser.tabListReads;
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  // One reading every 250 ms, whichever number of windows listens.
+  expect(browser.tabListReads - reads).toBeLessThanOrEqual(3);
+
+  browser.tellInspector({ revision: 1 });
+  await first.stop();
+  browser.tellInspector({ revision: 2 });
+
+  await expect
+    .poll(() => second.heard.filter((event) => "contract" in event))
+    .toEqual([{ contract: { revision: 1 } }, { contract: { revision: 2 } }]);
+  expect(browser.inspectorListeners).toBe(1);
+  await second.stop();
+  expect(browser.inspectorListeners).toBe(0);
+  const stopped = browser.tabListReads;
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  expect(browser.tabListReads).toBe(stopped);
+});
+
+it("a failed or late reading of the tab list keeps the Tab the windows show, and its subscription", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const window = session.listen();
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+
+  const readable = browser.failTabList(
+    "ayme could not read the browser's tab list."
+  );
+  const failing = browser.tabListReads;
+  await expect.poll(() => browser.tabListReads).toBeGreaterThan(failing + 1);
+  readable();
+  const release = browser.holdTabList();
+  const holding = browser.tabListReads;
+  await expect.poll(() => browser.tabListReads).toBe(holding + 1);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
+  expect(window.heard).toEqual([{ tab: 1 }]);
+  expect(browser.inspectorListeners).toBe(1);
+  expect(await session.ask(contract("look", undefined, 1))).toMatchObject({
+    ok: true,
+  });
+  release();
+});
+
 it("a window that stops listening ends the Session's subscription to the Tab's contract, and the Session goes on", async () => {
   const { session, browser } = await startScriptedSession(opening);
   const window = session.listen();

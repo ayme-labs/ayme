@@ -83,6 +83,8 @@ export interface ScriptedBrowser extends ScriptedTab {
    * answers only once the test calls the function it returns, as an HTTP
    * read that is slow to answer. */
   holdTabList(): () => void;
+  /** How many reads of the browser's tab list began so far. */
+  readonly tabListReads: number;
 }
 
 /** The remote control of one Tab of the scripted browser. The scripted
@@ -312,6 +314,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   const open: Tab[] = [];
   let tabList: TabReadError | undefined;
   let heldTabList: Deferred.Deferred<void> | undefined;
+  let tabListReads = 0;
   const opened = Deferred.makeUnsafe<void, SessionStartError>();
   const built = Deferred.makeUnsafe<BuiltPageObjects, SessionStartError>();
   const gone = Deferred.makeUnsafe<void>();
@@ -327,6 +330,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   const first = openTab();
   const tabs = {
     open: Effect.suspend(() => {
+      tabListReads++;
       if (tabList) return Effect.fail(tabList);
       const now = [...open];
       const held = heldTabList;
@@ -385,6 +389,9 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       holdTabList: () => {
         const held = (heldTabList = Deferred.makeUnsafe<void>());
         return () => Deferred.doneUnsafe(held, Exit.void);
+      },
+      get tabListReads() {
+        return tabListReads;
       },
       ...first.control,
       get hosted() {
