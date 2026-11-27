@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0074
 ---
 
 # ayme adds Page Object Tools to the developer's browser automation, and `ayme mcp` offers only that

@@ -420,7 +420,7 @@ hosting its playground.
     `include: true`, otherwise it is a build without ayme and none of it runs; WebMCP
     publication as the app's setup decides, the Inspector off, Peeks inert
     - Deployment node: the host app's page in its users' browsers
-    - Evidence: verified: [docs/adr/0034-peek-tools-reach-coding-agents-only-in-development.md](docs/adr/0034-peek-tools-reach-coding-agents-only-in-development.md),
+    - Evidence: verified: [docs/adr/0076-peeks-show-only-in-the-inspector-and-only-while-it-is-on.md](docs/adr/0076-peeks-show-only-in-the-inspector-and-only-while-it-is-on.md),
       [docs/guide/guides/connect-an-agent.md](docs/guide/guides/connect-an-agent.md), [docs/guide/reference/build-plugin.md](docs/guide/reference/build-plugin.md)
   - **Build plugin**: ran once at build time; nothing of it runs in production
     - Evidence: verified: [docs/guide/guides/server-rendering.md](docs/guide/guides/server-rendering.md)

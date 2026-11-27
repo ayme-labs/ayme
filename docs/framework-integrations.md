@@ -8,7 +8,7 @@ This page holds only the behaviour contract and the list of files a new framewor
 
 An integration is a thin adapter over the public runtime session from `@ayme-dev/ayme`. It maps the session's lifetime onto the framework's: an owner creates and starts the session at the application root, and consumers read its status and register Page Objects for as long as they live. Framework-independent behaviour belongs in core, not in the adapter.
 
-API names follow [ADR-0017](adr/0017-keep-framework-integration-apis-closely-aligned.md): the same names in every framework (`AymeProvider`, `useAyme`, `usePageObject`, and the `{ ayme, webMCP }` value), with framework-native names where the framework requires them, as Angular's `provideAyme`, `injectAyme` and `injectPageObject`. One runtime owner per document and its lifetime come from [ADR-0030](adr/0030-application-setup-owns-the-runtime-and-decides-publication.md); application code driving ayme through the runtime object from [ADR-0031](adr/0031-application-code-drives-ayme-through-the-runtime-object-setup-returns.md); the package split from [ADR-0065](adr/0065-a-shared-ayme-package-ships-the-engine-and-the-page-object-compiler-with-separate-framework-and-build-integrations.md).
+API names follow [ADR-0017](adr/0017-keep-framework-integration-apis-closely-aligned.md): the same names in every framework (`AymeProvider`, `useAyme`, `usePageObject`, and the `{ ayme, webMCP }` value), with framework-native names where the framework requires them, as Angular's `provideAyme`, `injectAyme` and `injectPageObject`. One runtime owner per document and its lifetime come from [ADR-0030](adr/0030-application-setup-owns-the-runtime-and-decides-publication.md); application code driving ayme through the runtime object from [ADR-0031](adr/0031-application-code-drives-ayme-through-the-runtime-object-setup-returns.md); the package split from [ADR-0075](adr/0075-a-shared-ayme-package-ships-the-engine-and-the-page-object-compiler-and-one-package-ships-the-ayme-command.md).
 
 ## Package checklist
 
@@ -91,7 +91,7 @@ A new framework edits these files outside its own package and example:
 - the [Prettier ignore list](../.prettierignore), for the example's build output;
 - `pnpm-lock.yaml`;
 - [releasing](releasing.md)'s list of the release set;
-- [ADR-0065](adr/0065-a-shared-ayme-package-ships-the-engine-and-the-page-object-compiler-with-separate-framework-and-build-integrations.md)'s package list;
+- [ADR-0075](adr/0075-a-shared-ayme-package-ships-the-engine-and-the-page-object-compiler-and-one-package-ships-the-ayme-command.md)'s package list;
 - the [core README](../packages/ayme/README.md)'s list of `/internal` consumers, if the package imports it.
 
 Only when the framework needs them:

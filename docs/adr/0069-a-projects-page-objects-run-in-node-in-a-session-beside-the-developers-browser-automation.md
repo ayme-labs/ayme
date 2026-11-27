@@ -19,7 +19,7 @@ A coding agent reaches a project's Page Objects through a Session: one running a
 - The Session lives in a process of its own that the commands talk to, so that what it holds lasts from one command to the next: its browser, its Page Objects, its Page Object Ids and the Run under way on each Tab.
 - A Session always has a browser. It starts with one, which ayme either starts or joins, and it ends when that browser goes away. ayme closes only a browser it started.
 - A page that ships ayme is not a Session. An agent reaches it through WebMCP.
-- This adds a route beside the one ADR-0055 and ADR-0066 decide, where a page pairs with a coding agent's MCP server over the Agent Connection. That route still exists; when it is removed, a new ADR supersedes those two.
+- This is the only route by which a coding agent reaches a project's Page Objects (ADR-0074).
 
 ## Considered and rejected
 

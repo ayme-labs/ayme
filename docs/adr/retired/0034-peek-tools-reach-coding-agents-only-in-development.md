@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0076
 ---
 
 # Peek Tools reach coding agents only, and only while the app runs in development

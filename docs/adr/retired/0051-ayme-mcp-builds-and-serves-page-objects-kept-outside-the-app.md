@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0074
 ---
 
 # `ayme mcp` builds and serves Page Objects kept outside the app, and the browser automation loads them through its init script
