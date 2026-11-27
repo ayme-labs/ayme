@@ -160,6 +160,7 @@ Each Caller name has its own cursor: the page state that Caller last received, f
 
 - `webmcp`, an agent calling through WebMCP;
 - `ayme-mcp`, an agent calling through the ayme MCP server;
+- `ayme-command`, an agent calling with `ayme call` through a Session of the [`ayme` command](connect-an-agent.md);
 - `inspector`, the Inspector;
 - `app`, your app's `ayme.tools.run`, or the name it passes as `by`.
 
@@ -184,22 +185,23 @@ A tool call whose action starts loading a new document, such as a click on a pla
 }
 ```
 
-This holds for Browser Tools, Custom Tools and Page Object Tools alike; an agent reads a Page Object Tool's as [its short answer](#a-page-object-tools-answer-to-an-agent). A navigation that stays in the document, such as your client router's route change, a fragment change, or going back to an entry of the same document, waits for a Settled Page like any other action. A Goal Loop step that starts a full load is the run's last; its Handover has the reason `page_loading` and names the URL in `loading`.
+This holds for Browser Tools, Custom Tools and Page Object Tools alike; an agent reads a Page Object Tool's as [its short answer](#a-page-object-tools-answer-to-an-agent). Over Playwright in Node, as in a Session of the `ayme` command, a Page Object Tool's call answers only once its action has returned: see [The Page Object an action returns](#the-page-object-an-action-returns). A navigation that stays in the document, such as your client router's route change, a fragment change, or going back to an entry of the same document, waits for a Settled Page like any other action. A Goal Loop step that starts a full load is the run's last; its Handover has the reason `page_loading` and names the URL in `loading`.
 
 Over Playwright in Node, the old document's last capture can fail to reach ayme when the next document commits at once, as from a local server on a busy machine. The answer then has no `page_changed` and no Change Record, and `next` says that what the action changed before the load could not be read. ayme does not see a load that Playwright's own `goto` or `reload` starts, so `navigate` without a router function and `reload` answer once that call returns. These two, `navigate_back` and `navigate_forward` change nothing in the document themselves, so when its last capture does not arrive, the page before the call stands in for it, and they always answer with `page_changed`.
 
 ## The Page Object an action returns
 
-When a Page Object Action returns a Page Object whose model declares or inherits [`present`](../reference/ayme.md#page-object-presence), the call answers once that predicate returns `true`. A Caller then finds the screen the action led to, not one still on its way, such as the nearly empty page some apps load after a sign-in before they send the browser on. The wait ends at the Settled Page deadline, counted once from the action's answer: it covers the action returning, which an action that started a full load may still be about to do, and each ask of the predicate after it. Past the deadline the call answers as it would have without the wait.
+When a Page Object Action returns a Page Object whose model declares or inherits [`present`](../reference/ayme.md#page-object-presence), the call answers once that predicate returns `true`. A Caller then finds the screen the action led to, not one still on its way, such as the nearly empty page some apps load after a sign-in before they send the browser on. The wait ends at the Settled Page deadline, counted from the action's return, and each ask of the predicate gets only the time left. Past the deadline the call answers as it would have without the wait.
 
 - An action that returns nothing, a value that is not a Page Object, or a Page Object without a `present` of its own or inherited gets no wait.
 - ayme adds no other wait after an action. Waiting for a navigation or a load as such is the browser automation's, and an action does not wait for the screen it leads to: it returns that screen's Page Object.
 - The answer is the one the action gave; the wait changes when it comes, not what it says. A part of the page that came during the wait is in the next action's `changes_before`.
-- In the browser, where a full load ends ayme with the document, a call that starts one still answers at once. Over Playwright in Node, the call waits through the load for the returned Page Object.
+- In the browser, where a full load ends ayme with the document, a call that starts one still answers at once, and gets no wait.
+- Over Playwright in Node, as in a Session of the `ayme` command, ayme outlives the load. A call that starts one lasts until its action returns, however long after the load that is: it answers with what the action returned, or fails with what it threw, and then waits for the returned Page Object. ayme puts no time limit on the call, and the next call on the page waits until it ends.
 
 ## A Page Object Tool's answer to an agent
 
-An agent that calls a Page Object Tool through WebMCP or through the ayme MCP server gets a short answer instead of the action result, the same in both:
+An agent that calls a Page Object Tool through WebMCP, through the ayme MCP server, or with `ayme call` through a Session of the [`ayme` command](connect-an-agent.md) gets a short answer instead of the action result, the same in each:
 
 ```ts
 {
@@ -210,7 +212,7 @@ An agent that calls a Page Object Tool through WebMCP or through the ayme MCP se
 }
 ```
 
-`changes` is in the notation of `page_objects`, not a Change Record: a Page Object that went away is marked `(removed)`, one that appeared is shown in full after `+`, with its declared children and its id, and a declared child whose value changed reads `old → new`. It is absent when the Page Objects did not change. When the action starts loading a new document, `settled` is `false`, `url` is the URL it loads when that differs from the page's, as it does not for a reload, and `changes` is absent.
+`changes` is in the notation of `page_objects`, not a Change Record: a Page Object that went away is marked `(removed)`, one that appeared is shown in full after `+`, with its declared children and its id, and a declared child whose value changed reads `old → new`. It is absent when the Page Objects did not change. When the action starts loading a new document, `settled` is `false`. In a Session, when the action returned a Page Object that is present on the new document, the answer comes from the new page: `url` is its URL when that changed, and `changes` is how the Page Objects changed from the old page to the new one. Otherwise, and always through WebMCP and the ayme MCP server, whose ayme ends with the document, `url` is the URL the action loads when that differs from the page's, as it does not for a reload, and `changes` is absent.
 
 ```ts
 {
