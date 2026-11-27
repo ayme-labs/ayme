@@ -289,7 +289,7 @@ export const idOnAnotherTab = (id: string, on: string, named: string): string =>
   `${id} is a Page Object of the tab that shows ${on}, not of the one that shows ${named}. Leave out --tab: the Page Object Id chooses the tab.`;
 
 /** The dialog `dialog` names itself in the first sentence of every answer
- * while it is open, with what an agent does about it. */
+ * while it is open. */
 function dialogSentences({ type, message, defaultValue }: Dialog): string {
   const article = /^[aeiou]/i.test(type) ? "An" : "A";
   return [
@@ -297,21 +297,24 @@ function dialogSentences({ type, message, defaultValue }: Dialog): string {
     ...(defaultValue
       ? [`Its default value is ${JSON.stringify(defaultValue)}.`]
       : []),
-    "Answer it with your browser automation, then run ayme again.",
   ].join(" ");
 }
 
-/** Why a read of a Tab's page, such as an Inspector window's, was answered
- * without the page: a dialog is open on the Tab (rule 5). */
-export const dialogOpen = (dialog: Dialog): string => dialogSentences(dialog);
+/** Why a command was answered without the page, before it started: a
+ * dialog is open on its Tab (rule 5). Nothing of it ran, so it can be run
+ * again. */
+export const dialogOpen = (dialog: Dialog): string =>
+  `${dialogSentences(dialog)} Answer it with your browser automation, then run this command again.`;
 
 /** Why a listing of the Tab at `url` was answered without the page: a
- * dialog is open on the Tab. It still starts with the Tab line (rule 5). */
+ * dialog is open on the Tab. It still starts with the Tab line, and names
+ * the Tab by its URL, since its title is the page's, which the dialog
+ * holds (rule 5). */
 export const dialogOpenInListing = (url: string, dialog: Dialog): string =>
-  `${tabLine({ url, title: "" })}\n${dialogSentences(dialog)}`;
+  `${tabLine({ url, title: "" })}\n${dialogOpen(dialog)}`;
 
-/** Why a Run ended at a dialog, or never started: one is open on its Tab
- * (rule 4). The action does nothing more, so the agent knows that answering
- * the dialog does not finish it. */
+/** Why a Run ended at a dialog once its action had started (rule 4): part
+ * of the action may have happened, so the agent checks the page rather than
+ * run it again. */
 export const dialogOpenAtRun = (dialog: Dialog): string =>
-  `${dialogSentences(dialog)} An action stops at a dialog it does not answer itself: it does nothing more on the page, however the dialog is answered.`;
+  `${dialogSentences(dialog)} Answer it with your browser automation. The action stopped there: ayme refuses its further calls on the page, however the dialog is answered. Check the page before you choose the next step.`;

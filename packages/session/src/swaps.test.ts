@@ -237,7 +237,7 @@ it("a listing while a dialog is open keeps the build line after its Tab line", a
 
   expect(await session.ask({ tools: {} })).toEqual({
     ok: false,
-    text: `Tab: http://127.0.0.1:5173/shop.html\n${BUILD_LINE}\nA confirm dialog is open on the tab: "Remove Milk from the basket?". Answer it with your browser automation, then run ayme again.`,
+    text: `Tab: http://127.0.0.1:5173/shop.html\n${BUILD_LINE}\nA confirm dialog is open on the tab: "Remove Milk from the basket?". Answer it with your browser automation, then run this command again.`,
   });
 });
 

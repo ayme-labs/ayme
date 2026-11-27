@@ -818,6 +818,18 @@ describe("a Session's Node Host, through the internal entry", () => {
     });
   });
 
+  it("takes no Host's say over an action's calls on the public options: only the internal Node Host does", () => {
+    const options: Playwright.PlaywrightAymeOptions = {
+      page: undefined as unknown as Page,
+      // @ts-expect-error The public options have no actionCalls.
+      actionCalls: undefined,
+    };
+    expect(options).not.toHaveProperty("actionCalls", expect.anything());
+  });
+
+  // What a Host decides about each call is the page wrapper's, on a
+  // scripted page in pageInstrumentation.test.ts; here, a Run the Host
+  // stopped.
   describe("the Playwright calls of a Page Object Action's own code", () => {
     const counter =
       '<section id="counter"><output>0</output><button>Add</button></section>' +
@@ -827,7 +839,8 @@ describe("a Session's Node Host, through the internal entry", () => {
      * told apart from ayme's reads as a Session tells them. */
     async function hostDeciding(
       page: Page,
-      before: (answersAtOnce: boolean) => Promise<void> | undefined
+      before: (answersAtOnce: boolean) => Promise<void> | undefined,
+      stopped?: Promise<never>
     ) {
       const own = new AsyncLocalStorage<true>();
       const ayme = internal.createNodeHost(
@@ -838,57 +851,89 @@ describe("a Session's Node Host, through the internal entry", () => {
             run: (action) => own.run(true, action),
             before: (answersAtOnce) =>
               own.getStore() ? before(answersAtOnce) : undefined,
+            bind: (listener) => listener,
+            stopped: () => (own.getStore() ? undefined : stopped),
           },
         },
         selectors
       );
       stops.push(await ayme.start());
-      return internal.pageObjectCallerOf(ayme, "ayme-command");
+      return Object.assign(internal.pageObjectCallerOf(ayme, "ayme-command"), {
+        runs: () => ayme.runs.list(),
+        window: internal.inspectorPortOf(ayme),
+      });
     }
 
-    it("go to the Host before they start, each saying whether it answers at once without the browser", async () => {
-      const page = await pageShowing(counter);
-      const heard: boolean[] = [];
-      const caller = await hostDeciding(page, (answersAtOnce) => {
-        heard.push(answersAtOnce);
-        return undefined;
-      });
-
-      await caller.run("Counter.press", { id: "po1" });
-
-      // The action's `locator`, `getByRole` and `click`.
-      expect(heard).toEqual([true, true, false]);
-      expect(await page.locator("output").textContent()).toBe("1");
-    });
-
-    it("start only once the Host lets them", async () => {
+    it("a Run its Host stopped is logged failed with why at once, and what its action does afterwards is not: the Run still lasts until the action ends", async () => {
       const page = await pageShowing(counter);
       let release = () => {};
       const held = new Promise<void>((resolve) => (release = resolve));
-      const caller = await hostDeciding(page, (answersAtOnce) =>
-        answersAtOnce ? undefined : held
+      let stop: (why: Error) => void = () => {};
+      const stopped = new Promise<never>((_, reject) => (stop = reject));
+      stopped.catch(() => {});
+      const caller = await hostDeciding(
+        page,
+        (answersAtOnce) => (answersAtOnce ? undefined : held),
+        stopped
       );
-
+      let ended = false;
       const run = caller.run("Counter.press", { id: "po1" });
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      expect(await page.locator("output").textContent()).toBe("0");
-      release();
+      void run.then(
+        () => (ended = true),
+        () => (ended = true)
+      );
+      const log = () => caller.runs();
+      await expect.poll(() => log().at(-1)?.status).toBe("running");
+      stop(new Error("A confirm dialog is open on the tab."));
+      await expect.poll(() => log().at(-1)?.status).toBe("failed");
+      expect(ended).toBe(false);
 
+      release();
       await run;
+
       expect(await page.locator("output").textContent()).toBe("1");
+      expect(log().at(-1)).toMatchObject({
+        tool: "Counter.press",
+        status: "failed",
+        error: "A confirm dialog is open on the tab.",
+      });
     });
 
-    it("never reach the page when the Host refuses them, and the Run fails with why", async () => {
+    it("a window's Run its Host stopped is told to the listening window as failed with why at once", async () => {
       const page = await pageShowing(counter);
-      const caller = await hostDeciding(page, (answersAtOnce) => {
-        if (answersAtOnce) return undefined;
-        throw new Error("The Host refused the call.");
-      });
-
-      await expect(caller.run("Counter.press", { id: "po1" })).rejects.toThrow(
-        "The Host refused the call."
+      let release = () => {};
+      const held = new Promise<void>((resolve) => (release = resolve));
+      let stop: (why: Error) => void = () => {};
+      const stopped = new Promise<never>((_, reject) => (stop = reject));
+      stopped.catch(() => {});
+      const { window } = await hostDeciding(
+        page,
+        (answersAtOnce) => (answersAtOnce ? undefined : held),
+        stopped
       );
-      expect(await page.locator("output").textContent()).toBe("0");
+      const heard: {
+        state?: { runs: readonly { status: string; error?: string }[] };
+      }[] = [];
+      const stopListening = window.subscribe((event) =>
+        heard.push(event as (typeof heard)[number])
+      );
+      const lastRun = () => heard.at(-1)?.state?.runs.at(-1);
+
+      const run = window.request("runTool", {
+        name: "Counter.press",
+        input: { id: "po1" },
+        by: "inspector",
+      });
+      await expect.poll(() => lastRun()?.status).toBe("running");
+      stop(new Error("A confirm dialog is open on the tab."));
+
+      await expect.poll(lastRun).toMatchObject({
+        status: "failed",
+        error: "A confirm dialog is open on the tab.",
+      });
+      release();
+      await run;
+      stopListening();
     });
   });
 

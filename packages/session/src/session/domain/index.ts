@@ -51,7 +51,7 @@ export {
   type InspectorEvent,
   type InspectorRequest,
 } from "./inspector";
-export type { Dialog, TabDialog } from "./dialog";
+export { TabDialogOpen, type Dialog, type TabDialog } from "./dialog";
 export { RunError, type RunAnswer } from "./run";
 export type { SessionAnswer, SessionEnd, SessionRequest } from "./requests";
 export { brokenRebuild, brokenStart, SessionStartError } from "./startError";

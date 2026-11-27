@@ -27,6 +27,9 @@ export type InTurn = <A, E>(work: Effect.Effect<A, E>) => Effect.Effect<A, E>;
 
 /** The Session's Page Objects as its builds leave them. */
 export interface Rebuilds {
+  /** The build line of a Tab not hosted yet: while the last finished build
+   * failed, or else the source cannot be watched (rule 7). */
+  readonly buildLine: () => string | undefined;
   /** The newest good build, which a Tab hosted now starts with. */
   readonly newest: () => BuiltPageObjects;
   /**
@@ -98,7 +101,14 @@ export const rebuilding = (
     });
     yield* rebuild.pipe(Effect.forever, Effect.forkIn(scope));
 
+    const buildLine = () => {
+      const unwatched = builds.unwatched();
+      if (failing) return rebuildFailedLine(failing);
+      return unwatched === undefined ? undefined : unwatchedLine(unwatched);
+    };
+
     return {
+      buildLine,
       newest: () => newest,
       swapping: (hosted, startedWith, { inTurn, closed }) =>
         Effect.gen(function* () {
@@ -150,15 +160,10 @@ export const rebuilding = (
             },
             dialog: hosted.dialog,
             takesId: hosted.takesId,
-            buildLine: () => {
-              const unwatched = builds.unwatched();
-              if (failing) return rebuildFailedLine(failing);
-              if (tab.refused !== undefined)
-                return swapRefusedLine(tab.refused);
-              return unwatched === undefined
-                ? undefined
-                : unwatchedLine(unwatched);
-            },
+            buildLine: () =>
+              failing === undefined && tab.refused !== undefined
+                ? swapRefusedLine(tab.refused)
+                : buildLine(),
           } satisfies SwappingTab;
         }),
     };

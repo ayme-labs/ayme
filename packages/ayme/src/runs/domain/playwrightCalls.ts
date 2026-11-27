@@ -32,9 +32,10 @@ type Methods<T> = Extract<
   string
 >;
 
-// Every method of Playwright's Locator, Page, Keyboard and Mouse, so a
-// Playwright release that adds one fails typecheck here until it is
-// classified, and nowhere else.
+// Every method of Playwright's Locator, Page, Keyboard and Mouse in the
+// Playwright types the package is built against, so building against a
+// release that adds one fails typecheck here until it is classified, and
+// nowhere else.
 
 const locatorCalls = {
   all: "none",
@@ -261,8 +262,10 @@ type AtOnce<T> = {
     : never;
 }[Methods<T>];
 
-// Every method of Locator and Page that answers at once, so a Playwright
-// release that adds one fails typecheck here until it is listed.
+// Every method of Locator and Page that answers at once, as the Playwright
+// types the package is built against declare them: building against a
+// release that adds one fails typecheck here until it is listed. A newer
+// Playwright a project runs may have methods these tables lack.
 const locatorAtOnce = {
   and: true,
   contentFrame: true,
@@ -326,13 +329,20 @@ const atOnce: Record<CallSubject, Readonly<Record<string, true>>> = {
   mouse: {} satisfies Record<AtOnce<Mouse>, true>,
 };
 
-/** Whether a call answers at once, without the browser: a Host can refuse
- * it but cannot hold it, since its caller reads its answer at once. */
-export function answersAtOnce(
+/**
+ * Whether a Host may hold a call until it lets it start: one the tables know
+ * answers with a promise. A Host can refuse any call, but holding one that
+ * answers at once, or one the tables do not know, would change what it
+ * answers.
+ */
+export function mayHold(
   subject: CallSubject,
   method: string | symbol
 ): boolean {
-  return Object.hasOwn(atOnce[subject], method);
+  return (
+    Object.hasOwn(playwrightCalls[subject], method) &&
+    !Object.hasOwn(atOnce[subject], method)
+  );
 }
 
 /** What a call does, or undefined for a symbol-keyed or unknown method, which runs as it is. */

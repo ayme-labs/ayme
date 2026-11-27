@@ -6,7 +6,7 @@ import {
   type CallSubject,
   type Interaction,
 } from "../domain/interactions";
-import { answersAtOnce, elementsOf } from "../domain/playwrightCalls";
+import { elementsOf, mayHold } from "../domain/playwrightCalls";
 import type { ActionCalls } from "../application/run";
 
 type PageInstrumentation = (page: Page) => Page;
@@ -56,8 +56,92 @@ export function instrumentedPage(
       instrumented = instrumentation(instrumented);
     return instrumented;
   };
+  // Starts `call` once the Host lets an action's call start: a refused call
+  // fails as Playwright's own calls do, it rejects.
+  const afterAsking = <T>(call: () => T): T | Promise<T> => {
+    if (!actionCalls) return call();
+    try {
+      const waiting = actionCalls.before(false);
+      return waiting ? waiting.then(call) : call();
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  };
   let resolvePage = derivePage;
   const isPage = (value: unknown) => value === page || value === resolvePage();
+  // What Playwright hands out besides the Page, its locators and its input
+  // devices, through which an action can still reach the browser: a Frame,
+  // an ElementHandle, the BrowserContext, another Page, a Dialog. Each is
+  // wrapped once, so it stays the same object, and its calls go to the Host.
+  const handedOut = new WeakMap<object, object>();
+  const gated = (value: unknown): unknown => {
+    if (isPage(value)) return proxyPage;
+    if (!actionCalls) return value;
+    if (Array.isArray(value))
+      return value.some((each) => isPage(each) || isPlaywrightObject(each))
+        ? value.map(gated)
+        : value;
+    if (!isPlaywrightObject(value)) return value;
+    let proxy = handedOut.get(value);
+    if (!proxy) {
+      proxy = gatedObject(value);
+      handedOut.set(value, proxy);
+    }
+    return proxy;
+  };
+  const gatedResult = (result: unknown) =>
+    result instanceof Promise ? result.then(gated) : gated(result);
+  // A listener Playwright calls later runs as the code that registered it,
+  // and gets what it is handed wrapped too; removing it by the function the
+  // action registered still works.
+  const listeners = new WeakMap<Callback, Callback>();
+  const listening = (property: string | symbol, args: unknown[]) => {
+    const [first, listener, ...rest] = args;
+    if (!actionCalls || typeof listener !== "function") return args;
+    if (removesListener.has(property)) {
+      const bound = listeners.get(listener as Callback);
+      return bound ? [first, bound, ...rest] : args;
+    }
+    if (!addsListener.has(property)) return args;
+    let bound = listeners.get(listener as Callback);
+    if (!bound) {
+      const original = listener as Callback;
+      const inAction = actionCalls.bind(original);
+      bound = function (this: unknown, ...heard: unknown[]) {
+        return inAction.apply(this, heard.map(gated));
+      };
+      listeners.set(original, bound);
+    }
+    return [first, bound, ...rest];
+  };
+  const gatedObject = (target: object): object => {
+    // Answering a dialog is what a held call waits for, so it is never held.
+    const neverHeld = (target as { _type?: unknown })._type === "Dialog";
+    return new Proxy(target, {
+      get(_, property) {
+        const member: unknown = Reflect.get(target, property);
+        // Playwright reads its own fields when it is handed the object back.
+        if (typeof property !== "string" || property.startsWith("_"))
+          return member;
+        if (typeof member !== "function") return gated(member);
+        const send = (args: unknown[]) =>
+          gatedResult(Reflect.apply(member, target, listening(property, args)));
+        // Only a method that always answers with a promise may be held, so
+        // a method the runtime does not know answers as it always does.
+        if (neverHeld || !isAsync(member))
+          return (...args: unknown[]) => {
+            try {
+              actionCalls!.before(true);
+            } catch (error) {
+              if (isAsync(member)) return Promise.reject(error);
+              throw error;
+            }
+            return send(args);
+          };
+        return (...args: unknown[]) => afterAsking(() => send(args));
+      },
+    });
+  };
   const devices = new Map<string | symbol, object>();
   const device = (property: string | symbol) => {
     let bound = devices.get(property);
@@ -108,9 +192,7 @@ export function instrumentedPage(
             )
           )
         );
-      if (result instanceof Promise)
-        return result.then((value) => (isPage(value) ? proxyPage : value));
-      return result;
+      return gatedResult(result);
     };
     const proxy = new Proxy(initial.target, {
       get(_, property) {
@@ -123,11 +205,15 @@ export function instrumentedPage(
           isPage(target)
         )
           return device(property);
-        if (typeof member !== "function") return member;
+        if (typeof member !== "function") return gated(member);
         const perform = (args: unknown[]) => {
           const target = resolve();
           const run = () =>
-            bindResult(call(target, property, args), property, args);
+            bindResult(
+              call(target, property, listening(property, args)),
+              property,
+              args
+            );
           const interaction =
             onInteraction && interactionOf(subject, target, property, args);
           if (!interaction) return run();
@@ -137,27 +223,23 @@ export function instrumentedPage(
             return run();
           }
           // Every Interaction on an element is asynchronous, so its ref is
-          // read in the page before the input reaches the element.
-          return refOfLocator(locator, latestRefOf).then((ref) => {
-            onInteraction!(ref ? { ...interaction, ref } : interaction);
-            return run();
-          });
+          // read in the page before the input reaches the element. The Host
+          // is asked again once it is read, as it may have stopped the
+          // action meanwhile.
+          return refOfLocator(locator, latestRefOf)
+            .then((ref) => afterAsking(() => ref))
+            .then((ref) => {
+              onInteraction!(ref ? { ...interaction, ref } : interaction);
+              return run();
+            });
         };
         if (!actionCalls) return (...args: unknown[]) => perform(args);
-        const atOnce = answersAtOnce(subject, property);
-        return (...args: unknown[]) => {
-          if (atOnce) {
-            void actionCalls.before(true);
+        if (!mayHold(subject, property))
+          return (...args: unknown[]) => {
+            actionCalls.before(true);
             return perform(args);
-          }
-          // A refused call fails as Playwright's own calls do: it rejects.
-          try {
-            const waiting = actionCalls.before(false);
-            return waiting ? waiting.then(() => perform(args)) : perform(args);
-          } catch (error) {
-            return Promise.reject(error);
-          }
-        };
+          };
+        return (...args: unknown[]) => afterAsking(() => perform(args));
       },
     });
     return { proxy, resolve };
@@ -167,6 +249,59 @@ export function instrumentedPage(
   resolvePage = root.resolve;
   const proxyPage = root.proxy;
   return proxyPage;
+}
+
+type Callback = (...args: unknown[]) => unknown;
+
+// The methods that register a function Playwright calls later with what it
+// hands out, as their second argument, and those that remove one.
+const addsListener = new Set<string | symbol>([
+  "on",
+  "once",
+  "addListener",
+  "prependListener",
+  "prependOnceListener",
+  "route",
+  "routeWebSocket",
+  "exposeBinding",
+  "exposeFunction",
+  "addLocatorHandler",
+  "waitForEvent",
+]);
+const removesListener = new Set<string | symbol>([
+  "off",
+  "removeListener",
+  "unroute",
+]);
+
+const isAsync = (method: unknown) =>
+  Object.prototype.toString.call(method) === "[object AsyncFunction]";
+
+/** Whether Playwright's client made `value` to reach the browser through:
+ * one of its objects with a channel to the browser, or an instance that
+ * holds one, as a FrameLocator holds its Frame. */
+function isPlaywrightObject(value: unknown): value is object {
+  if (typeof value !== "object" || value === null || value instanceof Promise)
+    return false;
+  if (isClientObject(value)) return true;
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return (
+    prototype !== Object.prototype &&
+    prototype !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).some(isClientObject)
+  );
+}
+
+/** Playwright's public API has no brand to test; every object of its client
+ * that talks to the browser has a guid on its connection. */
+function isClientObject(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { _guid?: unknown })._guid === "string" &&
+    "_connection" in value
+  );
 }
 
 /** Diagnostic resolution must never wait for an element or prevent the actual call. */

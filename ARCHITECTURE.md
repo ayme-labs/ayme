@@ -386,15 +386,17 @@ in-browser agents and the app's own code call on the running page.
   - Evidence: verified: [packages/browser/src/projectPlaywright.ts](packages/browser/src/projectPlaywright.ts), [packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts](packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts), [packages/recorder/src/playwright/infrastructure/in-page/gate.ts](packages/recorder/src/playwright/infrastructure/in-page/gate.ts), [packages/recorder/src/playwright/infrastructure/in-page/watches.ts](packages/recorder/src/playwright/infrastructure/in-page/watches.ts), [packages/recorder/src/playwright/infrastructure/traceTool.ts](packages/recorder/src/playwright/infrastructure/traceTool.ts), [packages/recorder/src/timeline/infrastructure/recordingStore.ts](packages/recorder/src/timeline/infrastructure/recordingStore.ts)
 - **Session → Host application**
   - Flows:
-    - → loading the Playwright installed in the project's folder, launching Chromium with it
-      on a profile of its own and opening the URL, or joining a running Chromium at its
-      DevTools protocol address without Playwright's defaults, and listening for dialogs
-      without answering them; reading the browser's tab list over HTTP; turning focus
-      emulation on for each Tab it works on, through a DevTools session of its own on that Tab;
-      reading the Page Object sources of the project's ayme folder and the files they import,
-      at the start and again after each edit
-    - ← the browser going away; the tab list, the most recently active tab first; a Tab's
-      page closing; each edit to those sources, watched for as long as the Session runs
+    - → loading the Playwright installed in the project's folder, launching Chromium with it on
+      a profile of its own and opening the URL, or joining a running Chromium at its DevTools
+      protocol address without Playwright's defaults, and listening for dialogs without
+      answering them; reading the browser's tab list over HTTP; watching each page's dialogs
+      from when Playwright hands the page over, and turning focus emulation on for each Tab it
+      works on, through a DevTools session of its own on that page; reading the Page Object
+      sources of the project's ayme folder and the files they import, at the start and again
+      after each edit
+    - ← the browser going away; the tab list, the most recently active tab first; a Tab's page
+      closing; a dialog opening and closing on a page, its opening also from Playwright; each
+      edit to those sources, watched for as long as the Session runs
   - Evidence: verified: [packages/session/src/playwright/infrastructure/live/stockBrowser.ts](packages/session/src/playwright/infrastructure/live/stockBrowser.ts), [packages/browser/src/infrastructure/live/browser.ts](packages/browser/src/infrastructure/live/browser.ts), [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [packages/session/src/playwright/infrastructure/tabList.ts](packages/session/src/playwright/infrastructure/tabList.ts), [packages/session/src/page-objects/infrastructure/sourceWatch.ts](packages/session/src/page-objects/infrastructure/sourceWatch.ts)
 - **Session → Node host runtime**
   - Flows:
@@ -402,15 +404,18 @@ in-browser agents and the app's own code call on the running page.
       of the project's own `@ayme-dev/ayme`, through its `./internal` entry, loaded in the
       Session's process, with the selector engine registered on the project's Playwright;
       listings, each in one turn of the Tab, and Runs of Page Object Tools, as the
-      `ayme-command` Caller; the Inspector window's calls on the Tab's Inspector contract, served through `inspectorPortOf`, a tool run among them as the `inspector` Caller;
-      a rebuild's classes, which replace those the Tab's Host runs, in one change between its
-      Runs, through `replacePageObjects`, in the same Host, so its page registry and Page
-      Object Ids stay
+      `ayme-command` Caller; the Inspector window's calls on the Tab's Inspector contract,
+      served through `inspectorPortOf`, a tool run among them as the `inspector` Caller; the
+      Session's say over each Playwright call of a Page Object Action's own code, which it
+      holds while a dialog opens on the Tab and refuses once the Session stopped the Run at a
+      dialog, and the news that a Run stopped; a rebuild's classes, which replace those the
+      Tab's Host runs, in one change between its Runs, through `replacePageObjects`, in the
+      same Host, so its page registry and Page Object Ids stay
     - ← the Page Object Tree as text, each Page Object Tool with its availability, and a Run's
       short answer or its error; the Inspector contract's answers and events
     - ← each Page Object Id the Tab's Host gives, with the class of its Page Object, and each
       it forgets
-  - Evidence: verified: [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [packages/session/src/page-objects/infrastructure/projectAyme.ts](packages/session/src/page-objects/infrastructure/projectAyme.ts)
+  - Evidence: verified: [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [packages/session/src/page-objects/infrastructure/projectAyme.ts](packages/session/src/page-objects/infrastructure/projectAyme.ts), [packages/session/src/playwright/infrastructure/tabDialogs.ts](packages/session/src/playwright/infrastructure/tabDialogs.ts), [packages/ayme/src/runs/infrastructure/pageInstrumentation.ts](packages/ayme/src/runs/infrastructure/pageInstrumentation.ts)
 - **App Process runtime → ayme MCP server**
   - Flows:
     - → pairing without a token, the process's Peek Tools and their changes, read results

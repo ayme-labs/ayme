@@ -1,7 +1,8 @@
+import { EventEmitter } from "node:events";
 import { expect, it } from "vitest";
 
 import type { TabDialog } from "../../session/domain";
-import { DIALOG_OPEN_MS, dialogOpenMs, tabDialogs } from "./tabDialogs";
+import { DIALOG_OPEN_MS, tabDialogs } from "./tabDialogs";
 
 const confirm = { type: "confirm", message: "Remove Milk?" };
 
@@ -181,17 +182,16 @@ it("an action that starts once a stopped action's dialog closed runs freely", as
   expect(await settled(calls[0]!)).toBe("started");
 });
 
-it("an action whose call comes while a dialog counts as open is refused, though it started after the dialog counted", async () => {
+it("an action that would start while a dialog counts as open is never entered", () => {
   const { dialogs, pass } = scripted();
   dialogs.opened(confirm);
   pass();
 
-  const calls: Promise<unknown>[] = [];
-  action(dialogs, () => later(dialogs, calls));
-  await Promise.resolve();
-  await Promise.resolve();
-
-  expect(await settled(calls[0]!)).toBe(REFUSED);
+  let entered = false;
+  expect(() => dialogs.actionCalls.run(() => (entered = true))).toThrow(
+    REFUSED.slice("refused: ".length)
+  );
+  expect(entered).toBe(false);
 });
 
 it("a call that answers at once is never held while a dialog opens", async () => {
@@ -205,9 +205,184 @@ it("a call that answers at once is never held while a dialog opens", async () =>
   expect(await settled(calls[0]!)).toBe("started");
 });
 
-it("a dialog counts after 100 ms, unless AYME_DIALOG_OPEN_MS sets another number of milliseconds", () => {
-  expect(dialogOpenMs({})).toBe(100);
-  expect(dialogOpenMs({ AYME_DIALOG_OPEN_MS: "3000" })).toBe(3000);
-  expect(dialogOpenMs({ AYME_DIALOG_OPEN_MS: "soon" })).toBe(100);
-  expect(dialogOpenMs({ AYME_DIALOG_OPEN_MS: "0" })).toBe(100);
+/** A promise and the function that resolves it. */
+function gate() {
+  let open = () => {};
+  const opened = new Promise<void>((resolve) => (open = resolve));
+  return { opened, open: () => open() };
+}
+
+it("a request the dialog stopped before its action began never enters the action, once the dialog closed", async () => {
+  const { dialogs, pass } = scripted();
+  const read = gate();
+  let entered = false;
+  // As the Host's read of the Page Object Tree before the action.
+  const request = dialogs.request(async () => {
+    await read.opened;
+    return dialogs.actionCalls.run(() => (entered = true));
+  });
+
+  dialogs.opened(confirm);
+  pass();
+  dialogs.closed();
+  read.open();
+
+  expect(await settled(request)).toBe(REFUSED);
+  expect(entered).toBe(false);
+});
+
+it("a child Run a stopped action enters after its dialog closed is refused too", async () => {
+  const { dialogs, pass } = scripted();
+  const answered = gate();
+  let entered = false;
+  const request = dialogs.request(() =>
+    dialogs.actionCalls.run(async () => {
+      await answered.opened;
+      return dialogs.actionCalls.run(() => (entered = true));
+    })
+  );
+
+  dialogs.opened(confirm);
+  pass();
+  dialogs.closed();
+  answered.open();
+
+  expect(await settled(request)).toBe(REFUSED);
+  expect(entered).toBe(false);
+});
+
+it("a call an action scheduled before it returned is refused when the dialog counts while its Run settles", async () => {
+  const { dialogs, pass } = scripted();
+  const later = gate();
+  const settling = gate();
+  const calls: Promise<unknown>[] = [];
+  void dialogs.request(async () => {
+    await dialogs.actionCalls.run(() => {
+      void later.opened.then(() => {
+        try {
+          calls.push(Promise.resolve(dialogs.actionCalls.before(false)));
+        } catch (error) {
+          calls.push(Promise.reject(error));
+        }
+      });
+    });
+    // As the Host waits for the page to settle after the action.
+    await settling.opened;
+  });
+  await Promise.resolve();
+
+  dialogs.opened(confirm);
+  pass();
+  dialogs.closed();
+  later.open();
+  for (let turn = 0; turn < 4; turn++) await Promise.resolve();
+
+  expect(await settled(calls[0]!)).toBe(REFUSED);
+  settling.open();
+});
+
+it("ayme's own reads for a stopped request stay outside the action: they are neither held nor refused", async () => {
+  const { dialogs, pass } = scripted();
+  const after = gate();
+  let read: unknown = "not read";
+  const request = dialogs.request(async () => {
+    await after.opened;
+    read = dialogs.actionCalls.before(false);
+  });
+
+  dialogs.opened(confirm);
+  pass();
+  after.open();
+  await request;
+
+  expect(read).toBeUndefined();
+});
+
+it("a listener an action registered runs as the action's, though Playwright calls it from its connection: its calls are refused once the action stopped", async () => {
+  const { dialogs, pass } = scripted();
+  // As Playwright's connection, which existed before the action.
+  const connection = new EventEmitter();
+  const calls: Promise<unknown>[] = [];
+  const listener = () => {
+    try {
+      calls.push(Promise.resolve(dialogs.actionCalls.before(false)));
+    } catch (error) {
+      calls.push(Promise.reject(error));
+    }
+  };
+  action(dialogs, () =>
+    connection.on("console", dialogs.actionCalls.bind(listener))
+  );
+
+  dialogs.opened(confirm);
+  pass();
+  dialogs.closed();
+  connection.emit("console");
+
+  expect(await settled(calls[0]!)).toBe(REFUSED);
+});
+
+it("a listener registered outside every action stays as it is", () => {
+  const { dialogs } = scripted();
+  const listener = () => {};
+
+  expect(dialogs.actionCalls.bind(listener)).toBe(listener);
+});
+
+it("a dialog that was open before the Tab was watched counts as open at once, and stops the requests under way", async () => {
+  const { dialogs, told, waits } = scripted();
+  const after = gate();
+  let entered = false;
+  const request = dialogs.request(async () => {
+    await after.opened;
+    return dialogs.actionCalls.run(() => (entered = true));
+  });
+
+  dialogs.alreadyOpen(confirm);
+  dialogs.closed();
+  after.open();
+
+  expect(told).toEqual([{ open: confirm }, "none"]);
+  expect(waits).toEqual([]);
+  expect(await settled(request)).toBe(REFUSED);
+  expect(entered).toBe(false);
+});
+
+it("once the Tab's watch ends, as when its page closes, nothing more counts and the calls it held are refused", async () => {
+  const { dialogs, told, waits } = scripted();
+  const calls: Promise<unknown>[] = [];
+  action(dialogs, () => later(dialogs, calls));
+  dialogs.opened(confirm);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  dialogs.end();
+  dialogs.opened(confirm);
+
+  expect(await settled(calls[0]!)).toBe(
+    "refused: ayme refused this Playwright call: ayme no longer watches the tab's dialogs, as the tab closed or the Session ended."
+  );
+  expect(waits).toHaveLength(1);
+  expect(waits[0]!.cancelled).toBe(true);
+  expect(told).toEqual(["opening"]);
+});
+
+it("a request the dialog stopped hears why: what its Caller was answered instead", async () => {
+  const { dialogs, pass } = scripted();
+  const answered = gate();
+  let stopped: Promise<never> | undefined;
+  const request = dialogs.request(async () => {
+    stopped = dialogs.actionCalls.stopped();
+    await answered.opened;
+  });
+
+  dialogs.opened(confirm);
+  pass();
+
+  await expect(stopped).rejects.toThrow(
+    'A confirm dialog is open on the tab: "Remove Milk?".'
+  );
+  answered.open();
+  await request;
+  expect(dialogs.actionCalls.stopped()).toBeUndefined();
 });

@@ -13,7 +13,7 @@ import { SessionBrowser } from "../../../session/application";
 import { SessionStartError } from "../../../session/domain";
 import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { sessionStartError } from "../startErrors";
-import { hostTabs } from "./tabHost";
+import { hostTabs, watchDialogs } from "./tabHost";
 
 const startFailed = (what: string) => (cause: unknown) =>
   new SessionStartError(
@@ -95,6 +95,7 @@ export const stockBrowser = (projectDir: string): Layer.Layer<SessionBrowser> =>
           "open" in request
             ? yield* opened(found, request.open)
             : yield* joined(found, request.join.cdp);
+        watchDialogs(playwrightBrowser);
         return {
           address,
           gone: goneFrom(playwrightBrowser),

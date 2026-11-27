@@ -126,6 +126,8 @@ export interface ScriptedTab {
   /** The built Page Objects the Tab's Host started with, once it is
    * hosted. */
   readonly startedWith: BuiltPageObjects | undefined;
+  /** How many listings of the Tab's page the Session read. */
+  readonly listingsRead: number;
   /** The built Page Objects swapped in on the Tab's Host, in order. */
   readonly swappedIn: readonly BuiltPageObjects[];
   /** How many times the Tab's Host read its Page Objects on the page for a
@@ -258,6 +260,7 @@ function scriptedTab(
   };
   let shownUrl = url;
   const runs: { tool: string; input: unknown }[] = [];
+  let listingsRead = 0;
   const swappedIn: BuiltPageObjects[] = [];
   const swapsTried: BuiltPageObjects[] = [];
   let observed = 0;
@@ -279,13 +282,14 @@ function scriptedTab(
   const setDialog = (now: TabDialog) =>
     Effect.runSync(SubscriptionRef.set(dialog, now));
   const hosted: HostedTab = {
-    listing: Effect.suspend(() =>
-      shown === "held"
+    listing: Effect.suspend(() => {
+      listingsRead += 1;
+      return shown === "held"
         ? Effect.never
         : shown instanceof TabReadError
           ? Effect.fail(shown)
-          : Effect.succeed(shown)
-    ),
+          : Effect.succeed(shown);
+    }),
     call: (tool: string, input: unknown) =>
       Effect.tryPromise({
         try: () => {
@@ -343,6 +347,7 @@ function scriptedTab(
   const tab: Tab = {
     url: () => shownUrl,
     closed: Deferred.await(closed),
+    dialog: SubscriptionRef.changes(dialog),
     // As a page's registry refuses a second owner.
     host: (giving, pageObjects) =>
       given
@@ -369,6 +374,9 @@ function scriptedTab(
       },
       failReads: (reason) => (shown = new TabReadError(reason)),
       holdReads: () => (shown = "held"),
+      get listingsRead() {
+        return listingsRead;
+      },
       swappedIn,
       get observed() {
         return observed;
@@ -593,6 +601,9 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       },
       get inspectorListeners() {
         return first.control.inspectorListeners;
+      },
+      get listingsRead() {
+        return first.control.listingsRead;
       },
     },
   };
