@@ -8,9 +8,7 @@ status: accepted
 
 A Session joins the developer's browser without Playwright's defaults: the browser belongs to the developer's browser automation, so ayme leaves its settings as they are.
 
-Chromium stops drawing frames for a Tab that is not in front, and Playwright waits for frames before it acts, so on such a Tab a Run's action stalls until its own timeout. A Tab leaves the front during a Run as soon as the action opens a popup or a link in a new tab, or the automation switches to another. On the hidden-Tab spike and in the Session's end-to-end test, a click after the action opened a tab timed out; with focus emulation on, Chromium keeps drawing the Tab and the Run finished as it does in front.
-
-A browser started by Playwright, as `ayme open`, Playwright CLI and Playwright MCP start theirs, already has focus emulation on every page Playwright owns. A browser started by agent-browser, or by any client that is not Playwright, has none.
+Chromium stops drawing frames for a Tab that is not in front, and Playwright waits for frames before it acts, so on such a Tab a Run's action stalls until its own timeout. A Tab leaves the front during a Run as soon as the action opens a popup or a link in a new tab, or the automation switches to another. With focus emulation on, Chromium keeps drawing the Tab and the Run finishes as it does in front; the joined-browser test in [`tabs.spec.ts`](../../apps/mcp-fixture/tests/tabs.spec.ts) runs that sequence.
 
 ## Decision
 
@@ -27,4 +25,4 @@ A Session turns focus emulation on for each Tab it works on, popups and tabs an 
 
 ## Cost
 
-While a Session is connected, an app that reacts to being hidden does not react on a Tab the Session worked on, in a browser agent-browser or another client started. Under `ayme open`, Playwright CLI and Playwright MCP that was already the case.
+While a Session is connected, an app that reacts to being hidden does not react on a Tab the Session worked on.
