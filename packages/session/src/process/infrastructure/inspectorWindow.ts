@@ -39,19 +39,16 @@ const page = (name: string) =>
     `<script type="module" src="${SCRIPT_PATH}"></script>`
   );
 
-/** Whether a request is made to the loopback address the server is on,
- * from no page or from the window's own, so that a page which points a
- * name of its own at it, or a page of another origin, reads nothing. */
-function isLoopback(request: IncomingMessage): boolean {
-  const { host, origin } = request.headers;
-  if (!toLoopback(request)) return false;
+/** Whether a request names `host`, the address the server printed, and
+ * comes from no page or from the window's own: a page that points a name
+ * of its own at it, or a page of another origin, reads nothing, and a tab
+ * of the window is always at the address the Session tells apart from its
+ * Tabs (`showsWindow`). */
+function isOwn(request: IncomingMessage, host: string): boolean {
+  const { origin } = request.headers;
+  if (request.headers.host !== host) return false;
   return origin === undefined || origin === `http://${host}`;
 }
-
-/** Whether a request names the loopback address as its host. */
-const toLoopback = (request: IncomingMessage) =>
-  // A request with no Host header reads as "undefined": no loopback name.
-  /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(String(request.headers.host));
 
 const pathOf = (request: IncomingMessage) => (request.url ?? "/").split("?")[0];
 
@@ -142,14 +139,21 @@ export async function serveInspectorWindow({
   const sockets = new WebSocketServer({ noServer: true });
   const token = newToken();
   let closing = false;
+  // Set once the server listens, before it takes a request.
+  let host = "";
   const server = createServer((request, response) => {
     const path = pathOf(request);
     if (closing) {
       response.shouldKeepAlive = false;
       return send(response, 503, "text/plain", "The Session is ending.");
     }
-    if (!isLoopback(request))
-      return send(response, 403, "text/plain", "Not a loopback request.");
+    if (!isOwn(request, host))
+      return send(
+        response,
+        403,
+        "text/plain",
+        "Not a request to this address."
+      );
     if (request.method !== "GET" && request.method !== "HEAD")
       return send(response, 405, "text/plain", "Only GET is served here.");
     if (path === PAGE_PATH || path === `${PAGE_PATH}/`)
@@ -171,7 +175,7 @@ export async function serveInspectorWindow({
     if (closing) return socket.destroy();
     if (
       pathOf(request) !== SOCKET_PATH ||
-      !toLoopback(request) ||
+      request.headers.host !== host ||
       !bringsToken(request, token)
     )
       return socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
@@ -187,10 +191,10 @@ export async function serveInspectorWindow({
     server.once("error", reject);
     server.listen(0, "127.0.0.1", () => resolve());
   });
-  const { port } = server.address() as AddressInfo;
+  host = `127.0.0.1:${(server.address() as AddressInfo).port}`;
   return {
-    address: withTokenFragment(`http://127.0.0.1:${port}${PAGE_PATH}`, token),
-    agentAppSocket: withToken(`ws://127.0.0.1:${port}${SOCKET_PATH}`, token),
+    address: withTokenFragment(`http://${host}${PAGE_PATH}`, token),
+    agentAppSocket: withToken(`ws://${host}${SOCKET_PATH}`, token),
     attach: (attaching) =>
       Deferred.doneUnsafe(attached, Exit.succeed(attaching)),
     close: async () => {

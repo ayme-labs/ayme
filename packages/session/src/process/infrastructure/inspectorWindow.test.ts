@@ -133,28 +133,31 @@ it("serves the window's page and the Inspector's script on the loopback address,
   expect((await fetch(new URL("/other", address))).status).toBe(404);
 });
 
-it("answers nothing to a request named for another host, so a page that points a name of its own at it reads nothing", async () => {
-  const { address } = await serve();
-  const { port } = new URL(address);
+it.each(["evil.test", "localhost"])(
+  "answers nothing to a request named %s, only to the address it printed, so the window's own tab is always told apart from the Session's",
+  async (name) => {
+    const { address } = await serve();
+    const { port } = new URL(address);
+    const named = { host: `${name}:${port}` };
 
-  const { statusCode } = await new Promise<{ statusCode?: number }>(
-    (resolve) => {
-      void import("node:http").then(({ get }) =>
-        get(
-          {
-            host: "127.0.0.1",
-            port,
-            path: "/inspector",
-            headers: { host: `evil.test:${port}` },
-          },
-          resolve
-        )
-      );
-    }
-  );
+    const { statusCode } = await new Promise<{ statusCode?: number }>(
+      (resolve) => {
+        void import("node:http").then(({ get }) =>
+          get(
+            { host: "127.0.0.1", port, path: "/inspector", headers: named },
+            resolve
+          )
+        );
+      }
+    );
+    const socket = new WebSocket(socketUrl(address), { headers: named });
+    onTestFinished(() => socket.terminate());
 
-  expect(statusCode).toBe(403);
-});
+    expect(statusCode).toBe(403);
+    const [error] = (await once(socket, "error")) as [Error];
+    expect(error.message).toContain("403");
+  }
+);
 
 it("refuses a window's socket from a page of another origin", async () => {
   const { address } = await serve();
