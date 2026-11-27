@@ -78,7 +78,9 @@ End with `ayme detach`, which leaves the browser running.
   answers that no Session is open, start one as above.
 - `-s=<name>`, or `AYME_SESSION`, names a Session, so that two agents in one
   folder each have their own. Every command of that Session takes the same
-  name.
+  name. Your automation needs a session of its own too, as
+  [Sessions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#sessions)
+  says.
 - ayme works on the browser's most recently active tab. It follows the tab
   your automation switches to or opens. The first line of `ayme page-objects`
   and `ayme tools` names that tab.
