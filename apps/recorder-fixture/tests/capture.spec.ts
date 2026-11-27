@@ -52,16 +52,20 @@ test.describe("ayme capture <url>", () => {
         (await cdp.send("Target.getTargets")).targetInfos.filter(
           (target) => target.type === "page"
         );
+      // Both contexts come from the one read that listed both pages: a
+      // later read once missed the window's address, for a reason not found.
+      let listed: Awaited<ReturnType<typeof pages>> = [];
       await expect
-        .poll(async () => (await pages()).map((target) => target.url).sort())
+        .poll(async () => {
+          listed = await pages();
+          return listed.map((target) => target.url).sort();
+        })
         .toEqual([fixturePages.url(), windowUrl].sort());
-      const contextOf = async (url: string) =>
-        (await pages()).find((target) => target.url === url)!.browserContextId;
+      const contextOf = (url: string) =>
+        listed.find((target) => target.url === url)!.browserContextId;
       // A context of its own: the recorder's page hooks, Playwright's
       // recorder and the trace are all the recorded context's.
-      expect(await contextOf(windowUrl!)).not.toBe(
-        await contextOf(fixturePages.url())
-      );
+      expect(contextOf(windowUrl!)).not.toBe(contextOf(fixturePages.url()));
       // Playwright learns of a page and its address a moment after the
       // browser lists it.
       const pageAt = async (url: string) => {
