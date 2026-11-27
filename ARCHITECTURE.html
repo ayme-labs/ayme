@@ -1173,6 +1173,25 @@
         }
       },
       {
+        "from": "Coding agents",
+        "to": "Browser automation",
+        "flows": [
+          {
+            "dir": "→",
+            "text": "in the Page Object study's third arm, Claude Code, started by e2e's ACP adapter in an e2e test worker and spoken to over ACP on stdio, calls e2e's action tools and the e2e suite's Page Objects as tools on an MCP server the worker serves over HTTP on 127.0.0.1"
+          },
+          {
+            "dir": "←",
+            "text": "each step's instruction and screen, tool results, and `tools/list_changed` notifications as the tools that can run change"
+          }
+        ],
+        "evidence": {
+          "text": "verified: `packages/e2e-tools/README.md`, `apps/inspector-fixture/e2e.goals-tools.config.ts`",
+          "inferred": false,
+          "mixed": false
+        }
+      },
+      {
         "from": "Browser runtime",
         "to": "Host application",
         "flows": [
@@ -1717,9 +1736,9 @@
             }
           },
           "Browser automation": {
-            "how": "not part of the playground and example setup",
+            "how": "not part of the playground and example setup. The Page Object study's goal runs in `apps/inspector-fixture`, started by hand, drive Chromium with e2e: its runner process starts the fixture's Vite server and forks the test workers, and each worker starts the coding agent; the third arm runs the runner and the workers through `e2e-patched` from the private `@ayme-dev/e2e-tools`, with e2e patched in those processes only",
             "evidence": {
-              "text": "verified: `apps/example-vue/README.md`",
+              "text": "verified: `apps/example-vue/README.md`, `packages/e2e-tools/README.md`, `apps/inspector-fixture/e2e.goals.config.ts`",
               "inferred": false,
               "mixed": false
             }

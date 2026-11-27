@@ -67,10 +67,7 @@ before any test assertion, with its own message. WebMCP is experimental, so
 only the test of the Connections popover's WebMCP state installs a WebMCP
 driver, the recording one from `@ayme-dev/webmcp/testing`.
 
-The goal tests (`tests/goals/`) run only by hand, with Claude Code signed in:
-`pnpm test:goals` for the Page Object study's first arm, on e2e as
-published, and `pnpm test:goals:tools` for its third, the same files with the
-e2e suite's Page Objects as tools
-([`@ayme-dev/e2e-tools`](../../packages/e2e-tools/README.md)). Their ports
-come from the checkout's path (`e2e.goals.config.ts`). `pnpm test:tools-check`
-checks the third arm's wiring with no model.
+The goal tests (`tests/goals/`) are the Page Object study's first and third
+arms, and run only by hand: the [testing guide](../../docs/testing.md) has
+their commands, and [`@ayme-dev/e2e-tools`](../../packages/e2e-tools/README.md)
+the third arm's runs, its model-free check and what keeps the arms apart.
