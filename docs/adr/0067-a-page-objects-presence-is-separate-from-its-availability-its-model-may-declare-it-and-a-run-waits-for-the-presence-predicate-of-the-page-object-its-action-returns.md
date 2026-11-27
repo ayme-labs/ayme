@@ -3,7 +3,7 @@ status: accepted
 supersedes: ADR-0061
 ---
 
-# A Page Object's presence is separate from its availability, its model may declare its root and its presence, and a Run waits for the Page Object its action returns
+# A Page Object's presence is separate from its availability, its model may declare it, and a Run waits for the presence predicate of the Page Object its action returns
 
 ## Why
 
@@ -11,14 +11,14 @@ One measure of whether a Page Object could be used could not tell a collapsed of
 
 And presence rested on conventions of ayme's own: a top-level Page Object was present while it was registered, and a rooted one while a member with an agreed name resolved to one element. An app that did not follow them had no way to say when a Page Object is on the page. Registering every model at setup listed every page's tools on every page, and a model whose anchor had another name failed quietly.
 
-A Page Object Action that leads to another screen returns that screen's Page Object, and an action waits only for its own outcome, not for the screen it leads to. A Run then answered from the page as it settled after the action. After a sign-in, an app often loads a nearly empty page first and only then sends the browser on, or shows the next screen after the page has already gone quiet. The agent then read a screen without Page Objects and needed another call. On a prototype, waiting for the returned Page Object's own presence predicate brought those empty answers after a sign-in to zero.
+A Page Object Action that leads to another screen returns that screen's Page Object, but the Run answered as soon as the page settled after the action. After a sign-in, an app often shows a nearly empty page first, so the agent read a screen without Page Objects and had to call again. On a prototype, waiting for the returned Page Object's presence predicate removed those empty answers.
 
 ## Decision
 
 Page Object Presence and Page Object Availability are separate results of one observation. Presence decides what is on the page: which Page Objects the Structural Page State marks and the Page Object Tree shows, and which Page Object Tools are listed. Availability decides whether a listed tool would run now (ADR-0062). Availability implies presence; presence does not imply availability.
 
 - A Page Object with a Page Object Root is present while its root is one element the page renders within the area a user reaches by ordinary scrolling. A root that has left the page, such as a hidden, detached, fully clipped or collapsed off-canvas one, is absent. A root that is only below the fold, behind a modal it is not in, inert, or covered stays present, and can be unavailable. Observation simulates scrolling only as far as answering that needs, never scrolls, clicks or focuses, and leaves the page as it found it.
-- A model may declare its root and its presence, each as a predicate in the mark that makes the class a Page Object Model, so an app says when its Page Objects are on the page instead of following ayme's conventions. Each predicate receives the live Page Object, runs read-only, and is inherited, nearest declaring class first, so an app writes it once on a base class of its own. Predicates run with the observation, and a presence predicate also while a Run waits for the Page Object its action returned; neither checks a call. Only a declared root anchors a model, not a member's name, and a Locator member that resolves to the root's element is the root, not a child.
+- A model may declare its root and its presence, each as a predicate in the mark that makes the class a Page Object Model, so an app says when its Page Objects are on the page instead of following ayme's conventions. Each predicate receives the live Page Object, runs read-only, and is inherited, nearest declaring class first, so an app writes it once on a base class of its own. Both run with the observation, and the presence predicate also while a Run waits (below); neither checks a call. Only a declared root anchors a model, not a member's name, and a Locator member that resolves to the root's element is the root, not a child.
 - Without predicates, the conventions stay the defaults: a model with a root is present while its root is, a top-level model without one while it is registered, and a child with neither while the Page Object it is reached through is. With both, the root must be present and the presence predicate narrows.
 - The presence predicate gates the subtree: a Page Object its presence predicate withdraws is absent with its children. A root gates only its own Page Object, so a child can still be present inside one whose root is not.
 - A predicate that throws makes its Page Object absent and reports the error. Presence carries no reason: an absent Page Object's tools are listed nowhere a reason could show.
@@ -26,10 +26,10 @@ Page Object Presence and Page Object Availability are separate results of one ob
 - An app can name the Page Objects of its pages in one place at setup, beside registering a Page Object in a component. A model whose presence is a component's lifetime still registers in that component.
 - The Structural Page State leaves out the captured subtree of a root known not to be present. A root that resolves to several elements establishes no Page Object and no tool, and removes nothing from the capture.
 - ayme's Page Object registry owns the one completed observation, with both results and the identity of each root's element. Measuring them does not extend the browser adapter's contract.
-- A Run whose Page Object Action returns a Page Object with a presence predicate of its own, declared or inherited, answers once that predicate holds, or at the Settled Page deadline counted from the action's return. This holds for every Caller and every Host.
-  - A Page Object without a presence predicate of its own, an action that returns nothing, and any other value an action returns get no wait.
-  - The wait changes when the Run answers, not what it answers: the Change Record stays the one the action's Settled Page wait gave.
-  - An action that starts a full load answers at the load's start. A Host whose runtime ends with its document, as the browser runtime's does, ends the Run there and does not wait, since the wait would lose the answer with the document. A Host whose session outlives the load, as a Host in Node does, keeps the Run until the action returns, with what it returns or throws, and waits from that return. ayme adds no time limit to a Run: an action's own waits are respected, and the next Run on the page starts only once the action has returned.
+- When a Page Object Action returns a Page Object whose model declares or inherits a presence predicate, its Run waits for that predicate to hold, and for nothing else. The wait ends at the Settled Page deadline, counted from the action's return. A Page Object without a presence predicate, and any other value an action returns, get no wait. This holds for every Caller and every Host.
+  - The wait changes when the Run answers, not what it answers: the Change Record is the one the action's Settled Page wait gave.
+  - When the action starts a full load, a Host whose runtime ends with its document, as the browser runtime's does, answers at the load's start and does not wait, since the answer would be lost with the document. A Host that outlives the load, such as a Session, keeps the Run until the action returns, with what it returns or throws, and waits from that return.
+  - ayme adds no time limit to a Run: an action's own waits are respected, and the next Run on the page starts only once the action has returned.
 
 ## Considered and rejected
 
@@ -38,8 +38,8 @@ Page Object Presence and Page Object Availability are separate results of one ob
 - A class-level availability predicate to say a page is not shown. A page the browser is not on is the collapsed sidebar, not the content behind a modal: it leaves the page state rather than staying listed with a reason.
 - A route or URL helper shipped by ayme. The app's router already knows its routes.
 - A wait after every action, for a load or for the page to change. Built and measured on a prototype: every eval arm got several seconds slower, and the answers did not improve.
-- An action that waits for the screen it leads to. A Page Object knows itself and its own children; the screen it leads to is named only as its return value, and that screen's own presence predicate already says when it is there.
-- One deadline from the action's answer at a load's start, for the action returning and the predicate together. A Run then ended while its action went on: the next Run could act on the page at the same time, and what the action returned or threw after the load was lost.
+- An action that waits for the screen it leads to. A Page Object knows itself and its own children; the screen it leads to is named only as its return value, and that screen's presence predicate already says when it is there.
+- One deadline, counted from a load's start, for the action to return and the predicate to hold. A Run then ended while its action went on: the next Run could act on the page at the same time, and what the action returned or threw after the load was lost.
 
 ## Cost
 
