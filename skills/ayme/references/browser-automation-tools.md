@@ -9,9 +9,10 @@ clicks outside Page Objects, navigation, and answering dialogs.
 
 Run each command in the project's folder. Write it `npx ayme <command>` when
 the project has `@ayme-dev/cli` in its `package.json`. When the project also
-has `@ayme-dev/mcp`, whose command is also called `ayme`, write
-`npx @ayme-dev/cli <command>` instead. Below, the commands are written
-`ayme <command>` for short. When the project has no `@ayme-dev/cli`, read
+has `@ayme-dev/mcp`, `npx ayme` can run that package's command instead: ask
+the user to uninstall it, as
+[Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#set-up-your-project)
+says. Below, the commands are written `ayme <command>` for short. When the project has no `@ayme-dev/cli`, read
 [Browser setup](browser-setup.md) first.
 
 ## Connect ayme and your automation to one browser

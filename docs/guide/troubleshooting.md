@@ -25,7 +25,7 @@ The common reasons an ayme setup fails, by what you see.
 These are for a coding agent that runs your Page Object Tools with the `ayme` command, as [Connect an agent](guides/connect-an-agent.md) sets up.
 
 - **`No Session is open in <folder>.`**: no Session runs in that folder under that name. Start one with `ayme open` or `ayme attach`, in the project's folder and with the same `-s=<name>` as the command. `ayme list` lists the folder's Sessions.
-- **`npx ayme` has no `open`, `attach` or `page-objects`**: the project also has `@ayme-dev/mcp`, whose command is also called `ayme`, and `npx` ran that one. Run `npx @ayme-dev/cli <command>` instead.
+- **`npx ayme` has no `open`, `attach` or `page-objects`**: the project also has `@ayme-dev/mcp`, whose command is also called `ayme`, and `npx` ran that one. Uninstall it, as [Set up your project](guides/connect-an-agent.md#set-up-your-project) says.
 - **The Session does not start, and names a package**: the project has no `@ayme-dev/ayme`, has it at another version than `@ayme-dev/cli`, or has no Playwright, or one older than 1.62. Install the version the message names.
 - **`<folder> has no ayme/page-objects.ts.`**: list your Page Object classes there; see [Connect an agent](guides/connect-an-agent.md#set-up-your-project).
 - **`The Page Objects of … did not build:`**: the build error follows. Fix it, then start the Session again. A Session builds your Page Objects only when it starts, so start it again after every edit.

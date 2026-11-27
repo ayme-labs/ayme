@@ -26,6 +26,8 @@ The agent's browser automation keeps doing everything else: snapshots, clicks ou
 
    The command runs your Page Objects with your project's own `@ayme-dev/ayme` and Playwright. When a version does not fit, it does not start, and says which version to install.
 
+   If your project has `@ayme-dev/mcp`, uninstall it with `npm uninstall @ayme-dev/mcp`. It is retired, and its command is also called `ayme`, so `npx ayme`, and even `npx @ayme-dev/cli`, can run it instead of this one.
+
 2. Keep your [Page Object Models](ayme-page-objects.md) in the [`ayme` folder](ayme-folder.md), and list them in `ayme/page-objects.ts`. Its default export is an array of your Page Object classes, as the `pageObjects` option of [`createAyme`](../reference/ayme.md#createayme) takes them:
 
    ```ts
@@ -55,7 +57,7 @@ Then ask your agent to call one of your Page Object Tools, and to confirm the ef
 
 ## Connect ayme and the browser automation to one browser
 
-The agent runs the commands in your project's folder, as `npx ayme <command>`. If your project also has `@ayme-dev/mcp`, whose command is also called `ayme`, it runs `npx @ayme-dev/cli <command>` instead. The commands below are written `ayme <command>` for short.
+The agent runs the commands in your project's folder, as `npx ayme <command>`. The commands below are written `ayme <command>` for short.
 
 Connect both before the agent acts on the page. Chrome answers no new DevTools connection while a dialog is open, so an automation that connects after an action opened a dialog cannot answer it.
 
