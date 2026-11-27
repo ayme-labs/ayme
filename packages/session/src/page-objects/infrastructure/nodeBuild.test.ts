@@ -226,6 +226,19 @@ it("an entry whose default export lists no classes fails the start, saying what 
   );
 });
 
+it("an entry that lists two different classes of one name fails the build, since ayme tells Page Object classes apart by name", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nimport { Basket as Cart } from "./pom/cart/Basket";\nexport default [Basket, Cart];\n',
+    "ayme/pom/Basket.ts": BASKET,
+    "ayme/pom/cart/Basket.ts": BASKET,
+  });
+
+  expect(await refusal(dir)).toBe(
+    `The default export of ${join(dir, "ayme", "page-objects.ts")} lists two different classes named Basket. ayme tells Page Object classes apart by name: rename one of them.`
+  );
+});
+
 it("a built module that cannot be written to a temporary file fails the start, saying where", async () => {
   const { dir } = await project({
     "ayme/page-objects.ts": "export default [];\n",

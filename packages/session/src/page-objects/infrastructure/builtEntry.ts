@@ -80,18 +80,32 @@ const placeOf = ({ location }: PartialMessage) =>
     : "";
 
 /** The Page Object classes the built `entry` lists as its default
- * export. */
+ * export. Two different classes of one name are refused here, since the
+ * registry tells classes apart by name and would leave one of them out. */
 export const pageObjectClasses = (
   module: { readonly default?: unknown },
   entry: string
 ): Effect.Effect<readonly unknown[], SessionStartError> => {
   const listed = module.default;
-  return Array.isArray(listed) &&
-    listed.every((item) => typeof item === "function")
-    ? Effect.succeed(listed)
-    : Effect.fail(
+  if (
+    !Array.isArray(listed) ||
+    !listed.every((item) => typeof item === "function")
+  )
+    return Effect.fail(
+      new SessionStartError(
+        `The default export of ${entry} is not an array of Page Object classes. List the project's Page Object classes in it: export default [Basket, Checkout];`
+      )
+    );
+  const byName = new Map<string, unknown>();
+  for (const model of listed as readonly { readonly name: string }[]) {
+    const named = byName.get(model.name);
+    if (named !== undefined && named !== model)
+      return Effect.fail(
         new SessionStartError(
-          `The default export of ${entry} is not an array of Page Object classes. List the project's Page Object classes in it: export default [Basket, Checkout];`
+          `The default export of ${entry} lists two different classes named ${model.name}. ayme tells Page Object classes apart by name: rename one of them.`
         )
       );
+    byName.set(model.name, model);
+  }
+  return Effect.succeed(listed);
 };

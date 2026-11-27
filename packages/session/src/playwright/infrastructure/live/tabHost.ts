@@ -21,7 +21,6 @@ import {
 import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
-import { swapClasses, type NodeHostPom } from "../swapClasses";
 import { failingOnItsUncaught } from "../runUncaught";
 import { dialogOpenMs, tabDialogs, type ActionCalls } from "../tabDialogs";
 import { handedOver, readTabOrder, tabListAddress } from "../tabList";
@@ -44,8 +43,13 @@ type NodeHostEntry = {
       actionCalls: ActionCalls;
     },
     selectors: unknown
-  ): { start(): Promise<() => void>; readonly pom: NodeHostPom };
+  ): { start(): Promise<() => void> };
   createPageObjectIdSource(): IdSource;
+  replacePageObjects(
+    ayme: unknown,
+    running: readonly unknown[],
+    rebuilt: readonly unknown[]
+  ): void;
   inspectorPortOf(ayme: unknown): InspectorPort;
   pageObjectCallerOf(
     ayme: unknown,
@@ -147,12 +151,12 @@ const targetIdOf = (page: Page) => {
 };
 
 /** The Tab's page as its Host reaches it through `caller`, running
- * `classes` on `pom`. */
+ * `classes` on the Node Host `ayme` of `entry`. */
 const hostedTab = (
   caller: ReturnType<NodeHostEntry["pageObjectCallerOf"]>,
   inspector: InspectorPort,
   dialog: SubscriptionRef.SubscriptionRef<TabDialog>,
-  pom: NodeHostPom,
+  { entry, ayme }: { readonly entry: NodeHostEntry; readonly ayme: unknown },
   classes: readonly unknown[]
 ): HostedTab => ({
   // Each takes the Tab's turn, so it waits for the Run under way.
@@ -175,7 +179,7 @@ const hostedTab = (
     Effect.try({
       try: () => {
         const rebuilt = (pageObjects as NodePageObjects).classes;
-        swapClasses(pom, classes, rebuilt);
+        entry.replacePageObjects(ayme, classes, rebuilt);
         classes = rebuilt;
       },
       catch: (cause) =>
@@ -233,7 +237,7 @@ const hostOn =
           entry.pageObjectCallerOf(ayme, CALLER),
           entry.inspectorPortOf(ayme),
           dialog,
-          ayme.pom,
+          { entry, ayme },
           classes
         );
       },

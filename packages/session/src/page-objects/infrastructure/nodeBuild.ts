@@ -171,6 +171,9 @@ const bundle = (entry: string, compiler: CompilerEntry, read: Set<string>) => {
         format: "esm",
         write: false,
         outfile: "page-objects.mjs",
+        // A class keeps the name it is declared with, which the entry check
+        // compares, where two of one name would otherwise be renamed apart.
+        keepNames: true,
         logLevel: "silent",
         plugins: [
           readFiles(read),

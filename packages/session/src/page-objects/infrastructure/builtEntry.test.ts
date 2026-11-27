@@ -28,6 +28,21 @@ it.each([[{}], [{ default: Basket }], [{ default: [Basket, "Checkout"] }]])(
   }
 );
 
+it("refuses an entry that lists two different classes of one name, and takes one listed twice", async () => {
+  const Cart = { Basket: class {} }.Basket;
+  const error = await Effect.runPromise(
+    Effect.flip(pageObjectClasses({ default: [Basket, Cart] }, entry))
+  );
+  expect(error.message).toBe(
+    "The default export of /app/ayme/page-objects.ts lists two different classes named Basket. ayme tells Page Object classes apart by name: rename one of them."
+  );
+  expect(
+    await Effect.runPromise(
+      pageObjectClasses({ default: [Basket, Basket] }, entry)
+    )
+  ).toEqual([Basket, Basket]);
+});
+
 it("says which entry did not build, above the build's own messages", () => {
   expect(
     buildFailed(entry, [
