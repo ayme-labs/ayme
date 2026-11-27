@@ -146,6 +146,13 @@ export const runFailed = ({ message, changes }: RunError): SessionAnswer =>
       : [message, "", ...changesLines(changes)].join("\n")
   );
 
+/** The answer to a command whose answer could not be made or written, such
+ * as a Run's whose returned value throws when it is turned into text. */
+export const unanswerable = (why: string): SessionAnswer =>
+  failed(
+    `ayme could not write the answer to this command: ${why.replace(/\.$/, "")}.`
+  );
+
 /** The answer to a command still waiting when the Session ended. */
 export function endedBeforeAnswer(end: SessionEnd): SessionAnswer {
   switch (end) {

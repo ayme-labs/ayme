@@ -392,6 +392,24 @@ it("--params that is not JSON, or names a file that cannot be read, is answered 
   expect(browser.runs).toEqual([]);
 });
 
+it("a command whose answer cannot be turned into text is answered with why, and the Session goes on", async () => {
+  const { served, browser } = await claimAndServe();
+  if (served._tag !== "Success") throw served.failure;
+  // A value a Page Object returned, which throws when it is written out.
+  const result = Object.defineProperty({}, "toJSON", {
+    value: () => {
+      throw new Error("This value cannot be written.");
+    },
+  });
+  browser.answerRuns(async () => ({ settled: true, result }));
+
+  expect(await askCall(place, "Basket.add", undefined)).toEqual({
+    ok: false,
+    text: "ayme could not write the answer to this command: This value cannot be written.",
+  });
+  expect(await askSession(place, { stop: {} })).toMatchObject({ ok: true });
+});
+
 it("Sessions of different names run side by side in one folder, and a command reaches the one it names", async () => {
   const review = { projectDir, name: "review" };
   const first = await claimAndServe();
