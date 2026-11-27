@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import { expect, it } from "vitest";
 
 import type { TabDialog } from "../../session/domain";
@@ -302,4 +303,35 @@ it("ayme's own reads for a stopped request stay outside the action: they are nei
   await request;
 
   expect(read).toBeUndefined();
+});
+
+it("a listener an action registered runs as the action's, though Playwright calls it from its connection: its calls are refused once the action stopped", async () => {
+  const { dialogs, pass } = scripted();
+  // As Playwright's connection, which existed before the action.
+  const connection = new EventEmitter();
+  const calls: Promise<unknown>[] = [];
+  const listener = () => {
+    try {
+      calls.push(Promise.resolve(dialogs.actionCalls.before(false)));
+    } catch (error) {
+      calls.push(Promise.reject(error));
+    }
+  };
+  action(dialogs, () =>
+    connection.on("console", dialogs.actionCalls.bind(listener))
+  );
+
+  dialogs.opened(confirm);
+  pass();
+  dialogs.closed();
+  connection.emit("console");
+
+  expect(await settled(calls[0]!)).toBe(REFUSED);
+});
+
+it("a listener registered outside every action stays as it is", () => {
+  const { dialogs } = scripted();
+  const listener = () => {};
+
+  expect(dialogs.actionCalls.bind(listener)).toBe(listener);
 });

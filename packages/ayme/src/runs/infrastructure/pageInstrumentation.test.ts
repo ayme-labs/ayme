@@ -160,6 +160,11 @@ function hostDeciding() {
     decision: "start" as "start" | "refuse" | Promise<void>,
     asked: 0,
     run: <T>(action: () => T) => action(),
+    bound: [] as unknown[],
+    bind: <F>(listener: F) => {
+      host.bound.push(listener);
+      return listener;
+    },
     before: () => {
       host.asked += 1;
       if (host.decision === "refuse") throw new Error("refused");
@@ -358,6 +363,7 @@ it("what a listener is handed carries the check, and the listener is removed by 
   const listener = (value: unknown) =>
     void heard.push(value as (typeof heard)[number]);
   wrapped.on("popup", listener);
+  expect(host.bound).toEqual([listener]);
   emit("popup", popup);
 
   wrapped.off("popup", listener);

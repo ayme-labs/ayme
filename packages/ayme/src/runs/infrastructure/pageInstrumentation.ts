@@ -91,8 +91,9 @@ export function instrumentedPage(
   };
   const gatedResult = (result: unknown) =>
     result instanceof Promise ? result.then(gated) : gated(result);
-  // A listener Playwright calls later gets what it is handed wrapped too;
-  // removing it by the function the action registered still works.
+  // A listener Playwright calls later runs as the code that registered it,
+  // and gets what it is handed wrapped too; removing it by the function the
+  // action registered still works.
   const listeners = new WeakMap<Callback, Callback>();
   const listening = (property: string | symbol, args: unknown[]) => {
     const [first, listener, ...rest] = args;
@@ -105,8 +106,9 @@ export function instrumentedPage(
     let bound = listeners.get(listener as Callback);
     if (!bound) {
       const original = listener as Callback;
+      const inAction = actionCalls.bind(original);
       bound = function (this: unknown, ...heard: unknown[]) {
-        return original.apply(this, heard.map(gated));
+        return inAction.apply(this, heard.map(gated));
       };
       listeners.set(original, bound);
     }

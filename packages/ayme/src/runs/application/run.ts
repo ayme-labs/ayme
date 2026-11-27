@@ -27,6 +27,9 @@ export type ActionCalls = {
    * A call that `answersAtOnce`, such as building a locator, cannot wait.
    */
   before(answersAtOnce: boolean): Promise<void> | undefined;
+  /** `listener`, which an action hands Playwright to call later, made to
+   * run as that action's own code wherever Playwright calls it from. */
+  bind<F extends (...args: never[]) => unknown>(listener: F): F;
 };
 
 /** How `ayme.tools.run` starts a Run. */

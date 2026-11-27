@@ -838,6 +838,7 @@ describe("a Session's Node Host, through the internal entry", () => {
             run: (action) => own.run(true, action),
             before: (answersAtOnce) =>
               own.getStore() ? before(answersAtOnce) : undefined,
+            bind: (listener) => listener,
           },
         },
         selectors

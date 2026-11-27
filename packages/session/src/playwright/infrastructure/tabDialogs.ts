@@ -24,6 +24,7 @@ export function dialogOpenMs(env: NodeJS.ProcessEnv): number {
 export type ActionCalls = {
   run<T>(action: () => T): T;
   before(answersAtOnce: boolean): Promise<void> | undefined;
+  bind<F extends (...args: never[]) => unknown>(listener: F): F;
 };
 
 /** Whether the dialog stopped a request, once one did: everything the Host
@@ -104,6 +105,14 @@ export function tabDialogs(
       refuseIfStopped(own);
       if (!held || answersAtOnce) return undefined;
       return held.until.then(() => actionCalls.before(false));
+    },
+    // Playwright calls a listener from its connection, whose async context
+    // is not the action's.
+    bind: (listener) => {
+      if (!actions.getStore()) return listener;
+      const inAction = AsyncLocalStorage.snapshot();
+      return ((...args) =>
+        inAction(() => listener(...args))) as typeof listener;
     },
   };
   return {
