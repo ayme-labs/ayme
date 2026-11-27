@@ -14,18 +14,33 @@ how ayme and its skills work in this repository. Read its opening part, which
 holds for every skill, and its `Recorder` section, and follow a line that
 points to another file. It overrides this skill's defaults.
 
-1. **Record.** In the project's folder, run
-   `npx @ayme-dev/cli@latest capture <url>`, with the URL where the user wants
-   to start, somewhere it can keep running. The recorder uses the Playwright
-   the project has installed, and records in its Chromium. When the command
-   says Playwright could not open Chromium, install it with Playwright's own
-   `npx playwright install chromium`, then run the command again. It opens the page in Chromium with a recorder
-   window beside it and a small toolbar on the page. Recording is off until the
-   user presses Record; they perform the flow and press Finish. The command
-   then prints `Recording package: <path>`. `ayme/recordings/latest.yaml` is
-   a copy of the newest package. To record a Chromium the user
-   already has running, run `capture --cdp=<url>` instead, with
-   the address of its DevTools protocol, such as `http://127.0.0.1:9222`.
+1. **Record.** First choose the command. When `@ayme-dev/cli` is not in the
+   project's `package.json`, it is `npx @ayme-dev/cli@latest`, the newest
+   release. When it is, the project pins its version: check with
+   `npm ls @ayme-dev/cli` that the pinned copy is installed. When that fails,
+   lists no version or marks the version `invalid`, ask the user to install
+   the project's dependencies and wait: without the pinned copy,
+   `npx @ayme-dev/cli` runs another version. A version before 0.4 is the old
+   recorder, `ayme-recorder`, which has no `capture`: ask the user to upgrade
+   it, as
+   [Upgrade](https://github.com/ayme-labs/ayme/blob/main/docs/guide/upgrade.md)
+   describes, and wait. Otherwise the command is `npx @ayme-dev/cli`, which
+   runs the pinned copy.
+
+   In the project's folder, run `npx @ayme-dev/cli@latest capture <url>`, or
+   `npx @ayme-dev/cli capture <url>` for a pinned copy, with the URL where the
+   user wants to start, somewhere it can keep running. The recorder uses the
+   Playwright the project has installed, and records in its Chromium. When the
+   command says Playwright could not open Chromium, install it with
+   Playwright's own `npx playwright install chromium`, then run the command
+   again. It opens the page in Chromium with the Recorder window beside it and
+   a small toolbar on the page. Recording is off until the user presses
+   Record; they perform the flow and press Finish. The command then prints
+   `Recording package: <path>`. `ayme/recordings/latest.yaml` is a copy of
+   the newest package. To record a Chromium the user already has running,
+   run `npx @ayme-dev/cli@latest capture --cdp=<url>` instead, or
+   `npx @ayme-dev/cli capture --cdp=<url>` for a pinned copy, with the
+   address of its DevTools protocol, such as `http://127.0.0.1:9222`.
 
    When the user asked for an automation of a flow with new data, add
    `--start-recording`: the recorder then opens already recording, so the
@@ -36,14 +51,6 @@ points to another file. It overrides this skill's defaults.
    user presses Finish, and you run the command again. Use the browser the
    recorder opens: `--start-recording` does not apply with
    `--cdp`, so a recording there never holds its first page load.
-
-   `@latest` runs the newest release. When `@ayme-dev/cli` is in the project's
-   `package.json`, the project pins its version: run `npx @ayme-dev/cli` in
-   place of `npx @ayme-dev/cli@latest`, which runs the pinned copy. Check
-   first that it is installed, with `npm ls @ayme-dev/cli`. When that fails,
-   lists no version or marks the version `invalid`, ask the user to install
-   the project's dependencies and wait: without the pinned copy,
-   `npx @ayme-dev/cli` runs a different version.
 
 2. **Read** the package, as [Read the package](#read-the-package) describes.
    Leave every discarded entry out of the page objects and the test. A package
