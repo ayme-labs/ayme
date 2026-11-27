@@ -219,6 +219,22 @@ still has the page before and after a discarded interaction: find its
 entry there: open the `afterSnapshotId` of the interaction before it, or the
 `beforeSnapshotId` of the one after it.
 
+## Steps a warning names
+
+While it runs, the command may print lines that start with `Warning:` on
+its error output. One that names a step, such as `interaction_4`, or a
+visit's `baselineTree`, says the recorder could not work that part out in
+full, and the package does not mark it. Do not rely on that step's
+`changeTree`, or on its refs matching the rest of the package: an element can
+be under another ref there, and a step without a `changeTree` may still have
+changed the page. Read the page before and after the step from the trace
+instead, by its entry in `traceActionPoints`, as
+[Use the trace](#use-the-trace) describes; a `kind: change` has no entry
+there, so open the snapshots of the interactions around it, as
+[Discarded entries](#discarded-entries) says for a discarded one. The step's
+`type`, its `targetSelector` and the values the user entered are not
+affected.
+
 ## Write page objects from the recording
 
 Draft the playbook's test from the timeline first, then the smallest set of
