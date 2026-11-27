@@ -150,7 +150,8 @@ test("an error thrown by Page Object code ends only its Run, and the Session cat
   ayme,
   baseURL,
 }) => {
-  await ayme("open", `${baseURL}/account.html`);
+  const opened = await ayme("open", `${baseURL}/account.html`);
+  const page = await automationPage(opened.stdout);
 
   expect(await ayme("call", "AccountPage.fail")).toEqual({
     code: 1,
@@ -161,6 +162,7 @@ test("an error thrown by Page Object code ends only its Run, and the Session cat
     code: 0,
   });
   // The uncaught error and rejection fire once the Run has answered.
+  await page.evaluate(() => Object.assign(window, { leave: true }));
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   expect(await ayme("call", "ShopPage.readHeading")).toEqual({
@@ -168,6 +170,21 @@ test("an error thrown by Page Object code ends only its Run, and the Session cat
     stdout: 'settled: true\nresult: "Account"\n',
     stderr: "",
   });
+});
+
+test("a Run whose action waits on a callback that threw is answered with that error, and keeps the Tab's turn while its action waits", async ({
+  ayme,
+  baseURL,
+}) => {
+  await ayme("open", `${baseURL}/account.html`);
+
+  expect(await ayme("call", "AccountPage.throwInTimer")).toEqual({
+    code: 1,
+    stdout: "",
+    stderr: "The timer the action waits on failed.\n",
+  });
+  // The action never returns, so the next command waits until `ayme close`.
+  expect(await stillPending(ayme("tools"))).toBe(true);
 });
 
 test("one Run per Tab at a time: a call and a listing wait for the Run under way, which ayme gives no time limit", async ({
