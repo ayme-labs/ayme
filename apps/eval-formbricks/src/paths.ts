@@ -9,17 +9,17 @@ export const evalRoot = path.resolve(
 export const repoRoot = path.resolve(evalRoot, "../..");
 
 /**
- * The lab app: the Formbricks submodule, and around it the Page Objects
- * `ayme mcp` serves when it starts here, with their qualification.
+ * The lab app: the Formbricks submodule, and around it the Page Objects a
+ * Session runs when it starts here, with their qualification.
  */
 export const labRoot = path.join(repoRoot, "apps/lab-formbricks");
 /** The Formbricks submodule checkout inside the lab app. */
 export const formbricksRoot = path.join(labRoot, "formbricks");
 /**
  * A mission agent's working root: the Formbricks source and nothing else.
- * The lab app's folder is the submodule's parent, so the Page Objects and
- * the init script the run's server writes there stay out of every arm's
- * reach: the agent learns the Page Objects from their tools alone.
+ * The lab app's folder is the submodule's parent, so the Page Objects there
+ * stay out of every arm's reach: the agent learns the Page Objects from
+ * their tools alone.
  */
 export const agentRoot = formbricksRoot;
 

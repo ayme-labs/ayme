@@ -15,7 +15,6 @@
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
-    "@ayme-dev/mcp": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@modelcontextprotocol/client": "^2.4.0",
     "@modelcontextprotocol/server": "^2.4.0",

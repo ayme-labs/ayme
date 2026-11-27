@@ -4,10 +4,9 @@
  * Code configuration folder, and a session attached over CDP to the browser
  * the harness launched on the mission's start page. agent-browser never
  * launches or downloads a browser of its own, and the measured agent
- * installs nothing. Its WebMCP support is off. The arm alone gets
- * Formbricks as it is. The arm with ayme gets the lab app's Page Objects
- * served into its page by the run's `ayme mcp`, and that server as its
- * `ayme` MCP server.
+ * installs nothing. Its WebMCP support is off. Both arms get Formbricks as
+ * it is; in the arm with ayme, the run's Session attaches to agent-browser's
+ * browser, as the guide connects the two.
  */
 import { execFile } from "node:child_process";
 import { chmod, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -17,7 +16,13 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import type { ArmContext, ArmSetup } from "./arms.ts";
-import { installAymeSkill, launchStartPage, setUpAymePage } from "./ayme.ts";
+import {
+  installAymeCommand,
+  installAymeSkill,
+  startAymeSession,
+  type AymeEvidence,
+} from "./ayme.ts";
+import { playwright, viewport, type BrowserContext } from "./browser.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import { freeLoopbackPort } from "./playwrightMcp.ts";
 
@@ -132,7 +137,33 @@ async function installCliAndSkill(context: ArmContext): Promise<string> {
   return skillDir;
 }
 
-/** The page of the arm alone: Formbricks as it is, on the harness's browser, with nothing of ayme. */
+/**
+ * Launches the headless system Chrome on the run's profile, with the arm's
+ * browser arguments, and opens the mission's start page. The harness stays
+ * attached for the run; closing the context closes the browser.
+ */
+async function launchStartPage(
+  context: Pick<ArmContext, "profileDir" | "start">,
+  browserArgs: string[]
+) {
+  const browser: BrowserContext =
+    await playwright().chromium.launchPersistentContext(context.profileDir, {
+      channel: "chrome",
+      headless: true,
+      viewport,
+      args: browserArgs,
+    });
+  try {
+    const page = browser.pages()[0] ?? (await browser.newPage());
+    await page.goto(context.start.url);
+    return { browser, page };
+  } catch (error) {
+    await browser.close().catch(() => {});
+    throw error;
+  }
+}
+
+/** The page: Formbricks as it is, on the harness's browser, with nothing of ayme. */
 async function setUpPlainPage(
   context: ArmContext,
   browserArgs: string[]
@@ -140,7 +171,7 @@ async function setUpPlainPage(
   evidence: Record<string, unknown>;
   dispose: () => Promise<void>;
 }> {
-  const { browser, page } = await launchStartPage(context, { browserArgs });
+  const { browser, page } = await launchStartPage(context, browserArgs);
   return {
     evidence: { page: { url: page.url() } },
     dispose: async () => {
@@ -158,11 +189,11 @@ async function setUpPlainPage(
 /**
  * The setup of every agent-browser arm: the start page on a Chrome the
  * harness launches with a remote-debugging port, then the run's session
- * attached to it. Without ayme the page is Formbricks as it is; with it, the
- * page paired with the run's `ayme mcp`, started as the skill reference says,
- * and the `ayme` skill beside agent-browser's. The session
- * starts with `get url`, which attaches and adopts the open tab without
- * navigating it, and must report the start page. After the run every session
+ * attached to it. The session starts with `get url`, which attaches and
+ * adopts the open tab without navigating it, and must report the start
+ * page. With ayme, the `ayme` command and skill beside agent-browser's, and
+ * the run's Session attached with `ayme attach` to the address `agent-browser
+ * get cdp-url` prints. After the run the Session is detached, every session
  * in the run's socket folder is closed, which detaches, and then the browser
  * is.
  */
@@ -175,22 +206,24 @@ async function setUpAgentBrowser(
   const aymeSkillDir = withAyme
     ? await installAymeSkill(context.configDir)
     : null;
+  if (withAyme)
+    await installAymeCommand(context, shimDirectory(context.runDir));
   const socketDir = await mkdtemp(path.join(os.tmpdir(), "ab-"));
   const environment = agentBrowserEnvironment(context, process.env.PATH ?? "", {
     cdpPort: port,
     socketDir,
   });
-  const browserArgs = [`--remote-debugging-port=${port}`];
   let page: Awaited<ReturnType<typeof setUpPlainPage>>;
   try {
-    page = withAyme
-      ? await setUpAymePage(context, { browserArgs })
-      : await setUpPlainPage(context, browserArgs);
+    page = await setUpPlainPage(context, [`--remote-debugging-port=${port}`]);
   } catch (error) {
     await rm(socketDir, { recursive: true, force: true });
     throw error;
   }
+  let endSession: (() => Promise<void>) | undefined;
   const dispose = async () => {
+    // ayme first: it only attaches, and the browser stays the harness's to close.
+    await endSession?.();
     try {
       await runCli(context, environment, ["close", "--all"]);
     } catch (error) {
@@ -201,6 +234,7 @@ async function setUpAgentBrowser(
     await rm(socketDir, { recursive: true, force: true });
     await page.dispose();
   };
+  let aymeEvidence: AymeEvidence | null = null;
   try {
     context.log(
       `Attaching the agent-browser session "${environment.AGENT_BROWSER_SESSION}" over CDP on port ${port}.`
@@ -213,6 +247,14 @@ async function setUpAgentBrowser(
       throw new Error(
         `agent-browser reported ${pageUrl || "no page"} instead of the start page at ${context.start.url}.`
       );
+    if (withAyme) {
+      const cdpUrl = (
+        await runCli(context, environment, ["get", "cdp-url"])
+      ).trim();
+      const session = await startAymeSession(context, { attach: cdpUrl });
+      endSession = session.end;
+      aymeEvidence = await session.onStartScreen();
+    }
   } catch (error) {
     await dispose();
     throw error;
@@ -224,7 +266,11 @@ async function setUpAgentBrowser(
       skillDir,
       ...(aymeSkillDir === null ? [] : [aymeSkillDir]),
     ],
-    evidence: { ...page.evidence, remoteDebuggingPort: port },
+    evidence: {
+      ...page.evidence,
+      ...aymeEvidence,
+      remoteDebuggingPort: port,
+    },
     dispose,
   };
 }

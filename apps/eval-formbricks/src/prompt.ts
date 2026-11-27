@@ -1,5 +1,5 @@
 import type { Arm } from "./arms.ts";
-import { aymeReference, aymeSkillName } from "./ayme.ts";
+import { aymeReferences, aymeSkillName } from "./ayme.ts";
 import { missionDefinitions, type Mission } from "./missions.ts";
 
 /**
@@ -45,8 +45,7 @@ export function readyLine({
 /**
  * What the setup turn of an arm with ayme asks: load the browser
  * automation's skill, if it has one, and the `ayme` skill, and read that
- * skill's reference on browser automation tools, where the instruction on
- * what to read after a Page Object Tool lives.
+ * skill's references on reaching the browser and on the Page Object Tools.
  */
 export function aymeReadyLine(
   { skill }: Pick<Arm, "skill">,
@@ -60,7 +59,10 @@ export function aymeReadyLine(
     agent === "claude"
       ? skillLoading.claude.how
       : `now by reading ${skill === undefined ? "its `SKILL.md` file" : "their `SKILL.md` files"}`;
-  return `Load ${skills} ${how}, and read \`${aymeReference}\` in the \`${aymeSkillName}\` skill's folder. Read no other file and don't use the browser; just reply ready.`;
+  const references = aymeReferences
+    .map((reference) => `\`${reference}\``)
+    .join(" and ");
+  return `Load ${skills} ${how}, and read ${references} in the \`${aymeSkillName}\` skill's folder. Read no other file and don't use the browser; just reply ready.`;
 }
 
 /**
@@ -69,7 +71,7 @@ export function aymeReadyLine(
  * turn, outside the measured one, so the prompt names the skills: a bare
  * "load your skill if you have one" left the agent skipping it in some runs
  * and loading it in the measured turn instead. An arm with ayme reads the
- * skill reference here too.
+ * skill's references here too.
  */
 export function setupPrompt(
   arm: Pick<Arm, "skill" | "withAyme">,
