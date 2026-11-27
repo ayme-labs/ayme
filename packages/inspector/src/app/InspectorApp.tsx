@@ -153,14 +153,21 @@ export function InspectorApp({
       setViewState((current) => ({ ...current, selection: pageSelection }));
   }, [stale, pageStateRead, setViewState]);
   const detail = unserved ? (
-    <Empty>
-      No page is serving the Inspector. Pair a page with this ayme mcp, and
-      start that page&apos;s ayme session with{" "}
-      <code>
-        inspector: {"{"} placement: &quot;external&quot; {"}"}
-      </code>
-      .
-    </Empty>
+    session ? (
+      <Empty>
+        This Session has no Tab yet. Once a tab is open in its browser, the
+        Inspector shows it.
+      </Empty>
+    ) : (
+      <Empty>
+        No page is serving the Inspector. Pair a page with this ayme mcp, and
+        start that page&apos;s ayme session with{" "}
+        <code>
+          inspector: {"{"} placement: &quot;external&quot; {"}"}
+        </code>
+        .
+      </Empty>
+    )
   ) : (
     ((stale ? viewOf(pageSelection) : view) ?? (
       <Empty>Nothing to show for this selection.</Empty>

@@ -328,7 +328,9 @@ it("tells each window how the Session ended, and then closes it", async () => {
   await closed;
   expect(window.told.at(-1)).toEqual({
     ended:
-      "The Session shop was closed. Start a Session with ayme open or ayme attach, then run ayme -s=shop inspect to inspect it.",
+      "The Session shop was closed. Start a Session with ayme -s=shop open or ayme -s=shop attach, then run ayme -s=shop inspect to inspect it.",
+    inChat:
+      "The Session shop was closed. Start a Session with ayme -s=shop open or ayme -s=shop attach, then ask your agent to show the Inspector again.",
   });
 });
 

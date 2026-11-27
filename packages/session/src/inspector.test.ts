@@ -388,7 +388,7 @@ it("a window that stops listening ends the Session's subscription to the Tab's c
   expect(await session.ask(contract("getState"))).toMatchObject({ ok: true });
 });
 
-it("when the Session ends, each window is told why, and nothing follows", async () => {
+it("when the Session ends, each window is told why, and how to get it back in a window and in an Agent App's chat, with the Session's name in every command; nothing follows", async () => {
   const { session, browser } = await startScriptedSession({
     ...opening,
     name: "shop",
@@ -403,7 +403,9 @@ it("when the Session ends, each window is told why, and nothing follows", async 
     { tab: 1 },
     {
       ended:
-        "The Session shop was closed. Start a Session with ayme open or ayme attach, then run ayme -s=shop inspect to inspect it.",
+        "The Session shop was closed. Start a Session with ayme -s=shop open or ayme -s=shop attach, then run ayme -s=shop inspect to inspect it.",
+      inChat:
+        "The Session shop was closed. Start a Session with ayme -s=shop open or ayme -s=shop attach, then ask your agent to show the Inspector again.",
     },
   ]);
   expect(browser.inspectorListeners).toBe(0);
@@ -420,6 +422,9 @@ it("a window is told the Session ended when its browser goes away, and one that 
     {
       ended: expect.stringMatching(
         /^The Session default ended: its browser went away\./
+      ),
+      inChat: expect.stringMatching(
+        /^The Session default ended: its browser went away\. .* then ask your agent to show the Inspector again\.$/
       ),
     },
   ]);

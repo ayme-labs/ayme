@@ -8,12 +8,12 @@ import {
   contractAnswer,
   INSPECTOR_CALLER,
   failed,
+  inspectorEnded,
   NO_TAB_OPEN,
   NO_WINDOW,
   showsWindow,
   TabReadError,
   windowAnswer,
-  windowEnded,
   type InspectorEvent,
   type InspectorRequest,
   type SessionAnswer,
@@ -140,7 +140,7 @@ export function followTabs(
         // that alone: a queue that ended takes nothing more.
         yield* ending.pipe(
           Effect.map((how) => {
-            Queue.offerUnsafe(queue, { ended: windowEnded(how, name) });
+            Queue.offerUnsafe(queue, inspectorEnded(how, name));
             Queue.endUnsafe(queue);
           }),
           Effect.forkScoped

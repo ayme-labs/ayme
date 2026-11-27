@@ -22,7 +22,7 @@ type Reply =
   | { reset: true }
   | { tab: number }
   | { token: string }
-  | { ended: string };
+  | { ended: string; inChat?: string };
 
 type Waiting = {
   resolve(result: unknown): void;
@@ -55,10 +55,10 @@ export type WebSocketInspectorOptions = {
   /** Called with the token a Session tells a window a one-use code
    * admitted, which the window connects again with. */
   onToken?: (token: string) => void;
-  /** Called once, with what to say, when the server says the Session it
-   * serves ended: the transport connects no more, since no Session comes
-   * back at that address. */
-  onEnded?: (notice: string) => void;
+  /** Called once, with what to say in a window and in an Agent App's chat,
+   * when the server says the Session it serves ended: the transport
+   * connects no more, since no Session comes back at that address. */
+  onEnded?: (notice: string, inChat: string | undefined) => void;
   /**
    * Whether the server tells the Tab the window shows, as a Session's
    * does: each request waits until it did, and names that Tab, so the
@@ -190,7 +190,7 @@ export function webSocketInspectorContract(
       if ("token" in reply) return onToken?.(reply.token);
       if ("ended" in reply) {
         lost = true;
-        return onEnded?.(reply.ended);
+        return onEnded?.(reply.ended, reply.inChat);
       }
       if ("event" in reply) return emit(raiseEvent(reply.event));
       const pending = waiting.get(reply.id);

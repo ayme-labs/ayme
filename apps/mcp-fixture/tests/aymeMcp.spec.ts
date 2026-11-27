@@ -320,7 +320,7 @@ test("once the Session ends, the Inspector in the chat says so and connects no m
   await ayme("close");
 
   await expect(frame.getByRole("status")).toHaveText(
-    "The Session default was closed. Start a Session with ayme open or ayme attach, then run ayme -s=default inspect to inspect it."
+    "The Session default was closed. Start a Session with ayme -s=default open or ayme -s=default attach, then ask your agent to show the Inspector again."
   );
   await expect(inspector.panel).toHaveCount(0);
 });

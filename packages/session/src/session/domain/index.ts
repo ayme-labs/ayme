@@ -42,7 +42,7 @@ export {
   OPENING_CODE_LIFETIME_MS,
   showsWindow,
   windowAnswer,
-  windowEnded,
+  inspectorEnded,
   windowNotOpened,
   windowOpened,
   type InspectorEvent,

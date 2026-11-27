@@ -398,13 +398,13 @@ describe("webSocketInspectorContract", () => {
 
   describe("when the Session behind the server ends", () => {
     it("says why, connects no more when the server goes, and fails every request from then on", async () => {
-      const ended: string[] = [];
+      const ended: unknown[] = [];
       const contract = webSocketInspectorContract(
         "ws://127.0.0.1:9351/inspector/ws",
         {
           WebSocket: FakeWebSocket as never,
           reconnectMs: 1000,
-          onEnded: (notice) => ended.push(notice),
+          onEnded: (notice, inChat) => ended.push([notice, inChat]),
         }
       );
       const socket = FakeWebSocket.instances.at(-1)!;
@@ -412,11 +412,19 @@ describe("webSocketInspectorContract", () => {
       const waiting = contract.getState();
       const rejected = expect(waiting).rejects.toThrow("closed");
 
-      socket.receive({ ended: "The Session shop was closed." });
+      socket.receive({
+        ended: "The Session shop was closed. Run ayme inspect.",
+        inChat: "The Session shop was closed. Ask your agent.",
+      });
       socket.close();
       await vi.advanceTimersByTimeAsync(5000);
 
-      expect(ended).toEqual(["The Session shop was closed."]);
+      expect(ended).toEqual([
+        [
+          "The Session shop was closed. Run ayme inspect.",
+          "The Session shop was closed. Ask your agent.",
+        ],
+      ]);
       await rejected;
       expect(FakeWebSocket.instances).toHaveLength(1);
       await expect(contract.getState()).rejects.toThrow("closed");

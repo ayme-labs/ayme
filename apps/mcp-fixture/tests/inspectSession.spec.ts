@@ -303,7 +303,7 @@ test("closing the window leaves the Session as it was; when the Session ends, th
   );
   await ayme("close");
   await expect(second.window.getByRole("status")).toHaveText(
-    "The Session default was closed. Start a Session with ayme open or ayme attach, then run ayme -s=default inspect to inspect it."
+    "The Session default was closed. Start a Session with ayme -s=default open or ayme -s=default attach, then run ayme -s=default inspect to inspect it."
   );
   await expect(second.inspector.panel).toHaveCount(0);
 });
@@ -327,7 +327,7 @@ test("a window whose Session's process was killed stops trying to connect, and s
   process.kill(sessionProcess()!, "SIGKILL");
 
   await expect(window.getByRole("status")).toHaveText(
-    "This Inspector lost its ayme MCP server. Ask the agent to open the Inspector again.",
+    "This Inspector lost the Session default. Start it again with ayme -s=default open, then run ayme -s=default inspect.",
     { timeout: 15_000 }
   );
   await expect(inspector.panel).toHaveCount(0);

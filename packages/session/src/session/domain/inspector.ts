@@ -34,9 +34,9 @@ export type InspectorEvent =
    * of the Tab before, and the contract's revisions start again. A window
    * hears it first when it starts listening. */
   | { readonly tab: number }
-  /** The Session ended: what the window says in place of the Inspector.
-   * Nothing follows it. */
-  | { readonly ended: string };
+  /** The Session ended: what the window says in place of the Inspector,
+   * and what the view in an Agent App's chat says. Nothing follows it. */
+  | { readonly ended: string; readonly inChat: string };
 
 /** Whether a Tab at `url` shows the Inspector window served at `window`:
  * any page of the window's server is the window's. */
@@ -126,18 +126,29 @@ export const idNotOnShownTab = (id: string, url: string): string =>
  * a test of its process. */
 export const NO_WINDOW = "This Session serves no Inspector window.";
 
-/** What the Inspector window of the Session named `name` says once the
- * Session ended, by how it ended. */
-export function windowEnded(end: SessionEnd, name: string): string {
-  const again = `Start a Session with ayme open or ayme attach, then run ${commandLine(name, "inspect")} to inspect it.`;
+/** What the Inspector of the Session named `name` says once the Session
+ * ended, by how it ended: in a window, and in an Agent App's chat. */
+export function inspectorEnded(
+  end: SessionEnd,
+  name: string
+): { readonly ended: string; readonly inChat: string } {
+  const how = endedHow(end, name);
+  const start = `Start a Session with ${commandLine(name, "open")} or ${commandLine(name, "attach")}`;
+  return {
+    ended: `${how} ${start}, then run ${commandLine(name, "inspect")} to inspect it.`,
+    inChat: `${how} ${start}, then ask your agent to show the Inspector again.`,
+  };
+}
+
+function endedHow(end: SessionEnd, name: string): string {
   switch (end) {
     case "stopped":
-      return `The Session ${name} was closed. ${again}`;
+      return `The Session ${name} was closed.`;
     case "detached":
-      return `ayme detach ended the Session ${name}. ${again}`;
+      return `ayme detach ended the Session ${name}.`;
     case "browser gone":
-      return `The Session ${name} ended: its browser went away. ${again}`;
+      return `The Session ${name} ended: its browser went away.`;
     case "start failed":
-      return `The Session ${name} never started. ${again}`;
+      return `The Session ${name} never started.`;
   }
 }

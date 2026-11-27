@@ -33,9 +33,15 @@ export function mountExternalInspector({
   };
 }
 
-/** What a window says once its server is gone for good. */
+/** What a window of `@ayme-dev/mcp`'s server says once that server is gone
+ * for good. */
 export const SERVER_LOST_NOTICE =
   "This Inspector lost its ayme MCP server. Ask the agent to open the Inspector again.";
+
+/** What the Inspector of the Session named `name` says once it can no
+ * longer reach it: in a window, or in an Agent App's chat. */
+export const sessionLost = (name: string, inChat: boolean): string =>
+  `This Inspector lost the Session ${name}. Start it again with ayme -s=${name} open, then ${inChat ? "ask your agent to show the Inspector again" : `run ayme -s=${name} inspect`}.`;
 
 /**
  * Says `text` in place of the Inspector: by default, that the server this
