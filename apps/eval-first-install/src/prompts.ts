@@ -29,9 +29,9 @@ export function setupPrompt(tool: Tool, page: string): string {
 
 ## Brief
 
-The app I work on runs at ${page}. It is a small list app, its server is already running, and its source is not in this folder. The app itself does not include ayme. This project has ayme installed, with Page Objects for the app in ayme/.
+The app I work on runs at ${page}. It is a small list app, its server is already running, and its source is not in this folder. The app itself does not include ayme. This project has @ayme-dev/ayme installed, with Page Objects for the app in ayme/.
 
-I want you to do browser tasks on that page for me with ${TOOL_NAMES[tool]}, using the project's ayme Page Objects wherever they fit. Get everything ready for that. Install ${tool} at the version named. I will restart you when you are done, and then give you a task.
+I want you to do browser tasks on that page for me with ${TOOL_NAMES[tool]}, using the project's ayme Page Objects wherever they fit. Get everything ready for that, and install what it needs; you need not ask me first. Install ${tool} at the version named. I will restart you when you are done, and then give you a task.
 
 ${environmentFacts}
 
