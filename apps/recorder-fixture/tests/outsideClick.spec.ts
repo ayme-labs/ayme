@@ -9,7 +9,8 @@ import { expect, test } from "./fixtures";
 // Issue #1396: a press on the page's toolbar is no press outside a panel the
 // page closes on one, so the panel stays open and what is inside it can be
 // asserted. The page hears nothing of the press: not its pointerdown or
-// mousedown, nor the click the toolbar gives its own button.
+// mousedown, nor the click the toolbar gives its own button. Nor does the
+// browser take it for a press outside a popover.
 
 const panels: {
   readonly heard: string;
@@ -59,6 +60,15 @@ const panels: {
       open: page.openFocusoutPanelButton,
       panel: page.focusoutPanel,
       inside: page.insideFocusoutPanelButton,
+    }),
+  },
+  {
+    heard: "the browser, as a popover",
+    inside: "Inside popover",
+    of: (page) => ({
+      open: page.openPopoverButton,
+      panel: page.popoverPanel,
+      inside: page.insidePopoverButton,
     }),
   },
 ];

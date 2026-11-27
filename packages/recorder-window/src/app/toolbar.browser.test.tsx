@@ -463,6 +463,80 @@ describe("a person's input on the toolbar", () => {
   });
 });
 
+describe("a press on the toolbar, with the page's popovers open", () => {
+  /** A popover of the page, shown, once the page has heard so: one a
+   * press outside closes, unless `manual`. */
+  async function popover(
+    mode: "auto" | "manual",
+    parent: HTMLElement = document.body
+  ) {
+    const element = document.createElement("div");
+    element.popover = mode;
+    element.textContent = `A ${mode} popover`;
+    parent.append(element);
+    removals.push(() => element.remove());
+    const toggled = new Promise((resolve) =>
+      element.addEventListener("toggle", resolve, { once: true })
+    );
+    element.showPopover();
+    await toggled;
+    return element;
+  }
+
+  const open = (...popovers: HTMLElement[]) =>
+    popovers.map((each) => each.matches(":popover-open"));
+
+  /** The toolbar, recording, and pressed on Stop. */
+  async function pressStop() {
+    const { call, sent, tell } = scriptedPage();
+    const host = mount(call);
+    tell({ phase: "recording", commands: ["stop"] });
+    await expect.poll(() => toolbar.offered()).toEqual(["Stop"]);
+    return { host, sent };
+  }
+
+  it("presses the button, and leaves a popover open, shown or hidden by nothing of the toolbar's", async () => {
+    const { host, sent } = await pressStop();
+    const shown = await popover("auto");
+
+    await personClicks(host, toolbar.stopButton);
+
+    expect(sent).toEqual([{ type: "stop" }]);
+    expect(open(shown)).toEqual([true]);
+  });
+
+  it("leaves open a popover shown before the toolbar came", async () => {
+    const shown = await popover("auto");
+    const { host } = await pressStop();
+
+    await personClicks(host, toolbar.stopButton);
+
+    expect(open(shown)).toEqual([true]);
+  });
+
+  it("leaves open a popover shown in another, and a manual one above both", async () => {
+    const { host } = await pressStop();
+    const outer = await popover("auto");
+    const inner = await popover("auto", outer);
+    const manual = await popover("manual");
+
+    await personClicks(host, toolbar.stopButton);
+
+    expect(open(outer, inner, manual)).toEqual([true, true, true]);
+  });
+
+  it("leaves open the popover under one the page closed, or took out while open", async () => {
+    const { host } = await pressStop();
+    const outer = await popover("auto");
+    (await popover("auto", outer)).remove();
+    (await popover("auto", outer)).hidePopover();
+
+    await personClicks(host, toolbar.stopButton);
+
+    expect(open(outer)).toEqual([true]);
+  });
+});
+
 describe("where the toolbar is put", () => {
   const call: ToolbarCall = async () => null;
   const binding = "__aymeRecorderToolbar";
