@@ -38,7 +38,7 @@ npx ayme call ProjectRow.rename --params '{"id": "po1", "args": {"name": "Launch
 npx ayme close
 ```
 
-`ayme open` starts Chromium and prints the address the browser automation attaches to; `ayme attach --cdp=<url>` joins a browser the automation opened instead. `ayme page-objects` prints the Page Objects on the screen, each with its id, `ayme call` runs one of their tools, and `ayme close` ends the Session. [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md) shows each browser automation, and `npx ayme --help` lists every command.
+`ayme open` starts Chromium and prints the address the browser automation attaches to; `ayme attach --cdp=<url>` joins a browser the automation opened instead. `ayme page-objects` prints the Page Objects on the screen, with the id of each one that has a root, `ayme call` runs one of their tools, and `ayme close` ends the Session. [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md) shows each browser automation, and `npx ayme --help` lists every command.
 
 ## The Inspector
 

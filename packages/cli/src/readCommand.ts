@@ -25,7 +25,8 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  already running, at the address of its DevTools protocol,
                  such as http://127.0.0.1:9222.
   page-objects   Print the Page Object Tree of the Session's Tab: its Page
-                 Objects, each with its id, and how many tools they have.
+                 Objects, with the id of each one that has a root, and how
+                 many tools they have.
   tools          List every Page Object Tool of the Session's Tab with its
                  parameters, and why a tool is unavailable.
   call <tool>    Run the Page Object Tool <tool> and print what its action
