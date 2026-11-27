@@ -325,3 +325,28 @@ it("an open Inspector window keeps its Tab across a Swap, whose Host tells it th
     { contract: { registry: "the swapped Page Objects" } },
   ]);
 });
+
+const SECOND_TAB = "http://127.0.0.1:5173/second.html";
+
+it("a good build that a later edit broke is dropped on every Tab that had not swapped it in yet, and kept on a Tab that had", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  await session.ask({ tools: {} });
+  const second = browser.openTab(SECOND_TAB);
+  const runs = holdRuns(second);
+  const held = session.ask({ call: { ...readHeading.call, tab: SECOND_TAB } });
+  await until(() => second.runs.length === 1);
+
+  await rebuilt(browser, EDITED);
+  await until(() => browser.swappedIn.length > 0);
+  browser.edit();
+  await until(() => browser.builds === 3);
+  browser.failBuild(BUILD_ERRORS, FIRST_ERROR);
+  runs.end();
+  await held;
+
+  expect((await session.ask({ tools: { tab: SECOND_TAB } })).text).toContain(
+    BUILD_LINE
+  );
+  expect(second.swappedIn).toEqual([]);
+  expect(browser.swappedIn).toEqual([EDITED]);
+});

@@ -45,10 +45,11 @@ export const rebuilding = (
   scope: Scope.Scope
 ): Effect.Effect<Rebuilds> =>
   Effect.gen(function* () {
-    // The build the Tabs that swapped last run, and a good build no Tab has
-    // swapped in yet.
-    let inForce = first;
-    let waiting: BuiltPageObjects | undefined;
+    // The newest good build, and on each Tab the good build it has yet to
+    // swap in: a failed build drops those, and a Tab that swapped one in
+    // keeps it.
+    let newest = first;
+    const waiting = new Set<{ pending: BuiltPageObjects | undefined }>();
     let failing: SessionStartError | undefined;
     const followers = new Set<Effect.Effect<void>>();
     // One waiting edit stands for every edit since the last build began.
@@ -62,11 +63,12 @@ export const rebuilding = (
       const built = yield* Effect.exit(builds.build.pipe(Scope.provide(scope)));
       if ((yield* Queue.size(edited)) > 0) return;
       if (Exit.isSuccess(built)) {
-        waiting = built.value;
+        newest = built.value;
+        for (const tab of waiting) tab.pending = built.value;
         failing = undefined;
         for (const follower of followers) yield* Effect.forkIn(follower, scope);
       } else {
-        waiting = undefined;
+        for (const tab of waiting) tab.pending = undefined;
         failing = Option.getOrElse(Cause.findErrorOption(built.cause), () =>
           brokenStart(Cause.squash(built.cause))
         );
@@ -75,16 +77,16 @@ export const rebuilding = (
     yield* rebuild.pipe(Effect.forever, Effect.forkIn(scope));
 
     const swapping = (hosted: HostedTab): HostedTab => {
-      let runs = first;
+      const tab = {
+        pending: newest === first ? undefined : (newest as BuiltPageObjects),
+      };
+      waiting.add(tab);
       const upToDate: Effect.Effect<void, TabReadError> = Effect.suspend(() => {
-        const newest = waiting ?? inForce;
-        if (newest === runs) return Effect.void;
-        return hosted.swap(newest).pipe(
+        const next = tab.pending;
+        if (next === undefined) return Effect.void;
+        return hosted.swap(next).pipe(
           Effect.map(() => {
-            runs = newest;
-            if (newest !== waiting) return;
-            inForce = newest;
-            waiting = undefined;
+            if (tab.pending === next) tab.pending = undefined;
           })
         );
       });
@@ -117,7 +119,7 @@ export const rebuilding = (
         Effect.gen(function* () {
           // A Swap that fails is told by the next listing or Run on the
           // Tab, which tries it again.
-          const follower = Effect.ignore(hosted.swap(inForce));
+          const follower = Effect.ignore(hosted.swap(newest));
           followers.add(follower);
           yield* closed.pipe(
             Effect.andThen(Effect.sync(() => followers.delete(follower))),
