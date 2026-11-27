@@ -118,7 +118,15 @@ const hostedTab = (
       try: () => failingOnItsUncaught(() => caller.run(tool, input)),
       catch: runErrorOf,
     }),
-  inspector: tabInspector(inspector),
+  // A Run from the window fails on what its code left uncaught, as a
+  // command's does.
+  inspector: tabInspector({
+    ...inspector,
+    request: (method, params) =>
+      method === "runTool"
+        ? failingOnItsUncaught(() => inspector.request(method, params))
+        : inspector.request(method, params),
+  }),
 });
 
 /** What every Tab's Host shares: the project's entry, the built classes,

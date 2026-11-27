@@ -221,6 +221,37 @@ test("a Run from the window waits for the Run under way on the Tab, whichever Ca
   expect(await command.caller()).toEqual({ text: "ayme-command" });
 });
 
+test("a Run from the window whose action waits on a callback that threw is answered with that error, as ayme call is", async ({
+  ayme,
+  inspect,
+  baseURL,
+  browser,
+}) => {
+  await ayme("open", `${baseURL}/account.html`);
+  const { window, inspector } = await openWindow(
+    browser,
+    windowIn((await inspect("none")).stdout)!
+  );
+  const errors: string[] = [];
+  window.on("websocket", (socket) =>
+    socket.on("framereceived", ({ payload }) => {
+      const { error } = JSON.parse(String(payload)) as { error?: string };
+      if (error !== undefined) errors.push(error);
+    })
+  );
+  await window.reload();
+  await inspector.open();
+  await expect
+    .poll(() => inspector.navigator.model.objectPaths())
+    .toContain("AccountPage");
+
+  await (await inspector.tool("AccountPage.throwInTimer")).run();
+
+  await expect
+    .poll(() => errors)
+    .toContain("The timer the action waits on failed.");
+});
+
 test("hovering a Page Object in the window highlights it on the Session's page", async ({
   ayme,
   inspect,
