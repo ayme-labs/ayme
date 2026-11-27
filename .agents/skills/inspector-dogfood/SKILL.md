@@ -19,10 +19,10 @@ Page Object Tree, `ayme tools` lists its Page Object Tools, and `ayme call`
 drives it. Playwright CLI, attached to the Session's browser, does what no
 tool does, such as pressing a run card's Run button.
 
-You meet the panel the way an agent meets it, which finds what the unit and
+Driving the panel the way an agent drives it finds what the unit and
 end-to-end tests miss: a tool that is not live, a click the panel swallows,
-noise in the Page Object Tree, an answer whose changes miss what you saw
-change.
+noise in the Page Object Tree, an answer that reports no change after you saw
+the page change.
 
 ## Procedure
 
