@@ -15,25 +15,39 @@ const tabLine = ({ url, title }: TabName) =>
 
 const NO_TOOLS = "This screen has no Page Object Tools.";
 
+/** `--tab` naming the Tab at `url`, single-quoted so that it pastes into a
+ * POSIX shell whatever the URL holds. */
+const tabOption = (url: string) => `--tab='${url.replaceAll("'", "'\\''")}'`;
+
 /** The last line of `ayme page-objects` of the Session named `name`: how
  * many Page Object Tools the screen has, and where they are listed, also
- * when it has none. */
-function toolCountLine(count: number, name: string): string {
-  const tools = commandLine(name, "tools");
+ * when it has none; on the Tab `--tab` named, when it named one. */
+function toolCountLine(
+  count: number,
+  name: string,
+  tab: string | undefined
+): string {
+  const tools =
+    commandLine(name, "tools") +
+    (tab === undefined ? "" : ` ${tabOption(tab)}`);
   return count === 1
     ? `This screen has 1 Page Object Tool: ${tools} lists it with its parameters.`
     : `This screen has ${count} Page Object Tools: ${tools} lists them with their parameters.`;
 }
 
-/** The answer to `ayme page-objects` of the Session named `name`. */
+/** The answer to `ayme page-objects` of the Session named `name`, asked
+ * for the Tab `--tab` named, when it named one. */
 export const pageObjectsAnswer = (
   { tab, pageObjectTree, tools }: Listing,
-  name: string
+  name: string,
+  named?: string
 ): SessionAnswer => ({
   ok: true,
-  text: [tabLine(tab), pageObjectTree, toolCountLine(tools.length, name)].join(
-    "\n"
-  ),
+  text: [
+    tabLine(tab),
+    pageObjectTree,
+    toolCountLine(tools.length, name, named),
+  ].join("\n"),
   data: { tab, pageObjectTree, tools: tools.length },
 });
 
@@ -213,6 +227,11 @@ export const paramsTooLarge = (file: string, limit: number): SessionAnswer =>
 /** Why a command that needs a Tab is answered with none (rule 9). */
 export const NO_TAB_OPEN =
   "No tab is open in the Session's browser. Open one with your browser automation, then run ayme again.";
+
+/** Why a command waiting on a Tab was answered without what it asked for:
+ * the Tab closed meanwhile. */
+export const TAB_CLOSED =
+  "The tab was closed before ayme answered this command.";
 
 /** Why `--tab` named no open Tab of the Session named `name`: the URLs the
  * open Tabs show. */

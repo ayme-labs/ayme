@@ -100,12 +100,13 @@ export const stockBrowser = (projectDir: string): Layer.Layer<SessionBrowser> =>
           gone: goneFrom(playwrightBrowser),
           // The Session hands its Tabs the Page Objects the project's build
           // gave.
-          host: (pageObjects) =>
+          host: (pageObjects, { window }) =>
             hostTabs(
               playwrightBrowser,
               address,
               found.playwright.selectors,
-              pageObjects as NodePageObjects
+              pageObjects as NodePageObjects,
+              window
             ),
         };
       }),

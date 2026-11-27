@@ -13,6 +13,7 @@ import type {
 } from "../../../session/application";
 import {
   SessionStartError,
+  showsWindow,
   TabReadError,
   type RunAnswer,
 } from "../../../session/domain";
@@ -20,11 +21,15 @@ import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
 import { failingOnItsUncaught } from "../runUncaught";
-import { pageTargets, tabListAddress } from "../tabList";
+import { handedOver, readTabOrder, tabListAddress } from "../tabList";
 import { tabInspector, type InspectorPort } from "./tabInspector";
 
-/** Where a Node Host's Page Object Ids come from. */
-type IdSource = { next(): string };
+/** Where a Node Host's Page Object Ids come from, and what hears that a
+ * page forgot one. */
+type IdSource = {
+  next(className: string): string;
+  released?(id: string): void;
+};
 
 /** What the Session uses of the project's `@ayme-dev/ayme/internal`. */
 type NodeHostEntry = {
@@ -52,6 +57,15 @@ type NodeHostEntry = {
   };
 };
 
+// Playwright hands a new tab's page over within moments; a popup an action
+// just opened is worth that wait before ayme chooses another Tab.
+const HANDOVER_WAIT_MS = 2000;
+
+// Chromium answers its tab list in milliseconds; one still unanswered by
+// then is stuck, as behind a proxy that never ends the body. A Run has no
+// such limit: this bounds only ayme's own lookup.
+const TAB_LIST_DEADLINE_MS = 5000;
+
 /** The Caller a Session's commands start their Runs as. */
 const CALLER = "ayme-command";
 
@@ -70,18 +84,19 @@ const devtools = (page: Page) => {
   }
   return session;
 };
-const targetIdOf = async (page: Page) =>
-  (
-    (await (await devtools(page)).send("Target.getTargetInfo")) as {
-      targetInfo: { targetId: string };
-    }
-  ).targetInfo.targetId;
-
-/** The browser's tabs, the most recently active first, as its tab list at
- * `address` gives them. */
-const tabOrder = async (address: string) => {
-  const answer = await fetch(tabListAddress(address));
-  return pageTargets((await answer.json()) as { id: string; type: string }[]);
+/** The id of each page's tab, kept from its first lookup that succeeded,
+ * since a page keeps its tab. */
+const targetIds = new WeakMap<Page, Promise<string>>();
+const targetIdOf = (page: Page) => {
+  let id = targetIds.get(page);
+  if (!id) {
+    id = devtools(page)
+      .then((session) => session.send("Target.getTargetInfo"))
+      .then(({ targetInfo }) => targetInfo.targetId);
+    targetIds.set(page, id);
+    id.catch(() => targetIds.delete(page));
+  }
+  return id;
 };
 
 /** The Tab's page as its Host reaches it through `caller`. */
@@ -116,15 +131,15 @@ type Hosting = {
 };
 
 /** Makes the Session the Host of `page`, with focus emulation on, telling
- * `given` each Page Object Id its Host gives out. The Node Host's start sets
+ * `tabIds` of each Page Object Id its Host gives out and forgets. The Node Host's start sets
  * up the page's binding and its in-page helper without waiting for either,
- * so it reads nothing of the page. */
+ * so it reads nothing of the page. The Host stops when the page closes. */
 const hostOn =
   (
     { entry, classes, ids, selectors }: Hosting,
     page: Page
   ): BrowserTab["host"] =>
-  (given) =>
+  (tabIds) =>
     Effect.tryPromise({
       try: async () => {
         // So that a Run works the same while the Tab is not in front
@@ -132,16 +147,22 @@ const hostOn =
         await (
           await devtools(page)
         ).send("Emulation.setFocusEmulationEnabled", { enabled: true });
-        const next = () => {
-          const id = ids.next();
-          given(id);
+        const next = (className: string) => {
+          const id = ids.next(className);
+          tabIds.given(id, className);
           return id;
         };
         const ayme = entry.createNodeHost(
-          { page, pageObjects: classes, pageObjectIds: { next } },
+          {
+            page,
+            pageObjects: classes,
+            pageObjectIds: { next, released: tabIds.released },
+          },
           selectors
         );
-        await ayme.start();
+        const stop = await ayme.start();
+        if (page.isClosed()) stop();
+        else page.once("close", stop);
         return hostedTab(
           entry.pageObjectCallerOf(ayme, CALLER),
           entry.inspectorPortOf(ayme)
@@ -172,17 +193,24 @@ const pagesByTarget = async (browser: Browser) =>
     ).flat()
   );
 
-/** The Tabs of `browser`, whose DevTools protocol is at `address`, each the
- * same object while its page is open. */
+/** The Tabs of `browser`, which lists its tabs at `list`, each the
+ * same object while its page is open; a tab that shows the Inspector window
+ * served at `window` is none of them, and no read waits for it. */
 function tabsOf(
   browser: Browser,
-  address: string,
-  hosting: Hosting
+  list: string,
+  hosting: Hosting,
+  window: string | undefined
 ): BrowserTabs {
   const tabs = new WeakMap<Page, BrowserTab>();
+  const skipped = new Set<string>();
   const tabOf = (page: Page) => {
     const tab = tabs.get(page) ?? {
       url: () => page.url(),
+      closed: Effect.callback<void>((resume) => {
+        page.once("close", () => resume(Effect.void));
+        if (page.isClosed()) resume(Effect.void);
+      }),
       host: hostOn(hosting, page),
     };
     tabs.set(page, tab);
@@ -190,17 +218,19 @@ function tabsOf(
   };
   return {
     open: Effect.tryPromise({
-      try: async () => {
-        const [order, pages] = await Promise.all([
-          tabOrder(address),
-          pagesByTarget(browser),
-        ]);
-        // A tab Playwright has not attached to yet, which it does a moment
-        // after the tab opens, is no Tab yet.
-        return order.flatMap((id) => {
-          const page = pages.get(id);
-          return page ? [tabOf(page)] : [];
+      try: async (signal) => {
+        const order = await readTabOrder(list, {
+          signal,
+          deadline: TAB_LIST_DEADLINE_MS,
+          without: (url) => window !== undefined && showsWindow(url, window),
         });
+        const until = Date.now() + HANDOVER_WAIT_MS;
+        const pages = await handedOver(order, () => pagesByTarget(browser), {
+          pause: () => new Promise((resolve) => setTimeout(resolve, 50)),
+          over: () => signal.aborted || Date.now() > until,
+          skipped,
+        });
+        return pages.map(tabOf);
       },
       catch: (cause) =>
         new TabReadError(
@@ -215,12 +245,16 @@ function tabsOf(
  * protocol is at `address`, running `pageObjects` on each Tab the Session
  * works on, on the Playwright whose `selectors` drive the pages. Every
  * Tab's Host takes its Page Object Ids from one source. Reads no page.
+ * Refuses an address that tells nothing of where the browser lists its
+ * tabs, since every command needs that list. A tab that shows the Inspector
+ * window served at `window` is none of its Tabs.
  */
 export const hostTabs = (
   browser: Browser,
   address: string,
   selectors: unknown,
-  { classes, nodeHost }: NodePageObjects
+  { classes, nodeHost }: NodePageObjects,
+  window: string | undefined
 ): Effect.Effect<BrowserTabs, SessionStartError> =>
   Effect.tryPromise({
     try: async () =>
@@ -230,12 +264,21 @@ export const hostTabs = (
         `ayme could not run the project's Page Objects: ${reason(cause)}`
       ),
   }).pipe(
-    Effect.map((entry) =>
-      tabsOf(browser, address, {
-        entry,
-        classes,
-        ids: entry.createPageObjectIdSource(),
-        selectors,
+    Effect.flatMap((entry) =>
+      Effect.try({
+        try: () =>
+          tabsOf(
+            browser,
+            tabListAddress(address),
+            {
+              entry,
+              classes,
+              ids: entry.createPageObjectIdSource(),
+              selectors,
+            },
+            window
+          ),
+        catch: (cause) => new SessionStartError(reason(cause)),
       })
     )
   );

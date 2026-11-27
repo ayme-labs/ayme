@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PageObjectId, PageObjectTreeRead } from "../page-objects/domain";
 import { treeRead } from "../../testing/pageObjectTree.testSupport";
+import { InPageVersionError } from "../in-page";
 import type { DocumentToken, ToolInfo } from "../shared";
 import {
   pageObjectToolSource,
@@ -380,4 +381,29 @@ describe("a Page Object Tool's answer to a Caller that runs Page Object Tools al
       expect(run).not.toHaveBeenCalled();
     }
   );
+
+  it("refuses with the error naming both versions when the page runs ayme's in-page module of another version, before the tool is looked up", async () => {
+    const versions = new InPageVersionError(
+      "This document runs ayme's in-page module 1.0.0; this host is 1.1.0."
+    );
+    const run = vi.fn<PageObjectToolSession["run"]>(async () => {
+      throw new Error('The tool "ListPage.add" is unavailable.');
+    });
+    const stub: PageObjectToolSession = {
+      list: () => [],
+      run,
+      inTurn: (turn) =>
+        turn({
+          run,
+          readPageObjectTree: () => Promise.reject(versions),
+          url: () => "http://app/list",
+          arrivedAfterLoad: () => false,
+        }),
+    };
+
+    await expect(
+      pageObjectToolSource(stub, only).run("ListPage.add", {})
+    ).rejects.toBe(versions);
+    expect(run).not.toHaveBeenCalled();
+  });
 });

@@ -6,6 +6,7 @@ export {
   type HeldBrowser,
   type HostedTab,
   type SessionBrowserRequest,
+  type TabIds,
   type TabInspector,
 } from "./sessionBrowser";
 export { PageObjectsBuild, type BuiltPageObjects } from "./pageObjectsBuild";
