@@ -9,10 +9,11 @@ clicks outside Page Objects, navigation, and answering dialogs.
 
 Run each command in the project's folder. Write it `npx ayme <command>` when
 the project has `@ayme-dev/cli` in its `package.json`. When the project also
-has `@ayme-dev/mcp`, whose command is also called `ayme`, write
-`npx @ayme-dev/cli <command>` instead. Below, the commands are written
-`ayme <command>` for short. When the project has no `@ayme-dev/cli`, read
-[Browser setup](browser-setup.md) first.
+has `@ayme-dev/mcp`, `npx ayme` can run that package's command instead: ask
+the user to uninstall it, as
+[Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#set-up-your-project)
+says. Below, the commands are written `ayme <command>` for short. When the
+project has no `@ayme-dev/cli`, read [Browser setup](browser-setup.md) first.
 
 ## Connect ayme and your automation to one browser
 
@@ -73,15 +74,11 @@ End with `ayme detach`, which leaves the browser running.
 
 ## The Session
 
-- `ayme list` lists the Sessions of the project's folder. When a command
-  answers that no Session is open, start one as above.
+- When a command answers that no Session is open, start one as above.
+  `ayme list` lists the Sessions of the project's folder.
 - `-s=<name>`, or `AYME_SESSION`, names a Session, so that two agents in one
   folder each have their own. Every command of that Session takes the same
-  name.
-- ayme works on the browser's most recently active tab. It follows the tab
-  your automation switches to or opens. The first line of `ayme page-objects`
-  and `ayme tools` names that tab.
-- `ayme detach` ends a Session started with `ayme attach` and leaves the
-  browser running. `ayme close` ends any Session, and closes the browser only
-  when `ayme open` opened it.
-- A Session ends when its browser goes away. Start a new one, as above.
+  name, and your automation needs a session of its own too.
+- [Sessions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#sessions)
+  says how to name your automation's session, which Tab ayme works on, and
+  how a Session ends.

@@ -20,7 +20,7 @@ Add the recorder to your project as a dev dependency:
 npm install -D @ayme-dev/cli
 ```
 
-This gives you the `ayme` command; record with `npx ayme capture`, from your project's folder. You can also install it globally with `npm install -g @ayme-dev/cli` and run `ayme capture`, or run it without installing as `npx @ayme-dev/cli capture`. Either way, run it in your project's folder: that is where it looks for Playwright and saves recordings. If your project also has `@ayme-dev/mcp`, whose command is also called `ayme`, run `npx @ayme-dev/cli capture`.
+This gives you the `ayme` command; record with `npx ayme capture`, from your project's folder. You can also install it globally with `npm install -g @ayme-dev/cli` and run `ayme capture`, or run it without installing as `npx @ayme-dev/cli capture`. Either way, run it in your project's folder: that is where it looks for Playwright and saves recordings. If your project also has `@ayme-dev/mcp`, whose command is also called `ayme`, uninstall it, as [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#set-up-your-project) says.
 
 Recording needs Chromium for your project's Playwright. Install it once with Playwright's own command:
 

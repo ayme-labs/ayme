@@ -23,9 +23,12 @@ automation, or when a command answers that no Session is open, read
 project is not set up for the command yet, or a Session does not start,
 read [Browser setup](references/browser-setup.md).
 
-On each new screen, starting with the first one, run `ayme page-objects`
-before you take a snapshot. When you use the Page Object Tools, or a command
-answers that a tool is unavailable, read [Page tools](references/page-tools.md).
+While a Session is open, run `ayme page-objects` on each new screen,
+starting with the first one, before you take a snapshot: a Page Object Tool
+does in one call what several clicks and keystrokes would. Call one when it
+does the next step, and take a snapshot only when none does. When you use
+the Page Object Tools, or a command answers that a tool is unavailable, read
+[Page tools](references/page-tools.md).
 
 For designing or restructuring Page Object Models, read
 [Page object design](references/page-object-design.md) and

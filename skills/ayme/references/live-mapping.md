@@ -2,15 +2,13 @@
 
 Map a user flow into a POM against the running app, in this order:
 
-1. **Connect** ayme and the browser automation you already use to one
-   browser on the app's page, as
-   [Using ayme with browser automation tools](browser-automation-tools.md)
-   describes. Without any browser automation, add one first, such as
-   Playwright CLI, Playwright MCP or agent-browser.
-2. **Discover** the flow with your browser automation: its snapshot, click
-   and fill. Note each surface's root, portaled content, which states change
-   what's possible, and each step's visible outcome.
-3. **Write the POM** from what you observed, following
+1. **Discover** the flow with the browser automation you already use: its
+   snapshot, click and fill. Without any, add one first, such as Playwright
+   CLI, Playwright MCP or agent-browser. When a Session is open, list the
+   Page Objects on each new screen first, as the skill says. Note each
+   surface's root, portaled content, which states change what's possible,
+   and each step's visible outcome.
+2. **Write the POM** from what you observed, following
    [Page object design](page-object-design.md) and
    [Page Object Models](ayme-page-objects.md). Write each locator from the
    role and name the snapshot shows, such as
@@ -31,9 +29,15 @@ Map a user flow into a POM against the running app, in this order:
    are relative to that root, such as
    `getByRole('textbox', { name: 'Project name' })`.
 
-4. **Verify** with `ayme page-objects`: each new Page Object shows where you
-   expect it, with the children you declared. A Session rebuilds the Page
-   Objects only when it starts: run `ayme close` or `ayme detach`, and start
-   it again, after you add or edit a Page Object. Then call each new action and
-   confirm its effect, in its answer's `changes` or with your browser
-   automation.
+3. **Verify** with a Session. At the project's first Page Object, set the
+   project up first, as [Browser setup](browser-setup.md) says: a Session
+   does not start without `ayme/page-objects.ts`. List a new class there
+   unless a class it lists already reaches it. Start a Session on the
+   same browser as your automation, as
+   [Using ayme with browser automation tools](browser-automation-tools.md)
+   describes. A Session builds the Page Objects only when it starts: after
+   you add or edit a Page Object, end it with `ayme close` or `ayme detach`,
+   and start it again. Run `ayme page-objects`: each new Page Object shows
+   where you expect it, with the children you declared. Then call each new
+   action and confirm its effect, in its answer's `changes` or with your
+   browser automation.
