@@ -24,6 +24,7 @@ export {
   toolsAnswer,
   unanswerable,
   unknownRequest,
+  withBuildLine,
 } from "./answers";
 export {
   TabReadError,

@@ -9,7 +9,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { Effect } from "effect";
+import { Effect, Fiber, Stream } from "effect";
 import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 
 import { PageObjectsBuild } from "../../session/application";
@@ -104,14 +104,16 @@ const build = (projectDir: string) =>
     )
   ) as Promise<NodePageObjects>;
 
-const refusal = (projectDir: string) =>
+const refused = (projectDir: string) =>
   Effect.runPromise(
     Effect.scoped(
       PageObjectsBuild.use(({ build }) => Effect.flip(build)).pipe(
         Effect.provide(projectPageObjects(projectDir, "0.3.0"))
       )
     )
-  ).then((error) => error.message);
+  );
+const refusal = (projectDir: string) =>
+  refused(projectDir).then((error) => error.message);
 
 /** The classes registered with the copy of @ayme-dev/ayme at `installed`. */
 const registeredWith = async (installed: string) =>
@@ -236,4 +238,28 @@ it("a built module that cannot be written to a temporary file fails the start, s
       `^ayme could not write the built Page Objects of ${join(dir, "ayme", "page-objects.ts")} to a file in ${missing}: .*ENOENT`
     )
   );
+});
+
+it("tells of an edit to a file the last build read, and a build after it loads the edited classes", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+  const [before, after] = await Effect.runPromise(
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { build, edits } = yield* PageObjectsBuild;
+        const first = (yield* build) as NodePageObjects;
+        const edited = yield* Effect.forkScoped(Stream.runHead(edits));
+        yield* Effect.promise(() =>
+          write(dir, { "ayme/pom/Basket.ts": `${BASKET}// edited\n` })
+        );
+        yield* Fiber.join(edited);
+        return [first, (yield* build) as NodePageObjects];
+      }).pipe(Effect.provide(projectPageObjects(dir, "0.3.0")))
+    )
+  );
+  expect(after.classes).toHaveLength(1);
+  expect(after.classes[0]).not.toBe(before.classes[0]);
 });

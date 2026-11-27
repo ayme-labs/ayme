@@ -27,6 +27,7 @@ import {
 import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
+import { swapClasses, type NodeHostPom } from "../swapClasses";
 import { failingOnItsUncaught } from "../runUncaught";
 import { tabDialogs, type ActionCalls } from "../tabDialogs";
 import { handedOver, readTabOrder, tabListAddress } from "../tabList";
@@ -49,7 +50,7 @@ type NodeHostEntry = {
       actionCalls: ActionCalls;
     },
     selectors: unknown
-  ): { start(): Promise<() => void> };
+  ): { start(): Promise<() => void>; readonly pom: NodeHostPom };
   createPageObjectIdSource(): IdSource;
   inspectorPortOf(ayme: unknown): InspectorPort;
   pageObjectCallerOf(
@@ -240,12 +241,15 @@ const targetIdOf = (page: Page) => {
   return id;
 };
 
-/** The Tab's page as its Host reaches it through `caller`, each Run a
- * request of `dialogs`, which a dialog stops. */
+/** The Tab's page as its Host reaches it through `caller`, running
+ * `classes` on `pom`, each Run a request of `dialogs`, which a dialog
+ * stops. */
 const hostedTab = (
   caller: ReturnType<NodeHostEntry["pageObjectCallerOf"]>,
   inspector: InspectorPort,
-  { dialogs, dialog }: Pick<Watch, "dialogs" | "dialog">
+  { dialogs, dialog }: Pick<Watch, "dialogs" | "dialog">,
+  pom: NodeHostPom,
+  classes: readonly unknown[]
 ): HostedTab => ({
   // Each takes the Tab's turn, so it waits for the Run under way.
   listing: Effect.tryPromise({
@@ -272,6 +276,18 @@ const hostedTab = (
         : inspector.request(method, params),
   }),
   dialog: SubscriptionRef.changes(dialog),
+  swap: (pageObjects) =>
+    Effect.try({
+      try: () => {
+        const rebuilt = (pageObjects as NodePageObjects).classes;
+        swapClasses(pom, classes, rebuilt);
+        classes = rebuilt;
+      },
+      catch: (cause) =>
+        new TabReadError(
+          `ayme could not swap the rebuilt Page Objects in on the tab: ${reason(cause)}`
+        ),
+    }),
 });
 
 /** What every Tab's Host shares: the project's entry, the built classes,
@@ -332,7 +348,9 @@ const hostOn =
         return hostedTab(
           entry.pageObjectCallerOf(ayme, CALLER),
           entry.inspectorPortOf(ayme),
-          watch
+          watch,
+          ayme.pom,
+          classes
         );
       },
       catch: (cause) =>

@@ -6,7 +6,7 @@ import { isBuiltin } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { pathToFileURL } from "node:url";
-import { Effect, Layer } from "effect";
+import { Effect, Exit, Layer } from "effect";
 import * as esbuild from "esbuild";
 
 import { PageObjectsBuild } from "../../session/application";
@@ -18,6 +18,7 @@ import {
   type PomDiagnostic,
 } from "./builtEntry";
 import { projectAyme, type ProjectAyme } from "./projectAyme";
+import { sourceWatch } from "./sourceWatch";
 
 /** The project's Page Objects, built and loaded for Node. */
 export type NodePageObjects = {
@@ -142,8 +143,21 @@ const projectPackages = (projectDir: string): esbuild.Plugin => ({
   },
 });
 
-/** The entry built into one ES module, or the build's messages. */
-const bundle = (entry: string, compiler: CompilerEntry) => {
+/** Adds each file of the project the build loads to `read`, whether the
+ * build succeeds or not: the source an edit changes. */
+const readFiles = (read: Set<string>): esbuild.Plugin => ({
+  name: "ayme-read-files",
+  setup(build) {
+    build.onLoad({ filter: /.*/ }, ({ path }) => {
+      if (!installed(path)) read.add(path);
+      return undefined;
+    });
+  },
+});
+
+/** The entry built into one ES module, or the build's messages; each file
+ * of the project it loads goes into `read`. */
+const bundle = (entry: string, compiler: CompilerEntry, read: Set<string>) => {
   // The project folder, which holds the ayme folder.
   const projectDir = join(dirname(entry), "..");
   return Effect.tryPromise({
@@ -158,7 +172,11 @@ const bundle = (entry: string, compiler: CompilerEntry) => {
         write: false,
         outfile: "page-objects.mjs",
         logLevel: "silent",
-        plugins: [projectPackages(projectDir), pageObjectModels(compiler)],
+        plugins: [
+          readFiles(read),
+          projectPackages(projectDir),
+          pageObjectModels(compiler),
+        ],
       }),
     catch: (failure) => failure as esbuild.BuildFailure,
   }).pipe(
@@ -170,7 +188,9 @@ const bundle = (entry: string, compiler: CompilerEntry) => {
           color: false,
         })
       ).pipe(
-        Effect.flatMap((messages) => Effect.fail(buildFailed(entry, messages)))
+        Effect.flatMap((messages) =>
+          Effect.fail(buildFailed(entry, messages, failure.errors ?? []))
+        )
       )
     )
   );
@@ -212,30 +232,43 @@ const load = (code: string, entry: string) =>
   );
 
 /** Builds the project's Page Objects for Node and loads them, with the
- * project's own `@ayme-dev/ayme`. */
-const buildForNode = ({
-  entry,
-  compiler,
-  nodeHost,
-}: ProjectAyme): Effect.Effect<NodePageObjects, SessionStartError> =>
+ * project's own `@ayme-dev/ayme`; each file of the project the build
+ * loads goes into `read`. */
+const buildForNode = (
+  { entry, compiler, nodeHost }: ProjectAyme,
+  read: Set<string>
+): Effect.Effect<NodePageObjects, SessionStartError> =>
   importFile<CompilerEntry>(
     compiler,
     `The Page Object compiler of the project's @ayme-dev/ayme, ${compiler},`
   ).pipe(
-    Effect.flatMap((compilerEntry) => bundle(entry, compilerEntry)),
+    Effect.flatMap((compilerEntry) => bundle(entry, compilerEntry, read)),
     Effect.flatMap((code) => load(code, entry)),
     Effect.flatMap((module) => pageObjectClasses(module, entry)),
     Effect.map((classes) => ({ classes, nodeHost }))
   );
 
 /** The build of the Page Objects of the project in `projectDir`, on its own
- * `@ayme-dev/ayme`, which must be `aymeVersion`, this ayme's version. */
+ * `@ayme-dev/ayme`, which must be `aymeVersion`, this ayme's version. Its
+ * edits are those to the files the last finished build read, watched until
+ * the scope of a build closes. */
 export const projectPageObjects = (
   projectDir: string,
   aymeVersion: string
-): Layer.Layer<PageObjectsBuild> =>
-  Layer.succeed(PageObjectsBuild, {
-    build: projectAyme(projectDir, aymeVersion).pipe(
-      Effect.flatMap(buildForNode)
-    ),
+): Layer.Layer<PageObjectsBuild> => {
+  const watch = sourceWatch();
+  return Layer.succeed(PageObjectsBuild, {
+    build: Effect.gen(function* () {
+      yield* Effect.addFinalizer(() => Effect.sync(watch.close));
+      watch.began();
+      const read = new Set<string>();
+      return yield* projectAyme(projectDir, aymeVersion).pipe(
+        Effect.flatMap((project) => buildForNode(project, read)),
+        Effect.onExit((exit) =>
+          Effect.sync(() => watch.finished(read, Exit.isFailure(exit)))
+        )
+      );
+    }),
+    edits: watch.edits,
   });
+};

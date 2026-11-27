@@ -43,9 +43,11 @@ import {
   type TabDialog,
   TabDialogOpen,
   unknownRequest,
+  withBuildLine,
 } from "../domain";
 import { answerInspector, inspectorEvents, withoutWindow } from "./inspector";
 import { PageObjectsBuild } from "./pageObjectsBuild";
+import { rebuilding, type Rebuilds } from "./rebuilds";
 import {
   SessionBrowser,
   type HeldBrowser,
@@ -55,8 +57,13 @@ import {
   type SessionBrowserRequest,
 } from "./sessionBrowser";
 
-/** What a Session has once it started: its browser, and its Tabs. */
-type Started = { readonly held: HeldBrowser; readonly tabs: SessionTabs };
+/** What a Session has once it started: its browser, its Tabs, and its
+ * Page Objects as its builds leave them. */
+type Started = {
+  readonly held: HeldBrowser;
+  readonly tabs: SessionTabs;
+  readonly rebuilds: Rebuilds;
+};
 
 /** One running ayme connected to one browser. */
 export interface Session {
@@ -111,14 +118,19 @@ export const openSession = (
       { concurrency: "unbounded" }
     ).pipe(
       Effect.flatMap(([held, built]) =>
-        held.host(built, { window: inspector }).pipe(
-          Effect.map((tabs): Started => ({
+        Effect.all([
+          held.host(built, { window: inspector }),
+          rebuilding(built, pageObjects, browserScope),
+        ]).pipe(
+          Effect.map(([tabs, rebuilds]): Started => ({
             held,
+            rebuilds,
             tabs: sessionTabs(
               withoutWindow(tabs, inspector),
               name,
               browserScope,
-              Deferred.isDone(ending)
+              Deferred.isDone(ending),
+              rebuilds
             ),
           }))
         )
@@ -178,7 +190,7 @@ export const openSession = (
 
     /** A listing of the Tab `on` names, answered by `answer`. */
     const listed = (
-      { tabs }: Started,
+      { tabs, rebuilds }: Started,
       { tab }: { readonly tab?: string },
       answer: (listing: Listing) => SessionAnswer
     ) =>
@@ -193,7 +205,8 @@ export const openSession = (
                 : error.message
             )
           )
-        )
+        ),
+        Effect.map((answer) => withBuildLine(answer, rebuilds.failing()))
       );
 
     const answerTo = (
@@ -300,12 +313,14 @@ type SessionTabs = {
 /** The Tabs of `browser`, each hosted once, the first time the Session
  * named `name` works on it, and the Page Object Ids each Tab's Host gave.
  * A Tab is let go when its page closes, in `scope`. None starts work once
- * `ending`. */
+ * `ending`. Each swaps in the Page Objects `rebuilds` leaves between its
+ * Runs. */
 function sessionTabs(
   browser: BrowserTabs,
   name: string,
   scope: Scope.Scope,
-  ending: Effect.Effect<boolean>
+  ending: Effect.Effect<boolean>,
+  rebuilds: Rebuilds
 ): SessionTabs {
   const hosts = new Map<BrowserTab, Effect.Effect<HostedTab, TabReadError>>();
   // The Tab each id was given on, while its Host knows the id.
@@ -344,11 +359,15 @@ function sessionTabs(
         ).pipe(
           Effect.map((hosted) =>
             atDialogs(
-              untilClosed(inTurns(hosted, ending), tab.closed),
+              untilClosed(
+                inTurns(rebuilds.swapping(hosted), ending),
+                tab.closed
+              ),
               tab,
               scope
             )
           ),
+          Effect.tap((hosted) => rebuilds.follow(hosted, tab.closed)),
           Effect.tap(() =>
             tab.closed.pipe(Effect.andThen(retire(tab)), Effect.forkIn(scope))
           )
@@ -416,6 +435,7 @@ function untilClosed(
       events: hosted.inspector.events.pipe(Stream.interruptWhen(closed)),
     },
     dialog: hosted.dialog,
+    swap: hosted.swap,
   };
 }
 
@@ -448,6 +468,8 @@ function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
           : hosted.inspector.request(method, params),
     },
     dialog: hosted.dialog,
+    // A Swap takes the turn, so it happens only between Runs (rule 7).
+    swap: (pageObjects) => inTurn(hosted.swap(pageObjects)),
   };
 }
 
@@ -544,6 +566,8 @@ function atDialogs(
         ),
     },
     dialog: hosted.dialog,
+    // A Swap reads no page, so a dialog does not hold it up (rule 7).
+    swap: hosted.swap,
   };
 }
 

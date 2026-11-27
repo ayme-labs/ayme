@@ -1,4 +1,4 @@
-import { Context, type Effect, type Scope } from "effect";
+import { Context, type Effect, type Scope, type Stream } from "effect";
 
 import type { SessionStartError } from "../domain";
 
@@ -13,7 +13,8 @@ export type BuiltPageObjects = unknown;
  * Builds the Page Objects of the project's ayme folder for Node: the
  * Session's second seam, beside its browser. A build reads no page, so it
  * runs while the browser opens. It fails with the build's errors, as
- * `ayme open` prints them.
+ * `ayme open` prints them. Each run of `build` builds again, from the
+ * source as it is then; `edits` tells when that source changed.
  */
 export class PageObjectsBuild extends Context.Service<
   PageObjectsBuild,
@@ -23,5 +24,8 @@ export class PageObjectsBuild extends Context.Service<
       SessionStartError,
       Scope.Scope
     >;
+    /** Each edit to the source the last finished build read, from when
+     * the stream runs. */
+    readonly edits: Stream.Stream<void>;
   }
 >()("@ayme-dev/session/session/PageObjectsBuild") {}
