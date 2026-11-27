@@ -991,6 +991,72 @@ describe("live Page Object registry", () => {
     ]);
   });
 
+  it("keeps a registered class's tools when another build of its file declares a different root, before that build registers anything", async () => {
+    const { registry, session, ayme, rootOf } = await setup();
+    // A Session loads a rebuilt bundle before it knows the build is good,
+    // and while the classes it replaces are still registered.
+    const compile = (rooted: boolean) => {
+      const Basket = class Basket {
+        root = brandedLocator();
+        add() {}
+      };
+      if (rooted) ayme({ root: rootOf })(Basket);
+      registry.registerCompiledPom(Basket, {
+        ...emptyManifest("Basket"),
+        file: "Basket.ts",
+        members: [{ memberName: "root", kind: "locator", access: "field" }],
+        tools: [action("Basket.add")],
+      });
+      const Shop = class Shop {
+        basket = new Basket();
+      };
+      registry.registerCompiledPom(Shop, {
+        ...emptyManifest("Shop"),
+        file: "Shop.ts",
+        members: [
+          {
+            memberName: "basket",
+            kind: "component",
+            access: "field",
+            componentClassName: "Basket",
+            collection: false,
+          },
+        ],
+        components: [
+          {
+            className: "Basket",
+            file: "Basket.ts",
+            members: [{ memberName: "root", kind: "locator", access: "field" }],
+            tools: [action("Basket.add")],
+          },
+        ],
+      });
+      return { Basket, Shop };
+    };
+    const rootedNow = () =>
+      registry
+        .listRegisteredPomTools()
+        .map(({ tool }) => [tool.name, tool.rooted]);
+    const installed = compile(true);
+    session.register(installed.Basket);
+    await vi.runOnlyPendingTimersAsync();
+    expect(rootedNow()).toEqual([["Basket.add", true]]);
+    session.unregister(installed.Basket);
+    session.register(installed.Shop);
+    await vi.runOnlyPendingTimersAsync();
+    expect(rootedNow()).toEqual([["Basket.add", true]]);
+
+    compile(false);
+    pageChanges();
+    await vi.runOnlyPendingTimersAsync();
+
+    expect(rootedNow()).toEqual([["Basket.add", true]]);
+    session.unregister(installed.Shop);
+    session.register(installed.Basket);
+    await vi.runOnlyPendingTimersAsync();
+    expect(rootedNow()).toEqual([["Basket.add", true]]);
+  });
+
   it("reports an observation error for a manifest-declared locator without a brand", async () => {
     const { registry, session } = await setup();
 

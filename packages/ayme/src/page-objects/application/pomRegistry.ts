@@ -259,9 +259,10 @@ export function createPomRegistry(
   function refreshRootlessRefusals() {
     const manifests = [...registeredPoms].map(({ manifest }) => manifest);
     const roots = new Map(
-      manifests.flatMap((manifest) =>
+      [...registeredPoms].flatMap(({ pomClass, manifest }) =>
         [manifest, ...manifest.components].map(
-          (node) => [node.className, compiledRootDeclared(node)] as const
+          (node) =>
+            [node.className, compiledRootDeclared(pomClass, node)] as const
         )
       )
     );
@@ -379,7 +380,7 @@ export function createPomRegistry(
     for (const { component, owner, actions } of classes.values()) {
       const instance = instancesOf(component)[0]?.instance;
       const rooted =
-        compiledRootDeclared(component) ??
+        compiledRootDeclared(owner.pomClass, component) ??
         (instance !== undefined &&
           modelOption(instance.constructor, "root") !== undefined);
       owner.tools = owner.tools.concat(
