@@ -24,7 +24,7 @@ The common reasons an ayme setup fails, by what you see.
 
 These are for a coding agent that runs your Page Object Tools with the `ayme` command, as [Connect an agent](guides/connect-an-agent.md) sets up.
 
-- **`No Session is open in <folder>.`**: no Session runs in that folder under that name. Start one with `ayme open` or `ayme attach`, in the project's folder and with the same `-s=<name>` as the command. `ayme list` lists the folder's Sessions.
+- **`No Session is open in <folder>.`**, or **`No Session named <name> is open in <folder>.`**: no Session runs in that folder under that name. When other Sessions run there, the message goes on with their names: `The Sessions open there are named: …`. Start one with `ayme open` or `ayme attach`, in the project's folder and with the same `-s=<name>` as the command, or use the name of one that runs. `ayme list` prints `No Session is open in <folder>.` too, as its answer rather than an error, when the folder has none.
 - **`npx ayme` has no `open`, `attach` or `page-objects`**: the project also has `@ayme-dev/mcp`, whose command is also called `ayme`, and `npx` ran that one. Uninstall it, as [Set up your project](guides/connect-an-agent.md#set-up-your-project) says.
 - **The Session does not start, and names a package**: the project has no `@ayme-dev/ayme`, has it at another version than `@ayme-dev/cli`, or has no Playwright, or one older than the range [Connect an agent](guides/connect-an-agent.md#set-up-your-project) gives. Install the version the message names; for Playwright, one in that range.
 - **`<folder> has no ayme/page-objects.ts.`**: list your Page Object classes there; see [Connect an agent](guides/connect-an-agent.md#set-up-your-project).

@@ -2,9 +2,8 @@
 
 The commands are written `ayme <command>`; run them as
 [Browser automation tools](browser-automation-tools.md) says. Each one
-prints its answer and exits. An error goes to standard error with exit code
-
-1. Add `--json` for an answer as JSON.
+prints its answer and exits. An error goes to standard error with exit
+code 1. Add `--json` for a Session's answer as JSON.
 
 ## Prefer the Page Object Tools
 
@@ -43,7 +42,8 @@ The first line names the tab ayme works on: the browser's most recently
 active tab. `--tab=<url>` reads another tab, by the URL that line shows.
 
 `ayme tools` lists each Page Object Tool of the screen with its parameters,
-and why a tool cannot run now: `ProjectRow.remove (unavailable: …)`.
+and marks a tool that cannot run now: `ProjectRow.remove (unavailable: …)`
+with the app's reason, or `(unavailable)` alone when the app gave none.
 
 ## Name a Page Object by its id
 
@@ -89,7 +89,7 @@ then run `ayme page-objects`.
 ## Refused and failed calls
 
 - A refused call answers with its reason alone, such as
-  `RuntimeStateError: ProjectRow "po2" is unavailable: No item is selected`,
+  `RuntimeStateError: ProjectRow "po2" is unavailable: No item is selected.`,
   the app's own reason. Input that does not match the tool's parameters is
   refused before the action runs, with a sentence for each problem.
 - A failed call answers with what failed, followed by `changes:` when the
