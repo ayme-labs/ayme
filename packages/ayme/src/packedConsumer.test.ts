@@ -28,7 +28,7 @@
  *
  * 11. The packed `@ayme-dev/cli` carries the recorder engine and window
  *     and nothing of Playwright, and a clean project that installs it
- *     records a flow once.
+ *     records a flow once, and lists its Page Objects in a Session.
  *
  * With `AYME_PACKED_DIR` set, the tarballs are packed into that empty
  * directory and kept, so the release workflow publishes exactly the
@@ -1726,8 +1726,9 @@ it("the packed CLI carries its engine, its window, its toolbar and its notices, 
   ]);
   expect(manifest.bin).toEqual({ ayme: "./dist/cli.mjs" });
   // The engine and the window are inside the command: nothing to install
-  // beside it but the Playwright the project has.
-  expect(manifest.dependencies).toBeUndefined();
+  // beside it but the Playwright the project has, and esbuild, whose
+  // platform binary a Session builds the project's Page Objects with.
+  expect(manifest.dependencies).toEqual({ esbuild: expect.any(String) });
   expect(manifest.peerDependencies).toEqual({
     "@playwright/test": `>=${recorderRange.floor}`,
   });
@@ -1775,13 +1776,16 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
 });
 
 it(
-  "a clean project installs the packed CLI and records one flow with ayme capture",
-  { timeout: 120_000 },
+  "a clean project installs the packed CLI, records one flow with ayme capture, and lists its Page Objects in a Session",
+  { timeout: 180_000 },
   async () => {
     const project = path.join(tmp, "recorder-project");
     fs.mkdirSync(project);
     // The project's own Playwright, which the recorder uses: the CLI brings
     // none.
+    // Its own @ayme-dev/ayme and TypeScript, which a Session builds the
+    // project's Page Objects with.
+    const { tarballs, workspaceYaml } = tarballDependencies(["@ayme-dev/ayme"]);
     fs.writeFileSync(
       path.join(project, "package.json"),
       JSON.stringify({
@@ -1790,9 +1794,12 @@ it(
         devDependencies: {
           [CLI]: `file:${packed[CLI]!.tarball}`,
           "@playwright/test": lastPlaywright,
+          ...tarballs,
+          typescript: "6.0.3",
         },
       })
     );
+    fs.writeFileSync(path.join(project, "pnpm-workspace.yaml"), workspaceYaml);
     exec("pnpm", ["install", "--ignore-scripts", "--no-lockfile"], project);
 
     const app = createHttpServer((_request, response) => {
@@ -1912,6 +1919,73 @@ it(
       );
     } finally {
       command.kill();
+    }
+
+    // A Session builds the project's Page Objects with the esbuild the CLI
+    // installs and the project's own @ayme-dev/ayme, and runs them on the
+    // page.
+    fs.mkdirSync(path.join(project, "ayme"), { recursive: true });
+    // The compiler reads how the project compiles its TypeScript.
+    fs.writeFileSync(
+      path.join(project, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          strict: true,
+          target: "ES2022",
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          experimentalDecorators: true,
+          types: [],
+        },
+      })
+    );
+    fs.writeFileSync(
+      path.join(project, "ayme", "page-objects.ts"),
+      `import { ayme } from "@ayme-dev/ayme";
+import type { Page } from "@playwright/test";
+
+@ayme
+class ShopPage {
+  constructor(private readonly page: Page) {}
+
+  @ayme.action({ description: "Add an item." })
+  async add() {
+    await this.page.getByRole("button", { name: "Add item" }).click();
+  }
+}
+
+export default [ShopPage];
+`
+    );
+    const run = (...args: string[]) =>
+      promisify(execFile)(
+        process.execPath,
+        [path.join(installed, ayme!), ...args],
+        {
+          cwd: project,
+          encoding: "utf-8",
+          env: {
+            ...process.env,
+            NODE_PATH: "",
+            AYME_CACHE_DIR: path.join(project, "cache"),
+          },
+        }
+      );
+    try {
+      await run("open", pageUrl).catch((error: unknown) => {
+        throw execFailure(error);
+      });
+      const { stdout: listed } = await run("page-objects");
+      expect(listed).toBe(
+        [
+          `Tab: Shop (${pageUrl})`,
+          "ShopPage",
+          "This screen has 1 Page Object Tool: ayme tools lists it with its parameters.",
+          "",
+        ].join("\n")
+      );
+    } finally {
+      await run("close").catch(() => {});
       app.close();
     }
   }
