@@ -14,6 +14,8 @@ export type ListedTool = {
   readonly available: boolean;
   /** Its Availability Reason, when it is unavailable and has one. */
   readonly reason?: string;
+  /** Present when its `@ayme.action` sets `destructive: true`. */
+  readonly destructive?: true;
 };
 
 /** What a listing reads of a Tab: its name, its page's Page Object Tree as

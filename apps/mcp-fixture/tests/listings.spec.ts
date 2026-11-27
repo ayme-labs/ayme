@@ -35,7 +35,7 @@ test("ayme page-objects prints the Page Object Tree of the Tab, between the Tab'
   });
 });
 
-test("ayme tools lists every Page Object Tool with its parameters, an unavailable one with why", async ({
+test("ayme tools lists every Page Object Tool with its parameters, an unavailable one with why, a destructive one marked", async ({
   ayme,
   baseURL,
 }) => {
@@ -50,7 +50,7 @@ test("ayme tools lists every Page Object Tool with its parameters, an unavailabl
     expect.stringMatching(/^ShopPage\.readHeading: Read the shop's heading\./),
     expect.stringMatching(/^Basket\.add: Put an item in the basket\./),
     expect.stringMatching(
-      /^Basket\.clear \(unavailable: The basket is empty\): Clear the basket\./
+      /^Basket\.clear destructive \(unavailable: The basket is empty\): Clear the basket\./
     ),
   ]);
   const parameters = (tool: string) =>
@@ -94,6 +94,7 @@ test("both listings have a --json form", async ({ ayme, baseURL }) => {
           name: "Basket.clear",
           available: false,
           reason: "The basket is empty",
+          destructive: true,
           parameters: expect.objectContaining({ type: "object" }),
         }),
       ],

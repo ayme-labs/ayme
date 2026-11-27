@@ -139,14 +139,16 @@ function toolLines({
   parameters,
   available,
   reason,
+  destructive,
 }: ListedTool): string[] {
+  const mark = destructive ? " destructive" : "";
   const unavailable = available
     ? ""
     : reason === undefined
       ? " (unavailable)"
       : ` (unavailable: ${reason})`;
   return [
-    `${name}${unavailable}${description ? `: ${description}` : ""}`,
+    `${name}${mark}${unavailable}${description ? `: ${description}` : ""}`,
     `  parameters: ${JSON.stringify(parameters)}`,
   ];
 }

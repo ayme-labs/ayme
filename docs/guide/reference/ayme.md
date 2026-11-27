@@ -368,13 +368,12 @@ export class ProjectRow extends AppComponent {
 
 The mark reaches agents only as the tool's standard annotation. ayme still lists and runs the tool like any other: it never asks for confirmation, refuses a call or hides the tool. What to do about the mark is up to whoever calls the tool.
 
-| Where the tool is published             | What a marked tool carries                                                                                                                                 |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [WebMCP](../guides/publish-tools.md)    | `annotations: { consequentialHint: true }`. WebMCP has no destructive hint; its consequential one is for actions that are significant or cannot be undone. |
-| [`ayme.tools.list()`](#toolinfo)        | `destructive: true`                                                                                                                                        |
-| The [Inspector](../guides/inspector.md) | A warning icon in the Tools list and a Destructive mark beside the tool's name                                                                             |
-
-`ayme tools`, the [`ayme` command](../guides/connect-an-agent.md)'s list of a Session's tools, prints no mark.
+| Where the tool is published                   | What a marked tool carries                                                                                                                                 |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [WebMCP](../guides/publish-tools.md)          | `annotations: { consequentialHint: true }`. WebMCP has no destructive hint; its consequential one is for actions that are significant or cannot be undone. |
+| [`ayme.tools.list()`](#toolinfo)              | `destructive: true`                                                                                                                                        |
+| The [Inspector](../guides/inspector.md)       | A warning icon in the Tools list and a Destructive mark beside the tool's name                                                                             |
+| [`ayme tools`](../guides/connect-an-agent.md) | `destructive` after the tool's name, and `"destructive": true` with `--json`                                                                               |
 
 A tool without the mark carries no annotations at all, so ayme never says a tool is safe.
 

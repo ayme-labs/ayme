@@ -195,7 +195,7 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-An agent that calls the tool through WebMCP gets the mark as the tool's `consequentialHint` annotation, so it or the harness driving it can stop before the call; `ayme tools` prints no mark. ayme still runs the tool like any other. Write `true` in the decorator itself: the build reads it from source, as it reads `description`. [Destructive actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#destructive-actions) has the details.
+An agent that calls the tool through WebMCP gets the mark as the tool's `consequentialHint` annotation, so it or the harness driving it can stop before the call; `ayme tools` prints `destructive` after its name. ayme still runs the tool like any other. Write `true` in the decorator itself: the build reads it from source, as it reads `description`. [Destructive actions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#destructive-actions) has the details.
 
 ## `@ayme.child`
 

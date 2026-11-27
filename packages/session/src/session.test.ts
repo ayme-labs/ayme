@@ -216,6 +216,37 @@ it("tools lists every Page Object Tool of the Tab with its parameters, an unavai
   });
 });
 
+it("tools marks a tool its author marked destructive, in the text after its name and in the JSON, and nothing on the others", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const remove = {
+    name: "Basket.remove",
+    description: "Remove an item.",
+    parameters: {},
+    available: true,
+    destructive: true as const,
+  };
+  const empty = { ...remove, name: "Basket.empty", available: false };
+  browser.show({
+    tab,
+    pageObjectTree: "Basket po1",
+    tools: [readHeading, remove, empty],
+  });
+
+  expect(await session.ask({ tools: {} })).toEqual({
+    ok: true,
+    text: [
+      "Tab: Groceries (http://127.0.0.1:5173/basket.html)",
+      "Basket.readHeading: Read the basket's heading.",
+      '  parameters: {"type":"object","properties":{},"additionalProperties":false}',
+      "Basket.remove destructive: Remove an item.",
+      "  parameters: {}",
+      "Basket.empty destructive (unavailable): Remove an item.",
+      "  parameters: {}",
+    ].join("\n"),
+    data: { tab, tools: [readHeading, remove, empty] },
+  });
+});
+
 it("a screen without Page Object Tools says so in both listings, and page-objects still ends with the count and where tools are listed", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.show({
