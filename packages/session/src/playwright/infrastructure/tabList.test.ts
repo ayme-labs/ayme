@@ -24,8 +24,28 @@ it.each([
     "wss://browser.example:443/devtools/browser/1",
     "https://browser.example/json/list",
   ],
+  // Behind a proxy that serves the browser under a path, as Playwright
+  // joins it.
+  [
+    "http://proxy.example/team/chrome",
+    "http://proxy.example/team/chrome/json/list",
+  ],
+  [
+    "ws://proxy.example/team/chrome/devtools/browser/5e0c-41",
+    "http://proxy.example/team/chrome/json/list",
+  ],
+  [
+    "https://proxy.example/team/chrome/?token=t",
+    "https://proxy.example/team/chrome/json/list?token=t",
+  ],
 ])("reads the tab list of the browser at %s from %s", (address, list) => {
   expect(tabListAddress(address)).toBe(list);
+});
+
+it("refuses a socket address that tells no tab list", () => {
+  expect(() => tabListAddress("ws://127.0.0.1:9222/socket")).toThrow(
+    "ws://127.0.0.1:9222/socket is a DevTools socket that tells nothing of where the browser lists its tabs, which ayme reads over HTTP. Join the browser at its HTTP address, such as http://127.0.0.1:9222, or at a socket address that ends in /devtools/browser/<id>."
+  );
 });
 
 it("keeps the browser's order of its tabs, most recently active first, and leaves out every target that is no tab", () => {
@@ -143,6 +163,23 @@ describe("a read of the tab list", () => {
     await expect(readTabOrder(list, reading)).rejects.toThrow(
       `${list} answered something other than the browser's tab list: ${_}.`
     );
+  });
+
+  it("refuses to follow a redirect, so the read never leaves the address it was given", async () => {
+    let followed = false;
+    const elsewhere = await serving((_, response) => {
+      followed = true;
+      response.end("[]");
+    });
+    const list = await serving((_, response) => {
+      response.writeHead(302, { location: elsewhere });
+      response.end();
+    });
+
+    await expect(readTabOrder(list, reading)).rejects.toThrow(
+      `${list} redirected to ${elsewhere}. ayme reads the tab list only at the address the browser was joined at.`
+    );
+    expect(followed).toBe(false);
   });
 
   it("gives up on a list whose body never ends, at its deadline", async () => {

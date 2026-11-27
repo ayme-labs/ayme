@@ -176,13 +176,9 @@ const pagesByTarget = async (browser: Browser) =>
     ).flat()
   );
 
-/** The Tabs of `browser`, whose DevTools protocol is at `address`, each the
+/** The Tabs of `browser`, which lists its tabs at `list`, each the
  * same object while its page is open. */
-function tabsOf(
-  browser: Browser,
-  address: string,
-  hosting: Hosting
-): BrowserTabs {
+function tabsOf(browser: Browser, list: string, hosting: Hosting): BrowserTabs {
   const tabs = new WeakMap<Page, BrowserTab>();
   const skipped = new Set<string>();
   const tabOf = (page: Page) => {
@@ -200,7 +196,7 @@ function tabsOf(
   return {
     open: Effect.tryPromise({
       try: async (signal) => {
-        const order = await readTabOrder(tabListAddress(address), {
+        const order = await readTabOrder(list, {
           signal,
           deadline: TAB_LIST_DEADLINE_MS,
         });
@@ -225,6 +221,8 @@ function tabsOf(
  * protocol is at `address`, running `pageObjects` on each Tab the Session
  * works on, on the Playwright whose `selectors` drive the pages. Every
  * Tab's Host takes its Page Object Ids from one source. Reads no page.
+ * Refuses an address that tells nothing of where the browser lists its
+ * tabs, since every command needs that list.
  */
 export const hostTabs = (
   browser: Browser,
@@ -240,12 +238,16 @@ export const hostTabs = (
         `ayme could not run the project's Page Objects: ${reason(cause)}`
       ),
   }).pipe(
-    Effect.map((entry) =>
-      tabsOf(browser, address, {
-        entry,
-        classes,
-        ids: entry.createPageObjectIdSource(),
-        selectors,
+    Effect.flatMap((entry) =>
+      Effect.try({
+        try: () =>
+          tabsOf(browser, tabListAddress(address), {
+            entry,
+            classes,
+            ids: entry.createPageObjectIdSource(),
+            selectors,
+          }),
+        catch: (cause) => new SessionStartError(reason(cause)),
       })
     )
   );

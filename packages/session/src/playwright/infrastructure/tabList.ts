@@ -1,9 +1,26 @@
-/** Where a browser at `address`, the one a Session opened or joined, lists
- * its tabs over HTTP: the same host, for an address of either protocol. */
+/**
+ * Where a browser at `address`, the one a Session opened or joined, lists
+ * its tabs over HTTP, beside the `json/version` Playwright reads when it
+ * joins an HTTP address: under the same path, which a proxy may serve the
+ * browser under. A socket address tells that path only when it ends in
+ * `/devtools/browser/<id>`, as Chromium names its own.
+ */
 export function tabListAddress(address: string): string {
   const url = new URL(address);
   const secure = url.protocol === "https:" || url.protocol === "wss:";
-  return `${secure ? "https" : "http"}://${url.host}/json/list`;
+  if (url.protocol === "ws:" || url.protocol === "wss:") {
+    const socket = /^(.*)\/devtools\/browser\/[^/]+$/.exec(url.pathname);
+    if (!socket)
+      throw new Error(
+        `${address} is a DevTools socket that tells nothing of where the browser lists its tabs, which ayme reads over HTTP. Join the browser at its HTTP address, such as http://127.0.0.1:9222, or at a socket address that ends in /devtools/browser/<id>.`
+      );
+    url.pathname = socket[1]!;
+  }
+  url.protocol = secure ? "https:" : "http:";
+  url.hash = "";
+  if (!url.pathname.endsWith("/")) url.pathname += "/";
+  url.pathname += "json/list";
+  return url.toString();
 }
 
 /** Why an answer is no tab list, as a read of one refuses it. */
@@ -37,9 +54,16 @@ export async function readTabOrder(
 ): Promise<string[]> {
   const timeout = AbortSignal.timeout(deadline);
   try {
+    // Never followed, so the read stays at the address the person gave.
     const answer = await fetch(list, {
+      redirect: "manual",
       signal: AbortSignal.any([signal, timeout]),
     });
+    const location = answer.headers.get("location");
+    if (location !== null)
+      throw new Error(
+        `${list} redirected to ${location}. ayme reads the tab list only at the address the browser was joined at.`
+      );
     if (!answer.ok)
       throw new Error(`${list} answered with HTTP status ${answer.status}.`);
     return pageTargets(await answer.json());
