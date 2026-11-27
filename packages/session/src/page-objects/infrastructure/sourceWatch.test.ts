@@ -50,19 +50,28 @@ it("tells of an edit to a file the last build read, also one an editor saves by 
   await expect(edited).resolves.toBeDefined();
 });
 
-it("tells a listener that comes later of an edit made since the last build began", async () => {
+it("tells a listener that comes later of an edit made since the last build began, and of none from before it", async () => {
   const dir = await folder({ "Basket.ts": "export class Basket {}\n" });
-  const watch = watching([join(dir, "Basket.ts")]);
+  const told: string[] = [];
+  const watch = sourceWatch({
+    checked: (edit) => told.push(`checked: ${edit}`),
+  });
+  onTestFinished(watch.close);
+  watch.began();
+  watch.reads(join(dir, "Basket.ts"));
+  watch.finished(false);
   const first = firstEdit(watch);
   await writeFile(join(dir, "Basket.ts"), "export class Basket { a = 1 }\n");
   await first;
-
   await expect(firstEdit(watch)).resolves.toBeDefined();
+
   watch.began();
-  const none = await Effect.runPromise(
-    Stream.runHead(watch.edits).pipe(Effect.timeoutOption(0))
-  );
-  expect(none._tag).toBe("None");
+  told.length = 0;
+  const later = firstEdit(watch).then(() => told.push("told"));
+  await writeFile(join(dir, "Basket.ts"), "export class Basket { a = 2 }\n");
+  await later;
+
+  expect(told).toEqual(["checked: true", "told"]);
 });
 
 it("tells of an edit made after a build read a file and before the watch reached it", async () => {

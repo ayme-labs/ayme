@@ -77,8 +77,15 @@ export interface ScriptedBrowser extends ScriptedTab {
   /** How many builds the Session started, the first included. A build
    * after the first waits for the test: `finishBuild` or `failBuild`. */
   readonly builds: number;
-  /** The developer edits the source of the Page Objects. */
-  edit(): void;
+  /** Whether the Session listens for edits of the source. */
+  readonly watched: boolean;
+  /** The developer edits the source of the Page Objects; resolves once the
+   * Session took the edit. */
+  edit(): Promise<void>;
+  /** Resolves once `holds()` is true, checked again after each thing the
+   * scripted browser and build are asked to do, so a test waits for the
+   * Session's work and not for time. */
+  until(holds: () => boolean): Promise<void>;
   /** The source can no longer be watched, for `reason`; it can again once
    * it is undefined. */
   loseWatch(reason: string | undefined): void;
@@ -236,7 +243,12 @@ type Tab = BrowserTab & { readonly control: ScriptedTab };
 
 /** A scripted Tab at `url`, among the browser's `open` Tabs, whose classes
  * in `rooted` declare a root. */
-function scriptedTab(url: string, open: Tab[], rooted: Set<string>): Tab {
+function scriptedTab(
+  url: string,
+  open: Tab[],
+  rooted: Set<string>,
+  changed: () => void
+): Tab {
   let shown: Listing | TabReadError | "held" = {
     ...EMPTY_LISTING,
     tab: { url, title: "" },
@@ -275,6 +287,7 @@ function scriptedTab(url: string, open: Tab[], rooted: Set<string>): Tab {
       Effect.tryPromise({
         try: () => {
           runs.push({ tool, input });
+          changed();
           return answerRun(tool, input);
         },
         catch: (error) =>
@@ -285,6 +298,7 @@ function scriptedTab(url: string, open: Tab[], rooted: Set<string>): Tab {
         Effect.tryPromise({
           try: (released) => {
             inspectorCalls.push({ method, params });
+            changed();
             return answerInspector(method, params, released);
           },
           catch: (error) =>
@@ -298,6 +312,7 @@ function scriptedTab(url: string, open: Tab[], rooted: Set<string>): Tab {
             const listener = (event: unknown) =>
               void Queue.offerUnsafe(queue, event);
             listeners.add(listener);
+            changed();
             return listener;
           }),
           (listener) => Effect.sync(() => listeners.delete(listener))
@@ -306,13 +321,19 @@ function scriptedTab(url: string, open: Tab[], rooted: Set<string>): Tab {
     },
     dialog: SubscriptionRef.changes(dialog),
     takesId: (tool) => rooted.has(tool.slice(0, tool.indexOf("."))),
-    observe: Effect.sync(() => void observed++),
+    observe: Effect.sync(() => {
+      observed++;
+      changed();
+    }),
     swap: (pageObjects) =>
       Effect.suspend(() => {
         swapsTried.push(pageObjects);
-        if (refusing !== undefined)
+        if (refusing !== undefined) {
+          changed();
           return Effect.fail(new TabReadError(refusing));
+        }
         swappedIn.push(pageObjects);
+        changed();
         return Effect.void;
       }),
   };
@@ -398,6 +419,8 @@ function scriptedTab(url: string, open: Tab[], rooted: Set<string>): Tab {
 export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   layer: Layer.Layer<SessionBrowser | PageObjectsBuild>;
   browser: ScriptedBrowser;
+  /** Tells what waits in `browser.until` that something changed. */
+  changed: () => void;
 } {
   const asked: SessionBrowserRequest[] = [];
   const hostedWith: BuiltPageObjects[] = [];
@@ -420,6 +443,23 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
     return building;
   };
   const editors = new Set<() => void>();
+  // What waits for the scripted browser and build to change.
+  const waiting = new Set<() => void>();
+  const changed = () => {
+    for (const check of [...waiting]) check();
+  };
+  const until = (holds: () => boolean) =>
+    new Promise<void>((resolve) => {
+      const check = () => {
+        if (!holds()) return;
+        waiting.delete(check);
+        resolve();
+      };
+      waiting.add(check);
+      check();
+    });
+  // How many edits the Session took.
+  let taken = 0;
   let unwatched: string | undefined;
   const gone = Deferred.makeUnsafe<void>();
   if (!held) Deferred.doneUnsafe(opened, Exit.void);
@@ -427,7 +467,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
     Deferred.doneUnsafe(builds[0]!, Exit.succeed(SCRIPTED_PAGE_OBJECTS));
 
   const openTab = (url = "about:blank") => {
-    const tab = scriptedTab(url, open, rooted);
+    const tab = scriptedTab(url, open, rooted, changed);
     open.unshift(tab);
     return tab;
   };
@@ -447,6 +487,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   const build = Layer.succeed(PageObjectsBuild, {
     build: Effect.suspend(() => {
       if (started++ > 0) builds.push(Deferred.makeUnsafe());
+      changed();
       return Deferred.await(builds[started - 1]!);
     }),
     edits: Stream.callback<void>((queue) =>
@@ -457,6 +498,13 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
           return editor;
         }),
         (editor) => Effect.sync(() => editors.delete(editor))
+      )
+    ).pipe(
+      Stream.tap(() =>
+        Effect.sync(() => {
+          taken++;
+          changed();
+        })
       )
     ),
     unwatched: () => unwatched,
@@ -484,6 +532,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
 
   return {
     layer: Layer.merge(browsers, build),
+    changed,
     browser: {
       asked,
       hostedWith,
@@ -506,9 +555,15 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       get builds() {
         return started;
       },
-      edit: () => {
-        for (const editor of editors) editor();
+      get watched() {
+        return editors.size > 0;
       },
+      edit: () => {
+        const awaited = taken + 1;
+        for (const editor of editors) editor();
+        return until(() => taken >= awaited);
+      },
+      until,
       loseWatch: (reason) => (unwatched = reason),
       goAway: () => Deferred.doneUnsafe(gone, Exit.void),
       openTab: (url) => openTab(url).control,
@@ -552,7 +607,7 @@ export async function startScriptedSession(
     agentApp,
     ...request
   } = options;
-  const { layer, browser } = scriptedBrowser({
+  const { layer, browser, changed } = scriptedBrowser({
     ...(held ? { held } : {}),
     ...(heldBuild ? { heldBuild } : {}),
   });
@@ -575,7 +630,10 @@ export async function startScriptedSession(
         const heard: InspectorEvent[] = [];
         const listening = Effect.runFork(
           Stream.runForEach(session.events, (event) =>
-            Effect.sync(() => heard.push(event))
+            Effect.sync(() => {
+              heard.push(event);
+              changed();
+            })
           )
         );
         onTestFinished(() => Effect.runPromise(Fiber.interrupt(listening)));
