@@ -209,7 +209,7 @@ describe("Page Object ids from a source a Host gives", () => {
     const released: string[] = [];
     const numbered = createPageObjectIdSource();
     const source = {
-      next: () => numbered.next(),
+      next: (className: string) => numbered.next(className),
       released: (id: string) => released.push(id),
     };
     const shown = page("e1", "e2");
