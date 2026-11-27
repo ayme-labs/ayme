@@ -1,6 +1,7 @@
 import {
   mkdir,
   mkdtemp,
+  readFile,
   realpath,
   rm,
   symlink,
@@ -276,3 +277,78 @@ it("tells of an edit to a file the last build read, and a build after it loads t
   expect(after.classes).toHaveLength(1);
   expect(after.classes[0]).not.toBe(before.classes[0]);
 });
+
+/**
+ * Builds the project in `dir` once, then, for each step, makes the change
+ * `step` makes and waits for the edit it causes, then builds again; what
+ * each build gave, the error it failed with or its classes. A change that
+ * causes no edit within 5 s fails.
+ */
+async function buildsAcross(
+  dir: string,
+  steps: readonly (() => Promise<unknown>)[]
+): Promise<(string | readonly unknown[])[]> {
+  return Effect.runPromise(
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { build, edits } = yield* PageObjectsBuild;
+        const outcome = build.pipe(
+          Effect.match({
+            onSuccess: (built) => (built as NodePageObjects).classes,
+            onFailure: (error) => error.message,
+          })
+        );
+        const outcomes = [yield* outcome];
+        for (const step of steps) {
+          const edited = yield* Effect.forkScoped(
+            Stream.runHead(edits).pipe(Effect.timeoutOption(5000))
+          );
+          yield* Effect.promise(step);
+          const heard = yield* Fiber.join(edited);
+          if (heard._tag === "None")
+            return yield* Effect.die(new Error("No edit was told."));
+          outcomes.push(yield* outcome);
+        }
+        return outcomes;
+      }).pipe(Effect.provide(projectPageObjects(dir, "0.3.0")))
+    )
+  );
+}
+
+it("an entry that goes away for a moment, as on a branch switch, is still watched, and its return is an edit", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+  const entry = join(dir, "ayme", "page-objects.ts");
+  const text = await readFile(entry, "utf8");
+
+  const outcomes = await buildsAcross(dir, [
+    () => rm(entry),
+    () => writeFile(entry, text),
+  ]);
+
+  expect(outcomes[1]).toContain("has no ayme/page-objects.ts");
+  expect(outcomes[2]).toHaveLength(1);
+}, 15_000);
+
+it("a failed import is repaired by adding the missing file alone, in a folder no build read from", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+    "ayme/pom/cart/README.md": "The cart's Page Objects.\n",
+  });
+
+  const outcomes = await buildsAcross(dir, [
+    () =>
+      write(dir, {
+        "ayme/pom/Basket.ts": `import { Cart } from "./cart/Cart";\n${BASKET}export const cart = Cart;\n`,
+      }),
+    () => write(dir, { "ayme/pom/cart/Cart.ts": "export class Cart {}\n" }),
+  ]);
+
+  expect(outcomes[1]).toContain('Could not resolve "./cart/Cart"');
+  expect(outcomes[2]).toHaveLength(1);
+}, 15_000);

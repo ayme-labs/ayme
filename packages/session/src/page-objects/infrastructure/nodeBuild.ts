@@ -17,7 +17,7 @@ import {
   pageObjectClasses,
   type PomDiagnostic,
 } from "./builtEntry";
-import { projectAyme, type ProjectAyme } from "./projectAyme";
+import { ENTRY, projectAyme, type ProjectAyme } from "./projectAyme";
 import { sourceWatch } from "./sourceWatch";
 
 /** The project's Page Objects, built and loaded for Node. */
@@ -143,21 +143,44 @@ const projectPackages = (projectDir: string): esbuild.Plugin => ({
   },
 });
 
-/** Adds each file of the project the build loads to `read`, whether the
- * build succeeds or not: the source an edit changes. */
-const readFiles = (read: Set<string>): esbuild.Plugin => ({
+/** The files esbuild tries for an import of `path` from `dir`, in the order
+ * of its default extensions. */
+const candidatesOf = (path: string, dir: string) => {
+  const base = join(dir, path);
+  const extensions = [".tsx", ".ts", ".jsx", ".js", ".css", ".json"];
+  return [
+    base,
+    ...extensions.map((extension) => base + extension),
+    ...extensions.map((extension) => join(base, `index${extension}`)),
+  ];
+};
+
+/** Tells `reads` of each file of the project the build loads, whether the
+ * build succeeds or not, and of each file a relative import could reach,
+ * which a file that does not exist yet may fix: the source an edit
+ * changes. */
+const readFiles = (reads: (file: string) => void): esbuild.Plugin => ({
   name: "ayme-read-files",
   setup(build) {
+    build.onResolve({ filter: /^\.\.?(\/|$)/ }, ({ path, resolveDir }) => {
+      for (const candidate of candidatesOf(path, resolveDir))
+        if (!installed(candidate)) reads(candidate);
+      return undefined;
+    });
     build.onLoad({ filter: /.*/ }, ({ path }) => {
-      if (!installed(path)) read.add(path);
+      if (!installed(path)) reads(path);
       return undefined;
     });
   },
 });
 
-/** The entry built into one ES module, or the build's messages; each file
- * of the project it loads goes into `read`. */
-const bundle = (entry: string, compiler: CompilerEntry, read: Set<string>) => {
+/** The entry built into one ES module, or the build's messages; `reads`
+ * hears of each file of the project it reads. */
+const bundle = (
+  entry: string,
+  compiler: CompilerEntry,
+  reads: (file: string) => void
+) => {
   // The project folder, which holds the ayme folder.
   const projectDir = join(dirname(entry), "..");
   return Effect.tryPromise({
@@ -176,7 +199,7 @@ const bundle = (entry: string, compiler: CompilerEntry, read: Set<string>) => {
         keepNames: true,
         logLevel: "silent",
         plugins: [
-          readFiles(read),
+          readFiles(reads),
           projectPackages(projectDir),
           pageObjectModels(compiler),
         ],
@@ -235,17 +258,17 @@ const load = (code: string, entry: string) =>
   );
 
 /** Builds the project's Page Objects for Node and loads them, with the
- * project's own `@ayme-dev/ayme`; each file of the project the build
- * loads goes into `read`. */
+ * project's own `@ayme-dev/ayme`; `reads` hears of each file of the
+ * project the build reads. */
 const buildForNode = (
   { entry, compiler, nodeHost }: ProjectAyme,
-  read: Set<string>
+  reads: (file: string) => void
 ): Effect.Effect<NodePageObjects, SessionStartError> =>
   importFile<CompilerEntry>(
     compiler,
     `The Page Object compiler of the project's @ayme-dev/ayme, ${compiler},`
   ).pipe(
-    Effect.flatMap((compilerEntry) => bundle(entry, compilerEntry, read)),
+    Effect.flatMap((compilerEntry) => bundle(entry, compilerEntry, reads)),
     Effect.flatMap((code) => load(code, entry)),
     Effect.flatMap((module) => pageObjectClasses(module, entry)),
     Effect.map((classes) => ({ classes, nodeHost }))
@@ -253,8 +276,8 @@ const buildForNode = (
 
 /** The build of the Page Objects of the project in `projectDir`, on its own
  * `@ayme-dev/ayme`, which must be `aymeVersion`, this ayme's version. Its
- * edits are those to the files the last finished build read, watched until
- * the scope of a build closes. */
+ * edits are those to its entry and to the files its builds read, watched
+ * until the scope of a build closes. */
 export const projectPageObjects = (
   projectDir: string,
   aymeVersion: string
@@ -264,14 +287,16 @@ export const projectPageObjects = (
     build: Effect.gen(function* () {
       yield* Effect.addFinalizer(() => Effect.sync(watch.close));
       watch.began();
-      const read = new Set<string>();
+      // Watched also when it is missing, so its return is an edit.
+      watch.reads(join(projectDir, ENTRY));
       return yield* projectAyme(projectDir, aymeVersion).pipe(
-        Effect.flatMap((project) => buildForNode(project, read)),
+        Effect.flatMap((project) => buildForNode(project, watch.reads)),
         Effect.onExit((exit) =>
-          Effect.sync(() => watch.finished(read, Exit.isFailure(exit)))
+          Effect.sync(() => watch.finished(Exit.isFailure(exit)))
         )
       );
     }),
     edits: watch.edits,
+    unwatched: watch.lost,
   });
 };

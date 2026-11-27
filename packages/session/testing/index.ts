@@ -77,6 +77,9 @@ export interface ScriptedBrowser extends ScriptedTab {
   readonly builds: number;
   /** The developer edits the source of the Page Objects. */
   edit(): void;
+  /** The source can no longer be watched, for `reason`; it can again once
+   * it is undefined. */
+  loseWatch(reason: string | undefined): void;
   /** The built Page Objects the Session got ready to run on its Tabs,
    * each time it did. */
   readonly hostedWith: readonly BuiltPageObjects[];
@@ -415,6 +418,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
     return building;
   };
   const editors = new Set<() => void>();
+  let unwatched: string | undefined;
   const gone = Deferred.makeUnsafe<void>();
   if (!held) Deferred.doneUnsafe(opened, Exit.void);
   if (!heldBuild)
@@ -453,6 +457,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
         (editor) => Effect.sync(() => editors.delete(editor))
       )
     ),
+    unwatched: () => unwatched,
   });
   const browsers = Layer.succeed(SessionBrowser, {
     get: (asking) =>
@@ -500,6 +505,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       edit: () => {
         for (const editor of editors) editor();
       },
+      loseWatch: (reason) => (unwatched = reason),
       goAway: () => Deferred.doneUnsafe(gone, Exit.void),
       openTab: (url) => openTab(url).control,
       failTabList: (reason) => {

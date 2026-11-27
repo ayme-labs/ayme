@@ -502,3 +502,15 @@ it("a Run answered early by an error its code left uncaught keeps the Tab's turn
   expect(await next).toMatchObject({ ok: true });
   expect(browser.swappedIn).toEqual([EDITED]);
 });
+
+it("a listing says so after its Tab line while the source cannot be watched", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  browser.loseWatch("/app/ayme/pom: EMFILE: too many open files, watch");
+
+  expect((await session.ask({ tools: {} })).text.split("\n")[1]).toContain(
+    "/app/ayme/pom: EMFILE: too many open files, watch"
+  );
+  browser.loseWatch(undefined);
+  expect((await session.ask({ tools: {} })).text).not.toContain("EMFILE");
+});

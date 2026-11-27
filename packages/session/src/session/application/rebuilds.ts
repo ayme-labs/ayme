@@ -11,8 +11,9 @@ import type { HostedTab } from "./sessionBrowser";
  * makes itself. */
 export type SwappingTab = Omit<HostedTab, "swap" | "observe"> & {
   /** Why the last finished build failed, or why the Tab could not register
-   * the last good build it tried, while that is so: what its listings say
-   * after their Tab line (rule 7). */
+   * the last good build it tried, or why the source cannot be watched,
+   * while that is so: what its listings say after their Tab line (rule
+   * 7). */
   readonly failing: () => SessionStartError | undefined;
 };
 
@@ -62,6 +63,14 @@ export const rebuilding = (
     let newest = first;
     let failing: SessionStartError | undefined;
     const tabs = new Set<FollowingTab>();
+    const unwatched = () => {
+      const why = builds.unwatched();
+      return why === undefined
+        ? undefined
+        : new SessionStartError(
+            `ayme cannot watch the Page Objects' source, so an edit there may not be rebuilt: ${why}`
+          );
+    };
     // One waiting edit stands for every edit since the last build began.
     const edited = yield* Queue.sliding<void>(1);
     yield* builds.edits.pipe(
@@ -144,7 +153,7 @@ export const rebuilding = (
             },
             dialog: hosted.dialog,
             takesId: hosted.takesId,
-            failing: () => failing ?? tab.refused,
+            failing: () => failing ?? tab.refused ?? unwatched(),
           } satisfies SwappingTab;
         }),
     };
