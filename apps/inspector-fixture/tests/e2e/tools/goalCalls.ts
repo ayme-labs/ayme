@@ -72,12 +72,12 @@ export const goalCalls: Readonly<
   "select {object} under On this page in the Model lens": (p) =>
     one("ModelLens_select", { path: p.object }),
   // The twin names the row by its path on the TodoPage.
-  'select the "{item}" row of the {collection} collection under On this page in the Model lens':
+  'select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens':
     (p) =>
       one("ModelLens_select", {
         path: `TodoPage.${String(p.collection)}${String(p.item)}`,
       }),
-  'hover the "{item}" row of the {collection} collection under On this page in the Model lens':
+  'hover the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens':
     (p) =>
       one("ModelLens_hover", {
         path: `TodoPage.${String(p.collection)}${String(p.item)}`,
