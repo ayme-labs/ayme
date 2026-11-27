@@ -16,8 +16,12 @@ In 0.4, one package, `@ayme-dev/cli`, provides one command, `ayme`. A coding age
    npm uninstall @ayme-dev/mcp
    ```
 
-2. Install `@ayme-dev/cli`, Playwright and `@ayme-dev/ayme`, as [Set up your project](guides/connect-an-agent.md#set-up-your-project) shows. A Session needs Playwright 1.62 to 1.64 in your project, and `@ayme-dev/ayme` at the version of `@ayme-dev/cli`.
-3. Install the skills again. The recorder's skill is now called `ayme-capture`, so delete the `ayme-recorder` skill from your project too:
+2. Install `@ayme-dev/cli` and Playwright, as [Set up your project](guides/connect-an-agent.md#set-up-your-project) shows.
+3. Bring every `@ayme-dev/*` package your project has to the version of `@ayme-dev/cli`, at once: `@ayme-dev/ayme`, your framework package (`@ayme-dev/react`, `@ayme-dev/vue`, `@ayme-dev/svelte` or `@ayme-dev/angular`), `@ayme-dev/unplugin-ayme`, `@ayme-dev/inspector` and `@ayme-dev/webmcp`. Keep each in the dependency section it is in: `npm install <package>@<version>`, without `-D`. `npm ls` lists the packages you have. Then rebuild and restart your app.
+
+   npm does not warn about a package you leave at 0.3. The framework packages, the build plugin and the Inspector each depend on `@ayme-dev/ayme` at exactly their own version, so one left at 0.3 brings its own `@ayme-dev/ayme` 0.3, and your page runs that. A Session refuses such a page: `This document runs ayme's in-page module 0.3.0; this host is 0.4.0.`
+
+4. Install the skills again. The recorder's skill is now called `ayme-capture`, so delete the `ayme-recorder` skill from your project too:
 
    ```sh
    npx skills add ayme-labs/ayme --skill ayme

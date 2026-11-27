@@ -16,7 +16,7 @@ Which packages ayme publishes, what each one owns, and which versions of each fr
 | `@ayme-dev/inspector`     | The in-page panel. See [Inspector](../guides/inspector.md).                                                                                                            | Optional, as a dev dependency |
 | `@ayme-dev/cli`           | The `ayme` command: your Page Object Tools for a coding agent, beside its browser automation, and ayme capture. See [Connect an agent](../guides/connect-an-agent.md). | Optional, as a dev dependency |
 
-`@ayme-dev/ayme` bundles what it needs from ayme's internal packages and from playwright-lite, so you never install those. `@playwright/test` is not an ayme package; install it as a dev dependency for the `Page` and `Locator` types. Keep all ayme packages on the same version: the `ayme` command runs Page Objects only with the `@ayme-dev/ayme` of its own version.
+`@ayme-dev/ayme` bundles what it needs from ayme's internal packages and from playwright-lite, so you never install those. `@playwright/test` is not an ayme package; install it as a dev dependency for the `Page` and `Locator` types. Keep all ayme packages on the same version. The framework packages, the build plugin and the Inspector each depend on `@ayme-dev/ayme` at exactly their own version, so one at another version brings a second copy of ayme into your app, and npm does not warn about it. The `ayme` command also runs Page Objects only with the `@ayme-dev/ayme` of its own version.
 
 Each [framework page](../README.md#frameworks) has the install command for its framework, and the quickstarts start with it: [Vue](quickstart-vue.md), [React](quickstart-react.md), [Svelte](quickstart-svelte.md) and [Angular](quickstart-angular.md).
 

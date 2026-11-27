@@ -24,12 +24,10 @@ The agent's browser automation keeps doing everything else: snapshots, clicks ou
    npm install -D @ayme-dev/cli "@playwright/test@>=1.62 <1.65"
    ```
 
-   The command runs your Page Objects with your project's own `@ayme-dev/ayme` and Playwright, and needs `@ayme-dev/ayme` at exactly its own version. When a version does not fit, it does not start, and says which version to install.
+   The command runs your Page Objects with your project's own `@ayme-dev/ayme` and Playwright, and needs `@ayme-dev/ayme` at exactly its own version. When a version does not fit, it does not start, and says which version to install. `<version>` below is the version of `@ayme-dev/cli`, which `npm ls @ayme-dev/cli` prints.
 
-   - If your app already ships ayme, keep `@ayme-dev/ayme` in your `dependencies`, and change only its version: `npm install @ayme-dev/ayme@<version>`, without `-D`. With `-D`, npm moves it to `devDependencies`, and an install of production dependencies leaves it out. The page your app serves must run that version too: a Session cannot read or act on a page that runs ayme of another version.
+   - If your app already ships ayme, bring every `@ayme-dev/*` package it has to `<version>`: `@ayme-dev/ayme`, your framework package such as `@ayme-dev/react`, `@ayme-dev/unplugin-ayme`, and `@ayme-dev/inspector` or `@ayme-dev/webmcp` if you use them. Install each with `npm install <package>@<version>`, without `-D`, which keeps it in the dependency section it is in; with `-D`, npm moves `@ayme-dev/ayme` to `devDependencies`, and an install of production dependencies leaves it out. Then rebuild and restart your app. npm does not warn about a package left at another version: the framework packages, the build plugin and the Inspector each depend on `@ayme-dev/ayme` at exactly their own version, so one left behind brings its own copy, and your page runs that copy. A Session refuses such a page: `This document runs ayme's in-page module 0.3.0; this host is 0.4.0.`
    - Otherwise, add it as a dev dependency: `npm install -D @ayme-dev/ayme@<version>`.
-
-   `<version>` is the version of `@ayme-dev/cli`, which `npm ls @ayme-dev/cli` prints.
 
 2. Keep your [Page Object Models](ayme-page-objects.md) in the [`ayme` folder](ayme-folder.md), and list them in `ayme/page-objects.ts`. Its default export is an array of your Page Object classes, as the `pageObjects` option of [`createAyme`](../reference/ayme.md#createayme) takes them:
 
