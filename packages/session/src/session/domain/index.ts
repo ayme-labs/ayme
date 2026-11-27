@@ -17,6 +17,7 @@ export {
   paramsTooLarge,
   paramsUnreadable,
   runFailed,
+  TAB_CLOSED,
   toolsAnswer,
   unanswerable,
   unknownRequest,
