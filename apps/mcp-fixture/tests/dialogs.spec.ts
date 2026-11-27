@@ -35,37 +35,45 @@ const DIALOG =
 const DIALOG_OPEN = `${DIALOG} Answer it with your browser automation, then run this command again.`;
 const AT_RUN = `${DIALOG} Answer it with your browser automation. The action stopped there: ayme refuses its further calls on the page, however the dialog is answered. Check the page before you choose the next step.`;
 
-test("an action that clicks, gets a confirm and has a second click after it ends at the confirm: ayme call says a dialog is open, and once the automation accepts it, the second click never comes", async ({
-  ayme,
-  baseURL,
-}) => {
-  const opened = await ayme("open", `${baseURL}/dialogs.html`);
-  const { page, dialogs } = await automation(opened.stdout);
+for (const [answer, answered] of [
+  ["accept", "accepted"],
+  ["dismiss", "dismissed"],
+] as const)
+  test(`an action that clicks, gets a confirm and has a second click after it ends at the confirm: ayme call says a dialog is open, and once the automation answers it with ${answer}, the second click never comes`, async ({
+    ayme,
+    baseURL,
+  }) => {
+    const opened = await ayme("open", `${baseURL}/dialogs.html`);
+    const { page, dialogs } = await automation(opened.stdout);
 
-  expect(await ayme("call", "DialogPage.removeThenMark")).toEqual({
-    code: 1,
-    stdout: "",
-    stderr: `${AT_RUN}\n`,
+    expect(await ayme("call", "DialogPage.removeThenMark")).toEqual({
+      code: 1,
+      stdout: "",
+      stderr: `${AT_RUN}\n`,
+    });
+    // The automation hears the dialog on a connection of its own.
+    await expect
+      .poll(() => dialogs.map((dialog) => dialog.message()))
+      .toEqual(["Remove Milk from the basket?"]);
+    expect(await ayme("tools")).toEqual({
+      code: 1,
+      stdout: "",
+      stderr: `Tab: ${baseURL}/dialogs.html\n${DIALOG_OPEN}\n`,
+    });
+
+    await dialogs[0]![answer]();
+
+    // ayme hears the dialog close on a connection of its own; the listing
+    // waits for the stopped action to end, and tells nothing of it.
+    await expect
+      .poll(async () => (await ayme("page-objects")).stdout)
+      .toMatch(/^Tab: Dialogs \(/);
+    const listing = await ayme("page-objects");
+    expect(listing).toMatchObject({ code: 0, stderr: "" });
+    expect(listing.stdout).not.toMatch(/dialog is open|stop/i);
+    expect(await page.locator("#answer").textContent()).toBe(answered);
+    expect(await page.locator("#marks").textContent()).toBe("0");
   });
-  expect(dialogs.map((dialog) => dialog.message())).toEqual([
-    "Remove Milk from the basket?",
-  ]);
-  expect(await ayme("tools")).toEqual({
-    code: 1,
-    stdout: "",
-    stderr: `Tab: ${baseURL}/dialogs.html\n${DIALOG_OPEN}\n`,
-  });
-
-  await dialogs[0]!.accept();
-
-  // The listing waits for the stopped action to end, and tells nothing of it.
-  const listing = await ayme("page-objects");
-  expect(listing).toMatchObject({ code: 0, stderr: "" });
-  expect(listing.stdout).toMatch(/^Tab: Dialogs \(/);
-  expect(listing.stdout).not.toMatch(/dialog is open|stop/i);
-  expect(await page.locator("#answer").textContent()).toBe("accepted");
-  expect(await page.locator("#marks").textContent()).toBe("0");
-});
 
 test("a dialog on one Tab leaves a command on another Tab alone, and a command naming its Tab is answered at once that it is open", async ({
   ayme,
@@ -73,7 +81,9 @@ test("a dialog on one Tab leaves a command on another Tab alone, and a command n
 }) => {
   const opened = await ayme("open", `${baseURL}/dialogs.html`);
   const { context, page, dialogs } = await automation(opened.stdout);
-  // The Session watches the Tab's dialogs from its first read of the Tab.
+  // The first Tab ayme hosts in a browser context makes Playwright set up
+  // its bindings on every page of it, which waits while any of them shows a
+  // dialog: hosting this Tab first keeps that wait out of this test.
   await ayme("page-objects");
   // A click of the automation's own would wait for the confirm's answer.
   await page.evaluate(() =>
@@ -103,7 +113,10 @@ test("a dialog on one Tab leaves a command on another Tab alone, and a command n
 
   await dialogs[0]!.dismiss();
 
-  expect(await ayme("tools", onDialogTab)).toMatchObject({ code: 0 });
+  // ayme hears the dialog close on a connection of its own.
+  await expect
+    .poll(async () => (await ayme("tools", onDialogTab)).code)
+    .toBe(0);
   expect(await page.locator("#answer").textContent()).toBe("dismissed");
   expect(await page.locator("#marks").textContent()).toBe("0");
 });

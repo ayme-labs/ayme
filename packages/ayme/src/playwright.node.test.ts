@@ -827,6 +827,9 @@ describe("a Session's Node Host, through the internal entry", () => {
     expect(options).not.toHaveProperty("actionCalls", expect.anything());
   });
 
+  // What a Host decides about each call is the page wrapper's, on a
+  // scripted page in pageInstrumentation.test.ts; here, a Run the Host
+  // stopped.
   describe("the Playwright calls of a Page Object Action's own code", () => {
     const counter =
       '<section id="counter"><output>0</output><button>Add</button></section>' +
@@ -860,39 +863,6 @@ describe("a Session's Node Host, through the internal entry", () => {
         window: internal.inspectorPortOf(ayme),
       });
     }
-
-    it("go to the Host before they start, each saying whether it answers at once without the browser", async () => {
-      const page = await pageShowing(counter);
-      const heard: boolean[] = [];
-      const caller = await hostDeciding(page, (answersAtOnce) => {
-        heard.push(answersAtOnce);
-        return undefined;
-      });
-
-      await caller.run("Counter.press", { id: "po1" });
-
-      // The action's `locator`, `getByRole` and `click`, which is asked
-      // again right before it is sent.
-      expect(heard).toEqual([true, true, false, false]);
-      expect(await page.locator("output").textContent()).toBe("1");
-    });
-
-    it("start only once the Host lets them", async () => {
-      const page = await pageShowing(counter);
-      let release = () => {};
-      const held = new Promise<void>((resolve) => (release = resolve));
-      const caller = await hostDeciding(page, (answersAtOnce) =>
-        answersAtOnce ? undefined : held
-      );
-
-      const run = caller.run("Counter.press", { id: "po1" });
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      expect(await page.locator("output").textContent()).toBe("0");
-      release();
-
-      await run;
-      expect(await page.locator("output").textContent()).toBe("1");
-    });
 
     it("a Run its Host stopped is logged failed with why at once, and what its action does afterwards is not: the Run still lasts until the action ends", async () => {
       const page = await pageShowing(counter);
@@ -964,19 +934,6 @@ describe("a Session's Node Host, through the internal entry", () => {
       release();
       await run;
       stopListening();
-    });
-
-    it("never reach the page when the Host refuses them, and the Run fails with why", async () => {
-      const page = await pageShowing(counter);
-      const caller = await hostDeciding(page, (answersAtOnce) => {
-        if (answersAtOnce) return undefined;
-        throw new Error("The Host refused the call.");
-      });
-
-      await expect(caller.run("Counter.press", { id: "po1" })).rejects.toThrow(
-        "The Host refused the call."
-      );
-      expect(await page.locator("output").textContent()).toBe("0");
     });
   });
 

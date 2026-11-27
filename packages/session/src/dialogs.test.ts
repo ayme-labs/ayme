@@ -391,3 +391,57 @@ it("while a dialog is open, a window's requests that need no page are answered a
     "pomDefinitionText",
   ]);
 });
+
+it("a window's read under way when a dialog counts is answered that the dialog is open", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...opening,
+    inspector: WINDOW,
+  });
+  await session.ask({ tools: {} });
+  browser.answerInspector(() => new Promise(() => {}));
+  const read = session.ask(contract("look"));
+  expect(await pending(read)).toBe(true);
+
+  dialogOpens(browser);
+
+  expect(await read).toEqual({ ok: false, text: DIALOG_OPEN });
+});
+
+it("a Tab that closes while a stopped action holds its turn answers the command waiting for that turn that it closed", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  holdRuns(browser);
+  const call = session.ask(remove);
+  await pending(call);
+  dialogOpens(browser);
+  expect(await call).toEqual({ ok: false, text: AT_RUN });
+  browser.closeDialog();
+  const next = session.ask(readHeading);
+  expect(await pending(next)).toBe(true);
+
+  browser.close();
+
+  expect(await next).toEqual({
+    ok: false,
+    text: "The tab was closed before ayme answered this command.",
+  });
+  expect(browser.runs).toEqual([remove.call]);
+});
+
+it("a dialog that opens while the Session starts answers its first command once the start is answered", async () => {
+  const { session, browser } = await startScriptedSession({
+    ...opening,
+    held: true,
+  });
+  browser.show(shop);
+  dialogOpens(browser);
+  const first = session.ask({ tools: {} });
+  expect(await pending(first)).toBe(true);
+
+  browser.open();
+
+  expect(await session.started).toMatchObject({ ok: true });
+  expect(await first).toEqual({
+    ok: false,
+    text: `Tab: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
+  });
+});

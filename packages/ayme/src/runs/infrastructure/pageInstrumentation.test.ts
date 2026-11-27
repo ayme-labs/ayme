@@ -159,6 +159,7 @@ function hostDeciding() {
   const host = {
     decision: "start" as "start" | "refuse" | Promise<void>,
     asked: 0,
+    heard: [] as boolean[],
     run: <T>(action: () => T) => action(),
     stopped: () => undefined,
     bound: [] as unknown[],
@@ -166,8 +167,9 @@ function hostDeciding() {
       host.bound.push(listener);
       return listener;
     },
-    before: () => {
+    before: (answersAtOnce: boolean) => {
       host.asked += 1;
+      host.heard.push(answersAtOnce);
       if (host.decision === "refuse") throw new Error("refused");
       return host.decision === "start" ? undefined : host.decision;
     },
@@ -400,4 +402,46 @@ it("a method of a later Playwright the call tables do not know answers as it alw
   expect(wrapped.laterMethod()).toBe("answered");
   host.decision = "refuse";
   expect(() => wrapped.laterMethod()).toThrow("refused");
+});
+
+it("an action's calls go to its Host before they start, each saying whether the Host may hold it", async () => {
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(page, undefined, noRef, host);
+
+  await wrapped.locator("button").click();
+
+  // `locator` answers at once; `click` answers later.
+  expect(host.heard).toEqual([true, false]);
+  expect(clicks).toEqual(["raw button"]);
+});
+
+it("an action's call its Host holds starts only once the Host lets it", async () => {
+  const host = hostDeciding();
+  const button = instrumentedPage(page, undefined, noRef, host).locator(
+    "button"
+  );
+  let letStart = () => {};
+  host.decision = new Promise((resolve) => (letStart = resolve));
+  host.asked = 0;
+
+  const click = button.click();
+  expect(host.asked).toBe(1);
+  for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+  expect(clicks).toEqual([]);
+  host.decision = "start";
+  letStart();
+  await click;
+
+  expect(clicks).toEqual(["raw button"]);
+});
+
+it("an action's call its Host refuses never reaches the page, and fails with why", async () => {
+  const host = hostDeciding();
+  const button = instrumentedPage(page, undefined, noRef, host).locator(
+    "button"
+  );
+  host.decision = "refuse";
+
+  await expect(button.click()).rejects.toThrow("refused");
+  expect(clicks).toEqual([]);
 });
