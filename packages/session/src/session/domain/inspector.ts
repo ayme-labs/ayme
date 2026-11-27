@@ -32,8 +32,10 @@ export type InspectorEvent =
   /** The Tab the windows show from now on, by a number that rises on each
    * change, which the window's calls name: what a window showed before is
    * of the Tab before, and the contract's revisions start again. A window
-   * hears it first when it starts listening. */
-  | { readonly tab: number }
+   * hears it first when it starts listening. With `noTab`, the windows show
+   * no Tab, as none is open or the tab list cannot be read: a window clears
+   * what it showed, since no state of this Tab comes to replace it. */
+  | { readonly tab: number; readonly noTab?: true }
   /** The Session ended: what the window says in place of the Inspector,
    * and what the view in an Agent App's chat says. Nothing follows it. */
   | { readonly ended: string; readonly inChat: string };

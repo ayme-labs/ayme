@@ -285,15 +285,17 @@ describe("webSocketInspectorContract", () => {
      * revision 7. */
     async function sessionClient() {
       const newPages: number[] = [];
+      const noTabs: number[] = [];
       const contract = webSocketInspectorContract("ws://x/inspector/ws", {
         WebSocket: FakeWebSocket as never,
         onNewPage: () => newPages.push(newPages.length + 1),
+        onNoTab: () => noTabs.push(noTabs.length + 1),
       });
       const socket = () => FakeWebSocket.instances.at(-1)!;
       const client = createInspectorClient(contract);
       client.subscribe(() => {});
       socket().open();
-      return { contract, client, socket, newPages };
+      return { contract, client, socket, newPages, noTabs };
     }
 
     it("sends nothing until the Session told the Tab, then names it in every request", async () => {
@@ -322,6 +324,25 @@ describe("webSocketInspectorContract", () => {
       expect(socket().sent.slice(-2)).toEqual([
         { id: expect.any(Number), method: "getState", tab: 2 },
         { id: expect.any(Number), method: "look", tab: 2 },
+      ]);
+    });
+
+    it("says when the Session shows no Tab, reads nothing of it, and reads the next Tab as a new page", async () => {
+      const { socket, newPages, noTabs } = await sessionClient();
+      socket().receive({ tab: 1 });
+      const sent = socket().sent.length;
+
+      socket().receive({ tab: 2, noTab: true });
+
+      expect(noTabs).toEqual([1]);
+      expect(newPages).toEqual([]);
+      expect(socket().sent).toHaveLength(sent);
+
+      socket().receive({ tab: 3 });
+
+      expect(newPages).toEqual([1]);
+      expect(socket().sent.slice(sent)).toEqual([
+        { id: expect.any(Number), method: "getState", tab: 3 },
       ]);
     });
 

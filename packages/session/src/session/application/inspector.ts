@@ -85,12 +85,14 @@ export function followTabs(
   const tell = (event: InspectorEvent) => {
     for (const listener of [...listeners]) listener(event);
   };
+  const tabEvent = (now: NonNullable<typeof shown>): InspectorEvent =>
+    now.showing ? { tab: now.tab } : { tab: now.tab, noTab: true };
   /** Tells the windows the Tab they show from now on, and forwards its
    * contract's events while the returned fiber runs. */
   const show = (showing: ShowableTab | undefined) =>
     Effect.gen(function* () {
       shown = { tab: ++told, showing };
-      tell({ tab: shown.tab });
+      tell(tabEvent(shown));
       if (!showing) return undefined;
       return yield* showing.hosted.inspector.events.pipe(
         Stream.runForEach((event) =>
@@ -151,7 +153,7 @@ export function followTabs(
         yield* Effect.acquireRelease(
           Effect.sync(() => {
             listeners.add(listener);
-            if (shown) listener({ tab: shown.tab });
+            if (shown) listener(tabEvent(shown));
           }),
           () =>
             Effect.sync(() => listeners.delete(listener)).pipe(

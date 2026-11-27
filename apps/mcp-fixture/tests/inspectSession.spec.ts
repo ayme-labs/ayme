@@ -167,6 +167,42 @@ test("the window shows the Page Object Tree and the tools of the Session's Tab, 
   expect(await model.isNotOnPage(model.object("Basket"))).toBe(true);
 });
 
+test("when the last Tab closes, the window clears what it showed and says the Session has no Tab, and shows the next Tab that opens", async ({
+  ayme,
+  inspect,
+  baseURL,
+  browser,
+}) => {
+  const opened = await ayme("open", `${baseURL}/shop.html`);
+  const automated = await automation(opened.stdout);
+  const [context] = automated.contexts();
+  const { inspector } = await openWindow(
+    browser,
+    windowIn((await inspect("none")).stdout)!
+  );
+  await inspector.navigator.showLens("Tools");
+  await expect
+    .poll(() => inspector.navigator.tools.listed())
+    .toEqual({ "Page object tools": expect.arrayContaining(["Basket.add"]) });
+  const noTab = inspector.container.getByText(
+    "This Session has no Tab open. Once a tab is open in its browser, the Inspector shows it."
+  );
+
+  await context!.pages()[0]!.close();
+
+  await expect(noTab).toBeVisible();
+  expect(await inspector.navigator.tools.listed()).toEqual({});
+
+  const again = await context!.newPage();
+  await again.goto(`${baseURL}/shop.html`);
+
+  await inspector.navigator.showLens("Tools");
+  await expect
+    .poll(() => inspector.navigator.tools.listed())
+    .toEqual({ "Page object tools": expect.arrayContaining(["Basket.add"]) });
+  await expect(noTab).toHaveCount(0);
+});
+
 // Which Caller has the Tab's turn is proved at the scripted browser
 // (packages/session/src/inspector.test.ts); here the two Callers' Runs meet
 // on one Tab of a real Session.

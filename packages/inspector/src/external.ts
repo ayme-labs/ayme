@@ -50,29 +50,34 @@ export function startExternalInspector() {
   const sessionName =
     document.querySelector(SESSION_META)?.getAttribute("content") ?? "";
   let mounted: ReturnType<typeof mountExternalInspector> | undefined;
-  replaceInspectorTransport(
-    webSocketInspectorContract(socket, {
-      ...(admission && { onToken: admission.admitted }),
-      // A new page is a reload as the Inspector in the page has it: it
-      // mounts again and picks up what it kept for the tab.
-      onNewPage() {
-        mounted?.dispose();
-        mounted = mountExternalInspector({ fullscreen });
-      },
-      onEnded(notice, inChat) {
-        mounted?.dispose();
-        mounted = undefined;
-        showServerLost((agentApp && inChat) || notice);
-      },
-      retries: RETRIES,
-      onLost() {
-        mounted?.dispose();
-        mounted = undefined;
-        showServerLost(sessionLost(sessionName, agentApp !== null));
-      },
-    }),
-    { external: true }
-  );
+  const contract = webSocketInspectorContract(socket, {
+    ...(admission && { onToken: admission.admitted }),
+    // A new page is a reload as the Inspector in the page has it: it
+    // mounts again and picks up what it kept for the tab.
+    onNewPage() {
+      mounted?.dispose();
+      mounted = mountExternalInspector({ fullscreen });
+    },
+    // A client of its own forgets the Tab before, which no state of a
+    // next Tab has yet come to replace.
+    onNoTab() {
+      mounted?.dispose();
+      replaceInspectorTransport(contract, { external: true });
+      mounted = mountExternalInspector({ fullscreen });
+    },
+    onEnded(notice, inChat) {
+      mounted?.dispose();
+      mounted = undefined;
+      showServerLost((agentApp && inChat) || notice);
+    },
+    retries: RETRIES,
+    onLost() {
+      mounted?.dispose();
+      mounted = undefined;
+      showServerLost(sessionLost(sessionName, agentApp !== null));
+    },
+  });
+  replaceInspectorTransport(contract, { external: true });
   mounted = mountExternalInspector({ fullscreen });
   return {
     dispose() {

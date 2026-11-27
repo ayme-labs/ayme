@@ -35,7 +35,8 @@ const contract = (method: string, params?: unknown, tab?: number) => ({
 
 /** The Tab the window that heard `heard` was told last. */
 const shownTab = (heard: readonly InspectorEvent[]) =>
-  heard.findLast((event) => "tab" in event) as { tab: number } | undefined;
+  heard.findLast((event) => "tab" in event) as
+    { tab: number; noTab?: true } | undefined;
 
 it("ayme inspect is answered with the address of the Session's Inspector window, with a code made for each opening", async () => {
   let made = 0;
@@ -292,11 +293,29 @@ it("a window's Run of a tool whose Page Object Id is of another Tab is refused",
   expect(second.inspectorCalls).toEqual([]);
 });
 
+it("a window that shows a Tab is told it shows no Tab once the last Tab closed, then the next Tab that opens, as a new Tab", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const window = session.listen();
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+
+  browser.close();
+
+  await expect
+    .poll(() => shownTab(window.heard))
+    .toEqual({ tab: 2, noTab: true });
+
+  browser.openTab("http://127.0.0.1:5173/shop");
+
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 3 });
+});
+
 it("a window that listens while no tab is open is told the first Tab that opens, as a new Tab", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.close();
   const window = session.listen();
-  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+  await expect
+    .poll(() => shownTab(window.heard))
+    .toEqual({ tab: 1, noTab: true });
   expect(await session.ask(contract("getState", undefined, 1))).toEqual({
     ok: false,
     text: "No tab is open in the Session's browser. Open one with your browser automation, then run ayme again.",
@@ -318,7 +337,9 @@ it("a window that listens while the tab list cannot be read is told so, and then
     "ayme could not read the browser's tab list."
   );
   const window = session.listen();
-  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+  await expect
+    .poll(() => shownTab(window.heard))
+    .toEqual({ tab: 1, noTab: true });
 
   readable();
 

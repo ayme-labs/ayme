@@ -111,7 +111,7 @@ function requestIn(data: unknown):
 
 function frameOf(event: InspectorEvent, listening: boolean) {
   if ("ended" in event) return { ended: event.ended, inChat: event.inChat };
-  if ("tab" in event) return { tab: event.tab };
+  if ("tab" in event) return event;
   return listening ? { event: event.contract } : undefined;
 }
 
