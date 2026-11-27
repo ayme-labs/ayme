@@ -63,3 +63,51 @@ it("without a code or a token, connects without either, as to the server of ayme
     windowAdmission(windowAt("http://127.0.0.1:4444/inspector")).socket()
   ).toBe("ws://127.0.0.1:4444/inspector/ws");
 });
+
+it("with the tab's storage blocked, still connects with the code, then the token, and leaves the code out of the address", () => {
+  const window = windowAt("http://127.0.0.1:4444/inspector#code=abc");
+  Object.defineProperty(window, "sessionStorage", {
+    get() {
+      throw new DOMException("Access is denied.", "SecurityError");
+    },
+  });
+
+  const admission = windowAdmission(window);
+
+  expect(admission.socket()).toBe("ws://127.0.0.1:4444/inspector/ws?code=abc");
+  expect(window.replaced).toEqual(["/inspector"]);
+  admission.admitted("secret");
+  expect(admission.socket()).toBe(
+    "ws://127.0.0.1:4444/inspector/ws?token=secret"
+  );
+});
+
+it("with the tab's storage blocked, connects without a token, as to the server of ayme mcp of @ayme-dev/mcp", () => {
+  const window = windowAt("http://127.0.0.1:4444/inspector");
+  Object.defineProperty(window, "sessionStorage", {
+    get() {
+      throw new DOMException("Access is denied.", "SecurityError");
+    },
+  });
+
+  expect(windowAdmission(window).socket()).toBe(
+    "ws://127.0.0.1:4444/inspector/ws"
+  );
+});
+
+it("when the tab's storage is full, keeps the token for this page", () => {
+  const window = windowAt("http://127.0.0.1:4444/inspector#code=abc");
+  window.sessionStorage.setItem = () => {
+    throw new DOMException(
+      "The quota has been exceeded.",
+      "QuotaExceededError"
+    );
+  };
+  const admission = windowAdmission(window);
+
+  admission.admitted("secret");
+
+  expect(admission.socket()).toBe(
+    "ws://127.0.0.1:4444/inspector/ws?token=secret"
+  );
+});

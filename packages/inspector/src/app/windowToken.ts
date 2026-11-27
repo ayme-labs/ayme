@@ -1,3 +1,5 @@
+import { readStored, tabStorage, writeStored } from "../shared/infrastructure";
+
 /** Where the window keeps the Session's token in its tab, so a reload still
  * connects. */
 const TOKEN_KEY = "ayme:inspector-token";
@@ -17,24 +19,24 @@ type BrowserWindow = {
  * (ADR-0072). `ayme inspect` opens the window with a one-use code in the
  * fragment, which reaches no server: the window takes it out of the address
  * bar and connects with it once; the Session then tells it its token, which
- * the window connects again with and keeps in its tab for a reload. A window
- * served without either, by `@ayme-dev/mcp`'s server, connects without.
+ * the window connects again with and keeps in its tab for a reload. Where
+ * the browser blocks the tab's storage or it is full, a reload needs
+ * `ayme inspect` again. A window served without either, by
+ * `@ayme-dev/mcp`'s server, connects without.
  */
-export function windowAdmission({
-  location,
-  history,
-  sessionStorage,
-}: BrowserWindow): {
+export function windowAdmission(browser: BrowserWindow): {
   /** The socket to connect to now. */
   readonly socket: () => string;
   /** Keeps `token`, which the Session told the window once admitted. */
   readonly admitted: (token: string) => void;
 } {
+  const { location, history } = browser;
   const code = new URLSearchParams(location.hash.slice(1)).get("code");
   if (code !== null)
     history.replaceState(null, "", location.pathname + location.search);
-  const kept = code === null ? sessionStorage.getItem(TOKEN_KEY) : null;
-  let token = kept === null ? undefined : (JSON.parse(kept) as string);
+  const storage = tabStorage(browser);
+  const kept = code === null ? readStored(storage, TOKEN_KEY) : undefined;
+  let token = typeof kept === "string" ? kept : undefined;
   const socket = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/inspector/ws`;
   return {
     socket: () => {
@@ -46,7 +48,7 @@ export function windowAdmission({
     },
     admitted: (given) => {
       token = given;
-      sessionStorage.setItem(TOKEN_KEY, JSON.stringify(given));
+      writeStored(storage, TOKEN_KEY, given);
     },
   };
 }
