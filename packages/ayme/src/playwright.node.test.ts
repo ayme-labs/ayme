@@ -848,6 +848,7 @@ describe("a Session's Node Host, through the internal entry", () => {
       stops.push(await ayme.start());
       return Object.assign(internal.pageObjectCallerOf(ayme, "ayme-command"), {
         runs: () => ayme.runs.list(),
+        window: internal.inspectorPortOf(ayme),
       });
     }
 
@@ -917,6 +918,43 @@ describe("a Session's Node Host, through the internal entry", () => {
         status: "failed",
         error: "A confirm dialog is open on the tab.",
       });
+    });
+
+    it("a window's Run its Host stopped is told to the listening window as failed with why at once", async () => {
+      const page = await pageShowing(counter);
+      let release = () => {};
+      const held = new Promise<void>((resolve) => (release = resolve));
+      let stop: (why: Error) => void = () => {};
+      const stopped = new Promise<never>((_, reject) => (stop = reject));
+      stopped.catch(() => {});
+      const { window } = await hostDeciding(
+        page,
+        (answersAtOnce) => (answersAtOnce ? undefined : held),
+        stopped
+      );
+      const heard: {
+        state?: { runs: readonly { status: string; error?: string }[] };
+      }[] = [];
+      const stopListening = window.subscribe((event) =>
+        heard.push(event as (typeof heard)[number])
+      );
+      const lastRun = () => heard.at(-1)?.state?.runs.at(-1);
+
+      const run = window.request("runTool", {
+        name: "Counter.press",
+        input: { id: "po1" },
+        by: "inspector",
+      });
+      await expect.poll(() => lastRun()?.status).toBe("running");
+      stop(new Error("A confirm dialog is open on the tab."));
+
+      await expect.poll(lastRun).toMatchObject({
+        status: "failed",
+        error: "A confirm dialog is open on the tab.",
+      });
+      release();
+      await run;
+      stopListening();
     });
 
     it("never reach the page when the Host refuses them, and the Run fails with why", async () => {
