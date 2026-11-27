@@ -381,3 +381,27 @@ it("an edit to a file only the Page Object compiler reads, as an import type, is
   expect(outcomes[1]).toContain("This Page Object does not compile.");
   expect(outcomes[2]).toHaveLength(1);
 }, 15_000);
+
+it("the watch belongs to the build's lifetime, not to each build: a build whose own scope closed still has its edits told", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+  const told = await Effect.runPromise(
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { build, edits } = yield* PageObjectsBuild;
+        yield* Effect.scoped(build);
+        const edited = yield* Effect.forkScoped(
+          Stream.runHead(edits).pipe(Effect.timeoutOption(5000))
+        );
+        yield* Effect.promise(() =>
+          write(dir, { "ayme/pom/Basket.ts": `${BASKET}// edited\n` })
+        );
+        return yield* Fiber.join(edited);
+      }).pipe(Effect.provide(projectPageObjects(dir, "0.3.0")))
+    )
+  );
+  expect(told._tag).toBe("Some");
+}, 15_000);

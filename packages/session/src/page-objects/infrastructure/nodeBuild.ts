@@ -285,26 +285,30 @@ const buildForNode = (
 /** The build of the Page Objects of the project in `projectDir`, on its own
  * `@ayme-dev/ayme`, which must be `aymeVersion`, this ayme's version. Its
  * edits are those to its entry and to the files its builds read, watched
- * until the scope of a build closes. */
+ * for as long as the layer lives. */
 export const projectPageObjects = (
   projectDir: string,
   aymeVersion: string
-): Layer.Layer<PageObjectsBuild> => {
-  const watch = sourceWatch();
-  return Layer.succeed(PageObjectsBuild, {
-    build: Effect.gen(function* () {
+): Layer.Layer<PageObjectsBuild> =>
+  Layer.effect(
+    PageObjectsBuild,
+    Effect.gen(function* () {
+      const watch = sourceWatch();
       yield* Effect.addFinalizer(() => Effect.sync(watch.close));
-      watch.began();
-      // Watched also when it is missing, so its return is an edit.
-      watch.reads(join(projectDir, ENTRY));
-      return yield* projectAyme(projectDir, aymeVersion).pipe(
-        Effect.flatMap((project) => buildForNode(project, watch.reads)),
-        Effect.onExit((exit) =>
-          Effect.sync(() => watch.finished(Exit.isFailure(exit)))
-        )
-      );
-    }),
-    edits: watch.edits,
-    unwatched: watch.lost,
-  });
-};
+      return {
+        build: Effect.suspend(() => {
+          watch.began();
+          // Watched also when it is missing, so its return is an edit.
+          watch.reads(join(projectDir, ENTRY));
+          return projectAyme(projectDir, aymeVersion).pipe(
+            Effect.flatMap((project) => buildForNode(project, watch.reads)),
+            Effect.onExit((exit) =>
+              Effect.sync(() => watch.finished(Exit.isFailure(exit)))
+            )
+          );
+        }),
+        edits: watch.edits,
+        unwatched: watch.lost,
+      };
+    })
+  );
