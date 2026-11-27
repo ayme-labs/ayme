@@ -64,7 +64,7 @@ await ayme.tools.run(
 );
 ```
 
-A Caller name is any non-empty string; an empty one throws a `RuntimeStateError`. Name yours in lowercase kebab-case; ayme does not enforce it. ayme's own Callers use the names in `callers`: `app`, `webmcp` (WebMCP publication), `ayme-mcp` (the ayme MCP server) and `inspector`.
+A Caller name is any non-empty string; an empty one throws a `RuntimeStateError`. Name yours in lowercase kebab-case; ayme does not enforce it. ayme's own Callers use the names in `callers`: `app`, `webmcp` (WebMCP publication) and `inspector`.
 
 Each Caller name has its own Change Record cursor: the page that Caller last received, through `snapshot` or as the Settled Page of its last action, is where its next action's Change Record starts. Two Callers under one name share one cursor. An action's result carries the record in two parts: `changes_before`, what changed since the Caller last received the page, on its own or by another Caller, and `changes`, what the action changed; `page_changed` is true when either has a change.
 
