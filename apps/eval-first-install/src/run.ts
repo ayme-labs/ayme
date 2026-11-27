@@ -28,13 +28,9 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
 import { checkOutcome, startFixture } from "./fixture.ts";
-import { DEFAULT_REF, pack, type Packed } from "./pack.ts";
-import {
-  approveMcpJson,
-  projectTemplateDir,
-  recorder,
-  resultsDir,
-} from "./paths.ts";
+import { DEFAULT_REF, pack, PACKAGES, type Packed } from "./pack.ts";
+import { approveMcpJson, recorder, resultsDir } from "./paths.ts";
+import { buildProject } from "./project.ts";
 import { setupPrompt, taskPrompt, TOOLS, type Tool } from "./prompts.ts";
 import { publish, startRegistry } from "./registry.ts";
 import { scoreRun, table } from "./score.ts";
@@ -45,7 +41,7 @@ const EFFORT = "medium";
 const SETUP_TIMEOUT_S = 720;
 const TASK_TIMEOUT_S = 1200;
 const ALLOWED_TOOLS =
-  "Bash,Read,Write,Edit,Glob,Grep,Skill,ToolSearch,mcp__ayme,mcp__playwright,mcp__playwright-mcp,mcp__ayme-mcp,mcp__agent-browser,mcp__playwright-cli";
+  "Bash,Read,Write,Edit,Glob,Grep,Skill,ToolSearch,mcp__playwright,mcp__playwright-mcp,mcp__agent-browser,mcp__playwright-cli";
 
 const { values } = parseArgs({
   options: {
@@ -94,7 +90,8 @@ const work = mkdtempSync(join(tmpdir(), "eval-first-install-"));
 const project = join(work, "project");
 const n = String(Math.floor(Math.random() * 10_000)).padStart(4, "0");
 
-/** The worker's environment: the harness's own, without package-manager leftovers. */
+/** The worker's environment: the harness's own, without package-manager
+ * leftovers, with the recorder loaded into every Node process. */
 function workerEnv(): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(process.env)) {
@@ -160,8 +157,10 @@ function runClaude(
   name: "setup" | "task",
   prompt: string,
   extra: string[],
-  env: NodeJS.ProcessEnv
+  workerEnv: NodeJS.ProcessEnv
 ): Promise<Phase> {
+  // The recorder files each `ayme` command under the phase it ran in.
+  const env = { ...workerEnv, EVAL_FIRST_INSTALL_PHASE: name };
   writeFileSync(join(out, `${name}-prompt.txt`), prompt);
   const args = [
     "-p",
@@ -178,13 +177,14 @@ function runClaude(
     "stream-json",
     "--verbose",
     // Answers yes when Claude Code asks to edit .mcp.json, as the user
-    // would; see approve-mcp-json.mjs.
+    // would; see approve-mcp-json.mjs. Bash too: a worker that edits it with
+    // sed is asked as well.
     "--settings",
     JSON.stringify({
       hooks: {
         PermissionRequest: [
           {
-            matcher: "Write|Edit",
+            matcher: "Write|Edit|Bash",
             hooks: [
               {
                 type: "command",
@@ -272,12 +272,6 @@ function copyWorkerFiles(): void {
       });
     }
   }
-  if (existsSync(join(project, "ayme", "init-script.js"))) {
-    cpSync(
-      join(project, "ayme", "init-script.js"),
-      join(configs, "init-script.js")
-    );
-  }
 }
 
 const meta: Record<string, unknown> = {
@@ -298,7 +292,8 @@ const writeMeta = () =>
 
 const registry = await startRegistry(
   join(work, "registry"),
-  join(out, "registry.log")
+  join(out, "registry.log"),
+  PACKAGES.map((name) => `@ayme-dev/${name}`)
 );
 // The registry already runs, so a fixture that fails to start stops it.
 const fixture = await startFixture().catch((error) => {
@@ -317,23 +312,11 @@ try {
   );
   log(`Published to ${registry.url}`);
 
-  cpSync(projectTemplateDir, project, { recursive: true });
-  const template = join(project, "package.json.template");
-  writeFileSync(
-    join(project, "package.json"),
-    readFileSync(template, "utf8").replaceAll(
-      "{{AYME_VERSION}}",
-      packed.version
-    )
+  buildProject(
+    project,
+    { dir: packedDir, version: packed.version },
+    registry.url
   );
-  rmSync(template);
-  writeFileSync(join(project, ".npmrc"), `registry=${registry.url}\n`);
-  cpSync(join(packedDir, "skill"), join(project, ".claude", "skills", "ayme"), {
-    recursive: true,
-  });
-  cpSync(join(packedDir, "docs"), join(project, "ayme-docs"), {
-    recursive: true,
-  });
   const env = workerEnv();
   execFileSync("npm", ["install", "--no-audit", "--no-fund"], {
     cwd: project,
@@ -352,7 +335,14 @@ try {
   writeMeta();
 
   if (values.agent === "none") {
-    await selfCheck(project, fixture.url, n, env, log);
+    meta.selfCheckCommands = await selfCheck(
+      project,
+      fixture.url,
+      n,
+      packed.version,
+      { ...env, EVAL_FIRST_INSTALL_PHASE: "task" },
+      log
+    );
   } else {
     const setup = await runClaude(
       "setup",
@@ -415,6 +405,17 @@ try {
   console.log(table([score]));
   if (!values.keep) rmSync(work, { recursive: true, force: true });
   else log(`Kept ${work}`);
-  if (values.agent === "none" && !outcome.passed) exitCode = 1;
+  if (values.agent === "none") {
+    // The self-check also proves the recorder saw every command it ran.
+    const recorded = Object.values(score.aymeCommands?.task ?? {}).reduce(
+      (sum, { count }) => sum + count,
+      0
+    );
+    if (recorded !== meta.selfCheckCommands)
+      log(
+        `The recording holds ${recorded} ayme commands; the self-check ran ${String(meta.selfCheckCommands)}`
+      );
+    if (!outcome.passed || recorded !== meta.selfCheckCommands) exitCode = 1;
+  }
 }
 process.exit(exitCode);

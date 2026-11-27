@@ -27,8 +27,9 @@ import { repoRoot, resultsDir } from "./paths.ts";
 
 export const DEFAULT_REF = "main";
 
-/** The packages a first-time user's project installs, and the peers they pin. */
-const PACKAGES = ["ayme", "mcp", "webmcp", "inspector"];
+/** The packages a first-time user's project installs: the app's ayme and
+ * the `ayme` command, which runs only with the same version of it. */
+export const PACKAGES = ["ayme", "cli"];
 
 export type Packed = {
   dir: string;
