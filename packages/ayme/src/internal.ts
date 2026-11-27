@@ -15,7 +15,8 @@
 // project's Page Objects through here: it creates a Node Host for each Tab
 // on the Playwright that drives its browser, all of them taking their Page
 // Object Ids from one source, and reads a Run's short answer and a listing,
-// each in the Tab's turn.
+// each in the Tab's turn, and serves each Tab's Inspector contract to its
+// Inspector window.
 export {
   getStartedAyme,
   markRenderSession,
@@ -54,5 +55,5 @@ export type {
   InspectorContractPorts,
   InspectorSession,
 } from "./runtime";
-export { createNodeHost, pageObjectCallerOf } from "./runtime";
+export { createNodeHost, inspectorPortOf, pageObjectCallerOf } from "./runtime";
 export type { PageObjectCaller } from "./runtime";

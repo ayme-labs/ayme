@@ -73,6 +73,10 @@ export type PlaywrightAyme = Omit<Ayme, "start"> & {
   start(): Promise<() => void>;
 };
 
+/** The target each Node Host's session runs on, by the session's `tools`,
+ * which a Node host's session object shares with the core one it spreads. */
+export const nodeHostTargets = new WeakMap<object, SessionTarget>();
+
 /**
  * A session over `options.page`; inert until started. `registerSelectors`
  * registers the `ayme-ref` engine on Playwright's `selectors`, once per
@@ -89,6 +93,7 @@ export function createPlaywrightAyme(
     pageObjects: options.pageObjects,
     navigate: options.navigate,
   });
+  nodeHostTargets.set(core.tools, target);
   return {
     ...core,
     async start() {
