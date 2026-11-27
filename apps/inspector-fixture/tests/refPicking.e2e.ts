@@ -67,9 +67,9 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      const click = await inspector.tool("click");
+      await inspector.tool("click");
 
-      await click.refField("target").pickOnPage();
+      await inspector.detail.runCard().refField("target").pickOnPage();
       await untilThePagePicks(listPage);
       await listPage.addItemButton.hover();
 

@@ -40,7 +40,9 @@ describe("mounted after the runtime started", () => {
   }) => {
     await countClickCues(page);
 
-    await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+    await inspector.tool("ListPage.addItem");
+
+    await inspector.detail.runCard().run({ text: "Milk" });
 
     const run = inspector.runs.latest("ListPage.addItem");
     await expect.poll(() => run.status()).toBe("Succeeded");
@@ -100,7 +102,8 @@ describe("with the inspector option on, without demo", () => {
 
     await mcpServer!.call("ListPage.addItem", { text: "Eggs" });
     await expect(await listPage.items.front()).toHaveText(["Eggs"]);
-    await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+    await inspector.tool("ListPage.addItem");
+    await inspector.detail.runCard().run({ text: "Milk" });
 
     const run = inspector.runs.latest("ListPage.addItem");
     await expect.poll(() => run.status()).toBe("Succeeded");

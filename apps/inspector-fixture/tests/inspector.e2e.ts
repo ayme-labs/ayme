@@ -32,7 +32,8 @@ test("running a Page Object tool from the panel acts on the page", async ({
   inspector,
   listPage,
 }) => {
-  await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+  await inspector.tool("ListPage.addItem");
+  await inspector.detail.runCard().run({ text: "Milk" });
 
   await expect(
     await listPage.items
@@ -205,7 +206,8 @@ test("a host member named like one of the panel's controls stays one match, and 
   inspector,
   listPage,
 }) => {
-  await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+  await inspector.tool("ListPage.addItem");
+  await inspector.detail.runCard().run({ text: "Milk" });
   await expect(await listPage.items.front()).toHaveCount(1);
   // The panel now shows its own "Clear" button.
   await expect(await inspector.runs.clearButton.front()).toBeVisible();
@@ -383,7 +385,8 @@ describe("on a React host with aggressive global CSS", () => {
   onReact(
     "the panel works beside the host's own React",
     async ({ browser, inspector, listPage }) => {
-      await (await inspector.tool("ListPage.addItem")).run({ text: "Eggs" });
+      await inspector.tool("ListPage.addItem");
+      await inspector.detail.runCard().run({ text: "Eggs" });
 
       await expect(
         await listPage.items

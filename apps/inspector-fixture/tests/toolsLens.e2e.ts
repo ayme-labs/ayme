@@ -217,7 +217,8 @@ for (const placement of placements) {
           await expect
             .poll(() => inspector.navigator.tools.peekSections())
             .toEqual({ Browser: peeks });
-          await (await inspector.tool("peek.list")).runButton.click();
+          await inspector.tool("peek.list");
+          await inspector.detail.runCard().runButton.click();
 
           const run = inspector.runs.latest("peek.list");
           await expect.poll(() => run.status()).toBe("Succeeded");
