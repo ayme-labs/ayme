@@ -28,6 +28,7 @@ import {
   pageObjectsAnswer,
   RunError,
   runFailed,
+  TAB_CLOSED,
   TabReadError,
   toolsAnswer,
   type SessionAnswer,
@@ -103,12 +104,13 @@ export const openSession = (
       { concurrency: "unbounded" }
     ).pipe(
       Effect.flatMap(([held, built]) =>
-        held.host(built).pipe(
+        held.host(built, { window: inspector }).pipe(
           Effect.map((tabs): Started => ({
             held,
             tabs: sessionTabs(
               withoutWindow(tabs, inspector),
               name,
+              browserScope,
               Deferred.isDone(ending)
             ),
           }))
@@ -188,13 +190,13 @@ export const openSession = (
     ): Effect.Effect<SessionAnswer> => {
       if ("pageObjects" in request)
         return listed(started, request.pageObjects, (listing) =>
-          pageObjectsAnswer(listing, name)
+          pageObjectsAnswer(listing, name, request.pageObjects.tab)
         );
       if ("tools" in request)
         return listed(started, request.tools, toolsAnswer);
       if ("call" in request) {
         const { tool, input, tab } = request.call;
-        return started.tabs.chosen(tab, idIn(input)).pipe(
+        return started.tabs.chosen(tab, { tool, input }).pipe(
           Effect.catch((error) => Effect.fail(new RunError(error.message))),
           Effect.flatMap((hosted) => hosted.call(tool, input)),
           Effect.map(callAnswer),
@@ -256,40 +258,51 @@ export const openSession = (
     };
   });
 
-/** The Page Object Id a tool's input names, when it names one. */
+/** The `id` a tool's input gives, when it gives a string. */
 const idIn = (input: unknown): string | undefined => {
   const id = (input as { readonly id?: unknown } | null | undefined)?.id;
   return typeof id === "string" ? id : undefined;
 };
 
+/** The class whose Page Object Tool `tool` is: the compiler names each
+ * `<class>.<action>`. */
+const classOf = (tool: string) => tool.slice(0, tool.indexOf("."));
+
 /** A Session's Tabs, as its requests reach them. */
 type SessionTabs = {
   /**
-   * The Tab a request works on, with the Session as its Host: the Tab whose
-   * Host gave the Page Object Id `id`, else the most recently active Tab
-   * whose URL is `url`, else the most recently active Tab.
+   * The Tab a request works on, with the Session as its Host: for a `call`
+   * of a tool that takes a Page Object Id, the Tab whose Host gave the id;
+   * else the most recently active Tab whose URL is `url`, else the most
+   * recently active Tab.
    */
   readonly chosen: (
     url: string | undefined,
-    id?: string
+    call?: { readonly tool: string; readonly input: unknown }
   ) => Effect.Effect<HostedTab, TabReadError>;
 };
 
 /** The Tabs of `browser`, each hosted once, the first time the Session
  * named `name` works on it, and the Page Object Ids each Tab's Host gave.
- * None starts work once `ending`. */
+ * A Tab is let go when its page closes, in `scope`. None starts work once
+ * `ending`. */
 function sessionTabs(
   browser: BrowserTabs,
   name: string,
+  scope: Scope.Scope,
   ending: Effect.Effect<boolean>
 ): SessionTabs {
   const hosts = new Map<BrowserTab, Effect.Effect<HostedTab, TabReadError>>();
-  // The Tab each id was given on. An id of a closed Tab is gone with it.
+  // The Tab each id was given on, while its Host knows the id.
   const owners = new Map<string, BrowserTab>();
-  const forget = (open: readonly BrowserTab[]) => {
-    for (const tab of hosts.keys()) if (!open.includes(tab)) hosts.delete(tab);
-    for (const [id, tab] of owners) if (!open.includes(tab)) owners.delete(id);
-  };
+  // The classes some id was given to: those with a Page Object Root, whose
+  // tools take a Page Object Id.
+  const rooted = new Set<string>();
+  const retire = (tab: BrowserTab) =>
+    Effect.sync(() => {
+      hosts.delete(tab);
+      for (const [id, owner] of owners) if (owner === tab) owners.delete(id);
+    });
   const hostOf = (tab: BrowserTab) =>
     Effect.gen(function* () {
       const known = hosts.get(tab);
@@ -298,8 +311,21 @@ function sessionTabs(
       // once; a failed hosting is tried again by the next request.
       const hosting = yield* Effect.cached(
         tab
-          .host((id) => owners.set(id, tab))
-          .pipe(Effect.map((hosted) => inTurns(hosted, ending)))
+          .host({
+            given: (id, className) => {
+              owners.set(id, tab);
+              rooted.add(className);
+            },
+            released: (id) => owners.delete(id),
+          })
+          .pipe(
+            Effect.map((hosted) =>
+              untilClosed(inTurns(hosted, ending), tab.closed)
+            ),
+            Effect.tap(() =>
+              tab.closed.pipe(Effect.andThen(retire(tab)), Effect.forkIn(scope))
+            )
+          )
       );
       hosts.set(tab, hosting);
       return yield* hosting.pipe(
@@ -307,17 +333,18 @@ function sessionTabs(
       );
     });
   return {
-    chosen: (url, id) =>
-      browser.open.pipe(
+    chosen: (url, call) => {
+      const id =
+        call && rooted.has(classOf(call.tool)) ? idIn(call.input) : undefined;
+      const owner = id === undefined ? undefined : owners.get(id);
+      if (owner) {
+        if (url === undefined || owner.url() === url) return hostOf(owner);
+        return Effect.fail(
+          new TabReadError(idOnAnotherTab(id!, owner.url(), url))
+        );
+      }
+      return browser.open.pipe(
         Effect.flatMap((open) => {
-          forget(open);
-          const owner = id === undefined ? undefined : owners.get(id);
-          if (owner) {
-            if (url === undefined || owner.url() === url) return hostOf(owner);
-            return Effect.fail(
-              new TabReadError(idOnAnotherTab(id!, owner.url(), url))
-            );
-          }
           const tab =
             url === undefined
               ? open[0]
@@ -335,7 +362,32 @@ function sessionTabs(
             )
           );
         })
-      ),
+      );
+    },
+  };
+}
+
+/** `hosted`, whose listings, Runs and Inspector calls are answered once
+ * its Tab is `closed`, and whose Inspector events end then: an action
+ * inside a wait of its own may go on until that wait ends. */
+function untilClosed(
+  hosted: HostedTab,
+  closed: Effect.Effect<void>
+): HostedTab {
+  const orClosed = <A, E>(work: Effect.Effect<A, E>, error: E) =>
+    Effect.raceFirst(work, closed.pipe(Effect.andThen(Effect.fail(error))));
+  return {
+    listing: orClosed(hosted.listing, new TabReadError(TAB_CLOSED)),
+    call: (tool, input) =>
+      orClosed(hosted.call(tool, input), new RunError(TAB_CLOSED)),
+    inspector: {
+      request: (method, params) =>
+        orClosed(
+          hosted.inspector.request(method, params),
+          new TabReadError(TAB_CLOSED)
+        ),
+      events: hosted.inspector.events.pipe(Stream.interruptWhen(closed)),
+    },
   };
 }
 

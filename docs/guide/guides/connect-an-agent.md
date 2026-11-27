@@ -18,13 +18,20 @@ The agent's browser automation keeps doing everything else: snapshots, clicks ou
 
 ## Set up your project
 
-1. Install the `ayme` command, `@ayme-dev/cli`, as a dev dependency. It needs `@ayme-dev/ayme` at exactly the same version, and Playwright 1.62 or newer:
+1. Install the `ayme` command, `@ayme-dev/cli`, and Playwright as dev dependencies. The command supports Playwright 1.62 to 1.64, and the quotes keep npm to that range:
 
    ```sh
-   npm install -D @ayme-dev/cli @ayme-dev/ayme @playwright/test
+   npm install -D @ayme-dev/cli "@playwright/test@>=1.62 <1.65"
    ```
 
-   The command runs your Page Objects with your project's own `@ayme-dev/ayme` and Playwright. When a version does not fit, it does not start, and says which version to install.
+   The command runs your Page Objects with your project's own `@ayme-dev/ayme` and Playwright, and needs `@ayme-dev/ayme` at exactly its own version. When a version does not fit, it does not start, and says which version to install.
+
+   - If your app already ships ayme, keep `@ayme-dev/ayme` in your `dependencies`, and change only its version: `npm install @ayme-dev/ayme@<version>`, without `-D`. With `-D`, npm moves it to `devDependencies`, and an install of production dependencies leaves it out. The page your app serves must run that version too: a Session cannot read or act on a page that runs ayme of another version.
+   - Otherwise, add it as a dev dependency: `npm install -D @ayme-dev/ayme@<version>`.
+
+   `<version>` is the version of `@ayme-dev/cli`, which `npm ls @ayme-dev/cli` prints.
+
+   If your project has `@ayme-dev/mcp`, uninstall it with `npm uninstall @ayme-dev/mcp`. It is retired, and its command is also called `ayme`, so `npx ayme`, and even `npx @ayme-dev/cli`, can run it instead of this one.
 
 2. Keep your [Page Object Models](ayme-page-objects.md) in the [`ayme` folder](ayme-folder.md), and list them in `ayme/page-objects.ts`. Its default export is an array of your Page Object classes, as the `pageObjects` option of [`createAyme`](../reference/ayme.md#createayme) takes them:
 
@@ -55,7 +62,7 @@ Then ask your agent to call one of your Page Object Tools, and to confirm the ef
 
 ## Connect ayme and the browser automation to one browser
 
-The agent runs the commands in your project's folder, as `npx ayme <command>`. If your project also has `@ayme-dev/mcp`, whose command is also called `ayme`, it runs `npx @ayme-dev/cli <command>` instead. The commands below are written `ayme <command>` for short.
+The agent runs the commands in your project's folder, as `npx ayme <command>`. The commands below are written `ayme <command>` for short.
 
 Connect both before the agent acts on the page. Chrome answers no new DevTools connection while a dialog is open, so an automation that connects after an action opened a dialog cannot answer it.
 
@@ -114,8 +121,8 @@ ayme attach --cdp=http://127.0.0.1:9222
 
 ## Sessions
 
-- **The tab.** ayme works on the browser's most recently active tab, and follows the tab the agent's automation switches to or opens. The first line of `ayme page-objects` and `ayme tools` names that tab. `--tab=<url>` reads another tab, by the URL that line shows. A Page Object Id is unique across a Session's tabs, so a call runs on the tab its Page Object is on.
-- **Names.** A project folder can have several Sessions, each with a name: `-s=<name>`, or the `AYME_SESSION` environment variable, as in Playwright CLI. Without either, the name is `default`. `ayme list` lists the Sessions of the folder. Two agents in one folder each use a name of their own.
+- **The Tab.** A Tab is one tab of the Session's browser. ayme works on the most recently active Tab, and follows the Tab the agent's automation switches to or opens. The first line of `ayme page-objects` and `ayme tools` names that Tab. `--tab=<url>` reads another Tab, by the URL that line shows. A Page Object Id is unique across a Session's Tabs, so `ayme call` runs the tool on the Tab its Page Object is on.
+- **Names.** A project folder can have several Sessions, each with a name: `-s=<name>`, or the `AYME_SESSION` environment variable, as in Playwright CLI. Without either, the name is `default`. `ayme list` lists the Sessions of the folder. Two agents in one folder each use a name of their own. A Session's name does not reach the browser automation, so each agent also needs an automation session of its own: `playwright-cli -s=<name>`, `agent-browser --session <name>`, or a debugging port of its own for Playwright MCP. Each agent passes the same one to every command, from opening the browser to closing it.
 - **The end.** `ayme detach` ends a Session started with `ayme attach` and leaves the browser running. `ayme close` ends any Session, and closes the browser only when `ayme open` opened it. A Session also ends when its browser goes away.
 - **Edits.** A Session builds your Page Objects when it starts. After you edit them, end the Session and start it again. When the build fails, the Session does not start, and the command prints the build error.
 
@@ -142,14 +149,14 @@ ayme call ProjectRow.rename --params '{"id": "po1", "args": {"name": "Launch pla
 
 It answers with whether the page settled, what the action returned, the URL when the action changed it, and how the Page Object Tree changed: [a Page Object Tool's answer to an agent](page-state.md#a-page-object-tools-answer-to-an-agent).
 
-Each command prints plain text, or JSON with `--json`. An error goes to standard error, with exit code 1. A tool that cannot run now is listed with its reason, and a call to it is refused with that reason.
+A Session's answers are plain text, or JSON with `--json`. The command's own errors, such as an option it does not know, and `--help` are plain text. An error goes to standard error, with exit code 1. A tool that cannot run now is listed as unavailable, with its reason when the app gives one, and a call to it is refused.
 
 `ayme --help` lists every command and option.
 
 ## Limits
 
-- Chromium only, on Playwright 1.62 or newer.
-- A Session turns focus emulation on for each tab it works on, so that an action works the same on a tab in the background. While a Session is connected, an app that reacts to being hidden does not react.
+- Chromium only, on the Playwright versions [Set up your project](#set-up-your-project) names.
+- A Session turns focus emulation on for each Tab it works on, so that an action works the same on a Tab in the background. While a Session is connected, an app that reacts to being hidden does not react.
 - A Session offers your Page Object Tools only. It has no Browser Tools, Custom Tools or Goal Loop: the agent's browser automation does the rest.
 
 [Troubleshooting](../troubleshooting.md#the-agent-cannot-reach-the-page) covers the common problems.

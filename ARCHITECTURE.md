@@ -211,10 +211,12 @@ in-browser agents and the app's own code call on the running page.
   and a browser ayme opened closes. It runs them as the Host of each Tab it works on, through
   the Node host runtime of the project's own `@ayme-dev/ayme`, and turns focus emulation on
   for that Tab, the one setting it changes in a browser it joined. It works on the most
-  recently active Tab, unless `--tab` names another by its URL or a Page Object Id chooses
-  the Tab whose Host gave it; it lists that Tab's Page Object Tree and Page Object Tools, and
-  runs a Page Object Tool on it as a Run, one Run per Tab at a time and with no time limit
-  of its own.
+  recently active Tab, in the order of the browser's own tab list, unless `--tab` names
+  another by its URL or, for a tool of a class with a Page Object Root, the Page Object Id
+  chooses the Tab whose Host gave it; it lists that Tab's Page Object Tree and Page Object
+  Tools, and runs a Page Object Tool on it as a Run, one Run per Tab at a time and with no
+  time limit of its own. A Tab is gone only when Playwright says its page closed; its Host
+  stops then, and a command still waiting on it is told so.
   An error Page Object code throws, or leaves for nobody to catch, ends only its Run. `ayme inspect` opens the Session's Inspector window in the developer's default browser, outside the Session's browser: the background process serves it, and it shows the Tab the Session works on, follows it to another Tab, runs a Page Object Tool there as a Run of the Inspector in that Tab's turn, and says so when the Session ends. A Tab that shows the window is never one the Session works on
 - Technology: the `ayme` command from `@ayme-dev/cli` (`ayme open [url]`,
   `ayme attach --cdp=<url>`, `ayme call`, `ayme inspect`, `ayme mcp`, `ayme detach`, `ayme close` and
@@ -225,7 +227,9 @@ in-browser agents and the app's own code call on the running page.
   the background process is the same command, started detached. The Session gets its
   browser through `@ayme-dev/browser`: one it opens on a profile of its own so that every
   Tab is in one context and one window, with the DevTools protocol on a port Chromium
-  picks, or one it joins at the DevTools protocol address it is given. It builds the Page
+  picks, or one it joins at the DevTools protocol address it is given. It reads the
+  browser's tab list over HTTP, at `json/list` under the path of that address, follows no
+  redirect, and gives up on a read after a deadline of its own. It builds the Page
   Objects with esbuild and the project's own Page Object compiler,
   `@ayme-dev/ayme/compiler`, and leaves every package they import to the project's install,
   so the compiled classes and the Node host runtime share the project's one copy of
@@ -382,9 +386,11 @@ in-browser agents and the app's own code call on the running page.
     - → loading the Playwright installed in the project's folder, launching Chromium with it
       on a profile of its own and opening the URL, or joining a running Chromium at its
       DevTools protocol address without Playwright's defaults, and listening for dialogs
-      without answering them
-    - ← the browser going away
-  - Evidence: verified: [packages/session/src/playwright/infrastructure/live/stockBrowser.ts](packages/session/src/playwright/infrastructure/live/stockBrowser.ts), [packages/browser/src/infrastructure/live/browser.ts](packages/browser/src/infrastructure/live/browser.ts)
+      without answering them; reading the browser's tab list over HTTP; turning focus
+      emulation on for each Tab it works on, through a DevTools session of its own on that Tab
+    - ← the browser going away; the tab list, the most recently active tab first; a Tab's
+      page closing
+  - Evidence: verified: [packages/session/src/playwright/infrastructure/live/stockBrowser.ts](packages/session/src/playwright/infrastructure/live/stockBrowser.ts), [packages/browser/src/infrastructure/live/browser.ts](packages/browser/src/infrastructure/live/browser.ts), [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [packages/session/src/playwright/infrastructure/tabList.ts](packages/session/src/playwright/infrastructure/tabList.ts)
 - **Session → Node host runtime**
   - Flows:
     - → the built Page Object classes and the Tab's Playwright `Page`, to the Node host runtime
@@ -394,6 +400,8 @@ in-browser agents and the app's own code call on the running page.
       `ayme-command` Caller; the Inspector window's calls on the Tab's Inspector contract, served through `inspectorPortOf`, a tool run among them as the `inspector` Caller
     - ← the Page Object Tree as text, each Page Object Tool with its availability, and a Run's
       short answer or its error; the Inspector contract's answers and events
+    - ← each Page Object Id the Tab's Host gives, with the class of its Page Object, and each
+      it forgets
   - Evidence: verified: [packages/session/src/playwright/infrastructure/live/tabHost.ts](packages/session/src/playwright/infrastructure/live/tabHost.ts), [packages/session/src/page-objects/infrastructure/projectAyme.ts](packages/session/src/page-objects/infrastructure/projectAyme.ts)
 - **App Process runtime → ayme MCP server**
   - Flows:
@@ -606,8 +614,8 @@ hosting its playground.
     - Deployment node: a Playwright container on a GitHub Actions runner
     - Evidence: verified: [apps/recorder-fixture/tests/fixtures.ts](apps/recorder-fixture/tests/fixtures.ts), [.github/workflows/ci.yml](.github/workflows/ci.yml)
   - **Session**: started by the MCP fixture's end-to-end tests of the `ayme` command, as a
-    child process, with a headless Chromium it launches, or one the test's own Playwright
-    started for it to join
+    child process, with a headless Chromium it launches, or one the test started for it to
+    join, through its own Playwright or as a bare Chromium
     - Deployment node: a Playwright container on a GitHub Actions runner
     - Evidence: verified: [apps/mcp-fixture/tests/aymeCommand.ts](apps/mcp-fixture/tests/aymeCommand.ts), [.github/workflows/ci.yml](.github/workflows/ci.yml)
 - External systems:

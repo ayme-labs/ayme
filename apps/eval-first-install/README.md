@@ -1,31 +1,33 @@
 # First-install eval
 
-Checks how a developer installing ayme for the first time gets on with each of three browser automations: Playwright CLI, Playwright MCP and agent-browser. A headless Claude Code worker (Sonnet, medium effort) gets a project folder with ayme installed and Page Objects in `ayme/`, is told only which browser automation to use, sets things up, is restarted, and then does a task on a small list app that does not include ayme. Neither prompt names a channel, a skill or a document.
+Checks how a developer installing ayme for the first time gets on with each of three browser automations: Playwright CLI, Playwright MCP and agent-browser. A headless Claude Code worker (Sonnet, medium effort) gets a project folder with `@ayme-dev/ayme` installed and Page Objects in `ayme/`, but not the `ayme` command. It is told only which browser automation to use, sets things up, is restarted, and then does a task on a small list app that does not include ayme. Neither prompt names a channel, a skill or a document: the worker finds `@ayme-dev/cli` and the `ayme` commands in the skill and the guide.
 
-It is never part of `pnpm check` or the repo's CI: the package has no build, lint, typecheck or test task. It runs by hand or through [its own workflow](../../.github/workflows/eval-first-install.yml).
+A round is never part of `pnpm check` or the repo's CI, because every run calls the model. It runs by hand or through [its own workflow](../../.github/workflows/eval-first-install.yml). The harness's own tests, lint and typecheck run like any package's.
 
 ## What a run does
 
-1. **Packs the ref under test** (`src/pack.ts`, default `main`): checks it out in a throwaway worktree under the main checkout's `.claude/worktrees/`, sets `@ayme-dev/ayme`, `mcp`, `webmcp` and `inspector` to the prerelease version `<version>-first-install.g<sha>`, builds and packs them, and copies the ref's `ayme` skill and `docs/guide`. A packed ref is reused from `results/packed/<sha>`.
-2. **Starts a local npm registry**: Verdaccio, run with `npx`, holding the packed tarballs and passing everything else through to npmjs. The project's `.npmrc` points at it, so the project installs the prerelease, and the documented `npx -y @ayme-dev/mcp@<version>` works as for a real user.
-3. **Builds the project** in a fresh temporary folder, outside the repo so the worker finds none of its files: [fixture/project](fixture/project) (a `package.json` pinning the prerelease, `tsconfig.json`, and `ayme/` with its `tsconfig.json`, `page-objects.ts` and the Page Objects from `apps/example-vue/ayme/pom/`), the skill in `.claude/skills/ayme/`, the guide in `ayme-docs/`, then `npm install`.
+1. **Packs the ref under test** (`src/pack.ts`, default `main`): checks it out in a throwaway worktree under the main checkout's `.claude/worktrees/`, sets `@ayme-dev/ayme` and `@ayme-dev/cli` to the prerelease version `<version>-first-install.g<sha>`, builds and packs them, and copies the ref's `ayme` skill and `docs/guide`. A packed ref is reused from `results/packed/<sha>`.
+2. **Starts a local npm registry**: Verdaccio, run with `npx`. It serves the packed packages alone, under the dist-tag `latest`, and passes everything else through to npmjs. The project's `.npmrc` points at it, so a bare `npm install -D @ayme-dev/cli` installs the prerelease, as the newest release would for a real user.
+3. **Builds the project** in a fresh temporary folder, outside the repo so the worker finds none of its files: [fixture/project](fixture/project) (a `package.json` with the prerelease of `@ayme-dev/ayme`, Playwright and TypeScript, `tsconfig.json`, and `ayme/` with its `tsconfig.json`, `page-objects.ts` and the Page Objects from `apps/example-vue/ayme/pom/`), the skill in `.claude/skills/ayme/`, the guide in `ayme-docs/`, then `npm install` ([src/project.ts](src/project.ts)).
 4. **Serves the fixture app** ([fixture/app](fixture/app)): a static list app with no ayme in it, whose DOM matches the Page Objects. Its server keeps the list.
-5. **Runs the worker** twice with `claude -p`: the setup prompt, then, resumed with the project's `.mcp.json`, the task prompt ([src/prompts.ts](src/prompts.ts)). Claude Code asks before any edit of `.mcp.json`, and a headless run declines every question, so a hook ([src/approve-mcp-json.mjs](src/approve-mcp-json.mjs)) answers yes to that one question, as the developer would, and logs it to `approvals.log`.
+5. **Runs the worker** twice with `claude -p`: the setup prompt, then, resumed with the project's `.mcp.json`, the task prompt ([src/prompts.ts](src/prompts.ts)). Playwright MCP's registration goes in `.mcp.json`. Claude Code asks before any edit of it, with Write, Edit or a Bash command, and a headless run declines every question, so a hook ([src/approve-mcp-json.mjs](src/approve-mcp-json.mjs)) answers yes to those questions, as the developer would, and logs each to `approvals.log`.
 6. **Checks the outcome** from the server's list: active items include "Soy milk N" and neither "Oat milk N" nor "Rye bread N", and "Rye bread N" is archived.
 7. **Stops everything the worker started**: every process that carries the run's marker variable or names the run's folder.
 8. **Scores the run** from its files ([src/score.ts](src/score.ts)).
 
 ## Run it
 
-From the repo root, in `devbox shell` (Node 24), with Claude Code logged in and Google Chrome installed:
+From the repo root, in `devbox shell` (Node 24), with Claude Code logged in for a paid run:
 
 ```sh
 cd apps/eval-first-install
 node src/run.ts --tool playwright-cli                  # one paid run
 node src/run.ts --tool agent-browser --ref <ref>       # another ref
-node src/run.ts --tool playwright-mcp --agent none     # the task done by a script, no model: checks the harness
+node src/run.ts --tool playwright-cli --agent none     # the self-check: the task done by a script, no model
 node src/score.ts results/runs/*/                      # one table over several runs
 ```
+
+The self-check ([src/selfCheck.ts](src/selfCheck.ts)) sets the project up as the guide's Connect an agent page says: `npm install -D @ayme-dev/cli`, which must install the packed version, and `npx playwright install chromium`. It then starts a Session with `npx ayme open`, does the task with `ayme page-objects` and `ayme call`, and ends with `ayme close`. It fails unless the outcome check passes and the recording holds every `ayme` command it ran.
 
 `--packed <dir>` reuses a packed ref, `--out <dir>` names the run's folder (default `results/runs/<tool>-<time>`), and `--keep` keeps the temporary project.
 
@@ -37,20 +39,26 @@ On a shared machine, note that the worker chooses its own ports and browser, and
 
 ## A run's folder
 
-| File                                                      | What it holds                                                                                                                     |
-| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `setup.jsonl`, `task.jsonl`                               | The worker's stream-json transcripts                                                                                              |
-| `setup-prompt.txt`, `task-prompt.txt`                     | The prompts as sent                                                                                                               |
-| `ayme-record.jsonl`                                       | Every stdio line of every `ayme mcp` the worker started (below)                                                                   |
-| `outcome.json`                                            | The harness's outcome check and the server's final list                                                                           |
-| `REPORT.md`                                               | The worker's own report                                                                                                           |
-| `mcp.json`, `configs/`                                    | The worker's `.mcp.json`, the project's JSON files, `.playwright/`, `.claude/` settings and the init script, as the run left them |
-| `meta.json`, `harness.log`, `fixture.log`, `registry.log` | Versions, timings and the logs of the harness, the app's server and the registry                                                  |
-| `score.json`, `score.md`                                  | The run's score                                                                                                                   |
+| File                                                      | What it holds                                                                                                    |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `setup.jsonl`, `task.jsonl`                               | The worker's stream-json transcripts                                                                             |
+| `setup-prompt.txt`, `task-prompt.txt`                     | The prompts as sent                                                                                              |
+| `ayme-record.jsonl`                                       | Every `ayme` command the worker ran, with its answer (below)                                                     |
+| `outcome.json`                                            | The harness's outcome check and the server's final list                                                          |
+| `REPORT.md`                                               | The worker's own report                                                                                          |
+| `mcp.json`, `configs/`                                    | The worker's `.mcp.json`, the project's JSON files, `.playwright/` and `.claude/` settings, as the run left them |
+| `approvals.log`                                           | Each edit of `.mcp.json` the hook approved                                                                       |
+| `meta.json`, `harness.log`, `fixture.log`, `registry.log` | Versions, timings and the logs of the harness, the app's server and the registry                                 |
+| `score.json`, `score.md`                                  | The run's score                                                                                                  |
 
-### The `ayme mcp` recording
+### The `ayme` recording
 
-[src/recorder.mjs](src/recorder.mjs) is loaded into every Node process the worker starts, through `NODE_OPTIONS=--import`, and does nothing unless the process is `ayme mcp` from `@ayme-dev/mcp`, however it was started. It appends each line `ayme mcp` reads or writes, its start command and its exit code, to `ayme-record.jsonl` in the run's folder, outside the worker's project, so the worker's `npm install` cannot replace it. Each line is `{"t", "pid", "dir": "start" | "in" | "out" | "err" | "exit", "line"}`. A fatal error Node prints itself, outside `process.stderr.write`, is not recorded, but the exit code is.
+[src/recorder.mjs](src/recorder.mjs) is loaded into every Node process the worker starts, through `NODE_OPTIONS=--import`, and does nothing unless the process is an `ayme` command from `@ayme-dev/cli`, however it was started. The Session's background process is not a command and is not recorded. It appends two lines per command to `ayme-record.jsonl` in the run's folder, outside the worker's project, so the worker's `npm install` cannot replace it:
+
+- `{"t", "pid", "event": "start", "phase", "args", "cwd"}` when the command starts. The phase, `setup` or `task`, is the one the harness ran the worker in.
+- `{"t", "pid", "event": "end", "code", "stdout", "stderr"}` when it exits, with all it printed.
+
+A command killed by a signal has no end line. A fatal error Node prints itself, outside `process.stderr.write`, is not recorded, but the exit code is.
 
 ## The score
 
@@ -60,13 +68,13 @@ One row per run:
 - **Claimed**: what the Outcome section of the worker's REPORT.md says.
 - **Skill**: the phases in which the worker loaded the `ayme` skill with the Skill tool.
 - **Docs read**: the skill and guide files the worker read with Read or `cat`/`sed`/`head`-style commands, in order. `skill` is SKILL.md, a bare name is a skill reference, `docs/…` is the guide.
-- **Channel (default)**: how the task's Page Object actions (`ListPage.*`, `ListItem.*`, `ArchiveDialog.*`) were called: `mcp` (the `ayme` server's tools or `ayme_call`), `webmcp` (`playwright-cli webmcp-call`, `agent-browser webmcp invoke`, Playwright MCP's `webmcp_*` tools), `both` or `none`; in brackets, the channel the skill names for that tool, `mcp` for all three, and whether the run used it.
-- **PO calls (errors)**: those action calls in the task phase, and how many answered with an error.
-- **mcp direct / ayme_call**: of the `mcp` calls, how many called the page's tool by its name and how many went through `ayme_call`. The direct call is the intended path; `ayme_call` is the fallback for a client that doesn't follow tool-list changes ([ADR-0066](../../docs/adr/0066-each-coding-agents-ayme-mcp-server-pairs-with-one-page-and-the-apps-processes-and-its-fallback-tools-reach-every-tool-it-lists.md)).
+- **ayme packages**: the project's `@ayme-dev/*` packages as the run left them, each with its version and section: `(dev)` for `devDependencies`. It shows whether the worker installed `@ayme-dev/cli`, at which version, and whether it moved `@ayme-dev/ayme` or added `@ayme-dev/mcp`.
+- **Channel**: how the task's Page Object actions (`ListPage.*`, `ListItem.*`, `ArchiveDialog.*`) were called in the task phase: `ayme` (`ayme call`, from the recording), `webmcp` (`playwright-cli webmcp-call`, `agent-browser webmcp invoke`, Playwright MCP's `webmcp_*` tools), `both` or `none`. The skill names `ayme` for every browser automation.
+- **PO calls (errors)**: those action calls in the task phase, and how many answered with an error: for `ayme call`, a non-zero exit code or no end line.
+- **ayme commands**: each phase's `ayme` commands by name, such as `open 1, page-objects 3, call 4 (1 failed)`, from the recording; `n/a` for a folder without one.
 - **Plain actions**: clicks, fills, key presses and the like through the browser automation in the task phase.
 - **Restart asked in task**: whether the worker asked to be restarted again during the task.
-- **Browser downloads**: browser install commands, `browser_install` calls, and download output, by phase.
+- **Browser downloads**: browser install commands, such as `npx playwright install chromium`, `playwright-cli install-browser` or `agent-browser install`, `browser_install` calls, and download output, by phase. Playwright CLI's `install`, with or without `--skills`, sets up a workspace and is not one, and a command quoted in a heredoc, such as in a REPORT.md the worker writes, is text.
 - **Turns, time, cost**: over both phases, from Claude Code's result events.
-- **ayme mcp starts (non-zero exits)**: from the recording.
 
 The command classes are heuristics over the transcripts; check a surprising cell against the transcript.

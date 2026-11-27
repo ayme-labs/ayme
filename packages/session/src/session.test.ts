@@ -20,6 +20,10 @@ it("a Session opens the browser it is asked for and answers its start with the b
 
 const opening = { open: { headed: false } } as const;
 
+/** Gives the Session a turn to hear what the browser told it, as a
+ * Playwright event reaches it a moment after the browser acts. */
+const heard = () => new Promise((resolve) => setImmediate(resolve));
+
 /** Whether `promise` is still pending once everything ready to run ran. */
 async function pending(promise: Promise<unknown>): Promise<boolean> {
   let settled = false;
@@ -742,11 +746,11 @@ it("the Page Object Id in a call chooses the Tab whose Host gave it, whichever T
   const { session, browser } = await startScriptedSession(opening);
   browser.show(shop);
   await session.ask({ pageObjects: {} });
-  browser.give("po1");
+  browser.give("po1", "Basket");
   const other = browser.openTab();
   other.show(signIn);
   await session.ask({ pageObjects: {} });
-  other.give("po2");
+  other.give("po2", "Basket");
 
   expect(await session.ask(add("po1"))).toMatchObject({ ok: true });
   expect(await session.ask(add("po2"))).toMatchObject({ ok: true });
@@ -758,10 +762,11 @@ it("the Page Object Id in a call chooses the Tab whose Host gave it, whichever T
 it("a closed Tab's ids are gone: a call with one runs on the most recently active Tab, whose Host does not know it", async () => {
   const { session, browser } = await startScriptedSession(opening);
   await session.ask({ pageObjects: {} });
-  browser.give("po1");
+  browser.give("po1", "Basket");
   const other = browser.openTab();
   browser.activate();
   browser.close();
+  await heard();
 
   await session.ask(add("po1"));
 
@@ -772,7 +777,7 @@ it("a call whose --tab names another Tab than its Page Object Id's is refused, a
   const { session, browser } = await startScriptedSession(opening);
   browser.show(shop);
   await session.ask({ pageObjects: {} });
-  browser.give("po1");
+  browser.give("po1", "Basket");
   browser.openTab().show(signIn);
 
   expect(
@@ -785,4 +790,109 @@ it("a call whose --tab names another Tab than its Page Object Id's is refused, a
     await session.ask({ call: { ...add("po1").call, tab: shop.tab.url } })
   ).toMatchObject({ ok: true });
   expect(browser.runs).toHaveLength(1);
+});
+
+it("a read of the tab list made before a Tab opened lets go of none of it: the Tab keeps its Host and its ids", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  const release = browser.holdTabList();
+  const slow = session.ask({ pageObjects: {} });
+  expect(await pending(slow)).toBe(true);
+  const other = browser.openTab();
+  other.show(signIn);
+  expect(await session.ask({ pageObjects: {} })).toMatchObject({ ok: true });
+  other.give("po1", "Basket");
+
+  release();
+  expect(await slow).toMatchObject({ ok: true });
+
+  expect(await session.ask({ pageObjects: {} })).toMatchObject({
+    ok: true,
+    text: expect.stringMatching(/^Tab: Sign in \(/),
+  });
+  browser.activate();
+  expect(await session.ask(add("po1"))).toMatchObject({ ok: true });
+  expect([browser.runs, other.runs]).toEqual([[], [add("po1").call]]);
+});
+
+it("a command waiting on a Tab that closes is answered that the tab was closed, while another Tab keeps the Session going", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  const other = browser.openTab();
+  other.answerRuns(() => new Promise(() => {}));
+  const call = session.ask({ call: { tool: "Basket.hold", input: {} } });
+  expect(await pending(call)).toBe(true);
+  other.holdReads();
+  const listing = session.ask({ pageObjects: { tab: "about:blank" } });
+  expect(await pending(listing)).toBe(true);
+
+  other.close();
+
+  const closed = {
+    ok: false,
+    text: "The tab was closed before ayme answered this command.",
+  };
+  expect(await call).toEqual(closed);
+  expect(await listing).toEqual(closed);
+  expect(await session.ask({ pageObjects: {} })).toMatchObject({
+    ok: true,
+    text: expect.stringMatching(/^Tab: Shop \(/),
+  });
+});
+
+it("an id its Tab's Host forgot, as its element left the page, chooses no Tab any more", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const other = browser.openTab();
+  await session.ask({ pageObjects: {} });
+  other.give("po1", "Basket");
+  browser.activate();
+
+  other.release("po1");
+
+  await session.ask(add("po1"));
+  expect([browser.runs, other.runs]).toEqual([[add("po1").call], []]);
+});
+
+it("an id among a call's arguments chooses no Tab when the tool's class has no Page Object Root, so the call runs on the most recently active Tab, and --tab may name it", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  await session.ask({ pageObjects: {} });
+  browser.give("po1", "Basket");
+  const other = browser.openTab();
+  other.show(signIn);
+  const cancel = { tool: "OrderPage.cancel", input: { id: "po1" } };
+
+  expect(await session.ask({ call: cancel })).toMatchObject({ ok: true });
+  expect(
+    await session.ask({ call: { ...cancel, tab: signIn.tab.url } })
+  ).toMatchObject({ ok: true });
+
+  expect([browser.runs, other.runs]).toEqual([[], [cancel, cancel]]);
+});
+
+it("a call whose Page Object Id names its Tab reads no tab list", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  await session.ask({ pageObjects: {} });
+  browser.give("po1", "Basket");
+  browser.failTabList("ayme could not read the browser's tab list.");
+
+  expect(await session.ask(add("po1"))).toMatchObject({ ok: true });
+  expect(
+    await session.ask({ call: { ...add("po1").call, tab: shop.tab.url } })
+  ).toMatchObject({ ok: true });
+  expect(browser.runs).toEqual([add("po1").call, add("po1").call]);
+});
+
+it("the last line of a listing asked for with --tab names that Tab too, quoted for a shell", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const odd = "http://127.0.0.1:5173/shop.html?q=it's&x=1";
+  browser.show({ ...shop, tab: { ...shop.tab, url: odd } });
+  browser.openTab().show(signIn);
+
+  expect(await session.ask({ pageObjects: { tab: odd } })).toMatchObject({
+    text: expect.stringMatching(
+      /\nThis screen has 0 Page Object Tools: ayme -s=default tools --tab='http:\/\/127\.0\.0\.1:5173\/shop\.html\?q=it'\\''s&x=1' lists them with their parameters\.$/
+    ),
+  });
 });
