@@ -1,4 +1,4 @@
-import { Context, type Effect, type Scope } from "effect";
+import { Context, type Effect, type Scope, type Stream } from "effect";
 
 import type {
   Listing,
@@ -27,6 +27,24 @@ export interface HostedTab {
     tool: string,
     input: unknown
   ) => Effect.Effect<RunAnswer, RunError>;
+  /** The Inspector's contract with the runtime on the Tab's page, as its
+   * Host serves it to a window outside the page. */
+  readonly inspector: TabInspector;
+}
+
+/** A Tab's Inspector contract, in the plain data a window sends and
+ * reads. */
+export interface TabInspector {
+  /** Calls the contract's `method` with `params`, at once: a Run it starts
+   * waits for the Run under way in the Host's own turn. Answers what the
+   * contract answered, or fails with why. */
+  readonly request: (
+    method: string,
+    params: unknown
+  ) => Effect.Effect<unknown, TabReadError>;
+  /** The contract's events while the stream runs. Ending the last one ends
+   * what the windows asked for on the page, such as a highlight. */
+  readonly events: Stream.Stream<unknown>;
 }
 
 /** A Tab of the Session's browser: the same object for as long as the Tab

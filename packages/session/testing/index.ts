@@ -1,6 +1,15 @@
 // Test support (ADR-0057): a real Session on a scripted browser, where a
 // test plays the browser by hand.
-import { Deferred, Effect, Exit, Layer, Scope } from "effect";
+import {
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  Queue,
+  Scope,
+  Stream,
+} from "effect";
 import { onTestFinished } from "vitest";
 
 import {
@@ -16,6 +25,7 @@ import {
   RunError,
   SessionStartError,
   TabReadError,
+  type InspectorEvent,
   type Listing,
   type RunAnswer,
   type SessionAnswer,
@@ -100,6 +110,22 @@ export interface ScriptedTab {
   activate(): void;
   /** The Tab closes. */
   close(): void;
+  /** Every call on the Tab's Inspector contract, in order, as the Tab's
+   * Host received it. */
+  readonly inspectorCalls: readonly {
+    readonly method: string;
+    readonly params: unknown;
+  }[];
+  /** How the Tab's Inspector contract answers each call from now on: as
+   * `answer` resolves, or fails as it rejects. Until then it answers with
+   * the method's name. */
+  answerInspector(
+    answer: (method: string, params: unknown) => Promise<unknown>
+  ): void;
+  /** How many listen to the events of the Tab's Inspector contract now. */
+  readonly inspectorListeners: number;
+  /** The Tab's Inspector contract tells its listeners `event`. */
+  tellInspector(event: unknown): void;
 }
 
 /** What the scripted Tab shows until a test says otherwise. */
@@ -114,6 +140,19 @@ export interface ScriptedSession {
   readonly started: Promise<SessionAnswer>;
   ask(request: SessionRequest): Promise<SessionAnswer>;
   readonly ended: Promise<SessionEnd>;
+  /** Listens to the Session's events from now on, as an Inspector window
+   * does. */
+  listen(): Listening;
+}
+
+/** An Inspector window listening to a Session's events. */
+export interface Listening {
+  /** What it heard so far, in order. */
+  readonly heard: readonly InspectorEvent[];
+  /** Resolves once the events ended. */
+  readonly done: Promise<void>;
+  /** Stops listening, as a window that closes. */
+  stop(): Promise<void>;
 }
 
 /** How the scripted browser and build behave: each finishes at once
@@ -129,6 +168,9 @@ export type ScriptedSessionOptions = SessionBrowserRequest &
   ScriptedOptions & {
     /** The Session's name: "default" when not given. */
     readonly name?: string;
+    /** Where its process serves the Session's Inspector window; none when
+     * not given. */
+    readonly inspector?: string;
   };
 
 /** A Tab of the scripted browser, as the Session reaches it and as a test
@@ -146,6 +188,11 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
     Promise.resolve({ settled: true });
   let given: ((id: string) => void) | undefined;
+  const inspectorCalls: { method: string; params: unknown }[] = [];
+  let answerInspector: (method: string, params: unknown) => Promise<unknown> = (
+    method
+  ) => Promise.resolve(method);
+  const listeners = new Set<(event: unknown) => void>();
   const hosted: HostedTab = {
     listing: Effect.suspend(() =>
       shown === "held"
@@ -163,6 +210,30 @@ function scriptedTab(url: string, open: Tab[]): Tab {
         catch: (error) =>
           error instanceof RunError ? error : new RunError(String(error)),
       }),
+    inspector: {
+      request: (method, params) =>
+        Effect.tryPromise({
+          try: () => {
+            inspectorCalls.push({ method, params });
+            return answerInspector(method, params);
+          },
+          catch: (error) =>
+            new TabReadError(
+              error instanceof Error ? error.message : String(error)
+            ),
+        }),
+      events: Stream.callback<unknown>((queue) =>
+        Effect.acquireRelease(
+          Effect.sync(() => {
+            const listener = (event: unknown) =>
+              void Queue.offerUnsafe(queue, event);
+            listeners.add(listener);
+            return listener;
+          }),
+          (listener) => Effect.sync(() => listeners.delete(listener))
+        )
+      ),
+    },
   };
   const tab: Tab = {
     url: () => shownUrl,
@@ -193,6 +264,14 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       },
       close: () => {
         if (open.includes(tab)) open.splice(open.indexOf(tab), 1);
+      },
+      inspectorCalls,
+      answerInspector: (answer) => (answerInspector = answer),
+      get inspectorListeners() {
+        return listeners.size;
+      },
+      tellInspector: (event) => {
+        for (const listener of listeners) listener(event);
       },
     },
   };
@@ -276,6 +355,9 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       get hosted() {
         return first.control.hosted;
       },
+      get inspectorListeners() {
+        return first.control.inspectorListeners;
+      },
     },
   };
 }
@@ -284,7 +366,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
 export async function startScriptedSession(
   options: ScriptedSessionOptions
 ): Promise<{ session: ScriptedSession; browser: ScriptedBrowser }> {
-  const { held, heldBuild, name = "default", ...request } = options;
+  const { held, heldBuild, name = "default", inspector, ...request } = options;
   const { layer, browser } = scriptedBrowser({
     ...(held ? { held } : {}),
     ...(heldBuild ? { heldBuild } : {}),
@@ -292,7 +374,11 @@ export async function startScriptedSession(
   const scope = Effect.runSync(Scope.make());
   onTestFinished(() => Effect.runPromise(Scope.close(scope, Exit.void)));
   const session = await Effect.runPromise(
-    openSession(request, name).pipe(Effect.provide(layer), Scope.provide(scope))
+    openSession(
+      request,
+      name,
+      inspector === undefined ? {} : { inspector }
+    ).pipe(Effect.provide(layer), Scope.provide(scope))
   );
   const run = <A>(effect: Effect.Effect<A>) => Effect.runPromise(effect);
 
@@ -301,6 +387,20 @@ export async function startScriptedSession(
       started: run(session.started),
       ask: (asking) => run(session.ask(asking)),
       ended: run(session.ended),
+      listen: () => {
+        const heard: InspectorEvent[] = [];
+        const listening = Effect.runFork(
+          Stream.runForEach(session.events, (event) =>
+            Effect.sync(() => heard.push(event))
+          )
+        );
+        onTestFinished(() => Effect.runPromise(Fiber.interrupt(listening)));
+        return {
+          heard,
+          done: Effect.runPromise(Fiber.await(listening)).then(() => {}),
+          stop: () => Effect.runPromise(Fiber.interrupt(listening)),
+        };
+      },
     },
     browser,
   };
