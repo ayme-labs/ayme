@@ -53,7 +53,9 @@ Leave `args` out when the action takes none. `ProjectsPage` has no id,
 because it has no root, so its tools take the action's arguments directly.
 Leave `--params` out for a tool that takes none:
 `ayme call ProjectsPage.openNewProjectDialog`. For long input, write the
-object to a file and pass `--params @<file>`.
+object to a file and pass `--params @<file>`, within the limits
+[What the agent sees](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#what-the-agent-sees)
+gives.
 
 The id chooses the Tab: `ayme call` runs the tool on the Tab its Page
 Object is on, so leave `--tab` out of that call. A tool without an id runs

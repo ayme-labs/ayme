@@ -139,7 +139,7 @@ ProjectsPage
 This screen has 3 Page Object Tools: ayme -s=default tools lists them with their parameters.
 ```
 
-`ayme call` takes the tool's input as one JSON object, `--params '<json>'`, or `--params @<file>` to read it from a file. A tool of a Page Object with an id takes the id as `id` and the action's own arguments under `args`:
+`ayme call` takes the tool's input as one JSON object, `--params '<json>'`, or `--params @<file>` to read it from a regular file of at most 1 MiB (1,048,576 bytes). A relative path starts at the project's folder. A tool of a Page Object with an id takes the id as `id` and the action's own arguments under `args`:
 
 ```sh
 ayme call ProjectRow.rename --params '{"id": "po1", "args": {"name": "Launch plan v2"}}'

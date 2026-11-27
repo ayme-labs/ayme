@@ -37,7 +37,8 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  tool of a Page Object with an id. Leave it out for a tool
                  that takes none.
   --params @<file>
-                 Read that JSON object from <file>, a file of at most 1 MB.
+                 Read that JSON object from <file>, a regular file of at most
+                 1 MiB. A relative <file> starts at the project's folder.
   --tab=<url>    Work on the most recently active tab whose page shows
                  exactly <url>, as the first line of ayme page-objects prints
                  it, and not on the browser's most recently active tab. A
