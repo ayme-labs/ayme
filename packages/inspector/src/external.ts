@@ -29,17 +29,19 @@ const AGENT_APP_CONFIG_ID = "ayme-inspector-app";
  * `@ayme-dev/mcp`'s server does. */
 const SESSION_META = 'meta[name="ayme-session"]';
 
-/** How many times in a row a window in an Agent App connects again. */
-const AGENT_APP_RETRIES = 3;
+/** How many times in a row a Session's window, or one in an Agent App,
+ * connects again. */
+const RETRIES = 3;
 
 /**
  * Starts the Inspector in the window it is served to: it reads the page
  * behind the server that served this window, and fills the window. In an
  * Agent App's chat, the page names that server's socket, and the Inspector
- * talks to the Agent App it is shown in. There, the socket's token ends with
- * the server, so a window that finds no server after {@link AGENT_APP_RETRIES}
- * tries stops and says so; a browser window goes on trying, since the server
- * it is served by may start again at the same address.
+ * talks to the Agent App it is shown in. A Session's window, and one in an
+ * Agent App, stops and says so once it finds no server after {@link RETRIES}
+ * tries, since a new Session gets another port and token; the window of
+ * `@ayme-dev/mcp`'s server goes on trying, since that server may start
+ * again at the same address.
  */
 export function startExternalInspector() {
   const agentApp = document.getElementById(AGENT_APP_CONFIG_ID);
@@ -51,6 +53,7 @@ export function startExternalInspector() {
   let mounted: ReturnType<typeof mountExternalInspector> | undefined;
   replaceInspectorTransport(
     webSocketInspectorContract(socket, {
+      followsTabs: session,
       // A new page is a reload as the Inspector in the page has it: it
       // mounts again and picks up what it kept for the tab.
       onNewPage() {
@@ -62,8 +65,8 @@ export function startExternalInspector() {
         mounted = undefined;
         showServerLost(notice);
       },
-      ...(agentApp && {
-        retries: AGENT_APP_RETRIES,
+      ...((agentApp || session) && {
+        retries: RETRIES,
         onLost() {
           mounted?.dispose();
           mounted = undefined;

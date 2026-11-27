@@ -58,7 +58,7 @@ import type {
   loadAgentConnection,
   loadProcessConnection,
 } from "./agentConnection";
-import type { InspectorPort } from "@ayme-dev/mcp/client";
+import type { InspectorPort } from "./inspectorChannelPort";
 import type { loadInspector } from "./inspector";
 import {
   callerOf,

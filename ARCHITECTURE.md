@@ -217,7 +217,7 @@ in-browser agents and the app's own code call on the running page.
   Tools, and runs a Page Object Tool on it as a Run, one Run per Tab at a time and with no
   time limit of its own. A Tab is gone only when Playwright says its page closed; its Host
   stops then, and a command still waiting on it is told so.
-  An error Page Object code throws, or leaves for nobody to catch, ends only its Run. `ayme inspect` opens the Session's Inspector window in the developer's default browser, outside the Session's browser: the background process serves it, and it shows the Tab the Session works on, follows it to another Tab, runs a Page Object Tool there as a Run of the Inspector in that Tab's turn, and says so when the Session ends. A Tab that shows the window is never one the Session works on
+  An error Page Object code throws, or leaves for nobody to catch, ends only its Run. `ayme inspect` asks the developer's default browser to open the Session's Inspector window, which is outside the Session's browser unless the Session joined that default browser, where the window is one more tab: the background process serves it, and it shows the Tab the Session works on, follows it to another Tab, runs a Page Object Tool there as a Run of the Inspector in that Tab's turn, and says so when the Session ends. A Tab that shows the window is never one the Session works on
 - Technology: the `ayme` command from `@ayme-dev/cli` (`ayme open [url]`,
   `ayme attach --cdp=<url>`, `ayme call`, `ayme inspect`, `ayme mcp`, `ayme detach`, `ayme close` and
   `ayme list`), over

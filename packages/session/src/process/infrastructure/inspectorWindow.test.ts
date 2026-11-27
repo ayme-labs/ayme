@@ -1,13 +1,24 @@
 import { once } from "node:events";
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  closeSync,
+  constants,
+  mkdtempSync,
+  openSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Effect, Exit, Scope } from "effect";
-import { expect, it, onTestFinished } from "vitest";
+import { Effect, Exit, Scope, Stream } from "effect";
+import { connect, type Socket } from "node:net";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { WebSocket } from "ws";
 
 import { scriptedBrowser } from "../../../testing";
 import { serveSession } from "./background";
+import { serveInspectorWindow } from "./inspectorWindow";
 import { privateFolder } from "./record";
 
 // The Inspector window a Session's process serves, reached as a browser
@@ -18,11 +29,23 @@ import { privateFolder } from "./record";
 const SCRIPT = "/* the Inspector's external build */";
 
 /** Serves a Session named "shop" on a scripted browser, with its window,
- * until the test ends. */
-async function serve() {
+ * until the test ends; with `heldScript`, a read of the Inspector's script
+ * never ends. */
+async function serve({ heldScript = false } = {}) {
   const made = realpathSync(mkdtempSync(join(tmpdir(), "ayme-window-")));
   const script = join(made, "external.mjs");
-  writeFileSync(script, SCRIPT);
+  if (heldScript) {
+    // A named pipe nobody writes to: a read of it waits until the test
+    // ends, when the pipe is opened and closed to end it.
+    execFileSync("mkfifo", [script]);
+    onTestFinished(() => {
+      try {
+        closeSync(openSync(script, constants.O_WRONLY | constants.O_NONBLOCK));
+      } catch {
+        // Nothing reads it.
+      }
+    });
+  } else writeFileSync(script, SCRIPT);
   const { folder, socket } = privateFolder();
   onTestFinished(() => {
     rmSync(made, { recursive: true, force: true });
@@ -52,14 +75,22 @@ async function serve() {
   };
 }
 
+/** The window's socket at `address`, with the token its fragment holds. */
+function socketUrl(address: string) {
+  const url = new URL("/inspector/ws", address);
+  url.protocol = "ws:";
+  url.search = new URL(address).hash.slice(1);
+  return url;
+}
+
 /** A window's socket to the server at `address`, with the token its
  * fragment holds, sending `origin` when given, and what it was told, in
  * order. */
 async function windowSocket(address: string, origin?: string) {
-  const url = new URL("/inspector/ws", address);
-  url.protocol = "ws:";
-  url.search = new URL(address).hash.slice(1);
-  const socket = new WebSocket(url, origin ? { headers: { origin } } : {});
+  const socket = new WebSocket(
+    socketUrl(address),
+    origin ? { headers: { origin } } : {}
+  );
   onTestFinished(() => socket.terminate());
   const told: unknown[] = [];
   socket.on("message", (data) => told.push(JSON.parse(String(data))));
@@ -67,11 +98,12 @@ async function windowSocket(address: string, origin?: string) {
   let id = 0;
   return {
     socket,
-    told,
-    /** Sends a request and resolves with its reply. */
-    async request(method: string, params?: unknown) {
+    told: told as object[],
+    /** Sends a request, on the Tab `tab` when given, and resolves with
+     * its reply. */
+    async request(method: string, params?: unknown, tab?: number) {
       const asked = ++id;
-      socket.send(JSON.stringify({ id: asked, method, params }));
+      socket.send(JSON.stringify({ id: asked, method, params, tab }));
       await expect
         .poll(() =>
           told.find((frame) => (frame as { id?: number }).id === asked)
@@ -101,28 +133,31 @@ it("serves the window's page and the Inspector's script on the loopback address,
   expect((await fetch(new URL("/other", address))).status).toBe(404);
 });
 
-it("answers nothing to a request named for another host, so a page that points a name of its own at it reads nothing", async () => {
-  const { address } = await serve();
-  const { port } = new URL(address);
+it.each(["evil.test", "localhost"])(
+  "answers nothing to a request named %s, only to the address it printed, so the window's own tab is always told apart from the Session's",
+  async (name) => {
+    const { address } = await serve();
+    const { port } = new URL(address);
+    const named = { host: `${name}:${port}` };
 
-  const { statusCode } = await new Promise<{ statusCode?: number }>(
-    (resolve) => {
-      void import("node:http").then(({ get }) =>
-        get(
-          {
-            host: "127.0.0.1",
-            port,
-            path: "/inspector",
-            headers: { host: `evil.test:${port}` },
-          },
-          resolve
-        )
-      );
-    }
-  );
+    const { statusCode } = await new Promise<{ statusCode?: number }>(
+      (resolve) => {
+        void import("node:http").then(({ get }) =>
+          get(
+            { host: "127.0.0.1", port, path: "/inspector", headers: named },
+            resolve
+          )
+        );
+      }
+    );
+    const socket = new WebSocket(socketUrl(address), { headers: named });
+    onTestFinished(() => socket.terminate());
 
-  expect(statusCode).toBe(403);
-});
+    expect(statusCode).toBe(403);
+    const [error] = (await once(socket, "error")) as [Error];
+    expect(error.message).toContain("403");
+  }
+);
 
 it("refuses a window's socket from a page of another origin", async () => {
   const { address } = await serve();
@@ -136,6 +171,54 @@ it("refuses a window's socket from a page of another origin", async () => {
 
   const [error] = (await once(socket, "error")) as [Error];
   expect(error.message).toContain("403");
+});
+
+it.each([
+  ["a frame that is not JSON", "not json", 1008],
+  ["a frame that is no request", JSON.stringify({ id: 1 }), 1008],
+  [
+    "a binary frame",
+    Buffer.from(JSON.stringify({ id: 1, method: "look" })),
+    1008,
+  ],
+  ["a frame larger than any request", "x".repeat(2 * 1024 * 1024), 1009],
+] as const)(
+  "closes a window that sends %s, and goes on serving another window",
+  async (_, frame, code) => {
+    const { address } = await serve();
+    const bad = await windowSocket(address);
+
+    bad.socket.send(frame);
+
+    const [closed] = (await once(bad.socket, "close")) as [number];
+    expect(closed).toBe(code);
+    const healthy = await windowSocket(address);
+    expect(await healthy.request("getState")).toEqual({
+      id: 1,
+      result: "getState",
+    });
+  }
+);
+
+it("closes a window that stops reading once what it left unread outgrows its bound", async () => {
+  const { address, browser } = await serve();
+  const window = await windowSocket(address);
+  expect(await window.request("subscribe")).toEqual({ id: 1, result: null });
+  await expect.poll(() => browser.inspectorListeners).toBe(1);
+  // The window's own end of the connection stops reading.
+  const connection = (window.socket as unknown as { _socket: Socket })._socket;
+  connection.pause();
+
+  const told = 40;
+  for (let event = 0; event < told; event += 1)
+    browser.tellInspector({ event, padding: "x".repeat(1024 * 1024) });
+  const closed = once(window.socket, "close");
+  connection.resume();
+
+  await closed;
+  expect(
+    window.told.filter((frame) => Object.hasOwn(frame, "event")).length
+  ).toBeLessThan(told);
 });
 
 it("answers a window's call with what the contract of the Session's Tab answered, and an error with why", async () => {
@@ -154,18 +237,28 @@ it("answers a window's call with what the contract of the Session's Tab answered
   ]);
 });
 
-it("tells a window that subscribed the contract's events, and a new page when the Session works on another Tab", async () => {
+it("tells a window the Tab it shows, the contract's events once it subscribed, and each new Tab, which its calls name", async () => {
   const { address, browser } = await serve();
   const window = await windowSocket(address);
 
   expect(await window.request("subscribe")).toEqual({ id: 1, result: null });
   await expect.poll(() => browser.inspectorListeners).toBe(1);
   browser.tellInspector({ type: "state" });
-  browser.openTab("http://127.0.0.1:5173/other");
+  const other = browser.openTab("http://127.0.0.1:5173/other");
 
   await expect
-    .poll(() => window.told.slice(1))
-    .toEqual([{ event: { type: "state" } }, { reset: true }]);
+    .poll(() => window.told.filter((frame) => !Object.hasOwn(frame, "id")))
+    .toEqual([{ tab: 1 }, { event: { type: "state" } }, { tab: 2 }]);
+  expect(await window.request("look", undefined, 1)).toEqual({
+    id: 2,
+    error:
+      "The Inspector shows another Tab now, so ayme did not carry out this call on the Tab the window showed.",
+  });
+  expect(await window.request("look", undefined, 2)).toEqual({
+    id: 3,
+    result: "look",
+  });
+  expect(other.inspectorCalls.map(({ method }) => method)).toEqual(["look"]);
 });
 
 it("a window that closes ends the Session's subscription to the Tab's contract, and the Session goes on", async () => {
@@ -182,6 +275,57 @@ it("a window that closes ends the Session's subscription to the Tab's contract, 
   });
 });
 
+it("closing one of two windows keeps the subscription to the Tab's contract, which ends the windows' highlights only with the last", async () => {
+  const { address, browser } = await serve();
+  const first = await windowSocket(address);
+  const second = await windowSocket(address);
+  await first.request("subscribe");
+  await second.request("subscribe");
+  await expect.poll(() => browser.inspectorListeners).toBe(1);
+  await second.request("highlight", { layer: "pinned", refs: ["e1"] }, 1);
+
+  second.socket.close();
+  await once(second.socket, "close");
+  browser.tellInspector({ type: "state" });
+
+  await expect
+    .poll(() => first.told)
+    .toContainEqual({ event: { type: "state" } });
+  expect(browser.inspectorListeners).toBe(1);
+  first.socket.close();
+  await expect.poll(() => browser.inspectorListeners).toBe(0);
+});
+
+it("a window that closes releases the reads it started, while a Run it started goes on", async () => {
+  const { address, browser } = await serve();
+  const window = await windowSocket(address);
+  const released = new Map<string, AbortSignal>();
+  let finish = () => {};
+  browser.answerInspector(
+    (method, _params, signal) =>
+      new Promise((resolve) => {
+        released.set(method, signal);
+        if (method === "runTool") finish = () => resolve("ran");
+      })
+  );
+  window.socket.send(JSON.stringify({ id: 1, method: "look", tab: 1 }));
+  window.socket.send(
+    JSON.stringify({
+      id: 2,
+      method: "runTool",
+      params: { name: "Basket.add", input: {} },
+      tab: 1,
+    })
+  );
+  await expect.poll(() => released.size).toBe(2);
+
+  window.socket.close();
+
+  await expect.poll(() => released.get("look")?.aborted).toBe(true);
+  expect(released.get("runTool")?.aborted).toBe(false);
+  finish();
+});
+
 it("tells each window how the Session ended, and then closes it", async () => {
   const { address, session } = await serve();
   const window = await windowSocket(address);
@@ -194,5 +338,52 @@ it("tells each window how the Session ended, and then closes it", async () => {
   expect(window.told.at(-1)).toEqual({
     ended:
       "The Session shop was closed. Start a Session with ayme open or ayme attach, then run ayme -s=shop inspect to inspect it.",
+  });
+});
+
+describe("closing, within the one limit of how long it waits for the windows", () => {
+  it("takes no window that connects while a window that does not read its socket drains, and still ends", async () => {
+    const window = await serveInspectorWindow({
+      name: "shop",
+      script: "",
+      started: Effect.succeed({
+        ask: () => Effect.never,
+        events: Stream.never,
+      }),
+    });
+    onTestFinished(() => window.close());
+    const stuck = new WebSocket(socketUrl(window.address));
+    onTestFinished(() => stuck.terminate());
+    await once(stuck, "open");
+    // A window that stops reading never answers the close.
+    (stuck as unknown as { _socket: Socket })._socket.pause();
+
+    const closing = window.close();
+    const late = new WebSocket(socketUrl(window.address));
+    onTestFinished(() => late.terminate());
+    const outcome = await new Promise<string>((resolve) => {
+      late.once("open", () => resolve("open"));
+      late.once("error", (error) => resolve(error.message));
+    });
+
+    expect(outcome).not.toBe("open");
+    await closing;
+  });
+
+  it("ends an HTTP request still open", async () => {
+    const { address, close } = await serve({ heldScript: true });
+    const { port, host } = new URL(address);
+    const held = connect(Number(port), "127.0.0.1");
+    onTestFinished(() => void held.destroy());
+    const ended = new Promise((resolve) => held.once("close", resolve));
+    held.on("error", () => {});
+    await once(held, "connect");
+    // The script's read never ends, so neither does the answer.
+    held.write(`GET /inspector/external.mjs HTTP/1.1\r\nHost: ${host}\r\n\r\n`);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    await close();
+
+    await ended;
   });
 });

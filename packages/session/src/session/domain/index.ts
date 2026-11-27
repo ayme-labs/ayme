@@ -33,7 +33,9 @@ export {
   type TabName,
 } from "./listing";
 export {
+  ANOTHER_TAB_SHOWN,
   contractAnswer,
+  idNotOnShownTab,
   agentAppAnswer,
   INSPECTOR_CALLER,
   NO_WINDOW,

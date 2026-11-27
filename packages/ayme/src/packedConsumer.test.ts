@@ -1706,7 +1706,7 @@ function filesOf(dir: string) {
 
 const CLI = "@ayme-dev/cli";
 
-it("the packed CLI carries its engine, its window, its toolbar and its notices, and declares Playwright as the project's own", () => {
+it("the packed CLI carries its engine, its window, its toolbar, its Inspector and their notices, and declares Playwright as the project's own", () => {
   const { dir } = packed[CLI]!;
   const manifest = readManifest(dir) as ReturnType<typeof readManifest> & {
     bin?: Record<string, string>;
@@ -1718,6 +1718,8 @@ it("the packed CLI carries its engine, its window, its toolbar and its notices, 
     "README.md",
     "dist/THIRD_PARTY_NOTICES.txt",
     "dist/cli.mjs",
+    "dist/inspector/THIRD_PARTY_NOTICES.txt",
+    "dist/inspector/external.mjs",
     "dist/toolbar/toolbar.js",
     "dist/window/index.html",
     "dist/window/mark-small.svg",
@@ -1779,7 +1781,7 @@ it("the packed CLI's notices name the third-party code bundled into it, with its
 });
 
 it(
-  "a clean project installs the packed CLI, records one flow with ayme capture, and lists its Page Objects in a Session",
+  "a clean project installs the packed CLI, records one flow with ayme capture, and lists its Page Objects in a Session, whose Inspector window it serves",
   { timeout: 150_000 },
   async () => {
     const project = path.join(tmp, "recorder-project");
@@ -1883,6 +1885,8 @@ export class ShopPage {
               ...process.env,
               NODE_PATH: "",
               AYME_CACHE_DIR: path.join(project, ".cache"),
+              // ayme inspect prints the window's address and opens nothing.
+              BROWSER: "none",
             },
           },
           (error, stdout, stderr) =>
@@ -1980,6 +1984,24 @@ export class ShopPage {
           /^Tab: Shop \(.+\)\nShopPage\n[^]*This screen has 1 Page Object Tool: ayme -s=default tools lists it with its parameters\.\n$/
         ),
       });
+
+      // The Session serves its Inspector window with the script the CLI
+      // carries.
+      const inspected = await session("inspect");
+      expect(inspected, inspected.stderr).toMatchObject({ code: 0 });
+      const address =
+        /at (http:\/\/127\.0\.0\.1:\d+\/inspector#token=[\w-]+)\.$/m.exec(
+          inspected.stdout
+        )?.[1];
+      expect(address, inspected.stdout).toBeDefined();
+      const script = await fetch(new URL("/inspector/external.mjs", address));
+      expect(script.status).toBe(200);
+      expect(await script.text()).toBe(
+        fs.readFileSync(
+          path.join(installed, "dist/inspector/external.mjs"),
+          "utf8"
+        )
+      );
     } catch (error) {
       // What the command printed is the first thing to look at.
       throw new Error(

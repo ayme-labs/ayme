@@ -132,7 +132,7 @@ it("admits the window and an Agent App's view, from any origin, once each brings
     const told: unknown[] = [];
     ws.on("message", (data) => told.push(JSON.parse(String(data))));
     ws.send(JSON.stringify({ id: 1, method: "getState" }));
-    await expect.poll(() => told).toEqual([{ id: 1, result: "getState" }]);
+    await expect.poll(() => told).toContainEqual({ id: 1, result: "getState" });
   }
   expect(browser.inspectorCalls).toHaveLength(2);
 });
