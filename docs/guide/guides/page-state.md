@@ -190,11 +190,11 @@ Over Playwright in Node, the old document's last capture can fail to reach ayme 
 
 ## The Page Object an action returns
 
-When a Page Object Action returns a Page Object whose model declares or inherits [`present`](../reference/ayme.md#page-object-presence), the call answers once that predicate returns `true`. A Caller then finds the screen the action led to, not one still on its way, such as the nearly empty page some apps load after a sign-in before they send the browser on. The wait ends at the Settled Page deadline, counted from the action's return, and each ask of the predicate gets only the time left. Past the deadline the call answers as it would have without the wait.
+When a Page Object Action returns a Page Object whose model declares or inherits [`present`](../reference/ayme.md#page-object-presence), the call answers once that predicate returns `true`. A Caller then finds the screen the action led to, not one still on its way, such as the nearly empty page some apps load after a sign-in before they send the browser on. The wait starts once the action has returned and the page has settled after it, and ends at the Settled Page deadline counted from there; each ask of the predicate gets only the time left. Past the deadline the call answers as it would have without the wait.
 
 - An action that returns nothing, a value that is not a Page Object, or a Page Object without a `present` of its own or inherited gets no wait.
 - ayme adds no other wait after an action. Waiting for a navigation or a load as such is the browser automation's, and an action does not wait for the screen it leads to: it returns that screen's Page Object.
-- The answer is the one the action gave; the wait changes when it comes, not what it says. A part of the page that came during the wait is in the next action's `changes_before`.
+- The action result's Change Record ends before the wait: a part of the page that came during the wait is in the next action's `changes_before`. [A Page Object Tool's short answer](#a-page-object-tools-answer-to-an-agent) reads the Page Object Tree after the wait, so its `changes` includes what came during it.
 - In the browser, where a full load ends ayme with the document, a call that starts one still answers at once, and gets no wait.
 - Over Playwright in Node, as in a Session of the `ayme` command, ayme outlives the load. A call that starts one lasts until its action returns, however long after the load that is: it answers with what the action returned, or fails with what it threw, and then waits for the returned Page Object. ayme puts no time limit on the call, and the next call on the page waits until it ends.
 

@@ -83,5 +83,5 @@ npx ayme close
 
 - **In a Session, your Page Object Actions run on your project's Playwright library**, not on ayme's own in-page version of it. The Session does not load your Playwright Test config or fixtures: see [Limits](guides/connect-an-agent.md#limits).
 - **ayme never answers a dialog.** When a dialog opens during a Run and stays open for 100 ms, the action stops there. An action that answers its own dialog within that time goes on. [Dialogs](guides/connect-an-agent.md#dialogs) gives the details.
-- **A Run can answer later.** When an action returns a Page Object whose model declares or inherits `present`, the Run answers once that predicate holds, up to the Settled Page deadline, whoever started it. [The Page Object an action returns](guides/page-state.md#the-page-object-an-action-returns) gives the details.
+- **A Run can answer later.** When an action returns a Page Object whose model declares or inherits `present`, the Run answers once that predicate holds, or at the Settled Page deadline. [The Page Object an action returns](guides/page-state.md#the-page-object-an-action-returns) says when the wait starts and when there is none.
 - **An edit to your Page Objects takes effect without a restart.** The Session rebuilds them and swaps them in between Runs. See the Edits item in [Sessions](guides/connect-an-agent.md#sessions).
