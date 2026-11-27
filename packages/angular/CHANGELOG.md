@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/ayme-labs/ayme/compare/angular-v0.3.0...angular-v0.3.1) (2026-11-27)
+
+
+### Miscellaneous Chores
+
+* **angular:** Synchronize ayme versions
+
 ## [0.3.0](https://github.com/ayme-labs/ayme/compare/angular-v0.2.0...angular-v0.3.0) (2026-11-26)
 
 
