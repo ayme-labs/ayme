@@ -123,7 +123,7 @@ The loader reports the tsconfig and source files the compiler read, so Turbopack
 - `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` resolve to a small absent entry. The runtime, Playwright in the browser, the Inspector and WebMCP are left out of the output.
 - Each Page Object Model the plugin compiles becomes a stand-in. A stand-in has the model's class name and exports, but not the imports only the model used. The rest of the model's module stays.
 - `@ayme-dev/vue`, `@ayme-dev/react`, `@ayme-dev/svelte` and `@ayme-dev/angular` each resolve to an absent entry of their own. It has the package's names and types, so a component tree renders as before.
-- `AymeProvider`, `useAyme` and `provideAyme` hand out an inert session. Its publication status stays `disabled`, and its tool list is empty.
+- `AymeProvider`, `useAyme` and `provideAyme` hand out an inert runtime. Its publication status stays `disabled`, and its tool list is empty.
 - `usePageObject` and `injectPageObject` return the stand-in, an instance of the model's class. The Peek hook does nothing.
 
 Using a stand-in fails with a `RuntimeStateError` that names the member. An action rejects. Any other member, such as a Page Object Child, a field or a method, throws when it is used. With `ProjectsPage` and its `openNewProjectDialog` action from [Action descriptions](ayme.md#action-descriptions):

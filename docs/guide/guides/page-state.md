@@ -82,7 +82,7 @@ createAyme({
 });
 ```
 
-For a rule a selector cannot say, pass a function that takes the session's Playwright `Page` and returns a `Locator` of the elements to drop. ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
+For a rule a selector cannot say, pass a function that takes the runtime's Playwright `Page` and returns a `Locator` of the elements to drop. ayme calls it once, when the runtime starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
 
 ```ts
 const assistantName = "Assistant";
@@ -92,7 +92,7 @@ createAyme({
 });
 ```
 
-In the browser, `page` is the session's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names `ignore`.
+In the browser, `page` is the runtime's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names `ignore`.
 
 An element that matches later is dropped too. An element an action adds just before a full page load can still appear in that action's Change Record.
 

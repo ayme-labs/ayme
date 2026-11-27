@@ -35,7 +35,7 @@ How to turn your app's Page Object Models into tools that coding agents and your
 
 ## Reference
 
-- [`@ayme-dev/ayme`](reference/ayme.md): the decorators, `createAyme`, the session's tools, Page Objects, Peeks and publication, and the package entries.
+- [`@ayme-dev/ayme`](reference/ayme.md): the decorators, `createAyme`, the runtime's tools, Page Objects, Peeks and publication, and the package entries.
 - [Browser Tools](reference/browser-tools.md): every built-in tool ayme publishes, with its input.
 - [Decision Endpoint](reference/decision-endpoint.md): the contract of the route that adds your key to each decision model request.
 - [Build plugin](reference/build-plugin.md): the options of `@ayme-dev/unplugin-ayme` and how its Playwright settings resolve.

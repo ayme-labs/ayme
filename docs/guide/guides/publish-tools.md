@@ -4,7 +4,7 @@ How to start ayme in your app and turn on WebMCP publication, so agents that run
 
 ## Start ayme
 
-Your framework package starts ayme at the root of your app and gives the rest of the app the running session, `ayme`. Vue and React wrap the app in `AymeProvider`, Svelte calls `useAyme` in the root component, and Angular adds `provideAyme()` to the application config. Each takes the same options, including `webMCP`:
+Your framework package starts ayme at the root of your app and gives the rest of the app its runtime, `ayme`. Vue and React wrap the app in `AymeProvider`, Svelte calls `useAyme` in the root component, and Angular adds `provideAyme()` to the application config. Each takes the same options, including `webMCP`:
 
 ```tsx
 <AymeProvider webMCP={{ enabled: true }}>
@@ -12,7 +12,7 @@ Your framework package starts ayme at the root of your app and gives the rest of
 </AymeProvider>
 ```
 
-Without a framework package, such as in a script on a page, create the session with `createAyme` and start it yourself:
+Without a framework package, such as in a script on a page, create the runtime with `createAyme` and start it yourself:
 
 ```ts
 import { createAyme } from "@ayme-dev/ayme";
@@ -21,11 +21,11 @@ const ayme = createAyme({ webMCP: { enabled: true } });
 const stop = ayme.start();
 ```
 
-One session owns the current document at a time. `start()` returns the function that stops it. The [`@ayme-dev/ayme` reference](../reference/ayme.md) lists every option.
+One runtime owns the current document at a time. `start()` returns the function that stops it. The [`@ayme-dev/ayme` reference](../reference/ayme.md) lists every option.
 
 ## Register Page Objects
 
-A Page Object's tools are listed while its class is registered and the Page Object is present, as [`@ayme`](ayme-page-objects.md#ayme) describes. Register pages at app setup, in the `pageObjects` option of `createAyme`, `AymeProvider`, `useAyme` or `provideAyme`. A page states its own presence from the URL, so it can be listed once with all the others. Its tools then come and go with the browser's location. The classes stay registered for the session's lifetime.
+A Page Object's tools are listed while its class is registered and the Page Object is present, as [`@ayme`](ayme-page-objects.md#ayme) describes. Register pages at app setup, in the `pageObjects` option of `createAyme`, `AymeProvider`, `useAyme` or `provideAyme`. A page states its own presence from the URL, so it can be listed once with all the others. Its tools then come and go with the browser's location. The classes stay registered for the runtime's lifetime.
 
 ```ts
 const ayme = createAyme({

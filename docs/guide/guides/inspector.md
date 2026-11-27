@@ -17,7 +17,7 @@ useAyme({ inspector: import.meta.env.DEV });
 ```
 
 - The option is off unless set, and there is no production guard: you decide when it is on.
-- While it is on, the session loads the Inspector when it starts in the browser, mounts it, and unmounts it when it stops. Server rendering loads nothing.
+- While it is on, the runtime loads the Inspector when it starts in the browser, mounts it, and unmounts it when it stops. Server rendering loads nothing.
 - With the option off, the page requests no Inspector code.
 - If the package cannot be loaded, the error names `@ayme-dev/inspector`.
 - The Inspector reaches Page Objects constructed before it loaded.

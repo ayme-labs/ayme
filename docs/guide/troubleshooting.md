@@ -41,7 +41,7 @@ These are for a coding agent that runs your Page Object Tools with the `ayme` co
 
 These are for [Peeks](reference/ayme.md#aymepeek), which exist only while the Inspector is on.
 
-- **No `peek.<name>` tool**: `ayme.peek` does nothing unless the session has `inspector` on, and nothing in Node. A component's Peek appears once the component has mounted, and goes when its last instance unmounts.
+- **No `peek.<name>` tool**: `ayme.peek` does nothing unless the runtime has `inspector` on, and nothing in Node. A component's Peek appears once the component has mounted, and goes when its last instance unmounts.
 - **`[ayme] peek.<name> is hidden: another tool uses that name.`**: another of the page's tools took the Peek Tool's name, and keeps it. Rename the Peek.
 
 ## In-browser agents see no tools
@@ -49,7 +49,7 @@ These are for [Peeks](reference/ayme.md#aymepeek), which exist only while the In
 These are for agents that run in the browser and read the tools ayme publishes through WebMCP.
 
 - **The publication status is `disabled`**: pass `webMCP: { enabled: true }` where ayme starts. See [Publish tools](guides/publish-tools.md).
-- **`ayme was removed from this build, but setup enables WebMCP publication.`** in the console: setup passes `webMCP: { enabled: true }`, but the build left ayme out, so the session is inert, its publication status stays `disabled` and no tool is published. Set the [build plugin](reference/build-plugin.md)'s `include: true` for the build that publishes tools.
+- **`ayme was removed from this build, but setup enables WebMCP publication.`** in the console: setup passes `webMCP: { enabled: true }`, but the build left ayme out, so the runtime is inert, its publication status stays `disabled` and no tool is published. Set the [build plugin](reference/build-plugin.md)'s `include: true` for the build that publishes tools.
 - **The status is `unavailable`**: no WebMCP driver appeared within two seconds. Load the polyfill or enable Chrome's flag before your app's entry module, as [Publish tools](guides/publish-tools.md#give-the-page-webmcp) shows, or call `retryPublication()` once it is there.
 - **The status is `failed`**: `@ayme-dev/webmcp` is not installed beside `@ayme-dev/ayme`, or the WebMCP driver rejected a registration. The message says which.
 - **The status is `active` but no tool is published**: two tools share a name, such as a Custom Tool named like a Page Object Tool, which leaves `ayme.tools.list()` empty. `ayme.tools.run` throws the error that names the tool.
