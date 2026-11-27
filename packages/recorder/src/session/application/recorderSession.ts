@@ -16,7 +16,12 @@ import type {
   RecorderWarning,
   RecordingOutcome,
 } from "../../contract";
-import { Timeline, type RecordingTrace } from "../../timeline/domain";
+import {
+  Timeline,
+  type InteractionReport,
+  type RecordingTrace,
+  type TimelineAddition,
+} from "../../timeline/domain";
 import {
   awaitsAnswer,
   initialState,
@@ -43,6 +48,35 @@ export type SaveRecording = (
   createdAt: Date,
   trace: RecordingTrace | null
 ) => Promise<string | null>;
+
+/** Why something broke, for a person. */
+const reasonOf = (broken: unknown) =>
+  broken instanceof Error ? broken.message : String(broken);
+
+/** That the timeline could not take an addition, for a person: the step by
+ * its name when the addition is one, or else the kind of addition, and that
+ * the trace has it all the same, since the trace is the browser's and not
+ * the timeline's. */
+const notAdded = (add: TimelineAddition, reason: string): RecorderWarning => {
+  const lost =
+    add.kind === "interaction"
+      ? `A step is missing from the recording: ${stepOf(add.interaction.report)}. The trace still holds it.`
+      : `Something may be missing from the recording: the recorder could not add to its timeline (${add.kind}). The trace still holds what happened.`;
+  return {
+    kind: "notRecorded",
+    message: `${lost} The recorder's error: ${reason}`,
+  };
+};
+
+/** A step by Playwright's name for it and by its selector, when it has one. */
+const stepOf = ({ type, selector }: InteractionReport) =>
+  selector === null ? type : `${type} on ${selector}`;
+
+/** That a part of the worker's own work was not done, for a person. */
+const notDone = (reason: string): RecorderWarning => ({
+  kind: "notRecorded",
+  message: `Something may be missing from the recording: the recorder could not do a part of its own work. The recorder's error: ${reason}`,
+});
 
 /** One thing that happened, waiting for its turn, and where a command's
  * answer goes. */
@@ -109,7 +143,13 @@ export class RecorderSession extends Context.Service<
           visits = timeline.visits();
           update = now(update.revision + 1);
           toldNow = JSON.stringify(told());
-          for (const listener of listeners) listener(update);
+          for (const listener of listeners)
+            try {
+              listener(update);
+            } catch {
+              // A subscriber that breaks is its own to mend: the others are
+              // told all the same, and the recording goes on.
+            }
         };
         const tell = (happening: Happening) =>
           Queue.offer(queue, { happening });
@@ -244,25 +284,12 @@ export class RecorderSession extends Context.Service<
               return;
             case "save": {
               const createdAt = new Date(yield* Clock.currentTimeMillis);
-              // A package that cannot be written ends the recorder "failed",
-              // once the storage state is saved, as at any other end: the
-              // worker goes on.
-              return yield* Effect.matchEffect(
-                Effect.tryPromise({
-                  try: () =>
-                    options.save(timeline, createdAt, item.trace ?? null),
-                  catch: (cause) =>
-                    cause instanceof Error ? cause.message : String(cause),
-                }),
-                {
-                  onFailure: (reason) => tell({ kind: "saveFailed", reason }),
-                  onSuccess: (folder) =>
-                    // What changed after the last Interaction is an entry now.
-                    publishEntries.pipe(
-                      Effect.andThen(tell({ kind: "saved", folder }))
-                    ),
-                }
+              const folder = yield* Effect.promise(() =>
+                options.save(timeline, createdAt, item.trace ?? null)
               );
+              // What changed after the last Interaction is an entry now.
+              yield* publishEntries;
+              return yield* tell({ kind: "saved", folder });
             }
             case "end":
               return yield* Deferred.succeed(done, item.outcome);
@@ -284,6 +311,54 @@ export class RecorderSession extends Context.Service<
           }
         });
 
+        /**
+         * What is done in place of an item that broke while it was carried
+         * out, so that the items after it are carried out all the same. The
+         * lifecycle has moved its state on already: where it waits for what
+         * the item leads to, it is told what it is told when that fails, and
+         * decides; where nothing waits, a person is told what was lost.
+         */
+        const instead = (
+          item: ToDo,
+          reason: string
+        ): Effect.Effect<unknown> => {
+          switch (item.kind) {
+            case "browser":
+              // The request never left: it is answered as the browser
+              // answers one it could not carry out.
+              return tell({ kind: "requestFailed", request: item.ask, reason });
+            // Highlight.
+            case "locate":
+              // No element is found: the highlight is answered "notFound".
+              return tell({
+                kind: "located",
+                highlight: item.highlight,
+                target: null,
+              });
+            case "save":
+              // A package that cannot be written ends the recorder "failed",
+              // once the storage state is saved, as at any other end.
+              return tell({ kind: "saveFailed", reason });
+            case "timeline":
+              return Effect.sync(() => warn(notAdded(item.add, reason)));
+            // An answer, a time limit, the end, Clear or a warning: none
+            // of them asks anything of the timeline or the browser, so none
+            // is expected to break, and the lifecycle has no happening for
+            // one that did. Each kind is named, so that a new one is given
+            // its case here.
+            case "reply":
+            case "deferReply":
+            case "replyDeferred":
+            case "keepReply":
+            case "replyKept":
+            case "startTimeLimit":
+            case "end":
+            case "clear":
+            case "warn":
+              return Effect.sync(() => warn(notDone(reason)));
+          }
+        };
+
         const handle = Effect.fnUntraced(function* ({
           happening,
           reply,
@@ -302,7 +377,13 @@ export class RecorderSession extends Context.Service<
             !next.todo.some((item) => item.kind === "clear")
           )
             publish();
-          for (const item of next.todo) yield* carryOut(item, reply);
+          // Each item is carried out on its own: one that breaks keeps none
+          // of those after it from being carried out, such as a held click
+          // that is passed on, and ends no recording.
+          for (const item of next.todo)
+            yield* carryOut(item, reply).pipe(
+              Effect.catchDefect((broken) => instead(item, reasonOf(broken)))
+            );
           // A time limit is one wrap-up's: once that is over, it must not
           // pass for a later one, which has a limit of its own. One that
           // passed already is in the queue ahead of whatever starts the
@@ -332,19 +413,19 @@ export class RecorderSession extends Context.Service<
           Effect.forever,
           Effect.forkScoped
         );
-        // The one worker. If carrying something out breaks it, as when the
-        // package cannot be written, the lifecycle is told, and the recorder
-        // ends "failed": nobody waits for an end that cannot come.
+        // The one worker. An item that breaks is made up for where it is
+        // carried out (`instead`). What breaks the worker all the same, as a
+        // step of the lifecycle that throws, is the last resort's: the
+        // lifecycle is told, and the recorder ends "failed", so nobody waits
+        // for an end that cannot come.
         yield* Queue.take(queue).pipe(
           Effect.flatMap(handle),
           Effect.forever,
           Effect.catchCause((cause) => {
-            const broken = Cause.squash(cause);
             return handle({
               happening: {
                 kind: "brokeDown",
-                reason:
-                  broken instanceof Error ? broken.message : String(broken),
+                reason: reasonOf(Cause.squash(cause)),
               },
             });
           }),
