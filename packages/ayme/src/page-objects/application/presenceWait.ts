@@ -20,12 +20,35 @@ export async function waitForReturnedPageObject(
   const deadline = Date.now() + SETTLED_PAGE_DEADLINE_MS;
   if (typeof pageObject !== "object" || pageObject === null) return false;
   for (;;) {
-    // Undefined when the model declares and inherits no presence predicate.
-    const { present } = await askPresence(pageObject);
-    if (present !== false) return present === true;
+    // Each ask gets only the time left, so a predicate that never answers
+    // cannot hold the Run past the deadline. Undefined when the model
+    // declares and inherits no presence predicate.
+    const answer = await within(askPresence(pageObject), deadline - Date.now());
+    if (answer === TIMED_OUT) return false;
+    if (answer.present !== false) return answer.present === true;
     const left = deadline - Date.now();
     if (left <= 0) return false;
     await sleep(Math.min(PRESENCE_ASK_INTERVAL_MS, left));
+  }
+}
+
+const TIMED_OUT = Symbol("timed out");
+
+/** What `promise` resolves to within `ms`, else TIMED_OUT. */
+async function within<T>(
+  promise: Promise<T>,
+  ms: number
+): Promise<T | typeof TIMED_OUT> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<typeof TIMED_OUT>((resolve) => {
+        timer = setTimeout(() => resolve(TIMED_OUT), ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
