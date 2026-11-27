@@ -1291,11 +1291,11 @@
         "flows": [
           {
             "dir": "→",
-            "text": "loading the Playwright installed in the project's folder, launching Chromium with it on a profile of its own and opening the URL, or joining a running Chromium at its DevTools protocol address without Playwright's defaults, and listening for dialogs without answering them; reading the browser's tab list over HTTP; turning focus emulation on for each Tab it works on, through a DevTools session of its own on that Tab"
+            "text": "loading the Playwright installed in the project's folder, launching Chromium with it on a profile of its own and opening the URL, or joining a running Chromium at its DevTools protocol address without Playwright's defaults, and listening for dialogs without answering them; reading the browser's tab list over HTTP; watching each page's dialogs from when Playwright hands the page over, and turning focus emulation on for each Tab it works on, through a DevTools session of its own on that page"
           },
           {
             "dir": "←",
-            "text": "the browser going away; the tab list, the most recently active tab first; a Tab's page closing"
+            "text": "the browser going away; the tab list, the most recently active tab first; a Tab's page closing; a dialog opening and closing on a page, its opening also from Playwright"
           }
         ],
         "evidence": {
@@ -1310,7 +1310,7 @@
         "flows": [
           {
             "dir": "→",
-            "text": "the built Page Object classes and the Tab's Playwright `Page`, to the Node host runtime of the project's own `@ayme-dev/ayme`, through its `./internal` entry, loaded in the Session's process, with the selector engine registered on the project's Playwright; listings, each in one turn of the Tab, and Runs of Page Object Tools, as the `ayme-command` Caller; the Inspector window's calls on the Tab's Inspector contract, served through `inspectorPortOf`, a tool run among them as the `inspector` Caller"
+            "text": "the built Page Object classes and the Tab's Playwright `Page`, to the Node host runtime of the project's own `@ayme-dev/ayme`, through its `./internal` entry, loaded in the Session's process, with the selector engine registered on the project's Playwright; listings, each in one turn of the Tab, and Runs of Page Object Tools, as the `ayme-command` Caller; the Inspector window's calls on the Tab's Inspector contract, served through `inspectorPortOf`, a tool run among them as the `inspector` Caller; the Session's say over each Playwright call of a Page Object Action's own code, which it holds while a dialog opens on the Tab and refuses once the Session stopped the Run at a dialog, and the news that a Run stopped"
           },
           {
             "dir": "←",
@@ -1322,7 +1322,7 @@
           }
         ],
         "evidence": {
-          "text": "verified: `packages/session/src/playwright/infrastructure/live/tabHost.ts`, `packages/session/src/page-objects/infrastructure/projectAyme.ts`",
+          "text": "verified: `packages/session/src/playwright/infrastructure/live/tabHost.ts`, `packages/session/src/page-objects/infrastructure/projectAyme.ts`, `packages/session/src/playwright/infrastructure/tabDialogs.ts`, `packages/ayme/src/runs/infrastructure/pageInstrumentation.ts`",
           "inferred": false,
           "mixed": false
         }
