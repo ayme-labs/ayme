@@ -20,6 +20,10 @@ it("a Session opens the browser it is asked for and answers its start with the b
 
 const opening = { open: { headed: false } } as const;
 
+/** Gives the Session a turn to hear what the browser told it, as a
+ * Playwright event reaches it a moment after the browser acts. */
+const heard = () => new Promise((resolve) => setImmediate(resolve));
+
 /** Whether `promise` is still pending once everything ready to run ran. */
 async function pending(promise: Promise<unknown>): Promise<boolean> {
   let settled = false;
@@ -737,6 +741,7 @@ it("a closed Tab's ids are gone: a call with one runs on the most recently activ
   const other = browser.openTab();
   browser.activate();
   browser.close();
+  await heard();
 
   await session.ask(add("po1"));
 
@@ -760,4 +765,27 @@ it("a call whose --tab names another Tab than its Page Object Id's is refused, a
     await session.ask({ call: { ...add("po1").call, tab: shop.tab.url } })
   ).toMatchObject({ ok: true });
   expect(browser.runs).toHaveLength(1);
+});
+
+it("a read of the tab list made before a Tab opened lets go of none of it: the Tab keeps its Host and its ids", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  const release = browser.holdTabList();
+  const slow = session.ask({ pageObjects: {} });
+  expect(await pending(slow)).toBe(true);
+  const other = browser.openTab();
+  other.show(signIn);
+  expect(await session.ask({ pageObjects: {} })).toMatchObject({ ok: true });
+  other.give("po1");
+
+  release();
+  expect(await slow).toMatchObject({ ok: true });
+
+  expect(await session.ask({ pageObjects: {} })).toMatchObject({
+    ok: true,
+    text: expect.stringMatching(/^Tab: Sign in \(/),
+  });
+  browser.activate();
+  expect(await session.ask(add("po1"))).toMatchObject({ ok: true });
+  expect([browser.runs, other.runs]).toEqual([[], [add("po1").call]]);
 });

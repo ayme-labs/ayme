@@ -175,6 +175,10 @@ function tabsOf(
   const tabOf = (page: Page) => {
     const tab = tabs.get(page) ?? {
       url: () => page.url(),
+      closed: Effect.callback<void>((resume) => {
+        page.once("close", () => resume(Effect.void));
+        if (page.isClosed()) resume(Effect.void);
+      }),
       host: hostOn(hosting, page),
     };
     tabs.set(page, tab);

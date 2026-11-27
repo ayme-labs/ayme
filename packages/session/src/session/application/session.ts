@@ -99,7 +99,7 @@ export const openSession = (
         held.host(built).pipe(
           Effect.map((tabs): Started => ({
             held,
-            tabs: sessionTabs(tabs, name),
+            tabs: sessionTabs(tabs, name, browserScope),
           }))
         )
       ),
@@ -252,15 +252,21 @@ type SessionTabs = {
 };
 
 /** The Tabs of `browser`, each hosted once, the first time the Session
- * named `name` works on it, and the Page Object Ids each Tab's Host gave. */
-function sessionTabs(browser: BrowserTabs, name: string): SessionTabs {
+ * named `name` works on it, and the Page Object Ids each Tab's Host gave.
+ * A Tab is let go when its page closes, in `scope`. */
+function sessionTabs(
+  browser: BrowserTabs,
+  name: string,
+  scope: Scope.Scope
+): SessionTabs {
   const hosts = new Map<BrowserTab, Effect.Effect<HostedTab, TabReadError>>();
   // The Tab each id was given on. An id of a closed Tab is gone with it.
   const owners = new Map<string, BrowserTab>();
-  const forget = (open: readonly BrowserTab[]) => {
-    for (const tab of hosts.keys()) if (!open.includes(tab)) hosts.delete(tab);
-    for (const [id, tab] of owners) if (!open.includes(tab)) owners.delete(id);
-  };
+  const retire = (tab: BrowserTab) =>
+    Effect.sync(() => {
+      hosts.delete(tab);
+      for (const [id, owner] of owners) if (owner === tab) owners.delete(id);
+    });
   const hostOf = (tab: BrowserTab) =>
     Effect.gen(function* () {
       const known = hosts.get(tab);
@@ -268,7 +274,13 @@ function sessionTabs(browser: BrowserTabs, name: string): SessionTabs {
       // Cached at once, so two requests that arrive together host the Tab
       // once; a failed hosting is tried again by the next request.
       const hosting = yield* Effect.cached(
-        tab.host((id) => owners.set(id, tab))
+        tab
+          .host((id) => owners.set(id, tab))
+          .pipe(
+            Effect.tap(() =>
+              tab.closed.pipe(Effect.andThen(retire(tab)), Effect.forkIn(scope))
+            )
+          )
       );
       hosts.set(tab, hosting);
       return yield* hosting.pipe(
@@ -279,7 +291,6 @@ function sessionTabs(browser: BrowserTabs, name: string): SessionTabs {
     chosen: (url, id) =>
       browser.open.pipe(
         Effect.flatMap((open) => {
-          forget(open);
           const owner = id === undefined ? undefined : owners.get(id);
           if (owner) {
             if (url === undefined || owner.url() === url) return hostOf(owner);

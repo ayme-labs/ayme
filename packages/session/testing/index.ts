@@ -68,6 +68,10 @@ export interface ScriptedBrowser extends ScriptedTab {
   /** Every read of the browser's tab list fails, for the reason a person
    * reads. */
   failTabList(reason: string): void;
+  /** The next read of the browser's tab list takes the Tabs open now and
+   * answers only once the test calls the function it returns, as an HTTP
+   * read that is slow to answer. */
+  holdTabList(): () => void;
 }
 
 /** The remote control of one Tab of the scripted browser. The scripted
@@ -98,7 +102,7 @@ export interface ScriptedTab {
   give(id: string): void;
   /** The browser automation brings the Tab to the front. */
   activate(): void;
-  /** The Tab closes. */
+  /** The Tab closes, and Playwright says so. */
   close(): void;
 }
 
@@ -146,6 +150,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
     Promise.resolve({ settled: true });
   let given: ((id: string) => void) | undefined;
+  const closed = Deferred.makeUnsafe<void>();
   const hosted: HostedTab = {
     listing: Effect.suspend(() =>
       shown === "held"
@@ -166,11 +171,19 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   };
   const tab: Tab = {
     url: () => shownUrl,
+    closed: Deferred.await(closed),
+    // As a page's registry refuses a second owner.
     host: (giving) =>
-      Effect.sync(() => {
-        given = giving;
-        return hosted;
-      }),
+      given
+        ? Effect.fail(
+            new TabReadError(
+              "ayme could not run the project's Page Objects on the tab: The ayme runtime already has an active owner."
+            )
+          )
+        : Effect.sync(() => {
+            given = giving;
+            return hosted;
+          }),
     control: {
       get hosted() {
         return given !== undefined;
@@ -193,6 +206,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       },
       close: () => {
         if (open.includes(tab)) open.splice(open.indexOf(tab), 1);
+        Deferred.doneUnsafe(closed, Exit.void);
       },
     },
   };
@@ -211,6 +225,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   // The open Tabs, the most recently active first.
   const open: Tab[] = [];
   let tabList: TabReadError | undefined;
+  let heldTabList: Deferred.Deferred<void> | undefined;
   const opened = Deferred.makeUnsafe<void, SessionStartError>();
   const built = Deferred.makeUnsafe<BuiltPageObjects, SessionStartError>();
   const gone = Deferred.makeUnsafe<void>();
@@ -225,9 +240,15 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   };
   const first = openTab();
   const tabs = {
-    open: Effect.suspend(() =>
-      tabList ? Effect.fail(tabList) : Effect.succeed([...open])
-    ),
+    open: Effect.suspend(() => {
+      if (tabList) return Effect.fail(tabList);
+      const now = [...open];
+      const held = heldTabList;
+      heldTabList = undefined;
+      return held
+        ? Deferred.await(held).pipe(Effect.as(now))
+        : Effect.succeed(now);
+    }),
   };
   const build = Layer.succeed(PageObjectsBuild, {
     build: Deferred.await(built),
@@ -272,6 +293,10 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       goAway: () => Deferred.doneUnsafe(gone, Exit.void),
       openTab: (url) => openTab(url).control,
       failTabList: (reason) => (tabList = new TabReadError(reason)),
+      holdTabList: () => {
+        const held = (heldTabList = Deferred.makeUnsafe<void>());
+        return () => Deferred.doneUnsafe(held, Exit.void);
+      },
       ...first.control,
       get hosted() {
         return first.control.hosted;

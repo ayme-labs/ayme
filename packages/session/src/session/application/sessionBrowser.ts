@@ -30,11 +30,14 @@ export interface HostedTab {
 }
 
 /** A Tab of the Session's browser: the same object for as long as the Tab
- * is open. */
+ * is open. Its Host can be started once, as a page's registry has one
+ * owner. */
 export interface BrowserTab {
   /** The URL its page shows now, which names the Tab on the command
    * line. */
   readonly url: () => string;
+  /** Completes when Playwright says the Tab's page closed. */
+  readonly closed: Effect.Effect<void>;
   /**
    * Makes the Session the Host of the Tab, with focus emulation on, so that
    * a Run works the same while the Tab is not in front (rule 6). `given`
@@ -50,7 +53,9 @@ export interface BrowserTab {
  * on, with Page Object Ids from one source the Tabs share. */
 export interface BrowserTabs {
   /** The Tabs open now, the most recently active first, in the order of the
-   * browser's own tab list: it reads no page. */
+   * browser's own tab list: it reads no page. A read made before a Tab
+   * opened lacks it, so a read only chooses a Tab; `closed` says one is
+   * gone. */
   readonly open: Effect.Effect<readonly BrowserTab[], TabReadError>;
 }
 
