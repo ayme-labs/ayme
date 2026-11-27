@@ -322,9 +322,9 @@ function render() {
   const goalArm = arms.find((a) => a.arm !== "arm2");
   const mirrored = new Set(goalArm?.runs[0]?.tests.map((t) => t.test) ?? []);
   const range = (values, format = String) => {
-    const lo = Math.min(...values);
-    const hi = Math.max(...values);
-    return lo === hi ? format(lo) : `${format(lo)}–${format(hi)}`;
+    const lo = format(Math.min(...values));
+    const hi = format(Math.max(...values));
+    return lo === hi ? lo : `${lo}–${hi}`;
   };
   const seconds = (ms) => `${(ms / 1000).toFixed(0)} s`;
   const usd = (n) => `$${n.toFixed(2)}`;
@@ -341,7 +341,7 @@ function render() {
       range(total("wallMs"), seconds),
       goals ? range(total("steps")) : "none",
       goals ? range(total("stepsWithoutModel")) : "none",
-      goals ? range(total("tokens")) : "none",
+      goals ? range(total("tokens"), (n) => n.toLocaleString("en")) : "none",
       goals ? range(total("estimatedCostUsd"), usd) : "none",
       String(a.runs.length),
     ];
@@ -371,15 +371,22 @@ function render() {
   const handOffs = arms
     .filter((a) => a.arm !== "arm2")
     .map((a) => {
+      // By line: a test can repeat a step's wording.
       const seen = new Map();
-      for (const r of a.runs)
+      a.runs.forEach((r, i) => {
         for (const t of r.tests)
           for (const s of t.modelSteps) {
-            const key = `${t.test} › "${s.step}" (${s.cache ?? "no cache"}${s.reason ? `, ${s.reason}` : ""})`;
-            seen.set(key, (seen.get(key) ?? 0) + 1);
+            // The origin's port differs by arm and machine.
+            const why = [s.cache ?? "no cache", s.reason, s.detail]
+              .filter(Boolean)
+              .join(", ")
+              .replace(/http:\/\/127\.0\.0\.1:\d+/g, "`ayme mcp`'s window ");
+            const key = `${t.test}, line ${s.line}, "${s.step}": ${why}`;
+            seen.set(key, [...(seen.get(key) ?? []), i + 1]);
           }
+      });
       const lines = [...seen].map(
-        ([key, n]) => `- ${key}: ${n} of ${a.runs.length} runs`
+        ([key, inRuns]) => `- ${key}. Runs ${inRuns.join(", ")}.`
       );
       return `${a.name}:\n\n${lines.join("\n") || "- none"}`;
     });
