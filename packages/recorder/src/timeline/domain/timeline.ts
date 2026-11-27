@@ -623,8 +623,10 @@ export class Timeline {
    * snapshots can hold an element that stood under another's first ref in
    * the earlier one beside that other, as when the page re-created an
    * element and the original is back. The element that first had the ref
-   * keeps it there, and the other is written under its own. How each node
-   * of a Change Tree stood before goes with it, under its new ref.
+   * keeps it there, and the other is written under its own, or under a new
+   * one when another element of the tree has its own as a first ref, as
+   * when the page re-created it in turn. How each node of a Change Tree
+   * stood before goes with it, under its new ref.
    *
    * `given` holds the ref each element of a tree renamed earlier through it
    * was given, by its own ref, and gets this tree's. An element that tree
@@ -647,7 +649,9 @@ export class Timeline {
       if (!holder.has(first(ref)) || isFirst(ref, first(ref)))
         holder.set(first(ref), ref);
     // The refs this tree's elements keep from the earlier tree: another
-    // element of this tree cannot have one too.
+    // element of this tree cannot have one too. Core keeps the later ref of
+    // an element matched under two, so the page before can hold an element
+    // the earlier tree had under another ref.
     const kept = new Set(owns.flatMap((own) => given.get(own) ?? []));
     const beforeByRef = new Map<AriaRef, StructuralNode>();
     const rename = (node: StructuralNode): StructuralNode => {
@@ -655,8 +659,8 @@ export class Timeline {
       // One that does not hold its first ref keeps its own from here on.
       const chosen =
         holder.get(first(own)) === own ? first(own) : firstRef(own);
-      const ref =
-        given.get(own) ?? (kept.has(chosen) ? this.refs.create() : chosen);
+      const free = !kept.has(chosen) && (holder.get(chosen) ?? own) === own;
+      const ref = given.get(own) ?? (free ? chosen : this.refs.create());
       given.set(own, ref);
       const before = tree.getBeforeNode(node.ref);
       // Stryker disable next-line ConditionalExpression: equivalent, since core reads a node recorded as null and one not recorded alike
