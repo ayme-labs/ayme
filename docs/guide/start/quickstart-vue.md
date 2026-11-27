@@ -6,7 +6,7 @@ From a Vite Vue app to a Page Object Tool your coding agent calls.
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/vue
-npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/cli
 ```
 
 ## 2. Add the build plugin
@@ -76,7 +76,7 @@ If your Playwright tests already have a Page Object Model for this page, mark th
 
 ## 4. Start ayme and use the Page Object
 
-Start ayme in the root component with the Inspector and the Agent Connection in development, and use the Page Object:
+Start ayme in the root component with the Inspector in development, and use the Page Object:
 
 ```vue
 <!-- src/App.vue -->
@@ -87,7 +87,6 @@ import { ProjectsPage } from "#pom/ProjectsPage";
 
 useAyme({
   inspector: import.meta.env.DEV,
-  agentConnection: import.meta.env.DEV,
 });
 const pom = usePageObject(ProjectsPage);
 
@@ -118,7 +117,7 @@ function create() {
 
 Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-To call it from your coding agent, register ayme's MCP server in the agent and connect it to the page, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
+To call it from your coding agent, list `ProjectsPage` in `ayme/page-objects.ts` and let the agent start the `ayme` command beside its browser automation, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
 
 ## Next
 

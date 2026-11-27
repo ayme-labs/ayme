@@ -6,7 +6,7 @@ From a SvelteKit app to a Page Object Tool your coding agent calls.
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/svelte
-npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/cli
 ```
 
 ## 2. Add the build plugin
@@ -84,7 +84,7 @@ If your Playwright tests already have a Page Object Model for this page, mark th
 
 ## 4. Start ayme and use the Page Object
 
-Start ayme in the root layout with the Inspector and the Agent Connection in development:
+Start ayme in the root layout with the Inspector in development:
 
 ```svelte
 <!-- src/routes/+layout.svelte -->
@@ -94,7 +94,7 @@ Start ayme in the root layout with the Inspector and the Agent Connection in dev
   import { useAyme } from "@ayme-dev/svelte";
 
   let { children }: { children: Snippet } = $props();
-  useAyme({ inspector: dev, agentConnection: dev });
+  useAyme({ inspector: dev });
 </script>
 
 {@render children()}
@@ -140,7 +140,7 @@ Use the Page Object in a page:
 
 Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-To call it from your coding agent, register ayme's MCP server in the agent and connect it to the page, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
+To call it from your coding agent, list `ProjectsPage` in `ayme/page-objects.ts` and let the agent start the `ayme` command beside its browser automation, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
 
 ## Next
 

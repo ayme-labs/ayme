@@ -4,11 +4,11 @@ Everything about ayme in an Angular app: `ng add` and manual setup, starting aym
 
 ## Install and configure
 
-Run `ng add`, then install the Inspector and the Agent Connection for development, as the [Angular quickstart](../start/quickstart-angular.md) does:
+Run `ng add`, then install the Inspector and the `ayme` command for development, as the [Angular quickstart](../start/quickstart-angular.md) does:
 
 ```sh
 ng add @ayme-dev/angular
-npm install -D @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/inspector @ayme-dev/cli
 ```
 
 `ng add` installs `@ayme-dev/ayme`. It adds three dev dependencies: `@ayme-dev/unplugin-ayme`, `@playwright/test` (for the types Page Object Models use) and the `@angular-builders/custom-esbuild` major that matches your Angular major. Then it:
@@ -24,7 +24,7 @@ It leaves bundle budgets alone; see [Bundle size](#bundle-size). If your app use
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/angular
-npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild @playwright/test @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild @playwright/test @ayme-dev/inspector @ayme-dev/cli
 ```
 
 Install the `@angular-builders/custom-esbuild` major that matches your Angular major. Then:
@@ -37,16 +37,14 @@ Finally add `provideAyme()` to the application config, as shown below.
 
 ## Start ayme in the application config
 
-Start ayme once in the application config, with the Inspector and the Agent Connection in development:
+Start ayme once in the application config, with the Inspector in development:
 
 ```ts
 import { ApplicationConfig, isDevMode } from "@angular/core";
 import { provideAyme } from "@ayme-dev/angular";
 
 export const appConfig: ApplicationConfig = {
-  providers: [
-    provideAyme({ inspector: isDevMode(), agentConnection: isDevMode() }),
-  ],
+  providers: [provideAyme({ inspector: isDevMode() })],
 };
 ```
 
@@ -66,7 +64,6 @@ export const appConfig: ApplicationConfig = {
     provideAyme({
       pageObjects: [ProjectsPage, SettingsPage],
       inspector: isDevMode(),
-      agentConnection: isDevMode(),
     }),
   ],
 };
@@ -122,7 +119,6 @@ Then add `webMCP` to `provideAyme`'s options:
 ```ts
 provideAyme({
   inspector: isDevMode(),
-  agentConnection: isDevMode(),
   webMCP: { enabled: true },
 });
 ```

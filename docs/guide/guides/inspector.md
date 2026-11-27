@@ -10,7 +10,7 @@ Install `@ayme-dev/inspector` beside `@ayme-dev/ayme`, which declares it as an o
 npm install -D @ayme-dev/inspector
 ```
 
-Then pass `inspector: true` where ayme starts: `useAyme` or `AymeProvider` in Vue, `AymeProvider` in React, `useAyme` in Svelte, `provideAyme` in Angular, or `createAyme`. Most apps turn it on in development only, with their framework's development flag from [the table in Connect an agent](connect-an-agent.md#the-development-flag-per-framework):
+Then pass `inspector: true` where ayme starts: `useAyme` or `AymeProvider` in Vue, `AymeProvider` in React, `useAyme` in Svelte, `provideAyme` in Angular, or `createAyme`. Most apps turn it on in development only, with their framework's [development flag](#the-development-flag-per-framework):
 
 ```ts
 useAyme({ inspector: import.meta.env.DEV });
@@ -23,6 +23,18 @@ useAyme({ inspector: import.meta.env.DEV });
 - The Inspector reaches Page Objects constructed before it loaded.
 - It works whether WebMCP publication is on or off.
 - It turns the page's [Peeks](../reference/ayme.md#aymepeek) on, as `agentConnection` does.
+
+### The development flag per framework
+
+| Framework                | Development flag                                            | Setup                                                                                                                                                                |
+| ------------------------ | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vite: React, Vue, Svelte | `import.meta.env.DEV`                                       | [React](../frameworks/react.md#start-ayme-at-the-root), [Vue](../frameworks/vue.md#start-ayme-at-the-root), [Svelte](../frameworks/svelte.md#start-ayme-at-the-root) |
+| Angular                  | `isDevMode()` from `@angular/core`                          | [Angular](../frameworks/angular.md#start-ayme-in-the-application-config)                                                                                             |
+| SvelteKit                | `dev` from `$app/environment`, or `$app/env` on SvelteKit 3 | [Svelte](../frameworks/svelte.md#start-ayme-at-the-root)                                                                                                             |
+| Next.js                  | `process.env.NODE_ENV === "development"`                    | [React: Server rendering](../frameworks/react.md#server-rendering)                                                                                                   |
+| Nuxt                     | `import.meta.dev`                                           | [Vue: Server rendering](../frameworks/vue.md#server-rendering)                                                                                                       |
+
+With Vite, a development build you serve without a dev server, such as static files, comes from `NODE_ENV=development vite build`. `vite build --mode development` alone still builds with `NODE_ENV=production`, so `import.meta.env.DEV` is `false` and the Inspector stays off.
 
 ## In a window of its own
 
@@ -83,7 +95,7 @@ Captured target names stay readable after the element disappears or the page rel
 
 The panel floats, docks to the left, right or bottom of the page, or collapses to the ayme logo. It remembers its layout, sizes, positions and theme per site. Within a tab, a reload brings back the open lens, the selection, the Runs region and the newest 50 runs. A selected structure node goes back to the page, because its ref can name another element after a reload. Its theme follows the system until you change it. While docked, it pads the page's root on that side so the panel sits beside the page.
 
-The pill after the panel's title says whether a coding agent is connected to the tab through the [Agent Connection](connect-an-agent.md), and names it: Claude Code, Codex, Cursor, or the name any other agent's MCP client gives. It reads:
+The pill after the panel's title says whether a coding agent is connected to the tab through the Agent Connection, and names it: Claude Code, Codex, Cursor, or the name any other agent's MCP client gives. It reads:
 
 | Pill             | When                                                                          |
 | ---------------- | ----------------------------------------------------------------------------- |

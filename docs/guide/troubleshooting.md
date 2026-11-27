@@ -6,7 +6,7 @@ The common reasons an ayme setup fails, by what you see.
 
 - **`Unsupported Page Object Tool input type for …`**: an action takes a parameter type the compiler cannot describe, such as a function or a class instance. [Page Object Models](guides/ayme-page-objects.md#aymeaction) lists the supported types. When the type is an import, check that the tsconfig the message names resolves it, for example through its `paths`. A build without ayme does not fail on it; see [Include ayme in a build](reference/build-plugin.md#include-ayme-in-a-build).
 - **`Page Object Action … needs a name for every element of …`**, **`… takes two input fields named …`** or **`… have no type`**: a destructured parameter cannot be published as it is: an array pattern skips or nests an element or leaves a tuple element unbound, two input properties share a name, or an object pattern binds a name its type does not have, as an unannotated one does. See [Page Object Models](guides/ayme-page-objects.md#aymeaction). A build without ayme does not fail on these.
-- **`<file>: Could not find a tsconfig.json for this module.`**: the Page Object Model is outside every tsconfig. Add one, or pass `tsconfigPath` to the [build plugin](reference/build-plugin.md). With `ayme mcp`, which has no `tsconfigPath`, add `ayme/tsconfig.json`; see [The `ayme` folder](guides/ayme-folder.md#set-the-folder-up-for-page-objects).
+- **`<file>: Could not find a tsconfig.json for this module.`**: the Page Object Model is outside every tsconfig. Add one, or pass `tsconfigPath` to the [build plugin](reference/build-plugin.md).
 - **Angular's `maximumError` budget fails**, or **Vite warns about a chunk over 500 kB**: ayme adds about 290 kB transferred to the initial chunk. Raise the `initial` budget; see [Angular](frameworks/angular.md#bundle-size). A build includes ayme only with the plugin's `include: true`; see [Include ayme in a build](reference/build-plugin.md#include-ayme-in-a-build).
 - **`ayme was removed from this build. <Model>.<action> is not in it.`**: the app called a Page Object in a build without ayme, one without the plugin's `include: true`. Set it for builds whose own code drives Page Objects; see [Include ayme in a build](reference/build-plugin.md#include-ayme-in-a-build).
 - **`Unsupported Playwright config loader version …`**: loading a Playwright config through `playwright.config` needs `@playwright/test` 1.62 to 1.64. Remove `config` and pass `use` values directly, or upgrade.
@@ -22,18 +22,17 @@ The common reasons an ayme setup fails, by what you see.
 
 ## The agent cannot reach the page
 
-These are for a coding agent connected through ayme's MCP server, as [Connect an agent](guides/connect-an-agent.md) sets up.
+These are for a coding agent that runs your Page Object Tools with the `ayme` command, as [Connect an agent](guides/connect-an-agent.md) sets up.
 
-- **The agent has no `ayme_connect` tool**: the server is not registered or did not start. Check the registration for your agent, pinned to your `@ayme-dev/mcp` version, and restart the agent.
-- **An open tab does not pair by itself**: a tab pairs by itself only on `localhost` or `127.0.0.1`, and only when exactly one ayme MCP server is running and not already working with another tab. With several running, such as one per agent or worktree, ask your agent for a link with `ayme_connect` and paste it into the tab; the page does not reload.
-- **The page logs red failed-WebSocket lines in the console**: an unpaired page on `localhost` logs one for each port where it looks for a server and finds none. They are expected and harmless. The page looks again each time the tab gains focus, until it pairs.
-- **The agent sees only `ayme_connect`, `ayme_list_tools`, `ayme_call` and `ayme_inspect`, or no Page Object Tools**: the agent reads its tool list once, when it starts, and does not follow changes to it. Ask it to list the page's tools with `ayme_list_tools` and run them with `ayme_call`.
-- **A tool answers that no page is connected**: no tab is paired, or the tab closed or navigated to another origin. Right after the agent's MCP server restarts, a tab that was paired before pairs again by itself within a few seconds, and the page's tools come back. If they don't, or no tab was paired, ask the agent to call `ayme_connect` again and open the new link.
-- **A tool answers that no page reconnected in its place, or that the tab did not reconnect**: the tab loaded a page that doesn't run ayme's Agent Connection, such as a page outside your app, or the tab closed. The server waits a few seconds for the new page before it gives this answer, and the call did not run. Go back to a page of your app in that tab, and its tools come back.
-- **`No free port for the ayme MCP server between 9350 and 9365.`**: other programs hold the range. Add `--port <port>` after `mcp` in the registration, with a free port. The connect link carries it, so the page needs no change.
-- **`The agentConnection option could not load @ayme-dev/mcp.`**: install `@ayme-dev/mcp` beside `@ayme-dev/ayme`, or turn the option off.
-- **The page is on a deployed preview or another non-local origin**: open the connect link there, and allow Chrome's local network access prompt if it asks.
-- **A tool call times out just after the app's tab went to the background**: while the machine is under heavy CPU load, the first call after the tab is hidden can stall and fail with `Timeout … exceeded`. The calls after it run normally, so retry it, or keep the tab visible.
+- **`No Session is open in <folder>.`**: no Session runs in that folder under that name. Start one with `ayme open` or `ayme attach`, in the project's folder and with the same `-s=<name>` as the command. `ayme list` lists the folder's Sessions.
+- **`npx ayme` has no `open`, `attach` or `page-objects`**: the project also has `@ayme-dev/mcp`, whose command is also called `ayme`, and `npx` ran that one. Run `npx @ayme-dev/cli <command>` instead.
+- **The Session does not start, and names a package**: the project has no `@ayme-dev/ayme`, has it at another version than `@ayme-dev/cli`, or has no Playwright, or one older than 1.62. Install the version the message names.
+- **`<folder> has no ayme/page-objects.ts.`**: list your Page Object classes there; see [Connect an agent](guides/connect-an-agent.md#set-up-your-project).
+- **`The Page Objects of … did not build:`**: the build error follows. Fix it, then start the Session again. A Session builds your Page Objects only when it starts, so start it again after every edit.
+- **A Page Object's tools are missing**: its class is not listed in `ayme/page-objects.ts`, and no listed class reaches it; or it is not present on the tab ayme works on. The first line of `ayme page-objects` names that tab: the browser's most recently active one.
+- **`ayme attach` fails with `Timeout 30000ms exceeded`**: Chrome answers no new connection while a dialog is open in one of its pages. Answer the dialog with the browser automation, then run `ayme attach` again. Connect the automation before an action can open a dialog, so it can answer it.
+- **`No tab is open in the Session's browser.`**: open one with the browser automation.
+- **`ayme open` cannot start Chromium**: install it for the project's Playwright with `npx playwright install chromium`.
 
 ## A Peek Tool is missing
 

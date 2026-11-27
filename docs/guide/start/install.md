@@ -14,9 +14,9 @@ Which packages ayme publishes, what each one owns, and which versions of each fr
 | `@ayme-dev/unplugin-ayme` | Compiling Page Object Models and their tool schemas into the browser build, for Vite, the Angular CLI and Turbopack. See [Build plugin](../reference/build-plugin.md). | Always, as a dev dependency   |
 | `@ayme-dev/webmcp`        | Publishing the tools through WebMCP, for agents that run in the browser. See [Publish tools](../guides/publish-tools.md).                                              | With the `webMCP` option      |
 | `@ayme-dev/inspector`     | The in-page panel. See [Inspector](../guides/inspector.md).                                                                                                            | Optional, as a dev dependency |
-| `@ayme-dev/mcp`           | ayme's MCP server for coding agents, and the page client it pairs with. See [Connect an agent](../guides/connect-an-agent.md).                                         | Optional, as a dev dependency |
+| `@ayme-dev/cli`           | The `ayme` command: your Page Object Tools for a coding agent, beside its browser automation, and ayme capture. See [Connect an agent](../guides/connect-an-agent.md). | Optional, as a dev dependency |
 
-`@ayme-dev/ayme` bundles what it needs from ayme's internal packages and from playwright-lite, so you never install those. `@playwright/test` is not an ayme package; install it as a dev dependency for the `Page` and `Locator` types. Keep all ayme packages on the same version, including the version you register ayme's MCP server with.
+`@ayme-dev/ayme` bundles what it needs from ayme's internal packages and from playwright-lite, so you never install those. `@playwright/test` is not an ayme package; install it as a dev dependency for the `Page` and `Locator` types. Keep all ayme packages on the same version: the `ayme` command runs Page Objects only with the `@ayme-dev/ayme` of its own version.
 
 Each [framework page](../README.md#frameworks) has the install command for its framework, and the quickstarts start with it: [Vue](quickstart-vue.md), [React](quickstart-react.md), [Svelte](quickstart-svelte.md) and [Angular](quickstart-angular.md).
 
