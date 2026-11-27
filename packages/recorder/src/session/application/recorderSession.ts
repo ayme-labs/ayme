@@ -344,17 +344,8 @@ export class RecorderSession extends Context.Service<
             // An answer, a time limit, the end, Clear or a warning: none
             // of them asks anything of the timeline or the browser, so none
             // is expected to break, and the lifecycle has no happening for
-            // one that did. Each kind is named, so that a new one is given
-            // its case here.
-            case "reply":
-            case "deferReply":
-            case "replyDeferred":
-            case "keepReply":
-            case "replyKept":
-            case "startTimeLimit":
-            case "end":
-            case "clear":
-            case "warn":
+            // one that did.
+            default:
               return Effect.sync(() => warn(notDone(reason)));
           }
         };
