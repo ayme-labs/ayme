@@ -20,7 +20,7 @@ ayme's Page Object registry owns one observation of the page while it contains a
 
 The first registration starts observation and schedules an initial probe. Changes to the page schedule coalesced probes. Only changed observations notify subscribers. The final disposal stops observation and cancels pending work.
 
-What a probe measures, Page Object Presence and Page Object Availability, is decided in ADR-0061 and ADR-0062.
+What a probe measures, Page Object Presence and Page Object Availability, is decided in ADR-0067 and ADR-0062.
 
 ayme owns the set of Page Object Tools. Optional publishers, WebMCP publication among them, mirror that set and add no observer of their own.
 
