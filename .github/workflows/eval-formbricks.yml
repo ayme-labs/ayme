@@ -104,14 +104,17 @@ jobs:
           done
           echo "The lab app answers after ${SECONDS} s."
 
+      # The qualification, and `ayme open` in the Playwright CLI arm with ayme,
+      # run the lab app's Playwright, which needs its own Chromium; the other
+      # arms use the runner's Chrome.
+      - name: Install Chromium for the lab app's Playwright
+        working-directory: apps/lab-formbricks
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Qualify the lab app
         if: ${{ inputs.qualify_only }}
         working-directory: apps/lab-formbricks
-        run: |
-          # The qualification runs this repository's Playwright, which needs its
-          # own Chromium; the eval's arms use the runner's Chrome.
-          pnpm exec playwright install --with-deps chromium
-          pnpm lab:qualify
+        run: pnpm lab:qualify
 
       - name: Run the suite
         if: ${{ !inputs.qualify_only }}

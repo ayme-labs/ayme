@@ -110,9 +110,13 @@ export function codexConfig(options: {
     ...Object.entries(options.mcpServers).flatMap(([name, server]) => [
       "",
       `[mcp_servers.${toml(name)}]`,
-      `command = ${toml(server.command)}`,
-      `args = [${server.args.map(toml).join(", ")}]`,
-      `env = { HOME = ${toml(home)} }`,
+      ...("url" in server
+        ? [`url = ${toml(server.url)}`]
+        : [
+            `command = ${toml(server.command)}`,
+            `args = [${server.args.map(toml).join(", ")}]`,
+            `env = { HOME = ${toml(home)} }`,
+          ]),
       // Without it a call is refused: nobody is there to approve it.
       'default_tools_approval_mode = "approve"',
     ]),

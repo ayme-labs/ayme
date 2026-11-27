@@ -49,7 +49,14 @@ export type BrowserContext = {
   browser(): { version(): string } | null;
 };
 
+type CdpBrowser = {
+  contexts(): BrowserContext[];
+  version(): string;
+  close(): Promise<void>;
+};
+
 type Chromium = {
+  connectOverCDP(endpoint: string): Promise<CdpBrowser>;
   launchPersistentContext(
     userDataDir: string,
     options: {
@@ -224,6 +231,44 @@ async function openSignInPage(
     return { browserVersion: context.browser()?.version() ?? null };
   } finally {
     await context.close();
+  }
+}
+
+/**
+ * Opens the mission's start page in a browser another process started, at
+ * `address`: signs in through the API and opens the editor for a mission
+ * that starts signed in, or opens the sign-in page. For a browser `ayme open`
+ * started, whose fresh profile the harness cannot prepare beforehand. Lets
+ * go of the browser afterwards without closing it; resolves with its
+ * version.
+ */
+export async function openStartPageOverCdp(
+  address: string,
+  options: Omit<StartOptions, "profileDir" | "channel">
+): Promise<string> {
+  const { mission, baseUrl, log } = options;
+  const browser = await playwright().chromium.connectOverCDP(address);
+  try {
+    const context = browser.contexts()[0];
+    if (context === undefined)
+      throw new Error(`The browser at ${address} has no context.`);
+    const page = context.pages()[0] ?? (await context.newPage());
+    if (mission.start.signedIn) {
+      await signInThroughApi(page, baseUrl, mission.user);
+      await openEditor(page, mission.start.url, log);
+    } else {
+      await page.goto(mission.start.url, {
+        waitUntil: "domcontentloaded",
+        timeout: navigationTimeoutMs,
+      });
+      await page
+        .getByRole("button", { name: "Log in with Email" })
+        .waitFor({ timeout: 60_000 });
+    }
+    return browser.version();
+  } finally {
+    // Over CDP, closing only disconnects: the browser is the Session's.
+    await browser.close();
   }
 }
 
