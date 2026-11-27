@@ -108,9 +108,10 @@ A visit's `cause` is `initial` for the page the recording started on,
 `navigate` for a page that went to another address, and `openPage` for a tab
 or window that opened. The package does not say what made a page navigate.
 When the last step of the visit before could have led there, such as a click
-on a link or Enter pressed in a form, it did. When no step could have, the
-user used the browser's Back or Forward button or typed an address, or the
-page redirected by itself. Ask the user which it was rather than guess. A
+on a link or Enter pressed in a form, check in the trace and on the page
+whether it did. When no step could have, the user used the browser's Back or
+Forward button or typed an address, or the page redirected by itself. When
+the cause is still unclear, ask the user rather than guess. A
 reload of the same address starts no visit, and neither does a change of only
 the address's query or hash.
 
