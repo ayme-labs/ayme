@@ -323,7 +323,8 @@ it("a window that listens while the tab list cannot be read is told so, and then
   readable();
 
   await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 2 });
-  expect(browser.inspectorListeners).toBe(1);
+  // The Session tells the Tab first and subscribes to its Host right after.
+  await expect.poll(() => browser.inspectorListeners).toBe(1);
 });
 
 it("one reading of the tab list and one subscription to the Tab's Host serve every window, and stop with the last one", async () => {
