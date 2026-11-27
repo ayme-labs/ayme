@@ -6,7 +6,7 @@ import {
   type CallSubject,
   type Interaction,
 } from "../domain/interactions";
-import { answersAtOnce, elementsOf } from "../domain/playwrightCalls";
+import { elementsOf, mayHold } from "../domain/playwrightCalls";
 import type { ActionCalls } from "../application/run";
 
 type PageInstrumentation = (page: Page) => Page;
@@ -234,14 +234,12 @@ export function instrumentedPage(
             });
         };
         if (!actionCalls) return (...args: unknown[]) => perform(args);
-        const atOnce = answersAtOnce(subject, property);
-        return (...args: unknown[]) => {
-          if (atOnce) {
-            void actionCalls.before(true);
+        if (!mayHold(subject, property))
+          return (...args: unknown[]) => {
+            actionCalls.before(true);
             return perform(args);
-          }
-          return afterAsking(() => perform(args));
-        };
+          };
+        return (...args: unknown[]) => afterAsking(() => perform(args));
       },
     });
     return { proxy, resolve };

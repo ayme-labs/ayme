@@ -385,3 +385,19 @@ it("without a Host that decides, Playwright's own objects are handed out as they
 
   expect(wrapped.mainFrame()).toBe(frame);
 });
+
+it("a method of a later Playwright the call tables do not know answers as it always does: never held, only refused", () => {
+  const raw = { ...fakePage("raw"), laterMethod: () => "answered" };
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    host
+  ) as unknown as typeof raw;
+
+  host.decision = new Promise(() => {});
+  expect(wrapped.laterMethod()).toBe("answered");
+  host.decision = "refuse";
+  expect(() => wrapped.laterMethod()).toThrow("refused");
+});
