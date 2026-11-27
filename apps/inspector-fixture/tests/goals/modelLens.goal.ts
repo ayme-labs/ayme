@@ -1,7 +1,13 @@
 import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { outline, placements, reloadFixture, testIn } from "../e2e/fixtures";
+import {
+  outline,
+  placements,
+  reloadFixture,
+  testIn,
+  confirmGoalRecordings,
+} from "../e2e/fixtures";
 
 // The goal-driven twin of ../modelLens.e2e.ts: the same tests, with each
 // action on the panel an agent goal.
@@ -32,9 +38,9 @@ for (const placement of placements) {
         .poll(
           async () => {
             await agent.act(
-              "hover {object} under On this page in the Model lens",
+              'hover the "{item}" row of the {collection} collection under On this page in the Model lens',
               {
-                params: { object: "TodoPage.items[1]" },
+                params: { item: "[1]", collection: "items" },
               }
             );
             return secondItem();
@@ -45,19 +51,17 @@ for (const placement of placements) {
       await inspector.header.title.hover();
       await expect.poll(secondItem).toBe("none");
 
-      await agent.act("select {object} under On this page in the Model lens", {
-        params: { object: "TodoPage.items[1]" },
-      });
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (
-        await page
-          .locator("#todo-items > li")
-          .within((rows) => rows.nth(1))
-          .front()
-      ).waitFor();
+      await agent.act(
+        'select the "{item}" row of the {collection} collection under On this page in the Model lens',
+        {
+          params: { item: "[1]", collection: "items" },
+        }
+      );
       await inspector.header.title.hover();
 
       await expect.poll(secondItem).toBe("solid");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("hovering a member highlights it dashed, beside the selected Page Object's solid highlight", async ({
@@ -71,21 +75,24 @@ for (const placement of placements) {
         page.locator("#todo-items > li >> nth=1 >> .todo-archive"),
         browser
       );
-      await agent.act("select {object} under On this page in the Model lens", {
-        params: { object: "TodoPage.items[1]" },
-      });
+      await agent.act(
+        'select the "{item}" row of the {collection} collection under On this page in the Model lens',
+        {
+          params: { item: "[1]", collection: "items" },
+        }
+      );
 
       await agent.act("hover its {member} member", {
         params: { member: "archiveButton" },
       });
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await page.locator("#todo-items > li >> nth=1").front()).waitFor();
 
       await expect.poll(archiveButton).toBe("dashed");
       await expect.poll(item).toBe("solid");
       await inspector.header.title.hover();
       await expect.poll(archiveButton).toBe("none");
       await expect.poll(item).toBe("solid");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("clicking a member selects it: the page highlights it solid and the panel shows it", async ({
@@ -100,7 +107,7 @@ for (const placement of placements) {
         params: { object: "TodoPage" },
       });
 
-      await agent.act("click its {member} member", {
+      await agent.act("select its {member} member", {
         params: { member: "newItemInput" },
       });
       await inspector.header.title.hover();
@@ -112,9 +119,12 @@ for (const placement of placements) {
       await expect(await detail.fact("On the page").front()).toHaveText(
         "1 match"
       );
+
+      await confirmGoalRecordings(browser);
     });
 
     test("the Model lens's panes stay as they were left after a reload", async ({
+      browser,
       agent,
       page,
       inspector,
@@ -129,6 +139,8 @@ for (const placement of placements) {
 
       await expect(await lens.objectTree.front()).toBeVisible();
       await expect(await lens.modelList.front()).toHaveCount(0);
+
+      await confirmGoalRecordings(browser);
     });
   });
 }

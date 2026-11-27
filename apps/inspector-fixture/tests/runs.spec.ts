@@ -165,6 +165,8 @@ test.describe("connected to an agent", () => {
     await addItem.run({ text: "Milk" });
 
     const run = inspector.runs.latest("ListPage.addItem");
+    // The newest run of the tool is the agent's until the panel's arrives.
+    await expect.poll(() => run.caller()).toEqual(INSPECTOR);
     await expect.poll(() => run.status()).toBe("Failed");
     // The panel shows the error an agent gets for the same call. Its call
     // log varies with timing, so the first line is compared.
@@ -275,6 +277,8 @@ test.describe("with WebMCP publication off", () => {
       await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
 
       const run = inspector.runs.latest("ListPage.addItem");
+      // The newest run of the tool is the agent's until the panel's arrives.
+      await expect.poll(() => run.caller()).toEqual(INSPECTOR);
       await expect.poll(() => run.earlierPage.count()).toBe(0);
       await expect.poll(() => run.status()).toBe("Failed");
       expect(firstLine(await run.error.textContent())).toBe(
@@ -370,21 +374,34 @@ test("a run's result copies as the page's Run log has it", async ({
   listPage,
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await listPage.addItem("Milk");
+  // The clipboard is the focused document's: the Inspector's, in front from
+  // here on, which is the app's own page in the inline placement.
   const panelPage = inspector.panel.page();
+  await panelPage.bringToFront();
   // Something else first, so a copy that never lands is told apart.
   await panelPage.evaluate(() => navigator.clipboard.writeText("not copied"));
-  await listPage.addItem("Milk");
   await (await inspector.tool("ListPage.countItems")).runButton.click();
   const run = inspector.runs.latest("ListPage.countItems");
   await expect.poll(() => run.status()).toBe("Succeeded");
+  const logged = (await new AppView(page).runs()).at(-1)!;
 
   await run.copyResultButton.click();
 
-  // The panel says so once the write resolved.
-  await expect(run.card.getByRole("status")).toHaveText("Copied");
-  const copied = await panelPage.evaluate(() => navigator.clipboard.readText());
-  const logged = (await new AppView(page).runs()).at(-1)!;
-  expect(JSON.parse(copied)).toEqual(logged.result);
+  // The write is asynchronous, so the clipboard is read until it lands. The
+  // panel's "Copied" status clears again, so it is not waited for.
+  await expect
+    .poll(async () => {
+      const copied = await panelPage.evaluate(() =>
+        navigator.clipboard.readText()
+      );
+      try {
+        return JSON.parse(copied) as unknown;
+      } catch {
+        return copied;
+      }
+    })
+    .toEqual(logged.result);
 });
 
 test("press_key presses the key the page receives", async ({
@@ -392,12 +409,14 @@ test("press_key presses the key the page receives", async ({
   listPage,
 }) => {
   const pressKey = await inspector.tool("press_key");
-  await pressKey.fill({ key: "F4" });
 
-  await pressKey.runButton.click();
-
-  // The fixture writes the function key it receives into the New item field.
-  await expect(listPage.newItemInput).toHaveValue("F4");
+  // The fixture writes the function key it receives into the New item field;
+  // two keys, so a run that always presses the same one fails.
+  for (const key of ["F4", "F7"]) {
+    await pressKey.fill({ key });
+    await pressKey.runButton.click();
+    await expect(listPage.newItemInput).toHaveValue(key);
+  }
 });
 
 test("the fill_form editor fills only the fields still changed after an undo", async ({
@@ -420,7 +439,8 @@ test("the fill_form editor fills only the fields still changed after an undo", a
   expect(
     (input as { fields: { name: string }[] }).fields.map(({ name }) => name)
   ).toEqual(["Urgent"]);
-  await expect(page.getByRole("checkbox", { name: "Urgent" })).toBeChecked();
+  // The Urgent checkbox: the new item's second field, as the runtime names it.
+  await expect(listPage.newItemFields.nth(1)).toBeChecked();
   await expect(listPage.newItemInput).toHaveValue("");
 });
 
@@ -442,6 +462,15 @@ test("generate_locator offers the locator of each target in each group", async (
   await locatorGroups.toggleFromTree(2, ...groups[1]!);
   await card.runButton.click();
 
+  // The panel submitted these groups and no others.
+  await expect
+    .poll(() => inspector.runs.latest("generate_locator").status())
+    .toBe("Succeeded");
+  const submitted = (await app.runs()).at(-1)!;
+  expect(submitted.tool).toBe("generate_locator");
+  expect(submitted.input).toEqual({
+    groups: groups.map((targets) => ({ targets })),
+  });
   const expected = (await app.run("generate_locator", {
     groups: groups.map((targets) => ({ targets })),
   })) as { groups: { locators: { target: string; locator: string }[] }[] };

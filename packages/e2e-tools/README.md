@@ -26,7 +26,7 @@ Four guards keep the arms apart:
 - `e2e-patched` starts only with a `--config` whose source calls `assertPatchedE2e`, so it never runs e2e's default config, which may be a baseline arm's.
 - `assertPatchedE2e` (arm 3's configs) stops a run that is not patched, and loads every file a patch names through the hook, so a file loaded before it or from another copy stops the run too.
 - `assertUnpatchedE2e` (arm 1's `e2e.goals.config.ts`) stops a baseline run that carries the hook, through `e2e-patched` or `NODE_OPTIONS`, and lets arm 3 read the baseline's settings through `importBaseline`.
-- `assertOwnCacheDir` (arm 3) stops a run whose replay cache is a baseline arm's, with the directory as e2e picks it (the last `--cache-dir`, else `E2E_CACHE_DIR`, else `cache.dir`) and symlinks resolved.
+- `assertOwnCacheDir` (arm 3) stops a run whose replay cache is not the config's own, or is a baseline arm's, with the directory as e2e picks it (the last `--cache-dir`, else `E2E_CACHE_DIR`, else `cache.dir`) and symlinks resolved. The agent's and the scripted runs each have their own.
 
 To change a patch, unpack the published package, apply the patch with `git apply`, edit, and write the diff back with `git diff`; keep its `.js` files only, since the types are in [`src/patched.ts`](src/patched.ts).
 
@@ -46,7 +46,7 @@ To change a patch, unpack the published package, apply the patch with `git apply
 `@e2e-dev/acp` (`patches/@e2e-dev__acp@0.1.3.patch`; 0.1.3 is the version arm 1 runs, so both arms run one ACP executor):
 
 - **Config tools served over ACP.** A `tools` option serves tools to the agent beside e2e's own action tools, under the same step guard, and the executor implements `replayTool` for them. As for the action tools, the guard is asked again when a call's turn in e2e's action queue comes (`stepEnded`), so a call queued behind the step's verdict does not act.
-- **The tool list holds what can run now.** A served tool with `hidden` is listed only while it answers false. The list is checked when the request being served asks for `tools/list` alone, as its JSON body says, after each call, and before each live turn but the first: a call's answer carries MCP's `tools/list_changed` notice when the call changed the list, and a turn's message names the served tools that can run when the list changed since the agent's last call, as a replay or the test itself may have changed the screen. Any other request reaches every tool, so a call reaches its tool's own refusal. In the package, `serveProjectTools`'s `hidden` asks `ruledOutNow` (the Page Object's presence, root and availability rules), and `dropAfterFailure` refuses a call that failed with the same input for the rest of the test. `AYME_E2E_DEBUG` logs when the list changes. The rules read the tab in front only, which is the screen the agent sees: a Page Object of a window in the back is not listed until the agent switches to its tab.
+- **The tool list holds what can run now.** A served tool with `hidden` is listed only while it answers false. The list is checked when the request being served asks for `tools/list` alone, as its JSON body says, after each call, and before each live turn but the first: a call's answer carries MCP's `tools/list_changed` notice when the call changed the list, and a turn's message names the served tools that can run when the list changed since the agent's last call, as a replay or the test itself may have changed the screen. That line is the one difference between what arm 3's agent and the goals-only arm's agent are told, beside the tools and the rules about them. Any other request reaches every tool, so a call reaches its tool's own refusal. In the package, `serveProjectTools`'s `hidden` asks `ruledOutNow` (the Page Object's presence, root and availability rules), and `dropAfterFailure` refuses a call that failed with the same input for the rest of the test. `AYME_E2E_DEBUG` logs when the list changes. The rules read the tab in front only, which is the screen the agent sees: a Page Object of a window in the back is not listed until the agent switches to its tab.
 
 `e2e` (`patches/e2e@0.25.0.patch`): the runner forks its test workers with the hook's `--import`, which `e2e-patched` hands it.
 
@@ -70,6 +70,7 @@ These they can:
 - Activating a tab, as a Page Object brings its tab forward, is no page action: it changes which tab is in front, not the app, and the same call activates it again on every replay before it fails.
 - When a stale call fails before any page action and the agent finishes the step with nothing e2e saves, such as a hover alone, no fallback is kept, so that step goes to the model on every run until the Page Object is fixed.
 - Whether the agent's MCP client takes the list's change notice between turns is untested without a model; the turn's message names the change either way, and the first call's answer carries the notice.
+- No model-free check runs the ACP path live: the check's ACP executor only replays, with an agent that cannot start. So the re-check of a call queued behind the step's verdict (`stepEnded`), the refresh before a turn and the MCP listing are exercised only by a run with the real agent. A fake ACP agent for them needs an ACP agent on stdio and an MCP client over HTTP, more than the check is worth now.
 
 ## Running the model-free check
 
@@ -87,9 +88,9 @@ The recordings are under `.e2e/cache-tools-check`; delete it to record afresh.
 
 [`apps/inspector-fixture/e2e.goals-tools.config.ts`](../../apps/inspector-fixture/e2e.goals-tools.config.ts) runs arm 1's goal tests (`tests/goals`, its config `e2e.goals.config.ts`) unchanged, with the same agent, model and ports, and the e2e suite's Page Objects as tools beside e2e's own action tools. From `apps/inspector-fixture`:
 
-| Run                                                      | Command                                            |
-| -------------------------------------------------------- | -------------------------------------------------- |
-| Arm 3, Claude Code on your own login                     | `pnpm test:goals:tools`                            |
-| The same goals answered by scripted calls, with no model | `AYME_E2E_EXECUTOR=scripted pnpm test:goals:tools` |
+| Run                                                      | Command                          |
+| -------------------------------------------------------- | -------------------------------- |
+| Arm 3, Claude Code on your own login                     | `pnpm test:goals:tools`          |
+| The same goals answered by scripted calls, with no model | `pnpm test:goals:tools:scripted` |
 
 The scripted run takes its calls from [`tests/e2e/tools/goalCalls.ts`](../../apps/inspector-fixture/tests/e2e/tools/goalCalls.ts), one entry per goal, and keeps its recordings apart from the agent's.

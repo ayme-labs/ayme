@@ -1,7 +1,12 @@
 import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { outline, placements, testIn } from "../e2e/fixtures";
+import {
+  outline,
+  placements,
+  testIn,
+  confirmGoalRecordings,
+} from "../e2e/fixtures";
 
 // The goal-driven twin of ../structure.e2e.ts: the same tests, with each
 // action on the panel an agent goal.
@@ -23,21 +28,22 @@ for (const placement of placements) {
         params: { lens: "Structure" },
       });
 
-      await agent.act("hover the {member} node in the Structure lens", {
-        params: { member: "ListPage.newItemInput" },
+      await agent.act("hover the node tagged {tag} in the Structure lens", {
+        params: { tag: ".newItemInput" },
       });
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
 
-      await agent.act("select the {member} node in the Structure lens", {
-        params: { member: "ListPage.newItemInput" },
+      await agent.act("select the node tagged {tag} in the Structure lens", {
+        params: { tag: ".newItemInput" },
       });
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await listPage.newItemInput.front()).waitFor();
       await inspector.navigator.searchBox.hover();
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("solid");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a text field's node offers fill, and a button's does not", async ({
+      browser,
       agent,
       inspector,
     }) => {
@@ -45,15 +51,15 @@ for (const placement of placements) {
         params: { lens: "Structure" },
       });
 
-      await agent.act("select the {member} node in the Structure lens", {
-        params: { member: "ListPage.newItemInput" },
+      await agent.act("select the node tagged {tag} in the Structure lens", {
+        params: { tag: ".newItemInput" },
       });
       await expect(
         await inspector.detail.node.tool("fill").front()
       ).toHaveCount(1);
 
-      await agent.act("select the {member} node in the Structure lens", {
-        params: { member: "ListPage.addItemButton" },
+      await agent.act("select the node tagged {tag} in the Structure lens", {
+        params: { tag: ".addItemButton" },
       });
       await expect(
         await inspector.detail.node.tool("click").front()
@@ -61,6 +67,8 @@ for (const placement of placements) {
       await expect(
         await inspector.detail.node.tool("fill").front()
       ).toHaveCount(0);
+
+      await confirmGoalRecordings(browser);
     });
   });
 }

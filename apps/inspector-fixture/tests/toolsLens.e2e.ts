@@ -1,8 +1,13 @@
 import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { callOverMcp, INSPECTOR, placements, testIn } from "./e2e/fixtures";
-import { panelLook } from "./e2e/pom/Inspector";
+import {
+  callOverMcp,
+  INSPECTOR,
+  placements,
+  testIn,
+  confirmGoalRecordings,
+} from "./e2e/fixtures";
 
 // E2E: the panel shows the page's live tools as the runtime lists them, and a
 // Page Object Tool as an agent gets it over ayme MCP, in both placements of
@@ -19,16 +24,13 @@ for (const placement of placements) {
 
   describe(placement, () => {
     test("the Tools lens lists every live tool of the page", async ({
+      browser,
       appView,
       inspector,
     }) => {
       const liveTools = await appView.tools();
 
       await inspector.navigator.showLens("Tools");
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (
-        await inspector.navigator.tools.tool(liveTools[0]!.name).front()
-      ).waitFor();
 
       await expect
         .poll(async () =>
@@ -37,12 +39,14 @@ for (const placement of placements) {
             .sort()
         )
         .toEqual(liveTools.map(({ name }) => name).sort());
+
+      await confirmGoalRecordings(browser);
     });
 
     describe("connected to an agent", () => {
       connected(
         "each tool's page shows the description, schema and destructive mark an agent gets",
-        async ({ appView, inspector, mcpServer }) => {
+        async ({ browser, appView, inspector, mcpServer }) => {
           const liveTools = await appView.tools();
           // The Page Object Tools reach the agent as the runtime lists them.
           const { tools: agentTools } = await mcpServer!.client.listTools();
@@ -67,9 +71,9 @@ for (const placement of placements) {
           for (const tool of liveTools) {
             await inspector.navigator.tools.tool(tool.name).click();
             await expect(await toolPage.title.front()).toHaveText(tool.name);
-            await toolPage.modelSees.open();
-            // Counted by e2e's replay cache, so the goal twin's goals are saved.
-            await (await toolPage.title.front()).waitFor();
+            // The section stays open from one tool to the next: the page keeps
+            // its state when the tool changes.
+            if (tool === liveTools[0]) await toolPage.modelSees.open();
 
             await expect
               .poll(() => toolPage.descriptionText())
@@ -91,6 +95,8 @@ for (const placement of placements) {
               .filter(({ destructive }) => destructive)
               .map(({ name }) => name)
           ).toEqual(["ListPage.clear"]);
+
+          await confirmGoalRecordings(browser);
         }
       );
 
@@ -119,11 +125,14 @@ for (const placement of placements) {
           const result = await callOverMcp(mcpServer!, "ListPage.countItems");
 
           expect(result).not.toHaveProperty("changes");
+
+          await confirmGoalRecordings(browser);
         }
       );
     });
 
     test("a Page Object tool's page shows its model's definition as snapshot returns it", async ({
+      browser,
       appView,
       inspector,
     }) => {
@@ -132,25 +141,21 @@ for (const placement of placements) {
 
       await inspector.tool("ListPage.addItem");
       await toolPage.modelSees.open();
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await toolPage.modelSees.definitions.front()).waitFor();
 
       await expect
         .poll(() => toolPage.modelSees.definitionsText())
         .toBe(definition);
+
+      await confirmGoalRecordings(browser);
     });
 
     describe("with WebMCP publication off", () => {
       unpublished(
         "the Tools lens still lists the live tools",
-        async ({ appView, inspector }) => {
+        async ({ browser, appView, inspector }) => {
           const liveTools = await appView.tools();
 
           await inspector.navigator.showLens("Tools");
-          // Counted by e2e's replay cache, so the goal twin's goals are saved.
-          await (
-            await inspector.navigator.tools.tool(liveTools[0]!.name).front()
-          ).waitFor();
 
           await expect
             .poll(async () =>
@@ -159,11 +164,14 @@ for (const placement of placements) {
                 .sort()
             )
             .toEqual(liveTools.map(({ name }) => name).sort());
+
+          await confirmGoalRecordings(browser);
         }
       );
     });
 
     test("a tool that can't run now shows dimmed with its reason, and Run gives the refusal", async ({
+      browser,
       appView,
       inspector,
     }) => {
@@ -179,43 +187,28 @@ for (const placement of placements) {
       const card = await inspector.tool("ListPage.clear");
 
       // The tool's run card is dimmed and gives the reason; its row in the
-      // Tools lens's list shows neither. e2e has no CSS matcher: the card's
-      // computed opacity, read in the panel. The card is the Selected
-      // region's only form, as `runCard()` finds it.
-      await expect
-        .poll(
-          async () =>
-            (
-              await panelLook(
-                inspector.tab,
-                'section[aria-label="Selected"] form',
-                ["opacity"]
-              )
-            )?.opacity
-        )
-        .toBe("0.6");
+      // Tools lens's list shows neither.
+      await expect.poll(() => inspector.detail.cardOpacity()).toBe("0.6");
       await expect(await card.reason.front()).toHaveText(clear.reason!);
       await expect(await card.runButton.front()).toBeEnabled();
       await card.runButton.click();
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (
-        await inspector.runs.runs.within((runs) => runs.first()).front()
-      ).waitFor();
       // The newest run of the tool is the app's until the panel's arrives.
       const run = inspector.runs.latest("ListPage.clear");
       await expect.poll(() => run.caller()).toEqual(INSPECTOR);
       await expect.poll(() => run.status()).toBe("Failed");
       await expect.poll(async () => (await run.read())?.error).toBe(refusal);
+
+      await confirmGoalRecordings(browser);
     });
 
     describe("with the inspector option on", () => {
       withInspectorOption(
         "the page's own Peek lists under Peek tools, and its tool page reads it",
-        async ({ appView, inspector, listPage }) => {
+        async ({ browser, appView, inspector, listPage }) => {
           const peeks = (await appView.tools())
             .filter(({ group }) => group === "peek")
             .map(({ name }) => name);
-          // The fixture's Peek of its list.
+          // Only /session.html's runtime registers a Peek: its list's.
           expect(peeks).toEqual(["peek.list"]);
           await listPage.addItem("Milk");
 
@@ -224,16 +217,15 @@ for (const placement of placements) {
             .poll(() => inspector.navigator.tools.peekSections())
             .toEqual({ Browser: peeks });
           await (await inspector.tool("peek.list")).runButton.click();
-          // Counted by e2e's replay cache, so the goal twin's goals are saved.
-          await (
-            await inspector.runs.runs.within((runs) => runs.first()).front()
-          ).waitFor();
 
           const run = inspector.runs.latest("peek.list");
           await expect.poll(() => run.status()).toBe("Succeeded");
+          await run.resultToggle.click();
           expect(JSON.parse((await run.resultText()) ?? "")).toEqual(
             await appView.run("peek.list")
           );
+
+          await confirmGoalRecordings(browser);
         }
       );
     });

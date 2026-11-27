@@ -143,15 +143,16 @@ function realDir(dir: string): string {
 }
 
 /**
- * Throws if this run's replay cache is one a baseline config uses, as e2e
- * picks it: `--cache-dir`, else `E2E_CACHE_DIR`, else `cache.dir`, else
- * `.e2e/cache`, from the project root. An arm 3 config calls it, so its
- * recordings never mix with, or replay, a baseline arm's.
+ * Throws unless this run's replay cache is `own`, as e2e picks it:
+ * `--cache-dir`, else `E2E_CACHE_DIR`, else `cache.dir`, from the project
+ * root; and if it is one a baseline config uses. An arm 3 config calls it,
+ * so its recordings never mix with a baseline arm's, nor its scripted runs'
+ * with its agent's.
  */
 export function assertOwnCacheDir(
   config: string,
   projectRoot: string,
-  own: string | undefined,
+  own: string,
   /** The baseline arms' configs, whose `cache.dir` (or e2e's default) is taken. */
   baselineConfigs: readonly object[]
 ): void {
@@ -161,7 +162,11 @@ export function assertOwnCacheDir(
   const resolve = (dir: string) =>
     realDir(path.resolve(projectRoot, dir.replace(/^~(?=$|\/)/, homedir())));
   const env = process.env.E2E_CACHE_DIR;
-  const dir = resolve(cacheDirFlag() ?? env ?? own ?? ".e2e/cache");
+  const dir = resolve(cacheDirFlag() ?? env ?? own);
+  if (dir !== resolve(own))
+    throw new Error(
+      `${config} would record into ${dir}, not its own ${own}: leave out --cache-dir and E2E_CACHE_DIR, or give it ${own}`
+    );
   if (
     baselines.some(
       (baseline) => resolve(env ?? baseline ?? ".e2e/cache") === dir

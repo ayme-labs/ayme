@@ -7,6 +7,8 @@ import {
   outline,
   reloadFixture,
   testIn,
+  confirmGoalRecordings,
+  INSPECTOR,
 } from "./e2e/fixtures";
 import { AGENT_CLIENT_NAME } from "@ayme-dev/mcp/testing";
 
@@ -26,6 +28,7 @@ test("the page objects reach into the Inspector's closed shadow root", async ({
 });
 
 test("running a Page Object tool from the panel acts on the page", async ({
+  browser,
   inspector,
   listPage,
 }) => {
@@ -36,6 +39,13 @@ test("running a Page Object tool from the panel acts on the page", async ({
       .within((items) => items.filter({ hasText: "Milk" }))
       .front()
   ).toHaveCount(1);
+
+  // The panel's own run, so a run made another way doesn't pass.
+  await expect
+    .poll(() => inspector.runs.latest("ListPage.addItem").caller())
+    .toEqual(INSPECTOR);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("the panel follows the system theme", async ({ browser, inspector }) => {
@@ -52,18 +62,31 @@ test("the panel follows the system theme", async ({ browser, inspector }) => {
 });
 
 test("the layout and its sizes survive a reload", async ({
+  browser,
   page,
   inspector,
 }) => {
   const { header, shell } = inspector;
   await header.dragBy(-100, 50);
+  const beforeFloating = await shell.box();
   await shell.resizeBy("left", -60, 0);
+  await expect
+    .poll(async () => (await shell.box()).width)
+    .toBeCloseTo(beforeFloating.width + 60, 0);
   const floating = await shell.box();
   await header.layoutMenu.choose("Dock left");
+  const beforeDockedLeft = await shell.box();
   await shell.resizeBy("right", 80, 0);
+  await expect
+    .poll(async () => (await shell.box()).width)
+    .toBeCloseTo(beforeDockedLeft.width + 80, 0);
   const dockedLeft = await shell.box();
   await header.layoutMenu.choose("Dock to bottom");
+  const beforeDockedBottom = await shell.box();
   await shell.resizeBy("top", 0, -60);
+  await expect
+    .poll(async () => (await shell.box()).height)
+    .toBeCloseTo(beforeDockedBottom.height + 60, 0);
   const dockedBottom = await shell.box();
 
   await reloadFixture(page, "/");
@@ -73,12 +96,13 @@ test("the layout and its sizes survive a reload", async ({
   await header.layoutMenu.choose("Dock left");
   await expect.poll(() => shell.box()).toEqual(dockedLeft);
   await header.layoutMenu.choose("Floating");
-  // Counted by e2e's replay cache, so the goal twin's goals are saved.
-  await (await inspector.panel.front()).waitFor();
   await expect.poll(() => shell.box()).toEqual(floating);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("a collapsed panel stays collapsed after a reload", async ({
+  browser,
   page,
   inspector,
 }) => {
@@ -88,9 +112,12 @@ test("a collapsed panel stays collapsed after a reload", async ({
 
   await expect(await inspector.logo.root.front()).toBeVisible();
   await expect(await inspector.panel.front()).toHaveCount(0);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("a docked panel sits beside the page, and floating it gives the space back", async ({
+  browser,
   page,
   inspector,
 }) => {
@@ -103,9 +130,9 @@ test("a docked panel sits beside the page, and floating it gives the space back"
   await expect.poll(pageLeft).toBeGreaterThanOrEqual(panel.x + panel.width);
 
   await inspector.header.layoutMenu.choose("Floating");
-  // Counted by e2e's replay cache, so the goal twin's goals are saved.
-  await (await inspector.panel.front()).waitFor();
   await expect.poll(pageLeft).toBe(before);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("the page highlights what's hovered in the panel and what's selected, at once", async ({
@@ -122,11 +149,11 @@ test("the page highlights what's hovered in the panel and what's selected, at on
   // and Chromium 156 sends no mouseenter for that; enter it from outside.
   await browser.mouse.move(0, 0);
   await navigator.result('textbox "New item"').hover();
-  // Counted by e2e's replay cache, so the goal twin's goals are saved.
-  await (await listPage.addItemButton.front()).waitFor();
 
   await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
   await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
+
+  await confirmGoalRecordings(browser);
 });
 
 test("the app's DOM gains no attribute while an element is highlighted", async ({
@@ -159,16 +186,17 @@ test("the app's DOM gains no attribute while an element is highlighted", async (
   await navigator.search("New item");
   await browser.mouse.move(0, 0);
   await navigator.result('textbox "New item"').hover();
-  // Counted by e2e's replay cache, so the goal twin's goals are saved.
-  await (await listPage.addItemButton.front()).waitFor();
 
   // Both highlights are showing.
   await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
   await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
   expect(await attributes()).toEqual(before);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("a host member named like one of the panel's controls stays one match, and its tool runs", async ({
+  browser,
   appView,
   inspector,
   listPage,
@@ -181,6 +209,8 @@ test("a host member named like one of the panel's controls stays one match, and 
   await expect(await listPage.clearButton.front()).toHaveCount(1);
   await appView.run("ListPage.clear");
   await expect(await listPage.items.front()).toHaveCount(0);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("the Structure view follows typing and text changes on the page", async ({
@@ -191,8 +221,6 @@ test("the Structure view follows typing and text changes on the page", async ({
 }) => {
   const structure = () => inspector.structure.treeText();
   await inspector.navigator.showLens("Structure");
-  // Counted by e2e's replay cache, so the goal twin's goals are saved.
-  await (await inspector.structure.tree.front()).waitFor();
 
   await listPage.newItemInput.fill("Oat milk");
   await expect.poll(structure).toContain("Oat milk");
@@ -206,6 +234,8 @@ test("the Structure view follows typing and text changes on the page", async ({
     return null;
   });
   await expect.poll(structure).toContain('heading"Groceries for Friday"');
+
+  await confirmGoalRecordings(browser);
 });
 
 describe("connected to an agent", () => {
@@ -216,8 +246,6 @@ describe("connected to an agent", () => {
     async ({ mcpServer, browser, page, inspector }) => {
       // The panel has looked at the page: its structure shows the heading.
       await inspector.navigator.showLens("Structure");
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await inspector.structure.tree.front()).waitFor();
       await expect
         .poll(() => inspector.structure.treeText())
         .toContain("Groceries");
@@ -236,6 +264,8 @@ describe("connected to an agent", () => {
       const result = await callOverMcp(mcpServer!, "ListPage.countItems");
 
       expect(result).not.toHaveProperty("changes");
+
+      await confirmGoalRecordings(browser);
     }
   );
 
@@ -248,7 +278,6 @@ describe("connected to an agent", () => {
         const { pill } = inspector.header.connections;
         await expect(await pill.front()).toHaveText(AGENT_CLIENT_NAME);
 
-        // Watched while the server stops, not after.
         const stopped = mcpServer!.close();
         await expect(await pill.front()).toHaveText("Reconnecting");
         await stopped;
@@ -262,6 +291,7 @@ describe("connected to an agent", () => {
 });
 
 test("the header's menus and switches work by mouse inside the closed shadow root", async ({
+  browser,
   inspector,
 }) => {
   const { header } = inspector;
@@ -288,6 +318,8 @@ test("the header's menus and switches work by mouse inside the closed shadow roo
   await expect(await inspector.logo.root.front()).toBeVisible();
   await inspector.logo.open();
   await expect(await inspector.panel.front()).toBeVisible();
+
+  await confirmGoalRecordings(browser);
 });
 
 plainTest(
@@ -305,6 +337,8 @@ plainTest(
     await expect(await connections.webMCP.state.front()).toHaveText(
       "Published"
     );
+
+    await confirmGoalRecordings(browser);
   }
 );
 
@@ -326,6 +360,8 @@ plainTest(
     await expect(await inspector.container.front()).not.toContainText(
       "can't call"
     );
+
+    await confirmGoalRecordings(browser);
   }
 );
 
@@ -342,7 +378,7 @@ describe("on a React host with aggressive global CSS", () => {
 
   onReact(
     "the panel works beside the host's own React",
-    async ({ inspector, listPage }) => {
+    async ({ browser, inspector, listPage }) => {
       await (await inspector.tool("ListPage.addItem")).run({ text: "Eggs" });
 
       await expect(
@@ -350,6 +386,8 @@ describe("on a React host with aggressive global CSS", () => {
           .within((items) => items.filter({ hasText: "Eggs" }))
           .front()
       ).toHaveCount(1);
+
+      await confirmGoalRecordings(browser);
     }
   );
 });

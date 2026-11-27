@@ -19,6 +19,18 @@ export type { FixturePage, Placement };
 /** The Caller mark of a run made from the panel, as Runs shows it. */
 export const INSPECTOR = { icon: "Run by you from the Inspector" } as const;
 
+/**
+ * The last line of every test that has a goal twin (`tests/goals/`), in both
+ * arms alike. e2e saves an `agent.act` recording only once a later check of
+ * the kind it counts passes (its docs/cache.mdx, "When a recording is
+ * written"), and polls and checks on read values don't count. It comes last,
+ * after the test's own checks passed, and checks nothing itself: any URL
+ * matches.
+ */
+export async function confirmGoalRecordings(browser: Browser) {
+  await browser.waitForURL(/^/);
+}
+
 /** Both placements, for a spec whose tests run in each. */
 export const placements: readonly Placement[] = ["inline", "external"];
 
@@ -166,8 +178,8 @@ async function connectLink(
 }
 
 /**
- * What a Page Object Tool's call over `agent` answers: its JSON, or its
- * error text with `isError`.
+ * What a Page Object Tool's call over `agent` answers, as JSON. A call that
+ * fails throws with its error text, so no check of the answer can pass on it.
  */
 export async function callOverMcp(
   agent: Agent,
@@ -175,9 +187,8 @@ export async function callOverMcp(
   input: Record<string, unknown> = {}
 ) {
   const { text, isError } = await agent.call(name, input);
-  return isError
-    ? { isError, text }
-    : (JSON.parse(text) as Record<string, unknown>);
+  if (isError) throw new Error(`${name} failed over ayme MCP: ${text}`);
+  return JSON.parse(text) as Record<string, unknown>;
 }
 
 /**
@@ -233,9 +244,15 @@ export function testIn(
           if (placement !== "external" && !connected) return use(undefined);
           // A fixed port when the run names one: the goal tests' recordings
           // are keyed to the Inspector window's origin (e2e.goals.config.ts).
-          const port =
-            process.env.AYME_E2E_MCP_PORT ?? String(await freePort());
-          const agent = await startAgent("--port", port);
+          const fixed = process.env.AYME_E2E_MCP_PORT;
+          const port = fixed ?? String(await freePort());
+          const agent = await startAgent("--port", port).catch((error) => {
+            if (!fixed) throw error;
+            throw new Error(
+              `ayme mcp could not start on port ${port}, from AYME_E2E_MCP_PORT; set it to a free port.`,
+              { cause: error }
+            );
+          });
           await use(agent);
           await agent.close();
         },

@@ -32,7 +32,6 @@ export const goalCalls: Readonly<
   Record<string, (params: Params, test: Test) => Call[]>
 > = {
   // The panel
-  "open the ayme panel": () => one("Inspector_open"),
   "collapse the panel": () => one("Inspector_collapse"),
   "open the panel from the ayme logo": () => one("CollapsedLogo_open"),
   "drag the panel by its header {left} px left and {down} px down": (p) =>
@@ -44,10 +43,10 @@ export const goalCalls: Readonly<
   "drag the panel's {edge} edge {distance} px to the {direction}": resize,
   "set the layout to {layout}": (p) =>
     one("LayoutMenu_choose", { choice: p.layout }),
-  "open the Layout menu": () => one("LayoutMenu_open"),
-  "choose {layout} in the Layout menu": (p) =>
+  "open the Layout menu with the mouse": () => one("LayoutMenu_open"),
+  "choose {layout} in the Layout menu with the mouse": (p) =>
     one("LayoutMenu_pick", { choice: p.layout }),
-  "switch the theme": () => one("ThemeSwitch_press"),
+  "press the theme switch once with the mouse": () => one("ThemeSwitch_press"),
   "open the Connections popover": () => one("Connections_open"),
   // The navigator
   "show the {lens} lens": (p) => one("Navigator_showLens", { name: p.lens }),
@@ -62,19 +61,30 @@ export const goalCalls: Readonly<
     title.startsWith("Runs switches")
       ? one("Navigator_selectItem", { text: p.tool })
       : one("ToolsLens_select", { name: p.tool }),
-  "select the {member} node in the Structure lens": (p) =>
-    one("StructureLens_selectNode", { member: p.member }),
-  "hover the {member} node in the Structure lens": (p) =>
-    one("StructureLens_hoverNode", { member: p.member }),
+  // The tag shows the member without its class, `.newItemInput`; the twin
+  // names it in full.
+  "select the node tagged {tag} in the Structure lens": (p) =>
+    one("StructureLens_selectNode", { member: `ListPage${String(p.tag)}` }),
+  "hover the node tagged {tag} in the Structure lens": (p) =>
+    one("StructureLens_hoverNode", { member: `ListPage${String(p.tag)}` }),
   "select the {role} {name} node in the Structure lens": (p) =>
     one("StructureLens_selectNodeNamed", { role: p.role, name: p.name }),
   "select {object} under On this page in the Model lens": (p) =>
     one("ModelLens_select", { path: p.object }),
-  "hover {object} under On this page in the Model lens": (p) =>
-    one("ModelLens_hover", { path: p.object }),
+  // The twin names the row by its path on the TodoPage.
+  'select the "{item}" row of the {collection} collection under On this page in the Model lens':
+    (p) =>
+      one("ModelLens_select", {
+        path: `TodoPage.${String(p.collection)}${String(p.item)}`,
+      }),
+  'hover the "{item}" row of the {collection} collection under On this page in the Model lens':
+    (p) =>
+      one("ModelLens_hover", {
+        path: `TodoPage.${String(p.collection)}${String(p.item)}`,
+      }),
   "collapse the {pane} pane in the Model lens": (p) =>
     one("ModelLens_togglePane", { name: p.pane }),
-  "click its {member} member": (p) =>
+  "select its {member} member": (p) =>
     one("ModelDetailView_selectMember", { name: p.member }),
   "hover its {member} member": (p) =>
     one("ModelDetailView_hoverMember", { name: p.member }),
@@ -88,8 +98,6 @@ export const goalCalls: Readonly<
         ? "NodeView_modelSees_open"
         : "ToolPage_modelSees_open"
     ),
-  "show the arguments for {tool} if they are hidden": () =>
-    one("RunCard_openArguments"),
   "run it": () => one("RunCard_pressRun"),
   "run it with the text {text}": (p) =>
     one("RunCard_run", { args: { text: p.text } }),
@@ -102,14 +110,15 @@ export const goalCalls: Readonly<
   "run {tool} with the text {text}": (p) =>
     one("NodeView_runTool", { name: p.tool, args: { text: p.text } }),
   "set the key to {key}": (p) => one("RunCard_fill", { args: { key: p.key } }),
-  "pick the {item} item": (p) => one("RunCard_pickItem", { label: p.item }),
+  "pick the {item} item with the mouse": (p) =>
+    one("RunCard_pickItem", { label: p.item }),
   "switch the arguments editor to JSON": () =>
     one("RunCard_switchEditor", { to: "JSON" }),
   "switch the arguments editor back to Form": () =>
     one("RunCard_switchEditor", { to: "Form" }),
-  "set the state to {state}": (p) =>
+  "set the state to {state} with the mouse": (p) =>
     one("RunCard_choose", { path: "state", option: p.state }),
-  "open the {field} element chooser": (p) =>
+  "open the page structure tree of the {field} field": (p) =>
     one("RunCard_openChooser", { field: p.field }),
   "start picking the {field} element on the page": (p) =>
     one("RunCard_pickOnPage", { field: p.field }),
@@ -123,7 +132,9 @@ export const goalCalls: Readonly<
   "add a group": () => one("LocatorGroups_addGroup"),
   // Runs
   "show all runs in Runs": () => one("RunsView_showAll"),
-  "show only the selection's runs in Runs": () => one("RunsView_showSelection"),
+  "show all runs in Runs with the mouse": () => one("RunsView_showAll"),
+  "show only the selection's runs in Runs with the mouse": () =>
+    one("RunsView_showSelection"),
   "clear Runs": () => one("RunsView_clear"),
   "open the Result of the latest {tool} run in Runs": (p) =>
     one("RunsView_toggleResult", { toolName: p.tool }),

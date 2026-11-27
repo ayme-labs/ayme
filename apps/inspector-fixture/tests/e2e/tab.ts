@@ -101,10 +101,6 @@ export class On {
     return (await this.front()).count();
   }
 
-  async isVisible() {
-    return (await this.front()).isVisible();
-  }
-
   async textContent() {
     return (await this.front()).textContent();
   }

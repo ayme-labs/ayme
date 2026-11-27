@@ -1,7 +1,12 @@
 import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { INSPECTOR, placements, testIn } from "../e2e/fixtures";
+import {
+  INSPECTOR,
+  placements,
+  testIn,
+  confirmGoalRecordings,
+} from "../e2e/fixtures";
 
 // The goal-driven twin of ../detailRuns.e2e.ts: the same tests, with each
 // action on the panel an agent goal.
@@ -16,6 +21,7 @@ for (const placement of placements) {
 
   describe(placement, () => {
     test("a structure node's Browser tool runs on that node, and Runs shows the run as yours", async ({
+      browser,
       agent,
       inspector,
       listPage,
@@ -23,8 +29,8 @@ for (const placement of placements) {
       await agent.act("show the {lens} lens", {
         params: { lens: "Structure" },
       });
-      await agent.act("select the {member} node in the Structure lens", {
-        params: { member: "ListPage.newItemInput" },
+      await agent.act("select the node tagged {tag} in the Structure lens", {
+        params: { tag: ".newItemInput" },
       });
 
       await agent.act("run {tool} with the text {text}", {
@@ -35,9 +41,12 @@ for (const placement of placements) {
       const run = inspector.runs.latest("fill");
       await expect.poll(() => run.status()).toBe("Succeeded");
       expect(await run.caller()).toEqual(INSPECTOR);
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives", async ({
+      browser,
       agent,
       appView,
       inspector,
@@ -67,14 +76,15 @@ for (const placement of placements) {
           .front()
       ).toHaveCount(1);
       await agent.act("open What the model sees");
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await toolPage.modelSees.definitions.front()).waitFor();
       await expect
         .poll(() => toolPage.modelSees.definitionsText())
         .toBe(definition);
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a checked checkbox reads as checked in its node's What the model sees, as in the page state snapshot gives", async ({
+      browser,
       agent,
       appView,
       inspector,
@@ -98,6 +108,8 @@ for (const placement of placements) {
       const snapshotLines = structure.split("\n").map((line) => line.trim());
       const [nodeLine] = (await modelSees.pageStateText())!.split("\n");
       expect(snapshotLines).toContain(nodeLine);
+
+      await confirmGoalRecordings(browser);
     });
   });
 }

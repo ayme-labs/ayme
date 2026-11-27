@@ -1,7 +1,12 @@
 import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
-import { outline, placements, testIn } from "./e2e/fixtures";
+import {
+  outline,
+  placements,
+  testIn,
+  confirmGoalRecordings,
+} from "./e2e/fixtures";
 
 // E2E: the Structure lens on the fixture page, with the real runtime, in
 // both placements of the Inspector.
@@ -22,13 +27,14 @@ for (const placement of placements) {
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
 
       await newItem.click();
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await listPage.newItemInput.front()).waitFor();
       await inspector.navigator.searchBox.hover();
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("solid");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a text field's node offers fill, and a button's does not", async ({
+      browser,
       inspector,
     }) => {
       await inspector.navigator.showLens("Structure");
@@ -45,6 +51,8 @@ for (const placement of placements) {
       await expect(
         await inspector.detail.node.tool("fill").front()
       ).toHaveCount(0);
+
+      await confirmGoalRecordings(browser);
     });
   });
 }

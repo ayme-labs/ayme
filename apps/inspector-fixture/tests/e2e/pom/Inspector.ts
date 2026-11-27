@@ -193,7 +193,7 @@ export class StructureLens extends Part {
 
   @ayme.action({
     description:
-      'Selects the node tagged with a Page Object member, e.g. "ListPage.addItemButton".',
+      'Selects the node tagged with a Page Object member, named in full: the tag ".addItemButton" on a ListPage node is "ListPage.addItemButton".',
   })
   async selectNode(member: string) {
     await this.nodeOf(member).click();
@@ -201,7 +201,7 @@ export class StructureLens extends Part {
 
   @ayme.action({
     description:
-      "Hovers the node tagged with a Page Object member, which highlights it on the page.",
+      'Hovers the node tagged with a Page Object member, named in full as for selectNode ("ListPage.addItemButton"), which highlights it on the page.',
   })
   async hoverNode(member: string) {
     await this.nodeOf(member).hover();
@@ -245,7 +245,7 @@ export class ModelLens extends Part {
 
   @ayme.action({
     description:
-      'Selects an object in the tree, by its path, e.g. "ListPage.items[1]".',
+      'Selects an object in the tree, by its path: a row of a collection is the Page Object, the collection and the row\'s label, so the "[1]" row of TodoPage\'s items collection is "TodoPage.items[1]".',
   })
   async select(path: string) {
     await this.object(path).click();
@@ -253,7 +253,7 @@ export class ModelLens extends Part {
 
   @ayme.action({
     description:
-      "Hovers an object in the tree, by its path, which highlights it on the page.",
+      'Hovers an object in the tree, by its path as for select ("TodoPage.items[1]"), which highlights it on the page.',
   })
   async hover(path: string) {
     await this.object(path).hover();
@@ -367,12 +367,18 @@ export class ToolsLens extends Part {
   async listed(): Promise<Partial<Record<ToolGroupLabel, string[]>>> {
     const listed: Partial<Record<ToolGroupLabel, string[]>> = {};
     for (const label of toolGroupLabels) {
-      // The group's own list in the navigator, as the Playwright Page
-      // Object reads it.
-      const names = await panelTexts(
-        this.tab,
-        `nav[aria-label="Navigator"] ul[aria-label=${JSON.stringify(label)}] > li button`
+      // By role, as the Playwright Page Object reads them. Each button is
+      // named by the tool's whole name, which e2e's text reads space apart.
+      const buttons = this.on((root) =>
+        root.getByRole("list", label).getByRole("button")
       );
+      const names: string[] = [];
+      for (let index = 0; index < (await buttons.count()); index += 1)
+        names.push(
+          (await buttons
+            .within((all) => all.nth(index))
+            .getAttribute("aria-label")) ?? ""
+        );
       if (names.length > 0) listed[label] = names;
     }
     return listed;
@@ -397,10 +403,6 @@ export class Navigator extends Part {
   }
 
   /** The legend's counts: live, not on page, refs. */
-  get legend(): On {
-    return this.on((root) => root.getByRole("group", "Legend"));
-  }
-
   /** The legend's items as the DOM has them, such as "3 live". */
   legendItems(): Promise<string[]> {
     return panelTexts(
@@ -465,9 +467,7 @@ export class Navigator extends Part {
 
   @ayme.action({ description: "Shows a lens: Model, Structure or Tools." })
   async showLens(name: LensName) {
-    await this.on((root) =>
-      root.getByRole("group", "Lens").getByRole("button", name)
-    ).click();
+    await this.lens(name).click();
   }
 
   @ayme.action({ description: "Searches the active lens." })
@@ -726,13 +726,11 @@ export class RefField extends Part {
       await this.chooser.click();
   }
 
-  /** Searches the tree. */
   async find(query: string) {
     await this.open();
     await this.search.fill(query);
   }
 
-  /** Chooses a ref from the tree. */
   async choose(ref: string) {
     await this.find(ref);
     await this.node(ref).click();
@@ -749,7 +747,6 @@ export class RefField extends Part {
     await this.pickButton.click();
   }
 
-  /** Whether it's picking on the page. */
   async isPicking() {
     return (await this.pickButton.getAttribute("aria-pressed")) === "true";
   }
@@ -911,18 +908,9 @@ export class RunCard extends Part {
       .click();
   }
 
-  /** Fills the arguments, picks the item when given, and runs the tool. */
-  @ayme.action({
-    description:
-      "Fills the arguments, picks the item when given, and runs the tool.",
-  })
-  async run(
-    args: Readonly<Record<string, ArgumentValue>> = {},
-    // Named, not destructured: a tool passes each parameter by its name.
-    options: { item?: string } = {}
-  ) {
+  @ayme.action({ description: "Fills the arguments and runs the tool." })
+  async run(args: Readonly<Record<string, ArgumentValue>> = {}) {
     await this.fill(args);
-    if (options.item !== undefined) await this.pickItem(options.item);
     await this.runButton.click();
   }
 }
@@ -988,7 +976,6 @@ export class ToolPage extends Part {
     );
   }
 
-  /** The tool's name. */
   get title(): On {
     return this.on((root) => root.getByRole("heading", { level: 2 }));
   }
@@ -1055,6 +1042,18 @@ export class ModelDetailView extends Part {
 
 /** The detail pane: the view of what's selected, with its run cards. */
 export class DetailPane extends Part {
+  /**
+   * The opacity of the view's only run card, as `runCard()` without a name
+   * finds it. e2e has no CSS matcher, so it is read in the panel.
+   */
+  async cardOpacity() {
+    return (
+      await panelLook(this.tab, 'section[aria-label="Selected"] form', [
+        "opacity",
+      ])
+    )?.opacity;
+  }
+
   @ayme.child
   get model(): ModelDetailView {
     return new ModelDetailView(this.tab, this.root);
@@ -1279,10 +1278,8 @@ export class RunEntry {
     return this.root.within((run) => run.getByRole("button", "Result").first());
   }
 
-  /** Its result as Runs shows it, opened first if it isn't. */
+  /** Its result as Runs shows it, or null while its Result is closed. */
   async resultText() {
-    if ((await this.resultToggle.getAttribute("aria-expanded")) === "false")
-      await this.resultToggle.click();
     return (await this.read())?.result ?? null;
   }
 
@@ -1362,7 +1359,6 @@ export class RunsView extends Part {
     ).click();
   }
 
-  /** Shows every run. */
   @ayme.action({ description: "Shows every run." })
   async showAll() {
     await this.on((root) =>

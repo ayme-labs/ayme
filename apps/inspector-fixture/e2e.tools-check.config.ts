@@ -38,9 +38,11 @@ const cacheDir = ".e2e/cache-tools-check";
 const { default: goals } = await importBaseline(
   () => import("./e2e.goals.config")
 );
+// Arm 1's cache is pinned by `pnpm test:goals` (--cache-dir), not its config.
 assertOwnCacheDir("e2e.tools-check.config.ts", here, cacheDir, [
   baseConfig,
   goals,
+  { cache: { dir: ".e2e/goals-cache" } },
 ]);
 const replayOnly = process.env.AYME_E2E_CACHE === "read-only";
 const stale = process.env.AYME_E2E_STALE;

@@ -100,13 +100,7 @@ export class AppView {
           window
             .fixtureAyme!.runs.list()
             .filter((run) => run.parent === undefined)
-            .map(({ tool, input, status, result, error }) => ({
-              tool,
-              input,
-              status,
-              result,
-              error,
-            }))
+            .map(({ tool, input, result }) => ({ tool, input, result }))
         )
       )
     ) as LoggedRun[];
@@ -114,10 +108,14 @@ export class AppView {
 
   /** The navigator legend's counts, from `page_objects` and `snapshot`. */
   async legendCounts(): Promise<LegendCounts> {
+    // One snapshot, so its definitions and structure describe one moment.
+    const { pomDefinitions, structure } = (await this.run("snapshot", {
+      names: [],
+    })) as { pomDefinitions: string; structure: string };
     return legendCounts(
       (await this.run("page_objects")) as string,
-      await this.pomDefinitions(),
-      await this.structure()
+      pomDefinitions,
+      structure
     );
   }
 

@@ -7,6 +7,8 @@ import {
   outline,
   reloadFixture,
   testIn,
+  confirmGoalRecordings,
+  INSPECTOR,
 } from "../e2e/fixtures";
 
 // The goal-driven twin of ../inspector.e2e.ts: the same tests, with each
@@ -19,7 +21,9 @@ import {
 const test = testIn("inline");
 
 test("running a Page Object tool from the panel acts on the page", async ({
+  browser,
   agent,
+  inspector,
   listPage,
 }) => {
   await agent.act("open the {tool} tool in the Tools lens", {
@@ -32,9 +36,17 @@ test("running a Page Object tool from the panel acts on the page", async ({
       .within((items) => items.filter({ hasText: "Milk" }))
       .front()
   ).toHaveCount(1);
+
+  // The panel's own run, so a run made another way doesn't pass.
+  await expect
+    .poll(() => inspector.runs.latest("ListPage.addItem").caller())
+    .toEqual(INSPECTOR);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("the layout and its sizes survive a reload", async ({
+  browser,
   agent,
   page,
   inspector,
@@ -46,29 +58,41 @@ test("the layout and its sizes survive a reload", async ({
       params: { left: 100, down: 50 },
     }
   );
+  const beforeFloating = await shell.box();
   await agent.act(
     "drag the panel's {edge} edge {distance} px to the {direction}",
     {
       params: { edge: "left", distance: 60, direction: "left" },
     }
   );
+  await expect
+    .poll(async () => (await shell.box()).width)
+    .toBeCloseTo(beforeFloating.width + 60, 0);
   const floating = await shell.box();
   await agent.act("set the layout to {layout}", {
     params: { layout: "Dock left" },
   });
+  const beforeDockedLeft = await shell.box();
   await agent.act(
     "drag the panel's {edge} edge {distance} px to the {direction}",
     {
       params: { edge: "right", distance: 80, direction: "right" },
     }
   );
+  await expect
+    .poll(async () => (await shell.box()).width)
+    .toBeCloseTo(beforeDockedLeft.width + 80, 0);
   const dockedLeft = await shell.box();
   await agent.act("set the layout to {layout}", {
     params: { layout: "Dock to bottom" },
   });
+  const beforeDockedBottom = await shell.box();
   await agent.act("drag the panel's {edge} edge {distance} px {direction}", {
     params: { edge: "top", distance: 60, direction: "up" },
   });
+  await expect
+    .poll(async () => (await shell.box()).height)
+    .toBeCloseTo(beforeDockedBottom.height + 60, 0);
   const dockedBottom = await shell.box();
 
   await reloadFixture(page, "/");
@@ -82,12 +106,13 @@ test("the layout and its sizes survive a reload", async ({
   await agent.act("set the layout to {layout}", {
     params: { layout: "Floating" },
   });
-  // Counted by e2e's replay cache, so the goal twin's goals are saved.
-  await (await inspector.panel.front()).waitFor();
   await expect.poll(() => shell.box()).toEqual(floating);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("a collapsed panel stays collapsed after a reload", async ({
+  browser,
   agent,
   page,
   inspector,
@@ -98,9 +123,12 @@ test("a collapsed panel stays collapsed after a reload", async ({
 
   await expect(await inspector.logo.root.front()).toBeVisible();
   await expect(await inspector.panel.front()).toHaveCount(0);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("a docked panel sits beside the page, and floating it gives the space back", async ({
+  browser,
   agent,
   page,
   inspector,
@@ -118,9 +146,9 @@ test("a docked panel sits beside the page, and floating it gives the space back"
   await agent.act("set the layout to {layout}", {
     params: { layout: "Floating" },
   });
-  // Counted by e2e's replay cache, so the goal twin's goals are saved.
-  await (await inspector.panel.front()).waitFor();
   await expect.poll(pageLeft).toBe(before);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("the page highlights what's hovered in the panel and what's selected, at once", async ({
@@ -143,11 +171,11 @@ test("the page highlights what's hovered in the panel and what's selected, at on
   await agent.act("hover the search result {result}", {
     params: { result: 'textbox "New item"' },
   });
-  // Counted by e2e's replay cache, so the goal twin's goals are saved.
-  await (await listPage.addItemButton.front()).waitFor();
 
   await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
   await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
+
+  await confirmGoalRecordings(browser);
 });
 
 test("the app's DOM gains no attribute while an element is highlighted", async ({
@@ -187,16 +215,17 @@ test("the app's DOM gains no attribute while an element is highlighted", async (
   await agent.act("hover the search result {result}", {
     params: { result: 'textbox "New item"' },
   });
-  // Counted by e2e's replay cache, so the goal twin's goals are saved.
-  await (await listPage.addItemButton.front()).waitFor();
 
   // Both highlights are showing.
   await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
   await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
   expect(await attributes()).toEqual(before);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("a host member named like one of the panel's controls stays one match, and its tool runs", async ({
+  browser,
   agent,
   appView,
   inspector,
@@ -213,6 +242,8 @@ test("a host member named like one of the panel's controls stays one match, and 
   await expect(await listPage.clearButton.front()).toHaveCount(1);
   await appView.run("ListPage.clear");
   await expect(await listPage.items.front()).toHaveCount(0);
+
+  await confirmGoalRecordings(browser);
 });
 
 test("the Structure view follows typing and text changes on the page", async ({
@@ -224,8 +255,6 @@ test("the Structure view follows typing and text changes on the page", async ({
 }) => {
   const structure = () => inspector.structure.treeText();
   await agent.act("show the {lens} lens", { params: { lens: "Structure" } });
-  // Counted by e2e's replay cache, so the goal twin's goals are saved.
-  await (await inspector.structure.tree.front()).waitFor();
 
   await listPage.newItemInput.fill("Oat milk");
   await expect.poll(structure).toContain("Oat milk");
@@ -239,6 +268,8 @@ test("the Structure view follows typing and text changes on the page", async ({
     return null;
   });
   await expect.poll(structure).toContain('heading"Groceries for Friday"');
+
+  await confirmGoalRecordings(browser);
 });
 
 describe("connected to an agent", () => {
@@ -251,8 +282,6 @@ describe("connected to an agent", () => {
       await agent.act("show the {lens} lens", {
         params: { lens: "Structure" },
       });
-      // Counted by e2e's replay cache, so the goal twin's goals are saved.
-      await (await inspector.structure.tree.front()).waitFor();
       await expect
         .poll(() => inspector.structure.treeText())
         .toContain("Groceries");
@@ -271,11 +300,14 @@ describe("connected to an agent", () => {
       const result = await callOverMcp(mcpServer!, "ListPage.countItems");
 
       expect(result).not.toHaveProperty("changes");
+
+      await confirmGoalRecordings(browser);
     }
   );
 });
 
 test("the header's menus and switches work by mouse inside the closed shadow root", async ({
+  browser,
   agent,
   inspector,
 }) => {
@@ -288,8 +320,8 @@ test("the header's menus and switches work by mouse inside the closed shadow roo
     "Dock to bottom",
     "Floating",
   ] as const) {
-    await agent.act("open the Layout menu");
-    await agent.act("choose {layout} in the Layout menu", {
+    await agent.act("open the Layout menu with the mouse");
+    await agent.act("choose {layout} in the Layout menu with the mouse", {
       params: { layout },
     });
     await expect.poll(() => header.layoutMenu.current()).toBe(layout);
@@ -297,7 +329,7 @@ test("the header's menus and switches work by mouse inside the closed shadow roo
   }
 
   for (const theme of ["Light", "Dark", "System"] as const) {
-    await agent.act("switch the theme");
+    await agent.act("press the theme switch once with the mouse");
     await expect.poll(() => header.themeSwitch.current()).toBe(theme);
   }
 
@@ -305,6 +337,8 @@ test("the header's menus and switches work by mouse inside the closed shadow roo
   await expect(await inspector.logo.root.front()).toBeVisible();
   await agent.act("open the panel from the ayme logo");
   await expect(await inspector.panel.front()).toBeVisible();
+
+  await confirmGoalRecordings(browser);
 });
 
 plainTest(
@@ -322,6 +356,8 @@ plainTest(
     await expect(await connections.webMCP.state.front()).toHaveText(
       "Published"
     );
+
+    await confirmGoalRecordings(browser);
   }
 );
 
@@ -343,6 +379,8 @@ plainTest(
     await expect(await inspector.container.front()).not.toContainText(
       "can't call"
     );
+
+    await confirmGoalRecordings(browser);
   }
 );
 
@@ -351,7 +389,7 @@ describe("on a React host with aggressive global CSS", () => {
 
   onReact(
     "the panel works beside the host's own React",
-    async ({ agent, listPage }) => {
+    async ({ browser, agent, listPage }) => {
       await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListPage.addItem" },
       });
@@ -364,6 +402,8 @@ describe("on a React host with aggressive global CSS", () => {
           .within((items) => items.filter({ hasText: "Eggs" }))
           .front()
       ).toHaveCount(1);
+
+      await confirmGoalRecordings(browser);
     }
   );
 });
