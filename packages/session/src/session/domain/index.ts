@@ -13,6 +13,8 @@ export {
   openedAnswer,
   pageObjectsAnswer,
   paramsNotJson,
+  paramsNotAFile,
+  paramsTooLarge,
   paramsUnreadable,
   runFailed,
   toolsAnswer,

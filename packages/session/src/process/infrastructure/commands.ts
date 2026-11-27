@@ -1,14 +1,23 @@
 // The commands' side of a Session's process: each command finds the
 // process of its folder, sends one request and returns its answer.
 import { spawn, type ChildProcess } from "node:child_process";
-import { closeSync, openSync, readFileSync, rmSync } from "node:fs";
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  openSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import type { SessionBrowserRequest } from "../../session/application";
 import {
   failed,
+  paramsNotAFile,
   paramsNotJson,
+  paramsTooLarge,
   paramsUnreadable,
   type SessionAnswer,
   type SessionRequest,
@@ -72,8 +81,35 @@ export async function askSession(
 const messageOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
+/** The most of a `--params @<file>` ayme reads: a tool's input is a small
+ * JSON object, and a larger file would only fill the command's memory. */
+export const PARAMS_FILE_LIMIT_BYTES = 1024 * 1024;
+
+/** The text of the regular file at `path`, or the answer that refuses it.
+ * Opened without blocking, so a named pipe is refused rather than waited on. */
+function paramsFile(file: string, path: string): string | SessionAnswer {
+  let fd: number;
+  try {
+    fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK);
+  } catch (error) {
+    return paramsUnreadable(file, messageOf(error));
+  }
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile()) return paramsNotAFile(file);
+    if (stat.size > PARAMS_FILE_LIMIT_BYTES)
+      return paramsTooLarge(file, PARAMS_FILE_LIMIT_BYTES);
+    return readFileSync(fd, "utf8");
+  } catch (error) {
+    return paramsUnreadable(file, messageOf(error));
+  } finally {
+    closeSync(fd);
+  }
+}
+
 /** The tool's input `params` gives: JSON, the JSON of the file `@<file>`
- * names in the folder of `place`, or none when it is not given. */
+ * names, a relative path resolved from the project folder of `place`, or
+ * none when it is not given. */
 function inputOf(
   place: SessionPlace,
   params: string | undefined
@@ -82,11 +118,9 @@ function inputOf(
   let json = params;
   if (params.startsWith("@")) {
     const file = params.slice(1);
-    try {
-      json = readFileSync(resolve(place.projectDir, file), "utf8");
-    } catch (error) {
-      return paramsUnreadable(file, messageOf(error));
-    }
+    const read = paramsFile(file, resolve(place.projectDir, file));
+    if (typeof read !== "string") return read;
+    json = read;
   }
   try {
     return { input: JSON.parse(json) as unknown };

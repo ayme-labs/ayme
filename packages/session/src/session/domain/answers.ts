@@ -196,6 +196,20 @@ export const paramsUnreadable = (file: string, why: string): SessionAnswer =>
     `--params @${file} names a file ayme cannot read: ${why.replace(/\.$/, "")}.`
   );
 
+/** The answer to `ayme call` when its `--params @<file>` names something
+ * other than a regular file, such as a named pipe or a folder. */
+export const paramsNotAFile = (file: string): SessionAnswer =>
+  failed(
+    `--params @${file} names something that is not a regular file. Give a file of JSON.`
+  );
+
+/** The answer to `ayme call` when the file its `--params @<file>` names is
+ * larger than `limit` bytes, the most ayme reads. */
+export const paramsTooLarge = (file: string, limit: number): SessionAnswer =>
+  failed(
+    `--params @${file} names a file larger than ${limit / (1024 * 1024)} MB, the most ayme reads for a tool's input.`
+  );
+
 /** Why a command that needs a Tab is answered with none (rule 9). */
 export const NO_TAB_OPEN =
   "No tab is open in the Session's browser. Open one with your browser automation, then run ayme again.";
