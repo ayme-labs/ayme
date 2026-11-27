@@ -212,7 +212,7 @@ export const openSession = (
           hosted.listing.pipe(
             Effect.map(answer),
             Effect.catch((error) => Effect.succeed(failed(error.message))),
-            Effect.map((answer) => withBuildLine(answer, hosted.failing()))
+            Effect.map((answer) => withBuildLine(answer, hosted.buildLine()))
           )
         ),
         Effect.catch((error) => Effect.succeed(failed(error.message)))
@@ -474,7 +474,7 @@ function untilClosed(
     },
     dialog: hosted.dialog,
     takesId: hosted.takesId,
-    failing: hosted.failing,
+    buildLine: hosted.buildLine,
   };
 }
 
@@ -538,7 +538,7 @@ function inTurns(
     },
     dialog: hosted.dialog,
     takesId: hosted.takesId,
-    failing: hosted.failing,
+    buildLine: hosted.buildLine,
   };
 }
 
@@ -616,7 +616,7 @@ function atDialogs(
     },
     dialog: hosted.dialog,
     takesId: hosted.takesId,
-    failing: hosted.failing,
+    buildLine: hosted.buildLine,
   };
 }
 

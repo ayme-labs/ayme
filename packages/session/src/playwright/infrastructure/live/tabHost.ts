@@ -204,10 +204,7 @@ const hostedTab = (
         entry.replacePageObjects(ayme, classes, rebuilt);
         classes = rebuilt;
       },
-      catch: (cause) =>
-        new TabReadError(
-          `ayme could not swap the rebuilt Page Objects in on the tab: ${reason(cause)}`
-        ),
+      catch: (cause) => new TabReadError(reason(cause)),
     }),
 });
 

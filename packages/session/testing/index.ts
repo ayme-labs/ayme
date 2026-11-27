@@ -72,6 +72,8 @@ export interface ScriptedBrowser extends ScriptedTab {
   /** The build under way fails, with the build's errors as `ayme open`
    * prints them, and `first` as the first of them on one line. */
   failBuild(errors: string, first?: string): void;
+  /** The build under way breaks with an error nobody expected. */
+  breakBuild(defect: Error): void;
   /** How many builds the Session started, the first included. A build
    * after the first waits for the test: `finishBuild` or `failBuild`. */
   readonly builds: number;
@@ -494,6 +496,8 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       breakOpen: (defect) => Deferred.doneUnsafe(opened, Exit.die(defect)),
       finishBuild: (built = SCRIPTED_PAGE_OBJECTS) =>
         void Deferred.doneUnsafe(underWay(), Exit.succeed(built)),
+      breakBuild: (defect) =>
+        void Deferred.doneUnsafe(underWay(), Exit.die(defect)),
       failBuild: (errors, first) =>
         void Deferred.doneUnsafe(
           underWay(),

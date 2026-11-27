@@ -3,18 +3,23 @@
 // (rule 7).
 import { Cause, Effect, Exit, Option, Queue, Scope, Stream } from "effect";
 
-import { brokenStart, SessionStartError } from "../domain";
+import {
+  brokenRebuild,
+  rebuildFailedLine,
+  swapRefusedLine,
+  unwatchedLine,
+  type SessionStartError,
+} from "../domain";
 import type { BuiltPageObjects, PageObjectsBuild } from "./pageObjectsBuild";
 import type { HostedTab } from "./sessionBrowser";
 
 /** A hosted Tab as the Session's commands reach it, whose Swaps the Session
  * makes itself. */
 export type SwappingTab = Omit<HostedTab, "swap" | "observe"> & {
-  /** Why the last finished build failed, or why the Tab could not register
-   * the last good build it tried, or why the source cannot be watched,
-   * while that is so: what its listings say after their Tab line (rule
-   * 7). */
-  readonly failing: () => SessionStartError | undefined;
+  /** The build line its listings show after their Tab line, while the
+   * last finished build failed, or else the Tab could not register the last
+   * good build it tried, or else the source cannot be watched (rule 7). */
+  readonly buildLine: () => string | undefined;
 };
 
 /** Takes the Tab's turn for `work`: one Run, listing or Swap at a time. */
@@ -42,7 +47,7 @@ export interface Rebuilds {
  * Swaps. */
 type FollowingTab = {
   pending: BuiltPageObjects | undefined;
-  refused: SessionStartError | undefined;
+  refused: string | undefined;
   readonly wake: Queue.Queue<void>;
 };
 
@@ -63,14 +68,7 @@ export const rebuilding = (
     let newest = first;
     let failing: SessionStartError | undefined;
     const tabs = new Set<FollowingTab>();
-    const unwatched = () => {
-      const why = builds.unwatched();
-      return why === undefined
-        ? undefined
-        : new SessionStartError(
-            `ayme cannot watch the Page Objects' source, so an edit there may not be rebuilt: ${why}`
-          );
-    };
+
     // One waiting edit stands for every edit since the last build began.
     const edited = yield* Queue.sliding<void>(1);
     yield* builds.edits.pipe(
@@ -86,7 +84,7 @@ export const rebuilding = (
       if (Exit.isFailure(built)) {
         for (const tab of tabs) tab.pending = undefined;
         failing = Option.getOrElse(Cause.findErrorOption(built.cause), () =>
-          brokenStart(Cause.squash(built.cause))
+          brokenRebuild(Cause.squash(built.cause))
         );
         return;
       }
@@ -120,8 +118,7 @@ export const rebuilding = (
             return hosted.swap(next).pipe(
               Effect.match({
                 onSuccess: () => (tab.refused = undefined),
-                onFailure: (error) =>
-                  (tab.refused = new SessionStartError(error.message)),
+                onFailure: (error) => (tab.refused = error.message),
               })
             );
           });
@@ -153,7 +150,15 @@ export const rebuilding = (
             },
             dialog: hosted.dialog,
             takesId: hosted.takesId,
-            failing: () => failing ?? tab.refused ?? unwatched(),
+            buildLine: () => {
+              const unwatched = builds.unwatched();
+              if (failing) return rebuildFailedLine(failing);
+              if (tab.refused !== undefined)
+                return swapRefusedLine(tab.refused);
+              return unwatched === undefined
+                ? undefined
+                : unwatchedLine(unwatched);
+            },
           } satisfies SwappingTab;
         }),
     };

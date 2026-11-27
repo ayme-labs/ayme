@@ -71,13 +71,18 @@ export const buildFailed = (
     first?.text === undefined ? undefined : `${placeOf(first)}${first.text}`
   );
 
-/** Where `message` is, as esbuild names a place, followed by ": ". */
-const placeOf = ({ location }: PartialMessage) =>
-  location?.file
-    ? `${[location.file, location.line, location.column]
-        .filter((part) => part !== undefined)
-        .join(":")}: `
-    : "";
+/** Where `message` is, as an editor names a place, followed by ": ": its
+ * file, line and column, each counted from 1, and as much of them as
+ * esbuild knows. esbuild counts a column from 0 in the UTF-8 bytes of the
+ * line, so it is known only with the line's text. */
+const placeOf = ({ location }: PartialMessage) => {
+  if (!location?.file) return "";
+  const { file, line, column, lineText } = location;
+  const known = line ? [file, line] : [file];
+  if (line && column !== undefined && lineText !== undefined)
+    known.push(Buffer.from(lineText).subarray(0, column).toString().length + 1);
+  return `${known.join(":")}: `;
+};
 
 /** The Page Object classes the built `entry` lists as its default
  * export. Two different classes of one name are refused here, since the

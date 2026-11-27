@@ -57,9 +57,9 @@ const BUILD_ERRORS =
   'The Page Objects of /app/ayme/page-objects.ts did not build:\n✘ [ERROR] Expected ";" but found "basket"\n\n    ayme/pom/Basket.ts:3:9:';
 const FIRST_ERROR = 'ayme/pom/Basket.ts:3:9: Expected ";" but found "basket"';
 
-const BUILD_LINE = `The Page Objects do not build since the last edit, so the Session keeps the ones it has: ${FIRST_ERROR}`;
+const BUILD_LINE = `Page Object rebuild failed. Keeping the current Page Objects. ${FIRST_ERROR}`;
 
-it("the build line names the first error whole on one line, and a failure without one by the first line of its message", async () => {
+it("the build line names the first error whole on one line, a failure without one by the first line of its message, and one inside ayme as such", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.show(shop);
   await session.started;
@@ -74,7 +74,14 @@ it("the build line names the first error whole on one line, and a failure withou
   await until(() => browser.builds === 3);
   browser.failBuild("The Page Objects did not load: x is not defined\nat …");
   expect((await session.ask({ tools: {} })).text.split("\n")[1]).toBe(
-    "The Page Objects do not build since the last edit, so the Session keeps the ones it has: The Page Objects did not load: x is not defined"
+    "Page Object rebuild failed. Keeping the current Page Objects. The Page Objects did not load: x is not defined"
+  );
+
+  browser.edit();
+  await until(() => browser.builds === 4);
+  browser.breakBuild(new Error("EACCES: permission denied, mkdtemp"));
+  expect((await session.ask({ tools: {} })).text.split("\n")[1]).toBe(
+    "Page Object rebuild failed. Keeping the current Page Objects. ayme broke while it rebuilt them: EACCES: permission denied, mkdtemp"
   );
 });
 
@@ -413,11 +420,11 @@ it("a build a Tab cannot register counts there as a failed build: the Tab keeps 
 
   expect(await session.ask({ tools: { tab: shop.tab.url } })).toEqual({
     ok: true,
-    text: `Tab: Shop (http://127.0.0.1:5173/shop.html)\nThe Page Objects do not build since the last edit, so the Session keeps the ones it has: ${NO_BASKET}\nThis screen has no Page Object Tools.`,
+    text: `Tab: Shop (http://127.0.0.1:5173/shop.html)\nPage Object rebuild failed on this Tab. Keeping its current Page Objects. ${NO_BASKET}\nThis screen has no Page Object Tools.`,
     data: {
       tab: shop.tab,
       tools: [],
-      buildFailing: `The Page Objects do not build since the last edit, so the Session keeps the ones it has: ${NO_BASKET}`,
+      buildFailing: `Page Object rebuild failed on this Tab. Keeping its current Page Objects. ${NO_BASKET}`,
     },
   });
   expect(
@@ -508,8 +515,8 @@ it("a listing says so after its Tab line while the source cannot be watched", as
   browser.show(shop);
   browser.loseWatch("/app/ayme/pom: EMFILE: too many open files, watch");
 
-  expect((await session.ask({ tools: {} })).text.split("\n")[1]).toContain(
-    "/app/ayme/pom: EMFILE: too many open files, watch"
+  expect((await session.ask({ tools: {} })).text.split("\n")[1]).toBe(
+    "The Page Objects' source cannot be watched, so an edit may not be rebuilt. /app/ayme/pom: EMFILE: too many open files, watch"
   );
   browser.loseWatch(undefined);
   expect((await session.ask({ tools: {} })).text).not.toContain("EMFILE");
