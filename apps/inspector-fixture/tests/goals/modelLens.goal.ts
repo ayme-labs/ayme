@@ -38,7 +38,7 @@ for (const placement of placements) {
         .poll(
           async () => {
             await agent.act(
-              "hover {item} in the {collection} collection under On this page in the Model lens",
+              'hover the "{item}" row of the {collection} collection under On this page in the Model lens',
               {
                 params: { item: "[1]", collection: "items" },
               }
@@ -52,7 +52,7 @@ for (const placement of placements) {
       await expect.poll(secondItem).toBe("none");
 
       await agent.act(
-        "select {item} in the {collection} collection under On this page in the Model lens",
+        'select the "{item}" row of the {collection} collection under On this page in the Model lens',
         {
           params: { item: "[1]", collection: "items" },
         }
@@ -76,7 +76,7 @@ for (const placement of placements) {
         browser
       );
       await agent.act(
-        "select {item} in the {collection} collection under On this page in the Model lens",
+        'select the "{item}" row of the {collection} collection under On this page in the Model lens',
         {
           params: { item: "[1]", collection: "items" },
         }
