@@ -133,6 +133,7 @@ describe("a completed run", () => {
         failed: 0,
         byTool: { Skill: { total: 1, failed: 0 } },
       },
+      aymeCommands: null,
       finalMessage: "ready",
     });
     expect(result.startedAt).toBe("2026-10-04T10:00:06.500Z");
@@ -332,5 +333,50 @@ describe("a run whose result lists a helper model first", () => {
 
   it("reports the session's model from the init event", () => {
     expect(result.versions.model.used).toBe("claude-sonnet-fixture");
+  });
+});
+
+describe("a run of an arm with ayme", () => {
+  const record = [
+    // The setup turn's.
+    '{"t":"2026-10-04T10:00:03.000Z","pid":1,"event":"start","args":["list"]}',
+    '{"t":"2026-10-04T10:00:03.200Z","pid":1,"event":"end","code":0,"stdout":"","stderr":""}',
+    '{"t":"2026-10-04T10:00:08.000Z","pid":2,"event":"start","args":["page-objects"]}',
+    '{"t":"2026-10-04T10:00:08.300Z","pid":2,"event":"end","code":0,"stdout":"","stderr":""}',
+    '{"t":"2026-10-04T10:00:09.000Z","pid":3,"event":"start","args":["call","SurveyEditorPage.saveAndClose"]}',
+    '{"t":"2026-10-04T10:00:10.000Z","pid":3,"event":"end","code":1,"stdout":"","stderr":"x"}',
+  ];
+  const result = normalizeRun(
+    artifacts({ arm: "playwright-mcp-with-ayme", aymeRecord: record })
+  );
+
+  it("counts the task turn's ayme commands apart from its tool calls, by command and tool, and the setup turn's apart", () => {
+    expect(result.aymeCommands).toEqual({
+      total: 2,
+      failed: 1,
+      byTool: {
+        "ayme call SurveyEditorPage.saveAndClose": { total: 1, failed: 1 },
+        "ayme page-objects": { total: 1, failed: 0 },
+      },
+    });
+    expect(result.setupTurn.aymeCommands).toEqual({
+      total: 1,
+      failed: 0,
+      byTool: { "ayme list": { total: 1, failed: 0 } },
+    });
+    expect(result.toolCalls).toEqual(normalizeRun(artifacts({})).toolCalls);
+  });
+
+  it("lists them in the summary", () => {
+    expect(summarizeResult(result)).toContain(
+      "- ayme commands: 2 (1 failed)\n  - ayme call SurveyEditorPage.saveAndClose: 1 (1 failed)\n  - ayme page-objects: 1 (0 failed)\n"
+    );
+  });
+
+  it("has none for an arm without ayme", () => {
+    const alone = normalizeRun(artifacts({}));
+    expect(alone.aymeCommands).toBeNull();
+    expect(alone.setupTurn.aymeCommands).toBeNull();
+    expect(summarizeResult(alone)).not.toContain("ayme commands");
   });
 });

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/cli": "workspace:*",
     "@ayme-dev/mcp": "workspace:*"
   },
   "devDependencies": {

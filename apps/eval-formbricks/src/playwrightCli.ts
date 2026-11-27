@@ -3,10 +3,9 @@
  * `playwright-cli` command on the agent's PATH, the CLI's official skill in the
  * run's Claude Code configuration folder, and a browser session already open
  * on the mission's start page. The measured agent installs and downloads
- * nothing. The arm alone opens its own browser on Formbricks as it is; the
- * arms with ayme attach the session over CDP to the browser the harness
- * launched on the page the run's `ayme mcp` serves the lab app's Page
- * Objects to.
+ * nothing. The arm alone opens its own browser on Formbricks as it is; in
+ * the arm with ayme, `ayme open` opens the browser and the session attaches
+ * to it over CDP, as the guide connects the two.
  */
 import { execFile } from "node:child_process";
 import { chmod, cp, mkdir, writeFile } from "node:fs/promises";
@@ -15,9 +14,13 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import type { ArmContext, ArmSetup } from "./arms.ts";
-import { installAymeSkill, setUpAymePage } from "./ayme.ts";
+import {
+  installAymeCommand,
+  installAymeSkill,
+  startAymeSession,
+  type HarnessSession,
+} from "./ayme.ts";
 import { withoutClaudeVariables } from "./claude.ts";
-import { cdpEndpoint, freeLoopbackPort } from "./playwrightMcp.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -176,44 +179,46 @@ export async function setUpPlaywrightCli(
 }
 
 /**
- * The setup of the CLI arm with ayme: the page paired with the run's `ayme
- * mcp`, started as the skill reference says, on a browser listening on a
- * remote-debugging port; the CLI and its skill as for the arm alone, and the
- * `ayme` skill beside it; then the session attached to that browser.
- * `attach` leaves the tab as it is, where `open` would load it again.
+ * The setup of the CLI arm with ayme: the CLI and its skill as for the arm
+ * alone, and the `ayme` command and skill beside them; then the run's Session
+ * with `ayme open`, which opens a browser of the lab app's Playwright; the
+ * mission's start page in it; and the CLI's session attached to it. `attach`
+ * leaves the tab as it is, where `open` would load it again.
  */
 export async function setUpPlaywrightCliWithAyme(
   context: ArmContext
 ): Promise<ArmSetup> {
-  const port = await freeLoopbackPort();
-  const endpoint = cdpEndpoint(port);
-  const environment = playwrightCliEnvironment(context, undefined, {
-    cdpEndpoint: endpoint,
-  });
   const skillDir = await installCliAndSkill(context);
   const aymeSkillDir = await installAymeSkill(context.configDir);
-  const page = await setUpAymePage(context, {
-    browserArgs: [`--remote-debugging-port=${port}`],
+  await installAymeCommand(context, shimDirectory(context.runDir));
+  const session: HarnessSession = await startAymeSession(context, {
+    open: true,
   });
-  let session: { dispose: () => Promise<void> } | undefined;
+  let cli: { dispose: () => Promise<void> } | undefined;
   const dispose = async () => {
-    // The session first: it only attaches, and the browser is the page setup's to close.
-    await session?.dispose();
-    await page.dispose();
+    // The CLI first: it only attaches, and the browser is the Session's to close.
+    await cli?.dispose();
+    await session.end();
   };
   try {
-    session = await startSession(context, environment, [
+    const browserVersion = await context.openStartPage(session.address);
+    const evidence = await session.onStartScreen();
+    const environment = playwrightCliEnvironment(context, undefined, {
+      cdpEndpoint: session.address,
+    });
+    cli = await startSession(context, environment, [
       "attach",
-      `--cdp=${endpoint}`,
+      `--cdp=${session.address}`,
     ]);
+    return {
+      environment,
+      readableDirectories: [context.outputDir, skillDir, aymeSkillDir],
+      evidence,
+      browserVersion,
+      dispose,
+    };
   } catch (error) {
     await dispose();
     throw error;
   }
-  return {
-    environment,
-    readableDirectories: [context.outputDir, skillDir, aymeSkillDir],
-    evidence: { ...page.evidence, remoteDebuggingPort: port },
-    dispose,
-  };
 }
