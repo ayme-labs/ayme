@@ -15,14 +15,6 @@ import {
  * happened. */
 export const DIALOG_OPEN_MS = 100;
 
-/** {@link DIALOG_OPEN_MS}, unless `env` sets AYME_DIALOG_OPEN_MS to a
- * number of milliseconds: an end-to-end test sets a longer one, so that an
- * action that answers its own dialog does so in time on a slow machine. */
-export function dialogOpenMs(env: NodeJS.ProcessEnv): number {
-  const ms = Number(env["AYME_DIALOG_OPEN_MS"]);
-  return Number.isFinite(ms) && ms > 0 ? ms : DIALOG_OPEN_MS;
-}
-
 /** What the project's Node Host asks of its Host about a Page Object
  * Action's own Playwright calls: `ActionCalls` of `@ayme-dev/ayme`. */
 export type ActionCalls = {

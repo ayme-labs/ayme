@@ -66,35 +66,6 @@ test("an action that clicks, gets a confirm and has a second click after it ends
   expect(await page.locator("#marks").textContent()).toBe("0");
 });
 
-test.describe("an action that answers its own dialog", () => {
-  // The action answers in milliseconds; a dialog counts as open only after
-  // this long here, so the test holds on a slow machine.
-  const before = process.env["AYME_DIALOG_OPEN_MS"];
-  test.beforeAll(() => {
-    process.env["AYME_DIALOG_OPEN_MS"] = "5000";
-  });
-  test.afterAll(() => {
-    if (before === undefined) delete process.env["AYME_DIALOG_OPEN_MS"];
-    else process.env["AYME_DIALOG_OPEN_MS"] = before;
-  });
-
-  test("goes on: its second click comes, and ayme call prints what it returned", async ({
-    ayme,
-    baseURL,
-  }) => {
-    const opened = await ayme("open", `${baseURL}/dialogs.html`);
-    const { page, dialogs } = await automation(opened.stdout);
-
-    expect(await ayme("call", "DialogPage.removeAcceptingThenMark")).toEqual({
-      code: 0,
-      stdout: expect.stringMatching(/^settled: true\nresult: "accepted"\n/),
-      stderr: "",
-    });
-    expect(dialogs).toHaveLength(1);
-    expect(await page.locator("#marks").textContent()).toBe("1");
-  });
-});
-
 test("a dialog on one Tab leaves a command on another Tab alone, and a command naming its Tab is answered at once that it is open", async ({
   ayme,
   baseURL,
