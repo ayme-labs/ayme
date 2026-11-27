@@ -8,7 +8,7 @@ import { webSocketInspectorContract } from "./webSocketInspectorContract";
 // Unit tests: the channel transport of the Inspector contract against a
 // WebSocket the test drives, the way `ayme mcp` relays it. Frames are the
 // server's: requests `{ id, method, params }`; replies `{ id, result }`,
-// `{ id, error }`, `{ event }` and `{ reset: true }`.
+// `{ id, error }`, `{ event }`, `{ reset: true }` and `{ ended }`.
 
 class FakeWebSocket {
   static readonly instances: FakeWebSocket[] = [];
@@ -279,6 +279,33 @@ describe("webSocketInspectorContract", () => {
 
       expect(second.methods()).toEqual(["subscribe", "getState"]);
       expect(events).toEqual([{ type: "state", state: state(1) }]);
+    });
+  });
+
+  describe("when the Session behind the server ends", () => {
+    it("says why, connects no more when the server goes, and fails every request from then on", async () => {
+      const ended: string[] = [];
+      const contract = webSocketInspectorContract(
+        "ws://127.0.0.1:9351/inspector/ws",
+        {
+          WebSocket: FakeWebSocket as never,
+          reconnectMs: 1000,
+          onEnded: (notice) => ended.push(notice),
+        }
+      );
+      const socket = FakeWebSocket.instances.at(-1)!;
+      socket.open();
+      const waiting = contract.getState();
+      const rejected = expect(waiting).rejects.toThrow("closed");
+
+      socket.receive({ ended: "The Session shop was closed." });
+      socket.close();
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(ended).toEqual(["The Session shop was closed."]);
+      await rejected;
+      expect(FakeWebSocket.instances).toHaveLength(1);
+      await expect(contract.getState()).rejects.toThrow("closed");
     });
   });
 });

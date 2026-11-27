@@ -1,9 +1,10 @@
 // The Inspector's external build (`./external`, ADR-0049): the page that
-// `ayme mcp` serves, which shows the Inspector's lenses for the page paired
-// with that server. It reads the contract over a WebSocket to that server,
-// where the inline Inspector calls the runtime's own. `ayme mcp` serves it
-// to a browser window, and, with this script inside the page, to an agent
-// app that shows it in its chat as an MCP App.
+// `ayme mcp` or a Session's process serves, which shows the Inspector's
+// lenses for the page paired with that server or the Tab the Session works
+// on. It reads the contract over a WebSocket to that server, where the
+// inline Inspector calls the runtime's own. `ayme mcp` serves it to a
+// browser window, and, with this script inside the page, to an agent app
+// that shows it in its chat as an MCP App; a Session to a browser window.
 import { App } from "@modelcontextprotocol/ext-apps/app-with-deps";
 
 import { connectAgentApp, mountExternalInspector, showServerLost } from "./app";
@@ -46,6 +47,11 @@ export function startExternalInspector() {
       onNewPage() {
         mounted?.dispose();
         mounted = mountExternalInspector({ fullscreen });
+      },
+      onEnded(notice) {
+        mounted?.dispose();
+        mounted = undefined;
+        showServerLost(notice);
       },
       ...(agentApp && {
         retries: AGENT_APP_RETRIES,
