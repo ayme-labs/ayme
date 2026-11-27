@@ -1,4 +1,5 @@
 import { chmod, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { runAyme } from "@ayme-dev/cli/testing";
 import {
   Inspector,
@@ -286,4 +287,31 @@ test("closing the window leaves the Session as it was; when the Session ends, th
     "The Session default was closed. Start a Session with ayme open or ayme attach, then run ayme -s=default inspect to inspect it."
   );
   await expect(second.inspector.panel).toHaveCount(0);
+});
+
+test("an open window shows the Page Objects a Swap brings in, without being opened again", async ({
+  ayme,
+  inspect,
+  project,
+  baseURL,
+  browser,
+}) => {
+  await ayme("open", `${baseURL}/shop.html`);
+  const { inspector } = await openWindow(
+    browser,
+    windowIn((await inspect("none")).stdout)!
+  );
+  await inspector.navigator.showLens("Tools");
+  const tools = async () =>
+    (await inspector.navigator.tools.listed())["Page object tools"];
+  await expect.poll(tools).toContain("ShopPage.readHeading");
+
+  const shopPage = join(project, "ayme", "pom", "ShopPage.ts");
+  await writeFile(
+    shopPage,
+    (await readFile(shopPage, "utf8")).replace("readHeading()", "readTitle()")
+  );
+
+  await expect.poll(tools).toContain("ShopPage.readTitle");
+  expect(await tools()).not.toContain("ShopPage.readHeading");
 });

@@ -51,6 +51,10 @@ _Avoid_: daemon, server, background process, front. Not a Page State Session, wh
 One tab of a Session's browser. It shows one page at a time and outlives it: a page load gives the Tab a new page. A Session works on the most recently active Tab unless a command names another.
 _Avoid_: window, target
 
+**Swap**:
+Replacing a Session's Page Objects with the ones rebuilt after an edit to their source. It happens only between Runs. A build that fails causes no Swap: the Session keeps the Page Objects it has.
+_Avoid_: reload, refresh, which mean a page load
+
 **Visit**:
 One stretch of a Page State Session between navigations: from document load, or from a same-document navigation, to the next. Interaction history is scoped by Visits.
 
