@@ -29,9 +29,9 @@ In 0.4, one package, `@ayme-dev/cli`, provides one command, `ayme`. A coding age
 From your app's code:
 
 - **`agentConnection`**, wherever ayme starts: `createAyme`, `AymeProvider`, `useAyme` or `provideAyme`.
-- **`placement`** in the `inspector` option. `inspector: true` turns on the panel in the page, and `inspector: { demo: true }` turns on Demo Mode. Where you used `{ placement: "external" }`, use the panel, or [`ayme inspect`](guides/inspector.md#on-a-session-ayme-inspect) on a Session.
-- **ayme on your server, for Peeks**: a `createAyme({ agentConnection: true }).start()` in Next.js's `instrumentation.ts` or in a Nuxt server plugin, and every module that adds a Peek on the server. In Node, `start()` now starts nothing and `ayme.peek` adds nothing. Peeks you add in components stay.
-- **`callers.aymeMcp`**, if your code compares a Run's Caller with it. No Run has that Caller now.
+- **`placement`** in the `inspector` option. `inspector: true` turns on the panel in the page, and `inspector: { demo: true }` turns on Demo Mode. Where you used `{ placement: "external" }`, use the panel, or [`ayme inspect`](guides/inspector.md#on-a-session-ayme-inspect) on a Session. Left in code that TypeScript does not check, `{ placement: "external" }` now turns on the panel in the page.
+- **ayme on your server, for Peeks**: a `createAyme({ agentConnection: true }).start()` in Next.js's `instrumentation.ts` or in a Nuxt server plugin, and every module that adds a Peek on the server. On the server, `createAyme().start()` from `@ayme-dev/ayme` now starts nothing, and `ayme.peek` adds nothing. Peeks you add in components stay, and so does `@ayme-dev/ayme/playwright` in your tests.
+- **`callers.aymeMcp`**, if your code compares a Run's Caller with it. No Run has that Caller now, and `"ayme-mcp"` is no longer a `BuiltInCaller`.
 
 From your project's files and your agent's settings:
 
@@ -76,4 +76,5 @@ npx ayme close
 
 - **In a Session, your Page Object Actions run on your project's Playwright**, not on ayme's own in-page version of it, so an action behaves as it does in your tests.
 - **ayme never answers a dialog.** When a dialog opens during a Run and stays open for 100 ms, the action stops there. An action that answers its own dialog within that time goes on. [Dialogs](guides/connect-an-agent.md#dialogs) gives the details.
+- **A Run can answer later.** When an action returns a Page Object whose model declares or inherits `present`, the Run answers once that predicate holds, up to the Settled Page deadline, whoever started it. [The Page Object an action returns](guides/page-state.md#the-page-object-an-action-returns) gives the details.
 - **An edit to your Page Objects takes effect without a restart.** The Session rebuilds them and swaps them in between Runs. See the Edits item in [Sessions](guides/connect-an-agent.md#sessions).
