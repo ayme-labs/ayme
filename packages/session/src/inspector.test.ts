@@ -332,7 +332,8 @@ it("a window that listens while no tab is open is told the first Tab that opens,
   const first = browser.openTab("http://127.0.0.1:5173/shop");
 
   await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 2 });
-  expect(first.inspectorListeners).toBe(1);
+  // The Session tells the Tab first and subscribes to its Host right after.
+  await expect.poll(() => first.inspectorListeners).toBe(1);
   expect(await session.ask(contract("getState", undefined, 2))).toMatchObject({
     ok: true,
     data: "getState",
