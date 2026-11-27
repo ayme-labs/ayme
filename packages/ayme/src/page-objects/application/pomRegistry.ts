@@ -170,6 +170,9 @@ export function createPomRegistry(
   const waitingPoms = new Set<ObservedRegisteredPom>();
   let refusedClasses = new Map<string, RuntimeStateError>();
   const subscribers = new Set<() => void>();
+  // Inside `inOneChange`, which tells its subscribers once, at its end.
+  let changing = 0;
+  let changed = false;
   let stopWatchingPage: (() => void) | undefined;
   // The ids of this page's Page Objects, which outlive a registration: an id
   // is never given to another Page Object.
@@ -226,7 +229,7 @@ export function createPomRegistry(
       dispose() {
         if (waitingPoms.delete(registration)) return;
         if (!registeredPoms.delete(registration)) return;
-        if (registeredPoms.size === 0) stopObservingPage();
+        if (registeredPoms.size === 0 && changing === 0) stopObservingPage();
         // Only leaving can clear a clash. A registration still refused is
         // not logged again.
         for (const waiting of waitingPoms)
@@ -248,20 +251,20 @@ export function createPomRegistry(
   }
 
   function admitRegisteredPom(registration: ObservedRegisteredPom) {
-    const registryWasEmpty = registeredPoms.size === 0;
     registeredPoms.add(registration);
     refreshRootlessRefusals();
     refreshRegisteredTools();
-    if (registryWasEmpty) startObservingPage();
+    if (!stopWatchingPage) startObservingPage();
     else driver.refresh();
   }
 
   function refreshRootlessRefusals() {
     const manifests = [...registeredPoms].map(({ manifest }) => manifest);
     const roots = new Map(
-      manifests.flatMap((manifest) =>
+      [...registeredPoms].flatMap(({ pomClass, manifest }) =>
         [manifest, ...manifest.components].map(
-          (node) => [node.className, compiledRootDeclared(node)] as const
+          (node) =>
+            [node.className, compiledRootDeclared(pomClass, node)] as const
         )
       )
     );
@@ -379,7 +382,7 @@ export function createPomRegistry(
     for (const { component, owner, actions } of classes.values()) {
       const instance = instancesOf(component)[0]?.instance;
       const rooted =
-        compiledRootDeclared(component) ??
+        compiledRootDeclared(owner.pomClass, component) ??
         (instance !== undefined &&
           modelOption(instance.constructor, "root") !== undefined);
       owner.tools = owner.tools.concat(
@@ -563,7 +566,29 @@ export function createPomRegistry(
   }
 
   function notifySubscribers() {
-    for (const subscriber of subscribers) subscriber();
+    if (changing > 0) changed = true;
+    else for (const subscriber of subscribers) subscriber();
+  }
+
+  /**
+   * Package-internal: runs `change`, whose registrations and disposals the
+   * subscribers hear of once, at its end, and over which the page stays
+   * observed, as a rebuild replaces a Host's Page Objects.
+   */
+  function inOneChange(change: () => void) {
+    changing += 1;
+    try {
+      change();
+    } finally {
+      changing -= 1;
+      if (changing === 0) {
+        if (registeredPoms.size === 0) stopObservingPage();
+        if (changed) {
+          changed = false;
+          notifySubscribers();
+        }
+      }
+    }
   }
 
   // The one runtime session that owns this registry.
@@ -591,6 +616,7 @@ export function createPomRegistry(
 
   return {
     claim,
+    inOneChange,
     listAvailablePomTools,
     listRootedToolInstances,
     listRegisteredPomRoots,

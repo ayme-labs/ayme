@@ -1,3 +1,6 @@
+import { dialogOpen } from "./answers";
+import { TabReadError } from "./listing";
+
 /** A dialog a Tab's page shows, as the browser tells it: its kind, such as
  * "confirm", its message, and a prompt's default value. */
 export type Dialog = {
@@ -12,3 +15,14 @@ export type Dialog = {
  * every command that needs the page is answered with.
  */
 export type TabDialog = "none" | "opening" | { readonly open: Dialog };
+
+/** Why the Session started no work on the Tab at `url`: `dialog` counts as
+ * open there. */
+export class TabDialogOpen extends TabReadError {
+  constructor(
+    readonly url: string,
+    readonly dialog: Dialog
+  ) {
+    super(dialogOpen(dialog));
+  }
+}

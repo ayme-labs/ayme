@@ -46,7 +46,7 @@ export const withoutWindow = (
 /** A Tab the windows may show: the Session's Tab, and its Host. */
 export type ShowableTab = {
   readonly tab: BrowserTab;
-  readonly hosted: HostedTab;
+  readonly hosted: Pick<HostedTab, "inspector">;
 };
 
 /** The Tab the windows of a Session show, followed for them all at once. */
@@ -190,7 +190,7 @@ export const answerInspector = (
     readonly agentApp: string | undefined;
     readonly name: string;
     readonly shown: ShownTabs["shown"];
-    readonly chosen: Effect.Effect<HostedTab, Error>;
+    readonly chosen: Effect.Effect<Pick<HostedTab, "inspector">, Error>;
     readonly idElsewhere: (
       on: BrowserTab,
       call: { readonly tool: string; readonly input: unknown }
@@ -208,21 +208,21 @@ export const answerInspector = (
         : agentAppAnswer(agentApp, name)
     );
   const { method, params, tab } = request.contract;
-  const on: Effect.Effect<HostedTab, Error> =
-    tab === undefined
-      ? chosen
-      : shown(tab).pipe(
-          Effect.flatMap((showing) => {
-            if (!showing) return Effect.fail(new TabReadError(NO_TAB_OPEN));
-            const elsewhere =
-              method === "runTool"
-                ? idElsewhere(showing.tab, toolCallOf(params))
-                : undefined;
-            return elsewhere === undefined
-              ? Effect.succeed(showing.hosted)
-              : Effect.fail(new TabReadError(elsewhere));
-          })
-        );
+  const on: Effect.Effect<Pick<HostedTab, "inspector">, Error> = tab ===
+  undefined
+    ? chosen
+    : shown(tab).pipe(
+        Effect.flatMap((showing) => {
+          if (!showing) return Effect.fail(new TabReadError(NO_TAB_OPEN));
+          const elsewhere =
+            method === "runTool"
+              ? idElsewhere(showing.tab, toolCallOf(params))
+              : undefined;
+          return elsewhere === undefined
+            ? Effect.succeed(showing.hosted)
+            : Effect.fail(new TabReadError(elsewhere));
+        })
+      );
   return on.pipe(
     Effect.flatMap((hosted) =>
       hosted.inspector.request(

@@ -17,28 +17,39 @@ const TAB_LINE = "Tab: ";
 const tabLine = ({ url, title }: TabName) =>
   title ? `${TAB_LINE}${title} (${url})` : `${TAB_LINE}${url}`;
 
-/** The line that follows a listing's Tab line while the last finished build
- * failed, naming the first error whole on one line, or else the first line
- * of the reason, whose later lines are a stack (rule 7). */
-const buildLine = ({ first, message }: SessionStartError) =>
-  `The Page Objects do not build since the last edit, so the Session keeps the ones it has: ${first === undefined ? message.split("\n")[0] : first.replace(/\s*\n\s*/g, " ")}`;
+/** The first line of what `reason` says, which a stack may follow. */
+const firstLine = (reason: string) => reason.split("\n")[0]!;
 
-/** `answer`, a listing's or the reason it read no page, with the build line
- * after its Tab line while `failing` says why the last finished build
- * failed. An answer without a Tab line, such as "no tab is open", gets
- * none, since the line describes the Page Objects a Tab shows. */
+/** The build line while the last finished build failed: its first error,
+ * whole, on one line, or else the first line of the reason (rule 7). */
+export const rebuildFailedLine = ({ first, message }: SessionStartError) =>
+  `Page Object rebuild failed. Keeping the current Page Objects. ${first === undefined ? firstLine(message) : first.replace(/\s*\n\s*/g, " ")}`;
+
+/** The build line while a Tab could not take the last good build it was
+ * handed, for `reason`. */
+export const swapRefusedLine = (reason: string) =>
+  `Page Object rebuild failed on this Tab. Keeping its current Page Objects. ${firstLine(reason)}`;
+
+/** The build line while the source cannot be watched, for `reason`. */
+export const unwatchedLine = (reason: string) =>
+  `The Page Objects' source cannot be watched, so an edit may not be rebuilt. ${firstLine(reason)}`;
+
+/** `answer`, a listing's or the reason it read no page, with `line`, the
+ * build line, after its Tab line, in its text and its data alike. An
+ * answer without a Tab line, such as "no tab is open", gets none, since the
+ * line describes the Page Objects a Tab shows. */
 export function withBuildLine(
   answer: SessionAnswer,
-  failing: SessionStartError | undefined
+  line: string | undefined
 ): SessionAnswer {
-  if (!failing || !answer.text.startsWith(TAB_LINE)) return answer;
+  if (line === undefined || !answer.text.startsWith(TAB_LINE)) return answer;
   const [tab, ...rest] = answer.text.split("\n");
-  const text = [tab, buildLine(failing), ...rest].join("\n");
+  const text = [tab, line, ...rest].join("\n");
   return answer.ok
     ? {
         ...answer,
         text,
-        data: { ...(answer.data as object), buildFailing: buildLine(failing) },
+        data: { ...(answer.data as object), buildFailing: line },
       }
     : { ok: false, text };
 }
@@ -278,7 +289,7 @@ export const idOnAnotherTab = (id: string, on: string, named: string): string =>
   `${id} is a Page Object of the tab that shows ${on}, not of the one that shows ${named}. Leave out --tab: the Page Object Id chooses the tab.`;
 
 /** The dialog `dialog` names itself in the first sentence of every answer
- * while it is open, with what an agent does about it. */
+ * while it is open. */
 function dialogSentences({ type, message, defaultValue }: Dialog): string {
   const article = /^[aeiou]/i.test(type) ? "An" : "A";
   return [
@@ -286,21 +297,24 @@ function dialogSentences({ type, message, defaultValue }: Dialog): string {
     ...(defaultValue
       ? [`Its default value is ${JSON.stringify(defaultValue)}.`]
       : []),
-    "Answer it with your browser automation, then run ayme again.",
   ].join(" ");
 }
 
-/** Why a read of a Tab's page, such as an Inspector window's, was answered
- * without the page: a dialog is open on the Tab (rule 5). */
-export const dialogOpen = (dialog: Dialog): string => dialogSentences(dialog);
+/** Why a command was answered without the page, before it started: a
+ * dialog is open on its Tab (rule 5). Nothing of it ran, so it can be run
+ * again. */
+export const dialogOpen = (dialog: Dialog): string =>
+  `${dialogSentences(dialog)} Answer it with your browser automation, then run this command again.`;
 
 /** Why a listing of the Tab at `url` was answered without the page: a
- * dialog is open on the Tab. It still starts with the Tab line (rule 5). */
+ * dialog is open on the Tab. It still starts with the Tab line, and names
+ * the Tab by its URL, since its title is the page's, which the dialog
+ * holds (rule 5). */
 export const dialogOpenInListing = (url: string, dialog: Dialog): string =>
-  `${tabLine({ url, title: "" })}\n${dialogSentences(dialog)}`;
+  `${tabLine({ url, title: "" })}\n${dialogOpen(dialog)}`;
 
-/** Why a Run ended at a dialog, or never started: one is open on its Tab
- * (rule 4). The action does nothing more, so the agent knows that answering
- * the dialog does not finish it. */
+/** Why a Run ended at a dialog once its action had started (rule 4): part
+ * of the action may have happened, so the agent checks the page rather than
+ * run it again. */
 export const dialogOpenAtRun = (dialog: Dialog): string =>
-  `${dialogSentences(dialog)} An action stops at a dialog it does not answer itself: it does nothing more on the page, however the dialog is answered.`;
+  `${dialogSentences(dialog)} Answer it with your browser automation. The action stopped there: ayme refuses its further calls on the page, however the dialog is answered. Check the page before you choose the next step.`;

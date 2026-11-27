@@ -15,13 +15,24 @@ const compiledPoms = new WeakMap<object, PomManifest>();
 // Root declarations are known before any instances exist, even for empty
 // collections. An HMR replacement updates the same compiled declaration.
 const compiledRoots = new Map<string, boolean>();
+// The declarations each class registered with, of its own root and of the
+// classes it reaches, read as it registered: its module's imports register
+// before it, so they come from the same build. A later build loaded beside
+// it, such as a rebuild a Session has not checked yet, leaves them as they
+// were.
+const declaredWith = new WeakMap<object, ReadonlyMap<string, boolean>>();
 const declarationKey = (manifest: PomComponentManifest) =>
   JSON.stringify([manifest.file, manifest.className]);
 
+/** Whether `manifest`'s class declares a root, as `PomClass`, which reaches
+ * it, was compiled with; the newest declaration when `PomClass` registered
+ * before it. */
 export function compiledRootDeclared(
+  PomClass: object,
   manifest: PomComponentManifest
 ): boolean | undefined {
-  return compiledRoots.get(declarationKey(manifest));
+  const key = declarationKey(manifest);
+  return declaredWith.get(PomClass)?.get(key) ?? compiledRoots.get(key);
 }
 
 export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
@@ -29,6 +40,16 @@ export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
   compiledRoots.set(
     declarationKey(manifest),
     modelOption(PomClass, "root") !== undefined
+  );
+  declaredWith.set(
+    PomClass,
+    new Map(
+      [manifest, ...manifest.components].flatMap((node) => {
+        const key = declarationKey(node);
+        const root = compiledRoots.get(key);
+        return root === undefined ? [] : [[key, root] as const];
+      })
+    )
   );
 }
 

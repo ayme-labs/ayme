@@ -35,10 +35,9 @@ Map a user flow into a POM against the running app, in this order:
    unless a class it lists already reaches it. Start a Session on the
    same browser as your automation, as
    [Using ayme with browser automation tools](browser-automation-tools.md)
-   describes. The Session builds the Page Objects again after each edit and
-   swaps them in between Runs, so keep it open. When the second line of
-   `ayme page-objects` says the Page Objects do not build, fix the error it
-   names first. Run `ayme page-objects`: each new Page Object shows
+   describes. Keep it open across your edits: it takes them in, as
+   [Sessions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#sessions)
+   says under Edits. Run `ayme page-objects`: each new Page Object shows
    where you expect it, with the children you declared. Then call each new
    action and confirm its effect, in its answer's `changes` or with your
    browser automation.

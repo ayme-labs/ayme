@@ -71,27 +71,46 @@ export const buildFailed = (
     first?.text === undefined ? undefined : `${placeOf(first)}${first.text}`
   );
 
-/** Where `message` is, as esbuild names a place, followed by ": ". */
-const placeOf = ({ location }: PartialMessage) =>
-  location?.file
-    ? `${[location.file, location.line, location.column]
-        .filter((part) => part !== undefined)
-        .join(":")}: `
-    : "";
+/** Where `message` is, as an editor names a place, followed by ": ": its
+ * file, line and column, each counted from 1, and as much of them as
+ * esbuild knows. esbuild counts a column from 0 in the UTF-8 bytes of the
+ * line, so it is known only with the line's text. */
+const placeOf = ({ location }: PartialMessage) => {
+  if (!location?.file) return "";
+  const { file, line, column, lineText } = location;
+  const known = line ? [file, line] : [file];
+  if (line && column !== undefined && lineText !== undefined)
+    known.push(Buffer.from(lineText).subarray(0, column).toString().length + 1);
+  return `${known.join(":")}: `;
+};
 
 /** The Page Object classes the built `entry` lists as its default
- * export. */
+ * export. Two different classes of one name are refused here, since the
+ * registry tells classes apart by name and would leave one of them out. */
 export const pageObjectClasses = (
   module: { readonly default?: unknown },
   entry: string
 ): Effect.Effect<readonly unknown[], SessionStartError> => {
   const listed = module.default;
-  return Array.isArray(listed) &&
-    listed.every((item) => typeof item === "function")
-    ? Effect.succeed(listed)
-    : Effect.fail(
+  if (
+    !Array.isArray(listed) ||
+    !listed.every((item) => typeof item === "function")
+  )
+    return Effect.fail(
+      new SessionStartError(
+        `The default export of ${entry} is not an array of Page Object classes. List the project's Page Object classes in it: export default [Basket, Checkout];`
+      )
+    );
+  const byName = new Map<string, unknown>();
+  for (const model of listed as readonly { readonly name: string }[]) {
+    const named = byName.get(model.name);
+    if (named !== undefined && named !== model)
+      return Effect.fail(
         new SessionStartError(
-          `The default export of ${entry} is not an array of Page Object classes. List the project's Page Object classes in it: export default [Basket, Checkout];`
+          `The default export of ${entry} lists two different classes named ${model.name}. ayme tells Page Object classes apart by name: rename one of them.`
         )
       );
+    byName.set(model.name, model);
+  }
+  return Effect.succeed(listed);
 };

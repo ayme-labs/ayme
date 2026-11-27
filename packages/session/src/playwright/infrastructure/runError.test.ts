@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 
 import { RunError } from "../../session/domain";
 import { runErrorOf } from "./runError";
+import { LeftUncaught } from "./runUncaught";
 
 /** An error as the project's @ayme-dev/ayme throws it, of a class of its
  * own copy. */
@@ -36,4 +37,16 @@ it("keeps how the Page Object Tree changed while the failed Run ran", () => {
 
 it("tells a thrown value that is no Error as text", () => {
   expect(runErrorOf("closed")).toEqual(new RunError("closed"));
+});
+
+it("tells an error the Run's code left uncaught as it tells any, with the Run's work still going", () => {
+  const ended = new Promise<void>(() => {});
+  const error = runErrorOf(
+    new LeftUncaught(thrown("TypeError", "x is not a function"), ended)
+  );
+
+  expect([error.message, error.going]).toEqual([
+    "TypeError: x is not a function",
+    ended,
+  ]);
 });

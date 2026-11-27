@@ -17,3 +17,10 @@ export const brokenStart = (defect: unknown): SessionStartError =>
   new SessionStartError(
     `The Session could not start: ${defect instanceof Error ? defect.message : String(defect)}`
   );
+
+/** Why a rebuild of a running Session's Page Objects failed when it broke
+ * in a way nobody expected. */
+export const brokenRebuild = (defect: unknown): SessionStartError =>
+  new SessionStartError(
+    `ayme broke while it rebuilt them: ${defect instanceof Error ? defect.message : String(defect)}`
+  );

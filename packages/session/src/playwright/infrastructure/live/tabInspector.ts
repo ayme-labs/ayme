@@ -11,9 +11,11 @@ export const tabInspector = (port: InspectorPort): TabInspector => ({
     Effect.tryPromise({
       try: () => port.request(method, params),
       catch: (cause) =>
-        new TabReadError(
-          cause instanceof Error ? cause.message : String(cause)
-        ),
+        cause instanceof TabReadError
+          ? cause
+          : new TabReadError(
+              cause instanceof Error ? cause.message : String(cause)
+            ),
     }),
   events: Stream.callback<unknown>((queue) =>
     Effect.acquireRelease(

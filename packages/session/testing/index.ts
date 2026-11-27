@@ -72,11 +72,23 @@ export interface ScriptedBrowser extends ScriptedTab {
   /** The build under way fails, with the build's errors as `ayme open`
    * prints them, and `first` as the first of them on one line. */
   failBuild(errors: string, first?: string): void;
+  /** The build under way breaks with an error nobody expected. */
+  breakBuild(defect: Error): void;
   /** How many builds the Session started, the first included. A build
    * after the first waits for the test: `finishBuild` or `failBuild`. */
   readonly builds: number;
-  /** The developer edits the source of the Page Objects. */
-  edit(): void;
+  /** Whether the Session listens for edits of the source. */
+  readonly watched: boolean;
+  /** The developer edits the source of the Page Objects; resolves once the
+   * Session took the edit. */
+  edit(): Promise<void>;
+  /** Resolves once `holds()` is true, checked again after each thing the
+   * scripted browser and build are asked to do, so a test waits for the
+   * Session's work and not for time. */
+  until(holds: () => boolean): Promise<void>;
+  /** The source can no longer be watched, for `reason`; it can again once
+   * it is undefined. */
+  loseWatch(reason: string | undefined): void;
   /** The built Page Objects the Session got ready to run on its Tabs,
    * each time it did. */
   readonly hostedWith: readonly BuiltPageObjects[];
@@ -111,8 +123,22 @@ export interface ScriptedTab {
   /** Every read of the Tab's page waits, as behind a presence predicate
    * that never resolves, until the test shows a listing again. */
   holdReads(): void;
+  /** The built Page Objects the Tab's Host started with, once it is
+   * hosted. */
+  readonly startedWith: BuiltPageObjects | undefined;
+  /** How many listings of the Tab's page the Session read. */
+  readonly listingsRead: number;
   /** The built Page Objects swapped in on the Tab's Host, in order. */
   readonly swappedIn: readonly BuiltPageObjects[];
+  /** How many times the Tab's Host read its Page Objects on the page for a
+   * Run from the Inspector window. */
+  readonly observed: number;
+  /** Every Swap the Session made on the Tab, in order, whether it worked
+   * or not. */
+  readonly swapsTried: readonly BuiltPageObjects[];
+  /** Every Swap on the Tab fails from now on, for `reason`, as a rebuilt
+   * class that cannot be made there; none does once it is undefined. */
+  refuseSwaps(reason: string | undefined): void;
   /** Every Run started on the Tab, in order. */
   readonly runs: readonly { readonly tool: string; readonly input: unknown }[];
   /** How each Run on the Tab ends from now on: as `answer` resolves, or
@@ -127,6 +153,11 @@ export interface ScriptedTab {
   /** The Tab's Host forgets `id`, as when a read finds its element gone
    * from the page. */
   release(id: string): void;
+  /** The tools of the class `className` take no Page Object Id from now
+   * on, on every Tab, as after a Swap of a build whose class declares no
+   * root. Until then a class's tools take one once a Tab's Host gave one of
+   * its Page Objects an id. */
+  rootless(className: string): void;
   /** The browser automation brings the Tab to the front. */
   activate(): void;
   /** The Tab closes, and Playwright says so. */
@@ -215,18 +246,29 @@ export type ScriptedSessionOptions = SessionBrowserRequest &
  * controls it. */
 type Tab = BrowserTab & { readonly control: ScriptedTab };
 
-/** A scripted Tab at `url`, among the browser's `open` Tabs. */
-function scriptedTab(url: string, open: Tab[]): Tab {
+/** A scripted Tab at `url`, among the browser's `open` Tabs, whose classes
+ * in `rooted` declare a root. */
+function scriptedTab(
+  url: string,
+  open: Tab[],
+  rooted: Set<string>,
+  changed: () => void
+): Tab {
   let shown: Listing | TabReadError | "held" = {
     ...EMPTY_LISTING,
     tab: { url, title: "" },
   };
   let shownUrl = url;
   const runs: { tool: string; input: unknown }[] = [];
+  let listingsRead = 0;
   const swappedIn: BuiltPageObjects[] = [];
+  const swapsTried: BuiltPageObjects[] = [];
+  let observed = 0;
+  let refusing: string | undefined;
   let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
     Promise.resolve({ settled: true });
   let given: TabIds | undefined;
+  let startedWith: BuiltPageObjects | undefined;
   const closed = Deferred.makeUnsafe<void>();
   const inspectorCalls: { method: string; params: unknown }[] = [];
   let answerInspector: (
@@ -240,17 +282,19 @@ function scriptedTab(url: string, open: Tab[]): Tab {
   const setDialog = (now: TabDialog) =>
     Effect.runSync(SubscriptionRef.set(dialog, now));
   const hosted: HostedTab = {
-    listing: Effect.suspend(() =>
-      shown === "held"
+    listing: Effect.suspend(() => {
+      listingsRead += 1;
+      return shown === "held"
         ? Effect.never
         : shown instanceof TabReadError
           ? Effect.fail(shown)
-          : Effect.succeed(shown)
-    ),
+          : Effect.succeed(shown);
+    }),
     call: (tool: string, input: unknown) =>
       Effect.tryPromise({
         try: () => {
           runs.push({ tool, input });
+          changed();
           return answerRun(tool, input);
         },
         catch: (error) =>
@@ -261,6 +305,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
         Effect.tryPromise({
           try: (released) => {
             inspectorCalls.push({ method, params });
+            changed();
             return answerInspector(method, params, released);
           },
           catch: (error) =>
@@ -274,6 +319,7 @@ function scriptedTab(url: string, open: Tab[]): Tab {
             const listener = (event: unknown) =>
               void Queue.offerUnsafe(queue, event);
             listeners.add(listener);
+            changed();
             return listener;
           }),
           (listener) => Effect.sync(() => listeners.delete(listener))
@@ -281,13 +327,29 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       ),
     },
     dialog: SubscriptionRef.changes(dialog),
-    swap: (pageObjects) => Effect.sync(() => void swappedIn.push(pageObjects)),
+    takesId: (tool) => rooted.has(tool.slice(0, tool.indexOf("."))),
+    observe: Effect.sync(() => {
+      observed++;
+      changed();
+    }),
+    swap: (pageObjects) =>
+      Effect.suspend(() => {
+        swapsTried.push(pageObjects);
+        if (refusing !== undefined) {
+          changed();
+          return Effect.fail(new TabReadError(refusing));
+        }
+        swappedIn.push(pageObjects);
+        changed();
+        return Effect.void;
+      }),
   };
   const tab: Tab = {
     url: () => shownUrl,
     closed: Deferred.await(closed),
+    dialog: SubscriptionRef.changes(dialog),
     // As a page's registry refuses a second owner.
-    host: (giving) =>
+    host: (giving, pageObjects) =>
       given
         ? Effect.fail(
             new TabReadError(
@@ -296,11 +358,15 @@ function scriptedTab(url: string, open: Tab[]): Tab {
           )
         : Effect.sync(() => {
             given = giving;
+            startedWith = pageObjects;
             return hosted;
           }),
     control: {
       get hosted() {
         return given !== undefined;
+      },
+      get startedWith() {
+        return startedWith;
       },
       show: (listing) => {
         shown = listing;
@@ -308,14 +374,24 @@ function scriptedTab(url: string, open: Tab[]): Tab {
       },
       failReads: (reason) => (shown = new TabReadError(reason)),
       holdReads: () => (shown = "held"),
+      get listingsRead() {
+        return listingsRead;
+      },
       swappedIn,
+      get observed() {
+        return observed;
+      },
+      swapsTried,
+      refuseSwaps: (reason) => (refusing = reason),
       runs,
       answerRuns: (answer) => (answerRun = answer),
       give: (id, className) => {
         if (!given) throw new Error("The Session is not this Tab's Host.");
+        rooted.add(className);
         given.given(id, className);
       },
       release: (id) => given?.released(id),
+      rootless: (className) => rooted.delete(className),
       activate: () => {
         open.splice(open.indexOf(tab), 1);
         open.unshift(tab);
@@ -354,12 +430,16 @@ function scriptedTab(url: string, open: Tab[]): Tab {
 export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   layer: Layer.Layer<SessionBrowser | PageObjectsBuild>;
   browser: ScriptedBrowser;
+  /** Tells what waits in `browser.until` that something changed. */
+  changed: () => void;
 } {
   const asked: SessionBrowserRequest[] = [];
   const hostedWith: BuiltPageObjects[] = [];
   let released = false;
   // The open Tabs, the most recently active first.
   const open: Tab[] = [];
+  // The classes that declare a root, in the build every Tab runs.
+  const rooted = new Set<string>();
   let tabList: TabReadError | undefined;
   let heldTabList: Deferred.Deferred<void> | undefined;
   let tabListReads = 0;
@@ -374,13 +454,31 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
     return building;
   };
   const editors = new Set<() => void>();
+  // What waits for the scripted browser and build to change.
+  const waiting = new Set<() => void>();
+  const changed = () => {
+    for (const check of [...waiting]) check();
+  };
+  const until = (holds: () => boolean) =>
+    new Promise<void>((resolve) => {
+      const check = () => {
+        if (!holds()) return;
+        waiting.delete(check);
+        resolve();
+      };
+      waiting.add(check);
+      check();
+    });
+  // How many edits the Session took.
+  let taken = 0;
+  let unwatched: string | undefined;
   const gone = Deferred.makeUnsafe<void>();
   if (!held) Deferred.doneUnsafe(opened, Exit.void);
   if (!heldBuild)
     Deferred.doneUnsafe(builds[0]!, Exit.succeed(SCRIPTED_PAGE_OBJECTS));
 
   const openTab = (url = "about:blank") => {
-    const tab = scriptedTab(url, open);
+    const tab = scriptedTab(url, open, rooted, changed);
     open.unshift(tab);
     return tab;
   };
@@ -400,6 +498,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
   const build = Layer.succeed(PageObjectsBuild, {
     build: Effect.suspend(() => {
       if (started++ > 0) builds.push(Deferred.makeUnsafe());
+      changed();
       return Deferred.await(builds[started - 1]!);
     }),
     edits: Stream.callback<void>((queue) =>
@@ -411,7 +510,15 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
         }),
         (editor) => Effect.sync(() => editors.delete(editor))
       )
+    ).pipe(
+      Stream.tap(() =>
+        Effect.sync(() => {
+          taken++;
+          changed();
+        })
+      )
     ),
+    unwatched: () => unwatched,
   });
   const browsers = Layer.succeed(SessionBrowser, {
     get: (asking) =>
@@ -436,6 +543,7 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
 
   return {
     layer: Layer.merge(browsers, build),
+    changed,
     browser: {
       asked,
       hostedWith,
@@ -448,6 +556,8 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       breakOpen: (defect) => Deferred.doneUnsafe(opened, Exit.die(defect)),
       finishBuild: (built = SCRIPTED_PAGE_OBJECTS) =>
         void Deferred.doneUnsafe(underWay(), Exit.succeed(built)),
+      breakBuild: (defect) =>
+        void Deferred.doneUnsafe(underWay(), Exit.die(defect)),
       failBuild: (errors, first) =>
         void Deferred.doneUnsafe(
           underWay(),
@@ -456,9 +566,16 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       get builds() {
         return started;
       },
-      edit: () => {
-        for (const editor of editors) editor();
+      get watched() {
+        return editors.size > 0;
       },
+      edit: () => {
+        const awaited = taken + 1;
+        for (const editor of editors) editor();
+        return until(() => taken >= awaited);
+      },
+      until,
+      loseWatch: (reason) => (unwatched = reason),
       goAway: () => Deferred.doneUnsafe(gone, Exit.void),
       openTab: (url) => openTab(url).control,
       failTabList: (reason) => {
@@ -476,8 +593,17 @@ export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
       get hosted() {
         return first.control.hosted;
       },
+      get startedWith() {
+        return first.control.startedWith;
+      },
+      get observed() {
+        return first.control.observed;
+      },
       get inspectorListeners() {
         return first.control.inspectorListeners;
+      },
+      get listingsRead() {
+        return first.control.listingsRead;
       },
     },
   };
@@ -496,7 +622,7 @@ export async function startScriptedSession(
     agentApp,
     ...request
   } = options;
-  const { layer, browser } = scriptedBrowser({
+  const { layer, browser, changed } = scriptedBrowser({
     ...(held ? { held } : {}),
     ...(heldBuild ? { heldBuild } : {}),
   });
@@ -520,7 +646,10 @@ export async function startScriptedSession(
         const heard: InspectorEvent[] = [];
         const listening = Effect.runFork(
           Stream.runForEach(session.events, (event) =>
-            Effect.sync(() => heard.push(event))
+            Effect.sync(() => {
+              heard.push(event);
+              changed();
+            })
           )
         );
         onTestFinished(() => Effect.runPromise(Fiber.interrupt(listening)));

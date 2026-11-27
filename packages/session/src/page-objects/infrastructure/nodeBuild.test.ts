@@ -1,6 +1,7 @@
 import {
   mkdir,
   mkdtemp,
+  readFile,
   realpath,
   rm,
   symlink,
@@ -30,8 +31,10 @@ async function folder(name: string): Promise<string> {
  * Installs a stand-in for @ayme-dev/ayme in `root`. Its compiler compiles a
  * module that marks a class `@pom`: the class registers with the copy the
  * compiled module imports, as the real compiler's output does, and every
- * other module is left to esbuild. A module that says `// broken` does not
- * compile.
+ * other module is left to esbuild. A module that says `// types from
+ * <file>` reads the types of its tools from that file, which esbuild never
+ * loads, as an `import type` does. A module that says `// broken`, or
+ * whose types file does, does not compile.
  */
 async function installAyme(root: string): Promise<string> {
   return aymePackage(join(root, "node_modules", "@ayme-dev", "ayme"));
@@ -53,6 +56,8 @@ async function aymePackage(installed: string): Promise<string> {
     "internal.mjs":
       "export const registered = [];\nexport const registerCompiledPom = (pom) => registered.push(pom);\n",
     "compiler.mjs": `
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 export class PomCompileError extends Error {
   constructor(diagnostics) {
     super("The module did not compile.");
@@ -60,8 +65,16 @@ export class PomCompileError extends Error {
   }
 }
 export const createPomCompiler = () => ({
-  compile(fileName, source) {
-    if (source.includes("// broken"))
+  compile(fileName, source, { onDependencies } = {}) {
+    const types = [...source.matchAll(/[/][/] types from ([^ \\n]+)/g)].map(
+      (match) => join(dirname(fileName), match[1])
+    );
+    onDependencies?.(types);
+    if (
+      [source, ...types.map((file) => readFileSync(file, "utf8"))].some(
+        (text) => text.includes("// broken")
+      )
+    )
       throw new PomCompileError([{ text: "This Page Object does not compile." }]);
     const pom = /@pom\\s+export class (\\w+)/.exec(source);
     if (!pom) return null;
@@ -226,6 +239,19 @@ it("an entry whose default export lists no classes fails the start, saying what 
   );
 });
 
+it("an entry that lists two different classes of one name fails the build, since ayme tells Page Object classes apart by name", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nimport { Basket as Cart } from "./pom/cart/Basket";\nexport default [Basket, Cart];\n',
+    "ayme/pom/Basket.ts": BASKET,
+    "ayme/pom/cart/Basket.ts": BASKET,
+  });
+
+  expect(await refusal(dir)).toBe(
+    `The default export of ${join(dir, "ayme", "page-objects.ts")} lists two different classes named Basket. ayme tells Page Object classes apart by name: rename one of them.`
+  );
+});
+
 it("a built module that cannot be written to a temporary file fails the start, saying where", async () => {
   const { dir } = await project({
     "ayme/page-objects.ts": "export default [];\n",
@@ -263,3 +289,119 @@ it("tells of an edit to a file the last build read, and a build after it loads t
   expect(after.classes).toHaveLength(1);
   expect(after.classes[0]).not.toBe(before.classes[0]);
 });
+
+/**
+ * Builds the project in `dir` once, then, for each step, makes the change
+ * `step` makes and waits for the edit it causes, then builds again; what
+ * each build gave, the error it failed with or its classes. A change that
+ * causes no edit within 5 s fails.
+ */
+async function buildsAcross(
+  dir: string,
+  steps: readonly (() => Promise<unknown>)[]
+): Promise<(string | readonly unknown[])[]> {
+  return Effect.runPromise(
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { build, edits } = yield* PageObjectsBuild;
+        const outcome = build.pipe(
+          Effect.match({
+            onSuccess: (built) => (built as NodePageObjects).classes,
+            onFailure: (error) => error.message,
+          })
+        );
+        const outcomes = [yield* outcome];
+        for (const step of steps) {
+          const edited = yield* Effect.forkScoped(
+            Stream.runHead(edits).pipe(Effect.timeoutOption(5000))
+          );
+          yield* Effect.promise(step);
+          const heard = yield* Fiber.join(edited);
+          if (heard._tag === "None")
+            return yield* Effect.die(new Error("No edit was told."));
+          outcomes.push(yield* outcome);
+        }
+        return outcomes;
+      }).pipe(Effect.provide(projectPageObjects(dir, "0.3.0")))
+    )
+  );
+}
+
+it("an entry that goes away for a moment, as on a branch switch, is still watched, and its return is an edit", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+  const entry = join(dir, "ayme", "page-objects.ts");
+  const text = await readFile(entry, "utf8");
+
+  const outcomes = await buildsAcross(dir, [
+    () => rm(entry),
+    () => writeFile(entry, text),
+  ]);
+
+  expect(outcomes[1]).toContain("has no ayme/page-objects.ts");
+  expect(outcomes[2]).toHaveLength(1);
+}, 15_000);
+
+it("a failed import is repaired by adding the missing file alone, in a folder no build read from", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+    "ayme/pom/cart/README.md": "The cart's Page Objects.\n",
+  });
+
+  const outcomes = await buildsAcross(dir, [
+    () =>
+      write(dir, {
+        "ayme/pom/Basket.ts": `import { Cart } from "./cart/Cart";\n${BASKET}export const cart = Cart;\n`,
+      }),
+    () => write(dir, { "ayme/pom/cart/Cart.ts": "export class Cart {}\n" }),
+  ]);
+
+  expect(outcomes[1]).toContain('Could not resolve "./cart/Cart"');
+  expect(outcomes[2]).toHaveLength(1);
+}, 15_000);
+
+it("an edit to a file only the Page Object compiler reads, as an import type, is an edit, and so is its repair", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": `// types from ./item.ts\n${BASKET}`,
+    "ayme/pom/item.ts": "export type Item = string;\n",
+  });
+
+  const outcomes = await buildsAcross(dir, [
+    () => write(dir, { "ayme/pom/item.ts": "// broken\n" }),
+    () => write(dir, { "ayme/pom/item.ts": "export type Item = number;\n" }),
+  ]);
+
+  expect(outcomes[1]).toContain("This Page Object does not compile.");
+  expect(outcomes[2]).toHaveLength(1);
+}, 15_000);
+
+it("the watch belongs to the build's lifetime, not to each build: a build whose own scope closed still has its edits told", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+  const told = await Effect.runPromise(
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { build, edits } = yield* PageObjectsBuild;
+        yield* Effect.scoped(build);
+        const edited = yield* Effect.forkScoped(
+          Stream.runHead(edits).pipe(Effect.timeoutOption(5000))
+        );
+        yield* Effect.promise(() =>
+          write(dir, { "ayme/pom/Basket.ts": `${BASKET}// edited\n` })
+        );
+        return yield* Fiber.join(edited);
+      }).pipe(Effect.provide(projectPageObjects(dir, "0.3.0")))
+    )
+  );
+  expect(told._tag).toBe("Some");
+}, 15_000);

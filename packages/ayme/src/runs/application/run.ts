@@ -17,7 +17,8 @@ import { callers, RuntimeStateError, type Caller } from "../../shared";
  */
 export type ActionCalls = {
   /** Runs a Page Object Action's method: the calls its code makes, at once
-   * or later, are the action's own. */
+   * or later, are the action's own. Throws, without running it, to refuse
+   * the action. */
   run<T>(action: () => T): T;
   /**
    * Heard before each call through the runtime's Page, its locators and
@@ -26,6 +27,13 @@ export type ActionCalls = {
    * A call that `answersAtOnce`, such as building a locator, cannot wait.
    */
   before(answersAtOnce: boolean): Promise<void> | undefined;
+  /** `listener`, which an action hands Playwright to call later, made to
+   * run as that action's own code wherever Playwright calls it from. */
+  bind<F extends (...args: never[]) => unknown>(listener: F): F;
+  /** For the Run whose code asks, a promise that fails with what its
+   * Caller was answered instead once the Host stopped the Run; undefined
+   * for a Run the Host does not stop. */
+  stopped(): Promise<never> | undefined;
 };
 
 /** How `ayme.tools.run` starts a Run. */

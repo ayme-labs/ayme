@@ -30,7 +30,7 @@ import {
 } from "../tools/application";
 import { configureGoalLoopOf } from "../goal-loop/infrastructure";
 import { type GoalLoopDecisionFunction } from "../goal-loop/application";
-import { assertAvailable, type Cursor } from "../page-state/domain";
+import { assertAvailable, movesUntil, type Cursor } from "../page-state/domain";
 import {
   configurePageStateIgnoreOf,
   cursorsOf,
@@ -333,6 +333,58 @@ const pageObjectCallers = new WeakMap<
   object,
   (by: Caller) => PageObjectCaller
 >();
+
+// What a Session of the `ayme` command does with a Node Host's Page
+// Objects, keyed by the session's `tools`, as `pageObjectCallers` is.
+const hostedPageObjects = new WeakMap<
+  object,
+  {
+    replace(
+      running: readonly PageObjectConstructor[],
+      rebuilt: readonly PageObjectConstructor[]
+    ): void;
+    takesId(tool: string): boolean;
+    observe(): Promise<void>;
+  }
+>();
+
+const hostedPageObjectsOf = (ayme: Pick<Ayme, "tools">) => {
+  const hosted = hostedPageObjects.get(ayme.tools);
+  if (!hosted)
+    throw new RuntimeStateError("This is not an ayme runtime session.");
+  return hosted;
+};
+
+/**
+ * Replaces the Page Object classes `running`, which the session registered,
+ * with `rebuilt`, as one change, the way a Session swaps a rebuild in on a
+ * Node Host: every rebuilt class is made first, so one whose constructor
+ * throws changes nothing and the error is thrown; the registry's
+ * subscribers then hear of the whole change once. The replaced classes'
+ * instances are let go.
+ */
+export function replacePageObjects(
+  ayme: Pick<Ayme, "tools">,
+  running: readonly PageObjectConstructor[],
+  rebuilt: readonly PageObjectConstructor[]
+): void {
+  hostedPageObjectsOf(ayme).replace(running, rebuilt);
+}
+
+/** Resolves once the session's registered Page Objects were read on the
+ * page as it is now: a probe that began after this call. */
+export function observePageObjects(ayme: Pick<Ayme, "tools">): Promise<void> {
+  return hostedPageObjectsOf(ayme).observe();
+}
+
+/** Whether the session's Page Object Tool `tool` takes a Page Object Id,
+ * as the classes registered now declare: its class declares a root. */
+export function pageObjectToolTakesId(
+  ayme: Pick<Ayme, "tools">,
+  tool: string
+): boolean {
+  return hostedPageObjectsOf(ayme).takesId(tool);
+}
 
 /** The session's Page Object Tools as `by` reaches them, its Runs started as `by`. */
 export function pageObjectCallerOf(
@@ -662,6 +714,12 @@ export function createAymeOn(
     return takeTurn(() => recordTopLevelRun(name, input, by, probeAfterAction));
   }
 
+  /** The Run log's options for a Run its Host may stop. */
+  function stoppedRun() {
+    const stopped = target.actionCalls?.stopped();
+    return stopped ? { stopped } : undefined;
+  }
+
   /** A probe of the Page Objects after an action, which never fails the Run. */
   function probeAfterAction(): Promise<void> {
     return target
@@ -680,23 +738,30 @@ export function createAymeOn(
     by: Caller,
     settle: () => Promise<void>
   ): Promise<unknown> {
-    const cursor = cursorsOf(target.key()).of(by);
-    return runLog().record(name, input, { by }, (id) => {
-      const { tool, checkedInput } = lookUpRun(name, input);
-      return executeTopLevelRun(
-        {
-          reads:
-            tool === getPageContextTool ||
-            tool === pageObjectsTool ||
-            (target.peeks()?.isPeekTool(tool) ?? false),
-        },
-        () =>
-          executeWithChildRuns(id, cursor, (context) =>
-            tool.execute(checkedInput, context)
-          ),
-        settle
-      );
-    });
+    const stopped = target.actionCalls?.stopped();
+    const cursor = movesUntil(cursorsOf(target.key()).of(by), stopped);
+    return runLog().record(
+      name,
+      input,
+      { by },
+      (id) => {
+        const { tool, checkedInput } = lookUpRun(name, input);
+        return executeTopLevelRun(
+          {
+            reads:
+              tool === getPageContextTool ||
+              tool === pageObjectsTool ||
+              (target.peeks()?.isPeekTool(tool) ?? false),
+          },
+          () =>
+            executeWithChildRuns(id, cursor, (context) =>
+              tool.execute(checkedInput, context)
+            ),
+          settle
+        );
+      },
+      stopped ? { stopped } : undefined
+    );
   }
 
   /**
@@ -742,11 +807,16 @@ export function createAymeOn(
     const takeChildTurn = createRunQueue();
     const run: StartChildRun = (name, input, childCursor = cursor) =>
       takeChildTurn(() =>
-        runLog().record(name, input, { parent: id }, (childId) =>
-          executeWithChildRuns(childId, childCursor, (context) => {
-            const { tool, checkedInput } = lookUpRun(name, input);
-            return tool.execute(checkedInput, context);
-          })
+        runLog().record(
+          name,
+          input,
+          { parent: id },
+          (childId) =>
+            executeWithChildRuns(childId, childCursor, (context) => {
+              const { tool, checkedInput } = lookUpRun(name, input);
+              return tool.execute(checkedInput, context);
+            }),
+          stoppedRun()
         )
       );
     try {

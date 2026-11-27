@@ -1,5 +1,6 @@
 import {
   Cause,
+  Context,
   Deferred,
   Effect,
   Exit,
@@ -41,6 +42,7 @@ import {
   type SessionRequest,
   SessionStartError,
   type TabDialog,
+  TabDialogOpen,
   unknownRequest,
   withBuildLine,
 } from "../domain";
@@ -51,13 +53,17 @@ import {
   type ShowableTab,
 } from "./inspector";
 import { PageObjectsBuild } from "./pageObjectsBuild";
-import { rebuilding, type Rebuilds } from "./rebuilds";
+import {
+  rebuilding,
+  type InTurn,
+  type Rebuilds,
+  type SwappingTab,
+} from "./rebuilds";
 import {
   SessionBrowser,
   type HeldBrowser,
   type BrowserTab,
   type BrowserTabs,
-  type HostedTab,
   type SessionBrowserRequest,
 } from "./sessionBrowser";
 
@@ -205,18 +211,36 @@ export const openSession = (
         })
       );
 
-    /** A listing of the Tab `on` names, answered by `answer`. */
+    /** A listing of the Tab `on` names, answered by `answer`, with the
+     * build line of that Tab, or of the Session for a Tab not hosted. */
     const listed = (
       { tabs, rebuilds }: Started,
       { tab }: { readonly tab?: string },
       answer: (listing: Listing) => SessionAnswer
-    ) =>
-      tabs.chosen(tab).pipe(
-        Effect.flatMap((hosted) => hosted.listing),
-        Effect.map(answer),
-        Effect.catch((error) => Effect.succeed(failed(error.message))),
-        Effect.map((answer) => withBuildLine(answer, rebuilds.failing()))
+    ) => {
+      const refused = (error: Error) =>
+        Effect.succeed(
+          failed(
+            error instanceof TabDialogOpen
+              ? dialogOpenInListing(error.url, error.dialog)
+              : error.message
+          )
+        );
+      return tabs.chosen(tab).pipe(
+        Effect.flatMap((hosted) =>
+          hosted.listing.pipe(
+            Effect.map(answer),
+            Effect.catch(refused),
+            Effect.map((answer) => withBuildLine(answer, hosted.buildLine()))
+          )
+        ),
+        Effect.catch((error) =>
+          refused(error).pipe(
+            Effect.map((answer) => withBuildLine(answer, rebuilds.buildLine()))
+          )
+        )
       );
+    };
 
     const answerTo = (
       request: Exclude<
@@ -299,10 +323,6 @@ const idIn = (input: unknown): string | undefined => {
   return typeof id === "string" ? id : undefined;
 };
 
-/** The class whose Page Object Tool `tool` is: the compiler names each
- * `<class>.<action>`. */
-const classOf = (tool: string) => tool.slice(0, tool.indexOf("."));
-
 /** A Session's Tabs, as its requests reach them. */
 type SessionTabs = {
   /**
@@ -314,7 +334,7 @@ type SessionTabs = {
   readonly chosen: (
     url: string | undefined,
     call?: { readonly tool: string; readonly input: unknown }
-  ) => Effect.Effect<HostedTab, TabReadError>;
+  ) => Effect.Effect<SwappingTab, TabReadError>;
   /** The most recently active Tab, with the Session as its Host; none when
    * no tab is open. */
   readonly active: Effect.Effect<ShowableTab | undefined, TabReadError>;
@@ -338,15 +358,15 @@ function sessionTabs(
   ending: Effect.Effect<boolean>,
   rebuilds: Rebuilds
 ): SessionTabs {
-  const hosts = new Map<BrowserTab, Effect.Effect<HostedTab, TabReadError>>();
+  const hosts = new Map<BrowserTab, Effect.Effect<SwappingTab, TabReadError>>();
   // The Tab each id was given on, while its Host knows the id.
   const owners = new Map<string, BrowserTab>();
-  // The classes some id was given to: those with a Page Object Root, whose
-  // tools take a Page Object Id.
-  const rooted = new Set<string>();
+  // Each Tab whose hosting finished, for a choice that reads no page.
+  const hostedNow = new Map<BrowserTab, SwappingTab>();
   const retire = (tab: BrowserTab) =>
     Effect.sync(() => {
       hosts.delete(tab);
+      hostedNow.delete(tab);
       for (const [id, owner] of owners) if (owner === tab) owners.delete(id);
     });
   const hostOf = (tab: BrowserTab) =>
@@ -355,48 +375,81 @@ function sessionTabs(
       if (known) return yield* known;
       // Hosting starts JavaScript that an interrupt cannot stop.
       if (yield* ending) return yield* Effect.never;
+      // Hosting a Tab waits on its page, which a dialog holds: a Tab whose
+      // dialog counts as open is answered with it, and hosted later.
+      const now = yield* Effect.raceFirst(
+        Stream.runHead(
+          tab.dialog.pipe(Stream.filter((now) => now !== "opening"))
+        ),
+        tab.closed.pipe(
+          Effect.andThen(Effect.fail(new TabReadError(TAB_CLOSED)))
+        )
+      );
+      if (Option.isSome(now) && isOpen(now.value))
+        return yield* Effect.fail(new TabDialogOpen(tab.url(), now.value.open));
       // Cached at once, so two requests that arrive together host the Tab
       // once; a failed hosting is tried again by the next request.
+      const startedWith = rebuilds.newest();
       const hosting = yield* Effect.cached(
-        tab
-          .host({
-            given: (id, className) => {
-              owners.set(id, tab);
-              rooted.add(className);
+        Effect.raceFirst(
+          tab.host(
+            {
+              given: (id) => owners.set(id, tab),
+              released: (id) => owners.delete(id),
             },
-            released: (id) => owners.delete(id),
-          })
-          .pipe(
-            Effect.map((hosted) =>
-              atDialogs(
-                untilClosed(
-                  inTurns(rebuilds.swapping(hosted), ending),
-                  tab.closed
-                ),
-                tab,
-                scope
-              )
-            ),
-            Effect.tap((hosted) => rebuilds.follow(hosted, tab.closed)),
-            Effect.tap(() =>
-              tab.closed.pipe(Effect.andThen(retire(tab)), Effect.forkIn(scope))
-            )
+            startedWith
+          ),
+          dialogCounts(tab)
+        ).pipe(
+          Effect.flatMap((hosted) => {
+            const turn = turns(ending);
+            return rebuilds
+              .swapping(hosted, startedWith, {
+                inTurn: turn.inTurn,
+                closed: tab.closed,
+              })
+              .pipe(
+                Effect.map((swapping) =>
+                  atDialogs(
+                    untilClosed(inTurns(swapping, turn, scope), tab.closed),
+                    tab,
+                    scope
+                  )
+                )
+              );
+          }),
+          Effect.tap((hosted) => Effect.sync(() => hostedNow.set(tab, hosted))),
+          Effect.tap(() =>
+            tab.closed.pipe(Effect.andThen(retire(tab)), Effect.forkIn(scope))
           )
+        )
       );
       hosts.set(tab, hosting);
       return yield* hosting.pipe(
         Effect.tapError(() => Effect.sync(() => hosts.delete(tab)))
       );
     });
-  /** The Tab whose Host gave the Page Object Id that `call` takes. */
-  const ownerOf = (call?: {
-    readonly tool: string;
-    readonly input: unknown;
-  }) => {
-    const id =
-      call && rooted.has(classOf(call.tool)) ? idIn(call.input) : undefined;
-    return id === undefined ? undefined : { id, tab: owners.get(id) };
-  };
+  /** The most recently active Tab whose URL is `url`, else the most
+   * recently active Tab. */
+  const byUrl = (url: string | undefined) =>
+    browser.open.pipe(
+      Effect.flatMap((open) => {
+        const tab =
+          url === undefined ? open[0] : open.find((each) => each.url() === url);
+        if (tab) return hostOf(tab);
+        return Effect.fail(
+          new TabReadError(
+            open.length === 0
+              ? NO_TAB_OPEN
+              : noTabShows(
+                  url!,
+                  open.map((each) => each.url()),
+                  name
+                )
+          )
+        );
+      })
+    );
   return {
     active: browser.open.pipe(
       Effect.flatMap(([tab]) =>
@@ -405,39 +458,27 @@ function sessionTabs(
           : Effect.succeed(undefined)
       )
     ),
+    // Only an id the tool takes, in the build the Tab `on` runs, is one.
     idElsewhere: (on, call) => {
-      const owned = ownerOf(call);
-      return owned?.tab && owned.tab !== on
-        ? idNotOnShownTab(owned.id, owned.tab.url())
+      if (!hostedNow.get(on)?.takesId(call.tool)) return undefined;
+      const id = idIn(call.input);
+      const owner = id === undefined ? undefined : owners.get(id);
+      return owner && owner !== on
+        ? idNotOnShownTab(id!, owner.url())
         : undefined;
     },
     chosen: (url, call) => {
-      const owned = ownerOf(call);
-      const id = owned?.id;
-      const owner = owned?.tab;
-      if (owner) {
-        if (url === undefined || owner.url() === url) return hostOf(owner);
-        return Effect.fail(
-          new TabReadError(idOnAnotherTab(id!, owner.url(), url))
-        );
-      }
-      return browser.open.pipe(
-        Effect.flatMap((open) => {
-          const tab =
-            url === undefined
-              ? open[0]
-              : open.find((each) => each.url() === url);
-          if (tab) return hostOf(tab);
+      const id = call && idIn(call.input);
+      const owner = id === undefined ? undefined : owners.get(id);
+      if (!call || !owner) return byUrl(url);
+      // Only an id the tool takes, in the build its Tab runs, chooses it.
+      return hostOf(owner).pipe(
+        Effect.flatMap((hosted) => {
+          if (!hosted.takesId(call.tool)) return byUrl(url);
+          if (url === undefined || owner.url() === url)
+            return Effect.succeed(hosted);
           return Effect.fail(
-            new TabReadError(
-              open.length === 0
-                ? NO_TAB_OPEN
-                : noTabShows(
-                    url!,
-                    open.map((each) => each.url()),
-                    name
-                  )
-            )
+            new TabReadError(idOnAnotherTab(id!, owner.url(), url))
           );
         })
       );
@@ -449,9 +490,9 @@ function sessionTabs(
  * its Tab is `closed`, and whose Inspector events end then: an action
  * inside a wait of its own may go on until that wait ends. */
 function untilClosed(
-  hosted: HostedTab,
+  hosted: SwappingTab,
   closed: Effect.Effect<void>
-): HostedTab {
+): SwappingTab {
   const orClosed = <A, E>(work: Effect.Effect<A, E>, error: E) =>
     Effect.raceFirst(work, closed.pipe(Effect.andThen(Effect.fail(error))));
   return {
@@ -467,75 +508,166 @@ function untilClosed(
       events: hosted.inspector.events.pipe(Stream.interruptWhen(closed)),
     },
     dialog: hosted.dialog,
-    swap: hosted.swap,
+    takesId: hosted.takesId,
+    buildLine: hosted.buildLine,
   };
 }
 
+/** A Tab's turn in the Session, and what starts only while the Session is
+ * not ending. */
+type Turns = { readonly inTurn: InTurn; readonly unlessEnding: InTurn };
+
 /**
- * `hosted`, whose listings and Runs also wait for the Tab's turn in the
- * Session, where the Session's end stops one still waiting: the Host's own
- * wait cannot be stopped, and a joined browser stays open. One whose turn
- * comes once the Session is `ending` never starts; the end answers it.
+ * The turn of one Tab in the Session, where the Session's end stops a
+ * listing or Run still waiting: the Host's own wait cannot be stopped, and
+ * a joined browser stays open. Work whose turn comes once the Session is
+ * `ending` never starts; the end answers it, as a request answered while it
+ * waited never starts either.
  */
-function inTurns(hosted: HostedTab, ending: Effect.Effect<boolean>): HostedTab {
+function turns(ending: Effect.Effect<boolean>): Turns {
   const turn = Semaphore.makeUnsafe(1);
-  const unlessEnding = <A, E>(work: Effect.Effect<A, E>) =>
+  const unlessEnding: InTurn = (work) =>
     ending.pipe(Effect.flatMap((ends) => (ends ? Effect.never : work)));
-  const inTurn = <A, E>(work: Effect.Effect<A, E>) =>
-    Semaphore.withPermit(turn, unlessEnding(work));
+  return {
+    unlessEnding,
+    inTurn: (work) =>
+      Semaphore.withPermit(
+        turn,
+        unlessEnding(
+          Effect.gen(function* () {
+            const request = yield* Answered;
+            if (request.answered) return yield* Effect.interrupt;
+            request.started = true;
+            return yield* work;
+          })
+        )
+      ),
+  };
+}
+
+/** `hosted`, whose listings, Runs and Inspector Runs wait for the Tab's
+ * turn, as `inTurn` takes it, and whose other Inspector calls start only
+ * `unlessEnding`. Work of a Run goes on in `scope`. */
+function inTurns(
+  hosted: SwappingTab,
+  { inTurn, unlessEnding }: Turns,
+  scope: Scope.Scope
+): SwappingTab {
+  // A Run answered by an error while its own work is still `going` keeps
+  // the turn, in `scope`, until that work ends, as one stopped at a dialog
+  // does: the Swap and the next Run come after it.
+  const run = <A, E extends { readonly going?: Promise<unknown> }>(
+    work: Effect.Effect<A, E>
+  ) =>
+    Effect.gen(function* () {
+      const answer = yield* Deferred.make<A, E>();
+      yield* inTurn(
+        work.pipe(
+          Effect.onExit((exit) => Deferred.done(answer, exit)),
+          Effect.tapError(({ going }) =>
+            going ? Effect.promise(() => going.catch(() => {})) : Effect.void
+          )
+        )
+      ).pipe(
+        Effect.onExit((exit) =>
+          Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
+            ? Deferred.interrupt(answer)
+            : Effect.void
+        ),
+        Effect.exit,
+        Effect.forkIn(scope)
+      );
+      return yield* Deferred.await(answer);
+    });
   return {
     listing: inTurn(hosted.listing),
-    call: (tool, input) => inTurn(hosted.call(tool, input)),
+    call: (tool, input) => run(hosted.call(tool, input)),
     // A Run from the Inspector window takes the turn; its reads do not,
     // and start no JavaScript, which an interrupt cannot stop, once ending.
     inspector: {
       ...hosted.inspector,
       request: (method, params) =>
         method === "runTool"
-          ? inTurn(hosted.inspector.request(method, params))
+          ? run(hosted.inspector.request(method, params))
           : unlessEnding(hosted.inspector.request(method, params)),
     },
     dialog: hosted.dialog,
-    // A Swap takes the turn, so it happens only between Runs (rule 7).
-    swap: (pageObjects) => inTurn(hosted.swap(pageObjects)),
+    takesId: hosted.takesId,
+    buildLine: hosted.buildLine,
   };
 }
+
+/** Whether the Session already answered the request whose work this is,
+ * and whether that work had the Tab's turn: work still waiting for it then
+ * never starts, since its Caller may have run the command again meanwhile. */
+const Answered = Context.Reference<{ answered: boolean; started: boolean }>(
+  "@ayme-dev/session/session/Answered",
+  { defaultValue: () => ({ answered: false, started: false }) }
+);
+
+// The window's requests its Tab's Host answers from what it already holds,
+// without the page a dialog holds: the Runs, the recorded page state and
+// the Page Objects' definitions.
+const offPage = new Set(["getState", "recordedPageState", "pomDefinitionText"]);
 
 const isOpen = (now: TabDialog): now is { readonly open: Dialog } =>
   typeof now === "object";
 
+/** Fails with `tab`'s dialog once one counts as open there. */
+const dialogCounts = (tab: BrowserTab) =>
+  tab.dialog.pipe(
+    Stream.filter(isOpen),
+    Stream.runHead,
+    Effect.flatMap((open) =>
+      Option.isSome(open)
+        ? Effect.fail(new TabDialogOpen(tab.url(), open.value.open))
+        : Effect.never
+    )
+  );
+
 /**
- * `hosted`, whose listings, Runs and Inspector calls are answered that a
- * dialog is open while one counts as open on its Tab (rules 4 and 5): at
- * once when one is, and the moment one counts while they wait for the Tab's
- * turn or run. One that arrives while a dialog opens waits until it counts
- * or closes. What a command was answered for goes on in `scope` and keeps
- * the Tab's turn until it ends, so the next Run starts only once a stopped
- * action has ended; nothing reads its outcome. The answers name the Tab by
- * `tab`'s URL, since its title is the page's, which the dialog holds.
+ * `hosted`, whose requests are answered that a dialog is open once one
+ * counts on its Tab (rules 4 and 5), at once or while they wait or run.
+ * Work already under way keeps the Tab's turn in `scope` until it ends, so
+ * the next Run starts only once a stopped action has ended; work still
+ * waiting never starts, since its Caller may run the command again. A
+ * listing names the Tab by `tab`'s URL, since its title is the page's, which
+ * the dialog holds.
  */
 function atDialogs(
-  hosted: HostedTab,
+  hosted: SwappingTab,
   tab: BrowserTab,
   scope: Scope.Scope
-): HostedTab {
+): SwappingTab {
   const counted = hosted.dialog.pipe(Stream.filter((now) => now !== "opening"));
   const atDialog = <A, E>(
     work: Effect.Effect<A, E>,
-    refused: (dialog: Dialog) => E,
+    refused: (dialog: Dialog, started: boolean) => E,
+    closed: E,
     read = false
   ): Effect.Effect<A, E> =>
     Effect.gen(function* () {
-      const now = yield* Stream.runHead(counted);
+      const now = yield* Effect.raceFirst(
+        Stream.runHead(counted),
+        tab.closed.pipe(Effect.andThen(Effect.fail(closed)))
+      );
       if (Option.isSome(now) && isOpen(now.value))
-        return yield* Effect.fail(refused(now.value.open));
-      const working = yield* Effect.forkIn(work, scope);
+        return yield* Effect.fail(refused(now.value.open, false));
+      const request = { answered: false, started: false };
+      const working = yield* Effect.forkIn(
+        Effect.provideService(work, Answered, request),
+        scope
+      );
       const opened = counted.pipe(
         Stream.filter(isOpen),
         Stream.runHead,
         Effect.flatMap((open) =>
           Option.isSome(open)
-            ? Effect.fail(refused(open.value.open))
+            ? Effect.sync(() => (request.answered = true)).pipe(
+                Effect.andThen(
+                  Effect.fail(refused(open.value.open, request.started))
+                )
+              )
             : Effect.never
         )
       );
@@ -548,34 +680,53 @@ function atDialogs(
         )
       );
       const raced = Effect.raceFirst(answer, opened);
-      // A read is released with whoever asked for it, such as a window that
-      // closed; a Run goes on, as it does once a dialog answered its Caller.
+      // A read is ayme's own work, not an action: it is released with
+      // whoever asked for it, such as a window that closed, and once a
+      // dialog answered them, so it holds no Swap behind the dialog. A Run
+      // goes on, as it does once a dialog answered its Caller.
       return yield* read
-        ? raced.pipe(Effect.onInterrupt(() => Fiber.interrupt(working)))
+        ? raced.pipe(
+            Effect.onExit((exit) =>
+              Exit.isSuccess(exit) ? Effect.void : Fiber.interrupt(working)
+            )
+          )
         : raced;
     });
-  const atRun = (dialog: Dialog) => new RunError(dialogOpenAtRun(dialog));
+  // A command whose work had started may have changed the page; one still
+  // waiting can be run again.
+  const atRun = (dialog: Dialog, started: boolean) =>
+    started ? dialogOpenAtRun(dialog) : dialogOpen(dialog);
   return {
     listing: atDialog(
       hosted.listing,
-      (dialog) => new TabReadError(dialogOpenInListing(tab.url(), dialog))
+      (dialog) => new TabReadError(dialogOpenInListing(tab.url(), dialog)),
+      new TabReadError(TAB_CLOSED),
+      true
     ),
-    call: (tool, input) => atDialog(hosted.call(tool, input), atRun),
+    call: (tool, input) =>
+      atDialog(
+        hosted.call(tool, input),
+        (dialog, started) => new RunError(atRun(dialog, started)),
+        new RunError(TAB_CLOSED)
+      ),
     inspector: {
       ...hosted.inspector,
       request: (method, params) =>
-        atDialog(
-          hosted.inspector.request(method, params),
-          (dialog) =>
-            new TabReadError(
-              method === "runTool" ? atRun(dialog).message : dialogOpen(dialog)
+        offPage.has(method)
+          ? hosted.inspector.request(method, params)
+          : atDialog(
+              hosted.inspector.request(method, params),
+              (dialog, started) =>
+                new TabReadError(
+                  atRun(dialog, method === "runTool" && started)
+                ),
+              new TabReadError(TAB_CLOSED),
+              method !== "runTool"
             ),
-          method !== "runTool"
-        ),
     },
     dialog: hosted.dialog,
-    // A Swap reads no page, so a dialog does not hold it up (rule 7).
-    swap: hosted.swap,
+    takesId: hosted.takesId,
+    buildLine: hosted.buildLine,
   };
 }
 
