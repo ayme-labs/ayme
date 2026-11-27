@@ -1,10 +1,8 @@
 # Using ayme with browser automation tools
 
-You keep driving the browser with the automation you already use: Playwright
-CLI, Playwright MCP or agent-browser. The `ayme` command adds the project's
-Page Object Tools to it. A Session is one running ayme connected to one
-browser: it runs the project's Page Objects in Node, on the browser your
-automation drives. Your automation keeps doing everything else: snapshots,
+Start a Session on the browser your automation already drives: Playwright
+CLI, Playwright MCP or agent-browser. The Session runs the project's Page
+Objects in Node. Your automation keeps doing everything else: snapshots,
 clicks outside Page Objects, navigation, and answering dialogs.
 
 Run each command in the project's folder. Write it `npx ayme <command>` when

@@ -4,9 +4,7 @@ How to let Claude Code, Codex, Cursor or another coding agent call your Page Obj
 
 ## How it works
 
-A coding agent drives the browser with its own browser automation, such as Playwright CLI, Playwright MCP or agent-browser. The `ayme` command adds your Page Object Tools to it.
-
-The agent starts a Session with `ayme open` or `ayme attach`. A Session is one running ayme connected to one browser: the same browser the agent's automation drives. It runs your project's Page Objects in Node, on your project's own Playwright. Nothing of ayme has to be in your app, so it works on any page, whether your app ships ayme or not.
+The agent starts a Session, with `ayme open` or `ayme attach`, on the browser its own browser automation drives, such as Playwright CLI, Playwright MCP or agent-browser. The Session runs your project's Page Objects in Node, on your project's own Playwright, so nothing of ayme has to be in your app.
 
 The agent then reads the screen and acts through your Page Objects:
 

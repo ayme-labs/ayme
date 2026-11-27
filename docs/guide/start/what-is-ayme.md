@@ -6,7 +6,7 @@ ayme turns the Page Object Models from your Playwright tests into tools that cod
 
 A Page Object Model describes a page, or a part of one, through the elements and actions it provides. You mark the model and the actions to expose, and the build plugin compiles them into your app. When the app runs, each marked action becomes a Page Object Tool, named after its class and method and typed from the method's signature. The model stays the source of the behavior, and the same class keeps working in your Playwright tests.
 
-Your Page Object Models run in the browser on [playwright-lite](https://github.com/ayme-labs/playwright-lite), an implementation of Playwright's `Page` and `Locator` that drives the current document from inside the page. You write them against Playwright's own `Page` and `Locator` types.
+In an app that ships ayme, your Page Object Models run in the browser on [playwright-lite](https://github.com/ayme-labs/playwright-lite), an implementation of Playwright's `Page` and `Locator` that drives the current document from inside the page. You write them against Playwright's own `Page` and `Locator` types.
 
 ## What an agent gets
 
@@ -15,7 +15,7 @@ A coding agent such as Claude Code, Codex or Cursor runs your Page Objects with 
 - the Page Object Tools of every Page Object currently on the page;
 - the Page Object Tree, which shows those Page Objects with the id a rooted Page Object Tool takes.
 
-The agent keeps driving the browser with its own browser automation, and ayme adds your Page Objects to it. A Page Object Tool answers the agent with its result, whether the page settled, and how the Page Objects changed.
+A Page Object Tool answers the agent with its result, whether the page settled, and how the Page Objects changed.
 
 While you develop, the [Inspector](../guides/inspector.md) also shows app state the page does not, such as unsaved edits or a store, through the [Peeks](../reference/ayme.md#aymepeek) your app adds in the page. No agent reads them.
 
