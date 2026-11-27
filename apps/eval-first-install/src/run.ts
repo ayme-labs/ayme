@@ -178,13 +178,14 @@ function runClaude(
     "stream-json",
     "--verbose",
     // Answers yes when Claude Code asks to edit .mcp.json, as the user
-    // would; see approve-mcp-json.mjs.
+    // would; see approve-mcp-json.mjs. Bash too: a worker that edits it with
+    // sed is asked as well.
     "--settings",
     JSON.stringify({
       hooks: {
         PermissionRequest: [
           {
-            matcher: "Write|Edit",
+            matcher: "Write|Edit|Bash",
             hooks: [
               {
                 type: "command",
