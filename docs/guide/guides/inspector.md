@@ -17,12 +17,12 @@ useAyme({ inspector: import.meta.env.DEV });
 ```
 
 - The option is off unless set, and there is no production guard: you decide when it is on.
-- While it is on, the session loads the Inspector when it starts in the browser, mounts it, and unmounts it when it stops. Server rendering loads nothing.
+- While it is on, the runtime loads the Inspector when it starts in the browser, mounts it, and unmounts it when it stops. Server rendering loads nothing.
 - With the option off, the page requests no Inspector code.
 - If the package cannot be loaded, the error names `@ayme-dev/inspector`.
 - The Inspector reaches Page Objects constructed before it loaded.
 - It works whether WebMCP publication is on or off.
-- It turns the page's [Peeks](../reference/ayme.md#aymepeek) on, and is the only place they show.
+- It turns the page's [Peeks](../reference/ayme.md#aymepeek) on. You run them in the Inspector, and your app's code can through `ayme.tools`; ayme gives them to no agent.
 
 ### The development flag per framework
 
@@ -48,7 +48,7 @@ With a [Session](connect-an-agent.md) running, `ayme inspect` opens the Inspecto
 ayme inspect
 ```
 
-The window is served by the Session's own process and usually opens outside the Session's browser, so it never shows up in your browser automation's snapshots. When the Session joined your default browser with `ayme attach`, the window opens there as one more tab, which your browser automation can see but ayme never takes for its Tab. Nothing has to be in your app, and nothing more to install: the Inspector comes with `@ayme-dev/cli`.
+The window is served by the Session's own process. When your default browser is not the Session's browser, your browser automation never sees the window. When the Session joined your default browser with `ayme attach`, the window opens there as one more tab, which your browser automation can see but ayme never takes for its Tab. Nothing has to be in your app, and nothing more to install: the Inspector comes with `@ayme-dev/cli`.
 
 - It shows the Page Objects and the Page Object Tools of the Session's Tab, and follows the browser to another Tab.
 - Run a tool by hand from it. Runs records it as run by you from the Inspector. It is one Run like an agent's `ayme call`: a Tab runs one at a time, so it waits for the Run under way there, and a call waits for it.
@@ -100,7 +100,7 @@ The navigator has three lenses:
 
 - **Model**: the Page Objects on the page and the Page Object Models it knows, with their declared [Page Object Children](ayme-page-objects.md#aymechild), each with its description and its state on the page, such as `3 matches`.
 - **Structure**: the Structural Page State an agent receives, each node tagged with the member it maps to; an element of a Locator collection by its index, such as `filterChips[1]`.
-- **Tools**: every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. A tool marked [destructive](../reference/ayme.md#destructive-actions) shows a warning icon in the list and a Destructive mark beside its name, and so does its action in the Model lens; Run runs it like any other. Peek tools lists the page's [Peeks](../reference/ayme.md#aymepeek).
+- **Tools**: in the panel in the page, every tool of the page, grouped as Page object, Custom, Browser, Peek and Agent tools. On a Session, the Page Object Tools alone, since a Session offers no other tool. A Page Object Tool that cannot run now shows dimmed, with its reason under its name; Run stays enabled, so you can check the refusal. A tool marked [destructive](../reference/ayme.md#destructive-actions) shows a warning icon in the list and a Destructive mark beside its name, and so does its action in the Model lens; Run runs it like any other. Peek tools lists the page's [Peeks](../reference/ayme.md#aymepeek).
 
 Selecting anything opens its detail. A tool's page and a structure node's detail also show what the model sees of them: the definitions, page state and schemas an agent gets.
 

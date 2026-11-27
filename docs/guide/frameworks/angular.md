@@ -48,7 +48,7 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
+Your coding agent then reaches your Page Objects once you finish [Set up your project](../guides/connect-an-agent.md#set-up-your-project), which also installs Playwright at a version the `ayme` command supports.
 
 Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the `pageObjects` option of `provideAyme`:
 
@@ -69,7 +69,7 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-A component that calls an action gets the session's instance from `injectPageObject(Model)`, which also registers the class until the component is destroyed:
+A component that calls an action gets the runtime's instance from `injectPageObject(Model)`, which also registers the class until the component is destroyed:
 
 ```ts
 import { Component } from "@angular/core";
@@ -169,7 +169,7 @@ const serverConfig: ApplicationConfig = {
 export const config = mergeApplicationConfig(appConfig, serverConfig);
 ```
 
-On the server, `provideAyme` creates a session per request but never starts it, and hydration creates the real Page Objects. `injectPeek` adds its Peek in `afterNextRender`. `afterNextRender` never runs on the server. The [Angular example](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
+On the server, `provideAyme` creates a runtime per request but never starts it, and hydration creates the real Page Objects. `injectPeek` adds its Peek in `afterNextRender`. `afterNextRender` never runs on the server. The [Angular example](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Bundle size
 
@@ -215,6 +215,6 @@ The supported Angular versions are on [Install](../start/install.md#supported-ve
 | Function                        | Returns                | Behavior                                                                                                                                                                                                                         |
 | ------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `provideAyme(options?)`         | `EnvironmentProviders` | Starts ayme with the environment injector that receives it, before the root component is created, and stops it when that injector is destroyed.                                                                                  |
-| `injectAyme()`                  | `{ ayme, webMCP }`     | `ayme` is the [session](../reference/ayme.md). `webMCP.publicationStatus` is a read-only signal.                                                                                                                                 |
-| `injectPageObject(Model)`       | the Page Object        | Registers the class with the session and returns its instance; its Page Object Tools stay registered until the caller is destroyed: component destruction, `@if` removal and router navigation all end it.                       |
+| `injectAyme()`                  | `{ ayme, webMCP }`     | `ayme` is the [runtime](../reference/ayme.md). `webMCP.publicationStatus` is a read-only signal.                                                                                                                                 |
+| `injectPageObject(Model)`       | the Page Object        | Registers the class with the runtime and returns its instance; its Page Object Tools stay registered until the caller is destroyed: component destruction, `@if` removal and router navigation all end it.                       |
 | `injectPeek(values, name, id?)` | `void`                 | [Experimental](../reference/experimental-apis.md). Adds the caller's instance of the Peek `name` after its first render, until the caller is destroyed. The Inspector reads `values`, with its signals, when its Peek Tool runs. |

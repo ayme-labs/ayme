@@ -2,9 +2,9 @@
 
 How to mark a Page Object Model, decorator by decorator, so ayme turns what a user does with it into Page Object Tools.
 
-Put marked models in `.ts` files the application imports, with `experimentalDecorators` on, and keep them in `ayme/pom/`, as [The `ayme` folder](ayme-folder.md) shows; the [build plugin](../reference/build-plugin.md#what-it-compiles) compiles them. They run in the browser, so they use Playwright's types only, as [Playwright in the browser](../reference/playwright-in-the-browser.md) explains. A marked model stays your Page Object Model: it needs no ayme base class, and it keeps working in your Playwright tests.
+Put marked models in `.ts` files, with `experimentalDecorators` on, and keep them in `ayme/pom/`, as [The `ayme` folder](ayme-folder.md) shows. A [Session](connect-an-agent.md) of the `ayme` command builds them for Node. In an app that ships ayme, the [build plugin](../reference/build-plugin.md#what-it-compiles) compiles them into the browser build, where they use Playwright's types only, as [Playwright in the browser](../reference/playwright-in-the-browser.md) explains. A marked model stays your Page Object Model: it needs no ayme base class, and it keeps working in your Playwright tests.
 
-An agent sees each model as its definition: the model with its description, its children, then its actions with theirs. The examples below add up to this one:
+The in-page `snapshot` tool shows each model as its definition: the model with its description, its children, then its actions with theirs. A coding agent with the `ayme` command reads the Page Object Tree and the tool schemas instead. The examples below add up to this definition:
 
 ```text
 ProjectsPage // Projects of the current workspace, visible to every member.
@@ -44,7 +44,7 @@ export class ProjectsPage extends AppPage {
 }
 ```
 
-Declare the function with a type, since TypeScript types an inline one's `self` as `unknown`. It can run at any time, but never as part of a call, so keep it to reads, such as the URL, visibility or text.
+Declare the function with a type, since TypeScript types an inline one's `self` as `unknown`. ayme asks it at any time: while it reads the page, and while a call waits for the Page Object its action returned. Keep it to reads, such as the URL, visibility or text.
 
 **`root`** returns the Locator of the element a component lives in, its Page Object Root. Write it once, on a component base class that takes that element:
 
@@ -179,7 +179,7 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-`ProjectRow.remove` stays listed, because it can run on Launch plan. For a member who is not an admin of any project, no row shows Remove. The tool then stays listed with `available: false` and `reason: "Only admins can remove projects"`. An agent reads that reason with the other tool changes it is told about.
+`ProjectRow.remove` stays listed, because it can run on Launch plan. For a member who is not an admin of any project, no row shows Remove. The tool then stays listed with `available: false` and `reason: "Only admins can remove projects"`. An agent reads that reason in `ayme tools`, or in the refusal when it calls the tool.
 
 Like `present`, keep the predicate to reads.
 

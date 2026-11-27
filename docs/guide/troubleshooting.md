@@ -26,21 +26,22 @@ These are for a coding agent that runs your Page Object Tools with the `ayme` co
 
 - **`No Session is open in <folder>.`**, or **`No Session named <name> is open in <folder>.`**: no Session runs in that folder under that name. When other Sessions run there, the message goes on with their names: `The Sessions open there are named: …`. Start one with `ayme open` or `ayme attach`, in the project's folder and with the same `-s=<name>` as the command, or use the name of one that runs. `ayme list` prints `No Session is open in <folder>.` too, as its answer rather than an error, when the folder has none.
 - **The Session does not start, and names a package**: the project has no `@ayme-dev/ayme`, has it at another version than `@ayme-dev/cli`, or has no Playwright, or one older than the range [Connect an agent](guides/connect-an-agent.md#set-up-your-project) gives. Install the version the message names; for Playwright, one in that range.
+- **`The Page Object compiler of the project's @ayme-dev/ayme, …, did not load: …`**: the message says what is missing. Without TypeScript, it says to install it; with TypeScript 7, it says to install `@typescript/typescript6`. See [Set up your project](guides/connect-an-agent.md#set-up-your-project).
 - **`<folder> has no ayme/page-objects.ts.`**: list your Page Object classes there; see [Connect an agent](guides/connect-an-agent.md#set-up-your-project).
 - **`The Page Objects of … did not build:`**: the build error follows, and no Session started. Fix it, then start the Session again.
-- **`Page Object rebuild failed. Keeping the current Page Objects. …`**: an edit made the Page Objects fail to build, and the line names the first error, at its file, line and column. The tools listed are those the Tab runs now. Fix the error and save: the Session builds again and swaps the fixed Page Objects in, without a restart.
+- **`Page Object rebuild failed. Keeping the current Page Objects. …`**: an edit made the Page Objects fail to build, and the line names the first error, with as much of its file, line and column as the error gives. The tools listed are those the Tab runs now. Fix the error and save: the Session builds again and swaps the fixed Page Objects in, without a restart.
 - **`Page Object rebuild failed on this Tab. Keeping its current Page Objects. …`**: the rebuild built, but this Tab could not take it, for the reason given, such as a constructor that throws on its page. The Tab keeps the Page Objects it runs; the next edit is tried again.
 - **`The Page Objects' source cannot be watched, so an edit may not be rebuilt. …`**: ayme could not watch a folder of the Page Objects' source, for the reason given, such as the system's limit on watched files. Edits there may not reach the Session: raise the limit, or close and open the Session after an edit.
 - **A Page Object's tools are missing**: its class is not listed in `ayme/page-objects.ts`, and no listed class reaches it; or it is not present on the Tab ayme works on. The first line of `ayme page-objects` names that Tab: the browser's most recently active one.
-- **`ayme attach` fails with `Timeout 30000ms exceeded`**: Chrome answers no new connection while a dialog is open in one of its pages. Answer the dialog with the browser automation, then run `ayme attach` again. Connect the automation before an action can open a dialog, so it can answer it.
+- **`ayme attach` fails with `Timeout 30000ms exceeded`**: check that the browser runs and that the address is its DevTools address. An open dialog also blocks the connection: Chrome answers no new connection while a dialog is open in one of its pages. Answer the dialog with the browser automation, then run `ayme attach` again. Connect the automation before an action can open a dialog, so it can answer it.
 - **`No tab is open in the Session's browser.`**: open one with the browser automation.
 - **`ayme open` cannot start Chromium**: install it for the project's Playwright with `npx playwright install chromium`.
 
 ## A Peek is missing from the Inspector
 
-These are for [Peeks](reference/ayme.md#aymepeek), which only the Inspector shows.
+These are for [Peeks](reference/ayme.md#aymepeek), which exist only while the Inspector is on.
 
-- **No `peek.<name>` tool**: `ayme.peek` does nothing unless the session has `inspector` on, and nothing in Node. A component's Peek appears once the component has mounted, and goes when its last instance unmounts.
+- **No `peek.<name>` tool**: `ayme.peek` does nothing unless the runtime has `inspector` on, and nothing in Node. A component's Peek appears once the component has mounted, and goes when its last instance unmounts.
 - **`[ayme] peek.<name> is hidden: another tool uses that name.`**: another of the page's tools took the Peek Tool's name, and keeps it. Rename the Peek.
 
 ## In-browser agents see no tools
@@ -48,7 +49,7 @@ These are for [Peeks](reference/ayme.md#aymepeek), which only the Inspector show
 These are for agents that run in the browser and read the tools ayme publishes through WebMCP.
 
 - **The publication status is `disabled`**: pass `webMCP: { enabled: true }` where ayme starts. See [Publish tools](guides/publish-tools.md).
-- **`ayme was removed from this build, but setup enables WebMCP publication.`** in the console: setup passes `webMCP: { enabled: true }`, but the build left ayme out, so the session is inert, its publication status stays `disabled` and no tool is published. Set the [build plugin](reference/build-plugin.md)'s `include: true` for the build that publishes tools.
+- **`ayme was removed from this build, but setup enables WebMCP publication.`** in the console: setup passes `webMCP: { enabled: true }`, but the build left ayme out, so the runtime is inert, its publication status stays `disabled` and no tool is published. Set the [build plugin](reference/build-plugin.md)'s `include: true` for the build that publishes tools.
 - **The status is `unavailable`**: no WebMCP driver appeared within two seconds. Load the polyfill or enable Chrome's flag before your app's entry module, as [Publish tools](guides/publish-tools.md#give-the-page-webmcp) shows, or call `retryPublication()` once it is there.
 - **The status is `failed`**: `@ayme-dev/webmcp` is not installed beside `@ayme-dev/ayme`, or the WebMCP driver rejected a registration. The message says which.
 - **The status is `active` but no tool is published**: two tools share a name, such as a Custom Tool named like a Page Object Tool, which leaves `ayme.tools.list()` empty. `ayme.tools.run` throws the error that names the tool.
@@ -56,6 +57,6 @@ These are for agents that run in the browser and read the tools ayme publishes t
 
 ## ayme starts twice
 
-- **`The ayme runtime already has an active owner`**, or a framework's nested-owner error: start ayme once, at the app's root. In a Node process, start one session, in the server's entry point. In SvelteKit, only the root `+layout.svelte` may call `useAyme(options)`; in Angular, put `provideAyme` in the application config, not in route providers.
+- **`The ayme runtime already has an active owner`**, or a framework's nested-owner error: start ayme once, at the app's root, and with `@ayme-dev/ayme/playwright` once for each Playwright `Page`. In SvelteKit, only the root `+layout.svelte` may call `useAyme(options)`; in Angular, put `provideAyme` in the application config, not in route providers.
 
 [Errors](reference/errors.md) lists every message with its cause.

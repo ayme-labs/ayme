@@ -1,6 +1,6 @@
 # @ayme-dev/ayme
 
-The decorators, `createAyme` and the session it returns, and the other exports of `@ayme-dev/ayme` and its entries.
+The decorators, `createAyme` and the runtime it returns, and the other exports of `@ayme-dev/ayme` and its entries.
 
 ## Entries
 
@@ -34,7 +34,7 @@ A build without ayme resolves `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` to 
 
 A subclass inherits each from the nearest class in its chain that declares it, with or without a decorator of its own. It may declare its own. `root` and `present` are inherited separately, so a subclass can override one and keep the other.
 
-They can run at any time, but never as part of a tool call. So they must only read: they must not scroll, click, focus or change the page. They never run on the server.
+ayme asks them at any time, also during a tool call: a call asks `present` while it waits for the Page Object its action returned. So they must only read: they must not scroll, click, focus or change the page. They never run on the server.
 
 ### Page Object presence
 
@@ -67,7 +67,7 @@ A predicate that reads the URL follows client-side routing and the browser's Bac
 
 A predicate that throws makes the Page Object absent. The console gets the error with the class, such as `ProjectsPage: its present predicate threw TypeError: store is undefined.`, once until the error changes.
 
-Presence adds and withdraws tools. A present Page Object's availability is still measured at its root. An action that returns a Page Object with `present` answers once it holds; see [The Page Object an action returns](../guides/page-state.md#the-page-object-an-action-returns). [Register Page Objects](../guides/publish-tools.md#register-page-objects) says where a page such as `ProjectsPage` is registered.
+Presence adds and withdraws tools. A present Page Object's availability is still measured at its root. An action that returns a Page Object with `present` answers once it holds, or at the Settled Page deadline; see [The Page Object an action returns](../guides/page-state.md#the-page-object-an-action-returns). [Register Page Objects](../guides/publish-tools.md#register-page-objects) says where a page such as `ProjectsPage` is registered.
 
 #### Typed route parameters
 
@@ -183,7 +183,7 @@ The page state marks each row's root with its class, in place of its role, and i
     - e13 button "Remove"
 ```
 
-There is one `ProjectRow.remove` tool for both rows. Your code calls it through the session that [`createAyme`](#createayme) returns. Create it in your app's entry file, apart from the models, so its name does not clash with the `ayme` decorator:
+There is one `ProjectRow.remove` tool for both rows. Your code calls it through the runtime that [`createAyme`](#createayme) returns. Create it in your app's entry file, apart from the models, so its name does not clash with the `ayme` decorator:
 
 ```ts
 // main.ts
@@ -382,20 +382,20 @@ The build reads `destructive` from source, as it reads `description`, so it must
 
 ## createAyme
 
-`createAyme(options?)` creates a session, of type `Ayme`.
+`createAyme(options?)` creates a runtime, of type `Ayme`.
 
 | Option        | Type                                                          | Meaning                                                                                                                                                                                                                                                                     |
 | ------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pageFactory` | `() => Page`                                                  | Builds the browser Page the session drives. Never called during server rendering. Defaults to `createPage()`.                                                                                                                                                               |
-| `ignore`      | `ElementFilter`: a CSS selector, or `(page: Page) => Locator` | Drops matching elements and their descendants from the Structural Page State. A function gets the session's Page and returns a Locator. An element that matches later is dropped too. See [Page state](../guides/page-state.md).                                            |
+| `pageFactory` | `() => Page`                                                  | Builds the browser Page the runtime drives. Never called during server rendering. Defaults to `createPage()`.                                                                                                                                                               |
+| `ignore`      | `ElementFilter`: a CSS selector, or `(page: Page) => Locator` | Drops matching elements and their descendants from the Structural Page State. A function gets the runtime's Page and returns a Locator. An element that matches later is dropped too. See [Page state](../guides/page-state.md).                                            |
 | `customTools` | `CustomTool[]`                                                | Operations on one element. See [Custom Tools](../guides/custom-tools.md).                                                                                                                                                                                                   |
-| `pageObjects` | `PageObjectConstructor[]`                                     | Page Object classes registered for the session's lifetime, one [`pom.register`](#aymepom) each when the session is created. See [Register Page Objects](../guides/publish-tools.md#register-page-objects).                                                                  |
+| `pageObjects` | `PageObjectConstructor[]`                                     | Page Object classes registered for the runtime's lifetime, one [`pom.register`](#aymepom) each when the runtime is created. See [Register Page Objects](../guides/publish-tools.md#register-page-objects).                                                                  |
 | `goalLoop`    | `GoalLoopDecisionFunction`                                    | [Experimental](experimental-apis.md). The decision function the Goal Loop calls, usually `decisionEndpoint(url)`. The `goal` tool exists only when it is set. See [Goals with Jev](../guides/goals-with-jev.md).                                                            |
 | `webMCP`      | `AymeWebMcpOptions`                                           | `{ enabled, toolNamePrefix }`. See [Publish tools](../guides/publish-tools.md).                                                                                                                                                                                             |
-| `inspector`   | `boolean \| { demo?: boolean }`                               | Turns on the [Inspector](../guides/inspector.md), a panel in the page, when the session starts in the browser. It loads the optional `@ayme-dev/inspector` package on demand. Off unless set. `{ demo: true }` also turns on [demo mode](../guides/inspector.md#demo-mode). |
+| `inspector`   | `boolean \| { demo?: boolean }`                               | Turns on the [Inspector](../guides/inspector.md), a panel in the page, when the runtime starts in the browser. It loads the optional `@ayme-dev/inspector` package on demand. Off unless set. `{ demo: true }` also turns on [demo mode](../guides/inspector.md#demo-mode). |
 | `navigate`    | `(url: string) => unknown`                                    | Your client router's navigation, which the [`navigate` Browser Tool](browser-tools.md) calls instead of loading a new document. See below.                                                                                                                                  |
 
-`ignore`, `customTools`, `goalLoop` and `navigate` take effect on `start()` and are cleared when the session stops.
+`ignore`, `customTools`, `goalLoop` and `navigate` take effect on `start()` and are cleared when the runtime stops.
 
 With `navigate`, the `navigate` tool moves through your router, so your app keeps its in-memory state. The function gets the absolute URL of a page on the document's own origin; the tool refuses other origins, and protocols other than `http:` and `https:`, before calling it. When it returns a promise, the tool waits for it and ignores its value, then waits for a Settled Page and answers with the Change Record; a rejection fails the call. If it starts a full load after all, the call answers as a [full page load](../guides/page-state.md#full-page-loads). A router that takes a path, such as Vue Router, gets the URL without its origin:
 
@@ -403,7 +403,7 @@ With `navigate`, the `navigate` tool moves through your router, so your app keep
 navigate: (url) => router.push(url.slice(location.origin.length)),
 ```
 
-`ayme.start()` makes the session the owner of the place it runs and turns on what its options ask for, and returns the function that stops it. That place is the document, which has one owner at a time: a start while the document already has one throws a `RuntimeStateError` with `code: "active-owner"`; once that owner stops, a session can start again. In Node, `start()` starts nothing, so server rendering needs no guard.
+`ayme.start()` makes the runtime the owner of the place it runs and turns on what its options ask for, and returns the function that stops it. That place is the document, which has one owner at a time: a start while the document already has one throws a `RuntimeStateError` with `code: "active-owner"`; once that owner stops, a runtime can start again. In Node, `start()` starts nothing, so server rendering needs no guard.
 
 ## ayme.tools
 
@@ -420,14 +420,14 @@ Presence decides whether a Page Object Tool is listed. It is listed while any in
 | Member                      | Behavior                                                                                                                                                                                                                                                                                                                                                                                             |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `run(name, input, { by }?)` | Runs the tool as a Run for the Caller `by` names, `"app"` by default, the way an agent's call runs it. Browser Tools resolve with an `ActionResult`, except `generate_locator`, which resolves with its locators; `snapshot` with a `PageContextPayload`, `page_objects` with its text, `goal` with a `Handover`. Page Object Tools and Custom Tools resolve with an action result, typed `unknown`. |
-| `list()`                    | Every tool, in publication order, as [`ToolInfo`](#toolinfo) objects. Returns the same array until the list changes, and `[]` while the session is not started.                                                                                                                                                                                                                                      |
-| `subscribe(listener)`       | Calls `listener` with the new list after it changes: the session starts or stops, a class is registered for the first time or unregistered for the last, a Page Object appears on the page or leaves it, a tool becomes available or unavailable or its reason changes, or a Peek Tool appears or goes. Returns the function that unsubscribes.                                                      |
+| `list()`                    | Every tool, in publication order, as [`ToolInfo`](#toolinfo) objects. Returns the same array until the list changes, and `[]` while the runtime is not started.                                                                                                                                                                                                                                      |
+| `subscribe(listener)`       | Calls `listener` with the new list after it changes: the runtime starts or stops, a class is registered for the first time or unregistered for the last, a Page Object appears on the page or leaves it, a tool becomes available or unavailable or its reason changes, or a Peek Tool appears or goes. Returns the function that unsubscribes.                                                      |
 
 `run` checks a call in this order. Nothing runs until every check passes. Child Runs are checked the same way.
 
 | Check                                                                          | Fails with                                                                |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| `by` is not empty, and the session is started.                                 | `RuntimeStateError`                                                       |
+| `by` is not empty, and the runtime is started.                                 | `RuntimeStateError`                                                       |
 | A tool has the name.                                                           | `RuntimeStateError`: `There is no tool "<name>".`                         |
 | The input matches the tool's input schema. Leaving `input` out counts as `{}`. | `ToolInputError`, naming every problem. See [Errors](errors.md#messages). |
 | A rooted tool's `id` names a Page Object of its class on the page.             | `RefResolutionError`                                                      |
@@ -560,7 +560,7 @@ A `Run` is one tool call in the log. Say your code removes Launch plan from [Act
 | `error`        | Failed Runs only: the error's message, prefixed with its name unless that is plain `Error`.             |
 | `startedAt`    | Epoch milliseconds.                                                                                     |
 | `durationMs`   | Absent while the Run is running.                                                                        |
-| `interactions` | The Interactions the Run performed itself on the session's Page, in order.                              |
+| `interactions` | The Interactions the Run performed itself on the runtime's Page, in order.                              |
 
 An `Interaction` is one input the Run gave the page. It is a click, fill, key press, hover or selection on an element, or a keyboard or mouse input.
 
@@ -573,16 +573,16 @@ An `Interaction` is one input the Run gave the page. It is a click, fill, key pr
 
 Waits, assertions, scrolls, focus changes and navigations are not Interactions. A child Run's Interactions are its own, not its parent's. So a `goal` Run lists none, and each step's child Run lists its own.
 
-A failed Run is still recorded, and `run` still throws. A failed WebMCP call is still an error result. This includes a call whose tool does not exist or is unavailable, and one made while the session is not started. Only an empty `by` throws without recording a Run, because there is no Caller to record.
+A failed Run is still recorded, and `run` still throws. A failed WebMCP call is still an error result. This includes a call whose tool does not exist or is unavailable, and one made while the runtime is not started. Only an empty `by` throws without recording a Run, because there is no Caller to record.
 
 ## ayme.pom
 
-`ayme.pom` (`AymePom`) holds one Page Object of each Page Object Model for the session.
+`ayme.pom` (`AymePom`) holds one Page Object of each Page Object Model for the runtime.
 
 | Member              | Behavior                                                                                                                                                                                                                                                    |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `get(Model)`        | Returns the instance, created on first use. Safe during rendering: on the server it returns an inert object with the model's prototype and never calls `pageFactory`.                                                                                       |
-| `register(Model)`   | Counts a registration and returns the instance. The class's tools are live while the session is started. Registrations made before `start()` take effect on start. On the server it registers nothing. See [Classes with one name](#classes-with-one-name). |
+| `register(Model)`   | Counts a registration and returns the instance. The class's tools are live while the runtime is started. Registrations made before `start()` take effect on start. On the server it registers nothing. See [Classes with one name](#classes-with-one-name). |
 | `unregister(Model)` | Removes one registration. The tools are withdrawn when the last one is removed.                                                                                                                                                                             |
 
 Every registration of a class shares one instance, so a Page Object should keep no per-component state in its own fields.
@@ -602,7 +602,7 @@ ayme tells classes apart by name. Say `ProjectsPage` is registered, and its `acc
 - There is one instance per (`name`, `id`). A later call with the same `id` updates that instance's `read`. Without an `id` there is one instance per name, and a later call replaces the earlier one, so a module that runs again replaces its Peek.
 - The tool goes when its last instance is removed. An instance removed and added again in one go, such as by React StrictMode's remount, keeps it.
 
-Peek Tools are in `ayme.tools`, and the Inspector lists and runs them. No coding agent reaches them: WebMCP never publishes them, the Goal Loop never offers them, and a Session of the `ayme` command lists Page Object Tools only. A call answers at once, without waiting for a Settled Page. `ayme.peek` does nothing unless the session has `inspector` on, and does nothing in Node.
+Peek Tools are in `ayme.tools`, and the Inspector lists and runs them. No coding agent reaches them: WebMCP never publishes them, the Goal Loop never offers them, and a Session of the `ayme` command lists Page Object Tools only. A call answers at once, without waiting for a Settled Page. `ayme.peek` does nothing unless the runtime has `inspector` on, and does nothing in Node.
 
 ### What a Peek exposes
 
@@ -614,17 +614,17 @@ ayme.peek(() => ({ id: user.id, name: user.name }), "user"); // not the whole us
 
 ## ayme.webMCP
 
-`ayme.webMCP` (`AymeWebMcp`) is the session's WebMCP publication.
+`ayme.webMCP` (`AymeWebMcp`) is the runtime's WebMCP publication.
 
 | Member                | Behavior                                                                                                                                                                                                                                                     |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `publicationStatus`   | `{ state, message }`. `state` is `disabled` (publication off), `waiting` (for a WebMCP driver), `active` (published), `unavailable` (no driver within two seconds), `failed` (such as `@ayme-dev/webmcp` not installed) or `disposed` (the session stopped). |
+| `publicationStatus`   | `{ state, message }`. `state` is `disabled` (publication off), `waiting` (for a WebMCP driver), `active` (published), `unavailable` (no driver within two seconds), `failed` (such as `@ayme-dev/webmcp` not installed) or `disposed` (the runtime stopped). |
 | `subscribe(listener)` | Calls `listener` with each new status. Returns the function that unsubscribes.                                                                                                                                                                               |
 | `retryPublication()`  | Tries again after `unavailable` or `failed`. Pending attempts are shared, and an active publication is not repeated.                                                                                                                                         |
 
 ## createPage
 
-`createPage(options?)` builds the browser Page the session drives by default. Its options are `testIdAttribute`, `actionTimeout` and `navigationTimeout`. Each one resolves on its own. The value you pass wins. Next come the Playwright settings the [build plugin](build-plugin.md) compiled in, then the built-in default. The built-in defaults are 1 second for `actionTimeout` and 30 seconds for `navigationTimeout`. `createPage()` with no options is the session's default Page. `actionTimeout` also bounds element reads such as `boundingBox`, so an action on a locator that matches nothing fails instead of waiting forever. Navigation keeps its own default whatever `actionTimeout` is; pass `navigationTimeout` to change it. Pass a factory as `pageFactory` to own page construction: without the Vite plugin, with a timeout that differs from your build, or wrapped in your own instrumentation.
+`createPage(options?)` builds the browser Page the runtime drives by default. Its options are `testIdAttribute`, `actionTimeout` and `navigationTimeout`. Each one resolves on its own. The value you pass wins. Next come the Playwright settings the [build plugin](build-plugin.md) compiled in, then the built-in default. The built-in defaults are 1 second for `actionTimeout` and 30 seconds for `navigationTimeout`. `createPage()` with no options is the runtime's default Page. `actionTimeout` also bounds element reads such as `boundingBox`, so an action on a locator that matches nothing fails instead of waiting forever. Navigation keeps its own default whatever `actionTimeout` is; pass `navigationTimeout` to change it. Pass a factory as `pageFactory` to own page construction: without the Vite plugin, with a timeout that differs from your build, or wrapped in your own instrumentation.
 
 ```ts
 createAyme({ pageFactory: () => createPage({ actionTimeout: 500 }) });

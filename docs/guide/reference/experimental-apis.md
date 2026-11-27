@@ -13,10 +13,10 @@ An experimental API belongs to a feature ayme keeps but whose shape is not settl
 
 ## The Goal Loop
 
-- `goalLoop` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the session option that turns the Goal Loop and its `goal` tool on, in [Goals with Jev](../guides/goals-with-jev.md).
+- `goalLoop` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the runtime option that turns the Goal Loop and its `goal` tool on, in [Goals with Jev](../guides/goals-with-jev.md).
 - `decisionEndpoint(url, options?)` in `@ayme-dev/ayme`: the decision function that posts each step to your Decision Endpoint, in [`decisionEndpoint`](decision-endpoint.md#decisionendpoint).
 - `createDecisionEndpoint(options)` in `@ayme-dev/ayme/server`: the Decision Endpoint's handler, in [`createDecisionEndpoint`](decision-endpoint.md#createdecisionendpoint).
 
 ## WebMCP publication
 
-- `webMCP` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the session option that publishes the session's tools through WebMCP, to an agent that runs in the browser, in [Publish tools](../guides/publish-tools.md).
+- `webMCP` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the runtime option that publishes the runtime's tools through WebMCP, to an agent that runs in the browser, in [Publish tools](../guides/publish-tools.md).

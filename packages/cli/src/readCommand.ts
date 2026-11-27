@@ -25,7 +25,8 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  already running, at the address of its DevTools protocol,
                  such as http://127.0.0.1:9222.
   page-objects   Print the Page Object Tree of the Session's Tab: its Page
-                 Objects, each with its id, and how many tools they have.
+                 Objects, with the id of each one that has a root, and how
+                 many tools they have.
   tools          List every Page Object Tool of the Session's Tab with its
                  parameters, and why a tool is unavailable.
   call <tool>    Run the Page Object Tool <tool> and print what its action
@@ -37,16 +38,20 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  tool of a Page Object with an id. Leave it out for a tool
                  that takes none.
   --params @<file>
-                 Read that JSON object from <file>, a file of at most 1 MB.
-  --tab=<url>    Work on the tab whose page shows <url>, as the first line of
-                 ayme page-objects prints it, and not on the browser's most
-                 recently active tab. A call's Page Object Id chooses its tab
-                 by itself.
-  inspect        Open the Inspector on the Session in your default browser,
-                 outside the Session's browser: the Page Objects and the
-                 tools of the Session's tab, to run by hand. BROWSER=none
-                 only prints its address; another BROWSER names the program
-                 that opens it.
+                 Read that JSON object from <file>, a regular file of at most
+                 1 MiB. A relative <file> starts at the project's folder.
+  --tab=<url>    Work on the most recently active tab whose page shows
+                 exactly <url>, as the first line of ayme page-objects prints
+                 it, and not on the browser's most recently active tab. A
+                 call of a tool that takes a Page Object Id runs on the tab
+                 of that Page Object: leave --tab out of it.
+  inspect        Ask your default browser to open the Inspector on the
+                 Session: the Page Objects and the tools of the Session's
+                 tab, to run by hand. When it opens in the Session's browser,
+                 ayme leaves its tab out of the Session's tabs. The address
+                 opens one window, within five minutes: run ayme inspect
+                 again for another. BROWSER=none only prints the address;
+                 another BROWSER names the program that opens it.
   mcp            Serve MCP over stdio, for an Agent App to start: it shows
                  the Inspector on the Session in the Agent App's chat, if
                  the Agent App shows MCP Apps. It offers no tool that reads
@@ -72,9 +77,11 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  a storage state as Playwright writes it, such as one saved
                  with npx playwright codegen --save-storage.
   --save-storage <file>
-                 When the recorder ends, however it ends, save the browser's
-                 cookies and local storage to <file>, in the same format,
-                 also when nothing was recorded.
+                 When the recorder ends with Finish, with its last recorded
+                 page closed or with Ctrl+C, save the browser's cookies and
+                 local storage to <file>, in the same format, also when
+                 nothing was recorded. When the browser was quit or the save
+                 fails, it prints a warning instead.
   --cdp=<url>    Record the page of a Chromium that is already running, at
                  the address of its DevTools protocol on this machine, such
                  as http://127.0.0.1:9222. The page is not navigated, and the

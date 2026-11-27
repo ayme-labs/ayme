@@ -1,5 +1,5 @@
 // Opening the person's default browser at the Inspector window, from the
-// command that asked for it, outside the Session's browser.
+// command that asked for it.
 import { spawn } from "node:child_process";
 
 /** The program that opens `url` and its arguments. */

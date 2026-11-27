@@ -1,6 +1,6 @@
 # Page state
 
-What an agent sees of your page: the Structural Page State, the Structural Refs and Page Object ids it acts through, and the interaction history ayme keeps.
+What ayme's runtime in your page shows an agent, from the Structural Page State and the refs and ids it acts through to the interaction history ayme keeps, and the part a coding agent reads with the [`ayme` command](connect-an-agent.md): the Page Object Tree and a Page Object Tool's short answer.
 
 ## Structural Page State
 
@@ -10,7 +10,7 @@ The state an agent reads also prints each Page Object's id on its root, after th
 
 Content that is scrollable or blocked by a modal stays in the state. Page Object subtrees known to be hidden or off-canvas are left out. Being in the state does not mean a node can be interacted with.
 
-Page state works without WebMCP publication. An agent reads it with the `snapshot` tool, which returns the state as `structure` and the definitions of the registered Page Object Models as `pomDefinitions`. Your own code runs the same tool with `ayme.tools.run("snapshot", {})`.
+Page state works without WebMCP publication. An agent in the page reads it with the `snapshot` tool, which returns the state as `structure` and the definitions of the registered Page Object Models as `pomDefinitions`. Your own code runs the same tool with `ayme.tools.run("snapshot", {})`.
 
 ## Structural Refs
 
@@ -52,11 +52,11 @@ Cannot click "[ref=e36]": the selector matches no element. It writes the Structu
 
 ## Page Object ids
 
-A Page Object of a class with a [Page Object Root](../reference/ayme.md#page-object-root) has an id, written `po<n>`, such as `po3`. The page numbers its Page Objects in the order it first shows them. Two classes rooted at one element are two Page Objects, each with its own id. A Page Object keeps its id while the element of its root stays on the page, and an id is never given to another Page Object.
+A Page Object of a class with a [Page Object Root](../reference/ayme.md#page-object-root) has an id, written `po<n>`, such as `po3`. The Host that runs them, your page's own runtime or a Session of the [`ayme` command](connect-an-agent.md), numbers its Page Objects in the order it first shows them: within one page for the page's runtime, across all its Tabs for a Session. Two classes rooted at one element are two Page Objects, each with its own id. A Page Object keeps its id while the element of its root stays on the page, and an id is never given to another Page Object.
 
 A Page Object Tool of such a class takes the id as `id`, for a page, a single child and a collection item alike: `ProjectRow.archive({ id: "po2" })`. An `id` that is not written `po<n>`, a Structural Ref included, is refused with a `ToolInputError`, as is a call that gives `ref`. An id whose Page Object is no longer on the page fails with a `RefResolutionError`: `Cannot call ProjectRow.archive on Page Object "po2": it is not on the page.` So does the id of a Page Object of another class: `it is not a ProjectRow on the page`.
 
-An agent reads the ids without the whole page state from `page_objects`, which answers the Page Objects on the page as a tree: each one's class, its declared children with their values (an element child as its accessibility subtree), and the id of each Page Object of a class with a root. It carries no tool names, schemas or Page Object definitions:
+An agent reads the ids without the whole page state from `page_objects`, which answers the Page Objects on the page as a tree: each one's class, its declared children with their values (an element child as an excerpt of its accessibility subtree: at most 40 lines, each cut at 200 characters, then a note of how many lines it left out; a single element child that is not on the page is not shown), and the id of each Page Object of a class with a root. It carries no tool names, schemas or Page Object definitions:
 
 ```text
 ShoppingListPage
@@ -68,7 +68,7 @@ ShoppingListPage
         name: text: Eggs
 ```
 
-Every id it prints is one that Page Object's tools take. It answers `No Page Object is on the page.` when none is.
+Every id it prints is one that Page Object's tools take, on the same Host. Use an id only with the Host that printed it: ids from `page_objects` or `snapshot` with that runtime's tools, and ids from `ayme page-objects` with `ayme call` on the same Session. Each Host numbers on its own, so `po2` on another Host can be another Page Object. `page_objects` answers `No Page Object is on the page.` when none is.
 
 In TypeScript the id is a `PageObjectId`, exported from `@ayme-dev/ayme`. It is a type of its own: a Structural Ref (`AriaRef`) is not assignable to it, nor it to a Structural Ref.
 
@@ -82,7 +82,7 @@ createAyme({
 });
 ```
 
-For a rule a selector cannot say, pass a function that takes the session's Playwright `Page` and returns a `Locator` of the elements to drop. ayme calls it once, when the session starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
+For a rule a selector cannot say, pass a function that takes the runtime's Playwright `Page` and returns a `Locator` of the elements to drop. ayme calls it once, when the runtime starts, and keeps the Locator. The function runs in your own code, so it can use anything around it:
 
 ```ts
 const assistantName = "Assistant";
@@ -92,7 +92,7 @@ createAyme({
 });
 ```
 
-In the browser, `page` is the session's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names `ignore`.
+In the browser, `page` is the runtime's Playwright Lite page; through `@ayme-dev/ayme/playwright` it is the Playwright `Page` you passed. A function that throws, or returns anything but a Locator, fails `start()` with a `ToolInputError` that names `ignore`.
 
 An element that matches later is dropped too. An element an action adds just before a full page load can still appear in that action's Change Record.
 
@@ -154,7 +154,7 @@ Every action returns its Change Record: what changed on the page, in two parts. 
 - Each part is present only when it has a change. `page_changed` is true when either part is present.
 - `settled` says whether the page went quiet after the action.
 
-An agent's Page Object Tool call answers in [a shorter form](#a-page-object-tools-answer-to-an-agent). Its other tools answer with the full result.
+An agent's Page Object Tool call, through WebMCP or with `ayme call`, answers in [a shorter form](#a-page-object-tools-answer-to-an-agent). The page's other tools answer an agent with the full result.
 
 Each Caller name has its own cursor: the page state that Caller last received, from `snapshot` or as the Settled Page after its last action. The Caller names are:
 
@@ -190,22 +190,22 @@ Over Playwright in Node, the old document's last capture can fail to reach ayme 
 
 ## The Page Object an action returns
 
-When a Page Object Action returns a Page Object whose model declares or inherits [`present`](../reference/ayme.md#page-object-presence), the call answers once that predicate returns `true`. A Caller then finds the screen the action led to, not one still on its way, such as the nearly empty page some apps load after a sign-in before they send the browser on. The wait ends at the Settled Page deadline, counted from the action's return, and each ask of the predicate gets only the time left. Past the deadline the call answers as it would have without the wait.
+When a Page Object Action returns a Page Object whose model declares or inherits [`present`](../reference/ayme.md#page-object-presence), the call answers once that predicate returns `true`. A Caller then finds the screen the action led to, not one still on its way, such as the nearly empty page some apps load after a sign-in before they send the browser on. The wait starts once the action has returned and the page has settled after it, and ends at the Settled Page deadline counted from there; each ask of the predicate gets only the time left. Past the deadline the call answers as it would have without the wait.
 
 - An action that returns nothing, a value that is not a Page Object, or a Page Object without a `present` of its own or inherited gets no wait.
 - ayme adds no other wait after an action. Waiting for a navigation or a load as such is the browser automation's, and an action does not wait for the screen it leads to: it returns that screen's Page Object.
-- The answer is the one the action gave; the wait changes when it comes, not what it says. A part of the page that came during the wait is in the next action's `changes_before`.
+- The action result's Change Record ends before the wait: a part of the page that came during the wait is in the next action's `changes_before`. [A Page Object Tool's short answer](#a-page-object-tools-answer-to-an-agent) reads the Page Object Tree after the wait, so its `changes` includes what came during it.
 - In the browser, where a full load ends ayme with the document, a call that starts one still answers at once, and gets no wait.
 - Over Playwright in Node, as in a Session of the `ayme` command, ayme outlives the load. A call that starts one lasts until its action returns, however long after the load that is: it answers with what the action returned, or fails with what it threw, and then waits for the returned Page Object. ayme puts no time limit on the call, and the next call on the page waits until it ends.
 
 ## A Page Object Tool's answer to an agent
 
-An agent that calls a Page Object Tool through WebMCP or with `ayme call` through a Session of the [`ayme` command](connect-an-agent.md) gets a short answer instead of the action result, the same in each:
+An agent that calls a Page Object Tool through WebMCP or with `ayme call` through a Session of the [`ayme` command](connect-an-agent.md) gets a short answer instead of the action result, with the same fields in each; after a full load they differ, as described below:
 
 ```ts
 {
   settled: boolean;   // whether the page settled after the action; false while a new document loads
-  result?: unknown;   // what the action returned, when it returned something
+  result?: unknown;   // what the action returned, when that is a JSON value
   url?: string;       // the page's URL, when the action changed it
   changes?: string;   // how the Page Objects on the page changed
 }

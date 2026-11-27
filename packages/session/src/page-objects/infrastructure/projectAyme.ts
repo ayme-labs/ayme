@@ -54,8 +54,16 @@ function entryFile(
   return file === undefined ? undefined : join(folder, file);
 }
 
+/** The install of `version` for a project without @ayme-dev/ayme: a
+ * Session's only use of it, so a dev dependency. */
 const install = (version: string) =>
   `"npm install -D @ayme-dev/ayme@${version}"`;
+
+/** The install of `version` over a copy the project has, which may be its
+ * app's runtime dependency: without -D, npm keeps it in the section it is
+ * in, where -D would move it to devDependencies. */
+const reinstall = (version: string) =>
+  `"npm install @ayme-dev/ayme@${version}", without -D, which keeps it in the dependency section it is in`;
 
 /**
  * The project's own `@ayme-dev/ayme` and Page Objects entry, refused unless
@@ -83,7 +91,7 @@ export const projectAyme = (
       ) as Manifest;
     } catch (cause) {
       return refuse(
-        `The package.json of the @ayme-dev/ayme at ${folder} is not JSON (${(cause as Error).message}). Install @ayme-dev/ayme ${aymeVersion} again, for example with ${install(aymeVersion)}.`
+        `The package.json of the @ayme-dev/ayme at ${folder} is not JSON (${(cause as Error).message}). Install @ayme-dev/ayme ${aymeVersion} again, for example with ${reinstall(aymeVersion)}.`
       );
     }
     if (manifest.version !== aymeVersion) {
@@ -92,7 +100,7 @@ export const projectAyme = (
           ? "an @ayme-dev/ayme that states no version"
           : `@ayme-dev/ayme ${manifest.version}`;
       return refuse(
-        `${projectDir} has ${has}. This ayme, ${aymeVersion}, runs Page Objects only with @ayme-dev/ayme ${aymeVersion}, which is released with it: install that version, for example with ${install(aymeVersion)}.`
+        `${projectDir} has ${has}. This ayme, ${aymeVersion}, runs Page Objects only with @ayme-dev/ayme ${aymeVersion}, which is released with it: install that version, for example with ${reinstall(aymeVersion)}.`
       );
     }
     const files: Record<string, string> = {};
@@ -100,7 +108,7 @@ export const projectAyme = (
       const file = entryFile(folder, manifest, subpath);
       if (file === undefined)
         return refuse(
-          `The @ayme-dev/ayme at ${folder} has no ${subpath} entry, which ayme runs Page Objects with. Install @ayme-dev/ayme ${aymeVersion} again, for example with ${install(aymeVersion)}.`
+          `The @ayme-dev/ayme at ${folder} has no ${subpath} entry, which ayme runs Page Objects with. Install @ayme-dev/ayme ${aymeVersion} again, for example with ${reinstall(aymeVersion)}.`
         );
       files[subpath] = file;
     }

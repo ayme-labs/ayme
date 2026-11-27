@@ -105,7 +105,7 @@ tests/replay.ts                    copy of assets/replay.ts, with match() for th
 ayme/
   pom/                             page objects
   CONVENTIONS.md                   what holds for every flow in the repository
-  recordings/rec_…/                the recording, written by the recorder
+  recordings/rec_…/                the recording, written by the Recorder
   params/contract.recorded.json    what the recording entered and showed
   params/contract.<date>.json      the data of one live run
   auth.json                        the saved login

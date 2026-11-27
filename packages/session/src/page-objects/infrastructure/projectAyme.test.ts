@@ -87,7 +87,7 @@ it.each([
     await addEntry(folder);
 
     expect(await refusal(folder)).toBe(
-      `${folder} has ${has}. This ayme, 0.3.0, runs Page Objects only with @ayme-dev/ayme 0.3.0, which is released with it: install that version, for example with "npm install -D @ayme-dev/ayme@0.3.0".`
+      `${folder} has ${has}. This ayme, 0.3.0, runs Page Objects only with @ayme-dev/ayme 0.3.0, which is released with it: install that version, for example with "npm install @ayme-dev/ayme@0.3.0", without -D, which keeps it in the dependency section it is in.`
     );
   }
 );
@@ -99,7 +99,7 @@ it("refuses an @ayme-dev/ayme whose package.json is damaged, naming the file", a
 
   expect(await refusal(folder)).toMatch(
     new RegExp(
-      `^The package.json of the @ayme-dev/ayme at ${installed} is not JSON \\(.+\\)\\. Install @ayme-dev/ayme 0\\.3\\.0 again, for example with "npm install -D @ayme-dev/ayme@0\\.3\\.0"\\.$`
+      `^The package.json of the @ayme-dev/ayme at ${installed} is not JSON \\(.+\\)\\. Install @ayme-dev/ayme 0\\.3\\.0 again, for example with "npm install @ayme-dev/ayme@0\\.3\\.0", without -D, which keeps it in the dependency section it is in\\.$`
     )
   );
 });
@@ -112,7 +112,7 @@ it("refuses an @ayme-dev/ayme that lacks an entry the Session needs", async () =
   await addEntry(folder);
 
   expect(await refusal(folder)).toBe(
-    `The @ayme-dev/ayme at ${installed} has no ./internal entry, which ayme runs Page Objects with. Install @ayme-dev/ayme 0.3.0 again, for example with "npm install -D @ayme-dev/ayme@0.3.0".`
+    `The @ayme-dev/ayme at ${installed} has no ./internal entry, which ayme runs Page Objects with. Install @ayme-dev/ayme 0.3.0 again, for example with "npm install @ayme-dev/ayme@0.3.0", without -D, which keeps it in the dependency section it is in.`
   );
 });
 

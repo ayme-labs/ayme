@@ -31,14 +31,16 @@ To update, install `@ayme-dev/cli@latest`, with `@ayme-dev/ayme` at the same ver
 
 Your coding agent starts a Session: one running ayme connected to the browser its browser automation drives, such as Playwright CLI, Playwright MCP or agent-browser. The Session runs the Page Objects your project lists in `ayme/page-objects.ts`, in Node, on your project's Playwright. Nothing of ayme has to be in your app.
 
+With the [quickstart](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/install.md)'s `ProjectsPage` listed in `ayme/page-objects.ts`, as [Set up your project](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#set-up-your-project) shows:
+
 ```sh
 npx ayme open http://localhost:5173/
 npx ayme page-objects
-npx ayme call ProjectRow.rename --params '{"id": "po1", "args": {"name": "Launch plan v2"}}'
+npx ayme call ProjectsPage.createProject --params '{"name": "Launch plan"}'
 npx ayme close
 ```
 
-`ayme open` starts Chromium and prints the address the browser automation attaches to; `ayme attach --cdp=<url>` joins a browser the automation opened instead. `ayme page-objects` prints the Page Objects on the screen, each with its id, `ayme call` runs one of their tools, and `ayme close` ends the Session. [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md) shows each browser automation, and `npx ayme --help` lists every command.
+`ayme open` starts Chromium and prints the address the browser automation attaches to; `ayme attach --cdp=<url>` joins a browser the automation opened instead. `ayme page-objects` prints the Page Objects on the screen, with the id of each one that has a root, `ayme call` runs one of their tools, and `ayme close` ends the Session. [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md) shows each browser automation, and `npx ayme --help` lists every command.
 
 ## The Inspector
 
@@ -46,9 +48,7 @@ npx ayme close
 
 ## ayme capture
 
-![A coding agent starts the recorder; the flow is recorded with the app on the left and the recorder window on the right listing each step and what it changed; the agent then writes a page object and a test from the recording and runs it](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-demo.gif)
-
-The [ayme capture guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md) has every command and flag, the warnings and the limits. The sections below walk you from a recording to a written test.
+![A coding agent starts the Recorder; the flow is recorded with the app on the left and the Recorder on the right listing each step and what it changed; the agent then writes a page object and a test from the recording and runs it](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-demo.gif)
 
 ### Record a flow
 
@@ -58,61 +58,15 @@ Run ayme capture from your project's folder and pass the address where the flow 
 npx ayme capture http://localhost:3000
 ```
 
-It opens the page in Chromium, with the recorder window beside it and a small toolbar on the page. The terminal prints the window's address as `Recorder UI: ...`.
+It opens the page in Chromium, with the Recorder beside it and a small toolbar on the page. Recording is off at first, so you can get the page into the state you want to start from, such as logged in. Then:
 
-Recording is off when the recorder opens, so you can first get the page into the state you want to start from, for example by logging in. The recorder keeps no login between recordings; the guide shows [three ways to record a logged-in app](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#record-a-logged-in-app). Then:
-
-1. Press **Record** in the recorder window, or on the toolbar.
+1. Press **Record** in the Recorder, or on the toolbar.
 2. Walk through the flow in the app.
-3. Press **Finish** to save the recording.
+3. Press **Finish** to save the recording. The terminal prints its path as `Recording package: ...`.
 
-![The recorder's controls, from an earlier version: Stop, Assert visibility, Clear, a settings button that is now gone, and Finish](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-controls.png)
+![The Recorder during a recording: a page heading, the navigation, and each step with the changes it caused](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-timeline.png)
 
-While recording, **Record** turns into **Stop**: press it to pause, and **Continue recording** to pick up again. The guide describes [every control](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#record-a-flow).
-
-**Finish**, closing the last recorded page and Ctrl+C in the terminal each save the recording. The terminal then prints its path as `Recording package: ...`. If nothing was recorded, it prints `Recording was empty; no recording package was created.` instead.
-
-#### What the recorder shows
-
-![The recorder window during a recording: a page heading, the navigation, and each step with the changes it caused](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-timeline.png)
-
-The recorder window lists the flow as you go:
-
-- **Visits**: a heading such as **PAGE 1**, with its address, starts each Visit: the page you pressed **Record** on, a page that went to another path, or a new tab.
-- **Steps**: each click, typed text, key press, choice or upload, with the element it acted on.
-- **Changes**: under each step, what changed on the page as a result, for example an element that appeared or was removed, or text that changed.
-
-Hover an element in the window to highlight it on the page. The guide says more about [what the window shows](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#what-the-window-shows).
-
-#### Discard and restore a step
-
-To leave a step out, hover it and press **Discard**. You can do this while recording, without pressing **Stop**, for a step, a visibility assertion or a change no step explains.
-
-![A paused recorder timeline, from an earlier version. The fill step is hovered and shows Discard](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-entry-before-discard.png)
-
-The step stays in the timeline, struck through, with its changes hidden. An undo icon puts it back.
-
-![The same fill step after Discard, with the undo icon](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-entry-discarded.png)
-
-Press the undo icon to restore the step, with its changes.
-
-![The fill step after restore, with its change visible again](https://raw.githubusercontent.com/ayme-labs/ayme/main/docs/cli/images/recorder-entry-restored.png)
-
-Discarding a step does not put the page back: what you do next is recorded from the page as it is. **Finish** saves a discarded step as a stub that tells your agent to leave it out, and **Clear** forgets your choices. The trace still holds the discarded step, so Discard does not hide something you typed by mistake.
-
-#### Assert what matters
-
-Your agent writes the test's checks from what the recording saw change, but some things are easy to miss. To make sure the test checks that something is visible, press **Assert visibility** (the eye button) while recording, then click that element in the app. The click does not reach your app; the recorder records it as a visibility assertion. Press the eye button again for each element you want to assert.
-
-### What the recorder writes
-
-The recorder keeps its data in an `ayme` folder in the folder you run it from:
-
-- `ayme/recordings/<recording-id>/package.yaml`: the package's YAML file: the page at each Visit, the steps and the changes.
-- `ayme/recordings/<recording-id>/trace.zip`: the Playwright trace of the recording, with DOM snapshots and network requests. When the trace cannot be written, for example because the browser stopped answering, the recording is saved without it.
-- `ayme/recordings/latest.yaml`: a copy of the latest recording that was saved. A run that recorded nothing leaves it as it was, so use the path printed as `Recording package:` for the run you just made.
-
-The first save lists `recordings/` in `ayme/.gitignore`, and creates the file if the folder has none. That keeps new recordings out of what git picks up, but it cannot untrack files that are already committed. The guide says [when the recorder leaves the file as it is](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#where-recordings-are-stored). To look into a trace, open it with `npx playwright trace open ayme/recordings/<recording-id>/trace.zip`; the guide explains [what the trace holds](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#trace).
+The [ayme capture guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md) covers the controls, a logged-in app, the files a recording saves, its trace, the warnings and the limits.
 
 ### Turn a recording into page objects
 
@@ -130,7 +84,7 @@ The agent reads the recording, proposes the page objects and the test, and write
 
 A coding agent wrote Playwright page objects and a passing test for the same flow in two ways:
 
-- **ayme capture:** the flow was recorded once, and the agent worked from the recording with the recorder's skill. The recording was made by a script that gave the steps as input events, not by a person.
+- **ayme capture:** the flow was recorded once, and the agent worked from the recording with the Recorder's skill. The recording was made by a script that gave the steps as input events, not by a person.
 - **Playwright MCP:** the agent got the flow as written steps and explored the pages itself.
 
 |                | Time to a passing test | Mean | Runs with a failed test run | Cost                  |
@@ -140,7 +94,7 @@ A coding agent wrote Playwright page objects and a passing test for the same flo
 
 Time and cost show the median of five runs, with the lowest and highest in parentheses. Every run ended with a passing test. The time ranges overlap by one run.
 
-A failed test run is a run of the test that failed before its first pass; a command that started no test does not count. In one recorder run, the test failed twice after that first pass, on a locator that matched two links, and the agent fixed it before the run ended. When each of the ten tests was run three more times afterwards, all ten passed 3 of 3.
+A failed test run is a run of the test that failed before its first pass; a command that started no test does not count. In one Recorder run, the test failed twice after that first pass, on a locator that matched two links, and the agent fixed it before the run ended. When each of the ten tests was run three more times afterwards, all ten passed 3 of 3.
 
 The flow has nine steps on a GitHub repository page: through its pull requests, its releases and the Code menu.
 

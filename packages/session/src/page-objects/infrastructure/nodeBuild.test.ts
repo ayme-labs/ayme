@@ -229,6 +229,21 @@ it("a model that does not compile fails the build with the compiler's diagnostic
   expect(message).toContain("ayme/pom/Basket.ts:0:0:");
 });
 
+it("a project without TypeScript fails the start, saying to install it, since the compiler runs on the project's own TypeScript", async () => {
+  const { dir, installed } = await project({
+    "ayme/page-objects.ts": "export default [];\n",
+  });
+  // The real compiler imports the project's TypeScript as it loads.
+  await writeFile(
+    join(installed, "compiler.mjs"),
+    'import ts from "typescript";\nexport const createPomCompiler = ts;\n'
+  );
+
+  expect(await refusal(dir)).toMatch(
+    /^The Page Object compiler of the project's @ayme-dev\/ayme, .+, did not load: Cannot find package 'typescript' .+\. The compiler runs on the project's own TypeScript: install it, for example with "npm install -D typescript"\.$/
+  );
+});
+
 it("an entry whose default export lists no classes fails the start, saying what to export", async () => {
   const { dir } = await project({
     "ayme/page-objects.ts": 'export default ["Basket"];\n',

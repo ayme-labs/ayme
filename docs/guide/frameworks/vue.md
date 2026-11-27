@@ -64,7 +64,7 @@ useAyme({
 });
 ```
 
-Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore`, `:pageObjects` and `:inspector`. Your coding agent then reaches your Page Objects as [Connect an agent](../guides/connect-an-agent.md) shows. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them.
+Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore`, `:pageObjects` and `:inspector`. Your coding agent then reaches your Page Objects once you finish [Set up your project](../guides/connect-an-agent.md#set-up-your-project), which also installs Playwright at a version the `ayme` command supports. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them.
 
 The `navigate` tool loads a new document by default. To make it move through Vue Router instead, pass a `navigate` function. It gets the absolute URL, and Vue Router's `push` takes the path:
 
@@ -101,18 +101,18 @@ Define `navigate` once in `<script setup>`, as above. An inline arrow in the tem
 
 ## Root ownership
 
-One owner runs ayme for the document: a provider or a standalone `useAyme(options?)`. A second active owner is rejected, including a provider nested in another. Only the owner disposes the session.
+One owner runs ayme for the document: a provider or a standalone `useAyme(options?)`. A second active owner is rejected, including a provider nested in another. Only the owner disposes the runtime.
 
 Put the owner at the application root, not in a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout.vue` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout.vue`, and the owner with it. Unmounting the owner stops ayme and withdraws the tools it publishes through WebMCP. The agent can lose the answer to its call.
 
 | Call                                      | Behavior                                                              |
 | ----------------------------------------- | --------------------------------------------------------------------- |
 | `useAyme()` beneath an owner              | Returns its `{ ayme, webMCP }`; starts and disposes nothing.          |
-| `useAyme()` without an owner above        | Starts and owns a session with the default Page in the current scope. |
-| `useAyme(options)` without an owner above | Starts and owns a session with those options.                         |
+| `useAyme()` without an owner above        | Starts and owns a runtime with the default Page in the current scope. |
+| `useAyme(options)` without an owner above | Starts and owns a runtime with those options.                         |
 | `useAyme(options)` beneath an owner       | Throws; configure the options on the owner.                           |
 
-In the browser, the standalone owner starts at once in its Vue scope and provides its session to descendant components. The owner's own setup can use Page Objects too. The `#pom/*` import is the alias that [The `ayme` folder](../guides/ayme-folder.md#set-the-folder-up-for-page-objects) sets up:
+In the browser, the standalone owner starts at once in its Vue scope and provides its runtime to descendant components. The owner's own setup can use Page Objects too. The `#pom/*` import is the alias that [The `ayme` folder](../guides/ayme-folder.md#set-the-folder-up-for-page-objects) sets up:
 
 ```ts
 // src/App.vue, <script setup>
@@ -125,7 +125,7 @@ useAyme({
 const pom = usePageObject(ProjectsPage);
 ```
 
-Without an owner above, `usePageObject` uses the standalone owner that is already started, as here. `useAyme()` looks for an owner in ancestor components only. An `AymeProvider` in the calling component's own template is below it, so `useAyme()` doesn't find it. The standalone owner also works in an `effectScope()`. Unrelated `effectScope()` calls don't share a session. A consumer's cleanup removes only its own subscriptions and Page Object registrations.
+Without an owner above, `usePageObject` uses the standalone owner that is already started, as here. `useAyme()` looks for an owner in ancestor components only. An `AymeProvider` in the calling component's own template is below it, so `useAyme()` doesn't find it. The standalone owner also works in an `effectScope()`. Unrelated `effectScope()` calls don't share a runtime. A consumer's cleanup removes only its own subscriptions and Page Object registrations.
 
 ## Composables
 
@@ -142,7 +142,7 @@ useAyme({
 });
 ```
 
-A component that calls an action gets the session's instance from `usePageObject`, which also registers the class for the component's scope:
+A component that calls an action gets the runtime's instance from `usePageObject`, which also registers the class for the component's scope:
 
 ```ts
 import { usePageObject } from "@ayme-dev/vue";
@@ -154,8 +154,8 @@ const pom = usePageObject(ProjectsPage);
 await pom.createProject("Launch plan");
 ```
 
-- `usePageObject(Model)` removes its registration with its Vue scope. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialize fields and compose locators; run actions later.
-- `useAyme()` returns the owner's session, `ayme`, and its WebMCP publication, `webMCP`.
+- `usePageObject(Model)` removes its registration with its Vue scope. The runtime keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialize fields and compose locators; run actions later.
+- `useAyme()` returns the owner's runtime, `ayme`, and its WebMCP publication, `webMCP`.
 - Both need an active Vue effect scope.
 
 ## Optional: publish with WebMCP
@@ -175,7 +175,7 @@ useAyme({
 });
 ```
 
-`useAyme()` returns `webMCP` as the session's publication, reactive and read-only. Read `webMCP.publicationStatus.state` in script or templates. When the `state` is `"unavailable"` (no WebMCP driver found) or `"failed"`, `webMCP.retryPublication()` tries again:
+`useAyme()` returns `webMCP` as the runtime's publication, reactive and read-only. Read `webMCP.publicationStatus.state` in script or templates. When the `state` is `"unavailable"` (no WebMCP driver found) or `"failed"`, `webMCP.retryPublication()` tries again:
 
 ```vue
 <script setup lang="ts">
