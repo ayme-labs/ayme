@@ -1150,8 +1150,6 @@ async function openPage(
           report,
         }));
       },
-      // A report left out would be given to the input after it, so one that
-      // cannot be read is told bare when it can be (`bareReportOf`).
       unread: (reported, { action, revision, cause }) => {
         const pageId = idOf.get(reported);
         if (revision) return warn(revisionLost(cause));
