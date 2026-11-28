@@ -1,0 +1,760 @@
+// Test support (ADR-0057): a real Session on a scripted browser, where a
+// test plays the browser by hand.
+import {
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  Queue,
+  Scope,
+  Stream,
+  SubscriptionRef,
+} from "effect";
+import { onTestFinished, vi } from "vitest";
+
+import {
+  openSession,
+  PageObjectsBuild,
+  SessionBrowser,
+  type BrowserTab,
+  type BuiltPageObjects,
+  type HostedTab,
+  type SessionBrowserRequest,
+  type TabIds,
+} from "../src/session/application";
+import {
+  RunError,
+  SessionStartError,
+  setupHeld,
+  TabReadError,
+  type Dialog,
+  type InspectorEvent,
+  type Listing,
+  type RunAnswer,
+  type SessionAnswer,
+  type SessionEnd,
+  type SessionRequest,
+  type TabDialog,
+} from "../src/session/domain";
+
+/** The address the scripted browser gives when it opens; a joined one gives
+ * the address it was joined at. */
+const SCRIPTED_ADDRESS = "http://127.0.0.1:9222";
+
+/** What the scripted build gives: the project's Page Objects, built. */
+export const SCRIPTED_PAGE_OBJECTS: BuiltPageObjects = Object.freeze({
+  built: "the scripted Page Objects",
+});
+
+/**
+ * The remote control of a scripted browser and of the scripted build of
+ * the project's Page Objects. Each finishes at once, unless the Session was
+ * started with `held: true` for the browser's open, or `heldBuild: true`
+ * for the build; then the test finishes it with `open` or `failOpen`, and
+ * `finishBuild` or `failBuild`.
+ */
+export interface ScriptedBrowser extends ScriptedTab {
+  /** Every browser the Session asked for, in order. */
+  readonly asked: readonly SessionBrowserRequest[];
+  /** Whether the Session has let its browser go, which closes a browser
+   * ayme opened and only disconnects from a joined one. */
+  readonly released: boolean;
+  /** A held open finishes: the browser is there. */
+  open(): void;
+  /** A held open fails, for the reason a person reads. */
+  failOpen(reason: string): void;
+  /** A held open breaks with an error nobody expected, such as a folder
+   * that could not be made. */
+  breakOpen(defect: Error): void;
+  /** The build under way finishes: the Page Objects are built, as
+   * `built` when given. */
+  finishBuild(built?: BuiltPageObjects): void;
+  /** The build under way fails, with the build's errors as `ayme open`
+   * prints them, and `first` as the first of them on one line. */
+  failBuild(errors: string, first?: string): void;
+  /** The build under way breaks with an error nobody expected. */
+  breakBuild(defect: Error): void;
+  /** How many builds the Session started, the first included. A build
+   * after the first waits for the test: `finishBuild` or `failBuild`. */
+  readonly builds: number;
+  /** Whether the Session listens for edits of the source. */
+  readonly watched: boolean;
+  /** The developer edits the source of the Page Objects; resolves once the
+   * Session took the edit. */
+  edit(): Promise<void>;
+  /** Resolves once `holds()` is true, checked again after each thing the
+   * scripted browser and build are asked to do, so a test waits for the
+   * Session's work and not for time. */
+  until(holds: () => boolean): Promise<void>;
+  /** The source can no longer be watched, for `reason`; it can again once
+   * it is undefined. */
+  loseWatch(reason: string | undefined): void;
+  /** The built Page Objects the Session got ready to run on its Tabs,
+   * each time it did. */
+  readonly hostedWith: readonly BuiltPageObjects[];
+  /** The browser goes away: it crashed, or someone closed it. */
+  goAway(): void;
+  /** Opens a Tab, at `url` when given, which becomes the most recently
+   * active one, as a Tab the browser automation opens does. */
+  openTab(url?: string): ScriptedTab;
+  /** Every read of the browser's tab list fails, for the reason a person
+   * reads, until the test calls the function it returns. */
+  failTabList(reason: string): () => void;
+  /** The next read of the browser's tab list takes the Tabs open now and
+   * answers only once the test calls the function it returns, as an HTTP
+   * read that is slow to answer. */
+  holdTabList(): () => void;
+  /** How many reads of the browser's tab list began so far. */
+  readonly tabListReads: number;
+}
+
+/** The remote control of one Tab of the scripted browser. The scripted
+ * browser's own members control the Tab it opened on. */
+export interface ScriptedTab {
+  /** Whether the Session is the Tab's Host, which turns focus emulation on
+   * for it. */
+  readonly hosted: boolean;
+  /** What the Tab shows from now on: a page without Page Objects until
+   * then. Its URL names the Tab. */
+  show(listing: Listing): void;
+  /** Every read of the Tab's page fails, for the reason a person reads,
+   * until the test shows a listing again. */
+  failReads(reason: string): void;
+  /** Every read of the Tab's page waits, as behind a presence predicate
+   * that never resolves, until the test shows a listing again. */
+  holdReads(): void;
+  /** The Tab's main frame starts a new document at `url`, as a sign-in's
+   * redirect does: each read of the page under way fails as Playwright
+   * fails it, and the Tab shows an empty page at `url` until the test shows
+   * another. */
+  load(url: string): void;
+  /** The built Page Objects the Tab's Host started with, once it is
+   * hosted. */
+  readonly startedWith: BuiltPageObjects | undefined;
+  /** How many listings of the Tab's page the Session read. */
+  readonly listingsRead: number;
+  /** The built Page Objects swapped in on the Tab's Host, in order. */
+  readonly swappedIn: readonly BuiltPageObjects[];
+  /** How many times the Tab's Host read its Page Objects on the page for a
+   * Run from the Inspector window. */
+  readonly observed: number;
+  /** Every Swap the Session made on the Tab, in order, whether it worked
+   * or not. */
+  readonly swapsTried: readonly BuiltPageObjects[];
+  /** Every Swap on the Tab fails from now on, for `reason`, as a rebuilt
+   * class that cannot be made there; none does once it is undefined. */
+  refuseSwaps(reason: string | undefined): void;
+  /** Every Run started on the Tab, in order. */
+  readonly runs: readonly { readonly tool: string; readonly input: unknown }[];
+  /** How each Run on the Tab ends from now on: as `answer` resolves, or
+   * fails as it rejects with a RunError. Until then a Run answers that the
+   * page settled. */
+  answerRuns(
+    answer: (tool: string, input: unknown) => Promise<RunAnswer>
+  ): void;
+  /** The Tab's Host gives out the Page Object Id `id` to a Page Object of
+   * the class `className`, as it does when a read first finds one. */
+  give(id: string, className: string): void;
+  /** The Tab's Host forgets `id`, as when a read finds its element gone
+   * from the page. */
+  release(id: string): void;
+  /** The tools of the class `className` take no Page Object Id from now
+   * on, on every Tab, as after a Swap of a build whose class declares no
+   * root. Until then a class's tools take one once a Tab's Host gave one of
+   * its Page Objects an id. */
+  rootless(className: string): void;
+  /** The browser automation brings the Tab to the front. */
+  activate(): void;
+  /** The Tab closes, and Playwright says so. */
+  close(): void;
+  /** Every call on the Tab's Inspector contract, in order, as the Tab's
+   * Host received it. */
+  readonly inspectorCalls: readonly {
+    readonly method: string;
+    readonly params: unknown;
+  }[];
+  /** How the Tab's Inspector contract answers each call from now on: as
+   * `answer` resolves, or fails as it rejects. `released` aborts once the
+   * Session no longer waits for the answer. Until then it answers with the
+   * method's name. */
+  answerInspector(
+    answer: (
+      method: string,
+      params: unknown,
+      released: AbortSignal
+    ) => Promise<unknown>
+  ): void;
+  /** How many listen to the events of the Tab's Inspector contract now. */
+  readonly inspectorListeners: number;
+  /** The Tab's Inspector contract tells its listeners `event`. */
+  tellInspector(event: unknown): void;
+  /** A dialog opens on the Tab's page. It does not count as open until the
+   * test says it has stayed open long enough. */
+  openDialog(dialog: Dialog): void;
+  /** The dialog has been open for 100 ms, so it counts as open. */
+  dialogStaysOpen(): void;
+  /** The dialog closes, answered by whoever answered it. */
+  closeDialog(): void;
+  /** Every hosting of the Tab fails, as once ayme's setup limit has passed
+   * while Playwright's setup of the Tab's browser context waits behind a
+   * dialog on another page there: `heldBy`, the one the Session counts as
+   * open, when it knows of one. It holds until the test calls the function
+   * it returns. */
+  holdSetup(heldBy?: {
+    readonly url: string;
+    readonly dialog: Dialog;
+  }): () => void;
+  /** Every hosting of the Tab waits, as one does while Playwright sets up
+   * the page, until the test calls the function it returns. */
+  holdHosting(): () => void;
+}
+
+/** How a read of the page fails once a new document replaced the one it
+ * read, as Playwright says it. */
+export const DESTROYED =
+  "ayme could not read the page: page.evaluate: Execution context was destroyed, most likely because of a navigation";
+
+/** What the scripted Tab shows until a test says otherwise. */
+export const EMPTY_LISTING: Listing = {
+  tab: { url: "about:blank", title: "" },
+  pageObjectTree: "No Page Object is on the page.",
+  tools: [],
+};
+
+/** The Session's interface with each member as a promise. */
+export interface ScriptedSession {
+  readonly started: Promise<SessionAnswer>;
+  ask(request: SessionRequest): Promise<SessionAnswer>;
+  readonly ended: Promise<SessionEnd>;
+  /** Listens to the Session's events from now on, as an Inspector window
+   * does. */
+  listen(): Listening;
+}
+
+/** An Inspector window listening to a Session's events. */
+export interface Listening {
+  /** What it heard so far, in order. */
+  readonly heard: readonly InspectorEvent[];
+  /** Resolves once the events ended. */
+  readonly done: Promise<void>;
+  /** Stops listening, as a window that closes. */
+  stop(): Promise<void>;
+}
+
+/** An Inspector window on a Session, as its transport is: each call it
+ * makes on the contract names the Tab the Session told it last. */
+export interface WindowOn extends Listening {
+  /** The Tab the Session told the window last. */
+  tab(): number;
+  /** The window's call of the contract's `method` with `params`. */
+  ask(method: string, params?: unknown): Promise<SessionAnswer>;
+}
+
+/** A window that listens to `session`, once the Session told it a Tab. */
+export async function windowOn(session: ScriptedSession): Promise<WindowOn> {
+  const listening = session.listen();
+  const tab = () => {
+    const told = listening.heard.findLast((event) => "tab" in event);
+    if (!told) throw new Error("The Session told the window no Tab yet.");
+    return (told as { readonly tab: number }).tab;
+  };
+  await vi.waitFor(tab);
+  return {
+    get heard() {
+      return listening.heard;
+    },
+    done: listening.done,
+    stop: () => listening.stop(),
+    tab,
+    ask: (method, params) =>
+      session.ask({
+        inspector: {
+          contract: {
+            method,
+            ...(params === undefined ? {} : { params }),
+            tab: tab(),
+          },
+        },
+      }),
+  };
+}
+
+/** How the scripted browser and build behave: each finishes at once
+ * unless held. */
+export type ScriptedOptions = {
+  /** The open waits for the test: `open` or `failOpen`. */
+  readonly held?: true;
+  /** The build waits for the test: `finishBuild` or `failBuild`. */
+  readonly heldBuild?: true;
+};
+
+export type ScriptedSessionOptions = SessionBrowserRequest &
+  ScriptedOptions & {
+    /** The Session's name: "default" when not given. */
+    readonly name?: string;
+    /** Where its process serves the Session's Inspector window; none when
+     * not given. */
+    readonly inspector?: string;
+    /** The socket of that window an Agent App's view connects to. */
+    readonly agentApp?: string;
+  };
+
+/** A Tab of the scripted browser, as the Session reaches it and as a test
+ * controls it. */
+type Tab = BrowserTab & { readonly control: ScriptedTab };
+
+/** A scripted Tab at `url`, among the browser's `open` Tabs, whose classes
+ * in `rooted` declare a root. */
+function scriptedTab(
+  url: string,
+  open: Tab[],
+  rooted: Set<string>,
+  changed: () => void
+): Tab {
+  let shown: Listing | TabReadError | "held" = {
+    ...EMPTY_LISTING,
+    tab: { url, title: "" },
+  };
+  let shownUrl = url;
+  // The documents the Tab's main frame started, its first included.
+  let documents = 1;
+  const heldReads = new Set<Deferred.Deferred<Listing, TabReadError>>();
+  const runs: { tool: string; input: unknown }[] = [];
+  let listingsRead = 0;
+  const swappedIn: BuiltPageObjects[] = [];
+  const swapsTried: BuiltPageObjects[] = [];
+  let observed = 0;
+  let refusing: string | undefined;
+  let answerRun: (tool: string, input: unknown) => Promise<RunAnswer> = () =>
+    Promise.resolve({ settled: true });
+  let given: TabIds | undefined;
+  let startedWith: BuiltPageObjects | undefined;
+  let setup: TabReadError | undefined;
+  let hosting: Deferred.Deferred<void> | undefined;
+  const closed = Deferred.makeUnsafe<void>();
+  const inspectorCalls: { method: string; params: unknown }[] = [];
+  let answerInspector: (
+    method: string,
+    params: unknown,
+    released: AbortSignal
+  ) => Promise<unknown> = (method) => Promise.resolve(method);
+  const listeners = new Set<(event: unknown) => void>();
+  const dialog = Effect.runSync(SubscriptionRef.make<TabDialog>("none"));
+  let opening: Dialog | undefined;
+  const setDialog = (now: TabDialog) =>
+    Effect.runSync(SubscriptionRef.set(dialog, now));
+  const hosted: HostedTab = {
+    listing: Effect.suspend(() => {
+      listingsRead += 1;
+      changed();
+      if (shown === "held") {
+        const read = Deferred.makeUnsafe<Listing, TabReadError>();
+        heldReads.add(read);
+        return Deferred.await(read).pipe(
+          Effect.ensuring(Effect.sync(() => heldReads.delete(read)))
+        );
+      }
+      return shown instanceof TabReadError
+        ? Effect.fail(shown)
+        : Effect.succeed(shown);
+    }),
+    call: (tool: string, input: unknown) =>
+      Effect.tryPromise({
+        try: () => {
+          runs.push({ tool, input });
+          changed();
+          return answerRun(tool, input);
+        },
+        catch: (error) =>
+          error instanceof RunError ? error : new RunError(String(error)),
+      }),
+    inspector: {
+      request: (method, params) =>
+        Effect.tryPromise({
+          try: (released) => {
+            inspectorCalls.push({ method, params });
+            changed();
+            return answerInspector(method, params, released);
+          },
+          catch: (error) =>
+            new TabReadError(
+              error instanceof Error ? error.message : String(error)
+            ),
+        }),
+      events: Stream.callback<unknown>((queue) =>
+        Effect.acquireRelease(
+          Effect.sync(() => {
+            const listener = (event: unknown) =>
+              void Queue.offerUnsafe(queue, event);
+            listeners.add(listener);
+            changed();
+            return listener;
+          }),
+          (listener) => Effect.sync(() => listeners.delete(listener))
+        )
+      ),
+    },
+    dialog: SubscriptionRef.changes(dialog),
+    document: Effect.sync(() => ({ id: String(documents), url: shownUrl })),
+    takesId: (tool) => rooted.has(tool.slice(0, tool.indexOf("."))),
+    observe: Effect.sync(() => {
+      observed++;
+      changed();
+    }),
+    swap: (pageObjects) =>
+      Effect.suspend(() => {
+        swapsTried.push(pageObjects);
+        if (refusing !== undefined) {
+          changed();
+          return Effect.fail(new TabReadError(refusing));
+        }
+        swappedIn.push(pageObjects);
+        changed();
+        return Effect.void;
+      }),
+  };
+  const tab: Tab = {
+    url: () => shownUrl,
+    closed: Deferred.await(closed),
+    dialog: SubscriptionRef.changes(dialog),
+    // As a page's registry refuses a second owner.
+    host: (giving, pageObjects) =>
+      (hosting ? Deferred.await(hosting) : Effect.void).pipe(
+        Effect.andThen(
+          Effect.suspend(() =>
+            setup
+              ? Effect.fail(setup)
+              : given
+                ? Effect.fail(
+                    new TabReadError(
+                      "ayme could not run the project's Page Objects on the tab: The ayme runtime already has an active owner."
+                    )
+                  )
+                : Effect.sync(() => {
+                    given = giving;
+                    startedWith = pageObjects;
+                    changed();
+                    return hosted;
+                  })
+          )
+        )
+      ),
+    control: {
+      get hosted() {
+        return given !== undefined;
+      },
+      get startedWith() {
+        return startedWith;
+      },
+      show: (listing) => {
+        shown = listing;
+        shownUrl = listing.tab.url;
+      },
+      failReads: (reason) => (shown = new TabReadError(reason)),
+      holdReads: () => (shown = "held"),
+      load: (loading) => {
+        documents++;
+        shownUrl = loading;
+        shown = { ...EMPTY_LISTING, tab: { url: loading, title: "" } };
+        for (const read of heldReads)
+          Deferred.doneUnsafe(read, Exit.fail(new TabReadError(DESTROYED)));
+      },
+      get listingsRead() {
+        return listingsRead;
+      },
+      swappedIn,
+      get observed() {
+        return observed;
+      },
+      swapsTried,
+      refuseSwaps: (reason) => (refusing = reason),
+      runs,
+      answerRuns: (answer) => (answerRun = answer),
+      give: (id, className) => {
+        if (!given) throw new Error("The Session is not this Tab's Host.");
+        rooted.add(className);
+        given.given(id, className);
+      },
+      release: (id) => given?.released(id),
+      rootless: (className) => rooted.delete(className),
+      activate: () => {
+        open.splice(open.indexOf(tab), 1);
+        open.unshift(tab);
+      },
+      close: () => {
+        if (open.includes(tab)) open.splice(open.indexOf(tab), 1);
+        Deferred.doneUnsafe(closed, Exit.void);
+      },
+      inspectorCalls,
+      answerInspector: (answer) => (answerInspector = answer),
+      get inspectorListeners() {
+        return listeners.size;
+      },
+      tellInspector: (event) => {
+        for (const listener of listeners) listener(event);
+      },
+      openDialog: (opened) => {
+        opening = opened;
+        setDialog("opening");
+      },
+      dialogStaysOpen: () => {
+        if (!opening) throw new Error("No dialog is opening on this Tab.");
+        setDialog({ open: opening });
+      },
+      closeDialog: () => {
+        opening = undefined;
+        setDialog("none");
+      },
+      holdSetup: (heldBy) => {
+        setup = new TabReadError(setupHeld(heldBy));
+        return () => (setup = undefined);
+      },
+      holdHosting: () => {
+        const held = (hosting = Deferred.makeUnsafe<void>());
+        return () => {
+          if (hosting === held) hosting = undefined;
+          Deferred.doneUnsafe(held, Exit.void);
+        };
+      },
+    },
+  };
+  return tab;
+}
+
+/** A scripted browser and build, as the layer a Session gets them from,
+ * and their remote control. */
+export function scriptedBrowser({ held, heldBuild }: ScriptedOptions = {}): {
+  layer: Layer.Layer<SessionBrowser | PageObjectsBuild>;
+  browser: ScriptedBrowser;
+  /** Tells what waits in `browser.until` that something changed. */
+  changed: () => void;
+} {
+  const asked: SessionBrowserRequest[] = [];
+  const hostedWith: BuiltPageObjects[] = [];
+  let released = false;
+  // The open Tabs, the most recently active first.
+  const open: Tab[] = [];
+  // The classes that declare a root, in the build every Tab runs.
+  const rooted = new Set<string>();
+  let tabList: TabReadError | undefined;
+  let heldTabList: Deferred.Deferred<void> | undefined;
+  let tabListReads = 0;
+  const opened = Deferred.makeUnsafe<void, SessionStartError>();
+  // Each build the Session started, in order; the first is made at once, so
+  // a test can finish it before the Session starts it.
+  const builds = [Deferred.makeUnsafe<BuiltPageObjects, SessionStartError>()];
+  let started = 0;
+  const underWay = () => {
+    const building = builds.find((each) => !Deferred.isDoneUnsafe(each));
+    if (!building) throw new Error("No build is under way.");
+    return building;
+  };
+  const editors = new Set<() => void>();
+  // What waits for the scripted browser and build to change.
+  const waiting = new Set<() => void>();
+  const changed = () => {
+    for (const check of [...waiting]) check();
+  };
+  const until = (holds: () => boolean) =>
+    new Promise<void>((resolve) => {
+      const check = () => {
+        if (!holds()) return;
+        waiting.delete(check);
+        resolve();
+      };
+      waiting.add(check);
+      check();
+    });
+  // How many edits the Session took.
+  let taken = 0;
+  let unwatched: string | undefined;
+  const gone = Deferred.makeUnsafe<void>();
+  if (!held) Deferred.doneUnsafe(opened, Exit.void);
+  if (!heldBuild)
+    Deferred.doneUnsafe(builds[0]!, Exit.succeed(SCRIPTED_PAGE_OBJECTS));
+
+  const openTab = (url = "about:blank") => {
+    const tab = scriptedTab(url, open, rooted, changed);
+    open.unshift(tab);
+    return tab;
+  };
+  const first = openTab();
+  const tabs = {
+    open: Effect.suspend(() => {
+      tabListReads++;
+      if (tabList) return Effect.fail(tabList);
+      const now = [...open];
+      const held = heldTabList;
+      heldTabList = undefined;
+      return held
+        ? Deferred.await(held).pipe(Effect.as(now))
+        : Effect.succeed(now);
+    }),
+  };
+  const build = Layer.succeed(PageObjectsBuild, {
+    build: Effect.suspend(() => {
+      if (started++ > 0) builds.push(Deferred.makeUnsafe());
+      changed();
+      return Deferred.await(builds[started - 1]!);
+    }),
+    edits: Stream.callback<void>((queue) =>
+      Effect.acquireRelease(
+        Effect.sync(() => {
+          const editor = () => void Queue.offerUnsafe(queue, undefined);
+          editors.add(editor);
+          return editor;
+        }),
+        (editor) => Effect.sync(() => editors.delete(editor))
+      )
+    ).pipe(
+      Stream.tap(() =>
+        Effect.sync(() => {
+          taken++;
+          changed();
+        })
+      )
+    ),
+    unwatched: () => unwatched,
+  });
+  const browsers = Layer.succeed(SessionBrowser, {
+    get: (asking) =>
+      // The wait for the open is outside the acquire, which cannot be
+      // interrupted, so that a Session can stop a start under way.
+      Effect.acquireRelease(
+        Effect.sync(() => asked.push(asking)),
+        () => Effect.sync(() => (released = true))
+      ).pipe(
+        Effect.andThen(Deferred.await(opened)),
+        Effect.as({
+          address: "join" in asking ? asking.join.cdp : SCRIPTED_ADDRESS,
+          gone: Deferred.await(gone),
+          host: (pageObjects: BuiltPageObjects) =>
+            Effect.sync(() => {
+              hostedWith.push(pageObjects);
+              return tabs;
+            }),
+        })
+      ),
+  });
+
+  return {
+    layer: Layer.merge(browsers, build),
+    changed,
+    browser: {
+      asked,
+      hostedWith,
+      get released() {
+        return released;
+      },
+      open: () => Deferred.doneUnsafe(opened, Exit.void),
+      failOpen: (reason) =>
+        Deferred.doneUnsafe(opened, Exit.fail(new SessionStartError(reason))),
+      breakOpen: (defect) => Deferred.doneUnsafe(opened, Exit.die(defect)),
+      finishBuild: (built = SCRIPTED_PAGE_OBJECTS) =>
+        void Deferred.doneUnsafe(underWay(), Exit.succeed(built)),
+      breakBuild: (defect) =>
+        void Deferred.doneUnsafe(underWay(), Exit.die(defect)),
+      failBuild: (errors, first) =>
+        void Deferred.doneUnsafe(
+          underWay(),
+          Exit.fail(new SessionStartError(errors, first))
+        ),
+      get builds() {
+        return started;
+      },
+      get watched() {
+        return editors.size > 0;
+      },
+      edit: () => {
+        const awaited = taken + 1;
+        for (const editor of editors) editor();
+        return until(() => taken >= awaited);
+      },
+      until,
+      loseWatch: (reason) => (unwatched = reason),
+      goAway: () => Deferred.doneUnsafe(gone, Exit.void),
+      openTab: (url) => openTab(url).control,
+      failTabList: (reason) => {
+        tabList = new TabReadError(reason);
+        return () => (tabList = undefined);
+      },
+      holdTabList: () => {
+        const held = (heldTabList = Deferred.makeUnsafe<void>());
+        return () => Deferred.doneUnsafe(held, Exit.void);
+      },
+      get tabListReads() {
+        return tabListReads;
+      },
+      ...first.control,
+      get hosted() {
+        return first.control.hosted;
+      },
+      get startedWith() {
+        return first.control.startedWith;
+      },
+      get observed() {
+        return first.control.observed;
+      },
+      get inspectorListeners() {
+        return first.control.inspectorListeners;
+      },
+      get listingsRead() {
+        return first.control.listingsRead;
+      },
+    },
+  };
+}
+
+/** Starts a Session on a scripted browser. It ends when the test does. */
+export async function startScriptedSession(
+  options: ScriptedSessionOptions
+): Promise<{ session: ScriptedSession; browser: ScriptedBrowser }> {
+  const {
+    held,
+    heldBuild,
+    name = "default",
+    inspector,
+    agentApp,
+    ...request
+  } = options;
+  const { layer, browser, changed } = scriptedBrowser({
+    ...(held ? { held } : {}),
+    ...(heldBuild ? { heldBuild } : {}),
+  });
+  const scope = Effect.runSync(Scope.make());
+  onTestFinished(() => Effect.runPromise(Scope.close(scope, Exit.void)));
+  const session = await Effect.runPromise(
+    openSession(request, name, {
+      ...(inspector === undefined ? {} : { inspector }),
+      ...(agentApp === undefined ? {} : { agentApp }),
+    }).pipe(Effect.provide(layer), Scope.provide(scope))
+  );
+  const run = <A>(effect: Effect.Effect<A>) => Effect.runPromise(effect);
+
+  return {
+    session: {
+      started: run(session.started),
+      ask: (asking) => run(session.ask(asking)),
+      ended: run(session.ended),
+      listen: () => {
+        const heard: InspectorEvent[] = [];
+        const listening = Effect.runFork(
+          Stream.runForEach(session.events, (event) =>
+            Effect.sync(() => {
+              heard.push(event);
+              changed();
+            })
+          )
+        );
+        onTestFinished(() => Effect.runPromise(Fiber.interrupt(listening)));
+        return {
+          heard,
+          done: Effect.runPromise(Fiber.await(listening)).then(() => {}),
+          stop: () => Effect.runPromise(Fiber.interrupt(listening)),
+        };
+      },
+    },
+    browser,
+  };
+}

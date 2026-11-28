@@ -19,6 +19,7 @@ import {
   type Page,
 } from "playwright-core";
 import { afterEach, expect, it } from "vitest";
+import { projectPlaywright, projectPlaywrightCli } from "@ayme-dev/browser";
 
 import { RecordedBrowser } from "../../../session/application";
 import type {
@@ -32,10 +33,6 @@ import {
   Timeline,
   type ElementLookup,
 } from "../../../timeline/domain";
-import {
-  loadProjectPlaywright,
-  projectPlaywrightCli,
-} from "../projectPlaywright";
 import { startGate } from "../in-page/gate";
 import { installGate, startPickingIn } from "./pageFunctions";
 import { stockBrowser } from "./stockBrowser";
@@ -67,7 +64,7 @@ const projectDir =
  * browser an attaching recorder finds: each version needs only the browser
  * build it installs. The test's own connections use this package's
  * Playwright, which needs no browser to connect. */
-const underTest = await Effect.runPromise(loadProjectPlaywright(projectDir));
+const underTest = await Effect.runPromise(projectPlaywright(projectDir));
 const { chromium: projectChromium } = underTest.playwright;
 
 /** A recorded browser on stock Playwright, as the engine sees it. */

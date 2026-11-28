@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { usePageObject, usePeek } from "@ayme-dev/vue";
+import { usePageObject } from "@ayme-dev/vue";
 import { CounterPage } from "#pom/CounterPage";
 import { SubCounterPage } from "#pom/SubCounterPage";
 
@@ -9,7 +9,6 @@ const count = ref(0);
 // lifetime, which no URL states (the certification unmounts it on its page).
 const pom = usePageObject(CounterPage);
 usePageObject(SubCounterPage);
-usePeek({ count }, "counter");
 </script>
 
 <template>

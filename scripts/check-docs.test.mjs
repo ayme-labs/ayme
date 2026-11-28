@@ -587,7 +587,7 @@ test("ignores a constructor parameter property outside the checked docs", () => 
           "# Readme\n\n```ts\nconstructor(readonly page: Page) {}\n```\n",
         "packages/internal/README.md":
           "# internal\n\n```ts\nconstructor(readonly page: Page) {}\n```\n",
-        "skills/ayme-recorder/references/model.md":
+        "skills/ayme-capture/references/model.md":
           "```ts\nconstructor(readonly page: Page) {}\n```\n",
         "docs/notes.md":
           "# Notes\n\n```ts\nconstructor(readonly page: Page) {}\n```\n",

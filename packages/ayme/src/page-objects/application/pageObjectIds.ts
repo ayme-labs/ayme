@@ -5,21 +5,40 @@ import type { PageDriver } from "./pageDriver";
 export type PageObjectRoot = { className: string; ref: string };
 
 /**
+ * Where a Host's Page Object ids come from: each `next()` is an id it never
+ * gave before, for a Page Object of the class `className`. A Host that
+ * shares one across its pages gives no id twice among them.
+ */
+export type PageObjectIdSource = {
+  next(className: string): PageObjectId;
+  /** Hears that a page forgot `id`, as its element left the page: the id
+   * names nothing from now on. */
+  released?(id: PageObjectId): void;
+};
+
+/** A source that numbers its ids from `po1`. */
+export function createPageObjectIdSource(): PageObjectIdSource {
+  let given = 0;
+  return { next: () => pageObjectIdOf(++given) };
+}
+
+/**
  * Package-internal: the Page Object ids of one page. An id belongs to one
  * Page Object: a class on the element of its root. It is given when that
  * Page Object is first read, in the order the Page Objects are read, kept
  * while the element stays on the page, however often captures rename it,
  * and never given to another Page Object. Two classes rooted at one element
  * are two Page Objects, each with its own id; two instances of one class
- * rooted at one element are one.
+ * rooted at one element are one. The ids come from `source`, the page's
+ * own unless its Host gives one.
  */
 export function createPageObjectIds(
-  driver: Pick<PageDriver, "elementKeys" | "keyedRefs">
+  driver: Pick<PageDriver, "elementKeys" | "keyedRefs">,
+  source: PageObjectIdSource = createPageObjectIdSource()
 ) {
   // Each id given: its class and the key of its root's element.
   const roots = new Map<PageObjectId, { className: string; key: string }>();
   const keyOf = (className: string, key: string) => `${className}\u0000${key}`;
-  let given = 0;
   // One read at a time: two reads that both found a root unread would each
   // give it an id.
   let last: Promise<unknown> = Promise.resolve();
@@ -40,7 +59,10 @@ export function createPageObjectIds(
     known.forEach(([id], index) => {
       const ref = now[index];
       if (ref) refs.set(id, ref);
-      else roots.delete(id);
+      else {
+        roots.delete(id);
+        source.released?.(id);
+      }
     });
     return refs;
   }
@@ -66,7 +88,7 @@ export function createPageObjectIds(
           const { className } = asked[index]!;
           let id = byKey.get(keyOf(className, root.key));
           if (!id) {
-            id = pageObjectIdOf(++given);
+            id = source.next(className);
             roots.set(id, { className, key: root.key });
             byKey.set(keyOf(className, root.key), id);
           }

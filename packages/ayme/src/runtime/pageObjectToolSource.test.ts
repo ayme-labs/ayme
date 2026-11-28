@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PageObjectId, PageObjectTreeRead } from "../page-objects/domain";
 import { treeRead } from "../../testing/pageObjectTree.testSupport";
+import { InPageVersionError } from "../in-page";
+import { markFailedAfterFullLoad } from "../runs/application";
 import type { ToolInfo } from "../shared";
 import {
   pageObjectToolSource,
@@ -55,10 +57,14 @@ function session({
   trees = [list("Milk")],
   urls = ["http://app/list"],
   answer,
+  toolsBeforeRead = TOOLS,
 }: {
   trees?: PageObjectTreeRead[];
   urls?: string[];
   answer: () => Promise<unknown>;
+  /** The tools the session lists until a read of the tree probed the
+   * page. */
+  toolsBeforeRead?: readonly ToolInfo[];
 }) {
   let read = 0;
   let at = 0;
@@ -67,7 +73,7 @@ function session({
     async () => trees[Math.min(read++, trees.length - 1)]!
   );
   const stub: PageObjectToolSession = {
-    list: () => TOOLS,
+    list: () => (read === 0 ? toolsBeforeRead : TOOLS),
     run,
     inTurn: (turn) =>
       turn({
@@ -167,6 +173,47 @@ describe("a Page Object Tool's answer to an agent", () => {
       settled: false,
       url: "http://app/item/1",
     });
+    expect(readPageObjectTree).toHaveBeenCalledOnce();
+  });
+
+  it("answers that the page has not settled while it reloads the URL it shows, with no URL", async () => {
+    const { stub } = session({
+      answer: async () => ({ settled: false, loading: "http://app/list" }),
+    });
+
+    expect(await pageObjectToolSource(stub).run("ListPage.add", {})).toEqual({
+      settled: false,
+    });
+  });
+
+  it("still runs the action when the read before it fails, and answers without the changes", async () => {
+    const { stub, run, readPageObjectTree } = session({
+      trees: [list("Milk"), list("Milk", "Eggs")],
+      answer: async () => ({ settled: true, result: 2 }),
+    });
+    readPageObjectTree.mockRejectedValueOnce(new Error("Target closed"));
+
+    expect(await pageObjectToolSource(stub).run("ListPage.add", {})).toEqual({
+      settled: true,
+      result: 2,
+    });
+    expect(run).toHaveBeenCalledOnce();
+  });
+
+  it("fails with the error alone when the action threw after the full load it started, and reads no tree for it", async () => {
+    const refused = new Error("The next page refused the sign-in.");
+    markFailedAfterFullLoad(refused);
+    const { stub, readPageObjectTree } = session({
+      trees: [list("Milk"), list("Milk", "Eggs")],
+      answer: () => Promise.reject(refused),
+    });
+
+    const failure: unknown = await pageObjectToolSource(stub)
+      .run("ListPage.add", {})
+      .catch((error: unknown) => error);
+
+    expect(failure).toBe(refused);
+    expect(failure).not.toHaveProperty("changes");
     expect(readPageObjectTree).toHaveBeenCalledOnce();
   });
 
@@ -285,5 +332,56 @@ describe("a Page Object Tool's answer to an agent", () => {
         changes: ["ListPage", "  count: text: 1 → 2"].join("\n"),
       },
     ]);
+  });
+});
+
+describe("a Page Object Tool's answer to a Caller that runs Page Object Tools alone", () => {
+  const only = { pageObjectToolsOnly: true } as const;
+
+  it("runs a Page Object Tool the session lists only once the call's turn has read the page", async () => {
+    const { stub } = session({
+      toolsBeforeRead: [],
+      answer: async () => ({ ...FULL_RECORD, result: 2 }),
+    });
+
+    expect(
+      await pageObjectToolSource(stub, only).run("ListPage.add", {})
+    ).toEqual({ settled: true, result: 2 });
+  });
+
+  it.each(["page_objects", "click"])(
+    "refuses %s, which is not a Page Object Tool, as a tool there is not, and runs nothing",
+    async (name) => {
+      const { stub, run } = session({ answer: async () => FULL_RECORD });
+
+      await expect(
+        pageObjectToolSource(stub, only).run(name, {})
+      ).rejects.toThrow(`There is no tool "${name}".`);
+      expect(run).not.toHaveBeenCalled();
+    }
+  );
+
+  it("refuses with the error naming both versions when the page runs ayme's in-page module of another version, before the tool is looked up", async () => {
+    const versions = new InPageVersionError(
+      "This document runs ayme's in-page module 1.0.0; this host is 1.1.0."
+    );
+    const run = vi.fn<PageObjectToolSession["run"]>(async () => {
+      throw new Error('The tool "ListPage.add" is unavailable.');
+    });
+    const stub: PageObjectToolSession = {
+      list: () => [],
+      run,
+      inTurn: (turn) =>
+        turn({
+          run,
+          readPageObjectTree: () => Promise.reject(versions),
+          url: () => "http://app/list",
+        }),
+    };
+
+    await expect(
+      pageObjectToolSource(stub, only).run("ListPage.add", {})
+    ).rejects.toBe(versions);
+    expect(run).not.toHaveBeenCalled();
   });
 });

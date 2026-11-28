@@ -1,0 +1,272 @@
+// The commands' side of a Session's process: each command finds the
+// process of its folder, sends one request and returns its answer.
+import { spawn, type ChildProcess } from "node:child_process";
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  openSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
+import { resolve } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
+
+import type { SessionBrowserRequest } from "../../session/application";
+import {
+  failed,
+  paramsNotAFile,
+  paramsNotJson,
+  paramsTooLarge,
+  paramsUnreadable,
+  type SessionAnswer,
+  type SessionRequest,
+} from "../../session/domain";
+import type { FromOpener } from "./background";
+import {
+  alreadyOpen,
+  claimRecord,
+  endedBeforeAnswer,
+  liveRecord,
+  liveRecords,
+  nameOf,
+  notOpen,
+  privateFolder,
+  processStart,
+  readClaim,
+  unusableName,
+  type SessionPlace,
+} from "./record";
+import { send } from "./wire";
+
+/** Whether `error` says nobody listens on the socket yet. */
+const notListening = (error: unknown) =>
+  ["ENOENT", "ECONNREFUSED"].includes(
+    (error as NodeJS.ErrnoException).code ?? ""
+  );
+
+/** Sends `request` to `place`'s Session. A Session still starting is
+ * waited for, as long as its claim is live (rule 10): the command stays
+ * with the claim it found, and a later start of the name is not its. */
+export async function askSession(
+  place: SessionPlace,
+  request: SessionRequest
+): Promise<SessionAnswer> {
+  const unusable = unusableName(place);
+  if (unusable) return failed(unusable);
+  const record = liveRecord(place);
+  if (!record)
+    return failed(
+      notOpen(
+        place,
+        liveRecords(place.projectDir).map(({ name }) => name)
+      )
+    );
+  for (;;) {
+    try {
+      return await send(record.socket, request);
+    } catch (error) {
+      if (!notListening(error))
+        return failed(
+          `The Session's process (${record.pid}) did not answer: ${(error as Error).message}`
+        );
+    }
+    await sleep(25);
+    const now = readClaim(place);
+    if (now.generation !== record.generation || !now.live)
+      return failed(endedBeforeAnswer(record));
+  }
+}
+
+const messageOf = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
+/** The most of a `--params @<file>` ayme reads: a tool's input is a small
+ * JSON object, and a larger file would only fill the command's memory. */
+export const PARAMS_FILE_LIMIT_BYTES = 1024 * 1024;
+
+/** The text of the regular file at `path`, or the answer that refuses it.
+ * Opened without blocking, so a named pipe is refused rather than waited on. */
+function paramsFile(file: string, path: string): string | SessionAnswer {
+  let fd: number;
+  try {
+    fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK);
+  } catch (error) {
+    return paramsUnreadable(file, messageOf(error));
+  }
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile()) return paramsNotAFile(file);
+    if (stat.size > PARAMS_FILE_LIMIT_BYTES)
+      return paramsTooLarge(file, PARAMS_FILE_LIMIT_BYTES);
+    return readFileSync(fd, "utf8");
+  } catch (error) {
+    return paramsUnreadable(file, messageOf(error));
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** The tool's input `params` gives: JSON, the JSON of the file `@<file>`
+ * names, a relative path resolved from the project folder of `place`, or
+ * none when it is not given. */
+function inputOf(
+  place: SessionPlace,
+  params: string | undefined
+): { readonly input: unknown } | SessionAnswer {
+  if (params === undefined) return { input: {} };
+  let json = params;
+  if (params.startsWith("@")) {
+    const file = params.slice(1);
+    const read = paramsFile(file, resolve(place.projectDir, file));
+    if (typeof read !== "string") return read;
+    json = read;
+  }
+  try {
+    return { input: JSON.parse(json) as unknown };
+  } catch (error) {
+    return paramsNotJson(messageOf(error), nameOf(place));
+  }
+}
+
+/** Starts a Run of `tool` on the Session at `place`, with the input
+ * `params` gives, as `ayme call --params` takes it: a file it names is read
+ * from the project folder. `tab` is what `--tab` names. */
+export async function askCall(
+  place: SessionPlace,
+  tool: string,
+  params: string | undefined,
+  tab?: string
+): Promise<SessionAnswer> {
+  const read = inputOf(place, params);
+  return "input" in read
+    ? askSession(place, {
+        call: {
+          tool,
+          input: read.input,
+          ...(tab === undefined ? {} : { tab }),
+        },
+      })
+    : read;
+}
+
+/** The text the process of a start printed before it ended. */
+function printed(log: string): string {
+  try {
+    return readFileSync(log, "utf8").trim();
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * How a start ends, as its process tells it: the process is spawned, the
+ * folder claimed for it, and it answers the start over its IPC channel.
+ * A process that fails to spawn, or ends before it answers, is answered
+ * with why.
+ */
+function startOf(
+  child: ChildProcess,
+  place: SessionPlace,
+  socket: string,
+  log: string
+): Promise<SessionAnswer> {
+  return new Promise((resolve) => {
+    child.once("error", (error) =>
+      resolve(failed(`The Session's process could not start: ${error.message}`))
+    );
+    child.once("spawn", () => {
+      const pid = child.pid!;
+      const since = processStart(pid);
+      // A process already gone is answered by its exit.
+      if (since === undefined) return;
+      const claim = claimRecord(place, { pid, since, socket });
+      if ("holder" in claim) {
+        child.kill();
+        return resolve(failed(alreadyOpen(place, claim.holder)));
+      }
+      child.send({ claimed: claim.generation } satisfies FromOpener);
+    });
+    // A Session that did not start is gone once its process is: a new
+    // start in the folder is not refused by it.
+    let told: SessionAnswer | undefined;
+    child.once("message", (answer: SessionAnswer) => {
+      told = answer;
+      if (answer.ok) resolve(answer);
+    });
+    child.once("exit", () =>
+      resolve(
+        told ??
+          failed(
+            printed(log) ||
+              "The Session's process ended before the Session started."
+          )
+      )
+    );
+  });
+}
+
+/**
+ * Starts a Session in a background process of its own, and resolves with
+ * the answer to its start once the start succeeded or failed.
+ * `processCommand` is the command line of that process before its options,
+ * run with this Node.
+ */
+export async function openSession({
+  projectDir,
+  name,
+  request,
+  processCommand,
+}: SessionPlace & {
+  readonly request: SessionBrowserRequest;
+  readonly processCommand: readonly string[];
+}): Promise<SessionAnswer> {
+  const place = { projectDir, name };
+  const unusable = unusableName(place);
+  if (unusable) return failed(unusable);
+  // Also refused by the claim: refused here, no process starts.
+  const holder = liveRecord(place);
+  if (holder) return failed(alreadyOpen(place, holder));
+  const { folder, socket, log } = privateFolder();
+  const output = openSync(log, "w", 0o600);
+  const child = spawn(
+    process.execPath,
+    [...processCommand, JSON.stringify({ projectDir, name, request, socket })],
+    {
+      cwd: projectDir,
+      detached: true,
+      stdio: ["ignore", output, output, "ipc"],
+    }
+  );
+  closeSync(output);
+  const answer = await startOf(child, place, socket, log);
+  if (answer.ok) {
+    if (child.connected) child.disconnect();
+    child.unref();
+  } else rmSync(folder, { recursive: true, force: true });
+  return answer;
+}
+
+/** The answer to `ayme list`: the live Sessions of `projectDir`, each by
+ * its name and process, and whether it is still starting. */
+export function listSessions(projectDir: string): SessionAnswer {
+  const sessions = liveRecords(projectDir).map(({ name, pid, starting }) => ({
+    name,
+    pid,
+    starting,
+  }));
+  return {
+    ok: true,
+    text:
+      sessions.length === 0
+        ? `No Session is open in ${projectDir}.`
+        : [
+            `Sessions in ${projectDir}:`,
+            ...sessions.map(
+              ({ name, pid, starting }) =>
+                `${name}, in process ${pid}${starting ? ", starting" : ""}`
+            ),
+          ].join("\n"),
+    data: { sessions },
+  };
+}

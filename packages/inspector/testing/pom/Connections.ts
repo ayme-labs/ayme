@@ -3,13 +3,13 @@ import type { Locator } from "@playwright/test";
 
 import { PanelPart } from "./PanelPart";
 
-/** One path in the Connections popover: the agent, or WebMCP. */
+/** One path in the Connections popover: WebMCP. */
 export class ConnectionRow extends PanelPart {
   constructor(root: Locator) {
     super(root);
   }
 
-  /** Its state in a word or two, such as "Connected" or "Off". */
+  /** Its state in a word or two, such as "Published" or "Off". */
   @ayme.child
   get state(): Locator {
     return this.root.locator(":scope > div > span:last-child");
@@ -37,9 +37,9 @@ export class ConnectionRow extends PanelPart {
 }
 
 /**
- * The header's Connections pill, which says how the agent reaches the page,
- * and the popover it opens in the Inspector's portal: one row for the
- * Agent Connection and one for WebMCP.
+ * The header's Connections pill, which says whether agents in this browser
+ * reach the page through WebMCP, and the popover it opens in the
+ * Inspector's portal, with WebMCP's row.
  */
 export class Connections extends PanelPart {
   /**
@@ -54,13 +54,6 @@ export class Connections extends PanelPart {
   }
 
   @ayme.child
-  get agent(): ConnectionRow {
-    return new ConnectionRow(
-      this.popover.getByRole("region", { name: "Agent", exact: true })
-    );
-  }
-
-  @ayme.child
   get webMCP(): ConnectionRow {
     return new ConnectionRow(
       this.popover.getByRole("region", { name: "WebMCP", exact: true })
@@ -72,19 +65,10 @@ export class Connections extends PanelPart {
     return this.root;
   }
 
-  /** The pill's dot, whose `data-tone` says how the agent's state reads. */
+  /** The pill's dot, whose `data-tone` says how WebMCP's state reads. */
   @ayme.child
   get pillDot(): Locator {
     return this.pill.locator("[data-tone]");
-  }
-
-  /**
-   * The mark on the pill's corner while WebMCP is on and broken; its
-   * `data-webmcp-mark` is WebMCP's state.
-   */
-  @ayme.child
-  get mark(): Locator {
-    return this.pill.locator("[data-webmcp-mark]");
   }
 
   @ayme.child

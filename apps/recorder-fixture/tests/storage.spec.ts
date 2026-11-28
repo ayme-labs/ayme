@@ -58,7 +58,7 @@ const loggedIn = (origin: string) => ({
   ],
 });
 
-test.describe("codegen <url> --save-storage <file>", () => {
+test.describe("ayme capture <url> --save-storage <file>", () => {
   test("saves the cookie and the local storage entry the page set when Finish ends the recorder, and leaves nothing of the save in the recording or its trace", async ({
     fixturePages,
     runRecorder,
@@ -69,7 +69,7 @@ test.describe("codegen <url> --save-storage <file>", () => {
     const file = testInfo.outputPath("state.json");
     const url = fixturePages.url("/login.html");
     const run = await runRecorder(
-      ["codegen", url, "--start-recording", "--save-storage", file],
+      ["capture", url, "--start-recording", "--save-storage", file],
       { cwd: project }
     );
     await run.waitForStdout("Recorder UI: ");
@@ -143,7 +143,7 @@ test.describe("codegen <url> --save-storage <file>", () => {
   }, testInfo) => {
     const file = testInfo.outputPath("state.json");
     const url = fixturePages.url("/login.html");
-    const run = await runRecorder(["codegen", url, "--save-storage", file]);
+    const run = await runRecorder(["capture", url, "--save-storage", file]);
     await run.waitForStdout(`Opened ${url}`);
     const browser = await chromium.connectOverCDP(run.debugEndpoint);
     try {
@@ -175,7 +175,7 @@ test.describe("codegen <url> --save-storage <file>", () => {
     await writeFile(notAFolder, "");
     const url = fixturePages.url("/login.html");
     const run = await runRecorder([
-      "codegen",
+      "capture",
       url,
       "--save-storage",
       join(notAFolder, "state.json"),
@@ -194,7 +194,7 @@ test.describe("codegen <url> --save-storage <file>", () => {
   });
 });
 
-test.describe("codegen <url> --load-storage <file>", () => {
+test.describe("ayme capture <url> --load-storage <file>", () => {
   test("opens the page with the cookie and the local storage entry of a file Playwright saved", async ({
     fixturePages,
     runRecorder,
@@ -215,7 +215,7 @@ test.describe("codegen <url> --load-storage <file>", () => {
       await own.close();
     }
 
-    const run = await runRecorder(["codegen", url, "--load-storage", file]);
+    const run = await runRecorder(["capture", url, "--load-storage", file]);
     await run.waitForStdout(`Opened ${url}`);
     const browser = await chromium.connectOverCDP(run.debugEndpoint);
     try {
@@ -235,7 +235,7 @@ test.describe("codegen <url> --load-storage <file>", () => {
   }, testInfo) => {
     const file = testInfo.outputPath("missing.json");
     const run = await runRecorder([
-      "codegen",
+      "capture",
       fixturePages.url("/login.html"),
       "--load-storage",
       file,

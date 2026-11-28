@@ -1,15 +1,13 @@
-import type { Agent } from "@ayme-dev/mcp/testing";
-
 import { AppView } from "./appView";
-import { expect, test } from "./fixtures";
+import { expect, test, type Agent } from "./fixtures";
 
 // E2E: on the dogfood page the Inspector's own Page Object is a Page Object
-// Model like any other: an agent lists its tools over ayme MCP, drives the
+// Model like any other: an agent lists its tools through WebMCP, drives the
 // panel through them, and the panel shows in the page state.
 
 test.use({ fixturePath: "/dogfood.html", connected: true });
 
-/** Calls a tool over ayme MCP, failing the test when the tool fails. */
+/** Calls a tool through WebMCP, failing the test when the tool fails. */
 async function call(agent: Agent, name: string, input: object) {
   const { text, isError } = await agent.call(name, { ...input });
   expect(isError, text).toBe(false);
@@ -24,7 +22,7 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
   inspector,
 }) => {
   const app = new AppView(page);
-  const names = await agent!.pageToolNames();
+  const names = await agent!.toolNames();
   expect(names).toEqual(
     expect.arrayContaining([
       "ListPage.addItem",
@@ -57,7 +55,7 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
   });
   await call(agent!, "Inspector.tool", { name: "ListPage.addItem" });
   await expect(inspector.detail.toolPage.title).toHaveText("ListPage.addItem");
-  await expect.poll(() => agent!.pageToolNames()).toContain("RunCard.fillJson");
+  await expect.poll(() => agent!.toolNames()).toContain("RunCard.fillJson");
 });
 
 test("an agent finds the forms' actions, and sets a fill_form field to a boolean through one", async ({
@@ -66,7 +64,7 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
   inspector,
 }) => {
   const app = new AppView(page);
-  const toolNames = () => agent!.pageToolNames();
+  const toolNames = () => agent!.toolNames();
   const card = "RunCard";
   /** Opens a tool's card and its form, whose tools then list. */
   const openForm = async (tool: string, ...actions: string[]) => {

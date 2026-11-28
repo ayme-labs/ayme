@@ -28,24 +28,10 @@ The pages:
   through its `inspector` option; the tests stop and restart it. With `?demo`,
   the option turns demo mode on.
 - `/dogfood.html`: the list app with the Inspector mounted for dogfooding: an
-  open shadow root, the Agent Connection on, and the Inspector's own Page
-  Object registered, so an agent drives the panel through Page Object Tools.
-  The Structure lens's tree and the search results are kept out of the page
-  state, since they render that state. `pnpm dev` serves it for a coding agent connected
-  through `ayme mcp`.
-
-## Two placements
-
-The specs run as two Playwright projects. `inline` mounts the Inspector in the
-fixture page. `external` runs the specs about what the Inspector shows and
-does (the list is `externalSpecs` in `playwright.config.ts`) with the
-`external` placement: each test starts an `ayme mcp` on a port of its own,
-opens the fixture page with `?external` (its session has
-`inspector: { placement: "external" }`) through the server's connect link,
-and drives the Inspector in a second window, the one `ayme_inspect` names.
-`page` is still the app's page there, so highlights and picking are checked
-across the window boundary. The specs about the panel in the page (its
-layout, host CSS, stacking, mounting and dogfooding) run inline only.
+  open shadow root and the Inspector's own Page Object registered, so an agent
+  drives the panel through Page Object Tools over WebMCP. The Structure lens's
+  tree and the search results are kept out of the page state, since they
+  render that state. `pnpm dev` serves it.
 
 ## Running
 
@@ -53,11 +39,12 @@ Run from this directory inside the repository's Devbox shell. `pnpm test:e2e`
 tests the built packages, so build first; Turbo's `test:e2e` task does. It runs
 Playwright on Chromium against the fixture pages, served on a free port
 (`AYME_E2E_PORT_INSPECTOR` overrides it). A test that calls Page Object Tools
-as a coding agent (`connected`) starts an `ayme mcp` server and opens the page
-through its connect link. The Browser Tools, which the server doesn't list,
-run on the page's own runtime, as the app runs them. The tests drive the panel
+as an agent (`connected`) installs the recording WebMCP driver from
+`@ayme-dev/webmcp/testing` before the page loads and calls the tools the page
+publishes, as an agent in the browser does. The Browser Tools run on the
+page's own runtime, as the app runs them. The tests drive the panel
 through the Inspector's page objects from `@ayme-dev/inspector/testing`. A
 fixture page that fails to start or a runtime that never lists its tools fails
-before any test assertion, with its own message. WebMCP is experimental, so
-only the test of the Connections popover's WebMCP state installs a WebMCP
-driver, the recording one from `@ayme-dev/webmcp/testing`.
+before any test assertion, with its own message. Only the tests that call tools
+as an agent, and the test of the Connections popover's WebMCP state, install
+that driver.

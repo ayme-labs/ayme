@@ -15,14 +15,11 @@ import { Header } from "../view/Header";
 export function WindowShell({
   theme,
   onThemeChange,
-  status,
   fullscreen,
   children,
 }: {
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
-  /** What the header shows after its title. */
-  status?: ReactNode;
   fullscreen?: WindowFullscreen;
   children: ReactNode;
 }) {
@@ -37,7 +34,6 @@ export function WindowShell({
     >
       <div className="flex size-full flex-col overflow-hidden bg-background">
         <Header
-          status={status}
           layout="bottom"
           theme={theme}
           onThemeChange={onThemeChange}

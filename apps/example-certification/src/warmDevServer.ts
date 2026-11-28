@@ -7,7 +7,6 @@ import {
   recordPublishedTools,
   waitForPublishedTool,
 } from "@ayme-dev/webmcp/testing";
-import { ignoreAutoPairScan } from "@ayme-dev/mcp/testing";
 
 import { counterPath } from "./config";
 
@@ -25,7 +24,6 @@ export default async function warmDevServer(config: FullConfig) {
       baseURL: config.projects[0]!.use.baseURL,
     });
     await recordPublishedTools(context);
-    await ignoreAutoPairScan(context);
     const page = await context.newPage();
     // The published tool shows the app's modules loaded.
     await page.goto(counterPath(), { timeout: 60_000 });

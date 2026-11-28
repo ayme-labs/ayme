@@ -373,9 +373,7 @@ it("leaves calls outside component initialisation to Svelte's own error", () => 
 });
 
 // peek seam: the function's contract with `ayme.peek`, which it adapts
-// (ADR-0031). The Peek Tool an agent reads is covered by the runtime's
-// browser tests and the examples' Agent Connection suite; here the dev gate
-// stays off, so no Agent Connection loads or scans.
+// (ADR-0031). The Peek Tool itself is covered by the runtime's browser tests.
 describe("peek", () => {
   type PeekCall = { read: () => unknown; name: string; id?: string };
   let calls: PeekCall[];

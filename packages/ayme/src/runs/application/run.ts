@@ -8,6 +8,34 @@ import type {
 import type { PomDefinitionsResult } from "../../shared";
 import { callers, RuntimeStateError, type Caller } from "../../shared";
 
+/**
+ * What a Host decides about the Playwright calls of a Page Object Action's
+ * own code, told apart from ayme's own reads of the page. A Session holds
+ * them while a dialog opens on its Tab and refuses them once one counts as
+ * open: an action never goes on past a dialog it did not answer itself
+ * (ADR-0073).
+ */
+export type ActionCalls = {
+  /** Runs a Page Object Action's method: the calls its code makes, at once
+   * or later, are the action's own. Throws, without running it, to refuse
+   * the action. */
+  run<T>(action: () => T): T;
+  /**
+   * Heard before each call through the runtime's Page, its locators and
+   * input devices, whoever makes it. Returns nothing to let the call start
+   * now, a promise to start it once that resolves, or throws to refuse it.
+   * A call that `answersAtOnce`, such as building a locator, cannot wait.
+   */
+  before(answersAtOnce: boolean): Promise<void> | undefined;
+  /** `listener`, which an action hands Playwright to call later, made to
+   * run as that action's own code wherever Playwright calls it from. */
+  bind<F extends (...args: never[]) => unknown>(listener: F): F;
+  /** For the Run whose code asks, a promise that fails with what its
+   * Caller was answered instead once the Host stopped the Run; undefined
+   * for a Run the Host does not stop. */
+  stopped(): Promise<never> | undefined;
+};
+
 /** How `ayme.tools.run` starts a Run. */
 export type ToolRunOptions = {
   /** The Run's Caller; `"app"` when absent. */
@@ -44,6 +72,15 @@ export type RunContext = {
   readonly pageStateSession: PageStateSession;
   /** How the Run measures whether its input would reach an element: the runtime's Reach. */
   readonly reach: Reach;
+  /**
+   * Whether the Run's runtime session goes on in the document a full load
+   * brings, as a Node host's does; the browser runtime's ends with its
+   * document.
+   */
+  readonly outlivesFullLoads: boolean;
+  /** What its Host decides about its Page Object Action's own Playwright
+   * calls, when it decides. */
+  readonly actionCalls?: ActionCalls;
 };
 
 /**
@@ -108,12 +145,26 @@ export async function executeTopLevelRun<T>(
   try {
     result = await execute();
   } catch (error) {
-    await settle();
+    if (!failedAfterFullLoad(error)) await settle();
     throw error;
   }
   if (!startedFullLoad(result)) await settle();
   return result;
 }
+
+const afterFullLoad = new WeakSet<object>();
+
+/** Package-internal: marks `error` as what an action threw after the full
+ * load it started, on a Host that outlives the load. Nothing reads the page
+ * for it, as nothing does for an answer after a full load. */
+export function markFailedAfterFullLoad(error: unknown): void {
+  if (typeof error === "object" && error !== null) afterFullLoad.add(error);
+}
+
+/** Package-internal: whether `error` is one {@link markFailedAfterFullLoad}
+ * marked. */
+export const failedAfterFullLoad = (error: unknown): boolean =>
+  typeof error === "object" && error !== null && afterFullLoad.has(error);
 
 /** Whether an answer, an action result or a Handover, names a loading URL. */
 function startedFullLoad(answer: unknown): boolean {

@@ -66,8 +66,8 @@ jobs:
           # Run live goals when the Vue example or a dependency is affected.
           packages=$(pnpm exec turbo ls $affected --output=json)
           echo "live_goals=$(jq -r '[.packages.items[].name] | index("@ayme-dev/example-vue") != null' <<< "$packages")" >> "$GITHUB_OUTPUT"
-          # Run the recorder on each supported Playwright when it, its CLI or
-          # its fixture app is affected.
+          # Run the recorder on each supported Playwright when it, its browser
+          # package, its CLI or its fixture app is affected.
           echo "recorder_playwright=$(jq -r '[.packages.items[].name] | index("@ayme-dev/recorder-fixture") != null' <<< "$packages")" >> "$GITHUB_OUTPUT"
 
           tasks=$(pnpm exec turbo run build lint typecheck test test:e2e $affected --dry=json \
@@ -339,9 +339,10 @@ jobs:
           path: ${{ matrix.dir }}/test-results
           if-no-files-found: ignore
 
-  # The recorder runs on the project's own Playwright, so its compatibility
-  # suite and its main end-to-end test run once per supported
-  # version, as packages/recorder/playwright-range.json states the range. One
+  # The recorder gets its browser with the project's own Playwright, through
+  # @ayme-dev/browser, so the browser package's compatibility suite, the
+  # recorder's and the recorder's main end-to-end test run once per supported
+  # version, as packages/browser/playwright-range.json states the range. One
   # job installs each version in turn into a project folder of its own,
   # rather than one runner per version repeating the setup.
   recorder-playwright:
@@ -367,7 +368,7 @@ jobs:
           # Every minor in the range. The Playwright image has no jq: Node
           # reads the file.
           versions=$(node -e '
-            const { floor, lastVerified } = require("./packages/recorder/playwright-range.json");
+            const { floor, lastVerified } = require("./packages/browser/playwright-range.json");
             const [major, from] = floor.split(".").map(Number);
             const to = Number(lastVerified.split(".")[1]);
             for (let minor = from; minor <= to; minor++) console.log(`${major}.${minor}`);
@@ -391,15 +392,21 @@ jobs:
           for version in $versions; do
             echo "::group::Playwright $version"
             # A project with only that Playwright, outside the repository,
-            # and the headless Chromium it launches.
+            # and both Chromium builds it launches: the headless shell, and
+            # Chromium's own, which a browser on a profile of its own needs
+            # for a tab list that follows the active tab.
             project="$RUNNER_TEMP/playwright-$version"
             mkdir -p "$project"
             part install sh -c "cd '$project' && npm init -y > /dev/null \
               && npm install --no-audit --no-fund 'playwright@$version' \
-              && npx --no-install playwright install chromium-headless-shell"
+              && npx --no-install playwright install chromium"
+            export AYME_PLAYWRIGHT_PROJECT="$project"
             export AYME_RECORDER_PLAYWRIGHT_PROJECT="$project"
-            # Passing is not enough: the suite's own check must also say that
+            # Passing is not enough: each suite's own check must also say that
             # every project ran and that each skip is one it declares.
+            part "browser compatibility suite" bash -o pipefail -c '
+              pnpm --filter @ayme-dev/browser test:compat 2>&1 | tee "$RUNNER_TEMP/compat.log" &&
+              grep -Fxq "Compatibility run: every test ran and passed where it belongs" "$RUNNER_TEMP/compat.log"'
             part "compatibility suite" bash -o pipefail -c '
               pnpm --filter @ayme-dev/recorder test:compat 2>&1 | tee "$RUNNER_TEMP/compat.log" &&
               grep -Fxq "Compatibility run: every test ran and passed where it belongs" "$RUNNER_TEMP/compat.log"'

@@ -6,14 +6,20 @@ import { createInspectorClient, emptyInspectorState } from "./inspectorClient";
 import { webSocketInspectorContract } from "./webSocketInspectorContract";
 
 // Unit tests: the channel transport of the Inspector contract against a
-// WebSocket the test drives, the way `ayme mcp` relays it. Frames are the
-// server's: requests `{ id, method, params }`; replies `{ id, result }`,
-// `{ id, error }`, `{ event }` and `{ reset: true }`.
+// WebSocket the test drives, the way a Session's process serves it. Frames
+// are the server's: requests `{ id, method, params, tab }`; replies
+// `{ id, result }`, `{ id, error }`, `{ event }`, `{ tab }`, `{ token }` and
+// `{ ended }`.
 
 class FakeWebSocket {
   static readonly instances: FakeWebSocket[] = [];
   static readonly OPEN = 1;
-  readonly sent: { id: number; method: string; params?: unknown }[] = [];
+  readonly sent: {
+    id: number;
+    method: string;
+    params?: unknown;
+    tab?: number;
+  }[] = [];
   readyState = 0;
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
@@ -34,6 +40,11 @@ class FakeWebSocket {
   open() {
     this.readyState = FakeWebSocket.OPEN;
     this.onopen?.();
+  }
+  /** The server accepts the connection and tells the Tab `1`. */
+  openOnTab() {
+    this.open();
+    this.receive({ tab: 1 });
   }
   /** The server says something. */
   receive(frame: unknown) {
@@ -63,6 +74,10 @@ const state = (revision: number, tool = "click"): InspectorState => ({
   ],
 });
 
+// A string given to `rejects.toThrow` also matches a rejection with no
+// error at all, so each test names the whole error.
+const closed = new Error("The connection to ayme's process closed.");
+
 function connect() {
   const contract = webSocketInspectorContract(
     "ws://127.0.0.1:9351/inspector/ws",
@@ -87,7 +102,7 @@ describe("webSocketInspectorContract", () => {
   it("connects to the given URL and asks for the state", async () => {
     const { contract, socket } = connect();
     const asked = contract.getState();
-    socket().open();
+    socket().openOnTab();
 
     socket().answer("getState", state(4));
 
@@ -100,7 +115,7 @@ describe("webSocketInspectorContract", () => {
 
     void contract.pick({ id: "pick-1", refs: ["e1"] });
     void contract.cancelPick({ id: "pick-1" });
-    socket().open();
+    socket().openOnTab();
     void contract.highlight({ layer: "hover", refs: [] });
 
     expect(socket().sent).toEqual([
@@ -108,23 +123,26 @@ describe("webSocketInspectorContract", () => {
         id: expect.any(Number),
         method: "pick",
         params: { id: "pick-1", refs: ["e1"] },
+        tab: 1,
       },
       {
         id: expect.any(Number),
         method: "cancelPick",
         params: { id: "pick-1" },
+        tab: 1,
       },
       {
         id: expect.any(Number),
         method: "highlight",
         params: { layer: "hover", refs: [] },
+        tab: 1,
       },
     ]);
   });
 
   it("answers each command with the state after it, and a pick with its ref", async () => {
     const { contract, socket } = connect();
-    socket().open();
+    socket().openOnTab();
 
     const picked = contract.pick({ id: "pick-1", refs: ["e1"] });
     socket().answer("pick", { state: state(2), ref: "e1" });
@@ -134,21 +152,21 @@ describe("webSocketInspectorContract", () => {
 
   it("rejects a request the server answers with an error", async () => {
     const { contract, socket } = connect();
-    socket().open();
+    socket().openOnTab();
 
     const asked = contract.getState();
     const [{ id }] = socket().sent;
     socket().receive({
       id,
-      error: "No page is connected to this ayme MCP server.",
+      error: "This Session has no Tab.",
     });
 
-    await expect(asked).rejects.toThrow("No page is connected");
+    await expect(asked).rejects.toThrow(new Error("This Session has no Tab."));
   });
 
   it("reads a recorded page state that is none as undefined", async () => {
     const { contract, socket } = connect();
-    socket().open();
+    socket().openOnTab();
 
     const asked = contract.recordedPageState();
     socket().answer("recordedPageState", null);
@@ -158,7 +176,7 @@ describe("webSocketInspectorContract", () => {
 
   it("subscribes the server once for all observers, and gives each the events", () => {
     const { contract, socket } = connect();
-    socket().open();
+    socket().openOnTab();
     const first: unknown[] = [];
     const second: unknown[] = [];
 
@@ -181,27 +199,11 @@ describe("webSocketInspectorContract", () => {
     expect(socket().methods()).toEqual(["subscribe", "unsubscribe"]);
   });
 
-  it("tells when the page is a new document, before it reads its state", () => {
-    const calls: string[] = [];
-    webSocketInspectorContract("ws://x/inspector/ws", {
-      WebSocket: FakeWebSocket as never,
-      onNewPage: () =>
-        calls.push(`new page after ${socketOf().methods().length} requests`),
-    });
-    const socketOf = () => FakeWebSocket.instances.at(-1)!;
-    socketOf().open();
-
-    socketOf().receive({ reset: true });
-
-    expect(calls).toEqual(["new page after 0 requests"]);
-    expect(socketOf().methods()).toEqual(["getState"]);
-  });
-
-  describe("a new page", () => {
+  describe("a new Tab", () => {
     /** A client of the transport that showed the page at revision 7. */
     async function clientAt7() {
       const { contract, socket } = connect();
-      socket().open();
+      socket().openOnTab();
       const client = createInspectorClient(contract);
       client.subscribe(() => {});
       socket().answer("getState", state(7, "old"));
@@ -213,7 +215,7 @@ describe("webSocketInspectorContract", () => {
     it("shows its state although its revisions start again", async () => {
       const { client, socket } = await clientAt7();
 
-      socket().receive({ reset: true });
+      socket().receive({ tab: 2 });
       // The transport reads the new page's state.
       socket().answer("getState", state(1, "new"));
       await vi.advanceTimersByTimeAsync(0);
@@ -225,7 +227,7 @@ describe("webSocketInspectorContract", () => {
 
     it("still never lets an event with a lower revision replace newer state", async () => {
       const { client, socket } = await clientAt7();
-      socket().receive({ reset: true });
+      socket().receive({ tab: 2 });
       socket().answer("getState", state(1, "new"));
       await vi.advanceTimersByTimeAsync(0);
       socket().receive({ event: { type: "state", state: state(3, "three") } });
@@ -237,7 +239,7 @@ describe("webSocketInspectorContract", () => {
 
     it("moves the revision of an image run and a command's state the same way", async () => {
       const { client, socket } = await clientAt7();
-      socket().receive({ reset: true });
+      socket().receive({ tab: 2 });
       socket().answer("getState", state(1));
       await vi.advanceTimersByTimeAsync(0);
 
@@ -252,9 +254,9 @@ describe("webSocketInspectorContract", () => {
   describe("when the server goes away", () => {
     it("rejects the requests still waiting", async () => {
       const { contract, socket } = connect();
-      socket().open();
+      socket().openOnTab();
       const asked = contract.pick({ id: "pick-1", refs: [] });
-      const rejected = expect(asked).rejects.toThrow("closed");
+      const rejected = expect(asked).rejects.toThrow(closed);
 
       socket().close();
 
@@ -263,7 +265,7 @@ describe("webSocketInspectorContract", () => {
 
     it("connects again, subscribes again and reads the state again", async () => {
       const { contract, socket } = connect();
-      socket().open();
+      socket().openOnTab();
       const events: unknown[] = [];
       contract.subscribe({ onEvent: (e) => events.push(e), onError: () => {} });
       const first = socket();
@@ -272,13 +274,195 @@ describe("webSocketInspectorContract", () => {
       await vi.advanceTimersByTimeAsync(1000);
       const second = socket();
       expect(second).not.toBe(first);
-      second.open();
+      second.openOnTab();
       await vi.advanceTimersByTimeAsync(0);
       second.answer("getState", state(1));
       await vi.advanceTimersByTimeAsync(0);
 
       expect(second.methods()).toEqual(["subscribe", "getState"]);
       expect(events).toEqual([{ type: "state", state: state(1) }]);
+    });
+  });
+
+  describe("on a Session, which tells the Tab the window shows", () => {
+    /** A client of a Session's transport that shows the Tab `1` at
+     * revision 7. */
+    async function sessionClient() {
+      const newPages: number[] = [];
+      const noTabs: number[] = [];
+      const contract = webSocketInspectorContract("ws://x/inspector/ws", {
+        WebSocket: FakeWebSocket as never,
+        onNewPage: () => newPages.push(newPages.length + 1),
+        onNoTab: () => noTabs.push(noTabs.length + 1),
+      });
+      const socket = () => FakeWebSocket.instances.at(-1)!;
+      const client = createInspectorClient(contract);
+      client.subscribe(() => {});
+      socket().open();
+      return { contract, client, socket, newPages, noTabs };
+    }
+
+    it("sends nothing until the Session told the Tab, then names it in every request", async () => {
+      const { contract, socket, newPages } = await sessionClient();
+      void contract.look();
+
+      expect(socket().sent).toEqual([]);
+      socket().receive({ tab: 1 });
+
+      expect(socket().sent).toEqual([
+        { id: expect.any(Number), method: "subscribe", tab: 1 },
+        { id: expect.any(Number), method: "getState", tab: 1 },
+        { id: expect.any(Number), method: "look", tab: 1 },
+      ]);
+      expect(newPages).toEqual([]);
+    });
+
+    it("reads a new Tab as a new page, and names it from then on", async () => {
+      const { contract, socket, newPages } = await sessionClient();
+      socket().receive({ tab: 1 });
+
+      socket().receive({ tab: 2 });
+      void contract.look();
+
+      expect(newPages).toEqual([1]);
+      expect(socket().sent.slice(-2)).toEqual([
+        { id: expect.any(Number), method: "getState", tab: 2 },
+        { id: expect.any(Number), method: "look", tab: 2 },
+      ]);
+    });
+
+    it("says when the Session shows no Tab, reads nothing of it, and reads the next Tab as a new page", async () => {
+      const { socket, newPages, noTabs } = await sessionClient();
+      socket().receive({ tab: 1 });
+      const sent = socket().sent.length;
+
+      socket().receive({ tab: 2, noTab: true });
+
+      expect(noTabs).toEqual([1]);
+      expect(newPages).toEqual([]);
+      expect(socket().sent).toHaveLength(sent);
+
+      socket().receive({ tab: 3 });
+
+      expect(newPages).toEqual([1]);
+      expect(socket().sent.slice(sent)).toEqual([
+        { id: expect.any(Number), method: "getState", tab: 3 },
+      ]);
+    });
+
+    it("drops the answer to a request made on the Tab before, so it never reaches what the window shows of the new one", async () => {
+      const { contract, client, socket } = await sessionClient();
+      socket().receive({ tab: 1 });
+      socket().answer("getState", state(7, "first Tab"));
+      await vi.advanceTimersByTimeAsync(0);
+      const run = contract.runTool({ name: "Basket.add", input: {} });
+      const dropped = expect(run).rejects.toThrow(
+        new Error("The Inspector shows another Tab now.")
+      );
+      const ran = socket().sent.at(-1)!;
+
+      socket().receive({ tab: 2 });
+      socket().answer("getState", state(1, "second Tab"));
+      await vi.advanceTimersByTimeAsync(0);
+      socket().receive({ id: ran.id, result: { state: state(8, "late") } });
+      await vi.advanceTimersByTimeAsync(0);
+
+      await dropped;
+      expect(client.current().tools.map(({ name }) => name)).toEqual([
+        "second Tab",
+      ]);
+    });
+
+    it("reads neither the first Tab the Session tells nor the same Tab told again as a new page", async () => {
+      const { socket, newPages } = await sessionClient();
+      socket().receive({ tab: 1 });
+      const sent = socket().sent.length;
+
+      socket().receive({ tab: 1 });
+
+      expect(newPages).toEqual([]);
+      expect(socket().sent).toHaveLength(sent);
+    });
+
+    it("needs no one told when the Session shows no Tab", async () => {
+      const contract = webSocketInspectorContract("ws://x/inspector/ws", {
+        WebSocket: FakeWebSocket as never,
+      });
+      FakeWebSocket.instances.at(-1)!.openOnTab();
+
+      FakeWebSocket.instances.at(-1)!.receive({ tab: 1, noTab: true });
+
+      void contract.look();
+      expect(FakeWebSocket.instances.at(-1)!.methods()).toEqual(["look"]);
+    });
+
+    it("drops an answer to no request it waits for", async () => {
+      const { contract, socket } = await sessionClient();
+      socket().receive({ tab: 1 });
+
+      socket().receive({ id: 999, error: "Late." });
+      socket().receive({ id: 998, result: {} });
+      const asked = contract.look();
+      socket().answer("look", { look: true });
+
+      expect(await asked).toEqual({ look: true });
+    });
+
+    it("waits for the Tab again after it connects again", async () => {
+      const { socket } = await sessionClient();
+      socket().receive({ tab: 1 });
+      socket().close();
+      await vi.advanceTimersByTimeAsync(1000);
+
+      socket().open();
+
+      expect(socket().sent).toEqual([]);
+      socket().receive({ tab: 3 });
+      expect(socket().methods()).toEqual(["subscribe", "getState"]);
+    });
+  });
+
+  describe("when the Session behind the server ends", () => {
+    it("needs no one told, and fails every request from then on", async () => {
+      const { contract, socket } = connect();
+      socket().openOnTab();
+
+      socket().receive({ ended: "The Session shop was closed." });
+
+      await expect(contract.getState()).rejects.toThrow(closed);
+    });
+
+    it("says why, connects no more when the server goes, and fails every request from then on", async () => {
+      const ended: unknown[] = [];
+      const contract = webSocketInspectorContract(
+        "ws://127.0.0.1:9351/inspector/ws",
+        {
+          WebSocket: FakeWebSocket as never,
+          reconnectMs: 1000,
+          onEnded: (notice, inChat) => ended.push([notice, inChat]),
+        }
+      );
+      const socket = FakeWebSocket.instances.at(-1)!;
+      socket.openOnTab();
+      const waiting = contract.getState();
+      const rejected = expect(waiting).rejects.toThrow(closed);
+
+      socket.receive({
+        ended: "The Session shop was closed. Run ayme inspect.",
+        inChat: "The Session shop was closed. Ask your agent.",
+      });
+      socket.close();
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(ended).toEqual([
+        [
+          "The Session shop was closed. Run ayme inspect.",
+          "The Session shop was closed. Ask your agent.",
+        ],
+      ]);
+      await rejected;
+      expect(FakeWebSocket.instances).toHaveLength(1);
+      await expect(contract.getState()).rejects.toThrow(closed);
     });
   });
 });

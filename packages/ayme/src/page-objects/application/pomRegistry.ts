@@ -18,6 +18,7 @@ import {
 import { assertLocatorReachable } from "../../page-state/infrastructure";
 import {
   asSentence,
+  isJsonValue,
   RefResolutionError,
   refuseViolations,
   RuntimeStateError,
@@ -52,13 +53,17 @@ import {
 import type { PageDriver } from "./pageDriver";
 import {
   createPageObjectIds,
+  type PageObjectIdSource,
   type PageObjectIds,
   type PageObjectRoot,
 } from "./pageObjectIds";
 import { readPageObjectTree as readTree } from "./pageObjectTree";
 import type { PageObjectTreeRead } from "../domain/pageObjectTreeText";
 import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
-import type { RunContext } from "../../runs/application";
+import {
+  markFailedAfterFullLoad,
+  type RunContext,
+} from "../../runs/application";
 
 /**
  * Package-internal: a Page Object tool as the registry holds it. Its
@@ -149,11 +154,14 @@ const noPageStates: PomPageStates = {
 
 /**
  * Package-internal: a registry of the Page Objects on one page, which it
- * reads through `driver` and watches while any is registered.
+ * reads through `driver` and watches while any is registered. Its Page
+ * Object ids come from `pageObjectIdSource` when its Host gives one, and
+ * are numbered for this page alone otherwise.
  */
 export function createPomRegistry(
   driver: PageDriver,
-  pageStates: PomPageStates = noPageStates
+  pageStates: PomPageStates = noPageStates,
+  pageObjectIdSource?: PageObjectIdSource
 ) {
   const registeredPoms = new Set<ObservedRegisteredPom>();
   // Registrations refused for a same-named class, in the order they were
@@ -161,10 +169,13 @@ export function createPomRegistry(
   const waitingPoms = new Set<ObservedRegisteredPom>();
   let refusedClasses = new Map<string, RuntimeStateError>();
   const subscribers = new Set<() => void>();
+  // Inside `inOneChange`, which tells its subscribers once, at its end.
+  let changing = 0;
+  let changed = false;
   let stopWatchingPage: (() => void) | undefined;
   // The ids of this page's Page Objects, which outlive a registration: an id
   // is never given to another Page Object.
-  const pageObjectIds = createPageObjectIds(driver);
+  const pageObjectIds = createPageObjectIds(driver, pageObjectIdSource);
 
   /**
    * Package-internal: unregisters every Page Object, as a runtime session
@@ -217,7 +228,7 @@ export function createPomRegistry(
       dispose() {
         if (waitingPoms.delete(registration)) return;
         if (!registeredPoms.delete(registration)) return;
-        if (registeredPoms.size === 0) stopObservingPage();
+        if (registeredPoms.size === 0 && changing === 0) stopObservingPage();
         // Only leaving can clear a clash. A registration still refused is
         // not logged again.
         for (const waiting of waitingPoms)
@@ -239,20 +250,20 @@ export function createPomRegistry(
   }
 
   function admitRegisteredPom(registration: ObservedRegisteredPom) {
-    const registryWasEmpty = registeredPoms.size === 0;
     registeredPoms.add(registration);
     refreshRootlessRefusals();
     refreshRegisteredTools();
-    if (registryWasEmpty) startObservingPage();
+    if (!stopWatchingPage) startObservingPage();
     else driver.refresh();
   }
 
   function refreshRootlessRefusals() {
     const manifests = [...registeredPoms].map(({ manifest }) => manifest);
     const roots = new Map(
-      manifests.flatMap((manifest) =>
+      [...registeredPoms].flatMap(({ pomClass, manifest }) =>
         [manifest, ...manifest.components].map(
-          (node) => [node.className, compiledRootDeclared(node)] as const
+          (node) =>
+            [node.className, compiledRootDeclared(pomClass, node)] as const
         )
       )
     );
@@ -370,7 +381,7 @@ export function createPomRegistry(
     for (const { component, owner, actions } of classes.values()) {
       const instance = instancesOf(component)[0]?.instance;
       const rooted =
-        compiledRootDeclared(component) ??
+        compiledRootDeclared(owner.pomClass, component) ??
         (instance !== undefined &&
           modelOption(instance.constructor, "root") !== undefined);
       owner.tools = owner.tools.concat(
@@ -554,7 +565,29 @@ export function createPomRegistry(
   }
 
   function notifySubscribers() {
-    for (const subscriber of subscribers) subscriber();
+    if (changing > 0) changed = true;
+    else for (const subscriber of subscribers) subscriber();
+  }
+
+  /**
+   * Package-internal: runs `change`, whose registrations and disposals the
+   * subscribers hear of once, at its end, and over which the page stays
+   * observed, as a rebuild replaces a Host's Page Objects.
+   */
+  function inOneChange(change: () => void) {
+    changing += 1;
+    try {
+      change();
+    } finally {
+      changing -= 1;
+      if (changing === 0) {
+        if (registeredPoms.size === 0) stopObservingPage();
+        if (changed) {
+          changed = false;
+          notifySubscribers();
+        }
+      }
+    }
   }
 
   // The one runtime session that owns this registry.
@@ -582,6 +615,7 @@ export function createPomRegistry(
 
   return {
     claim,
+    inOneChange,
     listAvailablePomTools,
     listRootedToolInstances,
     listRegisteredPomRoots,
@@ -829,7 +863,14 @@ async function performPageObjectAction(
   { instance, root }: CallTarget,
   tool: ToolManifest,
   args: unknown,
-  { cursor, page, pageStateSession, reach }: RunContext,
+  {
+    cursor,
+    page,
+    pageStateSession,
+    reach,
+    outlivesFullLoads,
+    actionCalls,
+  }: RunContext,
   targetName: string
 ): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
@@ -852,9 +893,30 @@ async function performPageObjectAction(
     );
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
-  return pageStateSession.runAction(cursor, { tool: tool.toolName, args }, () =>
-    method.apply(instance, parameters)
+  let returned: Promise<unknown> = Promise.resolve(undefined);
+  const result = await pageStateSession.runAction(
+    cursor,
+    { tool: tool.toolName, args },
+    () => {
+      const act = (): unknown => method.apply(instance, parameters);
+      const value = actionCalls ? actionCalls.run(act) : act();
+      returned = Promise.resolve(value);
+      return value;
+    }
   );
+  const loaded = result.loading !== undefined;
+  // A session that ends with its document answers at the load's start: it
+  // would lose the answer while it waited.
+  if (loaded && !outlivesFullLoads) return result;
+  // The Run lasts until the action returns, past a load it started, with
+  // what it returns or throws: ayme adds no time limit to a Run.
+  const value = await returned.catch((error: unknown) => {
+    if (loaded) markFailedAfterFullLoad(error);
+    throw error;
+  });
+  if (loaded && value !== undefined && isJsonValue(value))
+    result.result = value;
+  return result;
 }
 
 function isCallable(value: unknown): value is (...args: unknown[]) => unknown {

@@ -74,12 +74,6 @@ function mountHighlights(page = fakePage()) {
         createInspectorContract({
           started: () => undefined,
           subscribeToStarted: () => () => {},
-          appProcessTools: () => {
-            throw new Error("No session.");
-          },
-          connectionStatus: () => {
-            throw new Error("No session.");
-          },
           highlights: createHighlights(page.locate),
           pick: async () => undefined,
           registry: {

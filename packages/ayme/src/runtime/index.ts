@@ -1,8 +1,3 @@
-export { getAgentConnectionStatus } from "./agentConnectionStatus";
-export type {
-  AgentConnectionStatus,
-  AgentConnectionStatusSource,
-} from "./agentConnectionStatus";
 export {
   listElementToolTargets,
   listTools,
@@ -15,17 +10,12 @@ export type {
 } from "./publishedTools";
 export {
   createAyme,
-  getAppProcessTools,
   getStartedAyme,
-  markRenderSession,
   measureReachWith,
   sessionReach,
   subscribeToStartedAyme,
 } from "./runtime";
 export type {
-  AgentConnectionOptions,
-  AppProcessTool,
-  AppProcessTools,
   Ayme,
   AymeOptions,
   InspectorOptions,
@@ -46,7 +36,15 @@ export type {
 } from "./inspectorContract";
 export { createHighlights } from "./inspectorHighlights";
 export type { Highlightable } from "./inspectorHighlights";
-export { createPlaywrightAyme } from "./playwrightRuntime";
+export { createNodeHost } from "./playwrightRuntime";
+export {
+  observePageObjects,
+  pageObjectCallerOf,
+  pageObjectToolTakesId,
+  replacePageObjects,
+} from "./session";
+export { inspectorPortOf } from "./nodeHostInspector";
+export type { InspectorPort } from "./inspectorChannelPort";
 export type {
   PlaywrightAyme,
   PlaywrightAymeOptions,

@@ -991,6 +991,273 @@ describe("live Page Object registry", () => {
     ]);
   });
 
+  it("keeps a registered class's tools when another build of its file declares a different root, before that build registers anything", async () => {
+    const { registry, session, ayme, rootOf } = await setup();
+    // A Session loads a rebuilt bundle before it knows the build is good,
+    // and while the classes it replaces are still registered.
+    const compile = (rooted: boolean) => {
+      const Basket = class Basket {
+        root = brandedLocator();
+        add() {}
+      };
+      if (rooted) ayme({ root: rootOf })(Basket);
+      registry.registerCompiledPom(Basket, {
+        ...emptyManifest("Basket"),
+        file: "Basket.ts",
+        members: [{ memberName: "root", kind: "locator", access: "field" }],
+        tools: [action("Basket.add")],
+      });
+      const Shop = class Shop {
+        basket = new Basket();
+      };
+      registry.registerCompiledPom(Shop, {
+        ...emptyManifest("Shop"),
+        file: "Shop.ts",
+        members: [
+          {
+            memberName: "basket",
+            kind: "component",
+            access: "field",
+            componentClassName: "Basket",
+            collection: false,
+          },
+        ],
+        components: [
+          {
+            className: "Basket",
+            file: "Basket.ts",
+            members: [{ memberName: "root", kind: "locator", access: "field" }],
+            tools: [action("Basket.add")],
+          },
+        ],
+      });
+      return { Basket, Shop };
+    };
+    const rootedNow = () =>
+      registry
+        .listRegisteredPomTools()
+        .map(({ tool }) => [tool.name, tool.rooted]);
+    const installed = compile(true);
+    session.register(installed.Basket);
+    await vi.runOnlyPendingTimersAsync();
+    expect(rootedNow()).toEqual([["Basket.add", true]]);
+    session.unregister(installed.Basket);
+    session.register(installed.Shop);
+    await vi.runOnlyPendingTimersAsync();
+    expect(rootedNow()).toEqual([["Basket.add", true]]);
+
+    compile(false);
+    pageChanges();
+    await vi.runOnlyPendingTimersAsync();
+
+    expect(rootedNow()).toEqual([["Basket.add", true]]);
+    session.unregister(installed.Shop);
+    session.register(installed.Basket);
+    await vi.runOnlyPendingTimersAsync();
+    expect(rootedNow()).toEqual([["Basket.add", true]]);
+  });
+
+  describe("a Host's Page Objects replaced by a rebuild", () => {
+    /** A compiled class named `className`, as a rebuild loads it, whose
+     * constructor runs `made`. */
+    function compiled(
+      registry: { registerCompiledPom(model: object, manifest: object): void },
+      className: string,
+      made: () => void = () => {}
+    ) {
+      const PomClass = {
+        [className]: class {
+          constructor() {
+            made();
+          }
+        },
+      }[className]!;
+      registry.registerCompiledPom(PomClass, {
+        ...emptyManifest(className),
+        tools: [{ ...action("open"), toolName: `${className}.open` }],
+      });
+      return PomClass;
+    }
+
+    it("replaces them all at once, and its subscribers hear of it once", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop"), compiled(registry, "Cart")];
+      for (const model of running) session.register(model);
+      const rebuilt = [compiled(registry, "Shop"), compiled(registry, "Cart")];
+      const heard = vi.fn();
+      registry.subscribeToRegisteredPoms(heard);
+
+      replacePageObjects(session.ayme, running, rebuilt);
+
+      expect(
+        registry
+          .listRegisteredPoms()
+          .map(({ instance }) => instance.constructor)
+      ).toEqual(rebuilt);
+      expect(heard).toHaveBeenCalledOnce();
+    });
+
+    it("changes nothing when a rebuilt class cannot be made, also once another was", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop"), compiled(registry, "Cart")];
+      for (const model of running) session.register(model);
+      const made = vi.fn();
+      const rebuilt = [
+        compiled(registry, "Shop", made),
+        compiled(registry, "Cart", () => {
+          throw new Error("Cart could not be made.");
+        }),
+      ];
+      const heard = vi.fn();
+      registry.subscribeToRegisteredPoms(heard);
+
+      expect(() => replacePageObjects(session.ayme, running, rebuilt)).toThrow(
+        "Cart could not be made."
+      );
+
+      expect(made).toHaveBeenCalledOnce();
+      expect(
+        registry
+          .listRegisteredPoms()
+          .map(({ instance }) => instance.constructor)
+      ).toEqual(running);
+      expect(heard).not.toHaveBeenCalled();
+    });
+
+    it("says a tool takes a Page Object Id while its class, as registered now, declares a root", async () => {
+      const { registry, session, ayme, rootOf } = await setup();
+      const { replacePageObjects, pageObjectToolTakesId } =
+        await import("../../runtime");
+      const rooted = compiled(registry, "Panel");
+      ayme({ root: rootOf })(rooted);
+      registry.registerCompiledPom(rooted, {
+        ...emptyManifest("Panel"),
+        tools: [{ ...action("open"), toolName: "Panel.open" }],
+      });
+      session.register(rooted);
+      expect(pageObjectToolTakesId(session.ayme, "Panel.open")).toBe(true);
+
+      replacePageObjects(session.ayme, [rooted], [compiled(registry, "Panel")]);
+
+      expect(pageObjectToolTakesId(session.ayme, "Panel.open")).toBe(false);
+      expect(pageObjectToolTakesId(session.ayme, "Basket.add")).toBe(false);
+    });
+
+    it("lists the rebuilt classes' tools once a read of the page that began after the Swap ends", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects, observePageObjects } =
+        await import("../../runtime");
+      const running = [compiled(registry, "Shop")];
+      session.register(running[0]!);
+      await vi.runOnlyPendingTimersAsync();
+      replacePageObjects(session.ayme, running, [compiled(registry, "Shop")]);
+      expect(registry.listAvailablePomTools()).toEqual([]);
+
+      let read = false;
+      const observed = observePageObjects(session.ayme).then(
+        () => (read = true)
+      );
+      await Promise.resolve();
+      expect(read).toBe(false);
+      await vi.runOnlyPendingTimersAsync();
+      await observed;
+
+      expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+        "Shop.open",
+      ]);
+    });
+
+    it("tells its subscribers nothing when it changes nothing, also after a change", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop")];
+      session.register(running[0]!);
+      const heard = vi.fn();
+      registry.subscribeToRegisteredPoms(heard);
+
+      replacePageObjects(session.ayme, [], []);
+      expect(heard).not.toHaveBeenCalled();
+      replacePageObjects(session.ayme, running, [compiled(registry, "Shop")]);
+      replacePageObjects(session.ayme, [], []);
+
+      expect(heard).toHaveBeenCalledOnce();
+    });
+
+    it("stops observing the page once it replaces every class with none", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop")];
+      session.register(running[0]!);
+      expect(pageObjectProbe.source).toBeTypeOf("function");
+
+      replacePageObjects(session.ayme, running, []);
+
+      expect(pageObjectProbe.source).toBeUndefined();
+    });
+
+    it("makes a rebuilt class listed twice once", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop")];
+      session.register(running[0]!);
+      const made = vi.fn();
+      const rebuilt = compiled(registry, "Shop", made);
+
+      replacePageObjects(session.ayme, running, [rebuilt, rebuilt]);
+
+      expect(made).toHaveBeenCalledOnce();
+    });
+
+    it("registers only the rebuilt classes when the session starts again", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop")];
+      session.register(running[0]!);
+      const rebuilt = [compiled(registry, "Shop")];
+      replacePageObjects(session.ayme, running, rebuilt);
+
+      session.stop();
+      started = { ...session, stop: session.ayme.start() };
+
+      expect(
+        registry
+          .listRegisteredPoms()
+          .map(({ instance }) => instance.constructor)
+      ).toEqual(rebuilt);
+    });
+
+    it("says a tool takes a Page Object Id among the tools of other classes", async () => {
+      const { registry, session, ayme, rootOf } = await setup();
+      const { pageObjectToolTakesId } = await import("../../runtime");
+      session.register(compiled(registry, "Basket"));
+      const rooted = compiled(registry, "Panel");
+      ayme({ root: rootOf })(rooted);
+      registry.registerCompiledPom(rooted, {
+        ...emptyManifest("Panel"),
+        tools: [{ ...action("open"), toolName: "Panel.open" }],
+      });
+      session.register(rooted);
+
+      expect(pageObjectToolTakesId(session.ayme, "Panel.open")).toBe(true);
+      expect(pageObjectToolTakesId(session.ayme, "Basket.open")).toBe(false);
+    });
+
+    it("lets go of the instances of the classes it replaced", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop")];
+      session.register(running[0]!);
+      const instance = session.ayme.pom.get(running[0]!);
+      const rebuilt = [compiled(registry, "Shop")];
+
+      replacePageObjects(session.ayme, running, rebuilt);
+
+      expect(session.ayme.pom.get(running[0]!)).not.toBe(instance);
+    });
+  });
+
   it("reports an observation error for a manifest-declared locator without a brand", async () => {
     const { registry, session } = await setup();
 

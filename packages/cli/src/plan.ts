@@ -9,24 +9,24 @@ export type Plan =
       text: string;
       exitCode: number;
     }
-  | {
-      kind: "codegen";
-      target:
-        | {
-            url: string;
-            headless: boolean | undefined;
-            startRecording?: true;
-            loadStorage?: string;
-            saveStorage?: string;
-          }
-        | { cdpEndpoint: string };
-    }
-  | { kind: "install"; args: string[] }
-  | { kind: "trace"; args: string[] };
+  | Extract<
+      Command,
+      {
+        kind:
+          | "capture"
+          | "open"
+          | "attach"
+          | "ask"
+          | "call"
+          | "mcp"
+          | "list"
+          | "session process";
+      }
+    >;
 
 /**
- * Decides what to do for a command: print and stop, or run one of the four
- * things the command line runs. `cli.ts` only carries the plan out.
+ * Decides what to do for a command: print and stop, record with
+ * `ayme capture`, or reach a Session, `ayme mcp` included. `cli.ts` only carries the plan out.
  */
 export function planOf(command: Command): Plan {
   switch (command.kind) {
@@ -51,22 +51,14 @@ export function planOf(command: Command): Plan {
         text: command.text,
         exitCode: 1,
       };
+    case "capture":
+    case "open":
     case "attach":
-      return { kind: "codegen", target: { cdpEndpoint: command.cdpEndpoint } };
-    case "codegen":
-      return {
-        kind: "codegen",
-        target: {
-          url: command.url,
-          headless: command.headless,
-          ...(command.startRecording ? { startRecording: true as const } : {}),
-          loadStorage: command.loadStorage,
-          saveStorage: command.saveStorage,
-        },
-      };
-    case "install":
-      return { kind: "install", args: command.args };
-    case "trace":
-      return { kind: "trace", args: command.args };
+    case "ask":
+    case "call":
+    case "mcp":
+    case "list":
+    case "session process":
+      return command;
   }
 }

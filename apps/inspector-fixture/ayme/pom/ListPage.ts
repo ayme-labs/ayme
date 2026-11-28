@@ -18,13 +18,15 @@ export class ListPage {
     return this.page.getByRole("textbox", { name: "New item" });
   }
 
+  // The Inspector names its own buttons after the page's, inside an open
+  // shadow root on the dogfood page, so the page's own are the ones in main.
   @ayme.child
   get addItemButton(): Locator {
-    return this.page.getByRole("button", { name: "Add item" });
+    return this.page
+      .getByRole("main")
+      .getByRole("button", { name: "Add item" });
   }
 
-  // The Inspector's Runs view has a "Clear" button too, inside an open
-  // shadow root on the dogfood page, so the page's own is the one in main.
   @ayme.child
   get clearButton(): Locator {
     return this.page.getByRole("main").getByRole("button", { name: "Clear" });
@@ -61,8 +63,8 @@ export class ListPage {
 
   // Available only while the list has items (ADR-0062): on an empty list
   // the tool is listed, and a call is refused with this reason. Marked
-  // destructive, so the Inspector marks it and an agent's ayme MCP server
-  // gives it `destructiveHint`.
+  // destructive, so the Inspector marks it and WebMCP publishes it with
+  // `consequentialHint`.
   @ayme.action({
     description: "Remove every item from the list.",
     available: async (self: ListPage) =>

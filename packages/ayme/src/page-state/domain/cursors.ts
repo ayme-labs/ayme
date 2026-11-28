@@ -45,6 +45,26 @@ export function forkCursor(from: Cursor): Cursor {
   return cursorAt(from.current());
 }
 
+/**
+ * `cursor`, which moves no more once `stopped` fails: a Run its Host
+ * stopped was answered without what it read, so its Caller never received
+ * it.
+ */
+export function movesUntil(
+  cursor: Cursor,
+  stopped: Promise<never> | undefined
+): Cursor {
+  if (!stopped) return cursor;
+  let moves = true;
+  stopped.catch(() => (moves = false));
+  return {
+    current: () => cursor.current(),
+    move: (to) => {
+      if (moves) cursor.move(to);
+    },
+  };
+}
+
 function cursorAt(start: StructuralObservationEntry | undefined): Cursor {
   let current = start;
   return {

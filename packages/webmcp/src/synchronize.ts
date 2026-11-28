@@ -75,8 +75,8 @@ const changeRecordText = (error: Error) =>
     .join("");
 
 /**
- * Whether WebMCP publishes a tool: every listed one but a Peek Tool, which
- * reads app state for a coding agent while developing.
+ * Whether WebMCP publishes a tool: every listed one but a Peek Tool, whose
+ * reads of app state show in the Inspector alone (ADR-0076).
  */
 const publishable = (tool: WebMcpTool) => tool.group !== "peek";
 

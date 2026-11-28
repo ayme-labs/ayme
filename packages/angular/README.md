@@ -31,7 +31,7 @@ export const appConfig: ApplicationConfig = {
 
 > **Experimental:** this may change in any release. See [Experimental APIs](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/experimental-apis.md).
 
-While a coding agent or the Inspector is connected, `injectPeek(values, name, id?)` lets the agent read a component's state through the Peek Tool `peek.<name>`:
+While the Inspector is on, `injectPeek(values, name, id?)` lets you read a component's state in the Inspector's Tools lens, through the Peek Tool `peek.<name>`:
 
 ```ts
 import { Component, signal } from "@angular/core";
@@ -50,7 +50,7 @@ export class Counter {
 }
 ```
 
-Each component is one instance of the Peek, under the `id` you pass or one of its own. The agent reads `values` when it asks: a signal is called, and so is each top-level property that is a signal; anything else is read as it was passed. The instance is added in `afterNextRender`, so server rendering adds none, and it is removed when the caller's `DestroyRef` fires. Call it in an injection context. `injectPeek` calls [`ayme.peek`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek), so it does nothing unless `provideAyme` has `agentConnection` or `inspector` on.
+Each component is one instance of the Peek, under the `id` you pass or one of its own. The Inspector reads `values` when you run the tool: a signal is called, and so is each top-level property that is a signal; anything else is read as it was passed. The instance is added in `afterNextRender`, so server rendering adds none, and it is removed when the caller's `DestroyRef` fires. Call it in an injection context. `injectPeek` calls [`ayme.peek`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek), so it does nothing unless `provideAyme` has `inspector` on.
 
 ## Documentation
 

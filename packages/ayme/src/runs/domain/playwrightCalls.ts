@@ -32,9 +32,10 @@ type Methods<T> = Extract<
   string
 >;
 
-// Every method of Playwright's Locator, Page, Keyboard and Mouse, so a
-// Playwright release that adds one fails typecheck here until it is
-// classified, and nowhere else.
+// Every method of Playwright's Locator, Page, Keyboard and Mouse in the
+// Playwright types the package is built against, so building against a
+// release that adds one fails typecheck here until it is classified, and
+// nowhere else.
 
 const locatorCalls = {
   all: "none",
@@ -250,6 +251,99 @@ export const playwrightCalls: Record<
   keyboard: keyboardCalls,
   mouse: mouseCalls,
 };
+
+/** The names of `T`'s methods that return no promise: they answer at once,
+ * without the browser, such as building a locator or adding a listener. */
+type AtOnce<T> = {
+  [K in Methods<T>]: T[K] extends (...args: never[]) => infer R
+    ? R extends PromiseLike<unknown>
+      ? never
+      : K
+    : never;
+}[Methods<T>];
+
+// Every method of Locator and Page that answers at once, as the Playwright
+// types the package is built against declare them: building against a
+// release that adds one fails typecheck here until it is listed. A newer
+// Playwright a project runs may have methods these tables lack.
+const locatorAtOnce = {
+  and: true,
+  contentFrame: true,
+  describe: true,
+  description: true,
+  filter: true,
+  first: true,
+  frameLocator: true,
+  getByAltText: true,
+  getByLabel: true,
+  getByPlaceholder: true,
+  getByRole: true,
+  getByTestId: true,
+  getByText: true,
+  getByTitle: true,
+  last: true,
+  locator: true,
+  nth: true,
+  or: true,
+  page: true,
+  toString: true,
+  visible: true,
+  within: true,
+} as const satisfies Record<AtOnce<Locator>, true>;
+
+const pageAtOnce = {
+  addListener: true,
+  context: true,
+  frame: true,
+  frameLocator: true,
+  frames: true,
+  getByAltText: true,
+  getByLabel: true,
+  getByPlaceholder: true,
+  getByRef: true,
+  getByRole: true,
+  getByTestId: true,
+  getByText: true,
+  getByTitle: true,
+  isClosed: true,
+  locator: true,
+  mainFrame: true,
+  off: true,
+  on: true,
+  once: true,
+  prependListener: true,
+  removeListener: true,
+  setDefaultNavigationTimeout: true,
+  setDefaultTimeout: true,
+  url: true,
+  video: true,
+  viewportSize: true,
+  workers: true,
+} as const satisfies Record<AtOnce<Page>, true>;
+
+const atOnce: Record<CallSubject, Readonly<Record<string, true>>> = {
+  locator: locatorAtOnce,
+  page: pageAtOnce,
+  // Every call of the input devices reaches the browser.
+  keyboard: {} satisfies Record<AtOnce<Keyboard>, true>,
+  mouse: {} satisfies Record<AtOnce<Mouse>, true>,
+};
+
+/**
+ * Whether a Host may hold a call until it lets it start: one the tables know
+ * answers with a promise. A Host can refuse any call, but holding one that
+ * answers at once, or one the tables do not know, would change what it
+ * answers.
+ */
+export function mayHold(
+  subject: CallSubject,
+  method: string | symbol
+): boolean {
+  return (
+    Object.hasOwn(playwrightCalls[subject], method) &&
+    !Object.hasOwn(atOnce[subject], method)
+  );
+}
 
 /** What a call does, or undefined for a symbol-keyed or unknown method, which runs as it is. */
 export function kindOf(

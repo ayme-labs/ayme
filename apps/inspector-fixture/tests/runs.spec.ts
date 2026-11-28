@@ -1,11 +1,9 @@
-import type { Agent } from "@ayme-dev/mcp/testing";
-
 import { AppView } from "./appView";
-import { expect, INSPECTOR, outline, test } from "./fixtures";
+import { expect, INSPECTOR, outline, test, type Agent } from "./fixtures";
 
 // E2E: running tools from the panel, on the fixture page with the real
 // ListPage Page Object and the ayme runtime. The app runs Browser Tools
-// through its runtime, and an agent calls Page Object Tools over ayme MCP.
+// through its runtime, and an agent calls Page Object Tools through WebMCP.
 
 test("a non-POM target keeps its accessible name after clicking removes it and after reload", async ({
   page,
@@ -130,7 +128,7 @@ test("hovering a run's Interaction highlights its element on the page", async ({
 test.describe("connected to an agent", () => {
   test.use({ connected: true });
 
-  test("an agent's call over ayme MCP shows in Runs as the agent's", async ({
+  test("an agent's call through WebMCP shows in Runs as the agent's", async ({
     agent,
     inspector,
   }) => {
@@ -139,7 +137,7 @@ test.describe("connected to an agent", () => {
     const run = inspector.runs.latest("ListPage.addItem");
     await expect.poll(() => run.status()).toBe("Succeeded");
     expect(await run.caller()).toEqual({
-      icon: "Run by an agent through ayme MCP",
+      icon: "Run by an agent through WebMCP",
     });
     expect(await run.arguments.textContent()).toBe('{"text":"Milk"}');
     await expect
@@ -258,30 +256,6 @@ test("goal runs from the panel and shows in Runs with the Runs its steps execute
 test.describe("with WebMCP publication off", () => {
   test.use({ fixturePath: "/unpublished.html" });
 
-  test.describe("connected to an agent", () => {
-    test.use({ connected: true });
-
-    test("a Page Object tool that fails gives the text an agent gets for the same call", async ({
-      agent,
-      inspector,
-      listPage,
-    }) => {
-      await listPage.addItemButton.evaluate((button) => button.remove());
-      const agentError = await agentFailure(agent!, "ListPage.addItem", {
-        text: "Milk",
-      });
-
-      await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
-
-      const run = inspector.runs.latest("ListPage.addItem");
-      await expect.poll(() => run.earlierPage.count()).toBe(0);
-      await expect.poll(() => run.status()).toBe("Failed");
-      expect(firstLine(await run.error.textContent())).toBe(
-        firstLine(agentError)
-      );
-    });
-  });
-
   test("a Page Object tool runs from the panel", async ({
     inspector,
     listPage,
@@ -325,11 +299,11 @@ test.describe("with WebMCP publication off", () => {
   });
 });
 
-/** The failure text an agent gets calling a tool over ayme MCP. */
+/** The failure text an agent gets calling a tool through WebMCP. */
 async function agentFailure(agent: Agent, name: string, input: object) {
   const { text, isError } = await agent.call(name, { ...input });
   if (!isError)
-    throw new Error(`Expected ${name} to fail over ayme MCP: ${text}`);
+    throw new Error(`Expected ${name} to fail through WebMCP: ${text}`);
   return text;
 }
 

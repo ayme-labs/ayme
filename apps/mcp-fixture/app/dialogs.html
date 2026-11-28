@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dialogs</title>
+  </head>
+  <body>
+    <h1>Dialogs</h1>
+    <button type="button" id="remove">Remove Milk</button>
+    <button type="button" id="mark">Mark</button>
+    <a id="popup" href="/alert-at-once.html" target="_blank"
+      >A popup that alerts</a
+    >
+    <p>Answer: <output id="answer">none</output></p>
+    <p>Marks: <output id="marks">0</output></p>
+    <script>
+      document.getElementById("remove").onclick = () => {
+        document.getElementById("answer").textContent = confirm(
+          "Remove Milk from the basket?"
+        )
+          ? "accepted"
+          : "dismissed";
+      };
+      document.getElementById("mark").onclick = () => {
+        const marks = document.getElementById("marks");
+        marks.textContent = String(Number(marks.textContent) + 1);
+      };
+    </script>
+  </body>
+</html>

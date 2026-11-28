@@ -16,7 +16,6 @@ import { type AriaRef, type PageStateCapture } from "../page-state/domain";
 import { listRegisteredPomTools } from "../page-objects/infrastructure";
 import { RuntimeStateError } from "../shared";
 import {
-  listPeekToolInfo as listPeekToolInfoFrom,
   listTools as listToolsFrom,
   resolveTools as resolveToolsFrom,
   startedPageOf,
@@ -51,11 +50,6 @@ export const listTools = (
   options: Parameters<typeof listToolsFrom>[0],
   sources: ToolSources = browserToolSources
 ) => listToolsFrom(options, sources);
-
-/** Package-internal: the Peek Tools alone, from `sources` (the document's by default). */
-export const listPeekToolInfo = (
-  sources: Pick<ToolSources, "peekTools"> = browserToolSources
-) => listPeekToolInfoFrom(sources);
 
 /**
  * The refs each available single-element tool can take in `capture` (a look at the current

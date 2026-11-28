@@ -55,27 +55,12 @@ function clearTheList() {
   };
 }
 
-/**
- * Whether the page was opened for the external placement (`?external`): its
- * runtime mounts no panel and serves the Inspector over the Agent Connection,
- * to the window `ayme mcp` serves. The end-to-end tests' second project opens
- * every fixture page this way.
- */
-const external = new URLSearchParams(location.search).has("external");
-
-/**
- * Whether the page was opened through a connect link for the inline
- * placement (`?agent`): its runtime turns the Agent Connection on, so the
- * agent's ayme MCP server lists the page's tools.
- */
-const connected = new URLSearchParams(location.search).has("agent");
-
 declare global {
   interface Window {
     /**
      * The page's runtime, which the end-to-end tests read and run tools on
-     * as the app does: the Browser Tools and snapshot, which no agent's ayme
-     * MCP server lists, and the live tool list.
+     * as the app does: the Browser Tools and snapshot, and the live tool
+     * list.
      */
     fixtureAyme?: Ayme;
   }
@@ -88,12 +73,9 @@ const rendersThePage = `[${INSPECTOR_PAGE_RENDERING_ATTRIBUTE}]`;
  * ListPage by default), the way the ayme integrations do. `mount: "after"`
  * mounts the Inspector once the runtime started with its Page Object, and
  * `mount: "session"` leaves it to the session's `inspector` option. `demo`
- * mounts it in demo mode. `dogfood` mounts it for dogfooding, turns the
- * Agent Connection on and registers `alsoRegister`, the Inspector's own
- * Page Object compiled by the plugin. With `?external` in its address, the page
- * mounts no Inspector and its session has the external placement, in demo mode
- * with `demo`; with `?agent`, the Agent Connection is on. The page
- * reports whether it started on <html>, and its runtime on `window`, so the
+ * mounts it in demo mode. `dogfood` mounts it for dogfooding and registers
+ * `alsoRegister`, the Inspector's own Page Object compiled by the plugin.
+ * The page reports whether it started on <html>, and its runtime on `window`, so the
  * e2e tests can tell a broken fixture or a runtime that never listed its
  * tools from a broken Inspector.
  */
@@ -115,17 +97,12 @@ export function startAyme({
   const root = document.documentElement.dataset;
   try {
     let inspector =
-      mount === "before" && !external
-        ? mountInspector({ demo, dogfood })
-        : undefined;
+      mount === "before" ? mountInspector({ demo, dogfood }) : undefined;
     const runtime = createAyme({
       customTools: [markElement],
       goalLoop: clearTheList(),
       webMCP: { enabled: publish },
-      inspector: external
-        ? { placement: "external", demo }
-        : mount === "session" && (demo ? { demo } : true),
-      agentConnection: dogfood || connected,
+      inspector: mount === "session" && (demo ? { demo } : true),
       // The Structure lens and the search results render the page state; in
       // page state they would render themselves, over and over.
       ignore: dogfood ? rendersThePage : undefined,
@@ -134,8 +111,7 @@ export function startAyme({
     runtime.pom.register(PageObject);
     for (const Other of alsoRegister) runtime.pom.register(Other);
     const stop = runtime.start();
-    if (mount === "after" && !external)
-      inspector = mountInspector({ demo, dogfood });
+    if (mount === "after") inspector = mountInspector({ demo, dogfood });
     root.fixture = "ready";
     return () => {
       for (const Other of alsoRegister) runtime.pom.unregister(Other);

@@ -7,12 +7,12 @@
  *
  * Each browser automation, Playwright MCP, Playwright CLI and agent-browser,
  * has two arms: the browser automation alone, on Formbricks as it is; and
- * with ayme as its own MCP server, `ayme`, beside it. The arm with ayme
- * serves the lab app's Page Objects with the run's `ayme mcp`, started as
- * the `ayme` skill's reference on browser automation tools says, and loads
- * that skill and that reference in the setup turn. The interface
- * line states which tools the agent has, and no instruction of ayme's: those
- * come from the reference. The arms alone get nothing of ayme.
+ * with the `ayme` command beside it. The arm with ayme gets a Session the
+ * harness started on its browser, as the guide connects ayme to that
+ * browser automation, and loads the `ayme` skill and its references in the
+ * setup turn. The interface line names the command and where to start, and
+ * no other instruction of ayme's: those come from the skill. The arms alone
+ * get nothing of ayme.
  */
 import {
   agentBrowserVersion,
@@ -20,10 +20,10 @@ import {
   setUpAgentBrowserWithAyme,
 } from "./agentBrowser.ts";
 import {
-  aymeMcpServer,
+  aymeAllowedTools,
+  aymeDisallowedTools,
+  aymeOpenPreconditions,
   aymePreconditions,
-  aymeServerName,
-  aymeSkillName,
 } from "./ayme.ts";
 import type { Mission } from "./missions.ts";
 import {
@@ -43,7 +43,11 @@ export type BrowserAutomation =
 
 export type ArmId = BrowserAutomation | `${BrowserAutomation}-with-ayme`;
 
-export type McpServer = { command: string; args: string[] };
+/** An MCP server the agent starts. */
+export type CommandMcpServer = { command: string; args: string[] };
+
+/** An MCP server the agent starts, or one the harness started and the agent reaches over HTTP. */
+export type McpServer = CommandMcpServer | { type: "http"; url: string };
 
 /** Per-run paths an arm may point its interface at. */
 export type ArmContext = {
@@ -61,6 +65,11 @@ export type ArmContext = {
   start: Mission["start"];
   /** The agent's working root, where its interface's commands run too. */
   cwd: string;
+  /**
+   * Opens the mission's start page in a browser running at `address`, signed
+   * in when the mission starts signed in; resolves with the browser's version.
+   */
+  openStartPage: (address: string) => Promise<string>;
   log: (line: string) => void;
 };
 
@@ -74,6 +83,8 @@ export type ArmSetup = {
   evidence?: Record<string, unknown>;
   /** MCP servers the setup adds to the arm's own, such as one attached to a port chosen then. */
   mcpServers?: Record<string, McpServer>;
+  /** The browser the agent drives, when it is not the one the harness prepared the profile with. */
+  browserVersion?: string;
   /** Undoes the setup after the run, whatever its outcome. */
   dispose: () => Promise<void>;
 };
@@ -81,7 +92,7 @@ export type ArmSetup = {
 export type Arm = {
   id: ArmId;
   browserAutomation: BrowserAutomation;
-  /** Whether the arm adds ayme's Page Object Tools to its browser automation. */
+  /** Whether the arm adds the `ayme` command's Page Object Tools to its browser automation. */
   withAyme: boolean;
   /** The one prompt line that differs between arms; it may say where the browser is. */
   interfaceLine: (start: Mission["start"]) => string;
@@ -89,7 +100,12 @@ export type Arm = {
   skill?: string;
   /** Built-in Claude Code tools the agent keeps. Read-only file tools; the arm's interface does the rest. */
   tools: string[];
-  /** Permission rules letting the agent call the arm's interface without a prompt. */
+  /**
+   * Permission rules letting the agent call the arm's interface without a
+   * prompt. An arm with Bash allows every command; its interface's own
+   * command lines are listed too, since Codex lets out of its sandbox only
+   * the commands listed (see `codexRules`).
+   */
   allowedTools: string[];
   /** Permission rules that stay denied, whatever the interface's own skill allows. */
   disallowedTools?: string[];
@@ -113,6 +129,15 @@ export type Arm = {
  */
 const baseTools = ["Read", "Glob", "Grep", "ToolSearch"];
 
+/**
+ * Every Bash command, the leeway an agent has in a developer's environment:
+ * with only its interface's command allowed, Claude Code refused commands
+ * such as one that sets a shell variable first, or reads a saved snapshot
+ * with `sed`, and runs failed on that alone. The arm's refused commands
+ * stay refused, and the task's own rules stay in the prompt.
+ */
+export const anyCommand = "Bash";
+
 /** A command with and without arguments, as permission rules. */
 function bashCommand(command: string) {
   return [`Bash(${command})`, `Bash(${command}:*)`];
@@ -124,6 +149,14 @@ function startState(start: Mission["start"]) {
     : "on the sign-in page, not signed in";
 }
 
+/**
+ * What the agent-browser lines say of its session: agent-browser's guide
+ * has an agent work in a named session, and the session the harness opened
+ * is the one a command without `--session` reaches.
+ */
+const agentBrowserSession =
+  "It is agent-browser's default session: pass no `--session`.";
+
 /** Each browser automation's interface line when it runs alone. */
 const aloneLines: Record<
   BrowserAutomation,
@@ -134,15 +167,31 @@ const aloneLines: Record<
   "playwright-cli": (start) =>
     `Use the \`playwright-cli\` command for every browser interaction. Its browser session is already open ${startState(start)}; start from \`playwright-cli snapshot\`.`,
   "agent-browser": (start) =>
-    `Use the \`agent-browser\` command for every browser interaction. Its browser session is already open ${startState(start)}; start from \`agent-browser snapshot\`.`,
+    `Use the \`agent-browser\` command for every browser interaction. Its browser session is already open ${startState(start)}; start from \`agent-browser snapshot\`. ${agentBrowserSession}`,
 };
 
 /**
- * What an arm with ayme adds to its browser automation's line: where the
- * Page Object Tools are, as a fact. Nothing on when to call them or what to
- * read after one: that is the skill reference's.
+ * What an arm with ayme says of the command: what it offers, that the
+ * Session is already connected, where to start, and how to run it. The same
+ * for every browser automation; the rule to list the Page Objects on each new
+ * screen is the skill's. The skill runs the command as `npx ayme`, which the
+ * run's permissions refuse, so the last sentence names the form they allow.
  */
-export const aymeToolsSentence = `The \`${aymeServerName}\` MCP server lists the Page Object Tools of the screen the browser is on.`;
+export const aymeSentence =
+  "The `ayme` command lists and calls the Page Object Tools of the screen the browser is on, through a Session already connected to that browser; start from `ayme page-objects`. Run it as `ayme`, which is on the PATH here.";
+
+/** Each browser automation's line with ayme: its line alone, without a start of its own. */
+const withAymeLines: Record<
+  BrowserAutomation,
+  (start: Mission["start"]) => string
+> = {
+  "playwright-mcp": (start) =>
+    `${aloneLines["playwright-mcp"](start)} ${aymeSentence}`,
+  "playwright-cli": (start) =>
+    `Use the \`playwright-cli\` command for every browser interaction. Its browser session is already open ${startState(start)}. ${aymeSentence}`,
+  "agent-browser": (start) =>
+    `Use the \`agent-browser\` command for every browser interaction. Its browser session is already open ${startState(start)}. ${agentBrowserSession} ${aymeSentence}`,
+};
 
 /** What each browser automation runs on and is set up with; an arm with ayme adds to it. */
 const browserAutomations: Record<
@@ -165,7 +214,11 @@ const browserAutomations: Record<
     skill: "playwright-cli",
     // The skill is loaded through the Skill tool, in the setup turn; Bash is only the CLI.
     tools: [...baseTools, "Bash", "Skill"],
-    allowedTools: ["Bash(playwright-cli:*)", "Skill(playwright-cli)"],
+    allowedTools: [
+      anyCommand,
+      "Bash(playwright-cli:*)",
+      "Skill(playwright-cli)",
+    ],
     disallowedTools: [
       // The skill pre-approves `npx playwright`, which would run the lab app's own Playwright, or download one.
       "Bash(npx:*)",
@@ -183,7 +236,7 @@ const browserAutomations: Record<
   "agent-browser": {
     skill: "agent-browser",
     tools: [...baseTools, "Bash", "Skill"],
-    allowedTools: ["Bash(agent-browser:*)", "Skill(agent-browser)"],
+    allowedTools: [anyCommand, "Bash(agent-browser:*)", "Skill(agent-browser)"],
     disallowedTools: [
       // The skill's guide pre-approves `npx agent-browser`, which could fetch another version.
       "Bash(npx:*)",
@@ -229,9 +282,10 @@ function armAlone(browserAutomation: BrowserAutomation): Arm {
 }
 
 /**
- * The arm of a browser automation with ayme: the arm alone, its browser
- * attached over CDP to the page the run's `ayme mcp` serves, plus the `ayme`
- * skill and the `ayme` server with its permission.
+ * The arm of a browser automation with ayme: the arm alone, plus the `ayme`
+ * command, its skill and their permissions, and Bash and the Skill tool
+ * where the arm alone has neither. No MCP server of ayme's: Playwright MCP's
+ * own server is the setup's, which starts it.
  */
 function armWithAyme(browserAutomation: BrowserAutomation): Arm {
   const base = browserAutomations[browserAutomation];
@@ -244,21 +298,20 @@ function armWithAyme(browserAutomation: BrowserAutomation): Arm {
     id: `${browserAutomation}-with-ayme`,
     browserAutomation,
     withAyme: true,
-    interfaceLine: (start) =>
-      `${aloneLines[browserAutomation](start)} ${aymeToolsSentence}`,
+    interfaceLine: withAymeLines[browserAutomation],
     ...(base.skill === undefined ? {} : { skill: base.skill }),
-    tools: base.tools.includes("Skill") ? base.tools : [...base.tools, "Skill"],
+    tools: [...new Set([...base.tools, "Bash", "Skill"])],
+    // Bash comes with ayme, so every command does too.
     allowedTools: [
-      ...base.allowedTools,
-      `Skill(${aymeSkillName})`,
-      `mcp__${aymeServerName}`,
+      ...new Set([anyCommand, ...base.allowedTools, ...aymeAllowedTools]),
     ],
-    disallowedTools: base.disallowedTools,
-    // The browser automation's own server, where it has one, is the setup's: it names the port chosen then.
-    mcpServers: (context): Record<string, McpServer> => ({
-      [aymeServerName]: aymeMcpServer(context),
-    }),
-    preconditions: aymePreconditions,
+    disallowedTools: [...(base.disallowedTools ?? []), ...aymeDisallowedTools],
+    mcpServers: () => ({}),
+    // Only `ayme open` starts a browser of the project's Playwright.
+    preconditions:
+      browserAutomation === "playwright-cli"
+        ? aymeOpenPreconditions
+        : aymePreconditions,
     setup,
     browserInterface: base.browserInterface,
   };

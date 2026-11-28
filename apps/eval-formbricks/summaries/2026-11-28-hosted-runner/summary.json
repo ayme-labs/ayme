@@ -1,0 +1,1058 @@
+{
+  "suiteId": "2026-11-28T13-22-19-138Z-suite-26327d",
+  "date": "2026-11-28",
+  "missions": ["rename-survey-and-question"],
+  "timeoutSeconds": [600],
+  "versions": {
+    "claudeCode": ["2.1.326"],
+    "modelRequested": ["sonnet"],
+    "modelUsed": ["claude-sonnet-5-5"],
+    "effort": ["medium"],
+    "browserInterfaces": [
+      {
+        "arm": "playwright-mcp",
+        "name": "@playwright/mcp",
+        "version": "0.0.83"
+      },
+      {
+        "arm": "playwright-mcp-with-ayme",
+        "name": "@playwright/mcp",
+        "version": "0.0.83"
+      },
+      {
+        "arm": "playwright-cli",
+        "name": "@playwright/cli",
+        "version": "0.1.22"
+      },
+      {
+        "arm": "playwright-cli-with-ayme",
+        "name": "@playwright/cli",
+        "version": "0.1.22"
+      },
+      {
+        "arm": "agent-browser",
+        "name": "agent-browser",
+        "version": "0.41.2"
+      },
+      {
+        "arm": "agent-browser-with-ayme",
+        "name": "agent-browser",
+        "version": "0.41.2"
+      }
+    ],
+    "browser": ["158.0.8127.36", "156.0.8078.4"],
+    "aymeCommit": ["482bad2baf85550acd54af8eb6bd2bc997dfc234"],
+    "formbricksCommit": ["8abe0b4276d1e3aa25e40d5360ce59cd6e7a5bf2"]
+  },
+  "arms": [
+    {
+      "arm": "playwright-mcp",
+      "runs": 10,
+      "requestedRuns": 10,
+      "passes": 10,
+      "wallTimeMs": {
+        "n": 10,
+        "median": 22116,
+        "min": 16778,
+        "max": 25452
+      },
+      "tokens": {
+        "n": 10,
+        "median": 144341,
+        "min": 119176,
+        "max": 177485
+      },
+      "inputOutputTokens": {
+        "n": 10,
+        "median": 1281,
+        "min": 1113,
+        "max": 1470
+      },
+      "toolCalls": {
+        "n": 10,
+        "median": 11.5,
+        "min": 9,
+        "max": 13
+      },
+      "costUsd": {
+        "n": 10,
+        "median": 0.0749683,
+        "min": 0.0626839,
+        "max": 0.0820682
+      },
+      "runList": [
+        {
+          "runId": "2026-11-28T13-23-37-019Z-playwright-mcp-956fda",
+          "pass": true,
+          "wallTimeMs": 23583,
+          "usage": {
+            "input": 26,
+            "cacheCreation": 14180,
+            "cacheRead": 130062,
+            "output": 1229
+          },
+          "totalTokens": 145497,
+          "costUsd": 0.0820682
+        },
+        {
+          "runId": "2026-11-28T13-27-23-844Z-playwright-mcp-c68516",
+          "pass": true,
+          "wallTimeMs": 19674,
+          "usage": {
+            "input": 22,
+            "cacheCreation": 13196,
+            "cacheRead": 104857,
+            "output": 1101
+          },
+          "totalTokens": 119176,
+          "costUsd": 0.0743237
+        },
+        {
+          "runId": "2026-11-28T13-30-57-630Z-playwright-mcp-6651af",
+          "pass": true,
+          "wallTimeMs": 23464,
+          "usage": {
+            "input": 30,
+            "cacheCreation": 11987,
+            "cacheRead": 164028,
+            "output": 1440
+          },
+          "totalTokens": 177485,
+          "costUsd": 0.0788108
+        },
+        {
+          "runId": "2026-11-28T13-34-26-765Z-playwright-mcp-5a4166",
+          "pass": true,
+          "wallTimeMs": 20768,
+          "usage": {
+            "input": 26,
+            "cacheCreation": 11693,
+            "cacheRead": 130254,
+            "output": 1212
+          },
+          "totalTokens": 143185,
+          "costUsd": 0.0719694
+        },
+        {
+          "runId": "2026-11-28T13-37-52-680Z-playwright-mcp-36b8ca",
+          "pass": true,
+          "wallTimeMs": 25452,
+          "usage": {
+            "input": 28,
+            "cacheCreation": 9629,
+            "cacheRead": 140926,
+            "output": 1324
+          },
+          "totalTokens": 151907,
+          "costUsd": 0.0659046
+        },
+        {
+          "runId": "2026-11-28T13-41-23-013Z-playwright-mcp-bcbaf0",
+          "pass": true,
+          "wallTimeMs": 18824,
+          "usage": {
+            "input": 24,
+            "cacheCreation": 9356,
+            "cacheRead": 117219,
+            "output": 1349
+          },
+          "totalTokens": 127948,
+          "costUsd": 0.0626839
+        },
+        {
+          "runId": "2026-11-28T13-44-50-108Z-playwright-mcp-f8b3cd",
+          "pass": true,
+          "wallTimeMs": 16778,
+          "usage": {
+            "input": 24,
+            "cacheCreation": 13306,
+            "cacheRead": 114509,
+            "output": 1089
+          },
+          "totalTokens": 128928,
+          "costUsd": 0.0756129
+        },
+        {
+          "runId": "2026-11-28T13-47-55-102Z-playwright-mcp-97489d",
+          "pass": true,
+          "wallTimeMs": 23562,
+          "usage": {
+            "input": 28,
+            "cacheCreation": 11863,
+            "cacheRead": 144633,
+            "output": 1390
+          },
+          "totalTokens": 157914,
+          "costUsd": 0.0758713
+        },
+        {
+          "runId": "2026-11-28T13-51-31-963Z-playwright-mcp-5ab7e8",
+          "pass": true,
+          "wallTimeMs": 18888,
+          "usage": {
+            "input": 24,
+            "cacheCreation": 11770,
+            "cacheRead": 116529,
+            "output": 1212
+          },
+          "totalTokens": 129535,
+          "costUsd": 0.0709009
+        },
+        {
+          "runId": "2026-11-28T13-54-50-177Z-playwright-mcp-a72e12",
+          "pass": true,
+          "wallTimeMs": 24561,
+          "usage": {
+            "input": 30,
+            "cacheCreation": 13193,
+            "cacheRead": 162543,
+            "output": 1277
+          },
+          "totalTokens": 177043,
+          "costUsd": 0.0818563
+        }
+      ]
+    },
+    {
+      "arm": "playwright-mcp-with-ayme",
+      "runs": 10,
+      "requestedRuns": 10,
+      "passes": 10,
+      "wallTimeMs": {
+        "n": 10,
+        "median": 16725.5,
+        "min": 12915,
+        "max": 20211
+      },
+      "tokens": {
+        "n": 10,
+        "median": 127819.5,
+        "min": 90307,
+        "max": 147172
+      },
+      "inputOutputTokens": {
+        "n": 10,
+        "median": 862.5,
+        "min": 720,
+        "max": 1064
+      },
+      "toolCalls": {
+        "n": 10,
+        "median": 6,
+        "min": 4,
+        "max": 7
+      },
+      "costUsd": {
+        "n": 10,
+        "median": 0.0320882,
+        "min": 0.0250912,
+        "max": 0.0412297
+      },
+      "runList": [
+        {
+          "runId": "2026-11-28T13-24-15-218Z-playwright-mcp-with-ayme-8210df",
+          "pass": true,
+          "wallTimeMs": 17565,
+          "usage": {
+            "input": 16,
+            "cacheCreation": 2746,
+            "cacheRead": 124220,
+            "output": 840
+          },
+          "totalTokens": 127822,
+          "costUsd": 0.031838
+        },
+        {
+          "runId": "2026-11-28T13-27-55-706Z-playwright-mcp-with-ayme-097fd2",
+          "pass": true,
+          "wallTimeMs": 16808,
+          "usage": {
+            "input": 20,
+            "cacheCreation": 3117,
+            "cacheRead": 143099,
+            "output": 936
+          },
+          "totalTokens": 147172,
+          "costUsd": 0.0361779
+        },
+        {
+          "runId": "2026-11-28T13-31-29-783Z-playwright-mcp-with-ayme-f9618f",
+          "pass": true,
+          "wallTimeMs": 16160,
+          "usage": {
+            "input": 18,
+            "cacheCreation": 2809,
+            "cacheRead": 124131,
+            "output": 859
+          },
+          "totalTokens": 127817,
+          "costUsd": 0.0322751
+        },
+        {
+          "runId": "2026-11-28T13-34-56-691Z-playwright-mcp-with-ayme-9155a1",
+          "pass": true,
+          "wallTimeMs": 18164,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2248,
+            "cacheRead": 105445,
+            "output": 852
+          },
+          "totalTokens": 108559,
+          "costUsd": 0.0280845
+        },
+        {
+          "runId": "2026-11-28T13-38-26-511Z-playwright-mcp-with-ayme-c96c0f",
+          "pass": true,
+          "wallTimeMs": 15391,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 2315,
+            "cacheRead": 87272,
+            "output": 708
+          },
+          "totalTokens": 90307,
+          "costUsd": 0.0250912
+        },
+        {
+          "runId": "2026-11-28T13-41-50-227Z-playwright-mcp-with-ayme-41b564",
+          "pass": true,
+          "wallTimeMs": 20211,
+          "usage": {
+            "input": 20,
+            "cacheCreation": 3057,
+            "cacheRead": 142528,
+            "output": 991
+          },
+          "totalTokens": 146596,
+          "costUsd": 0.0364308
+        },
+        {
+          "runId": "2026-11-28T13-45-16-865Z-playwright-mcp-with-ayme-e03c94",
+          "pass": true,
+          "wallTimeMs": 12915,
+          "usage": {
+            "input": 18,
+            "cacheCreation": 3053,
+            "cacheRead": 123998,
+            "output": 841
+          },
+          "totalTokens": 127910,
+          "costUsd": 0.0330578
+        },
+        {
+          "runId": "2026-11-28T13-48-29-417Z-playwright-mcp-with-ayme-10a960",
+          "pass": true,
+          "wallTimeMs": 18024,
+          "usage": {
+            "input": 18,
+            "cacheCreation": 4374,
+            "cacheRead": 132377,
+            "output": 1046
+          },
+          "totalTokens": 137815,
+          "costUsd": 0.0412297
+        },
+        {
+          "runId": "2026-11-28T13-51-59-619Z-playwright-mcp-with-ayme-afd775",
+          "pass": true,
+          "wallTimeMs": 13600,
+          "usage": {
+            "input": 18,
+            "cacheCreation": 2805,
+            "cacheRead": 124053,
+            "output": 824
+          },
+          "totalTokens": 127700,
+          "costUsd": 0.0319013
+        },
+        {
+          "runId": "2026-11-28T13-55-24-958Z-playwright-mcp-with-ayme-0953e2",
+          "pass": true,
+          "wallTimeMs": 16643,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2130,
+            "cacheRead": 105144,
+            "output": 769
+          },
+          "totalTokens": 108057,
+          "costUsd": 0.0267524
+        }
+      ]
+    },
+    {
+      "arm": "playwright-cli",
+      "runs": 10,
+      "requestedRuns": 10,
+      "passes": 10,
+      "wallTimeMs": {
+        "n": 10,
+        "median": 20811.5,
+        "min": 18200,
+        "max": 27511
+      },
+      "tokens": {
+        "n": 10,
+        "median": 107555,
+        "min": 84482,
+        "max": 170401
+      },
+      "inputOutputTokens": {
+        "n": 10,
+        "median": 748,
+        "min": 667,
+        "max": 1264
+      },
+      "toolCalls": {
+        "n": 10,
+        "median": 4,
+        "min": 3,
+        "max": 8
+      },
+      "costUsd": {
+        "n": 10,
+        "median": 0.045364100000000004,
+        "min": 0.0427155,
+        "max": 0.054514
+      },
+      "runList": [
+        {
+          "runId": "2026-11-28T13-24-53-585Z-playwright-cli-e14fcc",
+          "pass": true,
+          "wallTimeMs": 21885,
+          "usage": {
+            "input": 16,
+            "cacheCreation": 7282,
+            "cacheRead": 144539,
+            "output": 836
+          },
+          "totalTokens": 152673,
+          "costUsd": 0.0519739
+        },
+        {
+          "runId": "2026-11-28T13-28-31-643Z-playwright-cli-572495",
+          "pass": true,
+          "wallTimeMs": 22229,
+          "usage": {
+            "input": 10,
+            "cacheCreation": 7305,
+            "cacheRead": 76474,
+            "output": 693
+          },
+          "totalTokens": 84482,
+          "costUsd": 0.0438174
+        },
+        {
+          "runId": "2026-11-28T13-32-07-125Z-playwright-cli-e7dd41",
+          "pass": true,
+          "wallTimeMs": 22996,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 7087,
+            "cacheRead": 99918,
+            "output": 741
+          },
+          "totalTokens": 107758,
+          "costUsd": 0.0457738
+        },
+        {
+          "runId": "2026-11-28T13-35-33-796Z-playwright-cli-b642d2",
+          "pass": true,
+          "wallTimeMs": 19153,
+          "usage": {
+            "input": 16,
+            "cacheCreation": 7156,
+            "cacheRead": 141999,
+            "output": 816
+          },
+          "totalTokens": 149987,
+          "costUsd": 0.0510159
+        },
+        {
+          "runId": "2026-11-28T13-39-01-495Z-playwright-cli-122727",
+          "pass": true,
+          "wallTimeMs": 18200,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 6722,
+            "cacheRead": 120235,
+            "output": 752
+          },
+          "totalTokens": 127723,
+          "costUsd": 0.0464595
+        },
+        {
+          "runId": "2026-11-28T13-42-30-018Z-playwright-cli-067887",
+          "pass": true,
+          "wallTimeMs": 19938,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 6552,
+            "cacheRead": 98861,
+            "output": 731
+          },
+          "totalTokens": 106156,
+          "costUsd": 0.0434281
+        },
+        {
+          "runId": "2026-11-28T13-45-47-927Z-playwright-cli-60ebc0",
+          "pass": true,
+          "wallTimeMs": 20694,
+          "usage": {
+            "input": 10,
+            "cacheCreation": 7374,
+            "cacheRead": 76674,
+            "output": 657
+          },
+          "totalTokens": 84715,
+          "costUsd": 0.0437534
+        },
+        {
+          "runId": "2026-11-28T13-49-08-195Z-playwright-cli-828c49",
+          "pass": true,
+          "wallTimeMs": 20929,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 6999,
+            "cacheRead": 99644,
+            "output": 697
+          },
+          "totalTokens": 107352,
+          "costUsd": 0.0449544
+        },
+        {
+          "runId": "2026-11-28T13-52-34-551Z-playwright-cli-d5e024",
+          "pass": true,
+          "wallTimeMs": 27511,
+          "usage": {
+            "input": 18,
+            "cacheCreation": 6437,
+            "cacheRead": 162700,
+            "output": 1246
+          },
+          "totalTokens": 170401,
+          "costUsd": 0.054514
+        },
+        {
+          "runId": "2026-11-28T13-56-02-450Z-playwright-cli-25e8d2",
+          "pass": true,
+          "wallTimeMs": 19008,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 6535,
+            "cacheRead": 98615,
+            "output": 669
+          },
+          "totalTokens": 105831,
+          "costUsd": 0.0427155
+        }
+      ]
+    },
+    {
+      "arm": "playwright-cli-with-ayme",
+      "runs": 10,
+      "requestedRuns": 10,
+      "passes": 10,
+      "wallTimeMs": {
+        "n": 10,
+        "median": 17883,
+        "min": 15416,
+        "max": 23134
+      },
+      "tokens": {
+        "n": 10,
+        "median": 139328,
+        "min": 115610,
+        "max": 187781
+      },
+      "inputOutputTokens": {
+        "n": 10,
+        "median": 876,
+        "min": 724,
+        "max": 1104
+      },
+      "toolCalls": {
+        "n": 10,
+        "median": 5,
+        "min": 4,
+        "max": 7
+      },
+      "costUsd": {
+        "n": 10,
+        "median": 0.0335655,
+        "min": 0.0279692,
+        "max": 0.0411194
+      },
+      "runList": [
+        {
+          "runId": "2026-11-28T13-25-32-207Z-playwright-cli-with-ayme-06c790",
+          "pass": true,
+          "wallTimeMs": 18166,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 2887,
+            "cacheRead": 113954,
+            "output": 898
+          },
+          "totalTokens": 117751,
+          "costUsd": 0.0319474
+        },
+        {
+          "runId": "2026-11-28T13-29-07-637Z-playwright-cli-with-ayme-d2ab32",
+          "pass": true,
+          "wallTimeMs": 23134,
+          "usage": {
+            "input": 18,
+            "cacheCreation": 2963,
+            "cacheRead": 183714,
+            "output": 1086
+          },
+          "totalTokens": 187781,
+          "costUsd": 0.0411194
+        },
+        {
+          "runId": "2026-11-28T13-32-45-200Z-playwright-cli-with-ayme-c9d4b8",
+          "pass": true,
+          "wallTimeMs": 18057,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2848,
+            "cacheRead": 135730,
+            "output": 863
+          },
+          "totalTokens": 139455,
+          "costUsd": 0.033623
+        },
+        {
+          "runId": "2026-11-28T13-36-10-168Z-playwright-cli-with-ayme-f7059c",
+          "pass": true,
+          "wallTimeMs": 18366,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2920,
+            "cacheRead": 135715,
+            "output": 867
+          },
+          "totalTokens": 139516,
+          "costUsd": 0.0339495
+        },
+        {
+          "runId": "2026-11-28T13-39-33-431Z-playwright-cli-with-ayme-f646ea",
+          "pass": true,
+          "wallTimeMs": 15416,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 2394,
+            "cacheRead": 112492,
+            "output": 712
+          },
+          "totalTokens": 115610,
+          "costUsd": 0.0279692
+        },
+        {
+          "runId": "2026-11-28T13-43-05-302Z-playwright-cli-with-ayme-b46c9d",
+          "pass": true,
+          "wallTimeMs": 16847,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2796,
+            "cacheRead": 135590,
+            "output": 818
+          },
+          "totalTokens": 139218,
+          "costUsd": 0.032951
+        },
+        {
+          "runId": "2026-11-28T13-46-20-473Z-playwright-cli-with-ayme-61a207",
+          "pass": true,
+          "wallTimeMs": 16599,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2306,
+            "cacheRead": 135326,
+            "output": 770
+          },
+          "totalTokens": 138416,
+          "costUsd": 0.0304846
+        },
+        {
+          "runId": "2026-11-28T13-49-47-602Z-playwright-cli-with-ayme-71bc9a",
+          "pass": true,
+          "wallTimeMs": 16992,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2827,
+            "cacheRead": 135620,
+            "output": 861
+          },
+          "totalTokens": 139322,
+          "costUsd": 0.033508
+        },
+        {
+          "runId": "2026-11-28T13-53-17-992Z-playwright-cli-with-ayme-331557",
+          "pass": true,
+          "wallTimeMs": 17829,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2862,
+            "cacheRead": 135563,
+            "output": 895
+          },
+          "totalTokens": 139334,
+          "costUsd": 0.0339823
+        },
+        {
+          "runId": "2026-11-28T13-56-34-217Z-playwright-cli-with-ayme-db9fa6",
+          "pass": true,
+          "wallTimeMs": 17937,
+          "usage": {
+            "input": 16,
+            "cacheCreation": 2779,
+            "cacheRead": 159338,
+            "output": 830
+          },
+          "totalTokens": 162963,
+          "costUsd": 0.0353818
+        }
+      ]
+    },
+    {
+      "arm": "agent-browser",
+      "runs": 10,
+      "requestedRuns": 10,
+      "passes": 6,
+      "wallTimeMs": {
+        "n": 10,
+        "median": 12854.5,
+        "min": 6157,
+        "max": 17249
+      },
+      "tokens": {
+        "n": 10,
+        "median": 79424.5,
+        "min": 45503,
+        "max": 122060
+      },
+      "inputOutputTokens": {
+        "n": 10,
+        "median": 792.5,
+        "min": 708,
+        "max": 1144
+      },
+      "toolCalls": {
+        "n": 10,
+        "median": 4,
+        "min": 2,
+        "max": 6
+      },
+      "costUsd": {
+        "n": 10,
+        "median": 0.0373875,
+        "min": 0.0300601,
+        "max": 0.0521349
+      },
+      "runList": [
+        {
+          "runId": "2026-11-28T13-26-11-389Z-agent-browser-2f35d9",
+          "pass": true,
+          "wallTimeMs": 17249,
+          "usage": {
+            "input": 16,
+            "cacheCreation": 7367,
+            "cacheRead": 113549,
+            "output": 1128
+          },
+          "totalTokens": 122060,
+          "costUsd": 0.0521349
+        },
+        {
+          "runId": "2026-11-28T13-29-51-128Z-agent-browser-6a4d0d",
+          "pass": true,
+          "wallTimeMs": 14198,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 5179,
+            "cacheRead": 73254,
+            "output": 812
+          },
+          "totalTokens": 79257,
+          "costUsd": 0.0361854
+        },
+        {
+          "runId": "2026-11-28T13-33-27-343Z-agent-browser-4c6d0f",
+          "pass": true,
+          "wallTimeMs": 12750,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 5618,
+            "cacheRead": 73181,
+            "output": 789
+          },
+          "totalTokens": 79600,
+          "costUsd": 0.0377041
+        },
+        {
+          "runId": "2026-11-28T13-36-52-795Z-agent-browser-66905e",
+          "pass": false,
+          "wallTimeMs": 7102,
+          "usage": {
+            "input": 8,
+            "cacheCreation": 4777,
+            "cacheRead": 40135,
+            "output": 700
+          },
+          "totalTokens": 45620,
+          "costUsd": 0.0301375
+        },
+        {
+          "runId": "2026-11-28T13-40-14-889Z-agent-browser-b2fb03",
+          "pass": true,
+          "wallTimeMs": 15123,
+          "usage": {
+            "input": 16,
+            "cacheCreation": 6738,
+            "cacheRead": 112329,
+            "output": 1118
+          },
+          "totalTokens": 120201,
+          "costUsd": 0.0493969
+        },
+        {
+          "runId": "2026-11-28T13-43-44-750Z-agent-browser-f3e0f1",
+          "pass": true,
+          "wallTimeMs": 12959,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 5631,
+            "cacheRead": 73229,
+            "output": 720
+          },
+          "totalTokens": 79592,
+          "costUsd": 0.0370709
+        },
+        {
+          "runId": "2026-11-28T13-47-00-161Z-agent-browser-adff83",
+          "pass": false,
+          "wallTimeMs": 7182,
+          "usage": {
+            "input": 10,
+            "cacheCreation": 8104,
+            "cacheRead": 60889,
+            "output": 757
+          },
+          "totalTokens": 69760,
+          "costUsd": 0.0460949
+        },
+        {
+          "runId": "2026-11-28T13-50-26-446Z-agent-browser-f82dca",
+          "pass": true,
+          "wallTimeMs": 15918,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 6171,
+            "cacheRead": 90658,
+            "output": 961
+          },
+          "totalTokens": 97804,
+          "costUsd": 0.0433878
+        },
+        {
+          "runId": "2026-11-28T13-53-57-211Z-agent-browser-b77838",
+          "pass": false,
+          "wallTimeMs": 8064,
+          "usage": {
+            "input": 8,
+            "cacheCreation": 4832,
+            "cacheRead": 40095,
+            "output": 776
+          },
+          "totalTokens": 45711,
+          "costUsd": 0.0311135
+        },
+        {
+          "runId": "2026-11-28T13-57-15-860Z-agent-browser-f0b092",
+          "pass": false,
+          "wallTimeMs": 6157,
+          "usage": {
+            "input": 8,
+            "cacheCreation": 4750,
+            "cacheRead": 40041,
+            "output": 704
+          },
+          "totalTokens": 45503,
+          "costUsd": 0.0300601
+        }
+      ]
+    },
+    {
+      "arm": "agent-browser-with-ayme",
+      "runs": 10,
+      "requestedRuns": 10,
+      "passes": 10,
+      "wallTimeMs": {
+        "n": 10,
+        "median": 15853.5,
+        "min": 13554,
+        "max": 18114
+      },
+      "tokens": {
+        "n": 10,
+        "median": 110489,
+        "min": 92170,
+        "max": 129867
+      },
+      "inputOutputTokens": {
+        "n": 10,
+        "median": 782,
+        "min": 732,
+        "max": 949
+      },
+      "toolCalls": {
+        "n": 10,
+        "median": 5,
+        "min": 4,
+        "max": 6
+      },
+      "costUsd": {
+        "n": 10,
+        "median": 0.02883475,
+        "min": 0.0266021,
+        "max": 0.0335677
+      },
+      "runList": [
+        {
+          "runId": "2026-11-28T13-26-43-304Z-agent-browser-with-ayme-bf9541",
+          "pass": true,
+          "wallTimeMs": 18114,
+          "usage": {
+            "input": 16,
+            "cacheCreation": 2885,
+            "cacheRead": 125930,
+            "output": 896
+          },
+          "totalTokens": 129727,
+          "costUsd": 0.033125
+        },
+        {
+          "runId": "2026-11-28T13-30-18-603Z-agent-browser-with-ayme-f61550",
+          "pass": true,
+          "wallTimeMs": 18083,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 2956,
+            "cacheRead": 88482,
+            "output": 720
+          },
+          "totalTokens": 92170,
+          "costUsd": 0.0278962
+        },
+        {
+          "runId": "2026-11-28T13-33-52-796Z-agent-browser-with-ayme-574f8f",
+          "pass": true,
+          "wallTimeMs": 15713,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2609,
+            "cacheRead": 107103,
+            "output": 754
+          },
+          "totalTokens": 110480,
+          "costUsd": 0.0287143
+        },
+        {
+          "runId": "2026-11-28T13-37-13-287Z-agent-browser-with-ayme-dac215",
+          "pass": true,
+          "wallTimeMs": 15994,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2638,
+            "cacheRead": 107189,
+            "output": 757
+          },
+          "totalTokens": 110598,
+          "costUsd": 0.0288689
+        },
+        {
+          "runId": "2026-11-28T13-40-45-265Z-agent-browser-with-ayme-9ca52c",
+          "pass": true,
+          "wallTimeMs": 17513,
+          "usage": {
+            "input": 16,
+            "cacheCreation": 2901,
+            "cacheRead": 126017,
+            "output": 933
+          },
+          "totalTokens": 129867,
+          "costUsd": 0.0335677
+        },
+        {
+          "runId": "2026-11-28T13-44-14-381Z-agent-browser-with-ayme-02b213",
+          "pass": true,
+          "wallTimeMs": 14414,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2608,
+            "cacheRead": 107106,
+            "output": 763
+          },
+          "totalTokens": 110491,
+          "costUsd": 0.0288006
+        },
+        {
+          "runId": "2026-11-28T13-47-21-400Z-agent-browser-with-ayme-da9e9a",
+          "pass": true,
+          "wallTimeMs": 14527,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2545,
+            "cacheRead": 107001,
+            "output": 773
+          },
+          "totalTokens": 110333,
+          "costUsd": 0.0286381
+        },
+        {
+          "runId": "2026-11-28T13-50-55-210Z-agent-browser-with-ayme-3aa2da",
+          "pass": true,
+          "wallTimeMs": 17064,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2866,
+            "cacheRead": 107198,
+            "output": 794
+          },
+          "totalTokens": 110872,
+          "costUsd": 0.0301518
+        },
+        {
+          "runId": "2026-11-28T13-54-17-683Z-agent-browser-with-ayme-8086a7",
+          "pass": true,
+          "wallTimeMs": 14184,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 2602,
+            "cacheRead": 107089,
+            "output": 782
+          },
+          "totalTokens": 110487,
+          "costUsd": 0.0289649
+        },
+        {
+          "runId": "2026-11-28T13-57-35-857Z-agent-browser-with-ayme-fbb7c9",
+          "pass": true,
+          "wallTimeMs": 13554,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 2535,
+            "cacheRead": 89981,
+            "output": 744
+          },
+          "totalTokens": 93272,
+          "costUsd": 0.0266021
+        }
+      ]
+    }
+  ],
+  "notes": []
+}

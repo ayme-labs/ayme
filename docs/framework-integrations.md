@@ -8,7 +8,7 @@ This page holds only the behaviour contract and the list of files a new framewor
 
 An integration is a thin adapter over the public runtime session from `@ayme-dev/ayme`. It maps the session's lifetime onto the framework's: an owner creates and starts the session at the application root, and consumers read its status and register Page Objects for as long as they live. Framework-independent behaviour belongs in core, not in the adapter.
 
-API names follow [ADR-0017](adr/0017-keep-framework-integration-apis-closely-aligned.md): the same names in every framework (`AymeProvider`, `useAyme`, `usePageObject`, and the `{ ayme, webMCP }` value), with framework-native names where the framework requires them, as Angular's `provideAyme`, `injectAyme` and `injectPageObject`. One runtime owner per document and its lifetime come from [ADR-0030](adr/0030-application-setup-owns-the-runtime-and-decides-publication.md); application code driving ayme through the runtime object from [ADR-0031](adr/0031-application-code-drives-ayme-through-the-runtime-object-setup-returns.md); the package split from [ADR-0065](adr/0065-a-shared-ayme-package-ships-the-engine-and-the-page-object-compiler-with-separate-framework-and-build-integrations.md).
+API names follow [ADR-0017](adr/0017-keep-framework-integration-apis-closely-aligned.md): the same names in every framework (`AymeProvider`, `useAyme`, `usePageObject`, and the `{ ayme, webMCP }` value), with framework-native names where the framework requires them, as Angular's `provideAyme`, `injectAyme` and `injectPageObject`. One runtime owner per document and its lifetime come from [ADR-0030](adr/0030-application-setup-owns-the-runtime-and-decides-publication.md); application code driving ayme through the runtime object from [ADR-0031](adr/0031-application-code-drives-ayme-through-the-runtime-object-setup-returns.md); the package split from [ADR-0075](adr/0075-a-shared-ayme-package-ships-the-engine-and-the-page-object-compiler-and-one-package-ships-the-ayme-command.md).
 
 ## Package checklist
 
@@ -41,7 +41,7 @@ Row ids are stable: a row that goes away leaves its id unused, and a new row tak
 
 ## Server rendering
 
-On the server, `start()` on an ordinary session claims the Node process as its App Process, one per process. Only the integration knows it is rendering, so it marks every session it creates without a window as a render session, with `markRenderSession` from `@ayme-dev/ayme/internal`. Core makes a render session inert: starting it starts nothing and returns a stop function that does nothing, so concurrent requests share no owner and none conflicts with the process's App Process. On the server a Page Object is an object with the model's prototype that never calls the page factory and registers nothing. Beyond the mark, the integration starts the session and registers Page Objects the same way on the server as in the browser, with no guard of its own. The initial status (C10) comes from the session; the integration renders it unchanged.
+On the server, core makes every session inert: starting it starts nothing and returns a stop function that does nothing, so concurrent requests share no owner. On the server a Page Object is an object with the model's prototype that never calls the page factory and registers nothing. The integration starts the session and registers Page Objects the same way on the server as in the browser, with no guard of its own. The initial status (C10) comes from the session; the integration renders it unchanged.
 
 ## Tests
 
@@ -91,7 +91,7 @@ A new framework edits these files outside its own package and example:
 - the [Prettier ignore list](../.prettierignore), for the example's build output;
 - `pnpm-lock.yaml`;
 - [releasing](releasing.md)'s list of the release set;
-- [ADR-0065](adr/0065-a-shared-ayme-package-ships-the-engine-and-the-page-object-compiler-with-separate-framework-and-build-integrations.md)'s package list;
+- [ADR-0075](adr/0075-a-shared-ayme-package-ships-the-engine-and-the-page-object-compiler-and-one-package-ships-the-ayme-command.md)'s package list;
 - the [core README](../packages/ayme/README.md)'s list of `/internal` consumers, if the package imports it.
 
 Only when the framework needs them:

@@ -1,6 +1,6 @@
 # @ayme-dev/ayme
 
-ayme turns the Page Object Models from your Playwright tests into tools that coding agents and your own app call in the running page. Mark a model and its actions, and each action becomes a Page Object Tool, published through WebMCP and runnable from your own code.
+ayme turns the Page Object Models from your Playwright tests into tools that your own app calls in the running page, and that an agent in the page calls through WebMCP. Mark a model and its actions, and each action becomes a Page Object Tool, published through WebMCP and runnable from your own code.
 
 ## Install
 
@@ -38,7 +38,7 @@ export class ProjectsPage {
 
 ## Start ayme
 
-Your framework package starts ayme at the root of your app: `AymeProvider` in Vue and React, `useAyme` in Svelte, `provideAyme()` in Angular. Without one, create and start the session yourself:
+Your framework package starts ayme at the root of your app: `AymeProvider` in Vue and React, `useAyme` in Svelte, `provideAyme()` in Angular. Without one, create and start the runtime yourself:
 
 ```ts
 import { createAyme } from "@ayme-dev/ayme";
@@ -64,7 +64,7 @@ await ayme.tools.run(
 );
 ```
 
-A Caller name is any non-empty string; an empty one throws a `RuntimeStateError`. Name yours in lowercase kebab-case; ayme does not enforce it. ayme's own Callers use the names in `callers`: `app`, `webmcp` (WebMCP publication), `ayme-mcp` (the ayme MCP server) and `inspector`.
+A Caller name is any non-empty string; an empty one throws a `RuntimeStateError`. Name yours in lowercase kebab-case; ayme does not enforce it. ayme's own Callers use the names in `callers`, which the [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymetools) lists.
 
 Each Caller name has its own Change Record cursor: the page that Caller last received, through `snapshot` or as the Settled Page of its last action, is where its next action's Change Record starts. Two Callers under one name share one cursor. An action's result carries the record in two parts: `changes_before`, what changed since the Caller last received the page, on its own or by another Caller, and `changes`, what the action changed; `page_changed` is true when either has a change.
 
@@ -82,38 +82,17 @@ const unsubscribe = ayme.runs.subscribe((runs) => {
 
 > **Experimental:** this may change in any release. See [Experimental APIs](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/experimental-apis.md).
 
-While a coding agent or the Inspector is connected, `ayme.peek` lets the agent read state the page does not show. Each name becomes a Peek Tool, `peek.<name>`, which reads the values when the agent calls it:
+While the Inspector is on, `ayme.peek` lets you read state the page does not show in the Inspector's Tools lens. Each name becomes a Peek Tool, `peek.<name>`, which reads the values when it runs:
 
 ```ts
-const ayme = createAyme({ agentConnection: true });
+const ayme = createAyme({ inspector: true });
 ayme.start();
 
 const removeCart = ayme.peek(() => cartStore.getState(), "cart");
 await ayme.tools.run("peek.cart", {}); // { name: "cart", instances: [{ values: … }] }
 ```
 
-`read` may be async. Pass an id as the third argument for one instance per id, such as one per mounted component; without one, a later call replaces the earlier one. The returned function removes the instance. Peeks do nothing unless the session has `agentConnection` on, or `inspector` in the browser, and WebMCP never publishes them. The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek) has the details.
-
-## Peek at server state
-
-> **Experimental:** this may change in any release. See [Experimental APIs](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/experimental-apis.md).
-
-Your app's own Node processes, such as its dev server or an Express backend, can offer Peeks too, as `peek.node.<name>`. Install `@ayme-dev/mcp` beside `@ayme-dev/ayme` there, and start ayme once, in the server's entry point: the session becomes the process's App Process, and a process has one. The sessions your framework package creates to render on the server never claim it. An Express backend, in `server/ayme.ts`:
-
-```ts
-import { createAyme } from "@ayme-dev/ayme";
-
-import { sessions } from "./sessions";
-
-export const ayme = createAyme({
-  agentConnection: process.env.NODE_ENV !== "production",
-});
-ayme.start(); // pairs with the agent's server only with agentConnection
-
-ayme.peek(() => ({ active: sessions.size }), "sessions"); // peek.node.sessions
-```
-
-The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#in-node) covers where Peeks live in Next.js (not in `instrumentation.ts`), how the process finds the agent's server, and the Inspector's Node section.
+`read` may be async. Pass an id as the third argument for one instance per id, such as one per mounted component; without one, a later call replaces the earlier one. The returned function removes the instance. Peeks do nothing unless the runtime has `inspector` on, and nothing in Node; no agent reads them. The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek) has the details.
 
 ## Documentation
 
@@ -121,7 +100,7 @@ The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference
 - [Publish tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md): starting ayme and turning WebMCP publication on.
 - [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md): the Structural Page State, Structural Refs and interaction history.
 - [Custom Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/custom-tools.md): operations of your own on one element.
-- [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md): let a coding agent call your tools through ayme's MCP server.
+- [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md): let a coding agent call your Page Object Tools with the `ayme` command, beside its browser automation.
 - [Goals with Jev](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/goals-with-jev.md): let a decision model drive the page toward a goal, through your Decision Endpoint.
 - [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md), [errors](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/errors.md) and the [Decision Endpoint contract](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/decision-endpoint.md)
 - [`@ayme-dev/ayme` reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md)

@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
-    "@ayme-dev/mcp": "workspace:*"
+    "@ayme-dev/cli": "workspace:*"
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",

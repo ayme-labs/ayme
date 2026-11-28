@@ -34,13 +34,6 @@ it.each<[string, AymeOptions, (options: AymeOptions) => void]>([
       (o.inspector as { demo: boolean }).demo = true;
     },
   ],
-  [
-    "agentConnection",
-    { agentConnection: { port: 9351 } },
-    (o) => {
-      (o.agentConnection as { port: number }).port = 9352;
-    },
-  ],
 ])("notices %s changed in place after the snapshot", (_, options, change) => {
   const snapshot = snapshotRuntimeOptions(options);
   expect(sameRuntimeOptions(options, snapshot)).toBe(true);
@@ -51,14 +44,11 @@ it.each<[string, AymeOptions, (options: AymeOptions) => void]>([
 it("compares objects field by field", () => {
   expect(
     sameRuntimeOptions(
-      { agentConnection: { port: 9351, link: undefined } },
-      { agentConnection: { port: 9351 } }
+      { webMCP: { enabled: true, toolNamePrefix: undefined } },
+      { webMCP: { enabled: true } }
     )
   ).toBe(true);
   expect(sameRuntimeOptions({ webMCP: {} }, {})).toBe(false);
-  expect(
-    sameRuntimeOptions({ agentConnection: true }, { agentConnection: {} })
-  ).toBe(false);
 });
 
 it("keeps an instance by reference rather than copying its own fields", () => {
@@ -74,54 +64,25 @@ it("keeps an instance by reference rather than copying its own fields", () => {
 });
 
 describe("the inspector option", () => {
-  it.each<[string, AymeOptions["inspector"], string, boolean]>([
-    ["unset", undefined, "off", false],
-    ["false", false, "off", false],
-    ["true", true, "inline", false],
-    ["{ demo: true }", { demo: true }, "inline", true],
-    ["{ demo: false }", { demo: false }, "inline", false],
-    ["an inline placement", { placement: "inline" }, "inline", false],
-    ["an external placement", { placement: "external" }, "external", false],
-    [
-      "an external placement with demo",
-      { placement: "external", demo: true },
-      "external",
-      true,
-    ],
-  ])("%s reads as %s, demo %s", (_, inspector, placement, demo) => {
-    expect(inspectorSetting({ inspector })).toEqual({ placement, demo });
+  it.each<[string, AymeOptions["inspector"], boolean, boolean]>([
+    ["unset", undefined, false, false],
+    ["false", false, false, false],
+    ["true", true, true, false],
+    ["{ demo: true }", { demo: true }, true, true],
+    ["{ demo: false }", { demo: false }, true, false],
+  ])("%s reads as on %s, demo %s", (_, inspector, on, demo) => {
+    expect(inspectorSetting({ inspector })).toEqual({ on, demo });
   });
 
-  it("keeps a session's options the same only while its placement and demo are", () => {
+  it("keeps a session's options the same only while whether it is on and demo are", () => {
     expect(
       sameRuntimeOptions({ inspector: true }, { inspector: { demo: false } })
     ).toBe(true);
     expect(
-      sameRuntimeOptions(
-        { inspector: true },
-        { inspector: { placement: "inline" } }
-      )
-    ).toBe(true);
-    expect(
-      sameRuntimeOptions(
-        { inspector: true },
-        { inspector: { placement: "external" } }
-      )
+      sameRuntimeOptions({ inspector: true }, { inspector: { demo: true } })
     ).toBe(false);
-    expect(
-      sameRuntimeOptions(
-        { inspector: { placement: "external" } },
-        { inspector: { placement: "external", demo: true } }
-      )
-    ).toBe(false);
-  });
-
-  it("notices the placement changed in place after the snapshot", () => {
-    const options: AymeOptions = { inspector: { placement: "inline" } };
-    const snapshot = snapshotRuntimeOptions(options);
-
-    (options.inspector as { placement: string }).placement = "external";
-
-    expect(sameRuntimeOptions(options, snapshot)).toBe(false);
+    expect(sameRuntimeOptions({ inspector: true }, { inspector: false })).toBe(
+      false
+    );
   });
 });

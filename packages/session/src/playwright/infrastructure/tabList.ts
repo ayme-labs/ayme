@@ -1,0 +1,138 @@
+/**
+ * Where a browser at `address`, the one a Session opened or joined, lists
+ * its tabs over HTTP, beside the `json/version` Playwright reads when it
+ * joins an HTTP address: under the same path, which a proxy may serve the
+ * browser under. A socket address tells that path only when it ends in
+ * `/devtools/browser/<id>`, as Chromium names its own.
+ */
+export function tabListAddress(address: string): string {
+  const url = new URL(address);
+  const secure = url.protocol === "https:" || url.protocol === "wss:";
+  if (url.protocol === "ws:" || url.protocol === "wss:") {
+    const socket = /^(.*)\/devtools\/browser\/[^/]+$/.exec(url.pathname);
+    if (!socket)
+      throw new Error(
+        `${address} is a DevTools socket that tells nothing of where the browser lists its tabs, which ayme reads over HTTP. Join the browser at its HTTP address, such as http://127.0.0.1:9222, or at a socket address that ends in /devtools/browser/<id>.`
+      );
+    url.pathname = socket[1]!;
+  }
+  url.protocol = secure ? "https:" : "http:";
+  url.hash = "";
+  if (!url.pathname.endsWith("/")) url.pathname += "/";
+  url.pathname += "json/list";
+  return url.toString();
+}
+
+/** Why an answer is no tab list, as a read of one refuses it. */
+class NoTabList extends Error {}
+
+const isTarget = (
+  entry: unknown
+): entry is { type: string; id?: unknown; url?: unknown } =>
+  typeof (entry as { type?: unknown } | null)?.type === "string";
+
+/**
+ * The ids of the browser's tabs in the order its tab list `list` gives
+ * them: Chromium puts the most recently active first, while its tabs share
+ * one window. Workers, frames and other targets are no tabs, nor is a tab
+ * whose URL `without` names.
+ */
+export function pageTargets(
+  list: unknown,
+  without: (url: string) => boolean = () => false
+): string[] {
+  if (!Array.isArray(list)) throw new NoTabList("no list");
+  if (!list.every(isTarget)) throw new NoTabList("an entry that is no target");
+  const pages = list.filter(
+    ({ type, url }) =>
+      type === "page" && !(typeof url === "string" && without(url))
+  );
+  if (!pages.every(({ id }) => typeof id === "string"))
+    throw new NoTabList("a page without an id");
+  return pages.map(({ id }) => id as string);
+}
+
+/**
+ * The ids of the browser's tabs, the most recently active first, as its tab
+ * list at `list` answers within `deadline` milliseconds, without those whose
+ * URL `without` names. It stops when `signal` aborts, as when the Session
+ * ends.
+ */
+export async function readTabOrder(
+  list: string,
+  {
+    signal,
+    deadline,
+    without,
+  }: {
+    signal: AbortSignal;
+    deadline: number;
+    without?: (url: string) => boolean;
+  }
+): Promise<string[]> {
+  const timeout = AbortSignal.timeout(deadline);
+  try {
+    // Never followed, so the read stays at the address the person gave.
+    const answer = await fetch(list, {
+      redirect: "manual",
+      signal: AbortSignal.any([signal, timeout]),
+    });
+    const location = answer.headers.get("location");
+    if (location !== null)
+      throw new Error(
+        `${list} redirected to ${location}. ayme reads the tab list only at the address the browser was joined at.`
+      );
+    if (!answer.ok)
+      throw new Error(`${list} answered with HTTP status ${answer.status}.`);
+    return pageTargets(await answer.json(), without);
+  } catch (error) {
+    if (timeout.aborted)
+      throw new Error(
+        `${list} did not answer within ${deadline / 1000} seconds.`,
+        { cause: error }
+      );
+    if (error instanceof NoTabList)
+      throw new Error(
+        `${list} answered something other than the browser's tab list: ${error.message}.`,
+        { cause: error }
+      );
+    throw error;
+  }
+}
+
+/** How a read of the listed tabs' pages waits for Playwright. */
+export type Handover = {
+  /** Waits a moment before the pages are read again. */
+  readonly pause: () => Promise<void>;
+  /** Whether the wait is over. */
+  readonly over: () => boolean;
+  /** The tabs not handed over in an earlier wait, which no read waits for
+   * again. */
+  readonly skipped: Set<string>;
+};
+
+/**
+ * The pages of the tabs `order` lists, in its order. `pages` reads the
+ * pages Playwright has handed over, by tab id, which it does a moment after
+ * a tab opens: it is read again until each listed tab is among them or the
+ * wait is over. A tab still missing then is left out.
+ */
+export async function handedOver<Page>(
+  order: readonly string[],
+  pages: () => Promise<ReadonlyMap<string, Page>>,
+  { pause, over, skipped }: Handover
+): Promise<Page[]> {
+  const missing = (handed: ReadonlyMap<string, Page>) =>
+    order.filter((id) => !handed.has(id) && !skipped.has(id));
+  let handed = await pages();
+  while (missing(handed).length > 0 && !over()) {
+    await pause();
+    handed = await pages();
+  }
+  for (const id of skipped) if (!order.includes(id)) skipped.delete(id);
+  for (const id of missing(handed)) skipped.add(id);
+  return order.flatMap((id) => {
+    const page = handed.get(id);
+    return page === undefined ? [] : [page];
+  });
+}

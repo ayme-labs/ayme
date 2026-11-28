@@ -92,7 +92,7 @@ describe("runStartupSuite", () => {
     expect(markdown).toContain("| startup-exact | 2 of 2 |");
     expect(markdown).toContain("| startup-extra-reference | 0 of 2 |");
     expect(markdown).toContain(
-      "| startup-extra-reference | references/peeks.md | 2 of 2 |"
+      "| startup-extra-reference | references/browser-setup.md | 2 of 2 |"
     );
   });
 
@@ -101,14 +101,14 @@ describe("runStartupSuite", () => {
       [
         {
           ...replaying("startup-extra-reference"),
-          allowed: ["references/peeks.md"],
+          allowed: ["references/browser-setup.md"],
         },
       ],
       1
     );
     expect(markdown).toContain("| startup-extra-reference | 1 of 1 |");
     expect(markdown).toContain(
-      "| startup-extra-reference | references/peeks.md | 1 of 1 |"
+      "| startup-extra-reference | references/browser-setup.md | 1 of 1 |"
     );
   });
 

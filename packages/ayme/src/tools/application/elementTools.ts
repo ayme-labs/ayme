@@ -40,9 +40,9 @@ export type CustomTool = {
   description: string;
   /**
    * Marks the operation as one that cannot be undone, such as deleting a
-   * record or submitting an order. The published tool says so in its
-   * annotations: `destructiveHint` over MCP, `consequentialHint` over
-   * WebMCP. ayme still runs it like any other tool. `false` is the same as
+   * record or submitting an order. The tool published over WebMCP says so
+   * with `consequentialHint`, and the Inspector marks it. ayme still runs
+   * it like any other tool. `false` is the same as
    * leaving it out.
    */
   destructive?: boolean;

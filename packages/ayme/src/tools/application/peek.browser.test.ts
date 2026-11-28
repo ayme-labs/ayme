@@ -12,24 +12,9 @@ import { rootOf } from "../../../testing/pomRoot.testSupport";
 import { createAyme, type Ayme, type AymeOptions } from "../../runtime";
 
 // Runtime object seam: an app adds Peeks with `ayme.peek` and reads them as
-// Peek Tools through `ayme.tools`, the set the Agent Connection's page client
-// publishes and runs.
+// Peek Tools through `ayme.tools`, the set the Inspector shows and runs.
 
-// The Agent Connection and the Inspector load as no-ops that keep the
-// session they are started with: the dev gate only needs their options on,
-// and a real page client would scan for an agent's ayme MCP server.
-const connected = vi.hoisted(() => ({ sessions: [] as unknown[] }));
-vi.mock("../../runtime/agentConnection", () => ({
-  loadProcessConnection: async () => {
-    throw new Error("A page never loads an App Process's connection.");
-  },
-  loadAgentConnection: async () => ({
-    startAgentConnection: (ayme: unknown) => {
-      connected.sessions.push(ayme);
-      return { dispose() {} };
-    },
-  }),
-}));
+// The Inspector loads as a no-op: the dev gate only needs its option on.
 vi.mock("../../runtime/inspector", () => ({
   loadInspector: async () => ({
     mountInspector: () => ({ dispose() {} }),
@@ -42,12 +27,11 @@ let cleanups: (() => void)[] = [];
 afterEach(() => {
   for (const cleanup of cleanups.reverse()) cleanup();
   cleanups = [];
-  connected.sessions = [];
   document.body.innerHTML = "";
 });
 
 /** A started session; Peeks are live in it unless `options` turn them off. */
-function started(options: AymeOptions = { agentConnection: true }) {
+function started(options: AymeOptions = { inspector: true }) {
   const ayme = createAyme({ pageFactory: () => page, ...options });
   cleanups.push(ayme.start());
   return ayme;
@@ -124,17 +108,9 @@ describe("Peek Tools", () => {
     expect(() => ayme.peek(() => 2, "cart/items")).toThrow(RuntimeStateError);
   });
 
-  it("refuses a browser name that would read as an App Process's peek.node. tool", () => {
-    const ayme = started();
-
-    expect(() => ayme.peek(() => 1, "node.jobs")).toThrow(RuntimeStateError);
-    expect(() => ayme.peek(() => 1, "node/jobs")).not.toThrow();
-    expect(toolNames(ayme)).not.toContain("peek.node.jobs");
-  });
-
   it("refuses a Peek whose tool name another tool already uses", () => {
     const ayme = started({
-      agentConnection: true,
+      inspector: true,
       customTools: [
         {
           name: "peek.highlight",
@@ -155,7 +131,7 @@ describe("Peek Tools", () => {
     cleanups.push(() => warn.mockRestore());
     const ayme = createAyme({
       pageFactory: () => page,
-      agentConnection: true,
+      inspector: true,
       customTools: [
         {
           name: "peek.outline",
@@ -360,7 +336,7 @@ describe("Peek Tools", () => {
 });
 
 describe("the dev gate", () => {
-  it("does nothing without agentConnection or inspector", async () => {
+  it("does nothing without inspector", async () => {
     const ayme = started({});
     const remove = peek(ayme, () => ({ secret: true }), "internals");
 
@@ -387,7 +363,6 @@ describe("the dev gate", () => {
   });
 
   it.each([
-    ["agentConnection", { agentConnection: true }],
     ["inspector", { inspector: true }],
     ["the Inspector's demo", { inspector: { demo: true } }],
   ] as const)("lets Peeks live with %s on", async (_, options) => {
@@ -403,15 +378,6 @@ describe("the dev gate", () => {
 });
 
 describe("where Peek Tools appear", () => {
-  it("offers them to the Agent Connection's page client", async () => {
-    const ayme = started({ agentConnection: true });
-    peek(ayme, () => ({ open: true }), "menu");
-
-    await expect.poll(() => connected.sessions).toHaveLength(1);
-    const [client] = connected.sessions as Pick<Ayme, "tools">[];
-    expect(client!.tools.list().map(({ name }) => name)).toContain("peek.menu");
-  });
-
   it("never offers them to the Goal Loop", async () => {
     const offered: string[][] = [];
     const goalLoop: GoalLoopDecisionFunction = async (
@@ -434,7 +400,7 @@ describe("where Peek Tools appear", () => {
         },
       };
     };
-    const ayme = started({ agentConnection: true, goalLoop });
+    const ayme = started({ inspector: true, goalLoop });
     peek(ayme, () => 1, "counter");
 
     await ayme.tools.run("goal", { goal: "Read the counter.", maxSteps: 1 });

@@ -138,9 +138,11 @@ jobs:
         if: steps.analysis.outcome == 'success'
         run: "true"
       # A cache entry cannot be overwritten, so each run saves under its own
-      # key. A run that a newer push cancelled saves nothing, because Stryker
-      # may have been stopped while writing its results.
-      - if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+      # key. A run that timed out or that a newer push cancelled saves too, so
+      # a first run too long for one job finishes over two: the packages it
+      # finished keep their results, and the step after the restore drops a
+      # file Stryker was stopped while writing.
+      - if: ${{ always() && github.event_name == 'pull_request' }}
         uses: actions/cache/save@v6
         with:
           path: packages/*/reports/stryker-incremental.json

@@ -1,6 +1,4 @@
 import {
-  type AgentConnectionStatus,
-  type AppProcessTool,
   type InspectorContract,
   type InspectorEvent,
   type InspectorHighlightLayer,
@@ -23,19 +21,6 @@ export type InspectorContractPorts = {
   started(): InspectorSession | undefined;
   /** Calls `listener` after a session starts or stops. */
   subscribeToStarted(listener: () => void): () => void;
-  appProcessTools(session: InspectorSession): {
-    list(): readonly AppProcessTool[];
-    subscribe(listener: () => void): () => void;
-    run(
-      name: string,
-      input: unknown,
-      options?: { by?: string }
-    ): Promise<unknown>;
-  };
-  connectionStatus(session: InspectorSession): {
-    get(): AgentConnectionStatus;
-    subscribe(listener: () => void): () => void;
-  };
   highlights: {
     set(layer: InspectorHighlightLayer, refs: readonly string[]): Promise<void>;
   };
@@ -66,9 +51,7 @@ const NO_SESSION: InspectorPublication = Object.freeze({
   message: "No ayme runtime session has started.",
 });
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
-const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
 const NO_RUNS: readonly InspectorRun[] = Object.freeze([]);
-const OFF: AgentConnectionStatus = Object.freeze({ state: "off" });
 
 /**
  * The Inspector contract over the runtime's started session: the same reads
@@ -100,25 +83,13 @@ export function createInspectorContract(
   /** The state now: the revision rises only when a part of it changed. */
   function read(): InspectorState {
     const session = ports.started();
-    const processes = session && ports.appProcessTools(session);
-    const connection = session && ports.connectionStatus(session);
     const tools = session ? session.tools.list() : NO_TOOLS;
-    const appProcessTools = processes?.list() ?? NO_PROCESS_TOOLS;
     const publication = session?.webMCP.publicationStatus ?? NO_SESSION;
-    const agentConnection = connection?.get() ?? OFF;
     const runs = session
       ? (session.runs.list() as readonly InspectorRun[])
       : NO_RUNS;
     const pomsRead = readRegistry();
-    const parts = [
-      session,
-      tools,
-      appProcessTools,
-      publication,
-      agentConnection,
-      runs,
-      pomsRead,
-    ];
+    const parts = [session, tools, publication, runs, pomsRead];
     if (
       !lastState ||
       parts.length !== last.length ||
@@ -128,9 +99,7 @@ export function createInspectorContract(
       lastState = Object.freeze({
         revision: ++revision,
         tools,
-        appProcessTools,
         publication,
-        agentConnection,
         runs,
         pageObjects: pomsRead.pageObjects,
         pomDefinitions: pomsRead.pomDefinitions,
@@ -174,8 +143,6 @@ export function createInspectorContract(
       session.tools.subscribe(publish),
       session.runs.subscribe(publish),
       session.webMCP.subscribe(publish),
-      ports.appProcessTools(session).subscribe(publish),
-      ports.connectionStatus(session).subscribe(publish),
     ];
     unfollow = () => stops.forEach((stop) => stop());
   };
@@ -215,19 +182,15 @@ export function createInspectorContract(
     async runTool({ name, input, by }) {
       const session = ports.started();
       if (!session) return answer({ error: NO_SESSION.message });
-      const processes = ports.appProcessTools(session);
       const options = by === undefined ? undefined : { by };
       try {
-        if (processes.list().some((tool) => tool.name === name))
-          await processes.run(name, input, options);
-        else
-          await (
-            session.tools.run as (
-              name: string,
-              input: unknown,
-              options?: { by?: string }
-            ) => Promise<unknown>
-          )(name, input, options);
+        await (
+          session.tools.run as (
+            name: string,
+            input: unknown,
+            options?: { by?: string }
+          ) => Promise<unknown>
+        )(name, input, options);
       } catch (error) {
         // The log records the failed Run, which the panel shows.
         return answer({

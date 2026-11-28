@@ -1,14 +1,17 @@
-// How the two agent channels, WebMCP publication and `ayme mcp`, run a tool:
-// both build their source with `pageObjectToolSource`, each over its own
-// Caller, so a Page Object Tool's answer cannot differ between them.
+// How the agent channels, WebMCP publication and a Session's `ayme`
+// commands, run a tool: each builds its source with
+// `pageObjectToolSource` over its own Caller, so a Page Object Tool's answer
+// cannot differ between them.
 // `ayme.tools.run` keeps answering the full record, which application code,
 // the Inspector and the Goal Loop read.
 import {
   renderPageObjectTreeChanges,
   type PageObjectTreeRead,
 } from "../page-objects/domain";
+import { InPageVersionError } from "../in-page";
 import type { ActionFailure, ActionResult } from "../page-state/domain";
-import type { JsonValue, ToolInfo } from "../shared";
+import { failedAfterFullLoad } from "../runs/application";
+import { RuntimeStateError, type JsonValue, type ToolInfo } from "../shared";
 
 /** What the source reads of the session, its calls made by one Caller. */
 export type PageObjectToolSession = {
@@ -45,7 +48,7 @@ export type PageObjectToolAnswer = {
   changes?: string;
 };
 
-/** How both agent channels run a tool. */
+/** How the agent channels run a tool. */
 export type PageObjectToolSource = {
   /**
    * Runs the tool `name`. A Page Object Tool answers a
@@ -59,24 +62,53 @@ export type PageObjectToolSource = {
 
 const isPageObjectTool = ({ group }: ToolInfo) => group === "pageObject";
 
+export type PageObjectToolSourceOptions = {
+  /**
+   * Runs Page Object Tools alone, as a Session offers no other tools: any
+   * other tool is refused as one there is not. Each call then takes its
+   * turn before it looks the tool up, against the tools the turn's first
+   * read of the page made current.
+   */
+  readonly pageObjectToolsOnly?: boolean;
+};
+
+const listedTool = (session: PageObjectToolSession, name: string) =>
+  session.list().find((listed) => listed.name === name);
+
 /** The tools of `session` as an agent channel runs them. */
 export function pageObjectToolSource(
-  session: PageObjectToolSession
+  session: PageObjectToolSession,
+  { pageObjectToolsOnly = false }: PageObjectToolSourceOptions = {}
 ): PageObjectToolSource {
   return {
     async run(name, input) {
-      const tool = session.list().find((listed) => listed.name === name);
-      if (!tool || !isPageObjectTool(tool)) return session.run(name, input);
+      const tool = listedTool(session, name);
+      if (!pageObjectToolsOnly && (!tool || !isPageObjectTool(tool)))
+        return session.run(name, input);
       // The tree before, the action and the tree after in the action's own
       // turn: the changes are that action's alone.
       return session.inTurn(async (page) => {
-        const before = await page.readPageObjectTree().catch(() => undefined);
+        // A page of another in-page version runs no tool, so its error is
+        // the answer; any other failed read only leaves out the changes.
+        const before = await page
+          .readPageObjectTree()
+          .catch((error: unknown) => {
+            if (error instanceof InPageVersionError) throw error;
+            return undefined;
+          });
+        // That read probed the page, so the list is current. A name it
+        // does not have is refused by the Run itself.
+        const listed = listedTool(session, name);
+        if (listed && !isPageObjectTool(listed))
+          throw new RuntimeStateError(`There is no tool "${name}".`);
         const url = page.url();
         const result = await page
           .run(name, input)
           .catch(async (error: unknown) => {
+            const failure = withoutChangeRecord(error);
+            if (failedAfterFullLoad(error)) throw failure;
             throw withTreeChanges(
-              withoutChangeRecord(error),
+              failure,
               before,
               await page.readPageObjectTree().catch(() => undefined)
             );

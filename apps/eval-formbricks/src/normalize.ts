@@ -1,4 +1,5 @@
 import type { Turn } from "./agentProcess.ts";
+import { countAymeCommands } from "./aymeCommands.ts";
 import { summarizeCodexTranscript } from "./codexTranscript.ts";
 import type { LoginName } from "./login.ts";
 import {
@@ -44,8 +45,10 @@ export type RunArtifacts = {
     formbricksCommit: string | null;
     aymeCommit: string | null;
   };
-  /** What the arm's setup established before the measured window, such as the page paired with the ayme MCP server; `null` for arms without a setup. */
+  /** What the arm's setup established before the measured window, such as the ayme Session it started; `null` for arms without a setup. */
   setup: Record<string, unknown> | null;
+  /** The recording of the agent's `ayme` commands, one line each; absent for an arm without ayme. */
+  aymeRecord?: string[];
   /** What the agent changed in the lab app folder during the run. */
   labCheckout: {
     /** Files it created there, moved into the run folder's `agent-files/`. */
@@ -85,6 +88,12 @@ export type NormalizedResult = {
   /** The task turn's cost: the session's cumulative cost at its end minus the setup turn's. Unknown for Codex, which reports tokens only. */
   costUsd: number | null;
   toolCalls: ToolCallCounts;
+  /**
+   * The task turn's `ayme` commands, by command and, for a call, its tool;
+   * `null` for an arm without ayme. Each ran inside one of the Bash calls
+   * `toolCalls` counts.
+   */
+  aymeCommands: ToolCallCounts | null;
   versions: {
     claudeCode: string | null;
     /** Present for a run through Codex alone. */
@@ -117,6 +126,7 @@ export type NormalizedResult = {
     costUsd: number | null;
     numTurns: number | null;
     toolCalls: ToolCallCounts;
+    aymeCommands: ToolCallCounts | null;
     finalMessage: string | null;
   };
   timeoutSeconds: number;
@@ -189,6 +199,12 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     tokens: result?.usage ?? null,
     costUsd,
     toolCalls: task.toolCalls,
+    aymeCommands:
+      artifacts.aymeRecord === undefined
+        ? null
+        : countAymeCommands(artifacts.aymeRecord, {
+            from: artifacts.taskTurn.sentAt,
+          }),
     versions: {
       claudeCode: init?.claudeCodeVersion ?? artifacts.versions.claudeCode,
       ...(artifacts.versions.codex == null
@@ -223,6 +239,12 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
       costUsd: setup.result?.cumulativeCostUsd ?? null,
       numTurns: setup.result?.numTurns ?? null,
       toolCalls: setup.toolCalls,
+      aymeCommands:
+        artifacts.aymeRecord === undefined
+          ? null
+          : countAymeCommands(artifacts.aymeRecord, {
+              to: artifacts.taskTurn.sentAt,
+            }),
       finalMessage: setup.result?.finalMessage ?? null,
     },
     timeoutSeconds: artifacts.timeoutSeconds,
@@ -249,13 +271,20 @@ function dollars(value: number | null) {
 }
 
 /** A short human overview, written next to `result.json`. */
-export function summarizeResult(result: NormalizedResult) {
-  const tools = Object.entries(result.toolCalls.byTool)
+function countLines(counts: ToolCallCounts) {
+  return Object.entries(counts.byTool)
     .map(
-      ([name, counts]) =>
-        `  - ${name}: ${counts.total} (${counts.failed} failed)`
+      ([name, { total, failed }]) => `  - ${name}: ${total} (${failed} failed)`
     )
     .join("\n");
+}
+
+export function summarizeResult(result: NormalizedResult) {
+  const tools = countLines(result.toolCalls);
+  const ayme =
+    result.aymeCommands === null
+      ? ""
+      : `- ayme commands: ${result.aymeCommands.total} (${result.aymeCommands.failed} failed)\n${countLines(result.aymeCommands)}\n`;
   const { setupTurn } = result;
   return `# Run ${result.runId}
 
@@ -271,7 +300,7 @@ export function summarizeResult(result: NormalizedResult) {
 - Cost: ${dollars(result.costUsd)}
 - Tool calls: ${result.toolCalls.total} (${result.toolCalls.failed} failed)
 ${tools}
-- Permission denials: ${result.agent.permissionDenials}
+${ayme}- Permission denials: ${result.agent.permissionDenials}
 - Setup turn, not counted above: ${seconds(setupTurn.wallTimeMs)}, ${count(setupTurn.tokens === null ? null : totalTokens(setupTurn.tokens))} tokens, ${dollars(setupTurn.costUsd)}, tool calls ${setupTurn.toolCalls.total} (${setupTurn.toolCalls.failed} failed)
 - ${result.versions.codex === undefined ? `Claude Code: ${result.versions.claudeCode ?? "unknown"}` : `Codex: ${result.versions.codex}`}
 - Model: ${result.versions.model.used ?? "unknown"} (requested ${result.versions.model.requested}, effort ${result.versions.model.effort ?? "unknown"})

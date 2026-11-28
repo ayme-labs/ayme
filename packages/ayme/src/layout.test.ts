@@ -769,7 +769,7 @@ it(
       await refusesItsDoor(
         all,
         exception,
-        'export { listRegisteredPoms } from "../../page-objects/infrastructure";\nexport { addPeek } from "../infrastructure/peekRegistry";\n'
+        'export { listRegisteredPoms } from "../../page-objects/infrastructure";\nexport { peeksOf } from "../infrastructure/peekRegistry";\n'
       )
     ).toBe(false);
   }

@@ -81,3 +81,27 @@ it("only the built ./compiler entry imports TypeScript", () => {
     entries.filter((entry) => TYPESCRIPT_IMPORT.test(codeOf(entry)))
   ).toEqual([]);
 });
+
+/** The built files `file` reaches through its local imports, itself
+ * included. */
+function filesOf(file: string, seen = new Set<string>()): Set<string> {
+  if (seen.has(file)) return seen;
+  seen.add(file);
+  const code = readFileSync(join(dist, file), "utf8");
+  for (const match of code.matchAll(LOCAL_IMPORT))
+    filesOf((match[1] ?? match[2])!.slice(2), seen);
+  return seen;
+}
+
+// A compiled Page Object registers through ./internal, and a Node host reads
+// the registration through ./playwright: a Session's Page Objects run only
+// if both reach one copy of that store.
+it("the built ./internal and ./playwright entries keep compiled Page Objects in one module", () => {
+  const keepers = [...filesOf("playwright.mjs")].filter((file) =>
+    readFileSync(join(dist, file), "utf8").includes(
+      "has no compiler-derived ayme metadata"
+    )
+  );
+  expect(keepers).toHaveLength(1);
+  expect(filesOf("internal.mjs")).toContain(keepers[0]);
+});

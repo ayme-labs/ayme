@@ -69,7 +69,7 @@ function editor(
   };
 }
 
-/** A Peek tool, as the session or an App Process lists it. */
+/** A Peek tool, as the session lists it. */
 function peekTool(name: string) {
   return {
     name,
@@ -419,71 +419,26 @@ describe("the Inspector", () => {
       .toContain("2 refs");
   });
 
-  it("lists an App Process's Peek tool in the Node section, beside the page's, and runs it through the agent's server", async () => {
+  it("lists the page's Peek tool among the Peek tools and runs it in the page", async () => {
     startedAyme.tools.list.mockReturnValue([peekTool("peek.cart")]);
-    startedAyme.appProcessTools.list.mockReturnValue([
-      peekTool("peek.node.jobs"),
-    ]);
-    startedAyme.appProcessTools.run.mockResolvedValue({
-      name: "jobs",
-      instances: [{ values: { value: "server" } }],
+    startedAyme.tools.run.mockResolvedValue({
+      name: "cart",
+      instances: [{ values: { items: 2 } }],
     });
     renderApp();
     await inspector.navigator.showLens("Tools");
     await expect
-      .poll(() => inspector.navigator.tools.peekSections())
-      .toEqual({ Browser: ["peek.cart"], Node: ["peek.node.jobs"] });
+      .poll(() => inspector.navigator.tools.listed())
+      .toMatchObject({ "Peek tools": ["peek.cart"] });
 
-    await (await inspector.tool("peek.node.jobs")).run();
+    await (await inspector.tool("peek.cart")).run();
 
-    const run = inspector.runs.latest("peek.node.jobs");
+    const run = inspector.runs.latest("peek.cart");
     await expect.poll(() => run.status()).toBe("Succeeded");
-    expect(JSON.parse((await run.resultText()) ?? "")).toEqual({
-      name: "jobs",
-      instances: [{ values: { value: "server" } }],
-    });
-    expect(startedAyme.appProcessTools.run).toHaveBeenCalledExactlyOnceWith(
-      "peek.node.jobs",
+    expect(startedAyme.tools.run).toHaveBeenCalledExactlyOnceWith(
+      "peek.cart",
       {}
     );
-    expect(startedAyme.tools.run).not.toHaveBeenCalled();
-  });
-
-  it("shows an App Process's Peek tool failure as a failed run", async () => {
-    startedAyme.appProcessTools.list.mockReturnValue([
-      peekTool("peek.node.jobs"),
-    ]);
-    startedAyme.appProcessTools.run.mockRejectedValue(
-      new Error("The App Process exited before it answered.")
-    );
-    renderApp();
-
-    await (await inspector.tool("peek.node.jobs")).run();
-
-    const run = inspector.runs.latest("peek.node.jobs");
-    await expect.poll(() => run.status()).toBe("Failed");
-    expect(await run.error.textContent()).toBe(
-      "The App Process exited before it answered."
-    );
-  });
-
-  it("drops the Node section once no App Process offers a Peek tool", async () => {
-    startedAyme.tools.list.mockReturnValue([peekTool("peek.cart")]);
-    startedAyme.appProcessTools.list.mockReturnValue([
-      peekTool("peek.node.jobs"),
-    ]);
-    renderApp();
-    await inspector.navigator.showLens("Tools");
-    await expect
-      .poll(() => inspector.navigator.tools.peekSections())
-      .toEqual({ Browser: ["peek.cart"], Node: ["peek.node.jobs"] });
-
-    startedAyme.appProcessTools.list.mockReturnValue([]);
-    startedAyme.announce();
-
-    await expect
-      .poll(() => inspector.navigator.tools.peekSections())
-      .toEqual({ Browser: ["peek.cart"] });
   });
 
   it("lists the live tools when nothing is published", async () => {
@@ -659,15 +614,18 @@ describe("the Inspector", () => {
   it("names the connected agent in the header, as the runtime reports it", async () => {
     renderApp();
     await expect
-      .poll(() => inspector.header.connections.pill.textContent())
-      .toBe("No agent");
+      .poll(() => inspector.header.connections.pill.getAttribute("aria-label"))
+      .toBe("Connections: WebMCP published");
 
-    startedAyme.agentConnection = { state: "connected", agent: "claude-code" };
+    startedAyme.webMCP.publicationStatus = {
+      state: "failed",
+      message: "WebMCP publication failed: boom.",
+    };
     startedAyme.announce();
 
     await expect
-      .poll(() => inspector.header.connections.pill.textContent())
-      .toBe("Claude Code");
+      .poll(() => inspector.header.connections.pill.getAttribute("aria-label"))
+      .toBe("Connections: WebMCP failed");
   });
 
   it("copies an option's snippet, and keeps going when the page denies the clipboard", async () => {
@@ -675,24 +633,25 @@ describe("the Inspector", () => {
       .spyOn(navigator.clipboard, "writeText")
       .mockRejectedValueOnce(new Error("Denied."))
       .mockResolvedValue();
+    startedAyme.webMCP.publicationStatus = { state: "disabled", message: "" };
     renderApp();
     const { connections } = inspector.header;
     await connections.open();
 
-    await connections.agent.copyButton.click();
-    expect(await connections.agent.copyButton.getAttribute("title")).toBe(
+    await connections.webMCP.copyButton.click();
+    expect(await connections.webMCP.copyButton.getAttribute("title")).toBe(
       "Copy"
     );
-    expect(await connections.agent.checkIcon.count()).toBe(0);
-    await connections.agent.copyButton.click();
+    expect(await connections.webMCP.checkIcon.count()).toBe(0);
+    await connections.webMCP.copyButton.click();
 
     expect(writeText).toHaveBeenCalledTimes(2);
-    expect(writeText).toHaveBeenLastCalledWith("agentConnection: true");
+    expect(writeText).toHaveBeenLastCalledWith("webMCP: { enabled: true }");
     // Only a copy that went through says so.
     await expect
-      .poll(() => connections.agent.copyButton.getAttribute("title"))
+      .poll(() => connections.webMCP.copyButton.getAttribute("title"))
       .toBe("Copied");
-    await expect.poll(() => connections.agent.checkIcon.count()).toBe(1);
+    await expect.poll(() => connections.webMCP.checkIcon.count()).toBe(1);
     writeText.mockRestore();
   });
 

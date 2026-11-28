@@ -12,14 +12,7 @@ export { listPublishedBrowserTools } from "./publishedBrowserTools";
 export { NAVIGATION_TOOLS } from "./navigationTools";
 export { configureRouterNavigate, routerNavigate } from "./routerStore";
 export { configureRouterNavigateOf, routerNavigateOf } from "./routerStores";
-export {
-  addPeek,
-  isPeekTool,
-  listPeekTools,
-  peeksOf,
-  processPeeks,
-  subscribeToPeekTools,
-} from "./peekRegistry";
+export { listPeekTools, peeksOf } from "./peekRegistry";
 export {
   getPageContextForDocument,
   getPomDefinitionText,

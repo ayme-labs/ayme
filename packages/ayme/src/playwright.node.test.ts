@@ -1,16 +1,19 @@
 // The `./playwright` entry in Node, over real Playwright Chromium and against
 // the built package: ayme over a Page a Node host was handed (ADR-0049).
+import { AsyncLocalStorage } from "node:async_hooks";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, selectors, type Browser, type Page } from "@playwright/test";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import type * as Internal from "./internal";
 import type * as Playwright from "./playwright";
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), "../dist");
 
 let built: typeof Playwright;
+let internal: typeof Internal;
 let browser: Browser;
 const stops: (() => void)[] = [];
 
@@ -19,6 +22,10 @@ beforeAll(async () => {
   // The Node lane loads what ships, by path, as builtEntries.test.ts reads it.
   // eslint-disable-next-line no-restricted-syntax
   built = (await import(entry)) as typeof Playwright;
+  // eslint-disable-next-line no-restricted-syntax
+  internal = (await import(
+    pathToFileURL(join(dist, "internal.mjs")).href
+  )) as typeof Internal;
   browser = await chromium.launch();
 }, 120_000);
 
@@ -328,6 +335,58 @@ describe("ayme over a Playwright Page", () => {
     );
   });
 
+  describe("Page Object ids", () => {
+    /** The id of the Page Object of `className` that `ayme`'s snapshot shows. */
+    async function idOf(ayme: Playwright.PlaywrightAyme, className: string) {
+      let id: string | undefined;
+      await expect
+        .poll(async () => {
+          id = new RegExp(`${className} (po\\d+)`).exec(
+            await snapshot(ayme)
+          )?.[1];
+          return id;
+        })
+        .toBeDefined();
+      return id!;
+    }
+
+    const counter =
+      '<section id="counter"><output>0</output><button>Add</button></section>';
+
+    it("are numbered per page when the Host gives no source", async () => {
+      const Counter = pageObjectRootedAt("OwnCounter", "#counter");
+      const first = await startedOn(await pageShowing(counter), {
+        pageObjects: [Counter],
+      });
+      const second = await startedOn(await pageShowing(counter), {
+        pageObjects: [Counter],
+      });
+
+      expect(await idOf(first, "OwnCounter")).toBe("po1");
+      expect(await idOf(second, "OwnCounter")).toBe("po1");
+    });
+
+    it("come from the source the Host gives, so two pages that share it never give one id twice", async () => {
+      const Counter = pageObjectRootedAt("SharedCounter", "#counter");
+      const pageObjectIds = built.createPageObjectIdSource();
+      const first = await startedOn(await pageShowing(counter), {
+        pageObjects: [Counter],
+        pageObjectIds,
+      });
+      const second = await startedOn(await pageShowing(counter), {
+        pageObjects: [Counter],
+        pageObjectIds,
+      });
+
+      expect(await idOf(first, "SharedCounter")).toBe("po1");
+      expect(await idOf(second, "SharedCounter")).toBe("po2");
+      await second.tools.run("SharedCounter.press", { id: "po2" } as never);
+      await expect(
+        second.tools.run("SharedCounter.press", { id: "po1" } as never)
+      ).rejects.toThrow(/po1/);
+    });
+  });
+
   /** A page at `http://app.test/` whose documents are what `serve` answers per URL. */
   async function pageServing(
     serve: (url: URL) => string,
@@ -386,6 +445,121 @@ describe("ayme over a Playwright Page", () => {
 
     expect(result.loading).toBe("http://app.test/two");
     expect(JSON.stringify(result)).not.toContain("Second document");
+  });
+
+  it("answers once its action returned and the page settled, without asking the presence of the Page Object it returned", async () => {
+    const page = await pageShowing("<h1>Sign in</h1>");
+    let asked = 0;
+    class Home {}
+    built.ayme({
+      present: () => {
+        asked += 1;
+        return false;
+      },
+    })(Home);
+    class SignIn {
+      logIn() {
+        return new Home();
+      }
+    }
+    built.registerCompiledPom(SignIn, {
+      className: "SignIn",
+      members: [],
+      tools: [
+        {
+          methodName: "logIn",
+          toolName: "SignIn.logIn",
+          description: "Log in",
+          parameters: [],
+        },
+      ],
+      components: [],
+    });
+    const ayme = await startedOn(page, { pageObjects: [SignIn] });
+    await snapshot(ayme);
+
+    expect(await ayme.tools.run("SignIn.logIn", {})).toMatchObject({
+      settled: true,
+    });
+    expect(asked).toBe(0);
+  });
+
+  describe("a Run whose action goes on after it started a full load", () => {
+    /**
+     * A sign-in form whose submit loads `/next`, whose button says it was
+     * pressed; with a session over it whose `SignIn.logIn` submits, waits
+     * three seconds, past the Settled Page deadline, and then does `after`.
+     */
+    async function signingIn(after: (page: Page) => Promise<unknown>) {
+      const page = await browser.newPage();
+      await page.route("http://app.test/**", (route) =>
+        route.fulfill({
+          contentType: "text/html",
+          body:
+            new URL(route.request().url()).pathname === "/next"
+              ? "<title>Next</title><button onclick=\"document.title = 'pressed'\">Go</button>"
+              : '<title>Sign in</title><form method="post" action="/next"><button>Log in</button></form>',
+        })
+      );
+      await page.goto("http://app.test/");
+      class SignIn {
+        constructor(readonly page: Page) {}
+        async logIn() {
+          await this.page.getByRole("button").click();
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          return after(this.page);
+        }
+      }
+      built.registerCompiledPom(SignIn, {
+        className: "SignIn",
+        members: [],
+        tools: [
+          {
+            methodName: "logIn",
+            toolName: "SignIn.logIn",
+            description: "Log in",
+            parameters: [],
+          },
+        ],
+        components: [],
+      });
+      const ayme = await startedOn(page, { pageObjects: [SignIn] });
+      await snapshot(ayme);
+      return { page, ayme };
+    }
+
+    it("lasts until the action returns: the next Run starts after the action's last click", async () => {
+      const { page, ayme } = await signingIn((next) =>
+        next.getByRole("button").click()
+      );
+
+      const run = ayme.tools.run("SignIn.logIn", {});
+      // Queued behind the first Run, it reads the title once its turn
+      // comes.
+      const next = ayme.tools.run("snapshot", {}).then(() => page.title());
+
+      await run;
+      expect(await next).toBe("pressed");
+    });
+
+    it("keeps what the action returns after the load", async () => {
+      const { ayme } = await signingIn(async () => "signed in");
+
+      expect(await ayme.tools.run("SignIn.logIn", {})).toMatchObject({
+        loading: "http://app.test/next",
+        result: "signed in",
+      });
+    });
+
+    it("fails with the error the action throws after the load", async () => {
+      const { ayme } = await signingIn(async () => {
+        throw new Error("The next page refused the sign-in.");
+      });
+
+      await expect(ayme.tools.run("SignIn.logIn", {})).rejects.toThrow(
+        "The next page refused the sign-in."
+      );
+    });
   });
 
   it("answers a navigate, a reload and a move back to another document with what changed before them", async () => {
@@ -510,5 +684,285 @@ describe("ayme over a Playwright Page", () => {
         "There is no history entry to go forward to; the page did not move."
       );
     });
+  });
+});
+
+describe("a Session's Node Host, through the internal entry", () => {
+  /** A Node Host over `page` on the Playwright `selectors` it is handed,
+   * started. */
+  async function hostOn(
+    page: Page,
+    pageObjects: Playwright.PlaywrightAymeOptions["pageObjects"]
+  ) {
+    const ayme = internal.createNodeHost({ page, pageObjects }, selectors);
+    stops.push(await ayme.start());
+    return ayme;
+  }
+
+  it("answers a Run of a Page Object Tool with the short answer an agent reads, as the Caller it names, before anything read the page", async () => {
+    const page = await pageShowing(
+      '<section id="counter"><output>0</output><button>Add</button></section>' +
+        "<script>document.querySelector('button').onclick = () => document.querySelector('output').textContent = '1'</script>"
+    );
+    const Counter = pageObjectRootedAt("Counter", "#counter");
+    const ayme = await hostOn(page, [Counter]);
+
+    const answer = await internal
+      .pageObjectCallerOf(ayme, "ayme-command")
+      .run("Counter.press", { id: "po1" });
+
+    expect(answer).toEqual({
+      settled: true,
+      changes: 'Counter po1\n  button: button "Add" → button "Add" [active]',
+    });
+    expect(await page.locator("output").textContent()).toBe("1");
+    expect(ayme.runs.list().at(-1)).toMatchObject({
+      tool: "Counter.press",
+      by: "ayme-command",
+      status: "succeeded",
+    });
+  });
+
+  it("lists the Page Object Tree, the tools, the URL and the title in one turn, once the Run under way has ended", async () => {
+    const page = await pageShowing("<h1>Before</h1>");
+    class Gate {
+      constructor(readonly page: Page) {}
+      async pass() {
+        await this.page.waitForFunction(() => "open" in window, null, {
+          timeout: 0,
+        });
+        await this.page.evaluate(() => {
+          document.title = "After";
+          document.querySelector("h1")!.textContent = "After";
+        });
+      }
+      get heading(): ReturnType<Page["locator"]> {
+        return this.page.getByRole("heading");
+      }
+    }
+    built.ayme(Gate);
+    built.registerCompiledPom(Gate, {
+      className: "Gate",
+      members: [{ memberName: "heading", kind: "locator", access: "getter" }],
+      tools: [
+        {
+          methodName: "pass",
+          toolName: "Gate.pass",
+          description: "Wait until the gate opens",
+          parameters: [],
+        },
+      ],
+      components: [],
+    });
+    const ayme = await hostOn(page, [Gate]);
+    const caller = internal.pageObjectCallerOf(ayme, "ayme-command");
+
+    const run = caller.run("Gate.pass", {});
+    let listed = false;
+    const listing = caller.listing().finally(() => (listed = true));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(listed).toBe(false);
+    await page.evaluate(() => Object.assign(window, { open: true }));
+
+    await run;
+    expect(await listing).toEqual({
+      pageObjectTree: 'Gate\n  heading: heading "After" [level=1]',
+      tools: expect.arrayContaining([
+        expect.objectContaining({ name: "Gate.pass", available: true }),
+      ]),
+      url: "about:blank",
+      title: "After",
+    });
+    expect(ayme.runs.list().at(-1)).toMatchObject({
+      tool: "page_objects",
+      by: "ayme-command",
+    });
+  });
+
+  it("takes no Host's say over an action's calls on the public options: only the internal Node Host does", () => {
+    const options: Playwright.PlaywrightAymeOptions = {
+      page: undefined as unknown as Page,
+      // @ts-expect-error The public options have no actionCalls.
+      actionCalls: undefined,
+    };
+    expect(options).not.toHaveProperty("actionCalls", expect.anything());
+  });
+
+  // What a Host decides about each call is the page wrapper's, on a
+  // scripted page in pageInstrumentation.test.ts; here, a Run the Host
+  // stopped.
+  describe("the Playwright calls of a Page Object Action's own code", () => {
+    const counter =
+      '<section id="counter"><output>0</output><button>Add</button></section>' +
+      "<script>document.querySelector('button').onclick = () => document.querySelector('output').textContent = '1'</script>";
+
+    /** A Node Host whose `before` hears each call of an action's own code,
+     * told apart from ayme's reads as a Session tells them. */
+    async function hostDeciding(
+      page: Page,
+      before: (answersAtOnce: boolean) => Promise<void> | undefined,
+      stopped?: Promise<never>
+    ) {
+      const own = new AsyncLocalStorage<true>();
+      const ayme = internal.createNodeHost(
+        {
+          page,
+          pageObjects: [pageObjectRootedAt("Counter", "#counter")],
+          actionCalls: {
+            run: (action) => own.run(true, action),
+            before: (answersAtOnce) =>
+              own.getStore() ? before(answersAtOnce) : undefined,
+            bind: (listener) => listener,
+            stopped: () => (own.getStore() ? undefined : stopped),
+          },
+        },
+        selectors
+      );
+      stops.push(await ayme.start());
+      return Object.assign(internal.pageObjectCallerOf(ayme, "ayme-command"), {
+        runs: () => ayme.runs.list(),
+        window: internal.inspectorPortOf(ayme),
+      });
+    }
+
+    it("a Run its Host stopped is logged failed with why at once, and what its action does afterwards is not: the Run still lasts until the action ends", async () => {
+      const page = await pageShowing(counter);
+      let release = () => {};
+      const held = new Promise<void>((resolve) => (release = resolve));
+      let stop: (why: Error) => void = () => {};
+      const stopped = new Promise<never>((_, reject) => (stop = reject));
+      stopped.catch(() => {});
+      const caller = await hostDeciding(
+        page,
+        (answersAtOnce) => (answersAtOnce ? undefined : held),
+        stopped
+      );
+      let ended = false;
+      const run = caller.run("Counter.press", { id: "po1" });
+      void run.then(
+        () => (ended = true),
+        () => (ended = true)
+      );
+      const log = () => caller.runs();
+      await expect.poll(() => log().at(-1)?.status).toBe("running");
+      stop(new Error("A confirm dialog is open on the tab."));
+      await expect.poll(() => log().at(-1)?.status).toBe("failed");
+      expect(ended).toBe(false);
+
+      release();
+      await run;
+
+      expect(await page.locator("output").textContent()).toBe("1");
+      expect(log().at(-1)).toMatchObject({
+        tool: "Counter.press",
+        status: "failed",
+        error: "A confirm dialog is open on the tab.",
+      });
+    });
+
+    it("a window's Run its Host stopped is told to the listening window as failed with why at once", async () => {
+      const page = await pageShowing(counter);
+      let release = () => {};
+      const held = new Promise<void>((resolve) => (release = resolve));
+      let stop: (why: Error) => void = () => {};
+      const stopped = new Promise<never>((_, reject) => (stop = reject));
+      stopped.catch(() => {});
+      const { window } = await hostDeciding(
+        page,
+        (answersAtOnce) => (answersAtOnce ? undefined : held),
+        stopped
+      );
+      const heard: {
+        state?: { runs: readonly { status: string; error?: string }[] };
+      }[] = [];
+      const stopListening = window.subscribe((event) =>
+        heard.push(event as (typeof heard)[number])
+      );
+      const lastRun = () => heard.at(-1)?.state?.runs.at(-1);
+
+      const run = window.request("runTool", {
+        name: "Counter.press",
+        input: { id: "po1" },
+        by: "inspector",
+      });
+      await expect.poll(() => lastRun()?.status).toBe("running");
+      stop(new Error("A confirm dialog is open on the tab."));
+
+      await expect.poll(lastRun).toMatchObject({
+        status: "failed",
+        error: "A confirm dialog is open on the tab.",
+      });
+      release();
+      await run;
+      stopListening();
+    });
+  });
+
+  it("refuses a tool that is not a Page Object Tool as one there is not", async () => {
+    const page = await pageShowing("<button>Save</button>");
+    const ayme = await hostOn(page, []);
+
+    await expect(
+      internal.pageObjectCallerOf(ayme, "ayme-command").run("snapshot", {})
+    ).rejects.toThrow('There is no tool "snapshot".');
+  });
+
+  it("keeps a Run whose action started a full load until the action returns, answers with the loading URL and no Page Object Tree, and starts the next Run after it", async () => {
+    const page = await browser.newPage();
+    await page.route("http://app.test/**", (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body:
+          new URL(route.request().url()).pathname === "/home"
+            ? "<title>Home</title><button onclick=\"document.title = 'pressed'\">Go</button>"
+            : '<title>Sign in</title><form method="post" action="/home"><button>Log in</button></form>',
+      })
+    );
+    await page.goto("http://app.test/");
+    class SignIn {
+      constructor(readonly page: Page) {}
+      async logIn() {
+        await this.page.getByRole("button").click();
+        // Past the Settled Page deadline, on the page the load brought.
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await this.page.getByRole("button").click();
+        return "signed in";
+      }
+      title() {
+        return this.page.title();
+      }
+    }
+    built.registerCompiledPom(SignIn, {
+      className: "SignIn",
+      members: [],
+      tools: [
+        {
+          methodName: "logIn",
+          toolName: "SignIn.logIn",
+          description: "Log in",
+          parameters: [],
+        },
+        {
+          methodName: "title",
+          toolName: "SignIn.title",
+          description: "The page's title",
+          parameters: [],
+        },
+      ],
+      components: [],
+    });
+    const ayme = await hostOn(page, [SignIn]);
+    const caller = internal.pageObjectCallerOf(ayme, "ayme-command");
+
+    const run = caller.run("SignIn.logIn", {});
+    // Queued behind the first Run, it reads the title once its turn comes.
+    const next = caller.run("SignIn.title", {});
+
+    expect(await run).toEqual({
+      settled: false,
+      result: "signed in",
+      url: "http://app.test/home",
+    });
+    expect(await next).toMatchObject({ result: "pressed" });
   });
 });

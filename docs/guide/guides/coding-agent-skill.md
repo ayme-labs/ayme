@@ -12,11 +12,11 @@ Name the skill with `--skill`, once for each skill you want. Without it, the CLI
 
 ## `ayme`
 
-Sets up ayme in your project: the agent follows the quickstart for your framework, exposes one of your existing Page Object Actions, connects to your page through ayme's MCP server and calls that action. After setup, it helps you design Page Object Models, use the page's tools and add Peeks. [Read the `ayme` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme/SKILL.md); its [onboarding steps](https://github.com/ayme-labs/ayme/blob/main/skills/ayme/references/onboarding.md) list exactly what setup does.
+Sets up ayme in your project: the agent follows the quickstart for your framework, exposes one of your existing Page Object Actions, and calls that action with the `ayme` command, beside its browser automation. After setup, it helps you design Page Object Models and use the page's tools. It tells the agent how to connect the `ayme` command and Playwright CLI, Playwright MCP or agent-browser to one browser, as [Connect an agent](connect-an-agent.md) shows. [Read the `ayme` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme/SKILL.md); its [onboarding steps](https://github.com/ayme-labs/ayme/blob/main/skills/ayme/references/onboarding.md) list exactly what setup does.
 
-## `ayme-recorder`
+## `ayme-capture`
 
-Records a flow while you drive your app, then turns the recording into Playwright page objects and a test that replays the flow. It can also write an automation that does the flow with new data and asks you before each step that can't be undone. To make those page objects ayme tools too, use the `ayme` skill. [Recorder](recorder.md) covers the recorder itself. [Read the `ayme-recorder` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-recorder/SKILL.md).
+Records a flow while you drive your app, then turns the recording into Playwright page objects and a test that replays the flow. It can also write an automation that does the flow with new data and asks you before each step that can't be undone. To make those page objects ayme tools too, use the `ayme` skill. [ayme capture](recorder.md) covers recording itself. [Read the `ayme-capture` skill](https://github.com/ayme-labs/ayme/blob/main/skills/ayme-capture/SKILL.md).
 
 ## `product-surfaces`
 

@@ -9,10 +9,10 @@ const canClear = async (self: Basket) =>
 
 /**
  * A Page Object the page registers and unregisters on demand, so its Page
- * Object Tool comes and goes while a page stays connected. Its `clear`
- * action is available only while the basket has items, so an agent meets
- * an unavailable tool with a reason, and is marked destructive, so its MCP
- * tool carries `destructiveHint`.
+ * Object Tool comes and goes while the page stays open. Its `clear` action
+ * is available only while the basket has items, so an agent meets an
+ * unavailable tool with a reason, and is marked destructive, so WebMCP
+ * publishes it with `consequentialHint`.
  */
 @ayme
 export class Basket {

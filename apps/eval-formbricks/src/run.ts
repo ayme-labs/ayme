@@ -8,7 +8,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -19,6 +19,7 @@ import {
   type AgentId,
 } from "./agents.ts";
 import {
+  anyCommand,
   arms,
   armIds,
   isArmId,
@@ -26,7 +27,12 @@ import {
   type ArmContext,
   type ArmSetup,
 } from "./arms.ts";
-import { initPageScript, openStartPage } from "./browser.ts";
+import { aymeRecordPath } from "./ayme.ts";
+import {
+  initPageScript,
+  openStartPage,
+  openStartPageOverCdp,
+} from "./browser.ts";
 import { runMain } from "./cli.ts";
 import { agentEffort, claudeVersion, runClaude } from "./claude.ts";
 import { codexConfig, codexRules, codexVersion, runCodex } from "./codex.ts";
@@ -132,6 +138,16 @@ export async function writeJson(filePath: string, value: unknown) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+/** The lines of a recording; none when the agent ran no command, so nothing was written. */
+async function readRecord(filePath: string): Promise<string[]> {
+  try {
+    return (await readFile(filePath, "utf8")).split("\n").filter(Boolean);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
 /**
  * Runs the mission once and stores it under `results/runs/<run id>/`.
  * Throws when the run cannot complete; a failed verdict is a result, not an error.
@@ -232,6 +248,8 @@ async function runOnceOn(
       configDir: claudeConfigDir,
       start: mission.start,
       cwd: agentRoot,
+      openStartPage: (address) =>
+        openStartPageOverCdp(address, { mission, baseUrl: labUrl, log }),
       log,
     };
     const prompt = createPrompt(mission, options.arm, labUrl);
@@ -264,6 +282,7 @@ async function runOnceOn(
         codexConfig({
           model: options.model,
           mcpServers,
+          anyCommand: options.arm.allowedTools.includes(anyCommand),
           readable: [
             agentRoot,
             skillsDir,
@@ -343,11 +362,14 @@ async function runOnceOn(
         claudeCode: agent === "claude" ? claudeVersion() : null,
         codex: agent === "codex" ? codexVersion() : null,
         browserInterface: options.arm.browserInterface(),
-        browser: browserVersion,
+        browser: armSetup?.browserVersion ?? browserVersion,
         formbricksCommit: gitOutput(formbricksRoot, ["rev-parse", "HEAD"]),
         aymeCommit: gitOutput(repoRoot, ["rev-parse", "HEAD"]),
       },
       setup: armSetup?.evidence ?? null,
+      ...(options.arm.withAyme
+        ? { aymeRecord: await readRecord(aymeRecordPath(runDir)) }
+        : {}),
       labCheckout: {
         movedFiles: labChanges.untracked,
         modifiedFiles: labChanges.modified,

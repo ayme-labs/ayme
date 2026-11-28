@@ -1,6 +1,9 @@
 /**
  * A throwaway npm registry: Verdaccio, holding the ref's `@ayme-dev/*`
- * tarballs and passing everything else through to npmjs.
+ * tarballs and passing everything else through to npmjs. The packed packages
+ * come from it alone, as the newest release would: a bare
+ * `npm install @ayme-dev/cli` gets the packed version, and never one from
+ * npmjs.
  */
 import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, openSync, writeFileSync } from "node:fs";
@@ -28,7 +31,9 @@ export type Registry = { url: string; stop: () => void };
 
 export async function startRegistry(
   dir: string,
-  logFile: string
+  logFile: string,
+  /** The packed packages, such as `@ayme-dev/cli`. */
+  packed: string[]
 ): Promise<Registry> {
   mkdirSync(join(dir, "storage"), { recursive: true });
   const port = await freePort();
@@ -45,7 +50,7 @@ uplinks:
     url: https://registry.npmjs.org/
     timeout: 60s
 packages:
-  "@*/*":
+${packed.map((name) => `  "${name}":\n    access: $all\n    publish: $authenticated\n`).join("")}  "@*/*":
     access: $all
     publish: $authenticated
     proxy: npmjs
@@ -88,7 +93,8 @@ log: { type: stdout, format: pretty, level: warn }
   return { url, stop };
 }
 
-/** Publishes the tarballs under the dist-tag `first-install`, as a throwaway user. */
+/** Publishes the tarballs as a throwaway user, under the dist-tag `latest`,
+ * which a bare install resolves. */
 export async function publish(
   registryUrl: string,
   tarballs: string[],
@@ -117,8 +123,9 @@ export async function publish(
       [
         "publish",
         tarball,
+        // A prerelease needs a named tag.
         "--tag",
-        "first-install",
+        "latest",
         "--userconfig",
         npmrc,
         "--registry",

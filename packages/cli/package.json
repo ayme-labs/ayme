@@ -1,7 +1,7 @@
 {
   "name": "@ayme-dev/cli",
   "version": "0.3.3",
-  "description": "The ayme Recorder: records a browser flow on the Playwright your project already has, for a coding agent to turn into page objects and a test.",
+  "description": "The ayme command. It runs your project's Page Objects for a coding agent beside its browser automation, and ayme capture records a browser flow on the Playwright your project already has, for the agent to turn into page objects and a test.",
   "keywords": [
     "ai-agent",
     "coding-agent",
@@ -22,18 +22,25 @@
     "directory": "packages/cli"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      "./package.json": "./package.json"
+    }
   },
   "type": "module",
   "files": [
     "dist"
   ],
   "bin": {
-    "ayme-recorder": "./dist/cli.mjs"
+    "ayme": "./dist/cli.mjs"
+  },
+  "exports": {
+    "./testing": "./testing/index.ts",
+    "./package.json": "./package.json"
   },
   "scripts": {
     "build": "tsdown",
-    "lint": "eslint src --max-warnings 0",
+    "lint": "eslint src testing --max-warnings 0",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "test:crap": "vitest run --config vitest.fast.config.ts --coverage",
@@ -47,12 +54,18 @@
       "optional": true
     }
   },
+  "dependencies": {
+    "esbuild": "^0.28.2"
+  },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/recorder": "workspace:*",
     "@ayme-dev/recorder-window": "workspace:*",
+    "@ayme-dev/session": "workspace:*",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/node": "^24.0.0",

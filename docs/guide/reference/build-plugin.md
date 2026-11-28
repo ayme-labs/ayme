@@ -120,10 +120,10 @@ The loader reports the tsconfig and source files the compiler read, so Turbopack
 
 `include` decides whether a build has ayme in it. It defaults to `false`. Without `include: true`, a build or dev server is a build without ayme:
 
-- `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` resolve to a small absent entry. The runtime, Playwright in the browser, the Inspector, WebMCP and the Agent Connection are left out of the output.
+- `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` resolve to a small absent entry. The runtime, Playwright in the browser, the Inspector and WebMCP are left out of the output.
 - Each Page Object Model the plugin compiles becomes a stand-in. A stand-in has the model's class name and exports, but not the imports only the model used. The rest of the model's module stays.
 - `@ayme-dev/vue`, `@ayme-dev/react`, `@ayme-dev/svelte` and `@ayme-dev/angular` each resolve to an absent entry of their own. It has the package's names and types, so a component tree renders as before.
-- `AymeProvider`, `useAyme` and `provideAyme` hand out an inert session. Its publication status stays `disabled`, and its tool list is empty.
+- `AymeProvider`, `useAyme` and `provideAyme` hand out an inert runtime. Its publication status stays `disabled`, and its tool list is empty.
 - `usePageObject` and `injectPageObject` return the stand-in, an instance of the model's class. The Peek hook does nothing.
 
 Using a stand-in fails with a `RuntimeStateError` that names the member. An action rejects. Any other member, such as a Page Object Child, a field or a method, throws when it is used. With `ProjectsPage` and its `openNewProjectDialog` action from [Action descriptions](ayme.md#action-descriptions):
@@ -240,7 +240,7 @@ These fail the build or the dev server. The four about an action's parameters, f
 
 How the position appears depends on what runs the compiler:
 
-- **Vite, Turbopack and [`ayme mcp`](../guides/page-objects-without-ayme.md)**: the error starts with `<file>:<line>:<col>: `, or with `<file>: ` when it has no line. The column counts from 1. An error about several places, such as a Page Object that reaches two classes with the same name, has one line for each place.
+- **Vite and Turbopack**: the error starts with `<file>:<line>:<col>: `, or with `<file>: ` when it has no line. The column counts from 1. An error about several places, such as a Page Object that reaches two classes with the same name, has one line for each place.
 - **Angular**: esbuild prints the message first, then the file, line and column above a code frame of that line. esbuild counts the column from 0. An error about several places is printed as one error for each place.
 
 The build runs the same [root-less class check](ayme.md#root-less-models) as the runtime. A class whose root it cannot read from the source, such as one given through spread options, passes the build and is checked at registration.

@@ -4,8 +4,8 @@
 // share nothing. It holds nothing of the browser: Playwright Lite, the
 // document's globals and the Inspector's loaders stay with the browser
 // runtime.
-import type { Locator, Page } from "@playwright/test";
-import { inPage } from "../in-page";
+import type { Locator, Page, Selectors } from "@playwright/test";
+import { inPage, registerAymeRef } from "../in-page";
 import { listCustomToolsOf } from "../tools/infrastructure";
 import {
   registerCustomTool,
@@ -21,8 +21,12 @@ import {
   providePageObjectProbeOf,
 } from "../page-state/infrastructure";
 import { pomRegistryOf } from "../page-objects/infrastructure";
-import type { PageObjectConstructor } from "../page-objects/application";
+import type {
+  PageObjectConstructor,
+  PageObjectIdSource,
+} from "../page-objects/application";
 import type { ElementFilter } from "../shared";
+import type { ActionCalls } from "../runs/application";
 import {
   createAymeOn,
   type Ayme,
@@ -53,6 +57,22 @@ export type PlaywrightAymeOptions = {
   pageObjects?: readonly PageObjectConstructor[];
   /** The application's router navigation, called with a same-origin URL. */
   navigate?: (url: string) => unknown;
+  /**
+   * Where the Page Object ids of `page` come from, so that a Host that gives
+   * one source to several Pages gives no id twice among them. Without one,
+   * the page numbers its own. Read by the first session on `page`.
+   */
+  pageObjectIds?: PageObjectIdSource;
+};
+
+/**
+ * What the internal entry's Node Host is created with: a session's options,
+ * and what its Host decides about each Playwright call of a Page Object
+ * Action's own code. Only a Session decides: it holds and refuses them at a
+ * dialog nobody answered (ADR-0073).
+ */
+export type NodeHostOptions = PlaywrightAymeOptions & {
+  actionCalls?: ActionCalls;
 };
 
 /**
@@ -64,22 +84,32 @@ export type PlaywrightAyme = Omit<Ayme, "start"> & {
   start(): Promise<() => void>;
 };
 
+/** The target each Node Host's session runs on, by the session's `tools`,
+ * which a Node host's session object shares with the core one it spreads. */
+export const nodeHostTargets = new WeakMap<object, SessionTarget>();
+
 /**
  * A session over `options.page`; inert until started. `registerSelectors`
  * registers the `ayme-ref` engine on Playwright's `selectors`, once per
  * process, which the entry that holds the Playwright import hands in.
  */
-export function createPlaywrightAyme(
-  options: PlaywrightAymeOptions,
+function createPlaywrightAyme(
+  options: NodeHostOptions,
   registerSelectors: () => Promise<void>
 ): PlaywrightAyme {
   const { page } = options;
   let prepared: PreparedOptions | undefined;
-  const target = playwrightTarget(page, () => prepared!);
+  const target = playwrightTarget(
+    page,
+    () => prepared!,
+    options.pageObjectIds,
+    options.actionCalls
+  );
   const core = createAymeOn(target, {
     pageObjects: options.pageObjects,
     navigate: options.navigate,
   });
+  nodeHostTargets.set(core.tools, target);
   return {
     ...core,
     async start() {
@@ -88,6 +118,18 @@ export function createPlaywrightAyme(
       return core.start();
     },
   };
+}
+
+/**
+ * A session over `options.page` on the Playwright whose `selectors` are
+ * handed in: the one that drives the Page's browser, where it registers the
+ * `ayme-ref` engine once.
+ */
+export function createNodeHost(
+  options: NodeHostOptions,
+  selectors: Selectors
+): PlaywrightAyme {
+  return createPlaywrightAyme(options, () => registerAymeRef(selectors));
 }
 
 /**
@@ -112,7 +154,9 @@ async function prepare(
 
 function playwrightTarget(
   page: Page,
-  prepared: () => PreparedOptions
+  prepared: () => PreparedOptions,
+  pageObjectIds: PageObjectIdSource | undefined,
+  actionCalls: ActionCalls | undefined
 ): SessionTarget {
   const host = playwrightPageHost(page);
   const pageState = () => pageStateOf(page, host);
@@ -123,6 +167,7 @@ function playwrightTarget(
           providePageObjectProbeOf(page, probe),
         providePageObjectIds: (idsOf) => providePageObjectIdsOf(page, idsOf),
       },
+      pageObjectIds,
     });
   const sources: ToolSources = {
     // The Goal Loop reads the document: a Node host offers none.
@@ -134,6 +179,8 @@ function playwrightTarget(
   };
   return {
     kind: "playwright",
+    // The Page the host drives outlives each document it shows.
+    outlivesFullLoads: true,
     key: () => page,
     rawPage: () => page,
     pageState,
@@ -145,5 +192,6 @@ function playwrightTarget(
     prepare: () => prepared(),
     latestRefOf: (locator: Locator) =>
       latestRefOfLocator(page, inPage(page), locator),
+    ...(actionCalls ? { actionCalls } : {}),
   };
 }

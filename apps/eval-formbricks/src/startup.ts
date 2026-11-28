@@ -1,7 +1,7 @@
 /**
  * The startup lane: one scenario, once. Measures only the agent's first turn
- * after loading the skill, with no browser, no running app and no MCP server
- * but a stub for a scenario that names tools, and reads the verdict from the
+ * after loading the skill, with no browser, no running app and no MCP server,
+ * and reads the verdict from the
  * transcript. It needs Claude Code and a token and nothing else. `runStartup`
  * is what a suite calls; the command below wraps it.
  *
@@ -12,12 +12,7 @@ import { cp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { agentAccess } from "./agents.ts";
-import {
-  aymeServerName,
-  aymeSkillDirectory,
-  aymeSkillName,
-  aymeSkillSource,
-} from "./ayme.ts";
+import { aymeSkillDirectory, aymeSkillName, aymeSkillSource } from "./ayme.ts";
 import { parseFlags, runMain } from "./cli.ts";
 import {
   agentEffort,
@@ -51,8 +46,6 @@ const agentTools = {
   tools: ["Read", "Skill"],
   allowedTools: [`Skill(${aymeSkillName})`],
 };
-
-const stubServerPath = path.join(evalRoot, "src/stubMcpServer.ts");
 
 export type StartupOptions = {
   scenario: StartupScenario;
@@ -199,16 +192,7 @@ async function runStartupOn(
     const message = `${scenario.framing} ${readyLine({ skill: aymeSkillName, readsSkillReferences: true })}\n`;
     const mcpConfigPath = path.join(runDir, "mcp.json");
     await writeFile(path.join(runDir, "setup-prompt.txt"), message);
-    await writeJson(mcpConfigPath, {
-      mcpServers: scenario.tools
-        ? {
-            [aymeServerName]: {
-              command: process.execPath,
-              args: [stubServerPath, JSON.stringify(scenario.tools)],
-            },
-          }
-        : {},
-    });
+    await writeJson(mcpConfigPath, { mcpServers: {} });
 
     log(
       `Starting the agent (${scenario.id}, ${model}, ${timeoutMs / 1000} s).`

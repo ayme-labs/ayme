@@ -1,12 +1,10 @@
 /**
  * The names ayme's own Callers start Runs under: the app's code by default,
- * an agent through WebMCP, an agent through the ayme MCP server, and the
- * Inspector.
+ * an agent through WebMCP, and the Inspector.
  */
 export const callers = Object.freeze({
   app: "app",
   webmcp: "webmcp",
-  aymeMcp: "ayme-mcp",
   inspector: "inspector",
 } as const);
 

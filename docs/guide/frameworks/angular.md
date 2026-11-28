@@ -4,11 +4,11 @@ Everything about ayme in an Angular app: `ng add` and manual setup, starting aym
 
 ## Install and configure
 
-Run `ng add`, then install the Inspector and the Agent Connection for development, as the [Angular quickstart](../start/quickstart-angular.md) does:
+Run `ng add`, then install the Inspector and the `ayme` command for development, as the [Angular quickstart](../start/quickstart-angular.md) does:
 
 ```sh
 ng add @ayme-dev/angular
-npm install -D @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/inspector @ayme-dev/cli
 ```
 
 `ng add` installs `@ayme-dev/ayme`. It adds three dev dependencies: `@ayme-dev/unplugin-ayme`, `@playwright/test` (for the types Page Object Models use) and the `@angular-builders/custom-esbuild` major that matches your Angular major. Then it:
@@ -24,7 +24,7 @@ It leaves bundle budgets alone; see [Bundle size](#bundle-size). If your app use
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/angular
-npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild @playwright/test @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild @playwright/test @ayme-dev/inspector @ayme-dev/cli
 ```
 
 Install the `@angular-builders/custom-esbuild` major that matches your Angular major. Then:
@@ -37,20 +37,18 @@ Finally add `provideAyme()` to the application config, as shown below.
 
 ## Start ayme in the application config
 
-Start ayme once in the application config, with the Inspector and the Agent Connection in development:
+Start ayme once in the application config, with the Inspector in development:
 
 ```ts
 import { ApplicationConfig, isDevMode } from "@angular/core";
 import { provideAyme } from "@ayme-dev/angular";
 
 export const appConfig: ApplicationConfig = {
-  providers: [
-    provideAyme({ inspector: isDevMode(), agentConnection: isDevMode() }),
-  ],
+  providers: [provideAyme({ inspector: isDevMode() })],
 };
 ```
 
-Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
+Your coding agent then reaches your Page Objects once you finish [Set up your project](../guides/connect-an-agent.md#set-up-your-project), which also installs Playwright at a version the `ayme` command supports.
 
 Registering a page doesn't tie it to a route. Give each page a `present` that checks the URL, as [Pages and components](../guides/ayme-page-objects.md#ayme) shows. Then register the pages once, in the `pageObjects` option of `provideAyme`:
 
@@ -66,13 +64,12 @@ export const appConfig: ApplicationConfig = {
     provideAyme({
       pageObjects: [ProjectsPage, SettingsPage],
       inspector: isDevMode(),
-      agentConnection: isDevMode(),
     }),
   ],
 };
 ```
 
-A component that calls an action gets the session's instance from `injectPageObject(Model)`, which also registers the class until the component is destroyed:
+A component that calls an action gets the runtime's instance from `injectPageObject(Model)`, which also registers the class until the component is destroyed:
 
 ```ts
 import { Component } from "@angular/core";
@@ -122,7 +119,6 @@ Then add `webMCP` to `provideAyme`'s options:
 ```ts
 provideAyme({
   inspector: isDevMode(),
-  agentConnection: isDevMode(),
   webMCP: { enabled: true },
 });
 ```
@@ -173,7 +169,7 @@ const serverConfig: ApplicationConfig = {
 export const config = mergeApplicationConfig(appConfig, serverConfig);
 ```
 
-On the server, `provideAyme` creates a session per request but never starts it, and hydration creates the real Page Objects. `injectPeek` adds its Peek in `afterNextRender`. `afterNextRender` never runs on the server. The [Angular example](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
+On the server, `provideAyme` creates a runtime per request but never starts it, and hydration creates the real Page Objects. `injectPeek` adds its Peek in `afterNextRender`. `afterNextRender` never runs on the server. The [Angular example](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Bundle size
 
@@ -216,9 +212,9 @@ The supported Angular versions are on [Install](../start/install.md#supported-ve
 
 ## API
 
-| Function                        | Returns                | Behavior                                                                                                                                                                                                          |
-| ------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `provideAyme(options?)`         | `EnvironmentProviders` | Starts ayme with the environment injector that receives it, before the root component is created, and stops it when that injector is destroyed.                                                                   |
-| `injectAyme()`                  | `{ ayme, webMCP }`     | `ayme` is the [session](../reference/ayme.md). `webMCP.publicationStatus` is a read-only signal.                                                                                                                  |
-| `injectPageObject(Model)`       | the Page Object        | Registers the class with the session and returns its instance; its Page Object Tools stay registered until the caller is destroyed: component destruction, `@if` removal and router navigation all end it.        |
-| `injectPeek(values, name, id?)` | `void`                 | [Experimental](../reference/experimental-apis.md). Adds the caller's instance of the Peek `name` after its first render, until the caller is destroyed. The agent reads `values`, with its signals, when it asks. |
+| Function                        | Returns                | Behavior                                                                                                                                                                                                                         |
+| ------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provideAyme(options?)`         | `EnvironmentProviders` | Starts ayme with the environment injector that receives it, before the root component is created, and stops it when that injector is destroyed.                                                                                  |
+| `injectAyme()`                  | `{ ayme, webMCP }`     | `ayme` is the [runtime](../reference/ayme.md). `webMCP.publicationStatus` is a read-only signal.                                                                                                                                 |
+| `injectPageObject(Model)`       | the Page Object        | Registers the class with the runtime and returns its instance; its Page Object Tools stay registered until the caller is destroyed: component destruction, `@if` removal and router navigation all end it.                       |
+| `injectPeek(values, name, id?)` | `void`                 | [Experimental](../reference/experimental-apis.md). Adds the caller's instance of the Peek `name` after its first render, until the caller is destroyed. The Inspector reads `values`, with its signals, when its Peek Tool runs. |

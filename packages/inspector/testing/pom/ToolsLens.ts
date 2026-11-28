@@ -10,9 +10,6 @@ export type ToolGroupLabel =
   | "Peek tools"
   | "Agent tools";
 
-/** The sections of the Peek tools group: the page's and the App Processes'. */
-export type PeekSideLabel = "Browser" | "Node";
-
 const groupLabels: readonly ToolGroupLabel[] = [
   "Page object tools",
   "Custom tools",
@@ -45,28 +42,6 @@ export class ToolsLens extends PanelPart {
     return (
       (await this.row(name).locator("[data-destructive-icon]").count()) > 0
     );
-  }
-
-  /** Whether a separator sets a tool's row apart from the rows above it. */
-  async separatorBefore(name: string): Promise<boolean> {
-    return (await this.row(name).locator("[data-peek-separator]").count()) > 0;
-  }
-
-  /** The Peek tools' names, by the side each row's badge shows. */
-  async peekSections(): Promise<Partial<Record<PeekSideLabel, string[]>>> {
-    // One read of every row, so a row that goes meanwhile is never waited for.
-    const rows = await this.group("Peek tools")
-      .getByRole("listitem")
-      .evaluateAll((items) =>
-        items.map((item) => ({
-          name: item.querySelector("button")?.textContent ?? "",
-          side: item.querySelector("[data-peek-side]")?.textContent ?? "",
-        }))
-      );
-    const sections: Partial<Record<PeekSideLabel, string[]>> = {};
-    for (const { name, side } of rows)
-      (sections[side as PeekSideLabel] ??= []).push(name);
-    return sections;
   }
 
   /** The listed tools' names, by group, for the groups that list any. */

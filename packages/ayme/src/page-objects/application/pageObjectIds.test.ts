@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createPageObjectIds } from "./pageObjectIds";
+import { createPageObjectIds, createPageObjectIdSource } from "./pageObjectIds";
 
 /**
  * A page whose elements are named by the refs in `names`, each element by
@@ -161,5 +161,87 @@ describe("Page Object ids", () => {
 
     expect(reads).toEqual([["po1"], ["po1"]]);
     expect(await idsOf(ids, ["e1"])).toEqual(["po1"]);
+  });
+});
+
+describe("Page Object ids from a source a Host gives", () => {
+  it("never gives one id on two pages that share the source", async () => {
+    const source = createPageObjectIdSource();
+    const first = createPageObjectIds(page("e1", "e2").driver, source);
+    const second = createPageObjectIds(page("e1", "e2").driver, source);
+
+    expect(await idsOf(first, ["e1"])).toEqual(["po1"]);
+    expect(await idsOf(second, ["e1", "e2"])).toEqual(["po2", "po3"]);
+    expect(await idsOf(first, ["e2", "e1"])).toEqual(["po4", "po1"]);
+    expect(await first.rootOf("po2")).toBeUndefined();
+    expect(await second.rootOf("po2")).toEqual({ className: "A", ref: "e1" });
+  });
+
+  it("keeps an id while its element stays, never gives it to another Page Object, and gives two classes on one element two ids", async () => {
+    const source = createPageObjectIdSource();
+    const shown = page("e1");
+    const first = createPageObjectIds(shown.driver, source);
+    const second = createPageObjectIds(page("e1").driver, source);
+
+    expect(
+      await first.rootsOf([
+        { className: "A", ref: "e1" },
+        { className: "B", ref: "e1" },
+      ])
+    ).toEqual([
+      { id: "po1", ref: "e1" },
+      { id: "po2", ref: "e1" },
+    ]);
+    expect(await idsOf(second, ["e1"])).toEqual(["po3"]);
+
+    shown.rename("e1", "e5");
+    expect(await first.rootOf("po1")).toEqual({ className: "A", ref: "e5" });
+    expect(await idsOf(first, ["e5"])).toEqual(["po1"]);
+
+    shown.remove("e5");
+    shown.add("e1");
+    expect(await idsOf(first, ["e1"])).toEqual(["po4"]);
+    expect(await first.rootOf("po1")).toBeUndefined();
+    expect(await idsOf(second, ["e1"])).toEqual(["po3"]);
+  });
+
+  it("tells its source each id it forgets, once a read finds its element gone, and no other", async () => {
+    const released: string[] = [];
+    const numbered = createPageObjectIdSource();
+    const source = {
+      next: (className: string) => numbered.next(className),
+      released: (id: string) => released.push(id),
+    };
+    const shown = page("e1", "e2");
+    const ids = createPageObjectIds(shown.driver, source);
+    expect(await idsOf(ids, ["e1", "e2"])).toEqual(["po1", "po2"]);
+
+    shown.remove("e1");
+    shown.rename("e2", "e5");
+    expect(released).toEqual([]);
+    expect(await idsOf(ids, ["e5"])).toEqual(["po2"]);
+    expect(released).toEqual(["po1"]);
+
+    await idsOf(ids, ["e5"]);
+    expect(released).toEqual(["po1"]);
+  });
+
+  it("tells its source the class of each Page Object it gives an id", async () => {
+    const asked: string[] = [];
+    const numbered = createPageObjectIdSource();
+    const source = {
+      next: (className: string) => {
+        asked.push(className);
+        return numbered.next(className);
+      },
+    };
+    const ids = createPageObjectIds(page("e1").driver, source);
+
+    await ids.rootsOf([
+      { className: "A", ref: "e1" },
+      { className: "B", ref: "e1" },
+    ]);
+
+    expect(asked).toEqual(["A", "B"]);
   });
 });

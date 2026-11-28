@@ -1,7 +1,7 @@
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createAyme, type Ayme } from "@ayme-dev/ayme";
+import { describe, expect, it, vi } from "vitest";
+import type { Ayme } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
   registerCompiledPom,
@@ -32,14 +32,6 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
 
 type PageFactory = NonNullable<AymeProviderProps["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
-
-// The server's own session holds the process as its App Process, as in a
-// dev server with Peeks: a render whose session claimed it too would throw.
-let stopAppProcess = () => {};
-beforeEach(() => {
-  stopAppProcess = createAyme().start();
-});
-afterEach(() => stopAppProcess());
 
 describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",

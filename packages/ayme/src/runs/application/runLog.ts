@@ -138,16 +138,16 @@ function createRunLog() {
   const log: AymeRuns & {
     /**
      * Records `execute` as a Run of `tool`, started by `origin`, and returns
-     * its answer. `execute` is handed the Run's id. A Run `offPage` acts on
-     * no page, such as an App Process tool's: it takes no Interactions, so
-     * one made meanwhile stays the page Run's.
+     * its answer. `execute` is handed the Run's id. A Run its Host stopped is
+     * recorded failed with why the moment `stopped` fails, and what it
+     * answers later is not recorded: its Caller never received it.
      */
     record<T>(
       tool: string,
       input: unknown,
       origin: RunOrigin,
       execute: (id: string) => Promise<T>,
-      options?: { offPage?: boolean }
+      options?: { stopped?: Promise<never> }
     ): Promise<T>;
     /**
      * Records `interaction` as the innermost running Run's. Outside every
@@ -162,7 +162,7 @@ function createRunLog() {
         listeners.delete(listener);
       };
     },
-    async record(tool, input, origin, execute, { offPage = false } = {}) {
+    async record(tool, input, origin, execute, { stopped } = {}) {
       const id = String(nextId++);
       const started = performance.now();
       publish(
@@ -182,9 +182,12 @@ function createRunLog() {
           ) as Run,
         ])
       );
-      if (!offPage) running.push(id);
+      running.push(id);
+      let over = false;
       const end = (ended: Partial<RunFields>) => {
-        if (!offPage) running.splice(running.lastIndexOf(id), 1);
+        if (over) return;
+        over = true;
+        running.splice(running.lastIndexOf(id), 1);
         publish(
           runs.map((run) =>
             run.id === id
@@ -197,6 +200,9 @@ function createRunLog() {
           )
         );
       };
+      stopped?.catch((why: unknown) =>
+        end({ status: "failed", error: errorText(why) })
+      );
       let answer;
       try {
         answer = await execute(id);

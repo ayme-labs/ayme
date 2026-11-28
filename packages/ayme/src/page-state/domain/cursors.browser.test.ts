@@ -61,7 +61,7 @@ describe("Change Record cursors, in Chromium", () => {
     start();
 
     const first = await add(callers.inspector);
-    const second = await add(callers.aymeMcp);
+    const second = await add(callers.webmcp);
     const third = await add(callers.inspector);
 
     expect(first.changes).toContain("Item 1");

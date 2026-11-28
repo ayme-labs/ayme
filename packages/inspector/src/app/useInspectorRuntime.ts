@@ -128,9 +128,8 @@ export function useInspectorRuntime({
     [tools.live, elementToolTargets]
   );
   const runnableTools = useMemo(
-    () =>
-      listRunnableTools(registeredPoms, [...tools.live, ...tools.appProcess]),
-    [registeredPoms, tools.live, tools.appProcess]
+    () => listRunnableTools(registeredPoms, tools.live),
+    [registeredPoms, tools.live]
   );
 
   const { hover, pin } = highlight;
@@ -146,13 +145,8 @@ export function useInspectorRuntime({
     /**
      * The tools the panel can run now: `tools.live`, every tool the session
      * lists in publication order, published or not, available or not, each
-     * described as agents read it;
-     * `tools.appProcess`, the tools of
-     * the App Processes paired beside the page, run through the agent's
-     * ayme MCP server;
-     * `tools.publication`, the WebMCP publication status (a failure
-     * carries its error in `message`); and `tools.agentConnection`,
-     * whether the page is connected to a coding agent's ayme MCP server.
+     * described as agents read it; and `tools.publication`, the WebMCP
+     * publication status (a failure carries its error in `message`).
      */
     tools,
     /**

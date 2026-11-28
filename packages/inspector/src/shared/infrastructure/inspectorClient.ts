@@ -17,12 +17,10 @@ import {
 export const emptyInspectorState: InspectorState = Object.freeze({
   revision: 0,
   tools: Object.freeze([]),
-  appProcessTools: Object.freeze([]),
   publication: Object.freeze({
     state: "disposed",
     message: "No ayme runtime session has started.",
   }),
-  agentConnection: Object.freeze({ state: "off" }),
   runs: Object.freeze([]),
   pageObjects: Object.freeze([]),
   pomDefinitions: Object.freeze([]),
@@ -33,7 +31,7 @@ export const emptyInspectorState: InspectorState = Object.freeze({
  * newest state it has heard, tells its listeners when that changes, and
  * sends the Inspector's commands. The transport it is built on is the
  * contract itself: inline it is the runtime's own, called directly with no
- * serialization; a channel to `ayme mcp` is another, for an Inspector in a
+ * serialization; a channel to a Session is another, for an Inspector in a
  * window of its own. The lenses do not know which they have, but for how
  * the page's changes reach them (`external`).
  */
@@ -85,7 +83,7 @@ export function createInspectorClient(
   let held = emptyInspectorState;
   const listeners = new Set<() => void>();
   let stopTransport: (() => void) | undefined;
-  // Windows on one `ayme mcp` share the page's pick ids, so each client's own.
+  // Each client names its own picks, so two windows on one page never share one.
   const pickPrefix = Math.random().toString(36).slice(2, 10);
   let picks = 0;
 

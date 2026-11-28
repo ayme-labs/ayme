@@ -1,7 +1,8 @@
 // The dogfood page registers the Inspector's Page Object with the runtime,
 // which only a test or a dogfooding page does (ADR-0057 keeps apps out).
+// @boundaries-ignore A relative path, not `@ayme-dev/inspector/testing`: a Session of the `ayme` command loads an installed package's entry without building it, and this entry is TypeScript source.
 // eslint-disable-next-line testing-entries/no-restricted-imports
-import { Inspector as InspectorPom } from "@ayme-dev/inspector/testing";
+import { Inspector as InspectorPom } from "../../../../packages/inspector/testing/index";
 import type { Page } from "@playwright/test";
 
 /**

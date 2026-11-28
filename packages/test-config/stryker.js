@@ -23,8 +23,9 @@ export function defineStrykerConfig({ mutate = defaultMutate } = {}) {
     plugins: ["@stryker-mutator/vitest-runner"],
     vitest: { configFile: "vitest.fast.config.ts", related: true },
     ignoreStatic: !full,
-    // Two workers keep a local run light; CI's full lane takes every core.
-    ...(full ? {} : { concurrency: 2 }),
+    // Two workers keep a local run light, where several agents share the
+    // machine; a CI runner is the run's alone, so it takes every core.
+    ...(full || process.env.CI ? {} : { concurrency: 2 }),
     // Stryker copies the package into `<tempDir>/sandbox-*/`. With the temp
     // dir at the repository root, `<root>/.stryker-tmp-<package>/sandbox-*/`
     // stands as deep as `packages/<package>/`, so a path that climbs to the

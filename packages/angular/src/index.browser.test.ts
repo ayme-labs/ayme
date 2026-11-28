@@ -60,12 +60,12 @@ afterEach(() => {
 });
 
 it("C1: passes every runtime option to the session unchanged", async () => {
-  // Keep the optional Inspector and Agent Connection peers from loading; they
-  // may not be built or installed where these tests run.
+  // Keep the optional Inspector peer from loading; it may not be built or
+  // installed where these tests run.
   const { createAyme: actual } =
     await vi.importActual<typeof import("@ayme-dev/ayme")>("@ayme-dev/ayme");
   vi.mocked(createAyme).mockImplementationOnce((options) =>
-    actual({ ...options, inspector: false, agentConnection: false })
+    actual({ ...options, inspector: false })
   );
   const options: AymeOptions = {
     pageFactory,
@@ -81,7 +81,6 @@ it("C1: passes every runtime option to the session unchanged", async () => {
     navigate: vi.fn(),
     webMCP: { enabled: false, toolNamePrefix: "ayme_" },
     inspector: true,
-    agentConnection: true,
   };
   const root = environment([provideAyme(options)]);
   runInInjectionContext(root, injectAyme);

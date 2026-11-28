@@ -1,6 +1,6 @@
 # @ayme-dev/ayme
 
-The decorators, `createAyme` and the session it returns, and the other exports of `@ayme-dev/ayme` and its entries.
+The decorators, `createAyme` and the runtime it returns, and the other exports of `@ayme-dev/ayme` and its entries.
 
 ## Entries
 
@@ -183,7 +183,7 @@ The page state marks each row's root with its class, in place of its role, and i
     - e13 button "Remove"
 ```
 
-There is one `ProjectRow.remove` tool for both rows. Your code calls it through the session that [`createAyme`](#createayme) returns. Create it in your app's entry file, apart from the models, so its name does not clash with the `ayme` decorator:
+There is one `ProjectRow.remove` tool for both rows. Your code calls it through the runtime that [`createAyme`](#createayme) returns. Create it in your app's entry file, apart from the models, so its name does not clash with the `ayme` decorator:
 
 ```ts
 // main.ts
@@ -366,36 +366,35 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-The mark reaches agents only as the tool's standard annotation. ayme still lists and runs the tool like any other: it never asks for confirmation, refuses a call or hides the tool. What to do about the mark is up to whoever calls the tool.
+The mark only informs. ayme still lists and runs the tool like any other: it never asks for confirmation, refuses a call or hides the tool. What to do about the mark is up to whoever calls the tool.
 
-| Where the tool is published                 | What a marked tool carries                                                                                                                                 |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`ayme mcp`](../guides/connect-an-agent.md) | `annotations: { destructiveHint: true }`, in the tool list and in `ayme_list_tools`                                                                        |
-| [WebMCP](../guides/publish-tools.md)        | `annotations: { consequentialHint: true }`. WebMCP has no destructive hint; its consequential one is for actions that are significant or cannot be undone. |
-| [`ayme.tools.list()`](#toolinfo)            | `destructive: true`                                                                                                                                        |
-| The [Inspector](../guides/inspector.md)     | A warning icon in the Tools list and a Destructive mark beside the tool's name                                                                             |
+| Where the tool is published                   | What a marked tool carries                                                                                                                                 |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [WebMCP](../guides/publish-tools.md)          | `annotations: { consequentialHint: true }`. WebMCP has no destructive hint; its consequential one is for actions that are significant or cannot be undone. |
+| [`ayme.tools.list()`](#toolinfo)              | `destructive: true`                                                                                                                                        |
+| The [Inspector](../guides/inspector.md)       | A warning icon in the Tools list and a Destructive mark beside the tool's name                                                                             |
+| [`ayme tools`](../guides/connect-an-agent.md) | `destructive` after the tool's name, and `"destructive": true` with `--json`                                                                               |
 
-A tool without the mark carries no annotations at all, so ayme never says a tool is safe. MCP takes a tool without annotations as possibly destructive.
+A tool without the mark carries no annotations at all, so ayme never says a tool is safe.
 
 The build reads `destructive` from source, as it reads `description`, so it must be written as `true` or `false`. `false` is the same as leaving it out. A value from a variable, a spread, options held in a variable, or a computed key the build cannot resolve fails the build; see [Build plugin errors](./build-plugin.md#errors). A subclass inherits the mark with the action. A [Custom Tool](../guides/custom-tools.md#mark-a-destructive-custom-tool) takes the same option.
 
 ## createAyme
 
-`createAyme(options?)` creates a session, of type `Ayme`.
+`createAyme(options?)` creates a runtime, of type `Ayme`.
 
-| Option            | Type                                                                | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ----------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pageFactory`     | `() => Page`                                                        | Builds the browser Page the session drives. Never called during server rendering. Defaults to `createPage()`.                                                                                                                                                                                                                                                                                                                                      |
-| `ignore`          | `ElementFilter`: a CSS selector, or `(page: Page) => Locator`       | Drops matching elements and their descendants from the Structural Page State. A function gets the session's Page and returns a Locator. An element that matches later is dropped too. See [Page state](../guides/page-state.md).                                                                                                                                                                                                                   |
-| `customTools`     | `CustomTool[]`                                                      | Operations on one element. See [Custom Tools](../guides/custom-tools.md).                                                                                                                                                                                                                                                                                                                                                                          |
-| `pageObjects`     | `PageObjectConstructor[]`                                           | Page Object classes registered for the session's lifetime, one [`pom.register`](#aymepom) each when the session is created. See [Register Page Objects](../guides/publish-tools.md#register-page-objects).                                                                                                                                                                                                                                         |
-| `goalLoop`        | `GoalLoopDecisionFunction`                                          | [Experimental](experimental-apis.md). The decision function the Goal Loop calls, usually `decisionEndpoint(url)`. The `goal` tool exists only when it is set. See [Goals with Jev](../guides/goals-with-jev.md).                                                                                                                                                                                                                                   |
-| `webMCP`          | `AymeWebMcpOptions`                                                 | `{ enabled, toolNamePrefix }`. See [Publish tools](../guides/publish-tools.md).                                                                                                                                                                                                                                                                                                                                                                    |
-| `inspector`       | `boolean \| { placement?: "inline" \| "external"; demo?: boolean }` | Turns on the [Inspector](../guides/inspector.md) when the session starts in the browser. Off unless set. See [Inspector placement](#inspector-placement).                                                                                                                                                                                                                                                                                          |
-| `navigate`        | `(url: string) => unknown`                                          | Your client router's navigation, which the [`navigate` Browser Tool](browser-tools.md) calls instead of loading a new document. See below.                                                                                                                                                                                                                                                                                                         |
-| `agentConnection` | `boolean \| { link?: string; port?: number }`                       | Lets a coding agent's ayme MCP server pair with the session and call its tools while it is started: in the browser, the page; in Node, the process, as an App Process beside the page. Loads the optional `@ayme-dev/mcp` package on demand, so install it beside `@ayme-dev/ayme`. Off unless set. For an App Process, `link` (a connect link from `ayme_connect`) names one server, and `port` looks on that one port only; a page ignores both. |
+| Option        | Type                                                          | Meaning                                                                                                                                                                                                                                                                     |
+| ------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pageFactory` | `() => Page`                                                  | Builds the browser Page the runtime drives. Never called during server rendering. Defaults to `createPage()`.                                                                                                                                                               |
+| `ignore`      | `ElementFilter`: a CSS selector, or `(page: Page) => Locator` | Drops matching elements and their descendants from the Structural Page State. A function gets the runtime's Page and returns a Locator. An element that matches later is dropped too. See [Page state](../guides/page-state.md).                                            |
+| `customTools` | `CustomTool[]`                                                | Operations on one element. See [Custom Tools](../guides/custom-tools.md).                                                                                                                                                                                                   |
+| `pageObjects` | `PageObjectConstructor[]`                                     | Page Object classes registered for the runtime's lifetime, one [`pom.register`](#aymepom) each when the runtime is created. See [Register Page Objects](../guides/publish-tools.md#register-page-objects).                                                                  |
+| `goalLoop`    | `GoalLoopDecisionFunction`                                    | [Experimental](experimental-apis.md). The decision function the Goal Loop calls, usually `decisionEndpoint(url)`. The `goal` tool exists only when it is set. See [Goals with Jev](../guides/goals-with-jev.md).                                                            |
+| `webMCP`      | `AymeWebMcpOptions`                                           | `{ enabled, toolNamePrefix }`. See [Publish tools](../guides/publish-tools.md).                                                                                                                                                                                             |
+| `inspector`   | `boolean \| { demo?: boolean }`                               | Turns on the [Inspector](../guides/inspector.md), a panel in the page, when the runtime starts in the browser. It loads the optional `@ayme-dev/inspector` package on demand. Off unless set. `{ demo: true }` also turns on [demo mode](../guides/inspector.md#demo-mode). |
+| `navigate`    | `(url: string) => unknown`                                    | Your client router's navigation, which the [`navigate` Browser Tool](browser-tools.md) calls instead of loading a new document. See below.                                                                                                                                  |
 
-`ignore`, `customTools`, `goalLoop` and `navigate` take effect on `start()` and are cleared when the session stops.
+`ignore`, `customTools`, `goalLoop` and `navigate` take effect on `start()` and are cleared when the runtime stops.
 
 With `navigate`, the `navigate` tool moves through your router, so your app keeps its in-memory state. The function gets the absolute URL of a page on the document's own origin; the tool refuses other origins, and protocols other than `http:` and `https:`, before calling it. When it returns a promise, the tool waits for it and ignores its value, then waits for a Settled Page and answers with the Change Record; a rejection fails the call. If it starts a full load after all, the call answers as a [full page load](../guides/page-state.md#full-page-loads). A router that takes a path, such as Vue Router, gets the URL without its origin:
 
@@ -403,16 +402,7 @@ With `navigate`, the `navigate` tool moves through your router, so your app keep
 navigate: (url) => router.push(url.slice(location.origin.length)),
 ```
 
-`ayme.start()` makes the session the owner of the place it runs and turns on what its options ask for, and returns the function that stops it. In the browser that place is the document; in a Node process it is the process, which the session runs as its App Process (see [In Node](#in-node)). Each has one owner at a time: a start while the document or the process already has one throws a `RuntimeStateError` with `code: "active-owner"`; once that owner stops, a session can start again. The sessions the framework integrations create to render on the server never own anything: their `start()` starts nothing, so server rendering needs no guard and never conflicts with the process's App Process.
-
-### Inspector placement
-
-| `inspector`                               | Where the Inspector shows                                                                                                                                                                                    |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `true`, `{}` or `{ placement: "inline" }` | A panel in the page. It loads the optional `@ayme-dev/inspector` package on demand.                                                                                                                          |
-| `{ placement: "external" }`               | In a [window of its own](../guides/inspector.md#in-a-window-of-its-own), which `ayme mcp` serves. The page mounts no panel. It serves the Inspector over its Agent Connection, and turns that connection on. |
-
-Add `demo: true` to either object for [demo mode](../guides/inspector.md#demo-mode).
+`ayme.start()` makes the runtime the owner of the place it runs and turns on what its options ask for, and returns the function that stops it. That place is the document, which has one owner at a time: a start while the document already has one throws a `RuntimeStateError` with `code: "active-owner"`; once that owner stops, a runtime can start again. In Node, `start()` starts nothing, so server rendering needs no guard.
 
 ## ayme.tools
 
@@ -420,23 +410,23 @@ Add `demo: true` to either object for [demo mode](../guides/inspector.md#demo-mo
 
 Presence decides whether a Page Object Tool is listed. It is listed while any instance of its class is on the page. Availability decides whether a listed tool would run. An unavailable tool stays listed with `available: false`. Each consumer treats it like this:
 
-| Consumer                             | An unavailable tool is                        |
-| ------------------------------------ | --------------------------------------------- |
-| WebMCP publication, Agent Connection | Published. A call is refused with its reason. |
-| Goal Loop                            | Not offered.                                  |
-| Inspector                            | Shown dimmed, with its reason.                |
+| Consumer           | An unavailable tool is                        |
+| ------------------ | --------------------------------------------- |
+| WebMCP publication | Published. A call is refused with its reason. |
+| Goal Loop          | Not offered.                                  |
+| Inspector          | Shown dimmed, with its reason.                |
 
 | Member                      | Behavior                                                                                                                                                                                                                                                                                                                                                                                             |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `run(name, input, { by }?)` | Runs the tool as a Run for the Caller `by` names, `"app"` by default, the way an agent's call runs it. Browser Tools resolve with an `ActionResult`, except `generate_locator`, which resolves with its locators; `snapshot` with a `PageContextPayload`, `page_objects` with its text, `goal` with a `Handover`. Page Object Tools and Custom Tools resolve with an action result, typed `unknown`. |
-| `list()`                    | Every tool, in publication order, as [`ToolInfo`](#toolinfo) objects. Returns the same array until the list changes, and `[]` while the session is not started.                                                                                                                                                                                                                                      |
-| `subscribe(listener)`       | Calls `listener` with the new list after it changes: the session starts or stops, a class is registered for the first time or unregistered for the last, a Page Object appears on the page or leaves it, a tool becomes available or unavailable or its reason changes, or a Peek Tool appears or goes. Returns the function that unsubscribes.                                                      |
+| `list()`                    | Every tool, in publication order, as [`ToolInfo`](#toolinfo) objects. Returns the same array until the list changes, and `[]` while the runtime is not started.                                                                                                                                                                                                                                      |
+| `subscribe(listener)`       | Calls `listener` with the new list after it changes: the runtime starts or stops, a class is registered for the first time or unregistered for the last, a Page Object appears on the page or leaves it, a tool becomes available or unavailable or its reason changes, or a Peek Tool appears or goes. Returns the function that unsubscribes.                                                      |
 
 `run` checks a call in this order. Nothing runs until every check passes. Child Runs are checked the same way.
 
 | Check                                                                          | Fails with                                                                |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| `by` is not empty, and the session is started.                                 | `RuntimeStateError`                                                       |
+| `by` is not empty, and the runtime is started.                                 | `RuntimeStateError`                                                       |
 | A tool has the name.                                                           | `RuntimeStateError`: `There is no tool "<name>".`                         |
 | The input matches the tool's input schema. Leaving `input` out counts as `{}`. | `ToolInputError`, naming every problem. See [Errors](errors.md#messages). |
 | A rooted tool's `id` names a Page Object of its class on the page.             | `RefResolutionError`                                                      |
@@ -444,7 +434,7 @@ Presence decides whether a Page Object Tool is listed. It is listed while any in
 
 Errors from the browser Page pass through unchanged. `BuiltInTools` maps each built-in tool name to its input and result. `ToolInput<Name>` and `ToolResult<Name>` read them.
 
-Every Caller starts its Runs through `run`: WebMCP publication as `"webmcp"`, the ayme MCP server's page client as `"ayme-mcp"`, and your code as `"app"` unless it passes another name, such as `{ by: "support-assistant" }` for an in-app assistant. A Caller name is any non-empty string; use lowercase kebab-case, which is not enforced. `callers` holds the built-in names (`callers.app`, `callers.webmcp`, `callers.aymeMcp`, `callers.inspector`); `BuiltInCaller` is one of them, and `Caller` is any name. Each Caller name has its own Change Record cursor, the page that Caller last received, so a Run's Change Record starts at its Caller's own last page: `changes_before` up to the action, `changes` from there; two Callers under one name share one cursor.
+Every Caller starts its Runs through `run`: WebMCP publication as `"webmcp"`, the Inspector as `"inspector"`, and your code as `"app"` unless it passes another name, such as `{ by: "support-assistant" }` for an in-app assistant. A Caller name is any non-empty string; use lowercase kebab-case, which is not enforced. `callers` holds the built-in names (`callers.app`, `callers.webmcp`, `callers.inspector`); `BuiltInCaller` is one of them, and `Caller` is any name. Each Caller name has its own Change Record cursor, the page that Caller last received, so a Run's Change Record starts at its Caller's own last page: `changes_before` up to the action, `changes` from there; two Callers under one name share one cursor.
 
 Runs take turns: the page runs one at a time, in the order they were started, whatever their Callers. After an action, the next Run starts once the page has settled. A failed Run ends its turn like any other.
 
@@ -534,7 +524,7 @@ An element with no accessible name is named by its role alone, such as `dialog`.
 
 ## ayme.runs
 
-`ayme.runs` (`AymeRuns`) is the document's Run log: the Runs started through `ayme.tools.run`, by any Caller, each listed once its turn starts, and the child Runs a tool starts, each listed after the Run that started it. An App Process tool the Inspector runs from the page is listed too, as an `"inspector"` Run; it acts on no page, so it takes no turn.
+`ayme.runs` (`AymeRuns`) is the document's Run log: the Runs started through `ayme.tools.run`, by any Caller, each listed once its turn starts, and the child Runs a tool starts, each listed after the Run that started it.
 
 | Member                | Behavior                                                                                                                                                                                                                                                |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -569,7 +559,7 @@ A `Run` is one tool call in the log. Say your code removes Launch plan from [Act
 | `error`        | Failed Runs only: the error's message, prefixed with its name unless that is plain `Error`.             |
 | `startedAt`    | Epoch milliseconds.                                                                                     |
 | `durationMs`   | Absent while the Run is running.                                                                        |
-| `interactions` | The Interactions the Run performed itself on the session's Page, in order.                              |
+| `interactions` | The Interactions the Run performed itself on the runtime's Page, in order.                              |
 
 An `Interaction` is one input the Run gave the page. It is a click, fill, key press, hover or selection on an element, or a keyboard or mouse input.
 
@@ -582,16 +572,16 @@ An `Interaction` is one input the Run gave the page. It is a click, fill, key pr
 
 Waits, assertions, scrolls, focus changes and navigations are not Interactions. A child Run's Interactions are its own, not its parent's. So a `goal` Run lists none, and each step's child Run lists its own.
 
-A failed Run is still recorded, and `run` still throws. A failed WebMCP call is still an error result. This includes a call whose tool does not exist or is unavailable, and one made while the session is not started. Only an empty `by` throws without recording a Run, because there is no Caller to record.
+A failed Run is still recorded, and `run` still throws. A failed WebMCP call is still an error result. This includes a call whose tool does not exist or is unavailable, and one made while the runtime is not started. Only an empty `by` throws without recording a Run, because there is no Caller to record.
 
 ## ayme.pom
 
-`ayme.pom` (`AymePom`) holds one Page Object of each Page Object Model for the session.
+`ayme.pom` (`AymePom`) holds one Page Object of each Page Object Model for the runtime.
 
 | Member              | Behavior                                                                                                                                                                                                                                                    |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `get(Model)`        | Returns the instance, created on first use. Safe during rendering: on the server it returns an inert object with the model's prototype and never calls `pageFactory`.                                                                                       |
-| `register(Model)`   | Counts a registration and returns the instance. The class's tools are live while the session is started. Registrations made before `start()` take effect on start. On the server it registers nothing. See [Classes with one name](#classes-with-one-name). |
+| `register(Model)`   | Counts a registration and returns the instance. The class's tools are live while the runtime is started. Registrations made before `start()` take effect on start. On the server it registers nothing. See [Classes with one name](#classes-with-one-name). |
 | `unregister(Model)` | Removes one registration. The tools are withdrawn when the last one is removed.                                                                                                                                                                             |
 
 Every registration of a class shares one instance, so a Page Object should keep no per-component state in its own fields.
@@ -604,72 +594,36 @@ ayme tells classes apart by name. Say `ProjectsPage` is registered, and its `acc
 
 > **Experimental:** this may change in any release. See [Experimental APIs](experimental-apis.md).
 
-`ayme.peek(read, name, id?)` adds a Peek: a named view of app state that a coding agent reads on demand. It returns the function that removes it.
+`ayme.peek(read, name, id?)` adds a Peek: a named view of app state that the [Inspector](../guides/inspector.md) shows. It returns the function that removes it.
 
-- `read` returns the values when an agent asks, and may be async. The values go out as JSON: a property whose value is `undefined` is left out, so the agent cannot tell it from one the Peek does not have; a `Date` becomes its ISO string; and an instance whose `read` returns `undefined` reads `null`.
-- `name` is required; an empty name throws `RuntimeStateError`, and so does a name whose Peek Tool name another tool already uses, or, in the browser, a name starting with `node.`, whose tool would read as an App Process's. A tool that takes the name later wins, and the console warns that the Peek Tool is hidden. Each name has one Peek Tool, `peek.<name>` in the browser and `peek.node.<name>` in a Node process (an App Process), with characters outside `[A-Za-z0-9_.-]` replaced by `_`. It takes no input and returns `{ name, instances }`: per live instance, its `id` and either its `values` or the `error` its read threw.
+- `read` returns the values when its Peek Tool runs, and may be async. The values go out as JSON: a property whose value is `undefined` is left out, so the reader cannot tell it from one the Peek does not have; a `Date` becomes its ISO string; and an instance whose `read` returns `undefined` reads `null`.
+- `name` is required; an empty name throws `RuntimeStateError`, and so does a name whose Peek Tool name another tool already uses. A tool that takes the name later wins, and the console warns that the Peek Tool is hidden. Each name has one Peek Tool, `peek.<name>`, with characters outside `[A-Za-z0-9_.-]` replaced by `_`. It takes no input and returns `{ name, instances }`: per live instance, its `id` and either its `values` or the `error` its read threw.
 - There is one instance per (`name`, `id`). A later call with the same `id` updates that instance's `read`. Without an `id` there is one instance per name, and a later call replaces the earlier one, so a module that runs again replaces its Peek.
 - The tool goes when its last instance is removed. An instance removed and added again in one go, such as by React StrictMode's remount, keeps it.
 
-Peek Tools are in `ayme.tools` and reach coding agents through the Agent Connection and the Inspector. WebMCP never publishes them, and the Goal Loop never offers them. A call answers at once, without waiting for a Settled Page. `ayme.peek` does nothing unless the session has `agentConnection` on, or `inspector` in the browser.
+Peek Tools are in `ayme.tools`, and the Inspector lists and runs them. No coding agent reaches them: WebMCP never publishes them, the Goal Loop never offers them, and a Session of the `ayme` command lists Page Object Tools only. A call answers at once, without waiting for a Settled Page. `ayme.peek` does nothing unless the runtime has `inspector` on, and does nothing in Node.
 
 ### What a Peek exposes
 
-Through the Agent Connection, whatever `read` returns goes to the coding agent unchanged, and from the agent's context to its model provider, as a page snapshot does; the Inspector shows it to you. ayme sends it nowhere else. A Peek is live only while the Agent Connection or the Inspector is on, which you turn on in development only; there is no production guard. `read` is where you decide what the agent sees: return only what you would paste into a chat with that provider. Pick the fields rather than handing over a whole record, and a class with a `toJSON` method controls its own shape:
+The Inspector shows you whatever `read` returns; ayme sends it nowhere else. A Peek is live only while the Inspector is on, which you turn on in development only; there is no production guard. Pick the fields rather than handing over a whole record, and a class with a `toJSON` method controls its own shape:
 
 ```ts
 ayme.peek(() => ({ id: user.id, name: user.name }), "user"); // not the whole user, with its email and token
 ```
 
-### In Node
-
-In Node, `start()` makes the session the process's App Process, unless a framework integration created the session to render a request. It needs no page, and the session's tools are its Peek Tools alone; with `agentConnection` the process pairs with the agent's ayme MCP server beside the page. Without `agentConnection` the session still owns the process, but connects nothing and offers no Peeks. A process has one App Process, so start one session per process, once, in the server's entry point.
-
-Peeks follow one rule on both sides: start the connection where the process starts, and define each Peek in the module that owns the state it reads. In the browser, that is the component, with your framework's Peek hook. In Node, it is the module that holds the state, or one next to it that the same code imports. The App Process offers the Peeks of every session in the process that has `agentConnection` on, so that module needs no started session: it creates its own with `agentConnection` on in development and calls `peek` on it. When a dev server evaluates the module again after an edit, its new `ayme.peek` call replaces the old instance, so the Peek reads the new code.
-
-In Next.js, start the App Process in `instrumentation.ts`, which runs once when the server starts:
-
-```ts
-// instrumentation.ts
-export async function register() {
-  if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  if (process.env.NODE_ENV === "production") return;
-  const { createAyme } = await import("@ayme-dev/ayme");
-  createAyme({ agentConnection: true }).start();
-}
-```
-
-Define the Peeks in a module that request code imports, such as one the root layout imports:
-
-```ts
-// app/server-peeks.ts, imported by app/layout.tsx
-import { createAyme } from "@ayme-dev/ayme";
-import { db } from "./db";
-
-createAyme({
-  agentConnection: process.env.NODE_ENV !== "production",
-}).peek(async () => ({ users: await db.user.count() }), "users");
-```
-
-Do not add Peeks in `register()`. `next dev` never evaluates `instrumentation.ts` again, not even after you edit it, and the modules it imports get their own copies, apart from the ones pages, layouts and Server Actions use. A Peek added there reads that copy: state request code changed does not show in it, and after an edit to the module it reads, it keeps running the old code until `next dev` restarts. A Peek in request code reads the same modules the page does. After an edit, it runs the old code until the next request evaluates its module again, so load a page after editing server code.
-
-In Nuxt, start it in a Nitro server plugin, as the [Nuxt example](https://github.com/ayme-labs/ayme/blob/main/apps/example-nuxt/README.md#peeks) does.
-
-The process finds the agent's server the way a tab does: it pairs only when exactly one ayme MCP server answers on the ports from 9350 to 9365. While unpaired it looks again every few seconds, and again when its server goes away, so a dev server started before the agent pairs once the agent is up. With several servers running, name one with `agentConnection: { link }` or `{ port }`. Read these from your own environment if you need them; ayme reads none. Component Peeks register only after mount in the browser, so server rendering adds none to the process. While the tab is paired with that server too, its Inspector lists the process's Peek Tools in the Node section of its Peek tools and runs them through the server. The [`@ayme-dev/mcp` README](https://github.com/ayme-labs/ayme/blob/main/packages/mcp/README.md#app-processes) covers the pairing and what happens when two App Processes offer one name.
-
 ## ayme.webMCP
 
-`ayme.webMCP` (`AymeWebMcp`) is the session's WebMCP publication.
+`ayme.webMCP` (`AymeWebMcp`) is the runtime's WebMCP publication.
 
 | Member                | Behavior                                                                                                                                                                                                                                                     |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `publicationStatus`   | `{ state, message }`. `state` is `disabled` (publication off), `waiting` (for a WebMCP driver), `active` (published), `unavailable` (no driver within two seconds), `failed` (such as `@ayme-dev/webmcp` not installed) or `disposed` (the session stopped). |
+| `publicationStatus`   | `{ state, message }`. `state` is `disabled` (publication off), `waiting` (for a WebMCP driver), `active` (published), `unavailable` (no driver within two seconds), `failed` (such as `@ayme-dev/webmcp` not installed) or `disposed` (the runtime stopped). |
 | `subscribe(listener)` | Calls `listener` with each new status. Returns the function that unsubscribes.                                                                                                                                                                               |
 | `retryPublication()`  | Tries again after `unavailable` or `failed`. Pending attempts are shared, and an active publication is not repeated.                                                                                                                                         |
 
 ## createPage
 
-`createPage(options?)` builds the browser Page the session drives by default. Its options are `testIdAttribute`, `actionTimeout` and `navigationTimeout`. Each one resolves on its own. The value you pass wins. Next come the Playwright settings the [build plugin](build-plugin.md) compiled in, then the built-in default. The built-in defaults are 1 second for `actionTimeout` and 30 seconds for `navigationTimeout`. `createPage()` with no options is the session's default Page. `actionTimeout` also bounds element reads such as `boundingBox`, so an action on a locator that matches nothing fails instead of waiting forever. Navigation keeps its own default whatever `actionTimeout` is; pass `navigationTimeout` to change it. Pass a factory as `pageFactory` to own page construction: without the Vite plugin, with a timeout that differs from your build, or wrapped in your own instrumentation.
+`createPage(options?)` builds the browser Page the runtime drives by default. Its options are `testIdAttribute`, `actionTimeout` and `navigationTimeout`. Each one resolves on its own. The value you pass wins. Next come the Playwright settings the [build plugin](build-plugin.md) compiled in, then the built-in default. The built-in defaults are 1 second for `actionTimeout` and 30 seconds for `navigationTimeout`. `createPage()` with no options is the runtime's default Page. `actionTimeout` also bounds element reads such as `boundingBox`, so an action on a locator that matches nothing fails instead of waiting forever. Navigation keeps its own default whatever `actionTimeout` is; pass `navigationTimeout` to change it. Pass a factory as `pageFactory` to own page construction: without the Vite plugin, with a timeout that differs from your build, or wrapped in your own instrumentation.
 
 ```ts
 createAyme({ pageFactory: () => createPage({ actionTimeout: 500 }) });

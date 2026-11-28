@@ -1,20 +1,15 @@
 import type { AymeOptions } from "./runtime";
 
 /**
- * What the `inspector` option turns on: where the Inspector runs (`off`,
- * `inline` in the page, or `external` in a window of its own) and whether
- * the session asks for Demo Mode. `true` and `{ demo }` are inline.
+ * What the `inspector` option turns on: whether the Inspector mounts in the
+ * page, and whether the session asks for Demo Mode.
  */
 export function inspectorSetting({ inspector }: AymeOptions): {
-  placement: "off" | "inline" | "external";
+  on: boolean;
   demo: boolean;
 } {
-  if (!inspector) return { placement: "off", demo: false };
-  if (inspector === true) return { placement: "inline", demo: false };
-  return {
-    placement: inspector.placement === "external" ? "external" : "inline",
-    demo: inspector.demo === true,
-  };
+  if (!inspector) return { on: false, demo: false };
+  return { on: true, demo: inspector !== true && inspector.demo === true };
 }
 
 /**

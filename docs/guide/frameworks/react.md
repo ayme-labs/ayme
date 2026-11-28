@@ -4,11 +4,11 @@ Everything about ayme in a React app: setup, the provider, hooks, server renderi
 
 ## Setup
 
-Install ayme, the React package and the build plugin, with the Inspector and the Agent Connection for development, as the [React quickstart](../start/quickstart-react.md) does:
+Install ayme, the React package and the build plugin, with the Inspector and the `ayme` command for development, as the [React quickstart](../start/quickstart-react.md) does:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/react
-npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/cli
 ```
 
 On Vite, add the plugin alongside the React plugin:
@@ -29,7 +29,7 @@ On Next.js, use the Turbopack loader, as the [build plugin reference](../referen
 
 ## Start ayme at the root
 
-Wrap the app in `AymeProvider`, with the Inspector and the Agent Connection in development:
+Wrap the app in `AymeProvider`, with the Inspector in development:
 
 ```tsx
 import { StrictMode } from "react";
@@ -39,17 +39,14 @@ import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AymeProvider
-      inspector={import.meta.env.DEV}
-      agentConnection={import.meta.env.DEV}
-    >
+    <AymeProvider inspector={import.meta.env.DEV}>
       <App />
     </AymeProvider>
   </StrictMode>
 );
 ```
 
-The provider takes the [`createAyme` options](../reference/ayme.md#createayme) as props, such as `pageFactory`, `ignore`, `pageObjects`, `inspector` and `agentConnection`. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
+The provider takes the [`createAyme` options](../reference/ayme.md#createayme) as props, such as `pageFactory`, `ignore`, `pageObjects` and `inspector`. Your coding agent then reaches your Page Objects once you finish [Set up your project](../guides/connect-an-agent.md#set-up-your-project), which also installs Playwright at a version the `ayme` command supports.
 
 ## Root ownership
 
@@ -57,9 +54,9 @@ The props must stay fixed while the provider is mounted; remount the provider an
 
 Only one owner can run ayme in a document. A provider nested inside another provider throws. A second provider elsewhere in the tree, or a `createAyme().start()` outside React, is rejected while the first owner runs. Unmounting the provider stops publication and observation.
 
-Strict Mode's effect replay in development keeps the session's Page and Page Objects.
+Strict Mode's effect replay in development keeps the runtime's Page and Page Objects.
 
-Wrap the application root, not a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout`, and the provider with it. Unmounting the provider stops ayme and closes the agent connection. The agent can lose the answer to its call.
+Wrap the application root, not a route component or a layout that unmounts on navigation. Suppose `AymeProvider` sits in a `ProjectsLayout` that renders only under `/projects`. An agent calls a `ProjectsPage` action that clicks the Settings link. The router leaves `/projects` and unmounts `ProjectsLayout`, and the provider with it. Unmounting the provider stops ayme and withdraws the tools it publishes through WebMCP. The agent can lose the answer to its call.
 
 ## Hooks
 
@@ -78,7 +75,6 @@ createRoot(document.getElementById("root")!).render(
     <AymeProvider
       pageObjects={[ProjectsPage, SettingsPage]}
       inspector={import.meta.env.DEV}
-      agentConnection={import.meta.env.DEV}
     >
       <App />
     </AymeProvider>
@@ -86,7 +82,7 @@ createRoot(document.getElementById("root")!).render(
 );
 ```
 
-Call the hooks in descendants of the provider. A component that calls an action gets the session's instance from `usePageObject`, which also registers the class while the component is mounted:
+Call the hooks in descendants of the provider. A component that calls an action gets the runtime's instance from `usePageObject`, which also registers the class while the component is mounted:
 
 ```tsx
 import { usePageObject } from "@ayme-dev/react";
@@ -103,8 +99,8 @@ export default function Controls() {
 }
 ```
 
-- `usePageObject(Model)` returns the session's instance of the class immediately and registers the class after commit. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. When the model class changes while the component stays mounted, as after a Fast Refresh edit, it returns the new class's instance and the old class's registration is removed. Unmounting it removes its registration.
-- `useAyme()` returns the provider's session, `ayme`, and its WebMCP publication, `webMCP`.
+- `usePageObject(Model)` returns the runtime's instance of the class immediately and registers the class after commit. The runtime keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. When the model class changes while the component stays mounted, as after a Fast Refresh edit, it returns the new class's instance and the old class's registration is removed. Unmounting it removes its registration.
+- `useAyme()` returns the provider's runtime, `ayme`, and its WebMCP publication, `webMCP`.
 
 Hooks need the provider in an ancestor component, and throw without it. A hook in the component that renders the provider throws too:
 
@@ -128,11 +124,7 @@ npm install @ayme-dev/webmcp
 Then add `webMCP` to the provider's props:
 
 ```tsx
-<AymeProvider
-  inspector={import.meta.env.DEV}
-  agentConnection={import.meta.env.DEV}
-  webMCP={{ enabled: true }}
->
+<AymeProvider inspector={import.meta.env.DEV} webMCP={{ enabled: true }}>
   <App />
 </AymeProvider>
 ```
@@ -169,10 +161,7 @@ import { AymeProvider } from "@ayme-dev/react";
 
 export default function AymeRuntime({ children }: { children: ReactNode }) {
   return (
-    <AymeProvider
-      inspector={process.env.NODE_ENV === "development"}
-      agentConnection={process.env.NODE_ENV === "development"}
-    >
+    <AymeProvider inspector={process.env.NODE_ENV === "development"}>
       {children}
     </AymeProvider>
   );

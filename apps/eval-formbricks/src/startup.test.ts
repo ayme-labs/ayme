@@ -4,11 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Client } from "@modelcontextprotocol/client";
-import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
-import type { McpServer } from "./arms.ts";
 import { aymeSkillSource } from "./ayme.ts";
 import { labRoot } from "./paths.ts";
 import {
@@ -82,7 +79,7 @@ describe("runStartup", () => {
   it("sends one message, which names the skill and no reference", async () => {
     const { stored } = await start("startup-exact.jsonl");
     const message =
-      "Get ready to drive the web page that is already open and connected through ayme. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n";
+      "Get ready to drive the web page that is already open in the browser your automation drives, with a Session of the ayme command connected to it. Load the `ayme` skill now with the Skill tool and read the references it points you to for this work. Read no file outside that skill's folder and don't use the browser; just reply ready.\n";
     expect(await stored("setup-prompt.txt")).toBe(message);
     const stderr = await stored("stderr.log");
     expect(stderr).toContain(`user message 1: ${message}`);
@@ -90,9 +87,7 @@ describe("runStartup", () => {
   });
 
   it("runs in the lab app folder with the skill copied and read-only tools, no MCP server and nothing else readable", async () => {
-    const { runDir, stored } = await start("startup-exact.jsonl", {
-      scenario: { ...scenario, tools: undefined },
-    });
+    const { runDir, stored } = await start("startup-exact.jsonl");
     const stderr = await stored("stderr.log");
     const skillDir = path.join(runDir, "claude-config/skills/ayme");
     expect(stderr).toContain(`started in ${labRoot} with`);
@@ -104,36 +99,6 @@ describe("runStartup", () => {
     expect(existsSync(path.join(runDir, "claude-config"))).toBe(false);
   });
 
-  it("gives a tool list a stub `ayme` server, which lists those tools and answers a call", async () => {
-    const tools = [
-      { name: "ayme_list_tools", description: "Lists the tools." },
-      { name: "SurveyEditorPage.saveAndClose", description: "Saves." },
-    ];
-    const { stored, result } = await start("startup-exact.jsonl", {
-      scenario: { ...scenario, tools },
-    });
-    expect(result.pass).toBe(true);
-    const { mcpServers } = JSON.parse(await stored("mcp.json")) as {
-      mcpServers: Record<string, McpServer>;
-    };
-    expect(Object.keys(mcpServers)).toEqual(["ayme"]);
-
-    const client = new Client({ name: "the-test", version: "0.0.0" });
-    await client.connect(new StdioClientTransport(mcpServers.ayme));
-    const listed = await client.listTools();
-    expect(
-      listed.tools.map(({ name, description }) => ({ name, description }))
-    ).toEqual(tools);
-    expect(
-      await client.callTool({ name: "SurveyEditorPage.saveAndClose" })
-    ).toMatchObject({
-      content: [
-        { type: "text", text: "SurveyEditorPage.saveAndClose is a stub." },
-      ],
-    });
-    await client.close();
-  });
-
   it("fails a run that reads one reference too many", async () => {
     const { result } = await start("startup-extra-reference.jsonl", {
       scenario: { ...scenario, forbidden: [] },
@@ -141,20 +106,20 @@ describe("runStartup", () => {
     expect(result.pass).toBe(false);
     expect(result.filesRead).toEqual([
       "references/page-tools.md",
-      "references/peeks.md",
+      "references/browser-setup.md",
     ]);
     expect(result.failed).toEqual([
       {
         condition: "expected-files-read",
         detail:
-          "expected references/page-tools.md; read references/page-tools.md, references/peeks.md",
+          "expected references/page-tools.md; read references/page-tools.md, references/browser-setup.md",
       },
     ]);
   });
 
   it("names a forbidden reference on its own", async () => {
     const { result } = await start("startup-extra-reference.jsonl", {
-      scenario: { ...scenario, forbidden: ["references/peeks.md"] },
+      scenario: { ...scenario, forbidden: ["references/browser-setup.md"] },
     });
     expect(result.failed.map(({ condition }) => condition)).toEqual([
       "expected-files-read",
@@ -166,7 +131,7 @@ describe("runStartup", () => {
     const allowing = {
       ...scenario,
       forbidden: [],
-      allowed: ["references/peeks.md"],
+      allowed: ["references/browser-setup.md"],
     };
     const read = await start("startup-extra-reference.jsonl", {
       scenario: allowing,
@@ -174,7 +139,7 @@ describe("runStartup", () => {
     expect(read.result.pass).toBe(true);
     expect(read.result.filesRead).toEqual([
       "references/page-tools.md",
-      "references/peeks.md",
+      "references/browser-setup.md",
     ]);
     const unread = await start("startup-exact.jsonl", { scenario: allowing });
     expect(unread.result.pass).toBe(true);
@@ -192,7 +157,8 @@ describe("runStartup", () => {
     expect(result.failed).toEqual([
       {
         condition: "expected-files-read",
-        detail: "expected references/live-mapping.md; read references/peeks.md",
+        detail:
+          "expected references/live-mapping.md; read references/browser-setup.md",
       },
     ]);
   });

@@ -13,27 +13,10 @@ An experimental API belongs to a feature ayme keeps but whose shape is not settl
 
 ## The Goal Loop
 
-- `goalLoop` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the session option that turns the Goal Loop and its `goal` tool on, in [Goals with Jev](../guides/goals-with-jev.md).
+- `goalLoop` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the runtime option that turns the Goal Loop and its `goal` tool on, in [Goals with Jev](../guides/goals-with-jev.md).
 - `decisionEndpoint(url, options?)` in `@ayme-dev/ayme`: the decision function that posts each step to your Decision Endpoint, in [`decisionEndpoint`](decision-endpoint.md#decisionendpoint).
 - `createDecisionEndpoint(options)` in `@ayme-dev/ayme/server`: the Decision Endpoint's handler, in [`createDecisionEndpoint`](decision-endpoint.md#createdecisionendpoint).
 
 ## WebMCP publication
 
-- `webMCP` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the session option that publishes the session's tools through WebMCP, to an agent that runs in the browser, in [Publish tools](../guides/publish-tools.md).
-
-## Page Objects that `ayme mcp` serves
-
-- `--page-objects <file>` of `ayme mcp` in `@ayme-dev/mcp`: names the entry the server builds and serves, in [Page Objects on a page without ayme](../guides/page-objects-without-ayme.md).
-
-`ayme mcp` in `@ayme-dev/mcp` can serve your Page Object Models to a page that doesn't ship ayme. The entry is a module whose default export lists the classes, as `createAyme`'s `pageObjects` option takes them:
-
-```ts
-// ayme/page-objects.ts
-import { ProjectsPage } from "./pom/ProjectsPage";
-
-export default [ProjectsPage];
-```
-
-Without `--page-objects`, `ayme mcp` serves `ayme/page-objects.ts` if the project has one. `--page-objects <file>` names another entry. The server builds the entry and serves it. It also writes `ayme/init-script.js`, which your browser automation loads into the page as an init script. The script starts ayme in the page, with the Agent Connection on, and registers the classes.
-
-`ayme/page-objects.ts` and `ayme/init-script.js` are experimental with the flag: a release may rename or move them, as it may the flag.
+- `webMCP` in `@ayme-dev/ayme` and `@ayme-dev/vue`: the runtime option that publishes the runtime's tools through WebMCP, to an agent that runs in the browser, in [Publish tools](../guides/publish-tools.md).

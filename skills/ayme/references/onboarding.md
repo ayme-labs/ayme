@@ -11,11 +11,11 @@
    the quickstart's `ProjectsPage`.
 4. For a framework without an ayme package, report that gap and stop at the
    documented integrations.
-5. Follow [Browser setup](browser-setup.md), then invoke the exposed action
-   through ayme's MCP server.
-
-When installing the skill elsewhere, keep the references directory and these
-links.
+5. Set the project up for the `ayme` command as
+   [Browser setup](browser-setup.md) says, start a Session beside your
+   browser automation as
+   [Browser automation tools](browser-automation-tools.md) says, then invoke
+   the exposed action with `ayme call`.
 
 Finish by reporting the packages and wiring changed, the action invoked, and
 its observed effect. If browser or client access is unavailable, distinguish

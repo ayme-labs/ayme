@@ -4,7 +4,7 @@ import { version } from "../package.json";
 import { planOf } from "./plan";
 
 // What the command line does for each command it has read: print and stop,
-// or hand over to one of the four things it runs.
+// or record with `ayme capture`.
 
 describe("what the command line does for a command", () => {
   it("prints the usage text for help on stdout, and exits with 0", () => {
@@ -34,53 +34,38 @@ describe("what the command line does for a command", () => {
     });
   });
 
-  it("records a URL, with the window setting and the storage state files when they were given", () => {
-    expect(planOf({ kind: "codegen", url: "http://localhost" })).toEqual({
-      kind: "codegen",
-      target: { url: "http://localhost", headless: undefined },
-    });
-    expect(
-      planOf({ kind: "codegen", url: "http://localhost", headless: true })
-    ).toEqual({
-      kind: "codegen",
-      target: { url: "http://localhost", headless: true },
-    });
+  it("records the target it was given, a URL or a running browser", () => {
     expect(
       planOf({
-        kind: "codegen",
-        url: "http://localhost",
-        startRecording: true,
-        loadStorage: "auth.json",
-        saveStorage: "saved.json",
+        kind: "capture",
+        target: {
+          url: "http://localhost",
+          startRecording: true,
+          loadStorage: "auth.json",
+        },
       })
     ).toEqual({
-      kind: "codegen",
+      kind: "capture",
       target: {
         url: "http://localhost",
-        headless: undefined,
         startRecording: true,
         loadStorage: "auth.json",
-        saveStorage: "saved.json",
       },
     });
+    expect(
+      planOf({ kind: "capture", target: { cdp: "http://127.0.0.1:9222" } })
+    ).toEqual({ kind: "capture", target: { cdp: "http://127.0.0.1:9222" } });
   });
 
-  it("records a running browser at its address", () => {
-    expect(
-      planOf({ kind: "attach", cdpEndpoint: "http://127.0.0.1:9222" })
-    ).toEqual({
-      kind: "codegen",
-      target: { cdpEndpoint: "http://127.0.0.1:9222" },
-    });
-  });
-
-  it("hands install and trace their arguments as they are", () => {
-    expect(
-      planOf({ kind: "install", args: ["--with-deps", "chromium"] })
-    ).toEqual({ kind: "install", args: ["--with-deps", "chromium"] });
-    expect(planOf({ kind: "trace", args: ["latest"] })).toEqual({
-      kind: "trace",
-      args: ["latest"],
-    });
+  it.each([
+    { kind: "open", open: { headed: false }, json: true },
+    { kind: "attach", cdp: "http://127.0.0.1:9222", json: false },
+    { kind: "ask", request: { detach: {} }, json: false, session: "review" },
+    { kind: "call", tool: "Basket.add", params: "@add.json", json: false },
+    { kind: "list", json: false },
+    { kind: "session process", options: "{}" },
+    { kind: "mcp", session: "shop" },
+  ] as const)("reaches a Session as the command asks: $kind", (command) => {
+    expect(planOf(command)).toEqual(command);
   });
 });

@@ -14,7 +14,10 @@ export function renderInspector(
   {
     windowed = false,
     fullscreen,
-  }: { windowed?: boolean; fullscreen?: WindowFullscreen } = {}
+  }: {
+    windowed?: boolean;
+    fullscreen?: WindowFullscreen;
+  } = {}
 ) {
   return renderInShadowRoot(
     shadowRoot,

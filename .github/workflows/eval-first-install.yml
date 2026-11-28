@@ -76,8 +76,8 @@ jobs:
           node src/pack.ts --ref "$REF" --out "$RUNNER_TEMP/packed"
           echo "sha=$(node -p 'require(process.env.RUNNER_TEMP + "/packed/meta.json").sha')" >> "$GITHUB_OUTPUT"
       # The task done by a script instead of a worker: proves the registry,
-      # the install, the fixture and the served Page Objects fit together
-      # before any model is paid for.
+      # the install of the ayme command, a Session on the fixture app and the
+      # recorder fit together before any model is paid for.
       - name: Self-check
         working-directory: apps/eval-first-install
         run: node src/run.ts --tool playwright-cli --agent none --packed "$RUNNER_TEMP/packed" --out results/self-check

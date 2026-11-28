@@ -1,1 +1,1 @@
-export { findTrace, saveRecording, type TraceLookup } from "./recordingStore";
+export { saveRecording } from "./recordingStore";

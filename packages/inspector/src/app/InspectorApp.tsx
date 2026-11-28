@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useInspectorRuntime } from "./useInspectorRuntime";
 import { Empty } from "../shared/view";
@@ -37,8 +37,10 @@ import { decodeViewState, viewStateKey, withSelection } from "./viewState";
  * The Inspector: the runtime's data wired into the panel. It owns
  * the one selection the navigator, the detail pane and Runs share, and
  * keeps where the person was in it for the tab. `windowed` fills a window of
- * the Inspector's own, outside the page it shows, in place of the dockable
+ * the Inspector's own, which a Session serves, in place of the dockable
  * panel; `fullscreen` is what an Agent App that shows that window offers.
+ * No agent reaches a Session through WebMCP, so a window's header leaves out
+ * the Connections pill that tells of it.
  */
 export function InspectorApp({
   windowed = false,
@@ -60,8 +62,7 @@ export function InspectorApp({
     () => new Set()
   );
   const { copied, copy } = useCopy();
-  // A window that has heard nothing from a page has no page serving the
-  // contract: none is paired, or its session is inline.
+  // A window whose Session told it no Tab, or nothing yet, holds no state.
   const client = inspectorClient();
   const heardNothing = useInspectorState(client).revision === 0;
   const unserved = windowed && client.external && heardNothing;
@@ -74,8 +75,7 @@ export function InspectorApp({
     view: viewState.runs,
     onViewChange: (runs) => setViewState((current) => ({ ...current, runs })),
   });
-  const { live, appProcess } = runtime.tools;
-  const tools = useMemo(() => [...live, ...appProcess], [live, appProcess]);
+  const { live } = runtime.tools;
 
   const lenses: Lens[] = [
     modelLens({
@@ -108,7 +108,7 @@ export function InspectorApp({
       onUnfoldedChainsChange: setUnfoldedChains,
     }),
     toolsLens({
-      tools,
+      tools: live,
       definitionText: runtime.definitionText,
       selection,
       onSelect: setSelection,
@@ -149,12 +149,8 @@ export function InspectorApp({
   }, [stale, pageStateRead, setViewState]);
   const detail = unserved ? (
     <Empty>
-      No page is serving the Inspector. Pair a page with this ayme mcp, and
-      start that page&apos;s ayme session with{" "}
-      <code>
-        inspector: {"{"} placement: &quot;external&quot; {"}"}
-      </code>
-      .
+      This Session has no Tab open. Once a tab is open in its browser, the
+      Inspector shows it.
     </Empty>
   ) : (
     ((stale ? viewOf(pageSelection) : view) ?? (
@@ -162,15 +158,6 @@ export function InspectorApp({
     ))
   );
 
-  const status = (
-    <Connections
-      agent={runtime.tools.agentConnection}
-      webMCP={runtime.tools.publication}
-      tools={live}
-      onCopy={copy}
-      copied={copied}
-    />
-  );
   const inspectorBody = (
     <InspectorBody
       layout={windowed ? "bottom" : preferences.layout}
@@ -196,7 +183,6 @@ export function InspectorApp({
         <WindowShell
           theme={preferences.theme}
           onThemeChange={(theme) => updatePreferences({ theme })}
-          status={status}
           fullscreen={fullscreen}
         >
           {inspectorBody}
@@ -206,7 +192,14 @@ export function InspectorApp({
           preferences={preferences}
           onPreferencesChange={updatePreferences}
           reserveHost={reserveHost}
-          status={status}
+          status={
+            <Connections
+              webMCP={runtime.tools.publication}
+              tools={live}
+              onCopy={copy}
+              copied={copied}
+            />
+          }
         >
           {inspectorBody}
         </InspectorShell>

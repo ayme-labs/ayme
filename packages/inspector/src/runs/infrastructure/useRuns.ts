@@ -17,6 +17,7 @@ import {
 import type {
   CollectionItem,
   InteractionDescription,
+  Run,
   ToolArguments,
 } from "../domain/run";
 import { recordedTargetName } from "../domain/recordedTarget";
@@ -45,7 +46,8 @@ type PendingRun = {
  * collection item its ref named when it started, and each Run's
  * Interactions, named by the member they acted on once it ends. The rows
  * shown are kept for the tab, so a reload still shows them, as earlier page rows. `invoke` runs a
- * tool as the Inspector.
+ * tool as the Inspector; a Run refused before it started, which the log
+ * never lists, shows as failed with why.
  */
 export function useRuns({
   onSettled,
@@ -69,6 +71,8 @@ export function useRuns({
     notes: ReadonlyMap<string, RunNotes>;
   }>({ runs: NO_RUNS, notes: NO_NOTES });
   const pending = useRef<PendingRun[]>([]);
+  // The panel's Runs refused before they started, newest first.
+  const [refused, setRefused] = useState<readonly Run[]>([]);
 
   useEffect(() => {
     const note = (rowId: string, notes: RunNotes) => {
@@ -217,13 +221,16 @@ export function useRuns({
 
   const runs = useMemo(
     () =>
-      shownRuns({
-        log: log.runs,
-        notes: log.notes,
-        earlier,
-        clearedAt,
-      }),
-    [log, earlier, clearedAt]
+      [
+        ...refused.filter((run) => run.startedAt > clearedAt),
+        ...shownRuns({
+          log: log.runs,
+          notes: log.notes,
+          earlier,
+          clearedAt,
+        }),
+      ].sort((a, b) => b.startedAt - a.startedAt),
+    [refused, log, earlier, clearedAt]
   );
   useEffect(() => setStored(runs), [runs, setStored]);
 
@@ -235,6 +242,7 @@ export function useRuns({
         ...(item ? { item } : {}),
       };
       pending.current.push(panelRun);
+      const startedAt = Date.now();
       try {
         // A failed Run is the log's to record, which the panel shows.
         await inspectorClient().runTool({
@@ -242,6 +250,24 @@ export function useRuns({
           input: args as JsonValue,
           by: callers.inspector,
         });
+      } catch (error) {
+        // Refused before it started, as at a dialog: the log never had it.
+        if (panelRun.rowId === undefined)
+          setRefused((current) => [
+            {
+              id: `refused-${startedAt}-${current.length}`,
+              by: callers.inspector,
+              toolName,
+              ...(item ? { item, objectPath: item.path } : {}),
+              arguments: args,
+              status: "failed",
+              error: error instanceof Error ? error.message : String(error),
+              startedAt,
+              interactions: [],
+              children: [],
+            },
+            ...current,
+          ]);
       } finally {
         pending.current.splice(pending.current.indexOf(panelRun), 1);
         onSettled();
@@ -253,6 +279,7 @@ export function useRuns({
   const clear = useCallback(() => {
     setClearedAt(Date.now());
     setEarlier([]);
+    setRefused([]);
   }, [setClearedAt]);
 
   return { runs, invoke, clear };

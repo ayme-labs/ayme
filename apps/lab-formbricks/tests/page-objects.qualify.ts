@@ -1,11 +1,11 @@
-import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { startAgent } from "@ayme-dev/mcp/testing";
+import { runAyme } from "@ayme-dev/cli/testing";
 import {
   type Browser,
   type Locator,
   type Page,
+  chromium,
   expect,
   test as base,
 } from "@playwright/test";
@@ -21,76 +21,141 @@ import {
   waitForAuthorization,
 } from "./seed";
 
-// The qualification drives the Page Objects with Playwright; the lab app,
-// which ships no ayme, gets the same classes from an `ayme mcp` server, which
-// builds them and loads them into the page through its init script. It needs
-// the lab app running (pnpm lab:dev), and no other ayme MCP server listening
-// on ports 9350 to 9365: a page pairs by itself only with exactly one.
+// The qualification drives the Page Objects with Playwright, and through
+// the `ayme` command as an agent does: a Session started in the lab app's
+// folder builds them and runs them in Node, on the browser it opened, and
+// the test's own Playwright connection to that browser plays the agent's
+// browser automation. The lab app, which ships no ayme, gets nothing of ayme
+// in the page. It needs the lab app running (pnpm lab:dev).
 
-/** The lab app's folder, where `ayme mcp` finds `ayme/page-objects.ts`. */
+/** The lab app's folder, where a Session finds `ayme/page-objects.ts`. */
 const LAB_DIR = fileURLToPath(new URL("..", import.meta.url));
 
-type Agent = Awaited<ReturnType<typeof startAgent>>;
+/** What one `ayme` command answered with `--json`. */
+type Answer = { ok: boolean; text: string; data?: unknown };
+
+/**
+ * How long one `ayme` command may run before the test stops it: `open`
+ * waits for the dev server to compile the sign-in page, which can take a
+ * minute.
+ */
+const COMMAND_LIMIT_MS = 120_000;
+
+/** The `ayme` command, run in the lab app's folder on the test's Session. */
+type Agent = {
+  /** The address of the Session's browser, which `ayme open` printed. */
+  address: string;
+  run(...args: string[]): Promise<Answer>;
+  /** Calls the Page Object Tool `name` with `params` as its parameters. */
+  call(name: string, params?: Record<string, unknown>): Promise<Answer>;
+  /** The names of the Page Object Tools `ayme tools` lists, available or not. */
+  toolNames(): Promise<string[]>;
+};
 
 const test = base.extend<{
   /**
-   * An `ayme mcp` server started in the lab app's folder, whose init script
-   * runs in every page of the test's context. One at a time: a page's scan
-   * pairs only when it finds exactly one.
+   * Runs the `ayme` command in the lab app's folder with `--json`, with a
+   * cache folder of the test's own, so it never finds a developer's own
+   * Session there. After the test it closes the test's Session, and its
+   * browser with it, also one still starting or one whose start failed.
    */
+  ayme: (...args: string[]) => Promise<Answer>;
+  /** The `ayme` command on a Session the test opened on the sign-in page. */
   agent: Agent;
+  /** The Session's page, as the test's browser automation reaches it. */
+  page: Page;
 }>({
-  agent: async ({ context }, use) => {
-    const agent = await startAgent({ cwd: LAB_DIR });
-    try {
-      // The server wrote it as it started, naming its port.
-      await context.addInitScript({
-        path: path.join(LAB_DIR, "ayme/init-script.js"),
+  // Playwright reads a fixture's dependencies from this pattern.
+  // eslint-disable-next-line no-empty-pattern
+  ayme: async ({}, use, testInfo) => {
+    const env = {
+      ...process.env,
+      AYME_CACHE_DIR: testInfo.outputPath("cache"),
+    };
+    const run = async (...args: string[]): Promise<Answer> => {
+      const command = `ayme ${args.join(" ")}`;
+      const { code, stdout, stderr } = await runAyme([...args, "--json"], {
+        cwd: LAB_DIR,
+        env,
+        signal: AbortSignal.timeout(COMMAND_LIMIT_MS),
       });
-      await use(agent);
+      try {
+        return JSON.parse(code === 0 ? stdout : stderr) as Answer;
+      } catch {
+        throw new Error(
+          `${command} exited with ${code} and answered no JSON.\nstdout: ${stdout}\nstderr: ${stderr}`
+        );
+      }
+    };
+    await use(run);
+    await test.step("close the Session", async () => {
+      const closed = await run("close");
+      if (closed.ok) return;
+      // No Session to close: it ended, or never started.
+      const listed = await run("list");
+      expect(
+        (listed.data as { sessions: unknown[] } | undefined)?.sessions,
+        `ayme close answered: ${closed.text}\nayme list answered: ${listed.text}`
+      ).toEqual([]);
+    });
+  },
+  agent: async ({ ayme, baseURL }, use) => {
+    const opened = await ayme("open", new URL("/auth/login", baseURL).href);
+    expect(opened.ok, opened.text).toBe(true);
+    await use({
+      address: (opened.data as { address: string }).address,
+      run: ayme,
+      call: (name, params = {}) =>
+        ayme("call", name, "--params", JSON.stringify(params)),
+      async toolNames() {
+        const listed = await ayme("tools");
+        expect(listed.ok, listed.text).toBe(true);
+        return (listed.data as { tools: { name: string }[] }).tools.map(
+          (tool) => tool.name
+        );
+      },
+    });
+  },
+  page: async ({ agent }, use) => {
+    const browser = await chromium.connectOverCDP(agent.address);
+    try {
+      await use(browser.contexts()[0]!.pages()[0]!);
     } finally {
-      await agent.close();
+      await browser.close();
     }
   },
 });
 
 test.afterAll(disconnect);
 
-/** Page Object Tools are named `<page object>.<action>`; ayme's own tools carry no dot. */
-const pageObjectTools = (names: string[]) =>
-  names.filter((name) => name.includes(".")).sort();
-
 async function expectExactlyOnce(locator: Locator): Promise<void> {
   await expect(locator).toHaveCount(1);
   await expect(locator).toBeVisible();
 }
 
-/** Waits until the server lists `names` among the page's tools. */
+/** Waits until `ayme tools` lists `names` among the screen's tools. */
 async function expectTools(agent: Agent, names: string[]): Promise<void> {
   // Polls the names still missing, so a failure names them rather than a truncated list.
   await expect
-    .poll(
-      async () => {
-        const listed = await agent.pageToolNames();
-        return names.filter((name) => !listed.includes(name));
-      },
-      { message: agent.log }
-    )
+    .poll(async () => {
+      const listed = await agent.toolNames();
+      return names.filter((name) => !listed.includes(name));
+    })
     .toEqual([]);
 }
 
 /**
  * How a call names the one Page Object of `className` on the page, as the
  * input of a rooted Page Object Tool: by its Page Object id, which
- * `page_objects` prints after its class name. Every call of a rooted tool
+ * `ayme page-objects` prints after its class name. Every call of a rooted tool
  * below names its Page Object through here.
  */
 async function named(
   agent: Agent,
   className: string
 ): Promise<Record<string, unknown>> {
-  const { text: tree, isError } = await agent.call("page_objects");
-  expect(isError, tree).toBe(false);
+  const { text: tree, ok } = await agent.run("page-objects");
+  expect(ok, tree).toBe(true);
   const id = new RegExp(`\\b${className} (po\\d+)`).exec(tree)?.[1];
   expect(id, `no ${className} in:\n${tree}`).toBeDefined();
   return { id };
@@ -169,23 +234,19 @@ async function compileScreens(browser: Browser): Promise<void> {
   }
 }
 
-test("an unmodified Formbricks page pairs with an ayme mcp server by itself and gets the Page Objects the server serves", async ({
-  page,
+test("a Session started in the lab app's folder lists the sign-in screen's Page Object Tool and no other screen's", async ({
   agent,
 }) => {
-  await page.goto("/auth/login");
-  // The init script loaded the runtime and the Page Objects from the server,
-  // and the page looked for the server as it loaded and paired with it, with
-  // no link.
-  await expectTools(agent, ["SignInPage.logIn"]);
-  // Each page is present on its own path, so the page offers only the current
-  // screen's Page Object Tools.
-  expect(pageObjectTools(await agent.pageToolNames())).toEqual([
-    "SignInPage.logIn",
-  ]);
+  // `ayme open` opened the sign-in page. Each page is present on its own
+  // path, so the Session lists only the current screen's Page Object Tools.
+  // Waits for the exact list, so a slow start passes and an extra screen fails.
+  await expect
+    .poll(async () => (await agent.toolNames()).sort())
+    .toEqual(["SignInPage.logIn"]);
 });
 
-test("each page object locator resolves exactly once in its intended state, and every action called through an ayme mcp server takes effect", async ({
+test("each page object locator resolves exactly once in its intended state, and every action called through the ayme command takes effect", async ({
+  baseURL,
   browser,
   page,
   agent,
@@ -193,14 +254,16 @@ test("each page object locator resolves exactly once in its intended state, and 
   await test.step("compile the screens", () => compileScreens(browser));
   const user = await seedUser();
 
-  // The agent calls the page objects through its server, in the page, so the
+  // The agent calls the page objects through the ayme command, so the
   // actions are checked the same way; the locators are checked with Playwright.
   const call = async (name: string, input: Record<string, unknown> = {}) => {
     const result = await agent.call(name, input);
-    expect(result.isError, `${name}: ${result.text}`).toBe(false);
+    expect(result.ok, `${name}: ${result.text}`).toBe(true);
   };
+  // The Session's page has no base URL of its own.
+  const goto = (path: string) => page.goto(new URL(path, baseURL).href);
   const signInPage = new SignInPage(page);
-  await page.goto("/auth/login");
+  await goto("/auth/login");
   await expectTools(agent, ["SignInPage.logIn"]);
   await expectExactlyOnce(signInPage.logInWithEmailButton);
   await expect(signInPage.emailInput).toHaveCount(0);
@@ -253,20 +316,20 @@ test("each page object locator resolves exactly once in its intended state, and 
   // says so.
   await expect(surveyEditorPage.saveAsDraftButton).toHaveCount(0);
   const refused = await agent.call("SurveyEditorPage.saveAsDraft");
-  expect(refused.isError, refused.text).toBe(true);
+  expect(refused.ok, refused.text).toBe(false);
   expect(refused.text).toContain(
     "The editor a first survey opens in has no Save as draft, only Save & Close."
   );
   // Nor a Save, which a draft has nowhere.
   await expect(surveyEditorPage.saveButton).toHaveCount(0);
   const noSaveYet = await agent.call("SurveyEditorPage.save");
-  expect(noSaveYet.isError, noSaveYet.text).toBe(true);
+  expect(noSaveYet.ok, noSaveYet.text).toBe(false);
   expect(noSaveYet.text).toContain(
     "The editor a first survey opens in has no Save, only Save & Close."
   );
 
   // The editor a draft opens in from the survey list has it.
-  await page.goto(editorPath(user.workspaceId, surveyId));
+  await goto(editorPath(user.workspaceId, surveyId));
   await expectExactlyOnce(surveyEditorPage.saveAsDraftButton);
   await expectHydrated(surveyEditorPage.saveAsDraftButton);
   await expect(surveyEditorPage.saveAndCloseButton).toHaveCount(0);
@@ -276,13 +339,13 @@ test("each page object locator resolves exactly once in its intended state, and 
   ]);
   // It has no Save & Close, and that action says why.
   const noSaveAndClose = await agent.call("SurveyEditorPage.saveAndClose");
-  expect(noSaveAndClose.isError, noSaveAndClose.text).toBe(true);
+  expect(noSaveAndClose.ok, noSaveAndClose.text).toBe(false);
   expect(noSaveAndClose.text).toContain(
     "This survey is a draft, which has Save & Close only in the editor a first survey opens in."
   );
   await expect(surveyEditorPage.saveButton).toHaveCount(0);
   const noSave = await agent.call("SurveyEditorPage.save");
-  expect(noSave.isError, noSave.text).toBe(true);
+  expect(noSave.ok, noSave.text).toBe(false);
   expect(noSave.text).toContain(
     "This survey is a draft, and Formbricks shows Save only for a survey that is no longer one."
   );
@@ -298,7 +361,7 @@ test("each page object locator resolves exactly once in its intended state, and 
     new RegExp(`${editorPath(user.workspaceId, surveyId)}$`)
   );
 
-  await page.goto(`${editorPath(user.workspaceId, surveyId)}?mode=cx`);
+  await goto(`${editorPath(user.workspaceId, surveyId)}?mode=cx`);
   await expectExactlyOnce(surveyEditorPage.saveAndCloseButton);
   await expectHydrated(surveyEditorPage.saveAndCloseButton);
   await expect(surveyEditorPage.surveyNameInput).toHaveValue(draftName);
@@ -351,7 +414,7 @@ test("each page object locator resolves exactly once in its intended state, and 
     "SurveyEditorPage.saveAsDraft",
   ]);
   const notADraft = await agent.call("SurveyEditorPage.saveAsDraft");
-  expect(notADraft.isError, notADraft.text).toBe(true);
+  expect(notADraft.ok, notADraft.text).toBe(false);
   expect(notADraft.text).toContain(
     "This survey is no longer a draft, and Formbricks shows Save as draft only for a draft."
   );
@@ -369,9 +432,7 @@ test("each page object locator resolves exactly once in its intended state, and 
 
   // A survey with responses asks before it opens in the editor.
   await seedResponse(surveyId);
-  await page.goto(
-    `/workspaces/${user.workspaceId}/surveys/${surveyId}/summary`
-  );
+  await goto(`/workspaces/${user.workspaceId}/surveys/${surveyId}/summary`);
   await expectExactlyOnce(surveySummaryPage.editButton);
   await expectHydrated(surveySummaryPage.editButton);
   await call("SurveySummaryPage.edit");

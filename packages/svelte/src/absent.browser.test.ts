@@ -86,7 +86,7 @@ it("renders the owner's children, with the status a consumer reads", () => {
 });
 
 it("adds no Peek", async () => {
-  mount(Owner, { options: { agentConnection: true }, child: PeekUser });
+  mount(Owner, { options: { inspector: true }, child: PeekUser });
   await tick();
   expect(sessions.length).toBeGreaterThan(0);
   for (const session of sessions) expect(session.peek).not.toHaveBeenCalled();

@@ -4,11 +4,11 @@ Everything about ayme in a Svelte or SvelteKit app: setup, starting ayme in the 
 
 ## Setup
 
-Install ayme, the Svelte package and the build plugin, with the Inspector and the Agent Connection for development, as the [Svelte quickstart](../start/quickstart-svelte.md) does:
+Install ayme, the Svelte package and the build plugin, with the Inspector and the `ayme` command for development, as the [Svelte quickstart](../start/quickstart-svelte.md) does:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/svelte
-npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/cli
 ```
 
 Add the plugin after your Svelte plugin, `sveltekit()` or `svelte()`:
@@ -42,7 +42,7 @@ Mark your Page Object Models as [Page Object Models](../guides/ayme-page-objects
 
 ## Start ayme at the root
 
-Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without SvelteKit, with the Inspector and the Agent Connection in development:
+Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without SvelteKit, with the Inspector in development:
 
 ```svelte
 <script lang="ts">
@@ -51,7 +51,7 @@ Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without Sv
   import { useAyme } from "@ayme-dev/svelte";
 
   let { children }: { children: Snippet } = $props();
-  useAyme({ inspector: dev, agentConnection: dev });
+  useAyme({ inspector: dev });
 </script>
 
 {@render children()}
@@ -64,22 +64,22 @@ The options are the [`createAyme` options](../reference/ayme.md#createayme), pas
 ```ts
 import { goto } from "$app/navigation";
 
-useAyme({ navigate: (url) => goto(url), inspector: dev, agentConnection: dev });
+useAyme({ navigate: (url) => goto(url), inspector: dev });
 ```
 
-The options are read once; to change them, remount the owner. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
+The options are read once; to change them, remount the owner. Your coding agent then reaches your Page Objects once you finish [Set up your project](../guides/connect-an-agent.md#set-up-your-project), which also installs Playwright at a version the `ayme` command supports.
 
 ## Root ownership
 
 | Call                                              | Behavior                                                                                                                                                           |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `useAyme(options)` or `useAyme()`, no owner above | Creates the session and makes it available to descendants. In the browser, starts it while the component initializes and stops it when the component is destroyed. |
+| `useAyme(options)` or `useAyme()`, no owner above | Creates the runtime and makes it available to descendants. In the browser, starts it while the component initializes and stops it when the component is destroyed. |
 | `useAyme()` beneath an owner                      | Returns the owner's `{ ayme, webMCP }`; starts and stops nothing.                                                                                                  |
 | `useAyme(options)` beneath an owner               | Throws; configure the options on the owner.                                                                                                                        |
 | A second owner while one is active                | Throws a `RuntimeStateError`.                                                                                                                                      |
 | Outside component initialization                  | Svelte's own error, as for `getContext`.                                                                                                                           |
 
-Because the session starts while the owner initializes, a descendant's `onMount` already sees it started.
+Because the runtime starts while the owner initializes, a descendant's `onMount` already sees it started.
 
 ## Composables
 
@@ -98,14 +98,13 @@ Registering a page doesn't tie it to a route. Give each page a `present` that ch
   useAyme({
     pageObjects: [ProjectsPage, SettingsPage],
     inspector: dev,
-    agentConnection: dev,
   });
 </script>
 
 {@render children()}
 ```
 
-A component that calls an action gets the session's instance from `usePageObject`, which also registers the class while the component lives:
+A component that calls an action gets the runtime's instance from `usePageObject`, which also registers the class while the component lives:
 
 ```svelte
 <script lang="ts">
@@ -118,7 +117,7 @@ A component that calls an action gets the session's instance from `usePageObject
 <button onclick={() => pom.createProject("Launch plan")}>Show me how</button>
 ```
 
-- `usePageObject(Model)` needs a `useAyme` owner in an ancestor or the same component. It removes its registration when its component is destroyed. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialize fields and compose locators; call actions later, such as in an event handler or `onMount`.
+- `usePageObject(Model)` needs a `useAyme` owner in an ancestor or the same component. It removes its registration when its component is destroyed. The runtime keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialize fields and compose locators; call actions later, such as in an event handler or `onMount`.
 - Svelte 3 and 4 write `on:click` instead of `onclick`.
 
 ## Optional: publish with WebMCP
@@ -132,10 +131,10 @@ npm install @ayme-dev/webmcp
 Then add `webMCP` to the owner's options:
 
 ```ts
-useAyme({ inspector: dev, agentConnection: dev, webMCP: { enabled: true } });
+useAyme({ inspector: dev, webMCP: { enabled: true } });
 ```
 
-`useAyme()` returns `webMCP.publicationStatus` as a readable store. It listens to the session only while it has subscribers. When its `state` is `"unavailable"` (no WebMCP driver found) or `"failed"`, `retryPublication` tries again:
+`useAyme()` returns `webMCP.publicationStatus` as a readable store. It listens to the runtime only while it has subscribers. When its `state` is `"unavailable"` (no WebMCP driver found) or `"failed"`, `retryPublication` tries again:
 
 ```svelte
 <script lang="ts">
@@ -204,6 +203,6 @@ A build includes ayme only with the plugin's `include: true`. The config above k
 
 | Export                  | Kind       | Does                                                                                                                                                        |
 | ----------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `useAyme(options?)`     | Composable | Without an owner above, creates and owns the session. Returns `{ ayme, webMCP }`.                                                                           |
+| `useAyme(options?)`     | Composable | Without an owner above, creates and owns the runtime. Returns `{ ayme, webMCP }`.                                                                           |
 | `usePageObject(Model)`  | Composable | Registers the class while the component lives and returns its instance.                                                                                     |
 | `peek(read, name, id?)` | Composable | [Experimental](../reference/experimental-apis.md). Adds the component's instance of the Peek `name` while it is mounted, reading the values `read` returns. |

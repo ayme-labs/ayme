@@ -29,24 +29,30 @@ export function OnboardingAssistant() {
 ```
 
 - `usePageObject` returns the same `ProjectsPage` instance the rest of your app uses, so the assistant's actions go through the page's own `Page`. Vue and Svelte use the same names, and Angular uses `injectAyme` and `injectPageObject`.
-- `snapshot` returns the Structural Page State, the same view of the page a coding agent gets; [Page state](page-state.md) describes it.
-- Each action the assistant takes is recorded like any other, so a coding agent connected to the same page sees what the assistant changed.
+- `snapshot` returns the Structural Page State, the same view of the page an agent in the browser gets through WebMCP; [Page state](page-state.md) describes it.
 
 ## Hand it every tool
 
-To give the assistant every tool ayme knows instead of picking a few, read them from `ayme.tools`:
+To give the assistant every tool it may use instead of picking a few, read them from `ayme.tools`, and leave out the Peek Tools. A Peek shows you app state in the Inspector while you develop, and ayme sends it to no agent; [What a Peek exposes](../reference/ayme.md#what-a-peek-exposes) says why.
 
 ```ts
-const tools = ayme.tools.list().filter(({ available }) => available);
+// The tools the assistant may use now. Call it again for each model turn:
+// the list changes with the page.
+const assistantTools = () =>
+  ayme.tools
+    .list()
+    .filter(({ available, group }) => available && group !== "peek");
 // each has name, agentDescription and inputSchema
 
 // Call this when the assistant's model picks a tool, with the input it chose:
 async function runTool(name: string, input: object) {
+  if (!assistantTools().some((tool) => tool.name === name))
+    throw new Error(`${name} is not one of the assistant's tools now.`);
   return ayme.tools.run(name, input);
 }
 ```
 
-The list holds `snapshot`, your Page Object Tools, the Browser Tools and your [Custom Tools](custom-tools.md). It also holds `goal` when the Goal Loop is configured, and the [Peek Tools](../reference/ayme.md#aymepeek) while the Inspector or the Agent Connection is on. The entry for the quickstart's `createProject` reads:
+The list holds `snapshot`, your Page Object Tools, the Browser Tools and your [Custom Tools](custom-tools.md). It also holds `goal` when the Goal Loop is configured, and the Peek Tools while the Inspector is on, which `assistantTools` leaves out. The entry for the quickstart's `createProject` reads:
 
 ```ts
 {
@@ -62,7 +68,7 @@ The list holds `snapshot`, your Page Object Tools, the Browser Tools and your [C
 - `createProject` has no description and returns no Page Object, so it has no `agentDescription`. If your framework requires a description, use the tool's name.
 - An action that returns another Page Object gets one that names it. `ProjectsPage.openNewProjectDialog` from [Page Object Models](ayme-page-objects.md) has `agentDescription: "Shows NewProjectDialog."` and `returnPoms: ["NewProjectDialog"]`.
 - To write your own wording, read `authorDescription`, which holds what the author wrote, and `returnPoms`.
-- A tool whose action cannot run now has `available: false`, and a `reason` when there is one. The filter above leaves those out. An assistant that shows its tools can show the reason instead.
+- A tool whose action cannot run now has `available: false`, and a `reason` when there is one. `assistantTools` leaves those out, and `runTool` refuses them. A tool can still become unavailable between the check and the Run, so handle a refusal from `ayme.tools.run` too. An assistant that shows its tools can show the reason instead.
 - `ayme.tools.subscribe(listener)` tells you when the list changes, such as when a Page Object appears or a tool becomes available.
 
 A Custom Tool that highlights an element suits an assistant well: it can point at things before it acts on them.

@@ -42,7 +42,7 @@ export class ToolPage extends PanelPart {
     return this.root.locator(":scope > p");
   }
 
-  /** What kind of tool it is, e.g. "Browser tool" or "Node Peek tool". */
+  /** What kind of tool it is, e.g. "Browser tool" or "Peek tool". */
   @ayme.child
   get kind(): Locator {
     return this.root.locator("[data-tool-kind]");

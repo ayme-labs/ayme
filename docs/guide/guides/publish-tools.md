@@ -4,7 +4,7 @@ How to start ayme in your app and turn on WebMCP publication, so agents that run
 
 ## Start ayme
 
-Your framework package starts ayme at the root of your app and gives the rest of the app the running session, `ayme`. Vue and React wrap the app in `AymeProvider`, Svelte calls `useAyme` in the root component, and Angular adds `provideAyme()` to the application config. Each takes the same options, including `webMCP`:
+Your framework package starts ayme at the root of your app and gives the rest of the app its runtime, `ayme`. Vue and React wrap the app in `AymeProvider`, Svelte calls `useAyme` in the root component, and Angular adds `provideAyme()` to the application config. Each takes the same options, including `webMCP`:
 
 ```tsx
 <AymeProvider webMCP={{ enabled: true }}>
@@ -12,7 +12,7 @@ Your framework package starts ayme at the root of your app and gives the rest of
 </AymeProvider>
 ```
 
-Without a framework package, such as in a script on a page, create the session with `createAyme` and start it yourself:
+Without a framework package, such as in a script on a page, create the runtime with `createAyme` and start it yourself:
 
 ```ts
 import { createAyme } from "@ayme-dev/ayme";
@@ -21,11 +21,11 @@ const ayme = createAyme({ webMCP: { enabled: true } });
 const stop = ayme.start();
 ```
 
-One session owns the current document at a time. `start()` returns the function that stops it. The [`@ayme-dev/ayme` reference](../reference/ayme.md) lists every option.
+One runtime owns the current document at a time. `start()` returns the function that stops it. The [`@ayme-dev/ayme` reference](../reference/ayme.md) lists every option.
 
 ## Register Page Objects
 
-A Page Object's tools are listed while its class is registered and the Page Object is present, as [`@ayme`](ayme-page-objects.md#ayme) describes. Register pages at app setup, in the `pageObjects` option of `createAyme`, `AymeProvider`, `useAyme` or `provideAyme`. A page states its own presence from the URL, so it can be listed once with all the others. Its tools then come and go with the browser's location. The classes stay registered for the session's lifetime.
+A Page Object's tools are listed while its class is registered and the Page Object is present, as [`@ayme`](ayme-page-objects.md#ayme) describes. Register pages at app setup, in the `pageObjects` option of `createAyme`, `AymeProvider`, `useAyme` or `provideAyme`. A page states its own presence from the URL, so it can be listed once with all the others. Its tools then come and go with the browser's location. The classes stay registered for the runtime's lifetime.
 
 ```ts
 const ayme = createAyme({
@@ -41,7 +41,7 @@ A registration counts, so a class registered at setup and in a component stays r
 
 ## Turn publication on
 
-> **Experimental:** WebMCP publication may change in any release. See [Experimental APIs](../reference/experimental-apis.md). A coding agent that drives the browser from outside it connects through [ayme's MCP server](connect-an-agent.md) instead.
+> **Experimental:** WebMCP publication may change in any release. See [Experimental APIs](../reference/experimental-apis.md).
 
 Publication lives in its own package. Install it beside `@ayme-dev/ayme`, which declares it as an optional peer dependency:
 
@@ -58,7 +58,7 @@ The call that starts ayme decides whether its tools are published through WebMCP
 createAyme({ webMCP: { enabled: true, toolNamePrefix: "shop_" } });
 ```
 
-WebMCP publication is for agents that run in the browser and read the page's `document.modelContext`. A coding agent such as Claude Code, Codex or Cursor connects through ayme's MCP server instead, with or without publication; see [Connect an agent](connect-an-agent.md).
+WebMCP publication is for agents that run in the browser and read the page's `document.modelContext`. For coding-agent tools, see [Connect an agent](connect-an-agent.md).
 
 ## Give the page WebMCP
 

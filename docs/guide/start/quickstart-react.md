@@ -6,7 +6,7 @@ From a Vite React app to a Page Object Tool your coding agent calls.
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/react
-npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/cli
 ```
 
 Vite's React template installs TypeScript 7. With TypeScript 7, the build plugin compiles Page Object Models with Microsoft's `@typescript/typescript6` ([supported versions](install.md#supported-versions)), so install it too:
@@ -84,7 +84,7 @@ If your Playwright tests already have a Page Object Model for this page, mark th
 
 ## 4. Start ayme and use the Page Object
 
-Wrap the app in `AymeProvider` with the Inspector and the Agent Connection in development, and use the Page Object in a component:
+Wrap the app in `AymeProvider` with the Inspector in development, and use the Page Object in a component:
 
 ```tsx
 // src/main.tsx
@@ -132,10 +132,7 @@ function Projects() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AymeProvider
-      inspector={import.meta.env.DEV}
-      agentConnection={import.meta.env.DEV}
-    >
+    <AymeProvider inspector={import.meta.env.DEV}>
       <Projects />
     </AymeProvider>
   </StrictMode>
@@ -146,7 +143,7 @@ createRoot(document.getElementById("root")!).render(
 
 Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-To call it from your coding agent, register ayme's MCP server in the agent and connect it to the page, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
+To call it from your coding agent, finish [Set up your project](../guides/connect-an-agent.md#set-up-your-project): it installs Playwright at a version the `ayme` command supports, and you list `ProjectsPage` in `ayme/page-objects.ts`. Then ask the agent to create a project: it starts the `ayme` command beside its browser automation and calls `ProjectsPage.createProject`.
 
 ## Next
 

@@ -5,9 +5,7 @@ import { mergeInspectorState, type InspectorState } from "./inspectorContract";
 const state = (revision: number): InspectorState => ({
   revision,
   tools: [],
-  appProcessTools: [],
   publication: { state: "disabled", message: "off" },
-  agentConnection: { state: "off" },
   runs: [],
   pageObjects: [],
   pomDefinitions: [],

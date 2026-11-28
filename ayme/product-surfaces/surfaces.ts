@@ -130,32 +130,22 @@ export const surfaces = {
     sources: ["packages/unplugin-ayme", "docs/guide/reference/build-plugin.md"],
   },
   aymeCommand: {
-    name: "`ayme` command",
-    what: "The terminal command of the package @ayme-dev/mcp: `ayme mcp` starts the server for a coding agent, with options to pick its port and, as an experiment, a page objects file to serve; `ayme inspect` prints the Inspector's address for the running server, with an option to pick its port",
+    name: "`ayme` command's Sessions",
+    what: "The Session commands of the `ayme` command of @ayme-dev/cli: `ayme open` and `ayme attach` start a Session on a browser the agent's automation drives; `ayme page-objects`, `ayme tools` and `ayme call` read the screen and run the project's Page Object Tools, on the Tab `--tab` names or the active one, and answer that a dialog is open when one is; `ayme detach` and `ayme close` end a Session and `ayme list` lists a folder's Sessions, each named with `-s=<name>` or `AYME_SESSION`; `--json` prints a Session's answers as JSON; `ayme inspect` opens the Session's Inspector in a window, and `ayme mcp` shows it in an Agent App's chat",
     consumers: {
       appDeveloper:
-        "Writes `ayme mcp` into their coding agent's settings and runs `ayme inspect` to get the Inspector's address",
-    },
-    sources: [
-      "packages/mcp/src/cli.ts",
-      "packages/mcp/src/server/readCommand.ts",
-      "packages/mcp/README.md",
-    ],
-  },
-  mcpServer: {
-    name: "MCP server for coding agents",
-    what: "The tools the coding agent calls on the running server, which pairs with one tab of the app and its server processes: connect to a tab, list the page's tools, call one, and show the Inspector",
-    consumers: {
-      appDeveloper: "Opens the connect link or lets the tab pair by itself",
+        "Starts and ends a Session beside their own browser, opens its Inspector, and registers `ayme mcp` in their Agent App",
       codingAgent:
-        "Connects to the app's tab, lists and calls the page's actions, reads Page Objects and Peeks, and hands the page a goal",
+        "Starts a Session on the browser its automation drives, reads the screen's Page Objects, calls their tools, and answers a dialog the Session reports with its own automation",
     },
     sources: [
-      "packages/mcp/src/tools",
-      "packages/mcp/src/connection",
-      "packages/mcp/src/pairing",
+      "packages/cli/src/readCommand.ts",
+      "packages/cli/src/session.ts",
+      "packages/cli/src/answer.ts",
+      "packages/cli/src/mcp.ts",
+      "packages/session",
       "docs/guide/guides/connect-an-agent.md",
-      "docs/guide/guides/page-objects-without-ayme.md",
+      "docs/guide/guides/inspector.md",
     ],
   },
   webmcpTools: {
@@ -221,17 +211,16 @@ export const surfaces = {
     sources: [
       "https://github.com/microsoft/playwright-mcp",
       "skills/ayme/references/browser-automation-tools.md",
-      "docs/guide/guides/page-objects-without-ayme.md",
+      "docs/guide/guides/connect-an-agent.md",
     ],
   },
   recorderCommand: {
-    name: "Recorder command (`ayme-recorder`)",
-    what: "The terminal command of @ayme-dev/cli. `codegen` opens the app at an address in Chromium for recording, with options to open it without a window, to start already recording, and to load or save a login; with a DevTools address instead, it records a Chromium that is already running. `trace` opens a recording's trace (the latest, one by id, or a trace file) with the project's own Playwright and passes other trace commands on. `install` installs a browser, Chromium unless another is named. It also prints its help and its version",
+    name: "`ayme capture` command",
+    what: "The `ayme` command of @ayme-dev/cli. `ayme capture` opens the app at an address in Chromium for recording, with options to open it without a window, to start already recording, and to load or save a login; with `--cdp=<url>` instead, it records a Chromium that is already running. When Chromium cannot be opened, it names Playwright's own command that installs it. It also prints its help and its version",
     consumers: {
-      appTester:
-        "Starts a recording, loads or saves a login, installs the browser, and opens the trace of a recording",
+      appTester: "Starts a recording, and loads or saves a login",
       codingAgent:
-        "Runs the recording command for the user when the recorder skill tells it to, then opens a recording's trace while turning it into a test",
+        "Runs the recording command for the user when the ayme-capture skill tells it to",
     },
     sources: [
       "packages/cli",
@@ -257,10 +246,7 @@ export const surfaces = {
       appTester:
         "Finds the latest recording in the project and hands it to the agent",
     },
-    sources: [
-      "packages/recorder/src/contract",
-      "skills/ayme-recorder/SKILL.md",
-    ],
+    sources: ["packages/recorder/src/contract", "skills/ayme-capture/SKILL.md"],
   },
   agentSkills: {
     name: "Coding agent skills",
@@ -273,7 +259,7 @@ export const surfaces = {
     },
     sources: [
       "skills/ayme",
-      "skills/ayme-recorder",
+      "skills/ayme-capture",
       "skills/product-surfaces",
       "docs/guide/guides/coding-agent-skill.md",
     ],
@@ -298,7 +284,7 @@ export const surfaces = {
   },
   releasedPackages: {
     name: "Released packages",
-    what: "The ayme packages as published on npm, including @ayme-dev/mcp and @ayme-dev/cli: each one's name, version, readme and what installing it needs, and each version's release notes",
+    what: "The ayme packages as published on npm, including @ayme-dev/cli: each one's name, version, readme and what installing it needs, and each version's release notes",
     consumers: {
       appDeveloper:
         "Installs and updates the packages for their app and the `ayme` command, and reads their readmes and release notes",
@@ -320,7 +306,6 @@ export const surfaces = {
       "packages/unplugin-ayme/README.md",
       "packages/inspector/README.md",
       "packages/webmcp/README.md",
-      "packages/mcp/README.md",
       "packages/cli/README.md",
     ],
   },

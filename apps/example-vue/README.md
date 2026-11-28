@@ -18,9 +18,7 @@ This browser playground combines a functional list app with an ayme inspector so
 
 ## Try with your agent
 
-Open the playground and choose **Try with your own coding agent**. The wizard shows the prompt to paste into the agent: it registers [ayme's MCP server](../../packages/mcp/README.md), pinned to the version of `@ayme-dev/mcp` in this repository, and asks the agent to call `ayme_connect` with the page's URL. The visitor opens the returned link in this tab, which pairs it without a reload; the wizard closes itself when the link arrives, because an open dialog blocks the page for the agent. The prompt is plain copy in `src/agentPrompts.ts`. ayme's MCP server is the only thing a visitor installs, and the page contacts it only through a connect link. The [ayme setup skill](../../skills/ayme/SKILL.md) is for integrating ayme into your own project, not for trying the playground.
-
-`App.vue` turns the Agent Connection (`agentConnection` in `useAyme`) on under the same condition as the Inspector, so `--mode inspector-disabled` builds without it. Building with `VITE_AGENT_CONNECTION=false` leaves out both the wizard and the Agent Connection; any other value, or none, keeps them. The hosted build sets it until `@ayme-dev/mcp` is published to npm. The end-to-end tests run the shared [example certification](../example-certification/README.md)'s Agent Connection check: an MCP client pairs with the dev server's page through a connect link and calls a tool. On the dev server only, a counter below the playground adds the Peek `counter` with `usePeek`, which the client reads before and after an increment and sees go when the counter unmounts; `ignore` keeps it out of Structural Page State.
+An agent reaches the playground through WebMCP publication only: the page publishes its Page Object Tools, `page_objects` and ayme's other tools to `document.modelContext`, and an agent that drives the page through WebMCP calls them there. The end-to-end tests run the shared [example certification](../example-certification/README.md)'s WebMCP check on the counter route: an agent reads the Page Object Tree with `page_objects` and runs a Page Object Tool. The [ayme setup skill](../../skills/ayme/SKILL.md) is for integrating ayme into your own project, not for trying the playground.
 
 The hosted bundle initializes the pinned WebMCP polyfill before the Vue app starts.
 
@@ -41,7 +39,7 @@ useAyme({ pageObjects: [ListPage], webMCP: { enabled: true } });
 
 `webMCP.enabled` turns publication on through `@ayme-dev/webmcp`, which the example depends on; it is off unless set. No page argument or application watcher is required. The counter page of the certification registers `CounterPage` in its `Counter` component instead, since the counter's presence is that component's lifetime, and disposal is automatic.
 
-This example turns the Inspector on with `inspector: { demo: true }`, so each action pauses briefly and each click shows a cue. `AgentPanel.vue` holds the agent wizard, which shows the prompt and loads nothing itself. `App.vue` also passes `ignore` to keep the site header out of Structural Page State. These helpers support the demo and are optional for applications.
+This example turns the Inspector on with `inspector: { demo: true }`, so each action pauses briefly and each click shows a cue. `App.vue` also passes `ignore` to keep the site header out of Structural Page State. These helpers support the demo and are optional for applications.
 
 Disabling publication does not remove ayme or Page Object code from the bundle.
 

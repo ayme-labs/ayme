@@ -3131,7 +3131,7 @@ describe("the lifecycle, for a page that is blank at Record", () => {
     expect(state).toEqual({ phase: "notRecording" });
   });
 
-  // As `codegen <url> --start-recording` opens it: blank at Record, and at
+  // As `ayme capture <url> --start-recording` opens it: blank at Record, and at
   // its address only once Record holds inputs back.
   const readBlank = (id: SnapshotId): Happening => ({
     kind: "snapshotTaken",

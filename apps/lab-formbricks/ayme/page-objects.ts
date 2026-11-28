@@ -5,8 +5,8 @@ import { SurveyNavigationPage } from "./pom/SurveyNavigationPage";
 import { SurveyEditorPage, SurveySummaryPage } from "./pom/SurveyPages";
 
 /**
- * The Page Objects `ayme mcp` serves to the Formbricks lab app, which does
- * not ship ayme. Each page is present on its own path, so the page offers
+ * The Page Objects a Session runs on the Formbricks lab app, which does not
+ * ship ayme. Each page is present on its own path, so the page offers
  * only the current screen's Page Object Tools.
  */
 export default [
