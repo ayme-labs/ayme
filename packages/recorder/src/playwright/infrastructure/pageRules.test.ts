@@ -20,6 +20,7 @@ import {
   recordersOwn,
   replayed,
   replayedEffect,
+  sameJson,
   withRules,
   type KeyFacts,
 } from "./pageRules";
@@ -226,13 +227,17 @@ describe("whether a page's calls reach Playwright", () => {
     expect(reachesPlaywright(stringify, () => ({}))).toBe(true);
   });
 
-  it("fails for a JSON.stringify the page replaced, or one that throws", () => {
+  it("fails for a JSON.stringify the page replaced, or one that writes no JSON", () => {
     expect(reaches(() => '{"tampered":true}')).toBe(false);
-    expect(
-      reaches(() => {
-        throw new RangeError("Maximum call stack size exceeded");
-      })
-    ).toBe(false);
+    expect(reaches(() => "tampered")).toBe(false);
+  });
+
+  it("fails for a JSON.stringify that throws, whatever the parser: the call cannot be made", () => {
+    const throwing = () => {
+      throw new RangeError("Maximum call stack size exceeded");
+    };
+    expect(reaches(throwing)).toBe(false);
+    expect(reachesPlaywright(throwing, () => null)).toBe(false);
   });
 
   it("fails while arrays have a toJSON that writes them as a string, as Prototype.js 1.6 gives them", () => {
@@ -264,6 +269,29 @@ describe("whether a page's calls reach Playwright", () => {
         () => "tampered",
         () => expect(reaches(stringify)).toBe(true)
       );
+  });
+});
+
+describe("whether two plain JSON values are the same", () => {
+  it("holds for equal values, nested ones included, whatever the order of keys", () => {
+    expect(sameJson(1, 1)).toBe(true);
+    expect(sameJson(null, null)).toBe(true);
+    expect(
+      sameJson({ a: [1, { b: "c" }], d: 2 }, { d: 2, a: [1, { b: "c" }] })
+    ).toBe(true);
+  });
+
+  it("fails for values of another kind, or with a key or an item more or less", () => {
+    expect(sameJson(null, {})).toBe(false);
+    expect(sameJson({}, null)).toBe(false);
+    expect(sameJson("a", {})).toBe(false);
+    expect(sameJson({}, "a")).toBe(false);
+    expect(sameJson(1, "1")).toBe(false);
+    expect(sameJson([1], { 0: 1 })).toBe(false);
+    expect(sameJson({ a: 1 }, { a: 1, b: 2 })).toBe(false);
+    expect(sameJson({ a: 1, b: 2 }, { a: 1 })).toBe(false);
+    expect(sameJson([1, 2], [1])).toBe(false);
+    expect(sameJson({ a: { b: 1 } }, { a: { b: 2 } })).toBe(false);
   });
 });
 

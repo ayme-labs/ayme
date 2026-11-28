@@ -189,15 +189,16 @@ export function reachesPlaywright(
     return false;
   }
   const readsBack = (text: string) => {
+    let read: Record<string, unknown> | null | undefined;
     try {
-      const read = parse(text) as Record<string, unknown> | null;
-      // The fields Playwright reads of a call.
-      return (["name", "seq", "serializedArgs"] as const).every((field) =>
-        sameJson(read?.[field], call[field])
-      );
+      read = parse(text) as Record<string, unknown> | null;
     } catch {
-      return false;
+      // Unreadable: nothing is read, and nothing is the call.
     }
+    // The fields Playwright reads of a call.
+    return (["name", "seq", "serializedArgs"] as const).every((field) =>
+      sameJson(read?.[field], call[field])
+    );
   };
   // A `parse` that cannot read the call's own text cannot tell, and the
   // page counts as heard: taking a healthy page for a broken one would keep
