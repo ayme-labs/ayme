@@ -187,6 +187,30 @@ describe("a Page Object Tool's answer to an agent", () => {
     expect(readPageObjectTree).toHaveBeenCalledOnce();
   });
 
+  it("answers that the page has not settled while it reloads the URL it shows, with no URL", async () => {
+    const { stub } = session({
+      answer: async () => ({ settled: false, loading: "http://app/list" }),
+    });
+
+    expect(await pageObjectToolSource(stub).run("ListPage.add", {})).toEqual({
+      settled: false,
+    });
+  });
+
+  it("still runs the action when the read before it fails, and answers without the changes", async () => {
+    const { stub, run, readPageObjectTree } = session({
+      trees: [list("Milk"), list("Milk", "Eggs")],
+      answer: async () => ({ settled: true, result: 2 }),
+    });
+    readPageObjectTree.mockRejectedValueOnce(new Error("Target closed"));
+
+    expect(await pageObjectToolSource(stub).run("ListPage.add", {})).toEqual({
+      settled: true,
+      result: 2,
+    });
+    expect(run).toHaveBeenCalledOnce();
+  });
+
   it("after a full load its Host outlives, once the Page Object the action returned is present, answers from the new page: its URL and how the Page Object Tree changed", async () => {
     const loaded = {
       settled: false,
