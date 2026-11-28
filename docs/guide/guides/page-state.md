@@ -190,7 +190,7 @@ Over Playwright in Node, the old document's last capture can fail to reach ayme 
 
 ## What a call waits for
 
-A call answers once its action has returned and the page has settled after it. ayme adds no other wait after an action, whatever the action returns: an action returns when its own work is done. Waiting for a navigation or a load as such is the browser automation's. When you want a tool to answer on the screen its action leads to, such as the page some apps show only after a nearly empty one after a sign-in, await that screen in the action before it returns.
+A call answers once its action has returned and the page has settled after it. ayme adds no other wait after an action, whatever the action returns: an action returns when its own work is done. Waiting for a navigation or a load as such is the browser automation's. An action waits only for its own outcome, such as its form going away. The screen it leads to is the agent's to wait for, with its browser automation, before it reads the page again.
 
 - In the browser, where a full load ends ayme with the document, a call that starts one answers at once, before its action returns.
 - Over Playwright in Node, as in a Session of the `ayme` command, ayme outlives the load. A call that starts one lasts until its action returns, however long after the load that is: it answers with what the action returned, or fails with what it threw. ayme puts no time limit on the call, and the next call on the page waits until it ends.
