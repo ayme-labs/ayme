@@ -6,7 +6,6 @@ import {
   outline,
   placements,
   testIn,
-  bringPanelToFront,
   confirmGoalRecordings,
   movePointerTo,
 } from "./e2e/fixtures";
@@ -51,7 +50,7 @@ for (const placement of placements) {
         .toEqual(described);
     });
 
-    test("hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid", async ({
+    test("selecting a Page Object highlights it solid on the page", async ({
       browser,
       page,
       inspector,
@@ -61,12 +60,6 @@ for (const placement of placements) {
         browser
       );
 
-      await inspector.navigator.model.object("TodoPage.items[1]").hover();
-      await expect.poll(secondItem).toBe("dashed");
-      await movePointerTo(inspector.header.title);
-      await expect.poll(secondItem).toBe("none");
-
-      await bringPanelToFront(inspector);
       await inspector.navigator.model.object("TodoPage.items[1]").click();
       await movePointerTo(inspector.header.title);
 
@@ -99,3 +92,28 @@ for (const placement of placements) {
     });
   });
 }
+
+// The hover runs inline only: in the external placement its dashed outline
+// shows in the page's window and nothing changes in the panel's, where e2e
+// measures a goal's outcome, so no goal arm could record it, and every runner
+// holds the same tests.
+const inlineTest = testIn("inline", "/models.html");
+
+describe("inline", () => {
+  inlineTest(
+    "hovering a Page Object highlights it dashed on the page, and moving off clears it",
+    async ({ browser, page, inspector }) => {
+      const secondItem = outline(
+        page.locator("#todo-items > li").within((rows) => rows.nth(1)),
+        browser
+      );
+
+      await inspector.navigator.model.object("TodoPage.items[1]").hover();
+      await expect.poll(secondItem).toBe("dashed");
+      await movePointerTo(inspector.header.title);
+      await expect.poll(secondItem).toBe("none");
+
+      await confirmGoalRecordings(browser);
+    }
+  );
+});

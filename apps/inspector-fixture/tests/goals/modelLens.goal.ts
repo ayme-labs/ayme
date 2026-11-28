@@ -5,7 +5,6 @@ import {
   outline,
   placements,
   testIn,
-  bringPanelToFront,
   confirmGoalRecordings,
   movePointerTo,
 } from "../e2e/fixtures";
@@ -21,7 +20,7 @@ for (const placement of placements) {
   const test = testIn(placement, "/models.html");
 
   describe(placement, () => {
-    test("hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid", async ({
+    test("selecting a Page Object highlights it solid on the page", async ({
       agent,
       browser,
       page,
@@ -32,17 +31,6 @@ for (const placement of placements) {
         browser
       );
 
-      await agent.act(
-        'hover the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
-        {
-          params: { item: "[1]", ordinal: "second", collection: "items" },
-        }
-      );
-      await expect.poll(secondItem).toBe("dashed");
-      await movePointerTo(inspector.header.title);
-      await expect.poll(secondItem).toBe("none");
-
-      await bringPanelToFront(inspector);
       await agent.act(
         'select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
         {
@@ -85,3 +73,30 @@ for (const placement of placements) {
     });
   });
 }
+
+// The hover runs inline only, for the reason ../modelLens.e2e.ts gives.
+const inlineTest = testIn("inline", "/models.html");
+
+describe("inline", () => {
+  inlineTest(
+    "hovering a Page Object highlights it dashed on the page, and moving off clears it",
+    async ({ agent, browser, page, inspector }) => {
+      const secondItem = outline(
+        page.locator("#todo-items > li").within((rows) => rows.nth(1)),
+        browser
+      );
+
+      await agent.act(
+        'hover the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
+        {
+          params: { item: "[1]", ordinal: "second", collection: "items" },
+        }
+      );
+      await expect.poll(secondItem).toBe("dashed");
+      await movePointerTo(inspector.header.title);
+      await expect.poll(secondItem).toBe("none");
+
+      await confirmGoalRecordings(browser);
+    }
+  );
+});
