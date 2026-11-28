@@ -371,16 +371,16 @@ export const dialogOpenInListing = (
   dialog: Dialog
 ): string => `${tabLine(id, { url, title: "" })}\n${dialogOpen(dialog)}`;
 
-/** Why a command was answered before its Tab was set up: Playwright's
- * setup of the first page ayme works on in a browser context waits while
- * any page of that context shows a dialog. `heldBy` is the dialog the
- * Session counts as open on another Tab there, with that Tab's URL, when
- * it knows of one. Nothing of the command ran, so it can be run again. */
+/** Why a command was answered before its Tab was set up. `heldBy` is the
+ * dialog the Session counts as open on another Tab, with that Tab's URL,
+ * when it knows of one: the likely cause, which the Session cannot prove,
+ * so the answer states the late setup and the dialog as two facts. Nothing
+ * of the command ran, so it can be run again. */
 export const setupHeld = (
   heldBy: { readonly url: string; readonly dialog: Dialog } | undefined
 ): string =>
   heldBy
-    ? `${dialogSentences(heldBy.dialog, `another tab, at ${heldBy.url}`)} ayme cannot set up this command's tab while it is open, so the command did nothing. Answer it with your browser automation, then run this command again.`
+    ? `ayme's setup of this command's tab did not answer in time, so the command did nothing. ${dialogSentences(heldBy.dialog, `another tab, at ${heldBy.url}`)} A dialog on another tab can hold that setup. Answer it with your browser automation, then run this command again.`
     : "ayme's setup of this command's tab did not answer in time, as happens while a dialog is open on another tab of the browser, so the command did nothing. If one is open, answer it with your browser automation, then run this command again.";
 
 /** Why a Run ended at a dialog once its action had started (rule 4): part

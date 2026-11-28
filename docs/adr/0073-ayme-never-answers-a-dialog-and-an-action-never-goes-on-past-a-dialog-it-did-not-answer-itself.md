@@ -13,7 +13,7 @@ A Session runs Page Object Actions beside the developer's browser automation, in
 ayme never answers a dialog: the agent answers it with its browser automation, which already drives the browser. A Session listens for dialogs so that Playwright dismisses none, and answers none itself.
 
 - A dialog counts as open only once it has stayed open a short while, so an automation that accepts an `alert` by itself, or an action that answers its own dialog as a Playwright test does, changes nothing.
-- While a dialog counts as open on a Tab, every command that needs that Tab's page is answered at once that it is open, with its text. A command answered so does nothing afterwards, even once the dialog is answered. A dialog affects only its own Tab.
+- While a dialog counts as open on a Tab, every command that needs that Tab's page is answered at once that it is open, with its text. A command answered so does nothing afterwards, even once the dialog is answered. A dialog affects only its own Tab, with the one exception under Cost.
 - A dialog that counts while a command is under way stops that command, whoever started it: before its action, during it, or while its Run settles. Its Caller is answered at once, and ayme refuses every further Playwright call of the action's own code, however the dialog is answered. ayme's own reads of the page go on.
 - A stopped Run shows as failed, with the dialog's text, and what its action returns or throws afterwards is not published. Nothing about it reaches a later command.
 - The stopped action keeps the Tab's turn until it has ended, so the next Run never overlaps it.

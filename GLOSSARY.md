@@ -70,7 +70,7 @@ The name a caller gives a Page Object of a class with a Page Object Root when it
 _Avoid_: Instance Ref, instance id, Page Object ref
 
 **Page Object Tree**:
-The Page Objects on a page, as an agent reads them through `page_objects`: each present Page Object under its class name, nested as its model nests its Page Object Children, each declared child shown with its value, and each Page Object of a class with a Page Object Root with its Page Object Id. It names no tool, carries no schema or Page Object definition, and shows no Structural Ref. A Page Object Tool's answer to an agent reports how it changed: the Page Objects that appeared, in full, those that went away, and the values that changed.
+The Page Objects on a page, as an agent reads them through `page_objects` in WebMCP publication or through `ayme page-objects`: each present Page Object under its class name, nested as its model nests its Page Object Children, each declared child shown with its value, and each Page Object of a class with a Page Object Root with its Page Object Id. It names no tool, carries no schema or Page Object definition, and shows no Structural Ref. A Page Object Tool's answer to an agent reports how it changed: the Page Objects that appeared, in full, those that went away, and the values that changed.
 _Avoid_: Page Object Screen, POM screen, instance tree, Page Object snapshot
 
 **Page Object Presence**:
@@ -86,14 +86,14 @@ Whether a Page Object Action can run right now. An action is available when its 
 The one fact that makes a Page Object Action, or a Browser Tool call on a single element, unavailable, as a string. The runtime writes it when a click would not reach the root or the element, or when an element a tool types into cannot take focus, naming the element in the way by its role and accessible name when it has a role to name it by; the author's predicate writes it otherwise. The runtime never infers more than it measured.
 
 **Browser Tool**:
-A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose, and offers and accepts only elements its input would reach: a click for one that clicks or hovers, focus for one that types or selects. It reaches an agent in the page through WebMCP publication, and never a coding agent through an ayme MCP server.
+A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose, and offers and accepts only elements its input would reach: a click for one that clicks or hovers, focus for one that types or selects. It reaches an agent in the page through WebMCP publication, and a Session does not offer it.
 
 **Locator Recommendation**:
 A Playwright locator string derived for one element, optionally relative to a container element. It matches exactly that element and never contains a Structural Ref. It is code for a Page Object Model, not an address for a later tool call.
 _Avoid_: selector suggestion
 
 **Custom Tool**:
-An operation an app registers that applies to one element. One registration makes it a published tool and an operation the Goal Loop may choose. It reaches an agent in the page through WebMCP publication, and never a coding agent through an ayme MCP server.
+An operation an app registers that applies to one element. One registration makes it a published tool and an operation the Goal Loop may choose. It reaches an agent in the page through WebMCP publication, and a Session does not offer it.
 
 **Settled Page**:
 A page that has shown no activity for a quiet window after an action. A wait for it is bounded by a deadline and reports whether the page became stable.
@@ -144,7 +144,7 @@ The route in an app's own backend that adds the provider's key and Jev model to 
 _Avoid_: relay (means the WebMCP local relay), proxy.
 
 **Inspector**:
-The panel that shows a page's Page Objects, its Structural Page State and its tools, and lets a developer run those tools by hand. It runs inline in the inspected page or outside it.
+The panel that shows a page's Page Objects, its Structural Page State and its tools, and lets a developer run those tools by hand. It runs inline in a page that ships ayme, and for a Session in a window of its own or in an Agent App's chat.
 _Avoid_: debug panel, debugger, POM inspector
 
 **Build without ayme**:
@@ -155,18 +155,12 @@ _Avoid_: stripped build, removed build, production build (a production build may
 The Inspector's setting for showing people what an agent does: it pauses briefly before each action and shows a cue where each click lands, whoever makes the call (the panel, an agent or WebMCP). Off by default, so calls run at full speed.
 _Avoid_: slow mode, demo trace
 
-**Agent Connection**:
-The link between one agent's ayme MCP server and one page, plus the App Processes paired beside it, through which the agent calls their tools. The server decides which of the page's tools the agent sees: its Page Object Tools, `page_objects` and Peek Tools, and none of its Browser Tools, `snapshot`, `goal` or Custom Tools.
-
 **Agent App**:
-The program a developer runs an agent in, which starts `ayme mcp` and connects to it over MCP: Cursor, Claude Desktop, T3 Code, Claude Code. Some show an MCP App, a page the server gives them, inside the chat.
+The program a developer runs an agent in: Cursor, Claude Desktop, T3 Code, Claude Code. It can start `ayme mcp` and connect to it over MCP, and some then show an MCP App, a page the server gives them, inside the chat.
 _Avoid_: host, MCP host (the MCP standard's words for it; Host means something else here), MCP client
 
 **Peek**:
-A named view of application state that a coding agent can read on demand while the app runs, from the browser or from the app's own server process. Reading it changes nothing.
+A named view of application state that the page does not show, declared by the app. A developer reads it on demand in the Inspector while the app runs. Reading it changes nothing.
 
 **Peek Tool**:
-The tool through which an agent reads one Peek, from every live instance of it.
-
-**App Process**:
-A Node process of the app being developed, such as its dev server, that pairs beside the page.
+The tool through which one Peek is read, from every live instance of it. It shows in the Inspector and reaches no agent.

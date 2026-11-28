@@ -18,13 +18,15 @@ export class ListPage {
     return this.page.getByRole("textbox", { name: "New item" });
   }
 
+  // The Inspector names its own buttons after the page's, inside an open
+  // shadow root on the dogfood page, so the page's own are the ones in main.
   @ayme.child
   get addItemButton(): Locator {
-    return this.page.getByRole("button", { name: "Add item" });
+    return this.page
+      .getByRole("main")
+      .getByRole("button", { name: "Add item" });
   }
 
-  // The Inspector's Runs view has a "Clear" button too, inside an open
-  // shadow root on the dogfood page, so the page's own is the one in main.
   @ayme.child
   get clearButton(): Locator {
     return this.page.getByRole("main").getByRole("button", { name: "Clear" });
