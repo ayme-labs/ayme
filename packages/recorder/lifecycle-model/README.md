@@ -79,6 +79,7 @@ Assumptions, as yes/no questions (the model's answer in brackets):
 8. Does the page's message that it holds a click reach the engine before the person's next command? [yes; no in `Race-HeldMessageAfterStop`]
 9. Does a report of typing, or its revision, reach the engine before the page commits a navigation that leaves the document it was typed in? [yes; no in `Race-NavigationBeforeTypingReport`]
 10. Does Playwright tell no listener of the page it opens to save the storage state, run none of the context's scripts in it, and leave it out of the context's events, so that the engine hears nothing of it? [yes; Playwright 1.62 to 1.65 mark it `isStorageStatePage`. Were it told, the engine would hear of it only once the outcome is decided, where it records nothing]
+11. Is the page's message that it holds an input, through Playwright's binding, delivered to the engine? [yes; G `gateIn` holds nothing where its check says the message would not reach Playwright]
 
 The model leaves out:
 

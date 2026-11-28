@@ -112,7 +112,11 @@ export function removeOwnElements(remove: string): void {
  * once more and getting the answer means the document's own earlier
  * question was answered first.
  */
-export async function askRecorderState(): Promise<void> {
+/** Asks Playwright's recorder for its state, unless the document's own gate
+ * knows that its calls do not reach Playwright: the answer would never come.
+ * One evaluation, so the check and the ask are of one document. */
+export async function askRecorderStateIfHeard(): Promise<void> {
+  if (window.__aymeRecorderGate?.heard() === false) return;
   const state = (
     window as unknown as { __pw_recorderState?: () => Promise<unknown> }
   ).__pw_recorderState;

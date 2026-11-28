@@ -49,6 +49,9 @@ export type Gate = {
    * reached the page once sent on, or one that reached it untouched; null
    * for any other event. */
   heldClickOf(event: Event): HeldClick | null;
+  /** Whether a call from the document reaches Playwright now, as the gate
+   * decides it before holding an input. */
+  heard(): boolean;
   /** Leaves every input alone while Playwright's recorder picks an element,
    * or no longer: the picking click is Playwright's, and never reaches the
    * page. It stops by itself after the picking click. */
@@ -92,7 +95,10 @@ export function startGate(start: GateStart): void {
  * moment it is switched on, it holds every key after it, typing included,
  * until it is let through: input reaches the page in the order it was
  * given. Switched off, it goes on holding keys and clicks alike while an
- * input it held still waits to be passed on.
+ * input it held still waits to be passed on. Where the call that tells of
+ * an input would not reach Playwright (`reachesPlaywright`), it holds
+ * nothing, since nothing would ever let the input through, and says so once
+ * on the console, which reaches Node without the page's JSON.
  *
  * A click sent on goes to the element under the pointer. One the browser
  * gave to another element, as to the body when a list came up under the
@@ -107,6 +113,18 @@ export function gateIn(held: string, rules: GateRules): void {
   // Every document has its own, frames included: a frame's click is sent
   // on at its place in the page.
   if (window.__aymeRecorderGate) return;
+  // Taken before the document's own scripts run, where the gate starts with
+  // the document; one loaded before the recorder attached may have replaced
+  // them, which `reachesPlaywright` allows for. Without a usable
+  // console.debug the gate installs all the same, and gives no warning.
+  let parse: (text: string) => unknown = () => null;
+  let note: (...said: string[]) => void = () => {};
+  try {
+    parse = JSON.parse;
+    note = console.debug.bind(console);
+  } catch {
+    // Nothing to say it with.
+  }
   let on = rules.gateStartsOn(window.__aymeRecorderGateStart);
   let holding = on;
   // Names this document: a held input is sent on to no other.
@@ -198,6 +216,7 @@ export function gateIn(held: string, rules: GateRules): void {
     pick: (on) => {
       picking = on;
     },
+    heard: () => heard(),
     heldClickOf: (event) => {
       const seq = arrivals.get(event);
       return seq === undefined ? null : { document: thisDocument, seq };
@@ -214,6 +233,13 @@ export function gateIn(held: string, rules: GateRules): void {
   const elementOf = (event: Event) => {
     const target = event.composedPath()[0];
     return target instanceof Element ? target : null;
+  };
+  const heard = () =>
+    rules.reachesPlaywright((value) => JSON.stringify(value), parse);
+  let toldUnheard = false;
+  const unheard = () => {
+    if (!toldUnheard) note(held, location.href);
+    toldUnheard = true;
   };
   const hold = (event: Event) => {
     swallow(event);
@@ -293,6 +319,11 @@ export function gateIn(held: string, rules: GateRules): void {
     arrivals.set(event, seq);
     tellClick(event, true);
   };
+  const holdClick = (event: MouseEvent) => {
+    hold(event);
+    swallowDoubleClick = event.type === "click" && event.detail >= 2;
+    tellClick(event, false);
+  };
   const onClick = (event: MouseEvent) => {
     notePress(event);
     const click = {
@@ -302,11 +333,10 @@ export function gateIn(held: string, rules: GateRules): void {
       target: clickTarget(event),
     };
     if (!rules.clickHeld(click)) return;
+    if (!heard()) return unheard();
     if (rules.clickUntouched({ underPointer: underPointer(event), waiting }))
       return passUntouched(event);
-    hold(event);
-    swallowDoubleClick = event.type === "click" && event.detail >= 2;
-    tellClick(event, false);
+    holdClick(event);
   };
   const mouseRoutes: Record<MouseRoute, (event: MouseEvent) => void> = {
     ignore: () => {},
@@ -371,6 +401,7 @@ export function gateIn(held: string, rules: GateRules): void {
   const holdKey = (event: KeyboardEvent) => {
     const decided = rules.keyHeld({ on, press: pressOf(event), holding });
     if (!decided.held) return;
+    if (!heard()) return unheard();
     hold(event);
     swallowKeyUp.add(event.code);
     tell({

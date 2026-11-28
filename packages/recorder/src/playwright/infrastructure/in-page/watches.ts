@@ -4,28 +4,12 @@ import type {
   actedOnIndex,
   ancestorChain,
   controlsSelector,
-  HeldClick,
 } from "../pageRules";
+import type { InputNote } from "../pageValues";
 
 // The watches the adapter installs in a recorded page. Each function is sent
 // to the page as its own text, so it uses nothing from outside itself but
 // what it is given (docs/testing.md#code-a-real-browser-runs).
-
-/** What a document tells of an input's target: the refs Playwright's
- * recorder gave the target and each of its ancestors, nearest first, null
- * where it gave none. */
-export type TargetChain = {
-  readonly type: string;
-  /** From the element the input acted on, as Playwright's selector names
-   * it, up. */
-  readonly chain: readonly (string | null)[];
-  /** The ref of the element under the pointer, which Playwright's report
-   * names as its ref: it says which report this is the note of. */
-  readonly under: string | null;
-  /** The held click the event is, as the gate sent it on; null for an event
-   * that is no held click's, as the release of a right-click. */
-  readonly held: HeldClick | null;
-};
 
 /** The element above an element, through an open shadow root to its host;
  * null above the top. */
@@ -112,9 +96,9 @@ declare global {
  */
 export function targetWatchIn(tell: string, rules: TargetRules): void {
   if (window.__aymeRecorderTargetWatch) return;
-  const told = (seen: TargetChain) =>
+  const told = (seen: InputNote) =>
     void (
-      window as unknown as Record<string, (seen: TargetChain) => Promise<void>>
+      window as unknown as Record<string, (seen: InputNote) => Promise<void>>
     )[tell]!(seen);
   const heldClickOf = (event: Event) =>
     window.__aymeRecorderGate?.heldClickOf(event) ?? null;

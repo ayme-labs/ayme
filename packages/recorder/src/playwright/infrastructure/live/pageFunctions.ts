@@ -29,7 +29,9 @@ import {
   leftAlone,
   modifiersOf,
   mouseRoute,
+  reachesPlaywright,
   recordersOwn,
+  sameJson,
   recordedAsPress,
   replayed,
   replayedEffect,
@@ -60,8 +62,9 @@ export const installGate: (held: string) => void = withRules(
     mouseRoute,
     keyRoute,
     keyHeld,
+    reachesPlaywright,
   },
-  [leftAlone, typingKey]
+  [leftAlone, typingKey, sameJson]
 );
 
 const ancestorRules = { ancestorChain, elementAbove, ariaRefOf };

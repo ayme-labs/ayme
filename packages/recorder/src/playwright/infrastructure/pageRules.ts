@@ -11,39 +11,7 @@ export type Modifier = "Alt" | "Control" | "Meta" | "Shift";
  * click's number there (`seq` of `HeldByPage`). */
 export type HeldClick = { readonly document: string; readonly seq: number };
 
-/** What a page tells of an input it held back, or of a click it let reach
- * the page untouched. `seq` numbers the inputs a document told of, from 1. */
-export type HeldByPage =
-  | {
-      readonly kind: "click";
-      readonly seq: number;
-      /** Where it was, in its own document's viewport. */
-      readonly x: number;
-      readonly y: number;
-      /** The click's count: 2 for the second click of a double click. */
-      readonly detail: number;
-      /** The button, the left one when it is not said. */
-      readonly button?: "right" | "middle";
-      readonly modifiers: readonly Modifier[];
-      /** The document it was held in. */
-      readonly document: string;
-      /** It was not held: it reached the page untouched, and is only told
-       * of (`clickUntouched`). */
-      readonly untouched: boolean;
-    }
-  | {
-      readonly kind: "key";
-      readonly seq: number;
-      /** Typing, as opposed to a key press Playwright records as a press. */
-      readonly typing: boolean;
-      /** It went to the document itself: no element had focus. */
-      readonly nothingFocused: boolean;
-      readonly key: string;
-      readonly code: string;
-      readonly modifiers: readonly Modifier[];
-      /** The document it was held in. */
-      readonly document: string;
-    };
+export type { HeldByPage } from "./pageValues";
 
 // The rules the gate decides by. They need no page: Node tests them, and
 // `withRules` sends them into the page with the gate. Each uses nothing
@@ -189,6 +157,85 @@ export function innermost<N>(
   for (let inner = at && inside(at); inner && inner !== at; inner = inside(at))
     at = inner;
   return at;
+}
+
+/**
+ * Whether a call from a page can reach Node through a Playwright binding.
+ * Playwright writes every binding call with the page's own `JSON.stringify`,
+ * so a page that replaced it, or that changed how it writes an object, as
+ * Prototype.js 1.6 gives arrays a `toJSON`, sends a call Node cannot read:
+ * it is lost, and so is every report of Playwright's recorder. The probe is
+ * shaped as Playwright writes a call, and read back as a value, so text laid
+ * out another way, or with more in it, still reads the same.
+ */
+export function reachesPlaywright(
+  stringify: (value: unknown) => string,
+  parse: (text: string) => unknown
+): boolean {
+  const callOf = () => ({
+    name: "__aymeRecorderHeld",
+    seq: 1,
+    serializedArgs: [
+      {
+        o: [
+          { k: "kind", v: "click" },
+          { k: "x", v: 1.5 },
+          { k: "modifiers", v: { a: ["Shift"], id: 2 } },
+        ],
+        id: 1,
+      },
+    ],
+  });
+  // The page's `stringify` never gets this one: one that changes what it is
+  // given would otherwise change what its text is compared with too.
+  const call = callOf();
+  let written: string;
+  try {
+    written = stringify(callOf());
+  } catch {
+    return false;
+  }
+  const readsBack = (text: string) => {
+    let read: Record<string, unknown> | null | undefined;
+    try {
+      read = parse(text) as Record<string, unknown> | null;
+    } catch {
+      // Unreadable: nothing is read, and nothing is the call.
+    }
+    // The fields Playwright reads of a call.
+    return (["name", "seq", "serializedArgs"] as const).every((field) =>
+      sameJson(read?.[field], call[field])
+    );
+  };
+  // A `parse` that cannot read the call's own text cannot tell, and the
+  // page counts as heard: taking a healthy page for a broken one would keep
+  // it from being recorded.
+  return (
+    readsBack(written) ||
+    !readsBack(
+      '{"name":"__aymeRecorderHeld","seq":1,"serializedArgs":[{"o":[{"k":"kind","v":"click"},{"k":"x","v":1.5},{"k":"modifiers","v":{"a":["Shift"],"id":2}}],"id":1}]}'
+    )
+  );
+}
+
+/** Whether two plain JSON values are the same. */
+export function sameJson(a: unknown, b: unknown): boolean {
+  if (
+    a === null ||
+    b === null ||
+    typeof a !== "object" ||
+    typeof b !== "object"
+  )
+    return a === b;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((key) =>
+    sameJson(
+      (a as Record<string, unknown>)[key],
+      (b as Record<string, unknown>)[key]
+    )
+  );
 }
 
 /** The modifier keys held with an input, in a fixed order. */
@@ -471,4 +518,5 @@ export type GateRules = {
   readonly mouseRoute: typeof mouseRoute;
   readonly keyRoute: typeof keyRoute;
   readonly keyHeld: typeof keyHeld;
+  readonly reachesPlaywright: typeof reachesPlaywright;
 };

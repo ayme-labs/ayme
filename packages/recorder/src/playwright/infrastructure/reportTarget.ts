@@ -1,16 +1,8 @@
 import { pictureRef, type InteractionReport } from "../../timeline/domain";
 import type { HeldClick } from "./pageRules";
+import type { InputNote } from "./pageValues";
 
-/** A page's note of an input: the event, the refs of the element it acted
- * on and its ancestors, nearest first, the ref of the element under the
- * pointer, which Playwright's report names, and the held click the event
- * is, if it is one (the in-page `TargetChain`). */
-export type InputNote = {
-  readonly type: string;
-  readonly chain: readonly (string | null)[];
-  readonly under: string | null;
-  readonly held: HeldClick | null;
-};
+export type { InputNote };
 
 /** A click a page told of that reached it, sent on or untouched, whose
  * report has not come: which it is, its count and its button. */

@@ -1,6 +1,13 @@
+import { EventEmitter } from "node:events";
+import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 
-import { RecorderStartError } from "@ayme-dev/recorder";
+import {
+  RecorderStartError,
+  type RecorderUpdate,
+  type RecorderWarning,
+  type RecordingOutcome,
+} from "@ayme-dev/recorder";
 
 import {
   browserOf,
@@ -8,6 +15,7 @@ import {
   launchOptions,
   outcomeLine,
   outcomeReport,
+  runUntilEnd,
   startFailure,
   startLine,
   startLines,
@@ -234,5 +242,199 @@ describe("what to print, where, and the exit code, for an outcome", () => {
       text: "The recorder failed: ENOSPC\n",
       code: 1,
     });
+  });
+});
+
+/** A terminal the run is wired to: the process's events, and two streams
+ * that keep what is written. Once `gone`, a stream fails each write, and
+ * Node tells it as an "error" event after the write. */
+function terminal() {
+  const output = () => {
+    const stream = Object.assign(
+      new Writable({
+        write(chunk, _encoding, done) {
+          if (stream.gone) return done(new Error("write EIO"));
+          stream.text += String(chunk);
+          done();
+        },
+      }),
+      { text: "", gone: false }
+    );
+    return stream;
+  };
+  return Object.assign(new EventEmitter(), {
+    stdout: output(),
+    stderr: output(),
+  });
+}
+
+/** A recorder the test ends: `ends` counts how often it was asked to. It
+ * tells a subscriber of `warnings` as it subscribes. */
+function recorder(warnings: RecorderWarning[] = []) {
+  let finish!: (outcome: RecordingOutcome) => void;
+  const done = new Promise<RecordingOutcome>((resolve) => (finish = resolve));
+  const handle = {
+    windowUrl: null,
+    ends: 0,
+    end() {
+      handle.ends += 1;
+    },
+    subscribe: (listener: (update: RecorderUpdate) => void) => {
+      listener({ state: { warnings } } as unknown as RecorderUpdate);
+      return () => {};
+    },
+    done,
+  };
+  return { handle, finish };
+}
+
+const warning: RecorderWarning = {
+  kind: "notRecorded",
+  message: "A step is in the recording without its element.",
+};
+
+const launched = { launch: { url: "http://shop.test/", headless: true } };
+const saved: RecordingOutcome = { kind: "saved", folder: "/p/rec_1" };
+
+describe("how a run of codegen ends", () => {
+  it.each(["SIGINT", "SIGTERM", "SIGHUP"])(
+    "ends the recorder on %s, and tells the saved recording: Ctrl+C, a kill and a closed terminal end it alike",
+    async (signal) => {
+      const { handle, finish } = recorder();
+      const at = terminal();
+      const run = runUntilEnd(handle, launched, at);
+
+      at.emit(signal);
+      expect(handle.ends).toBe(1);
+      finish(saved);
+
+      expect(await run).toBe(0);
+      expect(at.stdout.text).toContain(
+        "Recording package: /p/rec_1/package.yaml\n"
+      );
+    }
+  );
+
+  it("prints the recorder's warnings on stderr", async () => {
+    const { handle, finish } = recorder([warning]);
+    const at = terminal();
+    const run = runUntilEnd(handle, launched, at);
+    finish(saved);
+
+    expect(await run).toBe(0);
+    expect(at.stderr.text).toBe(
+      "Warning: A step is in the recording without its element.\n"
+    );
+  });
+
+  it("goes on to the end when the terminal is gone and every write fails, a warning's too", async () => {
+    const { handle, finish } = recorder([warning]);
+    const at = terminal();
+    at.stdout.gone = true;
+    at.stderr.gone = true;
+    const run = runUntilEnd(handle, launched, at);
+
+    at.emit("SIGHUP");
+    finish(saved);
+
+    expect(await run).toBe(0);
+    expect(handle.ends).toBe(1);
+  });
+
+  it.each(["uncaughtException", "unhandledRejection"])(
+    "ends the recorder on an error nothing caught (%s), as Ctrl+C does, says what it was, and fails",
+    async (event) => {
+      const { handle, finish } = recorder();
+      const at = terminal();
+      const run = runUntilEnd(handle, launched, at);
+
+      at.emit(
+        event,
+        Object.assign(new Error("boom"), { stack: "Error: boom\n    at here" })
+      );
+      expect(handle.ends).toBe(1);
+      finish(saved);
+
+      expect(await run).toBe(1);
+      expect(at.stderr.text).toBe(
+        "The recorder hit an error it did not expect, and ends with what it has recorded: Error: boom\n    at here\n"
+      );
+      expect(at.stdout.text).toContain(
+        "Recording package: /p/rec_1/package.yaml\n"
+      );
+    }
+  );
+
+  it("asks for the save before it tells of the error, also for an error that cannot be shown", async () => {
+    const { handle, finish } = recorder();
+    const at = terminal();
+    const run = runUntilEnd(handle, launched, at);
+
+    // No prototype, so no way to turn it into text.
+    at.emit("uncaughtException", Object.create(null));
+    expect(handle.ends).toBe(1);
+    finish(saved);
+
+    expect(await run).toBe(1);
+    expect(at.stderr.text).toBe(
+      "The recorder hit an error it did not expect, and ends with what it has recorded: an error that cannot be shown\n"
+    );
+  });
+
+  it("tells an error whose stack and message are no text as one that cannot be shown", async () => {
+    const { handle, finish } = recorder();
+    const at = terminal();
+    const run = runUntilEnd(handle, launched, at);
+
+    at.emit(
+      "uncaughtException",
+      Object.assign(new Error(), {
+        stack: Symbol("stack"),
+        message: Symbol("message"),
+      })
+    );
+    expect(handle.ends).toBe(1);
+    finish(saved);
+
+    expect(await run).toBe(1);
+    expect(at.stderr.text).toBe(
+      "The recorder hit an error it did not expect, and ends with what it has recorded: an error that cannot be shown\n"
+    );
+  });
+
+  it("ends the recorder once for errors that come while it saves, tells each, and still tells the saved recording", async () => {
+    const { handle, finish } = recorder();
+    const at = terminal();
+    const run = runUntilEnd(handle, launched, at);
+
+    at.emit("uncaughtException", new Error("first"));
+    at.emit("unhandledRejection", "second");
+    at.emit("uncaughtException", new Error("third"));
+    expect(handle.ends).toBe(1);
+    finish(saved);
+
+    expect(await run).toBe(1);
+    expect(at.stderr.text).toContain("second\n");
+    expect(at.stderr.text).toContain("third");
+    expect(at.stdout.text).toContain(
+      "Recording package: /p/rec_1/package.yaml\n"
+    );
+  });
+
+  it("listens to the process no more once the recorder has ended: an error after it is the process's own", async () => {
+    const { handle, finish } = recorder();
+    const at = terminal();
+    const run = runUntilEnd(handle, launched, at);
+    finish(saved);
+    await run;
+
+    for (const event of [
+      "SIGINT",
+      "SIGTERM",
+      "SIGHUP",
+      "uncaughtException",
+      "unhandledRejection",
+    ])
+      expect(at.listenerCount(event), event).toBe(0);
   });
 });
