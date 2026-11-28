@@ -1164,6 +1164,34 @@ describe("live Page Object registry", () => {
       ]);
     });
 
+    it("tells its subscribers nothing when it changes nothing, also after a change", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop")];
+      session.register(running[0]!);
+      const heard = vi.fn();
+      registry.subscribeToRegisteredPoms(heard);
+
+      replacePageObjects(session.ayme, [], []);
+      expect(heard).not.toHaveBeenCalled();
+      replacePageObjects(session.ayme, running, [compiled(registry, "Shop")]);
+      replacePageObjects(session.ayme, [], []);
+
+      expect(heard).toHaveBeenCalledOnce();
+    });
+
+    it("stops observing the page once it replaces every class with none", async () => {
+      const { registry, session } = await setup();
+      const { replacePageObjects } = await import("../../runtime");
+      const running = [compiled(registry, "Shop")];
+      session.register(running[0]!);
+      expect(pageObjectProbe.source).toBeTypeOf("function");
+
+      replacePageObjects(session.ayme, running, []);
+
+      expect(pageObjectProbe.source).toBeUndefined();
+    });
+
     it("lets go of the instances of the classes it replaced", async () => {
       const { registry, session } = await setup();
       const { replacePageObjects } = await import("../../runtime");
