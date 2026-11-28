@@ -239,7 +239,7 @@ describe("the arms", () => {
 describe("the interface line of an arm with ayme", () => {
   it("names the ayme command and starts the agent from ayme page-objects, the same for every browser automation", () => {
     expect(aymeSentence).toBe(
-      "The `ayme` command lists and calls the Page Object Tools of the screen the browser is on, through a Session already connected to that browser; start from `ayme page-objects`."
+      "The `ayme` command lists and calls the Page Object Tools of the screen the browser is on, through a Session already connected to that browser; start from `ayme page-objects`. Run it as `ayme`, which is on the PATH here."
     );
   });
 

@@ -150,12 +150,13 @@ const aloneLines: Record<
 
 /**
  * What an arm with ayme says of the command: what it offers, that the
- * Session is already connected, and where to start. The same for every
- * browser automation; the rule to list the Page Objects on each new screen
- * is the skill's.
+ * Session is already connected, where to start, and how to run it. The same
+ * for every browser automation; the rule to list the Page Objects on each new
+ * screen is the skill's. The skill runs the command as `npx ayme`, which the
+ * run's permissions refuse, so the last sentence names the form they allow.
  */
 export const aymeSentence =
-  "The `ayme` command lists and calls the Page Object Tools of the screen the browser is on, through a Session already connected to that browser; start from `ayme page-objects`.";
+  "The `ayme` command lists and calls the Page Object Tools of the screen the browser is on, through a Session already connected to that browser; start from `ayme page-objects`. Run it as `ayme`, which is on the PATH here.";
 
 /** Each browser automation's line with ayme: its line alone, without a start of its own. */
 const withAymeLines: Record<
