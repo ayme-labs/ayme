@@ -244,11 +244,11 @@ function accept(ws: WebSocket, session: Pick<Session, "ask" | "events">) {
       })
     )
   );
-  // The reads it asked for are released with it; a Run it started goes on,
-  // as one an agent started does.
-  const reads = new Set<Fiber.Fiber<void>>();
+  // What it asked for is released with it. A Run it started goes on all the
+  // same, as one an agent started does: the Session keeps a Run's work.
+  const asked = new Set<Fiber.Fiber<void>>();
   ws.once("close", () => {
-    for (const fiber of [hearing, ...reads])
+    for (const fiber of [hearing, ...asked])
       void Effect.runFork(Fiber.interrupt(fiber));
   });
   ws.on("message", (data, isBinary) => {
@@ -274,9 +274,8 @@ function accept(ws: WebSocket, session: Pick<Session, "ask" | "events">) {
           )
         )
       );
-    if (method === "runTool") return void Effect.runFork(answering);
-    const read = Effect.runFork(answering);
-    reads.add(read);
-    read.addObserver(() => reads.delete(read));
+    const asking = Effect.runFork(answering);
+    asked.add(asking);
+    asking.addObserver(() => asked.delete(asking));
   });
 }

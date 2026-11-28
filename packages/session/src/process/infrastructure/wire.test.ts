@@ -68,6 +68,8 @@ it("a connection carries one request, however its bytes arrive", async () => {
   connection.resume();
   await new Promise((resolve) => connection.once("connect", resolve));
   connection.write('{"stop":');
+  // Apart, so that the line arrives in pieces.
+  await new Promise((resolve) => setTimeout(resolve, 20));
   connection.write("{}}\n");
   await new Promise((resolve) => setTimeout(resolve, 20));
   connection.write('{"stop":{}}\n');
@@ -77,6 +79,24 @@ it("a connection carries one request, however its bytes arrive", async () => {
 
   expect(answer).toHaveBeenCalledTimes(1);
   expect(answer).toHaveBeenCalledWith({ stop: {} });
+});
+
+it("a connection's request is its first line, also when more arrives with it", async () => {
+  const socket = socketPath();
+  const answer = vi.fn(() => Promise.resolve(answered));
+  const listening = await listen(socket, answer);
+  onTestFinished(() => listening.close());
+
+  const connection = createConnection(socket);
+  connection.on("error", () => {});
+  let told = "";
+  connection.on("data", (data) => (told += String(data)));
+  await new Promise((resolve) => connection.once("connect", resolve));
+  connection.write('{"stop":{}}\n{"tools":{}}\n');
+  await new Promise((resolve) => connection.once("close", resolve));
+
+  expect(answer.mock.calls).toEqual([[{ stop: {} }]]);
+  expect(told).toBe(`${JSON.stringify(answered)}\n`);
 });
 
 it("closing the socket closes the connections that never sent a request", async () => {

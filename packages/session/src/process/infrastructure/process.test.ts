@@ -1,6 +1,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { EventEmitter, once } from "node:events";
 import {
+  existsSync,
   mkdtempSync,
   readdirSync,
   writeFileSync,
@@ -8,6 +9,7 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { Effect, Exit, Scope } from "effect";
@@ -344,6 +346,35 @@ it("a process that ends before it answers is answered with what it printed", asy
   });
 
   expect(answer).toEqual({ ok: false, text: "Cannot find module ayme" });
+});
+
+it("a socket path of the most bytes a local socket's path has is listened on", async () => {
+  const { served: refused } = await serve({
+    socket: join(folder("socket"), `${"long".repeat(30)}.sock`),
+  });
+  if (refused._tag !== "Failure") throw new Error("listened");
+  const most = Number(/at most (\d+) bytes/.exec(refused.failure.message)![1]);
+  const parent = folder("socket");
+  const socket = join(
+    parent,
+    // The rest of the path, after the folder and its separator.
+    "s".repeat(most - Buffer.byteLength(parent) - 1)
+  );
+  expect(Buffer.byteLength(socket)).toBe(most);
+
+  const { served } = await serve({ socket });
+
+  expect(served._tag).toBe("Success");
+});
+
+it("a Session served without the Inspector's script serves no Inspector window", async () => {
+  const { served } = await claimAndServe();
+  if (served._tag !== "Success") throw served.failure;
+
+  expect(await askSession(place, { inspector: { window: {} } })).toEqual({
+    ok: false,
+    text: "This Session serves no Inspector window.",
+  });
 });
 
 it("a socket path too long for a local socket fails the start with why", async () => {
@@ -730,16 +761,22 @@ function scriptedOpener() {
     claim: (generation: number) =>
       channel.emit("message", { claimed: generation }),
     goAway: () => opener.disconnect(),
+    connected: () => opener.connected,
   };
 }
 
 /** Claims the folder for this process, as the opening command does, and
  * runs the Session's process on a scripted browser in this process. */
-function runProcess(opener: Opener) {
-  const { socket } = sessionFolder();
+function runProcess(
+  opener: Opener,
+  {
+    socket = sessionFolder().socket,
+    held,
+  }: { socket?: string; held?: true } = {}
+) {
   const claim = claimRecord(place, { ...thisProcess(), socket });
   if (!("generation" in claim)) throw new Error("the folder has a Session");
-  const { layer, browser } = scriptedBrowser();
+  const { layer, browser } = scriptedBrowser(held ? { held } : {});
   const exitCode = serveProcess(
     { projectDir, socket, request: { open: { headed: false } } },
     opener,
@@ -749,7 +786,7 @@ function runProcess(opener: Opener) {
 }
 
 it("a start whose opening command goes away right after sending the claim ends, and leaves no browser and no Session", async () => {
-  const { opener, claim, goAway } = scriptedOpener();
+  const { opener, claim, goAway, told } = scriptedOpener();
   const { generation, exitCode, browser } = runProcess(opener);
 
   // Before the process watches for its opener going away.
@@ -761,15 +798,106 @@ it("a start whose opening command goes away right after sending the claim ends, 
   expect(browser.asked.length === 0 || browser.released).toBe(true);
   expect(browser.hostedWith).toEqual([]);
   expect(liveRecord(place)).toBeUndefined();
+  // Nobody is there to tell.
+  expect(await pendingAfter(told, 0)).toBe(true);
 });
 
-it("a Session's process marks its claim started before it answers the start, and serves the Session until it ends", async () => {
+it("a process whose opening command went away before the process looked for its claim ends, and asks for no browser", async () => {
+  const { opener, goAway } = scriptedOpener();
+  goAway();
+
+  const { exitCode, browser } = runProcess(opener);
+
+  expect(await exitCode).toBe(1);
+  expect(browser.asked).toEqual([]);
+});
+
+it("a process whose opening command goes away before sending the claim ends, and asks for no browser", async () => {
+  const { opener, goAway } = scriptedOpener();
+  const { exitCode, browser } = runProcess(opener);
+
+  goAway();
+
+  expect(await exitCode).toBe(1);
+  expect(browser.asked).toEqual([]);
+});
+
+it("a start whose opening command goes away while the browser opens ends, and leaves no Session", async () => {
+  const { opener, claim, told, goAway } = scriptedOpener();
+  const { generation, exitCode, browser } = runProcess(opener, {
+    held: true,
+  });
+  claim(generation);
+  await browser.until(() => browser.asked.length === 1);
+
+  goAway();
+
+  expect(await exitCode).toBe(1);
+  expect(liveRecord(place)).toBeUndefined();
+  expect(await pendingAfter(told, 0)).toBe(true);
+});
+
+it("a start that fails is told why, and its Session shows as starting until then", async () => {
   const { opener, claim, told, listedWhenTold } = scriptedOpener();
+  const { generation, exitCode, browser } = runProcess(opener, {
+    held: true,
+  });
+  claim(generation);
+  await browser.until(() => browser.asked.length === 1);
+
+  browser.failOpen("No Chromium here.");
+
+  expect(await told).toMatchObject({
+    ok: false,
+    text: expect.stringContaining("No Chromium here."),
+  });
+  expect(listedWhenTold()).toMatchObject({
+    data: { sessions: [{ name: "default", starting: true }] },
+  });
+  expect(await exitCode).toBe(1);
+  expect(liveRecord(place)).toBeUndefined();
+});
+
+it("a process that cannot serve its Session tells its opening command why", async () => {
+  const { opener, claim, told } = scriptedOpener();
+  const { generation, exitCode } = runProcess(opener, {
+    socket: join(folder("socket"), `${"long".repeat(30)}.sock`),
+  });
+
+  claim(generation);
+
+  expect(await told).toEqual({
+    ok: false,
+    text: expect.stringMatching(/^ayme cannot listen at /),
+  });
+  expect(await exitCode).toBe(1);
+});
+
+it.each(["SIGINT", "SIGTERM", "SIGHUP"] as const)(
+  "%s ends a Session's process as a stop does",
+  async (signal) => {
+    const { opener, claim, told } = scriptedOpener();
+    const { generation, exitCode, browser } = runProcess(opener);
+    claim(generation);
+    expect(await told).toMatchObject({ ok: true });
+
+    // As the system tells it, to the process's own listeners.
+    process.emit(signal);
+
+    expect(await exitCode).toBe(0);
+    expect(browser.released).toBe(true);
+    expect(liveRecord(place)).toBeUndefined();
+  }
+);
+
+it("a Session's process marks its claim started before it answers the start, lets its opening command go, and serves the Session until it ends", async () => {
+  const { opener, claim, told, listedWhenTold, connected } = scriptedOpener();
   const { generation, exitCode } = runProcess(opener);
 
   claim(generation);
 
   expect(await told).toMatchObject({ ok: true });
+  expect(connected()).toBe(false);
   expect(listedWhenTold()).toMatchObject({
     data: {
       sessions: [{ name: "default", pid: process.pid, starting: false }],
@@ -778,4 +906,237 @@ it("a Session's process marks its claim started before it answers the start, and
   expect(await askSession(place, { stop: {} })).toMatchObject({ ok: true });
   expect(await exitCode).toBe(0);
   expect(liveRecord(place)).toBeUndefined();
+});
+
+it("--tab names the Tab a call runs on; without it a call runs on the most recently active Tab", async () => {
+  const { served, browser } = await claimAndServe();
+  if (served._tag !== "Success") throw served.failure;
+  const other = browser.openTab("http://127.0.0.1:5173/other");
+
+  for (const tab of ["about:blank", undefined])
+    expect(
+      await askCall(place, "Basket.add", undefined, tab),
+      tab
+    ).toMatchObject({ ok: true });
+
+  expect(browser.runs).toEqual([{ tool: "Basket.add", input: {} }]);
+  expect(other.runs).toEqual([{ tool: "Basket.add", input: {} }]);
+});
+
+it("--params @<file> reads a file of exactly its size limit", async () => {
+  const { served, browser } = await claimAndServe();
+  if (served._tag !== "Success") throw served.failure;
+  const json = `{"a":"${"x".repeat(PARAMS_FILE_LIMIT_BYTES - 8)}"}`;
+  expect(Buffer.byteLength(json)).toBe(PARAMS_FILE_LIMIT_BYTES);
+  writeFileSync(join(projectDir, "limit.json"), json);
+
+  expect(await askCall(place, "Basket.add", "@limit.json")).toMatchObject({
+    ok: true,
+  });
+  expect(browser.runs).toEqual([
+    { tool: "Basket.add", input: JSON.parse(json) },
+  ]);
+});
+
+/** How many files this process has open. */
+const openFiles = () => readdirSync("/dev/fd").length;
+
+it("a command leaves no file open: --params it refuses, and a start that fails", async () => {
+  execFileSync("mkfifo", [join(projectDir, "pipe")]);
+  writeFileSync(
+    join(projectDir, "large.json"),
+    `"${"x".repeat(PARAMS_FILE_LIMIT_BYTES)}"`
+  );
+  const before = openFiles();
+
+  for (let time = 0; time < 10; time++) {
+    for (const params of ["@pipe", "@large.json"])
+      expect(await askCall(place, "Basket.add", params)).toMatchObject({
+        ok: false,
+      });
+    expect(
+      await openSession({
+        projectDir,
+        request: { open: { headed: false } },
+        processCommand: ["-e", "process.exit(1)"],
+      })
+    ).toMatchObject({ ok: false });
+  }
+
+  expect(openFiles()).toBeLessThan(before + 5);
+});
+
+it("a command that finds the Session's socket but nobody listening on it waits, as for a start not listening yet", async () => {
+  const { socket } = sessionFolder();
+  // A process that listened and was killed leaves its socket behind.
+  const listener = spawn(process.execPath, [
+    "-e",
+    `require("node:net").createServer().listen(${JSON.stringify(socket)}, () => process.kill(process.pid, "SIGKILL"))`,
+  ]);
+  await once(listener, "exit");
+  expect(existsSync(socket)).toBe(true);
+  const owner = await otherProcess();
+  const claimed = claimRecord(place, { ...owner, socket });
+  if (!("generation" in claimed)) throw new Error("not claimed");
+
+  const answer = askSession(place, { stop: {} });
+  expect(await pendingAfter(answer, 100)).toBe(true);
+  releaseRecord(place, claimed.generation);
+
+  expect(await answer).toEqual({
+    ok: false,
+    text: `The Session in process ${owner.pid} ended before it answered.`,
+  });
+});
+
+it("a command whose Session's process answers with something that is no answer says so", async () => {
+  const { socket } = sessionFolder();
+  const server = createServer((connection) =>
+    connection.end("not an answer\n")
+  );
+  await new Promise<void>((resolve) => server.listen(socket, resolve));
+  onTestFinished(() => void server.close());
+  claimRecord(place, { ...thisProcess(), socket });
+
+  expect(await askSession(place, { stop: {} })).toEqual({
+    ok: false,
+    text: `The Session's process (${process.pid}) did not answer: it answered with something that is no answer`,
+  });
+});
+
+it("a process that ends before it answers, having printed nothing, is answered so", async () => {
+  expect(
+    await openSession({
+      projectDir,
+      request: { open: { headed: false } },
+      processCommand: ["-e", "process.exit(1)"],
+    })
+  ).toEqual({
+    ok: false,
+    text: "The Session's process ended before the Session started.",
+  });
+});
+
+it("a Session's process is told its place, its socket and its claim, and runs in a process group of its own, which the terminal's Ctrl+C does not reach", async () => {
+  const review = { projectDir, name: "review" };
+  endWithTest(review);
+
+  const answer = await openSession({
+    ...review,
+    request: { open: { headed: true } },
+    processCommand: [
+      "-e",
+      `process.once("message", (told) => {
+        let leads = true;
+        try { process.kill(-process.pid, 0); } catch { leads = false; }
+        const text = JSON.stringify({ given: JSON.parse(process.argv.at(-1)), told, leads });
+        process.send({ ok: true, text }, () => process.disconnect());
+      });
+      setInterval(() => {}, 1e9);`,
+    ],
+  });
+
+  if (!answer.ok) throw new Error(answer.text);
+  const { given, told, leads } = JSON.parse(answer.text) as {
+    given: { socket: string };
+    told: unknown;
+    leads: boolean;
+  };
+  expect(given).toEqual({
+    projectDir,
+    name: "review",
+    request: { open: { headed: true } },
+    socket: liveRecord(review)!.socket,
+  });
+  expect(existsSync(dirname(given.socket))).toBe(true);
+  expect(told).toEqual({ claimed: 1 });
+  expect(leads).toBe(true);
+});
+
+it("a start that fails removes the Session's own folder", async () => {
+  const answer = await openSession({
+    projectDir,
+    request: { open: { headed: false } },
+    processCommand: [
+      "-e",
+      "console.log(JSON.parse(process.argv.at(-1)).socket); process.exit(1)",
+    ],
+  });
+
+  expect(answer.ok).toBe(false);
+  expect(answer.text).toMatch(/session\.sock$/);
+  expect(existsSync(dirname(answer.text))).toBe(false);
+});
+
+it("a start that its process says failed is answered once the process ended, and the name is free from then on", async () => {
+  const answer = await openSession({
+    projectDir,
+    request: { open: { headed: false } },
+    processCommand: [
+      "-e",
+      'process.once("message", () => process.send({ ok: false, text: "No browser." }, () => setTimeout(() => process.exit(1), 200)))',
+    ],
+  });
+
+  expect(answer).toEqual({ ok: false, text: "No browser." });
+  expect(liveRecord(place)).toBeUndefined();
+});
+
+it("once a start succeeded, the command lets the Session's process go", async () => {
+  endWithTest(place);
+
+  const answer = await openSession({
+    projectDir,
+    request: { open: { headed: false } },
+    processCommand: [
+      "-e",
+      `process.once("message", () => process.send({ ok: true, text: "started" }));
+      process.once("disconnect", () => require("node:fs").writeFileSync("let go", ""));
+      setInterval(() => {}, 1e9);`,
+    ],
+  });
+
+  expect(answer).toEqual({ ok: true, text: "started" });
+  await vi.waitFor(() =>
+    expect(existsSync(join(projectDir, "let go"))).toBe(true)
+  );
+});
+
+it("a start refused by the claim it lost ends the process it started", async () => {
+  const review = { projectDir, name: "review" };
+  // Each process notes its pid in the project folder, and ends by itself
+  // in time, whatever the test does.
+  const start = () =>
+    openSession({
+      ...review,
+      request: { open: { headed: false } },
+      processCommand: [
+        "-e",
+        `require("node:fs").writeFileSync(String(process.pid), "");
+        process.once("message", () => process.send({ ok: true, text: "started" }, () => process.disconnect()));
+        setTimeout(() => {}, 10_000);`,
+      ],
+    });
+  endWithTest(review);
+
+  const answers = await Promise.all([start(), start()]);
+
+  expect(answers.filter(({ ok }) => ok)).toHaveLength(1);
+  const winner = liveRecord(review)!.pid;
+  const running = (pid: number) => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  await vi.waitFor(() =>
+    expect(
+      readdirSync(projectDir)
+        .filter((file) => /^\d+$/.test(file))
+        .map(Number)
+        .filter((pid) => pid !== winner && running(pid))
+    ).toEqual([])
+  );
 });

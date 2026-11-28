@@ -1,5 +1,12 @@
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { connect as connectTcp } from "node:net";
+import { networkInterfaces, tmpdir } from "node:os";
 import { join } from "node:path";
 import { Effect, Exit, Scope } from "effect";
 import { beforeEach, expect, it, onTestFinished, vi } from "vitest";
@@ -173,6 +180,43 @@ it("admits a socket that brings the token from any origin or none", async () => 
     );
 });
 
+it("refuses a socket at any other path, with the token or from the window's own origin", async () => {
+  const { address, agentAppSocket } = await serveShop();
+
+  for (const path of ["/inspector/other", "/inspector", "/"]) {
+    const withToken = new URL(agentAppSocket);
+    withToken.pathname = path;
+    expect((await connect(withToken)).outcome, path).toBe(REFUSED);
+    const own = socketOf(address);
+    own.pathname = path;
+    expect((await connect(own, new URL(address).origin)).outcome, path).toBe(
+      REFUSED
+    );
+  }
+});
+
+it("listens on the loopback address only: the window's port is closed on the machine's other addresses", async () => {
+  const { address } = await serveShop();
+  const port = Number(new URL(address).port);
+  const others = [
+    "::1",
+    ...Object.values(networkInterfaces())
+      .flat()
+      .filter((net) => net && !net.internal && net.family === "IPv4")
+      .map((net) => net!.address),
+  ];
+
+  for (const other of others) {
+    const reached = await new Promise<boolean>((resolve) => {
+      const socket = connectTcp(port, other);
+      socket.once("connect", () => resolve(true));
+      socket.once("error", () => resolve(false));
+      onTestFinished(() => void socket.destroy());
+    });
+    expect(reached, other).toBe(false);
+  }
+});
+
 it("refuses a socket whose token is wrong", async () => {
   const { address } = await serveShop();
 
@@ -213,6 +257,19 @@ it("the token opens the socket only, never the window's page or script for anoth
       headers: { origin: "http://evil.test" },
     });
     expect(response.status, path).toBe(403);
+    expect(response.headers.get("content-type"), path).toBe("text/plain");
+    expect(await response.text(), path).toBe("Not a request to this address.");
+  }
+});
+
+it("serves the window's page and script to a request from the window's own origin, as a tab of the window sends", async () => {
+  const { address } = await serveShop();
+
+  for (const path of ["/inspector", "/inspector/external.mjs"]) {
+    const response = await fetch(new URL(path, address), {
+      headers: { origin: new URL(address).origin },
+    });
+    expect(response.status, path).toBe(200);
   }
 });
 
@@ -241,6 +298,32 @@ it("the page an Agent App shows holds the Inspector's script and the socket it c
   // The script stays inside its element.
   expect(html).toContain(
     '<script type="module">console.log("\\u003C/script>\\u003C!-- the Inspector");</script>'
+  );
+});
+
+it("the page an Agent App shows says why when the Inspector's script cannot be read, and connects nowhere", async () => {
+  await serveShop();
+
+  const { html, connectDomains } = await agentAppPage(
+    place,
+    join(place.projectDir, "missing.mjs")
+  );
+
+  expect(connectDomains).toEqual([]);
+  expect(html).toMatch(
+    />The Inspector&#39;s script could not be read: ENOENT: [^<]*missing\.mjs&#39;\. Then ask your agent to show the Inspector again\.<\/p>/
+  );
+  expect(html).not.toContain("<script");
+});
+
+it("the page an Agent App shows keeps the folder's path as text, whatever it holds", async () => {
+  const odd = join(place.projectDir, `a<b>&"c'`);
+  mkdirSync(odd);
+
+  const { html } = await agentAppPage({ ...place, projectDir: odd }, script());
+
+  expect(html).toContain(
+    `No Session named shop is open in ${place.projectDir}/a&#60;b&#62;&#38;&#34;c&#39;.`
   );
 });
 
