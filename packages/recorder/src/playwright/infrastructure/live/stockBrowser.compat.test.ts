@@ -2615,7 +2615,7 @@ it.each([
     const { warning } = await browser.toldOf("browserWarned");
     expect(warning).toEqual({
       kind: "notRecorded",
-      message: `Inputs on ${browser.url} are not recorded: the page changed JSON.stringify, or how it writes a built-in value, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs reach the page all the same.`,
+      message: `Inputs on ${browser.url} are not recorded: the page changed JSON.stringify, or how it writes a built-in value, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs reach the page all the same; the toolbar on it cannot reach the recorder, so use the recorder window.`,
     });
     await browser.click(browser.page.locator("#mark"));
     await expect

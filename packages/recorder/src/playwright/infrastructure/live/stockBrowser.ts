@@ -427,7 +427,7 @@ async function openPage(
             kind: "browserWarned",
             warning: {
               kind: "notRecorded",
-              message: `Inputs on ${frame.url()} are not recorded: the page changed JSON.stringify, or how it writes a built-in value, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs reach the page all the same.`,
+              message: `Inputs on ${frame.url()} are not recorded: the page changed JSON.stringify, or how it writes a built-in value, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs reach the page all the same; the toolbar on it cannot reach the recorder, so use the recorder window.`,
             },
           }),
         // A frame that is gone has no inputs to lose.
