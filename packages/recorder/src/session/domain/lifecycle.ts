@@ -1569,8 +1569,11 @@ function inputHeld(
   const earlier = underWay(draft, page);
   const made = newInput(input, page, what ?? { kind: "click", count: 1 });
   // A click that reached its page untouched is there from the start. With
-  // nothing of its page under way, no read of the page is being taken: the
-  // page's latest snapshot was read before the click's press.
+  // nothing of its page under way, no read of the page is being taken, and
+  // the page's latest snapshot is taken for one read before the click's
+  // press. It can have ended while the button was down: messages tell when
+  // a read is heard, not when the press was (lifecycle-model README, Known
+  // limits; #1537).
   const reached = reachedAt(made);
   const beforeItsPress =
     reached !== null &&
