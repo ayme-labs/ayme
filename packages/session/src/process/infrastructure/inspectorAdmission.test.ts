@@ -70,7 +70,6 @@ async function serveShop() {
   return { browser, address: address!, agentAppSocket: agentAppSocket! };
 }
 
-/** The window's socket, with `token` when given. */
 function socketOf(address: string, token?: string) {
   const url = new URL("/inspector/ws", address);
   url.protocol = "ws:";
@@ -78,9 +77,7 @@ function socketOf(address: string, token?: string) {
   return url;
 }
 
-/** Connects to `url` as `origin`, naming `host` when given, and resolves
- * with the socket once open, or with the error the server's refusal
- * gives. */
+/** Resolves with "open", or with the error the server's refusal gives. */
 async function connect(url: URL | string, origin?: string, host?: string) {
   const headers = {
     ...(origin === undefined ? {} : { origin }),
@@ -114,7 +111,7 @@ it("admits any number of windows of the page's own origin, with no secret, for a
   const { address } = await serveShop();
   const origin = new URL(address).origin;
 
-  for (const window of ["first", "reloaded", "another"])
+  for (const window of ["first", "second", "third"])
     expect((await connect(socketOf(address), origin)).outcome, window).toBe(
       "open"
     );
@@ -122,8 +119,20 @@ it("admits any number of windows of the page's own origin, with no secret, for a
 
 it("refuses a socket without the token from another origin, from an Agent App's frame and from no page", async () => {
   const { address } = await serveShop();
+  const { port } = new URL(address);
 
-  for (const origin of ["http://evil.test", "null", undefined])
+  for (const origin of [
+    "http://evil.test",
+    "null",
+    undefined,
+    // The window's own address in every other spelling.
+    `https://127.0.0.1:${port}`,
+    `http://127.0.0.1:${Number(port) + 1}`,
+    "http://127.0.0.1",
+    `http://127.0.0.1.:${port}`,
+    `http://localhost:${port}`,
+    `http://[::1]:${port}`,
+  ])
     expect((await connect(socketOf(address), origin)).outcome, origin).toBe(
       REFUSED
     );
@@ -133,7 +142,7 @@ it("refuses a socket of the window's own origin that names another host, as a pa
   const { address } = await serveShop();
   const { port } = new URL(address);
 
-  for (const name of ["evil.test", "localhost"])
+  for (const name of ["evil.test", "localhost", "127.0.0.1.", "[::1]"])
     expect(
       (
         await connect(
@@ -156,23 +165,23 @@ it("refuses a socket of the window's own origin that names another host, as a pa
 });
 
 it("admits a socket that brings the token from any origin or none", async () => {
-  const { address, agentAppSocket } = await serveShop();
+  const { agentAppSocket } = await serveShop();
 
   for (const origin of ["http://evil.test", "null", undefined])
     expect((await connect(agentAppSocket, origin)).outcome, origin).toBe(
       "open"
     );
-  expect(
-    (await connect(socketOf(address, tokenIn(agentAppSocket)))).outcome
-  ).toBe("open");
 });
 
 it("refuses a socket whose token is wrong", async () => {
   const { address } = await serveShop();
 
-  expect((await connect(socketOf(address, "guessed"), "null")).outcome).toBe(
-    REFUSED
-  );
+  // The second has a token's length, so it reaches the comparison.
+  for (const token of ["guessed", "x".repeat(32)])
+    expect(
+      (await connect(socketOf(address, token), "null")).outcome,
+      token
+    ).toBe(REFUSED);
 });
 
 it("answers the window and an Agent App's view alike", async () => {

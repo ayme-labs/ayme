@@ -36,8 +36,8 @@ const RETRIES = 3;
  * the Session that served this window, and fills the window. In an Agent
  * App's chat, the page names that Session's socket, and the Inspector talks
  * to the Agent App it is shown in. It stops and says so once it finds no
- * Session after {@link RETRIES} tries, since a new Session gets another
- * port and token.
+ * Session after {@link RETRIES} tries, since a Session that ended does not
+ * come back.
  */
 export function startExternalInspector() {
   const agentApp = document.getElementById(AGENT_APP_CONFIG_ID);

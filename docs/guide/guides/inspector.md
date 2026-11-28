@@ -57,7 +57,7 @@ Open the address in any browser, when you want it. The window is served by the S
 - Hovering or selecting a Page Object highlights it on the Session's page. There is no picking: a Session's tools take no element ref.
 - Closing the window leaves the Session as it was. When the Session ends, the window says so; start a new one and run `ayme inspect` again.
 - `-s=<name>` prints the address of the Session of that name, as for the other commands. With `--json`, the address is the answer's `data.address`.
-- The address opens any number of windows, and a reloaded one connects again, until the Session ends. A page of another site cannot connect to it.
+- The address opens any number of windows, and a reloaded one connects again, until the Session ends. A page of another site cannot connect to it without the Session's token.
 
 ### In your Agent App's chat: `ayme mcp`
 

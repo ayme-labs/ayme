@@ -366,7 +366,7 @@ export class ProjectRow extends AppComponent {
 }
 ```
 
-The mark reaches agents only as the tool's standard annotation. ayme still lists and runs the tool like any other: it never asks for confirmation, refuses a call or hides the tool. What to do about the mark is up to whoever calls the tool.
+The mark only informs. ayme still lists and runs the tool like any other: it never asks for confirmation, refuses a call or hides the tool. What to do about the mark is up to whoever calls the tool.
 
 | Where the tool is published                   | What a marked tool carries                                                                                                                                 |
 | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
