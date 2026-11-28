@@ -524,6 +524,33 @@ it("when the Session ends, each window is told why, and how to get it back in a 
   expect(browser.inspectorListeners).toBe(0);
 });
 
+it("a window is told a detach ended the Session, and one that listened while the start failed that it never started", async () => {
+  const start =
+    "Start a Session with ayme -s=default open or ayme -s=default attach";
+  const detached = await startScriptedSession({
+    join: { cdp: "http://127.0.0.1:9222" },
+    inspector: WINDOW,
+  });
+  const watching = detached.session.listen();
+  await expect.poll(() => shownTab(watching.heard)).toEqual({ tab: 1 });
+  await detached.session.ask({ detach: {} });
+  await watching.done;
+
+  const failing = await startScriptedSession({ ...opening, held: true });
+  const early = failing.session.listen();
+  failing.browser.failOpen("Chromium did not start.");
+  await early.done;
+
+  expect(watching.heard.at(-1)).toEqual({
+    ended: `ayme detach ended the Session default. ${start}, then run ayme -s=default inspect to inspect it.`,
+    inChat: `ayme detach ended the Session default. ${start}, then ask your agent to show the Inspector again.`,
+  });
+  expect(early.heard.at(-1)).toEqual({
+    ended: `The Session default never started. ${start}, then run ayme -s=default inspect to inspect it.`,
+    inChat: `The Session default never started. ${start}, then ask your agent to show the Inspector again.`,
+  });
+});
+
 it("a window is told the Session ended when its browser goes away, and one that listens later is told at once", async () => {
   const { session, browser } = await startScriptedSession(opening);
   const window = session.listen();

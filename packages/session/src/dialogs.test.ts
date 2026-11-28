@@ -393,6 +393,26 @@ it("a Tab no command touched yet whose dialog is opening is hosted only once the
   expect(browser.hosted).toBe(true);
 });
 
+it("a dialog that counts while its Tab is being hosted answers the command waiting for it, and the Tab is hosted only once the dialog is answered", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  const release = browser.holdHosting();
+  const read = session.ask({ tools: {} });
+  expect(await pending(read)).toBe(true);
+
+  dialogOpens(browser);
+
+  expect(await read).toEqual({
+    ok: false,
+    text: `Tab t1: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
+  });
+  expect(browser.hosted).toBe(false);
+  release();
+  browser.closeDialog();
+  expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
+  expect(browser.hosted).toBe(true);
+});
+
 it("a Tab that closes while a command waits for its dialog to count is answered that it closed, hosted or not", async () => {
   const { session, browser } = await startScriptedSession(opening);
   const other = browser.openTab("http://127.0.0.1:5173/sign-in.html");

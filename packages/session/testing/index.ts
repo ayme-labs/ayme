@@ -200,6 +200,9 @@ export interface ScriptedTab {
     readonly url: string;
     readonly dialog: Dialog;
   }): () => void;
+  /** Every hosting of the Tab waits, as one does while Playwright sets up
+   * the page, until the test calls the function it returns. */
+  holdHosting(): () => void;
 }
 
 /** What the scripted Tab shows until a test says otherwise. */
@@ -315,6 +318,7 @@ function scriptedTab(
   let given: TabIds | undefined;
   let startedWith: BuiltPageObjects | undefined;
   let setup: TabReadError | undefined;
+  let hosting: Deferred.Deferred<void> | undefined;
   const closed = Deferred.makeUnsafe<void>();
   const inspectorCalls: { method: string; params: unknown }[] = [];
   let answerInspector: (
@@ -396,19 +400,26 @@ function scriptedTab(
     dialog: SubscriptionRef.changes(dialog),
     // As a page's registry refuses a second owner.
     host: (giving, pageObjects) =>
-      setup
-        ? Effect.fail(setup)
-        : given
-          ? Effect.fail(
-              new TabReadError(
-                "ayme could not run the project's Page Objects on the tab: The ayme runtime already has an active owner."
-              )
-            )
-          : Effect.sync(() => {
-              given = giving;
-              startedWith = pageObjects;
-              return hosted;
-            }),
+      (hosting ? Deferred.await(hosting) : Effect.void).pipe(
+        Effect.andThen(
+          Effect.suspend(() =>
+            setup
+              ? Effect.fail(setup)
+              : given
+                ? Effect.fail(
+                    new TabReadError(
+                      "ayme could not run the project's Page Objects on the tab: The ayme runtime already has an active owner."
+                    )
+                  )
+                : Effect.sync(() => {
+                    given = giving;
+                    startedWith = pageObjects;
+                    changed();
+                    return hosted;
+                  })
+          )
+        )
+      ),
     control: {
       get hosted() {
         return given !== undefined;
@@ -471,6 +482,13 @@ function scriptedTab(
       holdSetup: (heldBy) => {
         setup = new TabReadError(setupHeld(heldBy));
         return () => (setup = undefined);
+      },
+      holdHosting: () => {
+        const held = (hosting = Deferred.makeUnsafe<void>());
+        return () => {
+          if (hosting === held) hosting = undefined;
+          Deferred.doneUnsafe(held, Exit.void);
+        };
       },
     },
   };
