@@ -7832,6 +7832,32 @@ describe("the lifecycle, for a click that reached its page untouched", () => {
     ]);
   });
 
+  it("takes a snapshot of its own while typing before it is still open: the typing ends there, with all it changed", () => {
+    const fill: InteractionReport = {
+      type: "fill",
+      selector: "internal:role=textbox",
+      target: null,
+      values: { text: "a" },
+    };
+    const { todo } = run([
+      ...afterOneClick,
+      { kind: "interactionReported", page: page1, report: fill },
+      untouched(input2),
+      taken(snapshot3),
+    ]);
+
+    expect(todo.slice(-2)).toEqual([
+      [takeSnapshot(snapshot3)],
+      expect.arrayContaining([keep(snapshot3), waitForSettled(input2)]),
+    ]);
+    expect(written(todo).at(-1)).toEqual({
+      selector: fill.selector,
+      before: snapshot2,
+      after: snapshot3,
+      at: 10,
+    });
+  });
+
   it("takes a snapshot to start from when its page has none, and is not passed on then either", () => {
     const { todo } = run([
       opened,

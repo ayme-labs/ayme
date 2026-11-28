@@ -2140,6 +2140,16 @@ function proceed(
     : goOnWrappingUp(state, draft, reportsOff);
 }
 
+/** Whether an input of a page known from its report only has no "after"
+ * yet. */
+const openReported = (draft: Draft, page: PageId) =>
+  draft.inputs.some(
+    (input) =>
+      input.page === page &&
+      input.held.kind === "reported" &&
+      input.stage !== "settled"
+  );
+
 /** Starts the next held input of every page that has none under way. */
 function startNext(draft: Draft) {
   for (const page of new Set(draft.inputs.map((input) => input.page))) {
@@ -2156,8 +2166,10 @@ function startNext(draft: Draft) {
       });
     }
     // A click that reached its page untouched starts from the page's
-    // latest snapshot: one taken now would show what the click did.
-    else if (reachedAt(next) !== null && latest) {
+    // latest snapshot: one taken now would show what the click did. Not
+    // while an input known from its report is still open, as typing just
+    // before it: that one ends at a snapshot taken now, with all it did.
+    else if (reachedAt(next) !== null && latest && !openReported(draft, page)) {
       change(draft, next.id, { startsBeforeItsPress: true });
       passOn(draft, next, latest.id);
     } else
