@@ -273,8 +273,12 @@ const holdsClickReports = (() => {
  * time the report could be read through it, so only the page's note of the
  * click names the link. On 1.62, whose report comes before the note, the
  * link stays, and its selector names it. */
-const linkRemovedOn = (condition: string) =>
-  `<a href="#a" onclick="event.preventDefault(); if (${holdsClickReports} && ${condition}) this.remove()"><span id="inner" style="display:inline-block">Pull requests</span></a>`;
+const linkRemovedOn = (
+  condition: string,
+  name = "Pull requests",
+  id = "inner"
+) =>
+  `<a href="#a" onclick="event.preventDefault(); if (${holdsClickReports} && ${condition}) this.remove()"><span id="${id}" style="display:inline-block">${name}</span></a>`;
 const REMOVED_LINK = linkRemovedOn("true");
 
 it("starts Playwright's recorder, which reports a person's click with its target in its own snapshot", async () => {
@@ -2324,12 +2328,15 @@ it("holds a click behind an input that still waits to be passed on, also once th
 // browser give the click to the body. Sent on again, it would reach the list.
 it("lets a click the browser gave to another element than the one under the pointer reach the page untouched, and tells of it as there already; behind an input that still waits, it holds it like any other", async () => {
   const browser = await onStockPlaywright(`
-    <h1>Cities</h1>
-    <button id="city" style="display:block;width:200px;height:40px">Lisbon</button>
-    <ul id="cities" hidden style="position:absolute;margin:0;padding:0;list-style:none;width:200px;background:#fff">
-      <li id="porto" style="height:40px">Porto</li>
-    </ul>
     <button id="other">Other</button>
+    <h1>Cities</h1>
+    <div id="picker" role="group" aria-label="City picker">
+      <button id="city" style="display:block;width:200px;height:40px">Lisbon</button>
+      <ul id="cities" hidden style="position:absolute;margin:0;padding:0;list-style:none;width:200px;background:#fff">
+        <li id="porto" style="height:40px">Porto</li>
+        <li style="height:40px">${linkRemovedOn("true", "Faro", "faro")}</li>
+      </ul>
+    </div>
     <script>
       window.clicks = [];
       document.addEventListener("click", (event) =>
@@ -2368,8 +2375,8 @@ it("lets a click the browser gave to another element than the one under the poin
   await expect.poll(clicks).toEqual(["other", "porto"]);
   expect(await listUp()).toBe(false);
 
-  // With nothing waiting, it reaches the page as it came: the body gets
-  // it, and the list stays up.
+  // With nothing waiting, it reaches the page as it came: the group that
+  // holds the select and its list gets it, and the list stays up.
   await browser.click(browser.page.locator("#city"));
   await expect.poll(() => heldSoFar().length).toBe(3);
   const untouched = heldSoFar()[2]!;
@@ -2378,23 +2385,36 @@ it("lets a click the browser gave to another element than the one under the poin
     count: 1,
     reachedAt: expect.any(Number),
   });
-  expect(await clicks()).toEqual(["other", "porto", "BODY"]);
+  expect(await clicks()).toEqual(["other", "porto", "picker"]);
   expect(await listUp()).toBe(true);
 
-  // Playwright reports it by itself, after the two sent on, and there is
-  // nothing to pass on: asked to, the browser sends the page no click.
-  await expect
-    .poll(
-      () =>
-        browser.told.filter((signal) => signal.kind === "interactionReported")
-          .length,
-      { timeout: 10_000 }
-    )
-    .toBe(3);
+  // A pick sent on before Playwright gives the click's report, which it
+  // holds half a second for a double click (1.63 and later): each report
+  // still names its own click's element, the group and the link the pick
+  // removed, which only the pick's own note names (`linkRemovedOn`).
+  const reports = () =>
+    browser.told.filter((signal) => signal.kind === "interactionReported");
+  await browser.click(browser.page.locator("#faro"));
+  await expect.poll(() => heldSoFar().length).toBe(4);
+  const pick = heldSoFar()[3]!;
+  if (holdsClickReports) expect(reports()).toHaveLength(2);
+  await browser.ask({ kind: "passOn", input: pick.input });
+  await browser.toldOf("inputPassedOn", ({ input }) => input === pick.input);
+  await expect.poll(() => reports().length, { timeout: 10_000 }).toBe(4);
+  expect(
+    reports()
+      .slice(2)
+      .map(({ report }) => namedLine(report))
+  ).toEqual([
+    expect.stringContaining('group "City picker"'),
+    expect.stringContaining('link "Faro"'),
+  ]);
+
+  // There is nothing to pass on for the click: asked to, the browser sends
+  // the page no click.
   await browser.ask({ kind: "passOn", input: untouched.input });
   await new Promise((resolve) => setTimeout(resolve, 500));
-  expect(await clicks()).toEqual(["other", "porto", "BODY"]);
-  expect(await listUp()).toBe(true);
+  expect(await clicks()).toEqual(["other", "porto", "picker", "faro"]);
 });
 
 it("holds as a press exactly the keys Playwright reports as a press: a letter typed in a field is typing; Enter, an arrow key, Control with a letter and Tab are presses", async () => {
