@@ -62,11 +62,9 @@ export function withBuildLine(
     : { ok: false, text };
 }
 
-/** The ids of Tabs, in a sentence. */
+/** The ids of two Tabs or more, in a sentence. */
 const idList = (ids: readonly string[]) =>
-  ids.length === 1
-    ? ids[0]!
-    : `${ids.slice(0, -1).join(", ")} and ${ids.at(-1)!}`;
+  `${ids.slice(0, -1).join(", ")} and ${ids.at(-1)!}`;
 
 /** The line an answer of the Session named `name` gets when the URL `--tab`
  * named, `url`, is shown by the Tab `chosen`, the most recently active of
@@ -124,7 +122,7 @@ export const pageObjectsAnswer = (
   { tab, pageObjectTree, tools }: Listing,
   id: string,
   name: string,
-  named = false
+  named: boolean
 ): SessionAnswer => ({
   ok: true,
   text: [

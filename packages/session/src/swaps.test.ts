@@ -76,6 +76,30 @@ it("the build line names the first error whole on one line, a failure without on
   );
 });
 
+it("the build line follows the Tab line of a Tab whose id has two digits", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  await session.started;
+  // Each read of the tab list gives its new Tabs ids, the most recently
+  // active first.
+  for (let opened = 2; opened <= 10; opened++) {
+    browser.openTab(`http://127.0.0.1:5173/${opened}.html`);
+    await session.ask({ tools: {} });
+  }
+  await browser.edit();
+  await browser.until(() => browser.builds === 2);
+  browser.failBuild(BUILD_ERRORS, FIRST_ERROR);
+
+  expect(await session.ask({ tools: {} })).toEqual({
+    ok: true,
+    text: `Tab t10: http://127.0.0.1:5173/10.html\n${BUILD_LINE}\nThis screen has no Page Object Tools.`,
+    data: {
+      tab: { id: "t10", url: "http://127.0.0.1:5173/10.html", title: "" },
+      tools: [],
+      buildFailing: BUILD_LINE,
+    },
+  });
+});
+
 /** Each Run on `tab` waits until the test ends it; `swapsSeen` holds how
  * many Swaps the Tab had when each Run started. */
 function holdRuns(tab: ScriptedTab) {

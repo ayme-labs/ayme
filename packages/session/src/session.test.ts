@@ -1034,6 +1034,19 @@ it("--tab naming a URL several Tabs show works on the most recently active of th
   });
 });
 
+it("--tab naming a URL three Tabs show names the other two in a list", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  browser.openTab(shop.tab.url).show(shop);
+  browser.openTab(shop.tab.url).show(shop);
+
+  expect(
+    (await session.ask({ tools: { tab: shop.tab.url } })).text.split("\n")[1]
+  ).toBe(
+    "Tabs t1, t2 and t3 show http://127.0.0.1:5173/shop.html: ayme chose t1, the most recently active. Name another by its id, as --tab=t2. To see which tab has which id, bring it to the front with your browser automation and run ayme -s=default page-objects: its first line shows its id."
+  );
+});
+
 it("a call whose --tab names its Page Object Id's Tab by id runs there, one that names another Tab by id is refused, and one that names an id no Tab has is told so", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.show(shop);
