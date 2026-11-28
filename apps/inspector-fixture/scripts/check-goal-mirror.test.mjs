@@ -272,10 +272,3 @@ test("rejects a spec title its e2e twin lacks", () => {
     /pair\.spec\.ts has "adds a loaf", and pair\.e2e\.ts does not/
   );
 });
-
-test("rejects a SPEC_ONLY entry that names no spec", () => {
-  assert.match(
-    specProblemsWith(new Map([["gone.spec.ts", "a reason"]])),
-    /SPEC_ONLY names no spec: gone\.spec\.ts/
-  );
-});

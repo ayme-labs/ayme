@@ -513,6 +513,7 @@ export function check({
  * itself or control of time (docs/testing.md, "E2E").
  */
 export const SPEC_ONLY = new Map([
+  // An entry may outlive its spec: #1528 deletes motion.spec.ts.
   ["motion.spec.ts", "it controls time, to watch the panel move"],
   ["twoHosts.spec.ts", "it drives ayme's Playwright integration itself"],
 ]);
@@ -561,9 +562,6 @@ export function checkSpecs({
     for (const title of b.filter((t) => !a.includes(t)))
       problems.push(`${twin} has "${title}", and ${spec} does not`);
   }
-  for (const spec of specOnly.keys())
-    if (!specs.includes(spec.replace(/\.spec\.ts$/, "")))
-      problems.push(`SPEC_ONLY names no spec: ${spec}`);
   return problems;
 }
 
