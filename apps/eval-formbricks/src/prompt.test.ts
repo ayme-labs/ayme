@@ -120,6 +120,12 @@ describe("the prompt of the default mission", () => {
     );
   });
 
+  it("names the agent-browser session as signed in on the editor, and as its default one", () => {
+    expect(arms["agent-browser"].interfaceLine(mission.start)).toBe(
+      "Use the `agent-browser` command for every browser interaction. Its browser session is already open and signed in on the editor; start from `agent-browser snapshot`. It is agent-browser's default session: pass no `--session`."
+    );
+  });
+
   it("never carries the seeded credentials", () => {
     expect(prompt).not.toContain(mission.user.email);
     expect(prompt).not.toContain(mission.user.password);
@@ -234,6 +240,15 @@ describe("the arms", () => {
     for (const armId of aymeArmIds)
       expect(armId).toBe(`${arms[armId].browserAutomation}-with-ayme`);
   });
+
+  it("allow every Bash command where the arm has Bash, and no Bash where it has none", () => {
+    for (const arm of Object.values(arms))
+      expect([arm.id, arm.allowedTools.includes("Bash")]).toEqual([
+        arm.id,
+        arm.tools.includes("Bash"),
+      ]);
+    expect(arms["playwright-mcp"].tools).not.toContain("Bash");
+  });
 });
 
 describe("the interface line of an arm with ayme", () => {
@@ -250,16 +265,20 @@ describe("the interface line of an arm with ayme", () => {
   });
 
   it.each([
-    ["playwright-cli-with-ayme", "playwright-cli"],
-    ["agent-browser-with-ayme", "agent-browser"],
+    ["playwright-cli-with-ayme", "playwright-cli", ""],
+    [
+      "agent-browser-with-ayme",
+      "agent-browser",
+      " It is agent-browser's default session: pass no `--session`.",
+    ],
   ] as const)(
     "of %s keeps where its session is and leaves out the start from a snapshot",
-    (armId, command) => {
+    (armId, command, session) => {
       expect(arms[armId].interfaceLine(mission.start)).toBe(
-        `Use the \`${command}\` command for every browser interaction. Its browser session is already open and signed in on the editor. ${aymeSentence}`
+        `Use the \`${command}\` command for every browser interaction. Its browser session is already open and signed in on the editor.${session} ${aymeSentence}`
       );
       expect(arms[armId].interfaceLine(signInMission.start)).toBe(
-        `Use the \`${command}\` command for every browser interaction. Its browser session is already open on the sign-in page, not signed in. ${aymeSentence}`
+        `Use the \`${command}\` command for every browser interaction. Its browser session is already open on the sign-in page, not signed in.${session} ${aymeSentence}`
       );
     }
   );
@@ -377,7 +396,8 @@ describe.each(aymeArmIds)("the %s arm", (armId) => {
       expect.arrayContaining([...alone.tools, "Bash", "Skill"])
     );
     expect(arm.allowedTools).toEqual([
-      ...alone.allowedTools,
+      "Bash",
+      ...alone.allowedTools.filter((rule) => rule !== "Bash"),
       "Bash(ayme:*)",
       "Skill(ayme)",
     ]);
@@ -473,7 +493,7 @@ describe("the playwright-cli arm", () => {
     expect(arm.mcpServers(armContext)).toEqual({});
   });
 
-  it("leaves the agent read-only file tools, the skill and a Bash limited to the CLI", () => {
+  it("leaves the agent read-only file tools, the skill and every Bash command", () => {
     expect(arm.tools).toEqual([
       "Read",
       "Glob",
@@ -483,6 +503,7 @@ describe("the playwright-cli arm", () => {
       "Skill",
     ]);
     expect(arm.allowedTools).toEqual([
+      "Bash",
       "Bash(playwright-cli:*)",
       "Skill(playwright-cli)",
     ]);

@@ -19,6 +19,7 @@ import {
   type AgentId,
 } from "./agents.ts";
 import {
+  anyCommand,
   arms,
   armIds,
   isArmId,
@@ -281,6 +282,7 @@ async function runOnceOn(
         codexConfig({
           model: options.model,
           mcpServers,
+          anyCommand: options.arm.allowedTools.includes(anyCommand),
           readable: [
             agentRoot,
             skillsDir,

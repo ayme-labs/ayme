@@ -11,6 +11,8 @@
  *   write nothing and reach no network;
  * - a command the arm allows, its browser automation's command line, runs
  *   outside that sandbox, and one the arm denies is refused;
+ * - an arm that allows every Bash command has no sandbox: every command
+ *   runs as in a developer's environment, but those the arm denies;
  * - a skill is a folder the agent reads with that shell, where Claude Code
  *   has a Skill tool; the arm installs it in the same place for both.
  * What Codex adds on its own is switched off.
@@ -77,13 +79,15 @@ export function codexConfig(options: {
   readable: string[];
   /** The home folder commands and MCP servers run with; the user's own by default. */
   home?: string;
+  /** Whether the arm allows every Bash command: then no command runs in a sandbox, and `readable` is moot. */
+  anyCommand?: boolean;
 }) {
   const home = options.home ?? os.homedir();
   return [
     `model = ${toml(options.model)}`,
     `model_reasoning_effort = ${toml(agentEffort)}`,
     'approval_policy = "never"',
-    `default_permissions = ${toml(permissionProfile)}`,
+    `default_permissions = ${toml(options.anyCommand ? ":danger-full-access" : permissionProfile)}`,
     "project_doc_max_bytes = 0",
     'web_search = "disabled"',
     "",
@@ -101,10 +105,14 @@ export function codexConfig(options: {
     // `/private/var/tmp`, for reading and writing whatever is listed here. Denying them is no way
     // out: with a denied folder Codex runs every command in the sandbox, the arm's own too.
     // What a command leaves there cannot leave the sandbox: see `codexRules`.
-    `[permissions.${permissionProfile}.filesystem]`,
-    '":minimal" = "read"',
-    ...options.readable.map((folder) => `${toml(folder)} = "read"`),
-    "",
+    ...(options.anyCommand
+      ? []
+      : [
+          `[permissions.${permissionProfile}.filesystem]`,
+          '":minimal" = "read"',
+          ...options.readable.map((folder) => `${toml(folder)} = "read"`),
+          "",
+        ]),
     "[features]",
     ...featuresOff.map((feature) => `${feature} = false`),
     ...Object.entries(options.mcpServers).flatMap(([name, server]) => [
@@ -134,7 +142,8 @@ function ruleCommand(rule: string): string[] | null {
  * The arm's command-line permissions as Codex's rules file: a command the
  * arm allows runs outside the sandbox, as it must to reach its browser, and
  * one it denies is refused, also when it starts with an allowed one. Every
- * other command runs in the sandbox. Rules for a skill or an MCP server need
+ * other command runs in the sandbox, unless the arm allows every command
+ * and so has none (see `codexConfig`). Rules for a skill or an MCP server need
  * none: the skill is a folder the agent may read, and the configuration
  * approves the arm's MCP servers.
  *

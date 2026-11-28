@@ -115,6 +115,19 @@ describe("codexConfig", () => {
     );
   });
 
+  it("runs every command without a sandbox for an arm that allows every Bash command", () => {
+    const anyCommand = codexConfig({
+      model: "gpt-6-luna",
+      mcpServers: {},
+      readable: ["/lab/formbricks"],
+      anyCommand: true,
+    });
+
+    expect(anyCommand).toContain('default_permissions = ":danger-full-access"');
+    expect(anyCommand).not.toContain("[permissions.");
+    expect(anyCommand).toContain('approval_policy = "never"');
+  });
+
   it("lists a server the harness started by its URL", () => {
     expect(
       codexConfig({
