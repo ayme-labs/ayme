@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/ayme-labs/ayme/compare/cli-v0.3.2...cli-v0.3.3) (2026-11-28)
+
+
+### Bug Fixes
+
+* **recorder:** save the recording when the terminal closes or a page calls the recorder's functions ([#1530](https://github.com/ayme-labs/ayme/issues/1530)) ([460932c](https://github.com/ayme-labs/ayme/commit/460932ca9d6a6daa501be2f4e836eaf0160e198f))
+
 ## [0.3.2](https://github.com/ayme-labs/ayme/compare/cli-v0.3.1...cli-v0.3.2) (2026-11-27)
 
 
