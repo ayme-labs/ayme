@@ -52,16 +52,16 @@ export async function bringPanelToFront(inspector: Inspector) {
 }
 
 /**
- * The start every test gets: after the panel's first look at the page, as
- * `settledStart` of `../fixtures.ts` waits for and says why, and, in the
- * external placement, with the panel's tab in front. e2e measures a goal's
+ * The start every test gets: after what the panel shows on its own after the
+ * page opens, as `settledStart` of `../fixtures.ts` waits for and says why,
+ * and, in the external placement, with the panel's tab in front. e2e measures a goal's
  * outcome from the screen the goal starts on (@e2e-dev/core's
  * `describeDelta`), so a first goal that switched tabs recorded the panel's
  * own chrome as its outcome, which a replay finds already showing once the
  * look lands first. In plain code, never a goal: no test is about where it
  * starts.
  */
-async function settledStart(inspector: Inspector) {
+async function settledStart(page: Tab, inspector: Inspector) {
   await expect
     .poll(async () =>
       (await inspector.navigator.legendItems()).some((item) =>
@@ -69,6 +69,22 @@ async function settledStart(inspector: Inspector) {
       )
     )
     .toBe(true);
+  const publication = async () => {
+    await page.front();
+    return page.browser.evaluate(
+      () => window.fixtureAyme!.webMCP.publicationStatus.state
+    );
+  };
+  await expect.poll(publication).not.toBe("waiting");
+  const state = await publication();
+  if (state === "unavailable" || state === "failed")
+    await expect
+      .poll(async () =>
+        (
+          await inspector.header.connections.pill.getAttribute("aria-label")
+        )?.endsWith(`, WebMCP ${state}`)
+      )
+      .toBe(true);
   await bringPanelToFront(inspector);
 }
 
@@ -152,7 +168,7 @@ export async function reloadFixture(
   await page.front();
   await page.browser.reload();
   await fixtureReady(page.browser, path);
-  await settledStart(inspector);
+  await settledStart(page, inspector);
 }
 
 /**
@@ -197,7 +213,7 @@ export async function openFixture(
       ? await openInspectorTab({ browser, screen }, agent)
       : page
   );
-  await settledStart(inspector);
+  await settledStart(page, inspector);
   return { page, inspector, listPage: new ListPage(page) };
 }
 

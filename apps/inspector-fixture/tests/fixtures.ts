@@ -61,15 +61,28 @@ export function outline(element: Locator) {
 }
 
 /**
- * Waits until the panel's first look at the page has landed, so every test
- * starts after it: a step that runs while it lands sees the panel change under
- * it (the legend wraps onto a second line, which moves the Model lens's rows
- * down under the pointer), and a goal recorded then does not replay once the
- * look lands first. The legend's refs count is the only sign of the look the
- * panel's first view shows; when the legend goes, wait for what replaces it.
+ * Waits until what the panel shows on its own after the page opens has shown,
+ * so every test starts after it: a step that runs while it changes sees the
+ * panel change under it, and a goal recorded then does not replay once it
+ * changed first. Two things change:
+ * - The panel's first look at the page lands, and the legend wraps onto a
+ *   second line, which moves the Model lens's rows down under the pointer.
+ *   The legend's refs count is the only sign of the look the panel's first
+ *   view shows; when the legend goes, wait for what replaces it.
+ * - WebMCP publication stops waiting for a driver, after 2 s without one
+ *   (packages/webmcp/src/publication.ts), and the Connections pill's name
+ *   then says WebMCP is unavailable.
  */
-async function settledStart(inspector: Inspector) {
+async function settledStart(page: Page, inspector: Inspector) {
   await expect(inspector.navigator.legend).toContainText(/(^|\D)[1-9]\d* refs/);
+  const publication = () =>
+    page.evaluate(() => window.fixtureAyme!.webMCP.publicationStatus.state);
+  await expect.poll(publication).not.toBe("waiting");
+  const state = await publication();
+  if (state === "unavailable" || state === "failed")
+    await expect(inspector.header.connections.pill).toHaveAccessibleName(
+      new RegExp(`, WebMCP ${state}$`)
+    );
 }
 
 /** The Caller mark of a run made from the panel, as Runs shows it. */
@@ -159,7 +172,7 @@ export async function openFixture(
   const inspector = new Inspector(
     agent && external ? await openInspectorWindow(page, agent, external) : page
   );
-  await settledStart(inspector);
+  await settledStart(page, inspector);
   return { inspector, listPage: new ListPage(page) };
 }
 
