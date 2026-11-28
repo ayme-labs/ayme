@@ -585,14 +585,24 @@ it.each(["off", "removeListener", "unroute"])(
   }
 );
 
-/** A ConsoleMessage as Playwright makes one for a page: no connection of
- * its own, it holds its Page, no Worker, and the event's data. */
+type Owner = { click(selector: string): Promise<void> };
+
+/** A ConsoleMessage as Playwright makes one: no connection of its own, it
+ * holds its Page, or none for a Worker's, its Worker, or none for a
+ * Page's, and the event's data, in that order. */
 class FakeConsoleMessage {
-  readonly _worker = null;
+  readonly _page: Owner | null;
+  readonly _worker: Owner | null;
   readonly _event = { type: "log", text: "saved" };
-  constructor(readonly _page: { click(selector: string): Promise<void> }) {}
+  constructor(page: Owner | null, worker: Owner | null) {
+    this._page = page;
+    this._worker = worker;
+  }
   page() {
     return this._page;
+  }
+  worker() {
+    return this._worker;
   }
 }
 
@@ -607,8 +617,8 @@ it("a console message a listener is handed reaches its Page only through the Hos
   ) as unknown as PageWithHandles;
   const heard: FakeConsoleMessage[] = [];
   wrapped.on("console", (message) => heard.push(message as FakeConsoleMessage));
-  emit("console", new FakeConsoleMessage(popup));
-  const owner = heard[0]!.page();
+  emit("console", new FakeConsoleMessage(popup, null));
+  const owner = heard[0]!.page()!;
 
   host.decision = "refuse";
 
@@ -627,4 +637,39 @@ it("an answer of no Playwright object, nothing or plain data, is handed out as i
 
   expect(await wrapped.nothing()).toBeNull();
   expect(wrapped.data()).toBe(data);
+});
+
+it("a Worker's console message a listener is handed reaches its Worker only through the Host", async () => {
+  const { raw, emit } = pageWithHandles();
+  const worker = clientObject("Worker", {
+    click: async (selector: string) => void clicks.push(`worker ${selector}`),
+  });
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    host
+  ) as unknown as PageWithHandles;
+  const heard: FakeConsoleMessage[] = [];
+  wrapped.on("console", (message) => heard.push(message as FakeConsoleMessage));
+  emit("console", new FakeConsoleMessage(null, worker));
+  const owner = heard[0]!.worker()!;
+
+  host.decision = "refuse";
+
+  await expect(owner.click("#buy")).rejects.toThrow("refused");
+  expect(clicks).toEqual([]);
+});
+
+it("a kept object reads as text, as a log line shows it", () => {
+  const { raw } = pageWithHandles();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    hostDeciding()
+  ) as unknown as PageWithHandles;
+
+  expect(`${wrapped.mainFrame()}`).toBe("[object Object]");
 });
