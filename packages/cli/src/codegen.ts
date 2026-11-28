@@ -175,9 +175,8 @@ const UNCAUGHT = ["uncaughtException", "unhandledRejection"] as const;
  * thrown, also a value no text can be made of. */
 function shown(cause: unknown): string {
   try {
-    return cause instanceof Error
-      ? (cause.stack ?? cause.message)
-      : String(cause);
+    // Made text here, where a throw is caught: a stack can be any value.
+    return `${cause instanceof Error ? (cause.stack ?? cause.message) : cause}`;
   } catch {
     return "an error that cannot be shown";
   }

@@ -355,6 +355,27 @@ describe("how a run of codegen ends", () => {
     );
   });
 
+  it("tells an error whose stack and message are no text as one that cannot be shown", async () => {
+    const { handle, finish } = recorder();
+    const at = terminal();
+    const run = runUntilEnd(handle, launched, at);
+
+    at.emit(
+      "uncaughtException",
+      Object.assign(new Error(), {
+        stack: Symbol("stack"),
+        message: Symbol("message"),
+      })
+    );
+    expect(handle.ends).toBe(1);
+    finish(saved);
+
+    expect(await run).toBe(1);
+    expect(at.stderr.text).toBe(
+      "The recorder hit an error it did not expect, and ends with what it has recorded: an error that cannot be shown\n"
+    );
+  });
+
   it("ends the recorder once for errors that come while it saves, tells each, and still tells the saved recording", async () => {
     const { handle, finish } = recorder();
     const at = terminal();
