@@ -7,6 +7,7 @@ import { GesturesPage } from "#pom/GesturesPage";
 import { HelpPage } from "#pom/HelpPage";
 import { LatePage } from "#pom/LatePage";
 import { LeavingPage } from "#pom/LeavingPage";
+import { PressOpensPage } from "#pom/PressOpensPage";
 import { ShopPage } from "#pom/ShopPage";
 import { expect, test, type Recording } from "./fixtures";
 
@@ -171,6 +172,62 @@ test.describe("recording", () => {
     // All three went through the recorder.
     const { text } = await finish(recording);
     expect(text.match(/kind: interaction/g)).toHaveLength(3);
+  });
+
+  // Issue #1533: the list comes up under the pointer on the press, so the
+  // browser gives the click to the body. Sent on again, that click would
+  // land on the list.
+  test("a press that opens a list under the pointer leaves the list open as without the recorder, and the press and the pick after it are both recorded", async ({
+    startRecording,
+  }) => {
+    const recording = await startRecording("/press-opens.html");
+    const { recorder, page, person } = recording;
+    const pressOpens = new PressOpensPage(page);
+    const pick = async (city: string) => {
+      await person.click(pressOpens.city);
+      // A person looks at the list before picking from it.
+      await person.pause();
+      await expect(pressOpens.cities).toBeVisible();
+      await person.click(pressOpens.cityOption(city));
+      await expect(pressOpens.city).toHaveText(city);
+      await person.pause();
+    };
+    const pickTwice = async () => {
+      await pick("Porto");
+      await pick("Faro");
+    };
+    const pageNow = () => pressOpens.state();
+
+    // Without recording: the page as a person finds it.
+    await pickTwice();
+    const unrecorded = await pageNow();
+    expect(unrecorded.listOpen).toBe(false);
+
+    await page.reload();
+    await recorder.send({ type: "record" });
+    await pickTwice();
+
+    // The page got the very presses, releases and clicks it gets unrecorded.
+    expect(await pageNow()).toEqual(unrecorded);
+    // Each press and each pick is an Interaction, in the order given, and a
+    // pick names its option.
+    const { text } = await finish(recording);
+    const [, , pickedPorto, opened, pickedFaro, ...more] = text.split(
+      "- kind: interaction"
+    );
+    expect(more).toEqual([]);
+    expect(text).not.toContain("kind: change");
+    expect(pickedPorto).toContain(
+      'targetSelector: internal:role=option[name="Porto"i]'
+    );
+    expect(pickedFaro).toContain(
+      'targetSelector: internal:role=option[name="Faro"i]'
+    );
+    // The list is what the press changed. The first press of a Visit has no
+    // read of the page before it, so there the list is in the Visit's first
+    // snapshot instead.
+    expect(opened).toContain("type: click");
+    expect(opened).toContain('listbox "Cities"');
   });
 });
 

@@ -439,7 +439,11 @@ async function openPage(
       const pageId = idOf.get(page);
       if (!pageId) return;
       const id = `input_${++inputs}` as InputId;
-      held.set(id, { frame, input });
+      // A click that reached its page untouched is not passed on: its
+      // report can come from now on.
+      const untouched = input.kind === "click" && input.untouched;
+      if (untouched) awaitReport(page, input);
+      else held.set(id, { frame, input });
       heldBy.set(pageId, [
         ...(heldBy.get(pageId) ?? []),
         { id, frame, seq: input.seq },
@@ -454,6 +458,7 @@ async function openPage(
                 kind: "click",
                 count: Math.max(1, input.detail),
                 ...(input.button ? { button: input.button } : {}),
+                ...(untouched ? { reachedAt: now() } : {}),
               }
             : input.typing
               ? { kind: "typing" }

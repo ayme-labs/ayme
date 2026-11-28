@@ -5,8 +5,10 @@ import {
   ancestorChain,
   arrivingEvent,
   clickHeld,
+  clickUntouched,
   heldButton,
   gateStartsOn,
+  innermost,
   keyHeld,
   keyRoute,
   letThroughUpTo,
@@ -179,6 +181,46 @@ describe("which click the gate holds back", () => {
     expect(
       clickHeld({ type: "click", button: 0, detail: 1, target: null })
     ).toBe(false);
+  });
+});
+
+describe("which click the gate lets reach the page untouched, and only tells of", () => {
+  it("lets a click that went to another element than the one under the pointer through, since sent on again it would reach that one", () => {
+    expect(clickUntouched({ underPointer: false, waiting: 0 })).toBe(true);
+  });
+
+  it("holds a click that went to the element under the pointer", () => {
+    expect(clickUntouched({ underPointer: true, waiting: 0 })).toBe(false);
+  });
+
+  it("holds any click while an input it held still waits to be passed on, so that none reaches the page before it", () => {
+    expect(clickUntouched({ underPointer: false, waiting: 1 })).toBe(false);
+  });
+});
+
+describe("the element under a point, through open shadow roots", () => {
+  // Each element names the one at the point inside its shadow root.
+  const inside =
+    (within: Record<string, string | null>) =>
+    (element: string): string | null =>
+      within[element] ?? null;
+
+  it("is the document's own when that has no shadow root", () => {
+    expect(innermost("button", inside({}))).toBe("button");
+  });
+
+  it("is the one inside a shadow root, and inside that one's", () => {
+    expect(
+      innermost("host", inside({ host: "inner-host", "inner-host": "button" }))
+    ).toBe("button");
+  });
+
+  it("is the host when its shadow root gives the host itself at the point", () => {
+    expect(innermost("host", inside({ host: "host" }))).toBe("host");
+  });
+
+  it("is none where the document has none", () => {
+    expect(innermost<string>(null, inside({}))).toBeNull();
   });
 });
 

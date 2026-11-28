@@ -93,6 +93,11 @@ export function startGate(start: GateStart): void {
  * given. Switched off, it goes on holding keys and clicks alike while an
  * input it held still waits to be passed on.
  *
+ * A click sent on goes to the element under the pointer. One the browser
+ * gave to another element, as to the body when a list came up under the
+ * pointer on the press, is therefore not held: it reaches the page as it
+ * came, and the adapter is only told of it (`clickUntouched`).
+ *
  * It listens on `window`, before anything of the page and before
  * Playwright's recorder, which listens on `document`: neither sees a held
  * input until the adapter sends it on.
@@ -255,8 +260,8 @@ export function gateIn(held: string, rules: GateRules): void {
     );
   };
   /** Tells of a held click: a right-click, held by its context menu event,
-   * counts one. */
-  const tellClick = (event: MouseEvent) => {
+   * counts one. `untouched`: of one that reached the page instead. */
+  const tellClick = (event: MouseEvent, untouched: boolean) => {
     const button = rules.heldButton(event.type);
     tell({
       kind: "click",
@@ -267,7 +272,25 @@ export function gateIn(held: string, rules: GateRules): void {
       ...(button ? { button } : {}),
       modifiers: rules.modifiersOf(event),
       document: thisDocument,
+      untouched,
     });
+  };
+  /** Whether a click went to the element under the pointer. */
+  const underPointer = (event: MouseEvent) =>
+    elementOf(event) ===
+    rules.innermost(
+      document.elementFromPoint(event.clientX, event.clientY),
+      (host) =>
+        host.shadowRoot?.elementFromPoint(event.clientX, event.clientY) ?? null
+    );
+  /** A click that reaches the page untouched (`clickUntouched`): it is told
+   * like a held one, with a number of its own, and the gate holds what
+   * follows it as after one. */
+  const passUntouched = (event: MouseEvent) => {
+    holding = true;
+    seq += 1;
+    arrivals.set(event, seq);
+    tellClick(event, true);
   };
   const onClick = (event: MouseEvent) => {
     notePress(event);
@@ -278,9 +301,11 @@ export function gateIn(held: string, rules: GateRules): void {
       target: clickTarget(event),
     };
     if (!rules.clickHeld(click)) return;
+    if (rules.clickUntouched({ underPointer: underPointer(event), waiting }))
+      return passUntouched(event);
     hold(event);
     swallowDoubleClick = event.type === "click" && event.detail >= 2;
-    tellClick(event);
+    tellClick(event, false);
   };
   const mouseRoutes: Record<MouseRoute, (event: MouseEvent) => void> = {
     ignore: () => {},

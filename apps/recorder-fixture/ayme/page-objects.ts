@@ -15,6 +15,7 @@ import { LeavingPage } from "./pom/LeavingPage";
 import { LoginPage } from "./pom/LoginPage";
 import { NestedPage } from "./pom/NestedPage";
 import { OutsideClickPage } from "./pom/OutsideClickPage";
+import { PressOpensPage } from "./pom/PressOpensPage";
 import { SettlingPage } from "./pom/SettlingPage";
 import { ShopPage } from "./pom/ShopPage";
 import { TickingPage } from "./pom/TickingPage";
@@ -36,6 +37,7 @@ export default [
   LoginPage,
   NestedPage,
   OutsideClickPage,
+  PressOpensPage,
   SettlingPage,
   ShopPage,
   TickingPage,

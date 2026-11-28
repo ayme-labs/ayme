@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Press opens</title>
+    <style>
+      /* Clear of the recorder's toolbar at the top of the page. */
+      body {
+        font: 16px/1.5 sans-serif;
+        padding: 90px 20px 20px;
+      }
+      #city {
+        width: 200px;
+        padding: 8px;
+        border: 1px solid #888;
+        cursor: pointer;
+      }
+      #backdrop {
+        position: fixed;
+        inset: 0;
+      }
+      #cities {
+        position: absolute;
+        width: 216px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        background: #fff;
+        border: 1px solid #333;
+      }
+      #cities li {
+        padding: 8px;
+        cursor: pointer;
+      }
+      [hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Press opens</h1>
+    <!-- A select that opens on the press, as many component libraries' do:
+         its list comes up over the field, so the release lands on another
+         element than the press, and the browser gives the click to what
+         holds both, the body. A click on the backdrop closes the list. -->
+    <div
+      id="city"
+      role="combobox"
+      tabindex="0"
+      aria-label="City"
+      aria-haspopup="listbox"
+      aria-expanded="false"
+    >
+      Lisbon
+    </div>
+    <div id="backdrop" hidden></div>
+    <ul id="cities" role="listbox" aria-label="Cities" hidden>
+      <li id="option-lisbon" role="option">Lisbon</li>
+      <li id="option-porto" role="option">Porto</li>
+      <li id="option-faro" role="option">Faro</li>
+    </ul>
+    <script>
+      // Every press, release and click the page gets, in order: what the
+      // tests compare between a page that is recorded and one that is not.
+      window.events = [];
+      for (const type of [
+        "pointerdown",
+        "mousedown",
+        "pointerup",
+        "mouseup",
+        "click",
+      ])
+        document.addEventListener(
+          type,
+          (event) =>
+            window.events.push(
+              `${type} ${event.target.id || event.target.nodeName}`
+            ),
+          true
+        );
+
+      const city = document.getElementById("city");
+      const backdrop = document.getElementById("backdrop");
+      const cities = document.getElementById("cities");
+      const show = (open) => {
+        backdrop.hidden = !open;
+        cities.hidden = !open;
+        city.setAttribute("aria-expanded", String(open));
+      };
+      city.addEventListener("mousedown", (event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        city.focus();
+        const { left, top } = city.getBoundingClientRect();
+        cities.style.left = `${left + scrollX}px`;
+        cities.style.top = `${top + scrollY}px`;
+        show(true);
+      });
+      backdrop.addEventListener("click", () => show(false));
+      cities.addEventListener("click", (event) => {
+        const option = event.target.closest("[role=option]");
+        if (!option) return;
+        city.textContent = option.textContent;
+        show(false);
+      });
+    </script>
+  </body>
+</html>

@@ -51,7 +51,8 @@ export type BrowserSignal =
   | { readonly kind: "reportingInteractions"; readonly on: boolean }
   /** Every page confirms that it holds inputs back, or that it no longer does. */
   | { readonly kind: "inputsHeld"; readonly on: boolean }
-  /** A page held an input back: it has not reached the page yet. */
+  /** A page held an input back: it has not reached the page yet, unless it
+   * is a click that says when it did (`reachedAt`). */
   | {
       readonly kind: "inputHeld";
       readonly input: InputId;
@@ -135,6 +136,11 @@ export type HeldInput =
       readonly kind: "click";
       readonly count: number;
       readonly button?: "right" | "middle";
+      /** The page did not hold it: it reached the page untouched, at this
+       * time on the clock of snapshots, and is never passed on. The page
+       * tells of it like a held click, so that it keeps its place among
+       * the inputs and its report is its own. */
+      readonly reachedAt?: number;
     }
   /** A key press that Playwright records as a press, not as typing.
    * `nothingFocused`: it went to the page itself, as no element had focus. */
@@ -1385,6 +1391,27 @@ function change(draft: Draft, id: InputId, patch: Partial<Input>) {
   );
 }
 
+/** When a click reached its page untouched (`reachedAt` of `HeldInput`);
+ * null for an input its page held back, and for any other. */
+const reachedAt = (input: Input) =>
+  input.held.kind === "click" ? (input.held.reachedAt ?? null) : null;
+
+/** An input the pages held may reach its page now, from `before` when it
+ * has one. A click that reached it untouched is there already. */
+function passOn(draft: Draft, input: Input, before?: SnapshotId) {
+  change(draft, input.id, {
+    stage: "passingOn",
+    asked: null,
+    ...(before ? { before } : {}),
+  });
+  const at = reachedAt(input);
+  if (at !== null) return inputPassedOn(draft, input.id, at, false);
+  draft.todo.push({
+    kind: "browser",
+    ask: { kind: "passOn", input: input.id },
+  });
+}
+
 /** Asks for a snapshot of a page and says which one it will be. */
 function askSnapshot(draft: Draft, page: PageId): SnapshotId {
   const snapshot = `snapshot_${++draft.snapshotsAsked}` as SnapshotId;
@@ -1526,7 +1553,9 @@ function inputHeld(
   what: HeldInput | undefined
 ) {
   const earlier = underWay(draft, page);
-  const held = newInput(input, page, what ?? { kind: "click", count: 1 });
+  const made = newInput(input, page, what ?? { kind: "click", count: 1 });
+  // A click that reached its page untouched is there from the start.
+  const held = { ...made, passedOnAt: reachedAt(made) };
   draft.inputs = [...draft.inputs, held];
   // The page holds everything after it now, by itself.
   changeGate(draft, page, { holding: true, upTo: held.id });
@@ -1632,18 +1661,7 @@ function giveSnapshot(draft: Draft, owner: Input, snapshot: PageSnapshot) {
       asked: null,
     });
     draft.todo.push(settleAfter(owner));
-  } else {
-    // Its "before" is in: now it may reach the page.
-    change(draft, owner.id, {
-      stage: "passingOn",
-      before: snapshot.id,
-      asked: null,
-    });
-    draft.todo.push({
-      kind: "browser",
-      ask: { kind: "passOn", input: owner.id },
-    });
-  }
+  } else passOn(draft, owner, snapshot.id);
 }
 
 /** For an input whose page could not be read when it was reported: the
@@ -1831,7 +1849,10 @@ function reportOfHeld(
       knownFromReport(draft, page, reported);
     return;
   }
-  if (input.stage === "waiting" || input.stage === "takingBefore") return;
+  // An input its page still holds back cannot be reported yet. A click
+  // that reached its page untouched can, whatever it waits for.
+  const heldBack = input.stage === "waiting" || input.stage === "takingBefore";
+  if (heldBack && reachedAt(input) === null) return;
   // A key pressed with nothing focused has no target, whatever element
   // Playwright names for it.
   // Stryker disable next-line ConditionalExpression: only a press says that nothing was focused; the check is for the type
@@ -2129,7 +2150,11 @@ function startNext(draft: Draft) {
         kind: "browser",
         ask: { kind: "passOn", input: next.id },
       });
-    } else
+    }
+    // A click that reached its page untouched starts from the page's
+    // latest snapshot: one taken now would show what the click did.
+    else if (reachedAt(next) !== null && latest) passOn(draft, next, latest.id);
+    else
       change(draft, next.id, {
         stage: "takingBefore",
         asked: askSnapshot(draft, page),
@@ -2437,6 +2462,7 @@ function release(inputs: readonly Input[]): ToDo[] {
     .filter(
       (input) =>
         heldByItsPage(input) &&
+        reachedAt(input) === null &&
         (input.stage === "waiting" || input.stage === "takingBefore")
     )
     .map((input) => ({
@@ -2593,11 +2619,7 @@ function withoutItsSnapshot(draft: Draft, owner: Input) {
     // Without a "before" it cannot be recorded. It is the page's all the
     // same: it is passed on, and goes its way like any other, so that the
     // inputs behind it keep their order.
-    change(draft, owner.id, { stage: "passingOn", asked: null });
-    draft.todo.push({
-      kind: "browser",
-      ask: { kind: "passOn", input: owner.id },
-    });
+    passOn(draft, owner);
     return;
   }
   // No page held it: there is nothing to pass on, and nothing behind it is
