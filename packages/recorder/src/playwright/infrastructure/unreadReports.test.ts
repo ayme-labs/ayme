@@ -49,17 +49,6 @@ describe("a report of Playwright's the adapter could not read", () => {
       })?.values
     ).toEqual({ files: ["a.txt", "b.txt"] });
   });
-
-  it("is told by nothing when even that cannot be read off it", () => {
-    const action = { name: "click" };
-    Object.defineProperty(action, "button", {
-      enumerable: true,
-      get() {
-        throw new Error("Not readable.");
-      },
-    });
-    expect(bareReportOf(action)).toBeUndefined();
-  });
 });
 
 describe("what a person is told of a report the adapter could not read", () => {

@@ -14,13 +14,22 @@ export type PlaywrightAction = {
   readonly signals?: unknown;
 } & Readonly<Record<string, unknown>>;
 
+/** The fields of a report that are no values: its name, its element, and
+ * its signals, which are not read yet. */
+const NOT_VALUES = new Set([
+  "name",
+  "selector",
+  "ref",
+  "ariaSnapshot",
+  "signals",
+]);
+
 /** What a report says of its input besides its name and its element: the
- * button, the modifiers, the text and so on. Its signals are not read yet. */
-export function valuesOf(action: PlaywrightAction): Record<string, unknown> {
-  const { name, selector, ref, ariaSnapshot, signals, ...values } = action;
-  void [name, selector, ref, ariaSnapshot, signals];
-  return values;
-}
+ * button, the modifiers, the text and so on. */
+export const valuesOf = (action: PlaywrightAction): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(action).filter(([key]) => !NOT_VALUES.has(key))
+  );
 
 /** Who hears of what Playwright's recorder reports. */
 export type ActionSink = {

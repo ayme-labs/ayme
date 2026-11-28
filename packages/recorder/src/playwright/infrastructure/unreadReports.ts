@@ -11,26 +11,19 @@ const isPlain = (value: unknown) =>
  * or an upload's files, with no element. It keeps the report's place among
  * the others: the lifecycle gives each report to the oldest input of its
  * kind still waiting for one, so a report left out would go to the input
- * after it. Undefined when even that cannot be read off it.
+ * after it.
  */
-export function bareReportOf(
-  action: PlaywrightAction
-): InteractionReport | undefined {
-  try {
-    const values = Object.entries(valuesOf(action)).filter(
-      ([, value]) =>
-        isPlain(value) || (Array.isArray(value) && value.every(isPlain))
-    );
-    return {
-      type: action.name,
-      selector: null,
-      target: null,
-      values: Object.fromEntries(values),
-    };
-    // Stryker disable next-line BlockStatement: an empty catch returns undefined too
-  } catch {
-    return undefined;
-  }
+export function bareReportOf(action: PlaywrightAction): InteractionReport {
+  const values = Object.entries(valuesOf(action)).filter(
+    ([, value]) =>
+      isPlain(value) || (Array.isArray(value) && value.every(isPlain))
+  );
+  return {
+    type: action.name,
+    selector: null,
+    target: null,
+    values: Object.fromEntries(values),
+  };
 }
 
 /** An error as a warning can show it. Anything can be thrown, also a value
@@ -89,8 +82,9 @@ export function toldOfUnread(
 ): { warning: RecorderWarning; report?: InteractionReport } {
   const { action, revision, cause } = unread;
   if (revision) return { warning: revisionLost(cause) };
-  const bare = ofOpenPage && action ? bareReportOf(action) : undefined;
-  return bare
-    ? { warning: withoutElement(bare.type, cause), report: bare }
-    : { warning: reportLost(cause) };
+  if (!ofOpenPage || !action) return { warning: reportLost(cause) };
+  return {
+    warning: withoutElement(action.name, cause),
+    report: bareReportOf(action),
+  };
 }
