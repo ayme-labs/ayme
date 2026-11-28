@@ -85,9 +85,14 @@ CONSTANTS
               \* switching Playwright's reports on, or the pages' gate (L
               \* cannotStart, after Record, not after Continue)
   Buttons     \* what the person clicks with: a subset of {"left", "right",
-              \* "middle", "leftOnCheckbox", "middleOnCheckbox"}; Playwright
+              \* "middle", "leftOnCheckbox", "middleOnCheckbox",
+              \* "leftNotUnderPointer"}; Playwright
               \* reports a click on a checkbox as a check, which names no button.
-              \* Left only where a path or chart is clearer without right-clicks
+              \* Left only where a path or chart is clearer without right-clicks.
+              \* "leftNotUnderPointer" is a left click the browser gave to
+              \* another element than the one under the pointer, as to the
+              \* body when a list came up under the pointer on the press:
+              \* the gate lets it reach the page untouched (ClickUntouched)
 
 Inputs == 1..N
 \* The engine's entries. Entry i is input i's: a held click, or the input
@@ -136,6 +141,11 @@ VARIABLES
   rep,            \* per entry: the engine has its report
   repOf,          \* per entry: whose report it has (an input)
   unrep, revised, \* L Input.unreported, L Input.revised
+  unt,            \* per entry: no | yes | early. A click that reached its page
+                  \*   untouched (L HeldInput.reachedAt); early when nothing of
+                  \*   its page was under way then, so that the snapshot it
+                  \*   starts from was read before its press (L
+                  \*   Input.startsBeforeItsPress)
   bsnap, asnap,   \* per entry: its "before" and "after" snapshot (0 = none)
   pend,           \* snapshots asked and not yet in, in the order asked (a page
                   \* answers them in that order): each is the set of who waits
@@ -184,7 +194,7 @@ VARIABLES
 engVars == <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
              traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest,
              pgReported, pgLastFill, els, pic,
-             lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
+             lst, ent, stage, rep, repOf, unrep, revised, unt, bsnap, asnap, pend,
              passReq, gateQ, modeQ, traceQ, tl, tlAtPause, dis, kept, revLost,
              pkg, saves, pkgHas, pkgDis, holdPg,
              keptSn, newT, pkgNew, shown, txt, fin, pos>>
@@ -209,7 +219,7 @@ Eng == [phase |-> phase, boot |-> boot, resumed |-> resumed, picking |-> picking
         gen |-> gen, pgHold |-> pgHold, pgLatest |-> pgLatest, lst |-> lst,
         pgReported |-> pgReported, pgLastFill |-> pgLastFill, els |-> els, pic |-> pic,
         ent |-> ent, stage |-> stage, rep |-> rep, repOf |-> repOf,
-        unrep |-> unrep, revised |-> revised, bsnap |-> bsnap, asnap |-> asnap,
+        unrep |-> unrep, revised |-> revised, unt |-> unt, bsnap |-> bsnap, asnap |-> asnap,
         pend |-> pend, passReq |-> passReq, gateQ |-> gateQ, modeQ |-> modeQ,
         traceQ |-> traceQ, tl |-> tl, tlAtPause |-> tlAtPause, dis |-> dis,
         kept |-> kept, revLost |-> revLost, pkg |-> pkg, saves |-> saves,
@@ -230,7 +240,7 @@ Commit(t) ==   \* t is computed once (TLC passes arguments unevaluated)
     /\ pgHold' = s.pgHold /\ pgLatest' = s.pgLatest /\ lst' = s.lst
     /\ pgReported' = s.pgReported /\ pgLastFill' = s.pgLastFill /\ els' = s.els /\ pic' = s.pic
     /\ ent' = s.ent /\ stage' = s.stage /\ rep' = s.rep /\ repOf' = s.repOf
-    /\ unrep' = s.unrep /\ revised' = s.revised /\ bsnap' = s.bsnap
+    /\ unrep' = s.unrep /\ revised' = s.revised /\ unt' = s.unt /\ bsnap' = s.bsnap
     /\ asnap' = s.asnap /\ pend' = s.pend /\ passReq' = s.passReq
     /\ gateQ' = s.gateQ /\ modeQ' = s.modeQ /\ traceQ' = s.traceQ
     /\ tl' = s.tl /\ tlAtPause' = s.tlAtPause /\ dis' = s.dis /\ kept' = s.kept
@@ -275,11 +285,15 @@ NoVisit(d) == StartBlank /\ d = 1
 Row(k, e, d, a, b, t) == [k |-> k, e |-> e, d |-> d, a |-> a, b |-> b, t |-> t, p |-> 0, f |-> FALSE]
 EntryRow(T, e, d, a, b, t) == [Row("entry", e, d, a, b, t) EXCEPT !.f = b \in T.pf]
 \* A held click's "before" is read: it shows the focus the press moved.
+\* (<<>> \o makes TLC build the rows as a sequence here: TLC 1.7.4 keeps a
+\* function written by its rule to work out later, and loses a row changed
+\* since with EXCEPT when Append turns it into a sequence. Config
+\* Clicks-Untouched broke F3 by that alone.)
 Press(T, x) ==
   LET R == T.rows IN
   [T EXCEPT !.pf = @ \cup {x},
-            !.rows = [k \in DOMAIN R |-> IF R[k].k = "entry" /\ R[k].b = x
-                                         THEN [R[k] EXCEPT !.f = TRUE] ELSE R[k]]]
+            !.rows = <<>> \o [k \in DOMAIN R |-> IF R[k].k = "entry" /\ R[k].b = x
+                                                THEN [R[k] EXCEPT !.f = TRUE] ELSE R[k]]]
 \* TL pressedAfter: the click e is written; the entry before it ends at its
 \* "before" x, which now stands with the focus as the read before it had it.
 \* With no read of its Visit before x, nothing changes.
@@ -287,8 +301,8 @@ Unpress(T, x, e, ks) ==
   IF x \notin T.pf \/ ~\E k \in ks : k < x /\ DocAt(k) = DocAt(x) THEN T
   ELSE LET R == T.rows IN
        [T EXCEPT !.pf = @ \ {x},
-                 !.rows = [k \in DOMAIN R |-> IF R[k].k = "entry" /\ R[k].e # e /\ R[k].b = x
-                                              THEN [R[k] EXCEPT !.f = FALSE] ELSE R[k]]]
+                 !.rows = <<>> \o [k \in DOMAIN R |-> IF R[k].k = "entry" /\ R[k].e # e /\ R[k].b = x
+                                                     THEN [R[k] EXCEPT !.f = FALSE] ELSE R[k]]]
 NextKept(ks, d, x) ==
   LET S == {k \in ks : DocAt(k) = d /\ k > x} IN
   IF S = {} THEN 0 ELSE CHOOSE k \in S : \A j \in S : k <= j
@@ -350,7 +364,8 @@ During(s) == Active(s) /\ ~s.discarding
 \* L Input.passedOnAt is set (withoutPage keeps such an input).
 PassedOn(s, e) ==
   CASE s.ent[e] \in {"click", "key"} ->
-         s.stage[e] \notin {"waiting", "takingBefore", "passingOn"}
+         \* a click that reached its page untouched is there from the start
+         s.unt[e] # "no" \/ s.stage[e] \notin {"waiting", "takingBefore", "passingOn"}
     [] s.ent[e] = "rep" -> s.bsnap[e] # 0
     [] OTHER -> s.stage[e] = "settled"
 
@@ -373,8 +388,17 @@ UnderWay(s) ==
 
 \* L anyHeld: a held input that has not reached its page yet.
 AnyHeldE(s) ==
-  \E e \in Elems(s.lst) : s.ent[e] \in {"click", "key"}
+  \E e \in Elems(s.lst) : s.ent[e] \in {"click", "key"} /\ s.unt[e] = "no"
                          /\ s.stage[e] \in {"waiting", "takingBefore", "passingOn"}
+
+\* L passOn: an input the pages held may reach its page now. A click that
+\* reached it untouched is there already, so what L inputPassedOn does for a
+\* click follows in the same step: nothing is asked of the browser.
+PassOnNow(s0, e) ==
+  LET s == [s0 EXCEPT !.stage[e] = "passingOn"] IN
+  IF s.unt[e] = "no" THEN [s EXCEPT !.passReq[In(e)] = TRUE]
+  ELSE LET later == First(s, {f \in Elems(s.lst) : s.stage[f] = "waiting"}) IN
+       IF later # 0 THEN AskShared(s, e, later) ELSE [s EXCEPT !.stage[e] = "settling"]
 
 \* L giveSnapshot
 GiveSnap(s, o, t) ==
@@ -390,9 +414,8 @@ GiveSnap(s, o, t) ==
                  IF s.bsnap[e] # 0 THEN [s EXCEPT !.stage[e] = "settled"]
                  ELSE [s EXCEPT !.stage[e] = "settled", !.bsnap[e] = t, !.asnap[e] = t]
             [] s.ent[e] = "rep" -> [s EXCEPT !.stage[e] = "settling", !.bsnap[e] = t]
-            [] OTHER -> [s EXCEPT !.stage[e] = "passingOn", !.bsnap[e] = t,
-                                  !.passReq[In(e)] = TRUE,
-                                  !.newT = IF s.ent[e] = "click" THEN Press(@, t) ELSE @]
+            [] OTHER -> PassOnNow([s EXCEPT !.bsnap[e] = t,
+                                            !.newT = IF s.ent[e] = "click" THEN Press(@, t) ELSE @], e)
 
 RECURSIVE GiveAll(_, _, _)
 GiveAll(s, os, t) ==
@@ -414,6 +437,9 @@ SnapIn(s, r, t) ==
       s2 == GiveAll(s1, {o \in r : o[1] # 0}, t)
   IN IF <<0, "final">> \in r THEN [s2 EXCEPT !.finals = "in"] ELSE s2
 
+\* L openReported
+OpenRep(s) == \E f \in Elems(s.lst) : s.ent[f] = "rep" /\ s.stage[f] # "settled"
+
 \* L startNext
 StartNext(s) ==
   LET u == UnderWay(s) IN
@@ -421,6 +447,13 @@ StartNext(s) ==
   ELSE IF s.stage[u] # "waiting" THEN s
   ELSE IF s.ent[u] = "key" /\ s.pgLatest # 0
        THEN [s EXCEPT !.stage[u] = "passingOn", !.passReq[In(u)] = TRUE]
+  \* A click that reached its page untouched starts from the page's latest
+  \* read: one taken now would show what the click did, as the latest one
+  \* does when an input before it ended after the click came. Not while an
+  \* input known from its report is still open (L openReported): that one
+  \* ends at a read taken now.
+  ELSE IF s.unt[u] # "no" /\ s.pgLatest # 0 /\ ~OpenRep(s)
+       THEN PassOnNow([s EXCEPT !.bsnap[u] = s.pgLatest], u)
        ELSE TakeFor(s, u, "b")
 
 \* L shareWithOpen
@@ -519,8 +552,11 @@ WriteFinal(s, e) ==
            ELSE AddEntry(s.newT, s.keptSn, e, IsRep(s, e), s.bsnap[e], s.asnap[e], s.pic[e], Txt(s, e))
       s1 == Drop(s, e, "written")
       newer == \E f \in Elems(s1.lst) : s1.rep[f]
-      \* a held click is written: the entry before it is measured again
-      W2 == IF s.ent[e] = "click" THEN Unpress(W, s.bsnap[e], e, s.keptSn) ELSE W
+      \* a held click is written: the entry before it is measured again. Not
+      \* for a click whose "before" was read before its press (TL
+      \* readAfterItsPress)
+      W2 == IF s.ent[e] = "click" /\ s.unt[e] # "early"
+            THEN Unpress(W, s.bsnap[e], e, s.keptSn) ELSE W
   IN [s1 EXCEPT !.tl = @ \cup {e}, !.newT = W2,
                 !.fin[e] = TRUE, !.shown[e] = FALSE,
                 !.pos[e] = IF s.shown[e] THEN @ ELSE EntryIx(W, e),
@@ -705,7 +741,7 @@ KnownFromReport(s, e, i, pc) ==
 \* right-click is held by its context menu event, a middle click by its
 \* auxclick. Playwright reports a left or a middle click on a checkbox as a
 \* check, which names no button.
-ClickKind(b) == CASE b = "left" -> "click" [] b = "right" -> "rclick"
+ClickKind(b) == CASE b \in {"left", "leftNotUnderPointer"} -> "click" [] b = "right" -> "rclick"
                   [] b = "middle" -> "mclick" [] b = "leftOnCheckbox" -> "lbox"
                   [] OTHER -> "mbox"
 ClickKinds == {"click", "rclick", "mclick", "lbox", "mbox"}
@@ -725,7 +761,9 @@ ReportOfHeld(s, i) ==
                                          /\ ReportsClickOf(In(f), i)}) IN
   IF t = 0 THEN
      IF s.phase = "wrap" /\ s.pages THEN KnownFromReport(s, i, i, evStamp[i]) ELSE s
-  ELSE IF s.stage[t] \in {"waiting", "takingBefore"} THEN s
+  \* an input its page still holds back cannot be reported yet; a click that
+  \* reached its page untouched can, whatever it waits for
+  ELSE IF s.stage[t] \in {"waiting", "takingBefore"} /\ s.unt[t] = "no" THEN s
   ELSE GiveUpEarlier([s EXCEPT !.rep[t] = TRUE, !.repOf[t] = i], Pos(s, t))
 
 \* L asserted
@@ -737,13 +775,21 @@ Asserted(s, e, i) ==
   IN IF early # 0 /\ s.stage[early] = "settling" THEN AskShared(s1, early, e) ELSE s1
 
 \* L inputHeld; while no recording is under way, L aside
-\* passes it on at once.
+\* passes it on at once. For a click that reached its page untouched the
+\* adapter has nothing to pass on (SB passOnHeld knows no input by its id),
+\* so no request is kept for it here.
 OnInputHeld(s, e, k) ==
-  IF ~During(s) THEN [s EXCEPT !.passReq[In(e)] = (s.phase \notin {"saved", "empty", "failed"})]
+  IF ~During(s) THEN [s EXCEPT !.passReq[In(e)] = (s.phase \notin {"saved", "empty", "failed"}
+                                                    /\ s.unt[e] = "no")]
   ELSE LET early == UnderWay(s)
+           \* a click that reached its page untouched with nothing of the page
+           \* under way: no read is being taken, so the page's latest one was
+           \* read before its press
+           before == s.unt[e] # "no" /\ early = 0 /\ ~OpenRep(s) /\ s.pgLatest # 0
            s1 == [s EXCEPT !.lst = Append(@, e), !.ent[e] = k, !.stage[e] = "waiting",
                            !.pgHold = TRUE, !.bsnap[e] = 0, !.asnap[e] = 0,
-                           !.rep[e] = FALSE, !.unrep[e] = FALSE]
+                           !.rep[e] = FALSE, !.unrep[e] = FALSE,
+                           !.unt[e] = IF before THEN "early" ELSE @]
        IN Proceed(IF early # 0 /\ s.stage[early] = "settling"
                   THEN AskShared(s1, early, e) ELSE s1, FALSE)
 
@@ -867,7 +913,7 @@ LiveKeep(s, S) == KeepAll(s, S)
 GiveUp(s) ==
   LET kept0 == {f \in Elems(s.lst) : s.rep[f]}
       s1 == WriteDown([s EXCEPT !.lst = SelectSeq(@, LAMBDA x : x \in kept0)], TRUE)
-      rel == {f \in Elems(s.lst) : s.ent[f] \in {"click", "key"}
+      rel == {f \in Elems(s.lst) : s.ent[f] \in {"click", "key"} /\ s.unt[f] = "no"
                                    /\ s.stage[f] \in {"waiting", "takingBefore"}}
       \* The pages are asked to hold no more, then the held inputs are sent on
       \*; the browser carries the two out side by side.
@@ -1015,6 +1061,7 @@ Init ==
   /\ ent = [e \in Ids |-> "none"] /\ stage = [e \in Ids |-> "none"]
   /\ rep = [e \in Ids |-> FALSE] /\ repOf = [e \in Ids |-> 0]
   /\ unrep = [e \in Ids |-> FALSE] /\ revised = [e \in Ids |-> FALSE]
+  /\ unt = [e \in Ids |-> "no"]
   /\ bsnap = [e \in Ids |-> 0] /\ asnap = [e \in Ids |-> 0] /\ pend = <<>>
   /\ passReq = [i \in Inputs |-> FALSE] /\ gateQ = <<>> /\ modeQ = <<>> /\ traceQ = <<>>
   /\ tl = {} /\ tlAtPause = {} /\ dis = {} /\ kept = {}
@@ -1116,7 +1163,7 @@ YouDiscard(e) ==
   /\ dis' = dis \cup {e}
   /\ UNCHANGED <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
                  traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest,
-                 lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
+                 lst, ent, stage, rep, repOf, unrep, revised, unt, bsnap, asnap, pend,
                  passReq, gateQ, modeQ, traceQ, tl, tlAtPause, kept, revLost,
                  pkg, saves, pkgHas, pkgDis, holdPg, keptSn, newT, pkgNew,
                  pgReported, pgLastFill, els, pic,
@@ -1129,7 +1176,7 @@ YouRestore(e) ==
   /\ dis' = dis \ {e}
   /\ UNCHANGED <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
                  traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest,
-                 lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
+                 lst, ent, stage, rep, repOf, unrep, revised, unt, bsnap, asnap, pend,
                  passReq, gateQ, modeQ, traceQ, tl, tlAtPause, kept, revLost,
                  pkg, saves, pkgHas, pkgDis, holdPg, keptSn, newT, pkgNew,
                  pgReported, pgLastFill, els, pic,
@@ -1200,6 +1247,10 @@ GatesUnpick ==
 ClickHeld(i) ==
   /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ (gateOn \/ holdPg) /\ MayClickHere
   /\ \E b \in Buttons :
+       \* a click the browser gave to another element than the one under the
+       \* pointer is held only while an input the gate held still waits to be
+       \* passed on (PR clickUntouched); otherwise ClickUntouched
+       /\ b = "leftNotUnderPointer" => WaitingPg > 0
        /\ kind' = [kind EXCEPT ![i] = ClickKind(b)]
        \* (only a left click leads elsewhere in the model)
        /\ \E n \in IF b = "left" /\ ~BlankHere THEN NavOptions ELSE {FALSE} : navs' = [navs EXCEPT ![i] = n]
@@ -1219,6 +1270,33 @@ ClickHeld(i) ==
   /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
                  tracing, clock, docOf, readFly, seen, hits, ev, ord, keys, revFly, revOrd,
                  revMade, revAt, wrong, overtook, surfVars, miscVars>>
+  /\ Publish
+
+\* The browser gave the click to another element than the one under the
+\* pointer, as to the body when a list came up under the pointer on the
+\* press: sent on again, it would reach that one. The gate lets it reach the
+\* page as it came and tells the engine of it like a held click, with a
+\* number of its own (G passUntouched; PR clickUntouched), and the document
+\* holds what follows it. Only while no input the gate held waits to be
+\* passed on: otherwise the click is held like any other (ClickHeld).
+\* Playwright sees it at once and holds back its report, as any left
+\* click's. The engine hears of it in the same step; its message coming
+\* late, and such a click that leads elsewhere, are not modelled. In the
+\* model no document holds clicks while Playwright picks.
+ClickUntouched(i) ==
+  /\ PersonMayAct /\ Alive /\ page = "open" /\ IsNext(i) /\ ~pickPg /\ (gateOn \/ holdPg) /\ MayClickHere
+  /\ "leftNotUnderPointer" \in Buttons /\ WaitingPg = 0 /\ mode # "pick"
+  /\ kind' = [kind EXCEPT ![i] = "click"]
+  /\ made' = [made EXCEPT ![i] = MadeNow]
+  /\ evStamp' = [evStamp EXCEPT ![i] = clock]   \* when it reached the page
+  /\ at' = [at EXCEPT ![i] = "page"]
+  /\ hits' = [hits EXCEPT ![i] = 1]
+  /\ ev' = [ev EXCEPT ![i] = IF mode = "none" THEN "none" ELSE "flying"]
+  /\ ord' = [ord EXCEPT ![i] = seen] /\ seen' = seen + 1
+  /\ Commit(OnInputHeld([Eng EXCEPT !.holdPg = TRUE, !.unt[i] = "yes"], i, "click"))
+  /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
+                 tracing, clock, docOf, readFly, keys, revFly, revOrd, revMade, revAt,
+                 touched, heldEver, navs, wrong, overtook, surfVars, miscVars>>
   /\ Publish
 
 \* The page's message that it holds a click reaches the engine (race R10:
@@ -1510,7 +1588,7 @@ SavedArrives ==
   /\ storage' = Asked
   /\ UNCHANGED <<boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
                  traceStarting, discarding, stopping, gen, pgHold, pgLatest, lst, ent,
-                 stage, rep, repOf, unrep, revised, bsnap, asnap, pend, passReq, gateQ,
+                 stage, rep, repOf, unrep, revised, unt, bsnap, asnap, pend, passReq, gateQ,
                  modeQ, traceQ, tl, tlAtPause, dis, kept, revLost, pkg, saves, pkgHas,
                  pkgDis, holdPg, keptSn, newT, pkgNew, shown, txt, fin, pos,
                  pgReported, pgLastFill, els, pic,
@@ -1539,7 +1617,7 @@ PackageWriteFails ==
   /\ pkg' = "none" /\ pkgHas' = {} /\ pkgDis' = {} /\ pkgNew' = <<>>
   /\ UNCHANGED <<boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
                  traceStarting, discarding, stopping, gen, pgHold, pgLatest, lst, ent,
-                 stage, rep, repOf, unrep, revised, bsnap, asnap, pend, passReq, gateQ,
+                 stage, rep, repOf, unrep, revised, unt, bsnap, asnap, pend, passReq, gateQ,
                  modeQ, traceQ, tl, tlAtPause, dis, kept, revLost, saves,
                  holdPg, keptSn, newT, shown, txt, fin, pos,
                  pgReported, pgLastFill, els, pic,
@@ -1573,7 +1651,7 @@ StorageLands ==
   /\ storage' \in {"saved", "failed"}
   /\ UNCHANGED <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
                  traceStarting, discarding, stopping, savedTold, gen, pgHold, pgLatest, lst, ent,
-                 stage, rep, repOf, unrep, revised, bsnap, asnap, pend, passReq, gateQ,
+                 stage, rep, repOf, unrep, revised, unt, bsnap, asnap, pend, passReq, gateQ,
                  modeQ, traceQ, tl, tlAtPause, dis, kept, revLost, pkg, saves, pkgHas,
                  pkgDis, holdPg, keptSn, newT, pkgNew, shown, txt, fin, pos,
                  pgReported, pgLastFill, els, pic,
@@ -1706,6 +1784,7 @@ EngineNext ==
   \/ YouPressFinishAgain \/ YouPressClear \/ YouPressAssert \/ YouLeaveAssert
   \/ \E e \in Ids : YouDiscard(e) \/ YouRestore(e)
   \/ \E i \in Inputs : ClickPicked(i) \/ ClickHeld(i) \/ ClickReaches(i) \/ ClickAfterPicking(i)
+  \/ \E i \in Inputs : ClickUntouched(i)
   \/ \E i \in Inputs : TypeHeld(i) \/ TypeReaches(i) \/ TypeMore(i)
   \/ GatesUnpick \/ \E i \in Inputs : HeldMessageArrives(i)
   \/ \E i \in Inputs : PassGone(i) \/ PassOn(i)
@@ -1744,9 +1823,9 @@ OnItsOwn ==
 \* X3 and X5 are rule 13a, and R03b is 13b. S1 to S4 are the storage save's
 \* (--save-storage). F1 to F7 are the rules of typed text in the window. N1
 \* to N6 are narrower versions of rule 12, each for its own shortest path.
-\* P1 to P31 are probes: each must break, which shows the model reaches that
+\* P1 to P33 are probes: each must break, which shows the model reaches that
 \* situation. L1 and L2 are progress, checked with fairness (Progress.cfg).
-\* Also checked: X4, X6, X7, X10, X11, X12a and D1, and the variants R03a to
+\* Also checked: X4, X6, X7, X10, X11, X12a, X13, X13e and D1, and the variants R03a to
 \* R03c, R04v, R06_DecisionsChangeOnlyByAPress, X3v, F1v, F3_FinalKeepsItsChanges,
 \* F4n, F7s and N1b; each is explained beside its check.
 
@@ -1898,6 +1977,18 @@ X12a_AssertionReadsInTimeOrder ==
        (ent[e] = "rep" /\ \E a \in tl : ent[a] = "assert" /\ In(a) < In(e)
                                      /\ ~\E f \in tl : In(a) < In(f) /\ In(f) < In(e))
          => bsnap[e] <= evStamp[In(e)]
+
+\* 12, for a click that reached its page untouched: the snapshot it starts
+\* from is read no later than the click. Breaks when its page has no read
+\* yet, as for the first input after Record, when an earlier input of the
+\* page is still under way, and right after typing (README, Known limits):
+\* its snapshot is then read after it, and shows what it did.
+X13_UntouchedClickStartsBeforeIt ==
+  \A e \in tl : unt[e] # "no" => bsnap[e] <= evStamp[In(e)]
+\* The same, for one that came while nothing of its page was under way: it
+\* starts from the page's latest read.
+X13e_WithNothingUnderWayStartsBeforeIt ==
+  \A e \in tl : unt[e] = "early" => bsnap[e] <= evStamp[In(e)]
 
 \* 13a. Nothing done while recording is thrown away. Gives way once the
 \*      five-second time limit passes, and for input on the blank page a
@@ -2103,6 +2194,10 @@ F6_WindowIsWhatIsSaved ==
 \*    into another field before the page went quiet, with no held input
 \*    between (the page moved the focus by itself), ends the earlier fill only
 \*    when the recorder learns of it, and that later fill starts there.
+\*    And, as a known limit too: a click that reached its page untouched
+\*    before the fill was complete starts from a read taken after it, and
+\*    the fill ends at that read or at one before it that was taken after
+\*    the click as well (README, Known limits).
 \*    While a fill is live its text may be ahead of its rows: they end at a
 \*    read after its first key, and at a read after its last key once final.
 \*    When its typing makes the page navigate, or the page closes, before it
@@ -2111,6 +2206,9 @@ F6_WindowIsWhatIsSaved ==
 SharedStart(e) ==
   \E f \in Ids : In(f) < In(e) /\ IsFillEntry(f) /\ asnap[f] # 0 /\ asnap[f] = bsnap[e]
 StartsAt(j, x) == \E f \in {j, N + j} : IsFillEntry(f) /\ bsnap[f] = x
+\* a click that reached its page untouched and starts from a read taken
+\* after it: the fill before it was not complete when it came
+UntouchedFromALaterRead(j) == unt[j] = "yes"
 LastReadOf(d) == LET K == {k \in keptSn : DocAt(k) = d} IN
                  IF K = {} THEN 0 ELSE CHOOSE k \in K : \A j \in K : j <= k
 \* its latest read is of the page it went on to, or the page closed: it ends
@@ -2131,12 +2229,15 @@ F7_MeasuredFromFirstKey ==
       /\ (r.b # 0 /\ ~fin[r.e]) => r.b > pic[r.e]
       \* and not past the next action that reached the page
       /\ r.b # 0 => \A j \in Inputs : (j > In(r.e) /\ at[j] = "page" /\ made[j].doc = r.d)
-                                       => (r.b <= evStamp[j] \/ StartsAt(j, r.b))
+                                       => (r.b <= evStamp[j] \/ StartsAt(j, r.b)
+                                           \/ UntouchedFromALaterRead(j))
       \* the next row of its Visit starts where it ends: nothing appended inside
       /\ (r.b # 0 /\ NextInDoc(k) # 0) => r.b <= WRows[NextInDoc(k)].a
 
-\* 7 without the exception for B2: with LeaveOutB2 it shows that B2 is the
-\* only path the exception covers.
+\* 7 without its exceptions: with LeaveOutB2 it shows that B2 is the only
+\* path its exception covers, and with a click that reaches its page
+\* untouched it breaks on that click alone (config
+\* Limit-UntouchedClickAfterTyping).
 F7s_MeasuredStrictly ==
   \A k \in 1..Len(WRows) :
     LET r == WRows[k] IN
@@ -2166,6 +2267,10 @@ P21_NeverWaitsToShow ==
   ~(page = "open" /\ \E e \in Elems(lst) : IsFillEntry(e) /\ rep[e] /\ ~shown[e])
 P22_NeverStartsAFillFromARevision == ~\E i \in Inputs : IsFillEntry(N + i)
 P23_NeverSetsAFinalFillsText == ~\E e \in Ids : stage[e] = "textSet"
+\* A click that reached its page untouched is recorded: from a read taken
+\* before it, and from one taken after it.
+P32_NeverRecordsAnUntouchedClickFromAnEarlierRead == ~\E e \in tl : unt[e] = "early"
+P33_NeverRecordsAnUntouchedClickFromALaterRead == ~\E e \in tl : unt[e] = "yes"
 \* --save-storage: the save is reached with nothing recorded, with a package,
 \* and fails (a warning).
 P26_NeverSavesStorageWithNothingRecorded == ~(storage = "saved" /\ phase = "empty")
@@ -2290,6 +2395,7 @@ StartedRecording ==
   /\ ent = [e \in Ids |-> "none"] /\ stage = [e \in Ids |-> "none"]
   /\ rep = [e \in Ids |-> FALSE] /\ repOf = [e \in Ids |-> 0]
   /\ unrep = [e \in Ids |-> FALSE] /\ revised = [e \in Ids |-> FALSE]
+  /\ unt = [e \in Ids |-> "no"]
   /\ bsnap = [e \in Ids |-> 0] /\ asnap = [e \in Ids |-> 0] /\ pend = <<>>
   /\ passReq = [i \in Inputs |-> FALSE] /\ gateQ = <<>> /\ modeQ = <<>> /\ traceQ = <<>>
   /\ tl = {} /\ tlAtPause = {} /\ dis = {} /\ kept = {}

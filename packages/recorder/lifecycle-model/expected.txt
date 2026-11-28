@@ -62,6 +62,12 @@ Clicks-Middle:
 Clicks-Middle-Fill:
 Clicks-MiddleOnCheckbox:
 Clicks-Mixed:
+# A click that reaches its page untouched.
+Clicks-Untouched:
+Clicks-Untouched-Fill:
+Clicks-Untouched-Order:
+Limit-UntouchedClickRead: X13_UntouchedClickStartsBeforeIt
+Limit-UntouchedClickAfterTyping: F7s_MeasuredStrictly
 # Probes: every probe breaks, which shows the model reaches that situation.
 Probes: P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten
 Probes-Discard: P2_NeverSavesADiscard P24_NeverDiscardsWhileRecording P25_NeverTypesOnInADiscardedFill
@@ -71,3 +77,4 @@ Probes-Window-Navigation: P19_NeverNavigatesUnderALiveFill
 Probes-Continue: P22_NeverStartsAFillFromARevision
 Probes-LateRevision: P23_NeverSetsAFinalFillsText
 Probes-Storage: P26_NeverSavesStorageWithNothingRecorded P27_NeverSavesStorageWithAPackage P28_NeverWarnsOfTheStorage P29_NeverSavesStorageAfterTheTraceFailedToStart P30_NeverSavesStorageAfterAFailedStartsTraceIsGone P31_NeverSavesStorageAfterAFailedWrite
+Probes-Untouched: P32_NeverRecordsAnUntouchedClickFromAnEarlierRead P33_NeverRecordsAnUntouchedClickFromALaterRead
