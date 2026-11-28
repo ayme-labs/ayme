@@ -161,8 +161,8 @@ export function clickHeld(click: {
  * so a page that replaced it, or that changed how it writes an object, as
  * Prototype.js 1.6 gives arrays a `toJSON`, sends a call Node cannot read:
  * it is lost, and so is every report of Playwright's recorder. The probe is
- * shaped as Playwright writes a call, and is read back with a `parse` the
- * page has not replaced: text laid out another way still reads the same.
+ * shaped as Playwright writes a call, and read back as a value, so text laid
+ * out another way still reads the same.
  */
 export function reachesPlaywright(
   stringify: (value: unknown) => string,
@@ -182,26 +182,27 @@ export function reachesPlaywright(
       },
     ],
   };
+  let written: string;
   try {
-    return sameJson(parse(stringify(call)), call);
+    written = stringify(call);
   } catch {
     return false;
   }
-}
-
-/**
- * Whether a held key the adapter did not take is typed by the gate itself
- * when it lets the key go: a key that types one character into a field. The
- * page then gets the key's events but not its own action, which an event a
- * page makes never has: any other key's action, as Enter's or Tab's, is
- * lost.
- */
-export function releasedAsText(key: KeyFacts): boolean {
+  const readsBack = (text: string) => {
+    try {
+      return sameJson(parse(text), call);
+    } catch {
+      return false;
+    }
+  };
+  // A `parse` that cannot read the call's own text cannot tell, and the
+  // page counts as heard: taking a healthy page for a broken one would keep
+  // it from being recorded.
   return (
-    key.target !== "other" &&
-    [...key.key].length === 1 &&
-    !key.ctrl &&
-    !key.meta
+    readsBack(written) ||
+    !readsBack(
+      '{"name":"__aymeRecorderHeld","seq":1,"serializedArgs":[{"o":[{"k":"kind","v":"click"},{"k":"x","v":1.5},{"k":"modifiers","v":{"a":["Shift"],"id":2}}],"id":1}]}'
+    )
   );
 }
 
@@ -504,5 +505,4 @@ export type GateRules = {
   readonly keyRoute: typeof keyRoute;
   readonly keyHeld: typeof keyHeld;
   readonly reachesPlaywright: typeof reachesPlaywright;
-  readonly releasedAsText: typeof releasedAsText;
 };

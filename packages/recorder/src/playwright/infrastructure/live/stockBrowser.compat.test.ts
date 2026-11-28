@@ -2598,7 +2598,7 @@ it("holds every key while a held input waits, and lets keys reach the page again
  * Playwright would not hear of it. */
 const unheardAt = (address: string) => ({
   kind: "notRecorded",
-  message: `Inputs on ${address} are not recorded: the page changed JSON.stringify, or how it writes an object, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs still reach the page, though a key may lose its own action, such as Enter's. Stop and finish in the recorder window, at the address the recorder printed.`,
+  message: `Inputs on ${address} are not recorded: the page changed JSON.stringify, or how it writes an object, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs still reach the page. Stop and finish in the recorder window, at the address the recorder printed.`,
 });
 const notRecorded = (browser: Harness) =>
   browser
@@ -2648,25 +2648,18 @@ it.each([
   }
 );
 
-it("sends on by itself a click and typing whose call Playwright rejects, on a page that writes only that call so that Playwright cannot read it", async () => {
-  // Only a call that names its document, as the gate's note of an input
-  // does, loses its arguments: the gate's check of the page passes.
+it("holds a click on a page whose JSON.parse throws, which Playwright's calls do not use, and gives no warning", async () => {
   const browser = await onStockPlaywright(
-    `<script>Object.defineProperty(Object.prototype, "toJSON", { configurable: true, value() {
-      const first = Array.isArray(this.serializedArgs) && this.serializedArgs[0];
-      return first && Array.isArray(first.o) && first.o.some((entry) => entry.k === "document")
-        ? { name: this.name, seq: this.seq, serializedArgs: "lost" }
-        : this;
-    } });</script>${MARK}`
+    `<script>JSON.parse = () => { throw new Error("tampered JSON.parse"); };</script>${MARK}`
   );
   await holding(browser);
 
-  await clickAndType(browser);
+  await browser.click(browser.page.locator("#mark"));
 
-  expect(await notRecorded(browser)).toEqual({
-    kind: "notRecorded",
-    message: `An input on ${browser.url} is not recorded: the recorder could not read or take what the page told of it. The input still reaches the page, though a key may lose its own action, such as Enter's.`,
-  });
+  await browser.toldOf("inputHeld");
+  expect(
+    browser.told.filter((signal) => signal.kind === "browserWarned")
+  ).toEqual([]);
 });
 
 it("warns of a document that changes JSON.stringify after Record, and leaves its click to it", async () => {
@@ -2699,27 +2692,68 @@ it("warns of a frame from another site, added after the page loaded, by the fram
   expect(await notRecorded(browser)).toEqual(unheardAt(child));
 });
 
-it("records a click again once a page whose calls were lost at Stop can be heard: a lost call holds up no snapshot after it", async () => {
+/** Stop and Continue, as the engine asks for them, each once answered: the
+ * answer to Continue is one told after Stop's. */
+async function stopAndContinue(browser: Harness, between: () => Promise<void>) {
+  await browser.ask({ kind: "reportInteractions", on: false });
+  await browser.toldOf("reportingInteractions", ({ on }) => !on);
+  await between();
+  const before = browser.told.length;
+  await browser.ask({ kind: "reportInteractions", on: true });
+  await expect
+    .poll(() =>
+      browser.told
+        .slice(before)
+        .some((signal) => signal.kind === "reportingInteractions" && signal.on)
+    )
+    .toBe(true);
+}
+
+/** A click on `page`'s #mark, held, read and sent on as the engine asks,
+ * and reported by Playwright. */
+async function recordClick(browser: Harness, page: Page, id: string) {
+  const held = browser.told.filter((signal) => signal.kind === "inputHeld");
+  await browser.click(page.locator("#mark"));
+  await expect
+    .poll(
+      () => browser.told.filter((signal) => signal.kind === "inputHeld").length
+    )
+    .toBe(held.length + 1);
+  const { input } = browser.told.filter(
+    (signal) => signal.kind === "inputHeld"
+  )[held.length] as Extract<BrowserSignal, { kind: "inputHeld" }>;
+  await browser.ask({ kind: "takeSnapshot", snapshot: "s1", page: id });
+  await browser.toldOf("snapshotTaken");
+  await browser.ask({ kind: "passOn", input });
+  await expect.poll(() => page.locator("#mark").textContent()).toBe("Marked");
+  await browser.toldOf("interactionReported");
+}
+
+it("records a click again once a page whose calls were lost can be heard, after Stop and Continue", async () => {
   const browser = await onStockPlaywright(
     `<script>window.realStringify = JSON.stringify; ${REPLACED}</script>${MARK}`
   );
   await holding(browser);
-  // Stop: the page's answer that its reports reached Playwright is lost,
-  // and the engine gives up waiting at the wrap-up's limit.
-  await browser.ask({ kind: "reportInteractions", on: false });
-  await new Promise((resolve) => setTimeout(resolve, 5_000));
-  await browser.page.evaluate("JSON.stringify = window.realStringify");
-  // Continue.
-  await browser.ask({ kind: "reportInteractions", on: true });
-  await browser.toldOf("reportingInteractions", ({ on }) => on);
 
-  await browser.click(browser.page.locator("#mark"));
-  const { input } = await browser.toldOf("inputHeld");
-  await browser.ask({ kind: "takeSnapshot", snapshot: "s1", page: "page_1" });
-  await browser.toldOf("snapshotTaken");
-  await browser.ask({ kind: "passOn", input });
+  await stopAndContinue(browser, () =>
+    browser.page.evaluate("JSON.stringify = window.realStringify")
+  );
 
-  await expect
-    .poll(() => browser.page.locator("#mark").textContent())
-    .toBe("Marked");
+  await recordClick(browser, browser.page, "page_1");
+});
+
+it("records a click on a page after Stop and Continue while another tab's calls are lost", async () => {
+  const browser = await onStockPlaywright(
+    `<script>if (location.pathname === "/broken") ${REPLACED}</script>${MARK}`
+  );
+  const [broken] = await Promise.all([
+    browser.page.context().waitForEvent("page"),
+    browser.page.evaluate((url) => window.open(url), `${browser.url}broken`),
+  ]);
+  await broken.locator("#mark").waitFor();
+  await holding(browser);
+
+  await stopAndContinue(browser, async () => {});
+
+  await recordClick(browser, browser.page, "page_1");
 });

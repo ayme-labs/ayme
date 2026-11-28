@@ -4,7 +4,6 @@ import type {
   GateRules,
   HeldByPage,
   HeldClick,
-  KeyFacts,
   KeyRoute,
   MouseRoute,
 } from "../pageRules";
@@ -55,10 +54,6 @@ export type Gate = {
   pick(on: boolean): void;
 };
 
-/** Why a gate left an input to the page: Playwright would not hear the
- * document's calls, or the adapter did not take this one. */
-type Unheard = "unheard" | "refused";
-
 /** Whether a document's gate starts on, and the change that said so. */
 export type GateStart = { readonly on: boolean; readonly change: number };
 
@@ -85,6 +80,15 @@ export function startGate(start: GateStart): void {
   window.__aymeRecorderGate?.set(start.on);
 }
 
+/** Whether a call from the document reaches Playwright now, for the
+ * adapter. */
+export function heardIn(
+  _: undefined,
+  rules: Pick<GateRules, "reachesPlaywright">
+): boolean {
+  return rules.reachesPlaywright((value) => JSON.stringify(value), JSON.parse);
+}
+
 /**
  * Installs the gate in a document, switched on or off as `startGate` last
  * said, and off when it never did. Switched on, it holds back the click
@@ -96,12 +100,10 @@ export function startGate(start: GateStart): void {
  * moment it is switched on, it holds every key after it, typing included,
  * until it is let through: input reaches the page in the order it was
  * given. Switched off, it goes on holding keys and clicks alike while an
- * input it held still waits to be passed on. It keeps holding an input
- * only once the adapter answers that it took it, since nothing else would
- * ever let it through: where Playwright would not hear the call
- * (`reachesPlaywright`) it holds nothing, and where the call is rejected or
- * answered otherwise it sends the input on itself. It says so once on the
- * console, which reaches Node without the page's JSON.
+ * input it held still waits to be passed on. Where the call that tells of
+ * an input would not reach Playwright (`reachesPlaywright`), it holds
+ * nothing, since nothing would ever let the input through, and says so once
+ * on the console, which reaches Node without the page's JSON.
  *
  * It listens on `window`, before anything of the page and before
  * Playwright's recorder, which listens on `document`: neither sees a held
@@ -111,8 +113,9 @@ export function gateIn(held: string, rules: GateRules): void {
   // Every document has its own, frames included: a frame's click is sent
   // on at its place in the page.
   if (window.__aymeRecorderGate) return;
-  // Taken as the document starts, before its own scripts could replace
-  // them; a document that was loaded before the recorder attached may have.
+  // Taken before the document's own scripts run, where the gate starts with
+  // the document; one loaded before the recorder attached may have replaced
+  // it, which `reachesPlaywright` allows for.
   const parse = JSON.parse;
   const note = console.debug.bind(console);
   let on = rules.gateStartsOn(window.__aymeRecorderGateStart);
@@ -211,31 +214,10 @@ export function gateIn(held: string, rules: GateRules): void {
       return seq === undefined ? null : { document: thisDocument, seq };
     },
   };
-  const heard = () =>
-    rules.reachesPlaywright((value) => JSON.stringify(value), parse);
-  /** Tells the adapter of an input it is about to hold, and has `release`
-   * send it on unless the adapter answers that it took it. False when
-   * Playwright would not hear the call, or it could not be made: nothing is
-   * held then. */
-  const tell = (input: HeldByPage, release: () => void) => {
-    if (!heard()) return false;
-    let answer: Promise<unknown>;
-    try {
-      answer = (
-        window as unknown as Record<
-          string,
-          (input: HeldByPage) => Promise<unknown>
-        >
-      )[held]!(input);
-    } catch {
-      return false;
-    }
-    void answer.then(
-      (taken) => taken === true || release(),
-      () => release()
-    );
-    return true;
-  };
+  const tell = (input: HeldByPage) =>
+    void (
+      window as unknown as Record<string, (input: HeldByPage) => Promise<void>>
+    )[held]!(input);
   const swallow = (event: Event) => {
     event.stopImmediatePropagation();
     event.preventDefault();
@@ -244,17 +226,12 @@ export function gateIn(held: string, rules: GateRules): void {
     const target = event.composedPath()[0];
     return target instanceof Element ? target : null;
   };
-  const told: Partial<Record<Unheard, true>> = {};
-  /** Says once why the gate left an input to the page. */
-  const unheard = (why: Unheard) => {
-    if (!told[why]) note(held, why, location.href);
-    told[why] = true;
-  };
-  /** Sends on an input the adapter did not take, as `send` makes it. */
-  const letGo = (send: () => void) => {
-    arrived();
-    unheard("refused");
-    send();
+  const heard = () =>
+    rules.reachesPlaywright((value) => JSON.stringify(value), parse);
+  let toldUnheard = false;
+  const unheard = () => {
+    if (!toldUnheard) note(held, location.href);
+    toldUnheard = true;
   };
   const hold = (event: Event) => {
     swallow(event);
@@ -303,29 +280,18 @@ export function gateIn(held: string, rules: GateRules): void {
   };
   /** Tells of a held click: a right-click, held by its context menu event,
    * counts one. */
-  /** A held click sent on as an event the gate makes: the page gets its
-   * events, as a click its own script makes. */
-  const resendClick = (event: MouseEvent, target: EventTarget) => () => {
-    target.dispatchEvent(new MouseEvent(event.type, event));
-    if (event.type === "click" && event.detail >= 2)
-      target.dispatchEvent(new MouseEvent("dblclick", event));
-  };
   const tellClick = (event: MouseEvent) => {
     const button = rules.heldButton(event.type);
-    const target = event.composedPath()[0]!;
-    return tell(
-      {
-        kind: "click",
-        seq: seq + 1,
-        x: event.clientX,
-        y: event.clientY,
-        detail: button ? 1 : event.detail,
-        ...(button ? { button } : {}),
-        modifiers: rules.modifiersOf(event),
-        document: thisDocument,
-      },
-      () => letGo(resendClick(event, target))
-    );
+    tell({
+      kind: "click",
+      seq,
+      x: event.clientX,
+      y: event.clientY,
+      detail: button ? 1 : event.detail,
+      ...(button ? { button } : {}),
+      modifiers: rules.modifiersOf(event),
+      document: thisDocument,
+    });
   };
   const onClick = (event: MouseEvent) => {
     notePress(event);
@@ -336,9 +302,10 @@ export function gateIn(held: string, rules: GateRules): void {
       target: clickTarget(event),
     };
     if (!rules.clickHeld(click)) return;
-    if (!tellClick(event)) return unheard("unheard");
+    if (!heard()) return unheard();
     hold(event);
     swallowDoubleClick = event.type === "click" && event.detail >= 2;
+    tellClick(event);
   };
   const mouseRoutes: Record<MouseRoute, (event: MouseEvent) => void> = {
     ignore: () => {},
@@ -377,9 +344,9 @@ export function gateIn(held: string, rules: GateRules): void {
   ] as const)
     window.addEventListener(type, onMouse as EventListener, true);
 
-  const factsOf = (event: KeyboardEvent) => {
+  const pressOf = (event: KeyboardEvent) => {
     const target = elementOf(event);
-    return {
+    return rules.recordedAsPress({
       key: event.key,
       code: event.code,
       ctrl: event.ctrlKey,
@@ -394,45 +361,28 @@ export function gateIn(held: string, rules: GateRules): void {
         }
       ),
       mac: navigator.platform.includes("Mac"),
-    };
+    });
   };
-  /** A held key sent on as events the gate makes, typed into its field
-   * when it is a character (`releasedAsText`), and released unless its own
-   * release is still to come. */
-  const resendKey =
-    (event: KeyboardEvent, target: EventTarget, facts: KeyFacts) => () => {
-      const typed = target.dispatchEvent(new KeyboardEvent("keydown", event));
-      if (typed && rules.releasedAsText(facts))
-        document.execCommand("insertText", false, event.key);
-      if (!swallowKeyUp.delete(event.code))
-        target.dispatchEvent(new KeyboardEvent("keyup", event));
-    };
   const nothingFocused = (event: KeyboardEvent) => {
     const target = event.composedPath()[0];
     return target === document.body || target === document.documentElement;
   };
   const holdKey = (event: KeyboardEvent) => {
-    const facts = factsOf(event);
-    const press = rules.recordedAsPress(facts);
-    const decided = rules.keyHeld({ on, press, holding });
+    const decided = rules.keyHeld({ on, press: pressOf(event), holding });
     if (!decided.held) return;
-    const target = event.composedPath()[0]!;
-    const told = tell(
-      {
-        kind: "key",
-        seq: seq + 1,
-        typing: decided.typing,
-        nothingFocused: nothingFocused(event),
-        key: event.key,
-        code: event.code,
-        modifiers: rules.modifiersOf(event),
-        document: thisDocument,
-      },
-      () => letGo(resendKey(event, target, facts))
-    );
-    if (!told) return unheard("unheard");
+    if (!heard()) return unheard();
     hold(event);
     swallowKeyUp.add(event.code);
+    tell({
+      kind: "key",
+      seq,
+      typing: decided.typing,
+      nothingFocused: nothingFocused(event),
+      key: event.key,
+      code: event.code,
+      modifiers: rules.modifiersOf(event),
+      document: thisDocument,
+    });
   };
   const keyRoutes: Record<KeyRoute, (event: KeyboardEvent) => void> = {
     ignore: () => {},

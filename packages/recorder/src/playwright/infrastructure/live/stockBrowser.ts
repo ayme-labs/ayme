@@ -70,6 +70,7 @@ import {
 import {
   ancestorRefs,
   followPickingIn,
+  heard,
   highlightIn,
   installGate,
   installTargetWatch,
@@ -415,23 +416,20 @@ async function openPage(
   let gateChanges = 0;
   let pickingChanges = 0;
 
-  /** What a document's gate says on the console when it left an input to
-   * the page (`gateIn`), for a person. */
-  const unheard: Record<string, (address: string) => string> = {
-    unheard: (address) =>
-      `Inputs on ${address} are not recorded: the page changed JSON.stringify, or how it writes an object, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs still reach the page, though a key may lose its own action, such as Enter's. Stop and finish in the recorder window, at the address the recorder printed.`,
-    refused: (address) =>
-      `An input on ${address} is not recorded: the recorder could not read or take what the page told of it. The input still reaches the page, though a key may lose its own action, such as Enter's.`,
-  };
+  /** Tells a person of a document whose gate held nothing back, as it said
+   * on the console (`gateIn`). The text is the page's: a page can forge the
+   * warning, and nothing else. */
   const heardOnConsole = (message: ConsoleMessage) => {
-    if (message.type() !== "debug") return;
-    const [said, why = "", address = ""] = message.text().split(" ");
-    const warned = said === heldBinding ? unheard[why] : undefined;
-    if (warned)
-      tell({
-        kind: "browserWarned",
-        warning: { kind: "notRecorded", message: warned(address) },
-      });
+    const said = message.text();
+    if (message.type() !== "debug" || !said.startsWith(`${heldBinding} `))
+      return;
+    tell({
+      kind: "browserWarned",
+      warning: {
+        kind: "notRecorded",
+        message: `Inputs on ${said.slice(heldBinding.length + 1)} are not recorded: the page changed JSON.stringify, or how it writes an object, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs still reach the page. Stop and finish in the recorder window, at the address the recorder printed.`,
+      },
+    });
   };
   const track = (page: Page) => {
     const id = `page_${idOf.size + 1}` as PageId;
@@ -479,8 +477,6 @@ async function openPage(
               ? { kind: "typing" }
               : { kind: "press", nothingFocused: input.nothingFocused },
       });
-      // Taken: the gate keeps holding the input only on this answer.
-      return true;
     }
   );
   /** Who hears of a page's activity now: a wait for a Settled Page. */
@@ -1005,24 +1001,19 @@ async function openPage(
    * one, can be overtaken by a switch-off from here; once switched off,
    * Playwright drops it. Each document asks Playwright's recorder for its
    * state (a private part of Playwright, as `noLongerRecording` says): the
-   * answer comes after the document's earlier reports were taken. A call
-   * Playwright traces: never inside a snapshot's mark.
+   * answer comes after the document's earlier reports were taken. A document
+   * whose calls do not reach Playwright has no report on its way, and would
+   * never answer: it is not asked. A call Playwright traces: never inside a
+   * snapshot's mark.
    */
   async function everyReportDelivered() {
-    let timer: NodeJS.Timeout | undefined;
     const asked = markers.then(() =>
-      Promise.race([
-        Promise.all(
-          everyFrame().map((frame) =>
-            frame.evaluate(askRecorderState).catch(() => {})
-          )
-        ),
-        // A document whose call to Playwright is lost never answers: the
-        // marks queued behind must not wait for it (`reachesPlaywright`).
-        new Promise((resolve) => {
-          timer = setTimeout(resolve, REPORTS_DELIVERED_MS);
-        }),
-      ]).finally(() => clearTimeout(timer))
+      Promise.all(
+        everyFrame().map(async (frame) => {
+          if (await frame.evaluate(heard, undefined).catch(() => false))
+            await frame.evaluate(askRecorderState).catch(() => {});
+        })
+      )
     );
     markers = asked.catch(() => {});
     await asked;
@@ -1216,11 +1207,6 @@ const FAKE_PATH = "C:\\fakepath\\";
 
 /** How long reading the ancestors of a target may take before the element
  * is taken to be gone. */
-/** How long a switch-off waits for the documents to answer that their
- * reports reached Playwright: far over the milliseconds one takes, and under
- * the engine's five seconds for a wrap-up, so that the switch-off is done
- * before the engine stops waiting for it. */
-const REPORTS_DELIVERED_MS = 2_000;
 const ANCESTOR_READ_MS = 1_000;
 
 /** How long reading the names of an upload's files may take before the

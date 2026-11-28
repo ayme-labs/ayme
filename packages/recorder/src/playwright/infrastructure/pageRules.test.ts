@@ -16,7 +16,6 @@ import {
   modifiersOf,
   ownRefOf,
   reachesPlaywright,
-  releasedAsText,
   recordedAsPress,
   recordersOwn,
   replayed,
@@ -210,6 +209,21 @@ describe("whether a page's calls reach Playwright", () => {
     expect(reaches((value) => JSON.stringify(value, null, 2))).toBe(true);
   });
 
+  it("holds, as it cannot tell, when the parser it reads back with was replaced too", () => {
+    const throwing = () => {
+      throw new Error("tampered JSON.parse");
+    };
+    expect(reachesPlaywright(stringify, throwing)).toBe(true);
+    expect(
+      reachesPlaywright((value) => JSON.stringify(value, null, 2), throwing)
+    ).toBe(true);
+    expect(reachesPlaywright(stringify, () => ({}))).toBe(true);
+  });
+
+  it("fails for what the parser reads as another value, when it reads the call's own text right", () => {
+    expect(reaches(() => '{"tampered":true}')).toBe(false);
+  });
+
   it("fails for a JSON.stringify the page replaced, or one that throws", () => {
     expect(reaches(() => '{"tampered":true}')).toBe(false);
     expect(
@@ -248,28 +262,6 @@ describe("whether a page's calls reach Playwright", () => {
         () => "tampered",
         () => expect(reaches(stringify)).toBe(true)
       );
-  });
-});
-
-describe("which key the gate types itself when it lets a held key go", () => {
-  it("types a character into a field, a text area or editable content", () => {
-    for (const target of ["input", "textarea", "contentEditable"] as const)
-      expect(releasedAsText(key({ key: "a", target }))).toBe(true);
-    expect(releasedAsText(key({ key: "é", alt: true, target: "input" }))).toBe(
-      true
-    );
-    expect(releasedAsText(key({ key: "😀", target: "input" }))).toBe(true);
-  });
-
-  it("types nothing for a key that is no character, one with Control or Meta, or one outside a field", () => {
-    expect(releasedAsText(key({ key: "Enter", target: "input" }))).toBe(false);
-    expect(releasedAsText(key({ key: "a", ctrl: true, target: "input" }))).toBe(
-      false
-    );
-    expect(releasedAsText(key({ key: "a", meta: true, target: "input" }))).toBe(
-      false
-    );
-    expect(releasedAsText(key({ key: "a", target: "other" }))).toBe(false);
   });
 });
 
