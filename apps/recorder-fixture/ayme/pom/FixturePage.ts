@@ -26,6 +26,19 @@ export abstract class FixturePage {
     })`) as Promise<Box[]>;
   }
 
+  /** Has a script of the page call each of the recorder's page functions
+   * (`window.__aymeRecorder*`) with each of `values` on every click from
+   * now on, as any script of a page can. */
+  async callRecorderFunctionsOnClick(
+    values: readonly unknown[]
+  ): Promise<void> {
+    await this.page.evaluate(`document.addEventListener("click", () => {
+      for (const name of ["Held", "Target", "Changed", "Toolbar"])
+        for (const value of ${JSON.stringify(values)})
+          window["__aymeRecorder" + name](value).catch(() => {});
+    })`);
+  }
+
   /** The one box the recorder's highlight is drawn at on this page; null
    * when it draws none. */
   async highlight(): Promise<Box | null> {
