@@ -68,6 +68,8 @@ It opens the page in Chromium, with the Recorder beside it and a small toolbar o
 
 The [ayme capture guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md) covers the controls, a logged-in app, the files a recording saves, its trace, the warnings and the limits.
 
+Each of [the ways a recording ends](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#end-a-recording), such as **Finish** or Ctrl+C, saves it.
+
 When the Recorder cannot fully record a step, it prints a line that starts with `Warning:` in the terminal and keeps recording. If you ran ayme capture yourself, pass the warning to your agent with the recording. The guide [lists the warnings](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#warnings).
 
 ### Turn a recording into page objects

@@ -11,36 +11,7 @@ export type Modifier = "Alt" | "Control" | "Meta" | "Shift";
  * there (`seq` of `HeldByPage`). */
 export type HeldClick = { readonly document: string; readonly seq: number };
 
-/** What a page tells of an input it held back. `seq` numbers the inputs a
- * document held, from 1. */
-export type HeldByPage =
-  | {
-      readonly kind: "click";
-      readonly seq: number;
-      /** Where it was, in its own document's viewport. */
-      readonly x: number;
-      readonly y: number;
-      /** The click's count: 2 for the second click of a double click. */
-      readonly detail: number;
-      /** The button, the left one when it is not said. */
-      readonly button?: "right" | "middle";
-      readonly modifiers: readonly Modifier[];
-      /** The document it was held in. */
-      readonly document: string;
-    }
-  | {
-      readonly kind: "key";
-      readonly seq: number;
-      /** Typing, as opposed to a key press Playwright records as a press. */
-      readonly typing: boolean;
-      /** It went to the document itself: no element had focus. */
-      readonly nothingFocused: boolean;
-      readonly key: string;
-      readonly code: string;
-      readonly modifiers: readonly Modifier[];
-      /** The document it was held in. */
-      readonly document: string;
-    };
+export type { HeldByPage } from "./pageValues";
 
 // The rules the gate decides by. They need no page: Node tests them, and
 // `withRules` sends them into the page with the gate. Each uses nothing

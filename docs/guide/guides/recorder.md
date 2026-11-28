@@ -50,7 +50,7 @@ The terminal prints the Recorder's address, such as `Recorder UI: http://127.0.0
 - `--start-recording`: starts recording before the page loads, so the recording and its trace include the first page load and its network requests. The page opens blank and then goes to `<url>`. Wait for it to open before you do anything: what you do on the blank page is not recorded. After **Clear**, the next recording starts from the page as it is then.
 - `--load-storage <file>`: opens the page with the cookies and local storage from `<file>`, a Playwright storage state file. You get such a file from `--save-storage` here, from `npx playwright codegen --save-storage`, or from your project's own login setup (`context.storageState()`). If the file cannot be read or holds no storage state, the Recorder does not start.
 - `--save-storage <file>`: when the Recorder ends, saves the browser's cookies and local storage to `<file>`, as `npx playwright codegen --save-storage` does.
-  - It saves when you press **Finish**, close the last recorded page, or press Ctrl+C. It saves even if nothing was recorded, or if the recording itself could not be saved.
+  - It saves at each [end of a recording](#end-a-recording). It saves even if nothing was recorded, or if the recording itself could not be saved.
   - It cannot save if you quit the whole browser.
   - To save a login without recording anything: log in, then close the page or press Ctrl+C. **Finish** is offered only after **Record**.
   - If the file cannot be saved, the Recorder prints [a warning](#warnings).
@@ -67,7 +67,7 @@ npx ayme capture --cdp=http://127.0.0.1:9222
 - The browser must have exactly one page open. The Recorder records that page and does not navigate it.
 - The Recorder does not open by itself. Open the printed `Recorder UI` address in any browser.
 - What a script does in that browser is recorded like your own clicks and typing.
-- To end, press **Finish**, close the page, or press Ctrl+C. Each saves the recording. The Recorder removes its toolbar from the page and leaves the browser open.
+- The Recorder ends and saves as [any recording does](#end-a-recording), then removes its toolbar from the page and leaves the browser open.
 - `--headless`, `--start-recording`, `--load-storage` and `--save-storage` do not apply here, and you cannot pass a URL as well.
 
 ## Record a flow
@@ -123,7 +123,10 @@ Each of these ends the Recorder and saves what was recorded:
 
 - press **Finish**,
 - close the last recorded page,
-- press Ctrl+C in the terminal.
+- press Ctrl+C in the terminal,
+- close the terminal, or lose the SSH session it runs in.
+
+After an error that nothing in the Recorder caught while a recording runs, the Recorder tries to save what it has, prints the error and exits with code 1.
 
 If recording never started, by **Record** or `--start-recording`, there is nothing to save.
 
@@ -186,6 +189,8 @@ A warning about one step names it by its id in the recording, such as `interacti
 - **Whether the page changed by itself could not be worked out.** The recording lists no such change at the time the warning gives.
 - **A step is not recorded.** Its page could not be read. This can happen to typing, a dropdown choice, an upload or an assertion.
 - **A step, or something else, is missing from the recording.** The Recorder itself failed to keep it. The warning names the step when a step is missing, and ends with the Recorder's own error. The trace still holds what happened on the page.
+- **A step is in the recording without its element, or only as Playwright reported it.** The Recorder could not read Playwright's report of the step in full. Without its element, the step has its type, what Playwright said of the input, such as a click's button, and the page's changes. As Playwright reported it, the step names the element Playwright named, which can be one inside the element it acted on, and an upload is typing of the path the browser shows for it, `C:\fakepath\` and the first file's name. The warning ends with the Recorder's own error.
+- **Typing may be missing its latest keys.** The Recorder could not read Playwright's revision of the typing. The trace still holds the keys.
 - **An upload is recorded with its first file name only.** The file input was gone, or held other files than Playwright reported, by the time the Recorder read it.
 - **Some or all of the trace's snapshots could not be numbered.** The recording has its trace, but lacks the position numbers that open those steps' snapshots.
 - **The storage state could not be saved.** `--save-storage` could not write its file, the browser was quit or did not answer within half a minute, or the Recorder broke down while saving. The recording ends as it would have without the save.

@@ -71,6 +71,9 @@ export type Run = {
   waitForStdout(text: string): Promise<void>;
   /** Sends the signal the terminal's stop sends. */
   interrupt(): void;
+  /** Closes the test's end of the run's output pipes, so its writes fail,
+   * and sends it SIGHUP: what a closed terminal does, on pipes. */
+  hangUp(): void;
   /** Closes the page at `url` in the recorder's browser, as the person
    * would, over the test's own connection to that browser. */
   closePage(url: string): Promise<void>;
@@ -461,6 +464,11 @@ export const test = base.extend<{
             check();
           }),
         interrupt: () => void child.kill("SIGINT"),
+        hangUp: () => {
+          child.stdout!.destroy();
+          child.stderr!.destroy();
+          child.kill("SIGHUP");
+        },
         debugEndpoint: `http://127.0.0.1:${debugPort}`,
         closePage: async (url) => {
           // The browser's DevTools protocol, over its HTTP endpoints.

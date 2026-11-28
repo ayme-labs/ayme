@@ -1,4 +1,11 @@
-import { mkdir, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -6,6 +13,7 @@ import { RecorderWindow } from "@ayme-dev/recorder-window/testing";
 import { chromium } from "@playwright/test";
 
 import { CartPage } from "#pom/CartPage";
+import { LoginPage } from "#pom/LoginPage";
 import { expect, personAt, test } from "./fixtures";
 import { stockTraceTool } from "./stockTrace";
 
@@ -161,6 +169,54 @@ test.describe("ayme capture <url>", () => {
     expect(run.stdout()).toContain(
       "Recording was empty; no recording package was created."
     );
+  });
+
+  test("SIGHUP, which a closed terminal sends, ends the recorder as Ctrl+C does: the recording and the storage state are saved, also with the command's output closed", async ({
+    fixturePages,
+    runRecorder,
+  }, testInfo) => {
+    const project = testInfo.outputPath("project");
+    await mkdir(project, { recursive: true });
+    const file = testInfo.outputPath("state.json");
+    const url = fixturePages.url("/login.html");
+    const run = await runRecorder(
+      ["capture", url, "--start-recording", "--save-storage", file],
+      { cwd: project }
+    );
+    await run.waitForStdout(`Opened ${url}`);
+    const browser = await chromium.connectOverCDP(run.debugEndpoint);
+    try {
+      const find = () =>
+        browser
+          .contexts()
+          .flatMap((context) => context.pages())
+          .find((open) => open.url() === url);
+      await expect.poll(() => find() !== undefined).toBe(true);
+      const page = find()!;
+      const login = new LoginPage(page);
+      const person = personAt(await page.context().newCDPSession(page));
+      await person.click(login.logInButton);
+      await expect(login.who).toHaveText("Logged in as ada");
+      await person.pause();
+
+      run.hangUp();
+      expect(await run.exit).toEqual({ code: 0, signal: null });
+    } finally {
+      await browser.close();
+    }
+
+    const recordings = join(project, "ayme", "recordings");
+    const saved = (await readdir(recordings)).find((name) =>
+      name.startsWith("rec_")
+    );
+    const text = await readFile(
+      join(recordings, saved!, "package.yaml"),
+      "utf8"
+    );
+    expect(text).toContain("kind: interaction");
+    expect(JSON.parse(await readFile(file, "utf8"))).toMatchObject({
+      cookies: [expect.objectContaining({ name: "session", value: "s3cret" })],
+    });
   });
 
   test("--start-recording opens already recording: the package and its trace hold the first page load, and Finish saves them", async ({
