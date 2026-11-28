@@ -2,7 +2,7 @@
   "arm": "arm1",
   "name": "Arm 1: plain goals",
   "command": "pnpm study:baseline arm1",
-  "commit": "b30f0b11d9430407f4ea63c55adf9eb3cba3bc16",
+  "commit": "57d5ffc6f17762793cdf90f2dbb7a2b19ae06c41",
   "build": "pnpm turbo run build --filter=@ayme-dev/inspector-fixture^..., before the runs",
   "env": {
     "E2E_TELEMETRY_DISABLED": "1",
@@ -11,161 +11,92 @@
   },
   "recordings": {
     "dir": ".e2e/goals-cache",
-    "entries": 240,
-    "digest": "ae2b2aed0a0736677e90186590b56a40bc408f29a1cbc61ded5ca4402bfee693"
+    "entries": 241,
+    "digest": "df08f615078f9f783156cc171444afb4a818c8dc30842b5ccb8746b067989b79"
   },
   "cohort": {
-    "shared": 72,
+    "shared": 74,
     "others": 13,
-    "digest": "1110fc5791ba195a4bd9ca7d52c23dcb0cff62760fe44c46ba6da9e7dcf349a9"
+    "digest": "847753169be10489f5b37d9a2f721b9cb347be5f8a8056120123773c05ae6dfe"
   },
   "runs": [
     {
-      "startedAt": "2026-11-28T16:27:57.909Z",
+      "startedAt": "2026-11-28T19:48:09.162Z",
       "status": "passed",
       "shared": {
-        "passed": 72,
-        "tests": 72,
-        "testMs": 324108,
-        "steps": 242,
-        "replayed": 240,
-        "modelAnswered": 2,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 322138,
+        "steps": 241,
+        "replayed": 241,
+        "modelAnswered": 0,
         "unaccounted": 0,
-        "tokens": 96182,
-        "cacheReadTokens": 81124,
-        "noEntryTokens": 96182
+        "tokens": 0,
+        "cacheReadTokens": 0,
+        "noEntryTokens": 0
       },
-      "estimatedCostUsd": 0.0729236,
+      "estimatedCostUsd": null,
       "failedTests": [],
-      "notReplayed": [
-        {
-          "test": "modelLens › external › hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid [chromium]",
-          "line": 35,
-          "step": "hover the row labelled \"{item}\", the {ordinal} row of the {collection} collection, under On this page in the Model lens",
-          "goal": "hover the row labelled \"{item}\", the {ordinal} row of the {collection} collection, under On this page in the Model lens {\"collection\":\"items\",\"item\":\"[1]\",\"ordinal\":\"second\"}",
-          "status": "passed",
-          "cache": "missed",
-          "reason": "no-entry",
-          "detail": "",
-          "tokens": 47379
-        },
-        {
-          "test": "structure › external › hovering a structure node highlights it on the page, and selecting it keeps it highlighted [chromium]",
-          "line": 33,
-          "step": "hover the node tagged {tag} in the Structure lens",
-          "goal": "hover the node tagged {tag} in the Structure lens {\"tag\":\".newItemInput\"}",
-          "status": "passed",
-          "cache": "missed",
-          "reason": "no-entry",
-          "detail": "",
-          "tokens": 48803
-        }
-      ],
+      "notReplayed": [],
       "notReplayedGoals": {
-        "steps": 2,
-        "distinct": 2,
+        "steps": 0,
+        "distinct": 0,
         "perUse": 0
       },
-      "commandWallMs": 326237,
-      "loadAverage": [4.96, 5.89, 7.33]
+      "commandWallMs": 324449,
+      "loadAverage": [5.63, 6.25, 6.58]
     },
     {
-      "startedAt": "2026-11-28T16:33:24.197Z",
+      "startedAt": "2026-11-28T19:53:33.565Z",
       "status": "passed",
       "shared": {
-        "passed": 72,
-        "tests": 72,
-        "testMs": 326976,
-        "steps": 242,
-        "replayed": 240,
-        "modelAnswered": 2,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 326056,
+        "steps": 241,
+        "replayed": 241,
+        "modelAnswered": 0,
         "unaccounted": 0,
-        "tokens": 113596,
-        "cacheReadTokens": 97914,
-        "noEntryTokens": 113596
+        "tokens": 0,
+        "cacheReadTokens": 0,
+        "noEntryTokens": 0
       },
-      "estimatedCostUsd": 0.076908,
+      "estimatedCostUsd": null,
       "failedTests": [],
-      "notReplayed": [
-        {
-          "test": "modelLens › external › hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid [chromium]",
-          "line": 35,
-          "step": "hover the row labelled \"{item}\", the {ordinal} row of the {collection} collection, under On this page in the Model lens",
-          "goal": "hover the row labelled \"{item}\", the {ordinal} row of the {collection} collection, under On this page in the Model lens {\"collection\":\"items\",\"item\":\"[1]\",\"ordinal\":\"second\"}",
-          "status": "passed",
-          "cache": "missed",
-          "reason": "no-entry",
-          "detail": "",
-          "tokens": 47358
-        },
-        {
-          "test": "structure › external › hovering a structure node highlights it on the page, and selecting it keeps it highlighted [chromium]",
-          "line": 33,
-          "step": "hover the node tagged {tag} in the Structure lens",
-          "goal": "hover the node tagged {tag} in the Structure lens {\"tag\":\".newItemInput\"}",
-          "status": "passed",
-          "cache": "missed",
-          "reason": "no-entry",
-          "detail": "",
-          "tokens": 66238
-        }
-      ],
+      "notReplayed": [],
       "notReplayedGoals": {
-        "steps": 2,
-        "distinct": 2,
+        "steps": 0,
+        "distinct": 0,
         "perUse": 0
       },
-      "commandWallMs": 329053,
-      "loadAverage": [8.11, 6.81, 7.2]
+      "commandWallMs": 328306,
+      "loadAverage": [8.22, 7.84, 7.25]
     },
     {
-      "startedAt": "2026-11-28T16:38:53.247Z",
+      "startedAt": "2026-11-28T19:59:02.107Z",
       "status": "passed",
       "shared": {
-        "passed": 72,
-        "tests": 72,
-        "testMs": 338322,
-        "steps": 242,
-        "replayed": 240,
-        "modelAnswered": 2,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 325675,
+        "steps": 241,
+        "replayed": 241,
+        "modelAnswered": 0,
         "unaccounted": 0,
-        "tokens": 96023,
-        "cacheReadTokens": 81137,
-        "noEntryTokens": 96023
+        "tokens": 0,
+        "cacheReadTokens": 0,
+        "noEntryTokens": 0
       },
-      "estimatedCostUsd": 0.0713193,
+      "estimatedCostUsd": null,
       "failedTests": [],
-      "notReplayed": [
-        {
-          "test": "modelLens › external › hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid [chromium]",
-          "line": 35,
-          "step": "hover the row labelled \"{item}\", the {ordinal} row of the {collection} collection, under On this page in the Model lens",
-          "goal": "hover the row labelled \"{item}\", the {ordinal} row of the {collection} collection, under On this page in the Model lens {\"collection\":\"items\",\"item\":\"[1]\",\"ordinal\":\"second\"}",
-          "status": "passed",
-          "cache": "missed",
-          "reason": "no-entry",
-          "detail": "",
-          "tokens": 47305
-        },
-        {
-          "test": "structure › external › hovering a structure node highlights it on the page, and selecting it keeps it highlighted [chromium]",
-          "line": 33,
-          "step": "hover the node tagged {tag} in the Structure lens",
-          "goal": "hover the node tagged {tag} in the Structure lens {\"tag\":\".newItemInput\"}",
-          "status": "passed",
-          "cache": "missed",
-          "reason": "no-entry",
-          "detail": "",
-          "tokens": 48718
-        }
-      ],
+      "notReplayed": [],
       "notReplayedGoals": {
-        "steps": 2,
-        "distinct": 2,
+        "steps": 0,
+        "distinct": 0,
         "perUse": 0
       },
-      "commandWallMs": 340466,
-      "loadAverage": [7.28, 6.54, 6.89]
+      "commandWallMs": 328134,
+      "loadAverage": [43.49, 18.48, 11.32]
     }
   ]
 }

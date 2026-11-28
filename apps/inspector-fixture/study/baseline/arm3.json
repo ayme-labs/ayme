@@ -2,7 +2,7 @@
   "arm": "arm3",
   "name": "Arm 3: goals with Page Object Tools",
   "command": "pnpm study:baseline arm3",
-  "commit": "b30f0b11d9430407f4ea63c55adf9eb3cba3bc16",
+  "commit": "57d5ffc6f17762793cdf90f2dbb7a2b19ae06c41",
   "build": "pnpm turbo run build --filter=@ayme-dev/inspector-fixture^..., before the runs",
   "env": {
     "E2E_TELEMETRY_DISABLED": "1",
@@ -11,24 +11,24 @@
   },
   "recordings": {
     "dir": ".e2e/goals-tools-cache",
-    "entries": 242,
-    "digest": "c195ae7c50158bd47e32592644d9d5bb6035adad427ed5cacaff6faa0f8195f0"
+    "entries": 241,
+    "digest": "28749b91620a34de18d2f6d2c06dabadf54a8cd8891ff192f230c8aa6de68fbf"
   },
   "cohort": {
-    "shared": 72,
+    "shared": 74,
     "others": 13,
-    "digest": "1110fc5791ba195a4bd9ca7d52c23dcb0cff62760fe44c46ba6da9e7dcf349a9"
+    "digest": "847753169be10489f5b37d9a2f721b9cb347be5f8a8056120123773c05ae6dfe"
   },
   "runs": [
     {
-      "startedAt": "2026-11-28T16:44:49.889Z",
+      "startedAt": "2026-11-28T20:04:43.995Z",
       "status": "passed",
       "shared": {
-        "passed": 72,
-        "tests": 72,
-        "testMs": 306708,
-        "steps": 242,
-        "replayed": 242,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 311498,
+        "steps": 241,
+        "replayed": 241,
         "modelAnswered": 0,
         "unaccounted": 0,
         "tokens": 0,
@@ -43,18 +43,18 @@
         "distinct": 0,
         "perUse": 0
       },
-      "commandWallMs": 315653,
-      "loadAverage": [8.26, 7.64, 7.41]
+      "commandWallMs": 319537,
+      "loadAverage": [7.48, 14.32, 12.25]
     },
     {
-      "startedAt": "2026-11-28T16:50:04.503Z",
+      "startedAt": "2026-11-28T20:10:03.610Z",
       "status": "passed",
       "shared": {
-        "passed": 72,
-        "tests": 72,
-        "testMs": 301510,
-        "steps": 242,
-        "replayed": 242,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 316830,
+        "steps": 241,
+        "replayed": 241,
         "modelAnswered": 0,
         "unaccounted": 0,
         "tokens": 0,
@@ -69,18 +69,18 @@
         "distinct": 0,
         "perUse": 0
       },
-      "commandWallMs": 309419,
-      "loadAverage": [12.02, 11.94, 9.43]
+      "commandWallMs": 324800,
+      "loadAverage": [5.58, 8.48, 10.11]
     },
     {
-      "startedAt": "2026-11-28T16:55:13.596Z",
+      "startedAt": "2026-11-28T20:15:28.343Z",
       "status": "passed",
       "shared": {
-        "passed": 72,
-        "tests": 72,
-        "testMs": 298753,
-        "steps": 242,
-        "replayed": 242,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 309526,
+        "steps": 241,
+        "replayed": 241,
         "modelAnswered": 0,
         "unaccounted": 0,
         "tokens": 0,
@@ -95,8 +95,8 @@
         "distinct": 0,
         "perUse": 0
       },
-      "commandWallMs": 306407,
-      "loadAverage": [11.63, 19.18, 14.02]
+      "commandWallMs": 317197,
+      "loadAverage": [12.11, 13.38, 12.36]
     }
   ]
 }
