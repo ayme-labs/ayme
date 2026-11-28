@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 
 import { RecorderStartError, type RecordingOutcome } from "@ayme-dev/recorder";
@@ -240,23 +241,22 @@ describe("what to print, where, and the exit code, for an outcome", () => {
 });
 
 /** A terminal the run is wired to: the process's events, and two streams
- * that keep what is written. A stream that is gone fails each write as Node
- * fails it, with an "error" event after the write. */
+ * that keep what is written. Once `gone`, a stream fails each write, and
+ * Node tells it as an "error" event after the write. */
 function terminal() {
-  const output = () =>
-    Object.assign(new EventEmitter(), {
-      text: "",
-      gone: false,
-      write(
-        this: { text: string; gone: boolean } & EventEmitter,
-        text: string
-      ) {
-        if (this.gone)
-          process.nextTick(() => this.emit("error", new Error("write EIO")));
-        else this.text += text;
-        return true;
-      },
-    });
+  const output = () => {
+    const stream = Object.assign(
+      new Writable({
+        write(chunk, _encoding, done) {
+          if (stream.gone) return done(new Error("write EIO"));
+          stream.text += String(chunk);
+          done();
+        },
+      }),
+      { text: "", gone: false }
+    );
+    return stream;
+  };
   return Object.assign(new EventEmitter(), {
     stdout: output(),
     stderr: output(),
@@ -338,6 +338,22 @@ describe("how a run of codegen ends", () => {
       );
     }
   );
+
+  it("asks for the save before it tells of the error, also for an error that cannot be shown", async () => {
+    const { handle, finish } = recorder();
+    const at = terminal();
+    const run = runUntilEnd(handle, launched, at);
+
+    // No prototype, so no way to turn it into text.
+    at.emit("uncaughtException", Object.create(null));
+    expect(handle.ends).toBe(1);
+    finish(saved);
+
+    expect(await run).toBe(1);
+    expect(at.stderr.text).toBe(
+      "The recorder hit an error it did not expect, and ends with what it has recorded: an error that cannot be shown\n"
+    );
+  });
 
   it("ends the recorder once for errors that come while it saves, tells each, and still tells the saved recording", async () => {
     const { handle, finish } = recorder();

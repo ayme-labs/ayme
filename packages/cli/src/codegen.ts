@@ -1,4 +1,6 @@
+import type { EventEmitter } from "node:events";
 import { dirname, join } from "node:path";
+import type { Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import {
   RecorderStartError,
@@ -169,27 +171,17 @@ const ENDING_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
  * with nothing saved. */
 const UNCAUGHT = ["uncaughtException", "unhandledRejection"] as const;
 
-/** A stream of the terminal: a write to one that is gone fails with an
- * "error" event. */
-type Output = {
-  write(text: string): unknown;
-  on(event: "error", listener: (error: Error) => void): unknown;
-};
-
-/** What a run is wired to: the process, for its signals and the errors
- * nothing caught, and the terminal's two streams. */
-export type Terminal = {
-  on(
-    event: (typeof ENDING_SIGNALS)[number] | (typeof UNCAUGHT)[number],
-    listener: (cause?: unknown) => void
-  ): unknown;
-  off(
-    event: (typeof ENDING_SIGNALS)[number] | (typeof UNCAUGHT)[number],
-    listener: (cause?: unknown) => void
-  ): unknown;
-  readonly stdout: Output;
-  readonly stderr: Output;
-};
+/** What an error nothing caught is, as a line can show it. Anything can be
+ * thrown, also a value no text can be made of. */
+function shown(cause: unknown): string {
+  try {
+    return cause instanceof Error
+      ? (cause.stack ?? cause.message)
+      : String(cause);
+  } catch {
+    return "an error that cannot be shown";
+  }
+}
 
 /**
  * Runs a started recorder to its end, wired to the terminal. Resolves with
@@ -199,11 +191,12 @@ export type Terminal = {
 export async function runUntilEnd(
   recorder: Pick<Recorder, "end" | "done" | "subscribe" | "windowUrl">,
   browser: RecorderOptions["browser"],
-  terminal: Terminal
+  terminal: EventEmitter & {
+    readonly stdout: Writable;
+    readonly stderr: Writable;
+  }
 ): Promise<number> {
-  // Once the terminal is gone, every write fails with an "error" event,
-  // which would end the process: the save goes on all the same, with nobody
-  // to tell.
+  // Never removed: a failed write, as to a closed terminal, reports its error after the write, even after this returns, and that error would crash the process after a good save.
   terminal.stdout.on("error", () => {});
   terminal.stderr.on("error", () => {});
   const write = (stream: "stdout" | "stderr", text: string) =>
@@ -213,14 +206,15 @@ export async function runUntilEnd(
   const end = () => recorder.end();
   let broke = false;
   const unexpected = (cause?: unknown) => {
+    // The save first, once: an error the save itself throws only adds its line.
+    if (!broke) {
+      broke = true;
+      end();
+    }
     write(
       "stderr",
-      `The recorder hit an error it did not expect, and ends with what it has recorded: ${cause instanceof Error ? (cause.stack ?? cause.message) : String(cause)}\n`
+      `The recorder hit an error it did not expect, and ends with what it has recorded: ${shown(cause)}\n`
     );
-    // Ended once: an error the save itself throws only adds its line.
-    if (broke) return;
-    broke = true;
-    end();
   };
   for (const signal of ENDING_SIGNALS) terminal.on(signal, end);
   for (const event of UNCAUGHT) terminal.on(event, unexpected);
