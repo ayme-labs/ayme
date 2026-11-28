@@ -180,11 +180,10 @@ mk Clicks-MiddleOnCheckbox "$IN" 2 1 1 1  0    1     $F     $F   $F   $F    $T  
 # Left, right and middle clicks, on checkboxes and not, mixed; B2 left out.
 mk Clicks-Mixed     "$IN" 2 1   1   1   0    1     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS $RULES" $F $F "$MIX"
 # A click that reaches its page untouched (#1533): the rules hold with it,
-# with typing shown while it is typed, and in the order of the reads; B2 left
-# out of the last.
-mk Clicks-Untouched "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS X5_StopWindowIsRecorded
+# with typing shown while it is typed and measured from its first key, and
+# in the order of the reads; B2 left out of the last.
+mk Clicks-Untouched "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS F7_MeasuredFromFirstKey X5_StopWindowIsRecorded
 $PROPS" $F $F "$UNT"
-mk Clicks-Untouched-Fill "$IN" 2 1 1 1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey" $F $F "$UNT"
 mk Clicks-Untouched-Order "$IN" 2 1 1 1  0    1     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS $RULES X13e_WithNothingUnderWayStartsBeforeIt" $F $F "$UNT"
 # Known limit: such a click starts from a read taken after it when its page
 # has none yet or an earlier input is still under way.

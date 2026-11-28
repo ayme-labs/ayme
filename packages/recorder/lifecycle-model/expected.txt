@@ -64,7 +64,6 @@ Clicks-MiddleOnCheckbox:
 Clicks-Mixed:
 # A click that reaches its page untouched.
 Clicks-Untouched:
-Clicks-Untouched-Fill:
 Clicks-Untouched-Order:
 Limit-UntouchedClickRead: X13_UntouchedClickStartsBeforeIt
 Limit-UntouchedClickAfterTyping: F7s_MeasuredStrictly
