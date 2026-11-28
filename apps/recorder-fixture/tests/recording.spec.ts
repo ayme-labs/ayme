@@ -209,14 +209,16 @@ test.describe("recording", () => {
 
     // The page got the very presses, releases and clicks it gets unrecorded.
     expect(await pageNow()).toEqual(unrecorded);
-    // Each press and each pick is an Interaction, in the order given, and a
-    // pick names its option.
+    // Each press and each pick is an Interaction, in the order given. A
+    // press names the body the browser gave its click to, by the page's
+    // text as Playwright's own recorder does, and a pick names its option.
     const { text } = await finish(recording);
-    const [, , pickedPorto, opened, pickedFaro, ...more] = text.split(
-      "- kind: interaction"
-    );
+    const [, openedFirst, pickedPorto, opened, pickedFaro, ...more] =
+      text.split("- kind: interaction");
     expect(more).toEqual([]);
     expect(text).not.toContain("kind: change");
+    for (const press of [openedFirst, opened])
+      expect(press).toContain('targetSelector: internal:text="Press opens');
     expect(pickedPorto).toContain(
       'targetSelector: internal:role=option[name="Porto"i]'
     );
