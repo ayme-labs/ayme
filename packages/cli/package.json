@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/cli",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "The ayme command. It runs your project's Page Objects for a coding agent beside its browser automation, and ayme capture records a browser flow on the Playwright your project already has, for the agent to turn into page objects and a test.",
   "keywords": [
     "ai-agent",

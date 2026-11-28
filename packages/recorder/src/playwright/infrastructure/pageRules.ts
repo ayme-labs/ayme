@@ -126,6 +126,85 @@ export function clickHeld(click: {
   return click.button === 0 && click.detail !== 0;
 }
 
+/**
+ * Whether a call from a page can reach Node through a Playwright binding.
+ * Playwright writes every binding call with the page's own `JSON.stringify`,
+ * so a page that replaced it, or that changed how it writes an object, as
+ * Prototype.js 1.6 gives arrays a `toJSON`, sends a call Node cannot read:
+ * it is lost, and so is every report of Playwright's recorder. The probe is
+ * shaped as Playwright writes a call, and read back as a value, so text laid
+ * out another way, or with more in it, still reads the same.
+ */
+export function reachesPlaywright(
+  stringify: (value: unknown) => string,
+  parse: (text: string) => unknown
+): boolean {
+  const callOf = () => ({
+    name: "__aymeRecorderHeld",
+    seq: 1,
+    serializedArgs: [
+      {
+        o: [
+          { k: "kind", v: "click" },
+          { k: "x", v: 1.5 },
+          { k: "modifiers", v: { a: ["Shift"], id: 2 } },
+        ],
+        id: 1,
+      },
+    ],
+  });
+  // The page's `stringify` never gets this one: one that changes what it is
+  // given would otherwise change what its text is compared with too.
+  const call = callOf();
+  let written: string;
+  try {
+    written = stringify(callOf());
+  } catch {
+    return false;
+  }
+  const readsBack = (text: string) => {
+    let read: Record<string, unknown> | null | undefined;
+    try {
+      read = parse(text) as Record<string, unknown> | null;
+    } catch {
+      // Unreadable: nothing is read, and nothing is the call.
+    }
+    // The fields Playwright reads of a call.
+    return (["name", "seq", "serializedArgs"] as const).every((field) =>
+      sameJson(read?.[field], call[field])
+    );
+  };
+  // A `parse` that cannot read the call's own text cannot tell, and the
+  // page counts as heard: taking a healthy page for a broken one would keep
+  // it from being recorded.
+  return (
+    readsBack(written) ||
+    !readsBack(
+      '{"name":"__aymeRecorderHeld","seq":1,"serializedArgs":[{"o":[{"k":"kind","v":"click"},{"k":"x","v":1.5},{"k":"modifiers","v":{"a":["Shift"],"id":2}}],"id":1}]}'
+    )
+  );
+}
+
+/** Whether two plain JSON values are the same. */
+export function sameJson(a: unknown, b: unknown): boolean {
+  if (
+    a === null ||
+    b === null ||
+    typeof a !== "object" ||
+    typeof b !== "object"
+  )
+    return a === b;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((key) =>
+    sameJson(
+      (a as Record<string, unknown>)[key],
+      (b as Record<string, unknown>)[key]
+    )
+  );
+}
+
 /** The modifier keys held with an input, in a fixed order. */
 export function modifiersOf(event: {
   readonly altKey: boolean;
@@ -404,4 +483,5 @@ export type GateRules = {
   readonly mouseRoute: typeof mouseRoute;
   readonly keyRoute: typeof keyRoute;
   readonly keyHeld: typeof keyHeld;
+  readonly reachesPlaywright: typeof reachesPlaywright;
 };
