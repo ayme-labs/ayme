@@ -276,7 +276,7 @@ test("the window is never the Tab the Session works on, even when it opens in th
   await window.goto(windowIn((await ayme("inspect")).stdout)!);
 
   expect(tabLine((await ayme("page-objects")).stdout)).toBe(
-    `Tab: Shop (${baseURL}/shop.html)`
+    `Tab t1: Shop (${baseURL}/shop.html)`
   );
 });
 

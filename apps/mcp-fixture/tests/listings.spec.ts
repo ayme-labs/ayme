@@ -23,7 +23,7 @@ test("ayme page-objects prints the Page Object Tree of the Tab, between the Tab'
   expect(await ayme("page-objects")).toEqual({
     code: 0,
     stdout: [
-      `Tab: Shop (${baseURL}/shop.html)`,
+      `Tab t1: Shop (${baseURL}/shop.html)`,
       "ShopPage",
       '  heading: heading "Shop" [level=1]',
       "Basket po1",
@@ -45,7 +45,7 @@ test("ayme tools lists every Page Object Tool with its parameters, an unavailabl
 
   expect(listed).toMatchObject({ code: 0, stderr: "" });
   const lines = listed.stdout.trimEnd().split("\n");
-  expect(lines[0]).toBe(`Tab: Shop (${baseURL}/shop.html)`);
+  expect(lines[0]).toBe(`Tab t1: Shop (${baseURL}/shop.html)`);
   expect(lines.slice(1).filter((line) => !line.startsWith(" "))).toEqual([
     expect.stringMatching(/^ShopPage\.readHeading: Read the shop's heading\./),
     expect.stringMatching(/^Basket\.add: Put an item in the basket\./),
@@ -68,7 +68,7 @@ test("ayme tools lists every Page Object Tool with its parameters, an unavailabl
 
 test("both listings have a --json form", async ({ ayme, baseURL }) => {
   await ayme("open", `${baseURL}/shop.html`);
-  const tab = { url: `${baseURL}/shop.html`, title: "Shop" };
+  const tab = { id: "t1", url: `${baseURL}/shop.html`, title: "Shop" };
 
   expect(JSON.parse((await ayme("page-objects", "--json")).stdout)).toEqual({
     ok: true,

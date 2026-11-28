@@ -58,7 +58,7 @@ for (const [answer, answered] of [
     expect(await ayme("tools")).toEqual({
       code: 1,
       stdout: "",
-      stderr: `Tab: ${baseURL}/dialogs.html\n${DIALOG_OPEN}\n`,
+      stderr: `Tab t1: ${baseURL}/dialogs.html\n${DIALOG_OPEN}\n`,
     });
 
     await dialogs[0]![answer]();
@@ -67,7 +67,7 @@ for (const [answer, answered] of [
     // waits for the stopped action to end, and tells nothing of it.
     await expect
       .poll(async () => (await ayme("page-objects")).stdout)
-      .toMatch(/^Tab: Dialogs \(/);
+      .toMatch(/^Tab t1: Dialogs \(/);
     const listing = await ayme("page-objects");
     expect(listing).toMatchObject({ code: 0, stderr: "" });
     expect(listing.stdout).not.toMatch(/dialog is open|stop/i);
@@ -98,12 +98,12 @@ test("a dialog on one Tab leaves a command on another Tab alone, and a command n
     stdout: 'settled: true\nresult: "Shop"\n',
     stderr: "",
   });
-  expect((await ayme("tools")).stdout).toMatch(/^Tab: Shop \(/);
+  expect((await ayme("tools")).stdout).toMatch(/^Tab t2: Shop \(/);
   const onDialogTab = `--tab=${baseURL}/dialogs.html`;
   expect(await ayme("tools", onDialogTab)).toEqual({
     code: 1,
     stdout: "",
-    stderr: `Tab: ${baseURL}/dialogs.html\n${DIALOG_OPEN}\n`,
+    stderr: `Tab t1: ${baseURL}/dialogs.html\n${DIALOG_OPEN}\n`,
   });
   expect(await ayme("call", "DialogPage.removeThenMark", onDialogTab)).toEqual({
     code: 1,
@@ -214,7 +214,7 @@ test("a dialog the page opened before any command touched its Tab is answered at
   expect(await ayme("tools")).toEqual({
     code: 1,
     stdout: "",
-    stderr: `Tab: ${baseURL}/dialogs.html\n${DIALOG_OPEN}\n`,
+    stderr: `Tab t1: ${baseURL}/dialogs.html\n${DIALOG_OPEN}\n`,
   });
 
   await dialogs[0]!.dismiss();
@@ -236,12 +236,12 @@ test("a popup that opens a dialog as it loads: a command on it is answered at on
     code: 1,
     stdout: "",
     stderr: expect.stringMatching(
-      /^Tab: \S+\nAn alert dialog is open on the tab: "Saved"\. Answer it with your browser automation, then run this command again\.\n$/
+      /^Tab t1: \S+\nAn alert dialog is open on the tab: "Saved"\. Answer it with your browser automation, then run this command again\.\n$/
     ),
   });
 
   await dialogs[0]!.accept();
   await expect
     .poll(async () => (await ayme("tools")).stdout)
-    .toMatch(/^Tab: Alert \(/);
+    .toMatch(/^Tab t1: Alert \(/);
 });
