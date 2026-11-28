@@ -42,9 +42,12 @@ it.each([
   expect(tabListAddress(address)).toBe(list);
 });
 
-it("refuses a socket address that tells no tab list", () => {
-  expect(() => tabListAddress("ws://127.0.0.1:9222/socket")).toThrow(
-    "ws://127.0.0.1:9222/socket is a DevTools socket that tells nothing of where the browser lists its tabs, which ayme reads over HTTP. Join the browser at its HTTP address, such as http://127.0.0.1:9222, or at a socket address that ends in /devtools/browser/<id>."
+it.each([
+  "ws://127.0.0.1:9222/socket",
+  "ws://127.0.0.1:9222/devtools/browser/5e0c-41/more",
+])("refuses a socket address that tells no tab list: %s", (address) => {
+  expect(() => tabListAddress(address)).toThrow(
+    `${address} is a DevTools socket that tells nothing of where the browser lists its tabs, which ayme reads over HTTP. Join the browser at its HTTP address, such as http://127.0.0.1:9222, or at a socket address that ends in /devtools/browser/<id>.`
   );
 });
 
@@ -64,6 +67,29 @@ it("keeps the browser's order of its tabs, most recently active first, and leave
     "A",
     "B",
   ]);
+});
+
+it("keeps a tab whose entry gives no URL, which no caller can leave out by it", () => {
+  expect(
+    pageTargets([{ id: "A", type: "page" }], (url) => url.endsWith(".html"))
+  ).toEqual(["A"]);
+});
+
+it.each([
+  ["an entry that is no target", [null]],
+  [
+    "an entry that is no target",
+    [{ id: "A", type: "page", url: "about:blank" }, "B"],
+  ],
+  [
+    "a page without an id",
+    [
+      { id: "A", type: "page", url: "about:blank" },
+      { type: "page", url: "about:blank" },
+    ],
+  ],
+])("refuses a list with %s among its entries", (why, list) => {
+  expect(() => pageTargets(list)).toThrow(why);
 });
 
 describe("the pages of the listed tabs", () => {
@@ -90,25 +116,29 @@ describe("the pages of the listed tabs", () => {
   it("leaves out a tab not handed over when the wait is over, and waits for it no more", async () => {
     const skipped = new Set<string>();
     let pauses = 0;
-    const waiting = {
-      pause: async () => void pauses++,
-      over: () => pauses === 2,
-      skipped,
+    // Each wait is over after two pauses of its own.
+    const waiting = () => {
+      let own = 0;
+      return {
+        pause: async () => void (own++, pauses++),
+        over: () => own === 2,
+        skipped,
+      };
     };
     const read = reads({ opener: "opener page" });
 
-    expect(await handedOver(["other", "opener"], read, waiting)).toEqual([
+    expect(await handedOver(["other", "opener"], read, waiting())).toEqual([
       "opener page",
     ]);
     expect(pauses).toBe(2);
 
-    expect(await handedOver(["other", "opener"], read, waiting)).toEqual([
+    expect(await handedOver(["other", "opener"], read, waiting())).toEqual([
       "opener page",
     ]);
     expect(pauses).toBe(2);
 
     // Once it is no longer listed, it is forgotten.
-    await handedOver(["opener"], read, waiting);
+    await handedOver(["opener"], read, waiting());
     expect(skipped).toEqual(new Set());
   });
 });
@@ -135,6 +165,15 @@ describe("a read of the tab list", () => {
   }
   const reading = { signal: new AbortController().signal, deadline: 5000 };
 
+  /** The message of the error `read` fails with. */
+  const refusal = (read: Promise<unknown>) =>
+    read.then(
+      () => {
+        throw new Error("The read did not fail.");
+      },
+      (error: unknown) => (error as Error).message
+    );
+
   it("gives the ids of the tabs the list answers", async () => {
     const list = await serving((_, response) =>
       response.end(
@@ -151,7 +190,7 @@ describe("a read of the tab list", () => {
       response.end("[]");
     });
 
-    await expect(readTabOrder(list, reading)).rejects.toThrow(
+    expect(await refusal(readTabOrder(list, reading))).toBe(
       `${list} answered with HTTP status 502.`
     );
   });
@@ -165,7 +204,7 @@ describe("a read of the tab list", () => {
       response.end(JSON.stringify(body))
     );
 
-    await expect(readTabOrder(list, reading)).rejects.toThrow(
+    expect(await refusal(readTabOrder(list, reading))).toBe(
       `${list} answered something other than the browser's tab list: ${_}.`
     );
   });
@@ -181,7 +220,7 @@ describe("a read of the tab list", () => {
       response.end();
     });
 
-    await expect(readTabOrder(list, reading)).rejects.toThrow(
+    expect(await refusal(readTabOrder(list, reading))).toBe(
       `${list} redirected to ${elsewhere}. ayme reads the tab list only at the address the browser was joined at.`
     );
     expect(followed).toBe(false);
@@ -190,9 +229,9 @@ describe("a read of the tab list", () => {
   it("gives up on a list whose body never ends, at its deadline", async () => {
     const list = await serving((_, response) => response.write("[{"));
 
-    await expect(
-      readTabOrder(list, { ...reading, deadline: 100 })
-    ).rejects.toThrow(`${list} did not answer within 0.1 seconds.`);
+    expect(
+      await refusal(readTabOrder(list, { ...reading, deadline: 100 }))
+    ).toBe(`${list} did not answer within 0.1 seconds.`);
   });
 
   it("stops when the Session ends", async () => {
