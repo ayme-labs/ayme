@@ -133,6 +133,12 @@ function renderApp() {
   });
 }
 
+/** Unmounts the panel and renders it again, as a reload of the page does. */
+function remountApp() {
+  for (const unmount of unmounts.splice(0)) unmount();
+  renderApp();
+}
+
 const publicationActive = { state: "active", message: "" } as const;
 const publicationDisabled = {
   state: "disabled",
@@ -546,8 +552,7 @@ describe("the Inspector", () => {
       .poll(() => inspector.runs.latest("Editor.save").status())
       .toBe("Succeeded");
 
-    for (const unmount of unmounts.splice(0)) unmount();
-    renderApp();
+    remountApp();
 
     await expect
       .poll(() =>
@@ -591,8 +596,7 @@ describe("the Inspector", () => {
     const dockedBottom = { x: 0, y: 380, width: 1280, height: 420 };
     await expect.poll(() => shell.box()).toEqual(dockedBottom);
 
-    for (const unmount of unmounts.splice(0)) unmount();
-    renderApp();
+    remountApp();
 
     await expect.poll(() => header.layoutMenu.current()).toBe("Dock to bottom");
     expect(await shell.box()).toEqual(dockedBottom);
@@ -607,8 +611,7 @@ describe("the Inspector", () => {
     await inspector.collapse();
     await expect.poll(() => inspector.panel.count()).toBe(0);
 
-    for (const unmount of unmounts.splice(0)) unmount();
-    renderApp();
+    remountApp();
 
     await expect.poll(() => inspector.logo.root.isVisible()).toBe(true);
     expect(await inspector.panel.count()).toBe(0);
@@ -623,8 +626,7 @@ describe("the Inspector", () => {
     await navigator.model.togglePane("Page object models");
     await expect.poll(() => navigator.model.modelList.count()).toBe(0);
 
-    for (const unmount of unmounts.splice(0)) unmount();
-    renderApp();
+    remountApp();
 
     await expect.poll(() => navigator.model.objectTree.isVisible()).toBe(true);
     expect(await navigator.model.modelList.count()).toBe(0);

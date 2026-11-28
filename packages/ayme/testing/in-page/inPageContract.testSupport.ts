@@ -909,20 +909,34 @@ export function inPageContract(lane: InPageLane) {
       let settled = false;
       void picked.then(() => (settled = true));
 
+      /** The boxes drawn, by their outline and whether each boxes `target`. */
+      const boxOn = async (target: Locator) => {
+        const at = await target.boundingBox();
+        return (await highlightBoxes(page)).map(
+          ({
+            outlineStyle,
+            outlineColor,
+            bounds: { x, y, width, height },
+          }) => ({
+            outlineStyle,
+            outlineColor,
+            on: JSON.stringify({ x, y, width, height }) === JSON.stringify(at),
+          })
+        );
+      };
+      const button = page.getByRole("button", { name: "Add item" });
+      const input = page.getByLabel("New item");
+
       // The pointer lands on the button's text; its button carries the ref.
       await page.getByText("Add item").hover();
       await expect
-        .poll(async () =>
-          (await highlightBoxes(page)).map((box) => box.outlineColor)
-        )
-        .toEqual([grey]);
+        .poll(() => boxOn(button))
+        .toEqual([{ outlineStyle: "dashed", outlineColor: grey, on: true }]);
       await page.getByText("Add item").click();
-      await page.getByLabel("New item").hover();
+      await input.hover();
       await expect
-        .poll(async () =>
-          (await highlightBoxes(page)).map((box) => box.outlineColor)
-        )
-        .toEqual([amber]);
+        .poll(() => boxOn(input))
+        .toEqual([{ outlineStyle: "dashed", outlineColor: amber, on: true }]);
 
       expect(settled).toBe(false);
       expect(await page.evaluate("window.presses")).toEqual([]);
