@@ -404,6 +404,10 @@ type Input = {
   /** For an assertion placed at an earlier read: the read its element is
    * found in (`targetRead`). */
   readonly targetRead?: SnapshotId;
+  /** A click that reached its page untouched and starts from the page's
+   * latest snapshot, read before its press (`startsBeforeItsPress` of
+   * `RecordedInteraction`). */
+  readonly startsBeforeItsPress?: true;
   /** An input known from its report whose page could not be read when it
    * was reported, and had no snapshot yet: its "after" is its "before" too,
    * and Playwright's picture of the page is not set against it. */
@@ -2153,8 +2157,10 @@ function startNext(draft: Draft) {
     }
     // A click that reached its page untouched starts from the page's
     // latest snapshot: one taken now would show what the click did.
-    else if (reachedAt(next) !== null && latest) passOn(draft, next, latest.id);
-    else
+    else if (reachedAt(next) !== null && latest) {
+      change(draft, next.id, { startsBeforeItsPress: true });
+      passOn(draft, next, latest.id);
+    } else
       change(draft, next.id, {
         stage: "takingBefore",
         asked: askSnapshot(draft, page),
@@ -2313,6 +2319,7 @@ function written(
     after: covered.at(-1)?.after ?? input.after,
     at: input.passedOnAt ?? 0,
     ...(input.targetRead ? { targetRead: input.targetRead } : {}),
+    ...(input.startsBeforeItsPress ? { startsBeforeItsPress: true } : {}),
   };
 }
 

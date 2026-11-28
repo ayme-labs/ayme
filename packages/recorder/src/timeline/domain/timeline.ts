@@ -275,6 +275,13 @@ export const sameDocument = (page: string, read: string) =>
  * holds it. */
 const PRESSED = new Set(["click", "check", "uncheck"]);
 
+/** Whether an Interaction's "before" was read after its press, as a held
+ * click's is: the press reaches the page before the gate holds the click.
+ * Not one known from its report alone, nor a click that reached its page
+ * untouched and starts from a read taken before it. */
+const readAfterItsPress = (interaction: RecordedInteraction) =>
+  !interaction.beforeFromReport && !interaction.startsBeforeItsPress;
+
 const sameReport = (one: InteractionReport, other: InteractionReport) =>
   one === other || JSON.stringify(one) === JSON.stringify(other);
 
@@ -1380,7 +1387,7 @@ export class Timeline {
     const { visit, from } = held;
     // A read after it that could not be kept is no "after" either.
     const to = comparable(visit.snapshots[end]);
-    if (!interaction.beforeFromReport)
+    if (readAfterItsPress(interaction))
       await this.pressedAfter(visit, from, interaction);
     const written = interaction.beforeFromReport
       ? { ...held, ...(await this.pictured(visit, interaction, from, to)) }
@@ -1462,7 +1469,7 @@ export class Timeline {
       ? undefined
       : visit.waiting.find(
           (waiting) =>
-            waiting.before === next.snapshot.id && !waiting.beforeFromReport
+            waiting.before === next.snapshot.id && readAfterItsPress(waiting)
         );
     const pressed = click && this.beforeItsPress(through, next, click.report);
     if (pressed) this.beforePress.set(next.snapshot.id, pressed);

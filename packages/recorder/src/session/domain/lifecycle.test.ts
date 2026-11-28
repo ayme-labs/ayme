@@ -7823,6 +7823,8 @@ describe("the lifecycle, for a click that reached its page untouched", () => {
               before: snapshot2,
               after: snapshot3,
               at: 15,
+              // That snapshot was read before its press.
+              startsBeforeItsPress: true,
             },
           },
         },
@@ -7855,8 +7857,23 @@ describe("the lifecycle, for a click that reached its page untouched", () => {
       taken(snapshot2),
     ]);
 
-    expect(written(todo)).toEqual([
-      { selector: "body", before: snapshot1, after: snapshot2, at: 15 },
+    expect(todo.at(-1)).toEqual([
+      keep(snapshot2),
+      // Its own snapshot was read after its press, as a held click's is.
+      {
+        kind: "timeline",
+        add: {
+          kind: "interaction",
+          interaction: {
+            page: page1,
+            report: { ...click, selector: "body" },
+            before: snapshot1,
+            after: snapshot2,
+            at: 15,
+          },
+        },
+      },
+      letThrough(input1),
     ]);
   });
 
