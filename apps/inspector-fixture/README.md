@@ -76,10 +76,13 @@ this machine's own login. What may differ from the twin is
 [`scripts/check-goal-mirror.mjs`](scripts/check-goal-mirror.mjs)'s to say,
 and why moving the pointer is no goal is
 [`movePointerTo`](tests/e2e/fixtures.ts)'s. They never run in CI, for the
-reason beside the `CI` guard in `e2e.goals.config.ts`. In the
-external placement, switching to the Inspector's tab is part of the goal,
-which the agent does as it sees fit, except where
-[`bringPanelToFront`](tests/e2e/fixtures.ts) says otherwise. A first run records each goal into
+reason beside the `CI` guard in `e2e.goals.config.ts`. Every test
+starts after the panel's first look at the page, and in the external
+placement with the panel's tab in front, so no goal starts with a switch to
+it: e2e measures a goal's outcome from the screen the goal starts on, as
+[`settledStart`](tests/e2e/fixtures.ts) says. A goal that follows a read of
+the page gets the panel's tab back from
+[`bringPanelToFront`](tests/e2e/fixtures.ts). A first run records each goal into
 `.e2e/goals-cache/`, and later runs replay it without the model, except for
 a step that changes no control: e2e saves
 nothing for it, so it calls the model on every run, and a warm run needs the

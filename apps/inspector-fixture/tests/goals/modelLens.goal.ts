@@ -5,7 +5,6 @@ import {
   outline,
   placements,
   testIn,
-  untilThePanelHasLooked,
   bringPanelToFront,
   confirmGoalRecordings,
   movePointerTo,
@@ -33,7 +32,6 @@ for (const placement of placements) {
         browser
       );
 
-      await untilThePanelHasLooked(inspector);
       await agent.act(
         'hover the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
         {

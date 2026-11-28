@@ -36,7 +36,7 @@ test("the layout and its sizes survive a reload", async ({
   });
   const dockedBottom = await shell.box();
 
-  await reloadFixture(page, "/");
+  await reloadFixture(page, "/", inspector);
 
   await expect.poll(() => header.layoutMenu.current()).toBe("Dock to bottom");
   expect(await shell.box()).toEqual(dockedBottom);

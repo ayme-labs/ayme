@@ -51,8 +51,17 @@ export async function bringPanelToFront(inspector: Inspector) {
   await inspector.tab.front();
 }
 
-/** `untilThePanelHasLooked` of `../fixtures.ts`, which says why. */
-export async function untilThePanelHasLooked(inspector: Inspector) {
+/**
+ * The start every test gets: after the panel's first look at the page, as
+ * `settledStart` of `../fixtures.ts` waits for and says why, and, in the
+ * external placement, with the panel's tab in front. e2e measures a goal's
+ * outcome from the screen the goal starts on (@e2e-dev/core's
+ * `describeDelta`), so a first goal that switched tabs recorded the panel's
+ * own chrome as its outcome, which a replay finds already showing once the
+ * look lands first. In plain code, never a goal: no test is about where it
+ * starts.
+ */
+async function settledStart(inspector: Inspector) {
   await expect
     .poll(async () =>
       (await inspector.navigator.legendItems()).some((item) =>
@@ -60,6 +69,7 @@ export async function untilThePanelHasLooked(inspector: Inspector) {
       )
     )
     .toBe(true);
+  await bringPanelToFront(inspector);
 }
 
 /** Both placements, for a spec whose tests run in each. */
@@ -134,10 +144,15 @@ async function fixtureReady(browser: Browser, path: FixturePage) {
 }
 
 /** Reloads the fixture page and waits for it as `openFixture` does. */
-export async function reloadFixture(page: Tab, path: FixturePage) {
+export async function reloadFixture(
+  page: Tab,
+  path: FixturePage,
+  inspector: Inspector
+) {
   await page.front();
   await page.browser.reload();
   await fixtureReady(page.browser, path);
+  await settledStart(inspector);
 }
 
 /**
@@ -146,8 +161,8 @@ export async function reloadFixture(page: Tab, path: FixturePage) {
  * tools. With `agent`, the page is opened through that agent's connect link
  * and waits until the agent lists its tools. With `external` as well, the
  * page is opened for the external placement, and the Inspector is a second
- * tab with the window the agent's server serves; the fixture page's tab stays
- * in front. With `webMCP`, the page publishes to the recording WebMCP
+ * tab with the window the agent's server serves. Either way the test starts
+ * as `settledStart` says. With `webMCP`, the page publishes to the recording WebMCP
  * driver, standing in for the browser's.
  */
 export async function openFixture(
@@ -177,15 +192,13 @@ export async function openFixture(
     await expect.poll(() => agent.toolNames()).toContain("page_objects");
 
   const page = new Tab(screen, browser, pageTab);
-  return {
-    page,
-    inspector: new Inspector(
-      agent && external
-        ? await openInspectorTab({ browser, screen }, agent, page)
-        : page
-    ),
-    listPage: new ListPage(page),
-  };
+  const inspector = new Inspector(
+    agent && external
+      ? await openInspectorTab({ browser, screen }, agent)
+      : page
+  );
+  await settledStart(inspector);
+  return { page, inspector, listPage: new ListPage(page) };
 }
 
 /**
@@ -228,15 +241,12 @@ export async function callOverMcp(
  */
 async function openInspectorTab(
   { browser, screen }: Omit<Fixtures, "app">,
-  agent: Agent,
-  page: Tab
+  agent: Agent
 ) {
   const { text: url, isError } = await agent.call("ayme_inspect");
   if (isError) throw new Error(`ayme_inspect failed: ${url}`);
   const tab = await browser.newTab();
   await browser.goto(url);
-  // The fixture page stays the one the person looks at.
-  await page.front();
   return new Tab(screen, browser, tab);
 }
 
