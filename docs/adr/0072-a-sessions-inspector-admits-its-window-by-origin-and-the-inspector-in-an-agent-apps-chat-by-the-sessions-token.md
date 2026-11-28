@@ -32,6 +32,5 @@ The Inspector an Agent App shows in its chat cannot be admitted by its origin: d
 ## Cost
 
 - A local process that is not a browser sends any origin it likes, so any process of any user on the machine can connect, the agent's own included. It can then read the Session's Tabs and run their Page Object Tools, as it can already drive the browser through the DevTools port.
-- Whoever holds the token can connect from a page of any origin until the Session ends. That is whoever can read the page an Agent App shows.
-- An Agent App that lets its model read MCP resources, or records them in a trace, gives the model the token.
-- A window or a page in a chat from a Session that ended no longer connects, since a new Session gets a new port and a new token: run `ayme inspect` again, or have the agent show the Inspector again.
+- Whoever holds the token can connect from a page of any origin until the Session ends: whoever can read the page an Agent App shows, and its model too when the Agent App lets the model read MCP resources or records them in a trace.
+- A window or a page in a chat from a Session that ended no longer connects, since a new Session has a new port and token.
