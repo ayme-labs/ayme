@@ -1649,6 +1649,9 @@ describe("the timeline, for the focus a click's press moved", () => {
     target?: string;
     /** Known from Playwright's report alone: the gate never held it. */
     reported?: boolean;
+    /** A click that reached its page untouched, from a read taken before
+     * its press. */
+    startsBeforeItsPress?: true;
     /** The input before ends at the read before this one. */
     priorEndsThere?: boolean;
     /** The read the input starts at is where recording resumed. */
@@ -1689,6 +1692,7 @@ describe("the timeline, for the focus a click's press moved", () => {
           interaction: {
             ...addition.interaction,
             ...(options.reported && { beforeFromReport: true }),
+            ...(options.startsBeforeItsPress && { startsBeforeItsPress: true }),
             report: {
               ...addition.interaction.report,
               type: options.type ?? "click",
@@ -1760,6 +1764,23 @@ describe("the timeline, for the focus a click's press moved", () => {
         focus('link "ayme"', "gained"),
       ])
     );
+  });
+
+  // Issue #1533: such a click starts from the page's latest read, which is
+  // where the input before it ended.
+  it("leaves the focus a read shows moved with the input that ended there when a click that reached its page untouched starts there: that read was taken before its press", async () => {
+    const [prior, click] = await entriesWith({
+      startsBeforeItsPress: true,
+      priorEndsThere: true,
+    });
+
+    expect(changesOf(prior)).toEqual(
+      expect.arrayContaining([
+        focus('textbox "Search"', "lost"),
+        focus('link "ayme"', "gained"),
+      ])
+    );
+    expect(changesOf(click)).toEqual([opening]);
   });
 
   it("leaves a focus moved at a read before the one a click starts at as a change of its own", async () => {

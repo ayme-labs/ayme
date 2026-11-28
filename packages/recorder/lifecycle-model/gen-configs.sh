@@ -27,6 +27,11 @@ LR='{"left", "right"}'
 LEFT='{"left"}'
 BOX='{"left", "middleOnCheckbox"}'
 MIX='{"left", "right", "middle", "leftOnCheckbox", "middleOnCheckbox"}'
+# A left click, and one the browser gave to another element than the one
+# under the pointer, which reaches the page untouched (#1533).
+UNT='{"left", "leftNotUnderPointer"}'
+# Only clicks that reach the page untouched.
+UNTONLY='{"leftNotUnderPointer"}'
 RULES="$HOLD X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 PROBES="P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten"
 WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow"
@@ -167,6 +172,10 @@ mk Race-LateTypingReport "$IN" 2 1 1 1   0    1     $F     $F   $F   $F    $T   
 mk Race-LastText    "$IN" 1 1   1   1   1    1     $T     $F   $F   $F    $F    $F      $F $F "INVARIANT F4_StopAndFinishKeepLastText"
 mk Race-ClickLostAfterStop "$IN" 2 1 1 1  0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT X5_StopWindowIsRecorded" $T $F "$LEFT"
 mk Race-ClickAfterPicking "$IN" 1 1 1 1   0    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT X3_NothingYouDidIsDropped" $F $T "$LEFT"
+# Typing, a choice or an upload whose report comes after a click that
+# reached the page untouched (Quick off): it goes before the click, and the
+# click is not dropped.
+mk Race-LateReportBeforeUntouched "$IN" 2 1 1 1 1 0   $F     $F   $F   $F    $F    $F      $F $F "INVARIANT X3_NothingYouDidIsDropped" $F $F "$UNTONLY"
 mk Race-HeldMessageAfterStop "$IN" 2 1 1 1 0  0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS N1_AfterStopInTimeOrder X2_SnapshotsInTimeOrder X5_StopWindowIsRecorded X3_NothingYouDidIsDropped X1_NothingOvertakesAHeldClick" $F $F "$LEFT" $T
 # Middle clicks: held and matched by their button, as right-clicks.
 mk Clicks-Middle    "$IN" 2 1   1   1   0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X7_EntryHasItsOwnReport X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X5_StopWindowIsRecorded R04_FinishSavesEverything" $F $F "$ALLB"
@@ -176,6 +185,19 @@ $PROPS" $F $F "$ALLB"
 mk Clicks-MiddleOnCheckbox "$IN" 2 1 1 1  0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X3_NothingYouDidIsDropped X4_WrapUpNeverGetsStuck X7_EntryHasItsOwnReport X5_StopWindowIsRecorded R04_FinishSavesEverything" $F $F "$BOX"
 # Left, right and middle clicks, on checkboxes and not, mixed; B2 left out.
 mk Clicks-Mixed     "$IN" 2 1   1   1   0    1     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS $RULES" $F $F "$MIX"
+# A click that reaches its page untouched (#1533): the rules hold with it,
+# with typing shown while it is typed and measured from its first key, and
+# in the order of the reads; B2 left out of the last.
+mk Clicks-Untouched "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS F7_MeasuredFromFirstKey X5_StopWindowIsRecorded
+$PROPS" $F $F "$UNT"
+mk Clicks-Untouched-Order "$IN" 2 1 1 1  0    1     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS $RULES X13e_WithNothingUnderWayStartsBeforeIt" $F $F "$UNT"
+# Known limit: such a click starts from a read taken after it when its page
+# has none yet or an earlier input is still under way.
+mk Limit-UntouchedClickRead "$IN" 2 1 1 1 0   0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT X13_UntouchedClickStartsBeforeIt" $F $F "$UNT"
+# Known limit: right after typing, before the page was quiet, the typing ends
+# at that click's own read, and is listed with what the click changed. B2
+# left out, so that the click is the only path.
+mk Limit-UntouchedClickAfterTyping "$IN" 2 1 1 1 1 0 $F   $F   $F   $F    $T    $F      $T $F "INVARIANT F7s_MeasuredStrictly" $F $F "$UNT"
 # Progress with fairness: blocked, TLC checks it too slowly (see README).
 mk Progress         "SPECIFICATION LiveSpec" 1 1 1 1 0 0 $T $F $T $F $T $F $F $F "PROPERTIES L1_HeldClickIsPassedOn L2_WrapUpEnds"
 # Probes: each must break, which shows the model reaches that situation.
@@ -190,6 +212,8 @@ mk Probes-LateRevision "$IN" 2 1 1   1   1    0     $F     $F   $F   $F    $T   
 # --save-storage: the save is reached with nothing recorded, with a package,
 # and fails.
 mk Probes-Storage   "$IN" 1 1   1   1   0    1     $T     $F   $F   $F    $T    $F      $F $F "INVARIANTS P26_NeverSavesStorageWithNothingRecorded P27_NeverSavesStorageWithAPackage P28_NeverWarnsOfTheStorage P29_NeverSavesStorageAfterTheTraceFailedToStart P30_NeverSavesStorageAfterAFailedStartsTraceIsGone P31_NeverSavesStorageAfterAFailedWrite" $F $F "$LR" $F $F $F $F $F $T $T $F $F $F $T
+# A click that reached its page untouched is recorded both ways.
+mk Probes-Untouched "$IN" 2 1   1   1   0    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS P32_NeverRecordsAnUntouchedClickFromAnEarlierRead P33_NeverRecordsAnUntouchedClickFromALaterRead" $F $F "$UNT"
 # The three charts.
 mk Chart-Lifecycle  "INIT Init
 NEXT LifeNext" 0 1 1 2 0 1 $T $F $F $F $T $F $F $F "INVARIANTS $HOLD" $F $F "$LEFT"

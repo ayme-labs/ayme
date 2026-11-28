@@ -460,7 +460,11 @@ async function openPage(
       const input = heldByPageIn(fromPage);
       if (!pageId || !input) return;
       const id = `input_${++inputs}` as InputId;
-      held.set(id, { frame, input });
+      // A click that reached its page untouched is not passed on: its
+      // report can come from now on.
+      const untouched = input.kind === "click" && input.untouched;
+      if (untouched) awaitReport(page, input, id);
+      else held.set(id, { frame, input });
       heldBy.set(pageId, [
         ...(heldBy.get(pageId) ?? []),
         { id, frame, seq: input.seq },
@@ -475,6 +479,7 @@ async function openPage(
                 kind: "click",
                 count: Math.max(1, input.detail),
                 ...(input.button ? { button: input.button } : {}),
+                ...(untouched ? { reachedAt: now() } : {}),
               }
             : input.typing
               ? { kind: "typing" }
@@ -496,19 +501,21 @@ async function openPage(
     if (!note) return;
     chains.set(page, [...(chains.get(page) ?? []).slice(-9), note]);
   });
-  /** The held clicks each page was sent while Playwright's recorder
-   * reported, whose reports can still come (`sentOn`). */
+  /** The clicks that reached each page while Playwright's recorder
+   * reported, sent on or untouched, whose reports can still come
+   * (`sentOn`). */
   const awaited = new Map<Page, readonly AwaitedClick[]>();
-  /** Awaits the report of a held click sent on while Playwright's recorder
-   * reports: the page's note of this click is the one that names its
-   * target. */
-  const awaitReport = (page: Page, sent: HeldByPage) => {
+  /** Awaits the report of a click that reaches its page while Playwright's
+   * recorder reports: the page's note of this click is the one that names
+   * its target. */
+  const awaitReport = (page: Page, sent: HeldByPage, untouched?: InputId) => {
     if (sent.kind !== "click" || recorderMode?.mode() !== "recording") return;
     const click: AwaitedClick = {
       document: sent.document,
       seq: sent.seq,
       count: Math.max(1, sent.detail),
       button: sent.button ?? "left",
+      ...(untouched ? { untouched } : {}),
     };
     awaited.set(page, sentOn(awaited.get(page) ?? [], click));
     return click;
@@ -524,13 +531,17 @@ async function openPage(
   const clickReported = (
     page: Page,
     action: PlaywrightAction
-  ): HeldClick | null => {
-    const { of, awaited: left } = reportedClick(
-      awaited.get(page) ?? [],
-      action
-    );
+  ): AwaitedClick | null => {
+    const before = awaited.get(page) ?? [];
+    const { of, awaited: left } = reportedClick(before, action);
     awaited.set(page, left);
-    return of;
+    return (
+      (of &&
+        before.find(
+          ({ document, seq }) => document === of.document && seq === of.seq
+        )) ??
+      null
+    );
   };
   /**
    * A report, with the element the input acted on, as Playwright's selector
@@ -1127,16 +1138,14 @@ async function openPage(
         const pageId = idOf.get(reported);
         if (!pageId) return;
         // What it names is read now, before anything else happens.
-        const { report, fromSelector } = reportFrom(
-          reported,
-          action,
-          clickReported(reported, action)
-        );
+        const of = clickReported(reported, action);
+        const { report, fromSelector } = reportFrom(reported, action, of);
         inReportOrder(async () => {
           const told = (read: InteractionReport): BrowserSignal => ({
             kind: "interactionReported",
             page: pageId,
             report: read,
+            ...(of?.untouched ? { of: of.untouched } : {}),
           });
           try {
             return told(

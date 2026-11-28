@@ -1,14 +1,17 @@
 import { pictureRef, type InteractionReport } from "../../timeline/domain";
+import type { InputId } from "../../session/domain";
 import type { HeldClick } from "./pageRules";
 import type { InputNote } from "./pageValues";
 
 export type { InputNote };
 
-/** A held click sent on to its page whose report has not come: which it is,
- * its count and its button. */
+/** A click a page told of that reached it, sent on or untouched, whose
+ * report has not come: which it is, its count and its button, and for one
+ * that reached it untouched, the input it is to the lifecycle. */
 export type AwaitedClick = HeldClick & {
   readonly count: number;
   readonly button: "left" | "right" | "middle";
+  readonly untouched?: InputId;
 };
 
 /** The reports of an input of the mouse: the element under the pointer can

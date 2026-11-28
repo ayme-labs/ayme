@@ -8,7 +8,7 @@ import type { Modifier } from "./pageRules";
 // would throw in Node later, where nothing catches it, or hold the page's
 // inputs back for good, as a number the gate counts by that is no number.
 
-/** The gate numbers the inputs a document held from 1. */
+/** The gate numbers the inputs a document told of from 1. */
 const SeqSchema = z.int().check(z.positive());
 const ModifiersSchema = z.readonly(
   z.array(z.enum(["Alt", "Control", "Meta", "Shift"] satisfies Modifier[]))
@@ -35,6 +35,9 @@ const HeldByPageSchema = z.union([
       button: z.optional(z.enum(["right", "middle"])),
       modifiers: ModifiersSchema,
       document: DocumentSchema,
+      /** It was not held: it reached the page untouched, and is only told
+       * of (`clickUntouched`). */
+      untouched: z.boolean(),
     })
   ),
   z.readonly(
@@ -63,13 +66,15 @@ const InputNoteSchema = z.readonly(
     /** The ref of the element under the pointer, which Playwright's report
      * names as its ref: it says which report this is the note of. */
     under: z.nullable(z.string()),
-    /** The held click the event is, as the gate sent it on; null for an
-     * event that is no held click's, as the release of a right-click. */
+    /** The click the gate told of that the event is, as it sent a held
+     * one on or let one through untouched; null for an event that is no
+     * such click's, as the release of a right-click. */
     held: z.nullable(HeldClickSchema),
   })
 );
 
-/** What a page tells of an input it held back. */
+/** What a page tells of an input it held back, or of a click it let reach
+ * the page untouched. */
 export type HeldByPage = z.infer<typeof HeldByPageSchema>;
 
 /** What a document's target watch tells of an input: the event, the refs

@@ -7765,3 +7765,315 @@ describe("the lifecycle, for a middle click", () => {
     expect(steps(todo)).toEqual([{ type: "check", button: undefined }]);
   });
 });
+
+// Issue #1533: a click the browser gave to another element than the one
+// under the pointer is not held, since sent on again it would reach that
+// one. The page tells of it like a held click, with the time it reached the
+// page.
+describe("the lifecycle, for a click that reached its page untouched", () => {
+  const untouched = (input: InputId, reachedAt = 15): Happening => ({
+    kind: "inputHeld",
+    input,
+    page: page1,
+    held: { kind: "click", count: 1, reachedAt },
+  });
+  const reportOf = (selector: string, of?: InputId): Happening => ({
+    kind: "interactionReported",
+    page: page1,
+    report: { ...click, selector },
+    ...(of ? { of } : {}),
+  });
+  /** The Interactions written, each with its report's selector. */
+  const written = (todo: readonly (readonly ToDo[])[]) =>
+    todo.flat().flatMap((item) =>
+      item.kind === "timeline" && item.add.kind === "interaction"
+        ? [
+            {
+              selector: item.add.interaction.report.selector,
+              before: item.add.interaction.before,
+              after: item.add.interaction.after,
+              at: item.add.interaction.at,
+            },
+          ]
+        : []
+    );
+  /** A click recorded from start to end: the page has a snapshot. */
+  const afterOneClick = [opened, ...started, ...oneClick, reported];
+
+  it("starts from the page's latest snapshot, since one taken now would show what the click did, and is never passed on", () => {
+    const { todo } = run([
+      ...afterOneClick,
+      untouched(input2),
+      settled(input2),
+      taken(snapshot3),
+      reportOf("body"),
+    ]);
+
+    expect(todo.slice(-4)).toEqual([
+      [waitForSettled(input2)],
+      [takeSnapshot(snapshot3)],
+      [keep(snapshot3), letThrough(input2)],
+      [
+        {
+          kind: "timeline",
+          add: {
+            kind: "interaction",
+            interaction: {
+              page: page1,
+              report: { ...click, selector: "body" },
+              before: snapshot2,
+              after: snapshot3,
+              at: 15,
+              // That snapshot was read before its press.
+              startsBeforeItsPress: true,
+            },
+          },
+        },
+      ],
+    ]);
+  });
+
+  it("takes a snapshot of its own while typing before it is still open: the typing ends there, with all it changed", () => {
+    const fill: InteractionReport = {
+      type: "fill",
+      selector: "internal:role=textbox",
+      target: null,
+      values: { text: "a" },
+    };
+    const { todo } = run([
+      ...afterOneClick,
+      { kind: "interactionReported", page: page1, report: fill },
+      untouched(input2),
+      taken(snapshot3),
+    ]);
+
+    expect(todo.slice(-2)).toEqual([
+      [takeSnapshot(snapshot3)],
+      expect.arrayContaining([keep(snapshot3), waitForSettled(input2)]),
+    ]);
+    expect(written(todo).at(-1)).toEqual({
+      selector: fill.selector,
+      before: snapshot2,
+      after: snapshot3,
+      at: 10,
+    });
+  });
+
+  it("takes a snapshot to start from when its page has none, and is not passed on then either", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      untouched(input1),
+      taken(snapshot1),
+    ]);
+
+    expect(todo.slice(-2)).toEqual([
+      [takeSnapshot(snapshot1)],
+      [keep(snapshot1), waitForSettled(input1)],
+    ]);
+  });
+
+  it("takes the report that comes while it waits for its snapshot: the click is at its page already", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      untouched(input1),
+      reportOf("body"),
+      taken(snapshot1),
+      settled(input1),
+      taken(snapshot2),
+    ]);
+
+    expect(todo.at(-1)).toEqual([
+      keep(snapshot2),
+      // Its own snapshot was read after its press, as a held click's is.
+      {
+        kind: "timeline",
+        add: {
+          kind: "interaction",
+          interaction: {
+            page: page1,
+            report: { ...click, selector: "body" },
+            before: snapshot1,
+            after: snapshot2,
+            at: 15,
+          },
+        },
+      },
+      letThrough(input1),
+    ]);
+  });
+
+  it("keeps its place before a click held after it: each gets its own report, and one snapshot is between them", () => {
+    const { todo } = run([
+      ...afterOneClick,
+      untouched(input2),
+      clickHeld(input3),
+      taken(snapshot3),
+      passedOn(input3, 30),
+      reportOf("body"),
+      reportOf("option"),
+      settled(input3),
+      taken(snapshot4),
+    ]);
+
+    expect(written(todo)).toEqual([
+      { selector: click.selector, before: snapshot1, after: snapshot2, at: 20 },
+      { selector: "body", before: snapshot2, after: snapshot3, at: 15 },
+      { selector: "option", before: snapshot3, after: snapshot4, at: 30 },
+    ]);
+  });
+
+  it("starts where the click before it ends when it came while that one's snapshot was being taken: a snapshot read after its press, as a held click's is", () => {
+    const { todo } = run([
+      ...afterOneClick,
+      clickHeld(input2),
+      taken(snapshot3),
+      passedOn(input2, 30),
+      settled(input2),
+      // The snapshot that follows is asked for; the click comes before it
+      // is in.
+      untouched(input3, 35),
+      taken(snapshot4),
+      reported,
+      settled(input3),
+      taken(snapshot5),
+      reportOf("body"),
+    ]);
+
+    expect(todo.at(-1)).toEqual([
+      {
+        kind: "timeline",
+        add: {
+          kind: "interaction",
+          interaction: {
+            page: page1,
+            report: { ...click, selector: "body" },
+            before: snapshot4,
+            after: snapshot5,
+            at: 35,
+          },
+        },
+      },
+    ]);
+  });
+
+  it("goes on without a snapshot that cannot be taken, with nothing to pass on, and is not recorded", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      untouched(input1),
+      failed(takeSnapshot(snapshot1)),
+      settled(input1),
+      taken(snapshot2),
+      reportOf("body"),
+    ]);
+
+    expect(todo.slice(-4)).toEqual([
+      [waitForSettled(input1)],
+      [takeSnapshot(snapshot2)],
+      [keep(snapshot2), letThrough(input1)],
+      [],
+    ]);
+  });
+
+  it("is not passed on when the wrap-up's time limit passes while it waits for its snapshot", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      untouched(input1),
+      stop,
+      { kind: "timeLimitPassed" },
+    ]);
+
+    expect(todo.at(-1)).toEqual([holdNoMore, stopReporting]);
+  });
+
+  // In another document of its page, as a frame, it can reach the page
+  // ahead of a click held before it: its report comes first, and the
+  // adapter names the click it is of.
+  it("takes the report named as its own while a click held before it in another document still waits for its snapshot, and leaves that click its own", () => {
+    const { todo } = run([
+      ...afterOneClick,
+      clickHeld(input2),
+      untouched(input3, 25),
+      reportOf("body", input3),
+      taken(snapshot3),
+      passedOn(input2, 30),
+      reportOf("option"),
+      settled(input2),
+      taken(snapshot4),
+      settled(input3),
+      taken(snapshot5),
+    ]);
+
+    expect(written(todo)).toEqual([
+      { selector: click.selector, before: snapshot1, after: snapshot2, at: 20 },
+      { selector: "option", before: snapshot3, after: snapshot4, at: 30 },
+      { selector: "body", before: snapshot4, after: snapshot5, at: 25 },
+    ]);
+  });
+
+  it("takes the report named as its own while a click held before it in another document is passed on after it, and leaves that click its own", () => {
+    const { todo } = run([
+      ...afterOneClick,
+      clickHeld(input2),
+      untouched(input3, 25),
+      taken(snapshot3),
+      passedOn(input2, 30),
+      reportOf("body", input3),
+      reportOf("option"),
+      settled(input2),
+      taken(snapshot4),
+      settled(input3),
+      taken(snapshot5),
+    ]);
+
+    expect(written(todo)).toEqual([
+      { selector: click.selector, before: snapshot1, after: snapshot2, at: 20 },
+      { selector: "option", before: snapshot3, after: snapshot4, at: 30 },
+      { selector: "body", before: snapshot4, after: snapshot5, at: 25 },
+    ]);
+  });
+
+  // The adapter reads the page before it tells of a report, so a report
+  // of typing, a choice or an upload can come after the gate told of the
+  // click. Playwright reports in order: what it reports before the click's
+  // own report came before the click.
+  it("comes after typing whose report comes only once the click reached its page, and keeps its own report", () => {
+    const fill: InteractionReport = {
+      type: "fill",
+      selector: "internal:role=textbox",
+      target: null,
+      values: { text: "a" },
+    };
+    const { todo } = run([
+      ...afterOneClick,
+      untouched(input2),
+      { kind: "interactionReported", page: page1, report: fill },
+      reportOf("body"),
+      settled(input2),
+      taken(snapshot3),
+    ]);
+
+    expect(written(todo)).toEqual([
+      { selector: click.selector, before: snapshot1, after: snapshot2, at: 20 },
+      { selector: fill.selector, before: snapshot2, after: snapshot2, at: 10 },
+      { selector: "body", before: snapshot2, after: snapshot3, at: 15 },
+    ]);
+  });
+
+  it("keeps Assert visibility from waiting: nothing is passed on that picking would swallow", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      untouched(input1),
+      { kind: "command", command: { type: "assertVisibility" } },
+    ]);
+
+    expect(todo.at(-1)).toEqual([
+      { kind: "browser", ask: { kind: "pick", on: true } },
+      reply("applied"),
+    ]);
+  });
+});

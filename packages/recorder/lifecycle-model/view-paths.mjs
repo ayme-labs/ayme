@@ -179,6 +179,8 @@ export const step = (action, from, to) => {
         return `you click (click ${i}): Playwright's picker takes it`;
       return `${clicked(to, i)}: it reaches the page untouched${to.navFlying && !from.navFlying ? " and starts a navigation" : ""}`;
     }
+    case "ClickUntouched":
+      return `${clicked(to, changed(from, to, "at"))}, on an element the page put under the pointer on the press: the gate lets it reach the page untouched, and tells the recorder`;
     case "TypeHeld":
       return `you type (typing ${changed(from, to, "at")}): the gate holds the key back`;
     case "TypeReaches":

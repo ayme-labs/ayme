@@ -7,8 +7,8 @@
 
 export type Modifier = "Alt" | "Control" | "Meta" | "Shift";
 
-/** Which held click an event is: the document that held it, and its number
- * there (`seq` of `HeldByPage`). */
+/** Which click a document told of an event is: the document, and the
+ * click's number there (`seq` of `HeldByPage`). */
 export type HeldClick = { readonly document: string; readonly seq: number };
 
 export type { HeldByPage } from "./pageValues";
@@ -124,6 +124,39 @@ export function clickHeld(click: {
   if (click.type === "contextmenu") return click.button === 2;
   if (click.type === "auxclick") return click.button === 1;
   return click.button === 0 && click.detail !== 0;
+}
+
+/**
+ * Whether the gate lets a click it would hold reach the page untouched, and
+ * only tells of it. The browser gives a click to the element that holds both
+ * the one pressed and the one released on: when a list comes up under the
+ * pointer on the press, that is the body. Sent on again, the click would
+ * reach the element under the pointer instead, the list. Not while an input
+ * the gate held still waits to be passed on: input reaches the page in the
+ * order it was given, so the click is held behind it like any other.
+ */
+export function clickUntouched(click: {
+  /** It went to the element under the pointer. */
+  readonly underPointer: boolean;
+  /** How many inputs the gate held still wait to be passed on. */
+  readonly waiting: number;
+}): boolean {
+  return !click.underPointer && click.waiting === 0;
+}
+
+/**
+ * The element under a point, through open shadow roots: from the one the
+ * document gives, `top`, down. `inside` names the element at the point in an
+ * element's shadow root; null when it has none, or none there.
+ */
+export function innermost<N>(
+  top: N | null,
+  inside: (element: N) => N | null
+): N | null {
+  let at = top;
+  for (let inner = at && inside(at); inner && inner !== at; inner = inside(at))
+    at = inner;
+  return at;
 }
 
 /**
@@ -474,6 +507,8 @@ export type GateRules = {
   readonly recordedAsPress: typeof recordedAsPress;
   readonly keyTarget: typeof keyTarget;
   readonly clickHeld: typeof clickHeld;
+  readonly clickUntouched: typeof clickUntouched;
+  readonly innermost: typeof innermost;
   readonly modifiersOf: typeof modifiersOf;
   readonly replayed: typeof replayed;
   readonly replayedEffect: typeof replayedEffect;

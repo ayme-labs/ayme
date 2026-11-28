@@ -10,6 +10,7 @@ const click = {
   detail: 1,
   modifiers: [],
   document: "doc_1",
+  untouched: false,
 };
 const key = {
   kind: "key",
@@ -23,8 +24,12 @@ const key = {
 };
 
 describe("what a page tells of an input it held", () => {
-  it("is taken as the gate sends it: a click, with or without its button, or a key", () => {
+  it("is taken as the gate sends it: a click, with or without its button, held or untouched, or a key", () => {
     expect(heldByPageIn(click)).toEqual(click);
+    expect(heldByPageIn({ ...click, untouched: true })).toEqual({
+      ...click,
+      untouched: true,
+    });
     // A click from the keyboard counts 0, and a pointer can be between
     // pixels.
     expect(heldByPageIn({ ...click, detail: 0, x: 10.5, y: -2 })).toEqual({
@@ -66,6 +71,10 @@ describe("what a page tells of an input it held", () => {
       { ...click, modifiers: ["Hyper"] },
     ],
     ["a click of no document", { ...click, document: 1 }],
+    [
+      "a click that says not whether it reached the page untouched",
+      { ...click, untouched: undefined },
+    ],
     ["a key that says not whether it is typing", { ...key, typing: "yes" }],
     ["a key with no name", { ...key, key: null }],
   ])("is not taken when the page hands over %s", (_, value) => {

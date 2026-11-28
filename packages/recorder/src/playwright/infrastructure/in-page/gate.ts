@@ -45,8 +45,9 @@ export type Gate = {
   /** Lets what follows through, unless the document held an input after
    * the `upTo`th. */
   letThrough(upTo: number): void;
-  /** The held click an event is, as it reached the page once sent on; null
-   * for an event that is no held click's. */
+  /** The click the gate told of that an event is: a held click as it
+   * reached the page once sent on, or one that reached it untouched; null
+   * for any other event. */
   heldClickOf(event: Event): HeldClick | null;
   /** Whether a call from the document reaches Playwright now, as the gate
    * decides it before holding an input. */
@@ -99,6 +100,11 @@ export function startGate(start: GateStart): void {
  * nothing, since nothing would ever let the input through, and says so once
  * on the console, which reaches Node without the page's JSON.
  *
+ * A click sent on goes to the element under the pointer. One the browser
+ * gave to another element, as to the body when a list came up under the
+ * pointer on the press, is therefore not held: it reaches the page as it
+ * came, and the adapter is only told of it (`clickUntouched`).
+ *
  * It listens on `window`, before anything of the page and before
  * Playwright's recorder, which listens on `document`: neither sees a held
  * input until the adapter sends it on.
@@ -149,8 +155,8 @@ export function gateIn(held: string, rules: GateRules): void {
   let released: (() => void) | undefined;
   /** The codes of held keys whose release is the gate's too. */
   const swallowKeyUp = new Set<string>();
-  /** The events of held clicks that reached the page, with the number of
-   * each click. */
+  /** The events of the clicks told of that reached the page, with the
+   * number of each click. */
   const arrivals = new WeakMap<Event, number>();
   /** Playwright's recorder picks an element: inputs are left to it. */
   // Picking started before this script ran, if the start did.
@@ -281,8 +287,8 @@ export function gateIn(held: string, rules: GateRules): void {
     );
   };
   /** Tells of a held click: a right-click, held by its context menu event,
-   * counts one. */
-  const tellClick = (event: MouseEvent) => {
+   * counts one. `untouched`: of one that reached the page instead. */
+  const tellClick = (event: MouseEvent, untouched: boolean) => {
     const button = rules.heldButton(event.type);
     tell({
       kind: "click",
@@ -293,7 +299,30 @@ export function gateIn(held: string, rules: GateRules): void {
       ...(button ? { button } : {}),
       modifiers: rules.modifiersOf(event),
       document: thisDocument,
+      untouched,
     });
+  };
+  /** Whether a click went to the element under the pointer. */
+  const underPointer = (event: MouseEvent) =>
+    elementOf(event) ===
+    rules.innermost(
+      document.elementFromPoint(event.clientX, event.clientY),
+      (host) =>
+        host.shadowRoot?.elementFromPoint(event.clientX, event.clientY) ?? null
+    );
+  /** A click that reaches the page untouched (`clickUntouched`): it is told
+   * like a held one, with a number of its own, and the gate holds what
+   * follows it as after one. */
+  const passUntouched = (event: MouseEvent) => {
+    holding = true;
+    seq += 1;
+    arrivals.set(event, seq);
+    tellClick(event, true);
+  };
+  const holdClick = (event: MouseEvent) => {
+    hold(event);
+    swallowDoubleClick = event.type === "click" && event.detail >= 2;
+    tellClick(event, false);
   };
   const onClick = (event: MouseEvent) => {
     notePress(event);
@@ -305,9 +334,9 @@ export function gateIn(held: string, rules: GateRules): void {
     };
     if (!rules.clickHeld(click)) return;
     if (!heard()) return unheard();
-    hold(event);
-    swallowDoubleClick = event.type === "click" && event.detail >= 2;
-    tellClick(event);
+    if (rules.clickUntouched({ underPointer: underPointer(event), waiting }))
+      return passUntouched(event);
+    holdClick(event);
   };
   const mouseRoutes: Record<MouseRoute, (event: MouseEvent) => void> = {
     ignore: () => {},
