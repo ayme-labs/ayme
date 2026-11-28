@@ -1,10 +1,20 @@
 // study-report's acceptance of a run, on reports written here: no browser,
 // no model.
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import process from "node:process";
 import { after, test } from "node:test";
+import { fileURLToPath, URL } from "node:url";
 
 import {
   goalIdentities,
@@ -19,7 +29,7 @@ const path = join(dir, "report.json");
 const key = "pair › opens [chromium]";
 const commit = "c0ffee";
 
-/** A one-test goal-arm report whose one step reached the agent. */
+/** A one-test goal-arm report with one step; `error` is e2e's structured error of its attempt. */
 function report({ startedAt, status, error, step }) {
   writeFileSync(
     path,
@@ -40,7 +50,7 @@ function report({ startedAt, status, error, step }) {
             attempts: [
               {
                 durationMs: 1000,
-                ...(error && { error: { message: error } }),
+                ...(error && { error }),
                 steps: [
                   {
                     kind: "agent",
@@ -83,49 +93,74 @@ test("a report left at the run's path by an earlier run is not a result", () => 
   );
 });
 
-test("a run whose agent turn the provider refused is not a result, though its test only failed", () => {
+test("a run with an error e2e does not class as a test failure is not a result, though its test only failed", () => {
   const now = Date.now();
   report({
     startedAt: new Date(now + 1).toISOString(),
     status: "failed",
-    error:
-      "The ACP agent session failed: Internal error: Credit balance is too low",
-    step: {
-      status: "failed",
-      cache: { mode: "missed", reason: "no-entry" },
-      metrics: {},
+    error: {
+      category: "infrastructure",
+      code: "MODEL_PROVIDER_FAILED",
+      message: "The ACP agent did not start: spawn claude-agent-acp ENOENT",
+      retryable: false,
     },
+    step: { status: "failed", cache: { mode: "missed", reason: "no-entry" } },
   });
   assert.throws(
     () => measure(now, 1),
-    (e) => e instanceof NotAResult && /provider refused/.test(e.message)
+    (e) => e instanceof NotAResult && /MODEL_PROVIDER_FAILED/.test(e.message)
   );
 });
 
-test("a test that failed is a result, and a handed-off step with no usage is unaccounted, its tokens unknown", () => {
+test("a test that failed is a result, and a step that failed after a model call reached the model, its usage unknown without the provider's count", () => {
   const now = Date.now();
   report({
     startedAt: new Date(now + 1).toISOString(),
     status: "failed",
-    error: "expected the Runs lens to list 2 runs, found 1",
+    error: {
+      category: "test",
+      code: "ASSERTION_FAILED",
+      message: "expected the Runs lens to list 2 runs, found 1",
+      retryable: false,
+    },
     step: {
       status: "failed",
       cache: { mode: "missed", reason: "no-entry" },
-      metrics: {},
+      metrics: { modelCalls: 1 },
+      // What e2e writes when the ACP agent reported no usage.
+      model: {
+        tokenAccounting: "adapter-upper-bound",
+        inputTokens: 0,
+        outputTokens: 0,
+      },
     },
   });
   const run = measure(now, 1);
+  const {
+    passed,
+    replayed,
+    reachedModel,
+    reachedModelFailed,
+    neither,
+    tokens,
+  } = run.shared;
   assert.deepEqual(
-    [
-      run.shared.passed,
-      run.shared.replayed,
-      run.shared.modelAnswered,
-      run.shared.unaccounted,
-      run.shared.tokens,
-    ],
-    [0, 0, 0, 1, null]
+    [passed, replayed, reachedModel, reachedModelFailed, neither, tokens],
+    [0, 0, 1, 1, 0, null]
   );
+  assert.equal(run.notReplayed[0].tokens, null);
   assert.equal(run.failedTests[0].test, key);
+  // With no cost estimate from e2e, the page does not claim $0.00.
+  const page = render([
+    {
+      arm: "arm1",
+      name: "Arm one",
+      commit,
+      cohort: { shared: 1, others: 0, digest: "d" },
+      runs: [{ ...run, commandWallMs: 1000, loadAverage: [1, 1, 1] }],
+    },
+  ]);
+  assert.match(page, /^\| Arm one \|.*\| unknown \| unknown \|$/m);
 });
 
 test("a goal is its text and literal parameters, at the line of `act`; parameters known only at run time leave it unnamed", () => {
@@ -138,6 +173,7 @@ test("a goal is its text and literal parameters, at the line of `act`; parameter
       '  .act("show the {lens} lens", { params: { lens: "Tools" } });',
       'await agent.act("show the {lens} lens", { params: { lens } });',
       'await agent.act("open it");',
+      'await agent.act("show the {lens} lens", { params: { "lens": "Tools" } });',
     ].join("\n")
   );
   const goals = goalIdentities(dir, "tests/goals");
@@ -146,6 +182,7 @@ test("a goal is its text and literal parameters, at the line of `act`; parameter
   assert.equal(at(3), at(1));
   assert.equal(at(4), null);
   assert.equal(at(5), "open it");
+  assert.equal(at(6), at(1));
 });
 
 test("the goals not replayed count a goal once however many tests run it, and a goal unnamed once per use", () => {
@@ -221,4 +258,67 @@ test("the page shows the arms measured on the latest arm's tests, and names the 
   assert.match(page, /\| Arm arm2b \|/);
   assert.doesNotMatch(page, /\| Arm arm2 \|/);
   assert.match(page, /not shown until they are measured again: Arm arm2\./);
+});
+
+test("the page's count of arm 2's own tests is arm 2's result's, whatever a goal arm's file says", () => {
+  const run = (others) => ({
+    startedAt: "2026-01-01",
+    estimatedCostUsd: null,
+    commandWallMs: 1000,
+    loadAverage: [1, 1, 1],
+    shared: { passed: 1, tests: 1, testMs: 1000, modelCalls: 0 },
+    ...(others && { others: { passed: others, tests: others, testMs: 1 } }),
+    notReplayed: [],
+    notReplayedGoals: { steps: 0, distinct: 0, perUse: 0 },
+    failedTests: [],
+  });
+  const arm = (id, others) => ({
+    arm: id,
+    name: id,
+    commit,
+    cohort: { shared: 1, others: 13, digest: "same" },
+    runs: [run(others)],
+  });
+  const page = render([arm("arm1"), arm("arm2", 42)], "arm2");
+  assert.match(page, /and 42 more of arm 2's own, 43 in arm 2\./);
+});
+
+const script = fileURLToPath(new URL("study-baseline.mjs", import.meta.url));
+/** The harness as a command, outside CI (which it refuses), with `env` over this process's. */
+const harness = (args, env) => {
+  const all = { ...process.env, ...env };
+  delete all.CI;
+  return spawnSync(process.execPath, [script, ...args], {
+    encoding: "utf8",
+    env: all,
+  });
+};
+
+test("arms 1 and 2 refuse a NODE_OPTIONS that preloads a module, such as the patch hook, before anything runs", () => {
+  const hook = join(dir, "patched-e2e/register.mjs");
+  mkdirSync(join(dir, "patched-e2e"), { recursive: true });
+  writeFileSync(hook, "");
+  for (const arm of ["arm1", "arm2"]) {
+    // AYME_E2E_DEBUG stops the harness at its next guard, should this one miss.
+    const { status, stderr } = harness([arm], {
+      NODE_OPTIONS: `--import ${hook}`,
+      AYME_E2E_DEBUG: "1",
+    });
+    assert.equal(status, 2);
+    assert.match(stderr, /unset NODE_OPTIONS: arm[12] runs e2e as published/);
+  }
+});
+
+test("render exits non-zero and leaves the page as it was when the formatter fails", () => {
+  const bin = join(dir, "bin");
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(join(bin, "pnpm"), "#!/bin/sh\nexit 1\n");
+  chmodSync(join(bin, "pnpm"), 0o755);
+  const page = fileURLToPath(
+    new URL("../study/baseline/README.md", import.meta.url)
+  );
+  const before = readFileSync(page, "utf8");
+  const { status } = harness(["render"], { PATH: bin });
+  assert.notEqual(status, 0);
+  assert.equal(readFileSync(page, "utf8"), before);
 });

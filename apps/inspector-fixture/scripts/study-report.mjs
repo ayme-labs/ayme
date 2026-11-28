@@ -6,26 +6,6 @@ import { join } from "node:path";
 
 import ts from "typescript";
 
-/**
- * Claude Code's texts for a login that cannot take another request, from
- * apps/eval-formbricks/src/transcript.ts. Unanchored here: e2e wraps them
- * ("The ACP agent session failed: Internal error: You've hit your …").
- */
-const USAGE_LIMIT_TEXTS = [
-  /You've hit your [^\n]*\b(?:limit|budget)\b/,
-  /You've reached your [^\n]*\blimit\b/,
-  /You're out of (?:extra usage|usage credits)\b/,
-  /Credit balance is too low\b/,
-  /Your org is out of usage\b/,
-  /Your seat type doesn't include (?:extra )?usage\b/,
-  /Your usage allocation has been disabled by your admin/,
-  /Your group's usage limit is set to \$0/,
-  /This service is disabled for your org\b/,
-  /(?:Fable|Haiku|Mythos|Opus|Sonnet)(?: [^·\n]{1,40})? requires usage credits\./,
-  /Your model policy only allows [^\n]*, which requires usage credits\b/,
-  /API Error: Usage credits required for 1M context\b/,
-];
-
 /** A run that measures something other than the arm: it never enters a range. */
 export class NotAResult extends Error {}
 
@@ -118,30 +98,48 @@ function goalOf(text, options) {
   for (const p of value.properties) {
     const v = ts.isPropertyAssignment(p) && p.initializer;
     if (!v) return null;
-    if (ts.isStringLiteralLike(v)) entries.push([p.name.getText(), v.text]);
-    else if (ts.isNumericLiteral(v)) entries.push([p.name.getText(), +v.text]);
+    // `lens` and `"lens"` name one property.
+    const name =
+      ts.isIdentifier(p.name) || ts.isStringLiteralLike(p.name)
+        ? p.name.text
+        : null;
+    if (name === null) return null;
+    if (ts.isStringLiteralLike(v)) entries.push([name, v.text]);
+    else if (ts.isNumericLiteral(v)) entries.push([name, +v.text]);
     else return null;
   }
   return `${text} ${JSON.stringify(Object.fromEntries(entries.sort()))}`;
 }
 
-/** Every error text in the report, in full. */
-function errorTexts(value, key = "", texts = []) {
-  if (typeof value === "string") {
-    if (/^(error|errors|message|detail|secondaryErrors)$/.test(key))
-      texts.push(value);
-  } else if (Array.isArray(value)) {
-    for (const item of value) errorTexts(item, key, texts);
-  } else if (value && typeof value === "object") {
-    for (const [k, v] of Object.entries(value)) errorTexts(v, k, texts);
+/**
+ * The modules NODE_OPTIONS preloads into every Node process a run starts. A
+ * baseline arm runs e2e as published, so nothing may be preloaded into it:
+ * e2e-tools' hook would patch it (packages/e2e-tools/README.md).
+ */
+export function preloads(nodeOptions = "") {
+  return [
+    ...nodeOptions.matchAll(
+      /(?:^|\s)(--import|--require|-r|--loader|--experimental-loader)(?:=|\s+)(\S+)/g
+    ),
+  ].map((m) => `${m[1]} ${m[2]}`);
+}
+
+/** Every structured error e2e wrote in the report (its schema's `error`). */
+function errorsIn(value, found = []) {
+  if (Array.isArray(value)) for (const item of value) errorsIn(item, found);
+  else if (value && typeof value === "object") {
+    if (typeof value.category === "string" && typeof value.code === "string")
+      found.push(value);
+    for (const v of Object.values(value)) errorsIn(v, found);
   }
-  return texts;
+  return found;
 }
 
 /**
  * The run in `reportPath`, projected to its totals and exceptions, or a
  * NotAResult saying why it measures nothing: a report this run did not write,
- * a run that did not complete, a run the model provider refused, or a set of
+ * a run that did not complete, a run with an error e2e does not class as a
+ * test failure (the model provider's, the machine's, e2e's own), or a set of
  * tests other than the cohort. `expected` lists the keys the arm must run,
  * `shared` those that count in the shared row; `clean` hides local paths.
  */
@@ -163,11 +161,14 @@ export function projectRun(
   const { run } = JSON.parse(readFileSync(reportPath, "utf8"));
   if (!(Date.parse(run.startedAt) >= startedAfter))
     throw new NotAResult(`${reportPath} is from an earlier run`);
-  const blocked = errorTexts(run).find((text) =>
-    USAGE_LIMIT_TEXTS.some((pattern) => pattern.test(text))
-  );
-  if (blocked)
-    throw new NotAResult(`the model provider refused a turn: ${blocked}`);
+  // A test failure is the product's; any other category is the run's, such
+  // as MODEL_PROVIDER_FAILED for an agent session that failed, a usage limit
+  // included (@e2e-dev/acp).
+  const notTest = errorsIn(run).find((e) => e.category !== "test");
+  if (notTest)
+    throw new NotAResult(
+      `e2e reported a ${notTest.category} error, not a test failure: ${notTest.code}: ${clean(notTest.message ?? "").slice(0, 500)}`
+    );
   // passed and failed are verdicts; blocked, error and interrupted are not.
   if (!["passed", "failed"].includes(run.status) || exitCode !== run.exitCode)
     throw new NotAResult(
@@ -205,13 +206,19 @@ export function projectRun(
         s.cache?.mode === "self-finalized" &&
         calls(s) === 0
     );
-    const answered = steps.filter((s) => s.status === "passed" && calls(s) > 0);
-    // A step whose model usage e2e did not record makes the sum unknown.
-    const usageKnown = steps.every((s) => calls(s) === 0 || s.model);
-    const sum = (pick, of = steps) =>
-      usageKnown
-        ? of.reduce((n, s) => n + (s.model ? pick(s.model) : 0), 0)
-        : null;
+    const reached = steps.filter((s) => calls(s) > 0);
+    // e2e's step metrics count each goal step's model calls; a step without
+    // them leaves the run's count unknown.
+    const modelCalls = steps.every((s) => calls(s) !== undefined)
+      ? steps.reduce((n, s) => n + calls(s), 0)
+      : null;
+    // Token counts are the provider's only: e2e writes a model record when
+    // the ACP agent gave no usage too, marked adapter-upper-bound.
+    const usageKnown =
+      modelCalls !== null &&
+      reached.every((s) => s.model?.tokenAccounting === "provider");
+    const sum = (pick, of = reached) =>
+      usageKnown ? of.reduce((n, s) => n + pick(s.model), 0) : null;
     const tokens = (m) => m.inputTokens + m.outputTokens;
     return {
       passed: results.filter((r) => r.status === "passed").length,
@@ -222,14 +229,16 @@ export function projectRun(
       ),
       steps: steps.length,
       replayed: replayed.length,
-      modelAnswered: answered.length,
-      unaccounted: steps.length - replayed.length - answered.length,
+      reachedModel: reached.length,
+      reachedModelFailed: reached.filter((s) => s.status !== "passed").length,
+      neither: steps.length - replayed.length - reached.length,
+      modelCalls,
       // inputTokens include prompt-cache reads and writes (@e2e-dev/acp).
       tokens: sum(tokens),
       cacheReadTokens: sum((m) => m.cacheReadTokens ?? 0),
       noEntryTokens: sum(
         tokens,
-        steps.filter((s) => s.cache?.reason === "no-entry")
+        reached.filter((s) => s.cache?.reason === "no-entry")
       ),
     };
   };
@@ -250,7 +259,11 @@ export function projectRun(
         cache: s.cache?.mode ?? null,
         reason: s.cache?.reason ?? null,
         detail: clean(s.cache?.detail ?? ""),
-        tokens: s.model ? s.model.inputTokens + s.model.outputTokens : null,
+        modelCalls: s.metrics?.modelCalls ?? null,
+        tokens:
+          s.model?.tokenAccounting === "provider"
+            ? s.model.inputTokens + s.model.outputTokens
+            : null,
       }))
   );
   // A goal whose parameters are only known at run time counts once per use,
@@ -315,7 +328,10 @@ export function render(all, latest) {
   const commits = new Set(arms.map((a) => a.commit));
   const goals = (a) => a.arm !== "arm2";
   const goalArms = arms.filter(goals);
-  const runsOf = (a) => `${a.runs.length} runs`;
+  const arm2 = arms.find((a) => a.arm === "arm2");
+  // The cohort's digest covers the shared tests only, so arm 2's own count
+  // comes from arm 2's result.
+  const arm2Own = arm2 && (arm2.runs[0].others?.tests ?? 0);
   const sharedRow = (a) => {
     const t = a.runs.map((r) => r.shared);
     const of = (key) => t.map((x) => x[key]);
@@ -328,14 +344,16 @@ export function render(all, latest) {
         ? [
             range(of("steps")),
             range(of("replayed")),
-            range(of("modelAnswered")),
-            range(of("unaccounted")),
+            `${range(of("reachedModel"))} (${range(of("reachedModelFailed"))})`,
+            range(of("neither")),
             `${range(notReplayed.map((n) => n.steps))} (${range(notReplayed.map((n) => n.distinct))})`,
             range(of("tokens"), count),
-            // e2e leaves the estimate out of a run that called no model.
+            // e2e leaves the estimate out of a run that called no model; the
+            // step metrics say whether it did.
             range(
               a.runs.map(
-                (r) => r.estimatedCostUsd ?? (r.shared.tokens === 0 ? 0 : null)
+                (r) =>
+                  r.estimatedCostUsd ?? (r.shared.modelCalls === 0 ? 0 : null)
               ),
               usd
             ),
@@ -357,56 +375,44 @@ export function render(all, latest) {
   const perUse = goalArms.filter((a) =>
     a.runs.some((r) => r.notReplayedGoals.perUse)
   );
-  const arm2 = arms.find((a) => a.arm === "arm2");
   const attributions = goalArms
     .filter((a) => a.runs.some((r) => r.shared.noEntryTokens))
     .map(
       (a) =>
-        `- ${a.name}: steps with no recording (missed, no-entry) used ${a.runs.map((r) => (r.shared.noEntryTokens === null ? "unknown" : count(r.shared.noEntryTokens))).join(", ")} tokens in its ${runsOf(a)}, ${range(
+        `- ${a.name}: steps with no recording (no-entry) used ${a.runs.map((r) => (r.shared.noEntryTokens === null ? "unknown" : count(r.shared.noEntryTokens))).join(", ")} tokens in its ${a.runs.length} runs, ${range(
           a.runs.map((r) =>
             r.shared.tokens ? r.shared.noEntryTokens / r.shared.tokens : null
           ),
           percent
         )} of its tokens. An attribution within these runs, not an estimate of a run without those steps: they shared an agent session with the arm's other steps.`
     );
-  const where = (s) => `${s.test}, line ${s.line}, "${s.step}"`;
-  // A step every run found no recording for: not a hand-off but a gap in
-  // the recordings, which reaches the model on every run.
-  const unrecorded = (a) =>
-    new Set(
-      a.runs
-        .map(
-          (r) =>
-            new Set(
-              r.notReplayed.filter((s) => s.reason === "no-entry").map(where)
-            )
-        )
-        .reduce((x, y) => new Set([...x].filter((k) => y.has(k))))
-    );
-  const listed = (a, keep) => {
+  const exceptions = goalArms.map((a) => {
     const seen = new Map();
     a.runs.forEach((r, i) => {
-      for (const s of r.notReplayed.filter(keep)) {
-        const why = [
+      for (const s of r.notReplayed) {
+        const what = [
           s.cache ?? "no cache",
           s.reason,
           s.detail,
-          s.status !== "passed" && `step ${s.status}`,
+          `step ${s.status}`,
         ]
           .filter(Boolean)
           .join(", ");
-        const key = `${where(s)}: ${why}`;
-        seen.set(key, [
-          ...(seen.get(key) ?? []),
-          `run ${i + 1} (${s.tokens === null ? "usage unknown" : `${count(s.tokens)} tokens`})`,
-        ]);
+        const key = `${s.test}, line ${s.line}, "${s.step}": ${what}`;
+        const usage =
+          s.modelCalls === 0
+            ? "no model call"
+            : s.tokens === null
+              ? "tokens unknown"
+              : `${count(s.tokens)} tokens`;
+        seen.set(key, [...(seen.get(key) ?? []), `run ${i + 1} (${usage})`]);
       }
     });
     const lines = [...seen].map(
       ([key, runs]) => `- ${key}. ${runs.join(", ")}.`
     );
     return `${a.name}:\n\n${lines.join("\n") || "- none"}`;
-  };
+  });
   const failures = arms.flatMap((a) =>
     a.runs.flatMap((r, i) =>
       r.failedTests.map(
@@ -414,13 +420,13 @@ export function render(all, latest) {
       )
     )
   );
-  const cohort = current?.cohort;
+  const shared = current?.cohort.shared;
 
   return `# Page Object study: baselines
 
 The "before" of the Page Object study (the [fixture's README](../../README.md)): each arm's suite on the Inspector before the redesign. Each cell is the range over the arm's runs; each run's totals and exceptions are in \`<arm>.json\`.
 
-${cohort ? `The suite: ${cohort.shared} test runs that every arm has, and ${cohort.others} more of arm 2's own, ${cohort.shared + cohort.others} in arm 2.` : "No arm is measured yet."}
+${current ? `The suite: ${shared} test runs that every arm has${arm2Own === undefined ? "" : `, and ${arm2Own} more of arm 2's own, ${shared + arm2Own} in arm 2`}.` : "No arm is measured yet."}
 ${stale.length ? `\nMeasured on other tests, so not shown until they are measured again: ${stale.map((a) => a.name).join(", ")}.\n` : ""}
 ## Measuring an arm
 
@@ -431,7 +437,7 @@ pnpm study:baseline arm3
 pnpm study:baseline render   # this page again, from the arms' files
 \`\`\`
 
-Run it from \`apps/inspector-fixture\` in the repository's Devbox shell, on your own machine, from a committed tree, one arm at a time with nothing else running. The goal arms replay the recordings committed under \`.e2e/goals-cache\` and \`.e2e/goals-tools-cache\` read-only; a step that does not replay goes to Claude Code on the machine's own login, so it must be signed in, and the \`ayme mcp\` port the arm's recordings were made on must be free (\`e2e.goals.config.ts\`, \`e2e.goals-tools.config.ts\`). It builds the packages the fixture serves, warms one fixture server, runs the arm's own script three times on it, and saves the arm's file only when all three runs completed on one commit with the same recordings. Each run's full e2e report stays on the machine that ran it, at \`.e2e/study/<arm>/<time>/run-<n>/report.json\`, and is not published. [The script](../../scripts/study-baseline.mjs) holds each guard's reason.
+Run it from \`apps/inspector-fixture\` in the repository's Devbox shell, on your own machine, from a committed tree, one arm at a time with nothing else running. The goal arms replay the recordings committed under \`.e2e/goals-cache\` and \`.e2e/goals-tools-cache\` read-only; a step that does not replay goes to Claude Code on the machine's own login, so it must be signed in, and the \`ayme mcp\` port the arm's recordings were made on must be free ([e2e.goals.config.ts](../../e2e.goals.config.ts), [e2e.goals-tools.config.ts](../../e2e.goals-tools.config.ts)). It builds the packages the fixture serves, warms one fixture server, runs the arm's own script three times on it, and saves the arm's file only when all three runs completed on one commit with the same recordings. Each run's full e2e report stays on the machine that ran it, at \`.e2e/study/<arm>/<time>/run-<n>/report.json\`, and is not published. [The script](../../scripts/study-baseline.mjs) holds each guard's reason.
 
 ## The tests every arm has
 
@@ -442,8 +448,8 @@ ${table(
     "Summed test time",
     "Goal steps",
     "Replayed, no model call",
-    "Model answered",
-    "Unaccounted",
+    "Reached the model (failed)",
+    "Neither",
     "Not replayed (distinct goals)",
     "Tokens",
     "e2e's cost estimate",
@@ -451,9 +457,9 @@ ${table(
   arms.map(sharedRow)
 )}
 
-- Tokens are input plus output, prompt-cache reads and writes included${cacheShare.length ? `; cache reads are ${range(cacheShare, percent)} of them` : ""}. e2e's cost estimate is its own, from the same usage.
-- Unaccounted: a goal step that neither replayed nor passed with the model, so its usage cannot be told.
-- Not replayed: the goal steps that did not replay with no model call, and in brackets the distinct goals among them, a goal's text with its parameters counted once however many tests run it: the count a recording per goal, shared by every test, would have left.${perUse.length ? ` A goal whose parameters are only known at run time counts once per use, so the bracket is an upper bound for ${perUse.map((a) => a.name).join(" and ")}.` : ""}
+- Reached the model: a goal step e2e's step metrics count a model call for, whatever its outcome; in brackets those whose step failed. Neither: a goal step that did not replay and called no model, such as one that failed before a call.
+- Tokens are the provider's input plus output, prompt-cache reads and writes included${cacheShare.length ? `; cache reads are ${range(cacheShare, percent)} of them` : ""}. They are unknown for a run in which a step that reached the model has no provider count (e2e marks such a record \`adapter-upper-bound\`). e2e's cost estimate is its own; $0.00 where no step called a model.
+- Not replayed: the goal steps of these runs that did not replay with no model call, and in brackets the distinct goals among them, a goal's text with its parameters counted once however many tests ran it.${perUse.length ? ` A goal whose parameters are only known at run time counts once per use, so the bracket is an upper bound for ${perUse.map((a) => a.name).join(" and ")}.` : ""}
 - Every arm ran with one worker and no retries, so this is a serial comparison. The default test timeout is 30 s in arm 2 and 900 s in the goal arms ([e2e.config.ts](../../e2e.config.ts), [e2e.goals.config.ts](../../e2e.goals.config.ts)).
 ${attributions.length ? `\n${attributions.join("\n")}\n` : ""}
 ## Arm 2's other tests
@@ -480,10 +486,10 @@ ${
 
 ## Whole runs
 
-Command wall time is the arm's script from start to exit, every test of the arm included. The load average is the machine's 1-minute load as each run started.
+Command time is the arm's script from start to exit, every test of the arm included. The load average is the machine's 1-minute load as each run started.
 
 ${table(
-  ["Arm", "Command wall time", "Load average", "Commit", "Recordings"],
+  ["Arm", "Command time", "Load average", "Commit", "Recordings"],
   arms.map((a) => [
     a.name,
     range(
@@ -496,22 +502,16 @@ ${table(
     ),
     `\`${a.commit.slice(0, 9)}\``,
     a.recordings
-      ? `\`${a.recordings.dir}\`, ${a.recordings.entries ?? "?"} entries, digest \`${a.recordings.digest.slice(0, 9)}\``
+      ? `\`${a.recordings.dir}\`, ${a.recordings.entries} entries, digest \`${a.recordings.digest.slice(0, 9)}\``
       : "none",
   ])
 )}
 ${commits.size > 1 ? "\nThe arms were measured at different commits.\n" : ""}
-## Goal steps with no recording
+## Goal steps that did not replay
 
-Steps the committed recordings hold no entry for in every run (e2e's \`no-entry\`), so they reach the model each time; they count as model answered above. e2e as published records nothing for a step that changed no control and no route on the tab it reads (\`no-change\` in [When a recording is written](https://e2e.com/docs/cache#when-a-recording-is-written)).
+By test and line: e2e's cache outcome and reason (\`no-entry\`: the recordings hold none for the step; e2e records nothing for a step that changed no control and no route, \`no-change\` in [When a recording is written](https://e2e.com/docs/cache#when-a-recording-is-written)), the step's outcome, and the runs it was in with their usage.
 
-${goalArms.map((a) => listed(a, (s) => unrecorded(a).has(where(s)))).join("\n\n")}
-
-## Goal steps not replayed
-
-The other goal steps that did not replay, by test and line, with e2e's reason, the runs each was in and its usage there.
-
-${goalArms.map((a) => listed(a, (s) => !unrecorded(a).has(where(s)))).join("\n\n")}
+${exceptions.join("\n\n")}
 
 ## Tests that did not pass
 
