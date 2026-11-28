@@ -43,3 +43,33 @@ it("follows the OS's dark colour scheme for the system theme", () => {
   expect(isDark("system")).toBe(true);
   expect(isDark("light")).toBe(false);
 });
+
+it("follows the OS's colour scheme as it changes, for the system theme", () => {
+  let dark = false;
+  const listeners = new Set<() => void>();
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    get matches() {
+      return dark && query === "(prefers-color-scheme: dark)";
+    },
+    addEventListener: (_: "change", listener: () => void) =>
+      listeners.add(listener),
+    removeEventListener: (_: "change", listener: () => void) =>
+      listeners.delete(listener),
+  }));
+  const shown: boolean[] = [];
+  function Probe() {
+    shown.push(useDarkTheme("system"));
+    return null;
+  }
+  const root = createRoot(document.createElement("div"));
+  act(() => root.render(<Probe />));
+
+  dark = true;
+  act(() => {
+    for (const listener of listeners) listener();
+  });
+
+  expect(shown.at(-1)).toBe(true);
+  act(() => root.unmount());
+  expect(listeners.size).toBe(0);
+});
