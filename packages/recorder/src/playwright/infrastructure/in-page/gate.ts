@@ -80,6 +80,15 @@ export function startGate(start: GateStart): void {
   window.__aymeRecorderGate?.set(start.on);
 }
 
+/** Whether a call from this document reaches Node through a Playwright
+ * binding, as the page's `JSON.stringify` is now. */
+export function heardIn(
+  _: undefined,
+  rules: Pick<GateRules, "reachesPlaywright">
+): boolean {
+  return rules.reachesPlaywright((value) => JSON.stringify(value));
+}
+
 /**
  * Installs the gate in a document, switched on or off as `startGate` last
  * said, and off when it never did. Switched on, it holds back the click
@@ -91,7 +100,10 @@ export function startGate(start: GateStart): void {
  * moment it is switched on, it holds every key after it, typing included,
  * until it is let through: input reaches the page in the order it was
  * given. Switched off, it goes on holding keys and clicks alike while an
- * input it held still waits to be passed on.
+ * input it held still waits to be passed on. It holds nothing back while
+ * the page writes its values so that Playwright cannot read the call that
+ * tells of it (`reachesPlaywright`): the adapter would never hear of the
+ * input, so nothing would ever let it through.
  *
  * It listens on `window`, before anything of the page and before
  * Playwright's recorder, which listens on `document`: neither sees a held
@@ -209,6 +221,8 @@ export function gateIn(held: string, rules: GateRules): void {
     const target = event.composedPath()[0];
     return target instanceof Element ? target : null;
   };
+  /** Whether the adapter would hear of an input held now. */
+  const heard = () => rules.reachesPlaywright((value) => JSON.stringify(value));
   const hold = (event: Event) => {
     swallow(event);
     holding = true;
@@ -277,7 +291,7 @@ export function gateIn(held: string, rules: GateRules): void {
       detail: event.detail,
       target: clickTarget(event),
     };
-    if (!rules.clickHeld(click)) return;
+    if (!rules.clickHeld(click) || !heard()) return;
     hold(event);
     swallowDoubleClick = event.type === "click" && event.detail >= 2;
     tellClick(event);
@@ -344,7 +358,7 @@ export function gateIn(held: string, rules: GateRules): void {
   };
   const holdKey = (event: KeyboardEvent) => {
     const decided = rules.keyHeld({ on, press: pressOf(event), holding });
-    if (!decided.held) return;
+    if (!decided.held || !heard()) return;
     hold(event);
     swallowKeyUp.add(event.code);
     tell({

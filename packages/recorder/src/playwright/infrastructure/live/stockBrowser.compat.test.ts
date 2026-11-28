@@ -2593,3 +2593,39 @@ it("holds every key while a held input waits, and lets keys reach the page again
   await expect.poll(typed).toBe("abcd");
   expect(held()).toHaveLength(3);
 });
+
+it.each([
+  [
+    "gives arrays a toJSON that writes them as a string, as Prototype.js 1.6 does",
+    `Object.defineProperty(Array.prototype, "toJSON", { configurable: true, value() { return "[" + this.map((item) => JSON.stringify(item)).join(", ") + "]"; } });`,
+  ],
+  ["replaced JSON.stringify", `JSON.stringify = () => '{"tampered":true}';`],
+])(
+  "leaves a click and typing to a page that %s, and warns that its inputs are not recorded: Playwright's bindings write every call with the page's JSON.stringify",
+  async (_, script) => {
+    const browser = await onStockPlaywright(
+      `<script>${script}</script>
+      <button id="mark" onclick="this.textContent = 'Marked'">Mark</button>
+      <label>Item <input id="item" /></label>`
+    );
+    await reporting(browser);
+    await browser.ask({ kind: "holdInputs", on: true });
+    await browser.toldOf("inputsHeld");
+
+    const { warning } = await browser.toldOf("browserWarned");
+    expect(warning).toEqual({
+      kind: "notRecorded",
+      message: `Inputs on ${browser.url} are not recorded: the page changed JSON.stringify, or how it writes a built-in value, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs reach the page all the same.`,
+    });
+    await browser.click(browser.page.locator("#mark"));
+    await expect
+      .poll(() => browser.page.locator("#mark").textContent())
+      .toBe("Marked");
+    await browser.page.locator("#item").focus();
+    await browser.page.keyboard.type("ab");
+    await expect
+      .poll(() => browser.page.locator("#item").inputValue())
+      .toBe("ab");
+    expect(browser.told.map(({ kind }) => kind)).not.toContain("inputHeld");
+  }
+);

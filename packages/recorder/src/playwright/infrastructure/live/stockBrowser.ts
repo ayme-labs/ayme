@@ -69,6 +69,7 @@ import {
 import {
   ancestorRefs,
   followPickingIn,
+  heard,
   highlightIn,
   installGate,
   installTargetWatch,
@@ -414,11 +415,31 @@ async function openPage(
   let gateChanges = 0;
   let pickingChanges = 0;
 
+  /** Warns of each of a page's documents that Playwright does not hear,
+   * whose gate holds nothing back (`gateIn`). The recorder tells the same
+   * warning once. */
+  const warnIfUnheard = (page: Page) => {
+    for (const frame of page.frames())
+      void frame.evaluate(heard, undefined).then(
+        (heardThere) =>
+          heardThere ||
+          tell({
+            kind: "browserWarned",
+            warning: {
+              kind: "notRecorded",
+              message: `Inputs on ${frame.url()} are not recorded: the page changed JSON.stringify, or how it writes a built-in value, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs reach the page all the same.`,
+            },
+          }),
+        // A frame that is gone has no inputs to lose.
+        () => {}
+      );
+  };
   const track = (page: Page) => {
     const id = `page_${idOf.size + 1}` as PageId;
     pages.set(id, page);
     idOf.set(page, id);
     tell({ kind: "pageOpened", page: id, url: page.url() });
+    page.on("load", () => warnIfUnheard(page));
     page.on("framenavigated", (frame) => {
       if (frame === page.mainFrame())
         tell({ kind: "pageNavigated", page: id, url: frame.url() });
@@ -839,6 +860,8 @@ async function openPage(
     await Promise.all(
       everyFrame().map((frame) => frame.evaluate(setGate, on).catch(() => {}))
     );
+    // A page may have changed JSON.stringify since it loaded.
+    if (on) for (const open of pages.values()) warnIfUnheard(open);
     tell({ kind: "inputsHeld", on });
     // Record is applied: the page opened to start recording goes to its
     // URL now, inside the recording and its trace.

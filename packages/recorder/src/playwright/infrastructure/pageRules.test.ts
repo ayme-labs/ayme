@@ -15,6 +15,7 @@ import {
   leftAlone,
   modifiersOf,
   ownRefOf,
+  reachesPlaywright,
   recordedAsPress,
   recordersOwn,
   replayed,
@@ -179,6 +180,37 @@ describe("which click the gate holds back", () => {
     expect(
       clickHeld({ type: "click", button: 0, detail: 1, target: null })
     ).toBe(false);
+  });
+});
+
+describe("whether a page's calls reach Playwright", () => {
+  const stringify = (value: unknown) => JSON.stringify(value);
+
+  it("holds while the page's JSON.stringify writes what Playwright reads back", () => {
+    expect(reachesPlaywright(stringify)).toBe(true);
+  });
+
+  it("fails for a JSON.stringify the page replaced, or one that throws", () => {
+    expect(reachesPlaywright(() => '{"tampered":true}')).toBe(false);
+    expect(
+      reachesPlaywright(() => {
+        throw new RangeError("Maximum call stack size exceeded");
+      })
+    ).toBe(false);
+  });
+
+  it("fails while arrays have a toJSON that writes them as a string, as Prototype.js 1.6 gives them", () => {
+    Object.defineProperty(Array.prototype, "toJSON", {
+      configurable: true,
+      value(this: unknown[]) {
+        return `[${this.map((item) => JSON.stringify(item)).join(", ")}]`;
+      },
+    });
+    try {
+      expect(reachesPlaywright(stringify)).toBe(false);
+    } finally {
+      delete (Array.prototype as { toJSON?: unknown }).toJSON;
+    }
   });
 });
 

@@ -155,6 +155,24 @@ export function clickHeld(click: {
   return click.button === 0 && click.detail !== 0;
 }
 
+/**
+ * Whether a call from a page can reach Node through a Playwright binding,
+ * given the page's own `JSON.stringify`. Playwright writes every binding
+ * call with it, so a page that replaced it, or that writes a built-in value
+ * its own way, as Prototype.js 1.6 gives arrays a `toJSON`, sends nothing
+ * Node can read: the gate's call is lost, and so is every report of
+ * Playwright's recorder.
+ */
+export function reachesPlaywright(
+  stringify: (value: unknown) => string
+): boolean {
+  try {
+    return stringify({ a: [0, "b"] }) === '{"a":[0,"b"]}';
+  } catch {
+    return false;
+  }
+}
+
 /** The modifier keys held with an input, in a fixed order. */
 export function modifiersOf(event: {
   readonly altKey: boolean;
@@ -433,4 +451,5 @@ export type GateRules = {
   readonly mouseRoute: typeof mouseRoute;
   readonly keyRoute: typeof keyRoute;
   readonly keyHeld: typeof keyHeld;
+  readonly reachesPlaywright: typeof reachesPlaywright;
 };
