@@ -2,7 +2,12 @@ import { EventEmitter } from "node:events";
 import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 
-import { RecorderStartError, type RecordingOutcome } from "@ayme-dev/recorder";
+import {
+  RecorderStartError,
+  type RecorderUpdate,
+  type RecorderWarning,
+  type RecordingOutcome,
+} from "@ayme-dev/recorder";
 
 import {
   browserOf,
@@ -263,8 +268,9 @@ function terminal() {
   });
 }
 
-/** A recorder the test ends: `ends` counts how often it was asked to. */
-function recorder() {
+/** A recorder the test ends: `ends` counts how often it was asked to. It
+ * tells a subscriber of `warnings` as it subscribes. */
+function recorder(warnings: RecorderWarning[] = []) {
   let finish!: (outcome: RecordingOutcome) => void;
   const done = new Promise<RecordingOutcome>((resolve) => (finish = resolve));
   const handle = {
@@ -273,11 +279,19 @@ function recorder() {
     end() {
       handle.ends += 1;
     },
-    subscribe: () => () => {},
+    subscribe: (listener: (update: RecorderUpdate) => void) => {
+      listener({ state: { warnings } } as unknown as RecorderUpdate);
+      return () => {};
+    },
     done,
   };
   return { handle, finish };
 }
+
+const warning: RecorderWarning = {
+  kind: "notRecorded",
+  message: "A step is in the recording without its element.",
+};
 
 const launched = { launch: { url: "http://shop.test/", headless: true } };
 const saved: RecordingOutcome = { kind: "saved", folder: "/p/rec_1" };
@@ -301,13 +315,25 @@ describe("how a run of codegen ends", () => {
     }
   );
 
-  it("goes on to the end when the terminal is gone and every write fails", async () => {
-    const { handle, finish } = recorder();
+  it("prints the recorder's warnings on stderr", async () => {
+    const { handle, finish } = recorder([warning]);
     const at = terminal();
     const run = runUntilEnd(handle, launched, at);
+    finish(saved);
 
+    expect(await run).toBe(0);
+    expect(at.stderr.text).toBe(
+      "Warning: A step is in the recording without its element.\n"
+    );
+  });
+
+  it("goes on to the end when the terminal is gone and every write fails, a warning's too", async () => {
+    const { handle, finish } = recorder([warning]);
+    const at = terminal();
     at.stdout.gone = true;
     at.stderr.gone = true;
+    const run = runUntilEnd(handle, launched, at);
+
     at.emit("SIGHUP");
     finish(saved);
 
