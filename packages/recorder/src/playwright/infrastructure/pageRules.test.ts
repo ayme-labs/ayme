@@ -235,6 +235,15 @@ describe("whether a page's calls reach Playwright", () => {
     expect(reaches(() => "tampered")).toBe(false);
   });
 
+  it("fails for a JSON.stringify that empties the call it is given before it writes it", () => {
+    expect(
+      reaches((value) => {
+        (value as { serializedArgs: unknown[] }).serializedArgs = [];
+        return JSON.stringify(value);
+      })
+    ).toBe(false);
+  });
+
   it("fails for a JSON.stringify that throws, whatever the parser: the call cannot be made", () => {
     const throwing = () => {
       throw new RangeError("Maximum call stack size exceeded");

@@ -139,7 +139,7 @@ export function reachesPlaywright(
   stringify: (value: unknown) => string,
   parse: (text: string) => unknown
 ): boolean {
-  const call = {
+  const callOf = () => ({
     name: "__aymeRecorderHeld",
     seq: 1,
     serializedArgs: [
@@ -152,10 +152,13 @@ export function reachesPlaywright(
         id: 1,
       },
     ],
-  };
+  });
+  // The page's `stringify` never gets this one: one that changes what it is
+  // given would otherwise change what its text is compared with too.
+  const call = callOf();
   let written: string;
   try {
-    written = stringify(call);
+    written = stringify(callOf());
   } catch {
     return false;
   }
