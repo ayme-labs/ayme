@@ -16,6 +16,7 @@ import {
   modifiersOf,
   ownRefOf,
   reachesPlaywright,
+  releasedAsText,
   recordedAsPress,
   recordersOwn,
   replayed,
@@ -185,32 +186,90 @@ describe("which click the gate holds back", () => {
 
 describe("whether a page's calls reach Playwright", () => {
   const stringify = (value: unknown) => JSON.stringify(value);
+  const reaches = (write: (value: unknown) => string) =>
+    reachesPlaywright(write, JSON.parse);
+  /** Runs `check` while `proto` has this `toJSON`. */
+  const withToJSON = (
+    proto: object,
+    toJSON: (this: unknown) => unknown,
+    check: () => void
+  ) => {
+    Object.defineProperty(proto, "toJSON", {
+      configurable: true,
+      value: toJSON,
+    });
+    try {
+      check();
+    } finally {
+      delete (proto as { toJSON?: unknown }).toJSON;
+    }
+  };
 
-  it("holds while the page's JSON.stringify writes what Playwright reads back", () => {
-    expect(reachesPlaywright(stringify)).toBe(true);
+  it("holds while the page's JSON.stringify writes what Playwright reads back, however it lays the text out", () => {
+    expect(reaches(stringify)).toBe(true);
+    expect(reaches((value) => JSON.stringify(value, null, 2))).toBe(true);
   });
 
   it("fails for a JSON.stringify the page replaced, or one that throws", () => {
-    expect(reachesPlaywright(() => '{"tampered":true}')).toBe(false);
+    expect(reaches(() => '{"tampered":true}')).toBe(false);
     expect(
-      reachesPlaywright(() => {
+      reaches(() => {
         throw new RangeError("Maximum call stack size exceeded");
       })
     ).toBe(false);
   });
 
   it("fails while arrays have a toJSON that writes them as a string, as Prototype.js 1.6 gives them", () => {
-    Object.defineProperty(Array.prototype, "toJSON", {
-      configurable: true,
-      value(this: unknown[]) {
-        return `[${this.map((item) => JSON.stringify(item)).join(", ")}]`;
+    withToJSON(
+      Array.prototype,
+      function (this: unknown) {
+        return `[${(this as unknown[]).map((item) => JSON.stringify(item)).join(", ")}]`;
       },
-    });
-    try {
-      expect(reachesPlaywright(stringify)).toBe(false);
-    } finally {
-      delete (Array.prototype as { toJSON?: unknown }).toJSON;
-    }
+      () => expect(reaches(stringify)).toBe(false)
+    );
+  });
+
+  it("fails for an object toJSON that empties only the call itself, which it tells by its arguments", () => {
+    withToJSON(
+      Object.prototype,
+      function (this: unknown) {
+        return this && typeof this === "object" && "serializedArgs" in this
+          ? {}
+          : this;
+      },
+      () => expect(reaches(stringify)).toBe(false)
+    );
+  });
+
+  it("holds while strings, numbers and dates have a toJSON: a call holds none of them as an object", () => {
+    for (const proto of [String.prototype, Number.prototype, Date.prototype])
+      withToJSON(
+        proto,
+        () => "tampered",
+        () => expect(reaches(stringify)).toBe(true)
+      );
+  });
+});
+
+describe("which key the gate types itself when it lets a held key go", () => {
+  it("types a character into a field, a text area or editable content", () => {
+    for (const target of ["input", "textarea", "contentEditable"] as const)
+      expect(releasedAsText(key({ key: "a", target }))).toBe(true);
+    expect(releasedAsText(key({ key: "é", alt: true, target: "input" }))).toBe(
+      true
+    );
+    expect(releasedAsText(key({ key: "😀", target: "input" }))).toBe(true);
+  });
+
+  it("types nothing for a key that is no character, one with Control or Meta, or one outside a field", () => {
+    expect(releasedAsText(key({ key: "Enter", target: "input" }))).toBe(false);
+    expect(releasedAsText(key({ key: "a", ctrl: true, target: "input" }))).toBe(
+      false
+    );
+    expect(releasedAsText(key({ key: "a", meta: true, target: "input" }))).toBe(
+      false
+    );
+    expect(releasedAsText(key({ key: "a", target: "other" }))).toBe(false);
   });
 });
 

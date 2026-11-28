@@ -15,6 +15,7 @@ import type {
   BrowserContext,
   BrowserContextOptions,
   CDPSession,
+  ConsoleMessage,
   Frame,
   Locator,
   Page,
@@ -69,7 +70,6 @@ import {
 import {
   ancestorRefs,
   followPickingIn,
-  heard,
   highlightIn,
   installGate,
   installTargetWatch,
@@ -415,31 +415,30 @@ async function openPage(
   let gateChanges = 0;
   let pickingChanges = 0;
 
-  /** Warns of each of a page's documents that Playwright does not hear,
-   * whose gate holds nothing back (`gateIn`). The recorder tells the same
-   * warning once. */
-  const warnIfUnheard = (page: Page) => {
-    for (const frame of page.frames())
-      void frame.evaluate(heard, undefined).then(
-        (heardThere) =>
-          heardThere ||
-          tell({
-            kind: "browserWarned",
-            warning: {
-              kind: "notRecorded",
-              message: `Inputs on ${frame.url()} are not recorded: the page changed JSON.stringify, or how it writes a built-in value, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs reach the page all the same; the toolbar on it cannot reach the recorder, so use the recorder window.`,
-            },
-          }),
-        // A frame that is gone has no inputs to lose.
-        () => {}
-      );
+  /** What a document's gate says on the console when it left an input to
+   * the page (`gateIn`), for a person. */
+  const unheard: Record<string, (address: string) => string> = {
+    unheard: (address) =>
+      `Inputs on ${address} are not recorded: the page changed JSON.stringify, or how it writes an object, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs still reach the page, though a key may lose its own action, such as Enter's. Stop and finish in the recorder window, at the address the recorder printed.`,
+    refused: (address) =>
+      `An input on ${address} is not recorded: the page told of it in a form the recorder does not take. The input still reaches the page, though a key may lose its own action, such as Enter's.`,
+  };
+  const heardOnConsole = (message: ConsoleMessage) => {
+    if (message.type() !== "debug") return;
+    const [said, why = "", address = ""] = message.text().split(" ");
+    const warned = said === heldBinding ? unheard[why] : undefined;
+    if (warned)
+      tell({
+        kind: "browserWarned",
+        warning: { kind: "notRecorded", message: warned(address) },
+      });
   };
   const track = (page: Page) => {
     const id = `page_${idOf.size + 1}` as PageId;
     pages.set(id, page);
     idOf.set(page, id);
     tell({ kind: "pageOpened", page: id, url: page.url() });
-    page.on("load", () => warnIfUnheard(page));
+    page.on("console", heardOnConsole);
     page.on("framenavigated", (frame) => {
       if (frame === page.mainFrame())
         tell({ kind: "pageNavigated", page: id, url: frame.url() });
@@ -480,6 +479,8 @@ async function openPage(
               ? { kind: "typing" }
               : { kind: "press", nothingFocused: input.nothingFocused },
       });
+      // Taken: the gate keeps holding the input only on this answer.
+      return true;
     }
   );
   /** Who hears of a page's activity now: a wait for a Settled Page. */
@@ -860,8 +861,6 @@ async function openPage(
     await Promise.all(
       everyFrame().map((frame) => frame.evaluate(setGate, on).catch(() => {}))
     );
-    // A page may have changed JSON.stringify since it loaded.
-    if (on) for (const open of pages.values()) warnIfUnheard(open);
     tell({ kind: "inputsHeld", on });
     // Record is applied: the page opened to start recording goes to its
     // URL now, inside the recording and its trace.

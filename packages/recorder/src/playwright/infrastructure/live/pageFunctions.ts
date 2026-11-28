@@ -7,7 +7,7 @@ import {
   type PickingStart,
 } from "../in-page/drawing";
 import { pickWithGate } from "../in-page/calls";
-import { gateIn, heardIn } from "../in-page/gate";
+import { gateIn } from "../in-page/gate";
 import {
   actedOn,
   ancestorRefsIn,
@@ -28,7 +28,9 @@ import {
   modifiersOf,
   mouseRoute,
   reachesPlaywright,
+  releasedAsText,
   recordersOwn,
+  sameJson,
   recordedAsPress,
   replayed,
   replayedEffect,
@@ -58,15 +60,10 @@ export const installGate: (held: string) => void = withRules(
     keyRoute,
     keyHeld,
     reachesPlaywright,
+    releasedAsText,
   },
-  [leftAlone, typingKey]
+  [leftAlone, typingKey, sameJson]
 );
-
-/** Whether Playwright hears a call from the document: its gate holds
- * nothing back where it does not. */
-export const heard: (arg: undefined) => boolean = withRules(heardIn, {
-  reachesPlaywright,
-});
 
 const ancestorRules = { ancestorChain, elementAbove, ariaRefOf };
 

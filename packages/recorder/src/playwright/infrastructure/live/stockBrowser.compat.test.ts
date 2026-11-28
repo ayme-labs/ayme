@@ -2594,38 +2594,104 @@ it("holds every key while a held input waits, and lets keys reach the page again
   expect(held()).toHaveLength(3);
 });
 
+/** The warning of a document whose gate left an input to the page because
+ * Playwright would not hear of it. */
+const unheardAt = (address: string) => ({
+  kind: "notRecorded",
+  message: `Inputs on ${address} are not recorded: the page changed JSON.stringify, or how it writes an object, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs still reach the page, though a key may lose its own action, such as Enter's. Stop and finish in the recorder window, at the address the recorder printed.`,
+});
+const notRecorded = (browser: Harness) =>
+  browser
+    .toldOf("browserWarned", ({ warning }) => warning.kind === "notRecorded")
+    .then(({ warning }) => warning);
+const MARK = `<button id="mark" onclick="this.textContent = 'Marked'">Mark</button>
+  <label>Item <input id="item" /></label>`;
+const PROTOTYPE_JS = `Object.defineProperty(Array.prototype, "toJSON", { configurable: true, value() { return "[" + this.map((item) => JSON.stringify(item)).join(", ") + "]"; } });`;
+const REPLACED = `JSON.stringify = () => '{"tampered":true}';`;
+
+/** A click and typing on the page, and what reached it. */
+async function clickAndType(browser: Harness) {
+  await browser.click(browser.page.locator("#mark"));
+  await expect
+    .poll(() => browser.page.locator("#mark").textContent())
+    .toBe("Marked");
+  await browser.page.locator("#item").focus();
+  await browser.page.keyboard.type("ab");
+  await expect
+    .poll(() => browser.page.locator("#item").inputValue())
+    .toBe("ab");
+}
+
+async function holding(browser: Harness) {
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+}
+
 it.each([
   [
     "gives arrays a toJSON that writes them as a string, as Prototype.js 1.6 does",
-    `Object.defineProperty(Array.prototype, "toJSON", { configurable: true, value() { return "[" + this.map((item) => JSON.stringify(item)).join(", ") + "]"; } });`,
+    PROTOTYPE_JS,
   ],
-  ["replaced JSON.stringify", `JSON.stringify = () => '{"tampered":true}';`],
+  ["replaced JSON.stringify", REPLACED],
 ])(
   "leaves a click and typing to a page that %s, and warns that its inputs are not recorded: Playwright's bindings write every call with the page's JSON.stringify",
   async (_, script) => {
     const browser = await onStockPlaywright(
-      `<script>${script}</script>
-      <button id="mark" onclick="this.textContent = 'Marked'">Mark</button>
-      <label>Item <input id="item" /></label>`
+      `<script>${script}</script>${MARK}`
     );
-    await reporting(browser);
-    await browser.ask({ kind: "holdInputs", on: true });
-    await browser.toldOf("inputsHeld");
+    await holding(browser);
 
-    const { warning } = await browser.toldOf("browserWarned");
-    expect(warning).toEqual({
-      kind: "notRecorded",
-      message: `Inputs on ${browser.url} are not recorded: the page changed JSON.stringify, or how it writes a built-in value, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs reach the page all the same; the toolbar on it cannot reach the recorder, so use the recorder window.`,
-    });
-    await browser.click(browser.page.locator("#mark"));
-    await expect
-      .poll(() => browser.page.locator("#mark").textContent())
-      .toBe("Marked");
-    await browser.page.locator("#item").focus();
-    await browser.page.keyboard.type("ab");
-    await expect
-      .poll(() => browser.page.locator("#item").inputValue())
-      .toBe("ab");
-    expect(browser.told.map(({ kind }) => kind)).not.toContain("inputHeld");
+    await clickAndType(browser);
+
+    expect(await notRecorded(browser)).toEqual(unheardAt(browser.url));
   }
 );
+
+it("sends on by itself a click and typing whose call Playwright rejects, on a page that writes only that call so that Playwright cannot read it", async () => {
+  // Only a call that names its document, as the gate's note of an input
+  // does, loses its arguments: the gate's check of the page passes.
+  const browser = await onStockPlaywright(
+    `<script>Object.defineProperty(Object.prototype, "toJSON", { configurable: true, value() {
+      const first = Array.isArray(this.serializedArgs) && this.serializedArgs[0];
+      return first && Array.isArray(first.o) && first.o.some((entry) => entry.k === "document")
+        ? { name: this.name, seq: this.seq, serializedArgs: "lost" }
+        : this;
+    } });</script>${MARK}`
+  );
+  await holding(browser);
+
+  await clickAndType(browser);
+
+  expect(await notRecorded(browser)).toEqual(unheardAt(browser.url));
+});
+
+it("warns of a document that changes JSON.stringify after Record, and leaves its click to it", async () => {
+  const browser = await onStockPlaywright(MARK);
+  await holding(browser);
+  await browser.page.evaluate(REPLACED);
+
+  await clickAndType(browser);
+
+  expect(await notRecorded(browser)).toEqual(unheardAt(browser.url));
+});
+
+it("warns of a frame from another site, added after the page loaded, by the frame's own address, and leaves its click to it", async () => {
+  const browser = await onStockPlaywright(
+    `<script>if (location.pathname === "/child") ${REPLACED}</script>${MARK}`
+  );
+  await holding(browser);
+  const child = `${browser.url.replace("127.0.0.1", "localhost")}child`;
+  await browser.page.evaluate((src) => {
+    const frame = document.createElement("iframe");
+    frame.src = src;
+    document.body.append(frame);
+  }, child);
+  const mark = browser.page.frameLocator("iframe").locator("#mark");
+  await mark.waitFor();
+
+  await browser.click(mark);
+
+  await expect.poll(() => mark.textContent()).toBe("Marked");
+  expect(await notRecorded(browser)).toEqual(unheardAt(child));
+});

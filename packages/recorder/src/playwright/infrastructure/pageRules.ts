@@ -156,21 +156,73 @@ export function clickHeld(click: {
 }
 
 /**
- * Whether a call from a page can reach Node through a Playwright binding,
- * given the page's own `JSON.stringify`. Playwright writes every binding
- * call with it, so a page that replaced it, or that writes a built-in value
- * its own way, as Prototype.js 1.6 gives arrays a `toJSON`, sends nothing
- * Node can read: the gate's call is lost, and so is every report of
- * Playwright's recorder.
+ * Whether a call from a page can reach Node through a Playwright binding.
+ * Playwright writes every binding call with the page's own `JSON.stringify`,
+ * so a page that replaced it, or that changed how it writes an object, as
+ * Prototype.js 1.6 gives arrays a `toJSON`, sends a call Node cannot read:
+ * it is lost, and so is every report of Playwright's recorder. The probe is
+ * shaped as Playwright writes a call, and is read back with a `parse` the
+ * page has not replaced: text laid out another way still reads the same.
  */
 export function reachesPlaywright(
-  stringify: (value: unknown) => string
+  stringify: (value: unknown) => string,
+  parse: (text: string) => unknown
 ): boolean {
+  const call = {
+    name: "__aymeRecorderHeld",
+    seq: 1,
+    serializedArgs: [
+      {
+        o: [
+          { k: "kind", v: "click" },
+          { k: "x", v: 1.5 },
+          { k: "modifiers", v: { a: ["Shift"], id: 2 } },
+        ],
+        id: 1,
+      },
+    ],
+  };
   try {
-    return stringify({ a: [0, "b"] }) === '{"a":[0,"b"]}';
+    return sameJson(parse(stringify(call)), call);
   } catch {
     return false;
   }
+}
+
+/**
+ * Whether a held key the adapter did not take is typed by the gate itself
+ * when it lets the key go: a key that types one character into a field. The
+ * page then gets the key's events but not its own action, which an event a
+ * page makes never has: any other key's action, as Enter's or Tab's, is
+ * lost.
+ */
+export function releasedAsText(key: KeyFacts): boolean {
+  return (
+    key.target !== "other" &&
+    [...key.key].length === 1 &&
+    !key.ctrl &&
+    !key.meta
+  );
+}
+
+/** Whether two plain JSON values are the same. */
+export function sameJson(a: unknown, b: unknown): boolean {
+  if (
+    a === null ||
+    b === null ||
+    typeof a !== "object" ||
+    typeof b !== "object"
+  )
+    return a === b;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((key) =>
+    sameJson(
+      (a as Record<string, unknown>)[key],
+      (b as Record<string, unknown>)[key]
+    )
+  );
 }
 
 /** The modifier keys held with an input, in a fixed order. */
@@ -452,4 +504,5 @@ export type GateRules = {
   readonly keyRoute: typeof keyRoute;
   readonly keyHeld: typeof keyHeld;
   readonly reachesPlaywright: typeof reachesPlaywright;
+  readonly releasedAsText: typeof releasedAsText;
 };
