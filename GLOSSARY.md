@@ -48,7 +48,7 @@ One running ayme connected to one browser, started with `ayme open` or `ayme att
 _Avoid_: daemon, server, background process, front. Not a Page State Session, which is what ayme remembers of one document. A page that ships ayme is not a Session.
 
 **Tab**:
-One tab of a Session's browser. It shows one page at a time and outlives it: a page load gives the Tab a new page. A Session works on the most recently active Tab unless a command names another.
+One tab of a Session's browser. It shows one page at a time and outlives it: a page load gives the Tab a new page. A Session works on the most recently active Tab unless a command names another. The Session gives each Tab an id, written `t<n>`, the first time it finds the Tab in the browser's tab list. The Tab keeps it across page loads until it closes, and no other Tab is given it. A tab that shows the Inspector window is none of the Session's Tabs and has no id.
 _Avoid_: window, target
 
 **Swap**:

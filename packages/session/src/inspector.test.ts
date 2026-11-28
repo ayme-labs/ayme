@@ -72,7 +72,7 @@ it("a window's call on the contract is answered by the Host of the Tab it shows,
   expect(second.hosted).toBe(true);
 });
 
-it("a Tab that shows the Inspector window is never the one the Session works on", async () => {
+it("a Tab that shows the Inspector window is never the one the Session works on, and has no id", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.show({
     tab: { url: "http://127.0.0.1:5173/shop", title: "Shop" },
@@ -86,7 +86,7 @@ it("a Tab that shows the Inspector window is never the one the Session works on"
   expect(await session.ask({ pageObjects: {} })).toMatchObject({
     ok: true,
     text: expect.stringMatching(
-      /^Tab: Shop \(http:\/\/127\.0\.0\.1:5173\/shop\)/
+      /^Tab t1: Shop \(http:\/\/127\.0\.0\.1:5173\/shop\)/
     ),
   });
   expect(await window.ask("getState")).toMatchObject({ ok: true });
@@ -97,6 +97,13 @@ it("a Tab that shows the Inspector window is never the one the Session works on"
   });
   expect(windowTab.hosted).toBe(false);
   expect(windowTab.inspectorCalls).toEqual([]);
+  // Nor does it get an id: the next Tab is the Session's second.
+  browser.openTab("http://127.0.0.1:5173/basket");
+  expect(await session.ask({ pageObjects: {} })).toMatchObject({
+    text: expect.stringMatching(
+      /^Tab t2: http:\/\/127\.0\.0\.1:5173\/basket\n/
+    ),
+  });
 });
 
 it("a window's call when no tab is open is answered that no tab is open", async () => {

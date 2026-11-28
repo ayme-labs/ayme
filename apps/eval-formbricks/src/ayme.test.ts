@@ -148,7 +148,7 @@ describe("what the harness reads of the command", () => {
     expect(
       listedToolNames(
         [
-          "Tab: Edit survey (http://localhost:3000/edit)",
+          "Tab t1: Edit survey (http://localhost:3000/edit)",
           "SurveyEditorPage.fillSurveyForm: Replaces the survey's name.",
           '  parameters: {"type":"object"}',
           "SurveyEditorPage.save (unavailable: The survey is a draft.): Saves it.",
