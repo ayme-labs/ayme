@@ -444,6 +444,9 @@ type Input = {
    * from: it starts at a read the timeline is told was lost, once it has
    * reached the page and so has its moment. */
   readonly beforeLost?: boolean;
+  /** Its "before" could not be taken, and it starts from its page's last
+   * read instead, which was taken before its press. */
+  readonly beforeEarlier?: boolean;
   /** Known from its report, on a page that went to another document since:
    * what Playwright reports as a revision of it is typing of its own there. */
   readonly elsewhere?: boolean;
@@ -2375,6 +2378,7 @@ function written(
     after: covered.at(-1)?.after ?? input.after,
     at: input.passedOnAt ?? 0,
     ...(input.targetRead ? { targetRead: input.targetRead } : {}),
+    ...(input.beforeEarlier ? { beforeEarlier: true } : {}),
   };
 }
 
@@ -2690,7 +2694,7 @@ function withoutItsSnapshot(draft: Draft, owner: Input) {
       ...(owner.held.kind === "typing"
         ? {}
         : latest
-          ? { before: latest.id }
+          ? { before: latest.id, beforeEarlier: true }
           : { before: nextSnapshotId(draft), beforeLost: true }),
     });
     draft.todo.push({

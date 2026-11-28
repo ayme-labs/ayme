@@ -94,6 +94,12 @@ export type RecordedInteraction = {
    */
   readonly beforeFromReport?: boolean;
   /**
+   * For a held input whose own read could not be had in time: `before` is
+   * its page's last read, taken before its press, so it shows no focus the
+   * press moved, and what that read shows is the input before's.
+   */
+  readonly beforeEarlier?: boolean;
+  /**
    * The read its target is found in, when that is not its "before": an
    * assertion placed at the page's read before typing that followed it,
    * whose own read came after the typing began. The element it picked can

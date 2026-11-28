@@ -133,6 +133,20 @@ const hurry = (id: SnapshotId): ToDo => ({
   ask: { kind: "takeSnapshot", snapshot: id, page: page1 },
   within: HELD_READ_LIMIT_MS,
 });
+/** An Interaction whose "before" is its page's last read, as its own read
+ * could not be had: taken before its press, it shows no focus the press
+ * moved. */
+const fromLastRead = (written: ToDo): ToDo => {
+  if (written.kind !== "timeline" || written.add.kind !== "interaction")
+    throw new Error("Not an Interaction.");
+  return {
+    ...written,
+    add: {
+      ...written.add,
+      interaction: { ...written.add.interaction, beforeEarlier: true },
+    },
+  };
+};
 /** A read that could not be taken, as the timeline is told of it: where a
  * click starts that had no read of its page to start from. */
 const lostRead = (id: SnapshotId, at = 20, address = url): ToDo => ({
@@ -1905,7 +1919,7 @@ describe("the lifecycle", () => {
         [waitForSettled(input2)],
         [readAfter(snapshot4)],
         [keep(snapshot4), letThrough(input2)],
-        [interaction(snapshot2, snapshot4, 22)],
+        [fromLastRead(interaction(snapshot2, snapshot4, 22))],
       ],
       state: { phase: "recording" },
     },

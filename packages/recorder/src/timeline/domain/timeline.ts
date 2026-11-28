@@ -1394,7 +1394,7 @@ export class Timeline {
     const { visit, from } = held;
     // A read after it that could not be kept is no "after" either.
     const to = comparable(visit.snapshots[end]);
-    if (!interaction.beforeFromReport)
+    if (!interaction.beforeFromReport && !interaction.beforeEarlier)
       await this.pressedAfter(visit, from, interaction);
     const written = interaction.beforeFromReport
       ? { ...held, ...(await this.pictured(visit, interaction, from, to)) }
@@ -1476,7 +1476,9 @@ export class Timeline {
       ? undefined
       : visit.waiting.find(
           (waiting) =>
-            waiting.before === next.snapshot.id && !waiting.beforeFromReport
+            waiting.before === next.snapshot.id &&
+            !waiting.beforeFromReport &&
+            !waiting.beforeEarlier
         );
     const pressed = click && this.beforeItsPress(through, next, click.report);
     if (pressed) this.beforePress.set(next.snapshot.id, pressed);
