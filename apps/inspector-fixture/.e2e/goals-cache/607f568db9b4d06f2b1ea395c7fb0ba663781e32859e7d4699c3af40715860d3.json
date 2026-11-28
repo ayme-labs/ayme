@@ -1,6 +1,6 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-27T08:41:36.653Z",
+  "createdAt": "2026-11-28T18:53:23.285Z",
   "payload": {
     "actions": [
       {
@@ -18,14 +18,14 @@
       "version": "1"
     },
     "recordedFor": {
-      "testId": "tests/goals/structure.goal.ts::inline::hovering%20a%20structure%20node%20highlights%20it%20on%20the%20page%2C%20and%20selecting%20it%20keeps%20it%20highlighted",
+      "testId": "tests/goals/structure.goal.ts::inline::selecting%20a%20structure%20node%20highlights%20it%20solid%20on%20the%20page",
       "targetId": "chromium",
       "instructionDigest": "425c310f80b361ee9b81d40c3249d58293d4f36530a6743062ed02b33f8bc788",
       "paramsDigest": "471148f3b63b56e887bee4a5303315c1fe71f58d75c3634e3b00643d18c26c4d",
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "Tapped the Structure lens button in the Inspector. It is now pressed, and the navigator shows the \"Page structure\" tree with 9 refs.",
+    "summary": "Tapped the Structure lens button in the Inspector. It is now pressed, Model is unpressed, and the navigator shows the \"Page structure\" tree.",
     "startPath": "/",
     "endPath": "/",
     "endAnchors": [
@@ -39,9 +39,6 @@
         "states": [
           "pressed"
         ]
-      },
-      {
-        "text": "9 refs"
       },
       {
         "text": "e2"
@@ -58,6 +55,9 @@
       {
         "name": "Groceries",
         "text": "\"Groceries\""
+      },
+      {
+        "text": "e4"
       }
     ],
     "goneAnchors": [
@@ -73,9 +73,6 @@
         "name": "Structure"
       },
       {
-        "text": "0 refs"
-      },
-      {
         "role": "button",
         "name": "On this page · 1",
         "states": [
@@ -86,16 +83,19 @@
         "name": "/"
       },
       {
-        "text": "127.0.0.1:59733"
+        "text": "127.0.0.1:52926"
       },
       {
         "text": "page"
       },
       {
         "name": "entries"
+      },
+      {
+        "text": "ListItem[0]"
       }
     ],
-    "endWaitMs": 14082,
+    "endWaitMs": 14074,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-27T08:41:36.655Z",
+  "createdAt": "2026-11-28T18:54:42.259Z",
   "payload": {
     "actions": [
       {
@@ -17,14 +17,14 @@
       "version": "1"
     },
     "recordedFor": {
-      "testId": "tests/goals/structure.goal.ts::inline::hovering%20a%20structure%20node%20highlights%20it%20on%20the%20page%2C%20and%20selecting%20it%20keeps%20it%20highlighted",
+      "testId": "tests/goals/structure.goal.ts::inline::hovering%20a%20structure%20node%20highlights%20it%20dashed%20on%20the%20page",
       "targetId": "chromium",
       "instructionDigest": "6e50731f107a069c159ae912e5f8d4cf9cc2aceab120b0fc5f30186a8de2cbf4",
       "paramsDigest": "12ba32785a83164844157d90778eeba4de35a79672eb2ec36a8de65503718161",
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "Hovered the e5 textbox row tagged .newItemInput in the Structure tree. A highlight box and the label locator('ayme-ref=e5') appeared.",
+    "summary": "Hovered the Structure-lens node tagged .newItemInput (e5 textbox \"New item\"). A highlight box and the locator label \"locator('ayme-ref=e5')\" appeared.",
     "startPath": "/",
     "endPath": "/",
     "endAnchors": [
@@ -32,7 +32,7 @@
         "text": "locator('ayme-ref=e5')"
       }
     ],
-    "endWaitMs": 14796,
+    "endWaitMs": 13429,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",
