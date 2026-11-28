@@ -19,7 +19,7 @@ What a model holds cannot all be read from its types. A locator's type cannot sa
 - The build derives the development-time contract from TypeScript visibility and static types: action schemas from their signatures, and a declared child's model from its type, which must agree with the declaration.
 - Because a child's declaration says whether it is one element or many, ayme can warn when a single child matches several elements, and names each element of a collection by its index.
 - The build fails rather than guess, so an unsupported or ambiguous type gives a build diagnostic instead of a weak runtime schema: it fails on a type the compiler cannot represent, with no override for it, and on a declaration on a member that holds neither a locator nor a Page Object, on a shape the guide does not list, or whose type it cannot resolve.
-- A Locator member that resolves to its Page Object's root is the root, not a child (ADR-0067). The Structural Page State marks only Page Object Roots; marking children is a separate decision.
+- A Locator member that resolves to its Page Object's root is the root, not a child (ADR-0061). The Structural Page State marks only Page Object Roots; marking children is a separate decision.
 
 ## Considered and rejected
 

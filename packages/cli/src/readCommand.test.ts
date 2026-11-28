@@ -437,6 +437,34 @@ describe("readCommand for a Session", () => {
     expect(readCommand(["-s=", "close"]).kind).toBe("error");
   });
 
+  it.each([
+    {
+      args: ["-s=", "close"],
+      message: "Give -s the name of a Session.",
+    },
+    {
+      args: ["tools", "--tab="],
+      message:
+        "Give --tab a tab's id or the URL it shows, as the first line of ayme page-objects prints them.",
+    },
+  ])("says what an empty option needs: `$args`", ({ args, message }) => {
+    expect(readCommand(args)).toEqual({
+      kind: "error",
+      text: `${message}\n\n${USAGE}`,
+    });
+  });
+
+  it.each([
+    [["close", "--help"]],
+    [["-h", "tools"]],
+    [["open", "a", "b", "-h"]],
+  ])(
+    "prints the usage text for help beside a Session's command: `%s`",
+    (args) => {
+      expect(readCommand(args)).toEqual({ kind: "help", text: USAGE });
+    }
+  );
+
   it("lists attach, detach, list and -s in its usage text", () => {
     expect(USAGE).toContain("ayme attach --cdp=<url>");
     expect(USAGE).toContain("ayme detach");
@@ -510,6 +538,12 @@ describe("readCommand for a Session", () => {
     });
   });
 
+  it("hands the Session an id --tab gives, as it hands it a URL", () => {
+    expect(readCommand(["tools", "--tab=t2"])).toMatchObject({
+      request: { tools: { tab: "t2" } },
+    });
+  });
+
   it("names the Tab for ayme tools and ayme call with --tab", () => {
     expect(readCommand(["tools", "--tab=about:blank"])).toMatchObject({
       request: { tools: { tab: "about:blank" } },
@@ -537,15 +571,44 @@ describe("readCommand for a Session", () => {
   );
 
   it("lists --tab in its usage text", () => {
-    expect(USAGE).toContain("ayme page-objects [--tab=<url>]");
-    expect(USAGE).toContain("ayme tools [--tab=<url>]");
-    expect(USAGE).toContain("--tab=<url>");
+    expect(USAGE).toContain("ayme page-objects [--tab=<id> | --tab=<url>]");
+    expect(USAGE).toContain("ayme tools [--tab=<id> | --tab=<url>]");
+    expect(USAGE).toContain("  --tab=<id> ");
+    expect(USAGE).toContain("  --tab=<url> ");
   });
 
   it("lists call with its --params in its usage text", () => {
     expect(USAGE).toContain(
       "ayme call <tool> [--params <json> | --params @<file>]"
     );
+  });
+
+  it.each([
+    [["list", "now"]],
+    [["detach", "now"]],
+    [["tools", "now"]],
+    [["call", "Basket.add", "Basket.remove"]],
+  ])("refuses a word the command does not take: `%s`", (args) => {
+    expect(readCommand(args)).toEqual({ kind: "error", text: USAGE });
+  });
+
+  it.each([
+    [["--tab", "close"]],
+    [["--cdp", "close"]],
+    [["--params", "close", "now"]],
+    [["--tab", "close", "constructor"]],
+  ])(
+    "fails with the usage text when an option takes the command's word as its value: `%s`",
+    (args) => {
+      expect(readCommand(args)).toEqual({ kind: "error", text: USAGE });
+    }
+  );
+
+  it("names the Session with a bare --session too", () => {
+    expect(readCommand(["--session", "review", "close"])).toMatchObject({
+      kind: "ask",
+      session: "review",
+    });
   });
 
   it("runs the Session's background process for its own word, which the usage text does not name", () => {
@@ -555,4 +618,11 @@ describe("readCommand for a Session", () => {
     });
     expect(USAGE).not.toContain("__session");
   });
+
+  it.each([[["__session"]], [["__session", "{}", "{}"]]])(
+    "fails with the usage text for the background process's word without its one options argument: `%s`",
+    (args) => {
+      expect(readCommand(args)).toEqual({ kind: "error", text: USAGE });
+    }
+  );
 });

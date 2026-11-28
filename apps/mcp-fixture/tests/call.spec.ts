@@ -122,28 +122,23 @@ test("an unknown tool, an unknown id and invalid parameters are each answered on
   });
 });
 
-test("after an action that loads another document, the answer comes from the new page once the Page Object it returned is there", async ({
+test("after an action that loads another document, the answer gives the URL it loads and no Page Object Tree, and a listing then reads the new page", async ({
   ayme,
   baseURL,
 }) => {
   await ayme("open", `${baseURL}/sign-in.html`);
 
-  const signedIn = await ayme(
-    "call",
-    "SignInPage.signIn",
-    "--params",
-    '{"name": "Ada"}'
-  );
-
-  expect(signedIn).toMatchObject({ code: 0, stderr: "" });
-  expect(signedIn.stdout.split("\n").slice(0, 2)).toEqual([
-    "settled: false",
-    `url: ${baseURL}/account.html?name=Ada`,
-  ]);
-  expect(signedIn.stdout).toContain("- SignInPage (removed)");
-  expect(signedIn.stdout).toContain(
-    '+ AccountPage\n    heading: heading "Account" [level=1]'
-  );
+  expect(
+    await ayme("call", "SignInPage.signIn", "--params", '{"name": "Ada"}')
+  ).toEqual({
+    code: 0,
+    stdout: `settled: false\nurl: ${baseURL}/account.html?name=Ada\n`,
+    stderr: "",
+  });
+  // The account page may still be loading when the first listing reads.
+  await expect
+    .poll(async () => (await ayme("page-objects")).stdout)
+    .toContain('AccountPage\n  heading: heading "Account" [level=1]');
 });
 
 test("an error thrown by Page Object code ends only its Run, and the Session catches what nothing else caught", async ({

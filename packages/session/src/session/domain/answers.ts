@@ -11,11 +11,20 @@ import type { SessionStartError } from "./startError";
 export const commandLine = (name: string, word: string): string =>
   `ayme -s=${name} ${word}`;
 
-const TAB_LINE = "Tab: ";
+/** The first line of a listing: the Tab it describes, by the id the
+ * Session gave it and as its page names it. */
+const tabLine = (id: string, { url, title }: TabName) =>
+  `Tab ${id}: ${title ? `${title} (${url})` : url}`;
 
-/** The first line of a listing: the Tab it describes. */
-const tabLine = ({ url, title }: TabName) =>
-  title ? `${TAB_LINE}${title} (${url})` : `${TAB_LINE}${url}`;
+const isTabLine = (line: string) => /^Tab t\d+: /.test(line);
+
+/** `text` with `line` after its Tab line, or first when it has none. */
+const afterTabLine = (text: string, line: string) => {
+  const [first, ...rest] = text.split("\n");
+  return isTabLine(first!)
+    ? [first, line, ...rest].join("\n")
+    : `${line}\n${text}`;
+};
 
 /** The first line of what `reason` says, which a stack may follow. */
 const firstLine = (reason: string) => reason.split("\n")[0]!;
@@ -42,9 +51,8 @@ export function withBuildLine(
   answer: SessionAnswer,
   line: string | undefined
 ): SessionAnswer {
-  if (line === undefined || !answer.text.startsWith(TAB_LINE)) return answer;
-  const [tab, ...rest] = answer.text.split("\n");
-  const text = [tab, line, ...rest].join("\n");
+  if (line === undefined || !isTabLine(answer.text)) return answer;
+  const text = afterTabLine(answer.text, line);
   return answer.ok
     ? {
         ...answer,
@@ -54,42 +62,77 @@ export function withBuildLine(
     : { ok: false, text };
 }
 
-const NO_TOOLS = "This screen has no Page Object Tools.";
+/** The ids of Tabs, in a sentence. */
+const idList = (ids: readonly string[]) =>
+  ids.length === 1
+    ? ids[0]!
+    : `${ids.slice(0, -1).join(", ")} and ${ids.at(-1)!}`;
 
-/** `--tab` naming the Tab at `url`, single-quoted so that it pastes into a
- * POSIX shell whatever the URL holds. */
-const tabOption = (url: string) => `--tab='${url.replaceAll("'", "'\\''")}'`;
+/** The line an answer of the Session named `name` gets when the URL `--tab`
+ * named, `url`, is shown by the Tab `chosen`, the most recently active of
+ * them, and by the Tabs `others` too. It says "chose", since a dialog can
+ * keep the command from working on the Tab it chose. */
+const tabsShowUrl = (
+  url: string,
+  chosen: string,
+  others: readonly string[],
+  name: string
+): string =>
+  `Tabs ${idList([chosen, ...others])} show ${url}: ayme chose ${chosen}, the most recently active. Name another by its id, as --tab=${others[0]!}. To see which tab has which id, bring it to the front with your browser automation and run ${commandLine(name, "page-objects")}: its first line shows its id.`;
+
+/** `answer` with the line {@link tabsShowUrl} for `alike`, when several
+ * Tabs show the URL `--tab` named: after its Tab line, or first. */
+export function withTabsAlike(
+  answer: SessionAnswer,
+  alike:
+    | {
+        readonly url: string;
+        readonly chosen: string;
+        readonly others: readonly string[];
+      }
+    | undefined,
+  name: string
+): SessionAnswer {
+  if (alike === undefined || alike.others.length === 0) return answer;
+  const text = afterTabLine(
+    answer.text,
+    tabsShowUrl(alike.url, alike.chosen, alike.others, name)
+  );
+  return { ...answer, text };
+}
+
+const NO_TOOLS = "This screen has no Page Object Tools.";
 
 /** The last line of `ayme page-objects` of the Session named `name`: how
  * many Page Object Tools the screen has, and where they are listed, also
- * when it has none; on the Tab `--tab` named, when it named one. */
+ * when it has none; on the Tab `tab`, by its id, when `--tab` named one. */
 function toolCountLine(
   count: number,
   name: string,
   tab: string | undefined
 ): string {
   const tools =
-    commandLine(name, "tools") +
-    (tab === undefined ? "" : ` ${tabOption(tab)}`);
+    commandLine(name, "tools") + (tab === undefined ? "" : ` --tab=${tab}`);
   return count === 1
     ? `This screen has 1 Page Object Tool: ${tools} lists it with its parameters.`
     : `This screen has ${count} Page Object Tools: ${tools} lists them with their parameters.`;
 }
 
-/** The answer to `ayme page-objects` of the Session named `name`, asked
- * for the Tab `--tab` named, when it named one. */
+/** The answer to `ayme page-objects` of the Session named `name`, of the
+ * Tab `id`, which `--tab` named when `named`. */
 export const pageObjectsAnswer = (
   { tab, pageObjectTree, tools }: Listing,
+  id: string,
   name: string,
-  named?: string
+  named = false
 ): SessionAnswer => ({
   ok: true,
   text: [
-    tabLine(tab),
+    tabLine(id, tab),
     pageObjectTree,
-    toolCountLine(tools.length, name, named),
+    toolCountLine(tools.length, name, named ? id : undefined),
   ].join("\n"),
-  data: { tab, pageObjectTree, tools: tools.length },
+  data: { tab: { id, ...tab }, pageObjectTree, tools: tools.length },
 });
 
 /** The answer to the command that started the Session named `name` on a
@@ -153,14 +196,17 @@ function toolLines({
   ];
 }
 
-/** The answer to `ayme tools`. */
-export const toolsAnswer = ({ tab, tools }: Listing): SessionAnswer => ({
+/** The answer to `ayme tools`, of the Tab `id`. */
+export const toolsAnswer = (
+  { tab, tools }: Listing,
+  id: string
+): SessionAnswer => ({
   ok: true,
   text: [
-    tabLine(tab),
+    tabLine(id, tab),
     ...(tools.length === 0 ? [NO_TOOLS] : tools.flatMap(toolLines)),
   ].join("\n"),
-  data: { tab, tools },
+  data: { tab: { id, ...tab }, tools },
 });
 
 /** The answer to a request of a kind the Session does not have, such as one
@@ -283,19 +329,35 @@ export const noTabShows = (
   shown: readonly string[],
   name: string
 ): string =>
-  `No tab of the Session's browser shows ${url}. --tab takes the URL a tab shows, as the first line of ${commandLine(name, "page-objects")} prints it. The open tabs show: ${shown.join(", ")}.`;
+  `No tab of the Session's browser shows ${url}. --tab takes a tab's id or the URL it shows, as the first line of ${commandLine(name, "page-objects")} prints them. The open tabs show: ${shown.join(", ")}.`;
+
+/** Why `--tab` named no open Tab of the Session named `name` by the id
+ * `id`. When the Session `given` it, the Tab closed or is out of the
+ * Session's Tabs for now, as one that went to the Inspector's window is:
+ * the Session cannot tell which. */
+export const tabIdUnknown = (
+  id: string,
+  given: boolean,
+  name: string
+): string =>
+  `${given ? `No open tab of the Session's browser has the id ${id} now: the tab was closed, or it shows the Inspector.` : `This Session gave no tab the id ${id}.`} Bring the tab you want to the front with your browser automation and run ${commandLine(name, "page-objects")}: it works on that tab, and its first line shows the tab's id.`;
 
 /** Why `ayme call` was refused when its Page Object Id is on another Tab
- * than the one `--tab` names: the id chooses the Tab. */
-export const idOnAnotherTab = (id: string, on: string, named: string): string =>
-  `${id} is a Page Object of the tab that shows ${on}, not of the one that shows ${named}. Leave out --tab: the Page Object Id chooses the tab.`;
+ * than the one `--tab` names: the id chooses the Tab, which is `on`, at
+ * `url`. */
+export const idOnAnotherTab = (id: string, on: string, url: string): string =>
+  `${id} is a Page Object of tab ${on}, which shows ${url}, not of the tab --tab names. Leave out --tab: the Page Object Id chooses the tab.`;
 
 /** The dialog `dialog` names itself in the first sentence of every answer
- * while it is open. */
-function dialogSentences({ type, message, defaultValue }: Dialog): string {
+ * while it is open, on the tab the command works on unless `on` names
+ * another. */
+function dialogSentences(
+  { type, message, defaultValue }: Dialog,
+  on = "the tab"
+): string {
   const article = /^[aeiou]/i.test(type) ? "An" : "A";
   return [
-    `${article} ${type} dialog is open on the tab: ${JSON.stringify(message)}.`,
+    `${article} ${type} dialog is open on ${on}: ${JSON.stringify(message)}.`,
     ...(defaultValue
       ? [`Its default value is ${JSON.stringify(defaultValue)}.`]
       : []),
@@ -308,12 +370,27 @@ function dialogSentences({ type, message, defaultValue }: Dialog): string {
 export const dialogOpen = (dialog: Dialog): string =>
   `${dialogSentences(dialog)} Answer it with your browser automation, then run this command again.`;
 
-/** Why a listing of the Tab at `url` was answered without the page: a
+/** Why a listing of the Tab `id` at `url` was answered without the page: a
  * dialog is open on the Tab. It still starts with the Tab line, and names
- * the Tab by its URL, since its title is the page's, which the dialog
- * holds (rule 5). */
-export const dialogOpenInListing = (url: string, dialog: Dialog): string =>
-  `${tabLine({ url, title: "" })}\n${dialogOpen(dialog)}`;
+ * the Tab by its id and URL, since its title is the page's, which the
+ * dialog holds (rule 5). */
+export const dialogOpenInListing = (
+  id: string,
+  url: string,
+  dialog: Dialog
+): string => `${tabLine(id, { url, title: "" })}\n${dialogOpen(dialog)}`;
+
+/** Why a command was answered before its Tab was set up. `heldBy` is the
+ * dialog the Session counts as open on another Tab, with that Tab's URL,
+ * when it knows of one: the likely cause, which the Session cannot prove,
+ * so the answer states the late setup and the dialog as two facts. Nothing
+ * of the command ran, so it can be run again. */
+export const setupHeld = (
+  heldBy: { readonly url: string; readonly dialog: Dialog } | undefined
+): string =>
+  heldBy
+    ? `ayme's setup of this command's tab did not answer in time, so the command did nothing. ${dialogSentences(heldBy.dialog, `another tab, at ${heldBy.url}`)} A dialog on another tab can hold that setup. Answer it with your browser automation, then run this command again.`
+    : "ayme's setup of this command's tab did not answer in time, as happens while a dialog is open on another tab of the browser, so the command did nothing. If one is open, answer it with your browser automation, then run this command again.";
 
 /** Why a Run ended at a dialog once its action had started (rule 4): part
  * of the action may have happened, so the agent checks the page rather than

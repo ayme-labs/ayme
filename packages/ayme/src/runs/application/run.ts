@@ -145,12 +145,26 @@ export async function executeTopLevelRun<T>(
   try {
     result = await execute();
   } catch (error) {
-    await settle();
+    if (!failedAfterFullLoad(error)) await settle();
     throw error;
   }
   if (!startedFullLoad(result)) await settle();
   return result;
 }
+
+const afterFullLoad = new WeakSet<object>();
+
+/** Package-internal: marks `error` as what an action threw after the full
+ * load it started, on a Host that outlives the load. Nothing reads the page
+ * for it, as nothing does for an answer after a full load. */
+export function markFailedAfterFullLoad(error: unknown): void {
+  if (typeof error === "object" && error !== null) afterFullLoad.add(error);
+}
+
+/** Package-internal: whether `error` is one {@link markFailedAfterFullLoad}
+ * marked. */
+export const failedAfterFullLoad = (error: unknown): boolean =>
+  typeof error === "object" && error !== null && afterFullLoad.has(error);
 
 /** Whether an answer, an action result or a Handover, names a loading URL. */
 function startedFullLoad(answer: unknown): boolean {

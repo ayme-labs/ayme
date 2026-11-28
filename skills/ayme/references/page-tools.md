@@ -19,7 +19,7 @@ page now. In this example, `ProjectsPage` holds a collection `projects()` of
 and has the actions `remove()` and `rename(name)`:
 
 ```
-Tab: Projects (http://localhost:5173/projects)
+Tab t1: Projects (http://localhost:5173/projects)
 ProjectsPage
   projects:
     - ProjectRow po1
@@ -31,7 +31,8 @@ ProjectsPage
 This screen has 3 Page Object Tools: ayme -s=default tools lists them with their parameters.
 ```
 
-- The first line names the Tab: the browser tab ayme works on.
+- The first line names the Tab: the browser tab ayme works on, by an id
+  such as `t1` that `--tab=t1` takes while the tab stays open.
   [Sessions](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md#sessions)
   says how to read another.
 - A declared element shows at most 40 lines of what a snapshot shows of it,
@@ -68,8 +69,8 @@ ayme call ProjectRow.rename --params '{"id": "po1", "args": {"name": "Launch pla
 
 - A tool that takes an id runs on the Tab its Page Object is on. Leave
   `--tab` out of that call.
-- Any other tool runs on the Tab `--tab` names, or else on the most recently
-  active one.
+- Any other tool runs on the Tab `--tab` names, by its id or its URL, or
+  else on the most recently active one.
 - An id stays with its Page Object while it is on the page, and is never
   given to another. When a call answers that the Page Object is not on the
   page, run `ayme page-objects` for the current ids.
@@ -79,8 +80,7 @@ ayme call ProjectRow.rename --params '{"id": "po1", "args": {"name": "Launch pla
 `ayme call` answers in a few lines:
 
 - `settled`: whether the page settled after the action. It is `false` after
-  an action that started loading a new document, even when the answer
-  already comes from the new page.
+  an action that started loading a new document.
 - `result`: what the action returned, when that is a JSON value.
 - `url`: the new URL, when the action changed it.
 - `changes`: how the Page Object Tree changed. A Page Object that appeared
@@ -100,9 +100,9 @@ a load, wait with your browser automation, then run `ayme page-objects`.
 - **Failed**: the answer says what failed, then `changes:` when the Page
   Object Tree changed while the action ran. Read how far the action got
   before you call it again.
-- **A dialog**: when an answer says a dialog `is open on the tab`, answer the
-  dialog with your browser automation. Then the end of that answer tells you
-  what to do:
+- **A dialog**: when an answer says a dialog `is open on the tab`, or
+  `is open on another tab` at the URL it names, answer the dialog with your
+  browser automation. Then the end of that answer tells you what to do:
   - `… then run this command again.`: the dialog was open before the command
     started, so the command did nothing. Run it again.
   - `The action stopped there: …`: the action ran up to the dialog and

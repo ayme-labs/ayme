@@ -1,5 +1,5 @@
 import { version } from "../package.json";
-import type { CaptureTarget, Command } from "./readCommand";
+import type { Command } from "./readCommand";
 
 /** What the command line does for a command it has read. */
 export type Plan =
@@ -9,11 +9,11 @@ export type Plan =
       text: string;
       exitCode: number;
     }
-  | { kind: "capture"; target: CaptureTarget }
   | Extract<
       Command,
       {
         kind:
+          | "capture"
           | "open"
           | "attach"
           | "ask"
@@ -52,7 +52,6 @@ export function planOf(command: Command): Plan {
         exitCode: 1,
       };
     case "capture":
-      return { kind: "capture", target: command.target };
     case "open":
     case "attach":
     case "ask":

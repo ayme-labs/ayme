@@ -2,6 +2,7 @@
 // own Node Host of @ayme-dev/ayme over the Tab's Playwright page, running
 // the built Page Objects there. ayme reaches a page only through that page,
 // from Node.
+import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { Effect, Stream, SubscriptionRef } from "effect";
 import type {
@@ -19,6 +20,7 @@ import type {
 } from "../../../session/application";
 import {
   SessionStartError,
+  setupHeld,
   showsWindow,
   TabReadError,
   type RunAnswer,
@@ -89,22 +91,27 @@ const CALLER = "ayme-command";
 const reason = (cause: unknown) =>
   cause instanceof Error ? cause.message : String(cause);
 
-// ayme's own setup on a page over DevTools answers in milliseconds; a page
-// that has not answered by then, as one Chromium holds behind a dialog,
-// holds no command for longer, nor the commands of other Tabs. A Run has no
-// such limit.
+// ayme's own setup on a page answers in milliseconds; a page that has not
+// answered by then, as one Chromium holds behind a dialog, there or on
+// another page of its browser context, holds no command for longer, nor the
+// commands of other Tabs. A Run has no such limit.
 const SETUP_DEADLINE_MS = 5000;
 
 /** `work`, failed once the page has not answered `what` within the
  * limit. */
-const withinSetup = <T>(work: Promise<T>, what: string): Promise<T> =>
+const withinSetup = <T>(
+  work: Promise<T>,
+  what: string,
+  late?: () => Error
+): Promise<T> =>
   new Promise<T>((resolve, reject) => {
     const timer = setTimeout(
       () =>
         reject(
-          new Error(
-            `the tab did not answer ${what} within ${SETUP_DEADLINE_MS / 1000} seconds`
-          )
+          late?.() ??
+            new Error(
+              `the tab did not answer ${what} within ${SETUP_DEADLINE_MS / 1000} seconds`
+            )
         ),
       SETUP_DEADLINE_MS
     );
@@ -242,6 +249,60 @@ export function watchDialogs(browser: Browser): void {
   browser.on("context", watchContext);
 }
 
+/** The dialog that counts as open on a Tab of `page`'s browser context
+ * other than `page`, with that Tab's URL, if the Session knows of one. A
+ * tab that shows the Inspector window served at `window` is no Tab. */
+const dialogBeside = (page: Page, window: string | undefined) => {
+  for (const other of page.context().pages()) {
+    if (other === page) continue;
+    if (window !== undefined && showsWindow(other.url(), window)) continue;
+    const watch = watched.get(other);
+    const now = watch && Effect.runSync(SubscriptionRef.get(watch.dialog));
+    if (typeof now === "object") return { url: other.url(), dialog: now.open };
+  }
+  return undefined;
+};
+
+// Playwright sets up a binding of its own on every page of a browser
+// context before it hands the first page there a function, and that setup
+// waits while any page of the context shows a dialog. The Node Host hands
+// its page one at its first read of the page, inside a Run, which has no
+// limit; a throwaway binding of ayme's own brings that wait into ayme's
+// setup, once per context, and is removed once made.
+const contextsReady = new WeakSet<BrowserContext>();
+const contextProbes = new WeakMap<BrowserContext, Promise<void>>();
+
+/** Lets the next use of `page`'s browser context make a probe of its own:
+ * one whose page closed may never answer (Playwright 1.64 drops the reply
+ * of a call whose page closed under it), and one that outlasted the setup
+ * limit is not waited for twice. */
+const forgetProbe = (page: Page, probe = contextProbes.get(page.context())) => {
+  if (contextProbes.get(page.context()) === probe)
+    contextProbes.delete(page.context());
+};
+
+const contextReady = (page: Page): Promise<void> => {
+  const context = page.context();
+  if (contextsReady.has(context)) return Promise.resolve();
+  let probe = contextProbes.get(context);
+  if (!probe) {
+    // A random name, so it meets no global of the page's own.
+    const made: Promise<void> = page
+      .exposeBinding(`__ayme_setup_${randomBytes(6).toString("hex")}`, () => {})
+      .then((binding) => {
+        // A probe forgotten meanwhile still made the context ready.
+        contextsReady.add(context);
+        void binding.dispose().catch(() => {});
+      });
+    const forget = () => forgetProbe(page, made);
+    made.then(forget, forget);
+    page.once("close", forget);
+    contextProbes.set(context, made);
+    probe = made;
+  }
+  return probe;
+};
+
 /** The id of each page's tab, kept from its first lookup that succeeded,
  * since a page keeps its tab. */
 const targetIds = new WeakMap<Page, Promise<string>>();
@@ -338,7 +399,11 @@ type Hosting = {
  * up the page's binding and its in-page helper without waiting for either,
  * so it reads nothing of the page. The Host stops when the page closes. */
 const hostOn =
-  ({ entry, ids, selectors }: Hosting, page: Page): BrowserTab["host"] =>
+  (
+    { entry, ids, selectors }: Hosting,
+    page: Page,
+    window: string | undefined
+  ): BrowserTab["host"] =>
   (tabIds, pageObjects) =>
     Effect.tryPromise({
       try: async (signal) => {
@@ -355,6 +420,14 @@ const hostOn =
             enabled: true,
           }),
           "ayme's focus emulation"
+        );
+        await withinSetup(
+          contextReady(page),
+          "Playwright's setup of its browser context",
+          () => {
+            forgetProbe(page);
+            return new TabReadError(setupHeld(dialogBeside(page, window)));
+          }
         );
         // The Session stopped hosting the Tab, as its dialog counts: no Node
         // Host takes the page.
@@ -386,9 +459,11 @@ const hostOn =
         );
       },
       catch: (cause) =>
-        new TabReadError(
-          `ayme could not run the project's Page Objects on the tab: ${reason(cause)}`
-        ),
+        cause instanceof TabReadError
+          ? cause
+          : new TabReadError(
+              `ayme could not run the project's Page Objects on the tab: ${reason(cause)}`
+            ),
     });
 
 /** Each page of `browser` by the id its tab has in the tab list; a page
@@ -434,7 +509,7 @@ function tabsOf(
       dialog: Stream.unwrap(
         Effect.sync(() => SubscriptionRef.changes(dialogsOf(page).dialog))
       ),
-      host: hostOn(hosting, page),
+      host: hostOn(hosting, page, window),
     };
     tabs.set(page, tab);
     return tab;

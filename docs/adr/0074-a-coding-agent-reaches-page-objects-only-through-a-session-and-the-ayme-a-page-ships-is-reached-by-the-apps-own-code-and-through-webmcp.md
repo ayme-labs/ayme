@@ -3,7 +3,7 @@ status: accepted
 supersedes: ADR-0051, ADR-0055, ADR-0066
 ---
 
-# A coding agent reaches Page Objects only through a Session, and a page that ships ayme only through WebMCP
+# A coding agent reaches Page Objects only through a Session; the ayme a page ships is reached by the app's own code and through WebMCP
 
 ## Why
 
@@ -15,7 +15,7 @@ The first route ran an action on ayme's reimplementation of Playwright, not on t
 
 - A coding agent reaches a project's Page Objects only through a Session, which it drives with the `ayme` command beside its own browser automation.
 - ayme adds to that browser automation and does not compete with it. A Session offers the project's Page Object Tools and its read of the Page Object Tree, and none of ayme's own browser driving: no Browser Tools, no read of the Structural Page State, no Goal Loop and no Custom Tools.
-- A page that ships ayme is reached only through WebMCP publication, by an agent that runs in the page and has no browser automation of its own. WebMCP publication stays experimental.
+- A page that ships ayme offers its tools in two ways: to the app's own code through `ayme.tools`, as an in-app assistant uses them, and to an agent that runs in the page through WebMCP publication, which stays experimental. The `ayme` commands and a coding agent's browser automation reach neither.
 - A page that ships ayme is not a Session, and the `ayme` commands do not reach the ayme inside it. A Session's browser can show such a page: the page's own runtime and the Session are then two Hosts, each with its own Page Objects and Page Object Ids.
 - There is no Agent Connection and there are no App Processes: an app's Node processes offer nothing to an agent. `ayme mcp` reaches no page; it only shows a Session's Inspector in an Agent App's chat (ADR-0072).
 - For a page that ships ayme, the Inspector is the panel in the page. A Session's Inspector is a window of its own.

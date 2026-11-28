@@ -53,7 +53,7 @@ test("a failed build keeps the Page Objects, and listings say the build is faili
   baseURL,
 }) => {
   await ayme("open", `${baseURL}/shop.html`);
-  const tabLine = `Tab: Shop (${baseURL}/shop.html)`;
+  const tabLine = `Tab t1: Shop (${baseURL}/shop.html)`;
 
   await edit(project, BASKET, "async clear() {", "async clear( {");
 

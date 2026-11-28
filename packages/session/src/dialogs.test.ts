@@ -100,8 +100,8 @@ it("the stopped action keeps the Tab's turn: the next Run starts only once it ha
   });
   expect(await session.ask({ tools: {} })).toEqual({
     ok: true,
-    text: "Tab: Shop (http://127.0.0.1:5173/shop.html)\nThis screen has no Page Object Tools.",
-    data: { tab: shop.tab, tools: [] },
+    text: "Tab t1: Shop (http://127.0.0.1:5173/shop.html)\nThis screen has no Page Object Tools.",
+    data: { tab: { id: "t1", ...shop.tab }, tools: [] },
   });
 });
 
@@ -114,7 +114,7 @@ it("while a dialog is open, every command that needs the page is answered at onc
 
   const inListing = {
     ok: false,
-    text: `Tab: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
+    text: `Tab t1: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
   };
   expect(await session.ask({ pageObjects: {} })).toEqual(inListing);
   expect(await session.ask({ tools: {} })).toEqual(inListing);
@@ -180,7 +180,7 @@ it("a command that arrives while a dialog opens waits for the 100 ms: it is answ
   browser.dialogStaysOpen();
   expect(await early).toEqual({
     ok: false,
-    text: `Tab: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
+    text: `Tab t1: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
   });
 
   browser.closeDialog();
@@ -217,7 +217,7 @@ it("commands waiting for the Tab's turn when a dialog counts are answered at onc
   expect(await waiting).toEqual({ ok: false, text: DIALOG_OPEN });
   expect(await listing).toEqual({
     ok: false,
-    text: `Tab: about:blank\n${DIALOG_OPEN}`,
+    text: `Tab t1: about:blank\n${DIALOG_OPEN}`,
   });
   expect(await fromWindow).toEqual({ ok: false, text: DIALOG_OPEN });
 
@@ -244,7 +244,7 @@ it("a listing under way when a dialog opens outside a Run is answered that the d
 
   expect(await listing).toEqual({
     ok: false,
-    text: `Tab: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
+    text: `Tab t1: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
   });
 });
 
@@ -267,11 +267,11 @@ it("a dialog affects only its own Tab: commands on another Tab are answered as u
   });
   expect(await session.ask({ tools: {} })).toMatchObject({
     ok: true,
-    text: expect.stringMatching(/^Tab: http:\/\/127\.0\.0\.1:5173\/sign-in/),
+    text: expect.stringMatching(/^Tab t2: http:\/\/127\.0\.0\.1:5173\/sign-in/),
   });
   expect(await session.ask({ tools: { tab: shop.tab.url } })).toEqual({
     ok: false,
-    text: `Tab: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
+    text: `Tab t1: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
   });
 });
 
@@ -334,7 +334,7 @@ it("a dialog already open on a Tab no command touched yet is answered at once, a
 
   expect(await session.ask({ tools: {} })).toEqual({
     ok: false,
-    text: `Tab: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
+    text: `Tab t1: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
   });
   expect(await session.ask(readHeading)).toEqual({
     ok: false,
@@ -443,6 +443,45 @@ it("a dialog that opens while the Session starts answers its first command once 
   expect(await session.started).toMatchObject({ ok: true });
   expect(await first).toEqual({
     ok: false,
-    text: `Tab: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
+    text: `Tab t1: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
   });
+});
+
+const dialogsUrl = "http://127.0.0.1:5173/dialogs.html";
+
+it("a Tab whose setup a dialog on another Tab holds is answered with that dialog, by its Tab's URL and its text, and starts nothing; once the dialog is answered, the same command and one on the dialog's Tab work", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show({ ...shop, tab: { url: dialogsUrl, title: "Dialogs" } });
+  dialogOpens(browser);
+  const other = browser.openTab(shop.tab.url);
+  other.show(shop);
+  const release = other.holdSetup({ url: dialogsUrl, dialog: confirm });
+  const held = `ayme's setup of this command's tab did not answer in time, so the command did nothing. A confirm dialog is open on another tab, at ${dialogsUrl}: "Remove Milk from the basket?". A dialog on another tab can hold that setup. Answer it with your browser automation, then run this command again.`;
+
+  expect(await session.ask(readHeading)).toEqual({ ok: false, text: held });
+  expect(await session.ask({ tools: {} })).toEqual({ ok: false, text: held });
+  expect(other.hosted).toBe(false);
+  expect(other.runs).toEqual([]);
+
+  browser.closeDialog();
+  release();
+
+  expect(await session.ask(readHeading)).toMatchObject({ ok: true });
+  expect(other.runs).toEqual([{ tool: "ShopPage.readHeading", input: {} }]);
+  expect(await session.ask({ tools: { tab: dialogsUrl } })).toMatchObject({
+    ok: true,
+    text: expect.stringMatching(/^Tab t2: Dialogs \(/),
+  });
+});
+
+it("a Tab whose setup is held while the Session knows of no dialog on another Tab is answered that one may be open there", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  browser.holdSetup();
+
+  expect(await session.ask(readHeading)).toEqual({
+    ok: false,
+    text: "ayme's setup of this command's tab did not answer in time, as happens while a dialog is open on another tab of the browser, so the command did nothing. If one is open, answer it with your browser automation, then run this command again.",
+  });
+  expect(browser.hosted).toBe(false);
 });

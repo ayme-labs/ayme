@@ -20,7 +20,9 @@ export {
   paramsTooLarge,
   paramsUnreadable,
   runFailed,
+  setupHeld,
   TAB_CLOSED,
+  tabIdUnknown,
   toolsAnswer,
   unanswerable,
   unknownRequest,
@@ -28,9 +30,12 @@ export {
   swapRefusedLine,
   unwatchedLine,
   withBuildLine,
+  withTabsAlike,
 } from "./answers";
 export {
   TabReadError,
+  tabId,
+  tabIdNumber,
   type ListedTool,
   type Listing,
   type TabName,

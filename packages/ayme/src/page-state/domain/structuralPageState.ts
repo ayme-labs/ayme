@@ -11,7 +11,6 @@ import {
   type PomRootIds,
   type PomRootMarks,
 } from "./pomRootMarks";
-import type { DocumentToken } from "../../shared";
 
 export type { AriaRef };
 
@@ -41,8 +40,6 @@ export type PageState = {
 /** Package-internal: typed data from the latest Page State Session capture. */
 export type PageStateCapture = {
   readonly tree: StructuralTree;
-  /** The document the capture is of, when the host tells it. */
-  readonly document?: DocumentToken;
   /**
    * For each predicate the capture was asked, and each Custom Tool's filter
    * under its name, the refs of the elements it keeps, as the in-page module

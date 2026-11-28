@@ -1,4 +1,10 @@
-export { callerOf, createRunQueue, executeTopLevelRun } from "./run";
+export {
+  callerOf,
+  createRunQueue,
+  executeTopLevelRun,
+  failedAfterFullLoad,
+  markFailedAfterFullLoad,
+} from "./run";
 export type {
   ActionCalls,
   RunContext,
