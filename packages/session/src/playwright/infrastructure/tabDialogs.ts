@@ -24,10 +24,12 @@ export type ActionCalls = {
 };
 
 /** Whether the dialog stopped a request, once one did, and the promise
- * that then fails with what its Caller was answered: everything the Host
- * does for the request carries the same record. */
+ * that then fails with what its Caller was answered, and whether an action
+ * started in it: everything the Host does for the request carries the same
+ * record. */
 type Stop = {
   stopped: boolean;
+  acted: boolean;
   readonly why: Promise<never>;
   readonly stop: (dialog: Dialog) => void;
 };
@@ -38,6 +40,7 @@ const stopRecord = (): Stop => {
   why.catch(() => {});
   const record: Stop = {
     stopped: false,
+    acted: false,
     why,
     stop: (dialog) => {
       if (record.stopped) return;
@@ -116,6 +119,7 @@ export function tabDialogs(
       // its parent or its request.
       const stop = actions.getStore() ?? requests.getStore();
       if (stop) {
+        stop.acted = true;
         refuseIfStopped(stop);
         return actions.run(stop, action);
       }
@@ -177,10 +181,15 @@ export function tabDialogs(
       release();
     },
     /** Runs `work`, all the Host does for one request on the Tab: a
-     * dialog that counts while it is under way stops it. */
-    request: <T>(work: () => T): T => {
+     * dialog that counts while it is under way stops it. `work` is handed
+     * whether an action started in the request so far, as the project's
+     * Node Host runs each Page Object Action's method through
+     * `actionCalls.run`. */
+    request: <T>(work: (acted: () => boolean) => T): T => {
       const stop = stopRecord();
-      return requests.run(stop, () => whileRunning(stop, work));
+      return requests.run(stop, () =>
+        whileRunning(stop, () => work(() => stop.acted))
+      );
     },
     actionCalls,
   };

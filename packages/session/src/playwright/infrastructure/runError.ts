@@ -1,4 +1,4 @@
-import { RunError } from "../../session/domain";
+import { ActionNotStarted, RunError } from "../../session/domain";
 import { LeftUncaught } from "./runUncaught";
 
 /**
@@ -7,17 +7,19 @@ import { LeftUncaught } from "./runUncaught";
  * "Error", and how the Page Object Tree changed while the Run ran. The
  * error comes from the project's own copy of ayme, so it is read by its
  * fields, never by its class. One its code left uncaught keeps the Run's
- * work, still going.
+ * work, still going. A Run whose action had not `acted` is an
+ * {@link ActionNotStarted}.
  */
-export function runErrorOf(cause: unknown): RunError {
+export function runErrorOf(cause: unknown, acted = true): RunError {
+  const Failed = acted ? RunError : ActionNotStarted;
   if (cause instanceof LeftUncaught) {
     const { message, changes } = runErrorOf(cause.error);
-    return new RunError(message, changes, cause.ended);
+    return new Failed(message, changes, cause.ended);
   }
-  if (!(cause instanceof Error)) return new RunError(String(cause));
+  if (!(cause instanceof Error)) return new Failed(String(cause));
   const { name, message } = cause;
   const { changes } = cause as { changes?: unknown };
-  return new RunError(
+  return new Failed(
     !name || name === "Error" ? message : `${name}: ${message}`,
     typeof changes === "string" && changes !== "" ? changes : undefined
   );

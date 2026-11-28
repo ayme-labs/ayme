@@ -24,3 +24,8 @@ export class RunError extends Error {
     super(message);
   }
 }
+
+/** Why a Run failed before its action started, so nothing of the action
+ * ran: the project's Node Host never asked its Host to run the action's
+ * method. */
+export class ActionNotStarted extends RunError {}

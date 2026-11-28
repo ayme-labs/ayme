@@ -124,6 +124,11 @@ export interface ScriptedTab {
   /** Every read of the Tab's page waits, as behind a presence predicate
    * that never resolves, until the test shows a listing again. */
   holdReads(): void;
+  /** The Tab's main frame starts a new document at `url`, as a sign-in's
+   * redirect does: each read of the page under way fails as Playwright
+   * fails it, and the Tab shows an empty page at `url` until the test shows
+   * another. */
+  load(url: string): void;
   /** The built Page Objects the Tab's Host started with, once it is
    * hosted. */
   readonly startedWith: BuiltPageObjects | undefined;
@@ -204,6 +209,11 @@ export interface ScriptedTab {
    * the page, until the test calls the function it returns. */
   holdHosting(): () => void;
 }
+
+/** How a read of the page fails once a new document replaced the one it
+ * read, as Playwright says it. */
+export const DESTROYED =
+  "ayme could not read the page: page.evaluate: Execution context was destroyed, most likely because of a navigation";
 
 /** What the scripted Tab shows until a test says otherwise. */
 export const EMPTY_LISTING: Listing = {
@@ -307,6 +317,9 @@ function scriptedTab(
     tab: { url, title: "" },
   };
   let shownUrl = url;
+  // The documents the Tab's main frame started, its first included.
+  let documents = 1;
+  const heldReads = new Set<Deferred.Deferred<Listing, TabReadError>>();
   const runs: { tool: string; input: unknown }[] = [];
   let listingsRead = 0;
   const swappedIn: BuiltPageObjects[] = [];
@@ -334,11 +347,17 @@ function scriptedTab(
   const hosted: HostedTab = {
     listing: Effect.suspend(() => {
       listingsRead += 1;
-      return shown === "held"
-        ? Effect.never
-        : shown instanceof TabReadError
-          ? Effect.fail(shown)
-          : Effect.succeed(shown);
+      changed();
+      if (shown === "held") {
+        const read = Deferred.makeUnsafe<Listing, TabReadError>();
+        heldReads.add(read);
+        return Deferred.await(read).pipe(
+          Effect.ensuring(Effect.sync(() => heldReads.delete(read)))
+        );
+      }
+      return shown instanceof TabReadError
+        ? Effect.fail(shown)
+        : Effect.succeed(shown);
     }),
     call: (tool: string, input: unknown) =>
       Effect.tryPromise({
@@ -377,6 +396,7 @@ function scriptedTab(
       ),
     },
     dialog: SubscriptionRef.changes(dialog),
+    document: Effect.sync(() => ({ id: String(documents), url: shownUrl })),
     takesId: (tool) => rooted.has(tool.slice(0, tool.indexOf("."))),
     observe: Effect.sync(() => {
       observed++;
@@ -433,6 +453,13 @@ function scriptedTab(
       },
       failReads: (reason) => (shown = new TabReadError(reason)),
       holdReads: () => (shown = "held"),
+      load: (loading) => {
+        documents++;
+        shownUrl = loading;
+        shown = { ...EMPTY_LISTING, tab: { url: loading, title: "" } };
+        for (const read of heldReads)
+          Deferred.doneUnsafe(read, Exit.fail(new TabReadError(DESTROYED)));
+      },
       get listingsRead() {
         return listingsRead;
       },

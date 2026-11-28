@@ -15,7 +15,7 @@ import type { HostedTab } from "./sessionBrowser";
 
 /** A hosted Tab as the Session's commands reach it, whose Swaps the Session
  * makes itself. */
-export type SwappingTab = Omit<HostedTab, "swap" | "observe"> & {
+export type SwappingTab = Omit<HostedTab, "swap" | "observe" | "document"> & {
   /** The build line its listings show after their Tab line, while the
    * last finished build failed, or else the Tab could not register the last
    * good build it tried, or else the source cannot be watched (rule 7). */

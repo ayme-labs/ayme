@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { RunError } from "../../session/domain";
+import { ActionNotStarted, RunError } from "../../session/domain";
 import { runErrorOf } from "./runError";
 import { LeftUncaught } from "./runUncaught";
 
@@ -63,4 +63,27 @@ it("tells an error the Run's code left uncaught as it tells any, with the Run's 
     "TypeError: x is not a function",
     ended,
   ]);
+});
+
+it("tells a Run that failed before its action started apart, with the same message and changes", () => {
+  const error = runErrorOf(
+    thrown("Error", "Execution context was destroyed.", "Basket po1"),
+    false
+  );
+
+  expect(error).toBeInstanceOf(ActionNotStarted);
+  expect([error.message, error.changes]).toEqual([
+    "Execution context was destroyed.",
+    "Basket po1",
+  ]);
+  expect(runErrorOf(new Error("x"))).not.toBeInstanceOf(ActionNotStarted);
+});
+
+it("tells an error left uncaught before the Run's action started apart too", () => {
+  const error = runErrorOf(
+    new LeftUncaught(new Error("x"), Promise.resolve()),
+    false
+  );
+
+  expect(error).toBeInstanceOf(ActionNotStarted);
 });
