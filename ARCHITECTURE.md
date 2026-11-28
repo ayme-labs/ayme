@@ -180,10 +180,10 @@ in-browser agents and the app's own code call on the running page.
   the Node host runtime of the project's own `@ayme-dev/ayme`, and turns focus emulation on
   for that Tab, the one setting it changes in a browser it joined. It works on the most
   recently active Tab, in the order of the browser's own tab list, unless `--tab` names
-  another by its URL or, for a tool of a class with a Page Object Root, the Page Object Id
-  chooses the Tab whose Host gave it; it lists that Tab's Page Object Tree and Page Object
-  Tools, and runs a Page Object Tool on it as a Run, one Run per Tab at a time and with no
-  time limit of its own. A Tab is gone only when Playwright says its page closed; its Host
+  another by the id the Session gave it or by its URL or, for a tool of a class with a
+  Page Object Root, the Page Object Id chooses the Tab whose Host gave it; it lists that
+  Tab's Page Object Tree and Page Object Tools, and runs a Page Object Tool on it as a
+  Run, one Run per Tab at a time and with no time limit of its own. A Tab is gone only when Playwright says its page closed; its Host
   stops then, and a command still waiting on it is told so.
   An error Page Object code throws, or leaves for nobody to catch, ends only its Run. `ayme inspect` prints the address of the Session's Inspector window, which the developer opens in a browser, outside the Session's browser or as one more tab of it: the background process serves it, and it shows the Tab the Session works on, follows it to another Tab, runs a Page Object Tool there as a Run of the Inspector in that Tab's turn, and says so when the Session ends. A Tab that shows the window is never one the Session works on
 - Technology: the `ayme` command from `@ayme-dev/cli` (`ayme open [url]`,
@@ -216,7 +216,7 @@ in-browser agents and the app's own code call on the running page.
     - → `ayme open [url]`, `ayme attach --cdp=<url>`, `ayme page-objects`, `ayme tools`,
       `ayme call <tool> --params`, `ayme detach`, `ayme close` and `ayme list`, run as
       commands in the project's folder, with the global `--json`, `-s=<name>` or
-      `AYME_SESSION` naming the Session, and `--tab=<url>` naming a Tab
+      `AYME_SESSION` naming the Session, and `--tab=<id>` or `--tab=<url>` naming a Tab
     - ← each answer's text, or the answer as JSON for `--json`, on stdout, or on stderr with
       exit code 1 when it is a failure; the address of the browser `ayme open` started or
       `ayme attach` joined; the Page Object Tree and the Page Object Tools of the Tab, each
