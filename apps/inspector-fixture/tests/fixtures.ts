@@ -68,6 +68,16 @@ export function outline(element: Locator) {
   return async () => (await read()).style;
 }
 
+/**
+ * Waits until the panel's first look at the page has landed, which the
+ * legend's refs count shows. A hover before it can land on another row: the
+ * legend then wraps onto a second line, which moves the Model lens's rows
+ * down under the pointer.
+ */
+export async function untilThePanelHasLooked(inspector: Inspector) {
+  await expect(inspector.navigator.legend).not.toContainText(/(^|\D)0 refs/);
+}
+
 /** The Caller mark of a run made from the panel, as Runs shows it. */
 export const INSPECTOR = { icon: "Run by you from the Inspector" } as const;
 

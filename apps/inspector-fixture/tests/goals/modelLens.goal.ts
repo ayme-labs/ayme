@@ -5,6 +5,7 @@ import {
   outline,
   placements,
   testIn,
+  untilThePanelHasLooked,
   bringPanelToFront,
   confirmGoalRecordings,
   movePointerTo,
@@ -32,22 +33,14 @@ for (const placement of placements) {
         browser
       );
 
-      // The list can still be settling under a resting pointer, which then
-      // hovers another row: hover again until it is this one.
-      await expect
-        .poll(
-          async () => {
-            await agent.act(
-              'hover the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
-              {
-                params: { item: "[1]", ordinal: "second", collection: "items" },
-              }
-            );
-            return secondItem();
-          },
-          { timeout: 30_000 }
-        )
-        .toBe("dashed");
+      await untilThePanelHasLooked(inspector);
+      await agent.act(
+        'hover the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
+        {
+          params: { item: "[1]", ordinal: "second", collection: "items" },
+        }
+      );
+      await expect.poll(secondItem).toBe("dashed");
       await movePointerTo(inspector.header.title);
       await expect.poll(secondItem).toBe("none");
 

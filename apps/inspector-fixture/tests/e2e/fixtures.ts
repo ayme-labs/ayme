@@ -51,6 +51,13 @@ export async function bringPanelToFront(inspector: Inspector) {
   await inspector.tab.front();
 }
 
+/** `untilThePanelHasLooked` of `../fixtures.ts`, which says why. */
+export async function untilThePanelHasLooked(inspector: Inspector) {
+  await expect
+    .poll(() => inspector.navigator.legendItems())
+    .not.toContain("0 refs");
+}
+
 /** Both placements, for a spec whose tests run in each. */
 export const placements: readonly Placement[] = ["inline", "external"];
 

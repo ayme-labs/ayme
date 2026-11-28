@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { AppView } from "./appView";
-import { expect, outline, test } from "./fixtures";
+import { expect, outline, test, untilThePanelHasLooked } from "./fixtures";
 
 // E2E: the Model lens on a fixture page whose Page Object has child Page
 // Objects, a collection, and a child that is not on the page, with the ayme
@@ -45,12 +45,9 @@ test("hovering a Page Object highlights it dashed on the page, and selecting it 
   const secondItem = outline(page.locator("#todo-items > li").nth(1));
   const object = inspector.navigator.model.object("TodoPage.items[1]");
 
-  // The list can still be settling under a resting pointer, which then hovers
-  // another row: hover again until it is this one.
-  await expect(async () => {
-    await object.hover();
-    expect(await secondItem()).toBe("dashed");
-  }).toPass();
+  await untilThePanelHasLooked(inspector);
+  await object.hover();
+  await expect.poll(secondItem).toBe("dashed");
   await inspector.header.title.hover();
   await expect.poll(secondItem).toBe("none");
 

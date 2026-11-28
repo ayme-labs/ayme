@@ -6,6 +6,7 @@ import {
   outline,
   placements,
   testIn,
+  untilThePanelHasLooked,
   bringPanelToFront,
   confirmGoalRecordings,
   movePointerTo,
@@ -61,17 +62,9 @@ for (const placement of placements) {
         browser
       );
 
-      // The list can still be settling under a resting pointer, which then
-      // hovers another row: hover again until it is this one.
-      await expect
-        .poll(
-          async () => {
-            await inspector.navigator.model.object("TodoPage.items[1]").hover();
-            return secondItem();
-          },
-          { timeout: 30_000 }
-        )
-        .toBe("dashed");
+      await untilThePanelHasLooked(inspector);
+      await inspector.navigator.model.object("TodoPage.items[1]").hover();
+      await expect.poll(secondItem).toBe("dashed");
       await movePointerTo(inspector.header.title);
       await expect.poll(secondItem).toBe("none");
 
