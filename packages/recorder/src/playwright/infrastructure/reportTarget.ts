@@ -12,8 +12,8 @@ export type InputNote = {
   readonly held: HeldClick | null;
 };
 
-/** A held click sent on to its page whose report has not come: which it is,
- * its count and its button. */
+/** A click a page told of that reached it, sent on or untouched, whose
+ * report has not come: which it is, its count and its button. */
 export type AwaitedClick = HeldClick & {
   readonly count: number;
   readonly button: "left" | "right" | "middle";

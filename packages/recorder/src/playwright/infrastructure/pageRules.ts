@@ -7,12 +7,12 @@
 
 export type Modifier = "Alt" | "Control" | "Meta" | "Shift";
 
-/** Which held click an event is: the document that held it, and its number
- * there (`seq` of `HeldByPage`). */
+/** Which click a document told of an event is: the document, and the
+ * click's number there (`seq` of `HeldByPage`). */
 export type HeldClick = { readonly document: string; readonly seq: number };
 
-/** What a page tells of an input it held back. `seq` numbers the inputs a
- * document held, from 1. */
+/** What a page tells of an input it held back, or of a click it let reach
+ * the page untouched. `seq` numbers the inputs a document told of, from 1. */
 export type HeldByPage =
   | {
       readonly kind: "click";

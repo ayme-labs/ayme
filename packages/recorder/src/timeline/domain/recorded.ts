@@ -94,9 +94,10 @@ export type RecordedInteraction = {
    */
   readonly beforeFromReport?: boolean;
   /**
-   * For a click that reached its page untouched and starts from the page's
-   * latest snapshot: `before` was read before its press, so it shows no
-   * focus the press moved. A held click's is read after its press.
+   * For a click that reached its page untouched while nothing of its page
+   * was under way: `before`, the page's latest snapshot then, was read
+   * before its press, so it shows no focus the press moved. A held click's
+   * is read after its press.
    */
   readonly startsBeforeItsPress?: true;
   /**

@@ -45,8 +45,9 @@ export type Gate = {
   /** Lets what follows through, unless the document held an input after
    * the `upTo`th. */
   letThrough(upTo: number): void;
-  /** The held click an event is, as it reached the page once sent on; null
-   * for an event that is no held click's. */
+  /** The click the gate told of that an event is: a held click as it
+   * reached the page once sent on, or one that reached it untouched; null
+   * for any other event. */
   heldClickOf(event: Event): HeldClick | null;
   /** Leaves every input alone while Playwright's recorder picks an element,
    * or no longer: the picking click is Playwright's, and never reaches the
@@ -136,8 +137,8 @@ export function gateIn(held: string, rules: GateRules): void {
   let released: (() => void) | undefined;
   /** The codes of held keys whose release is the gate's too. */
   const swallowKeyUp = new Set<string>();
-  /** The events of held clicks that reached the page, with the number of
-   * each click. */
+  /** The events of the clicks told of that reached the page, with the
+   * number of each click. */
   const arrivals = new WeakMap<Event, number>();
   /** Playwright's recorder picks an element: inputs are left to it. */
   // Picking started before this script ran, if the start did.

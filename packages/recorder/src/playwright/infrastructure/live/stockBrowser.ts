@@ -478,12 +478,13 @@ async function openPage(
   await context.exposeBinding(chainBinding, ({ page }, seen: TargetChain) => {
     chains.set(page, [...(chains.get(page) ?? []).slice(-9), seen]);
   });
-  /** The held clicks each page was sent while Playwright's recorder
-   * reported, whose reports can still come (`sentOn`). */
+  /** The clicks that reached each page while Playwright's recorder
+   * reported, sent on or untouched, whose reports can still come
+   * (`sentOn`). */
   const awaited = new Map<Page, readonly AwaitedClick[]>();
-  /** Awaits the report of a held click sent on while Playwright's recorder
-   * reports: the page's note of this click is the one that names its
-   * target. */
+  /** Awaits the report of a click that reaches its page while Playwright's
+   * recorder reports: the page's note of this click is the one that names
+   * its target. */
   const awaitReport = (page: Page, sent: HeldByPage) => {
     if (sent.kind !== "click" || recorderMode?.mode() !== "recording") return;
     const click: AwaitedClick = {

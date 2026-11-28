@@ -404,9 +404,9 @@ type Input = {
   /** For an assertion placed at an earlier read: the read its element is
    * found in (`targetRead`). */
   readonly targetRead?: SnapshotId;
-  /** A click that reached its page untouched and starts from the page's
-   * latest snapshot, read before its press (`startsBeforeItsPress` of
-   * `RecordedInteraction`). */
+  /** A click that reached its page untouched while nothing of its page was
+   * under way: the snapshot it starts from was read before its press
+   * (`startsBeforeItsPress` of `RecordedInteraction`). */
   readonly startsBeforeItsPress?: true;
   /** An input known from its report whose page could not be read when it
    * was reported, and had no snapshot yet: its "after" is its "before" too,
@@ -1558,8 +1558,20 @@ function inputHeld(
 ) {
   const earlier = underWay(draft, page);
   const made = newInput(input, page, what ?? { kind: "click", count: 1 });
-  // A click that reached its page untouched is there from the start.
-  const held = { ...made, passedOnAt: reachedAt(made) };
+  // A click that reached its page untouched is there from the start. With
+  // nothing of its page under way, no read of the page is being taken: the
+  // page's latest snapshot was read before the click's press.
+  const reached = reachedAt(made);
+  const beforeItsPress =
+    reached !== null &&
+    !earlier &&
+    !openReported(draft, page) &&
+    Boolean(gateOf(draft, page)?.latest);
+  const held: Input = {
+    ...made,
+    passedOnAt: reached,
+    ...(beforeItsPress ? { startsBeforeItsPress: true } : {}),
+  };
   draft.inputs = [...draft.inputs, held];
   // The page holds everything after it now, by itself.
   changeGate(draft, page, { holding: true, upTo: held.id });
@@ -2166,13 +2178,14 @@ function startNext(draft: Draft) {
       });
     }
     // A click that reached its page untouched starts from the page's
-    // latest snapshot: one taken now would show what the click did. Not
-    // while an input known from its report is still open, as typing just
-    // before it: that one ends at a snapshot taken now, with all it did.
-    else if (reachedAt(next) !== null && latest && !openReported(draft, page)) {
-      change(draft, next.id, { startsBeforeItsPress: true });
+    // latest snapshot: one taken now would show what the click did, as the
+    // latest one does when an input before it ended after the click came.
+    // Not while an input known from its report is still open, as typing
+    // just before it: that one ends at a snapshot taken now, with all it
+    // did.
+    else if (reachedAt(next) !== null && latest && !openReported(draft, page))
       passOn(draft, next, latest.id);
-    } else
+    else
       change(draft, next.id, {
         stage: "takingBefore",
         asked: askSnapshot(draft, page),

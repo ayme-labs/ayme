@@ -7923,6 +7923,40 @@ describe("the lifecycle, for a click that reached its page untouched", () => {
     ]);
   });
 
+  it("starts where the click before it ends when it came while that one's snapshot was being taken: a snapshot read after its press, as a held click's is", () => {
+    const { todo } = run([
+      ...afterOneClick,
+      clickHeld(input2),
+      taken(snapshot3),
+      passedOn(input2, 30),
+      settled(input2),
+      // The snapshot that follows is asked for; the click comes before it
+      // is in.
+      untouched(input3, 35),
+      taken(snapshot4),
+      reported,
+      settled(input3),
+      taken(snapshot5),
+      reportOf("body"),
+    ]);
+
+    expect(todo.at(-1)).toEqual([
+      {
+        kind: "timeline",
+        add: {
+          kind: "interaction",
+          interaction: {
+            page: page1,
+            report: { ...click, selector: "body" },
+            before: snapshot4,
+            after: snapshot5,
+            at: 35,
+          },
+        },
+      },
+    ]);
+  });
+
   it("goes on without a snapshot that cannot be taken, with nothing to pass on, and is not recorded", () => {
     const { todo } = run([
       opened,
