@@ -17,7 +17,7 @@ A coding agent reaches a project's Page Objects through a Session: one running a
 - The Session lives in a process of its own, so that what it holds lasts from one command to the next: its browser, its Page Objects, its Page Object Ids and the Run under way on each Tab.
 - A Session always has a browser, which ayme either starts or joins, and it ends when that browser goes away. ayme closes only a browser it started.
 
-Later ADRs build on this one: a Session is the only way a coding agent reaches Page Objects (ADR-0074), it changes one setting in a browser it joins (ADR-0071), it never answers a dialog (ADR-0073), and one token admits its Inspector (ADR-0072).
+Later ADRs build on this one: a Session is the only way a coding agent reaches Page Objects (ADR-0074), it changes one setting in a browser it joins (ADR-0071), it never answers a dialog (ADR-0073), and its Inspector admits a window by its origin (ADR-0072).
 
 ## Considered and rejected
 
