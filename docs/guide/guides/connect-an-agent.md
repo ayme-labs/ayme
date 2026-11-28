@@ -165,10 +165,10 @@ Tab: http://localhost:5173/projects
 A confirm dialog is open on the tab: "Delete Launch plan?". Answer it with your browser automation, then run this command again.
 ```
 
-A dialog affects only its own Tab, with one exception. While a dialog is open before the Session has worked on any Tab, a command on another Tab waits up to 5 seconds for ayme to set that Tab up, then fails and did nothing. It names the dialog's Tab by its URL:
+A dialog affects only its own Tab, with one exception. While a dialog is open before the Session has worked on any Tab that shares its cookies and storage (its browser context), a command on another such Tab waits up to 5 seconds for ayme to set that Tab up, then fails and did nothing. When the Session knows of the dialog, the answer names its Tab by its URL:
 
 ```text
-A confirm dialog is open on another tab, at http://localhost:5173/projects: "Delete Launch plan?". ayme cannot set up this command's tab while it is open, so the command did nothing. Answer it with your browser automation, then run this command again.
+ayme's setup of this command's tab did not answer in time, so the command did nothing. A confirm dialog is open on another tab, at http://localhost:5173/projects: "Delete Launch plan?". A dialog on another tab can hold that setup. Answer it with your browser automation, then run this command again.
 ```
 
 An action stops at a dialog it did not answer itself. When a dialog opens during a Run and stays open for 100 ms, `ayme call` fails at once:

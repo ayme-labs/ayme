@@ -456,7 +456,7 @@ it("a Tab whose setup a dialog on another Tab holds is answered with that dialog
   const other = browser.openTab(shop.tab.url);
   other.show(shop);
   const release = other.holdSetup({ url: dialogsUrl, dialog: confirm });
-  const held = `A confirm dialog is open on another tab, at ${dialogsUrl}: "Remove Milk from the basket?". ayme cannot set up this command's tab while it is open, so the command did nothing. Answer it with your browser automation, then run this command again.`;
+  const held = `ayme's setup of this command's tab did not answer in time, so the command did nothing. A confirm dialog is open on another tab, at ${dialogsUrl}: "Remove Milk from the basket?". A dialog on another tab can hold that setup. Answer it with your browser automation, then run this command again.`;
 
   expect(await session.ask(readHeading)).toEqual({ ok: false, text: held });
   expect(await session.ask({ tools: {} })).toEqual({ ok: false, text: held });

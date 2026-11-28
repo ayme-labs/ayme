@@ -2,6 +2,7 @@
 // own Node Host of @ayme-dev/ayme over the Tab's Playwright page, running
 // the built Page Objects there. ayme reaches a page only through that page,
 // from Node.
+import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { Effect, Stream, SubscriptionRef } from "effect";
 import type {
@@ -97,7 +98,7 @@ const reason = (cause: unknown) =>
 const SETUP_DEADLINE_MS = 5000;
 
 /** `work`, failed once the page has not answered `what` within the
- * limit, with `late` when given. */
+ * limit. */
 const withinSetup = <T>(
   work: Promise<T>,
   what: string,
@@ -248,11 +249,14 @@ export function watchDialogs(browser: Browser): void {
   browser.on("context", watchContext);
 }
 
-/** The dialog that counts as open on a page of `page`'s browser context
- * other than `page`, with that page's URL, if the Session knows of one. */
-const dialogBeside = (page: Page) => {
+/** The dialog that counts as open on a Tab of `page`'s browser context
+ * other than `page`, with that Tab's URL, if the Session knows of one. A
+ * tab that shows the Inspector window served at `window` is no Tab. */
+const dialogBeside = (page: Page, window: string | undefined) => {
   for (const other of page.context().pages()) {
-    const watch = other === page ? undefined : watched.get(other);
+    if (other === page) continue;
+    if (window !== undefined && showsWindow(other.url(), window)) continue;
+    const watch = watched.get(other);
     const now = watch && Effect.runSync(SubscriptionRef.get(watch.dialog));
     if (typeof now === "object") return { url: other.url(), dialog: now.open };
   }
@@ -265,22 +269,38 @@ const dialogBeside = (page: Page) => {
 // its page one at its first read of the page, inside a Run, which has no
 // limit; a throwaway binding of ayme's own brings that wait into ayme's
 // setup, once per context, and is removed once made.
-const contextsReady = new WeakMap<BrowserContext, Promise<void>>();
-let readyBindings = 0;
-const contextReady = (page: Page) => {
+const contextsReady = new WeakSet<BrowserContext>();
+const contextProbes = new WeakMap<BrowserContext, Promise<void>>();
+
+/** Lets the next use of `page`'s browser context make a probe of its own:
+ * one whose page closed may never answer (Playwright 1.64 drops the reply
+ * of a call whose page closed under it), and one that outlasted the setup
+ * limit is not waited for twice. */
+const forgetProbe = (page: Page, probe = contextProbes.get(page.context())) => {
+  if (contextProbes.get(page.context()) === probe)
+    contextProbes.delete(page.context());
+};
+
+const contextReady = (page: Page): Promise<void> => {
   const context = page.context();
-  let ready = contextsReady.get(context);
-  if (!ready) {
-    const made = page
-      .exposeBinding(`__ayme_setup_${++readyBindings}`, () => {})
-      .then((binding) => void binding.dispose().catch(() => {}));
-    made.catch(() => {
-      if (contextsReady.get(context) === made) contextsReady.delete(context);
-    });
-    contextsReady.set(context, made);
-    ready = made;
+  if (contextsReady.has(context)) return Promise.resolve();
+  let probe = contextProbes.get(context);
+  if (!probe) {
+    // A random name, so it meets no global of the page's own.
+    const made: Promise<void> = page
+      .exposeBinding(`__ayme_setup_${randomBytes(6).toString("hex")}`, () => {})
+      .then((binding) => {
+        // A probe forgotten meanwhile still made the context ready.
+        contextsReady.add(context);
+        void binding.dispose().catch(() => {});
+      });
+    const forget = () => forgetProbe(page, made);
+    made.then(forget, forget);
+    page.once("close", forget);
+    contextProbes.set(context, made);
+    probe = made;
   }
-  return ready;
+  return probe;
 };
 
 /** The id of each page's tab, kept from its first lookup that succeeded,
@@ -379,7 +399,11 @@ type Hosting = {
  * up the page's binding and its in-page helper without waiting for either,
  * so it reads nothing of the page. The Host stops when the page closes. */
 const hostOn =
-  ({ entry, ids, selectors }: Hosting, page: Page): BrowserTab["host"] =>
+  (
+    { entry, ids, selectors }: Hosting,
+    page: Page,
+    window: string | undefined
+  ): BrowserTab["host"] =>
   (tabIds, pageObjects) =>
     Effect.tryPromise({
       try: async (signal) => {
@@ -400,7 +424,10 @@ const hostOn =
         await withinSetup(
           contextReady(page),
           "Playwright's setup of its browser context",
-          () => new TabReadError(setupHeld(dialogBeside(page)))
+          () => {
+            forgetProbe(page);
+            return new TabReadError(setupHeld(dialogBeside(page, window)));
+          }
         );
         // The Session stopped hosting the Tab, as its dialog counts: no Node
         // Host takes the page.
@@ -482,7 +509,7 @@ function tabsOf(
       dialog: Stream.unwrap(
         Effect.sync(() => SubscriptionRef.changes(dialogsOf(page).dialog))
       ),
-      host: hostOn(hosting, page),
+      host: hostOn(hosting, page, window),
     };
     tabs.set(page, tab);
     return tab;
