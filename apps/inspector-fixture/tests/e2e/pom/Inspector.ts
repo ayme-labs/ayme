@@ -13,6 +13,9 @@ import type { On, Tab } from "../tab";
 
 export type LensName = "Model" | "Structure" | "Tools";
 
+/** `text` as a pattern that matches it literally. */
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /** Where a part is on its tab's screen. */
 type Root = (screen: Screen) => Locator;
 
@@ -151,7 +154,9 @@ export class StructureLens extends Part {
   nodeNamed(role: string, name: string): On {
     return this.on((root) =>
       this.treeOf(root).getByRole("treeitem", {
-        name: new RegExp(`^e\\d+ ${role} ${JSON.stringify(name)}`),
+        name: new RegExp(
+          `^e\\d+ ${escape(role)} ${escape(JSON.stringify(name))}`
+        ),
       })
     );
   }
@@ -579,8 +584,6 @@ export class RefField extends Part {
 
   /** A node of the tree, by its role and name, e.g. button "Add item". */
   nodeNamed(role: string, name: string): On {
-    const escape = (text: string) =>
-      text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     // e2e reads rendered text, which may space the ref, role and name apart.
     const text = `^e\\d+ ?${escape(role)} ?${escape(JSON.stringify(name))}$`;
     return this.nodes.within((nodes) =>
