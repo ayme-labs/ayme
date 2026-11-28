@@ -1,13 +1,8 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-27T08:32:14.545Z",
+  "createdAt": "2026-11-28T13:28:57.502Z",
   "payload": {
     "actions": [
-      {
-        "name": "switchTab",
-        "summary": "switch to tab 2",
-        "tab": 1
-      },
       {
         "name": "tap",
         "summary": "tap treeitem \"TodoPage\" in \"On this page · 3\"",
@@ -30,79 +25,69 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "In the Inspector's Model lens, I tapped TodoPage under \"On this page\". It is now selected, and the Selected panel shows the \"TodoPage\" heading, \"page object\", Live, 1 action and 4 members.",
-    "startPath": "/models.html?external=",
+    "summary": "Tapped TodoPage under On this page in the Model lens. It is now selected, and the Selected panel shows the TodoPage heading, \"page object\", Live, and an Actions section with addItem.",
+    "startPath": "http://127.0.0.1:9403/inspector",
     "endPath": "http://127.0.0.1:9403/inspector",
     "endAnchors": [
       {
         "role": "heading",
-        "name": "ayme"
+        "name": "TodoPage"
       },
       {
-        "text": "ayme-e2e"
+        "name": "page object"
       },
       {
-        "role": "button",
-        "name": "Theme: System. Switch to Light."
+        "text": "Live"
       },
       {
-        "role": "searchbox",
-        "name": "Search page objects, actions, members and refs",
-        "placeholder": "Search objects, actions, refs"
+        "role": "heading",
+        "name": "Actions · 1"
       },
       {
-        "role": "button",
-        "name": "Model",
-        "states": [
-          "pressed"
-        ]
+        "name": "addItem"
       },
       {
-        "role": "button",
-        "name": "Structure"
+        "text": "(text: string)"
       },
       {
-        "role": "button",
-        "name": "Tools"
+        "role": "heading",
+        "name": "Members · 4"
       },
       {
-        "text": "10 refs"
+        "role": "image",
+        "name": "Page object"
       }
     ],
     "goneAnchors": [
       {
         "role": "heading",
-        "name": "Chores"
+        "name": "Page /"
       },
       {
-        "role": "textbox",
-        "name": "New chore"
+        "name": "page · 3 page object models"
       },
       {
-        "role": "button",
-        "name": "Add chore"
+        "role": "heading",
+        "name": "On this page · 1"
       },
       {
-        "role": "button",
-        "name": "Done"
+        "name": "page"
       },
       {
-        "role": "document",
-        "name": "Inspector model fixture"
+        "role": "heading",
+        "name": "Tools · 3"
       },
       {
-        "text": "New chore"
+        "name": "snapshot"
       },
       {
-        "role": "list",
-        "name": "Chores"
+        "text": "(names?: string[])"
       },
       {
-        "role": "listitem",
-        "name": "Water plants Done"
+        "text": "Return the current live structural page state together with compact POM capability definitions known to ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description, then lists the POM's declared children and its actions. A bare member is…"
       }
     ],
-    "endWaitMs": 19750,
+    "endWaitMs": 13557,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",

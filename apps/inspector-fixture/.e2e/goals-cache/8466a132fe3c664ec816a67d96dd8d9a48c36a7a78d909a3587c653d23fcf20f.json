@@ -1,13 +1,8 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-26T21:48:49.042Z",
+  "createdAt": "2026-11-28T13:49:09.416Z",
   "payload": {
     "actions": [
-      {
-        "name": "switchTab",
-        "summary": "switch to tab 2",
-        "tab": 1
-      },
       {
         "name": "tap",
         "summary": "tap button \"Tools\" in \"Model\"",
@@ -39,33 +34,13 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "In the inspector tab (tab 2), I switched to the Tools lens and opened ListPage.clear. Its detail panel shows the heading \"ListPage.clear\", a \"Destructive\" label, and \"Remove every item from the list.\" It also shows \"Nothing to clear\" as the reason it is unavailable.",
-    "startPath": "/?external=",
+    "summary": "Switched to Tools lens and opened ListPage.clear; its detail panel (Destructive, \"Remove every item from the list.\", unavailable: Nothing to clear) is shown.",
+    "startPath": "http://127.0.0.1:9403/inspector",
     "endPath": "http://127.0.0.1:9403/inspector",
     "endAnchors": [
       {
-        "role": "heading",
-        "name": "ayme"
-      },
-      {
-        "text": "ayme-e2e"
-      },
-      {
-        "role": "button",
-        "name": "Theme: System. Switch to Light."
-      },
-      {
-        "role": "searchbox",
-        "name": "Search page objects, actions, members and refs",
-        "placeholder": "Search objects, actions, refs"
-      },
-      {
         "role": "button",
         "name": "Model"
-      },
-      {
-        "role": "button",
-        "name": "Structure"
       },
       {
         "role": "button",
@@ -75,38 +50,63 @@
         ]
       },
       {
-        "text": "9 refs"
+        "role": "heading",
+        "name": "Page object tools · 3"
+      },
+      {
+        "text": ".addItem"
+      },
+      {
+        "text": ".countItems"
+      },
+      {
+        "name": "Destructive"
+      },
+      {
+        "role": "heading",
+        "name": "Custom tools · 1"
+      },
+      {
+        "name": "mark_element"
       }
     ],
     "goneAnchors": [
       {
-        "role": "heading",
-        "name": "Groceries"
-      },
-      {
-        "role": "textbox",
-        "name": "New item"
-      },
-      {
-        "role": "checkbox",
-        "name": "Urgent"
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
       },
       {
         "role": "button",
-        "name": "Add item"
+        "name": "Tools"
       },
       {
-        "role": "document",
-        "name": "Inspector fixture"
+        "role": "button",
+        "name": "On this page · 1",
+        "states": [
+          "expanded"
+        ]
       },
       {
-        "text": "New item"
+        "name": "/"
       },
       {
-        "text": "Urgent"
+        "text": "page"
+      },
+      {
+        "name": "entries"
+      },
+      {
+        "text": "ListItem[0]"
+      },
+      {
+        "role": "separator",
+        "name": "Resize the two lists"
       }
     ],
-    "endWaitMs": 14124,
+    "endWaitMs": 12965,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",

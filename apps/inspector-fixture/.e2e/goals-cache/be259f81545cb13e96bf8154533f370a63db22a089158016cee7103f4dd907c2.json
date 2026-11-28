@@ -1,13 +1,8 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-26T21:26:52.798Z",
+  "createdAt": "2026-11-28T13:45:27.021Z",
   "payload": {
     "actions": [
-      {
-        "name": "switchTab",
-        "summary": "switch to tab 2",
-        "tab": 1
-      },
       {
         "name": "tap",
         "summary": "tap button \"All\" in \"This page\"",
@@ -30,78 +25,42 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "In the inspector tab (tab 2), I tapped \"All\" in the Runs scope group. \"All\" is now pressed and \"This page\" is not. The Runs list still shows 1 run (snapshot).",
-    "startPath": "/?external=",
+    "summary": "Tapped \"All\" in the Runs scope group. It now shows pressed and \"This page\" is no longer pressed.",
+    "startPath": "http://127.0.0.1:9403/inspector",
     "endPath": "http://127.0.0.1:9403/inspector",
     "endAnchors": [
       {
-        "role": "heading",
-        "name": "ayme"
-      },
-      {
-        "text": "ayme-e2e"
+        "text": "10 refs"
       },
       {
         "role": "button",
-        "name": "Theme: System. Switch to Light."
-      },
-      {
-        "role": "searchbox",
-        "name": "Search page objects, actions, members and refs",
-        "placeholder": "Search objects, actions, refs"
+        "name": "This page"
       },
       {
         "role": "button",
-        "name": "Model",
+        "name": "All",
+        "states": [
+          "pressed"
+        ]
+      }
+    ],
+    "goneAnchors": [
+      {
+        "text": "9 refs"
+      },
+      {
+        "role": "button",
+        "name": "This page",
         "states": [
           "pressed"
         ]
       },
       {
         "role": "button",
-        "name": "Structure"
-      },
-      {
-        "role": "button",
-        "name": "Tools"
-      },
-      {
-        "text": "10 refs"
+        "name": "All"
       }
     ],
-    "goneAnchors": [
-      {
-        "role": "heading",
-        "name": "Groceries"
-      },
-      {
-        "role": "textbox",
-        "name": "New item"
-      },
-      {
-        "role": "checkbox",
-        "name": "Urgent"
-      },
-      {
-        "role": "button",
-        "name": "Add item"
-      },
-      {
-        "role": "button",
-        "name": "Dismiss notice"
-      },
-      {
-        "role": "document",
-        "name": "Inspector fixture"
-      },
-      {
-        "text": "New item"
-      },
-      {
-        "text": "Urgent"
-      }
-    ],
-    "endWaitMs": 13612,
+    "endWaitMs": 13794,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",

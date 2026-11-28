@@ -1,6 +1,6 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-27T10:25:47.623Z",
+  "createdAt": "2026-11-28T13:30:04.577Z",
   "payload": {
     "actions": [
       {
@@ -25,12 +25,12 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "I tapped the \"[1] Eggs\" radio in the Instance group of the ListItem.mark form. It is now checked and \"[0] Milk\" is unchecked. A locator label, locator('ayme-ref=e12'), appeared.",
+    "summary": "Selected the Eggs radio (\"[1] Eggs\") in the ListItem.mark Instance radiogroup; it now shows checked and focused.",
     "startPath": "/",
     "endPath": "/",
     "endAnchors": [
       {
-        "text": "locator('ayme-ref=e12')"
+        "text": "locator('ayme-ref=e13')"
       },
       {
         "role": "radio",
@@ -57,7 +57,7 @@
         "name": "[1] Eggs"
       }
     ],
-    "endWaitMs": 12624,
+    "endWaitMs": 10121,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",

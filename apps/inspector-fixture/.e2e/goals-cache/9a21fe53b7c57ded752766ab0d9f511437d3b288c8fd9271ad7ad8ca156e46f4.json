@@ -1,13 +1,8 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-28T09:18:12.617Z",
+  "createdAt": "2026-11-28T13:34:01.953Z",
   "payload": {
     "actions": [
-      {
-        "name": "switchTab",
-        "summary": "switch to tab 2",
-        "tab": 1
-      },
       {
         "name": "tap",
         "summary": "tap button \"Structure\" in \"Model\"",
@@ -30,26 +25,10 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "In the inspector tab (tab 2), I tapped the \"Structure\" lens button. It now shows [pressed], and the navigator lists the \"Page structure\" tree (e2 main, e3 heading, and so on). Tab 2 is the active tab.",
-    "startPath": "/?external=",
+    "summary": "Tapped the Structure lens button in the Inspector. It is now pressed, Model is unpressed, and the navigator shows the \"Page structure\" tree (e2 main, e3 heading \"Groceries\", and so on).",
+    "startPath": "http://127.0.0.1:9403/inspector",
     "endPath": "http://127.0.0.1:9403/inspector",
     "endAnchors": [
-      {
-        "role": "heading",
-        "name": "ayme"
-      },
-      {
-        "text": "ayme-e2e"
-      },
-      {
-        "role": "button",
-        "name": "Theme: System. Switch to Light."
-      },
-      {
-        "role": "searchbox",
-        "name": "Search page objects, actions, members and refs",
-        "placeholder": "Search objects, actions, refs"
-      },
       {
         "role": "button",
         "name": "Model"
@@ -62,42 +41,62 @@
         ]
       },
       {
-        "role": "button",
-        "name": "Tools"
+        "text": "e2"
       },
       {
-        "text": "9 refs"
+        "text": "main"
+      },
+      {
+        "text": "e3"
+      },
+      {
+        "text": "heading"
+      },
+      {
+        "name": "Groceries",
+        "text": "\"Groceries\""
+      },
+      {
+        "text": "e4"
       }
     ],
     "goneAnchors": [
       {
-        "role": "heading",
-        "name": "Groceries"
-      },
-      {
-        "role": "textbox",
-        "name": "New item"
-      },
-      {
-        "role": "checkbox",
-        "name": "Urgent"
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
       },
       {
         "role": "button",
-        "name": "Add item"
+        "name": "Structure"
       },
       {
-        "role": "document",
-        "name": "Inspector fixture"
+        "role": "button",
+        "name": "On this page · 1",
+        "states": [
+          "expanded"
+        ]
       },
       {
-        "text": "New item"
+        "name": "/"
       },
       {
-        "text": "Urgent"
+        "text": "page"
+      },
+      {
+        "name": "entries"
+      },
+      {
+        "text": "ListItem[0]"
+      },
+      {
+        "role": "separator",
+        "name": "Resize the two lists"
       }
     ],
-    "endWaitMs": 16141,
+    "endWaitMs": 13224,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",

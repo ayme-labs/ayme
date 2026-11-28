@@ -1,13 +1,8 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-26T21:36:41.696Z",
+  "createdAt": "2026-11-28T13:48:40.269Z",
   "payload": {
     "actions": [
-      {
-        "name": "switchTab",
-        "summary": "switch to tab 2",
-        "tab": 1
-      },
       {
         "name": "tap",
         "summary": "tap button \"Tools\" in \"Model\"",
@@ -30,33 +25,13 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "In the inspector tab (tab 2) I tapped the \"Tools\" lens button. It is now pressed, and the navigator lists the tool groups: Page object tools (3), Custom tools (1), Browser tools (14), Peek tools (1) and Agent tools (3). Tab 2 is the active tab.",
-    "startPath": "/?external=",
+    "summary": "Tapped the Tools lens button in the Inspector. It now shows pressed, and the navigator lists the tool groups: Page object tools, Custom tools, Browser tools and Agent tools.",
+    "startPath": "http://127.0.0.1:9403/inspector",
     "endPath": "http://127.0.0.1:9403/inspector",
     "endAnchors": [
       {
-        "role": "heading",
-        "name": "ayme"
-      },
-      {
-        "text": "ayme-e2e"
-      },
-      {
-        "role": "button",
-        "name": "Theme: System. Switch to Light."
-      },
-      {
-        "role": "searchbox",
-        "name": "Search page objects, actions, members and refs",
-        "placeholder": "Search objects, actions, refs"
-      },
-      {
         "role": "button",
         "name": "Model"
-      },
-      {
-        "role": "button",
-        "name": "Structure"
       },
       {
         "role": "button",
@@ -66,38 +41,62 @@
         ]
       },
       {
-        "text": "9 refs"
+        "role": "heading",
+        "name": "Page object tools · 3"
+      },
+      {
+        "text": "ListPage"
+      },
+      {
+        "text": ".addItem"
+      },
+      {
+        "text": ".countItems"
+      },
+      {
+        "name": "Destructive"
+      },
+      {
+        "text": ".clear"
       }
     ],
     "goneAnchors": [
       {
-        "role": "heading",
-        "name": "Groceries"
-      },
-      {
-        "role": "textbox",
-        "name": "New item"
-      },
-      {
-        "role": "checkbox",
-        "name": "Urgent"
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
       },
       {
         "role": "button",
-        "name": "Add item"
+        "name": "Tools"
       },
       {
-        "role": "document",
-        "name": "Inspector fixture"
+        "role": "button",
+        "name": "On this page · 1",
+        "states": [
+          "expanded"
+        ]
       },
       {
-        "text": "New item"
+        "name": "/"
       },
       {
-        "text": "Urgent"
+        "text": "page"
+      },
+      {
+        "name": "entries"
+      },
+      {
+        "text": "ListItem[0]"
+      },
+      {
+        "role": "separator",
+        "name": "Resize the two lists"
       }
     ],
-    "endWaitMs": 18816,
+    "endWaitMs": 12631,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",

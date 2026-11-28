@@ -1,6 +1,6 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-27T08:37:00.401Z",
+  "createdAt": "2026-11-28T13:30:28.649Z",
   "payload": {
     "actions": [
       {
@@ -25,7 +25,7 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "Expanded Result on the goal run in Runs. It shows reason \"done\", history with ListPage.clear result ok, and the Milk list item removed.",
+    "summary": "The Result of the latest goal run is expanded in Runs. It shows reason \"done\" and a history entry for ListPage.clear, which removed Milk.",
     "startPath": "/",
     "endPath": "/",
     "endAnchors": [
@@ -37,14 +37,14 @@
         ]
       },
       {
-        "text": "{ \"reason\": \"done\", \"next\": \"The goal has been achieved. Continue with your next task.\", \"history\": [ { \"operation\": \"ListPage.clear\", \"chosen\": {}, \"result\": \"ok\", \"page_changed\": true, \"changes\": - e2 main: - e9 <changed> button \"Clear\" [active] - e10 list \"Items\": - e11 ListItem <removed>: Milk …"
+        "text": "{ \"reason\": \"done\", \"next\": \"The goal has been achieved. Continue with your next task.\", \"history\": [ { \"operation\": \"ListPage.clear\", \"chosen\": {}, \"result\": \"ok\", \"page_changed\": true, \"changes\": - e2 main: - e9 <changed> button \"Clear\" [active] - e10 list \"Items\": - e12 ListItem <removed>: Milk …"
       },
       {
         "role": "figure",
         "name": "Result"
       }
     ],
-    "endWaitMs": 13847,
+    "endWaitMs": 10113,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",

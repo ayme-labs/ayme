@@ -1,13 +1,8 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-28T12:38:21.910Z",
+  "createdAt": "2026-11-28T13:32:15.356Z",
   "payload": {
     "actions": [
-      {
-        "name": "switchTab",
-        "summary": "switch to tab 2",
-        "tab": 1
-      },
       {
         "name": "tap",
         "summary": "tap button \"Tools\" in \"Model\"",
@@ -38,33 +33,13 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "In the inspector tab, I switched to the Tools lens and opened press_key from Browser tools. The detail pane now shows the press_key article, labelled \"Browser tool\", with its key combobox and a Run button. I didn't run the tool.",
-    "startPath": "/?external=",
+    "summary": "Selected the Tools lens and tapped press_key under Browser tools. The detail pane now shows the press_key tool (Browser tool) with its Arguments form (key combobox) and a Run button. I didn't run it.",
+    "startPath": "http://127.0.0.1:9403/inspector",
     "endPath": "http://127.0.0.1:9403/inspector",
     "endAnchors": [
       {
-        "role": "heading",
-        "name": "ayme"
-      },
-      {
-        "text": "ayme-e2e"
-      },
-      {
-        "role": "button",
-        "name": "Theme: System. Switch to Light."
-      },
-      {
-        "role": "searchbox",
-        "name": "Search page objects, actions, members and refs",
-        "placeholder": "Search objects, actions, refs"
-      },
-      {
         "role": "button",
         "name": "Model"
-      },
-      {
-        "role": "button",
-        "name": "Structure"
       },
       {
         "role": "button",
@@ -74,38 +49,61 @@
         ]
       },
       {
-        "text": "9 refs"
+        "role": "heading",
+        "name": "Page object tools · 3"
+      },
+      {
+        "text": "ListPage"
+      },
+      {
+        "text": ".addItem"
+      },
+      {
+        "text": ".countItems"
+      },
+      {
+        "name": "Destructive"
+      },
+      {
+        "text": ".clear"
       }
     ],
     "goneAnchors": [
       {
-        "role": "heading",
-        "name": "Groceries"
-      },
-      {
-        "role": "textbox",
-        "name": "New item"
-      },
-      {
-        "role": "checkbox",
-        "name": "Urgent"
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
       },
       {
         "role": "button",
-        "name": "Add item"
+        "name": "Tools"
       },
       {
-        "role": "document",
-        "name": "Inspector fixture"
+        "role": "button",
+        "name": "On this page · 1",
+        "states": [
+          "expanded"
+        ]
       },
       {
-        "text": "New item"
+        "name": "/"
       },
       {
-        "text": "Urgent"
+        "text": "page"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "name": "entries"
+      },
+      {
+        "text": "ListItem[0]"
       }
     ],
-    "endWaitMs": 13031,
+    "endWaitMs": 14396,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",

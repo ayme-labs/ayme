@@ -1,13 +1,8 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-26T21:55:52.927Z",
+  "createdAt": "2026-11-28T13:47:08.464Z",
   "payload": {
     "actions": [
-      {
-        "name": "switchTab",
-        "summary": "switch to tab 2",
-        "tab": 1
-      },
       {
         "name": "tap",
         "summary": "tap button \"Tools\" in \"Model\"",
@@ -39,33 +34,13 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "In the inspector tab (tab 2), I switched to the Tools lens and opened ListPage.addItem. Its detail panel is now showing, with a \"text\" string argument form and a Run button. I did not run the tool.",
-    "startPath": "/unpublished.html?external=",
+    "summary": "In the Tools lens, opened ListPage.addItem; the detail panel now shows the \"ListPage.addItem\" article with its Arguments form (text field) and Run button.",
+    "startPath": "http://127.0.0.1:9403/inspector",
     "endPath": "http://127.0.0.1:9403/inspector",
     "endAnchors": [
       {
-        "role": "heading",
-        "name": "ayme"
-      },
-      {
-        "text": "ayme-e2e"
-      },
-      {
-        "role": "button",
-        "name": "Theme: System. Switch to Light."
-      },
-      {
-        "role": "searchbox",
-        "name": "Search page objects, actions, members and refs",
-        "placeholder": "Search objects, actions, refs"
-      },
-      {
         "role": "button",
         "name": "Model"
-      },
-      {
-        "role": "button",
-        "name": "Structure"
       },
       {
         "role": "button",
@@ -75,35 +50,63 @@
         ]
       },
       {
-        "text": "8 refs"
+        "role": "heading",
+        "name": "Page object tools · 3"
+      },
+      {
+        "text": ".countItems"
+      },
+      {
+        "name": "Destructive"
+      },
+      {
+        "text": ".clear"
+      },
+      {
+        "role": "heading",
+        "name": "Custom tools · 1"
+      },
+      {
+        "name": "mark_element"
       }
     ],
     "goneAnchors": [
       {
-        "role": "heading",
-        "name": "Groceries"
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
       },
       {
-        "role": "textbox",
-        "name": "New item",
-        "value": "Milk"
+        "role": "button",
+        "name": "Tools"
       },
       {
-        "role": "checkbox",
-        "name": "Urgent"
+        "role": "button",
+        "name": "On this page · 1",
+        "states": [
+          "expanded"
+        ]
       },
       {
-        "role": "document",
-        "name": "Inspector fixture without publication"
+        "name": "/"
       },
       {
-        "text": "New item"
+        "text": "page"
       },
       {
-        "text": "Urgent"
+        "name": "entries"
+      },
+      {
+        "text": "ListItem[0]"
+      },
+      {
+        "role": "separator",
+        "name": "Resize the two lists"
       }
     ],
-    "endWaitMs": 14455,
+    "endWaitMs": 13438,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",

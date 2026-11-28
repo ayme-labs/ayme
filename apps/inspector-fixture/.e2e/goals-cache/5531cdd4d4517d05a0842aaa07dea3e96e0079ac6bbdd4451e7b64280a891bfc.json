@@ -1,13 +1,8 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-26T21:54:49.433Z",
+  "createdAt": "2026-11-28T13:46:39.172Z",
   "payload": {
     "actions": [
-      {
-        "name": "switchTab",
-        "summary": "switch to tab 2",
-        "tab": 1
-      },
       {
         "name": "tap",
         "summary": "tap button \"Tools\" in \"Model\"",
@@ -38,33 +33,13 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "In the inspector tab (tab 2), I opened the Tools lens and tapped generate_locator. The Selected panel now shows the \"generate_locator\" tool detail with its arguments form and a Run button. I did not run it.",
-    "startPath": "/?external=",
+    "summary": "Selected the Tools lens and opened generate_locator; the Selected pane now shows its detail with an arguments form and Run button.",
+    "startPath": "http://127.0.0.1:9403/inspector",
     "endPath": "http://127.0.0.1:9403/inspector",
     "endAnchors": [
       {
-        "role": "heading",
-        "name": "ayme"
-      },
-      {
-        "text": "ayme-e2e"
-      },
-      {
-        "role": "button",
-        "name": "Theme: System. Switch to Light."
-      },
-      {
-        "role": "searchbox",
-        "name": "Search page objects, actions, members and refs",
-        "placeholder": "Search objects, actions, refs"
-      },
-      {
         "role": "button",
         "name": "Model"
-      },
-      {
-        "role": "button",
-        "name": "Structure"
       },
       {
         "role": "button",
@@ -74,38 +49,61 @@
         ]
       },
       {
-        "text": "9 refs"
+        "role": "heading",
+        "name": "Page object tools · 3"
+      },
+      {
+        "text": "ListPage"
+      },
+      {
+        "text": ".addItem"
+      },
+      {
+        "text": ".countItems"
+      },
+      {
+        "name": "Destructive"
+      },
+      {
+        "text": ".clear"
       }
     ],
     "goneAnchors": [
       {
-        "role": "heading",
-        "name": "Groceries"
-      },
-      {
-        "role": "textbox",
-        "name": "New item"
-      },
-      {
-        "role": "checkbox",
-        "name": "Urgent"
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
       },
       {
         "role": "button",
-        "name": "Add item"
+        "name": "Tools"
       },
       {
-        "role": "document",
-        "name": "Inspector fixture"
+        "role": "button",
+        "name": "On this page · 1",
+        "states": [
+          "expanded"
+        ]
       },
       {
-        "text": "New item"
+        "name": "/"
       },
       {
-        "text": "Urgent"
+        "text": "page"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "name": "entries"
+      },
+      {
+        "text": "ListItem[0]"
       }
     ],
-    "endWaitMs": 14954,
+    "endWaitMs": 13361,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",

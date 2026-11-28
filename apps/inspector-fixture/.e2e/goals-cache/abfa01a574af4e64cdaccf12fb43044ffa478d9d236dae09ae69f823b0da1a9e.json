@@ -1,13 +1,8 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-11-27T10:26:36.508Z",
+  "createdAt": "2026-11-28T13:46:00.259Z",
   "payload": {
     "actions": [
-      {
-        "name": "switchTab",
-        "summary": "switch to tab 2",
-        "tab": 1
-      },
       {
         "name": "tap",
         "summary": "tap button \"Tools\" in \"Model\"",
@@ -39,33 +34,13 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "In the Inspector (tab 2), I selected the Tools lens and tapped ListItem.mark. The detail pane now shows the \"ListItem.mark\" tool with its form (Instance radios for Milk and Eggs, a state select, and a Run button). I did not run it.",
-    "startPath": "/?external=",
+    "summary": "Switched to the Tools lens and selected ListItem.mark. The detail pane now shows the \"ListItem.mark\" article (\"Page object tool\") with its mark form (Instance radios, state select) and a Run button. I did not press Run.",
+    "startPath": "http://127.0.0.1:9403/inspector",
     "endPath": "http://127.0.0.1:9403/inspector",
     "endAnchors": [
       {
-        "role": "heading",
-        "name": "ayme"
-      },
-      {
-        "text": "ayme-e2e"
-      },
-      {
-        "role": "button",
-        "name": "Theme: System. Switch to Light."
-      },
-      {
-        "role": "searchbox",
-        "name": "Search page objects, actions, members and refs",
-        "placeholder": "Search objects, actions, refs"
-      },
-      {
         "role": "button",
         "name": "Model"
-      },
-      {
-        "role": "button",
-        "name": "Structure"
       },
       {
         "role": "button",
@@ -76,42 +51,60 @@
       },
       {
         "text": "11 refs"
+      },
+      {
+        "role": "heading",
+        "name": "Page object tools · 4"
+      },
+      {
+        "text": "ListPage"
+      },
+      {
+        "text": ".addItem"
+      },
+      {
+        "text": ".countItems"
+      },
+      {
+        "name": "Destructive"
       }
     ],
     "goneAnchors": [
       {
-        "role": "heading",
-        "name": "Groceries"
-      },
-      {
-        "role": "textbox",
-        "name": "New item"
-      },
-      {
-        "role": "checkbox",
-        "name": "Urgent"
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
       },
       {
         "role": "button",
-        "name": "Add item"
+        "name": "Tools"
       },
       {
-        "role": "listitem",
-        "name": "Milk"
+        "text": "9 refs"
       },
       {
-        "role": "listitem",
-        "name": "Eggs"
+        "role": "button",
+        "name": "On this page · 3",
+        "states": [
+          "expanded"
+        ]
       },
       {
-        "role": "document",
-        "name": "Inspector fixture"
+        "name": "/"
       },
       {
-        "text": "New item"
+        "text": "page"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "name": "entries"
       }
     ],
-    "endWaitMs": 14047,
+    "endWaitMs": 13563,
     "keyedBy": {
       "cacheSchema": "trace-1",
       "policyVersion": "conservative/6",
