@@ -451,7 +451,7 @@ ${table(
   arms.map(sharedRow)
 )}
 
-- Tokens are input plus output, prompt-cache reads and writes included; cache reads are ${range(cacheShare, percent)} of them. e2e's cost estimate is its own, from the same usage.
+- Tokens are input plus output, prompt-cache reads and writes included${cacheShare.length ? `; cache reads are ${range(cacheShare, percent)} of them` : ""}. e2e's cost estimate is its own, from the same usage.
 - Unaccounted: a goal step that neither replayed nor passed with the model, so its usage cannot be told.
 - Not replayed: the goal steps that did not replay with no model call, and in brackets the distinct goals among them, a goal's text with its parameters counted once however many tests run it: the count a recording per goal, shared by every test, would have left.${perUse.length ? ` A goal whose parameters are only known at run time counts once per use, so the bracket is an upper bound for ${perUse.map((a) => a.name).join(" and ")}.` : ""}
 - Every arm ran with one worker and no retries, so this is a serial comparison. The default test timeout is 30 s in arm 2 and 900 s in the goal arms ([e2e.config.ts](../../e2e.config.ts), [e2e.goals.config.ts](../../e2e.goals.config.ts)).
