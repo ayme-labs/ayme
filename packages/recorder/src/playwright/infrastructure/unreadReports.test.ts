@@ -30,6 +30,24 @@ describe("a report of Playwright's the adapter could not read", () => {
     });
   });
 
+  it("keeps a choice's options and an upload's files, lists of plain values", () => {
+    expect(
+      bareReportOf({ name: "select", selector: "#size", options: ["M", "L"] })
+    ).toEqual({
+      type: "select",
+      selector: null,
+      target: null,
+      values: { options: ["M", "L"] },
+    });
+    expect(
+      bareReportOf({
+        name: "setInputFiles",
+        files: ["a.txt", "b.txt"],
+        mixed: ["a", { b: 1 }],
+      })?.values
+    ).toEqual({ files: ["a.txt", "b.txt"] });
+  });
+
   it("is told by nothing when even that cannot be read off it", () => {
     const action = { name: "click" };
     Object.defineProperty(action, "button", {
@@ -68,6 +86,15 @@ describe("what a person is told of a report the adapter could not read", () => {
   it("says a step may be missing when the report could not be read at all, also for an error that cannot be shown", () => {
     expect(reportLost(Object.create(null)).message).toBe(
       "A step may be missing from the recording: the recorder could not read a report of Playwright's. The trace still holds it. The recorder's error: an error that cannot be shown"
+    );
+  });
+
+  it("says so of an error whose message is no text", () => {
+    const symbolic = Object.assign(new Error(), {
+      message: Symbol("message"),
+    });
+    expect(reportLost(symbolic).message).toMatch(
+      /The recorder's error: an error that cannot be shown$/
     );
   });
 });

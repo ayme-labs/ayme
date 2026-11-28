@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isHeldByPage, isInputNote } from "./pageValues";
+import { heldByPageIn, inputNoteIn } from "./pageValues";
 
 const click = {
   kind: "click",
@@ -24,12 +24,20 @@ const key = {
 
 describe("what a page tells of an input it held", () => {
   it("is taken as the gate sends it: a click, with or without its button, or a key", () => {
-    expect(isHeldByPage(click)).toBe(true);
+    expect(heldByPageIn(click)).toEqual(click);
     // A click from the keyboard counts 0, and a pointer can be between
     // pixels.
-    expect(isHeldByPage({ ...click, detail: 0, x: 10.5, y: -2 })).toBe(true);
-    expect(isHeldByPage({ ...click, button: "right" })).toBe(true);
-    expect(isHeldByPage(key)).toBe(true);
+    expect(heldByPageIn({ ...click, detail: 0, x: 10.5, y: -2 })).toEqual({
+      ...click,
+      detail: 0,
+      x: 10.5,
+      y: -2,
+    });
+    expect(heldByPageIn({ ...click, button: "right" })).toEqual({
+      ...click,
+      button: "right",
+    });
+    expect(heldByPageIn(key)).toEqual(key);
   });
 
   it.each([
@@ -61,7 +69,15 @@ describe("what a page tells of an input it held", () => {
     ["a key that says not whether it is typing", { ...key, typing: "yes" }],
     ["a key with no name", { ...key, key: null }],
   ])("is not taken when the page hands over %s", (_, value) => {
-    expect(isHeldByPage(value)).toBe(false);
+    expect(heldByPageIn(value)).toBeUndefined();
+  });
+});
+
+describe("what is kept of a value a page hands over", () => {
+  it("is what the schema names: a field the page adds is left behind", () => {
+    expect(heldByPageIn({ ...click, extra: { big: "x".repeat(10) } })).toEqual(
+      click
+    );
   });
 });
 
@@ -74,8 +90,12 @@ describe("what a page tells of an input's target", () => {
   };
 
   it("is taken as the target watch sends it: of a held click, or of an event no click held", () => {
-    expect(isInputNote(note)).toBe(true);
-    expect(isInputNote({ ...note, under: null, held: null })).toBe(true);
+    expect(inputNoteIn(note)).toEqual(note);
+    expect(inputNoteIn({ ...note, under: null, held: null })).toEqual({
+      ...note,
+      under: null,
+      held: null,
+    });
   });
 
   it.each([
@@ -94,6 +114,6 @@ describe("what a page tells of an input's target", () => {
     ],
     ["a held click that is a string", { ...note, held: "doc_1" }],
   ])("is not taken when the page hands over %s", (_, value) => {
-    expect(isInputNote(value)).toBe(false);
+    expect(inputNoteIn(value)).toBeUndefined();
   });
 });

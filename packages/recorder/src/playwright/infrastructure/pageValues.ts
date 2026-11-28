@@ -61,10 +61,10 @@ const InputNoteSchema = z.readonly(
      * none. */
     chain: z.readonly(z.array(z.nullable(z.string()))),
     /** The ref of the element under the pointer, which Playwright's report
-     * names as its ref. */
+     * names as its ref: it says which report this is the note of. */
     under: z.nullable(z.string()),
-    /** The held click the event is; null for an event that is no held
-     * click's. */
+    /** The held click the event is, as the gate sent it on; null for an
+     * event that is no held click's, as the release of a right-click. */
     held: z.nullable(HeldClickSchema),
   })
 );
@@ -72,17 +72,17 @@ const InputNoteSchema = z.readonly(
 /** What a page tells of an input it held back. */
 export type HeldByPage = z.infer<typeof HeldByPageSchema>;
 
-/** A page's note of an input: the event, the refs of the element it acted
- * on and its ancestors, nearest first, the ref of the element under the
- * pointer, which Playwright's report names, and the held click the event
- * is, if it is one (the in-page `TargetChain`). */
+/** What a document's target watch tells of an input: the event, the refs
+ * of the element it acted on and its ancestors, nearest first, the ref of
+ * the element under the pointer, and the held click the event is. */
 export type InputNote = z.infer<typeof InputNoteSchema>;
 
-/** Whether a value is an input the gate held, as it tells of one. */
-export const isHeldByPage = (value: unknown): value is HeldByPage =>
-  HeldByPageSchema.safeParse(value).success;
+/** The input the gate held, as it tells of one; undefined for anything
+ * else. Only the fields the schema names are kept. */
+export const heldByPageIn = (value: unknown): HeldByPage | undefined =>
+  HeldByPageSchema.safeParse(value).data;
 
-/** Whether a value is a note of an input's target, as the target watch
- * tells of one. */
-export const isInputNote = (value: unknown): value is InputNote =>
-  InputNoteSchema.safeParse(value).success;
+/** The note of an input's target, as the target watch tells of one;
+ * undefined for anything else. Only the fields the schema names are kept. */
+export const inputNoteIn = (value: unknown): InputNote | undefined =>
+  InputNoteSchema.safeParse(value).data;

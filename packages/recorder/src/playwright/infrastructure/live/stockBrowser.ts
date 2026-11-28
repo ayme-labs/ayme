@@ -59,7 +59,7 @@ import {
   type HighlightBox,
 } from "../in-page/drawing";
 import { startGate } from "../in-page/gate";
-import { installActivityWatch, type TargetChain } from "../in-page/watches";
+import { installActivityWatch } from "../in-page/watches";
 import {
   letThroughUpTo,
   ownRefOf,
@@ -76,6 +76,7 @@ import {
 } from "./pageFunctions";
 import {
   playwrightRecorderOf,
+  valuesOf,
   type PlaywrightAction,
 } from "../playwrightRecorder";
 import {
@@ -97,7 +98,7 @@ import {
   revisionLost,
   withoutElement,
 } from "../unreadReports";
-import { isHeldByPage, isInputNote } from "../pageValues";
+import { heldByPageIn, inputNoteIn, type InputNote } from "../pageValues";
 import { storageStateIn } from "../storageFile";
 import { snapshotPositions } from "../traceTool";
 import {
@@ -443,9 +444,10 @@ async function openPage(
   const heldBinding = "__aymeRecorderHeld";
   await context.exposeBinding(
     heldBinding,
-    ({ page, frame }, input: unknown) => {
+    ({ page, frame }, fromPage: unknown) => {
       const pageId = idOf.get(page);
-      if (!pageId || !isHeldByPage(input)) return;
+      const input = heldByPageIn(fromPage);
+      if (!pageId || !input) return;
       const id = `input_${++inputs}` as InputId;
       held.set(id, { frame, input });
       heldBy.set(pageId, [
@@ -476,11 +478,12 @@ async function openPage(
     for (const heard of listening.get(page) ?? []) heard();
   });
   /** The latest targets each page told of. */
-  const chains = new Map<Page, TargetChain[]>();
+  const chains = new Map<Page, InputNote[]>();
   const chainBinding = "__aymeRecorderTarget";
   await context.exposeBinding(chainBinding, ({ page }, seen: unknown) => {
-    if (!isInputNote(seen)) return;
-    chains.set(page, [...(chains.get(page) ?? []).slice(-9), seen]);
+    const note = inputNoteIn(seen);
+    if (!note) return;
+    chains.set(page, [...(chains.get(page) ?? []).slice(-9), note]);
   });
   /** The held clicks each page was sent while Playwright's recorder
    * reported, whose reports can still come (`sentOn`). */
@@ -1271,14 +1274,13 @@ function withLocator(report: InteractionReport, page: Page): InteractionReport {
 }
 
 function reportOf(action: PlaywrightAction): InteractionReport {
-  const { name, selector, ref, ariaSnapshot, signals, ...values } = action;
-  void signals;
+  const { name, selector, ref, ariaSnapshot } = action;
   return {
     type: name,
     selector: selector ?? null,
     target:
       ref && ariaSnapshot ? { ref: pictureRef(ref), tree: ariaSnapshot } : null,
-    values,
+    values: valuesOf(action),
   };
 }
 
