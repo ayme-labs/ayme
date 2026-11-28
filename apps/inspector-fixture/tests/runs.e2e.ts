@@ -47,6 +47,7 @@ for (const placement of placements) {
         return null;
       });
       const ref = await appView.ref('button "Dismiss notice"');
+      await bringPanelToFront(inspector);
       await inspector.runs.showAll();
       await appView.run("click", { target: ref });
       const run = inspector.runs.latest("click");
@@ -106,6 +107,7 @@ for (const placement of placements) {
       // The Add item button's ref, as snapshot gives it.
       const ref = await appView.ref('button "Add item"');
 
+      await bringPanelToFront(inspector);
       await inspector.tool("mark_element");
 
       await inspector.detail.runCard().run({ ref });
@@ -130,6 +132,7 @@ for (const placement of placements) {
     }) => {
       await listPage.addItem("Milk");
       await listPage.addItem("Eggs");
+      await bringPanelToFront(inspector);
       await inspector.tool("ListItem.mark");
 
       await inspector.detail.runCard().pickItem("Eggs");
@@ -160,6 +163,7 @@ for (const placement of placements) {
     }) => {
       await listPage.addItem("Milk");
 
+      await bringPanelToFront(inspector);
       await inspector.tool("goal");
       await inspector.detail
         .runCard()
@@ -270,6 +274,7 @@ for (const placement of placements) {
         ],
         [await appView.ref('button "Clear"')],
       ];
+      await bringPanelToFront(inspector);
       await inspector.tool("generate_locator");
       const card = inspector.detail.runCard();
       const { locatorGroups } = card;
@@ -337,6 +342,7 @@ for (const placement of placements) {
           text: "Milk",
         });
 
+        await bringPanelToFront(inspector);
         await inspector.tool("ListPage.addItem");
         await inspector.detail.runCard().run({ text: "Milk" });
 
@@ -373,6 +379,7 @@ for (const placement of placements) {
             "ListPage.addItem",
             { text: "Milk" }
           );
+          await bringPanelToFront(inspector);
           await inspector.tool("ListPage.addItem");
           await inspector.detail.runCard().run({ text: "Milk" });
 

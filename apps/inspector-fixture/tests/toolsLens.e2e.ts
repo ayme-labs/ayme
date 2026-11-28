@@ -2,6 +2,7 @@ import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
 import {
+  bringPanelToFront,
   callOverMcp,
   INSPECTOR,
   placements,
@@ -29,6 +30,7 @@ for (const placement of placements) {
     }) => {
       const liveTools = await appView.tools();
 
+      await bringPanelToFront(inspector);
       await inspector.navigator.showLens("Tools");
 
       await expect
@@ -65,6 +67,7 @@ for (const placement of placements) {
             )
           );
           const { toolPage } = inspector.detail;
+          await bringPanelToFront(inspector);
           await inspector.navigator.showLens("Tools");
 
           for (const tool of liveTools) {
@@ -138,6 +141,7 @@ for (const placement of placements) {
       const definition = await appView.pomDefinitions("ListPage");
       const { toolPage } = inspector.detail;
 
+      await bringPanelToFront(inspector);
       await inspector.tool("ListPage.addItem");
       await toolPage.modelSees.open();
 
@@ -162,6 +166,7 @@ for (const placement of placements) {
       // Asked before the panel runs it: the app's own run is a Run too.
       const refusal = await appView.refusal("ListPage.clear");
 
+      await bringPanelToFront(inspector);
       await inspector.tool("ListPage.clear");
       const card = inspector.detail.runCard();
 
@@ -191,6 +196,7 @@ for (const placement of placements) {
           expect(peeks).toEqual(["peek.list"]);
           await listPage.addItem("Milk");
 
+          await bringPanelToFront(inspector);
           await inspector.navigator.showLens("Tools");
           await expect
             .poll(() => inspector.navigator.tools.peekSections())
