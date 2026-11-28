@@ -24,6 +24,7 @@ import { scriptedExecutor } from "./tests/e2e/tools/scripted";
 // recordings apart from the agent's.
 
 await assertPatchedE2e("e2e.goals-tools.config.ts");
+process.env.AYME_E2E_MCP_PORT ??= "9585"; // This arm's recordings were made on this port and replay only against that origin; set before the import below pins arm 1's.
 const {
   default: goals,
   GOALS_MODEL,
