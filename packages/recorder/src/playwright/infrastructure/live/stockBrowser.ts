@@ -91,13 +91,7 @@ import {
   rangeText,
   type Playwright,
 } from "../projectPlaywright";
-import {
-  bareReportOf,
-  readInPart,
-  reportLost,
-  revisionLost,
-  withoutElement,
-} from "../unreadReports";
+import { readInPart, reportLost, toldOfUnread } from "../unreadReports";
 import { heldByPageIn, inputNoteIn, type InputNote } from "../pageValues";
 import { storageStateIn } from "../storageFile";
 import { snapshotPositions } from "../traceTool";
@@ -1153,17 +1147,16 @@ async function openPage(
           report,
         }));
       },
-      unread: (reported, { action, revision, cause }) => {
+      unread: (reported, unread) => {
         const pageId = idOf.get(reported);
-        if (revision) return warn(revisionLost(cause));
-        const bare = pageId && action ? bareReportOf(action) : undefined;
-        if (!pageId || !bare) return warn(reportLost(cause));
-        warn(withoutElement(bare.type, cause));
-        inReportOrder(async () => ({
-          kind: "interactionReported",
-          page: pageId,
-          report: bare,
-        }));
+        const { warning, report } = toldOfUnread(pageId !== undefined, unread);
+        warn(warning);
+        if (pageId && report)
+          inReportOrder(async () => ({
+            kind: "interactionReported",
+            page: pageId,
+            report,
+          }));
       },
     });
     // A document that was open before the recorder started.

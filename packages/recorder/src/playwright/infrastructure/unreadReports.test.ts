@@ -5,6 +5,7 @@ import {
   readInPart,
   reportLost,
   revisionLost,
+  toldOfUnread,
   withoutElement,
 } from "./unreadReports";
 
@@ -20,13 +21,14 @@ describe("a report of Playwright's the adapter could not read", () => {
         button: "left",
         clickCount: 1,
         modifiers: 0,
+        trial: false,
         position: { x: 3, y: 4 },
       })
     ).toEqual({
       type: "click",
       selector: null,
       target: null,
-      values: { button: "left", clickCount: 1, modifiers: 0 },
+      values: { button: "left", clickCount: 1, modifiers: 0, trial: false },
     });
   });
 
@@ -96,5 +98,36 @@ describe("what a person is told of a report the adapter could not read", () => {
     expect(reportLost(symbolic).message).toMatch(
       /The recorder's error: an error that cannot be shown$/
     );
+  });
+});
+
+describe("what is told of a report that could not be read", () => {
+  const cause = new Error("It broke.");
+  const click = { name: "click", button: "left", clickCount: 1 };
+
+  it("is the report told bare, with a warning that it has no element, for a report of an open page", () => {
+    expect(
+      toldOfUnread(true, { action: click, revision: false, cause })
+    ).toEqual({
+      warning: withoutElement("click", cause),
+      report: {
+        type: "click",
+        selector: null,
+        target: null,
+        values: { button: "left", clickCount: 1 },
+      },
+    });
+  });
+
+  it("is a warning alone for a revision, a report of no open page, or one that could not be decoded", () => {
+    expect(
+      toldOfUnread(true, { action: click, revision: true, cause })
+    ).toEqual({ warning: revisionLost(cause) });
+    expect(
+      toldOfUnread(false, { action: click, revision: false, cause })
+    ).toEqual({ warning: reportLost(cause) });
+    expect(
+      toldOfUnread(true, { action: undefined, revision: false, cause })
+    ).toEqual({ warning: reportLost(cause) });
   });
 });

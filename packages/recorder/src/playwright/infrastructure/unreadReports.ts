@@ -27,6 +27,7 @@ export function bareReportOf(
       target: null,
       values: Object.fromEntries(values),
     };
+    // Stryker disable next-line BlockStatement: an empty catch returns undefined too
   } catch {
     return undefined;
   }
@@ -74,3 +75,22 @@ export const reportLost = (cause: unknown) =>
     "A step may be missing from the recording: the recorder could not read a report of Playwright's. The trace still holds it.",
     cause
   );
+
+/** What is told of a report that could not be read: a warning, and the
+ * report told bare when one keeps its place (`bareReportOf`). A revision
+ * has no place of its own, and a report of no open page none to keep. */
+export function toldOfUnread(
+  ofOpenPage: boolean,
+  unread: {
+    readonly action: PlaywrightAction | undefined;
+    readonly revision: boolean;
+    readonly cause: unknown;
+  }
+): { warning: RecorderWarning; report?: InteractionReport } {
+  const { action, revision, cause } = unread;
+  if (revision) return { warning: revisionLost(cause) };
+  const bare = ofOpenPage && action ? bareReportOf(action) : undefined;
+  return bare
+    ? { warning: withoutElement(bare.type, cause), report: bare }
+    : { warning: reportLost(cause) };
+}

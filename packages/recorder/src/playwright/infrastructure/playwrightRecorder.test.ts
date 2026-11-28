@@ -134,6 +134,9 @@ it("tells a report it cannot decode as unread, throws nothing at Playwright, and
     { action: undefined, revision: false },
     { action: undefined, revision: false },
   ]);
+  expect(unread[1]!.cause).toEqual(
+    new Error("Playwright's report names no action.")
+  );
   expect(added).toEqual([click]);
 });
 
