@@ -121,6 +121,42 @@ test("a dialog on one Tab leaves a command on another Tab alone, and a command n
   expect(await page.locator("#marks").textContent()).toBe("0");
 });
 
+test("a dialog open before ayme worked on any Tab of its browser context holds a command on another Tab only for ayme's setup limit, which names the dialog, and the command works once it is answered", async ({
+  ayme,
+  baseURL,
+}) => {
+  const opened = await ayme("open", `${baseURL}/dialogs.html`);
+  const { context, page, dialogs } = await automation(opened.stdout);
+  const shop = await context.newPage();
+  await shop.goto(`${baseURL}/shop.html`);
+  // A click of the automation's own would wait for the confirm's answer.
+  await page.evaluate(() =>
+    setTimeout(() => document.getElementById("remove")!.click())
+  );
+  await expect.poll(() => dialogs.length).toBe(1);
+
+  expect(await ayme("call", "ShopPage.readHeading")).toEqual({
+    code: 1,
+    stdout: "",
+    stderr: `A confirm dialog is open on another tab, at ${baseURL}/dialogs.html: "Remove Milk from the basket?". ayme cannot set up this command's tab while it is open, so the command did nothing. Answer it with your browser automation, then run this command again.\n`,
+  });
+
+  await dialogs[0]!.dismiss();
+
+  expect(await ayme("call", "ShopPage.readHeading")).toEqual({
+    code: 0,
+    stdout: 'settled: true\nresult: "Shop"\n',
+    stderr: "",
+  });
+  // ayme hears the dialog close on a connection of its own.
+  await expect
+    .poll(
+      async () => (await ayme("tools", `--tab=${baseURL}/dialogs.html`)).code
+    )
+    .toBe(0);
+  expect(await page.locator("#answer").textContent()).toBe("dismissed");
+});
+
 test("a dialog the page opened before any command touched its Tab is answered at once", async ({
   ayme,
   baseURL,

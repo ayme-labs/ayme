@@ -291,11 +291,15 @@ export const idOnAnotherTab = (id: string, on: string, named: string): string =>
   `${id} is a Page Object of the tab that shows ${on}, not of the one that shows ${named}. Leave out --tab: the Page Object Id chooses the tab.`;
 
 /** The dialog `dialog` names itself in the first sentence of every answer
- * while it is open. */
-function dialogSentences({ type, message, defaultValue }: Dialog): string {
+ * while it is open, on the tab the command works on unless `on` names
+ * another. */
+function dialogSentences(
+  { type, message, defaultValue }: Dialog,
+  on = "the tab"
+): string {
   const article = /^[aeiou]/i.test(type) ? "An" : "A";
   return [
-    `${article} ${type} dialog is open on the tab: ${JSON.stringify(message)}.`,
+    `${article} ${type} dialog is open on ${on}: ${JSON.stringify(message)}.`,
     ...(defaultValue
       ? [`Its default value is ${JSON.stringify(defaultValue)}.`]
       : []),
@@ -314,6 +318,18 @@ export const dialogOpen = (dialog: Dialog): string =>
  * holds (rule 5). */
 export const dialogOpenInListing = (url: string, dialog: Dialog): string =>
   `${tabLine({ url, title: "" })}\n${dialogOpen(dialog)}`;
+
+/** Why a command was answered before its Tab was set up: Playwright's
+ * setup of the first page ayme works on in a browser context waits while
+ * any page of that context shows a dialog. `heldBy` is the dialog the
+ * Session counts as open on another Tab there, with that Tab's URL, when
+ * it knows of one. Nothing of the command ran, so it can be run again. */
+export const setupHeld = (
+  heldBy: { readonly url: string; readonly dialog: Dialog } | undefined
+): string =>
+  heldBy
+    ? `${dialogSentences(heldBy.dialog, `another tab, at ${heldBy.url}`)} ayme cannot set up this command's tab while it is open, so the command did nothing. Answer it with your browser automation, then run this command again.`
+    : "ayme's setup of this command's tab did not answer in time, as happens while a dialog is open on another tab of the browser, so the command did nothing. If one is open, answer it with your browser automation, then run this command again.";
 
 /** Why a Run ended at a dialog once its action had started (rule 4): part
  * of the action may have happened, so the agent checks the page rather than

@@ -19,6 +19,7 @@ import type {
 } from "../../../session/application";
 import {
   SessionStartError,
+  setupHeld,
   showsWindow,
   TabReadError,
   type RunAnswer,
@@ -89,22 +90,27 @@ const CALLER = "ayme-command";
 const reason = (cause: unknown) =>
   cause instanceof Error ? cause.message : String(cause);
 
-// ayme's own setup on a page over DevTools answers in milliseconds; a page
-// that has not answered by then, as one Chromium holds behind a dialog,
-// holds no command for longer, nor the commands of other Tabs. A Run has no
-// such limit.
+// ayme's own setup on a page answers in milliseconds; a page that has not
+// answered by then, as one Chromium holds behind a dialog, there or on
+// another page of its browser context, holds no command for longer, nor the
+// commands of other Tabs. A Run has no such limit.
 const SETUP_DEADLINE_MS = 5000;
 
 /** `work`, failed once the page has not answered `what` within the
- * limit. */
-const withinSetup = <T>(work: Promise<T>, what: string): Promise<T> =>
+ * limit, with `late` when given. */
+const withinSetup = <T>(
+  work: Promise<T>,
+  what: string,
+  late?: () => Error
+): Promise<T> =>
   new Promise<T>((resolve, reject) => {
     const timer = setTimeout(
       () =>
         reject(
-          new Error(
-            `the tab did not answer ${what} within ${SETUP_DEADLINE_MS / 1000} seconds`
-          )
+          late?.() ??
+            new Error(
+              `the tab did not answer ${what} within ${SETUP_DEADLINE_MS / 1000} seconds`
+            )
         ),
       SETUP_DEADLINE_MS
     );
@@ -242,6 +248,41 @@ export function watchDialogs(browser: Browser): void {
   browser.on("context", watchContext);
 }
 
+/** The dialog that counts as open on a page of `page`'s browser context
+ * other than `page`, with that page's URL, if the Session knows of one. */
+const dialogBeside = (page: Page) => {
+  for (const other of page.context().pages()) {
+    const watch = other === page ? undefined : watched.get(other);
+    const now = watch && Effect.runSync(SubscriptionRef.get(watch.dialog));
+    if (typeof now === "object") return { url: other.url(), dialog: now.open };
+  }
+  return undefined;
+};
+
+// Playwright sets up a binding of its own on every page of a browser
+// context before it hands the first page there a function, and that setup
+// waits while any page of the context shows a dialog. The Node Host hands
+// its page one at its first read of the page, inside a Run, which has no
+// limit; a throwaway binding of ayme's own brings that wait into ayme's
+// setup, once per context, and is removed once made.
+const contextsReady = new WeakMap<BrowserContext, Promise<void>>();
+let readyBindings = 0;
+const contextReady = (page: Page) => {
+  const context = page.context();
+  let ready = contextsReady.get(context);
+  if (!ready) {
+    const made = page
+      .exposeBinding(`__ayme_setup_${++readyBindings}`, () => {})
+      .then((binding) => void binding.dispose().catch(() => {}));
+    made.catch(() => {
+      if (contextsReady.get(context) === made) contextsReady.delete(context);
+    });
+    contextsReady.set(context, made);
+    ready = made;
+  }
+  return ready;
+};
+
 /** The id of each page's tab, kept from its first lookup that succeeded,
  * since a page keeps its tab. */
 const targetIds = new WeakMap<Page, Promise<string>>();
@@ -356,6 +397,11 @@ const hostOn =
           }),
           "ayme's focus emulation"
         );
+        await withinSetup(
+          contextReady(page),
+          "Playwright's setup of its browser context",
+          () => new TabReadError(setupHeld(dialogBeside(page)))
+        );
         // The Session stopped hosting the Tab, as its dialog counts: no Node
         // Host takes the page.
         signal.throwIfAborted();
@@ -386,9 +432,11 @@ const hostOn =
         );
       },
       catch: (cause) =>
-        new TabReadError(
-          `ayme could not run the project's Page Objects on the tab: ${reason(cause)}`
-        ),
+        cause instanceof TabReadError
+          ? cause
+          : new TabReadError(
+              `ayme could not run the project's Page Objects on the tab: ${reason(cause)}`
+            ),
     });
 
 /** Each page of `browser` by the id its tab has in the tab list; a page

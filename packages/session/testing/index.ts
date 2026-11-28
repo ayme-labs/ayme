@@ -26,6 +26,7 @@ import {
 import {
   RunError,
   SessionStartError,
+  setupHeld,
   TabReadError,
   type Dialog,
   type InspectorEvent,
@@ -190,6 +191,15 @@ export interface ScriptedTab {
   dialogStaysOpen(): void;
   /** The dialog closes, answered by whoever answered it. */
   closeDialog(): void;
+  /** Every hosting of the Tab fails, as once ayme's setup limit has passed
+   * while Playwright's setup of the Tab's browser context waits behind a
+   * dialog on another page there: `heldBy`, the one the Session counts as
+   * open, when it knows of one. It holds until the test calls the function
+   * it returns. */
+  holdSetup(heldBy?: {
+    readonly url: string;
+    readonly dialog: Dialog;
+  }): () => void;
 }
 
 /** What the scripted Tab shows until a test says otherwise. */
@@ -304,6 +314,7 @@ function scriptedTab(
     Promise.resolve({ settled: true });
   let given: TabIds | undefined;
   let startedWith: BuiltPageObjects | undefined;
+  let setup: TabReadError | undefined;
   const closed = Deferred.makeUnsafe<void>();
   const inspectorCalls: { method: string; params: unknown }[] = [];
   let answerInspector: (
@@ -385,17 +396,19 @@ function scriptedTab(
     dialog: SubscriptionRef.changes(dialog),
     // As a page's registry refuses a second owner.
     host: (giving, pageObjects) =>
-      given
-        ? Effect.fail(
-            new TabReadError(
-              "ayme could not run the project's Page Objects on the tab: The ayme runtime already has an active owner."
+      setup
+        ? Effect.fail(setup)
+        : given
+          ? Effect.fail(
+              new TabReadError(
+                "ayme could not run the project's Page Objects on the tab: The ayme runtime already has an active owner."
+              )
             )
-          )
-        : Effect.sync(() => {
-            given = giving;
-            startedWith = pageObjects;
-            return hosted;
-          }),
+          : Effect.sync(() => {
+              given = giving;
+              startedWith = pageObjects;
+              return hosted;
+            }),
     control: {
       get hosted() {
         return given !== undefined;
@@ -454,6 +467,10 @@ function scriptedTab(
       closeDialog: () => {
         opening = undefined;
         setDialog("none");
+      },
+      holdSetup: (heldBy) => {
+        setup = new TabReadError(setupHeld(heldBy));
+        return () => (setup = undefined);
       },
     },
   };
