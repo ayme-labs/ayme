@@ -2320,6 +2320,83 @@ it("holds a click behind an input that still waits to be passed on, also once th
   ).toHaveLength(2);
 });
 
+// Issue #1533: a list that comes up under the pointer on the press makes the
+// browser give the click to the body. Sent on again, it would reach the list.
+it("lets a click the browser gave to another element than the one under the pointer reach the page untouched, and tells of it as there already; behind an input that still waits, it holds it like any other", async () => {
+  const browser = await onStockPlaywright(`
+    <h1>Cities</h1>
+    <button id="city" style="display:block;width:200px;height:40px">Lisbon</button>
+    <ul id="cities" hidden style="position:absolute;margin:0;padding:0;list-style:none;width:200px;background:#fff">
+      <li id="porto" style="height:40px">Porto</li>
+    </ul>
+    <button id="other">Other</button>
+    <script>
+      window.clicks = [];
+      document.addEventListener("click", (event) =>
+        window.clicks.push(event.target.id || event.target.nodeName));
+      const city = document.getElementById("city");
+      const cities = document.getElementById("cities");
+      city.addEventListener("mousedown", () => {
+        const { left, top } = city.getBoundingClientRect();
+        cities.style.left = left + scrollX + "px";
+        cities.style.top = top + scrollY + "px";
+        cities.hidden = false;
+      });
+      cities.addEventListener("click", () => (cities.hidden = true));
+    </script>`);
+  const clicks = () => browser.page.evaluate("window.clicks");
+  const listUp = () => browser.page.locator("#cities").isVisible();
+  const heldSoFar = () =>
+    browser.told.filter((signal) => signal.kind === "inputHeld");
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+
+  // Behind a click that still waits, it is held too: neither reaches the
+  // page, and it is sent on at its place, to the list.
+  await browser.click(browser.page.locator("#other"));
+  const other = await browser.toldOf("inputHeld");
+  await browser.click(browser.page.locator("#city"));
+  await expect.poll(() => heldSoFar().length).toBe(2);
+  const behind = heldSoFar()[1]!;
+  expect(behind.held).toEqual({ kind: "click", count: 1 });
+  expect(await clicks()).toEqual([]);
+  await browser.ask({ kind: "passOn", input: other.input });
+  await browser.toldOf("inputPassedOn", ({ input }) => input === other.input);
+  await browser.ask({ kind: "passOn", input: behind.input });
+  await browser.toldOf("inputPassedOn", ({ input }) => input === behind.input);
+  await expect.poll(clicks).toEqual(["other", "porto"]);
+  expect(await listUp()).toBe(false);
+
+  // With nothing waiting, it reaches the page as it came: the body gets
+  // it, and the list stays up.
+  await browser.click(browser.page.locator("#city"));
+  await expect.poll(() => heldSoFar().length).toBe(3);
+  const untouched = heldSoFar()[2]!;
+  expect(untouched.held).toEqual({
+    kind: "click",
+    count: 1,
+    reachedAt: expect.any(Number),
+  });
+  expect(await clicks()).toEqual(["other", "porto", "BODY"]);
+  expect(await listUp()).toBe(true);
+
+  // Playwright reports it by itself, after the two sent on, and there is
+  // nothing to pass on: asked to, the browser sends the page no click.
+  await expect
+    .poll(
+      () =>
+        browser.told.filter((signal) => signal.kind === "interactionReported")
+          .length,
+      { timeout: 10_000 }
+    )
+    .toBe(3);
+  await browser.ask({ kind: "passOn", input: untouched.input });
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  expect(await clicks()).toEqual(["other", "porto", "BODY"]);
+  expect(await listUp()).toBe(true);
+});
+
 it("holds as a press exactly the keys Playwright reports as a press: a letter typed in a field is typing; Enter, an arrow key, Control with a letter and Tab are presses", async () => {
   const browser = await onStockPlaywright(
     `<label>Item <input id="item" /></label>`
