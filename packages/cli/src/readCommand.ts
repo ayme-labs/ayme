@@ -168,50 +168,126 @@ const SESSION_OPTIONS: readonly SessionOption[] = [
   "tab",
 ];
 
-/** The commands of a Session, each with the options it `takes`, and what
- * it `asks` the folder's Session when it only asks it; the others are read
- * on their own. An option a command does not take is refused. */
-const SESSION_COMMANDS: Readonly<
-  Record<
-    string,
-    {
-      readonly takes: readonly SessionOption[];
-      readonly asks?: SessionRequest;
-    }
-  >
-> = {
-  open: { takes: ["headed"] },
-  attach: { takes: ["cdp"] },
-  list: { takes: [] },
-  call: { takes: ["params", "tab"] },
-  inspect: { takes: [], asks: { inspector: { window: {} } } },
-  mcp: { takes: [] },
-  // Each asks for the listing of the Tab --tab names.
-  "page-objects": { takes: ["tab"] },
-  tools: { takes: ["tab"] },
-  close: { takes: [], asks: { stop: {} } },
-  detach: { takes: [], asks: { detach: {} } },
+/** What `parseArgs` reads of the options a Session's commands know. */
+type SessionValues = {
+  help?: boolean;
+  headed?: boolean;
+  json?: boolean;
+  cdp?: string;
+  session?: string;
+  params?: string;
+  tab?: string;
+};
+
+/** What a Session's command is read from, beside its own word. */
+type SessionInput = {
+  /** The words after the command's own. */
+  readonly words: readonly string[];
+  readonly values: SessionValues;
+  readonly json: boolean;
+  /** The Session -s or AYME_SESSION names, when one does. */
+  readonly named: Named;
+  /** The Tab --tab names, when it names one. */
+  readonly onTab: { tab?: string };
+};
+
+/** A command of a Session: the options it `takes`, how many `words` it
+ * takes after its own, at least and at most, and how it `read`s them. An
+ * option it does not take, or a word too many or too few, is refused. */
+type SessionCommand = {
+  readonly takes: readonly SessionOption[];
+  readonly words: readonly [least: number, most: number];
+  readonly read: (input: SessionInput) => Command;
+};
+
+/** A command that only asks the folder's Session `request`. */
+const asking = (request: SessionRequest): SessionCommand => ({
+  takes: [],
+  words: [0, 0],
+  read: ({ json, named }) => ({ kind: "ask", request, json, ...named }),
+});
+
+/** A command that asks for the listing of the Tab --tab names. */
+const listing = (
+  request: (onTab: { tab?: string }) => SessionRequest
+): SessionCommand => ({
+  takes: ["tab"],
+  words: [0, 0],
+  read: ({ onTab, json, named }) => ({
+    kind: "ask",
+    request: request(onTab),
+    json,
+    ...named,
+  }),
+});
+
+const SESSION_COMMANDS: Readonly<Record<string, SessionCommand>> = {
+  open: {
+    takes: ["headed"],
+    words: [0, 1],
+    read: ({ words: [url], values, json, named }) => ({
+      kind: "open",
+      open: {
+        ...(url === undefined ? {} : { url }),
+        headed: values.headed ?? false,
+      },
+      json,
+      ...named,
+    }),
+  },
+  attach: {
+    takes: ["cdp"],
+    words: [0, 0],
+    // readSessionCommand refuses attach without --cdp.
+    read: ({ values, json, named }) => ({
+      kind: "attach",
+      cdp: values.cdp!,
+      json,
+      ...named,
+    }),
+  },
+  list: {
+    takes: [],
+    words: [0, 0],
+    read: ({ json }) => ({ kind: "list", json }),
+  },
+  call: {
+    takes: ["params", "tab"],
+    words: [1, 1],
+    read: ({ words: [tool], values: { params }, onTab, json, named }) => ({
+      kind: "call",
+      tool: tool!,
+      ...(params === undefined ? {} : { params }),
+      ...onTab,
+      json,
+      ...named,
+    }),
+  },
+  inspect: asking({ inspector: { window: {} } }),
+  mcp: {
+    takes: [],
+    words: [0, 0],
+    // Its answers go to an Agent App, which reads MCP, not --json.
+    read: ({ json, named }) =>
+      json ? { kind: "error", text: USAGE } : { kind: "mcp", ...named },
+  },
+  "page-objects": listing((onTab) => ({ pageObjects: onTab })),
+  tools: listing((onTab) => ({ tools: onTab })),
+  close: asking({ stop: {} }),
+  detach: asking({ detach: {} }),
 };
 
 /** The word the Session's background process is started with. */
 export const SESSION_PROCESS = "__session";
 
-/** `open [url] [--headed]`, `attach --cdp=<url>`, `list`, or a command
- * that only asks the Session, each with the global --json and -s. */
+/** A command of a Session from SESSION_COMMANDS, with the global --json and
+ * -s. */
 function readSessionCommand(
   args: string[],
   fromEnvironment: string | undefined
 ): Command {
   let positionals: string[];
-  let values: {
-    help?: boolean;
-    headed?: boolean;
-    json?: boolean;
-    cdp?: string;
-    session?: string;
-    params?: string;
-    tab?: string;
-  };
+  let values: SessionValues;
   try {
     ({ positionals, values } = parseArgs({
       // Playwright CLI's `-s=<name>`, which parseArgs reads as the value
@@ -233,67 +309,55 @@ function readSessionCommand(
   } catch (error) {
     return fail((error as Error).message);
   }
+  const [word = "", ...words] = positionals;
+  const refused = refusalOf(word, values);
+  if (refused) return refused;
+  const command = commandOf(word, words, values);
+  if (command === undefined) return { kind: "error", text: USAGE };
+  const session = values.session ?? (fromEnvironment || undefined);
+  return command.read({
+    words,
+    values,
+    json: values.json ?? false,
+    named: session === undefined ? {} : { session },
+    onTab: values.tab === undefined ? {} : { tab: values.tab },
+  });
+}
+
+/** The command of a Session `word` names, when it takes the `words` and
+ * the options given. An option before the command can take its word as the
+ * option's value, which leaves a word that names none. */
+function commandOf(
+  word: string,
+  words: readonly string[],
+  values: SessionValues
+): SessionCommand | undefined {
+  if (!Object.hasOwn(SESSION_COMMANDS, word)) return undefined;
+  const command = SESSION_COMMANDS[word]!;
+  const [least, most] = command.words;
+  const fits =
+    words.length >= least &&
+    words.length <= most &&
+    SESSION_OPTIONS.every(
+      (option) => values[option] === undefined || command.takes.includes(option)
+    );
+  return fits ? command : undefined;
+}
+
+/** Help, or the message for an option given no value, or for attach without
+ * the address it needs, before the command is read. */
+function refusalOf(word: string, values: SessionValues): Command | undefined {
   if (values.help) return { kind: "help", text: USAGE };
   if (values.session === "") return fail("Give -s the name of a Session.");
   if (values.tab === "")
     return fail(
       "Give --tab a tab's id or the URL it shows, as the first line of ayme page-objects prints them."
     );
-  const [word, url, ...more] = positionals;
-  const json = values.json ?? false;
-  const session = values.session ?? (fromEnvironment || undefined);
-  const named = session === undefined ? {} : { session };
   if (word === "attach" && values.cdp === undefined)
     return fail(
       "Give ayme attach the address of the browser's DevTools protocol, such as --cdp=http://127.0.0.1:9222."
     );
-  // `word` is one of SESSION_COMMANDS: readCommand sent it here.
-  const { takes, asks } = SESSION_COMMANDS[word!]!;
-  if (
-    SESSION_OPTIONS.some(
-      (option) => values[option] !== undefined && !takes.includes(option)
-    )
-  )
-    return { kind: "error", text: USAGE };
-  const { cdp, params, tab } = values;
-  const onTab = tab === undefined ? {} : { tab };
-  if (word === "attach" && url === undefined)
-    return { kind: "attach", cdp: cdp!, json, ...named };
-  if (word === "call")
-    return url !== undefined && more.length === 0
-      ? {
-          kind: "call",
-          tool: url,
-          ...(params === undefined ? {} : { params }),
-          ...onTab,
-          json,
-          ...named,
-        }
-      : { kind: "error", text: USAGE };
-  if ((word === "page-objects" || word === "tools") && url === undefined)
-    return {
-      kind: "ask",
-      request: word === "tools" ? { tools: onTab } : { pageObjects: onTab },
-      json,
-      ...named,
-    };
-  if (word === "open" && more.length === 0)
-    return {
-      kind: "open",
-      open: {
-        ...(url !== undefined ? { url } : {}),
-        headed: values.headed ?? false,
-      },
-      json,
-      ...named,
-    };
-  if (url !== undefined) return { kind: "error", text: USAGE };
-  if (word === "list") return { kind: "list", json };
-  // Its answers go to an Agent App, which reads MCP, not --json.
-  if (word === "mcp")
-    return json ? { kind: "error", text: USAGE } : { kind: "mcp", ...named };
-  if (asks) return { kind: "ask", request: asks, json, ...named };
-  return { kind: "error", text: USAGE };
+  return undefined;
 }
 
 /** What `parseArgs` reads of the options `capture` knows. */
