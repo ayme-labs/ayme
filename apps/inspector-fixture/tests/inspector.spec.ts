@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
+import { AGENT_CLIENT_NAME } from "@ayme-dev/mcp/testing";
 import type { Inspector } from "@ayme-dev/inspector/testing";
 
 import { AppView } from "./appView";
@@ -203,6 +204,23 @@ test.describe("connected to an agent", () => {
 
     expect(result).not.toHaveProperty("changes");
   });
+
+  test("the Connections pill names the agent, then says Reconnecting once its server stops, then Not connected", async ({
+    agent,
+    inspector,
+  }) => {
+    // Its own budget: "Not connected" waits out the client's reconnect
+    // window (RECONNECTING_MS in packages/mcp/src/client/index.ts).
+    test.setTimeout(60_000);
+    const { pill } = inspector.header.connections;
+    await expect(pill).toHaveText(AGENT_CLIENT_NAME);
+
+    const stopped = agent!.close();
+    await expect(pill).toHaveText("Reconnecting");
+    await stopped;
+
+    await expect(pill).toHaveText("Not connected", { timeout: 30_000 });
+  });
 });
 
 test("the header's menu and switches work by mouse inside the closed shadow root", async ({
@@ -341,4 +359,19 @@ test("the panel's CSS does not reach the host", async ({ page }) => {
     "background-color",
     "rgba(0, 0, 0, 0)"
   );
+});
+
+test("the legend counts what the page's runtime reports", async ({ page }) => {
+  // The list page has a collection model with no item and no single child
+  // missing; the models page has a single child missing. So a count of the
+  // models not on the page and a count of the Page Object nodes not on it,
+  // which the Model lens implements, differ on the first.
+  for (const path of ["/", "/models.html"] as const) {
+    const { inspector } = await openFixture(page, path);
+    const { live, notOnPage, refs } = await new AppView(page).legendCounts();
+
+    await expect(
+      inspector.navigator.legend.locator(":scope > span")
+    ).toHaveText([`${live} live`, `${notOnPage} not on page`, `${refs} refs`]);
+  }
 });

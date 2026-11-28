@@ -1,5 +1,5 @@
 import { AppView } from "./appView";
-import { callOverMcp, expect, test } from "./fixtures";
+import { callOverMcp, expect, INSPECTOR, test } from "./fixtures";
 
 // E2E: the panel shows the page's live tools as the runtime lists them, and a
 // Page Object Tool as an agent gets it over ayme MCP. The expected values
@@ -132,5 +132,65 @@ test.describe("with WebMCP publication off", () => {
           .sort()
       )
       .toEqual(liveTools.map(({ name }) => name).sort());
+  });
+});
+
+test("a tool that can't run now shows dimmed with its reason, and Run gives the refusal", async ({
+  page,
+  inspector,
+}) => {
+  const app = new AppView(page);
+  const clear = (await app.tools()).find(
+    ({ name }) => name === "ListPage.clear"
+  )!;
+  // The fixture's list starts empty, so its ListPage.clear has nothing to clear.
+  expect(clear.available).toBe(false);
+  // Asked before the panel runs it: the app's own run is a Run too.
+  const refusal = await app.refusal("ListPage.clear");
+
+  const card = await inspector.tool("ListPage.clear");
+
+  // The tool's run card is dimmed and gives the reason; its row in the
+  // Tools lens's list shows neither.
+  await expect(card.root).toHaveCSS("opacity", "0.6");
+  await expect(card.reason).toHaveText(clear.reason!);
+  await expect(card.runButton).toBeEnabled();
+  await card.runButton.click();
+  // The newest run of the tool is the app's until the panel's arrives.
+  const run = inspector.runs.latest("ListPage.clear");
+  await expect.poll(() => run.caller()).toEqual(INSPECTOR);
+  await expect.poll(() => run.status()).toBe("Failed");
+  await expect(run.error).toHaveText(refusal);
+});
+
+test.describe("with the inspector option on", () => {
+  // The session's inspector option turns the page's Peeks on; the other
+  // fixture pages mount the panel themselves.
+  test.use({ fixturePath: "/session.html" });
+
+  test("the page's own Peek lists under Peek tools, and its tool page reads it", async ({
+    page,
+    inspector,
+    listPage,
+  }) => {
+    const app = new AppView(page);
+    const peeks = (await app.tools())
+      .filter(({ group }) => group === "peek")
+      .map(({ name }) => name);
+    // Only /session.html's runtime registers a Peek: its list's.
+    expect(peeks).toEqual(["peek.list"]);
+    await listPage.addItem("Milk");
+
+    await inspector.navigator.showLens("Tools");
+    await expect
+      .poll(() => inspector.navigator.tools.peekSections())
+      .toEqual({ Browser: peeks });
+    await (await inspector.tool("peek.list")).runButton.click();
+
+    const run = inspector.runs.latest("peek.list");
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(JSON.parse((await run.resultText()) ?? "")).toEqual(
+      await app.run("peek.list")
+    );
   });
 });

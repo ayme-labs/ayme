@@ -213,12 +213,16 @@ export async function callOverMcp(
   return JSON.parse(text) as Record<string, unknown>;
 }
 
+/** An agent as `startAgent` starts it, with what stops its server. */
+type StartedAgent = Awaited<ReturnType<typeof startAgent>>;
+
 export const test = base.extend<
   {
     fixturePath: FixturePage;
     placement: Placement;
     connected: boolean;
-    agent: Agent | undefined;
+    /** The agent's server, which a test may stop. */
+    agent: StartedAgent | undefined;
     opened: Awaited<ReturnType<typeof openFixture>>;
     inspector: Inspector;
     listPage: ListPage;

@@ -8,6 +8,9 @@ import {
   reloadFixture,
   testIn,
 } from "./e2e/fixtures";
+import { AGENT_CLIENT_NAME } from "@ayme-dev/mcp/testing";
+
+import { AppView } from "./e2e/appView";
 import { panelLook, type Inspector } from "./e2e/pom/Inspector";
 
 // E2E: the built Inspector on fixture pages with a real Page Object and the
@@ -223,6 +226,26 @@ describe("connected to an agent", () => {
       expect(result).not.toHaveProperty("changes");
     }
   );
+
+  // Its own budget: "Not connected" waits out the client's reconnect window
+  // (RECONNECTING_MS in packages/mcp/src/client/index.ts).
+  describe("after its server stops", { timeout: 60_000 }, () => {
+    connected(
+      "the Connections pill names the agent, then says Reconnecting once its server stops, then Not connected",
+      async ({ mcpServer, inspector }) => {
+        const { pill } = inspector.header.connections;
+        await expect(await pill.front()).toHaveText(AGENT_CLIENT_NAME);
+
+        const stopped = mcpServer!.close();
+        await expect(await pill.front()).toHaveText("Reconnecting");
+        await stopped;
+
+        await expect(await pill.front()).toHaveText("Not connected", {
+          timeout: 30_000,
+        });
+      }
+    );
+  });
 });
 
 test("the header's menus and switches work by mouse inside the closed shadow root", async ({
@@ -402,5 +425,26 @@ plainTest(
     await expect
       .poll(async () => (await styles()).buttonBackground)
       .not.toBe("rgba(0, 0, 0, 0)");
+  }
+);
+
+plainTest(
+  "the legend counts what the page's runtime reports",
+  async ({ app, browser, screen }) => {
+    // The list page has a collection model with no item and no single child
+    // missing; the models page has a single child missing. So a count of the
+    // models not on the page and a count of the Page Object nodes not on it,
+    // which the Model lens implements, differ on the first.
+    for (const path of ["/", "/models.html"] as const) {
+      const { inspector, page } = await openFixture(
+        { app, browser, screen },
+        path
+      );
+      const { live, notOnPage, refs } = await new AppView(page).legendCounts();
+
+      await expect
+        .poll(() => inspector.navigator.legendItems())
+        .toEqual([`${live} live`, `${notOnPage} not on page`, `${refs} refs`]);
+    }
   }
 );

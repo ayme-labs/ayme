@@ -1,11 +1,16 @@
 import type { JsonValue } from "e2e";
 
-import type { LiveTool } from "../appView";
+import {
+  legendCounts,
+  type LegendCounts,
+  type LiveTool,
+  type LoggedRun,
+} from "../appView";
 import type { Tab } from "./tab";
 
 // The e2e counterpart of `../appView.ts`.
 
-export type { LiveTool };
+export type { LegendCounts, LiveTool, LoggedRun };
 
 /**
  * The fixture page's own runtime, read and run as the app does through
@@ -26,12 +31,25 @@ export class AppView {
         JSON.stringify(
           window
             .fixtureAyme!.tools.list()
-            .map(({ name, agentDescription, inputSchema, destructive }) => ({
-              name,
-              agentDescription,
-              inputSchema,
-              destructive,
-            }))
+            .map(
+              ({
+                name,
+                agentDescription,
+                inputSchema,
+                destructive,
+                group,
+                available,
+                reason,
+              }) => ({
+                name,
+                agentDescription,
+                inputSchema,
+                destructive,
+                group,
+                available,
+                reason,
+              })
+            )
         )
       )
     ) as LiveTool[];
@@ -52,6 +70,53 @@ export class AppView {
         { name, input }
       )
     ) as unknown;
+  }
+
+  /** The error the app gets when the runtime refuses to run a tool, as text. */
+  async refusal(
+    name: string,
+    input: { [key: string]: JsonValue } = {}
+  ): Promise<string> {
+    await this.page.front();
+    const refusal = await this.page.browser.evaluate(
+      ({ name, input }) =>
+        window.fixtureAyme!.tools.run(name, input as never).then(
+          () => null,
+          (error: Error) => String(error)
+        ),
+      { name, input }
+    );
+    if (refusal === null)
+      throw new Error(`${name} ran; it was expected to be refused.`);
+    return refusal;
+  }
+
+  /** The page's top-level Runs, oldest first, as its Run log has them. */
+  async runs(): Promise<LoggedRun[]> {
+    await this.page.front();
+    return JSON.parse(
+      await this.page.browser.evaluate(() =>
+        JSON.stringify(
+          window
+            .fixtureAyme!.runs.list()
+            .filter((run) => run.parent === undefined)
+            .map(({ tool, input, result }) => ({ tool, input, result }))
+        )
+      )
+    ) as LoggedRun[];
+  }
+
+  /** The navigator legend's counts, from `page_objects` and `snapshot`. */
+  async legendCounts(): Promise<LegendCounts> {
+    // One snapshot, so its definitions and structure describe one moment.
+    const { pomDefinitions, structure } = (await this.run("snapshot", {
+      names: [],
+    })) as { pomDefinitions: string; structure: string };
+    return legendCounts(
+      (await this.run("page_objects")) as string,
+      pomDefinitions,
+      structure
+    );
   }
 
   /** The page state snapshot gives. */

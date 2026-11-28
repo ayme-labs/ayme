@@ -227,6 +227,9 @@ const toolGroupLabels: readonly ToolGroupLabel[] = [
   "Agent tools",
 ];
 
+/** The sections of the Peek tools group: the page's and the App Processes'. */
+export type PeekSideLabel = "Browser" | "Node";
+
 /** The Tools lens's tree: the live tools, grouped. */
 export class ToolsLens extends Part {
   /** A tool's entry, by name. Pressing it opens the tool's page. */
@@ -251,6 +254,33 @@ export class ToolsLens extends Part {
         .within((row) => row.filter({ has: icon }))
         .count()) > 0
     );
+  }
+
+  /** The Peek tools' names, by the side each row's badge shows. */
+  async peekSections(): Promise<Partial<Record<PeekSideLabel, string[]>>> {
+    await this.tab.front();
+    // Read through the mount's test hook, as `panelTexts` does: a row's name
+    // and its badge are two texts e2e would read as one.
+    const rows = await this.tab.browser.evaluate(() => {
+      const key = Symbol.for("@ayme-dev/inspector/shadow-root");
+      return [...document.querySelectorAll("[data-ayme-inspector-host]")]
+        .flatMap((host) => {
+          const root =
+            (host as unknown as Record<symbol, ShadowRoot | undefined>)[key] ??
+            host.shadowRoot;
+          return [
+            ...(root?.querySelectorAll('[aria-label="Peek tools"] > li') ?? []),
+          ];
+        })
+        .map((item) => ({
+          name: item.querySelector("button")?.textContent ?? "",
+          side: item.querySelector("[data-peek-side]")?.textContent ?? "",
+        }));
+    });
+    const sections: Partial<Record<PeekSideLabel, string[]>> = {};
+    for (const { name, side } of rows)
+      (sections[side as PeekSideLabel] ??= []).push(name);
+    return sections;
   }
 
   /** The listed tools' names, by group, for the groups that list any. */
@@ -287,6 +317,15 @@ export class Navigator extends Part {
 
   get model(): ModelLens {
     return new ModelLens(this.tab, this.root);
+  }
+
+  /** The legend's counts: live, not on page, refs. */
+  /** The legend's items as the DOM has them, such as "3 live". */
+  legendItems(): Promise<string[]> {
+    return panelTexts(
+      this.tab,
+      'nav[aria-label="Navigator"] [aria-label="Legend"] > span'
+    );
   }
 
   get searchBox(): On {
@@ -401,6 +440,94 @@ export type ArgumentValue = string | number | boolean;
 export class FillForm extends Part {
   control(name: string): On {
     return this.on((list) => list.getByRole("listitem").getByLabel(name));
+  }
+
+  /** Sets a field: text for a textbox, a checked state for a checkbox. */
+  async set(name: string, value: string | boolean) {
+    const control = this.control(name);
+    if (typeof value === "string") await control.fill(value);
+    else if (value) await control.check();
+    else await (await control.front()).uncheck();
+  }
+
+  /** Undoes the change to one field. */
+  async undo(name: string) {
+    await this.on((list) =>
+      list.getByRole("button", `Undo the change to ${name}`)
+    ).click();
+  }
+}
+
+/** A run card's key field: Esc switches it from recording a key press to searching key names. */
+export class KeyField extends Part {
+  constructor(
+    tab: Tab,
+    card: Root,
+    private readonly path: string
+  ) {
+    super(tab, card);
+  }
+
+  get input(): On {
+    return this.on((card) => card.getByRole("combobox", this.path));
+  }
+
+  get modeButton(): On {
+    return this.on((card) =>
+      card.getByRole("button", {
+        name: /^(Search key names|Record a key press) instead$/,
+      })
+    );
+  }
+
+  /** Switches to searching and types a key name, e.g. "F2". */
+  async search(text: string) {
+    await this.input.click();
+    // Recording now: Esc switches it to searching.
+    if (
+      (await this.modeButton.getAttribute("aria-label")) ===
+      "Search key names instead"
+    )
+      await this.tab.browser.keyboard.press("Escape");
+    await this.input.fill(text);
+  }
+}
+
+/** `generate_locator`'s groups of targets, each with the locators a run gave them. */
+export class LocatorGroups extends Part {
+  /** One group, in the card's list of groups. */
+  private group(number: number) {
+    return (card: Locator) =>
+      card
+        .getByRole("list", "Locator groups")
+        .getByRole("listitem", `Group ${number}`);
+  }
+
+  get addGroupButton(): On {
+    return this.on((card) => card.getByRole("button", "Add group"));
+  }
+
+  /** The locator the last run gave a target. */
+  locator(number: number, ref: string): On {
+    return this.on((card) =>
+      this.group(number)(card).getByLabel(`Locator for ${ref}`)
+    );
+  }
+
+  /** Adds targets from a group's tree, or removes ones it has, by ref. */
+  async toggleFromTree(number: number, ...refs: string[]) {
+    const treeButton = this.on((card) =>
+      this.group(number)(card).getByRole("button", "Add from tree")
+    );
+    if ((await treeButton.getAttribute("aria-expanded")) !== "true")
+      await treeButton.click();
+    for (const ref of refs)
+      await this.on((card) =>
+        this.group(number)(card)
+          .getByRole("tree", `Add targets to group ${number}`)
+          .getByRole("treeitem")
+          .filter({ hasText: new RegExp(`^${ref}(?!\\d)`) })
+      ).click();
   }
 }
 
@@ -529,6 +656,24 @@ export class RunCard extends Part {
     return this.on((root) => root.getByLabel(path));
   }
 
+  /** Why the session would refuse a call now, under the tool's name. */
+  get reason(): On {
+    return this.on((root) =>
+      // e2e's Role type leaves out `note`, which its engine matches.
+      root.getByRole("note" as never, "Why it is unavailable")
+    );
+  }
+
+  /** A key argument's field, by its path, e.g. "key". */
+  keyField(path = "key"): KeyField {
+    return new KeyField(this.tab, this.root, path);
+  }
+
+  /** `generate_locator`'s groups. */
+  get locatorGroups(): LocatorGroups {
+    return new LocatorGroups(this.tab, this.root);
+  }
+
   /** `fill_form`'s form. */
   get fillForm(): FillForm {
     return new FillForm(
@@ -565,6 +710,11 @@ export class RunCard extends Part {
       const field = this.field(path);
       if ((await field.getAttribute("aria-haspopup")) === "tree") {
         await this.refField(path).choose(String(value));
+        continue;
+      }
+      // A key field is a combobox of its own; a select's role is implicit.
+      if ((await field.getAttribute("role")) === "combobox") {
+        await this.keyField(path).search(String(value));
         continue;
       }
       if (typeof value === "boolean") {
@@ -684,6 +834,18 @@ export class ModelDetailView extends Part {
 
 /** The detail pane: the view of what's selected, with its run cards. */
 export class DetailPane extends Part {
+  /**
+   * The opacity of the view's only run card, as `runCard()` without a name
+   * finds it. e2e has no CSS matcher, so it is read in the panel.
+   */
+  async cardOpacity() {
+    return (
+      await panelLook(this.tab, 'section[aria-label="Selected"] form', [
+        "opacity",
+      ])
+    )?.opacity;
+  }
+
   get model(): ModelDetailView {
     return new ModelDetailView(this.tab, this.root);
   }
@@ -890,6 +1052,16 @@ export class RunEntry {
     );
   }
 
+  /** Copies its result. */
+  get copyResultButton(): On {
+    return this.root.within((run) => run.getByRole("button", "Copy").first());
+  }
+
+  /** What its card announces, such as "Copied" once a copy landed. */
+  get announced(): On {
+    return this.root.within((run) => run.getByRole("status").first());
+  }
+
   /** Shows or hides its result, on a successful run that returned one. */
   get resultToggle(): On {
     return this.root.within((run) => run.getByRole("button", "Result").first());
@@ -943,6 +1115,10 @@ export class RunsView extends Part {
 
   get clearButton(): On {
     return this.on((root) => root.getByRole("button", "Clear"));
+  }
+
+  async clear() {
+    await this.clearButton.click();
   }
 
   /** Shows the selection's runs, e.g. "This object". */

@@ -131,6 +131,20 @@ export function startAyme({
       ignore: dogfood ? rendersThePage : undefined,
     });
     window.fixtureAyme = runtime;
+    // A Peek of the page's list, which the Tools lens lists under Peek
+    // tools: on /session.html only, so no other page's tools change, and
+    // here, so a session that stops and starts again keeps it.
+    const removePeek =
+      mount === "session"
+        ? runtime.peek(
+            () => ({
+              items: [...document.querySelectorAll("main ul > li")].map(
+                (item) => item.textContent
+              ),
+            }),
+            "list"
+          )
+        : undefined;
     runtime.pom.register(PageObject);
     for (const Other of alsoRegister) runtime.pom.register(Other);
     const stop = runtime.start();
@@ -140,6 +154,7 @@ export function startAyme({
     return () => {
       for (const Other of alsoRegister) runtime.pom.unregister(Other);
       runtime.pom.unregister(PageObject);
+      removePeek?.();
       stop();
       inspector?.dispose();
     };
