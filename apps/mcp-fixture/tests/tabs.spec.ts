@@ -132,7 +132,7 @@ test("each Tab has an id of the Session's own, which --tab names exactly, also a
     stderr: "",
   });
 
-  const several = `Tabs t2 and t1 show ${shopUrl}: ayme worked on t2, the most recently active. Name another by its id, as --tab=t1. To see which tab has which id, bring it to the front with your browser automation and run ayme: its Tab line shows its id.`;
+  const several = `Tabs t2 and t1 show ${shopUrl}: ayme chose t2, the most recently active. Name another by its id, as --tab=t1. To see which tab has which id, bring it to the front with your browser automation and run ayme -s=default page-objects: its first line shows its id.`;
   const byUrl = await ayme("page-objects", `--tab=${shopUrl}`);
   expect(byUrl.stdout.split("\n").slice(0, 2)).toEqual([
     `Tab t2: Shop (${shopUrl})`,
@@ -144,11 +144,11 @@ test("each Tab has an id of the Session's own, which --tab names exactly, also a
 
   await second.close();
   const toDo =
-    "Bring the tab you want to the front with your browser automation and run ayme without --tab: it works on that tab, and its Tab line shows the tab's id.";
+    "Bring the tab you want to the front with your browser automation and run ayme -s=default page-objects: it works on that tab, and its first line shows the tab's id.";
   expect(await ayme("tools", "--tab=t2")).toEqual({
     code: 1,
     stdout: "",
-    stderr: `Tab t2 was closed. ${toDo}\n`,
+    stderr: `No open tab of the Session's browser has the id t2 now: the tab was closed, or it shows the Inspector. ${toDo}\n`,
   });
   expect(await ayme("call", "ShopPage.readHeading", "--tab=t3")).toEqual({
     code: 1,

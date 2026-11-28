@@ -988,11 +988,11 @@ it("--tab naming the id of a Tab that closed, or of none the Session gave, is an
   await session.ask({ tools: {} });
   other.close();
   const toDo =
-    "Bring the tab you want to the front with your browser automation and run ayme without --tab: it works on that tab, and its Tab line shows the tab's id.";
+    "Bring the tab you want to the front with your browser automation and run ayme -s=default page-objects: it works on that tab, and its first line shows the tab's id.";
 
   expect(await session.ask({ tools: { tab: "t1" } })).toEqual({
     ok: false,
-    text: `Tab t1 was closed. ${toDo}`,
+    text: `No open tab of the Session's browser has the id t1 now: the tab was closed, or it shows the Inspector. ${toDo}`,
   });
   expect(
     await session.ask({
@@ -1012,7 +1012,7 @@ it("--tab naming a URL several Tabs show works on the most recently active of th
   const front = browser.openTab();
   front.show(shop);
   const several =
-    "Tabs t1 and t3 show http://127.0.0.1:5173/shop.html: ayme worked on t1, the most recently active. Name another by its id, as --tab=t3. To see which tab has which id, bring it to the front with your browser automation and run ayme: its Tab line shows its id.";
+    "Tabs t1 and t3 show http://127.0.0.1:5173/shop.html: ayme chose t1, the most recently active. Name another by its id, as --tab=t3. To see which tab has which id, bring it to the front with your browser automation and run ayme -s=default page-objects: its first line shows its id.";
 
   expect(await session.ask({ tools: { tab: shop.tab.url } })).toEqual({
     ok: true,
@@ -1034,7 +1034,7 @@ it("--tab naming a URL several Tabs show works on the most recently active of th
   });
 });
 
-it("a call whose --tab names its Page Object Id's Tab by id runs there, and one that names another Tab by id is refused", async () => {
+it("a call whose --tab names its Page Object Id's Tab by id runs there, one that names another Tab by id is refused, and one that names an id no Tab has is told so", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.show(shop);
   await session.ask({ pageObjects: {} });
@@ -1047,6 +1047,12 @@ it("a call whose --tab names its Page Object Id's Tab by id runs there, and one 
   ).toEqual({
     ok: false,
     text: "po1 is a Page Object of tab t1, which shows http://127.0.0.1:5173/shop.html, not of the tab --tab names. Leave out --tab: the Page Object Id chooses the tab.",
+  });
+  expect(
+    await session.ask({ call: { ...add("po1").call, tab: "t9" } })
+  ).toEqual({
+    ok: false,
+    text: "This Session gave no tab the id t9. Bring the tab you want to the front with your browser automation and run ayme -s=default page-objects: it works on that tab, and its first line shows the tab's id.",
   });
   expect(
     await session.ask({ call: { ...add("po1").call, tab: "t1" } })

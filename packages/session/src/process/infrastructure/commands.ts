@@ -131,7 +131,7 @@ function inputOf(
 
 /** Starts a Run of `tool` on the Session at `place`, with the input
  * `params` gives, as `ayme call --params` takes it: a file it names is read
- * from the project folder. `tab` is the URL of the Tab `--tab` names. */
+ * from the project folder. `tab` is what `--tab` names. */
 export async function askCall(
   place: SessionPlace,
   tool: string,

@@ -244,7 +244,7 @@ export const openSession = (
               )
             ),
             Effect.catch(unhosted),
-            Effect.map((answer) => withTabsAlike(answer, alike))
+            Effect.map((answer) => withTabsAlike(answer, alike, name))
           )
         ),
         Effect.catch(unhosted)
@@ -281,7 +281,7 @@ export const openSession = (
         return started.tabs.chosen(tab, { tool, input }).pipe(
           Effect.flatMap(({ hosted, alike }) =>
             run(hosted).pipe(
-              Effect.map((answer) => withTabsAlike(answer, alike))
+              Effect.map((answer) => withTabsAlike(answer, alike, name))
             )
           ),
           Effect.catch((error) => Effect.succeed(failed(error.message)))
@@ -493,9 +493,14 @@ function sessionTabs(
         const n = named === undefined ? undefined : tabIdNumber(named);
         if (n !== undefined) {
           const tab = open.find((each) => idOf(each) === named);
-          return tab
-            ? Effect.succeed(choice(tab))
-            : Effect.fail(new TabReadError(tabIdUnknown(named!, n <= given)));
+          if (tab) return Effect.succeed(choice(tab));
+          return Effect.fail(
+            new TabReadError(
+              open.length === 0
+                ? NO_TAB_OPEN
+                : tabIdUnknown(named!, n <= given, name)
+            )
+          );
         }
         const [tab, ...others] =
           named === undefined
@@ -553,8 +558,14 @@ function sessionTabs(
           const on = idOf(owner);
           if (named === undefined || named === on || named === owner.url())
             return Effect.succeed({ id: on, hosted: Effect.succeed(hosted) });
-          return Effect.fail(
-            new TabReadError(idOnAnotherTab(id!, on, owner.url()))
+          // What `--tab` names is read only here: when it names no Tab,
+          // that is the answer, before the Page Object's own Tab is.
+          return byName(named).pipe(
+            Effect.andThen(
+              Effect.fail(
+                new TabReadError(idOnAnotherTab(id!, on, owner.url()))
+              )
+            )
           );
         })
       );

@@ -68,15 +68,17 @@ const idList = (ids: readonly string[]) =>
     ? ids[0]!
     : `${ids.slice(0, -1).join(", ")} and ${ids.at(-1)!}`;
 
-/** The line an answer gets when the URL `--tab` named, `url`, is shown by
- * the Tab `chosen` it is of, the most recently active of them, and by the
- * Tabs `others` too. */
+/** The line an answer of the Session named `name` gets when the URL `--tab`
+ * named, `url`, is shown by the Tab `chosen`, the most recently active of
+ * them, and by the Tabs `others` too. It says "chose", since a dialog can
+ * keep the command from working on the Tab it chose. */
 const tabsShowUrl = (
   url: string,
   chosen: string,
-  others: readonly string[]
+  others: readonly string[],
+  name: string
 ): string =>
-  `Tabs ${idList([chosen, ...others])} show ${url}: ayme worked on ${chosen}, the most recently active. Name another by its id, as --tab=${others[0]!}. To see which tab has which id, bring it to the front with your browser automation and run ayme: its Tab line shows its id.`;
+  `Tabs ${idList([chosen, ...others])} show ${url}: ayme chose ${chosen}, the most recently active. Name another by its id, as --tab=${others[0]!}. To see which tab has which id, bring it to the front with your browser automation and run ${commandLine(name, "page-objects")}: its first line shows its id.`;
 
 /** `answer` with the line {@link tabsShowUrl} for `alike`, when several
  * Tabs show the URL `--tab` named: after its Tab line, or first. */
@@ -88,12 +90,13 @@ export function withTabsAlike(
         readonly chosen: string;
         readonly others: readonly string[];
       }
-    | undefined
+    | undefined,
+  name: string
 ): SessionAnswer {
   if (alike === undefined || alike.others.length === 0) return answer;
   const text = afterTabLine(
     answer.text,
-    tabsShowUrl(alike.url, alike.chosen, alike.others)
+    tabsShowUrl(alike.url, alike.chosen, alike.others, name)
   );
   return { ...answer, text };
 }
@@ -328,10 +331,16 @@ export const noTabShows = (
 ): string =>
   `No tab of the Session's browser shows ${url}. --tab takes a tab's id or the URL it shows, as the first line of ${commandLine(name, "page-objects")} prints them. The open tabs show: ${shown.join(", ")}.`;
 
-/** Why `--tab` named no open Tab by the id `id`: the Tab it was given to
- * closed, when `given`, or the Session never gave it. */
-export const tabIdUnknown = (id: string, given: boolean): string =>
-  `${given ? `Tab ${id} was closed.` : `This Session gave no tab the id ${id}.`} Bring the tab you want to the front with your browser automation and run ayme without --tab: it works on that tab, and its Tab line shows the tab's id.`;
+/** Why `--tab` named no open Tab of the Session named `name` by the id
+ * `id`. When the Session `given` it, the Tab closed or is out of the
+ * Session's Tabs for now, as one that went to the Inspector's window is:
+ * the Session cannot tell which. */
+export const tabIdUnknown = (
+  id: string,
+  given: boolean,
+  name: string
+): string =>
+  `${given ? `No open tab of the Session's browser has the id ${id} now: the tab was closed, or it shows the Inspector.` : `This Session gave no tab the id ${id}.`} Bring the tab you want to the front with your browser automation and run ${commandLine(name, "page-objects")}: it works on that tab, and its first line shows the tab's id.`;
 
 /** Why `ayme call` was refused when its Page Object Id is on another Tab
  * than the one `--tab` names: the id chooses the Tab, which is `on`, at
