@@ -2695,3 +2695,28 @@ it("warns of a frame from another site, added after the page loaded, by the fram
   await expect.poll(() => mark.textContent()).toBe("Marked");
   expect(await notRecorded(browser)).toEqual(unheardAt(child));
 });
+
+it("records a click again once a page whose calls were lost at Stop can be heard: a lost call holds up no snapshot after it", async () => {
+  const browser = await onStockPlaywright(
+    `<script>window.realStringify = JSON.stringify; ${REPLACED}</script>${MARK}`
+  );
+  await holding(browser);
+  // Stop: the page's answer that its reports reached Playwright is lost,
+  // and the engine gives up waiting at the wrap-up's limit.
+  await browser.ask({ kind: "reportInteractions", on: false });
+  await new Promise((resolve) => setTimeout(resolve, 5_000));
+  await browser.page.evaluate("JSON.stringify = window.realStringify");
+  // Continue.
+  await browser.ask({ kind: "reportInteractions", on: true });
+  await browser.toldOf("reportingInteractions", ({ on }) => on);
+
+  await browser.click(browser.page.locator("#mark"));
+  const { input } = await browser.toldOf("inputHeld");
+  await browser.ask({ kind: "takeSnapshot", snapshot: "s1", page: "page_1" });
+  await browser.toldOf("snapshotTaken");
+  await browser.ask({ kind: "passOn", input });
+
+  await expect
+    .poll(() => browser.page.locator("#mark").textContent())
+    .toBe("Marked");
+});

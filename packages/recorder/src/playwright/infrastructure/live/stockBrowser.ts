@@ -1009,12 +1009,20 @@ async function openPage(
    * Playwright traces: never inside a snapshot's mark.
    */
   async function everyReportDelivered() {
+    let timer: NodeJS.Timeout | undefined;
     const asked = markers.then(() =>
-      Promise.all(
-        everyFrame().map((frame) =>
-          frame.evaluate(askRecorderState).catch(() => {})
-        )
-      )
+      Promise.race([
+        Promise.all(
+          everyFrame().map((frame) =>
+            frame.evaluate(askRecorderState).catch(() => {})
+          )
+        ),
+        // A document whose call to Playwright is lost never answers: the
+        // marks queued behind must not wait for it (`reachesPlaywright`).
+        new Promise((resolve) => {
+          timer = setTimeout(resolve, REPORTS_DELIVERED_MS);
+        }),
+      ]).finally(() => clearTimeout(timer))
     );
     markers = asked.catch(() => {});
     await asked;
@@ -1208,6 +1216,11 @@ const FAKE_PATH = "C:\\fakepath\\";
 
 /** How long reading the ancestors of a target may take before the element
  * is taken to be gone. */
+/** How long a switch-off waits for the documents to answer that their
+ * reports reached Playwright: far over the milliseconds one takes, and under
+ * the engine's five seconds for a wrap-up, so that the switch-off is done
+ * before the engine stops waiting for it. */
+const REPORTS_DELIVERED_MS = 2_000;
 const ANCESTOR_READ_MS = 1_000;
 
 /** How long reading the names of an upload's files may take before the
