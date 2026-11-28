@@ -145,6 +145,21 @@ it("lists Peek Tools in their own group, before the Agent tools", async () => {
   ).toBe(1);
 });
 
+it("marks only the tool whose page is open as the current one", async () => {
+  renderTools();
+
+  await navigator.tools.tool("ListPage.addItem").click();
+
+  await expect
+    .poll(() =>
+      navigator.tools.tool("ListPage.addItem").getAttribute("aria-current")
+    )
+    .toBe("true");
+  expect(
+    await navigator.tools.tool("click").getAttribute("aria-current")
+  ).toBeNull();
+});
+
 it("marks a destructive tool with a warning icon in its row and the destructive mark beside its name", async () => {
   const removeItem: LiveTool = {
     name: "ListItem.remove",
