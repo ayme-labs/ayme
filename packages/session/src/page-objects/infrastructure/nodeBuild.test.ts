@@ -1,6 +1,7 @@
 import {
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
   realpath,
   rm,
@@ -208,12 +209,9 @@ it("a module that does not parse fails the build, naming the entry and the file"
     "ayme/pom/Basket.ts": "export class Basket {\n  read( {\n}\n",
   });
 
-  const message = await refusal(dir);
-
-  expect(message).toMatch(
-    `The Page Objects of ${join(dir, "ayme", "page-objects.ts")} did not build:\n`
+  expect(await refusal(dir)).toBe(
+    `The Page Objects of ${join(dir, "ayme", "page-objects.ts")} did not build:\n✘ [ERROR] Expected ")" but found end of file\n\n    ayme/pom/Basket.ts:4:0:\n      4 │ \n        │ ^\n        ╵ )`
   );
-  expect(message).toContain("ayme/pom/Basket.ts:4:0:");
 });
 
 it("a model that does not compile fails the build with the compiler's diagnostic at the model", async () => {
@@ -223,10 +221,13 @@ it("a model that does not compile fails the build with the compiler's diagnostic
     "ayme/pom/Basket.ts": `// broken\n${BASKET}`,
   });
 
-  const message = await refusal(dir);
+  const error = await refused(dir);
 
-  expect(message).toContain("This Page Object does not compile.");
-  expect(message).toContain("ayme/pom/Basket.ts:0:0:");
+  expect(error.message).toContain("This Page Object does not compile.");
+  expect(error.message).toContain("ayme/pom/Basket.ts:0:0:");
+  expect(error.first).toBe(
+    "ayme/pom/Basket.ts: This Page Object does not compile."
+  );
 });
 
 it("a project without TypeScript fails the start, saying to install it, since the compiler runs on the project's own TypeScript", async () => {
@@ -242,6 +243,116 @@ it("a project without TypeScript fails the start, saying to install it, since th
   expect(await refusal(dir)).toMatch(
     /^The Page Object compiler of the project's @ayme-dev\/ayme, .+, did not load: Cannot find package 'typescript' .+\. The compiler runs on the project's own TypeScript: install it, for example with "npm install -D typescript"\.$/
   );
+});
+
+it("a compiler that does not load for another reason fails the start with that reason alone", async () => {
+  const { dir, installed } = await project({
+    "ayme/page-objects.ts": "export default [];\n",
+  });
+  await writeFile(
+    join(installed, "compiler.mjs"),
+    'throw new Error("The compiler is broken.");\n'
+  );
+
+  expect(await refusal(dir)).toBe(
+    `The Page Object compiler of the project's @ayme-dev/ayme, ${join(installed, "compiler.mjs")}, did not load: The compiler is broken.`
+  );
+});
+
+it("an entry that throws as it loads fails the start, naming the entry and what it threw", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'throw new Error("No basket here.");\nexport default [];\n',
+  });
+
+  expect(await refusal(dir)).toBe(
+    `The Page Objects of ${join(dir, "ayme", "page-objects.ts")} did not load: No basket here.`
+  );
+});
+
+it("a compiler that throws an error of its own on a model, not a compile error, fails the build with that error", async () => {
+  const { dir, installed } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+  await writeFile(
+    join(installed, "compiler.mjs"),
+    `export class PomCompileError extends Error {}
+export const createPomCompiler = () => ({
+  compile() {
+    throw new Error("The compiler crashed.");
+  },
+});
+`
+  );
+
+  expect(await refusal(dir)).toContain("The compiler crashed.");
+});
+
+it("a package the Page Objects import is the copy installed in a folder above them, which Node loads, and a Node builtin is Node's own", async () => {
+  const { dir, installed } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": `import { basename } from "node:path";\nimport { seen } from "shop-data";\n${BASKET}seen.push(Basket, basename("/a/b"));\n`,
+  });
+  const shopData = join(dir, "node_modules", "shop-data");
+  await write(shopData, {
+    "package.json": JSON.stringify({
+      name: "shop-data",
+      type: "module",
+      exports: "./index.mjs",
+    }),
+    "index.mjs": "export const seen = [];\n",
+  });
+
+  const built = await build(dir);
+
+  const { seen } = (await import(
+    pathToFileURL(join(shopData, "index.mjs")).href
+  )) as { seen: unknown[] };
+  expect(seen).toEqual([...built.classes, "b"]);
+  expect(await registeredWith(installed)).toEqual(built.classes);
+});
+
+it("a path alias under the scope of an installed package names the project's own source, which is compiled", async () => {
+  const { dir, installed } = await project({
+    "ayme/tsconfig.json": JSON.stringify({
+      compilerOptions: { paths: { "@ayme-dev/shop/*": ["./pom/*"] } },
+    }),
+    "ayme/page-objects.ts":
+      'import { Basket } from "@ayme-dev/shop/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+
+  const built = await build(dir);
+
+  expect(await registeredWith(installed)).toEqual(built.classes);
+});
+
+it("an import of a package that is not installed fails the build, naming it", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { seen } from "shop-data";\nexport default [seen];\n',
+  });
+
+  expect(await refused(dir)).toMatchObject({
+    first: `ayme/page-objects.ts:1:22: Could not resolve "shop-data"`,
+  });
+});
+
+it("a build leaves no file behind in the temporary folder it loads the built module from", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+  const temporary = await folder("tmp");
+  vi.stubEnv("TMPDIR", temporary);
+
+  await build(dir);
+
+  expect(await readdir(temporary)).toEqual([]);
 });
 
 it("an entry whose default export lists no classes fails the start, saying what to export", async () => {
@@ -420,3 +531,76 @@ it("the watch belongs to the build's lifetime, not to each build: a build whose 
   );
   expect(told._tag).toBe("Some");
 }, 15_000);
+
+it("an edit to a model the entry reaches through a tsconfig path alias is an edit", async () => {
+  const { dir } = await project({
+    "ayme/tsconfig.json": JSON.stringify({
+      compilerOptions: { paths: { "@shop/*": ["./pom/*"] } },
+    }),
+    "ayme/page-objects.ts":
+      'import { Basket } from "@shop/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+
+  const outcomes = await buildsAcross(dir, [
+    () => write(dir, { "ayme/pom/Basket.ts": `// broken\n${BASKET}` }),
+  ]);
+
+  expect(outcomes[1]).toContain("This Page Object does not compile.");
+}, 15_000);
+
+it.each([
+  "cart/Cart.tsx",
+  "cart/Cart.jsx",
+  "cart/Cart.js",
+  "cart/Cart.json",
+  "cart/Cart/index.ts",
+])(
+  "a failed import is repaired by adding %s, a file esbuild resolves the import to",
+  async (added) => {
+    const { dir } = await project({
+      "ayme/page-objects.ts":
+        'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+      "ayme/pom/Basket.ts": `import * as cart from "./cart/Cart";\n${BASKET}export const items = cart;\n`,
+      "ayme/pom/cart/README.md": "The cart's Page Objects.\n",
+    });
+
+    const outcomes = await buildsAcross(dir, [
+      () =>
+        write(dir, {
+          [`ayme/pom/${added}`]: added.endsWith(".json")
+            ? "{}\n"
+            : "export const items = [];\n",
+        }),
+    ]);
+
+    expect(outcomes[0]).toContain('Could not resolve "./cart/Cart"');
+    expect(outcomes[1]).toHaveLength(1);
+  },
+  15_000
+);
+
+it("a write that leaves every file as the last build read it is no edit", async () => {
+  const { dir } = await project({
+    "ayme/page-objects.ts":
+      'import { Basket } from "./pom/Basket";\nexport default [Basket];\n',
+    "ayme/pom/Basket.ts": BASKET,
+  });
+  const told = await Effect.runPromise(
+    Effect.scoped(
+      Effect.gen(function* () {
+        const { build, edits } = yield* PageObjectsBuild;
+        yield* build;
+        const edited = yield* Effect.forkScoped(
+          Stream.runHead(edits).pipe(Effect.timeoutOption(600))
+        );
+        yield* Effect.promise(() =>
+          write(dir, { "ayme/pom/Basket.ts": BASKET })
+        );
+        return yield* Fiber.join(edited);
+      }).pipe(Effect.provide(projectPageObjects(dir, "0.3.0")))
+    )
+  );
+
+  expect(told._tag).toBe("None");
+});
