@@ -805,10 +805,8 @@ function atDialogs(
           ? hosted.inspector.request(method, params)
           : atDialog(
               hosted.inspector.request(method, params),
-              (dialog, started) =>
-                new TabReadError(
-                  atRun(dialog, method === "runTool" && started)
-                ),
+              // Only a Run takes the turn, which marks its work started.
+              (dialog, started) => new TabReadError(atRun(dialog, started)),
               new TabReadError(TAB_CLOSED),
               method !== "runTool"
             ),

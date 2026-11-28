@@ -734,6 +734,7 @@ it("with no Tab open, every command that needs one answers that no tab is open, 
   expect(
     await session.ask({ call: { tool: "ShopPage.readHeading", input: {} } })
   ).toEqual(none);
+  expect(await session.ask({ tools: { tab: "t1" } })).toEqual(none);
 
   browser.openTab().show(shop);
   expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
@@ -1003,6 +1004,70 @@ it("--tab naming the id of a Tab that closed, or of none the Session gave, is an
     text: `This Session gave no tab the id t3. ${toDo}`,
   });
   expect(browser.runs).toEqual([]);
+});
+
+it("--tab takes only the whole form of an id for one, so a URL that ends like one names a URL, and an id of two digits is an id", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const endsLikeId = "http://127.0.0.1:5173/t1";
+  browser.show({ ...shop, tab: { url: endsLikeId, title: "T1" } });
+  await session.ask({ tools: {} });
+  for (let opened = 2; opened <= 10; opened++) {
+    browser.openTab(`http://127.0.0.1:5173/${opened}.html`);
+    await session.ask({ tools: {} });
+  }
+
+  expect(await session.ask({ tools: { tab: endsLikeId } })).toMatchObject({
+    text: expect.stringMatching(/^Tab t1: T1 \(/),
+  });
+  expect(await session.ask({ tools: { tab: "t10" } })).toMatchObject({
+    text: expect.stringMatching(
+      /^Tab t10: http:\/\/127\.0\.0\.1:5173\/10\.html\n/
+    ),
+  });
+  expect((await session.ask({ tools: { tab: "t1x" } })).text).toMatch(
+    /^No tab of the Session's browser shows t1x\./
+  );
+});
+
+it("--tab naming the id of the Tab given one last, once it closed, says the tab was closed", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.openTab();
+  await session.ask({ tools: {} });
+  browser.close();
+  await heard();
+
+  expect(await session.ask({ tools: { tab: "t2" } })).toEqual({
+    ok: false,
+    text: "No open tab of the Session's browser has the id t2 now: the tab was closed, or it shows the Inspector. Bring the tab you want to the front with your browser automation and run ayme -s=default page-objects: it works on that tab, and its first line shows the tab's id.",
+  });
+});
+
+it("a Tab that closes takes only its own Page Object Ids: another Tab's still choose that Tab", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  await session.ask({ pageObjects: {} });
+  browser.give("po1", "Basket");
+  const other = browser.openTab();
+  other.show(signIn);
+  await session.ask({ pageObjects: {} });
+  other.give("po2", "Basket");
+  const front = browser.openTab();
+
+  other.close();
+  await heard();
+
+  expect(await session.ask(add("po1"))).toMatchObject({ ok: true });
+  expect(browser.runs).toEqual([add("po1").call]);
+  expect(front.runs).toEqual([]);
+});
+
+it("a call whose input is no object, such as null, runs on the most recently active Tab", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+
+  expect(
+    await session.ask({ call: { tool: "ShopPage.readHeading", input: null } })
+  ).toEqual({ ok: true, text: "settled: true", data: { settled: true } });
+  expect(browser.runs).toEqual([{ tool: "ShopPage.readHeading", input: null }]);
 });
 
 it("--tab naming a URL several Tabs show works on the most recently active of them, and its answer names the others' ids", async () => {
