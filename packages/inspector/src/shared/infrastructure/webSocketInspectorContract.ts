@@ -163,7 +163,7 @@ export function webSocketInspectorContract(
     socket = new WebSocketClass(url);
     socket.onopen = () => {
       failed = 0;
-      flush();
+      // Nothing is sent yet: the Session tells the Tab first.
       if (!reconnected) return;
       // The server knows nothing of this connection's subscription.
       if (observers.size > 0) void send("subscribe");
