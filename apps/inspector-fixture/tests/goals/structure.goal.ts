@@ -5,7 +5,6 @@ import {
   outline,
   placements,
   testIn,
-  bringPanelToFront,
   confirmGoalRecordings,
   movePointerTo,
 } from "../e2e/fixtures";
@@ -20,7 +19,7 @@ for (const placement of placements) {
   const test = testIn(placement);
 
   describe(placement, () => {
-    test("hovering a structure node highlights it on the page, and selecting it keeps it highlighted", async ({
+    test("selecting a structure node highlights it solid on the page", async ({
       agent,
       browser,
       inspector,
@@ -30,12 +29,6 @@ for (const placement of placements) {
         params: { lens: "Structure" },
       });
 
-      await agent.act("hover the node tagged {tag} in the Structure lens", {
-        params: { tag: ".newItemInput" },
-      });
-      await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
-
-      await bringPanelToFront(inspector);
       await agent.act("select the node tagged {tag} in the Structure lens", {
         params: { tag: ".newItemInput" },
       });
@@ -75,3 +68,24 @@ for (const placement of placements) {
     });
   });
 }
+
+// The hover runs inline only, for the reason ../modelLens.e2e.ts gives.
+const inlineTest = testIn("inline");
+
+describe("inline", () => {
+  inlineTest(
+    "hovering a structure node highlights it dashed on the page",
+    async ({ agent, browser, listPage }) => {
+      await agent.act("show the {lens} lens", {
+        params: { lens: "Structure" },
+      });
+
+      await agent.act("hover the node tagged {tag} in the Structure lens", {
+        params: { tag: ".newItemInput" },
+      });
+      await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
+
+      await confirmGoalRecordings(browser);
+    }
+  );
+});
