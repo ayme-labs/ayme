@@ -7,7 +7,8 @@ const canClear = async (self: Basket) =>
 
 /**
  * The basket of `shop.html`, rooted at its section, so it has a Page Object
- * Id. `clear` is unavailable while the basket is empty, and says why.
+ * Id. `clear` is unavailable while the basket is empty, and says why, and
+ * is marked destructive, so `ayme tools` shows the mark.
  */
 @ayme({ root: (self: Basket) => self.root })
 export class Basket {
@@ -40,6 +41,7 @@ export class Basket {
   @ayme.action({
     description: "Clear the basket.",
     available: canClear,
+    destructive: true,
   })
   async clear() {
     await this.items.evaluateAll((items) =>
