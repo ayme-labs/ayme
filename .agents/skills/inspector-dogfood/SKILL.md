@@ -133,7 +133,9 @@ its own Page Object Ids.
 This skill drives only the dogfood page. The fixture's Inspector Page Object
 finds the panel with plain CSS, which pierces the dogfood page's open shadow
 root but not the closed one of any other mount, such as the page
-`ayme inspect` points at.
+`ayme inspect` points at. A Session's Page Objects can act there through the
+`ayme-inspector=` selector engine, but the Session's page state cannot read
+into a closed root, so no answer shows what a call changed.
 
 The page and its tests live in `apps/inspector-fixture`: see
 `apps/inspector-fixture/README.md`, and
