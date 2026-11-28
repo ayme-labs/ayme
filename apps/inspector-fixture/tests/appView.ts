@@ -52,7 +52,9 @@ export class AppView {
    */
   async ref(line: string): Promise<string> {
     const structure = await this.structure();
-    const ref = structure.match(new RegExp(`(e\\d+) ${line}`))?.[1];
+    // The line is text, not a pattern: a name may hold "(" or "?".
+    const literal = line.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const ref = structure.match(new RegExp(`(e\\d+) ${literal}`))?.[1];
     if (!ref) throw new Error(`No ${line} in:\n${structure}`);
     return ref;
   }
