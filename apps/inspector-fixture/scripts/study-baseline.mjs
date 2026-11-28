@@ -4,21 +4,16 @@ import { spawn, spawnSync } from "node:child_process";
 import console from "node:console";
 import { createHash } from "node:crypto";
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   openSync,
   readdirSync,
   readFileSync,
-  realpathSync,
-  renameSync,
-  rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { get } from "node:http";
 import { createServer } from "node:net";
-import { homedir } from "node:os";
+import { homedir, loadavg } from "node:os";
 import { join, resolve } from "node:path";
 import process from "node:process";
 import { setTimeout } from "node:timers/promises";
@@ -30,6 +25,7 @@ import { LEFT_OUT } from "./check-goal-mirror.mjs";
 import {
   cohortOf,
   digestOf,
+  goalIdentities,
   NotAResult,
   projectRun,
   render,
@@ -83,17 +79,13 @@ const PINNED = [
 ];
 
 const [armId, ...rest] = process.argv.slice(2);
-if (armId === "render") {
+if (armId === "render" && !rest.length) {
   writeReadme();
   process.exit(0);
 }
 const arm = ARMS[armId];
-const cacheFrom =
-  rest[0] === "--cache-from" && rest.length === 2 ? rest[1] : undefined;
-if (!arm || (rest.length && (!cacheFrom || !arm.cacheDir))) {
-  console.error(
-    "usage: pnpm study:baseline <arm1|arm2|arm3> [--cache-from <dir>] | render"
-  );
+if (!arm || rest.length) {
+  console.error("usage: pnpm study:baseline <arm1|arm2|arm3> | render");
   process.exit(2);
 }
 const inherited = PINNED.filter(
@@ -115,11 +107,19 @@ if (uncommitted()) {
 }
 const commit = git("rev-parse", "HEAD");
 const runEnv = { E2E_TELEMETRY_DISABLED: "1", ...arm.env };
+// The recordings are the ones committed at `commit`: the tree is clean, and
+// their directory is not ignored (.gitignore).
 const cachePath = arm.cacheDir && join(here, arm.cacheDir);
 const recordings = cachePath && {
-  ...(cacheFrom && { copiedFrom: copyCache(cacheFrom, cachePath) }),
+  dir: arm.cacheDir,
+  entries: git("ls-files", "--", arm.cacheDir).split("\n").filter(Boolean)
+    .length,
   digest: digestDir(cachePath),
 };
+if (recordings && !recordings.entries) {
+  console.error(`${arm.cacheDir} holds no committed recordings`);
+  process.exit(2);
+}
 
 // `dist` is ignored by git, and the fixture serves the built packages.
 const build = "turbo run build --filter=@ayme-dev/inspector-fixture^...";
@@ -132,6 +132,7 @@ run(
 );
 
 const { shared, extras } = cohortOf(listTests(), LEFT_OUT);
+const goals = goalIdentities(here, "tests/goals");
 const expected = armId === "arm2" ? [...shared, ...extras] : shared;
 const invocation = join(
   here,
@@ -145,7 +146,7 @@ const app = await startWarmApp(appPort, join(invocation, "vite.log"));
 const summary = {
   arm: armId,
   name: arm.name,
-  command: `pnpm study:baseline ${armId}${cacheFrom ? ` --cache-from <a checkout of ${recordings.copiedFrom.branch}>` : ""}`,
+  command: `pnpm study:baseline ${armId}`,
   commit,
   build: `pnpm ${build}, before the runs`,
   env: runEnv,
@@ -162,6 +163,8 @@ try {
     const output = join(invocation, `run-${i + 1}`);
     await recordingPortFree();
     console.log(`\n${arm.name}: run ${i + 1} of ${RUNS}`);
+    // Other work on the machine slows a run; the page shows it beside the times.
+    const loadAverage = loadavg().map((n) => +n.toFixed(2));
     const startedAt = Date.now();
     const { status } = spawnSync(
       "pnpm",
@@ -182,8 +185,10 @@ try {
           expected,
           shared,
           clean,
+          goals,
         }),
         commandWallMs,
+        loadAverage,
       });
     } catch (error) {
       if (!(error instanceof NotAResult)) throw error;
@@ -223,36 +228,6 @@ function clean(text) {
     .replaceAll(root, "<checkout>")
     .replaceAll(homedir(), "~")
     .replace(/http:\/\/127\.0\.0\.1:\d+/g, "http://127.0.0.1:<port>");
-}
-
-/** Copies the recordings in from another checkout, never over themselves, and says which branch and commit that checkout was on. */
-function copyCache(from, to) {
-  const source = resolve(from);
-  if (!existsSync(source) || !statSync(source).isDirectory()) {
-    console.error(`--cache-from: ${source} is not a directory`);
-    process.exit(2);
-  }
-  if (existsSync(to) && realpathSync(source) === realpathSync(to)) {
-    console.error(`--cache-from: ${source} is ${armId}'s own cache`);
-    process.exit(2);
-  }
-  const incoming = `${to}.incoming`;
-  rmSync(incoming, { recursive: true, force: true });
-  cpSync(source, incoming, { recursive: true });
-  if (digestDir(incoming) !== digestDir(source)) {
-    console.error(`--cache-from: ${source} changed while it was copied`);
-    process.exit(1);
-  }
-  rmSync(to, { recursive: true, force: true });
-  renameSync(incoming, to);
-  const at = (...args) =>
-    spawnSync("git", ["-C", source, ...args], {
-      encoding: "utf8",
-    }).stdout.trim();
-  return {
-    branch: at("rev-parse", "--abbrev-ref", "HEAD"),
-    commit: at("rev-parse", "HEAD"),
-  };
 }
 
 /** The tests arm 2's config selects, which every arm's cohort derives from. */
@@ -388,7 +363,7 @@ function writeReadme() {
     const file = join(out, `${id}.json`);
     return existsSync(file) ? [JSON.parse(readFileSync(file, "utf8"))] : [];
   });
-  writeFileSync(join(out, "README.md"), render(arms));
+  writeFileSync(join(out, "README.md"), render(arms, ARMS[armId] && armId));
   spawnSync("pnpm", ["-w", "exec", "prettier", "--write", out], {
     stdio: "inherit",
   });

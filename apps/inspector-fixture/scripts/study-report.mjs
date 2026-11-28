@@ -1,7 +1,10 @@
 // What a study run's e2e report.json may contribute to a baseline, and the
 // page the baselines render to. Browser-free, so a test can feed it reports.
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import ts from "typescript";
 
 /**
  * Claude Code's texts for a login that cannot take another request, from
@@ -60,6 +63,68 @@ export function digestOf(keys) {
   return createHash("sha256").update(keys.join("\n")).digest("hex");
 }
 
+/**
+ * Each `agent.act` call in the goal files, by `<file>:<line>` as e2e's step
+ * source gives it, mapped to its goal: the text and its parameters, so two
+ * tests running the same goal with the same values name one goal. e2e's
+ * report keeps the text but not the parameters, so they are read from the
+ * call; a call whose parameters are only known at run time maps to null.
+ */
+export function goalIdentities(root, dir) {
+  const goals = new Map();
+  for (const name of readdirSync(join(root, dir)).filter((f) =>
+    f.endsWith(".goal.ts")
+  )) {
+    const file = `${dir}/${name}`;
+    const source = ts.createSourceFile(
+      file,
+      readFileSync(join(root, file), "utf8"),
+      ts.ScriptTarget.Latest,
+      true
+    );
+    (function visit(node) {
+      const callee = ts.isCallExpression(node) && node.expression;
+      if (
+        callee &&
+        ts.isPropertyAccessExpression(callee) &&
+        callee.expression.getText() === "agent" &&
+        callee.name.text === "act" &&
+        ts.isStringLiteralLike(node.arguments[0])
+      ) {
+        // e2e's step source is the line of `act`, not of the statement.
+        const { line } = source.getLineAndCharacterOfPosition(
+          callee.name.getStart()
+        );
+        goals.set(
+          `${file}:${line + 1}`,
+          goalOf(node.arguments[0].text, node.arguments[1])
+        );
+      }
+      ts.forEachChild(node, visit);
+    })(source);
+  }
+  return goals;
+}
+
+function goalOf(text, options) {
+  const params =
+    options &&
+    ts.isObjectLiteralExpression(options) &&
+    options.properties.find((p) => p.name?.getText() === "params");
+  if (!params) return text;
+  const value = ts.isPropertyAssignment(params) && params.initializer;
+  if (!value || !ts.isObjectLiteralExpression(value)) return null;
+  const entries = [];
+  for (const p of value.properties) {
+    const v = ts.isPropertyAssignment(p) && p.initializer;
+    if (!v) return null;
+    if (ts.isStringLiteralLike(v)) entries.push([p.name.getText(), v.text]);
+    else if (ts.isNumericLiteral(v)) entries.push([p.name.getText(), +v.text]);
+    else return null;
+  }
+  return `${text} ${JSON.stringify(Object.fromEntries(entries.sort()))}`;
+}
+
 /** Every error text in the report, in full. */
 function errorTexts(value, key = "", texts = []) {
   if (typeof value === "string") {
@@ -82,7 +147,15 @@ function errorTexts(value, key = "", texts = []) {
  */
 export function projectRun(
   reportPath,
-  { startedAfter, commit, exitCode, expected, shared, clean = (s) => s }
+  {
+    startedAfter,
+    commit,
+    exitCode,
+    expected,
+    shared,
+    clean = (s) => s,
+    goals = new Map(),
+  }
 ) {
   // e2e leaves the last report in place when a run stops before its tests.
   if (!existsSync(reportPath))
@@ -160,6 +233,29 @@ export function projectRun(
       ),
     };
   };
+  const notReplayed = run.results.flatMap((r) =>
+    r.attempts
+      .flatMap((a) => a.steps)
+      .filter(
+        (s) =>
+          s.kind === "agent" &&
+          !(s.cache?.mode === "self-finalized" && s.metrics?.modelCalls === 0)
+      )
+      .map((s) => ({
+        test: keys[run.results.indexOf(r)],
+        line: s.source?.line,
+        step: s.label,
+        goal: goals.get(`${s.source?.file}:${s.source?.line}`) ?? null,
+        status: s.status,
+        cache: s.cache?.mode ?? null,
+        reason: s.cache?.reason ?? null,
+        detail: clean(s.cache?.detail ?? ""),
+        tokens: s.model ? s.model.inputTokens + s.model.outputTokens : null,
+      }))
+  );
+  // A goal whose parameters are only known at run time counts once per use,
+  // so `distinct` is an upper bound by `perUse`.
+  const perUse = notReplayed.filter((s) => s.goal === null).length;
   const inShared = run.results.filter((_, i) => shared.includes(keys[i]));
   const others = run.results.filter((_, i) => !shared.includes(keys[i]));
   const where = (r) => keys[run.results.indexOf(r)];
@@ -176,25 +272,14 @@ export function projectRun(
         status: r.status,
         error: clean(r.attempts.at(-1)?.error?.message ?? "").slice(0, 500),
       })),
-    notReplayed: run.results.flatMap((r) =>
-      r.attempts
-        .flatMap((a) => a.steps)
-        .filter(
-          (s) =>
-            s.kind === "agent" &&
-            !(s.cache?.mode === "self-finalized" && s.metrics?.modelCalls === 0)
-        )
-        .map((s) => ({
-          test: where(r),
-          line: s.source?.line,
-          step: s.label,
-          status: s.status,
-          cache: s.cache?.mode ?? null,
-          reason: s.cache?.reason ?? null,
-          detail: clean(s.cache?.detail ?? ""),
-          tokens: s.model ? s.model.inputTokens + s.model.outputTokens : null,
-        }))
-    ),
+    notReplayed,
+    notReplayedGoals: {
+      steps: notReplayed.length,
+      distinct:
+        new Set(notReplayed.flatMap((s) => (s.goal === null ? [] : [s.goal])))
+          .size + perUse,
+      perUse,
+    },
   };
 }
 
@@ -214,18 +299,27 @@ const count = (n) => n.toLocaleString("en");
 const usd = (n) => `$${n.toFixed(2)}`;
 const percent = (n) => `${Math.round(n * 100)}%`;
 
-/** The study README, from every measured arm's summary. */
-export function render(arms) {
-  const digests = new Set(arms.map((a) => a.cohort.digest));
-  if (digests.size > 1)
-    throw new Error(
-      `the arms measured different tests: ${arms.map((a) => `${a.arm} ${a.cohort.digest.slice(0, 9)}`).join(", ")}; measure them again from one commit`
-    );
+/**
+ * The study README, from the measured arms' summaries. It shows the arms
+ * measured on the same tests as `latest` (an arm's id, else the arm measured
+ * last), and names the others as measured on other tests, so measuring one
+ * arm after the suite changed renders it alone instead of failing.
+ */
+export function render(all, latest) {
+  const newest = (a) => a.runs.at(-1)?.startedAt ?? "";
+  const current =
+    all.find((a) => a.arm === latest) ??
+    [...all].sort((a, b) => newest(a).localeCompare(newest(b))).at(-1);
+  const arms = all.filter((a) => a.cohort.digest === current?.cohort.digest);
+  const stale = all.filter((a) => !arms.includes(a));
   const commits = new Set(arms.map((a) => a.commit));
   const goals = (a) => a.arm !== "arm2";
+  const goalArms = arms.filter(goals);
+  const runsOf = (a) => `${a.runs.length} runs`;
   const sharedRow = (a) => {
     const t = a.runs.map((r) => r.shared);
     const of = (key) => t.map((x) => x[key]);
+    const notReplayed = a.runs.map((r) => r.notReplayedGoals);
     return [
       a.name,
       `${range(of("passed"))} of ${t[0].tests}`,
@@ -236,13 +330,14 @@ export function render(arms) {
             range(of("replayed")),
             range(of("modelAnswered")),
             range(of("unaccounted")),
+            `${range(notReplayed.map((n) => n.steps))} (${range(notReplayed.map((n) => n.distinct))})`,
             range(of("tokens"), count),
             range(
               a.runs.map((r) => r.estimatedCostUsd),
               usd
             ),
           ]
-        : ["none", "none", "none", "none", "none", "none"]),
+        : Array(7).fill("none")),
     ];
   };
   const table = (head, rows) =>
@@ -251,28 +346,44 @@ export function render(arms) {
       `| ${head.map(() => "---").join(" | ")} |`,
       ...rows.map((r) => `| ${r.join(" | ")} |`),
     ].join("\n");
-  const goalArms = arms.filter(goals);
   const cacheShare = goalArms.flatMap((a) =>
     a.runs
       .filter((r) => r.shared.tokens)
       .map((r) => r.shared.cacheReadTokens / r.shared.tokens)
+  );
+  const perUse = goalArms.filter((a) =>
+    a.runs.some((r) => r.notReplayedGoals.perUse)
   );
   const arm2 = arms.find((a) => a.arm === "arm2");
   const attributions = goalArms
     .filter((a) => a.runs.some((r) => r.shared.noEntryTokens))
     .map(
       (a) =>
-        `- ${a.name}: steps with no recording (missed, no-entry) used ${a.runs.map((r) => (r.shared.noEntryTokens === null ? "unknown" : count(r.shared.noEntryTokens))).join(", ")} tokens in its three runs, ${range(
+        `- ${a.name}: steps with no recording (missed, no-entry) used ${a.runs.map((r) => (r.shared.noEntryTokens === null ? "unknown" : count(r.shared.noEntryTokens))).join(", ")} tokens in its ${runsOf(a)}, ${range(
           a.runs.map((r) =>
             r.shared.tokens ? r.shared.noEntryTokens / r.shared.tokens : null
           ),
           percent
         )} of its tokens. An attribution within these runs, not an estimate of a run without those steps: they shared an agent session with the arm's other steps.`
     );
-  const notReplayed = goalArms.map((a) => {
+  const where = (s) => `${s.test}, line ${s.line}, "${s.step}"`;
+  // A step every run found no recording for: not a hand-off but a gap in
+  // the recordings, which reaches the model on every run.
+  const unrecorded = (a) =>
+    new Set(
+      a.runs
+        .map(
+          (r) =>
+            new Set(
+              r.notReplayed.filter((s) => s.reason === "no-entry").map(where)
+            )
+        )
+        .reduce((x, y) => new Set([...x].filter((k) => y.has(k))))
+    );
+  const listed = (a, keep) => {
     const seen = new Map();
     a.runs.forEach((r, i) => {
-      for (const s of r.notReplayed) {
+      for (const s of r.notReplayed.filter(keep)) {
         const why = [
           s.cache ?? "no cache",
           s.reason,
@@ -281,7 +392,7 @@ export function render(arms) {
         ]
           .filter(Boolean)
           .join(", ");
-        const key = `${s.test}, line ${s.line}, "${s.step}": ${why}`;
+        const key = `${where(s)}: ${why}`;
         seen.set(key, [
           ...(seen.get(key) ?? []),
           `run ${i + 1} (${s.tokens === null ? "usage unknown" : `${count(s.tokens)} tokens`})`,
@@ -292,7 +403,7 @@ export function render(arms) {
       ([key, runs]) => `- ${key}. ${runs.join(", ")}.`
     );
     return `${a.name}:\n\n${lines.join("\n") || "- none"}`;
-  });
+  };
   const failures = arms.flatMap((a) =>
     a.runs.flatMap((r, i) =>
       r.failedTests.map(
@@ -300,21 +411,24 @@ export function render(arms) {
       )
     )
   );
+  const cohort = current?.cohort;
 
   return `# Page Object study: baselines
 
-The "before" of the Page Object study (the [fixture's README](../../README.md)): each arm's suite on the Inspector before the redesign. Each cell is the range over the arm's three runs; each run's totals and exceptions are in \`<arm>.json\`.
+The "before" of the Page Object study (the [fixture's README](../../README.md)): each arm's suite on the Inspector before the redesign. Each cell is the range over the arm's runs; each run's totals and exceptions are in \`<arm>.json\`.
 
+${cohort ? `The suite: ${cohort.shared} test runs that every arm has, and ${cohort.others} more of arm 2's own, ${cohort.shared + cohort.others} in arm 2.` : "No arm is measured yet."}
+${stale.length ? `\nMeasured on other tests, so not shown until they are measured again: ${stale.map((a) => a.name).join(", ")}.\n` : ""}
 ## Measuring an arm
 
 \`\`\`sh
-pnpm study:baseline arm1 --cache-from <a checkout>/apps/inspector-fixture/.e2e/goals-cache
+pnpm study:baseline arm1
 pnpm study:baseline arm2
-pnpm study:baseline arm3 --cache-from <a checkout>/apps/inspector-fixture/.e2e/goals-tools-cache
+pnpm study:baseline arm3
 pnpm study:baseline render   # this page again, from the arms' files
 \`\`\`
 
-Run it on your own machine from a committed tree, one arm at a time with nothing else running; a goal arm's hand-offs use this machine's Claude login. It builds the packages the fixture serves, warms one fixture server, runs the arm's own script three times on it, and saves the arm's file only when all three runs completed on one commit with the same recordings. The recordings are not in git (\`.e2e/\` is ignored): \`--cache-from\` copies them in and saves their digest and where they were made. Each run's full e2e report stays on the machine that ran it, at \`.e2e/study/<arm>/<time>/run-<n>/report.json\`, and is not published. [The script](../../scripts/study-baseline.mjs) holds each guard's reason.
+Run it from \`apps/inspector-fixture\` in the repository's Devbox shell, on your own machine, from a committed tree, one arm at a time with nothing else running. The goal arms replay the recordings committed under \`.e2e/goals-cache\` and \`.e2e/goals-tools-cache\` read-only; a step that does not replay goes to Claude Code on the machine's own login, so it must be signed in, and the \`ayme mcp\` port the arm's recordings were made on must be free (\`e2e.goals.config.ts\`, \`e2e.goals-tools.config.ts\`). It builds the packages the fixture serves, warms one fixture server, runs the arm's own script three times on it, and saves the arm's file only when all three runs completed on one commit with the same recordings. Each run's full e2e report stays on the machine that ran it, at \`.e2e/study/<arm>/<time>/run-<n>/report.json\`, and is not published. [The script](../../scripts/study-baseline.mjs) holds each guard's reason.
 
 ## The tests every arm has
 
@@ -327,6 +441,7 @@ ${table(
     "Replayed, no model call",
     "Model answered",
     "Unaccounted",
+    "Not replayed (distinct goals)",
     "Tokens",
     "e2e's cost estimate",
   ],
@@ -335,6 +450,7 @@ ${table(
 
 - Tokens are input plus output, prompt-cache reads and writes included; cache reads are ${range(cacheShare, percent)} of them. e2e's cost estimate is its own, from the same usage.
 - Unaccounted: a goal step that neither replayed nor passed with the model, so its usage cannot be told.
+- Not replayed: the goal steps that did not replay with no model call, and in brackets the distinct goals among them, a goal's text with its parameters counted once however many tests run it: the count a recording per goal, shared by every test, would have left.${perUse.length ? ` A goal whose parameters are only known at run time counts once per use, so the bracket is an upper bound for ${perUse.map((a) => a.name).join(" and ")}.` : ""}
 - Every arm ran with one worker and no retries, so this is a serial comparison. The default test timeout is 30 s in arm 2 and 900 s in the goal arms ([e2e.config.ts](../../e2e.config.ts), [e2e.goals.config.ts](../../e2e.goals.config.ts)).
 ${attributions.length ? `\n${attributions.join("\n")}\n` : ""}
 ## Arm 2's other tests
@@ -361,29 +477,38 @@ ${
 
 ## Whole runs
 
-Command wall time is the arm's script from start to exit, every test of the arm included.
+Command wall time is the arm's script from start to exit, every test of the arm included. The load average is the machine's 1-minute load as each run started.
 
 ${table(
-  ["Arm", "Command wall time", "Commit", "Recordings", "Copied from"],
+  ["Arm", "Command wall time", "Load average", "Commit", "Recordings"],
   arms.map((a) => [
     a.name,
     range(
       a.runs.map((r) => r.commandWallMs),
       seconds
     ),
+    range(
+      a.runs.map((r) => r.loadAverage?.[0]),
+      (n) => n.toFixed(1)
+    ),
     `\`${a.commit.slice(0, 9)}\``,
-    a.recordings ? `\`${a.recordings.digest.slice(0, 9)}\`` : "none",
-    a.recordings?.copiedFrom
-      ? `${a.recordings.copiedFrom.branch} at \`${a.recordings.copiedFrom.commit.slice(0, 9)}\``
+    a.recordings
+      ? `\`${a.recordings.dir}\`, ${a.recordings.entries ?? "?"} entries, digest \`${a.recordings.digest.slice(0, 9)}\``
       : "none",
   ])
 )}
 ${commits.size > 1 ? "\nThe arms were measured at different commits.\n" : ""}
+## Goal steps with no recording
+
+Steps the committed recordings hold no entry for in every run (e2e's \`no-entry\`), so they reach the model each time; they count as model answered above. e2e as published records nothing for a step that changed no control and no route on the tab it reads (\`no-change\` in [When a recording is written](https://e2e.com/docs/cache#when-a-recording-is-written)).
+
+${goalArms.map((a) => listed(a, (s) => unrecorded(a).has(where(s)))).join("\n\n")}
+
 ## Goal steps not replayed
 
-By test and line, with e2e's reason, the runs each was in and its usage there.
+The other goal steps that did not replay, by test and line, with e2e's reason, the runs each was in and its usage there.
 
-${notReplayed.join("\n\n")}
+${goalArms.map((a) => listed(a, (s) => !unrecorded(a).has(where(s)))).join("\n\n")}
 
 ## Tests that did not pass
 
