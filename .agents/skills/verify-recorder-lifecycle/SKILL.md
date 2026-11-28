@@ -43,7 +43,8 @@ each function named in a comment beside the operator that models it (search
   `record`, `resume`, `wrapUp`, `goOnWrappingUp`, `giveUp`, `wrappedUp`, `endFromOutside`,
   `clearPaused`, `traceGone`, `saved`, `cannotStart` (after Record),
   `brokeDown` (while the storage state is saved), `saveFailed`, `ending` and `ended` (the storage
-  save, with `storageNotSaved`), through `proceed`, `startNext`,
+  save, with `storageNotSaved`), through `proceed`, `startNext` (with
+  `reachedAt`),
   `inputHeld`, `inputPassedOn`, `pageSettled`, `snapshotTaken`,
   `giveSnapshot`, `interactionReported`, `reportOfHeld` (with `buttonOf`,
   `reportsClickOf`, `asHeld`), `knownFromReport`,
@@ -63,10 +64,11 @@ each function named in a comment beside the operator that models it (search
   the order of reports (`inReportOrder`, `reportFrom`, `withAncestors`,
   `withPickedRef`, `actionAdded`, `actionUpdated`).
 - `packages/recorder/src/playwright/infrastructure/in-page/gate.ts` (`gateIn`,
-  `startGate`, and the gate's `set`, `open`, `arrived`, its picking start and `endPicking`),
+  `startGate`, and the gate's `set`, `open`, `arrived`, `passUntouched`, its picking start and `endPicking`),
   `drawing.ts` (`startPicking`), and `pageRules.ts` (`mouseRoute`,
-  `keyRoute`, `keyHeld`, `clickHeld`, `heldButton`, `arrivingEvent`): which
-  buttons the gate holds, and which clicks picking leaves to Playwright.
+  `keyRoute`, `keyHeld`, `clickHeld`, `clickUntouched`, `heldButton`,
+  `arrivingEvent`): which buttons the gate holds, which clicks it lets reach
+  the page untouched, and which clicks picking leaves to Playwright.
 - `packages/recorder/src/timeline/domain/timeline.ts` (`add`, `keepRead`,
   `replace`, `retext`, `produce`, `writeInteraction`, `pressedAfter`, `beforeItsPress`, `measure`,
   `changedBefore`, `tell`, `package`) and
