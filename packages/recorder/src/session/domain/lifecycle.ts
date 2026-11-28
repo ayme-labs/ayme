@@ -2170,13 +2170,7 @@ function startNext(draft: Draft) {
     // Stryker disable next-line OptionalChaining: a page that held an input has a gate; the check is for the type
     const latest = gateOf(draft, page)?.latest;
     // Typing needs no "before" once the page has a snapshot to start from.
-    if (next.held.kind === "typing" && latest) {
-      change(draft, next.id, { stage: "passingOn" });
-      draft.todo.push({
-        kind: "browser",
-        ask: { kind: "passOn", input: next.id },
-      });
-    }
+    if (next.held.kind === "typing" && latest) passOn(draft, next);
     // A click that reached its page untouched starts from the page's
     // latest snapshot: one taken now would show what the click did, as the
     // latest one does when an input before it ended after the click came.
