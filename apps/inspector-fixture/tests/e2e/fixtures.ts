@@ -38,6 +38,56 @@ export async function movePointerTo(element: On) {
   await element.hover();
 }
 
+/**
+ * Brings the panel's tab to the front, as the person looks back at the panel
+ * after a check read the page; a no-op where the panel is inline. Plain code
+ * in every arm, never a goal: no user step asks which tab is in front. e2e
+ * measures a goal's outcome from the screen the goal starts on
+ * (@e2e-dev/core's `describeDelta`), so a goal that starts with a switch to
+ * the panel's tab records the panel itself as its outcome, which every later
+ * replay finds already showing.
+ */
+export async function bringPanelToFront(inspector: Inspector) {
+  await inspector.tab.front();
+}
+
+/**
+ * The start every test gets: after what the panel shows on its own after the
+ * page opens, as `settledStart` of `../fixtures.ts` waits for and says why,
+ * and, in the external placement, with the panel's tab in front. e2e measures a goal's
+ * outcome from the screen the goal starts on (@e2e-dev/core's
+ * `describeDelta`), so a first goal that switched tabs recorded the panel's
+ * own chrome as its outcome, which a replay finds already showing once the
+ * look lands first. In plain code, never a goal: no test is about where it
+ * starts.
+ */
+async function settledStart(page: Tab, inspector: Inspector) {
+  await expect
+    .poll(async () =>
+      (await inspector.navigator.legendItems()).some((item) =>
+        /^[1-9]\d* refs$/.test(item)
+      )
+    )
+    .toBe(true);
+  const publication = async () => {
+    await page.front();
+    return page.browser.evaluate(
+      () => window.fixtureAyme!.webMCP.publicationStatus.state
+    );
+  };
+  await expect.poll(publication).not.toBe("waiting");
+  const state = await publication();
+  if (state === "unavailable" || state === "failed")
+    await expect
+      .poll(async () =>
+        (
+          await inspector.header.connections.pill.getAttribute("aria-label")
+        )?.endsWith(`, WebMCP ${state}`)
+      )
+      .toBe(true);
+  await bringPanelToFront(inspector);
+}
+
 /** Both placements, for a spec whose tests run in each. */
 export const placements: readonly Placement[] = ["inline", "external"];
 
@@ -110,10 +160,15 @@ async function fixtureReady(browser: Browser, path: FixturePage) {
 }
 
 /** Reloads the fixture page and waits for it as `openFixture` does. */
-export async function reloadFixture(page: Tab, path: FixturePage) {
+export async function reloadFixture(
+  page: Tab,
+  path: FixturePage,
+  inspector: Inspector
+) {
   await page.front();
   await page.browser.reload();
   await fixtureReady(page.browser, path);
+  await settledStart(page, inspector);
 }
 
 /**
@@ -122,8 +177,8 @@ export async function reloadFixture(page: Tab, path: FixturePage) {
  * tools. With `agent`, the page is opened through that agent's connect link
  * and waits until the agent lists its tools. With `external` as well, the
  * page is opened for the external placement, and the Inspector is a second
- * tab with the window the agent's server serves; the fixture page's tab stays
- * in front. With `webMCP`, the page publishes to the recording WebMCP
+ * tab with the window the agent's server serves. Either way the test starts
+ * as `settledStart` says. With `webMCP`, the page publishes to the recording WebMCP
  * driver, standing in for the browser's.
  */
 export async function openFixture(
@@ -153,15 +208,13 @@ export async function openFixture(
     await expect.poll(() => agent.toolNames()).toContain("page_objects");
 
   const page = new Tab(screen, browser, pageTab);
-  return {
-    page,
-    inspector: new Inspector(
-      agent && external
-        ? await openInspectorTab({ browser, screen }, agent, page)
-        : page
-    ),
-    listPage: new ListPage(page),
-  };
+  const inspector = new Inspector(
+    agent && external
+      ? await openInspectorTab({ browser, screen }, agent)
+      : page
+  );
+  await settledStart(page, inspector);
+  return { page, inspector, listPage: new ListPage(page) };
 }
 
 /**
@@ -204,15 +257,12 @@ export async function callOverMcp(
  */
 async function openInspectorTab(
   { browser, screen }: Omit<Fixtures, "app">,
-  agent: Agent,
-  page: Tab
+  agent: Agent
 ) {
   const { text: url, isError } = await agent.call("ayme_inspect");
   if (isError) throw new Error(`ayme_inspect failed: ${url}`);
   const tab = await browser.newTab();
   await browser.goto(url);
-  // The fixture page stays the one the person looks at.
-  await page.front();
   return new Tab(screen, browser, tab);
 }
 
@@ -290,14 +340,14 @@ export function testIn(
 }
 
 /**
- * The highlight Playwright draws over `element` now: its outline style
- * ("dashed" for what is hovered, "solid" for the selection) and colour, or
- * none. The page's own elements carry no mark for it.
+ * How the page outlines `element` now, by the highlight Playwright draws over
+ * it: "dashed" hovered, "solid" selected, else "none". The page's own
+ * elements carry no mark for it.
  */
-export function highlightOf(element: On, browser: Browser) {
+export function outline(element: On, browser: Browser) {
   return async () => {
     const box = await (await element.front()).boundingBox();
-    if (!box) return { style: "none", color: "" };
+    if (!box) return "none";
     return browser.evaluate((rect) => {
       const boxes = [...document.querySelectorAll("x-pw-glass")].flatMap(
         (glass) => [
@@ -315,15 +365,7 @@ export function highlightOf(element: On, browser: Browser) {
           near(at.height, rect.height)
         );
       });
-      return hit
-        ? { style: hit.style.outlineStyle, color: hit.style.outlineColor }
-        : { style: "none", color: "" };
+      return hit ? hit.style.outlineStyle : "none";
     }, box);
   };
-}
-
-/** How the page outlines `element`: "dashed" hovered, "solid" selected, else "none". */
-export function outline(element: On, browser: Browser) {
-  const read = highlightOf(element, browser);
-  return async () => (await read()).style;
 }

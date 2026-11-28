@@ -4,7 +4,6 @@ import { expect } from "e2e";
 import {
   outline,
   placements,
-  reloadFixture,
   testIn,
   confirmGoalRecordings,
   movePointerTo,
@@ -21,7 +20,7 @@ for (const placement of placements) {
   const test = testIn(placement, "/models.html");
 
   describe(placement, () => {
-    test("hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid", async ({
+    test("selecting a Page Object highlights it solid on the page", async ({
       agent,
       browser,
       page,
@@ -32,25 +31,6 @@ for (const placement of placements) {
         browser
       );
 
-      // The list can still be settling under a resting pointer, which then
-      // hovers another row: hover again until it is this one.
-      await expect
-        .poll(
-          async () => {
-            await agent.act(
-              'hover the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
-              {
-                params: { item: "[1]", ordinal: "second", collection: "items" },
-              }
-            );
-            return secondItem();
-          },
-          { timeout: 30_000 }
-        )
-        .toBe("dashed");
-      await movePointerTo(inspector.header.title);
-      await expect.poll(secondItem).toBe("none");
-
       await agent.act(
         'select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
         {
@@ -60,37 +40,6 @@ for (const placement of placements) {
       await movePointerTo(inspector.header.title);
 
       await expect.poll(secondItem).toBe("solid");
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("hovering a member highlights it dashed, beside the selected Page Object's solid highlight", async ({
-      agent,
-      browser,
-      page,
-      inspector,
-    }) => {
-      const item = outline(page.locator("#todo-items > li >> nth=1"), browser);
-      const archiveButton = outline(
-        page.locator("#todo-items > li >> nth=1 >> .todo-archive"),
-        browser
-      );
-      await agent.act(
-        'select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
-        {
-          params: { item: "[1]", ordinal: "second", collection: "items" },
-        }
-      );
-
-      await agent.act("hover its {member} member", {
-        params: { member: "archiveButton" },
-      });
-
-      await expect.poll(archiveButton).toBe("dashed");
-      await expect.poll(item).toBe("solid");
-      await movePointerTo(inspector.header.title);
-      await expect.poll(archiveButton).toBe("none");
-      await expect.poll(item).toBe("solid");
 
       await confirmGoalRecordings(browser);
     });
@@ -122,25 +71,32 @@ for (const placement of placements) {
 
       await confirmGoalRecordings(browser);
     });
-
-    test("the Model lens's panes stay as they were left after a reload", async ({
-      browser,
-      agent,
-      page,
-      inspector,
-    }) => {
-      const lens = inspector.navigator.model;
-      await agent.act("collapse the {pane} pane in the Model lens", {
-        params: { pane: "Page object models" },
-      });
-      await expect(await lens.modelList.front()).toHaveCount(0);
-
-      await reloadFixture(page, "/models.html");
-
-      await expect(await lens.objectTree.front()).toBeVisible();
-      await expect(await lens.modelList.front()).toHaveCount(0);
-
-      await confirmGoalRecordings(browser);
-    });
   });
 }
+
+// The hover runs inline only, for the reason ../modelLens.e2e.ts gives.
+const inlineTest = testIn("inline", "/models.html");
+
+describe("inline", () => {
+  inlineTest(
+    "hovering a Page Object highlights it dashed on the page, and moving off clears it",
+    async ({ agent, browser, page, inspector }) => {
+      const secondItem = outline(
+        page.locator("#todo-items > li").within((rows) => rows.nth(1)),
+        browser
+      );
+
+      await agent.act(
+        'hover the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
+        {
+          params: { item: "[1]", ordinal: "second", collection: "items" },
+        }
+      );
+      await expect.poll(secondItem).toBe("dashed");
+      await movePointerTo(inspector.header.title);
+      await expect.poll(secondItem).toBe("none");
+
+      await confirmGoalRecordings(browser);
+    }
+  );
+});

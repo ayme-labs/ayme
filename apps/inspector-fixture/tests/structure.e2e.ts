@@ -16,15 +16,12 @@ for (const placement of placements) {
   const test = testIn(placement);
 
   describe(placement, () => {
-    test("hovering a structure node highlights it on the page, and selecting it keeps it highlighted", async ({
+    test("selecting a structure node highlights it solid on the page", async ({
       browser,
       inspector,
       listPage,
     }) => {
       await inspector.navigator.showLens("Structure");
-
-      await inspector.structure.nodeOf("ListPage.newItemInput").hover();
-      await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
 
       await inspector.structure.nodeOf("ListPage.newItemInput").click();
       await movePointerTo(inspector.navigator.searchBox);
@@ -56,3 +53,20 @@ for (const placement of placements) {
     });
   });
 }
+
+// The hover runs inline only, for the reason modelLens.e2e.ts gives.
+const inlineTest = testIn("inline");
+
+describe("inline", () => {
+  inlineTest(
+    "hovering a structure node highlights it dashed on the page",
+    async ({ browser, inspector, listPage }) => {
+      await inspector.navigator.showLens("Structure");
+
+      await inspector.structure.nodeOf("ListPage.newItemInput").hover();
+      await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
+
+      await confirmGoalRecordings(browser);
+    }
+  );
+});

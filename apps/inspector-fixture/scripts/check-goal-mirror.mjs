@@ -13,6 +13,8 @@
 //   counterpart, nor have the twin's declarations only they use.
 // Every goal-file test ends with `await confirmGoalRecordings(browser);`,
 // imported from ../e2e/fixtures, and returns nowhere before it.
+// It also fails when a Playwright spec (tests/<name>.spec.ts) and its e2e
+// twin hold other test titles; SPEC_ONLY names the specs with no twin.
 import console from "node:console";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -28,8 +30,6 @@ export const LEFT_OUT = new Set([
   "mounting.e2e.ts › with the inspector option in demo mode",
   // They read, measure or drive the page and its runtime only.
   "dogfood.e2e.ts › the page state snapshot gives includes the panel",
-  "inspector.e2e.ts › the page objects reach into the Inspector's closed shadow root",
-  "inspector.e2e.ts › the panel follows the system theme",
   "inspector.e2e.ts › after its server stops",
   "inspector.e2e.ts › there is exactly one Inspector under React StrictMode",
   "inspector.e2e.ts › host CSS does not reach the panel",
@@ -96,10 +96,11 @@ function registration(statement) {
   if (!ts.isExpressionStatement(statement)) return undefined;
   const call = statement.expression;
   if (!ts.isCallExpression(call)) return undefined;
-  // `test`, `describe`, a test made by testIn, and their `.skip` and `.only`.
+  // `test`, `describe`, a test made by testIn, their `.skip` and `.only`,
+  // and Playwright's `test.describe`.
   const callee =
     ts.isPropertyAccessExpression(call.expression) &&
-    ["skip", "only"].includes(call.expression.name.text)
+    ["skip", "only", "describe"].includes(call.expression.name.text)
       ? call.expression.expression
       : call.expression;
   if (!ts.isIdentifier(callee)) return undefined;
@@ -507,8 +508,84 @@ export function check({
   return { problems, leftOut };
 }
 
+/**
+ * The Playwright specs with no e2e twin, and why: they need Playwright
+ * itself or control of time (docs/testing.md, "E2E").
+ */
+export const SPEC_ONLY = new Map([
+  // An entry may outlive its spec: #1528 deletes motion.spec.ts.
+  ["motion.spec.ts", "it controls time, to watch the panel move"],
+  ["twoHosts.spec.ts", "it drives ayme's Playwright integration itself"],
+]);
+
+/** The titles of the tests `text` registers, its describes left out. */
+function testTitles(path, text) {
+  const file = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
+  const titles = [];
+  (function visit(node) {
+    const callee = ts.isCallExpression(node) && node.expression;
+    const [title] = callee ? node.arguments : [];
+    const name = !callee
+      ? undefined
+      : ts.isPropertyAccessExpression(callee)
+        ? ts.isIdentifier(callee.expression) && callee.name.text
+        : ts.isIdentifier(callee) &&
+          (callee.text === "describe" ? "describe" : "test");
+    const registers =
+      ["test", "skip", "only", "describe"].includes(name) &&
+      title &&
+      ts.isStringLiteralLike(title) &&
+      isFunction(node.arguments.at(-1));
+    if (registers && name !== "describe") titles.push(title.text);
+    else ts.forEachChild(node, visit);
+  })(file);
+  return titles;
+}
+
+/** Each Playwright spec's test titles against its e2e twin's, under `root`/tests. */
+export function checkSpecs({
+  root = fileURLToPath(new URL("..", import.meta.url)),
+  read = (path) => readFileSync(path, "utf8"),
+  specOnly = SPEC_ONLY,
+} = {}) {
+  const tests = join(root, "tests");
+  // By path under tests/, as the runners find them.
+  const named = (suffix) =>
+    walk(tests, suffix).map((path) =>
+      relative(tests, path).slice(0, -suffix.length)
+    );
+  const specs = named(".spec.ts");
+  const twins = named(".e2e.ts");
+  const problems = [];
+  for (const name of new Set([...specs, ...twins])) {
+    const [spec, twin] = [`${name}.spec.ts`, `${name}.e2e.ts`];
+    if (specOnly.has(spec)) {
+      if (twins.includes(name))
+        problems.push(`${spec} is in SPEC_ONLY, and has a twin`);
+      continue;
+    }
+    if (!specs.includes(name) || !twins.includes(name)) {
+      problems.push(`${specs.includes(name) ? spec : twin} has no twin`);
+      continue;
+    }
+    const [a, b] = [spec, twin].map((f) => testTitles(f, read(join(tests, f))));
+    // Counted, so a title twice in one file needs it twice in the other.
+    const count = (titles, title) => titles.filter((t) => t === title).length;
+    for (const title of new Set([...a, ...b])) {
+      const [inSpec, inTwin] = [count(a, title), count(b, title)];
+      if (inSpec > inTwin)
+        problems.push(`${spec} has "${title}", and ${twin} does not`);
+      if (inTwin > inSpec)
+        problems.push(`${twin} has "${title}", and ${spec} does not`);
+    }
+  }
+  return problems;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const { problems, leftOut } = check();
+  const mirrored = check();
+  const { leftOut } = mirrored;
+  const problems = [...mirrored.problems, ...checkSpecs()];
   console.log(`Twin tests left out, LEFT_OUT (${leftOut.length}):`);
   for (const item of leftOut) console.log(`  ${item}`);
   if (problems.length) {
@@ -516,5 +593,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const problem of problems) console.error(`- ${problem}`);
     process.exit(1);
   }
-  console.log("\nThe goal files mirror their twins.");
+  console.log(
+    "\nThe goal files mirror their twins, and the Playwright specs hold their e2e twins' tests."
+  );
 }

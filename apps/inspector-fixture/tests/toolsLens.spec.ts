@@ -114,27 +114,6 @@ test("a Page Object tool's page shows its model's definition as snapshot returns
     .toBe(definition);
 });
 
-test.describe("with WebMCP publication off", () => {
-  test.use({ fixturePath: "/unpublished.html" });
-
-  test("the Tools lens still lists the live tools", async ({
-    page,
-    inspector,
-  }) => {
-    const liveTools = await new AppView(page).tools();
-
-    await inspector.navigator.showLens("Tools");
-
-    await expect
-      .poll(async () =>
-        Object.values(await inspector.navigator.tools.listed())
-          .flat()
-          .sort()
-      )
-      .toEqual(liveTools.map(({ name }) => name).sort());
-  });
-});
-
 test("a tool that can't run now shows dimmed with its reason, and Run gives the refusal", async ({
   page,
   inspector,

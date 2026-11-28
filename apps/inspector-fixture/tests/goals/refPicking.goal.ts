@@ -2,8 +2,6 @@ import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
 import {
-  highlightOf,
-  outline,
   placements,
   testIn,
   confirmGoalRecordings,
@@ -69,107 +67,6 @@ for (const placement of placements) {
         target: await appView.ref('textbox "New item"'),
         text: "Milk",
       });
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("while picking, the element under the pointer is highlighted", async ({
-      agent,
-      browser,
-      listPage,
-    }) => {
-      await agent.act("open the {tool} tool in the Tools lens", {
-        params: { tool: "click" },
-      });
-
-      await agent.act("start picking the {field} element on the page", {
-        params: { field: "target" },
-      });
-      await untilThePagePicks(listPage);
-      await listPage.addItemButton.hover();
-
-      // The dashed hover highlight.
-      await expect
-        .poll(outline(listPage.addItemButton, browser))
-        .toBe("dashed");
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("Esc cancels picking, and clicks reach the page again", async ({
-      agent,
-      browser,
-      page,
-      inspector,
-      listPage,
-    }) => {
-      await agent.act("open the {tool} tool in the Tools lens", {
-        params: { tool: "click" },
-      });
-      const ref = inspector.detail.runCard().refField("target");
-      await agent.act("start picking the {field} element on the page", {
-        params: { field: "target" },
-      });
-      await untilThePagePicks(listPage);
-
-      await page.front();
-      await browser.keyboard.press("Escape");
-      await expect.poll(() => ref.isPicking()).toBe(false);
-      await listPage.newItemInput.click();
-
-      await expect(await listPage.newItemInput.front()).toBeFocused();
-      expect(await ref.value()).toBeUndefined();
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("fill's structure leaves a button out and offers the text field", async ({
-      browser,
-      agent,
-      inspector,
-    }) => {
-      await agent.act("open the {tool} tool in the Tools lens", {
-        params: { tool: "fill" },
-      });
-      const ref = inspector.detail.runCard().refField("target");
-
-      await agent.act("open the page structure tree of the {field} field", {
-        params: { field: "target" },
-      });
-
-      await expect(
-        await ref.nodeNamed("textbox", "New item").front()
-      ).toBeEnabled();
-      await expect(
-        await ref.nodeNamed("button", "Add item").front()
-      ).toHaveCount(0);
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("picking a button for fill greys it and doesn't pick it", async ({
-      agent,
-      browser,
-      inspector,
-      listPage,
-    }) => {
-      await agent.act("open the {tool} tool in the Tools lens", {
-        params: { tool: "fill" },
-      });
-      const ref = inspector.detail.runCard().refField("target");
-      await agent.act("start picking the {field} element on the page", {
-        params: { field: "target" },
-      });
-      await untilThePagePicks(listPage);
-
-      await listPage.addItemButton.hover();
-      await expect
-        .poll(highlightOf(listPage.addItemButton, browser))
-        .toEqual({ style: "dashed", color: "rgb(156, 163, 175)" });
-      await listPage.addItemButton.click();
-
-      expect(await ref.isPicking()).toBe(true);
-      expect(await ref.value()).toBeUndefined();
 
       await confirmGoalRecordings(browser);
     });

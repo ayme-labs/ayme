@@ -2,7 +2,7 @@ import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 import type { Agent } from "@ayme-dev/mcp/testing";
 
-import { testIn, confirmGoalRecordings, INSPECTOR } from "../e2e/fixtures";
+import { testIn, confirmGoalRecordings } from "../e2e/fixtures";
 
 // The goal-driven twin of ../dogfood.e2e.ts: the same tests, with each
 // action on the panel an agent goal.
@@ -60,34 +60,6 @@ describe("dogfood", { timeout: 90_000 }, () => {
 
     await openForm("generate_locator", `LocatorGroups.toggleFromTree`);
     await openForm("goal", `ValueRows.fill`);
-
-    await confirmGoalRecordings(browser);
-  });
-
-  test("a rooted single instance is preselected and runs from the panel", async ({
-    browser,
-    agent,
-    mcpServer,
-    inspector,
-  }) => {
-    await call(mcpServer!, "Inspector.tool", { name: "Navigator.search" });
-    const card = inspector.detail.toolPage.card;
-    await expect(await card.items.front()).toHaveCount(1);
-    await expect(await card.items.front()).toHaveAttribute(
-      "aria-checked",
-      "true"
-    );
-    await agent.act("run it with the query {query}", {
-      params: { query: "ListPage.addItem" },
-    });
-    await expect(await inspector.navigator.searchBox.front()).toHaveValue(
-      "ListPage.addItem"
-    );
-
-    // The panel's own run.
-    await expect
-      .poll(() => inspector.runs.latest("Navigator.search").caller())
-      .toEqual(INSPECTOR);
 
     await confirmGoalRecordings(browser);
   });

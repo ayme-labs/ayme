@@ -19,7 +19,7 @@ export { expect } from "@playwright/test";
 /**
  * Playwright draws the Inspector's highlights in an overlay under `<html>`
  * whose shadow root is closed. Opens it, before the page's scripts run, so
- * `highlightOf` can read the boxes.
+ * `outline` can read the boxes.
  */
 const openHighlightOverlay = () => {
   const attachShadow = Element.prototype.attachShadow;
@@ -32,11 +32,11 @@ const openHighlightOverlay = () => {
 };
 
 /**
- * The highlight Playwright draws over `element` now: its outline style
- * ("dashed" for what is hovered, "solid" for the selection) and colour, or
- * none. The page's own elements carry no mark for it.
+ * How the page outlines `element` now, by the highlight Playwright draws over
+ * it: "dashed" hovered, "solid" selected, else "none". The page's own
+ * elements carry no mark for it.
  */
-export function highlightOf(element: Locator) {
+export function outline(element: Locator) {
   return () =>
     element.evaluate((target) => {
       const rect = target.getBoundingClientRect();
@@ -56,16 +56,33 @@ export function highlightOf(element: Locator) {
           near(at.height, rect.height)
         );
       });
-      return box
-        ? { style: box.style.outlineStyle, color: box.style.outlineColor }
-        : { style: "none", color: "" };
+      return box ? box.style.outlineStyle : "none";
     });
 }
 
-/** How the page outlines `element`: "dashed" hovered, "solid" selected, else "none". */
-export function outline(element: Locator) {
-  const read = highlightOf(element);
-  return async () => (await read()).style;
+/**
+ * Waits until what the panel shows on its own after the page opens has shown,
+ * so every test starts after it: a step that runs while it changes sees the
+ * panel change under it, and a goal recorded then does not replay once it
+ * changed first. Two things change:
+ * - The panel's first look at the page lands, and the legend wraps onto a
+ *   second line, which moves the Model lens's rows down under the pointer.
+ *   The legend's refs count is the only sign of the look the panel's first
+ *   view shows; when the legend goes, wait for what replaces it.
+ * - WebMCP publication stops waiting for a driver, after 2 s without one
+ *   (packages/webmcp/src/publication.ts), and the Connections pill's name
+ *   then says WebMCP is unavailable.
+ */
+async function settledStart(page: Page, inspector: Inspector) {
+  await expect(inspector.navigator.legend).toContainText(/(^|\D)[1-9]\d* refs/);
+  const publication = () =>
+    page.evaluate(() => window.fixtureAyme!.webMCP.publicationStatus.state);
+  await expect.poll(publication).not.toBe("waiting");
+  const state = await publication();
+  if (state === "unavailable" || state === "failed")
+    await expect(inspector.header.connections.pill).toHaveAccessibleName(
+      new RegExp(`, WebMCP ${state}$`)
+    );
 }
 
 /** The Caller mark of a run made from the panel, as Runs shows it. */
@@ -103,7 +120,8 @@ export type Placement = "inline" | "external";
  * and waits until the agent lists its tools. With `external` as well, the
  * page is opened for the external placement, and the Inspector is the window
  * the agent's server serves, opened in that context: `inspector` drives that
- * window, and `page` stays the app's.
+ * window, and `page` stays the app's. Either way the test starts as
+ * `settledStart` says.
  */
 export async function openFixture(
   page: Page,
@@ -151,14 +169,11 @@ export async function openFixture(
     await expect.poll(() => agent.toolNames()).toContain("page_objects");
 
   page.off("pageerror", onPageError);
-  return {
-    inspector: new Inspector(
-      agent && external
-        ? await openInspectorWindow(page, agent, external)
-        : page
-    ),
-    listPage: new ListPage(page),
-  };
+  const inspector = new Inspector(
+    agent && external ? await openInspectorWindow(page, agent, external) : page
+  );
+  await settledStart(page, inspector);
+  return { inspector, listPage: new ListPage(page) };
 }
 
 /**

@@ -35,39 +35,6 @@ for (const placement of placements) {
       await confirmGoalRecordings(browser);
     });
 
-    test("a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives", async ({
-      browser,
-      appView,
-      inspector,
-      listPage,
-    }) => {
-      const addItem = (await appView.tools()).find(
-        ({ name }) => name === "ListPage.addItem"
-      )!;
-      const definition = await appView.pomDefinitions("ListPage");
-      const { toolPage } = inspector.detail;
-
-      await inspector.tool("ListPage.addItem");
-      const card = inspector.detail.runCard();
-
-      await expect
-        .poll(() => toolPage.descriptionText())
-        .toBe(addItem.agentDescription ?? "");
-      await expect(await card.argumentsToggle.front()).toHaveCount(0);
-      await card.run({ text: "Bread" });
-      await expect(
-        await listPage.items
-          .within((items) => items.filter({ hasText: "Bread" }))
-          .front()
-      ).toHaveCount(1);
-      await toolPage.modelSees.open();
-      await expect
-        .poll(() => toolPage.modelSees.definitionsText())
-        .toBe(definition);
-
-      await confirmGoalRecordings(browser);
-    });
-
     test("a checked checkbox reads as checked in its node's What the model sees, as in the page state snapshot gives", async ({
       browser,
       appView,

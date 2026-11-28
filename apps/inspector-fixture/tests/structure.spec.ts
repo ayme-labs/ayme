@@ -2,19 +2,32 @@ import { expect, outline, test } from "./fixtures";
 
 // E2E: the Structure lens on the fixture page, with the real runtime.
 
-test("hovering a structure node highlights it on the page, and selecting it keeps it highlighted", async ({
+test("selecting a structure node highlights it solid on the page", async ({
   inspector,
   listPage,
 }) => {
   await inspector.navigator.showLens("Structure");
-  const newItem = inspector.structure.nodeOf("ListPage.newItemInput");
 
-  await newItem.hover();
-  await expect.poll(outline(listPage.newItemInput)).toBe("dashed");
-
-  await newItem.click();
+  await inspector.structure.nodeOf("ListPage.newItemInput").click();
   await inspector.navigator.searchBox.hover();
   await expect.poll(outline(listPage.newItemInput)).toBe("solid");
+});
+
+test.describe(() => {
+  test.skip(
+    ({ placement }) => placement === "external",
+    "The hover runs inline only, for the reason modelLens.e2e.ts gives."
+  );
+
+  test("hovering a structure node highlights it dashed on the page", async ({
+    inspector,
+    listPage,
+  }) => {
+    await inspector.navigator.showLens("Structure");
+
+    await inspector.structure.nodeOf("ListPage.newItemInput").hover();
+    await expect.poll(outline(listPage.newItemInput)).toBe("dashed");
+  });
 });
 
 test("a text field's node offers fill, and a button's does not", async ({

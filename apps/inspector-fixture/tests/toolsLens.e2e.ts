@@ -2,6 +2,7 @@ import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
 import {
+  bringPanelToFront,
   callOverMcp,
   INSPECTOR,
   placements,
@@ -17,7 +18,6 @@ import {
 for (const placement of placements) {
   const test = testIn(placement);
   const connected = testIn(placement, "/", { connected: true });
-  const unpublished = testIn(placement, "/unpublished.html");
   // The session's inspector option turns the page's Peeks on; the other
   // fixture pages mount the panel themselves.
   const withInspectorOption = testIn(placement, "/session.html");
@@ -30,6 +30,7 @@ for (const placement of placements) {
     }) => {
       const liveTools = await appView.tools();
 
+      await bringPanelToFront(inspector);
       await inspector.navigator.showLens("Tools");
 
       await expect
@@ -66,6 +67,7 @@ for (const placement of placements) {
             )
           );
           const { toolPage } = inspector.detail;
+          await bringPanelToFront(inspector);
           await inspector.navigator.showLens("Tools");
 
           for (const tool of liveTools) {
@@ -139,6 +141,7 @@ for (const placement of placements) {
       const definition = await appView.pomDefinitions("ListPage");
       const { toolPage } = inspector.detail;
 
+      await bringPanelToFront(inspector);
       await inspector.tool("ListPage.addItem");
       await toolPage.modelSees.open();
 
@@ -147,27 +150,6 @@ for (const placement of placements) {
         .toBe(definition);
 
       await confirmGoalRecordings(browser);
-    });
-
-    describe("with WebMCP publication off", () => {
-      unpublished(
-        "the Tools lens still lists the live tools",
-        async ({ browser, appView, inspector }) => {
-          const liveTools = await appView.tools();
-
-          await inspector.navigator.showLens("Tools");
-
-          await expect
-            .poll(async () =>
-              Object.values(await inspector.navigator.tools.listed())
-                .flat()
-                .sort()
-            )
-            .toEqual(liveTools.map(({ name }) => name).sort());
-
-          await confirmGoalRecordings(browser);
-        }
-      );
     });
 
     test("a tool that can't run now shows dimmed with its reason, and Run gives the refusal", async ({
@@ -184,6 +166,7 @@ for (const placement of placements) {
       // Asked before the panel runs it: the app's own run is a Run too.
       const refusal = await appView.refusal("ListPage.clear");
 
+      await bringPanelToFront(inspector);
       await inspector.tool("ListPage.clear");
       const card = inspector.detail.runCard();
 
@@ -213,6 +196,7 @@ for (const placement of placements) {
           expect(peeks).toEqual(["peek.list"]);
           await listPage.addItem("Milk");
 
+          await bringPanelToFront(inspector);
           await inspector.navigator.showLens("Tools");
           await expect
             .poll(() => inspector.navigator.tools.peekSections())

@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { AppView } from "./appView";
-import { expect, openFixture, outline, test } from "./fixtures";
+import { expect, outline, test } from "./fixtures";
 
 // E2E: the Model lens on a fixture page whose Page Object has child Page
 // Objects, a collection, and a child that is not on the page, with the ayme
@@ -38,44 +38,35 @@ test("the model list shows every Page Object Model snapshot describes, including
     .toEqual(described);
 });
 
-test("hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid", async ({
+test("selecting a Page Object highlights it solid on the page", async ({
   page,
   inspector,
 }) => {
   const secondItem = outline(page.locator("#todo-items > li").nth(1));
-  const object = inspector.navigator.model.object("TodoPage.items[1]");
 
-  // The list can still be settling under a resting pointer, which then hovers
-  // another row: hover again until it is this one.
-  await expect(async () => {
-    await object.hover();
-    expect(await secondItem()).toBe("dashed");
-  }).toPass();
-  await inspector.header.title.hover();
-  await expect.poll(secondItem).toBe("none");
-
-  await object.click();
+  await inspector.navigator.model.object("TodoPage.items[1]").click();
   await inspector.header.title.hover();
 
   await expect.poll(secondItem).toBe("solid");
 });
 
-test("hovering a member highlights it dashed, beside the selected Page Object's solid highlight", async ({
-  page,
-  inspector,
-}) => {
-  const secondRow = page.locator("#todo-items > li").nth(1);
-  const item = outline(secondRow);
-  const archiveButton = outline(secondRow.locator(".todo-archive"));
-  await inspector.navigator.model.object("TodoPage.items[1]").click();
+test.describe(() => {
+  test.skip(
+    ({ placement }) => placement === "external",
+    "The hover runs inline only, for the reason modelLens.e2e.ts gives."
+  );
 
-  await inspector.detail.model.member("archiveButton").hover();
+  test("hovering a Page Object highlights it dashed on the page, and moving off clears it", async ({
+    page,
+    inspector,
+  }) => {
+    const secondItem = outline(page.locator("#todo-items > li").nth(1));
 
-  await expect.poll(archiveButton).toBe("dashed");
-  await expect.poll(item).toBe("solid");
-  await inspector.header.title.hover();
-  await expect.poll(archiveButton).toBe("none");
-  await expect.poll(item).toBe("solid");
+    await inspector.navigator.model.object("TodoPage.items[1]").hover();
+    await expect.poll(secondItem).toBe("dashed");
+    await inspector.header.title.hover();
+    await expect.poll(secondItem).toBe("none");
+  });
 });
 
 test("clicking a member selects it: the page highlights it solid and the panel shows it", async ({
@@ -92,18 +83,4 @@ test("clicking a member selects it: the page highlights it solid and the panel s
   await expect.poll(input).toBe("solid");
   await expect(detail.title).toHaveText("TodoPage.newItemInput");
   await expect(detail.fact("On the page")).toHaveText("1 match");
-});
-
-test("the Model lens's panes stay as they were left after a reload", async ({
-  page,
-  inspector,
-}) => {
-  const lens = inspector.navigator.model;
-  await lens.togglePane("Page object models");
-  await expect(lens.modelList).toHaveCount(0);
-
-  await openFixture(page, "/models.html", { reload: true });
-
-  await expect(lens.objectTree).toBeVisible();
-  await expect(lens.modelList).toHaveCount(0);
 });

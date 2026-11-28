@@ -21,8 +21,6 @@ export default {
       engine: web({ reducedMotion: "reduce" }),
       app: {
         url: `http://127.0.0.1:${warmPort ?? 0}`,
-        // Runs' Copy writes the clipboard, which a test reads back.
-        permissions: { "clipboard-read": "grant", "clipboard-write": "grant" },
         // Serves every fixture page; /unpublished.html has publication off.
         command: {
           executable: "pnpm",

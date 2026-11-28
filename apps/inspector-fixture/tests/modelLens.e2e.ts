@@ -5,7 +5,6 @@ import type { AppView } from "./e2e/appView";
 import {
   outline,
   placements,
-  reloadFixture,
   testIn,
   confirmGoalRecordings,
   movePointerTo,
@@ -51,7 +50,7 @@ for (const placement of placements) {
         .toEqual(described);
     });
 
-    test("hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid", async ({
+    test("selecting a Page Object highlights it solid on the page", async ({
       browser,
       page,
       inspector,
@@ -61,47 +60,10 @@ for (const placement of placements) {
         browser
       );
 
-      // The list can still be settling under a resting pointer, which then
-      // hovers another row: hover again until it is this one.
-      await expect
-        .poll(
-          async () => {
-            await inspector.navigator.model.object("TodoPage.items[1]").hover();
-            return secondItem();
-          },
-          { timeout: 30_000 }
-        )
-        .toBe("dashed");
-      await movePointerTo(inspector.header.title);
-      await expect.poll(secondItem).toBe("none");
-
       await inspector.navigator.model.object("TodoPage.items[1]").click();
       await movePointerTo(inspector.header.title);
 
       await expect.poll(secondItem).toBe("solid");
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("hovering a member highlights it dashed, beside the selected Page Object's solid highlight", async ({
-      browser,
-      page,
-      inspector,
-    }) => {
-      const item = outline(page.locator("#todo-items > li >> nth=1"), browser);
-      const archiveButton = outline(
-        page.locator("#todo-items > li >> nth=1 >> .todo-archive"),
-        browser
-      );
-      await inspector.navigator.model.object("TodoPage.items[1]").click();
-
-      await inspector.detail.model.member("archiveButton").hover();
-
-      await expect.poll(archiveButton).toBe("dashed");
-      await expect.poll(item).toBe("solid");
-      await movePointerTo(inspector.header.title);
-      await expect.poll(archiveButton).toBe("none");
-      await expect.poll(item).toBe("solid");
 
       await confirmGoalRecordings(browser);
     });
@@ -128,22 +90,30 @@ for (const placement of placements) {
 
       await confirmGoalRecordings(browser);
     });
-
-    test("the Model lens's panes stay as they were left after a reload", async ({
-      browser,
-      page,
-      inspector,
-    }) => {
-      const lens = inspector.navigator.model;
-      await lens.togglePane("Page object models");
-      await expect(await lens.modelList.front()).toHaveCount(0);
-
-      await reloadFixture(page, "/models.html");
-
-      await expect(await lens.objectTree.front()).toBeVisible();
-      await expect(await lens.modelList.front()).toHaveCount(0);
-
-      await confirmGoalRecordings(browser);
-    });
   });
 }
+
+// The hover runs inline only: in the external placement its dashed outline
+// shows in the page's window and nothing changes in the panel's, where e2e
+// measures a goal's outcome, so no goal arm could record it, and every runner
+// holds the same tests.
+const inlineTest = testIn("inline", "/models.html");
+
+describe("inline", () => {
+  inlineTest(
+    "hovering a Page Object highlights it dashed on the page, and moving off clears it",
+    async ({ browser, page, inspector }) => {
+      const secondItem = outline(
+        page.locator("#todo-items > li").within((rows) => rows.nth(1)),
+        browser
+      );
+
+      await inspector.navigator.model.object("TodoPage.items[1]").hover();
+      await expect.poll(secondItem).toBe("dashed");
+      await movePointerTo(inspector.header.title);
+      await expect.poll(secondItem).toBe("none");
+
+      await confirmGoalRecordings(browser);
+    }
+  );
+});

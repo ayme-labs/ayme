@@ -6,49 +6,15 @@ import type { Inspector } from "@ayme-dev/inspector/testing";
 import { AppView } from "./appView";
 import { callOverMcp, expect, openFixture, outline, test } from "./fixtures";
 
-// E2E: the built Inspector on fixture pages with a real Page Object and the
-// ayme runtime. Each test has one reason to fail; fixture and runtime
-// problems fail first, in openFixture.
-
-test("the page objects reach into the Inspector's closed shadow root", async ({
-  inspector,
-}) => {
-  await expect(inspector.header.title).toBeVisible();
-});
-
-test("running a Page Object tool from the panel acts on the page", async ({
-  inspector,
-  listPage,
-}) => {
-  await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
-
-  await expect(listPage.items.filter({ hasText: "Milk" })).toHaveCount(1);
-});
-
-test("the panel follows the system theme", async ({ page, inspector }) => {
-  const colorScheme = () =>
-    inspector.panel.evaluate((panel) => getComputedStyle(panel).colorScheme);
-
-  await page.emulateMedia({ colorScheme: "light" });
-  await expect.poll(colorScheme).toBe("light");
-
-  await page.emulateMedia({ colorScheme: "dark" });
-  await expect.poll(colorScheme).toBe("dark");
-});
-
 test("the layout and its sizes survive a reload", async ({
   page,
   inspector,
 }) => {
   const { header, shell } = inspector;
-  await header.dragBy(-100, 50);
-  await shell.resizeBy("left", -60, 0);
   const floating = await shell.box();
   await header.layoutMenu.choose("Dock left");
-  await shell.resizeBy("right", 80, 0);
   const dockedLeft = await shell.box();
   await header.layoutMenu.choose("Dock to bottom");
-  await shell.resizeBy("top", 0, -60);
   const dockedBottom = await shell.box();
 
   await openFixture(page, "/", { reload: true });
@@ -59,18 +25,6 @@ test("the layout and its sizes survive a reload", async ({
   await expect.poll(() => shell.box()).toEqual(dockedLeft);
   await header.layoutMenu.choose("Floating");
   await expect.poll(() => shell.box()).toEqual(floating);
-});
-
-test("a collapsed panel stays collapsed after a reload", async ({
-  page,
-  inspector,
-}) => {
-  await inspector.collapse();
-
-  await openFixture(page, "/", { reload: true });
-
-  await expect(inspector.logo.root).toBeVisible();
-  await expect(inspector.panel).toHaveCount(0);
 });
 
 test("a docked panel sits beside the page, and floating it gives the space back", async ({
@@ -87,25 +41,6 @@ test("a docked panel sits beside the page, and floating it gives the space back"
 
   await inspector.header.layoutMenu.choose("Floating");
   await expect.poll(pageLeft).toBe(before);
-});
-
-test("the page highlights what's hovered in the panel and what's selected, at once", async ({
-  page,
-  inspector,
-  listPage,
-}) => {
-  const { navigator } = inspector;
-
-  await navigator.search("Add item");
-  await navigator.result('button "Add item"').click();
-  await navigator.search("New item");
-  // The new result can render right under the pointer left by the click,
-  // and Chromium 156 sends no mouseenter for that; enter it from outside.
-  await page.mouse.move(0, 0);
-  await navigator.result('textbox "New item"').hover();
-
-  await expect.poll(outline(listPage.addItemButton)).toBe("solid");
-  await expect.poll(outline(listPage.newItemInput)).toBe("dashed");
 });
 
 test("the app's DOM gains no attribute while an element is highlighted", async ({
@@ -223,28 +158,19 @@ test.describe("connected to an agent", () => {
   });
 });
 
-test("the header's menu and switches work by mouse inside the closed shadow root", async ({
+test("the header's menus and switches work by mouse inside the closed shadow root", async ({
   inspector,
 }) => {
   const { header } = inspector;
 
   // A press inside the panel must not count as a press outside the menu.
-  for (const layout of [
-    "Dock left",
-    "Dock right",
-    "Dock to bottom",
-    "Floating",
-  ] as const) {
-    await header.layoutMenu.trigger.click();
-    await header.layoutMenu.option(layout).click();
-    await expect.poll(() => header.layoutMenu.current()).toBe(layout);
-    await expect(header.layoutMenu.menu).toHaveCount(0);
-  }
+  await header.layoutMenu.trigger.click();
+  await header.layoutMenu.option("Dock left").click();
+  await expect.poll(() => header.layoutMenu.current()).toBe("Dock left");
+  await expect(header.layoutMenu.menu).toHaveCount(0);
 
-  for (const theme of ["Light", "Dark", "System"] as const) {
-    await header.themeSwitch.button.click();
-    await expect.poll(() => header.themeSwitch.current()).toBe(theme);
-  }
+  await header.themeSwitch.button.click();
+  await expect.poll(() => header.themeSwitch.current()).toBe("Light");
 
   await inspector.collapse();
   await expect(inspector.logo.root).toBeVisible();

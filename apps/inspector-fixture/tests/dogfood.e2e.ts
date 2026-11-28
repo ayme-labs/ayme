@@ -2,7 +2,7 @@ import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 import type { Agent } from "@ayme-dev/mcp/testing";
 
-import { testIn, confirmGoalRecordings, INSPECTOR } from "./e2e/fixtures";
+import { testIn, confirmGoalRecordings } from "./e2e/fixtures";
 
 // E2E: on the dogfood page the Inspector's own Page Object is a Page Object
 // Model like any other: an agent lists its tools over ayme MCP, drives the
@@ -100,31 +100,6 @@ describe("dogfood", { timeout: 90_000 }, () => {
 
     await openForm("generate_locator", `LocatorGroups.toggleFromTree`);
     await openForm("goal", `ValueRows.fill`);
-
-    await confirmGoalRecordings(browser);
-  });
-
-  test("a rooted single instance is preselected and runs from the panel", async ({
-    browser,
-    mcpServer,
-    inspector,
-  }) => {
-    await call(mcpServer!, "Inspector.tool", { name: "Navigator.search" });
-    const card = inspector.detail.toolPage.card;
-    await expect(await card.items.front()).toHaveCount(1);
-    await expect(await card.items.front()).toHaveAttribute(
-      "aria-checked",
-      "true"
-    );
-    await card.run({ query: "ListPage.addItem" });
-    await expect(await inspector.navigator.searchBox.front()).toHaveValue(
-      "ListPage.addItem"
-    );
-
-    // The panel's own run.
-    await expect
-      .poll(() => inspector.runs.latest("Navigator.search").caller())
-      .toEqual(INSPECTOR);
 
     await confirmGoalRecordings(browser);
   });

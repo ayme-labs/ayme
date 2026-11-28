@@ -7,11 +7,12 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, URL } from "node:url";
 
-import { check } from "./check-goal-mirror.mjs";
+import { check, checkSpecs } from "./check-goal-mirror.mjs";
 
 const root = fileURLToPath(new URL("goal-mirror-fixture", import.meta.url));
 const twin = join(root, "tests", "pair.e2e.ts");
 const goal = join(root, "tests", "goals", "pair.goal.ts");
+const spec = join(root, "tests", "pair.spec.ts");
 
 /** The problems with `edits` ([path, from, to]) made to the pair. */
 function problemsWith(...edits) {
@@ -248,4 +249,48 @@ test("fails with no goal files", () => {
   } finally {
     rmSync(empty, { recursive: true });
   }
+});
+
+/** The spec problems with `edits` ([path, from, to]) made to the pair. */
+function specProblemsWith(specOnly, ...edits) {
+  const read = (path) =>
+    edits.reduce(
+      (text, [file, from, to]) =>
+        file === path ? text.replace(from, to) : text,
+      readFileSync(path, "utf8")
+    );
+  return checkSpecs({ root, read, specOnly }).join("\n");
+}
+
+test("the pair's Playwright spec holds its e2e twin's tests", () => {
+  assert.equal(specProblemsWith(new Map()), "");
+});
+
+test("counts a test with an expression body, and not an empty describe", () => {
+  assert.match(
+    specProblemsWith(new Map(), [
+      spec,
+      'test("adds an item", async () => {});',
+      'test("adds an item", async () => {});\ntest("extra", async () => Promise.resolve());\ntest.describe("empty suite", () => {});',
+    ]),
+    /^pair\.spec\.ts has "extra", and pair\.e2e\.ts does not$/
+  );
+});
+
+test("rejects a spec title its e2e twin lacks", () => {
+  assert.match(
+    specProblemsWith(new Map(), [spec, "adds an item", "adds a loaf"]),
+    /pair\.spec\.ts has "adds a loaf", and pair\.e2e\.ts does not/
+  );
+});
+
+test("rejects a spec title twice where its e2e twin has it once", () => {
+  assert.match(
+    specProblemsWith(new Map(), [
+      spec,
+      'test("adds an item", async () => {});',
+      'test("adds an item", async () => {});\ntest.describe("again", () => {\n  test("adds an item", async () => {});\n});',
+    ]),
+    /^pair\.spec\.ts has "adds an item", and pair\.e2e\.ts does not$/
+  );
 });

@@ -112,102 +112,103 @@ const layouts: LayoutChoice[] = [
   "Floating",
 ];
 
-for (const zIndex of [50, 101]) {
-  describe(`over a page widget at z-index ${zIndex}`, () => {
-    test("the panel stays on top and its controls work in every layout", async ({
-      agent,
-      browser,
-      page,
-      inspector,
-    }) => {
-      await coverPage(page, zIndex);
-      const { header } = inspector;
+// One z-index is enough: the Inspector's host takes the highest z-index
+// there is (packages/inspector/src/app/inspector.css), so a page widget at
+// any lower one stacks below it.
+const zIndex = 101;
 
-      for (const layout of layouts) {
-        await agent.act("set the layout to {layout}", { params: { layout } });
-        await expect.poll(() => header.layoutMenu.current()).toBe(layout);
-        expect(await inspectorIsOnTopAt(browser, header.title), layout).toBe(
-          true
-        );
-      }
+describe(`over a page widget at z-index ${zIndex}`, () => {
+  test("the panel stays on top and its controls work in every layout", async ({
+    agent,
+    browser,
+    page,
+    inspector,
+  }) => {
+    await coverPage(page, zIndex);
+    const { header } = inspector;
 
-      await confirmGoalRecordings(browser);
-    });
+    for (const layout of layouts) {
+      await agent.act("set the layout to {layout}", { params: { layout } });
+      await expect.poll(() => header.layoutMenu.current()).toBe(layout);
+      expect(await inspectorIsOnTopAt(browser, header.title), layout).toBe(
+        true
+      );
+    }
 
-    test("the collapsed logo stays on top and opens the panel", async ({
-      agent,
-      browser,
-      page,
-      inspector,
-    }) => {
-      await coverPage(page, zIndex);
+    await confirmGoalRecordings(browser);
+  });
 
-      await agent.act("collapse the panel");
-      expect(await inspectorIsOnTopAt(browser, inspector.logo.root)).toBe(true);
-      await agent.act("open the panel from the ayme logo");
+  test("the collapsed logo stays on top and opens the panel", async ({
+    agent,
+    browser,
+    page,
+    inspector,
+  }) => {
+    await coverPage(page, zIndex);
 
-      await expect(await inspector.panel.front()).toBeVisible();
+    await agent.act("collapse the panel");
+    expect(await inspectorIsOnTopAt(browser, inspector.logo.root)).toBe(true);
+    await agent.act("open the panel from the ayme logo");
 
-      await confirmGoalRecordings(browser);
-    });
+    await expect(await inspector.panel.front()).toBeVisible();
 
-    test("clicks outside the Inspector reach the page in every layout", async ({
-      browser,
-      agent,
-      page,
-      inspector,
-    }) => {
-      const widget = await coverPage(page, zIndex);
-      let clicks = 0;
-      const clickOutside = async (part: On) => {
-        await clickOutsideOf(page, part);
-        clicks += 1;
-        await expect(await widget.front()).toHaveAttribute(
-          "data-page-widget",
-          String(clicks)
-        );
-      };
+    await confirmGoalRecordings(browser);
+  });
 
-      for (const layout of layouts) {
-        await agent.act("set the layout to {layout}", { params: { layout } });
-        await expect(
-          await inspector.header.layoutMenu.menu.front()
-        ).toBeHidden();
-        await expect
-          .poll(() => inspector.header.layoutMenu.current())
-          .toBe(layout);
-        await clickOutside(inspector.panel);
-      }
-      await agent.act("collapse the panel");
-      await clickOutside(inspector.logo.root);
+  test("clicks outside the Inspector reach the page in every layout", async ({
+    browser,
+    agent,
+    page,
+    inspector,
+  }) => {
+    const widget = await coverPage(page, zIndex);
+    let clicks = 0;
+    const clickOutside = async (part: On) => {
+      await clickOutsideOf(page, part);
+      clicks += 1;
+      await expect(await widget.front()).toHaveAttribute(
+        "data-page-widget",
+        String(clicks)
+      );
+    };
 
-      await confirmGoalRecordings(browser);
-    });
-
-    test("a click Browser Tool reaches a page button under the panel", async ({
-      agent,
-      appView,
-      browser,
-      page,
-      inspector,
-    }) => {
-      const button = await placeButtonUnder(page, inspector.panel, zIndex);
-      expect(await inspectorIsOnTopAt(browser, button)).toBe(true);
-
-      await appView.run("click", {
-        target: await appView.ref('button "Covered button"'),
-      });
-
-      await expect(await button.front()).toHaveAttribute("data-clicks", "1");
-      expect(await inspectorIsOnTopAt(browser, button)).toBe(true);
-      await agent.act("set the layout to {layout}", {
-        params: { layout: "Dock left" },
-      });
+    for (const layout of layouts) {
+      await agent.act("set the layout to {layout}", { params: { layout } });
+      await expect(await inspector.header.layoutMenu.menu.front()).toBeHidden();
       await expect
         .poll(() => inspector.header.layoutMenu.current())
-        .toBe("Dock left");
+        .toBe(layout);
+      await clickOutside(inspector.panel);
+    }
+    await agent.act("collapse the panel");
+    await clickOutside(inspector.logo.root);
 
-      await confirmGoalRecordings(browser);
-    });
+    await confirmGoalRecordings(browser);
   });
-}
+
+  test("a click Browser Tool reaches a page button under the panel", async ({
+    agent,
+    appView,
+    browser,
+    page,
+    inspector,
+  }) => {
+    const button = await placeButtonUnder(page, inspector.panel, zIndex);
+    expect(await inspectorIsOnTopAt(browser, button)).toBe(true);
+
+    await appView.run("click", {
+      target: await appView.ref('button "Covered button"'),
+    });
+
+    await expect(await button.front()).toHaveAttribute("data-clicks", "1");
+    expect(await inspectorIsOnTopAt(browser, button)).toBe(true);
+    await agent.act("set the layout to {layout}", {
+      params: { layout: "Dock left" },
+    });
+    await expect
+      .poll(() => inspector.header.layoutMenu.current())
+      .toBe("Dock left");
+
+    await confirmGoalRecordings(browser);
+  });
+});

@@ -94,77 +94,77 @@ const layouts: LayoutChoice[] = [
   "Floating",
 ];
 
-for (const zIndex of [50, 101]) {
-  test.describe(`over a page widget at z-index ${zIndex}`, () => {
-    test("the panel stays on top and its controls work in every layout", async ({
-      page,
-      inspector,
-    }) => {
-      await coverPage(page, zIndex);
-      const { header } = inspector;
+// One z-index is enough: the Inspector's host takes the highest z-index
+// there is (packages/inspector/src/app/inspector.css), so a page widget at
+// any lower one stacks below it.
+const zIndex = 101;
 
-      for (const layout of layouts) {
-        await header.layoutMenu.choose(layout);
-        await expect.poll(() => header.layoutMenu.current()).toBe(layout);
-        expect(await inspectorIsOnTopAt(page, header.title), layout).toBe(true);
-      }
-    });
+test.describe(`over a page widget at z-index ${zIndex}`, () => {
+  test("the panel stays on top and its controls work in every layout", async ({
+    page,
+    inspector,
+  }) => {
+    await coverPage(page, zIndex);
+    const { header } = inspector;
 
-    test("the collapsed logo stays on top and opens the panel", async ({
-      page,
-      inspector,
-    }) => {
-      await coverPage(page, zIndex);
-
-      await inspector.collapse();
-      expect(await inspectorIsOnTopAt(page, inspector.logo.root)).toBe(true);
-      await inspector.logo.open();
-
-      await expect(inspector.panel).toBeVisible();
-    });
-
-    test("clicks outside the Inspector reach the page in every layout", async ({
-      page,
-      inspector,
-    }) => {
-      const widget = await coverPage(page, zIndex);
-      let clicks = 0;
-      const clickOutside = async (part: Locator) => {
-        await clickOutsideOf(page, part);
-        clicks += 1;
-        await expect(widget).toHaveAttribute(
-          "data-page-widget",
-          String(clicks)
-        );
-      };
-
-      for (const layout of layouts) {
-        await inspector.header.layoutMenu.choose(layout);
-        await expect(inspector.header.layoutMenu.menu).toBeHidden();
-        await clickOutside(inspector.panel);
-      }
-      await inspector.collapse();
-      await clickOutside(inspector.logo.root);
-    });
-
-    test("a click Browser Tool reaches a page button under the panel", async ({
-      page,
-      inspector,
-    }) => {
-      const button = await placeButtonUnder(page, inspector.panel, zIndex);
-      expect(await inspectorIsOnTopAt(page, button)).toBe(true);
-      const app = new AppView(page);
-
-      await app.run("click", {
-        target: await app.ref('button "Covered button"'),
-      });
-
-      await expect(button).toHaveAttribute("data-clicks", "1");
-      expect(await inspectorIsOnTopAt(page, button)).toBe(true);
-      await inspector.header.layoutMenu.choose("Dock left");
-      await expect
-        .poll(() => inspector.header.layoutMenu.current())
-        .toBe("Dock left");
-    });
+    for (const layout of layouts) {
+      await header.layoutMenu.choose(layout);
+      await expect.poll(() => header.layoutMenu.current()).toBe(layout);
+      expect(await inspectorIsOnTopAt(page, header.title), layout).toBe(true);
+    }
   });
-}
+
+  test("the collapsed logo stays on top and opens the panel", async ({
+    page,
+    inspector,
+  }) => {
+    await coverPage(page, zIndex);
+
+    await inspector.collapse();
+    expect(await inspectorIsOnTopAt(page, inspector.logo.root)).toBe(true);
+    await inspector.logo.open();
+
+    await expect(inspector.panel).toBeVisible();
+  });
+
+  test("clicks outside the Inspector reach the page in every layout", async ({
+    page,
+    inspector,
+  }) => {
+    const widget = await coverPage(page, zIndex);
+    let clicks = 0;
+    const clickOutside = async (part: Locator) => {
+      await clickOutsideOf(page, part);
+      clicks += 1;
+      await expect(widget).toHaveAttribute("data-page-widget", String(clicks));
+    };
+
+    for (const layout of layouts) {
+      await inspector.header.layoutMenu.choose(layout);
+      await expect(inspector.header.layoutMenu.menu).toBeHidden();
+      await clickOutside(inspector.panel);
+    }
+    await inspector.collapse();
+    await clickOutside(inspector.logo.root);
+  });
+
+  test("a click Browser Tool reaches a page button under the panel", async ({
+    page,
+    inspector,
+  }) => {
+    const button = await placeButtonUnder(page, inspector.panel, zIndex);
+    expect(await inspectorIsOnTopAt(page, button)).toBe(true);
+    const app = new AppView(page);
+
+    await app.run("click", {
+      target: await app.ref('button "Covered button"'),
+    });
+
+    await expect(button).toHaveAttribute("data-clicks", "1");
+    expect(await inspectorIsOnTopAt(page, button)).toBe(true);
+    await inspector.header.layoutMenu.choose("Dock left");
+    await expect
+      .poll(() => inspector.header.layoutMenu.current())
+      .toBe("Dock left");
+  });
+});
