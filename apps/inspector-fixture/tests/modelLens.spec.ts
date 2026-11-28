@@ -38,22 +38,35 @@ test("the model list shows every Page Object Model snapshot describes, including
     .toEqual(described);
 });
 
-test("hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid", async ({
+test("selecting a Page Object highlights it solid on the page", async ({
   page,
   inspector,
 }) => {
   const secondItem = outline(page.locator("#todo-items > li").nth(1));
-  const object = inspector.navigator.model.object("TodoPage.items[1]");
 
-  await object.hover();
-  await expect.poll(secondItem).toBe("dashed");
-  await inspector.header.title.hover();
-  await expect.poll(secondItem).toBe("none");
-
-  await object.click();
+  await inspector.navigator.model.object("TodoPage.items[1]").click();
   await inspector.header.title.hover();
 
   await expect.poll(secondItem).toBe("solid");
+});
+
+test.describe(() => {
+  test.skip(
+    ({ placement }) => placement === "external",
+    "The hover runs inline only, for the reason modelLens.e2e.ts gives."
+  );
+
+  test("hovering a Page Object highlights it dashed on the page, and moving off clears it", async ({
+    page,
+    inspector,
+  }) => {
+    const secondItem = outline(page.locator("#todo-items > li").nth(1));
+
+    await inspector.navigator.model.object("TodoPage.items[1]").hover();
+    await expect.poll(secondItem).toBe("dashed");
+    await inspector.header.title.hover();
+    await expect.poll(secondItem).toBe("none");
+  });
 });
 
 test("clicking a member selects it: the page highlights it solid and the panel shows it", async ({
