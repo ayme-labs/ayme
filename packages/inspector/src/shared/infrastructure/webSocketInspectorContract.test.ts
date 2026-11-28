@@ -74,6 +74,10 @@ const state = (revision: number, tool = "click"): InspectorState => ({
   ],
 });
 
+// A string given to `rejects.toThrow` also matches a rejection with no
+// error at all, so each test names the whole error.
+const closed = new Error("The connection to ayme's process closed.");
+
 function connect() {
   const contract = webSocketInspectorContract(
     "ws://127.0.0.1:9351/inspector/ws",
@@ -157,7 +161,7 @@ describe("webSocketInspectorContract", () => {
       error: "This Session has no Tab.",
     });
 
-    await expect(asked).rejects.toThrow("This Session has no Tab.");
+    await expect(asked).rejects.toThrow(new Error("This Session has no Tab."));
   });
 
   it("reads a recorded page state that is none as undefined", async () => {
@@ -252,7 +256,7 @@ describe("webSocketInspectorContract", () => {
       const { contract, socket } = connect();
       socket().openOnTab();
       const asked = contract.pick({ id: "pick-1", refs: [] });
-      const rejected = expect(asked).rejects.toThrow("closed");
+      const rejected = expect(asked).rejects.toThrow(closed);
 
       socket().close();
 
@@ -353,7 +357,7 @@ describe("webSocketInspectorContract", () => {
       await vi.advanceTimersByTimeAsync(0);
       const run = contract.runTool({ name: "Basket.add", input: {} });
       const dropped = expect(run).rejects.toThrow(
-        "The Inspector shows another Tab now."
+        new Error("The Inspector shows another Tab now.")
       );
       const ran = socket().sent.at(-1)!;
 
@@ -367,6 +371,41 @@ describe("webSocketInspectorContract", () => {
       expect(client.current().tools.map(({ name }) => name)).toEqual([
         "second Tab",
       ]);
+    });
+
+    it("reads neither the first Tab the Session tells nor the same Tab told again as a new page", async () => {
+      const { socket, newPages } = await sessionClient();
+      socket().receive({ tab: 1 });
+      const sent = socket().sent.length;
+
+      socket().receive({ tab: 1 });
+
+      expect(newPages).toEqual([]);
+      expect(socket().sent).toHaveLength(sent);
+    });
+
+    it("needs no one told when the Session shows no Tab", async () => {
+      const contract = webSocketInspectorContract("ws://x/inspector/ws", {
+        WebSocket: FakeWebSocket as never,
+      });
+      FakeWebSocket.instances.at(-1)!.openOnTab();
+
+      FakeWebSocket.instances.at(-1)!.receive({ tab: 1, noTab: true });
+
+      void contract.look();
+      expect(FakeWebSocket.instances.at(-1)!.methods()).toEqual(["look"]);
+    });
+
+    it("drops an answer to no request it waits for", async () => {
+      const { contract, socket } = await sessionClient();
+      socket().receive({ tab: 1 });
+
+      socket().receive({ id: 999, error: "Late." });
+      socket().receive({ id: 998, result: {} });
+      const asked = contract.look();
+      socket().answer("look", { look: true });
+
+      expect(await asked).toEqual({ look: true });
     });
 
     it("waits for the Tab again after it connects again", async () => {
@@ -384,6 +423,15 @@ describe("webSocketInspectorContract", () => {
   });
 
   describe("when the Session behind the server ends", () => {
+    it("needs no one told, and fails every request from then on", async () => {
+      const { contract, socket } = connect();
+      socket().openOnTab();
+
+      socket().receive({ ended: "The Session shop was closed." });
+
+      await expect(contract.getState()).rejects.toThrow(closed);
+    });
+
     it("says why, connects no more when the server goes, and fails every request from then on", async () => {
       const ended: unknown[] = [];
       const contract = webSocketInspectorContract(
@@ -397,7 +445,7 @@ describe("webSocketInspectorContract", () => {
       const socket = FakeWebSocket.instances.at(-1)!;
       socket.openOnTab();
       const waiting = contract.getState();
-      const rejected = expect(waiting).rejects.toThrow("closed");
+      const rejected = expect(waiting).rejects.toThrow(closed);
 
       socket.receive({
         ended: "The Session shop was closed. Run ayme inspect.",
@@ -414,7 +462,7 @@ describe("webSocketInspectorContract", () => {
       ]);
       await rejected;
       expect(FakeWebSocket.instances).toHaveLength(1);
-      await expect(contract.getState()).rejects.toThrow("closed");
+      await expect(contract.getState()).rejects.toThrow(closed);
     });
   });
 });
