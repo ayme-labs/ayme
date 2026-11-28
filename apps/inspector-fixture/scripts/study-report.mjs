@@ -332,8 +332,11 @@ export function render(all, latest) {
             range(of("unaccounted")),
             `${range(notReplayed.map((n) => n.steps))} (${range(notReplayed.map((n) => n.distinct))})`,
             range(of("tokens"), count),
+            // e2e leaves the estimate out of a run that called no model.
             range(
-              a.runs.map((r) => r.estimatedCostUsd),
+              a.runs.map(
+                (r) => r.estimatedCostUsd ?? (r.shared.tokens === 0 ? 0 : null)
+              ),
               usd
             ),
           ]
