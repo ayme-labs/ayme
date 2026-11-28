@@ -100,9 +100,9 @@ a load, wait with your browser automation, then run `ayme page-objects`.
 - **Failed**: the answer says what failed, then `changes:` when the Page
   Object Tree changed while the action ran. Read how far the action got
   before you call it again.
-- **A dialog**: when an answer says a dialog `is open on the tab`, answer the
-  dialog with your browser automation. Then the end of that answer tells you
-  what to do:
+- **A dialog**: when an answer says a dialog `is open on the tab`, or
+  `is open on another tab` at the URL it names, answer the dialog with your
+  browser automation. Then the end of that answer tells you what to do:
   - `… then run this command again.`: the dialog was open before the command
     started, so the command did nothing. Run it again.
   - `The action stopped there: …`: the action ran up to the dialog and

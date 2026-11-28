@@ -446,3 +446,42 @@ it("a dialog that opens while the Session starts answers its first command once 
     text: `Tab: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
   });
 });
+
+const dialogsUrl = "http://127.0.0.1:5173/dialogs.html";
+
+it("a Tab whose setup a dialog on another Tab holds is answered with that dialog, by its Tab's URL and its text, and starts nothing; once the dialog is answered, the same command and one on the dialog's Tab work", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show({ ...shop, tab: { url: dialogsUrl, title: "Dialogs" } });
+  dialogOpens(browser);
+  const other = browser.openTab(shop.tab.url);
+  other.show(shop);
+  const release = other.holdSetup({ url: dialogsUrl, dialog: confirm });
+  const held = `ayme's setup of this command's tab did not answer in time, so the command did nothing. A confirm dialog is open on another tab, at ${dialogsUrl}: "Remove Milk from the basket?". A dialog on another tab can hold that setup. Answer it with your browser automation, then run this command again.`;
+
+  expect(await session.ask(readHeading)).toEqual({ ok: false, text: held });
+  expect(await session.ask({ tools: {} })).toEqual({ ok: false, text: held });
+  expect(other.hosted).toBe(false);
+  expect(other.runs).toEqual([]);
+
+  browser.closeDialog();
+  release();
+
+  expect(await session.ask(readHeading)).toMatchObject({ ok: true });
+  expect(other.runs).toEqual([{ tool: "ShopPage.readHeading", input: {} }]);
+  expect(await session.ask({ tools: { tab: dialogsUrl } })).toMatchObject({
+    ok: true,
+    text: expect.stringMatching(/^Tab: Dialogs \(/),
+  });
+});
+
+it("a Tab whose setup is held while the Session knows of no dialog on another Tab is answered that one may be open there", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  browser.holdSetup();
+
+  expect(await session.ask(readHeading)).toEqual({
+    ok: false,
+    text: "ayme's setup of this command's tab did not answer in time, as happens while a dialog is open on another tab of the browser, so the command did nothing. If one is open, answer it with your browser automation, then run this command again.",
+  });
+  expect(browser.hosted).toBe(false);
+});

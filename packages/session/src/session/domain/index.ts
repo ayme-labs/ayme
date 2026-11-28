@@ -20,6 +20,7 @@ export {
   paramsTooLarge,
   paramsUnreadable,
   runFailed,
+  setupHeld,
   TAB_CLOSED,
   toolsAnswer,
   unanswerable,
