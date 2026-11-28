@@ -61,12 +61,14 @@ export function outline(element: Locator) {
 }
 
 /**
- * Waits until the panel's first look at the page has landed, which the
- * legend's refs count shows. A hover before it can land on another row: the
- * legend then wraps onto a second line, which moves the Model lens's rows
- * down under the pointer.
+ * Waits until the panel's first look at the page has landed, so every test
+ * starts after it: a step that runs while it lands sees the panel change under
+ * it (the legend wraps onto a second line, which moves the Model lens's rows
+ * down under the pointer), and a goal recorded then does not replay once the
+ * look lands first. The legend's refs count is the only sign of the look the
+ * panel's first view shows; when the legend goes, wait for what replaces it.
  */
-export async function untilThePanelHasLooked(inspector: Inspector) {
+async function settledStart(inspector: Inspector) {
   await expect(inspector.navigator.legend).toContainText(/(^|\D)[1-9]\d* refs/);
 }
 
@@ -105,7 +107,8 @@ export type Placement = "inline" | "external";
  * and waits until the agent lists its tools. With `external` as well, the
  * page is opened for the external placement, and the Inspector is the window
  * the agent's server serves, opened in that context: `inspector` drives that
- * window, and `page` stays the app's.
+ * window, and `page` stays the app's. Either way the test starts as
+ * `settledStart` says.
  */
 export async function openFixture(
   page: Page,
@@ -153,14 +156,11 @@ export async function openFixture(
     await expect.poll(() => agent.toolNames()).toContain("page_objects");
 
   page.off("pageerror", onPageError);
-  return {
-    inspector: new Inspector(
-      agent && external
-        ? await openInspectorWindow(page, agent, external)
-        : page
-    ),
-    listPage: new ListPage(page),
-  };
+  const inspector = new Inspector(
+    agent && external ? await openInspectorWindow(page, agent, external) : page
+  );
+  await settledStart(inspector);
+  return { inspector, listPage: new ListPage(page) };
 }
 
 /**

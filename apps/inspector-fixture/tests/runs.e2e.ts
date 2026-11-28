@@ -57,7 +57,7 @@ for (const placement of placements) {
       expect(shown?.arguments).toBeNull();
       expect(shown?.interactions).toEqual([]);
       await expect.poll(async () => (await run.read())?.targetGone).toBe(true);
-      await reloadFixture(page, "/");
+      await reloadFixture(page, "/", inspector);
       await expect
         .poll(async () => (await inspector.runs.latest("click").read())?.toggle)
         .toContain('button "Dismiss notice"');
