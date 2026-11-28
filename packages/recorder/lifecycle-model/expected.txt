@@ -55,6 +55,7 @@ Race-LateTypingReport: N1_AfterStopInTimeOrder X5_StopWindowIsRecorded
 Race-LastText: F4_StopAndFinishKeepLastText
 Race-ClickLostAfterStop: X5_StopWindowIsRecorded
 Race-ClickAfterPicking: X3_NothingYouDidIsDropped
+Race-LateReportBeforeUntouched:
 Race-HeldMessageAfterStop: X1_NothingOvertakesAHeldClick X2_SnapshotsInTimeOrder X3_NothingYouDidIsDropped X5_StopWindowIsRecorded N1_AfterStopInTimeOrder
 Race-NavigationBeforeTypingReport: X10_FillStartsInItsDocument
 # Middle clicks.

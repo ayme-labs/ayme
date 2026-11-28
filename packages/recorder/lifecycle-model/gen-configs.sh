@@ -30,6 +30,8 @@ MIX='{"left", "right", "middle", "leftOnCheckbox", "middleOnCheckbox"}'
 # A left click, and one the browser gave to another element than the one
 # under the pointer, which reaches the page untouched (#1533).
 UNT='{"left", "leftNotUnderPointer"}'
+# Only clicks that reach the page untouched.
+UNTONLY='{"leftNotUnderPointer"}'
 RULES="$HOLD X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
 PROBES="P1_NeverSavesTwoEntries P3_NeverRecordsAnAssertionAfterAClick P4_NeverRecordsANavigation P5_NeverCutsASettleShort P7_NeverHoldsAClickDuringWrapUp P9_NeverSavesWithPageClosed P10_NeverHoldsTyping P11_NeverWritesRevisedTyping P12_NeverWritesTypingWhileRecording P13_NeverEndsTypingAtAClick P14_NeverPausesWithTypingWritten"
 WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesWithTextAhead P18_NeverClearsALiveFill P20_NeverShowsTextOnly P21_NeverWaitsToShow"
@@ -170,6 +172,10 @@ mk Race-LateTypingReport "$IN" 2 1 1 1   0    1     $F     $F   $F   $F    $T   
 mk Race-LastText    "$IN" 1 1   1   1   1    1     $T     $F   $F   $F    $F    $F      $F $F "INVARIANT F4_StopAndFinishKeepLastText"
 mk Race-ClickLostAfterStop "$IN" 2 1 1 1  0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT X5_StopWindowIsRecorded" $T $F "$LEFT"
 mk Race-ClickAfterPicking "$IN" 1 1 1 1   0    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT X3_NothingYouDidIsDropped" $F $T "$LEFT"
+# Typing, a choice or an upload whose report comes after a click that
+# reached the page untouched (Quick off): it goes before the click, and the
+# click is not dropped.
+mk Race-LateReportBeforeUntouched "$IN" 2 1 1 1 1 0   $F     $F   $F   $F    $F    $F      $F $F "INVARIANT X3_NothingYouDidIsDropped" $F $F "$UNTONLY"
 mk Race-HeldMessageAfterStop "$IN" 2 1 1 1 0  0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS N1_AfterStopInTimeOrder X2_SnapshotsInTimeOrder X5_StopWindowIsRecorded X3_NothingYouDidIsDropped X1_NothingOvertakesAHeldClick" $F $F "$LEFT" $T
 # Middle clicks: held and matched by their button, as right-clicks.
 mk Clicks-Middle    "$IN" 2 1   1   1   0    1     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS X7_EntryHasItsOwnReport X1_NothingOvertakesAHeldClick X3_NothingYouDidIsDropped X5_StopWindowIsRecorded R04_FinishSavesEverything" $F $F "$ALLB"

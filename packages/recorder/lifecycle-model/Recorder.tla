@@ -719,16 +719,25 @@ WithoutPage(s) ==
                  !.pgLatest = 0, !.pgHold = FALSE, !.pages = FALSE,
                  !.finals = IF s.phase = "wrap" /\ s.finals = "asked" THEN "in" ELSE @]
 
-\* L giveUpEarlier
+\* L giveUpEarlier: not an input its page still holds back, which has not
+\* reached the page yet. Nor, in the engine, one that reached the page after
+\* the reported one (L passedOnAt), as an input of another document can; in
+\* the model's one document, what is before a reported input reached the
+\* page before it.
 GiveUpEarlier(s, k) ==
   [s EXCEPT !.unrep = [f \in Ids |-> IF InL(s, f) /\ Pos(s, f) < k /\ ~s.rep[f]
+                                        /\ ~(s.stage[f] \in {"waiting", "takingBefore"}
+                                             /\ s.unt[f] = "no")
                                      THEN TRUE ELSE s.unrep[f]]]
 
 \* L knownFromReport. pc: when Playwright's picture of
-\* the input was taken.
+\* the input was taken. It goes before every input its page still holds
+\* back, and before a click that reached the page untouched whose report has
+\* not come: Playwright reports in order.
 KnownFromReport(s, e, i, pc) ==
   LET hw == {f \in Elems(s.lst) : s.ent[f] \in {"click", "key"}
-                                  /\ s.stage[f] \in {"waiting", "takingBefore"}}
+                                  /\ \/ s.stage[f] \in {"waiting", "takingBefore"}
+                                     \/ s.unt[f] # "no" /\ ~s.rep[f]}
       k == IF hw = {} THEN Len(s.lst) + 1 ELSE Pos(s, First(s, hw))
       s1 == GiveUpEarlier(s, k)
   IN [s1 EXCEPT !.lst = InsertAt(@, k, e), !.ent[e] = "rep", !.stage[e] = "waiting",
@@ -755,7 +764,11 @@ ReportsClickOf(f, i) ==
 
 \* A click's report is a held click's only when it can be (L reportOfHeld,
 \* reportsClickOf). A middle click is saved with a check's report as the middle
-\* click it was (L asHeld): the model has no report text.
+\* click it was (L asHeld): the model has no report text. The engine gives
+\* the report of a click that reached its page untouched to the click the
+\* adapter names (L reportOfHeld's `of`, SB clickReported), which in another
+\* document can be after a click held before it; in the model's one document
+\* it is the oldest click with no report, as here.
 ReportOfHeld(s, i) ==
   LET t == First(s, {f \in Elems(s.lst) : s.ent[f] = "click" /\ ~s.rep[f]
                                          /\ ReportsClickOf(In(f), i)}) IN
