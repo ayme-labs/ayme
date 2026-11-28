@@ -437,6 +437,34 @@ describe("readCommand for a Session", () => {
     expect(readCommand(["-s=", "close"]).kind).toBe("error");
   });
 
+  it.each([
+    {
+      args: ["-s=", "close"],
+      message: "Give -s the name of a Session.",
+    },
+    {
+      args: ["tools", "--tab="],
+      message:
+        "Give --tab the URL a tab shows, as the first line of ayme page-objects prints it.",
+    },
+  ])("says what an empty option needs: `$args`", ({ args, message }) => {
+    expect(readCommand(args)).toEqual({
+      kind: "error",
+      text: `${message}\n\n${USAGE}`,
+    });
+  });
+
+  it.each([
+    [["close", "--help"]],
+    [["-h", "tools"]],
+    [["open", "a", "b", "-h"]],
+  ])(
+    "prints the usage text for help beside a Session's command: `%s`",
+    (args) => {
+      expect(readCommand(args)).toEqual({ kind: "help", text: USAGE });
+    }
+  );
+
   it("lists attach, detach, list and -s in its usage text", () => {
     expect(USAGE).toContain("ayme attach --cdp=<url>");
     expect(USAGE).toContain("ayme detach");
@@ -548,6 +576,34 @@ describe("readCommand for a Session", () => {
     );
   });
 
+  it.each([
+    [["list", "now"]],
+    [["detach", "now"]],
+    [["tools", "now"]],
+    [["call", "Basket.add", "Basket.remove"]],
+  ])("refuses a word the command does not take: `%s`", (args) => {
+    expect(readCommand(args)).toEqual({ kind: "error", text: USAGE });
+  });
+
+  it.each([
+    [["--tab", "close"]],
+    [["--cdp", "close"]],
+    [["--params", "close", "now"]],
+    [["--tab", "close", "constructor"]],
+  ])(
+    "fails with the usage text when an option takes the command's word as its value: `%s`",
+    (args) => {
+      expect(readCommand(args)).toEqual({ kind: "error", text: USAGE });
+    }
+  );
+
+  it("names the Session with a bare --session too", () => {
+    expect(readCommand(["--session", "review", "close"])).toMatchObject({
+      kind: "ask",
+      session: "review",
+    });
+  });
+
   it("runs the Session's background process for its own word, which the usage text does not name", () => {
     expect(readCommand(["__session", '{"projectDir":"/app"}'])).toEqual({
       kind: "session process",
@@ -555,4 +611,11 @@ describe("readCommand for a Session", () => {
     });
     expect(USAGE).not.toContain("__session");
   });
+
+  it.each([[["__session"]], [["__session", "{}", "{}"]]])(
+    "fails with the usage text for the background process's word without its one options argument: `%s`",
+    (args) => {
+      expect(readCommand(args)).toEqual({ kind: "error", text: USAGE });
+    }
+  );
 });
