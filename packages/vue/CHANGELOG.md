@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/ayme-labs/ayme/compare/vue-v0.3.1...vue-v0.3.2) (2026-11-27)
+
+
+### Miscellaneous Chores
+
+* **vue:** Synchronize ayme versions
+
 ## [0.3.1](https://github.com/ayme-labs/ayme/compare/vue-v0.3.0...vue-v0.3.1) (2026-11-27)
 
 
