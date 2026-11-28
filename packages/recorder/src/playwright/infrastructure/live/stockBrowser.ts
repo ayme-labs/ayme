@@ -20,7 +20,7 @@ import type {
   Page,
 } from "playwright-core";
 
-import type { ToolbarBinding } from "../../../contract";
+import type { RecorderWarning, ToolbarBinding } from "../../../contract";
 import { RecordedBrowser } from "../../../session/application";
 import {
   RecorderStartError,
@@ -59,7 +59,7 @@ import {
   type HighlightBox,
 } from "../in-page/drawing";
 import { startGate } from "../in-page/gate";
-import { installActivityWatch, type TargetChain } from "../in-page/watches";
+import { installActivityWatch } from "../in-page/watches";
 import {
   letThroughUpTo,
   ownRefOf,
@@ -76,6 +76,7 @@ import {
 } from "./pageFunctions";
 import {
   playwrightRecorderOf,
+  valuesOf,
   type PlaywrightAction,
 } from "../playwrightRecorder";
 import {
@@ -90,6 +91,8 @@ import {
   rangeText,
   type Playwright,
 } from "../projectPlaywright";
+import { readInPart, reportLost, toldOfUnread } from "../unreadReports";
+import { heldByPageIn, inputNoteIn, type InputNote } from "../pageValues";
 import { storageStateIn } from "../storageFile";
 import { snapshotPositions } from "../traceTool";
 import {
@@ -435,9 +438,10 @@ async function openPage(
   const heldBinding = "__aymeRecorderHeld";
   await context.exposeBinding(
     heldBinding,
-    ({ page, frame }, input: HeldByPage) => {
+    ({ page, frame }, fromPage: unknown) => {
       const pageId = idOf.get(page);
-      if (!pageId) return;
+      const input = heldByPageIn(fromPage);
+      if (!pageId || !input) return;
       const id = `input_${++inputs}` as InputId;
       held.set(id, { frame, input });
       heldBy.set(pageId, [
@@ -468,10 +472,12 @@ async function openPage(
     for (const heard of listening.get(page) ?? []) heard();
   });
   /** The latest targets each page told of. */
-  const chains = new Map<Page, TargetChain[]>();
+  const chains = new Map<Page, InputNote[]>();
   const chainBinding = "__aymeRecorderTarget";
-  await context.exposeBinding(chainBinding, ({ page }, seen: TargetChain) => {
-    chains.set(page, [...(chains.get(page) ?? []).slice(-9), seen]);
+  await context.exposeBinding(chainBinding, ({ page }, seen: unknown) => {
+    const note = inputNoteIn(seen);
+    if (!note) return;
+    chains.set(page, [...(chains.get(page) ?? []).slice(-9), note]);
   });
   /** The held clicks each page was sent while Playwright's recorder
    * reported, whose reports can still come (`sentOn`). */
@@ -637,8 +643,12 @@ async function openPage(
    * waits for what is read of its target. */
   let reports: Promise<unknown> = Promise.resolve();
   const inReportOrder = (make: () => Promise<BrowserSignal>) => {
-    reports = reports.then(make).then(tell, () => {});
+    reports = reports
+      .then(make)
+      .then(tell, (cause: unknown) => warn(reportLost(cause)));
   };
+  const warn = (warning: RecorderWarning) =>
+    tell({ kind: "browserWarned", warning });
   await context.addInitScript(installTargetWatch, chainBinding);
   // Every document gets the gate and the activity watch, both switched off,
   // before its own scripts run.
@@ -1103,17 +1113,27 @@ async function openPage(
           action,
           clickReported(reported, action)
         );
-        inReportOrder(async () => ({
-          kind: "interactionReported",
-          page: pageId,
-          report: await asUpload(
-            await withPickedRef(
-              await withAncestors(report, reported, fromSelector),
-              reported
-            ),
-            reported
-          ),
-        }));
+        inReportOrder(async () => {
+          const told = (read: InteractionReport): BrowserSignal => ({
+            kind: "interactionReported",
+            page: pageId,
+            report: read,
+          });
+          try {
+            return told(
+              await asUpload(
+                await withPickedRef(
+                  await withAncestors(report, reported, fromSelector),
+                  reported
+                ),
+                reported
+              )
+            );
+          } catch (cause) {
+            warn(readInPart(action.name, cause));
+            return told(report);
+          }
+        });
       },
       // Playwright revises the report of typing with each key typed into
       // the same field.
@@ -1126,6 +1146,17 @@ async function openPage(
           page: pageId,
           report,
         }));
+      },
+      unread: (reported, unread) => {
+        const pageId = idOf.get(reported);
+        const { warning, report } = toldOfUnread(pageId !== undefined, unread);
+        warn(warning);
+        if (pageId && report)
+          inReportOrder(async () => ({
+            kind: "interactionReported",
+            page: pageId,
+            report,
+          }));
       },
     });
     // A document that was open before the recorder started.
@@ -1236,14 +1267,13 @@ function withLocator(report: InteractionReport, page: Page): InteractionReport {
 }
 
 function reportOf(action: PlaywrightAction): InteractionReport {
-  const { name, selector, ref, ariaSnapshot, signals, ...values } = action;
-  void signals;
+  const { name, selector, ref, ariaSnapshot } = action;
   return {
     type: name,
     selector: selector ?? null,
     target:
       ref && ariaSnapshot ? { ref: pictureRef(ref), tree: ariaSnapshot } : null,
-    values,
+    values: valuesOf(action),
   };
 }
 
