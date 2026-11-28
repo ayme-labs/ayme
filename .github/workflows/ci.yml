@@ -336,7 +336,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: browser-test-results-${{ matrix.name }}
-          path: ${{ matrix.dir }}/test-results
+          path: |
+            ${{ matrix.dir }}/test-results
+            ${{ matrix.dir }}/.e2e
+          include-hidden-files: true
           if-no-files-found: ignore
 
   # The recorder runs on the project's own Playwright, so its compatibility

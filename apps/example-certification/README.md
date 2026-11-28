@@ -27,6 +27,14 @@ From `@ayme-dev/example-certification/tests`, each builder defines plain Playwri
 
 Tools are called through the recording WebMCP driver from `@ayme-dev/webmcp/testing`, and the agent's side through `@ayme-dev/mcp/testing`.
 
+## e2e
+
+The examples are moving from Playwright's test runner to [e2e](https://e2e.com), one at a time. An example that has moved has an `e2e.config.ts` and `tests/*.e2e.ts` beside its Playwright files, and calls the e2e entries, which read the same environment:
+
+- `@ayme-dev/example-certification/e2e/config`: `certificationConfig({ command, counterPath? })`, where `command` serves the app on `{port}`, a free port the run picks. It has no warm-up: the first test that opens the counter on the dev server waits longer for publication instead.
+- `@ayme-dev/example-certification/e2e/tests`: `counterTests`, `devRebuildTests`, `agentConnectionTests`, `exampleTest` and `test`, as above. e2e hands a test no Playwright `Page`, so init scripts in the page stand in for routing the auto-pair scan and for the page's error events, and `counterTests` has no case that runs the app's Page Object through Playwright. The page's own record sees only the page's `console` calls and uncaught errors: a console error the browser reports itself, such as a 404 for an optional asset, fails the Playwright test and not the e2e one, and so does an error recorded before the app clears session storage or the test leaves its origin. e2e logs the browser's console in its report but offers a test no console events. Nor does it say which requests were scripts, so the check for the Agent Connection's code fetches again the script URLs the page's resource timing lists, where Playwright reads the bodies of the script responses that ran. `agentConnectionTests` has only the cases an app with the Agent Connection always on runs, and there is no `serverRenderTests` yet.
+- `@ayme-dev/example-certification/e2e/inspector`: the part of the Inspector's Page Object the examples' Inspector check uses, on e2e's `screen`, which reaches the Inspector's closed shadow root without a selector engine.
+
 ## Counter contract
 
 The builders drive this DOM, which each example renders on `/`, or the app's `counterPath`, beneath its runtime owner, with publication enabled:

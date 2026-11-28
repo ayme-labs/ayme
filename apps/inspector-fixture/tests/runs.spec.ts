@@ -165,6 +165,8 @@ test.describe("connected to an agent", () => {
     await addItem.run({ text: "Milk" });
 
     const run = inspector.runs.latest("ListPage.addItem");
+    // The newest run of the tool is the agent's until the panel's arrives.
+    await expect.poll(() => run.caller()).toEqual(INSPECTOR);
     await expect.poll(() => run.status()).toBe("Failed");
     // The panel shows the error an agent gets for the same call. Its call
     // log varies with timing, so the first line is compared.
@@ -274,6 +276,8 @@ test.describe("with WebMCP publication off", () => {
       await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
 
       const run = inspector.runs.latest("ListPage.addItem");
+      // The newest run of the tool is the agent's until the panel's arrives.
+      await expect.poll(() => run.caller()).toEqual(INSPECTOR);
       await expect.poll(() => run.earlierPage.count()).toBe(0);
       await expect.poll(() => run.status()).toBe("Failed");
       expect(firstLine(await run.error.textContent())).toBe(
