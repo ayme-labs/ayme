@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:20:57.616Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool Inspector_tool",
+        "tool": "Inspector_tool",
+        "input": "{\"name\":\"snapshot\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external%20with%20WebMCP%20publication%20off::a%20Custom%20Tool%20runs%20from%20the%20panel",
+      "targetId": "chromium",
+      "instructionDigest": "6d62ed3de9467190cc7f358fe2d0041a17119d640f55752ab0560d90d95d4d4e",
+      "paramsDigest": "b851673cfcbd9c8ef0f10cd28dcf372435c83ef01b22f16200091887ec0905d4",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Opened the snapshot tool in the Tools lens. The Selected region now shows the \"snapshot\" Agent tool page with its arguments form and a Run button.",
+    "startPath": "http://127.0.0.1:9585/inspector",
+    "endPath": "http://127.0.0.1:9585/inspector",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Model"
+      },
+      {
+        "role": "button",
+        "name": "Tools",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "heading",
+        "name": "Page object tools · 3"
+      },
+      {
+        "text": "ListPage"
+      },
+      {
+        "text": ".addItem"
+      },
+      {
+        "text": ".countItems"
+      },
+      {
+        "name": "Destructive"
+      },
+      {
+        "text": ".clear"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "Tools"
+      },
+      {
+        "role": "button",
+        "name": "On this page · 1",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "name": "/"
+      },
+      {
+        "text": "page"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "name": "entries"
+      },
+      {
+        "text": "ListItem[0]"
+      }
+    ],
+    "endWaitMs": 13321,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

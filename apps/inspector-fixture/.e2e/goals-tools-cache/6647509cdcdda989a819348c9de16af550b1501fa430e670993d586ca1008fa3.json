@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:27:39.845Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool LayoutMenu_choose",
+        "tool": "LayoutMenu_choose",
+        "input": "{\"choice\":\"Dock to bottom\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/stacking.goal.ts::over%20a%20page%20widget%20at%20z-index%20101::clicks%20outside%20the%20Inspector%20reach%20the%20page%20in%20every%20layout",
+      "targetId": "chromium",
+      "instructionDigest": "4a622d9c07d75b738c0a706d10dfe78d8ffa81f40cf04ca844a52aeba8b2be34",
+      "paramsDigest": "963119b3749888aca12c53a2f3fe946a65964f8ae64c31d9ca00c1937c8386c3",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Chose Dock to bottom; the layout button now reads \"Layout: Dock to bottom\" and the resize handle moved to the top edge.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "separator",
+        "name": "Resize from the top edge"
+      },
+      {
+        "role": "button",
+        "name": "Layout: Dock to bottom"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "separator",
+        "name": "Resize from the left edge"
+      },
+      {
+        "role": "button",
+        "name": "Layout: Dock right"
+      }
+    ],
+    "endWaitMs": 10112,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

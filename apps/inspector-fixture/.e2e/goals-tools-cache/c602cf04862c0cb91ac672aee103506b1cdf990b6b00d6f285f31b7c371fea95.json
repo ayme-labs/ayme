@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:26:40.916Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool RunCard_run",
+        "tool": "RunCard_run",
+        "input": "{\"args\":{\"ref\":\"e8\"}}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::a%20Custom%20Tool%20runs%20from%20the%20panel%20and%20shows%20in%20Runs",
+      "targetId": "chromium",
+      "instructionDigest": "32b543aeb81e62a687a34fc5ed0812919fb0f9d9c66eae76676fa6f4ad063123",
+      "paramsDigest": "2d10984c4f4ec04782c854f9b4d12481b9ebca9607f8f1fa74356adb55275716",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Chose e8 (button \"Add item\") as the ref and ran mark_element once. The run succeeded in 260 ms with 0 interactions and appears in the Runs timeline with arguments {\"ref\":\"e8\"}.",
+    "startPath": "http://127.0.0.1:9585/inspector",
+    "endPath": "http://127.0.0.1:9585/inspector",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "text": "e8 button \"Add item\""
+      },
+      {
+        "text": "Running…"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 1",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "role": "image",
+        "name": "Running"
+      },
+      {
+        "role": "image",
+        "name": "Run by you from the Inspector"
+      },
+      {
+        "role": "figure",
+        "name": "Arguments",
+        "text": "{\"ref\":\"e8\"}"
+      },
+      {
+        "role": "list",
+        "name": "Runs timeline"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "text": "Choose an element"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 0",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "No runs for this selection yet. Switch to All to see every run."
+      }
+    ],
+    "endWaitMs": 10122,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

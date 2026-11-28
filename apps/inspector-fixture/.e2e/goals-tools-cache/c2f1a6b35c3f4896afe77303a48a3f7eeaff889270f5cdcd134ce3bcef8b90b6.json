@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:24:50.256Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool Inspector_collapse",
+        "tool": "Inspector_collapse",
+        "input": "{}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/inspector.goal.ts::the%20header%27s%20menus%20and%20switches%20work%20by%20mouse%20inside%20the%20closed%20shadow%20root",
+      "targetId": "chromium",
+      "instructionDigest": "679f70daef1b16ebeeb9ab2492b82ef075d1ad63b1f62eff74b9145dda9e5822",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Collapsed the panel with Inspector_collapse. The inspector panel is gone and only an \"Open ayme\" button remains next to the page content.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Open ayme"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "separator",
+        "name": "Resize from the right edge"
+      },
+      {
+        "role": "heading",
+        "name": "ayme"
+      },
+      {
+        "text": "No agent"
+      },
+      {
+        "role": "button",
+        "name": "Theme: Light. Switch to Dark."
+      },
+      {
+        "role": "button",
+        "name": "Layout: Dock left"
+      },
+      {
+        "role": "button",
+        "name": "Collapse inspector",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "role": "searchbox",
+        "name": "Search page objects, actions, members and refs",
+        "placeholder": "Search objects, actions, refs"
+      },
+      {
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
+      }
+    ],
+    "endWaitMs": 10102,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

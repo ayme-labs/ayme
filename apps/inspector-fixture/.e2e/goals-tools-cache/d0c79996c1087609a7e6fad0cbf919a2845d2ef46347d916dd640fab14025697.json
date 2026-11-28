@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:25:55.748Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool RunsView_showAll",
+        "tool": "RunsView_showAll",
+        "input": "{}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::Clear%20empties%20Runs%2C%20and%20the%20run%20after%20it%20is%20the%20only%20one%20shown",
+      "targetId": "chromium",
+      "instructionDigest": "87c37a19e0680335298b7fe7e0c2cc8e7fb2706daee7fdd3a84633517a36f1dd",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Showed all runs in Runs. The \"All\" scope button is now pressed and \"This tool\" is not. The timeline still lists the one ListPage.countItems run.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Show in runs"
+      },
+      {
+        "role": "button",
+        "name": "This tool"
+      },
+      {
+        "role": "button",
+        "name": "All",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "image",
+        "name": "Succeeded"
+      },
+      {
+        "role": "button",
+        "name": "Result"
+      },
+      {
+        "role": "button",
+        "name": "Copy"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "text": "Running…"
+      },
+      {
+        "role": "button",
+        "name": "This tool",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "All"
+      },
+      {
+        "role": "image",
+        "name": "Running"
+      },
+      {
+        "role": "button",
+        "name": "Run by you from the Inspector ListPage .countItems Running…",
+        "states": [
+          "expanded"
+        ]
+      }
+    ],
+    "endWaitMs": 10122,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

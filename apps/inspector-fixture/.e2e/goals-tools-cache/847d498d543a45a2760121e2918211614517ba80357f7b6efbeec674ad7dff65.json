@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:26:04.635Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool Navigator_showLens",
+        "tool": "Navigator_showLens",
+        "input": "{\"name\":\"Tools\"}",
+        "source": "cb00caebf30e0058"
+      },
+      {
+        "name": "tool",
+        "summary": "tool Inspector_tool",
+        "tool": "Inspector_tool",
+        "input": "{\"name\":\"fill_form\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::the%20fill_form%20editor%20fills%20only%20the%20fields%20still%20changed%20after%20an%20undo",
+      "targetId": "chromium",
+      "instructionDigest": "6d62ed3de9467190cc7f358fe2d0041a17119d640f55752ab0560d90d95d4d4e",
+      "paramsDigest": "7169931673343803633295eaf76477c893de44f1aea0b4d0383d5611a79a23b9",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 2 recorded action(s) zero-turn from the trace cache; recorded verdict: Switched to the Tools lens and opened fill_form with Inspector_tool. Its page now shows a \"fill_form\" article (Browser tool) with a Form fields list (New item textbox, Urgent checkbox) and a Run button.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Changed fields",
+        "text": "0 changed"
+      },
+      {
+        "role": "button",
+        "name": "Model"
+      },
+      {
+        "role": "button",
+        "name": "Tools",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "heading",
+        "name": "Page object tools · 3"
+      },
+      {
+        "text": "ListPage"
+      },
+      {
+        "text": ".addItem"
+      },
+      {
+        "text": ".countItems"
+      },
+      {
+        "name": "Destructive"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "Tools"
+      },
+      {
+        "role": "button",
+        "name": "On this page · 1",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "name": "/"
+      },
+      {
+        "text": "127.0.0.1:49895"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "text": "page"
+      },
+      {
+        "name": "entries"
+      }
+    ],
+    "endWaitMs": 10121,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

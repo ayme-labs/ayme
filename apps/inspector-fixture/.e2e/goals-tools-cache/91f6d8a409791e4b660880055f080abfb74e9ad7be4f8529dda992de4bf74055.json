@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:28:25.773Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool ToolsLens_select",
+        "tool": "ToolsLens_select",
+        "input": "{\"name\":\"peek.list\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/toolsLens.goal.ts::inline::with%20the%20inspector%20option%20on::the%20page%27s%20own%20Peek%20lists%20under%20Peek%20tools%2C%20and%20its%20tool%20page%20reads%20it",
+      "targetId": "chromium",
+      "instructionDigest": "6d62ed3de9467190cc7f358fe2d0041a17119d640f55752ab0560d90d95d4d4e",
+      "paramsDigest": "114112add126d14fedd95a5f8928b7be65e2efe4527cea103d6fd385ca6b388f",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Opened peek.list via ToolsLens_select; its page is shown with heading \"peek.list\", \"Browser Peek tool\" description, and a Run form.",
+    "startPath": "/session.html",
+    "endPath": "/session.html",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "peek.list"
+      },
+      {
+        "text": "Browser Peek tool"
+      },
+      {
+        "text": "Read the current values of the Peek \"list\" from each live instance."
+      },
+      {
+        "text": "1 tool schema"
+      },
+      {
+        "role": "button",
+        "name": "This tool",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "text": "No runs for this selection yet. Switch to All to see every run."
+      },
+      {
+        "role": "article",
+        "name": "peek.list"
+      },
+      {
+        "role": "form",
+        "name": "peek.list"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "Page /"
+      },
+      {
+        "name": "127.0.0.1:49895 · 2 page object models"
+      },
+      {
+        "role": "heading",
+        "name": "On this page · 1"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "name": "page"
+      },
+      {
+        "role": "heading",
+        "name": "Tools · 3"
+      },
+      {
+        "text": "(names?: string[])"
+      },
+      {
+        "text": "Return the current live structural page state together with compact POM capability definitions known to ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description, then lists the POM's declared children and its actions. A bare member is…"
+      }
+    ],
+    "endWaitMs": 10118,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

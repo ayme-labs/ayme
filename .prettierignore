@@ -50,5 +50,6 @@ packages/*/CHANGELOG.md
 docs/guide/_layouts/
 /apps/lab-formbricks/ayme/init-script.js
 
-# Arm 1's goal recordings, in the format e2e writes them, so a re-recording diffs only what changed
+# Arm 1's and arm 3's goal recordings, in the format e2e writes them, so a re-recording diffs only what changed
 /apps/inspector-fixture/.e2e/goals-cache/
+/apps/inspector-fixture/.e2e/goals-tools-cache/
