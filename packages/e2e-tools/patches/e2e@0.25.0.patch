@@ -1,0 +1,14 @@
+diff --git a/dist/run/worker/handle.js b/dist/run/worker/handle.js
+index 169e800..ef31c8f 100644
+--- a/dist/run/worker/handle.js
++++ b/dist/run/worker/handle.js
+@@ -34,7 +34,8 @@ class ChildProcessRunner {
+         const entry = resolveEntry();
+         this.child = fork(entry.path, [], {
+             cwd: spawn.projectRoot,
+-            execArgv: entry.execArgv,
++            // Patch (ayme): e2e-patched hands its hook to the workers here, not through NODE_OPTIONS.
++            execArgv: [...entry.execArgv, ...(globalThis[Symbol.for('@ayme-dev/e2e-tools.workerExecArgv')] ?? [])],
+             stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+             // Collecting read the project's tsconfig.json files first; the worker warns only about ones it reaches on its own.
+             env: { ...spawn.env, [WARNED_TSCONFIGS_ENV]: warnedTsconfigs() },

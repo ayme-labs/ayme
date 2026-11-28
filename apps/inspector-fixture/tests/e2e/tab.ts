@@ -14,6 +14,17 @@ export class Tab {
     private readonly tab: BrowserTab
   ) {}
 
+  /**
+   * The screen, for a Page Object's rule that reads it without bringing the
+   * tab forward: the screen reads the active tab, and a part on a tab in the
+   * back is not on the screen the agent sees, so the rule fails with why.
+   */
+  screenInFront(): Screen {
+    if (!this.tab.isActive())
+      throw new Error("its window is not the one in front");
+    return this.screen;
+  }
+
   /** Makes this the active tab, if it is not. */
   async front() {
     if (!this.tab.isActive()) await this.tab.activate();

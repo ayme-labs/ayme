@@ -1,0 +1,125 @@
+import { expect } from "e2e";
+
+import { testIn } from "../fixtures";
+import { pageObjects } from "./pageObjects";
+
+// Run by `e2e.tools-check.config.ts`, not by the e2e suite: each `agent.act`
+// names one Page Object Tool call, which the scripted executor makes and the
+// patched e2e records, and the assertions after it hold on a replay as well.
+
+const test = testIn("inline");
+
+/** Whether a tool can run now: arm 3's agent is listed only those. */
+const runsNow = async (tool: string) =>
+  (await pageObjects.ruledOutNow(tool)) === undefined;
+
+test("the e2e suite's Page Objects run as tools, record and replay", async ({
+  agent,
+  appView,
+  inspector,
+  listPage,
+}) => {
+  const call = (
+    what: string,
+    tool: string,
+    input: object = {},
+    // How the scripted executor heals the call when it fails (AYME_E2E_STALE).
+    heal?: string
+  ) =>
+    agent.act(what, {
+      params: { tool, input: JSON.stringify(input), ...(heal && { heal }) },
+    });
+
+  // The pill learns WebMCP's state a moment after the page opens. A step
+  // recorded across that change keeps it as part of its outcome, and a
+  // replay that starts after it finds nothing left to prove and asks the
+  // executor: wait for it first.
+  await expect(await inspector.header.connections.pill.front()).toHaveAttribute(
+    "aria-label",
+    /, WebMCP /
+  );
+
+  await call("show the Model lens", "Navigator_showLens", { name: "Model" });
+  await expect(await inspector.navigator.lens("Model").front()).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+
+  await call("show the Tools lens", "Navigator_showLens", { name: "Tools" });
+  await expect(await inspector.navigator.lens("Tools").front()).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+
+  // A call that changes nothing on screen: the recording has no change to
+  // check, so the call running again without failing is its proof.
+  await call("show the Tools lens again", "Navigator_showLens", {
+    name: "Tools",
+  });
+
+  await call(
+    "open the addItem tool's page",
+    "Inspector_tool",
+    { name: "ListPage.addItem" },
+    'button "ListPage.addItem"'
+  );
+  await expect(await inspector.detail.toolPage.title.front()).toHaveText(
+    "ListPage.addItem"
+  );
+
+  await call("fill the run card", "RunCard_fill", { args: { text: "Milk" } });
+  await expect(
+    await inspector.detail.toolPage.card.field("text").front()
+  ).toHaveValue("Milk");
+
+  await call("run the tool with Bread", "RunCard_run", {
+    args: { text: "Bread" },
+  });
+  await expect(await listPage.items.front()).toHaveText(["Bread"]);
+  expect(await runsNow("RunCard_run")).toBe(true);
+  expect(await runsNow("CollapsedLogo_open")).toBe(false);
+
+  // A rest parameter takes its list; any other value is refused before the
+  // call acts, live, replayed or scripted alike.
+  await call("open generate_locator's page", "Inspector_tool", {
+    name: "generate_locator",
+  });
+  await call("open its arguments", "RunCard_openArguments");
+  const addItem = await appView.ref('button "Add item"');
+  const toggle = pageObjects.projectTools().LocatorGroups_toggleFromTree!;
+  const refused = await toggle.execute({ number: 1, refs: addItem }).then(
+    () => "it ran",
+    (error: unknown) => String(error)
+  );
+  expect(refused).toMatch(
+    /LocatorGroups\.toggleFromTree was called with input it does not take: refs: /
+  );
+  await call(
+    "add the Add item button to group 1",
+    "LocatorGroups_toggleFromTree",
+    {
+      number: 1,
+      refs: [addItem],
+    }
+  );
+  await call("run generate_locator", "RunCard_pressRun");
+  await expect(
+    await inspector.detail.toolPage.card.locatorGroups
+      .locator(1, addItem)
+      .front()
+  ).toHaveCount(1);
+
+  await call(
+    "collapse the panel",
+    "Inspector_collapse",
+    {},
+    'button "Collapse inspector"'
+  );
+  await expect(await inspector.panel.front()).toHaveCount(0);
+  expect(await runsNow("CollapsedLogo_open")).toBe(true);
+  expect(await runsNow("Navigator_showLens")).toBe(false);
+  expect(await runsNow("RunCard_run")).toBe(false);
+
+  await call("open the panel from its logo", "CollapsedLogo_open");
+  await expect(await inspector.panel.front()).toBeVisible();
+});

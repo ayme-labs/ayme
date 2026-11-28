@@ -11,8 +11,10 @@ Vite plugin, the way an app's are. The tests live here rather than in
 ```
 app/         the fixture pages, their startup code and the Vite config
 ayme/pom/    the fixture app's Page Objects
-tests/       Playwright fixtures (fixtures.ts) and the specs
-tests/goals/ the goal-driven twins of the *.e2e.ts tests
+tests/            Playwright fixtures (fixtures.ts) and the specs
+tests/e2e/        the e2e port's fixtures and Page Objects
+tests/e2e/tools/  the Page Object study's third arm: its tool entry and its check
+tests/goals/      the goal-driven twins of the *.e2e.ts tests
 ```
 
 The pages:
@@ -84,6 +86,11 @@ login too. The external placement's `ayme mcp` gets a port derived from the
 checkout's path, which `AYME_E2E_MCP_PORT` overrides. `pnpm lint` also runs
 the mirror check (alone: `pnpm check:goal-mirror`), and `pnpm test` runs its
 own tests.
+
+The same goal files are the Page Object study's third arm, with the e2e
+suite's Page Objects as tools: `pnpm test:goals:tools`, with its model-free
+runs and what keeps the arms apart in
+[`@ayme-dev/e2e-tools`](../../packages/e2e-tools/README.md).
 
 Known costs of keeping the goal files to their twins' shape:
 

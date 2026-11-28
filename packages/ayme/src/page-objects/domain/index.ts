@@ -1,9 +1,10 @@
 export {
   inputSchemaFor,
+  methodArguments,
   patternViolations,
   requiredDescription,
 } from "./actionTool";
-export { ayme } from "./decorators";
+export { availabilityPredicateOf, ayme, modelOption } from "./decorators";
 export type {
   ActionAvailability,
   AvailabilityPredicate,

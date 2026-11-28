@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { assertUnpatchedE2e } from "@ayme-dev/e2e-tools";
 import { claudeCode } from "@e2e-dev/acp";
 import type { E2EConfig } from "e2e";
 
@@ -14,6 +15,16 @@ if (process.env.CI)
   throw new Error(
     "e2e.goals.config.ts runs an agent on a model, and CI has none: run the goal tests on your own machine."
   );
+
+// Arm 1 runs e2e as published: a run that patches it stops here.
+assertUnpatchedE2e("e2e.goals.config.ts");
+
+/** What the goals' agent is told, in every arm that runs these goals (e2e.goals-tools.config.ts adds its tools' rules). */
+export const PANEL_RULES =
+  "You are testing the ayme Inspector panel. Carry out each goal through the panel's controls, never by acting on the page under it.";
+
+/** The goals' agent's model, in every arm that runs these goals, so a change moves them together. */
+export const GOALS_MODEL = "sonnet";
 
 // The external placement's Inspector window is served by `ayme mcp`, and a
 // recording is keyed to the window's origin: one port for every test (they
@@ -54,9 +65,8 @@ export default {
   agents: {
     default: {
       executor: claudeCode({
-        model: "sonnet",
-        system:
-          "You are testing the ayme Inspector panel. Carry out each goal through the panel's controls, never by acting on the page under it.",
+        model: GOALS_MODEL,
+        system: PANEL_RULES,
       }),
     },
   },

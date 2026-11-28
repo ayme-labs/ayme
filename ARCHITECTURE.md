@@ -288,6 +288,15 @@ in-browser agents and the app's own code call on the running page.
   - Flows:
     - → the init script, loaded into each page before the page's own scripts
   - Evidence: verified: [packages/mcp/src/served-page-objects/domain/servedPageObjects.ts](packages/mcp/src/served-page-objects/domain/servedPageObjects.ts), [docs/guide/guides/page-objects-without-ayme.md](docs/guide/guides/page-objects-without-ayme.md)
+- **Coding agents → Browser automation**
+  - Flows:
+    - → in the Page Object study's third arm, Claude Code, started by e2e's ACP adapter
+      in an e2e test worker and spoken to over ACP on stdio, calls e2e's action tools and
+      the e2e suite's Page Objects as tools on an MCP server the worker serves over HTTP on
+      127.0.0.1
+    - ← each step's instruction and screen, tool results, and `tools/list_changed`
+      notifications as the tools that can run change
+  - Evidence: verified: [packages/e2e-tools/README.md](packages/e2e-tools/README.md), [apps/inspector-fixture/e2e.goals-tools.config.ts](apps/inspector-fixture/e2e.goals-tools.config.ts)
 - **Browser runtime → Host application**
   - Flows:
     - → DOM reads, clicks, fills and key presses
@@ -479,8 +488,14 @@ hosting its playground.
   - **WebMCP driver**: the `@mcp-b/webmcp-polyfill` the playground initializes before the
     Vue app
     - Evidence: verified: [apps/example-vue/src/main.ts](apps/example-vue/src/main.ts)
-  - **Browser automation**: not part of the playground and example setup
-    - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md)
+  - **Browser automation**: not part of the playground and example setup. The Page Object
+    study's goal runs in `apps/inspector-fixture`, started by hand, drive Chromium with e2e:
+    its runner process starts the fixture's Vite server and forks the test workers, and each
+    worker starts the coding agent; the third arm runs the runner and the workers through
+    `e2e-patched` from the private `@ayme-dev/e2e-tools`, with e2e patched in those
+    processes only
+    - Evidence: verified: [apps/example-vue/README.md](apps/example-vue/README.md), [packages/e2e-tools/README.md](packages/e2e-tools/README.md),
+      [apps/inspector-fixture/e2e.goals.config.ts](apps/inspector-fixture/e2e.goals.config.ts)
 
 #### ci
 
