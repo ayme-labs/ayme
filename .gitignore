@@ -17,6 +17,11 @@ reports/
 stryker.log
 test-results/
 .e2e/
+# The goal twins' arm 1 and arm 3 recordings are committed, to replay from any checkout (apps/inspector-fixture/e2e.goals.config.ts, e2e.goals-tools.config.ts).
+!apps/inspector-fixture/.e2e/
+apps/inspector-fixture/.e2e/*
+!apps/inspector-fixture/.e2e/goals-cache/
+!apps/inspector-fixture/.e2e/goals-tools-cache/
 .vitest/
 apps/example-vue/goal-runs/
 apps/example-vue/dist-without-ayme/

@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T19:50:53.034Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"e7 checkbox \\\"Urgent\\\" .newItemFields[1]\"",
+        "target": {
+          "role": "button",
+          "name": "e7 checkbox \"Urgent\" .newItemFields[1]"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/detailRuns.goal.ts::external::a%20checked%20checkbox%20reads%20as%20checked%20in%20its%20node%27s%20What%20the%20model%20sees%2C%20as%20in%20the%20page%20state%20snapshot%20gives",
+      "targetId": "chromium",
+      "instructionDigest": "6db0f184b535178a39a68b69077fd9d39575607f53cc67c3e4104a75716b819c",
+      "paramsDigest": "aa72e4e88063557135a10af7eadec304a73f933095a84e53ffb2a0e18f4470b7",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "In the Structure lens I selected the e7 checkbox \"Urgent\" node. The tree item is now selected, and the Selected panel shows \"Structure node\" with ref e7, the member ListPage.newItemFields[1], and 5 tools.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "e7 checkbox \"Urgent\""
+      },
+      {
+        "text": "Structure node"
+      },
+      {
+        "text": "ref e7"
+      },
+      {
+        "text": "ListPage.newItemFields[1]"
+      },
+      {
+        "role": "heading",
+        "name": "Tools · 5"
+      },
+      {
+        "name": "click"
+      },
+      {
+        "text": "(target: string, doubleClick?: boolean, button?: \"left\" | \"right\" | \"middle\", modifiers?: (\"Alt\" | \"Control\" | \"ControlOrMeta\" | \"Meta\" | \"Shift\")[])"
+      },
+      {
+        "text": "Click one element. The result's changes_before lists what changed on the page since you last received it, before this action; changes lists what the action changed, anything that changed while the page settled after it included."
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "Page /"
+      },
+      {
+        "name": "page · 2 page object models"
+      },
+      {
+        "role": "heading",
+        "name": "On this page · 1"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "name": "page"
+      },
+      {
+        "role": "heading",
+        "name": "Tools · 3"
+      },
+      {
+        "name": "snapshot"
+      },
+      {
+        "text": "(names?: string[])"
+      }
+    ],
+    "endWaitMs": 12895,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

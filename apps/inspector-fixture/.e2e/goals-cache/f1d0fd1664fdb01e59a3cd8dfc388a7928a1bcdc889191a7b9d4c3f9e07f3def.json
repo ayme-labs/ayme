@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:48:49.043Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Run\" in \"ListPage.clear\"",
+        "target": {
+          "role": "button",
+          "name": "Run",
+          "within": "ListPage.clear"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/toolsLens.goal.ts::external::a%20tool%20that%20can%27t%20run%20now%20shows%20dimmed%20with%20its%20reason%2C%20and%20Run%20gives%20the%20refusal",
+      "targetId": "chromium",
+      "instructionDigest": "9dc5c61d793b51ed7b77d8439715a2569ea086d16288e95d7ffe0798225560aa",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Pressed Run once on ListPage.clear. It ran and failed as expected: \"Last result\" shows \"Failed · 0 ms\" with \"RuntimeStateError: ListPage.clear is unavailable: Nothing to clear.\" Runs went from 1 to 2, with a new entry \"Run by you from the Inspector\".",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "text": "RuntimeStateError: ListPage.clear is unavailable: Nothing to clear."
+      },
+      {
+        "role": "button",
+        "name": "Runs · 2",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "role": "image",
+        "name": "Run by you from the Inspector"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Runs · 1",
+        "states": [
+          "expanded"
+        ]
+      }
+    ],
+    "endWaitMs": 13894,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

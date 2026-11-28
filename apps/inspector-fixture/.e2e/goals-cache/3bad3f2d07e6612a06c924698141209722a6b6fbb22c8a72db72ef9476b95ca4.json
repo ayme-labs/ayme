@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T19:58:26.594Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Tools\" in \"Model\"",
+        "target": {
+          "role": "button",
+          "name": "Tools",
+          "within": "Model"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/dogfood.goal.ts::dogfood::an%20agent%20finds%20the%20forms%27%20actions%2C%20and%20sets%20a%20fill_form%20field%20to%20a%20boolean%20through%20one",
+      "targetId": "chromium",
+      "instructionDigest": "425c310f80b361ee9b81d40c3249d58293d4f36530a6743062ed02b33f8bc788",
+      "paramsDigest": "14a06b9d370cf096b7b97128403a7fd10999c33d827b1eb400b84cb0103b97e4",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Tapped the Tools lens button. It is now pressed, and the navigator lists Page object tools (27), Custom tools, Browser tools, Peek tools and Agent tools.",
+    "startPath": "/dogfood.html?agent=",
+    "endPath": "/dogfood.html?agent=",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Model"
+      },
+      {
+        "role": "button",
+        "name": "Tools",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "heading",
+        "name": "Page object tools · 27"
+      },
+      {
+        "text": "ListPage"
+      },
+      {
+        "text": ".addItem"
+      },
+      {
+        "text": ".countItems"
+      },
+      {
+        "name": "Destructive"
+      },
+      {
+        "text": ".clear"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "Tools"
+      },
+      {
+        "role": "button",
+        "name": "On this page · 14",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "name": "/"
+      },
+      {
+        "text": "127.0.0.1:5203"
+      },
+      {
+        "text": "page"
+      },
+      {
+        "name": "entries"
+      },
+      {
+        "text": "ListItem[0]"
+      }
+    ],
+    "endWaitMs": 13041,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

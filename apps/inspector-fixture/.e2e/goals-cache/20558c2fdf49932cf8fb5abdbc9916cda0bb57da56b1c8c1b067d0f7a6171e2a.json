@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T13:27:18.330Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Structure\" in \"Model\"",
+        "target": {
+          "role": "button",
+          "name": "Structure",
+          "within": "Model"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/detailRuns.goal.ts::external::a%20structure%20node%27s%20Browser%20tool%20runs%20on%20that%20node%2C%20and%20Runs%20shows%20the%20run%20as%20yours",
+      "targetId": "chromium",
+      "instructionDigest": "425c310f80b361ee9b81d40c3249d58293d4f36530a6743062ed02b33f8bc788",
+      "paramsDigest": "471148f3b63b56e887bee4a5303315c1fe71f58d75c3634e3b00643d18c26c4d",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I tapped the Structure lens button in the Inspector. It now shows as pressed, and the navigator lists the \"Page structure\" tree (e2 main, e3 heading \"Groceries\" and so on) in place of the Model tree.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Model"
+      },
+      {
+        "role": "button",
+        "name": "Structure",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "text": "e2"
+      },
+      {
+        "text": "main"
+      },
+      {
+        "text": "e3"
+      },
+      {
+        "text": "heading"
+      },
+      {
+        "name": "Groceries",
+        "text": "\"Groceries\""
+      },
+      {
+        "text": "e4"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "Structure"
+      },
+      {
+        "role": "button",
+        "name": "On this page · 1",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "name": "/"
+      },
+      {
+        "text": "page"
+      },
+      {
+        "name": "entries"
+      },
+      {
+        "text": "ListItem[0]"
+      },
+      {
+        "role": "separator",
+        "name": "Resize the two lists"
+      }
+    ],
+    "endWaitMs": 13956,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

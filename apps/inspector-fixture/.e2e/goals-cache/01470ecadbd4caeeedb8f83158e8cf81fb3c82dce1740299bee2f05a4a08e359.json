@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:36:41.713Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"navigate_forward\"",
+        "target": {
+          "role": "button",
+          "name": "navigate_forward"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/toolsLens.goal.ts::external::connected%20to%20an%20agent::each%20tool%27s%20page%20shows%20the%20description%2C%20schema%20and%20destructive%20mark%20an%20agent%20gets",
+      "targetId": "chromium",
+      "instructionDigest": "c0ef0f80d32f22a63457535e3308a3b84235105d11e9ba43ca818eb359020511",
+      "paramsDigest": "d1ac64cc878802991e81c06366a14c5dc68275c012b8ee5ae6718e600c039c95",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I selected \"navigate_forward\" in the Tools lens. The detail panel now shows a \"navigate_forward\" article labelled \"Browser tool\". It has a Run button, which I did not press, and no arguments. \"What the model sees\" shows an input schema with no properties.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "navigate_forward"
+      },
+      {
+        "text": "Go forward to the next page in the history. The result's changes_before lists what changed on the page since you last received it, before this action; changes lists what the action changed, anything that changed while the page settled after it included."
+      },
+      {
+        "text": "navigate_forward"
+      },
+      {
+        "role": "article",
+        "name": "navigate_forward"
+      },
+      {
+        "role": "form",
+        "name": "navigate_forward"
+      },
+      {
+        "name": "navigate_forward input schema"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "navigate_back"
+      },
+      {
+        "text": "Go back to the previous page in the history. The result's changes_before lists what changed on the page since you last received it, before this action; changes lists what the action changed, anything that changed while the page settled after it included."
+      },
+      {
+        "text": "navigate_back"
+      },
+      {
+        "role": "article",
+        "name": "navigate_back"
+      },
+      {
+        "role": "form",
+        "name": "navigate_back"
+      },
+      {
+        "name": "navigate_back input schema"
+      }
+    ],
+    "endWaitMs": 16080,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

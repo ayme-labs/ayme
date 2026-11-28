@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:32:20.789Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"snapshot\"",
+        "target": {
+          "role": "button",
+          "name": "snapshot"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/toolsLens.goal.ts::inline::connected%20to%20an%20agent::each%20tool%27s%20page%20shows%20the%20description%2C%20schema%20and%20destructive%20mark%20an%20agent%20gets",
+      "targetId": "chromium",
+      "instructionDigest": "c0ef0f80d32f22a63457535e3308a3b84235105d11e9ba43ca818eb359020511",
+      "paramsDigest": "b851673cfcbd9c8ef0f10cd28dcf372435c83ef01b22f16200091887ec0905d4",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Tapped \"snapshot\" under Agent tools in the Tools lens. The Selected panel now shows a \"snapshot\" article labelled \"Agent tool\", with its description, an arguments editor (Form/JSON) and a Run button.",
+    "startPath": "/?agent=",
+    "endPath": "/?agent=",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "snapshot"
+      },
+      {
+        "text": "Agent tool"
+      },
+      {
+        "text": "Arguments"
+      },
+      {
+        "role": "button",
+        "name": "Form",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "JSON"
+      },
+      {
+        "text": "names"
+      },
+      {
+        "text": "string[]"
+      },
+      {
+        "text": "optional"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "Page /"
+      },
+      {
+        "name": "127.0.0.1:5203 · 2 page object models"
+      },
+      {
+        "role": "heading",
+        "name": "On this page · 1"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "name": "page"
+      },
+      {
+        "role": "heading",
+        "name": "Tools · 3"
+      },
+      {
+        "text": "(names?: string[])"
+      },
+      {
+        "text": "Returns the Page Objects on the page now as a tree: each one's class, its declared children with their values, and the id (po<n>) of each one that has a root."
+      }
+    ],
+    "endWaitMs": 17423,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T09:53:53.845Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Show the arguments for fill\" in \"fill\"",
+        "target": {
+          "role": "button",
+          "name": "Show the arguments for fill",
+          "within": "fill"
+        }
+      },
+      {
+        "name": "type",
+        "summary": "type \"Bread\" into textbox \"text\" in \"fill\"",
+        "target": {
+          "role": "textbox",
+          "name": "text",
+          "within": "fill"
+        },
+        "value": "Bread"
+      },
+      {
+        "name": "tap",
+        "summary": "tap button \"Run\" in \"fill\"",
+        "target": {
+          "role": "button",
+          "name": "Run",
+          "within": "fill"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/detailRuns.goal.ts::inline::a%20structure%20node%27s%20Browser%20tool%20runs%20on%20that%20node%2C%20and%20Runs%20shows%20the%20run%20as%20yours",
+      "targetId": "chromium",
+      "instructionDigest": "ed42b063f7f2f29c01dab6ee6ac910ba0ec0be5590ea42ac610f3ebe68f7b13a",
+      "paramsDigest": "f3b2c3b65fe720562be1e934b581f93e6a15ee412de4239294e69ed96f0ebfc3",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Ran fill from the e5 node card with text \"Bread\". The Last result shows \"Succeeded · 266 ms · 1 interaction\", the Runs timeline has a fill entry for ListPage.newItemInput \"Bread\", and the page's New item textbox now reads \"Bread\".",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "role": "textbox",
+        "name": "New item",
+        "value": "Bread"
+      },
+      {
+        "name": "Bread",
+        "text": "\"Bread\""
+      },
+      {
+        "text": "Arguments"
+      },
+      {
+        "role": "button",
+        "name": "Form",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "JSON"
+      },
+      {
+        "text": "target"
+      },
+      {
+        "text": "ref"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "textbox",
+        "name": "New item"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 0",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "No runs for this selection yet. Switch to All to see every run."
+      },
+      {
+        "role": "button",
+        "name": "Show the arguments for fill"
+      }
+    ],
+    "endWaitMs": 16873,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

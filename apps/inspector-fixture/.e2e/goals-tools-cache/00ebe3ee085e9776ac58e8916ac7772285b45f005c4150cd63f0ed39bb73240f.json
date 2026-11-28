@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:24:35.229Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool Navigator_search",
+        "tool": "Navigator_search",
+        "input": "{\"query\":\"New item\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/inspector.goal.ts::the%20app%27s%20DOM%20gains%20no%20attribute%20while%20an%20element%20is%20highlighted",
+      "targetId": "chromium",
+      "instructionDigest": "8fe855c9cc3fe54df24016e9fbb6efe5bf5401eb157d4c881113a0c621c066a3",
+      "paramsDigest": "5b571b569d9748e6691d54455f15ac8d0a5623c1e3c80af2381ebeab451a3386",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Searched navigator for \"New item\"; results list shows Ref e5 textbox \"New item\" (ListPage.newItemInput, ListPage.newItemFields[0]).",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "searchbox",
+        "name": "Search page objects, actions, members and refs",
+        "placeholder": "Search objects, actions, refs",
+        "value": "New item"
+      },
+      {
+        "text": "Ref"
+      },
+      {
+        "name": "e5 textbox \"New item\""
+      },
+      {
+        "text": "ListPage.newItemInput, ListPage.newItemFields[0]"
+      },
+      {
+        "role": "list",
+        "name": "Search results"
+      },
+      {
+        "role": "listitem",
+        "name": "Ref e5 textbox \"New item\" ListPage.newItemInput, ListPage.newItemFields[0]"
+      },
+      {
+        "role": "button",
+        "name": "Ref e5 textbox \"New item\" ListPage.newItemInput, ListPage.newItemFields[0]"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "searchbox",
+        "name": "Search page objects, actions, members and refs",
+        "placeholder": "Search objects, actions, refs"
+      },
+      {
+        "text": "e2"
+      },
+      {
+        "text": "main"
+      },
+      {
+        "text": "e3"
+      },
+      {
+        "text": "heading"
+      },
+      {
+        "name": "Groceries",
+        "text": "\"Groceries\""
+      },
+      {
+        "text": "e4"
+      },
+      {
+        "text": "generic"
+      }
+    ],
+    "endWaitMs": 10111,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

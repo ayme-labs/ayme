@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T20:32:33.540Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Result\" in \"snapshot\"",
+        "target": {
+          "role": "button",
+          "name": "Result",
+          "within": "snapshot"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external%20with%20WebMCP%20publication%20off::snapshot%20runs%20from%20the%20panel%20and%20shows%20its%20result",
+      "targetId": "chromium",
+      "instructionDigest": "7e9426a6d7b3ef2738954a964b091dd82a9f81a0c735cb2ae6083c9a49c399d3",
+      "paramsDigest": "b851673cfcbd9c8ef0f10cd28dcf372435c83ef01b22f16200091887ec0905d4",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Tapped Result on the latest snapshot run in Runs. It expanded and now shows the result figure with the page structure (Groceries heading, New item textbox, Urgent checkbox, Add item and Clear buttons) and the ListPage and ListItem definitions.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Result",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "{ \"structure\": - e2 main: - e3 heading \"Groceries\" [level=1] - e4: - text: New item - e5 textbox \"New item\" - e6: - e7 checkbox \"Urgent\" - text: Urgent - e8 button \"Add item\" - e9 button \"Clear\" - e10 list \"Items\" \"pomDefinitions\": ListPage newItemInput addItemButton clearButton items[] newItemFiel…"
+      },
+      {
+        "role": "figure",
+        "name": "Result"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Result"
+      }
+    ],
+    "endWaitMs": 13996,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T19:25:21.606Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool ModelLens_hover",
+        "tool": "ModelLens_hover",
+        "input": "{\"path\":\"TodoPage.items[1]\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/modelLens.goal.ts::inline::hovering%20a%20Page%20Object%20highlights%20it%20dashed%20on%20the%20page%2C%20and%20moving%20off%20clears%20it",
+      "targetId": "chromium",
+      "instructionDigest": "edbfcda32ac00263822bb158bc31c018844832cc746664a1e9eb967ffa084094",
+      "paramsDigest": "9bc7e674ad7ccf93968f180dc991c2ff5057c91724231eaade13524ed0e103cb",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Hovered TodoPage.items[1] in the Model lens; a highlight box and locator label (ayme-ref=e10) appeared on the page.",
+    "startPath": "/models.html",
+    "endPath": "/models.html",
+    "endAnchors": [
+      {
+        "text": "locator('ayme-ref=e10')"
+      }
+    ],
+    "endWaitMs": 13135,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

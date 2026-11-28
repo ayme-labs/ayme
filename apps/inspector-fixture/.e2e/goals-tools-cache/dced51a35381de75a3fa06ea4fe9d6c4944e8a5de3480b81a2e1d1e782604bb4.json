@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:27:58.924Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool StructureLens_selectNode",
+        "tool": "StructureLens_selectNode",
+        "input": "{\"member\":\"ListPage.newItemInput\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/structure.goal.ts::external::a%20text%20field%27s%20node%20offers%20fill%2C%20and%20a%20button%27s%20does%20not",
+      "targetId": "chromium",
+      "instructionDigest": "4229078c37ed1162492a6ab1b984d605dc2f65c08507a80947ad56f614f0fc80",
+      "paramsDigest": "12ba32785a83164844157d90778eeba4de35a79672eb2ec36a8de65503718161",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Selected the node tagged .newItemInput (ListPage.newItemInput) in the Structure lens. The e5 textbox \"New item\" row is now selected, and the detail pane shows \"Structure node\" for e5 with its members and 5 tools.",
+    "startPath": "http://127.0.0.1:9585/inspector",
+    "endPath": "http://127.0.0.1:9585/inspector",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "e5 textbox \"New item\""
+      },
+      {
+        "text": "Structure node"
+      },
+      {
+        "text": "ref e5"
+      },
+      {
+        "text": "ListPage.newItemInput"
+      },
+      {
+        "text": "ListPage.newItemFields[0]"
+      },
+      {
+        "role": "heading",
+        "name": "Tools · 5"
+      },
+      {
+        "name": "click"
+      },
+      {
+        "text": "(target: string, doubleClick?: boolean, button?: \"left\" | \"right\" | \"middle\", modifiers?: (\"Alt\" | \"Control\" | \"ControlOrMeta\" | \"Meta\" | \"Shift\")[])"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "Page /"
+      },
+      {
+        "name": "page · 2 page object models"
+      },
+      {
+        "role": "heading",
+        "name": "On this page · 1"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "name": "page"
+      },
+      {
+        "role": "heading",
+        "name": "Tools · 3"
+      },
+      {
+        "name": "snapshot"
+      },
+      {
+        "text": "(names?: string[])"
+      }
+    ],
+    "endWaitMs": 10117,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

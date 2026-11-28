@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T10:24:59.917Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap menuitemradio \"Dock left\" in \"Floating\"",
+        "target": {
+          "role": "menuitemradio",
+          "name": "Dock left",
+          "within": "Floating"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/inspector.goal.ts::the%20header%27s%20menus%20and%20switches%20work%20by%20mouse%20inside%20the%20closed%20shadow%20root",
+      "targetId": "chromium",
+      "instructionDigest": "990c5edd30dd49ee92fe5ee5509946952c221690645cb3e6a9953003ade711b7",
+      "paramsDigest": "d34cb66017163d6aca79271cba24700f251a27e421a2138195d4f84bd0ba68cb",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Chose \"Dock left\" in the Layout menu. The menu closed and the button now reads \"Layout: Dock left\". The floating-only resize handles are gone.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Layout: Dock left"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "separator",
+        "name": "Resize from the left edge"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the top edge"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the bottom edge"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the top-left corner"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the top-right corner"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the bottom-left corner"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the bottom-right corner"
+      },
+      {
+        "role": "button",
+        "name": "Layout: Floating",
+        "states": [
+          "expanded"
+        ]
+      }
+    ],
+    "endWaitMs": 13203,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

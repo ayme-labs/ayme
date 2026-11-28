@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T10:25:47.631Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Run\" in \"ListItem.mark\"",
+        "target": {
+          "role": "button",
+          "name": "Run",
+          "within": "ListItem.mark"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::a%20collection%20action%20runs%20on%20the%20item%20and%20choice%20picked%20with%20the%20mouse",
+      "targetId": "chromium",
+      "instructionDigest": "9dc5c61d793b51ed7b77d8439715a2569ea086d16288e95d7ffe0798225560aa",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I tapped Run on ListItem.mark (entries[1], state todo). The result showed \"Succeeded · 324 ms · 0 interactions\", and the Runs list now shows 1 run with args {\"state\":\"todo\"}.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "role": "button",
+        "name": "Show in runs"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 1",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "role": "image",
+        "name": "Succeeded"
+      },
+      {
+        "role": "image",
+        "name": "Run by you from the Inspector"
+      },
+      {
+        "name": "entries[1]"
+      },
+      {
+        "role": "figure",
+        "name": "Arguments",
+        "text": "{\"args\":{\"state\":\"todo\"}}"
+      },
+      {
+        "role": "button",
+        "name": "Result"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Runs · 0",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "No runs for this selection yet. Switch to All to see every run."
+      }
+    ],
+    "endWaitMs": 14323,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

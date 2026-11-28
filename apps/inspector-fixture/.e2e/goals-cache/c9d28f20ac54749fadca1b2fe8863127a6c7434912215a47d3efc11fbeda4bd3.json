@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:51:05.779Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Run\" in \"generate_locator\"",
+        "target": {
+          "role": "button",
+          "name": "Run",
+          "within": "generate_locator"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::generate_locator%20offers%20the%20locator%20of%20each%20target%20in%20each%20group",
+      "targetId": "chromium",
+      "instructionDigest": "9dc5c61d793b51ed7b77d8439715a2569ea086d16288e95d7ffe0798225560aa",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Ran generate_locator once. It succeeded in 16 ms and returned locators for e8 (Add item button), e5 (New item textbox) and e9 (Clear button). Runs now shows 1 entry with arguments {\"groups\":[{\"targets\":[\"e8\",\"e5\"]},{\"targets\":[\"e9\"]}]}.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "name": "Locator for e8",
+        "text": "getByRole('button', { name: 'Add item' })"
+      },
+      {
+        "role": "button",
+        "name": "Copy the locator for e8"
+      },
+      {
+        "name": "Locator for e5",
+        "text": "getByRole('textbox', { name: 'New item' })"
+      },
+      {
+        "role": "button",
+        "name": "Copy the locator for e5"
+      },
+      {
+        "name": "Locator for e9",
+        "text": "getByRole('button', { name: 'Clear' })"
+      },
+      {
+        "role": "button",
+        "name": "Copy the locator for e9"
+      },
+      {
+        "role": "button",
+        "name": "Show in runs"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Runs · 0",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "No runs for this selection yet. Switch to All to see every run."
+      },
+      {
+        "text": "locator('ayme-ref=e8')"
+      }
+    ],
+    "endWaitMs": 14335,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

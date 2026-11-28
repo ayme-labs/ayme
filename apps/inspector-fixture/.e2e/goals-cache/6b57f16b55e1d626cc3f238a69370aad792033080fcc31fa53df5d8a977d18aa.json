@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T19:50:53.035Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"What the model sees · page state and 5 …\" in \"page state and 5 tool schemas\"",
+        "target": {
+          "role": "button",
+          "name": "What the model sees · page state and 5 tool schemas",
+          "text": "What the model sees ·",
+          "within": "page state and 5 tool schemas"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/detailRuns.goal.ts::external::a%20checked%20checkbox%20reads%20as%20checked%20in%20its%20node%27s%20What%20the%20model%20sees%2C%20as%20in%20the%20page%20state%20snapshot%20gives",
+      "targetId": "chromium",
+      "instructionDigest": "5291339846711b979471e2fa69b0fbd02c41c09fe1890a930c04a5585b502416",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I opened \"What the model sees\" for the e7 checkbox \"Urgent\". It is now expanded and shows the page state (`- e7 checkbox \"Urgent\"`, 0 children) and input schemas for click, hover, check, uncheck and mark_element.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "name": "Page state",
+        "text": "- e7 checkbox \"Urgent\""
+      },
+      {
+        "text": "0 children"
+      },
+      {
+        "text": "click"
+      },
+      {
+        "text": "{"
+      },
+      {
+        "text": "\"type\""
+      },
+      {
+        "text": ":"
+      },
+      {
+        "text": "\"object\""
+      },
+      {
+        "text": ","
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "What the model sees · page state and 5 tool schemas",
+        "text": "What the model sees ·"
+      }
+    ],
+    "endWaitMs": 12951,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

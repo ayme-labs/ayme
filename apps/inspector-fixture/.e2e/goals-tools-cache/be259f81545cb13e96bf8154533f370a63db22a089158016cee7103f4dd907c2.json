@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:18:43.937Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool RunsView_showAll",
+        "tool": "RunsView_showAll",
+        "input": "{}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::a%20non-POM%20target%20keeps%20its%20accessible%20name%20after%20clicking%20removes%20it%20and%20after%20reload",
+      "targetId": "chromium",
+      "instructionDigest": "87c37a19e0680335298b7fe7e0c2cc8e7fb2706daee7fdd3a84633517a36f1dd",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Ran RunsView_showAll. The Runs scope switched from \"This page\" to \"All\", and \"All\" now shows as pressed.",
+    "startPath": "http://127.0.0.1:9585/inspector",
+    "endPath": "http://127.0.0.1:9585/inspector",
+    "endAnchors": [
+      {
+        "text": "10 refs"
+      },
+      {
+        "role": "button",
+        "name": "This page"
+      },
+      {
+        "role": "button",
+        "name": "All",
+        "states": [
+          "pressed"
+        ]
+      }
+    ],
+    "goneAnchors": [
+      {
+        "text": "9 refs"
+      },
+      {
+        "role": "button",
+        "name": "This page",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "All"
+      }
+    ],
+    "endWaitMs": 12656,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

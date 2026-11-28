@@ -1,8 +1,8 @@
 {
   "arm": "arm3",
   "name": "Arm 3: goals with Page Object Tools",
-  "command": "pnpm study:baseline arm3 --cache-from <a checkout of t3/port-e2e-tool-replay>",
-  "commit": "90b9adcc7470304c383d8c92b1d97828ec11fd39",
+  "command": "pnpm study:baseline arm3",
+  "commit": "57d5ffc6f17762793cdf90f2dbb7a2b19ae06c41",
   "build": "pnpm turbo run build --filter=@ayme-dev/inspector-fixture^..., before the runs",
   "env": {
     "E2E_TELEMETRY_DISABLED": "1",
@@ -10,270 +10,99 @@
     "AYME_E2E_MCP_PORT": "9585"
   },
   "recordings": {
-    "copiedFrom": {
-      "branch": "t3/port-e2e-tool-replay",
-      "commit": "71e2bdcd94a1df9b6fe05514f2b19d5f4e2be4e9"
-    },
-    "digest": "a2ea7de9e92fb6e9214405ed3934b6efb07d2ed6022463f8da15462aaee8c730"
+    "dir": ".e2e/goals-tools-cache",
+    "entries": 241,
+    "digest": "28749b91620a34de18d2f6d2c06dabadf54a8cd8891ff192f230c8aa6de68fbf"
   },
   "cohort": {
-    "shared": 106,
-    "others": 15,
-    "digest": "09bb68dd0add350b1b2e3ce2d3bd01a01a9f7f3542189f851e7d4fd792bee380"
+    "shared": 74,
+    "others": 13,
+    "digest": "847753169be10489f5b37d9a2f721b9cb347be5f8a8056120123773c05ae6dfe"
   },
   "runs": [
     {
-      "startedAt": "2026-11-27T15:30:14.715Z",
+      "startedAt": "2026-11-28T20:04:43.995Z",
       "status": "passed",
       "shared": {
-        "passed": 106,
-        "tests": 106,
-        "testMs": 283928,
-        "steps": 334,
-        "replayed": 328,
-        "modelAnswered": 6,
-        "unaccounted": 0,
-        "tokens": 303046,
-        "cacheReadTokens": 250118,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 311498,
+        "steps": 241,
+        "replayed": 241,
+        "reachedModel": 0,
+        "reachedModelFailed": 0,
+        "neither": 0,
+        "modelCalls": 0,
+        "tokens": 0,
+        "cacheReadTokens": 0,
         "noEntryTokens": 0
       },
-      "estimatedCostUsd": 0.2478077,
+      "estimatedCostUsd": null,
       "failedTests": [],
-      "notReplayed": [
-        {
-          "test": "detailRuns › external › a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives [chromium]",
-          "line": 81,
-          "step": "open What the model sees",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 46134
-        },
-        {
-          "test": "modelLens › external › hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid [chromium]",
-          "line": 54,
-          "step": "select the row labelled \"{item}\", the {ordinal} row of the {collection} collection, under On this page in the Model lens",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 58942
-        },
-        {
-          "test": "runs › external › goal runs from the panel and shows in Runs with the Runs its steps executed and its Handover result [chromium]",
-          "line": 326,
-          "step": "open the Result of the latest {tool} run in Runs",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 45780
-        },
-        {
-          "test": "runs › external › a run's result copies as the page's Run log has it [chromium]",
-          "line": 407,
-          "step": "copy the result of the latest {tool} run",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 43628
-        },
-        {
-          "test": "runs › external › press_key presses the key the page receives [chromium]",
-          "line": 440,
-          "step": "set the key to {key}",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 66640
-        },
-        {
-          "test": "structure › external › hovering a structure node highlights it on the page, and selecting it keeps it highlighted [chromium]",
-          "line": 37,
-          "step": "select the node tagged {tag} in the Structure lens",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 41922
-        }
-      ],
-      "commandWallMs": 291127
+      "notReplayed": [],
+      "notReplayedGoals": {
+        "steps": 0,
+        "distinct": 0,
+        "perUse": 0
+      },
+      "commandWallMs": 319537,
+      "loadAverage": [7.48, 14.32, 12.25]
     },
     {
-      "startedAt": "2026-11-27T15:35:06.084Z",
+      "startedAt": "2026-11-28T20:10:03.610Z",
       "status": "passed",
       "shared": {
-        "passed": 106,
-        "tests": 106,
-        "testMs": 282965,
-        "steps": 334,
-        "replayed": 327,
-        "modelAnswered": 7,
-        "unaccounted": 0,
-        "tokens": 299395,
-        "cacheReadTokens": 239866,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 316830,
+        "steps": 241,
+        "replayed": 241,
+        "reachedModel": 0,
+        "reachedModelFailed": 0,
+        "neither": 0,
+        "modelCalls": 0,
+        "tokens": 0,
+        "cacheReadTokens": 0,
         "noEntryTokens": 0
       },
-      "estimatedCostUsd": 0.2737463,
+      "estimatedCostUsd": null,
       "failedTests": [],
-      "notReplayed": [
-        {
-          "test": "detailRuns › external › a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives [chromium]",
-          "line": 81,
-          "step": "open What the model sees",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 46160
-        },
-        {
-          "test": "modelLens › external › hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid [chromium]",
-          "line": 54,
-          "step": "select the row labelled \"{item}\", the {ordinal} row of the {collection} collection, under On this page in the Model lens",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 39198
-        },
-        {
-          "test": "modelLens › external › hovering a member highlights it dashed, beside the selected Page Object's solid highlight [chromium]",
-          "line": 78,
-          "step": "select the row labelled \"{item}\", the {ordinal} row of the {collection} collection, under On this page in the Model lens",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 38384
-        },
-        {
-          "test": "runs › external › goal runs from the panel and shows in Runs with the Runs its steps executed and its Handover result [chromium]",
-          "line": 326,
-          "step": "open the Result of the latest {tool} run in Runs",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 45834
-        },
-        {
-          "test": "runs › external › a run's result copies as the page's Run log has it [chromium]",
-          "line": 407,
-          "step": "copy the result of the latest {tool} run",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 43550
-        },
-        {
-          "test": "runs › external › press_key presses the key the page receives [chromium]",
-          "line": 440,
-          "step": "set the key to {key}",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 44331
-        },
-        {
-          "test": "structure › external › hovering a structure node highlights it on the page, and selecting it keeps it highlighted [chromium]",
-          "line": 37,
-          "step": "select the node tagged {tag} in the Structure lens",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 41938
-        }
-      ],
-      "commandWallMs": 290349
+      "notReplayed": [],
+      "notReplayedGoals": {
+        "steps": 0,
+        "distinct": 0,
+        "perUse": 0
+      },
+      "commandWallMs": 324800,
+      "loadAverage": [5.58, 8.48, 10.11]
     },
     {
-      "startedAt": "2026-11-27T15:39:56.537Z",
+      "startedAt": "2026-11-28T20:15:28.343Z",
       "status": "passed",
       "shared": {
-        "passed": 106,
-        "tests": 106,
-        "testMs": 277815,
-        "steps": 334,
-        "replayed": 328,
-        "modelAnswered": 6,
-        "unaccounted": 0,
-        "tokens": 261007,
-        "cacheReadTokens": 208311,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 309526,
+        "steps": 241,
+        "replayed": 241,
+        "reachedModel": 0,
+        "reachedModelFailed": 0,
+        "neither": 0,
+        "modelCalls": 0,
+        "tokens": 0,
+        "cacheReadTokens": 0,
         "noEntryTokens": 0
       },
-      "estimatedCostUsd": 0.2419984,
+      "estimatedCostUsd": null,
       "failedTests": [],
-      "notReplayed": [
-        {
-          "test": "detailRuns › external › a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives [chromium]",
-          "line": 81,
-          "step": "open What the model sees",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 46134
-        },
-        {
-          "test": "modelLens › external › hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid [chromium]",
-          "line": 54,
-          "step": "select the row labelled \"{item}\", the {ordinal} row of the {collection} collection, under On this page in the Model lens",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 39202
-        },
-        {
-          "test": "runs › external › goal runs from the panel and shows in Runs with the Runs its steps executed and its Handover result [chromium]",
-          "line": 326,
-          "step": "open the Result of the latest {tool} run in Runs",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 45794
-        },
-        {
-          "test": "runs › external › a run's result copies as the page's Run log has it [chromium]",
-          "line": 407,
-          "step": "copy the result of the latest {tool} run",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 43620
-        },
-        {
-          "test": "runs › external › press_key presses the key the page receives [chromium]",
-          "line": 440,
-          "step": "set the key to {key}",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 44329
-        },
-        {
-          "test": "structure › external › hovering a structure node highlights it on the page, and selecting it keeps it highlighted [chromium]",
-          "line": 37,
-          "step": "select the node tagged {tag} in the Structure lens",
-          "status": "passed",
-          "cache": "agent-concluded",
-          "reason": "end-mismatch",
-          "detail": "every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it",
-          "tokens": 41928
-        }
-      ],
-      "commandWallMs": 285399
+      "notReplayed": [],
+      "notReplayedGoals": {
+        "steps": 0,
+        "distinct": 0,
+        "perUse": 0
+      },
+      "commandWallMs": 317197,
+      "loadAverage": [12.11, 13.38, 12.36]
     }
   ]
 }

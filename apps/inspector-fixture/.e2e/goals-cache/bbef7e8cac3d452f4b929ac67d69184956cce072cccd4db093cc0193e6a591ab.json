@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T20:00:20.442Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Layout: Dock to bottom\"",
+        "target": {
+          "role": "button",
+          "name": "Layout: Dock to bottom"
+        }
+      },
+      {
+        "name": "tap",
+        "summary": "tap menuitemradio \"Dock left\" in \"Floating\"",
+        "target": {
+          "role": "menuitemradio",
+          "name": "Dock left",
+          "within": "Floating"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/inspector.goal.ts::the%20layout%20and%20its%20sizes%20survive%20a%20reload",
+      "targetId": "chromium",
+      "instructionDigest": "4a622d9c07d75b738c0a706d10dfe78d8ffa81f40cf04ca844a52aeba8b2be34",
+      "paramsDigest": "d34cb66017163d6aca79271cba24700f251a27e421a2138195d4f84bd0ba68cb",
+      "callIndex": 1,
+      "agent": "default"
+    },
+    "summary": "Chose \"Dock left\" from the layout menu; the button now reads \"Layout: Dock left\" and a right-edge resize handle replaced the top-edge one.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "separator",
+        "name": "Resize from the right edge"
+      },
+      {
+        "role": "button",
+        "name": "Layout: Dock left"
+      },
+      {
+        "text": "9 refs"
+      },
+      {
+        "role": "button",
+        "name": "Connections: agent connection off, WebMCP unavailable"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "separator",
+        "name": "Resize from the top edge"
+      },
+      {
+        "role": "button",
+        "name": "Layout: Dock to bottom"
+      },
+      {
+        "text": "0 refs"
+      },
+      {
+        "role": "button",
+        "name": "Connections: agent connection off"
+      }
+    ],
+    "endWaitMs": 12774,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

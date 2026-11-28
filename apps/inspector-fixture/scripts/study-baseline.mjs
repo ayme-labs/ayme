@@ -4,22 +4,17 @@ import { spawn, spawnSync } from "node:child_process";
 import console from "node:console";
 import { createHash } from "node:crypto";
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   openSync,
   readdirSync,
   readFileSync,
-  realpathSync,
-  renameSync,
-  rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { get } from "node:http";
 import { createServer } from "node:net";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { homedir, loadavg } from "node:os";
+import { basename, join, resolve } from "node:path";
 import process from "node:process";
 import { setTimeout } from "node:timers/promises";
 import { fileURLToPath, URL } from "node:url";
@@ -30,7 +25,9 @@ import { LEFT_OUT } from "./check-goal-mirror.mjs";
 import {
   cohortOf,
   digestOf,
+  goalIdentities,
   NotAResult,
+  preloads,
   projectRun,
   render,
 } from "./study-report.mjs";
@@ -49,25 +46,25 @@ const RUNS = 3;
 /**
  * Each arm's own pnpm script, unchanged, and the variables it runs with. The
  * goal arms replay read-only with the agent there for what does not replay;
- * their `ayme mcp` port is the one their recordings were made on, since the
- * external placement's steps replay only against that origin
- * (e2e.goals.config.ts).
+ * their configs pin the `ayme mcp` port their recordings were made on, and
+ * their scripts name their recordings' directory (`--cache-dir`).
  */
 const ARMS = {
   arm1: {
     name: "Arm 1: plain goals",
     script: "test:goals",
-    env: { AYME_E2E_CACHE: "read-only", AYME_E2E_MCP_PORT: "9403" },
-    cacheDir: ".e2e/goals-cache",
+    env: { AYME_E2E_CACHE: "read-only" },
   },
   arm2: { name: "Arm 2: Page Objects", script: "e2e", env: {} },
   arm3: {
     name: "Arm 3: goals with Page Object Tools",
     script: "test:goals:tools",
-    env: { AYME_E2E_CACHE: "read-only", AYME_E2E_MCP_PORT: "9585" },
-    cacheDir: ".e2e/goals-tools-cache",
+    env: { AYME_E2E_CACHE: "read-only" },
   },
 };
+const scripts = JSON.parse(
+  readFileSync(join(here, "package.json"), "utf8")
+).scripts;
 
 /** Variables that change what a run replays or how; each run gets the arm's values and no others. */
 const PINNED = [
@@ -83,16 +80,20 @@ const PINNED = [
 ];
 
 const [armId, ...rest] = process.argv.slice(2);
-if (armId === "render") {
+if (armId === "render" && !rest.length) {
   writeReadme();
   process.exit(0);
 }
 const arm = ARMS[armId];
-const cacheFrom =
-  rest[0] === "--cache-from" && rest.length === 2 ? rest[1] : undefined;
-if (!arm || (rest.length && (!cacheFrom || !arm.cacheDir))) {
+if (!arm || rest.length) {
+  console.error("usage: pnpm study:baseline <arm1|arm2|arm3> | render");
+  process.exit(2);
+}
+// Arms 1 and 2 run e2e as published; arm 3's launcher brings its own hook.
+const preloaded = armId === "arm3" ? [] : preloads(process.env.NODE_OPTIONS);
+if (preloaded.length) {
   console.error(
-    "usage: pnpm study:baseline <arm1|arm2|arm3> [--cache-from <dir>] | render"
+    `unset NODE_OPTIONS: ${armId} runs e2e as published, with nothing preloaded (${preloaded.join(", ")})`
   );
   process.exit(2);
 }
@@ -115,11 +116,14 @@ if (uncommitted()) {
 }
 const commit = git("rev-parse", "HEAD");
 const runEnv = { E2E_TELEMETRY_DISABLED: "1", ...arm.env };
-const cachePath = arm.cacheDir && join(here, arm.cacheDir);
-const recordings = cachePath && {
-  ...(cacheFrom && { copiedFrom: copyCache(cacheFrom, cachePath) }),
-  digest: digestDir(cachePath),
-};
+// The recordings are the ones committed at `commit`, as the tree is clean:
+// the files git tracks in the directory the arm's script names.
+const cacheDir = scripts[arm.script].match(/--cache-dir\s+(\S+)/)?.[1];
+const recordings = cacheDir && { dir: cacheDir, ...trackedRecordings() };
+if (recordings && !recordings.entries) {
+  console.error(`${cacheDir} holds no committed recordings`);
+  process.exit(2);
+}
 
 // `dist` is ignored by git, and the fixture serves the built packages.
 const build = "turbo run build --filter=@ayme-dev/inspector-fixture^...";
@@ -132,6 +136,7 @@ run(
 );
 
 const { shared, extras } = cohortOf(listTests(), LEFT_OUT);
+const goals = cacheDir ? goalIdentities(here, "tests/goals") : undefined;
 const expected = armId === "arm2" ? [...shared, ...extras] : shared;
 const invocation = join(
   here,
@@ -145,7 +150,7 @@ const app = await startWarmApp(appPort, join(invocation, "vite.log"));
 const summary = {
   arm: armId,
   name: arm.name,
-  command: `pnpm study:baseline ${armId}${cacheFrom ? ` --cache-from <a checkout of ${recordings.copiedFrom.branch}>` : ""}`,
+  command: `pnpm study:baseline ${armId}`,
   commit,
   build: `pnpm ${build}, before the runs`,
   env: runEnv,
@@ -160,9 +165,12 @@ const summary = {
 try {
   for (let i = 0; i < RUNS; i++) {
     const output = join(invocation, `run-${i + 1}`);
-    await recordingPortFree();
     console.log(`\n${arm.name}: run ${i + 1} of ${RUNS}`);
+    // Other work on the machine slows a run; the page shows it beside the times.
+    const loadAverage = loadavg().map((n) => +n.toFixed(2));
     const startedAt = Date.now();
+    const startedMono = process.hrtime.bigint();
+    const sleptBefore = lastSleep();
     const { status } = spawnSync(
       "pnpm",
       ["run", arm.script, "--workers", "1", "--output", output],
@@ -172,8 +180,23 @@ try {
         env: armEnv({ AYME_E2E_APP_PORT: String(appPort) }),
       }
     );
-    const commandWallMs = Date.now() - startedAt;
+    // Timed by the monotonic clock, which a wall-clock change cannot move.
+    const commandWallMs = Number(
+      (process.hrtime.bigint() - startedMono) / 1_000_000n
+    );
+    // A run the machine slept through times the sleep, and its pages may
+    // have reloaded under it. macOS says when it last slept; elsewhere a
+    // heuristic: the monotonic clock stops in a suspend on Linux and macOS,
+    // so a gap between it and the wall clock suggests one.
+    const clockGapMs = Date.now() - startedAt - commandWallMs;
+    const slept =
+      lastSleep() !== sleptBefore
+        ? "macOS reports a sleep"
+        : clockGapMs > 5_000 &&
+          `the wall clock ran ${Math.round(clockGapMs / 1000)} s ahead of the monotonic clock`;
     try {
+      if (slept)
+        throw new NotAResult(`the machine slept during the run: ${slept}`);
       summary.runs.push({
         ...projectRun(join(output, "report.json"), {
           startedAfter: startedAt,
@@ -182,8 +205,10 @@ try {
           expected,
           shared,
           clean,
+          goals,
         }),
         commandWallMs,
+        loadAverage,
       });
     } catch (error) {
       if (!(error instanceof NotAResult)) throw error;
@@ -201,13 +226,15 @@ try {
 const changed = [
   git("rev-parse", "HEAD") !== commit && "the commit",
   uncommitted() && "the working tree",
-  recordings && digestDir(cachePath) !== recordings.digest && "the recordings",
+  recordings &&
+    trackedRecordings().digest !== recordings.digest &&
+    "the recordings",
 ].filter(Boolean);
 if (changed.length) {
   console.error(`not saved: ${changed.join(" and ")} changed during the runs`);
   process.exitCode = 1;
 } else if (summary.runs.length === RUNS) {
-  writeFileSync(join(out, `${armId}.json`), JSON.stringify(summary, null, 2));
+  writeFormatted(join(out, `${armId}.json`), JSON.stringify(summary));
   writeReadme();
 }
 
@@ -225,36 +252,6 @@ function clean(text) {
     .replace(/http:\/\/127\.0\.0\.1:\d+/g, "http://127.0.0.1:<port>");
 }
 
-/** Copies the recordings in from another checkout, never over themselves, and says which branch and commit that checkout was on. */
-function copyCache(from, to) {
-  const source = resolve(from);
-  if (!existsSync(source) || !statSync(source).isDirectory()) {
-    console.error(`--cache-from: ${source} is not a directory`);
-    process.exit(2);
-  }
-  if (existsSync(to) && realpathSync(source) === realpathSync(to)) {
-    console.error(`--cache-from: ${source} is ${armId}'s own cache`);
-    process.exit(2);
-  }
-  const incoming = `${to}.incoming`;
-  rmSync(incoming, { recursive: true, force: true });
-  cpSync(source, incoming, { recursive: true });
-  if (digestDir(incoming) !== digestDir(source)) {
-    console.error(`--cache-from: ${source} changed while it was copied`);
-    process.exit(1);
-  }
-  rmSync(to, { recursive: true, force: true });
-  renameSync(incoming, to);
-  const at = (...args) =>
-    spawnSync("git", ["-C", source, ...args], {
-      encoding: "utf8",
-    }).stdout.trim();
-  return {
-    branch: at("rev-parse", "--abbrev-ref", "HEAD"),
-    commit: at("rev-parse", "HEAD"),
-  };
-}
-
 /** The tests arm 2's config selects, which every arm's cohort derives from. */
 function listTests() {
   const { stdout } = run(
@@ -263,6 +260,13 @@ function listTests() {
     { cwd: here, env: armEnv(), stdio: ["ignore", "pipe", "inherit"] }
   );
   return JSON.parse(stdout).pairs;
+}
+
+/** When macOS last went to sleep, or undefined where it does not say. */
+function lastSleep() {
+  return spawnSync("sysctl", ["-n", "kern.sleeptime"], {
+    encoding: "utf8",
+  }).stdout?.trim();
 }
 
 function free(port) {
@@ -274,28 +278,6 @@ function free(port) {
         server.close(() => done(bound));
       });
   });
-}
-
-/** Waits, for a while, when another checkout's `ayme mcp` holds the port the recordings need: the port is not ours to change. */
-async function recordingPortFree() {
-  const port = arm.env.AYME_E2E_MCP_PORT;
-  if (!port) return;
-  for (let waited = 0; !(await free(+port)); waited += 10_000) {
-    if (waited >= 30 * 60_000) {
-      const holder = spawnSync(
-        "lsof",
-        ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN"],
-        {
-          encoding: "utf8",
-        }
-      ).stdout;
-      throw new Error(
-        `port ${port}, which ${armId}'s recordings need, stayed taken for 30 minutes:\n${holder}\nStop that process or wait for it, then run the arm again.`
-      );
-    }
-    if (!waited) console.log(`port ${port} is taken: waiting`);
-    await setTimeout(10_000);
-  }
 }
 
 /** One Vite server for every run, its module graph loaded once by a browser so no run pays for a cold start. */
@@ -358,12 +340,13 @@ async function startWarmApp(port, log) {
   return server;
 }
 
-/** What a set of recordings is, so a reader can tell which a baseline replayed. */
-function digestDir(dir) {
+/** The recordings git tracks, and a digest of their names and bytes, so a reader can tell which a baseline replayed; a file git ignores there changes neither. */
+function trackedRecordings() {
+  const files = git("ls-files", "--", cacheDir).split("\n").filter(Boolean);
   const hash = createHash("sha256");
-  for (const f of readdirSync(dir).sort())
-    hash.update(f).update(readFileSync(join(dir, f)));
-  return hash.digest("hex");
+  for (const file of files.sort())
+    hash.update(basename(file)).update(readFileSync(join(here, file)));
+  return { entries: files.length, digest: hash.digest("hex") };
 }
 
 function run(command, args, options) {
@@ -388,8 +371,15 @@ function writeReadme() {
     const file = join(out, `${id}.json`);
     return existsSync(file) ? [JSON.parse(readFileSync(file, "utf8"))] : [];
   });
-  writeFileSync(join(out, "README.md"), render(arms));
-  spawnSync("pnpm", ["-w", "exec", "prettier", "--write", out], {
-    stdio: "inherit",
-  });
+  writeFormatted(join(out, "README.md"), render(arms, ARMS[armId] && armId));
+}
+
+/** Writes `text` as Prettier formats it, so a formatter that fails leaves the file as it was and the command exits non-zero. */
+function writeFormatted(file, text) {
+  const { stdout } = run(
+    "pnpm",
+    ["-w", "exec", "prettier", "--stdin-filepath", file],
+    { cwd: here, input: text, stdio: ["pipe", "pipe", "inherit"] }
+  );
+  writeFileSync(file, stdout);
 }

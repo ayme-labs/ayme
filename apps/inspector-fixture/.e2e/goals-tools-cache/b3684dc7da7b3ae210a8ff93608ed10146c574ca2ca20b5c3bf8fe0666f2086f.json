@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:27:09.570Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool LocatorGroups_addGroup",
+        "tool": "LocatorGroups_addGroup",
+        "input": "{}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::generate_locator%20offers%20the%20locator%20of%20each%20target%20in%20each%20group",
+      "targetId": "chromium",
+      "instructionDigest": "1db880f3d02119a59e74bb57f61b134e25c44cbbafa3e7cf4fc912627fae9573",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Added a group. \"Group 2\" now appears in the Locator groups list with its own Container chooser, Pick on page and Add from tree controls, and a \"Remove group 2\" button. Group 1 now also has a \"Remove group 1\" button.",
+    "startPath": "http://127.0.0.1:9585/inspector",
+    "endPath": "http://127.0.0.1:9585/inspector",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Remove group 1"
+      },
+      {
+        "role": "button",
+        "name": "Remove group 2"
+      },
+      {
+        "role": "button",
+        "name": "Add from tree"
+      },
+      {
+        "role": "listitem",
+        "name": "Group 2"
+      },
+      {
+        "role": "button",
+        "name": "Container of group 2"
+      }
+    ],
+    "endWaitMs": 10127,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

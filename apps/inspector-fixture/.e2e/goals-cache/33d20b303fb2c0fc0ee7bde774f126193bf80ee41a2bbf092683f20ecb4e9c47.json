@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:32:20.808Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"ListPage.addItem\" in \"ListPage\"",
+        "target": {
+          "role": "button",
+          "name": "ListPage.addItem",
+          "within": "ListPage"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/toolsLens.goal.ts::inline::connected%20to%20an%20agent::each%20tool%27s%20page%20shows%20the%20description%2C%20schema%20and%20destructive%20mark%20an%20agent%20gets",
+      "targetId": "chromium",
+      "instructionDigest": "c0ef0f80d32f22a63457535e3308a3b84235105d11e9ba43ca818eb359020511",
+      "paramsDigest": "45c2bfa25d5d0aafc4fea9d4e4757908daf13e46c65cc2e4d66003942724d65a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Tapped \"ListPage.addItem\" under Page object tools. The Selected panel now shows the \"ListPage.addItem\" Page object tool with a text argument, a Run button, and the ListPage definition plus its input schema.",
+    "startPath": "/?agent=",
+    "endPath": "/?agent=",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "ListPage.addItem"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "text": "Page object tool"
+      },
+      {
+        "text": "text"
+      },
+      {
+        "text": "string"
+      },
+      {
+        "role": "textbox",
+        "name": "text"
+      },
+      {
+        "text": "definition and 1 tool schema"
+      },
+      {
+        "text": "newItemInput"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "mark_element"
+      },
+      {
+        "text": "Custom tool"
+      },
+      {
+        "text": "Mark one element on the page."
+      },
+      {
+        "text": "ref"
+      },
+      {
+        "text": "Choose an element"
+      },
+      {
+        "role": "button",
+        "name": "Pick an element on the page"
+      },
+      {
+        "text": "1 tool schema"
+      },
+      {
+        "text": "mark_element"
+      }
+    ],
+    "endWaitMs": 16474,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

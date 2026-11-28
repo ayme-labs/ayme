@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:25:20.660Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool RunCard_run",
+        "tool": "RunCard_run",
+        "input": "{\"args\":{\"text\":\"Milk\"}}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/mounting.goal.ts::with%20the%20inspector%20option%20on%2C%20without%20demo::adds%20no%20click%20cue%20to%20an%20agent%27s%20call%20or%20a%20run%2C%20and%20records%20the%20run",
+      "targetId": "chromium",
+      "instructionDigest": "d85c9665e00a69807f24eed549a6105133b769324ffb7612cd010ac55e5b6b7e",
+      "paramsDigest": "248f82ce92389f110d414688c0f85759470d888e61bc6872e85835ad2187f4c3",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Ran ListPage.addItem with text \"Milk\" from the Inspector. The run succeeded (317 ms, 2 interactions), and \"Milk\" now appears in the Items list on the page.",
+    "startPath": "/session.html?agent=",
+    "endPath": "/session.html?agent=",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "role": "listitem",
+        "name": "Milk"
+      },
+      {
+        "role": "textbox",
+        "name": "text",
+        "value": "Milk"
+      },
+      {
+        "text": "Running…"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 2",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "role": "image",
+        "name": "Running"
+      },
+      {
+        "role": "image",
+        "name": "Run by you from the Inspector"
+      },
+      {
+        "role": "figure",
+        "name": "Arguments",
+        "text": "{\"text\":\"Milk\"}"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "textbox",
+        "name": "text"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 1",
+        "states": [
+          "expanded"
+        ]
+      }
+    ],
+    "endWaitMs": 10223,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T20:03:13.147Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "type",
+        "summary": "type \"Eggs\" into textbox \"text\" in \"ListPage.addItem\"",
+        "target": {
+          "role": "textbox",
+          "name": "text",
+          "within": "ListPage.addItem"
+        },
+        "value": "Eggs"
+      },
+      {
+        "name": "tap",
+        "summary": "tap button \"Run\" in \"ListPage.addItem\"",
+        "target": {
+          "role": "button",
+          "name": "Run",
+          "within": "ListPage.addItem"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/inspector.goal.ts::on%20a%20React%20host%20with%20aggressive%20global%20CSS::the%20panel%20works%20beside%20the%20host%27s%20own%20React",
+      "targetId": "chromium",
+      "instructionDigest": "d85c9665e00a69807f24eed549a6105133b769324ffb7612cd010ac55e5b6b7e",
+      "paramsDigest": "b9a169f5ae38b563c5ac9d12f331ce77cd59b03120ad83ec639cef5213853f1f",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Ran ListPage.addItem with text \"Eggs\". The run succeeded (325 ms, 2 interactions: fill, click). \"Eggs\" now appears in the page's Items list, and the Runs timeline shows 1 run.",
+    "startPath": "/react.html",
+    "endPath": "/react.html",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "role": "listitem",
+        "name": "Eggs"
+      },
+      {
+        "text": "8 refs"
+      },
+      {
+        "role": "heading",
+        "name": "Page object tools · 4"
+      },
+      {
+        "text": "ListItem"
+      },
+      {
+        "text": ".mark"
+      },
+      {
+        "role": "textbox",
+        "name": "text",
+        "value": "Eggs"
+      },
+      {
+        "role": "button",
+        "name": "Show in runs"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "text": "7 refs"
+      },
+      {
+        "role": "heading",
+        "name": "Page object tools · 3"
+      },
+      {
+        "role": "textbox",
+        "name": "text"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 0",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "No runs for this selection yet. Switch to All to see every run."
+      },
+      {
+        "role": "region",
+        "name": "Page object tools · 3"
+      }
+    ],
+    "endWaitMs": 13983,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

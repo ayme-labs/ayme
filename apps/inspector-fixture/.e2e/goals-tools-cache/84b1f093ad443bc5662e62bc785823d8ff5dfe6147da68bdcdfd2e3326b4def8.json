@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:25:47.337Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool RunCard_choose",
+        "tool": "RunCard_choose",
+        "input": "{\"path\":\"state\",\"option\":\"todo\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::a%20collection%20action%20runs%20on%20the%20item%20and%20choice%20picked%20with%20the%20mouse",
+      "targetId": "chromium",
+      "instructionDigest": "880ac2b1646035ce01736df15ad9c7f6eac0598ca7e47c83eb0ff8d38e4b1432",
+      "paramsDigest": "4f484e1962633335919c3eec496b44b2d6917ff94a70444f66933d1f478cb79f",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Set the state select to \"todo\". The combobox value changed from 0 to 1 and the \"todo\" option is now selected. I did not press Run.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "option",
+        "name": "done"
+      },
+      {
+        "role": "option",
+        "name": "todo",
+        "states": [
+          "selected"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "state",
+        "value": "1"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "option",
+        "name": "done",
+        "states": [
+          "selected"
+        ]
+      },
+      {
+        "role": "option",
+        "name": "todo"
+      },
+      {
+        "role": "combobox",
+        "name": "state",
+        "value": "0"
+      }
+    ],
+    "endWaitMs": 10120,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

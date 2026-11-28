@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:16:31.607Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool ModelLens_select",
+        "tool": "ModelLens_select",
+        "input": "{\"path\":\"TodoPage\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/modelLens.goal.ts::external::clicking%20a%20member%20selects%20it%3A%20the%20page%20highlights%20it%20solid%20and%20the%20panel%20shows%20it",
+      "targetId": "chromium",
+      "instructionDigest": "72466e20aa014dc6c1727dbe469ff47b739da41263f45135f47653951d4adfc9",
+      "paramsDigest": "00b1677a92ffb4529aa45d5f8bf3e1b26cc8f20681e285478d3c026d94a64df1",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Selected TodoPage under On this page in the Model lens. The treeitem is now selected, and the Selected region shows the TodoPage page object with its addItem action and 4 members.",
+    "startPath": "http://127.0.0.1:9585/inspector",
+    "endPath": "http://127.0.0.1:9585/inspector",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "TodoPage"
+      },
+      {
+        "name": "page object"
+      },
+      {
+        "text": "Live"
+      },
+      {
+        "role": "heading",
+        "name": "Actions · 1"
+      },
+      {
+        "name": "addItem"
+      },
+      {
+        "text": "(text: string)"
+      },
+      {
+        "role": "heading",
+        "name": "Members · 4"
+      },
+      {
+        "role": "image",
+        "name": "Page object"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "Page /"
+      },
+      {
+        "name": "page · 3 page object models"
+      },
+      {
+        "role": "heading",
+        "name": "On this page · 1"
+      },
+      {
+        "name": "page"
+      },
+      {
+        "role": "heading",
+        "name": "Tools · 3"
+      },
+      {
+        "name": "snapshot"
+      },
+      {
+        "text": "(names?: string[])"
+      },
+      {
+        "text": "Return the current live structural page state together with compact POM capability definitions known to ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description, then lists the POM's declared children and its actions. A bare member is…"
+      }
+    ],
+    "endWaitMs": 13747,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

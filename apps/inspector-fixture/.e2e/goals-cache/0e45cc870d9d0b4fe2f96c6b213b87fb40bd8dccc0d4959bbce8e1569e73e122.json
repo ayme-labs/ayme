@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T12:38:21.913Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap combobox \"key\" in \"press_key\"",
+        "target": {
+          "role": "combobox",
+          "name": "key",
+          "placeholder": "Press a key or combination",
+          "within": "press_key"
+        }
+      },
+      {
+        "name": "press",
+        "summary": "press \"F4\" on combobox \"key\" in \"press_key\"",
+        "target": {
+          "role": "combobox",
+          "name": "key",
+          "placeholder": "Press a key or combination",
+          "within": "press_key"
+        },
+        "key": "F4"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::press_key%20presses%20the%20key%20the%20page%20receives",
+      "targetId": "chromium",
+      "instructionDigest": "6cbc9d2cf416fca1fd5e31eb41d0cdbd3809d38a758c65668e98a100b1b78162",
+      "paramsDigest": "727ea3eead63f23bf48ddec353379c7841ab947e7b4562091b8f8da52301c2bd",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I set the press_key key to F4. The select action failed because the control isn't a native select. I tapped the key combobox, which began capturing keys, then pressed F4. The combobox now shows value=\"F4\". I didn't run the tool.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "key help",
+        "text": "Press a key or combo. Esc to search."
+      },
+      {
+        "role": "combobox",
+        "name": "key",
+        "placeholder": "Press a key or combination",
+        "value": "F4"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "combobox",
+        "name": "key",
+        "placeholder": "Press a key or combination"
+      }
+    ],
+    "endWaitMs": 13203,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

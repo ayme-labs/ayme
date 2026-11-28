@@ -1,31 +1,32 @@
 # Page Object study: baselines
 
-The "before" of the Page Object study (the [fixture's README](../../README.md)): each arm's suite on the Inspector before the redesign. Each cell is the range over the arm's three runs; each run's totals and exceptions are in `<arm>.json`.
+The "before" of the Page Object study (the [fixture's README](../../README.md)): each arm's suite on the Inspector before the redesign. Each cell is the range over the arm's runs; each run's totals and exceptions are in `<arm>.json`.
+
+The suite: 74 test runs that every arm has, and 13 more of arm 2's own, 87 in arm 2.
 
 ## Measuring an arm
 
 ```sh
-pnpm study:baseline arm1 --cache-from <a checkout>/apps/inspector-fixture/.e2e/goals-cache
+pnpm study:baseline arm1
 pnpm study:baseline arm2
-pnpm study:baseline arm3 --cache-from <a checkout>/apps/inspector-fixture/.e2e/goals-tools-cache
+pnpm study:baseline arm3
 pnpm study:baseline render   # this page again, from the arms' files
 ```
 
-Run it on your own machine from a committed tree, one arm at a time with nothing else running; a goal arm's hand-offs use this machine's Claude login. It builds the packages the fixture serves, warms one fixture server, runs the arm's own script three times on it, and saves the arm's file only when all three runs completed on one commit with the same recordings. The recordings are not in git (`.e2e/` is ignored): `--cache-from` copies them in and saves their digest and where they were made. Each run's full e2e report stays on the machine that ran it, at `.e2e/study/<arm>/<time>/run-<n>/report.json`, and is not published. [The script](../../scripts/study-baseline.mjs) holds each guard's reason.
+Run it from `apps/inspector-fixture` in the repository's Devbox shell, on your own machine, from a committed tree, one arm at a time with nothing else running. The goal arms replay the recordings committed under `.e2e/goals-cache` and `.e2e/goals-tools-cache` read-only; a step that does not replay goes to Claude Code on the machine's own login, so it must be signed in, and the `ayme mcp` port the arm's recordings were made on must be free ([e2e.goals.config.ts](../../e2e.goals.config.ts), [e2e.goals-tools.config.ts](../../e2e.goals-tools.config.ts)). It builds the packages the fixture serves, warms one fixture server, runs the arm's own script three times on it, and saves the arm's file only when all three runs completed on one commit with the same recordings. Each run's full e2e report stays on the machine that ran it, at `.e2e/study/<arm>/<time>/run-<n>/report.json`, and is not published. [The script](../../scripts/study-baseline.mjs) holds each guard's reason.
 
 ## The tests every arm has
 
-| Arm                                 | Tests passed | Summed test time | Goal steps | Replayed, no model call | Model answered | Unaccounted | Tokens          | e2e's cost estimate |
-| ----------------------------------- | ------------ | ---------------- | ---------- | ----------------------- | -------------- | ----------- | --------------- | ------------------- |
-| Arm 1: plain goals                  | 106 of 106   | 324 s–344 s      | 334        | 325–326                 | 8–9            | 0           | 434,085–499,132 | $0.29–$0.34         |
-| Arm 2: Page Objects                 | 106 of 106   | 156 s–159 s      | none       | none                    | none           | none        | none            | none                |
-| Arm 3: goals with Page Object Tools | 106 of 106   | 278 s–284 s      | 334        | 327–328                 | 6–7            | 0           | 261,007–303,046 | $0.24–$0.27         |
+| Arm                                 | Tests passed | Summed test time | Goal steps | Replayed, no model call | Reached the model (failed) | Neither | Not replayed (distinct goals) | Tokens | e2e's cost estimate |
+| ----------------------------------- | ------------ | ---------------- | ---------- | ----------------------- | -------------------------- | ------- | ----------------------------- | ------ | ------------------- |
+| Arm 1: plain goals                  | 74 of 74     | 322 s–326 s      | 241        | 241                     | 0 (0)                      | 0       | 0 (0)                         | 0      | $0.00               |
+| Arm 2: Page Objects                 | 74 of 74     | 272 s–278 s      | none       | none                    | none                       | none    | none                          | none   | none                |
+| Arm 3: goals with Page Object Tools | 74 of 74     | 310 s–317 s      | 241        | 241                     | 0 (0)                      | 0       | 0 (0)                         | 0      | $0.00               |
 
-- Tokens are input plus output, prompt-cache reads and writes included; cache reads are 80%–86% of them. e2e's cost estimate is its own, from the same usage.
-- Unaccounted: a goal step that neither replayed nor passed with the model, so its usage cannot be told.
+- Reached the model: a goal step e2e's step metrics count a model call for, whatever its outcome; in brackets those whose step failed. Neither: a goal step that did not replay and called no model, such as one that failed before a call.
+- Tokens are the provider's input plus output, prompt-cache reads and writes included. They are unknown for a run in which a step that reached the model has no provider count (e2e marks such a record `adapter-upper-bound`). e2e's cost estimate is its own; $0.00 where no step called a model.
+- Not replayed: the goal steps of these runs that did not replay with no model call, and in brackets the distinct goals among them, a goal's text with its parameters counted once however many tests ran it.
 - Every arm ran with one worker and no retries, so this is a serial comparison. The default test timeout is 30 s in arm 2 and 900 s in the goal arms ([e2e.config.ts](../../e2e.config.ts), [e2e.goals.config.ts](../../e2e.goals.config.ts)).
-
-- Arm 1: plain goals: steps with no recording (missed, no-entry) used 264,695, 246,540, 244,329 tokens in its three runs, 49%–61% of its tokens. An attribution within these runs, not an estimate of a run without those steps: they shared an agent session with the arm's other steps.
 
 ## Arm 2's other tests
 
@@ -33,43 +34,29 @@ The tests with no action to turn into a goal (`LEFT_OUT` in [the mirror check](.
 
 | Arm                 | Tests passed | Summed test time |
 | ------------------- | ------------ | ---------------- |
-| Arm 2: Page Objects | 15 of 15     | 27 s–28 s        |
+| Arm 2: Page Objects | 13 of 13     | 59 s–60 s        |
 
 ## Whole runs
 
-Command wall time is the arm's script from start to exit, every test of the arm included.
+Command time is the arm's script from start to exit, every test of the arm included. The load average is the machine's 1-minute load as each run started.
 
-| Arm                                 | Command wall time | Commit      | Recordings  | Copied from                                     |
-| ----------------------------------- | ----------------- | ----------- | ----------- | ----------------------------------------------- |
-| Arm 1: plain goals                  | 326 s–345 s       | `90b9adcc7` | `19ff47386` | t3/pilot-agentic-inspector-tests at `93ad5a556` |
-| Arm 2: Page Objects                 | 185 s–189 s       | `90b9adcc7` | none        | none                                            |
-| Arm 3: goals with Page Object Tools | 285 s–291 s       | `90b9adcc7` | `a2ea7de9e` | t3/port-e2e-tool-replay at `71e2bdcd9`          |
+| Arm                                 | Command time | Load average | Commit      | Recordings                                                |
+| ----------------------------------- | ------------ | ------------ | ----------- | --------------------------------------------------------- |
+| Arm 1: plain goals                  | 324 s–328 s  | 5.6–43.5     | `57d5ffc6f` | `.e2e/goals-cache`, 241 entries, digest `df08f6150`       |
+| Arm 2: Page Objects                 | 333 s–340 s  | 5.3–12.8     | `57d5ffc6f` | none                                                      |
+| Arm 3: goals with Page Object Tools | 317 s–325 s  | 5.6–12.1     | `57d5ffc6f` | `.e2e/goals-tools-cache`, 241 entries, digest `28749b916` |
 
-## Goal steps not replayed
+## Goal steps that did not replay
 
-By test and line, with e2e's reason, the runs each was in and its usage there.
+By test and line: e2e's cache outcome and reason (`no-entry`: the recordings hold none for the step; e2e records nothing for a step that changed no control and no route, `no-change` in [When a recording is written](https://e2e.com/docs/cache#when-a-recording-is-written)), the step's outcome, and the runs it was in with their usage.
 
 Arm 1: plain goals:
 
-- detailRuns › external › a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives [chromium], line 81, "open What the model sees": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 1 (35,698 tokens), run 2 (35,688 tokens), run 3 (35,692 tokens).
-- inspector › the layout and its sizes survive a reload [chromium], line 69, "drag the panel's {edge} edge {distance} px to the {direction}": missed, no-entry. run 1 (83,269 tokens), run 2 (66,824 tokens), run 3 (66,533 tokens).
-- inspector › the layout and its sizes survive a reload [chromium], line 83, "drag the panel's {edge} edge {distance} px to the {direction}": missed, no-entry. run 1 (82,850 tokens), run 2 (81,964 tokens), run 3 (81,227 tokens).
-- inspector › the layout and its sizes survive a reload [chromium], line 97, "drag the panel's {edge} edge {distance} px {direction}": missed, no-entry. run 1 (98,576 tokens), run 2 (97,752 tokens), run 3 (96,569 tokens).
-- modelLens › external › hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid [chromium], line 54, "select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 1 (31,356 tokens), run 2 (31,322 tokens), run 3 (31,328 tokens).
-- runs › external › goal runs from the panel and shows in Runs with the Runs its steps executed and its Handover result [chromium], line 326, "open the Result of the latest {tool} run in Runs": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 1 (35,202 tokens), run 2 (35,172 tokens), run 3 (52,912 tokens).
-- runs › external › a run's result copies as the page's Run log has it [chromium], line 407, "copy the result of the latest {tool} run": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 1 (33,248 tokens), run 2 (68,145 tokens), run 3 (33,268 tokens).
-- structure › external › hovering a structure node highlights it on the page, and selecting it keeps it highlighted [chromium], line 37, "select the node tagged {tag} in the Structure lens": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 1 (33,886 tokens), run 2 (33,880 tokens), run 3 (33,870 tokens).
-- modelLens › inline › hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid [chromium], line 40, "hover the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens": agent-concluded, end-mismatch, every recorded action ran, but the recorded end state did not show on /models.html: missing node "locator('ayme-ref=e10')". run 2 (48,385 tokens), run 3 (48,459 tokens).
+- none
 
 Arm 3: goals with Page Object Tools:
 
-- detailRuns › external › a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives [chromium], line 81, "open What the model sees": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 1 (46,134 tokens), run 2 (46,160 tokens), run 3 (46,134 tokens).
-- modelLens › external › hovering a Page Object highlights it dashed on the page, and selecting it highlights it solid [chromium], line 54, "select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 1 (58,942 tokens), run 2 (39,198 tokens), run 3 (39,202 tokens).
-- runs › external › goal runs from the panel and shows in Runs with the Runs its steps executed and its Handover result [chromium], line 326, "open the Result of the latest {tool} run in Runs": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 1 (45,780 tokens), run 2 (45,834 tokens), run 3 (45,794 tokens).
-- runs › external › a run's result copies as the page's Run log has it [chromium], line 407, "copy the result of the latest {tool} run": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 1 (43,628 tokens), run 2 (43,550 tokens), run 3 (43,620 tokens).
-- runs › external › press_key presses the key the page receives [chromium], line 440, "set the key to {key}": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 1 (66,640 tokens), run 2 (44,331 tokens), run 3 (44,329 tokens).
-- structure › external › hovering a structure node highlights it on the page, and selecting it keeps it highlighted [chromium], line 37, "select the node tagged {tag} in the Structure lens": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 1 (41,922 tokens), run 2 (41,938 tokens), run 3 (41,928 tokens).
-- modelLens › external › hovering a member highlights it dashed, beside the selected Page Object's solid highlight [chromium], line 78, "select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens": agent-concluded, end-mismatch, every recorded action ran, but the recorded outcome already showed on http://127.0.0.1:<port>/inspector before the replay acted there, so nothing proves the replay produced it. run 2 (38,384 tokens).
+- none
 
 ## Tests that did not pass
 

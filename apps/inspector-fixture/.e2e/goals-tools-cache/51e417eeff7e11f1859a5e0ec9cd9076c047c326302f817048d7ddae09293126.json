@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T11:25:23.790Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap combobox \"key\" in \"press_key\"",
+        "target": {
+          "role": "combobox",
+          "name": "key",
+          "placeholder": "Press a key or combination",
+          "within": "press_key"
+        }
+      },
+      {
+        "name": "pressKey",
+        "summary": "press \"F7\" on the focused field",
+        "key": "F7"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::press_key%20presses%20the%20key%20the%20page%20receives",
+      "targetId": "chromium",
+      "instructionDigest": "6cbc9d2cf416fca1fd5e31eb41d0cdbd3809d38a758c65668e98a100b1b78162",
+      "paramsDigest": "878e4ccc50927b3e6ce1e3529320cc31c181639ce723c40e1e81391e08798910",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Focused the key field and pressed F7; the \"key\" combobox now reads value=\"F7\" (was F4). I did not press Run.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "key help",
+        "text": "Press a key or combo. Esc to search."
+      },
+      {
+        "role": "combobox",
+        "name": "key",
+        "placeholder": "Press a key or combination",
+        "value": "F7"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "combobox",
+        "name": "key",
+        "placeholder": "Press a key or combination",
+        "value": "F4"
+      }
+    ],
+    "endWaitMs": 13914,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

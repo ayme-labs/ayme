@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:25:38.431Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool RunCard_run",
+        "tool": "RunCard_run",
+        "input": "{\"args\":{\"text\":\"Milk\"}}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::a%20Page%20Object%20Tool%20run%20from%20the%20panel%20shows%20in%20Runs%20as%20the%20Inspector%27s%2C%20with%20its%20Interactions",
+      "targetId": "chromium",
+      "instructionDigest": "d85c9665e00a69807f24eed549a6105133b769324ffb7612cd010ac55e5b6b7e",
+      "paramsDigest": "248f82ce92389f110d414688c0f85759470d888e61bc6872e85835ad2187f4c3",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Ran ListPage.addItem with text \"Milk\". It succeeded in 322 ms with 2 interactions (fill, click). The page list now shows a \"Milk\" item, and Runs shows 1 run.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "role": "listitem",
+        "name": "Milk"
+      },
+      {
+        "role": "heading",
+        "name": "Page object tools · 4"
+      },
+      {
+        "text": "ListItem"
+      },
+      {
+        "text": ".mark"
+      },
+      {
+        "role": "textbox",
+        "name": "text",
+        "value": "Milk"
+      },
+      {
+        "text": "Running…"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 1",
+        "states": [
+          "expanded"
+        ]
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "Page object tools · 3"
+      },
+      {
+        "role": "textbox",
+        "name": "text"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 0",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "No runs for this selection yet. Switch to All to see every run."
+      },
+      {
+        "role": "region",
+        "name": "Page object tools · 3"
+      }
+    ],
+    "endWaitMs": 10218,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

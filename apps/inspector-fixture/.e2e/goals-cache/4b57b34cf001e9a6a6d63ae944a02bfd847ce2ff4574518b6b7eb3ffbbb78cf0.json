@@ -1,0 +1,119 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T19:55:21.243Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Tools\" in \"Model\"",
+        "target": {
+          "role": "button",
+          "name": "Tools",
+          "within": "Model"
+        }
+      },
+      {
+        "name": "tap",
+        "summary": "tap button \"ListPage.addItem\" in \"ListPage\"",
+        "target": {
+          "role": "button",
+          "name": "ListPage.addItem",
+          "within": "ListPage"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/mounting.goal.ts::mounted%20after%20the%20runtime%20started::records%20a%20run%20on%20a%20Page%20Object%20built%20before%20it%20and%20shows%20its%20click%20cue%20in%20demo%20mode",
+      "targetId": "chromium",
+      "instructionDigest": "6d62ed3de9467190cc7f358fe2d0041a17119d640f55752ab0560d90d95d4d4e",
+      "paramsDigest": "45c2bfa25d5d0aafc4fea9d4e4757908daf13e46c65cc2e4d66003942724d65a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Switched to the Tools lens and opened ListPage.addItem. Its detail panel now shows the addItem form with a \"text\" argument and a Run button.",
+    "startPath": "/late.html",
+    "endPath": "/late.html",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Model"
+      },
+      {
+        "role": "button",
+        "name": "Tools",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "text": "9 refs"
+      },
+      {
+        "role": "heading",
+        "name": "Page object tools · 3"
+      },
+      {
+        "text": "ListPage"
+      },
+      {
+        "text": ".addItem"
+      },
+      {
+        "text": ".countItems"
+      },
+      {
+        "name": "Destructive"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "Tools"
+      },
+      {
+        "text": "0 refs"
+      },
+      {
+        "role": "button",
+        "name": "On this page · 1",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "name": "/"
+      },
+      {
+        "text": "127.0.0.1:5203"
+      },
+      {
+        "text": "page"
+      },
+      {
+        "name": "entries"
+      }
+    ],
+    "endWaitMs": 13129,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

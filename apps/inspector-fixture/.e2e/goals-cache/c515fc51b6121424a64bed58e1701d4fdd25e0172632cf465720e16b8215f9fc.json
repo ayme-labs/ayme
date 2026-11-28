@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T08:38:00.764Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"mark_element\"",
+        "target": {
+          "role": "button",
+          "name": "mark_element"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline%20with%20WebMCP%20publication%20off::a%20Custom%20Tool%20runs%20from%20the%20panel",
+      "targetId": "chromium",
+      "instructionDigest": "6d62ed3de9467190cc7f358fe2d0041a17119d640f55752ab0560d90d95d4d4e",
+      "paramsDigest": "e0e89cf940a3cb35e7e17f0defb633a222ef6ec7a7381a1b198c219131d01572",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Tapped mark_element in the Tools lens. Its panel is open (heading \"mark_element\", \"Custom tool\", ref argument with a \"Pick an element on the page\" button, and Run). I did not run it.",
+    "startPath": "/unpublished.html",
+    "endPath": "/unpublished.html",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "mark_element"
+      },
+      {
+        "text": "Custom tool"
+      },
+      {
+        "text": "Mark one element on the page."
+      },
+      {
+        "text": "ref"
+      },
+      {
+        "text": "Choose an element"
+      },
+      {
+        "role": "button",
+        "name": "Pick an element on the page"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 0",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "No runs for this selection yet. Switch to All to see every run."
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "role": "heading",
+        "name": "snapshot"
+      },
+      {
+        "text": "Agent tool"
+      },
+      {
+        "text": "Return the current live structural page state together with compact POM capability definitions known to ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description, then lists the POM's declared children and its actions. A bare member is…"
+      },
+      {
+        "text": "names"
+      },
+      {
+        "text": "string[]"
+      },
+      {
+        "text": "optional"
+      },
+      {
+        "role": "button",
+        "name": "Add to names",
+        "text": "+ Add"
+      }
+    ],
+    "endWaitMs": 16002,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

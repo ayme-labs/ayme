@@ -2,40 +2,44 @@
   "arm": "arm2",
   "name": "Arm 2: Page Objects",
   "command": "pnpm study:baseline arm2",
-  "commit": "90b9adcc7470304c383d8c92b1d97828ec11fd39",
+  "commit": "57d5ffc6f17762793cdf90f2dbb7a2b19ae06c41",
   "build": "pnpm turbo run build --filter=@ayme-dev/inspector-fixture^..., before the runs",
   "env": {
     "E2E_TELEMETRY_DISABLED": "1"
   },
   "cohort": {
-    "shared": 106,
-    "others": 15,
-    "digest": "09bb68dd0add350b1b2e3ce2d3bd01a01a9f7f3542189f851e7d4fd792bee380"
+    "shared": 74,
+    "others": 13,
+    "digest": "847753169be10489f5b37d9a2f721b9cb347be5f8a8056120123773c05ae6dfe"
   },
   "runs": [
     {
-      "startedAt": "2026-11-27T15:20:40.856Z",
+      "startedAt": "2026-11-28T20:20:53.529Z",
       "status": "passed",
       "shared": {
-        "passed": 106,
-        "tests": 106,
-        "testMs": 157058,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 278365,
         "steps": 0,
         "replayed": 0,
-        "modelAnswered": 0,
-        "unaccounted": 0,
+        "reachedModel": 0,
+        "reachedModelFailed": 0,
+        "neither": 0,
+        "modelCalls": 0,
         "tokens": 0,
         "cacheReadTokens": 0,
         "noEntryTokens": 0
       },
       "others": {
-        "passed": 15,
-        "tests": 15,
-        "testMs": 27574,
+        "passed": 13,
+        "tests": 13,
+        "testMs": 60331,
         "steps": 0,
         "replayed": 0,
-        "modelAnswered": 0,
-        "unaccounted": 0,
+        "reachedModel": 0,
+        "reachedModelFailed": 0,
+        "neither": 0,
+        "modelCalls": 0,
         "tokens": 0,
         "cacheReadTokens": 0,
         "noEntryTokens": 0
@@ -43,31 +47,41 @@
       "estimatedCostUsd": null,
       "failedTests": [],
       "notReplayed": [],
-      "commandWallMs": 186362
+      "notReplayedGoals": {
+        "steps": 0,
+        "distinct": 0,
+        "perUse": 0
+      },
+      "commandWallMs": 340437,
+      "loadAverage": [6.74, 10.03, 11.18]
     },
     {
-      "startedAt": "2026-11-27T15:23:47.295Z",
+      "startedAt": "2026-11-28T20:26:34.113Z",
       "status": "passed",
       "shared": {
-        "passed": 106,
-        "tests": 106,
-        "testMs": 159162,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 273133,
         "steps": 0,
         "replayed": 0,
-        "modelAnswered": 0,
-        "unaccounted": 0,
+        "reachedModel": 0,
+        "reachedModelFailed": 0,
+        "neither": 0,
+        "modelCalls": 0,
         "tokens": 0,
         "cacheReadTokens": 0,
         "noEntryTokens": 0
       },
       "others": {
-        "passed": 15,
-        "tests": 15,
-        "testMs": 27833,
+        "passed": 13,
+        "tests": 13,
+        "testMs": 58603,
         "steps": 0,
         "replayed": 0,
-        "modelAnswered": 0,
-        "unaccounted": 0,
+        "reachedModel": 0,
+        "reachedModelFailed": 0,
+        "neither": 0,
+        "modelCalls": 0,
         "tokens": 0,
         "cacheReadTokens": 0,
         "noEntryTokens": 0
@@ -75,31 +89,41 @@
       "estimatedCostUsd": null,
       "failedTests": [],
       "notReplayed": [],
-      "commandWallMs": 188798
+      "notReplayedGoals": {
+        "steps": 0,
+        "distinct": 0,
+        "perUse": 0
+      },
+      "commandWallMs": 333555,
+      "loadAverage": [5.32, 7.97, 9.89]
     },
     {
-      "startedAt": "2026-11-27T15:26:56.093Z",
+      "startedAt": "2026-11-28T20:32:07.687Z",
       "status": "passed",
       "shared": {
-        "passed": 106,
-        "tests": 106,
-        "testMs": 155794,
+        "passed": 74,
+        "tests": 74,
+        "testMs": 271744,
         "steps": 0,
         "replayed": 0,
-        "modelAnswered": 0,
-        "unaccounted": 0,
+        "reachedModel": 0,
+        "reachedModelFailed": 0,
+        "neither": 0,
+        "modelCalls": 0,
         "tokens": 0,
         "cacheReadTokens": 0,
         "noEntryTokens": 0
       },
       "others": {
-        "passed": 15,
-        "tests": 15,
-        "testMs": 27407,
+        "passed": 13,
+        "tests": 13,
+        "testMs": 59888,
         "steps": 0,
         "replayed": 0,
-        "modelAnswered": 0,
-        "unaccounted": 0,
+        "reachedModel": 0,
+        "reachedModelFailed": 0,
+        "neither": 0,
+        "modelCalls": 0,
         "tokens": 0,
         "cacheReadTokens": 0,
         "noEntryTokens": 0
@@ -107,7 +131,13 @@
       "estimatedCostUsd": null,
       "failedTests": [],
       "notReplayed": [],
-      "commandWallMs": 184925
+      "notReplayedGoals": {
+        "steps": 0,
+        "distinct": 0,
+        "perUse": 0
+      },
+      "commandWallMs": 333422,
+      "loadAverage": [12.76, 10.97, 10.46]
     }
   ]
 }

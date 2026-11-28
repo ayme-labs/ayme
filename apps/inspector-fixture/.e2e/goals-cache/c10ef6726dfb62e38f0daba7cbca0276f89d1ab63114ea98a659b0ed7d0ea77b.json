@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:27:27.437Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "type",
+        "summary": "type \"Milk\" into textbox \"New item\"",
+        "target": {
+          "role": "textbox",
+          "name": "New item"
+        },
+        "value": "Milk"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::the%20fill_form%20editor%20fills%20only%20the%20fields%20still%20changed%20after%20an%20undo",
+      "targetId": "chromium",
+      "instructionDigest": "cadd9aca687c42188af85f0191909180c579ed6a2a22fcd4dbcc20146674081f",
+      "paramsDigest": "41b1b63255b1e28084d56b68b4b7decaea99a7296c848999fdd4202dfd57dd6f",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Typed \"Milk\" into the New item field in the fill_form form. The field shows value \"Milk\", the counter reads \"1 changed\", and the row has fill order 1. I did not press Run.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Changed fields",
+        "text": "1 changed"
+      },
+      {
+        "role": "button",
+        "name": "Undo all"
+      },
+      {
+        "name": "Fill order",
+        "text": "1"
+      },
+      {
+        "role": "button",
+        "name": "Undo the change to New item"
+      },
+      {
+        "role": "textbox",
+        "name": "New item",
+        "value": "Milk"
+      },
+      {
+        "role": "listitem",
+        "name": "Move New item Fill order New item textbox Undo the change to New item Milk"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "status",
+        "name": "Changed fields",
+        "text": "0 changed"
+      },
+      {
+        "role": "textbox",
+        "name": "New item"
+      },
+      {
+        "role": "listitem",
+        "name": "Move New item New item textbox"
+      }
+    ],
+    "endWaitMs": 14200,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

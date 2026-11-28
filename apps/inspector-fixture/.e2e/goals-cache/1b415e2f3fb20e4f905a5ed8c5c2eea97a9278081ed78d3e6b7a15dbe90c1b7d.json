@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T20:14:01.924Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"page_objects\"",
+        "target": {
+          "role": "button",
+          "name": "page_objects"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::Clear%20empties%20Runs%2C%20and%20the%20run%20after%20it%20is%20the%20only%20one%20shown",
+      "targetId": "chromium",
+      "instructionDigest": "6d62ed3de9467190cc7f358fe2d0041a17119d640f55752ab0560d90d95d4d4e",
+      "paramsDigest": "a5cfbe398d37ef8c48315f5120dbb13a42f9be152cc3805769d2d2e451111434",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "In the Tools lens I opened the page_objects tool. The detail panel now shows the \"page_objects\" heading, the \"Agent tool\" label, its description, a page_objects form with a Run button, and a \"What the model sees\" section.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "page_objects"
+      },
+      {
+        "text": "Agent tool"
+      },
+      {
+        "text": "Returns the Page Objects on the page now as a tree: each one's class, its declared children with their values, and the id (po<n>) of each one that has a root."
+      },
+      {
+        "text": "1 tool schema"
+      },
+      {
+        "role": "article",
+        "name": "page_objects"
+      },
+      {
+        "role": "form",
+        "name": "page_objects"
+      },
+      {
+        "role": "button",
+        "name": "What the model sees · 1 tool schema",
+        "text": "What the model sees ·"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "ListPage.countItems"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "text": "Page object tool"
+      },
+      {
+        "text": "definition and 1 tool schema"
+      },
+      {
+        "role": "article",
+        "name": "ListPage.countItems"
+      },
+      {
+        "role": "button",
+        "name": "Open the ListPage page object model"
+      },
+      {
+        "role": "form",
+        "name": "countItems"
+      },
+      {
+        "role": "button",
+        "name": "What the model sees · definition and 1 tool schema",
+        "text": "What the model sees ·"
+      }
+    ],
+    "endWaitMs": 12715,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

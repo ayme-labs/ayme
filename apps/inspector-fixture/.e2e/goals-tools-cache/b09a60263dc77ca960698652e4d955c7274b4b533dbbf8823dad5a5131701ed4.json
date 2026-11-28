@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:28:11.422Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool ToolsLens_select",
+        "tool": "ToolsLens_select",
+        "input": "{\"name\":\"press_key\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/toolsLens.goal.ts::inline::connected%20to%20an%20agent::each%20tool%27s%20page%20shows%20the%20description%2C%20schema%20and%20destructive%20mark%20an%20agent%20gets",
+      "targetId": "chromium",
+      "instructionDigest": "c0ef0f80d32f22a63457535e3308a3b84235105d11e9ba43ca818eb359020511",
+      "paramsDigest": "3ec46273c501b06d07ee0083c6b8a8f8c00168cf9e33723325360667d8e4d9f5",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Selected the press_key tool in the Tools lens. Its page opened with the \"press_key\" heading, a \"Browser tool\" label, an Arguments form (key) and a Run button.",
+    "startPath": "/?agent=",
+    "endPath": "/?agent=",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "press_key"
+      },
+      {
+        "text": "Press a key on the element that has focus. The result's changes_before lists what changed on the page since you last received it, before this action; changes lists what the action changed, anything that changed while the page settled after it included."
+      },
+      {
+        "text": "Arguments"
+      },
+      {
+        "role": "button",
+        "name": "Form",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "JSON"
+      },
+      {
+        "text": "key"
+      },
+      {
+        "role": "combobox",
+        "name": "key",
+        "placeholder": "Press a key or combination"
+      },
+      {
+        "role": "button",
+        "name": "Search key names instead"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "status",
+        "name": "Changed fields",
+        "text": "0 changed"
+      },
+      {
+        "role": "heading",
+        "name": "fill_form"
+      },
+      {
+        "text": "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled. The result's changes_before lists what changed on the page since you last received it, before this action; changes lists what the action changed, anything that changed while…"
+      },
+      {
+        "text": "Fields"
+      },
+      {
+        "text": "Every field on the page, holding what it shows now. The ones you change are filled, in the numbered order; drag a row to change it."
+      },
+      {
+        "role": "button",
+        "name": "Move New item"
+      },
+      {
+        "text": "textbox"
+      },
+      {
+        "role": "button",
+        "name": "Move Urgent"
+      }
+    ],
+    "endWaitMs": 10123,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}
