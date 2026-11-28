@@ -292,6 +292,9 @@ describe("whether two plain JSON values are the same", () => {
     expect(sameJson({ a: 1, b: 2 }, { a: 1 })).toBe(false);
     expect(sameJson([1, 2], [1])).toBe(false);
     expect(sameJson({ a: { b: 1 } }, { a: { b: 2 } })).toBe(false);
+    expect(sameJson(1, {})).toBe(false);
+    expect(sameJson({}, 1)).toBe(false);
+    expect(sameJson({ a: 1, b: 2 }, { a: 1, b: 3 })).toBe(false);
   });
 });
 
