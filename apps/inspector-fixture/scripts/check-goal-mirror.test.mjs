@@ -283,3 +283,14 @@ test("rejects a spec title its e2e twin lacks", () => {
     /pair\.spec\.ts has "adds a loaf", and pair\.e2e\.ts does not/
   );
 });
+
+test("rejects a spec title twice where its e2e twin has it once", () => {
+  assert.match(
+    specProblemsWith(new Map(), [
+      spec,
+      'test("adds an item", async () => {});',
+      'test("adds an item", async () => {});\ntest.describe("again", () => {\n  test("adds an item", async () => {});\n});',
+    ]),
+    /^pair\.spec\.ts has "adds an item", and pair\.e2e\.ts does not$/
+  );
+});

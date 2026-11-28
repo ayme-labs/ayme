@@ -110,8 +110,8 @@ const layouts: LayoutChoice[] = [
 ];
 
 // One z-index is enough: the Inspector's host takes the highest z-index
-// there is (packages/inspector/src/app/inspector.css), so a page widget
-// stacks below it at any z-index it can have.
+// there is (packages/inspector/src/app/inspector.css), so a page widget at
+// any lower one stacks below it.
 const zIndex = 101;
 
 describe(`over a page widget at z-index ${zIndex}`, () => {

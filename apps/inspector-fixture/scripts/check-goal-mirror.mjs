@@ -569,10 +569,15 @@ export function checkSpecs({
       continue;
     }
     const [a, b] = [spec, twin].map((f) => testTitles(f, read(join(tests, f))));
-    for (const title of a.filter((t) => !b.includes(t)))
-      problems.push(`${spec} has "${title}", and ${twin} does not`);
-    for (const title of b.filter((t) => !a.includes(t)))
-      problems.push(`${twin} has "${title}", and ${spec} does not`);
+    // Counted, so a title twice in one file needs it twice in the other.
+    const count = (titles, title) => titles.filter((t) => t === title).length;
+    for (const title of new Set([...a, ...b])) {
+      const [inSpec, inTwin] = [count(a, title), count(b, title)];
+      if (inSpec > inTwin)
+        problems.push(`${spec} has "${title}", and ${twin} does not`);
+      if (inTwin > inSpec)
+        problems.push(`${twin} has "${title}", and ${spec} does not`);
+    }
   }
   return problems;
 }
