@@ -121,6 +121,14 @@ export type TimelineAddition =
        */
       readonly resumes?: boolean;
     }
+  /** A read a held input waited on that could not be taken, as when the
+   * page did not answer in time, on a page that had no read to start from:
+   * the input starts at it. It holds its place as a read that could not be
+   * kept, at `at`, the moment the input reached the page. */
+  | {
+      readonly kind: "unread";
+      readonly snapshot: Omit<PageSnapshot, "tree">;
+    }
   | {
       readonly kind: "interaction";
       readonly interaction: RecordedInteraction;

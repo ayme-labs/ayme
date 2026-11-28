@@ -595,6 +595,135 @@ describe("a recording", () => {
   });
 });
 
+// Issue #1525, its third page shape: a page whose read is slow or never
+// answers. A held click waits for its "before" only a short time.
+describe("a recording on a page that is slow to read", () => {
+  const sent = [
+    `- generic [ref=e1]:`,
+    `  - button "Save" [ref=e2]`,
+    `  - status [ref=e3]: Sent`,
+  ].join("\n");
+  const read = (snapshot: string) =>
+    ({ kind: "takeSnapshot", snapshot, page: "page_1" }) as const;
+
+  it("passes a held click on once its read has had three quarters of a second, and records it from the page's last read, with its element and its changes", async () => {
+    const { recorder, browser } = await start();
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    browser.holdClick();
+    await browser.asks(waitForSettled);
+    browser.showPage(saved);
+    browser.settle();
+    browser.report(click);
+    await browser.asks(read("snapshot_2"));
+
+    browser.holdSnapshots();
+    browser.holdClick();
+    await browser.asks(read("snapshot_3"));
+    await browser.advanceTime(749);
+    expect(browser.passedOn).toEqual(["input_1"]);
+    await browser.advanceTime(1);
+    await expect.poll(() => browser.passedOn).toEqual(["input_1", "input_2"]);
+    browser.releaseSnapshots();
+    await browser.asks({ ...waitForSettled, input: "input_2" });
+    browser.showPage(sent);
+    browser.settle();
+    browser.report(click);
+    await recorder.send({ type: "finish" });
+
+    const outcome = await recorder.done;
+    const text = await readFile(
+      join((outcome as { folder: string }).folder, "package.yaml"),
+      "utf8"
+    );
+    const second = text.split("id: interaction_2")[1]!;
+    expect(second).toContain("targetRef: e2");
+    expect(second).toContain("<changed> [ref=e3] status: Sent");
+    expect(text).toContain(
+      [
+        `  - interactionId: interaction_2`,
+        `    pageId: page_1`,
+        `    beforeSnapshotId: "20"`,
+      ].join("\n")
+    );
+  });
+
+  it("records a held click on a page never read without its changes, once its read has had three quarters of a second, and warns that the page could not be read before it", async () => {
+    const { recorder, browser } = await start();
+    const updates: RecorderUpdate[] = [];
+    recorder.subscribe((update) => updates.push(update));
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    browser.holdSnapshots();
+    browser.holdClick();
+    await browser.asks(read("snapshot_1"));
+
+    await browser.advanceTime(750);
+    await expect.poll(() => browser.passedOn).toEqual(["input_1"]);
+    await browser.asks(waitForSettled);
+    browser.settle();
+    await browser.asks(read("snapshot_3"));
+    browser.report(click);
+    // The read after it, and the wrap-up's last read, never answer either:
+    // each has five seconds.
+    await browser.advanceTime(5_000);
+    await recorder.send({ type: "finish" });
+    await browser.advanceTime(5_000);
+
+    const outcome = await recorder.done;
+    const text = await readFile(
+      join((outcome as { folder: string }).folder, "package.yaml"),
+      "utf8"
+    );
+    expect(text).toContain(
+      [
+        `          id: interaction_1`,
+        `          type: click`,
+        `          targetRef: null`,
+      ].join("\n")
+    );
+    expect(text).not.toContain("changeTree:");
+    expect(updates.at(-1)!.state.warnings).toContainEqual({
+      kind: "pageNotRead",
+      message:
+        "The page could not be read before interaction_1, so its target is known by its selector only and it has no change list.",
+    });
+  });
+
+  it("gives the read after a click only the short time once a second click waits on it", async () => {
+    const { recorder, browser, endWithin } = await start();
+    browser.showPage(idle);
+    await recorder.send({ type: "record" });
+    browser.holdClick();
+    await browser.asks(waitForSettled);
+    browser.holdSnapshots();
+    browser.settle();
+    await browser.asks(read("snapshot_2"));
+    await browser.advanceTime(1_000);
+
+    browser.holdClick();
+    // The clock moves in small steps, since the time is given as the worker
+    // takes the click in, which a test cannot see.
+    let moved = 0;
+    const asked = JSON.stringify(read("snapshot_3"));
+    while (
+      !browser.asked.some((request) => JSON.stringify(request) === asked) &&
+      moved < 4_000
+    ) {
+      await browser.advanceTime(50);
+      moved += 50;
+    }
+    // The read after the first click is given up well before its own five
+    // seconds: the second click's own read is asked, with the short time.
+    expect(moved).toBeGreaterThanOrEqual(750);
+    expect(moved).toBeLessThan(4_000);
+    await browser.asks(read("snapshot_3"));
+    await browser.advanceTime(750);
+    await expect.poll(() => browser.passedOn).toEqual(["input_1", "input_2"]);
+    await endWithin(65_000);
+  });
+});
+
 describe("a recording's warnings", () => {
   it("tells every subscriber a warning of the browser in the state, once", async () => {
     const { recorder, browser } = await start();

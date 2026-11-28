@@ -260,6 +260,13 @@ export type ToDo =
        */
       readonly within?: number;
     }
+  /** Give a request under way a time for its answer from now on, beside
+   * any it has, as `within` gives one when it is asked. */
+  | {
+      readonly kind: "limitAnswer";
+      readonly ask: BrowserRequest;
+      readonly within: number;
+    }
   | { readonly kind: "timeline"; readonly add: TimelineAddition }
   /** Tell the lifecycle "timeLimitPassed" after this long. */
   | { readonly kind: "startTimeLimit"; readonly ms: number }
@@ -315,6 +322,24 @@ export const TRACE_STOP_LIMIT_MS = 60_000;
 export const STORAGE_SAVE_LIMIT_MS = 30_000;
 
 /**
+ * How long a read of the page may take that a held click or key waits on:
+ * the input reaches the page once it has passed. On the largest pages
+ * measured, Wikipedia's "United States" and the HTML standard's parsing
+ * chapter, a read takes 0.3 to 0.66 seconds, and holds the page's own
+ * thread meanwhile, so a shorter limit would make no click faster there; a
+ * page of 60 nested named regions is never read (issue #1525).
+ */
+export const HELD_READ_LIMIT_MS = 750;
+
+/**
+ * How long any other read of the page may take, as the one after a click
+ * that holds nothing back: it is the next click's start when that click's
+ * own read fails, so it is given longer. A 4 times slower processor takes
+ * up to 2.3 seconds for the largest page measured.
+ */
+export const READ_LIMIT_MS = 5_000;
+
+/**
  * Whether the state still waits for the answer to a request that was given
  * a time for it (`within`). The worker ends the time of a request that is no
  * longer waited for, so that it cannot pass for a later one of its kind.
@@ -325,9 +350,22 @@ export function awaitsAnswer(
 ): boolean {
   if (request.kind === "saveStorage")
     return endingOf(state)?.discardingTrace === false;
+  if (request.kind === "takeSnapshot")
+    return awaitsRead(state, request.snapshot);
   if (request.kind !== "stopTrace") return false;
   return Boolean(
     request.keep ? savingOf(state)?.stoppingTrace : discarding(state)
+  );
+}
+
+/** Whether an input, the wrap-up or a Continue waits for this read. */
+function awaitsRead(state: LifecycleState, read: SnapshotId): boolean {
+  if (!isActive(state)) return false;
+  return (
+    state.inputs.some((input) => input.asked === read) ||
+    state.gates.some((gate) => gate.resuming === read) ||
+    (wrappingUpOf(state)?.finals?.some((final) => final.snapshot === read) ??
+      false)
   );
 }
 
@@ -402,6 +440,10 @@ type Input = {
    * was reported, and had no snapshot yet: its "after" is its "before" too,
    * and Playwright's picture of the page is not set against it. */
   readonly unread: boolean;
+  /** Its "before" could not be taken, on a page that had no read to start
+   * from: it starts at a read the timeline is told was lost, once it has
+   * reached the page and so has its moment. */
+  readonly beforeLost?: boolean;
   /** Known from its report, on a page that went to another document since:
    * what Playwright reports as a revision of it is typing of its own there. */
   readonly elsewhere?: boolean;
@@ -1385,20 +1427,44 @@ function change(draft: Draft, id: InputId, patch: Partial<Input>) {
   );
 }
 
-/** Asks for a snapshot of a page and says which one it will be. */
-function askSnapshot(draft: Draft, page: PageId): SnapshotId {
-  const snapshot = `snapshot_${++draft.snapshotsAsked}` as SnapshotId;
+/** Asks for a snapshot of a page and says which one it will be. A read a
+ * held input waits on has the short time. */
+function askSnapshot(
+  draft: Draft,
+  page: PageId,
+  waitedOn: boolean
+): SnapshotId {
+  const snapshot = nextSnapshotId(draft);
   draft.todo.push({
     kind: "browser",
     ask: { kind: "takeSnapshot", snapshot, page },
+    within: waitedOn ? HELD_READ_LIMIT_MS : READ_LIMIT_MS,
   });
   return snapshot;
 }
 
+/** Whether a held input of the page, other than `except`, waits its turn:
+ * it reaches the page only after the read under way. */
+const heldWaits = (draft: Draft, page: PageId, except?: Input) =>
+  draft.inputs.some(
+    (input) =>
+      input !== except &&
+      input.page === page &&
+      input.stage === "waiting" &&
+      heldByItsPage(input)
+  );
+
+const nextSnapshotId = (draft: Draft) =>
+  `snapshot_${++draft.snapshotsAsked}` as SnapshotId;
+
 /** One snapshot between two inputs of a page: the earlier one's "after" and
  * the later one's "before". The earlier input gets no further wait. */
 function askSharedSnapshot(draft: Draft, earlier: Input, later: Input) {
-  const asked = askSnapshot(draft, earlier.page);
+  const asked = askSnapshot(
+    draft,
+    earlier.page,
+    heldByItsPage(later) || heldWaits(draft, earlier.page)
+  );
   change(draft, earlier.id, { stage: "takingAfter", asked });
   change(draft, later.id, { stage: "takingBefore", asked });
 }
@@ -1456,12 +1522,7 @@ function heard(state: Active, draft: Draft, happening: BrowserSignal): Active {
     case "snapshotTaken":
       return snapshotTaken(state, draft, happening.snapshot);
     case "inputPassedOn":
-      inputPassedOn(
-        draft,
-        happening.input,
-        happening.at,
-        state.phase === "wrappingUp"
-      );
+      inputPassedOn(state, draft, happening.input, happening.at);
       return state;
     case "pageSettled":
       pageSettled(draft, happening.input);
@@ -1515,7 +1576,9 @@ function inputsHeld(state: Active, draft: Draft, on: boolean): Active {
   // held back: from here on, what changes is recorded.
   if (state.resumed)
     for (const page of state.pages)
-      changeGate(draft, page.id, { resuming: askSnapshot(draft, page.id) });
+      changeGate(draft, page.id, {
+        resuming: askSnapshot(draft, page.id, false),
+      });
   return { ...state, starting: false };
 }
 
@@ -1532,6 +1595,22 @@ function inputHeld(
   changeGate(draft, page, { holding: true, upTo: held.id });
   // A newer snapshot closes the previous Interaction.
   if (earlier?.stage === "settling") askSharedSnapshot(draft, earlier, held);
+  else if (earlier) hurryFor(draft, earlier, held);
+}
+
+/** A held input waits behind the read of an earlier input under way: from
+ * now on that read has the time of a read a held input waits on, as the
+ * input reaches the page only after it. The first input to wait gives it
+ * that time; a read for a held input has it already. */
+function hurryFor(draft: Draft, earlier: Input, held: Input) {
+  if (!earlier.asked) return;
+  if (earlier.stage === "takingBefore" && heldByItsPage(earlier)) return;
+  if (heldWaits(draft, held.page, held)) return;
+  draft.todo.push({
+    kind: "limitAnswer",
+    ask: { kind: "takeSnapshot", snapshot: earlier.asked, page: held.page },
+    within: HELD_READ_LIMIT_MS,
+  });
 }
 
 /** A snapshot is in: it is kept when an input, a wrap-up or a Continue
@@ -1651,17 +1730,25 @@ function giveSnapshot(draft: Draft, owner: Input, snapshot: PageSnapshot) {
 const startAt = (input: Input, snapshot: SnapshotId, at: number | null) =>
   input.unread && !input.before ? { before: snapshot, passedOnAt: at } : {};
 
-function inputPassedOn(
-  draft: Draft,
-  id: InputId,
-  at: number,
-  wrappingUp: boolean
-) {
+function inputPassedOn(state: Active, draft: Draft, id: InputId, at: number) {
+  const wrappingUp = state.phase === "wrappingUp";
   const input = draft.inputs.find(
     (held) => held.id === id && held.stage === "passingOn"
   );
   if (!input) return;
   change(draft, input.id, { passedOnAt: at });
+  // It starts at the read it could not have, as the page stood when it
+  // reached it: the timeline holds its place in the page's Visit, before
+  // the read after it is asked.
+  const page = state.pages.find((open) => open.id === input.page);
+  if (input.beforeLost && input.before && page)
+    draft.todo.push({
+      kind: "timeline",
+      add: {
+        kind: "unread",
+        snapshot: { id: input.before, page: page.id, url: page.url, at },
+      },
+    });
   // Typing has no "after": what it changed is the typing's report's. In a
   // wrap-up it stays under way until its page is settled, which gives its
   // report time to arrive, since nothing guarantees that the report comes
@@ -1701,7 +1788,7 @@ function pageSettled(draft: Draft, id: InputId) {
     return change(draft, input.id, { stage: "settled" });
   change(draft, input.id, {
     stage: "takingAfter",
-    asked: askSnapshot(draft, input.page),
+    asked: askSnapshot(draft, input.page, heldWaits(draft, input.page)),
   });
 }
 
@@ -1924,7 +2011,7 @@ function startReported(draft: Draft, index: number): boolean {
     change(draft, input.id, {
       // Stryker disable next-line StringLiteral: no rule reads this stage of an input no page held; it is only no longer "waiting", as with any other name
       stage: "takingBefore",
-      asked: askSnapshot(draft, input.page),
+      asked: askSnapshot(draft, input.page, false),
     });
     return false;
   }
@@ -2132,7 +2219,7 @@ function startNext(draft: Draft) {
     } else
       change(draft, next.id, {
         stage: "takingBefore",
-        asked: askSnapshot(draft, page),
+        asked: askSnapshot(draft, page, heldWaits(draft, page)),
       });
   }
 }
@@ -2201,7 +2288,7 @@ function finalReads(
   if (!ready) return state.finals;
   return state.pages.map((page) => ({
     page: page.id,
-    snapshot: askSnapshot(draft, page.id),
+    snapshot: askSnapshot(draft, page.id, false),
   }));
 }
 
@@ -2590,10 +2677,22 @@ function withoutItsSnapshot(draft: Draft, owner: Input) {
     return;
   }
   if (heldByItsPage(owner)) {
-    // Without a "before" it cannot be recorded. It is the page's all the
-    // same: it is passed on, and goes its way like any other, so that the
-    // inputs behind it keep their order.
-    change(draft, owner.id, { stage: "passingOn", asked: null });
+    // It is the page's: it is passed on, and goes its way like any other,
+    // so that the inputs behind it keep their order. A click or a press
+    // starts from the page's last read, which the page's next document
+    // forgets (`leftDocument`); with none, from a read the timeline is told
+    // was lost, and is recorded with no element and no changes. Typing
+    // needs no "before": what it changed is its report's.
+    const latest = gateOf(draft, owner.page)?.latest;
+    change(draft, owner.id, {
+      stage: "passingOn",
+      asked: null,
+      ...(owner.held.kind === "typing"
+        ? {}
+        : latest
+          ? { before: latest.id }
+          : { before: nextSnapshotId(draft), beforeLost: true }),
+    });
     draft.todo.push({
       kind: "browser",
       ask: { kind: "passOn", input: owner.id },
