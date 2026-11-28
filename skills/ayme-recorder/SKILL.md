@@ -272,6 +272,11 @@ A warning can also name what is no step:
   changed by itself around it without an entry for it. When recording
   resumed at that read after a pause, the page may have loaded again: the
   same element can have another ref after it than before.
+- A page, by its URL, whose inputs `are not recorded`: what the user did
+  there may be missing from the package. Ask the user what they did on that
+  page. The
+  [Recorder guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#warnings)
+  says what the warning means.
 
 ## Write page objects from the recording
 

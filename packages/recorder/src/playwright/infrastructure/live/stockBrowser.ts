@@ -15,6 +15,7 @@ import type {
   BrowserContext,
   BrowserContextOptions,
   CDPSession,
+  ConsoleMessage,
   Frame,
   Locator,
   Page,
@@ -37,7 +38,7 @@ import {
   type SnapshotId,
 } from "../../../timeline/domain";
 import {
-  askRecorderState,
+  askRecorderStateIfHeard,
   closeGate,
   fileNamesIn,
   frameContentOffset,
@@ -417,11 +418,27 @@ async function openPage(
   let gateChanges = 0;
   let pickingChanges = 0;
 
+  /** Tells a person of a document whose gate held nothing back, as it said
+   * on the console (`gateIn`). The text is the page's: a page can forge the
+   * warning, and nothing else. */
+  const heardOnConsole = (message: ConsoleMessage) => {
+    const said = message.text();
+    if (message.type() !== "debug" || !said.startsWith(`${heldBinding} `))
+      return;
+    tell({
+      kind: "browserWarned",
+      warning: {
+        kind: "notRecorded",
+        message: `Inputs on ${said.slice(heldBinding.length + 1)} are not recorded: the page changed JSON.stringify, or how it writes an object, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs still reach the page. Stop and finish in the recorder window, at the address the recorder printed.`,
+      },
+    });
+  };
   const track = (page: Page) => {
     const id = `page_${idOf.size + 1}` as PageId;
     pages.set(id, page);
     idOf.set(page, id);
     tell({ kind: "pageOpened", page: id, url: page.url() });
+    page.on("console", heardOnConsole);
     page.on("framenavigated", (frame) => {
       if (frame === page.mainFrame())
         tell({ kind: "pageNavigated", page: id, url: frame.url() });
@@ -993,14 +1010,16 @@ async function openPage(
    * one, can be overtaken by a switch-off from here; once switched off,
    * Playwright drops it. Each document asks Playwright's recorder for its
    * state (a private part of Playwright, as `noLongerRecording` says): the
-   * answer comes after the document's earlier reports were taken. A call
+   * answer comes after the document's earlier reports were taken. A document
+   * whose calls do not reach Playwright has no report on its way, and would
+   * never answer: it is not asked (`askRecorderStateIfHeard`). A call
    * Playwright traces: never inside a snapshot's mark.
    */
   async function everyReportDelivered() {
     const asked = markers.then(() =>
       Promise.all(
         everyFrame().map((frame) =>
-          frame.evaluate(askRecorderState).catch(() => {})
+          frame.evaluate(askRecorderStateIfHeard).catch(() => {})
         )
       )
     );
