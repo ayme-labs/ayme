@@ -1155,7 +1155,12 @@ describe("live Page Object registry", () => {
       replacePageObjects(session.ayme, running, [compiled(registry, "Shop")]);
       expect(registry.listAvailablePomTools()).toEqual([]);
 
-      const observed = observePageObjects(session.ayme);
+      let read = false;
+      const observed = observePageObjects(session.ayme).then(
+        () => (read = true)
+      );
+      await Promise.resolve();
+      expect(read).toBe(false);
       await vi.runOnlyPendingTimersAsync();
       await observed;
 
