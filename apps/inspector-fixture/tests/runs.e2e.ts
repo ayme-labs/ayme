@@ -8,6 +8,7 @@ import {
   placements,
   reloadFixture,
   testIn,
+  confirmGoalRecordings,
 } from "./e2e/fixtures";
 
 // E2E: running tools from the panel, on the fixture page with the real
@@ -57,17 +58,19 @@ for (const placement of placements) {
       expect(shown?.interactions).toEqual([]);
       await expect.poll(async () => (await run.read())?.targetGone).toBe(true);
       await reloadFixture(page, "/");
-      await inspector.open();
-      await inspector.runs.showAll();
       await expect
         .poll(async () => (await inspector.runs.latest("click").read())?.toggle)
         .toContain('button "Dismiss notice"');
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a Page Object Tool run from the panel shows in Runs as the Inspector's, with its Interactions", async ({
+      browser,
       inspector,
     }) => {
-      await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+      await inspector.tool("ListPage.addItem");
+      await inspector.detail.runCard().run({ text: "Milk" });
 
       const run = inspector.runs.latest("ListPage.addItem");
       await expect.poll(() => run.status()).toBe("Succeeded");
@@ -83,9 +86,12 @@ for (const placement of placements) {
           },
           { operation: "click", target: "ListPage.addItemButton" },
         ]);
+
+      await confirmGoalRecordings(browser);
     });
 
     test("form fields keep their names and values without repeating their refs", async ({
+      browser,
       appView,
       inspector,
     }) => {
@@ -115,6 +121,8 @@ for (const placement of placements) {
           { name: "Urgent", type: "checkbox", value: "true" },
         ],
       });
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a selection's chosen values show beside its readable target", async ({
@@ -146,6 +154,8 @@ for (const placement of placements) {
       const shown = await run.read();
       expect(shown?.toggle).toContain('combobox "Size"');
       expect(shown?.arguments).toBeNull();
+
+      await confirmGoalRecordings(browser);
     });
 
     test("hovering a run's Interaction highlights its element on the page", async ({
@@ -153,7 +163,8 @@ for (const placement of placements) {
       inspector,
       listPage,
     }) => {
-      await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+      await inspector.tool("ListPage.addItem");
+      await inspector.detail.runCard().run({ text: "Milk" });
       const run = inspector.runs.latest("ListPage.addItem");
       await expect.poll(() => run.status()).toBe("Succeeded");
 
@@ -167,9 +178,12 @@ for (const placement of placements) {
       await expect
         .poll(outline(listPage.addItemButton, browser))
         .toBe("dashed");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a Custom Tool runs from the panel and shows in Runs", async ({
+      browser,
       appView,
       inspector,
       listPage,
@@ -177,7 +191,9 @@ for (const placement of placements) {
       // The Add item button's ref, as snapshot gives it.
       const ref = await appView.ref('button "Add item"');
 
-      await (await inspector.tool("mark_element")).run({ ref });
+      await inspector.tool("mark_element");
+
+      await inspector.detail.runCard().run({ ref });
 
       await expect(await listPage.addItemButton.front()).toHaveAttribute(
         "data-marked"
@@ -185,25 +201,28 @@ for (const placement of placements) {
       const run = inspector.runs.latest("mark_element");
       await expect.poll(() => run.status()).toBe("Succeeded");
       expect(await run.caller()).toEqual(INSPECTOR);
+
+      await confirmGoalRecordings(browser);
     });
 
     // The run card's and Runs' own choices, made with the mouse in the closed
     // shadow root the Inspector mounts in. None of them is a popup that could
     // close before the press lands.
     test("a collection action runs on the item and choice picked with the mouse", async ({
+      browser,
       inspector,
       listPage,
     }) => {
       await listPage.addItem("Milk");
       await listPage.addItem("Eggs");
-      const mark = await inspector.tool("ListItem.mark");
+      await inspector.tool("ListItem.mark");
 
-      await mark.pickItem("Eggs");
-      await mark.jsonSwitch.click();
-      await mark.formSwitch.click();
+      await inspector.detail.runCard().pickItem("Eggs");
+      await inspector.detail.runCard().jsonSwitch.click();
+      await inspector.detail.runCard().formSwitch.click();
       // "done" is the field's first choice, which it shows before any pick.
-      await mark.field("state").selectOption("todo");
-      await mark.runButton.click();
+      await inspector.detail.runCard().field("state").selectOption("todo");
+      await inspector.detail.runCard().runButton.click();
 
       const item = (text: string) =>
         listPage.items.within((items) => items.filter({ hasText: text }));
@@ -214,12 +233,16 @@ for (const placement of placements) {
       await expect(await item("Milk").front()).not.toHaveAttribute(
         "data-state"
       );
+
+      await confirmGoalRecordings(browser);
     });
 
     test("Runs switches between the selection's runs and all runs with the mouse", async ({
+      browser,
       inspector,
     }) => {
-      await (await inspector.tool("ListPage.countItems")).runButton.click();
+      await inspector.tool("ListPage.countItems");
+      await inspector.detail.runCard().runButton.click();
       await inspector.navigator.item("ListPage.addItem").click();
       await expect(await inspector.runs.runs.front()).toHaveCount(0);
 
@@ -230,19 +253,24 @@ for (const placement of placements) {
 
       await inspector.runs.showSelection();
       await expect(await inspector.runs.runs.front()).toHaveCount(0);
+
+      await confirmGoalRecordings(browser);
     });
 
     // The fixture stubs the Goal Loop's decision (clear the list, then judge
     // the goal met), so this covers the panel's run, not the model's
     // judgement.
     test("goal runs from the panel and shows in Runs with the Runs its steps executed and its Handover result", async ({
+      browser,
       inspector,
       listPage,
     }) => {
       await listPage.addItem("Milk");
 
-      const pursueGoal = await inspector.tool("goal");
-      await pursueGoal.run({ goal: "Empty the list", maxSteps: 3 });
+      await inspector.tool("goal");
+      await inspector.detail
+        .runCard()
+        .run({ goal: "Empty the list", maxSteps: 3 });
 
       const run = inspector.runs.latest("goal");
       await expect.poll(() => run.status()).toBe("Succeeded");
@@ -253,14 +281,19 @@ for (const placement of placements) {
         .poll(() => run.child("ListPage.clear").interactionList())
         .toEqual([{ operation: "click", target: "ListPage.clearButton" }]);
       await expect(await listPage.items.front()).toHaveCount(0);
+      await run.resultToggle.click();
       expect(await run.resultText()).toContain('"reason": "done"');
+
+      await confirmGoalRecordings(browser);
     });
 
     test("Clear empties Runs, and the run after it is the only one shown", async ({
+      browser,
       appView,
       inspector,
     }) => {
-      await (await inspector.tool("ListPage.countItems")).runButton.click();
+      await inspector.tool("ListPage.countItems");
+      await inspector.detail.runCard().runButton.click();
       await inspector.runs.showAll();
       await expect(await inspector.runs.runs.front()).toHaveCount(1);
 
@@ -268,7 +301,8 @@ for (const placement of placements) {
       await expect(await inspector.runs.runs.front()).toHaveCount(0);
       // Another tool, so the run Runs shows next is told apart from the
       // cleared one.
-      await (await inspector.tool("page_objects")).runButton.click();
+      await inspector.tool("page_objects");
+      await inspector.detail.runCard().runButton.click();
 
       await expect
         .poll(async () => (await appView.runs()).map(({ tool }) => tool))
@@ -282,9 +316,12 @@ for (const placement of placements) {
       await expect
         .poll(() => inspector.runs.latest(newest.tool).status())
         .toBe("Succeeded");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("a run's result copies as the page's Run log has it", async ({
+      browser,
       appView,
       inspector,
       listPage,
@@ -309,7 +346,8 @@ for (const placement of placements) {
       await listPage.addItem("Milk");
       // Something else first, so a copy that never lands is told apart.
       await clipboard.write("not copied");
-      await (await inspector.tool("ListPage.countItems")).runButton.click();
+      await inspector.tool("ListPage.countItems");
+      await inspector.detail.runCard().runButton.click();
       const run = inspector.runs.latest("ListPage.countItems");
       await expect.poll(() => run.status()).toBe("Succeeded");
       const logged = (await appView.runs()).at(-1)!;
@@ -329,36 +367,40 @@ for (const placement of placements) {
           }
         })
         .toEqual(logged.result);
+
+      await confirmGoalRecordings(browser);
     });
 
     test("press_key presses the key the page receives", async ({
+      browser,
       inspector,
       listPage,
     }) => {
-      const pressKey = await inspector.tool("press_key");
+      await inspector.tool("press_key");
 
       // The fixture writes the function key it receives into the New item
       // field; two keys, so a run that always presses the same one fails.
       for (const key of ["F4", "F7"]) {
-        await pressKey.fill({ key });
-        await pressKey.runButton.click();
+        await inspector.detail.runCard().fill({ key });
+        await inspector.detail.runCard().runButton.click();
         await expect(await listPage.newItemInput.front()).toHaveValue(key);
       }
+
+      await confirmGoalRecordings(browser);
     });
 
     test("the fill_form editor fills only the fields still changed after an undo", async ({
+      browser,
       appView,
       inspector,
       listPage,
     }) => {
-      const card = await inspector.tool("fill_form");
-      await card.openArguments();
-      const form = card.fillForm;
+      await inspector.tool("fill_form");
 
-      await form.set("New item", "Milk");
-      await form.set("Urgent", true);
-      await form.undo("New item");
-      await card.runButton.click();
+      await inspector.detail.runCard().fillForm.set("New item", "Milk");
+      await inspector.detail.runCard().fillForm.set("Urgent", true);
+      await inspector.detail.runCard().fillForm.undo("New item");
+      await inspector.detail.runCard().runButton.click();
 
       const run = inspector.runs.latest("fill_form");
       await expect.poll(() => run.status()).toBe("Succeeded");
@@ -368,9 +410,12 @@ for (const placement of placements) {
       ).toEqual(["Urgent"]);
       await expect(await listPage.urgentCheckbox.front()).toBeChecked();
       await expect(await listPage.newItemInput.front()).toHaveValue("");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("generate_locator offers the locator of each target in each group", async ({
+      browser,
       appView,
       inspector,
     }) => {
@@ -381,8 +426,8 @@ for (const placement of placements) {
         ],
         [await appView.ref('button "Clear"')],
       ];
-      const card = await inspector.tool("generate_locator");
-      await card.openArguments();
+      await inspector.tool("generate_locator");
+      const card = inspector.detail.runCard();
       const { locatorGroups } = card;
 
       await locatorGroups.toggleFromTree(1, ...groups[0]!);
@@ -407,6 +452,8 @@ for (const placement of placements) {
           await expect(
             await locatorGroups.locator(index + 1, target).front()
           ).toHaveText(locator);
+
+      await confirmGoalRecordings(browser);
     });
   });
 
@@ -439,15 +486,15 @@ for (const placement of placements) {
 
     connected(
       "a tool that fails on the page shows its error",
-      async ({ mcpServer, inspector, listPage }) => {
+      async ({ browser, mcpServer, inspector, listPage }) => {
         // The tool's target is gone: the page no longer has its Add item button.
         await listPage.removeAddItemButton();
         const agentError = await agentFailure(mcpServer!, "ListPage.addItem", {
           text: "Milk",
         });
 
-        const addItem = await inspector.tool("ListPage.addItem");
-        await addItem.run({ text: "Milk" });
+        await inspector.tool("ListPage.addItem");
+        await inspector.detail.runCard().run({ text: "Milk" });
 
         const run = inspector.runs.latest("ListPage.addItem");
         // The newest run of the tool is the agent's until the panel's arrives.
@@ -460,6 +507,8 @@ for (const placement of placements) {
         await expect
           .poll(async () => firstLine((await run.read())?.error))
           .toBe(firstLine(agentError));
+
+        await confirmGoalRecordings(browser);
       }
     );
   });
@@ -473,17 +522,15 @@ for (const placement of placements) {
     describe("connected to an agent", () => {
       unpublishedConnected(
         "a Page Object tool that fails gives the text an agent gets for the same call",
-        async ({ mcpServer, inspector, listPage }) => {
+        async ({ browser, mcpServer, inspector, listPage }) => {
           await listPage.removeAddItemButton();
           const agentError = await agentFailure(
             mcpServer!,
             "ListPage.addItem",
             { text: "Milk" }
           );
-
-          await (
-            await inspector.tool("ListPage.addItem")
-          ).run({ text: "Milk" });
+          await inspector.tool("ListPage.addItem");
+          await inspector.detail.runCard().run({ text: "Milk" });
 
           const run = inspector.runs.latest("ListPage.addItem");
           // The newest run of the tool is the agent's until the panel's arrives.
@@ -497,14 +544,17 @@ for (const placement of placements) {
           await expect
             .poll(async () => firstLine((await run.read())?.error))
             .toBe(firstLine(agentError));
+
+          await confirmGoalRecordings(browser);
         }
       );
     });
 
     unpublished(
       "a Page Object tool runs from the panel",
-      async ({ inspector, listPage }) => {
-        await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
+      async ({ browser, inspector, listPage }) => {
+        await inspector.tool("ListPage.addItem");
+        await inspector.detail.runCard().run({ text: "Milk" });
 
         await expect(
           await listPage.items
@@ -514,22 +564,27 @@ for (const placement of placements) {
         await expect
           .poll(() => inspector.runs.latest("ListPage.addItem").status())
           .toBe("Succeeded");
+
+        await confirmGoalRecordings(browser);
       }
     );
 
     unpublished(
       "a Custom Tool runs from the panel",
-      async ({ inspector, listPage }) => {
+      async ({ browser, inspector, listPage }) => {
         // The Add item button's ref, from snapshot run in the panel.
-        const getPageContext = await inspector.tool("snapshot");
-        await getPageContext.runButton.click();
+        await inspector.tool("snapshot");
+        await inspector.detail.runCard().runButton.click();
         const run = inspector.runs.latest("snapshot");
         await expect.poll(() => run.status()).toBe("Succeeded");
+        await run.resultToggle.click();
         const structure = (await run.resultText()) ?? "";
         const ref = /(e\d+) button "Add item"/.exec(structure)?.[1];
         if (!ref) throw new Error(`No Add item button in:\n${structure}`);
 
-        await (await inspector.tool("mark_element")).run({ ref });
+        await inspector.tool("mark_element");
+
+        await inspector.detail.runCard().run({ ref });
 
         await expect(await listPage.addItemButton.front()).toHaveAttribute(
           "data-marked"
@@ -537,14 +592,16 @@ for (const placement of placements) {
         await expect
           .poll(() => inspector.runs.latest("mark_element").status())
           .toBe("Succeeded");
+
+        await confirmGoalRecordings(browser);
       }
     );
 
     unpublished(
       "snapshot runs from the panel and shows its result",
-      async ({ inspector }) => {
-        const getPageContext = await inspector.tool("snapshot");
-        await getPageContext.runButton.click();
+      async ({ browser, inspector }) => {
+        await inspector.tool("snapshot");
+        await inspector.detail.runCard().runButton.click();
 
         const run = inspector.runs.latest("snapshot");
         await expect.poll(() => run.status()).toBe("Succeeded");
@@ -552,6 +609,8 @@ for (const placement of placements) {
         await expect
           .poll(async () => (await run.read())?.result)
           .toContain('"structure"');
+
+        await confirmGoalRecordings(browser);
       }
     );
   });

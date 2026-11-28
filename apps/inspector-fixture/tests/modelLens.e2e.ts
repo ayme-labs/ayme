@@ -2,7 +2,14 @@ import { describe } from "@e2e-dev/web";
 import { expect } from "e2e";
 
 import type { AppView } from "./e2e/appView";
-import { outline, placements, reloadFixture, testIn } from "./e2e/fixtures";
+import {
+  outline,
+  placements,
+  reloadFixture,
+  testIn,
+  confirmGoalRecordings,
+  movePointerTo,
+} from "./e2e/fixtures";
 import type { Tab } from "./e2e/tab";
 
 // E2E: the Model lens on a fixture page whose Page Object has child Page
@@ -53,27 +60,27 @@ for (const placement of placements) {
         page.locator("#todo-items > li").within((rows) => rows.nth(1)),
         browser
       );
-      const object = inspector.navigator.model.object("TodoPage.items[1]");
 
       // The list can still be settling under a resting pointer, which then
       // hovers another row: hover again until it is this one.
-      // Until the test's own timeout, as Playwright's `toPass()` without one.
       await expect
         .poll(
           async () => {
-            await object.hover();
+            await inspector.navigator.model.object("TodoPage.items[1]").hover();
             return secondItem();
           },
           { timeout: 30_000 }
         )
         .toBe("dashed");
-      await inspector.header.title.hover();
+      await movePointerTo(inspector.header.title);
       await expect.poll(secondItem).toBe("none");
 
-      await object.click();
-      await inspector.header.title.hover();
+      await inspector.navigator.model.object("TodoPage.items[1]").click();
+      await movePointerTo(inspector.header.title);
 
       await expect.poll(secondItem).toBe("solid");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("hovering a member highlights it dashed, beside the selected Page Object's solid highlight", async ({
@@ -92,9 +99,11 @@ for (const placement of placements) {
 
       await expect.poll(archiveButton).toBe("dashed");
       await expect.poll(item).toBe("solid");
-      await inspector.header.title.hover();
+      await movePointerTo(inspector.header.title);
       await expect.poll(archiveButton).toBe("none");
       await expect.poll(item).toBe("solid");
+
+      await confirmGoalRecordings(browser);
     });
 
     test("clicking a member selects it: the page highlights it solid and the panel shows it", async ({
@@ -107,7 +116,7 @@ for (const placement of placements) {
       await inspector.navigator.model.object("TodoPage").click();
 
       await detail.member("newItemInput").click();
-      await inspector.header.title.hover();
+      await movePointerTo(inspector.header.title);
 
       await expect.poll(input).toBe("solid");
       await expect(await detail.title.front()).toHaveText(
@@ -116,9 +125,12 @@ for (const placement of placements) {
       await expect(await detail.fact("On the page").front()).toHaveText(
         "1 match"
       );
+
+      await confirmGoalRecordings(browser);
     });
 
     test("the Model lens's panes stay as they were left after a reload", async ({
+      browser,
       page,
       inspector,
     }) => {
@@ -130,6 +142,8 @@ for (const placement of placements) {
 
       await expect(await lens.objectTree.front()).toBeVisible();
       await expect(await lens.modelList.front()).toHaveCount(0);
+
+      await confirmGoalRecordings(browser);
     });
   });
 }

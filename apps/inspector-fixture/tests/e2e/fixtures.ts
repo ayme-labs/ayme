@@ -19,6 +19,25 @@ export type { FixturePage, Placement };
 /** The Caller mark of a run made from the panel, as Runs shows it. */
 export const INSPECTOR = { icon: "Run by you from the Inspector" } as const;
 
+/**
+ * A check e2e counts, so it saves the goals' recordings: e2e saves an
+ * `agent.act` recording only once a later check of that kind passes (its
+ * docs/cache.mdx, "When a recording is written"), and polls and checks on
+ * read values don't count. It checks nothing itself: any URL matches.
+ */
+export async function confirmGoalRecordings(browser: Browser) {
+  await browser.waitForURL(/^/);
+}
+
+/**
+ * Moves the pointer onto `element`, off what it hovered. Plain code in every
+ * arm, never a goal: it resets the pointer between steps, which no user step
+ * asks for.
+ */
+export async function movePointerTo(element: On) {
+  await element.hover();
+}
+
 /** Both placements, for a spec whose tests run in each. */
 export const placements: readonly Placement[] = ["inline", "external"];
 
@@ -230,7 +249,17 @@ export function testIn(
         // eslint-disable-next-line no-empty-pattern
         mcpServer: async ({}, use) => {
           if (placement !== "external" && !connected) return use(undefined);
-          const agent = await startAgent("--port", String(await freePort()));
+          // A fixed port when the run names one: the goal tests' recordings
+          // are keyed to the Inspector window's origin (e2e.goals.config.ts).
+          const fixed = process.env.AYME_E2E_MCP_PORT;
+          const port = fixed ?? String(await freePort());
+          const agent = await startAgent("--port", port).catch((error) => {
+            if (!fixed) throw error;
+            throw new Error(
+              `ayme mcp failed to start on port ${port}, from AYME_E2E_MCP_PORT; if the port is taken, change it.`,
+              { cause: error }
+            );
+          });
           await use(agent);
           await agent.close();
         },

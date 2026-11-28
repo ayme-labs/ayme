@@ -12,6 +12,7 @@ Vite plugin, the way an app's are. The tests live here rather than in
 app/         the fixture pages, their startup code and the Vite config
 ayme/pom/    the fixture app's Page Objects
 tests/       Playwright fixtures (fixtures.ts) and the specs
+tests/goals/ the goal-driven twins of the *.e2e.ts tests
 ```
 
 The pages:
@@ -65,3 +66,29 @@ lists its tools fails before any test assertion, with its own message.
 WebMCP is experimental, so only the test of the Connections popover's WebMCP
 state installs a WebMCP driver, the recording one from
 `@ayme-dev/webmcp/testing`.
+
+`pnpm test:goals` runs the goal-driven tests (`tests/goals/**/*.goal.ts`,
+with `e2e.goals.config.ts`), e2e's telemetry off: their `*.e2e.ts` twins'
+tests, with each Page Object action a goal that Claude Code carries out on
+this machine's own login. What may differ from the twin is
+[`scripts/check-goal-mirror.mjs`](scripts/check-goal-mirror.mjs)'s to say,
+and why moving the pointer is no goal is
+[`movePointerTo`](tests/e2e/fixtures.ts)'s. They never run in CI, for the
+reason beside the `CI` guard in `e2e.goals.config.ts`. In the
+external placement, switching to the Inspector's tab is part of the goal:
+the agent does it as it sees fit. A first run records each goal into
+`.e2e/goals-cache/`, and later runs replay it without the model, except for
+a step that changes no control, such as dragging the panel's edge: e2e saves
+nothing for it, so it calls the model on every run, and a warm run needs the
+login too. The external placement's `ayme mcp` gets a port derived from the
+checkout's path, which `AYME_E2E_MCP_PORT` overrides. `pnpm lint` also runs
+the mirror check (alone: `pnpm check:goal-mirror`), and `pnpm test` runs its
+own tests.
+
+Known costs of keeping the goal files to their twins' shape:
+
+- A long test costs more in the agent arms: each tool's page (toolsLens)
+  runs 24 goals in one agent session, and the header's menus and switches
+  (inspector) 13.
+- The Model lens hover goal runs inside its twin's `expect.poll`, so on a
+  slow turn the poll's time limit can cut it off.
