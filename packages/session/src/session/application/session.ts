@@ -36,6 +36,9 @@ import {
   runFailed,
   TAB_CLOSED,
   TabReadError,
+  tabId,
+  tabIdNumber,
+  tabIdUnknown,
   toolsAnswer,
   type SessionAnswer,
   type SessionEnd,
@@ -45,6 +48,7 @@ import {
   TabDialogOpen,
   unknownRequest,
   withBuildLine,
+  withTabsAlike,
 } from "../domain";
 import {
   answerInspector,
@@ -208,34 +212,42 @@ export const openSession = (
         })
       );
 
-    /** A listing of the Tab `on` names, answered by `answer`, with the
+    /** A listing of the Tab `tab` names, answered by `answer`, with the
      * build line of that Tab, or of the Session for a Tab not hosted. */
     const listed = (
       { tabs, rebuilds }: Started,
       { tab }: { readonly tab?: string },
-      answer: (listing: Listing) => SessionAnswer
+      answer: (listing: Listing, id: string) => SessionAnswer
     ) => {
       const refused = (error: Error) =>
         Effect.succeed(
           failed(
             error instanceof TabDialogOpen
-              ? dialogOpenInListing(error.url, error.dialog)
+              ? dialogOpenInListing(error.id, error.url, error.dialog)
               : error.message
           )
         );
+      const unhosted = (error: Error) =>
+        refused(error).pipe(
+          Effect.map((answer) => withBuildLine(answer, rebuilds.buildLine()))
+        );
       return tabs.chosen(tab).pipe(
-        Effect.flatMap((hosted) =>
-          hosted.listing.pipe(
-            Effect.map(answer),
-            Effect.catch(refused),
-            Effect.map((answer) => withBuildLine(answer, hosted.buildLine()))
+        Effect.flatMap(({ id, hosted, alike }) =>
+          hosted.pipe(
+            Effect.flatMap((hosted) =>
+              hosted.listing.pipe(
+                Effect.map((listing) => answer(listing, id)),
+                Effect.catch(refused),
+                Effect.map((answer) =>
+                  withBuildLine(answer, hosted.buildLine())
+                )
+              )
+            ),
+            Effect.catch(unhosted),
+            Effect.map((answer) => withTabsAlike(answer, alike))
           )
         ),
-        Effect.catch((error) =>
-          refused(error).pipe(
-            Effect.map((answer) => withBuildLine(answer, rebuilds.buildLine()))
-          )
-        )
+        Effect.catch(unhosted)
       );
     };
 
@@ -247,18 +259,32 @@ export const openSession = (
       started: Started
     ): Effect.Effect<SessionAnswer> => {
       if ("pageObjects" in request)
-        return listed(started, request.pageObjects, (listing) =>
-          pageObjectsAnswer(listing, name, request.pageObjects.tab)
+        return listed(started, request.pageObjects, (listing, id) =>
+          pageObjectsAnswer(
+            listing,
+            id,
+            name,
+            request.pageObjects.tab !== undefined
+          )
         );
       if ("tools" in request)
         return listed(started, request.tools, toolsAnswer);
       if ("call" in request) {
         const { tool, input, tab } = request.call;
+        const run = (hosted: Effect.Effect<SwappingTab, TabReadError>) =>
+          hosted.pipe(
+            Effect.catch((error) => Effect.fail(new RunError(error.message))),
+            Effect.flatMap((hosted) => hosted.call(tool, input)),
+            Effect.map(callAnswer),
+            Effect.catch((error) => Effect.succeed(runFailed(error)))
+          );
         return started.tabs.chosen(tab, { tool, input }).pipe(
-          Effect.catch((error) => Effect.fail(new RunError(error.message))),
-          Effect.flatMap((hosted) => hosted.call(tool, input)),
-          Effect.map(callAnswer),
-          Effect.catch((error) => Effect.succeed(runFailed(error)))
+          Effect.flatMap(({ hosted, alike }) =>
+            run(hosted).pipe(
+              Effect.map((answer) => withTabsAlike(answer, alike))
+            )
+          ),
+          Effect.catch((error) => Effect.succeed(failed(error.message)))
         );
       }
       if ("inspector" in request)
@@ -319,18 +345,30 @@ const idIn = (input: unknown): string | undefined => {
   return typeof id === "string" ? id : undefined;
 };
 
+/** The Tab a request works on: its id, its hosting by the Session, and,
+ * when `--tab` named a URL, the other Tabs that show it. */
+type ChosenTab = {
+  readonly id: string;
+  readonly hosted: Effect.Effect<SwappingTab, TabReadError>;
+  readonly alike?: {
+    readonly url: string;
+    readonly chosen: string;
+    readonly others: readonly string[];
+  };
+};
+
 /** A Session's Tabs, as its requests reach them. */
 type SessionTabs = {
   /**
-   * The Tab a request works on, with the Session as its Host: for a `call`
-   * of a tool that takes a Page Object Id, the Tab whose Host gave the id;
-   * else the most recently active Tab whose URL is `url`, else the most
-   * recently active Tab.
+   * The Tab a request works on: for a `call` of a tool that takes a Page
+   * Object Id, the Tab whose Host gave the id; else the Tab whose id is
+   * `named`, or the most recently active Tab whose URL is `named`; else the
+   * most recently active Tab.
    */
   readonly chosen: (
-    url: string | undefined,
+    named: string | undefined,
     call?: { readonly tool: string; readonly input: unknown }
-  ) => Effect.Effect<SwappingTab, TabReadError>;
+  ) => Effect.Effect<ChosenTab, TabReadError>;
   /** The most recently active Tab, with the Session as its Host; none when
    * no tab is open. */
   readonly active: Effect.Effect<ShowableTab | undefined, TabReadError>;
@@ -342,8 +380,9 @@ type SessionTabs = {
   ) => string | undefined;
 };
 
-/** The Tabs of `browser`, each hosted once, the first time the Session
- * named `name` works on it, and the Page Object Ids each Tab's Host gave.
+/** The Tabs of `browser`, each with an id from the first read of the tab
+ * list that shows it, and hosted once, the first time the Session named
+ * `name` works on it, and the Page Object Ids each Tab's Host gave.
  * A Tab is let go when its page closes, in `scope`. None starts work once
  * `ending`. Each swaps in the Page Objects `rebuilds` leaves between its
  * Runs. */
@@ -355,6 +394,23 @@ function sessionTabs(
   rebuilds: Rebuilds
 ): SessionTabs {
   const hosts = new Map<BrowserTab, Effect.Effect<SwappingTab, TabReadError>>();
+  // Never given again, as a Page Object Id is not, so an id names one Tab.
+  const tabIds = new WeakMap<BrowserTab, string>();
+  let given = 0;
+  const idOf = (tab: BrowserTab) => {
+    const known = tabIds.get(tab);
+    if (known !== undefined) return known;
+    const id = tabId(++given);
+    tabIds.set(tab, id);
+    return id;
+  };
+  const open = browser.open.pipe(
+    Effect.tap((open) =>
+      Effect.sync(() => {
+        for (const tab of open) idOf(tab);
+      })
+    )
+  );
   // The Tab each id was given on, while its Host knows the id.
   const owners = new Map<string, BrowserTab>();
   // Each Tab whose hosting finished, for a choice that reads no page.
@@ -382,7 +438,9 @@ function sessionTabs(
         )
       );
       if (Option.isSome(now) && isOpen(now.value))
-        return yield* Effect.fail(new TabDialogOpen(tab.url(), now.value.open));
+        return yield* Effect.fail(
+          new TabDialogOpen(idOf(tab), tab.url(), now.value.open)
+        );
       // Cached at once, so two requests that arrive together host the Tab
       // once; a failed hosting is tried again by the next request.
       const startedWith = rebuilds.newest();
@@ -395,7 +453,7 @@ function sessionTabs(
             },
             startedWith
           ),
-          dialogCounts(tab)
+          dialogCounts(tab, idOf(tab))
         ).pipe(
           Effect.flatMap((hosted) => {
             const turn = turns(ending);
@@ -409,6 +467,7 @@ function sessionTabs(
                   atDialogs(
                     untilClosed(inTurns(swapping, turn, scope), tab.closed),
                     tab,
+                    idOf(tab),
                     scope
                   )
                 )
@@ -425,20 +484,40 @@ function sessionTabs(
         Effect.tapError(() => Effect.sync(() => hosts.delete(tab)))
       );
     });
-  /** The most recently active Tab whose URL is `url`, else the most
-   * recently active Tab. */
-  const byUrl = (url: string | undefined) =>
-    browser.open.pipe(
-      Effect.flatMap((open) => {
-        const tab =
-          url === undefined ? open[0] : open.find((each) => each.url() === url);
-        if (tab) return hostOf(tab);
+  const choice = (tab: BrowserTab) => ({ id: idOf(tab), hosted: hostOf(tab) });
+  /** The Tab whose id is `named`, or the most recently active Tab whose URL
+   * is `named`, else the most recently active Tab. */
+  const byName = (named: string | undefined) =>
+    open.pipe(
+      Effect.flatMap((open): Effect.Effect<ChosenTab, TabReadError> => {
+        const n = named === undefined ? undefined : tabIdNumber(named);
+        if (n !== undefined) {
+          const tab = open.find((each) => idOf(each) === named);
+          return tab
+            ? Effect.succeed(choice(tab))
+            : Effect.fail(new TabReadError(tabIdUnknown(named!, n <= given)));
+        }
+        const [tab, ...others] =
+          named === undefined
+            ? open
+            : open.filter((each) => each.url() === named);
+        if (tab)
+          return Effect.succeed({
+            ...choice(tab),
+            ...(named !== undefined && {
+              alike: {
+                url: named,
+                chosen: idOf(tab),
+                others: others.map(idOf),
+              },
+            }),
+          });
         return Effect.fail(
           new TabReadError(
             open.length === 0
               ? NO_TAB_OPEN
               : noTabShows(
-                  url!,
+                  named!,
                   open.map((each) => each.url()),
                   name
                 )
@@ -447,7 +526,7 @@ function sessionTabs(
       })
     );
   return {
-    active: browser.open.pipe(
+    active: open.pipe(
       Effect.flatMap(([tab]) =>
         tab
           ? hostOf(tab).pipe(Effect.map((hosted) => ({ tab, hosted })))
@@ -463,18 +542,19 @@ function sessionTabs(
         ? idNotOnShownTab(id!, owner.url())
         : undefined;
     },
-    chosen: (url, call) => {
+    chosen: (named, call) => {
       const id = call && idIn(call.input);
       const owner = id === undefined ? undefined : owners.get(id);
-      if (!call || !owner) return byUrl(url);
+      if (!call || !owner) return byName(named);
       // Only an id the tool takes, in the build its Tab runs, chooses it.
       return hostOf(owner).pipe(
         Effect.flatMap((hosted) => {
-          if (!hosted.takesId(call.tool)) return byUrl(url);
-          if (url === undefined || owner.url() === url)
-            return Effect.succeed(hosted);
+          if (!hosted.takesId(call.tool)) return byName(named);
+          const on = idOf(owner);
+          if (named === undefined || named === on || named === owner.url())
+            return Effect.succeed({ id: on, hosted: Effect.succeed(hosted) });
           return Effect.fail(
-            new TabReadError(idOnAnotherTab(id!, owner.url(), url))
+            new TabReadError(idOnAnotherTab(id!, on, owner.url()))
           );
         })
       );
@@ -609,14 +689,15 @@ const offPage = new Set(["getState", "recordedPageState", "pomDefinitionText"]);
 const isOpen = (now: TabDialog): now is { readonly open: Dialog } =>
   typeof now === "object";
 
-/** Fails with `tab`'s dialog once one counts as open there. */
-const dialogCounts = (tab: BrowserTab) =>
+/** Fails with the dialog of `tab`, whose id is `id`, once one counts as
+ * open there. */
+const dialogCounts = (tab: BrowserTab, id: string) =>
   tab.dialog.pipe(
     Stream.filter(isOpen),
     Stream.runHead,
     Effect.flatMap((open) =>
       Option.isSome(open)
-        ? Effect.fail(new TabDialogOpen(tab.url(), open.value.open))
+        ? Effect.fail(new TabDialogOpen(id, tab.url(), open.value.open))
         : Effect.never
     )
   );
@@ -627,12 +708,13 @@ const dialogCounts = (tab: BrowserTab) =>
  * Work already under way keeps the Tab's turn in `scope` until it ends, so
  * the next Run starts only once a stopped action has ended; work still
  * waiting never starts, since its Caller may run the command again. A
- * listing names the Tab by `tab`'s URL, since its title is the page's, which
- * the dialog holds.
+ * listing names the Tab by its `id` and `tab`'s URL, since its title is
+ * the page's, which the dialog holds.
  */
 function atDialogs(
   hosted: SwappingTab,
   tab: BrowserTab,
+  id: string,
   scope: Scope.Scope
 ): SwappingTab {
   const counted = hosted.dialog.pipe(Stream.filter((now) => now !== "opening"));
@@ -695,7 +777,7 @@ function atDialogs(
   return {
     listing: atDialog(
       hosted.listing,
-      (dialog) => new TabReadError(dialogOpenInListing(tab.url(), dialog)),
+      (dialog) => new TabReadError(dialogOpenInListing(id, tab.url(), dialog)),
       new TabReadError(TAB_CLOSED),
       true
     ),

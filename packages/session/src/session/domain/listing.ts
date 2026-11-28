@@ -1,8 +1,17 @@
-/** A Tab, as a listing names it. */
+/** A Tab, as its page names it. */
 export type TabName = {
   readonly url: string;
   readonly title: string;
 };
+
+/** The id a Session gives the Tab it is the `n`th to give one, as `--tab`
+ * names it. */
+export const tabId = (n: number): string => `t${n}`;
+
+/** The `n` of the id `value`, when it has the form of the id a Session
+ * gives a Tab, which no URL a tab shows has. */
+export const tabIdNumber = (value: string): number | undefined =>
+  /^t[1-9]\d*$/.test(value) ? Number(value.slice(1)) : undefined;
 
 /** A Page Object Tool of the Tab's page, as `ayme tools` lists it. */
 export type ListedTool = {
