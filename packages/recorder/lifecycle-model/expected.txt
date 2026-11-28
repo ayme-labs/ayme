@@ -31,6 +31,9 @@ Rule7-AssertThenType:
 Rule7-TypeAfterStopOnNewPage: F7_MeasuredFromFirstKey
 Fold-AfterStep:
 Rules-WithoutB2:
+Rules-ReadsTimeOut:
+Rules-Pages-ReadsTimeOut:
+Rules-WithoutB2-ReadsTimeOut:
 # Known limits: each breaks its own rule.
 Limit-TypingThenTyping: N3_TypingThenTypingInTimeOrder
 Limit-ClosedPageWaits: X4_WrapUpNeverGetsStuck

@@ -94,6 +94,12 @@ export type RecordedInteraction = {
    */
   readonly beforeFromReport?: boolean;
   /**
+   * For a held input whose own read could not be had in time: `before` is
+   * its page's last read, taken before its press, so it shows no focus the
+   * press moved, and what that read shows is the input before's.
+   */
+  readonly beforeEarlier?: boolean;
+  /**
    * The read its target is found in, when that is not its "before": an
    * assertion placed at the page's read before typing that followed it,
    * whose own read came after the typing began. The element it picked can
@@ -120,6 +126,14 @@ export type TimelineAddition =
        * the new point to compare from.
        */
       readonly resumes?: boolean;
+    }
+  /** A read a held input waited on that could not be taken, as when the
+   * page did not answer in time, on a page that had no read to start from:
+   * the input starts at it. It holds its place as a read that could not be
+   * kept, at `at`, the moment the input reached the page. */
+  | {
+      readonly kind: "unread";
+      readonly snapshot: Omit<PageSnapshot, "tree">;
     }
   | {
       readonly kind: "interaction";

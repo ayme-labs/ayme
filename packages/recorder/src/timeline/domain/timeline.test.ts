@@ -1525,6 +1525,64 @@ describe("the timeline, for the focus a click's press moved", () => {
     });
   });
 
+  // Issue #1525: a click whose own read could not be had starts at its
+  // page's last read, taken before its press.
+  it("leaves the focus the click before moved with that click when the next click starts at the page's last read, which shows no press of its own", async () => {
+    const editing = [
+      `- generic [ref=e1]:`,
+      `  - button "Edit" [active] [ref=e2]`,
+      `  - textbox "Name" [ref=e3]`,
+    ].join("\n");
+    const focused = [
+      `- generic [ref=e1]:`,
+      `  - button "Edit" [ref=e2]`,
+      `  - textbox "Name" [active] [ref=e3]`,
+    ].join("\n");
+    const done = `${focused}\n  - paragraph [ref=e4]: Done`;
+    const clickOn = (
+      name: string,
+      ref: string,
+      tree: string,
+      before: string,
+      after: string,
+      fromLastRead: boolean
+    ): TimelineAddition => ({
+      kind: "interaction",
+      interaction: {
+        page: pageId("page_1"),
+        report: {
+          type: "click",
+          selector: `internal:role=button[name="${name}"s]`,
+          target: { ref: pictureRef(ref), tree },
+          values: { button: "left", clickCount: 1 },
+        },
+        before: snapshotId(before),
+        after: snapshotId(after),
+        at: 20,
+        ...(fromLastRead ? { beforeEarlier: true } : {}),
+      },
+    });
+    const timeline = await timelineOf([
+      visit,
+      snapshot(snapshotId("snapshot_1"), 10, editing),
+      // The click on "Edit" focuses the field by the page's own script.
+      snapshot(snapshotId("snapshot_2"), 20, focused),
+      clickOn("Edit", "e2", editing, "snapshot_1", "snapshot_2", false),
+      snapshot(snapshotId("snapshot_3"), 30, done),
+      clickOn("Name", "e3", focused, "snapshot_2", "snapshot_3", true),
+    ]);
+    const [edit, name] = timeline.visits().flatMap((one) => one.entries);
+
+    expect(edit).toMatchObject({
+      changes: expect.arrayContaining([
+        expect.objectContaining({ element: 'textbox "Name"' }),
+      ]),
+    });
+    expect(name).toMatchObject({
+      changes: [expect.objectContaining({ element: 'paragraph "Done"' })],
+    });
+  });
+
   it("keeps the focus a click's press moved out of a fill added again under its key, as one written once", async () => {
     // A banner came before the first key: a row of its own ahead of the
     // fill.

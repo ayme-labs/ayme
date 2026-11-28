@@ -221,28 +221,35 @@ export class RecorderSession extends Context.Service<
           }
         });
 
-        /** Hands a request to the browser. An answer that is given a time
-         * counts as "could not" once the time has passed: the time runs
-         * beside the queue, as a time limit does. */
+        /** An answer that is given a time counts as "could not" once the
+         * time has passed: the time runs beside the queue, as a time limit
+         * does. */
+        const limit = Effect.fnUntraced(function* (
+          request: BrowserRequest,
+          within: number
+        ) {
+          timed.push({
+            request,
+            time: yield* Effect.sleep(within).pipe(
+              Effect.andThen(
+                tell({
+                  kind: "requestFailed",
+                  request,
+                  // Stryker disable next-line StringLiteral: no request that is given a time shows why it failed
+                  reason: "The browser did not answer in time.",
+                })
+              ),
+              Effect.forkScoped
+            ),
+          });
+        });
+
+        /** Hands a request to the browser, with its time when it has one. */
         const ask = Effect.fnUntraced(function* (
           item: Extract<ToDo, { kind: "browser" }>
         ) {
           // Stryker disable next-line ConditionalExpression: a time started for a request that was given none is ended in the same step, by the rule that ends a time nobody waits for
-          if (item.within !== undefined)
-            timed.push({
-              request: item.ask,
-              time: yield* Effect.sleep(item.within).pipe(
-                Effect.andThen(
-                  tell({
-                    kind: "requestFailed",
-                    request: item.ask,
-                    // Stryker disable next-line StringLiteral: no request that is given a time shows why it failed
-                    reason: "The browser did not answer in time.",
-                  })
-                ),
-                Effect.forkScoped
-              ),
-            });
+          if (item.within !== undefined) yield* limit(item.ask, item.within);
           return yield* browser.ask(item.ask);
         });
 
@@ -270,6 +277,8 @@ export class RecorderSession extends Context.Service<
               return yield* answer(item, reply);
             case "browser":
               return yield* ask(item);
+            case "limitAnswer":
+              return yield* limit(item.ask, item.within);
             case "timeline":
               // An entry is told as soon as it is produced.
               yield* Effect.promise(() => timeline.add(item.add));

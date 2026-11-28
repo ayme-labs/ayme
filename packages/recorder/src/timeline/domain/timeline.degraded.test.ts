@@ -150,6 +150,70 @@ const lostStart = (visitId: string, where: string) =>
 const notReadWhereItLed = (id: string, visitId: string) =>
   `pageNotRead: The page ${id} led to, in ${visitId}, could not be read at first: what it showed then is not known.`;
 
+// Issue #1525: a page whose read never answers. The lifecycle tells the
+// timeline of the read a click waited on and could not have, so the click
+// is recorded at it.
+describe("a read of the page that could not be taken", () => {
+  const unread = (id: SnapshotId, at: number): TimelineAddition => ({
+    kind: "unread",
+    snapshot: { id, page: pageId("page_1"), url: "http://shop.test/", at },
+  });
+
+  it("holds its place as a read that could not be kept: the step that starts at it has no element and no Change Tree, and is warned of", async () => {
+    const timeline = await timelineOf([
+      visit,
+      unread(s(1), 15),
+      snapshot(s(2), 20, counter(1)),
+      click(s(1), s(2), 15),
+      snapshot(s(3), 30, counter(2)),
+      click(s(2), s(3), 25),
+    ]);
+
+    const text = (await timeline.package(
+      header,
+      tracePositions({ snapshot_2: "20", snapshot_3: "30" })
+    ))!;
+
+    expect(changeTreesOf(text)).toEqual([
+      { kind: "interaction", changeTree: null },
+      {
+        kind: "interaction",
+        changeTree: changed(`[ref=e3] paragraph: Count 2`),
+      },
+    ]);
+    expect(text).toContain(
+      [
+        `          id: interaction_1`,
+        `          type: click`,
+        `          targetRef: null`,
+      ].join("\n")
+    );
+    expect(messages(timeline)).toEqual([
+      notReadBefore("interaction_1"),
+      lostStart("visit_1", "at 15"),
+    ]);
+  });
+
+  it("is kept in no Visit when its page has none at its address", async () => {
+    const timeline = await timelineOf([
+      visit,
+      {
+        kind: "unread",
+        snapshot: {
+          id: s(1),
+          page: pageId("page_1"),
+          url: "http://shop.test/elsewhere",
+          at: 15,
+        },
+      },
+      snapshot(s(2), 20, counter(1)),
+      click(s(1), s(2), 15),
+    ]);
+
+    expect(await timeline.package(header)).toBeNull();
+  });
+});
+
 describe("a read of the page that cannot be kept", () => {
   it("holds its place and is compared with nothing: the step that ends at it and the step that starts at it have no Change Tree, and the steps after are as ever", async () => {
     const timeline = await timelineOf([

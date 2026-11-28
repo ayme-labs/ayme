@@ -385,6 +385,16 @@ export class Timeline {
         return this.startVisit(addition);
       case "snapshot":
         return this.keepRead(addition);
+      case "unread": {
+        const { id, at } = addition.snapshot;
+        this.readAt.set(id, at);
+        this.visitOf(addition.snapshot)?.snapshots.push({
+          snapshot: { id, at },
+          resumes: false,
+          lost: true,
+        });
+        return;
+      }
       case "interaction":
         return this.addInteraction(addition);
       case "elsewhere": {
@@ -430,21 +440,25 @@ export class Timeline {
     this.tell();
   }
 
-  /** A read of a page, kept in the Visit of the document it is of: the
-   * latest Visit of its page at the address it was read at. */
+  /** The Visit of the document a read is of: the latest Visit of its page
+   * at the address it was read at. */
+  private visitOf({ page, url }: { page: PageId; url: string }) {
+    return this.all.findLast(
+      (started) => started.page === page && sameDocument(started.url, url)
+    );
+  }
+
+  /** A read of a page, kept in the Visit of the document it is of. */
   private async keepRead(
     addition: Extract<TimelineAddition, { kind: "snapshot" }>
   ) {
     this.readAt.set(addition.snapshot.id, addition.snapshot.at);
-    const { page, url } = addition.snapshot;
     // A read of a document the page has left, as one a navigation overtook,
     // is of the Visit it left, never of where the page went, so that what
     // starts from it is kept there; one of the blank page is of no Visit.
     // A document is known by its address alone: a read the page left, came
     // back to its address and left again during is taken for the later Visit.
-    const visit = this.all.findLast(
-      (started) => started.page === page && sameDocument(started.url, url)
-    );
+    const visit = this.visitOf(addition.snapshot);
     if (!visit) return;
     const resumes = addition.resumes === true;
     // Recording resumed at a read that could not be kept, and no read was
@@ -1380,7 +1394,7 @@ export class Timeline {
     const { visit, from } = held;
     // A read after it that could not be kept is no "after" either.
     const to = comparable(visit.snapshots[end]);
-    if (!interaction.beforeFromReport)
+    if (!interaction.beforeFromReport && !interaction.beforeEarlier)
       await this.pressedAfter(visit, from, interaction);
     const written = interaction.beforeFromReport
       ? { ...held, ...(await this.pictured(visit, interaction, from, to)) }
@@ -1462,7 +1476,9 @@ export class Timeline {
       ? undefined
       : visit.waiting.find(
           (waiting) =>
-            waiting.before === next.snapshot.id && !waiting.beforeFromReport
+            waiting.before === next.snapshot.id &&
+            !waiting.beforeFromReport &&
+            !waiting.beforeEarlier
         );
     const pressed = click && this.beforeItsPress(through, next, click.report);
     if (pressed) this.beforePress.set(next.snapshot.id, pressed);
