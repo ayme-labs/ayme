@@ -63,7 +63,7 @@ Recording is off when the recorder opens, so you can first get the page into the
 
 While recording, **Record** turns into **Stop**: press it to pause, and **Continue recording** to pick up again. The guide describes [every control](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#record-a-flow).
 
-**Finish**, closing the last recorded page and Ctrl+C in the terminal each save the recording. The terminal then prints its path as `Recording package: ...`. If nothing was recorded, it prints `Recording was empty; no recording package was created.` instead.
+Each of [the ways a recording ends](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#end-a-recording), such as **Finish** or Ctrl+C, saves it. The terminal then prints its path as `Recording package: ...`. If nothing was recorded, it prints `Recording was empty; no recording package was created.` instead.
 
 When the recorder cannot fully record a step, it prints a line that starts with `Warning:` in the terminal and keeps recording. If you ran `codegen` yourself, pass the warning to your agent with the recording. The [Recorder guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/recorder.md#warnings) lists the warnings.
 

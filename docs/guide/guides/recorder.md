@@ -158,7 +158,7 @@ Each of these ends the recorder and saves what was recorded:
 - press Ctrl+C in the terminal,
 - close the terminal, or lose the SSH session it runs in.
 
-If the recorder hits an error it did not expect, it ends the same way and saves what was recorded, then prints the error and exits with code 1.
+After an error that nothing in the recorder caught while a recording runs, the recorder tries to save what it has, prints the error and exits with code 1.
 
 If you never pressed **Record**, there is nothing to save.
 
@@ -211,6 +211,8 @@ A warning about one step names it by its id in the recording, such as `interacti
 - **Whether the page changed by itself could not be worked out.** The recording lists no such change at the time the warning gives.
 - **A step is not recorded.** Its page could not be read. This can happen to typing, a dropdown choice, an upload or an assertion.
 - **A step, or something else, is missing from the recording.** The recorder itself failed to keep it. The warning names the step when a step is missing, and ends with the recorder's own error. The trace still holds what happened on the page.
+- **A step is in the recording without its element, or only as Playwright reported it.** The recorder could not read Playwright's report of the step in full. Without its element, the step has its type, what Playwright said of the input, such as a click's button, and the page's changes. As Playwright reported it, the step names the element Playwright named, which can be one inside the element it acted on, and an upload names its first file only. The warning ends with the recorder's own error.
+- **Typing may be missing its latest keys.** The recorder could not read Playwright's revision of the typing. The trace still holds the keys.
 - **An upload is recorded with its first file name only.** The file input was gone, or held other files than Playwright reported, by the time the recorder read it.
 - **Some or all of the trace's snapshots could not be numbered.** The recording has its trace, but lacks the position numbers that open those steps' snapshots.
 - **The storage state could not be saved.** `--save-storage` could not write its file, the browser was quit or did not answer within half a minute, or the recorder broke down while saving. The recording ends as it would have without the save.
