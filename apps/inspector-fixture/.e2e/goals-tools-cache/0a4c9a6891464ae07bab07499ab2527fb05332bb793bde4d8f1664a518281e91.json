@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:26:59.865Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool RunCard_pressRun",
+        "tool": "RunCard_pressRun",
+        "input": "{}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::press_key%20presses%20the%20key%20the%20page%20receives",
+      "targetId": "chromium",
+      "instructionDigest": "9dc5c61d793b51ed7b77d8439715a2569ea086d16288e95d7ffe0798225560aa",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Pressed Run on press_key with key F4. The run succeeded in 260 ms with 1 interaction, and the Runs timeline now shows one press_key \"F4\" entry (Runs · 1).",
+    "startPath": "http://127.0.0.1:9585/inspector",
+    "endPath": "http://127.0.0.1:9585/inspector",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "role": "combobox",
+        "name": "key",
+        "placeholder": "Press a key or combination",
+        "value": "F4"
+      },
+      {
+        "role": "button",
+        "name": "Search key names instead"
+      },
+      {
+        "text": "Running…"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 1",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "role": "image",
+        "name": "Running"
+      },
+      {
+        "role": "image",
+        "name": "Run by you from the Inspector"
+      },
+      {
+        "name": "F4",
+        "text": "\"F4\""
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "combobox",
+        "name": "key",
+        "placeholder": "Search key names",
+        "value": "F4"
+      },
+      {
+        "role": "button",
+        "name": "Record a key press instead"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 0",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "No runs for this selection yet. Switch to All to see every run."
+      }
+    ],
+    "endWaitMs": 10118,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

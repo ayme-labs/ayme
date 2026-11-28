@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T10:09:04.918Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Result\" in \"goal\"",
+        "target": {
+          "role": "button",
+          "name": "Result",
+          "within": "goal"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::goal%20runs%20from%20the%20panel%20and%20shows%20in%20Runs%20with%20the%20Runs%20its%20steps%20executed%20and%20its%20Handover%20result",
+      "targetId": "chromium",
+      "instructionDigest": "7e9426a6d7b3ef2738954a964b091dd82a9f81a0c735cb2ae6083c9a49c399d3",
+      "paramsDigest": "7691e3080242e1bae45dddebb4a7409ba9d49b8a844c975a0b88df9ab2b5cfde",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Tapped Result on the latest goal run in Runs. It expanded and shows the result JSON (reason \"done\", history with ListPage.clear).",
+    "startPath": "http://127.0.0.1:9585/inspector",
+    "endPath": "http://127.0.0.1:9585/inspector",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Result",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "{ \"reason\": \"done\", \"next\": \"The goal has been achieved. Continue with your next task.\", \"history\": [ { \"operation\": \"ListPage.clear\", \"chosen\": {}, \"result\": \"ok\", \"page_changed\": true, \"changes\": - e2 main: - e8 <changed> button \"Add item\" - e9 <changed> button \"Clear\" [active] - e10 list \"Items\"…"
+      },
+      {
+        "role": "button",
+        "name": "Connections: ayme-e2e connected, WebMCP unavailable"
+      },
+      {
+        "role": "figure",
+        "name": "Result"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Connections: ayme-e2e connected"
+      }
+    ],
+    "endWaitMs": 13599,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

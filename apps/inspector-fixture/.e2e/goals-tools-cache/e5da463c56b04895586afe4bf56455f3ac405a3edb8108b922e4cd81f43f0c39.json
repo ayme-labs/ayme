@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:27:04.834Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool FillForm_undo",
+        "tool": "FillForm_undo",
+        "input": "{\"name\":\"New item\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::the%20fill_form%20editor%20fills%20only%20the%20fields%20still%20changed%20after%20an%20undo",
+      "targetId": "chromium",
+      "instructionDigest": "aa4df56a07bf82c1b6089b7f8e4d5728b0896a19ad034c2c8164acc7768a08d2",
+      "paramsDigest": "353b9bf9ab01effff23daca4f60fcd1721c475877ef807f7eb03c860d94c9d80",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Undid the change to \"New item\" with FillForm_undo. The textbox is empty again and the status shows \"1 changed\". Urgent is still checked and its fill order moved to 1.",
+    "startPath": "http://127.0.0.1:9585/inspector",
+    "endPath": "http://127.0.0.1:9585/inspector",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Changed fields",
+        "text": "1 changed"
+      },
+      {
+        "role": "textbox",
+        "name": "New item"
+      },
+      {
+        "role": "listitem",
+        "name": "Move New item New item textbox"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "status",
+        "name": "Changed fields",
+        "text": "2 changed"
+      },
+      {
+        "role": "button",
+        "name": "Undo the change to New item"
+      },
+      {
+        "role": "textbox",
+        "name": "New item",
+        "value": "Milk"
+      },
+      {
+        "name": "Fill order",
+        "text": "2"
+      },
+      {
+        "role": "listitem",
+        "name": "Move New item Fill order New item textbox Undo the change to New item Milk"
+      }
+    ],
+    "endWaitMs": 10116,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

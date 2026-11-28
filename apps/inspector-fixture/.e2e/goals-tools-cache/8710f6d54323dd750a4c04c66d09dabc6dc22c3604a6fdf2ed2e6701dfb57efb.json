@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:28:11.418Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool ToolsLens_select",
+        "tool": "ToolsLens_select",
+        "input": "{\"name\":\"click\"}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/toolsLens.goal.ts::inline::connected%20to%20an%20agent::each%20tool%27s%20page%20shows%20the%20description%2C%20schema%20and%20destructive%20mark%20an%20agent%20gets",
+      "targetId": "chromium",
+      "instructionDigest": "c0ef0f80d32f22a63457535e3308a3b84235105d11e9ba43ca818eb359020511",
+      "paramsDigest": "344f09fbeb62ddddb91ac596d5668e8cb1c3b7b191c36236de5e9d0e3d837a5b",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Selected the click tool in the Tools lens. Its page opened with the \"click\" heading, a \"Browser tool\" label, an Arguments form (target, doubleClick, button, modifiers) and a Run button.",
+    "startPath": "/?agent=",
+    "endPath": "/?agent=",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "click"
+      },
+      {
+        "text": "Browser tool"
+      },
+      {
+        "text": "Click one element. The result's changes_before lists what changed on the page since you last received it, before this action; changes lists what the action changed, anything that changed while the page settled after it included."
+      },
+      {
+        "text": "Arguments"
+      },
+      {
+        "role": "button",
+        "name": "Form",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "JSON"
+      },
+      {
+        "text": "target"
+      },
+      {
+        "text": "ref"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "page_objects"
+      },
+      {
+        "text": "Agent tool"
+      },
+      {
+        "text": "Returns the Page Objects on the page now as a tree: each one's class, its declared children with their values, and the id (po<n>) of each one that has a root."
+      },
+      {
+        "text": "page_objects"
+      },
+      {
+        "role": "article",
+        "name": "page_objects"
+      },
+      {
+        "role": "form",
+        "name": "page_objects"
+      },
+      {
+        "name": "page_objects input schema"
+      }
+    ],
+    "endWaitMs": 10132,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

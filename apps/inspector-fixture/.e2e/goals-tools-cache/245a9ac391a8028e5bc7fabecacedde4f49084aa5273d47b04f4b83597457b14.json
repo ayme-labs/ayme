@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:24:53.543Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool Connections_open",
+        "tool": "Connections_open",
+        "input": "{}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/inspector.goal.ts::with%20WebMCP%20publishing%20off%2C%20the%20Connections%20popover%20says%20so%20and%20offers%20the%20option%20that%20turns%20it%20on",
+      "targetId": "chromium",
+      "instructionDigest": "4494a0ff0d061ae614af17e47423f1fb41ef31585325a3bcd175f4db7a5665c5",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Opened the Connections popover through the panel's Connections_open tool. The \"Connections\" dialog is now showing, with Agent (Off) and WebMCP (Off) sections and a docs link.",
+    "startPath": "/unpublished.html",
+    "endPath": "/unpublished.html",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "Connections"
+      },
+      {
+        "role": "heading",
+        "name": "Agent"
+      },
+      {
+        "text": "Off"
+      },
+      {
+        "text": "Lets a coding agent such as Claude Code or Cursor call this page's tools."
+      },
+      {
+        "text": "agentConnection: true"
+      },
+      {
+        "role": "button",
+        "name": "Copy agentConnection: true"
+      },
+      {
+        "role": "heading",
+        "name": "WebMCP"
+      },
+      {
+        "text": "For agents that live in this browser, such as an extension."
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Connections: agent connection off"
+      }
+    ],
+    "endWaitMs": 10116,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T11:15:06.531Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "hover",
+        "summary": "hover over button \"Ref e5 textbox \\\"New item\\\" ListPage.newI…\" in \"Ref\"",
+        "target": {
+          "role": "button",
+          "name": "Ref e5 textbox \"New item\" ListPage.newItemInput, ListPage.newItemFields[0]",
+          "within": "Ref"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/inspector.goal.ts::the%20app%27s%20DOM%20gains%20no%20attribute%20while%20an%20element%20is%20highlighted",
+      "targetId": "chromium",
+      "instructionDigest": "08685815dde2a5768563bdf6420478df1b4a7702fb28dcc8c475f2c1523fa448",
+      "paramsDigest": "bd49ad0867219da665cab26e601f7012e268a7be0d534ed266ce49809e2d4bde",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Hovered the \"New item\" textbox search result; the page now shows a highlight overlay labelled locator('ayme-ref=e5') (alongside the selected e8 one).",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "text": "locator('ayme-ref=e5')"
+      }
+    ],
+    "endWaitMs": 12495,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

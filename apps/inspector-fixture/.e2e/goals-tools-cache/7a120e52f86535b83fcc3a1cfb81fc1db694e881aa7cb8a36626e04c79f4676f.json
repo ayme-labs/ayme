@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T14:27:09.571Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool LocatorGroups_toggleFromTree",
+        "tool": "LocatorGroups_toggleFromTree",
+        "input": "{\"number\":2,\"refs\":[\"e9\"]}",
+        "source": "cb00caebf30e0058"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::generate_locator%20offers%20the%20locator%20of%20each%20target%20in%20each%20group",
+      "targetId": "chromium",
+      "instructionDigest": "22335e0227257f9947edcb1a70fbc8ce582fdb57e8e3c2ecdc6368cd44723b73",
+      "paramsDigest": "d46a87d68dbaf1834ef7af737bf5de64b79c049bf88cd7c1c8222469e79a6f74",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "replayed 1 recorded action(s) zero-turn from the trace cache; recorded verdict: Added e9 (button \"Clear\") to group 2 from its tree. \"Targets of group 2\" lists e9 with locator .clearButton, and e9 is selected in the tree. Group 1 still holds e8 and e5.",
+    "startPath": "http://127.0.0.1:9585/inspector",
+    "endPath": "http://127.0.0.1:9585/inspector",
+    "endAnchors": [
+      {
+        "text": "e9 button \"Clear\""
+      },
+      {
+        "text": ".clearButton"
+      },
+      {
+        "role": "button",
+        "name": "Remove e9"
+      },
+      {
+        "role": "textbox",
+        "name": "Search targets for group 2",
+        "placeholder": "Search refs, roles and names"
+      },
+      {
+        "role": "list",
+        "name": "Targets of group 2"
+      },
+      {
+        "role": "listitem",
+        "name": "e9"
+      },
+      {
+        "role": "tree",
+        "name": "Add targets to group 2"
+      },
+      {
+        "role": "treeitem",
+        "name": "e5 textbox \"New item\""
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "textbox",
+        "name": "Search targets for group 1",
+        "placeholder": "Search refs, roles and names"
+      },
+      {
+        "role": "tree",
+        "name": "Add targets to group 1"
+      },
+      {
+        "role": "treeitem",
+        "name": "e5 textbox \"New item\"",
+        "states": [
+          "selected"
+        ]
+      },
+      {
+        "role": "treeitem",
+        "name": "e8 button \"Add item\"",
+        "states": [
+          "selected"
+        ]
+      },
+      {
+        "role": "treeitem",
+        "name": "e9 button \"Clear\""
+      }
+    ],
+    "endWaitMs": 10124,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

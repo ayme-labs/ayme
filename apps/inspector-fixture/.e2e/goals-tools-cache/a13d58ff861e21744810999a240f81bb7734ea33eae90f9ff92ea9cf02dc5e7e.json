@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T11:15:06.530Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Ref e8 button \\\"Add item\\\" ListPage.addIt…\" in \"Ref\"",
+        "target": {
+          "role": "button",
+          "name": "Ref e8 button \"Add item\" ListPage.addItemButton",
+          "within": "Ref"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/inspector.goal.ts::the%20app%27s%20DOM%20gains%20no%20attribute%20while%20an%20element%20is%20highlighted",
+      "targetId": "chromium",
+      "instructionDigest": "31308b4255eaac49354f1dcf4b504ee2e48dfc15aab9059cbe7a73c9658782e4",
+      "paramsDigest": "40aa004b24037a63ae1c8d0744d8bc6f32f35ac497d824281e9eb116441f5de8",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Selected the \"Add item\" button search result (via tap, as selectResult failed to match). Navigator switched to Structure lens with e8 button \"Add item\" selected, showing ListPage.addItemButton and its tools.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "searchbox",
+        "name": "Search page objects, actions, members and refs",
+        "placeholder": "Search objects, actions, refs"
+      },
+      {
+        "role": "button",
+        "name": "Model"
+      },
+      {
+        "role": "button",
+        "name": "Structure",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "text": "e2"
+      },
+      {
+        "text": "main"
+      },
+      {
+        "text": "e3"
+      },
+      {
+        "text": "heading"
+      },
+      {
+        "name": "Groceries",
+        "text": "\"Groceries\""
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "searchbox",
+        "name": "Search page objects, actions, members and refs",
+        "placeholder": "Search objects, actions, refs",
+        "value": "Add item"
+      },
+      {
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "Structure"
+      },
+      {
+        "text": "Ref"
+      },
+      {
+        "role": "heading",
+        "name": "Page /"
+      },
+      {
+        "name": "127.0.0.1:55539 · 2 page object models"
+      },
+      {
+        "role": "heading",
+        "name": "On this page · 1"
+      },
+      {
+        "name": "ListPage"
+      }
+    ],
+    "endWaitMs": 15727,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}
