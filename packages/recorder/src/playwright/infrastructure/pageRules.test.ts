@@ -194,6 +194,7 @@ describe("whether a page's calls reach Playwright", () => {
     toJSON: (this: unknown) => unknown,
     check: () => void
   ) => {
+    const before = Object.getOwnPropertyDescriptor(proto, "toJSON");
     Object.defineProperty(proto, "toJSON", {
       configurable: true,
       value: toJSON,
@@ -201,7 +202,9 @@ describe("whether a page's calls reach Playwright", () => {
     try {
       check();
     } finally {
-      delete (proto as { toJSON?: unknown }).toJSON;
+      // Dates have a toJSON of their own, which later tests still need.
+      if (before) Object.defineProperty(proto, "toJSON", before);
+      else delete (proto as { toJSON?: unknown }).toJSON;
     }
   };
 
