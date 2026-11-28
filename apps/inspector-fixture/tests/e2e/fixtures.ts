@@ -38,6 +38,19 @@ export async function movePointerTo(element: On) {
   await element.hover();
 }
 
+/**
+ * Brings the panel's tab to the front, as the person looks back at the panel
+ * after a check read the page; a no-op where the panel is inline. Plain code
+ * in every arm, never a goal: no user step asks which tab is in front. e2e
+ * measures a goal's outcome from the screen the goal starts on
+ * (@e2e-dev/core's `describeDelta`), so a goal that starts with a switch to
+ * the panel's tab records the panel itself as its outcome, which every later
+ * replay finds already showing.
+ */
+export async function bringPanelToFront(inspector: Inspector) {
+  await inspector.tab.front();
+}
+
 /** Both placements, for a spec whose tests run in each. */
 export const placements: readonly Placement[] = ["inline", "external"];
 

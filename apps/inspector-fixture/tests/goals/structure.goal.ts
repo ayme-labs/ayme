@@ -5,6 +5,7 @@ import {
   outline,
   placements,
   testIn,
+  bringPanelToFront,
   confirmGoalRecordings,
   movePointerTo,
 } from "../e2e/fixtures";
@@ -34,6 +35,7 @@ for (const placement of placements) {
       });
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
 
+      await bringPanelToFront(inspector);
       await agent.act("select the node tagged {tag} in the Structure lens", {
         params: { tag: ".newItemInput" },
       });

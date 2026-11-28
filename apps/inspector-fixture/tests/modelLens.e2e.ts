@@ -7,6 +7,7 @@ import {
   placements,
   reloadFixture,
   testIn,
+  bringPanelToFront,
   confirmGoalRecordings,
   movePointerTo,
 } from "./e2e/fixtures";
@@ -75,6 +76,7 @@ for (const placement of placements) {
       await movePointerTo(inspector.header.title);
       await expect.poll(secondItem).toBe("none");
 
+      await bringPanelToFront(inspector);
       await inspector.navigator.model.object("TodoPage.items[1]").click();
       await movePointerTo(inspector.header.title);
 
@@ -93,6 +95,7 @@ for (const placement of placements) {
         page.locator("#todo-items > li >> nth=1 >> .todo-archive"),
         browser
       );
+      await bringPanelToFront(inspector);
       await inspector.navigator.model.object("TodoPage.items[1]").click();
 
       await inspector.detail.model.member("archiveButton").hover();

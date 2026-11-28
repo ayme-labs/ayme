@@ -77,8 +77,9 @@ this machine's own login. What may differ from the twin is
 and why moving the pointer is no goal is
 [`movePointerTo`](tests/e2e/fixtures.ts)'s. They never run in CI, for the
 reason beside the `CI` guard in `e2e.goals.config.ts`. In the
-external placement, switching to the Inspector's tab is part of the goal:
-the agent does it as it sees fit. A first run records each goal into
+external placement, switching to the Inspector's tab is part of the goal,
+which the agent does as it sees fit, except where
+[`bringPanelToFront`](tests/e2e/fixtures.ts) says otherwise. A first run records each goal into
 `.e2e/goals-cache/`, and later runs replay it without the model, except for
 a step that changes no control, such as dragging the panel's edge: e2e saves
 nothing for it, so it calls the model on every run, and a warm run needs the

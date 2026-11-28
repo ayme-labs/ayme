@@ -8,6 +8,7 @@ import {
   placements,
   reloadFixture,
   testIn,
+  bringPanelToFront,
   confirmGoalRecordings,
 } from "../e2e/fixtures";
 
@@ -323,6 +324,7 @@ for (const placement of placements) {
         .poll(() => run.child("ListPage.clear").interactionList())
         .toEqual([{ operation: "click", target: "ListPage.clearButton" }]);
       await expect(await listPage.items.front()).toHaveCount(0);
+      await bringPanelToFront(inspector);
       await agent.act("open the Result of the latest {tool} run in Runs", {
         params: { tool: "goal" },
       });
@@ -404,6 +406,7 @@ for (const placement of placements) {
       await expect.poll(() => run.status()).toBe("Succeeded");
       const logged = (await appView.runs()).at(-1)!;
 
+      await bringPanelToFront(inspector);
       await agent.act("copy the result of the latest {tool} run", {
         params: { tool: "ListPage.countItems" },
       });
@@ -428,6 +431,7 @@ for (const placement of placements) {
     test("press_key presses the key the page receives", async ({
       browser,
       agent,
+      inspector,
       listPage,
     }) => {
       await agent.act("open the {tool} tool in the Tools lens", {
@@ -437,6 +441,7 @@ for (const placement of placements) {
       // The fixture writes the function key it receives into the New item
       // field; two keys, so a run that always presses the same one fails.
       for (const key of ["F4", "F7"]) {
+        await bringPanelToFront(inspector);
         await agent.act("set the key to {key}", { params: { key } });
         await agent.act("run it");
         await expect(await listPage.newItemInput.front()).toHaveValue(key);

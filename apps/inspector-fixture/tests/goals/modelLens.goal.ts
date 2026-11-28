@@ -6,6 +6,7 @@ import {
   placements,
   reloadFixture,
   testIn,
+  bringPanelToFront,
   confirmGoalRecordings,
   movePointerTo,
 } from "../e2e/fixtures";
@@ -51,6 +52,7 @@ for (const placement of placements) {
       await movePointerTo(inspector.header.title);
       await expect.poll(secondItem).toBe("none");
 
+      await bringPanelToFront(inspector);
       await agent.act(
         'select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
         {
@@ -75,6 +77,7 @@ for (const placement of placements) {
         page.locator("#todo-items > li >> nth=1 >> .todo-archive"),
         browser
       );
+      await bringPanelToFront(inspector);
       await agent.act(
         'select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
         {

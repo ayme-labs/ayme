@@ -5,6 +5,7 @@ import {
   INSPECTOR,
   placements,
   testIn,
+  bringPanelToFront,
   confirmGoalRecordings,
 } from "../e2e/fixtures";
 
@@ -78,6 +79,7 @@ for (const placement of placements) {
           .within((items) => items.filter({ hasText: "Bread" }))
           .front()
       ).toHaveCount(1);
+      await bringPanelToFront(inspector);
       await agent.act("open What the model sees");
       await expect
         .poll(() => toolPage.modelSees.definitionsText())

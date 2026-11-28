@@ -5,6 +5,7 @@ import {
   outline,
   placements,
   testIn,
+  bringPanelToFront,
   confirmGoalRecordings,
   movePointerTo,
 } from "./e2e/fixtures";
@@ -26,6 +27,7 @@ for (const placement of placements) {
       await inspector.structure.nodeOf("ListPage.newItemInput").hover();
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
 
+      await bringPanelToFront(inspector);
       await inspector.structure.nodeOf("ListPage.newItemInput").click();
       await movePointerTo(inspector.navigator.searchBox);
       await expect.poll(outline(listPage.newItemInput, browser)).toBe("solid");

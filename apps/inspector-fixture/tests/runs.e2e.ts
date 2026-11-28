@@ -8,6 +8,7 @@ import {
   placements,
   reloadFixture,
   testIn,
+  bringPanelToFront,
   confirmGoalRecordings,
 } from "./e2e/fixtures";
 
@@ -281,6 +282,7 @@ for (const placement of placements) {
         .poll(() => run.child("ListPage.clear").interactionList())
         .toEqual([{ operation: "click", target: "ListPage.clearButton" }]);
       await expect(await listPage.items.front()).toHaveCount(0);
+      await bringPanelToFront(inspector);
       await run.resultToggle.click();
       expect(await run.resultText()).toContain('"reason": "done"');
 
@@ -352,6 +354,7 @@ for (const placement of placements) {
       await expect.poll(() => run.status()).toBe("Succeeded");
       const logged = (await appView.runs()).at(-1)!;
 
+      await bringPanelToFront(inspector);
       await run.copyResultButton.click();
 
       // The write is asynchronous, so the clipboard is read until it lands,
@@ -381,6 +384,7 @@ for (const placement of placements) {
       // The fixture writes the function key it receives into the New item
       // field; two keys, so a run that always presses the same one fails.
       for (const key of ["F4", "F7"]) {
+        await bringPanelToFront(inspector);
         await inspector.detail.runCard().fill({ key });
         await inspector.detail.runCard().runButton.click();
         await expect(await listPage.newItemInput.front()).toHaveValue(key);
