@@ -5,6 +5,7 @@ import {
   elementsOf,
   isInteraction,
   kindOf,
+  mayHold,
   playwrightCalls,
   valueOf,
   type CallSubject,
@@ -133,4 +134,12 @@ it("acts on no element from the keyboard or the mouse", () => {
   expect(valueOf("keyboard", "press", ["Enter"])).toBe("Enter");
   expect(elementsOf("mouse", page.mouse, "click", [10, 20])).toEqual([]);
   expect(valueOf("mouse", "click", [10, 20])).toBe(10);
+});
+
+it("lets a Host hold only a call the tables know answers later", () => {
+  expect(mayHold("locator", "click")).toBe(true);
+  expect(mayHold("keyboard", "press")).toBe(true);
+  expect(mayHold("locator", "nth")).toBe(false);
+  expect(mayHold("page", "url")).toBe(false);
+  expect(mayHold("page", "laterMethod")).toBe(false);
 });

@@ -305,7 +305,9 @@ describe("the Inspector contract the runtime serves", () => {
       recordedPageState: async () => undefined,
       demo: () => {},
     });
-    expect((await none.getState()).tools).toEqual([]);
+    const state = await none.getState();
+    expect(state.tools).toEqual([]);
+    expect(state.runs).toEqual([]);
     expect((await none.runTool({ name: "click" })).error).toMatch(
       /not started|No ayme/
     );

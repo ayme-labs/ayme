@@ -176,6 +176,30 @@ describe("a Page Object Tool's answer to an agent", () => {
     expect(readPageObjectTree).toHaveBeenCalledOnce();
   });
 
+  it("answers that the page has not settled while it reloads the URL it shows, with no URL", async () => {
+    const { stub } = session({
+      answer: async () => ({ settled: false, loading: "http://app/list" }),
+    });
+
+    expect(await pageObjectToolSource(stub).run("ListPage.add", {})).toEqual({
+      settled: false,
+    });
+  });
+
+  it("still runs the action when the read before it fails, and answers without the changes", async () => {
+    const { stub, run, readPageObjectTree } = session({
+      trees: [list("Milk"), list("Milk", "Eggs")],
+      answer: async () => ({ settled: true, result: 2 }),
+    });
+    readPageObjectTree.mockRejectedValueOnce(new Error("Target closed"));
+
+    expect(await pageObjectToolSource(stub).run("ListPage.add", {})).toEqual({
+      settled: true,
+      result: 2,
+    });
+    expect(run).toHaveBeenCalledOnce();
+  });
+
   it("fails with the error alone when the action threw after the full load it started, and reads no tree for it", async () => {
     const refused = new Error("The next page refused the sign-in.");
     markFailedAfterFullLoad(refused);

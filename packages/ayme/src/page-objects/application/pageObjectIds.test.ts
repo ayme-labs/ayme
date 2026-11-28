@@ -220,7 +220,9 @@ describe("Page Object ids from a source a Host gives", () => {
     shown.rename("e2", "e5");
     expect(released).toEqual([]);
     expect(await idsOf(ids, ["e5"])).toEqual(["po2"]);
+    expect(released).toEqual(["po1"]);
 
+    await idsOf(ids, ["e5"]);
     expect(released).toEqual(["po1"]);
   });
 
