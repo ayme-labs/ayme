@@ -60,7 +60,10 @@ import {
 import { readPageObjectTree as readTree } from "./pageObjectTree";
 import type { PageObjectTreeRead } from "../domain/pageObjectTreeText";
 import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
-import type { RunContext } from "../../runs/application";
+import {
+  markFailedAfterFullLoad,
+  type RunContext,
+} from "../../runs/application";
 
 /**
  * Package-internal: a Page Object tool as the registry holds it. Its
@@ -907,7 +910,10 @@ async function performPageObjectAction(
   if (loaded && !outlivesFullLoads) return result;
   // The Run lasts until the action returns, past a load it started, with
   // what it returns or throws: ayme adds no time limit to a Run.
-  const value = await returned;
+  const value = await returned.catch((error: unknown) => {
+    if (loaded) markFailedAfterFullLoad(error);
+    throw error;
+  });
   if (loaded && value !== undefined && isJsonValue(value))
     result.result = value;
   return result;

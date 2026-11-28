@@ -10,6 +10,7 @@ import {
 } from "../page-objects/domain";
 import { InPageVersionError } from "../in-page";
 import type { ActionFailure, ActionResult } from "../page-state/domain";
+import { failedAfterFullLoad } from "../runs/application";
 import { RuntimeStateError, type JsonValue, type ToolInfo } from "../shared";
 
 /** What the source reads of the session, its calls made by one Caller. */
@@ -104,8 +105,10 @@ export function pageObjectToolSource(
         const result = await page
           .run(name, input)
           .catch(async (error: unknown) => {
+            const failure = withoutChangeRecord(error);
+            if (failedAfterFullLoad(error)) throw failure;
             throw withTreeChanges(
-              withoutChangeRecord(error),
+              failure,
               before,
               await page.readPageObjectTree().catch(() => undefined)
             );

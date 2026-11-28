@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PageObjectId, PageObjectTreeRead } from "../page-objects/domain";
 import { treeRead } from "../../testing/pageObjectTree.testSupport";
 import { InPageVersionError } from "../in-page";
+import { markFailedAfterFullLoad } from "../runs/application";
 import type { ToolInfo } from "../shared";
 import {
   pageObjectToolSource,
@@ -172,6 +173,23 @@ describe("a Page Object Tool's answer to an agent", () => {
       settled: false,
       url: "http://app/item/1",
     });
+    expect(readPageObjectTree).toHaveBeenCalledOnce();
+  });
+
+  it("fails with the error alone when the action threw after the full load it started, and reads no tree for it", async () => {
+    const refused = new Error("The next page refused the sign-in.");
+    markFailedAfterFullLoad(refused);
+    const { stub, readPageObjectTree } = session({
+      trees: [list("Milk"), list("Milk", "Eggs")],
+      answer: () => Promise.reject(refused),
+    });
+
+    const failure: unknown = await pageObjectToolSource(stub)
+      .run("ListPage.add", {})
+      .catch((error: unknown) => error);
+
+    expect(failure).toBe(refused);
+    expect(failure).not.toHaveProperty("changes");
     expect(readPageObjectTree).toHaveBeenCalledOnce();
   });
 
