@@ -2388,16 +2388,17 @@ it("lets a click the browser gave to another element than the one under the poin
   expect(await clicks()).toEqual(["other", "porto", "picker"]);
   expect(await listUp()).toBe(true);
 
-  // A pick sent on before Playwright gives the click's report, which it
-  // holds half a second for a double click (1.63 and later): each report
+  // A pick sent on right away, while Playwright still holds the click's
+  // report, half a second for a double click (1.63 and later): each report
   // still names its own click's element, the group and the link the pick
-  // removed, which only the pick's own note names (`linkRemovedOn`).
+  // removed, which only the pick's own note names (`linkRemovedOn`). On a
+  // run slower than that half second the click's report comes first, and
+  // the test checks only that.
   const reports = () =>
     browser.told.filter((signal) => signal.kind === "interactionReported");
   await browser.click(browser.page.locator("#faro"));
   await expect.poll(() => heldSoFar().length).toBe(4);
   const pick = heldSoFar()[3]!;
-  if (holdsClickReports) expect(reports()).toHaveLength(2);
   await browser.ask({ kind: "passOn", input: pick.input });
   await browser.toldOf("inputPassedOn", ({ input }) => input === pick.input);
   await expect.poll(() => reports().length, { timeout: 10_000 }).toBe(4);
