@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/ayme-labs/ayme/compare/unplugin-ayme-v0.3.2...unplugin-ayme-v0.3.3) (2026-11-28)
+
+
+### Miscellaneous Chores
+
+* **unplugin-ayme:** Synchronize ayme versions
+
 ## [0.3.2](https://github.com/ayme-labs/ayme/compare/unplugin-ayme-v0.3.1...unplugin-ayme-v0.3.2) (2026-11-27)
 
 

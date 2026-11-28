@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/ayme-labs/ayme/compare/mcp-v0.3.2...mcp-v0.3.3) (2026-11-28)
+
+
+### Miscellaneous Chores
+
+* **mcp:** Synchronize ayme versions
+
 ## [0.3.2](https://github.com/ayme-labs/ayme/compare/mcp-v0.3.1...mcp-v0.3.2) (2026-11-27)
 
 
