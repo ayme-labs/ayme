@@ -2774,6 +2774,11 @@ function unanswered(
       (input) => input.asked === request.snapshot
     ))
       withoutItsSnapshot(draft, owner);
+    // A read Continue asked for is given up: its late answer is no one's,
+    // and the page's next read is where recording resumes.
+    const gate = gateOf(draft, request.page);
+    if (gate?.resuming === request.snapshot)
+      changeGate(draft, request.page, { resuming: null });
     const wrapping = wrappingUpOf(state);
     if (wrapping?.finals)
       next = {

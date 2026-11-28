@@ -4756,6 +4756,26 @@ describe("the lifecycle, for what the review against the spec found", () => {
       state: { phase: "recording" },
     },
     {
+      name: "a read after Continue that is not answered in time is given up: its late answer is kept by nothing, and the page's next read is where recording resumes (rule 13)",
+      happened: [
+        ...stopped,
+        resume,
+        reporting,
+        holding,
+        failed(readAfter(snapshot2)),
+        taken(snapshot2),
+        clickHeld(input1),
+        taken(snapshot3),
+      ],
+      todo: [
+        [],
+        [],
+        [takeSnapshot(snapshot3)],
+        [resumesAt(snapshot3), passOn(input1)],
+      ],
+      state: { phase: "recording" },
+    },
+    {
       name: "only a page's first snapshot after Continue is where recording resumes: a click held before it is in gets its own 'before', and whichever comes first is the one (rule 13)",
       happened: [
         ...stopped,
@@ -5009,6 +5029,19 @@ describe("the lifecycle, for the time an answer is given", () => {
       happened: [...stopped, resume, traceStarted, reporting, holding],
       of: takeSnapshot(snapshot2),
       awaited: true,
+    },
+    {
+      name: "a Continue whose read failed waits for it no more",
+      happened: [
+        ...stopped,
+        resume,
+        traceStarted,
+        reporting,
+        holding,
+        failed(readAfter(snapshot2)),
+      ],
+      of: takeSnapshot(snapshot2),
+      awaited: false,
     },
     {
       name: "no other request's answer is given a time",
