@@ -166,6 +166,8 @@ try {
     // Other work on the machine slows a run; the page shows it beside the times.
     const loadAverage = loadavg().map((n) => +n.toFixed(2));
     const startedAt = Date.now();
+    const startedHr = process.hrtime.bigint();
+    const sleptBefore = lastSleep();
     const { status } = spawnSync(
       "pnpm",
       ["run", arm.script, "--workers", "1", "--output", output],
@@ -176,7 +178,19 @@ try {
       }
     );
     const commandWallMs = Date.now() - startedAt;
+    // A run the machine slept through times the sleep, and its pages may
+    // have reloaded under it. macOS says when it last slept; elsewhere the
+    // monotonic clock, which stops in a suspend, falls behind the wall clock.
+    const sleptMs =
+      lastSleep() !== sleptBefore
+        ? Infinity
+        : commandWallMs -
+          Number((process.hrtime.bigint() - startedHr) / 1_000_000n);
     try {
+      if (sleptMs > 5_000)
+        throw new NotAResult(
+          `the machine slept during the run${sleptMs < Infinity ? `, for ${Math.round(sleptMs / 1000)} s` : ""}`
+        );
       summary.runs.push({
         ...projectRun(join(output, "report.json"), {
           startedAfter: startedAt,
@@ -238,6 +252,13 @@ function listTests() {
     { cwd: here, env: armEnv(), stdio: ["ignore", "pipe", "inherit"] }
   );
   return JSON.parse(stdout).pairs;
+}
+
+/** When macOS last went to sleep, or undefined where it does not say. */
+function lastSleep() {
+  return spawnSync("sysctl", ["-n", "kern.sleeptime"], {
+    encoding: "utf8",
+  }).stdout?.trim();
 }
 
 function free(port) {
