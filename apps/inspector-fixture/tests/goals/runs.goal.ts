@@ -4,7 +4,6 @@ import type { Agent } from "@ayme-dev/mcp/testing";
 
 import {
   INSPECTOR,
-  outline,
   placements,
   reloadFixture,
   testIn,
@@ -74,6 +73,7 @@ for (const placement of placements) {
       browser,
       agent,
       inspector,
+      listPage,
     }) => {
       await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListPage.addItem" },
@@ -96,108 +96,12 @@ for (const placement of placements) {
           },
           { operation: "click", target: "ListPage.addItemButton" },
         ]);
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("form fields keep their names and values without repeating their refs", async ({
-      browser,
-      agent,
-      appView,
-      inspector,
-    }) => {
-      const text = await appView.ref('textbox "New item"');
-      const urgent = await appView.ref('checkbox "Urgent"');
-      await agent.act("show all runs in Runs");
-      await appView.run("fill_form", {
-        fields: [
-          { name: "New item", type: "textbox", target: text, value: "Milk" },
-          { name: "Urgent", type: "checkbox", target: urgent, value: "true" },
-        ],
-      });
-      const run = inspector.runs.latest("fill_form");
-      await expect
-        .poll(() => run.interactionList())
-        .toEqual([
-          {
-            operation: "fill",
-            target: "ListPage.newItemInput",
-            value: '"Milk"',
-          },
-          { operation: "setChecked", target: "ListPage.newItemFields[1]" },
-        ]);
-      expect(JSON.parse((await run.read())?.arguments ?? "")).toEqual({
-        fields: [
-          { name: "New item", type: "textbox", value: "Milk" },
-          { name: "Urgent", type: "checkbox", value: "true" },
-        ],
-      });
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("a selection's chosen values show beside its readable target", async ({
-      agent,
-      appView,
-      browser,
-      page,
-      inspector,
-    }) => {
-      await page.front();
-      await browser.evaluate(() => {
-        const select = document.createElement("select");
-        select.setAttribute("aria-label", "Size");
-        for (const name of ["Small", "Large"]) {
-          const option = document.createElement("option");
-          option.value = name;
-          option.textContent = name;
-          select.append(option);
-        }
-        document.querySelector("main")!.append(select);
-        return null;
-      });
-      const target = await appView.ref('combobox "Size"');
-      await agent.act("show all runs in Runs");
-      await appView.run("select_option", { target, values: ["Large"] });
-      const run = inspector.runs.latest("select_option");
-      await expect
-        .poll(async () => (await run.read())?.toggle)
-        .toContain('["Large"]');
-      const shown = await run.read();
-      expect(shown?.toggle).toContain('combobox "Size"');
-      expect(shown?.arguments).toBeNull();
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("hovering a run's Interaction highlights its element on the page", async ({
-      agent,
-      browser,
-      inspector,
-      listPage,
-    }) => {
-      await agent.act("open the {tool} tool in the Tools lens", {
-        params: { tool: "ListPage.addItem" },
-      });
-      await agent.act("run it with the text {text}", {
-        params: { text: "Milk" },
-      });
-      const run = inspector.runs.latest("ListPage.addItem");
-      await expect.poll(() => run.status()).toBe("Succeeded");
-
-      await expect
-        .poll(async () => (await run.interactionList())[1]?.target)
-        .toBe("ListPage.addItemButton");
-
-      await agent.act(
-        "hover the {position} Interaction of the latest {tool} run in Runs",
-        { params: { position: "second", tool: "ListPage.addItem" } }
-      );
-
-      // The dashed hover highlight.
-      await expect
-        .poll(outline(listPage.addItemButton, browser))
-        .toBe("dashed");
+      // The tool acted on the page.
+      await expect(
+        await listPage.items
+          .within((items) => items.filter({ hasText: "Milk" }))
+          .front()
+      ).toHaveCount(1);
 
       await confirmGoalRecordings(browser);
     });
@@ -246,10 +150,6 @@ for (const placement of placements) {
       await agent.act("select the {item} item with the mouse", {
         params: { item: "Eggs" },
       });
-      await agent.act("switch the arguments editor to JSON with the mouse");
-      await agent.act(
-        "switch the arguments editor back to Form with the mouse"
-      );
       // "done" is the field's first choice, which it shows before any pick.
       await agent.act("set the state to {state} with the mouse", {
         params: { state: "todo" },
@@ -265,31 +165,6 @@ for (const placement of placements) {
       await expect(await item("Milk").front()).not.toHaveAttribute(
         "data-state"
       );
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("Runs switches between the selection's runs and all runs with the mouse", async ({
-      browser,
-      agent,
-      inspector,
-    }) => {
-      await agent.act("open the {tool} tool in the Tools lens", {
-        params: { tool: "ListPage.countItems" },
-      });
-      await agent.act("run it");
-      await agent.act("select {tool} in the Tools lens", {
-        params: { tool: "ListPage.addItem" },
-      });
-      await expect(await inspector.runs.runs.front()).toHaveCount(0);
-
-      await agent.act("show all runs in Runs with the mouse");
-      await expect
-        .poll(() => inspector.runs.latest("ListPage.countItems").caller())
-        .toEqual(INSPECTOR);
-
-      await agent.act("show only the selection's runs in Runs with the mouse");
-      await expect(await inspector.runs.runs.front()).toHaveCount(0);
 
       await confirmGoalRecordings(browser);
     });

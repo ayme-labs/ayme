@@ -7,11 +7,12 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, URL } from "node:url";
 
-import { check } from "./check-goal-mirror.mjs";
+import { check, checkSpecs } from "./check-goal-mirror.mjs";
 
 const root = fileURLToPath(new URL("goal-mirror-fixture", import.meta.url));
 const twin = join(root, "tests", "pair.e2e.ts");
 const goal = join(root, "tests", "goals", "pair.goal.ts");
+const spec = join(root, "tests", "pair.spec.ts");
 
 /** The problems with `edits` ([path, from, to]) made to the pair. */
 function problemsWith(...edits) {
@@ -248,4 +249,33 @@ test("fails with no goal files", () => {
   } finally {
     rmSync(empty, { recursive: true });
   }
+});
+
+/** The spec problems with `edits` ([path, from, to]) made to the pair. */
+function specProblemsWith(specOnly, ...edits) {
+  const read = (path) =>
+    edits.reduce(
+      (text, [file, from, to]) =>
+        file === path ? text.replace(from, to) : text,
+      readFileSync(path, "utf8")
+    );
+  return checkSpecs({ root, read, specOnly }).join("\n");
+}
+
+test("the pair's Playwright spec holds its e2e twin's tests", () => {
+  assert.equal(specProblemsWith(new Map()), "");
+});
+
+test("rejects a spec title its e2e twin lacks", () => {
+  assert.match(
+    specProblemsWith(new Map(), [spec, "adds an item", "adds a loaf"]),
+    /pair\.spec\.ts has "adds a loaf", and pair\.e2e\.ts does not/
+  );
+});
+
+test("rejects a SPEC_ONLY entry that names no spec", () => {
+  assert.match(
+    specProblemsWith(new Map([["gone.spec.ts", "a reason"]])),
+    /SPEC_ONLY names no spec: gone\.spec\.ts/
+  );
 });

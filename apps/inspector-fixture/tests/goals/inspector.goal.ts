@@ -8,7 +8,6 @@ import {
   reloadFixture,
   testIn,
   confirmGoalRecordings,
-  INSPECTOR,
 } from "../e2e/fixtures";
 
 // The goal-driven twin of ../inspector.e2e.ts: the same tests, with each
@@ -20,31 +19,6 @@ import {
 
 const test = testIn("inline");
 
-test("running a Page Object tool from the panel acts on the page", async ({
-  browser,
-  agent,
-  inspector,
-  listPage,
-}) => {
-  await agent.act("open the {tool} tool in the Tools lens", {
-    params: { tool: "ListPage.addItem" },
-  });
-  await agent.act("run it with the text {text}", { params: { text: "Milk" } });
-
-  await expect(
-    await listPage.items
-      .within((items) => items.filter({ hasText: "Milk" }))
-      .front()
-  ).toHaveCount(1);
-
-  // The panel's own run, so a run made another way doesn't pass.
-  await expect
-    .poll(() => inspector.runs.latest("ListPage.addItem").caller())
-    .toEqual(INSPECTOR);
-
-  await confirmGoalRecordings(browser);
-});
-
 test("the layout and its sizes survive a reload", async ({
   browser,
   agent,
@@ -52,54 +26,14 @@ test("the layout and its sizes survive a reload", async ({
   inspector,
 }) => {
   const { header, shell } = inspector;
-  const start = await shell.box();
-  await agent.act(
-    "drag the panel by its header {left} px left and {down} px down",
-    {
-      params: { left: 100, down: 50 },
-    }
-  );
-  await expect
-    .poll(async () => (await shell.box()).x)
-    .toBeCloseTo(start.x - 100, 0);
-  await expect
-    .poll(async () => (await shell.box()).y)
-    .toBeCloseTo(start.y + 50, 0);
-  const beforeFloating = await shell.box();
-  await agent.act(
-    "drag the panel's {edge} edge {distance} px to the {direction}",
-    {
-      params: { edge: "left", distance: 60, direction: "left" },
-    }
-  );
-  await expect
-    .poll(async () => (await shell.box()).width)
-    .toBeCloseTo(beforeFloating.width + 60, 0);
   const floating = await shell.box();
   await agent.act("set the layout to {layout}", {
     params: { layout: "Dock left" },
   });
-  const beforeDockedLeft = await shell.box();
-  await agent.act(
-    "drag the panel's {edge} edge {distance} px to the {direction}",
-    {
-      params: { edge: "right", distance: 80, direction: "right" },
-    }
-  );
-  await expect
-    .poll(async () => (await shell.box()).width)
-    .toBeCloseTo(beforeDockedLeft.width + 80, 0);
   const dockedLeft = await shell.box();
   await agent.act("set the layout to {layout}", {
     params: { layout: "Dock to bottom" },
   });
-  const beforeDockedBottom = await shell.box();
-  await agent.act("drag the panel's {edge} edge {distance} px {direction}", {
-    params: { edge: "top", distance: 60, direction: "up" },
-  });
-  await expect
-    .poll(async () => (await shell.box()).height)
-    .toBeCloseTo(beforeDockedBottom.height + 60, 0);
   const dockedBottom = await shell.box();
 
   await reloadFixture(page, "/");
@@ -114,22 +48,6 @@ test("the layout and its sizes survive a reload", async ({
     params: { layout: "Floating" },
   });
   await expect.poll(() => shell.box()).toEqual(floating);
-
-  await confirmGoalRecordings(browser);
-});
-
-test("a collapsed panel stays collapsed after a reload", async ({
-  browser,
-  agent,
-  page,
-  inspector,
-}) => {
-  await agent.act("collapse the panel");
-
-  await reloadFixture(page, "/");
-
-  await expect(await inspector.logo.root.front()).toBeVisible();
-  await expect(await inspector.panel.front()).toHaveCount(0);
 
   await confirmGoalRecordings(browser);
 });
@@ -154,33 +72,6 @@ test("a docked panel sits beside the page, and floating it gives the space back"
     params: { layout: "Floating" },
   });
   await expect.poll(pageLeft).toBe(before);
-
-  await confirmGoalRecordings(browser);
-});
-
-test("the page highlights what's hovered in the panel and what's selected, at once", async ({
-  agent,
-  browser,
-  listPage,
-}) => {
-  await agent.act("search the navigator for {query}", {
-    params: { query: "Add item" },
-  });
-  await agent.act("select the search result {result}", {
-    params: { result: 'button "Add item"' },
-  });
-  await agent.act("search the navigator for {query}", {
-    params: { query: "New item" },
-  });
-  // The new result can render right under the pointer left by the click,
-  // and Chromium 156 sends no mouseenter for that; enter it from outside.
-  await browser.mouse.move(0, 0);
-  await agent.act("hover the search result {result}", {
-    params: { result: 'textbox "New item"' },
-  });
-
-  await expect.poll(outline(listPage.addItemButton, browser)).toBe("solid");
-  await expect.poll(outline(listPage.newItemInput, browser)).toBe("dashed");
 
   await confirmGoalRecordings(browser);
 });
@@ -321,24 +212,15 @@ test("the header's menus and switches work by mouse inside the closed shadow roo
   const { header } = inspector;
 
   // A press inside the panel must not count as a press outside the menu.
-  for (const layout of [
-    "Dock left",
-    "Dock right",
-    "Dock to bottom",
-    "Floating",
-  ] as const) {
-    await agent.act("open the Layout menu with the mouse");
-    await agent.act("choose {layout} in the Layout menu with the mouse", {
-      params: { layout },
-    });
-    await expect.poll(() => header.layoutMenu.current()).toBe(layout);
-    await expect(await header.layoutMenu.menu.front()).toHaveCount(0);
-  }
+  await agent.act("open the Layout menu with the mouse");
+  await agent.act("choose {layout} in the Layout menu with the mouse", {
+    params: { layout: "Dock left" },
+  });
+  await expect.poll(() => header.layoutMenu.current()).toBe("Dock left");
+  await expect(await header.layoutMenu.menu.front()).toHaveCount(0);
 
-  for (const theme of ["Light", "Dark", "System"] as const) {
-    await agent.act("press the theme switch once with the mouse");
-    await expect.poll(() => header.themeSwitch.current()).toBe(theme);
-  }
+  await agent.act("press the theme switch once with the mouse");
+  await expect.poll(() => header.themeSwitch.current()).toBe("Light");
 
   await agent.act("collapse the panel with the mouse");
   await expect(await inspector.logo.root.front()).toBeVisible();

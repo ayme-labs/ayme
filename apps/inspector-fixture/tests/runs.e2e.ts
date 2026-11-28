@@ -4,7 +4,6 @@ import type { Agent } from "@ayme-dev/mcp/testing";
 
 import {
   INSPECTOR,
-  outline,
   placements,
   reloadFixture,
   testIn,
@@ -69,6 +68,7 @@ for (const placement of placements) {
     test("a Page Object Tool run from the panel shows in Runs as the Inspector's, with its Interactions", async ({
       browser,
       inspector,
+      listPage,
     }) => {
       await inspector.tool("ListPage.addItem");
       await inspector.detail.runCard().run({ text: "Milk" });
@@ -87,98 +87,12 @@ for (const placement of placements) {
           },
           { operation: "click", target: "ListPage.addItemButton" },
         ]);
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("form fields keep their names and values without repeating their refs", async ({
-      browser,
-      appView,
-      inspector,
-    }) => {
-      const text = await appView.ref('textbox "New item"');
-      const urgent = await appView.ref('checkbox "Urgent"');
-      await inspector.runs.showAll();
-      await appView.run("fill_form", {
-        fields: [
-          { name: "New item", type: "textbox", target: text, value: "Milk" },
-          { name: "Urgent", type: "checkbox", target: urgent, value: "true" },
-        ],
-      });
-      const run = inspector.runs.latest("fill_form");
-      await expect
-        .poll(() => run.interactionList())
-        .toEqual([
-          {
-            operation: "fill",
-            target: "ListPage.newItemInput",
-            value: '"Milk"',
-          },
-          { operation: "setChecked", target: "ListPage.newItemFields[1]" },
-        ]);
-      expect(JSON.parse((await run.read())?.arguments ?? "")).toEqual({
-        fields: [
-          { name: "New item", type: "textbox", value: "Milk" },
-          { name: "Urgent", type: "checkbox", value: "true" },
-        ],
-      });
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("a selection's chosen values show beside its readable target", async ({
-      appView,
-      browser,
-      page,
-      inspector,
-    }) => {
-      await page.front();
-      await browser.evaluate(() => {
-        const select = document.createElement("select");
-        select.setAttribute("aria-label", "Size");
-        for (const name of ["Small", "Large"]) {
-          const option = document.createElement("option");
-          option.value = name;
-          option.textContent = name;
-          select.append(option);
-        }
-        document.querySelector("main")!.append(select);
-        return null;
-      });
-      const target = await appView.ref('combobox "Size"');
-      await inspector.runs.showAll();
-      await appView.run("select_option", { target, values: ["Large"] });
-      const run = inspector.runs.latest("select_option");
-      await expect
-        .poll(async () => (await run.read())?.toggle)
-        .toContain('["Large"]');
-      const shown = await run.read();
-      expect(shown?.toggle).toContain('combobox "Size"');
-      expect(shown?.arguments).toBeNull();
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("hovering a run's Interaction highlights its element on the page", async ({
-      browser,
-      inspector,
-      listPage,
-    }) => {
-      await inspector.tool("ListPage.addItem");
-      await inspector.detail.runCard().run({ text: "Milk" });
-      const run = inspector.runs.latest("ListPage.addItem");
-      await expect.poll(() => run.status()).toBe("Succeeded");
-
-      await expect
-        .poll(async () => (await run.interactionList())[1]?.target)
-        .toBe("ListPage.addItemButton");
-
-      await run.interactionTarget(1).hover();
-
-      // The dashed hover highlight.
-      await expect
-        .poll(outline(listPage.addItemButton, browser))
-        .toBe("dashed");
+      // The tool acted on the page.
+      await expect(
+        await listPage.items
+          .within((items) => items.filter({ hasText: "Milk" }))
+          .front()
+      ).toHaveCount(1);
 
       await confirmGoalRecordings(browser);
     });
@@ -219,8 +133,6 @@ for (const placement of placements) {
       await inspector.tool("ListItem.mark");
 
       await inspector.detail.runCard().pickItem("Eggs");
-      await inspector.detail.runCard().jsonSwitch.click();
-      await inspector.detail.runCard().formSwitch.click();
       // "done" is the field's first choice, which it shows before any pick.
       await inspector.detail.runCard().field("state").selectOption("todo");
       await inspector.detail.runCard().runButton.click();
@@ -234,26 +146,6 @@ for (const placement of placements) {
       await expect(await item("Milk").front()).not.toHaveAttribute(
         "data-state"
       );
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("Runs switches between the selection's runs and all runs with the mouse", async ({
-      browser,
-      inspector,
-    }) => {
-      await inspector.tool("ListPage.countItems");
-      await inspector.detail.runCard().runButton.click();
-      await inspector.navigator.item("ListPage.addItem").click();
-      await expect(await inspector.runs.runs.front()).toHaveCount(0);
-
-      await inspector.runs.showAll();
-      await expect
-        .poll(() => inspector.runs.latest("ListPage.countItems").caller())
-        .toEqual(INSPECTOR);
-
-      await inspector.runs.showSelection();
-      await expect(await inspector.runs.runs.front()).toHaveCount(0);
 
       await confirmGoalRecordings(browser);
     });

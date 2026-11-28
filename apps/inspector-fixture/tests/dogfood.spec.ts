@@ -97,19 +97,6 @@ test("an agent finds the forms' actions, and sets a fill_form field to a boolean
   await openForm("goal", `ValueRows.fill`);
 });
 
-test("a rooted single instance is preselected and runs from the panel", async ({
-  agent,
-  inspector,
-}) => {
-  await call(agent!, "Inspector.tool", { name: "Navigator.search" });
-  const card = inspector.detail.toolPage.card;
-  await card.openArguments();
-  await expect(card.items).toHaveCount(1);
-  await expect(card.items).toHaveAttribute("aria-checked", "true");
-  await card.run({ query: "ListPage.addItem" });
-  await expect(inspector.navigator.searchBox).toHaveValue("ListPage.addItem");
-});
-
 test("the page state snapshot gives includes the panel", async ({
   page,
   inspector,

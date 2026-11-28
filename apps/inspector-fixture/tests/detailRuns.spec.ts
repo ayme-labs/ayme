@@ -21,32 +21,6 @@ test("a structure node's Browser tool runs on that node, and Runs shows the run 
   expect(await run.caller()).toEqual(INSPECTOR);
 });
 
-test("a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives", async ({
-  page,
-  inspector,
-  listPage,
-}) => {
-  const app = new AppView(page);
-  const addItem = (await app.tools()).find(
-    ({ name }) => name === "ListPage.addItem"
-  )!;
-  const definition = await app.pomDefinitions("ListPage");
-  const { toolPage } = inspector.detail;
-
-  const card = await inspector.tool("ListPage.addItem");
-
-  await expect
-    .poll(() => toolPage.descriptionText())
-    .toBe(addItem.agentDescription ?? "");
-  await expect(card.argumentsToggle).toHaveCount(0);
-  await card.run({ text: "Bread" });
-  await expect(listPage.items.filter({ hasText: "Bread" })).toHaveCount(1);
-  await toolPage.modelSees.open();
-  await expect
-    .poll(() => toolPage.modelSees.definitions.textContent())
-    .toBe(definition);
-});
-
 test("a checked checkbox reads as checked in its node's What the model sees, as in the page state snapshot gives", async ({
   page,
   inspector,

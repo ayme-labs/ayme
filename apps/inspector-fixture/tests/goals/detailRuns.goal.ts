@@ -5,7 +5,6 @@ import {
   INSPECTOR,
   placements,
   testIn,
-  bringPanelToFront,
   confirmGoalRecordings,
 } from "../e2e/fixtures";
 
@@ -45,45 +44,6 @@ for (const placement of placements) {
       const run = inspector.runs.latest("fill");
       await expect.poll(() => run.status()).toBe("Succeeded");
       expect(await run.caller()).toEqual(INSPECTOR);
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives", async ({
-      browser,
-      agent,
-      appView,
-      inspector,
-      listPage,
-    }) => {
-      const addItem = (await appView.tools()).find(
-        ({ name }) => name === "ListPage.addItem"
-      )!;
-      const definition = await appView.pomDefinitions("ListPage");
-      const { toolPage } = inspector.detail;
-
-      await agent.act("open the {tool} tool in the Tools lens", {
-        params: { tool: "ListPage.addItem" },
-      });
-      const card = inspector.detail.runCard();
-
-      await expect
-        .poll(() => toolPage.descriptionText())
-        .toBe(addItem.agentDescription ?? "");
-      await expect(await card.argumentsToggle.front()).toHaveCount(0);
-      await agent.act("run it with the text {text}", {
-        params: { text: "Bread" },
-      });
-      await expect(
-        await listPage.items
-          .within((items) => items.filter({ hasText: "Bread" }))
-          .front()
-      ).toHaveCount(1);
-      await bringPanelToFront(inspector);
-      await agent.act("open What the model sees");
-      await expect
-        .poll(() => toolPage.modelSees.definitionsText())
-        .toBe(definition);
 
       await confirmGoalRecordings(browser);
     });

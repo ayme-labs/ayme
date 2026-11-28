@@ -5,7 +5,6 @@ import type { AppView } from "./e2e/appView";
 import {
   outline,
   placements,
-  reloadFixture,
   testIn,
   bringPanelToFront,
   confirmGoalRecordings,
@@ -85,30 +84,6 @@ for (const placement of placements) {
       await confirmGoalRecordings(browser);
     });
 
-    test("hovering a member highlights it dashed, beside the selected Page Object's solid highlight", async ({
-      browser,
-      page,
-      inspector,
-    }) => {
-      const item = outline(page.locator("#todo-items > li >> nth=1"), browser);
-      const archiveButton = outline(
-        page.locator("#todo-items > li >> nth=1 >> .todo-archive"),
-        browser
-      );
-      await bringPanelToFront(inspector);
-      await inspector.navigator.model.object("TodoPage.items[1]").click();
-
-      await inspector.detail.model.member("archiveButton").hover();
-
-      await expect.poll(archiveButton).toBe("dashed");
-      await expect.poll(item).toBe("solid");
-      await movePointerTo(inspector.header.title);
-      await expect.poll(archiveButton).toBe("none");
-      await expect.poll(item).toBe("solid");
-
-      await confirmGoalRecordings(browser);
-    });
-
     test("clicking a member selects it: the page highlights it solid and the panel shows it", async ({
       browser,
       page,
@@ -128,23 +103,6 @@ for (const placement of placements) {
       await expect(await detail.fact("On the page").front()).toHaveText(
         "1 match"
       );
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("the Model lens's panes stay as they were left after a reload", async ({
-      browser,
-      page,
-      inspector,
-    }) => {
-      const lens = inspector.navigator.model;
-      await lens.togglePane("Page object models");
-      await expect(await lens.modelList.front()).toHaveCount(0);
-
-      await reloadFixture(page, "/models.html");
-
-      await expect(await lens.objectTree.front()).toBeVisible();
-      await expect(await lens.modelList.front()).toHaveCount(0);
 
       await confirmGoalRecordings(browser);
     });

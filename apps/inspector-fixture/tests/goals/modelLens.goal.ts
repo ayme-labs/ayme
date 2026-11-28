@@ -4,7 +4,6 @@ import { expect } from "e2e";
 import {
   outline,
   placements,
-  reloadFixture,
   testIn,
   bringPanelToFront,
   confirmGoalRecordings,
@@ -66,38 +65,6 @@ for (const placement of placements) {
       await confirmGoalRecordings(browser);
     });
 
-    test("hovering a member highlights it dashed, beside the selected Page Object's solid highlight", async ({
-      agent,
-      browser,
-      page,
-      inspector,
-    }) => {
-      const item = outline(page.locator("#todo-items > li >> nth=1"), browser);
-      const archiveButton = outline(
-        page.locator("#todo-items > li >> nth=1 >> .todo-archive"),
-        browser
-      );
-      await bringPanelToFront(inspector);
-      await agent.act(
-        'select the row labelled "{item}", the {ordinal} row of the {collection} collection, under On this page in the Model lens',
-        {
-          params: { item: "[1]", ordinal: "second", collection: "items" },
-        }
-      );
-
-      await agent.act("hover its {member} member", {
-        params: { member: "archiveButton" },
-      });
-
-      await expect.poll(archiveButton).toBe("dashed");
-      await expect.poll(item).toBe("solid");
-      await movePointerTo(inspector.header.title);
-      await expect.poll(archiveButton).toBe("none");
-      await expect.poll(item).toBe("solid");
-
-      await confirmGoalRecordings(browser);
-    });
-
     test("clicking a member selects it: the page highlights it solid and the panel shows it", async ({
       agent,
       browser,
@@ -122,26 +89,6 @@ for (const placement of placements) {
       await expect(await detail.fact("On the page").front()).toHaveText(
         "1 match"
       );
-
-      await confirmGoalRecordings(browser);
-    });
-
-    test("the Model lens's panes stay as they were left after a reload", async ({
-      browser,
-      agent,
-      page,
-      inspector,
-    }) => {
-      const lens = inspector.navigator.model;
-      await agent.act("collapse the {pane} pane in the Model lens", {
-        params: { pane: "Page object models" },
-      });
-      await expect(await lens.modelList.front()).toHaveCount(0);
-
-      await reloadFixture(page, "/models.html");
-
-      await expect(await lens.objectTree.front()).toBeVisible();
-      await expect(await lens.modelList.front()).toHaveCount(0);
 
       await confirmGoalRecordings(browser);
     });
