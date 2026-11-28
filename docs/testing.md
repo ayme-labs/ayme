@@ -38,7 +38,7 @@ Several agents share one machine, so local runs stay small and heavy runs belong
 
 - **Locally**, the commit hook ([`lefthook.yml`](../lefthook.yml)) lints and formats the staged files, then typechecks and tests the workspaces the staged change reaches. [`scripts/pre-commit-checks.mjs`](../scripts/pre-commit-checks.mjs) picks them, and holds the cap above which the hook leaves them to CI and what it always leaves out. By hand, run only the test file or package you changed and its typecheck. Give anything that runs several packages half the cores, for example `--concurrency=50%`.
 - **Allowed local exceptions**, already scoped to the change: `pnpm analyze:changed` and the scoped Stryker survivor check, both described under [Change analysis](#change-analysis).
-- **CI only**: `pnpm check`, the E2E lane, the compatibility lanes, the packed-consumer test, builds of every app, full mutation and analysis runs, live goals, and anything over the hook's cap.
+- **CI only**: `pnpm check`, the E2E lane (but for what the [Inspector fixture runs on your own machine](../apps/inspector-fixture/README.md#running): its goal arms, the study's baselines and the `node --test` tests of its scripts), the compatibility lanes, the packed-consumer test, builds of every app, full mutation and analysis runs, live goals, and anything over the hook's cap.
 - **CI skips draft pull requests**: mark the pull request ready to run it. To run CI on a draft by hand, use `gh workflow run ci.yml --ref <branch>`; that run checks every package, not only the affected ones, and skips commit lint.
 
 The hook's cap is the same everywhere, cloud containers included. A heavy run in a cloud container is fine only when it was asked for.

@@ -40,8 +40,9 @@ export default {
   // A goal runs live for up to tens of seconds on a recording run, and one
   // test (each tool's page, in toolsLens) runs a goal per live tool.
   timeout: 900_000,
-  // Apart from the default config's, so its reports stay their own; .e2e/
-  // is gitignored. The cache's directory is pinned by `pnpm test:goals`.
+  // Apart from the default config's, so its reports stay their own; this
+  // output directory is gitignored. The cache's directory, which is
+  // committed, is pinned by `pnpm test:goals`.
   output: ".e2e/goals",
   // `AYME_E2E_CACHE=read-only` replays without writing, as arm 3's does.
   cache: {

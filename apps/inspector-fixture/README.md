@@ -82,12 +82,14 @@ the external placement with the panel's tab in front, so no goal starts with a s
 it: e2e measures a goal's outcome from the screen the goal starts on, as
 [`settledStart`](tests/e2e/fixtures.ts) says. A goal that follows a read of
 the page gets the panel's tab back from
-[`bringPanelToFront`](tests/e2e/fixtures.ts). A first run records each goal into
-`.e2e/goals-cache/`, and later runs replay it without the model, except for
-a step that changes no control: e2e saves
-nothing for it, so it calls the model on every run, and a warm run needs the
-login too. The external placement's `ayme mcp` gets the fixed port
-`e2e.goals.config.ts` names, which `AYME_E2E_MCP_PORT` overrides. `pnpm lint` also runs
+[`bringPanelToFront`](tests/e2e/fixtures.ts). Each goal's recording is committed, in
+`.e2e/goals-cache/`: a run replays it without the model and records what it
+lacks, so it needs the login only when a step reaches the model, as a step
+that changes no control does on every run, since e2e saves nothing for it.
+The external placement's `ayme mcp` gets the fixed port its arm's config
+names, [`e2e.goals.config.ts`](e2e.goals.config.ts) or
+[`e2e.goals-tools.config.ts`](e2e.goals-tools.config.ts), which
+`AYME_E2E_MCP_PORT` overrides. `pnpm lint` also runs
 the mirror check (alone: `pnpm check:goal-mirror`), and `pnpm test` runs its
 own tests.
 
