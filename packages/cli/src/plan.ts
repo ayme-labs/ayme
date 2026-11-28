@@ -18,7 +18,6 @@ export type Plan =
           | "attach"
           | "ask"
           | "call"
-          | "inspect"
           | "mcp"
           | "list"
           | "session process";
@@ -58,7 +57,6 @@ export function planOf(command: Command): Plan {
     case "attach":
     case "ask":
     case "call":
-    case "inspect":
     case "mcp":
     case "list":
     case "session process":

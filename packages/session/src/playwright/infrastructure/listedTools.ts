@@ -10,6 +10,7 @@ export type NodeHostTool = {
   readonly inputSchema: unknown;
   readonly available: boolean;
   readonly reason?: string;
+  readonly destructive?: true;
 };
 
 /** The Page Object Tools among the Node Host's tools, as a listing shows
@@ -17,12 +18,22 @@ export type NodeHostTool = {
 export const listedTools = (tools: readonly NodeHostTool[]): ListedTool[] =>
   tools
     .filter(({ group }) => group === "pageObject")
-    .map(({ name, agentDescription, inputSchema, available, reason }) => ({
-      name,
-      ...(agentDescription === undefined
-        ? {}
-        : { description: agentDescription }),
-      parameters: inputSchema,
-      available,
-      ...(reason === undefined ? {} : { reason }),
-    }));
+    .map(
+      ({
+        name,
+        agentDescription,
+        inputSchema,
+        available,
+        reason,
+        destructive,
+      }) => ({
+        name,
+        ...(agentDescription === undefined
+          ? {}
+          : { description: agentDescription }),
+        parameters: inputSchema,
+        available,
+        ...(reason === undefined ? {} : { reason }),
+        ...(destructive ? { destructive } : {}),
+      })
+    );

@@ -1,27 +1,19 @@
 import { useEffect, useState } from "react";
 
-/** The part of a tab's storage this module uses. */
-type TabStorage = Pick<Storage, "getItem" | "setItem">;
-
 /**
- * The storage of the tab of `browser`: it outlives a reload and ends with
- * the tab. Nothing when the browser denies access to it.
+ * This tab's storage: it outlives a reload and ends with the tab. Nothing
+ * when the browser denies access to it.
  */
-export function tabStorage(
-  browser: { readonly sessionStorage: TabStorage } = window
-): TabStorage | undefined {
+function tabStorage(): Storage | undefined {
   try {
-    return browser.sessionStorage;
+    return window.sessionStorage;
   } catch {
     return undefined;
   }
 }
 
 /** The stored value under a key, or `undefined` when there is none to read. */
-export function readStored(
-  storage: TabStorage | undefined,
-  key: string
-): unknown {
+function readStored(storage: Storage | undefined, key: string): unknown {
   try {
     const text = storage?.getItem(key);
     return text ? JSON.parse(text) : undefined;
@@ -31,8 +23,8 @@ export function readStored(
 }
 
 /** Stores a value. Without usable storage, it lasts for the page. */
-export function writeStored(
-  storage: TabStorage | undefined,
+function writeStored(
+  storage: Storage | undefined,
   key: string,
   value: unknown
 ) {

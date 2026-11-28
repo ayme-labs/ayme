@@ -299,10 +299,16 @@ describe("readCommand for a Session", () => {
     expect(USAGE).toContain("--json");
   });
 
-  it("opens the Inspector on the Session for `inspect`, named by -s or AYME_SESSION", () => {
-    expect(readCommand(["inspect"])).toEqual({ kind: "inspect", json: false });
+  it("asks the Session where its Inspector is for `inspect`, named by -s or AYME_SESSION", () => {
+    const request = { inspector: { window: {} } };
+    expect(readCommand(["inspect"])).toEqual({
+      kind: "ask",
+      request,
+      json: false,
+    });
     expect(readCommand(["inspect", "-s=shop", "--json"])).toEqual({
-      kind: "inspect",
+      kind: "ask",
+      request,
       json: true,
       session: "shop",
     });

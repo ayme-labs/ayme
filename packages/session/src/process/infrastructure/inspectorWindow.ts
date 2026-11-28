@@ -11,18 +11,8 @@ import { Effect, Fiber, Stream } from "effect";
 import { WebSocketServer, type WebSocket } from "ws";
 
 import type { Session } from "../../session/application";
-import {
-  OPENING_CODE_LIFETIME_MS,
-  type InspectorEvent,
-} from "../../session/domain";
-import {
-  bringsToken,
-  newToken,
-  openingCodes,
-  paramOf,
-  withCodeFragment,
-  withToken,
-} from "./inspectorToken";
+import type { InspectorEvent } from "../../session/domain";
+import { bringsToken, newToken, withToken } from "./inspectorToken";
 import { inspectorDocument } from "./inspectorDocument";
 
 const PAGE_PATH = "/inspector";
@@ -115,9 +105,6 @@ function frameOf(event: InspectorEvent, listening: boolean) {
 export interface InspectorWindow {
   /** The window's page, such as `http://127.0.0.1:53124/inspector`. */
   readonly address: string;
-  /** Where one `ayme inspect` opens the window: its page with a new
-   * one-use code in the fragment, such as `…/inspector#code=…`. */
-  opening(): string;
   /** The window's socket with the Session's token, which the Inspector an
    * Agent App shows in its chat connects to. */
   readonly agentAppSocket: string;
@@ -129,9 +116,9 @@ export interface InspectorWindow {
 /**
  * Serves the Inspector window of the Session named `name` at a free port of
  * the loopback address: its page, the Inspector's built `script`, and a
- * socket for each window that brings the Session's token or a one-use code
- * (ADR-0072), from any origin; a window a code admitted is told the token
- * first, to connect again with. Each window hears the Session's events from when it
+ * socket for each window of the page's own origin, and for each client of
+ * any origin that brings the Session's token (ADR-0072). Each window hears
+ * the Session's events from when it
  * connects, the contract's own while it subscribed, and is closed once
  * told the Session ended. A window that connects before the Session
  * `started` waits for it.
@@ -151,7 +138,6 @@ export async function serveInspectorWindow({
     maxPayload: MAX_REQUEST_BYTES,
   });
   const token = newToken();
-  const codes = openingCodes(OPENING_CODE_LIFETIME_MS);
   let closing = false;
   // Set once the server listens, before it takes a request.
   let host = "";
@@ -187,17 +173,22 @@ export async function serveInspectorWindow({
   });
   server.on("upgrade", (request, socket, head) => {
     if (closing) return socket.destroy();
-    if (pathOf(request) !== SOCKET_PATH || request.headers.host !== host)
+    // A page of another origin cannot send the window's own Origin, and the
+    // Host check stops a page that points a name of its own at the port.
+    if (
+      pathOf(request) !== SOCKET_PATH ||
+      request.headers.host !== host ||
+      (request.headers.origin !== `http://${host}` &&
+        !bringsToken(request, token))
+    )
       return socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
-    const code = paramOf(request, "code");
-    // A code is taken here, before the upgrade, so no second client can
-    // bring it while this one connects.
-    if (code === null ? !bringsToken(request, token) : !codes.take(code))
-      return socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
-    sockets.handleUpgrade(request, socket, head, (ws) => {
-      if (code !== null) ws.send(JSON.stringify({ token }));
-      void session.then((attachedSession) => accept(ws, attachedSession));
-    });
+    sockets.handleUpgrade(
+      request,
+      socket,
+      head,
+      (ws) =>
+        void session.then((attachedSession) => accept(ws, attachedSession))
+    );
   });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -207,7 +198,6 @@ export async function serveInspectorWindow({
   const address = `http://${host}${PAGE_PATH}`;
   return {
     address,
-    opening: () => withCodeFragment(address, codes.make()),
     agentAppSocket: withToken(`ws://${host}${SOCKET_PATH}`, token),
     close: async () => {
       closing = true;

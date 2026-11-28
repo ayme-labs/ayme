@@ -273,9 +273,6 @@ export type ScriptedSessionOptions = SessionBrowserRequest &
     /** Where its process serves the Session's Inspector window; none when
      * not given. */
     readonly inspector?: string;
-    /** The address each `ayme inspect` is given: `inspector` when not
-     * given. */
-    readonly opening?: () => string;
     /** The socket of that window an Agent App's view connects to. */
     readonly agentApp?: string;
   };
@@ -656,7 +653,6 @@ export async function startScriptedSession(
     heldBuild,
     name = "default",
     inspector,
-    opening = inspector === undefined ? undefined : () => inspector,
     agentApp,
     ...request
   } = options;
@@ -669,7 +665,6 @@ export async function startScriptedSession(
   const session = await Effect.runPromise(
     openSession(request, name, {
       ...(inspector === undefined ? {} : { inspector }),
-      ...(opening === undefined ? {} : { opening }),
       ...(agentApp === undefined ? {} : { agentApp }),
     }).pipe(Effect.provide(layer), Scope.provide(scope))
   );

@@ -45,13 +45,11 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
                  it, and not on the browser's most recently active tab. A
                  call of a tool that takes a Page Object Id runs on the tab
                  of that Page Object: leave --tab out of it.
-  inspect        Ask your default browser to open the Inspector on the
-                 Session: the Page Objects and the tools of the Session's
-                 tab, to run by hand. When it opens in the Session's browser,
-                 ayme leaves its tab out of the Session's tabs. The address
-                 opens one window, within five minutes: run ayme inspect
-                 again for another. BROWSER=none only prints the address;
-                 another BROWSER names the program that opens it.
+  inspect        Print the address of the Inspector on the Session: the
+                 Page Objects and the tools of the Session's tab, to run by
+                 hand. Open it in any browser; it works until the Session
+                 ends. When it opens in the Session's browser, ayme leaves
+                 its tab out of the Session's tabs.
   mcp            Serve MCP over stdio, for an Agent App to start: it shows
                  the Inspector on the Session in the Agent App's chat, if
                  the Agent App shows MCP Apps. It offers no tool that reads
@@ -125,8 +123,6 @@ export type Command =
       json: boolean;
     } & Named)
   | { kind: "list"; json: boolean }
-  /** `ayme inspect`: the Inspector window of the Session. */
-  | ({ kind: "inspect"; json: boolean } & Named)
   /** `ayme mcp`: the Inspector of the Session in an Agent App's chat. */
   | ({ kind: "mcp" } & Named)
   /** The Session's background process, which `open` starts with the
@@ -184,7 +180,7 @@ const SESSION_COMMANDS: Readonly<
   attach: { takes: ["cdp"] },
   list: { takes: [] },
   call: { takes: ["params", "tab"] },
-  inspect: { takes: [] },
+  inspect: { takes: [], asks: { inspector: { window: {} } } },
   mcp: { takes: [] },
   // Each asks for the listing of the Tab --tab names.
   "page-objects": { takes: ["tab"] },
@@ -289,7 +285,6 @@ function readSessionCommand(
     };
   if (url !== undefined) return { kind: "error", text: USAGE };
   if (word === "list") return { kind: "list", json };
-  if (word === "inspect") return { kind: "inspect", json, ...named };
   // Its answers go to an Agent App, which reads MCP, not --json.
   if (word === "mcp")
     return json ? { kind: "error", text: USAGE } : { kind: "mcp", ...named };

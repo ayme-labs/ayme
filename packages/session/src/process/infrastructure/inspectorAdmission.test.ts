@@ -1,4 +1,3 @@
-import { once } from "node:events";
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,7 +6,6 @@ import { beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import { WebSocket } from "ws";
 
 import { scriptedBrowser } from "../../../testing";
-import { OPENING_CODE_LIFETIME_MS } from "../../session/domain";
 import { agentAppPage } from "./agentAppPage";
 import { serveSession } from "./background";
 import {
@@ -18,11 +16,11 @@ import {
   type SessionPlace,
 } from "./record";
 
-// Who reaches a Session's Inspector: the window `ayme inspect` opens, which
-// a one-use code admits, and the view an Agent App shows in its chat
-// (`ayme mcp`), which the Session's token admits (ADR-0072). Only the
-// commands' private socket hands out either. On a Session that runs on the
-// scripted browser in this process.
+// Who reaches a Session's Inspector: a window at the address `ayme inspect`
+// prints, which its own origin admits, and the view an Agent App shows in
+// its chat (`ayme mcp`), which the Session's token admits (ADR-0072). Only
+// the commands' private socket hands out the token. On a Session that runs
+// on the scripted browser in this process.
 
 /** The Inspector's built script, with what would end its element early. */
 const SCRIPT = 'console.log("</script><!-- the Inspector");';
@@ -39,8 +37,8 @@ beforeEach(() => {
 const script = () => join(place.projectDir, "external.mjs");
 
 /** Claims the folder's Session named shop for this process and serves it,
- * with its window, until the test ends. Resolves with where `ayme inspect`
- * opens the window and the socket `ayme mcp` gives an Agent App. */
+ * with its window, until the test ends. Resolves with the address `ayme
+ * inspect` prints and the socket `ayme mcp` gives an Agent App. */
 async function serveShop() {
   const { folder, socket } = privateFolder();
   const claim = claimRecord(place, { ...thisProcess(), socket });
@@ -65,33 +63,27 @@ async function serveShop() {
     if (!answer.ok) throw new Error(answer.text);
     return answer.data as Record<string, string>;
   };
-  /** Where `ayme inspect` opens a window, each time it asks. */
-  const opening = async () =>
-    (await ask({ inspector: { window: {} } })).address!;
-  const address = await opening();
+  const { address } = await ask({ inspector: { window: {} } });
   const { socket: agentAppSocket } = await ask({
     inspector: { agentApp: {} },
   });
-  return { browser, address, agentAppSocket: agentAppSocket!, opening };
+  return { browser, address: address!, agentAppSocket: agentAppSocket! };
 }
 
-/** The window's socket, with `credential` when given, such as
- * `{ token }` or `{ code }`. */
-function socketOf(
-  address: string,
-  credential: Readonly<Record<string, string>> = {}
-) {
+function socketOf(address: string, token?: string) {
   const url = new URL("/inspector/ws", address);
   url.protocol = "ws:";
-  for (const [key, value] of Object.entries(credential))
-    url.searchParams.set(key, value);
+  if (token !== undefined) url.searchParams.set("token", token);
   return url;
 }
 
-/** Connects to `url` as `origin`, and resolves with the socket once open,
- * or with the error the server's refusal gives. */
-async function connect(url: URL | string, origin?: string) {
-  const ws = new WebSocket(url, origin ? { headers: { origin } } : {});
+/** Resolves with "open", or with the error the server's refusal gives. */
+async function connect(url: URL | string, origin?: string, host?: string) {
+  const headers = {
+    ...(origin === undefined ? {} : { origin }),
+    ...(host === undefined ? {} : { host }),
+  };
+  const ws = new WebSocket(url, { headers });
   onTestFinished(() => ws.terminate());
   const outcome = await new Promise<string>((resolve) => {
     ws.once("open", () => resolve("open"));
@@ -100,112 +92,103 @@ async function connect(url: URL | string, origin?: string) {
   return { ws, outcome };
 }
 
-/** The one-use code in the fragment of the address `ayme inspect` opens. */
-const codeIn = (address: string) =>
-  new URLSearchParams(new URL(address).hash.slice(1)).get("code")!;
-
 /** The Session's token in the socket `ayme mcp` gives an Agent App. */
 const tokenIn = (socket: string) => new URL(socket).searchParams.get("token")!;
 
-/** Connects to `url` as `origin`, and resolves with the first frame the
- * Session sent it. */
-async function admitted(url: URL | string, origin?: string) {
-  const ws = new WebSocket(url, origin ? { headers: { origin } } : {});
-  onTestFinished(() => ws.terminate());
-  const [data] = (await once(ws, "message")) as [Buffer];
-  return { ws, first: JSON.parse(String(data)) as unknown };
-}
+const REFUSED = "Unexpected server response: 403";
 
-it("ayme inspect opens the window with a one-use code in the address's fragment, not the Session's token, which ayme mcp gets in its socket", async () => {
-  const { address, agentAppSocket, opening } = await serveShop();
+it("ayme inspect gives the window's page, with no secret, and ayme mcp the socket with the Session's token", async () => {
+  const { address, agentAppSocket } = await serveShop();
 
   const { port } = new URL(address);
-  expect(address).toMatch(
-    new RegExp(`^http://127\\.0\\.0\\.1:${port}/inspector#code=[\\w-]{32}$`)
-  );
+  expect(address).toBe(`http://127.0.0.1:${port}/inspector`);
   expect(agentAppSocket).toMatch(
     new RegExp(`^ws://127\\.0\\.0\\.1:${port}/inspector/ws\\?token=[\\w-]{32}$`)
   );
-  expect(address).not.toContain(tokenIn(agentAppSocket));
-  expect(codeIn(await opening())).not.toBe(codeIn(address));
 });
 
-it("a code admits one window, which the Session then tells its token, to connect again with after a reload or a dropped connection", async () => {
-  const { address, agentAppSocket } = await serveShop();
-  const origin = new URL(address).origin;
-
-  const { first } = await admitted(
-    socketOf(address, { code: codeIn(address) }),
-    origin
-  );
-
-  expect(first).toEqual({ token: tokenIn(agentAppSocket) });
-  const again = await admitted(
-    socketOf(address, { token: (first as { token: string }).token }),
-    origin
-  );
-  expect(again.first).not.toHaveProperty("token");
-});
-
-it("refuses a second client that brings a code already used, and admits the window of a new code", async () => {
-  const { address, opening } = await serveShop();
-  const origin = new URL(address).origin;
-  await admitted(socketOf(address, { code: codeIn(address) }), origin);
-
-  expect(
-    (await connect(socketOf(address, { code: codeIn(address) }), origin))
-      .outcome
-  ).toBe("Unexpected server response: 403");
-  const next = await opening();
-  expect(
-    (await connect(socketOf(next, { code: codeIn(next) }), origin)).outcome
-  ).toBe("open");
-});
-
-it("refuses a code that ran out", async () => {
-  vi.useFakeTimers({ toFake: ["Date"] });
-  onTestFinished(() => void vi.useRealTimers());
-  const { address, opening } = await serveShop();
-  const origin = new URL(address).origin;
-  const fresh = await opening();
-
-  vi.advanceTimersByTime(OPENING_CODE_LIFETIME_MS - 1);
-  expect(
-    (await connect(socketOf(fresh, { code: codeIn(fresh) }), origin)).outcome
-  ).toBe("open");
-  vi.advanceTimersByTime(1);
-  expect(
-    (await connect(socketOf(address, { code: codeIn(address) }), origin))
-      .outcome
-  ).toBe("Unexpected server response: 403");
-});
-
-it("refuses a socket that brings no token or code, from no page, from the window's own page or from an Agent App's frame", async () => {
+it("admits any number of windows of the page's own origin, with no secret, for as long as the Session runs", async () => {
   const { address } = await serveShop();
+  const origin = new URL(address).origin;
 
-  for (const origin of [undefined, new URL(address).origin, "null"])
-    expect((await connect(socketOf(address), origin)).outcome, origin).toBe(
-      "Unexpected server response: 403"
+  for (const window of ["first", "second", "third"])
+    expect((await connect(socketOf(address), origin)).outcome, window).toBe(
+      "open"
     );
 });
 
-it.each(["token", "code"])(
-  "refuses a socket whose %s is wrong",
-  async (credential) => {
-    const { address } = await serveShop();
+it("refuses a socket without the token from another origin, from an Agent App's frame and from no page", async () => {
+  const { address } = await serveShop();
+  const { port } = new URL(address);
 
+  for (const origin of [
+    "http://evil.test",
+    "null",
+    undefined,
+    // The window's own address in every other spelling.
+    `https://127.0.0.1:${port}`,
+    `http://127.0.0.1:${Number(port) + 1}`,
+    "http://127.0.0.1",
+    `http://127.0.0.1.:${port}`,
+    `http://localhost:${port}`,
+    `http://[::1]:${port}`,
+  ])
+    expect((await connect(socketOf(address), origin)).outcome, origin).toBe(
+      REFUSED
+    );
+});
+
+it("refuses a socket of the window's own origin that names another host, as a page that points a name of its own at the port does", async () => {
+  const { address } = await serveShop();
+  const { port } = new URL(address);
+
+  for (const name of ["evil.test", "localhost", "127.0.0.1.", "[::1]"])
     expect(
-      (await connect(socketOf(address, { [credential]: "guessed" }), "null"))
-        .outcome
-    ).toBe("Unexpected server response: 403");
-  }
-);
+      (
+        await connect(
+          socketOf(address),
+          `http://${name}:${port}`,
+          `${name}:${port}`
+        )
+      ).outcome,
+      name
+    ).toBe(REFUSED);
+  expect(
+    (
+      await connect(
+        socketOf(address),
+        new URL(address).origin,
+        `evil.test:${port}`
+      )
+    ).outcome
+  ).toBe(REFUSED);
+});
 
-it("admits the window and an Agent App's view, from any origin, once each brings its code or the token, and answers both", async () => {
+it("admits a socket that brings the token from any origin or none", async () => {
+  const { agentAppSocket } = await serveShop();
+
+  for (const origin of ["http://evil.test", "null", undefined])
+    expect((await connect(agentAppSocket, origin)).outcome, origin).toBe(
+      "open"
+    );
+});
+
+it("refuses a socket whose token is wrong", async () => {
+  const { address } = await serveShop();
+
+  // The second has a token's length, so it reaches the comparison.
+  for (const token of ["guessed", "x".repeat(32)])
+    expect(
+      (await connect(socketOf(address, token), "null")).outcome,
+      token
+    ).toBe(REFUSED);
+});
+
+it("answers the window and an Agent App's view alike", async () => {
   const { address, agentAppSocket, browser } = await serveShop();
 
   for (const [url, origin] of [
-    [socketOf(address, { code: codeIn(address) }), new URL(address).origin],
+    [socketOf(address), new URL(address).origin],
     [agentAppSocket, "null"],
   ] as const) {
     const { ws, outcome } = await connect(url, origin);

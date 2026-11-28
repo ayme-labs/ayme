@@ -4,7 +4,7 @@ import { listedTools } from "./listedTools";
 
 const schema = { type: "object", properties: {}, additionalProperties: false };
 
-it("lists the Page Object Tools alone, each with what an agent reads of it", () => {
+it("lists the Page Object Tools alone, each with what an agent reads of it and whether its author marked it destructive", () => {
   expect(
     listedTools([
       {
@@ -27,6 +27,7 @@ it("lists the Page Object Tools alone, each with what an agent reads of it", () 
         inputSchema: schema,
         available: false,
         reason: "The basket is empty",
+        destructive: true,
       },
       {
         name: "click",
@@ -47,6 +48,7 @@ it("lists the Page Object Tools alone, each with what an agent reads of it", () 
       parameters: schema,
       available: false,
       reason: "The basket is empty",
+      destructive: true,
     },
   ]);
 });

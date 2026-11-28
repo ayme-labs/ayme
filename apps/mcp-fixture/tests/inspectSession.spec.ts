@@ -1,39 +1,20 @@
-import { chmod, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { runAyme } from "@ayme-dev/cli/testing";
 import {
   Inspector,
   registerInspectorSelectors,
 } from "@ayme-dev/inspector/testing";
 import { chromium, selectors, type Browser } from "@playwright/test";
 
-import { expect, test as base } from "./aymeCommand";
+import { expect, test } from "./aymeCommand";
 
 // `ayme inspect`, run as a child process against a real browser: the
 // Inspector on a Session, in a window outside the Session's browser, driven
 // through the Inspector's own page objects. The test's browser stands in for
-// the person's default browser, and the test's own Playwright connection to
-// the Session's browser plays the developer's browser automation. The
-// Inspector renders into a closed shadow root; its page objects reach it
-// through these selectors.
-const test = base.extend<{
-  inspect: (browserProgram: string) => ReturnType<typeof runAyme>;
-}>({
-  inspect: async ({ project, temporary }, use, testInfo) => {
-    await use((browserProgram) =>
-      runAyme(["inspect"], {
-        cwd: project,
-        env: {
-          ...process.env,
-          AYME_CACHE_DIR: testInfo.outputPath("cache"),
-          TMPDIR: temporary,
-          BROWSER: browserProgram,
-        },
-      })
-    );
-  },
-});
-
+// the browser a person opens the address in, and the test's own Playwright
+// connection to the Session's browser plays the developer's browser
+// automation. The Inspector renders into a closed shadow root; its page
+// objects reach it through these selectors.
 test.beforeAll(() => registerInspectorSelectors(selectors));
 
 // Each resource registers its cleanup as it is made; every cleanup runs,
@@ -50,7 +31,7 @@ const addressIn = (stdout: string) =>
   /at (http:\/\/127\.0\.0\.1:\d+)\./.exec(stdout)?.[1];
 
 const windowIn = (stdout: string) =>
-  /at (http:\/\/127\.0\.0\.1:\d+\/inspector#code=[\w-]+)\./.exec(stdout)?.[1];
+  /at (http:\/\/127\.0\.0\.1:\d+\/inspector)\./.exec(stdout)?.[1];
 
 /** The browser automation, connected to the Session's browser that
  * `ayme open` printed the address of; the connection closes with the
@@ -67,8 +48,8 @@ const tabLine = (stdout: string) => stdout.split("\n")[0];
 const runOf = (inspector: Inspector, tool: string) =>
   inspector.runs.latest(tool);
 
-/** The Inspector window at `address`, in a page of the test's own browser:
- * the person's default browser, which is not the Session's. */
+/** The Inspector window at `address`, in a page of the test's own browser,
+ * which is not the Session's. */
 async function openWindow(browser: Browser, address: string) {
   const window = await browser.newPage();
   cleanups.push(() => window.close().catch(() => {}));
@@ -78,40 +59,32 @@ async function openWindow(browser: Browser, address: string) {
   return { window, inspector };
 }
 
-test("opens the Inspector window, served by the Session's process, in the program BROWSER names", async ({
+test("prints where the Session's process serves the Inspector window, the same address each time, and in --json", async ({
   ayme,
-  inspect,
   baseURL,
-}, testInfo) => {
+}) => {
   await ayme("open", `${baseURL}/shop.html`);
-  // A stand-in for the person's default browser, which writes down the
-  // address it was asked to open.
-  const opener = testInfo.outputPath("default-browser.cjs");
-  const asked = testInfo.outputPath("asked.txt");
-  await writeFile(
-    opener,
-    `#!/usr/bin/env node\nrequire("node:fs").writeFileSync(${JSON.stringify(asked)}, process.argv[2]);\n`
-  );
-  await chmod(opener, 0o755);
 
-  const inspected = await inspect(opener);
+  const inspected = await ayme("inspect");
 
   const address = windowIn(inspected.stdout);
   expect(inspected).toEqual({
     code: 0,
-    stdout: `ayme asked your browser to open the Inspector of the Session default at ${address}.\n`,
+    stdout: `The Inspector of the Session default is at ${address}.\nOpen that address in a browser. It works until the Session ends.\n`,
     stderr: "",
   });
-  await expect
-    .poll(() => readFile(asked, "utf8").catch(() => undefined))
-    .toBe(address);
+  expect(await ayme("inspect")).toEqual(inspected);
+  expect(JSON.parse((await ayme("inspect", "--json")).stdout)).toEqual({
+    ok: true,
+    text: inspected.stdout.trimEnd(),
+    data: { address },
+  });
   const page = await fetch(address!);
   expect(await page.text()).toContain("<title>ayme inspect: default</title>");
 });
 
 test("the window shows the Page Object Tree and the tools of the Session's Tab, runs a tool as a Run of the Inspector, and follows a Tab change", async ({
   ayme,
-  inspect,
   baseURL,
   browser,
 }) => {
@@ -121,7 +94,7 @@ test("the window shows the Page Object Tree and the tools of the Session's Tab, 
   const shop = context!.pages()[0]!;
   const { inspector } = await openWindow(
     browser,
-    windowIn((await inspect("none")).stdout)!
+    windowIn((await ayme("inspect")).stdout)!
   );
 
   await expect
@@ -169,7 +142,6 @@ test("the window shows the Page Object Tree and the tools of the Session's Tab, 
 
 test("when the last Tab closes, the window clears what it showed and says the Session has no Tab, and shows the next Tab that opens", async ({
   ayme,
-  inspect,
   baseURL,
   browser,
 }) => {
@@ -178,7 +150,7 @@ test("when the last Tab closes, the window clears what it showed and says the Se
   const [context] = automated.contexts();
   const { inspector } = await openWindow(
     browser,
-    windowIn((await inspect("none")).stdout)!
+    windowIn((await ayme("inspect")).stdout)!
   );
   await inspector.navigator.showLens("Tools");
   await expect
@@ -208,7 +180,6 @@ test("when the last Tab closes, the window clears what it showed and says the Se
 // on one Tab of a real Session.
 test("a Run from the window pressed while one of ayme call is under way on the Tab runs there too, each Run with its Caller", async ({
   ayme,
-  inspect,
   baseURL,
   browser,
 }) => {
@@ -216,7 +187,7 @@ test("a Run from the window pressed while one of ayme call is under way on the T
   const account = (await automation(opened.stdout)).contexts()[0]!.pages()[0]!;
   const { inspector } = await openWindow(
     browser,
-    windowIn((await inspect("none")).stdout)!
+    windowIn((await ayme("inspect")).stdout)!
   );
   await expect
     .poll(() => inspector.navigator.model.objectPaths())
@@ -242,14 +213,13 @@ test("a Run from the window pressed while one of ayme call is under way on the T
 
 test("a Run from the window whose action waits on a callback that threw is answered with that error, as ayme call is", async ({
   ayme,
-  inspect,
   baseURL,
   browser,
 }) => {
   await ayme("open", `${baseURL}/account.html`);
   const { window, inspector } = await openWindow(
     browser,
-    windowIn((await inspect("none")).stdout)!
+    windowIn((await ayme("inspect")).stdout)!
   );
   const errors: string[] = [];
   window.on("websocket", (socket) =>
@@ -273,7 +243,6 @@ test("a Run from the window whose action waits on a callback that threw is answe
 
 test("hovering a Page Object in the window highlights it on the Session's page", async ({
   ayme,
-  inspect,
   baseURL,
   browser,
 }) => {
@@ -281,7 +250,7 @@ test("hovering a Page Object in the window highlights it on the Session's page",
   const shop = (await automation(opened.stdout)).contexts()[0]!.pages()[0]!;
   const { inspector } = await openWindow(
     browser,
-    windowIn((await inspect("none")).stdout)!
+    windowIn((await ayme("inspect")).stdout)!
   );
   const highlights = () =>
     shop.evaluate(() => document.querySelectorAll("x-pw-glass").length);
@@ -299,13 +268,12 @@ test("hovering a Page Object in the window highlights it on the Session's page",
 
 test("the window is never the Tab the Session works on, even when it opens in the Session's own browser", async ({
   ayme,
-  inspect,
   baseURL,
 }) => {
   const opened = await ayme("open", `${baseURL}/shop.html`);
   const [context] = (await automation(opened.stdout)).contexts();
   const window = await context!.newPage();
-  await window.goto(windowIn((await inspect("none")).stdout)!);
+  await window.goto(windowIn((await ayme("inspect")).stdout)!);
 
   expect(tabLine((await ayme("page-objects")).stdout)).toBe(
     `Tab: Shop (${baseURL}/shop.html)`
@@ -314,14 +282,13 @@ test("the window is never the Tab the Session works on, even when it opens in th
 
 test("closing the window leaves the Session as it was; when the Session ends, the window says so", async ({
   ayme,
-  inspect,
   baseURL,
   browser,
 }) => {
   await ayme("open", `${baseURL}/shop.html`);
   const first = await openWindow(
     browser,
-    windowIn((await inspect("none")).stdout)!
+    windowIn((await ayme("inspect")).stdout)!
   );
   await expect
     .poll(() => first.inspector.navigator.model.objectPaths())
@@ -335,7 +302,7 @@ test("closing the window leaves the Session as it was; when the Session ends, th
   });
   const second = await openWindow(
     browser,
-    windowIn((await inspect("none")).stdout)!
+    windowIn((await ayme("inspect")).stdout)!
   );
   await ayme("close");
   await expect(second.window.getByRole("status")).toHaveText(
@@ -346,7 +313,6 @@ test("closing the window leaves the Session as it was; when the Session ends, th
 
 test("a window whose Session's process was killed stops trying to connect, and says so", async ({
   ayme,
-  inspect,
   baseURL,
   browser,
   sessionProcess,
@@ -354,7 +320,7 @@ test("a window whose Session's process was killed stops trying to connect, and s
   await ayme("open", `${baseURL}/shop.html`);
   const { window, inspector } = await openWindow(
     browser,
-    windowIn((await inspect("none")).stdout)!
+    windowIn((await ayme("inspect")).stdout)!
   );
   await expect
     .poll(() => inspector.navigator.model.objectPaths())
@@ -371,7 +337,6 @@ test("a window whose Session's process was killed stops trying to connect, and s
 
 test("an open window shows the Page Objects a Swap brings in, without being opened again", async ({
   ayme,
-  inspect,
   project,
   baseURL,
   browser,
@@ -379,7 +344,7 @@ test("an open window shows the Page Objects a Swap brings in, without being open
   await ayme("open", `${baseURL}/shop.html`);
   const { inspector } = await openWindow(
     browser,
-    windowIn((await inspect("none")).stdout)!
+    windowIn((await ayme("inspect")).stdout)!
   );
   await inspector.navigator.showLens("Tools");
   const tools = async () =>

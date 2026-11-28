@@ -73,8 +73,8 @@ async function serve({ heldScript = false } = {}) {
     session,
     browser,
     address: address!,
-    /** The window's socket with the Session's token, which admits any
-     * number of windows, unlike the address's one-use code. */
+    /** The window's socket with the Session's token, which admits a
+     * client of any origin. */
     socket: tokenSocket!,
     close: () => Effect.runPromise(Scope.close(scope, Exit.void)),
   };
@@ -119,7 +119,7 @@ async function windowSocket(url: string, origin?: string) {
 it("serves the window's page and the Inspector's script on the loopback address, at the address ayme inspect is told", async () => {
   const { address } = await serve();
 
-  expect(address).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/inspector#code=[\w-]+$/);
+  expect(address).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/inspector$/);
   const page = await fetch(address);
   expect(page.status).toBe(200);
   const html = await page.text();

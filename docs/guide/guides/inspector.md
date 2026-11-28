@@ -42,22 +42,22 @@ For a page that ships ayme, the Inspector is the panel in the page. A window of 
 
 ### On a Session: `ayme inspect`
 
-With a [Session](connect-an-agent.md) running, `ayme inspect` opens the Inspector on it in your default browser:
+With a [Session](connect-an-agent.md) running, `ayme inspect` prints where the Session's Inspector is, and opens nothing:
 
 ```sh
 ayme inspect
+# The Inspector of the Session default is at http://127.0.0.1:53124/inspector.
+# Open that address in a browser. It works until the Session ends.
 ```
 
-The window is served by the Session's own process. When your default browser is not the Session's browser, your browser automation never sees the window. When the Session joined your default browser with `ayme attach`, the window opens there as one more tab, which your browser automation can see but ayme never takes for its Tab. Nothing has to be in your app, and nothing more to install: the Inspector comes with `@ayme-dev/cli`.
+Open the address in any browser, when you want it. The window is served by the Session's own process. In a browser other than the Session's, your browser automation never sees it. In the Session's browser, it is one more tab, which your browser automation can see but ayme never takes for its Tab. Nothing has to be in your app, and nothing more to install: the Inspector comes with `@ayme-dev/cli`.
 
 - It shows the Page Objects and the Page Object Tools of the Session's Tab, and follows the browser to another Tab.
 - Run a tool by hand from it. Runs records it as run by you from the Inspector. It is one Run like an agent's `ayme call`: a Tab runs one at a time, so it waits for the Run under way there, and a call waits for it.
 - Hovering or selecting a Page Object highlights it on the Session's page. There is no picking: a Session's tools take no element ref.
 - Closing the window leaves the Session as it was. When the Session ends, the window says so; start a new one and run `ayme inspect` again.
-- `-s=<name>` opens the Inspector of the Session of that name, as for the other commands.
-- `BROWSER=none ayme inspect` only prints the window's address. Another `BROWSER` names the program that opens it.
-- The address opens one window, within five minutes. That window stays connected when you reload it, unless the browser blocks storage for the tab; for another window, or after such a reload, run `ayme inspect` again.
-- When the program that opens it cannot start, or fails within two seconds, `ayme inspect` exits with code 1 and prints the address to open by hand.
+- `-s=<name>` prints the address of the Session of that name, as for the other commands. With `--json`, the address is the answer's `data.address`.
+- The address opens any number of windows, and a reloaded one connects again, until the Session ends. A page of another site cannot connect to it without the Session's token.
 
 ### In your Agent App's chat: `ayme mcp`
 

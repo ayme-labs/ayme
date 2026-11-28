@@ -11,15 +11,13 @@ import type {
 // Session's process that serves this window from the Tab it works on. A new
 // `{ tab }` says the window shows a new document, whose revisions start
 // again; each request names the Tab the Session told last, and `{ tab,
-// noTab }` says it shows none. The Session tells
-// a window a one-use code admitted its `{ token }`, to connect again with.
+// noTab }` says it shows none.
 
 type Reply =
   | { id: number; result: unknown }
   | { id: number; error: string }
   | { event: InspectorEvent }
   | { tab: number; noTab?: true }
-  | { token: string }
   | { ended: string; inChat?: string };
 
 type Waiting = {
@@ -56,9 +54,6 @@ export type WebSocketInspectorOptions = {
   retries?: number;
   /** Called once, when the server is given up for lost. */
   onLost?: () => void;
-  /** Called with the token a Session tells a window a one-use code
-   * admitted, which the window connects again with. */
-  onToken?: (token: string) => void;
   /** Called once, with what to say in a window and in an Agent App's chat,
    * when the server says the Session it serves ended: the transport
    * connects no more, since no Session comes back at that address. */
@@ -66,8 +61,7 @@ export type WebSocketInspectorOptions = {
 };
 
 /**
- * The Inspector contract over the channel at `url`, read again for each
- * connection when it is a function. Requests leave in the
+ * The Inspector contract over the channel at `url`. Requests leave in the
  * order they are made, those made before the socket opens too, so a
  * `cancelPick` never overtakes its `pick`. Each request waits until the
  * Session told the Tab the window shows, and names that Tab, so the Session
@@ -81,7 +75,7 @@ export type WebSocketInspectorOptions = {
  * fails from then on.
  */
 export function webSocketInspectorContract(
-  url: string | (() => string),
+  url: string,
   {
     WebSocket: WebSocketClass = WebSocket,
     reconnectMs = 1000,
@@ -89,7 +83,6 @@ export function webSocketInspectorContract(
     onNoTab,
     retries,
     onLost,
-    onToken,
     onEnded,
   }: WebSocketInspectorOptions = {}
 ): InspectorContract {
@@ -167,7 +160,7 @@ export function webSocketInspectorContract(
   };
 
   const connect = (reconnected: boolean) => {
-    socket = new WebSocketClass(typeof url === "string" ? url : url());
+    socket = new WebSocketClass(url);
     socket.onopen = () => {
       failed = 0;
       flush();
@@ -185,7 +178,6 @@ export function webSocketInspectorContract(
         else if (before !== undefined && before !== reply.tab) reset();
         return flush();
       }
-      if ("token" in reply) return onToken?.(reply.token);
       if ("ended" in reply) {
         lost = true;
         return onEnded?.(reply.ended, reply.inChat);

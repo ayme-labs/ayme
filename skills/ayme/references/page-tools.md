@@ -40,6 +40,8 @@ This screen has 3 Page Object Tools: ayme -s=default tools lists them with their
   parameters, and marks one that cannot run now:
   `ProjectRow.remove (unavailable: …)` with the app's reason, or
   `(unavailable)` when the app gave none.
+- `destructive` after a tool's name says its author marked it as an action
+  that cannot be undone.
 
 ## Pass the input
 

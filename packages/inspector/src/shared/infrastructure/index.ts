@@ -5,7 +5,7 @@ export {
   inspectorShadowRoot,
 } from "./shadowRootHook";
 export { type Look, usePageLook } from "./usePageLook";
-export { readStored, tabStorage, useTabState, writeStored } from "./tabStorage";
+export { useTabState } from "./tabStorage";
 export {
   createInspectorClient,
   emptyInspectorState,

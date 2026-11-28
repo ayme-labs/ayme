@@ -18,7 +18,7 @@ it("ayme mcp is answered with the socket an Agent App's view connects to, and a 
 
   expect(await session.ask({ inspector: { agentApp: {} } })).toEqual({
     ok: true,
-    text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect opens it in a browser window.",
+    text: "The Inspector of the Session shop shows in this chat when your Agent App shows MCP Apps. ayme -s=shop inspect prints its address, to open in a browser.",
     data: { socket: SOCKET },
   });
 });

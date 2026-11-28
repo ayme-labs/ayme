@@ -38,10 +38,9 @@ two Hosts: the page's own runtime registers `GroceriesPage`, and `Basket`
 while Show basket has shown it, and publishes through WebMCP with `?webmcp`.
 `plain.html` is a document of the same origin without ayme. The test's own Playwright
 connection, at the address `ayme open` printed, plays the developer's browser
-automation. `inspectSession.spec.ts` opens the window `ayme inspect` serves in the
-test's own browser, which stands in for the person's default browser, and
-drives it through `@ayme-dev/inspector/testing`; it gives `ayme inspect` a
-`BROWSER` of its own, so no window opens on the machine. `aymeMcp.spec.ts` starts
+automation. `inspectSession.spec.ts` opens the address `ayme inspect` prints in the
+test's own browser, which stands in for the browser a person opens it in, and
+drives it through `@ayme-dev/inspector/testing`. `aymeMcp.spec.ts` starts
 the command's `ayme mcp` as an Agent App does and talks to it through an MCP SDK
 client over stdio; it shows the page `ayme_inspect` points to in the stand-in
 Agent App, `agent-app.html` with `agentApp.ts`.

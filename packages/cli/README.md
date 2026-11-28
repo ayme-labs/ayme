@@ -44,7 +44,7 @@ npx ayme close
 
 ## The Inspector
 
-`npx ayme inspect` opens the Inspector on a Session in your default browser: the Page Objects and tools of the Session's Tab, to run by hand. Registered in your Agent App's MCP configuration, `ayme mcp` shows the same Inspector in the chat. See [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md#in-a-window-of-its-own).
+`npx ayme inspect` prints the address of the Inspector on a Session, to open in any browser: the Page Objects and tools of the Session's Tab, to run by hand. Registered in your Agent App's MCP configuration, `ayme mcp` shows the same Inspector in the chat. See [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md#in-a-window-of-its-own).
 
 ## ayme capture
 

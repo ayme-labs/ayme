@@ -4,7 +4,6 @@ export {
   agentAppPage,
   askCall,
   askSession,
-  inspectSession,
   listSessions,
   openSession,
   runSessionProcess,
