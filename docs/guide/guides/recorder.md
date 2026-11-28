@@ -50,7 +50,7 @@ The terminal prints the recorder window's address, such as `Recorder UI: http://
 - `--start-recording`: starts recording before the page loads, so the recording and its trace include the first page load and its network requests. The page opens blank and then goes to `<url>`. Wait for it to open before you do anything: what you do on the blank page is not recorded. After **Clear**, the next recording starts from the page as it is then.
 - `--load-storage <file>`: opens the page with the cookies and local storage from `<file>`, a Playwright storage state file. You get such a file from `--save-storage` here, from `npx playwright codegen --save-storage`, or from your project's own login setup (`context.storageState()`). If the file cannot be read or holds no storage state, the recorder does not start.
 - `--save-storage <file>`: when the recorder ends, saves the browser's cookies and local storage to `<file>`, as `npx playwright codegen --save-storage` does.
-  - It saves when you press **Finish**, close the last recorded page, or press Ctrl+C. It saves even if nothing was recorded, or if the recording itself could not be saved.
+  - It saves at each [end of a recording](#end-a-recording). It saves even if nothing was recorded, or if the recording itself could not be saved.
   - It cannot save if you quit the whole browser.
   - To save a login without recording anything: log in, then close the page or press Ctrl+C. **Finish** is offered only after **Record**.
   - If the file cannot be saved, the recorder prints [a warning](#warnings).
@@ -67,7 +67,7 @@ npx ayme-recorder codegen --cdp-endpoint http://127.0.0.1:9222
 - The browser must have exactly one page open. The recorder records that page and does not navigate it.
 - The recorder window does not open by itself. Open the printed `Recorder UI` address in any browser.
 - What a script does in that browser is recorded like your own clicks and typing.
-- To end, press **Finish**, close the page, or press Ctrl+C. Each saves the recording. The recorder removes its toolbar from the page and leaves the browser open.
+- The recorder ends and saves as [any recording does](#end-a-recording), then removes its toolbar from the page and leaves the browser open.
 - `--headless`, `--start-recording`, `--load-storage` and `--save-storage` do not apply here, and you cannot pass a URL as well.
 
 ### `trace`
@@ -155,7 +155,10 @@ Each of these ends the recorder and saves what was recorded:
 
 - press **Finish**,
 - close the last recorded page,
-- press Ctrl+C in the terminal.
+- press Ctrl+C in the terminal,
+- close the terminal, or lose the SSH session it runs in.
+
+If the recorder hits an error it did not expect, it ends the same way and saves what was recorded, then prints the error and exits with code 1.
 
 If you never pressed **Record**, there is nothing to save.
 
