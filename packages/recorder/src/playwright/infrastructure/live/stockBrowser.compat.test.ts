@@ -2590,3 +2590,246 @@ it("holds every key while a held input waits, and lets keys reach the page again
   await expect.poll(typed).toBe("abcd");
   expect(held()).toHaveLength(3);
 });
+
+/** The warning of a document whose gate left an input to the page because
+ * Playwright would not hear of it. */
+const unheardAt = (address: string) => ({
+  kind: "notRecorded",
+  message: `Inputs on ${address} are not recorded: the page changed JSON.stringify, or how it writes an object, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs still reach the page. Stop and finish in the recorder window, at the address the recorder printed.`,
+});
+const notRecorded = (browser: Harness) =>
+  browser
+    .toldOf("browserWarned", ({ warning }) => warning.kind === "notRecorded")
+    .then(({ warning }) => warning);
+const MARK = `<button id="mark" onclick="this.textContent = 'Marked'">Mark</button>
+  <label>Item <input id="item" /></label>`;
+const PROTOTYPE_JS = `Object.defineProperty(Array.prototype, "toJSON", { configurable: true, value() { return "[" + this.map((item) => JSON.stringify(item)).join(", ") + "]"; } });`;
+const REPLACED = `JSON.stringify = () => '{"tampered":true}';`;
+
+/** A click and typing on the page, and what reached it. */
+async function clickAndType(browser: Harness) {
+  await browser.click(browser.page.locator("#mark"));
+  await expect
+    .poll(() => browser.page.locator("#mark").textContent())
+    .toBe("Marked");
+  await browser.page.locator("#item").focus();
+  await browser.page.keyboard.type("ab");
+  await expect
+    .poll(() => browser.page.locator("#item").inputValue())
+    .toBe("ab");
+}
+
+async function holding(browser: Harness) {
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+}
+
+it.each([
+  [
+    "gives arrays a toJSON that writes them as a string, as Prototype.js 1.6 does",
+    PROTOTYPE_JS,
+  ],
+  ["replaced JSON.stringify", REPLACED],
+])(
+  "leaves a click and typing to a page that %s, and warns that its inputs are not recorded: Playwright's bindings write every call with the page's JSON.stringify",
+  async (_, script) => {
+    const browser = await onStockPlaywright(
+      `<script>${script}</script>${MARK}`
+    );
+    await holding(browser);
+
+    await clickAndType(browser);
+
+    expect(await notRecorded(browser)).toEqual(unheardAt(browser.url));
+  }
+);
+
+it("holds a click on a page whose JSON.parse throws, which Playwright's calls do not use, and gives no warning", async () => {
+  const browser = await onStockPlaywright(
+    `<script>JSON.parse = () => { throw new Error("tampered JSON.parse"); };</script>${MARK}`
+  );
+  await holding(browser);
+
+  await browser.click(browser.page.locator("#mark"));
+
+  await browser.toldOf("inputHeld");
+  expect(
+    browser.told.filter((signal) => signal.kind === "browserWarned")
+  ).toEqual([]);
+});
+
+it("warns once of a document, however many inputs it leaves to the page, and once again of the next", async () => {
+  const browser = await onStockPlaywright(
+    `<script>${REPLACED}</script>${MARK}`
+  );
+  await holding(browser);
+  const warnings = () =>
+    browser.told.filter(
+      (signal) =>
+        signal.kind === "browserWarned" && signal.warning.kind === "notRecorded"
+    );
+
+  await clickAndType(browser);
+  await browser.click(browser.page.locator("#mark"));
+  await expect.poll(() => warnings().length).toBe(1);
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  expect(warnings()).toHaveLength(1);
+
+  await browser.page.reload();
+  await browser.click(browser.page.locator("#mark"));
+
+  await expect.poll(() => warnings().length).toBe(2);
+});
+
+it("answers Stop for a page that replaced JSON.parse and JSON.stringify after its gate was in", async () => {
+  const browser = await onStockPlaywright(MARK);
+  await holding(browser);
+  await browser.page.evaluate(
+    `JSON.parse = () => { throw new Error("tampered JSON.parse"); }; ${REPLACED}`
+  );
+  await browser.click(browser.page.locator("#mark"));
+  await expect
+    .poll(() => browser.page.locator("#mark").textContent())
+    .toBe("Marked");
+
+  await stopAndContinue(browser, async () => {});
+});
+
+it("installs the gate on a page that made console.debug no function, and holds its click", async () => {
+  const browser = await onStockPlaywright(
+    `<script>console.debug = 1;</script>${MARK}`
+  );
+  await holding(browser);
+
+  await browser.click(browser.page.locator("#mark"));
+
+  await browser.toldOf("inputHeld");
+});
+
+it("warns of a document that changes JSON.stringify after Record, and leaves its click to it", async () => {
+  const browser = await onStockPlaywright(MARK);
+  await holding(browser);
+  await browser.page.evaluate(REPLACED);
+
+  await clickAndType(browser);
+
+  expect(await notRecorded(browser)).toEqual(unheardAt(browser.url));
+});
+
+it("warns of a frame from another site, added after the page loaded, by the frame's own address, and leaves its click to it", async () => {
+  const browser = await onStockPlaywright(
+    `<script>if (location.pathname === "/child") ${REPLACED}</script>${MARK}`
+  );
+  await holding(browser);
+  const child = `${browser.url.replace("127.0.0.1", "localhost")}child`;
+  await browser.page.evaluate((src) => {
+    const frame = document.createElement("iframe");
+    frame.src = src;
+    document.body.append(frame);
+  }, child);
+  const mark = browser.page.frameLocator("iframe").locator("#mark");
+  await mark.waitFor();
+
+  await browser.click(mark);
+
+  await expect.poll(() => mark.textContent()).toBe("Marked");
+  expect(await notRecorded(browser)).toEqual(unheardAt(child));
+});
+
+/** Resolves once a signal told from `since` on matches. */
+const toldSince = (
+  browser: Harness,
+  since: number,
+  matches: (signal: BrowserSignal) => boolean
+) =>
+  expect
+    .poll(() => browser.told.slice(since).some(matches), { timeout: 10_000 })
+    .toBe(true);
+
+/** Stop and Continue, in the order the engine asks for them, each request
+ * once the one before is answered: Stop lets inputs through, then switches
+ * Playwright's recorder off; Continue switches it on, then holds inputs. */
+async function stopAndContinue(browser: Harness, between: () => Promise<void>) {
+  const steps: [Written<BrowserRequest>, (signal: BrowserSignal) => boolean][] =
+    [
+      [
+        { kind: "holdInputs", on: false },
+        (signal) => signal.kind === "inputsHeld" && !signal.on,
+      ],
+      [
+        { kind: "reportInteractions", on: false },
+        (signal) => signal.kind === "reportingInteractions" && !signal.on,
+      ],
+    ];
+  const again: typeof steps = [
+    [
+      { kind: "reportInteractions", on: true },
+      (signal) => signal.kind === "reportingInteractions" && signal.on,
+    ],
+    [
+      { kind: "holdInputs", on: true },
+      (signal) => signal.kind === "inputsHeld" && signal.on,
+    ],
+  ];
+  for (const [request, answered] of steps) {
+    const since = browser.told.length;
+    await browser.ask(request);
+    await toldSince(browser, since, answered);
+  }
+  await between();
+  for (const [request, answered] of again) {
+    const since = browser.told.length;
+    await browser.ask(request);
+    await toldSince(browser, since, answered);
+  }
+}
+
+/** A click on `page`'s #mark, held, read and sent on as the engine asks,
+ * and reported by Playwright. */
+async function recordClick(browser: Harness, page: Page, id: string) {
+  const held = browser.told.filter((signal) => signal.kind === "inputHeld");
+  await browser.click(page.locator("#mark"));
+  await expect
+    .poll(
+      () => browser.told.filter((signal) => signal.kind === "inputHeld").length
+    )
+    .toBe(held.length + 1);
+  const { input } = browser.told.filter(
+    (signal) => signal.kind === "inputHeld"
+  )[held.length] as Extract<BrowserSignal, { kind: "inputHeld" }>;
+  await browser.ask({ kind: "takeSnapshot", snapshot: "s1", page: id });
+  await browser.toldOf("snapshotTaken");
+  await browser.ask({ kind: "passOn", input });
+  await expect.poll(() => page.locator("#mark").textContent()).toBe("Marked");
+  await browser.toldOf("interactionReported");
+}
+
+it("records a click again once a page whose calls were lost can be heard, after Stop and Continue", async () => {
+  const browser = await onStockPlaywright(
+    `<script>window.realStringify = JSON.stringify; ${REPLACED}</script>${MARK}`
+  );
+  await holding(browser);
+
+  await stopAndContinue(browser, () =>
+    browser.page.evaluate("JSON.stringify = window.realStringify")
+  );
+
+  await recordClick(browser, browser.page, "page_1");
+});
+
+it("records a click on a page after Stop and Continue while another tab's calls are lost", async () => {
+  const browser = await onStockPlaywright(
+    `<script>if (location.pathname === "/broken") ${REPLACED}</script>${MARK}`
+  );
+  const [broken] = await Promise.all([
+    browser.page.context().waitForEvent("page"),
+    browser.page.evaluate((url) => window.open(url), `${browser.url}broken`),
+  ]);
+  await broken.locator("#mark").waitFor();
+  await holding(browser);
+
+  await stopAndContinue(browser, async () => {});
+
+  await recordClick(browser, browser.page, "page_1");
+});

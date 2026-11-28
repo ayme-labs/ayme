@@ -15,10 +15,12 @@ import {
   leftAlone,
   modifiersOf,
   ownRefOf,
+  reachesPlaywright,
   recordedAsPress,
   recordersOwn,
   replayed,
   replayedEffect,
+  sameJson,
   withRules,
   type KeyFacts,
 } from "./pageRules";
@@ -179,6 +181,132 @@ describe("which click the gate holds back", () => {
     expect(
       clickHeld({ type: "click", button: 0, detail: 1, target: null })
     ).toBe(false);
+  });
+});
+
+describe("whether a page's calls reach Playwright", () => {
+  const stringify = (value: unknown) => JSON.stringify(value);
+  const reaches = (write: (value: unknown) => string) =>
+    reachesPlaywright(write, JSON.parse);
+  /** Runs `check` while `proto` has this `toJSON`. */
+  const withToJSON = (
+    proto: object,
+    toJSON: (this: unknown) => unknown,
+    check: () => void
+  ) => {
+    const before = Object.getOwnPropertyDescriptor(proto, "toJSON");
+    Object.defineProperty(proto, "toJSON", {
+      configurable: true,
+      value: toJSON,
+    });
+    try {
+      check();
+    } finally {
+      // Dates have a toJSON of their own, which later tests still need.
+      if (before) Object.defineProperty(proto, "toJSON", before);
+      else delete (proto as { toJSON?: unknown }).toJSON;
+    }
+  };
+
+  it("holds while the page's JSON.stringify writes what Playwright reads back, however it lays the text out", () => {
+    expect(reaches(stringify)).toBe(true);
+    expect(reaches((value) => JSON.stringify(value, null, 2))).toBe(true);
+  });
+
+  it("holds while the page's JSON.stringify adds to the call what Playwright does not read", () => {
+    expect(
+      reaches((value) => JSON.stringify({ ...(value as object), extra: 1 }))
+    ).toBe(true);
+  });
+
+  it("holds, as it cannot tell, when the parser it reads back with was replaced too", () => {
+    const throwing = () => {
+      throw new Error("tampered JSON.parse");
+    };
+    expect(reachesPlaywright(stringify, throwing)).toBe(true);
+    expect(
+      reachesPlaywright((value) => JSON.stringify(value, null, 2), throwing)
+    ).toBe(true);
+    expect(reachesPlaywright(stringify, () => ({}))).toBe(true);
+  });
+
+  it("fails for a JSON.stringify the page replaced, or one that writes no JSON", () => {
+    expect(reaches(() => '{"tampered":true}')).toBe(false);
+    expect(reaches(() => "tampered")).toBe(false);
+  });
+
+  it("fails for a JSON.stringify that empties the call it is given before it writes it", () => {
+    expect(
+      reaches((value) => {
+        (value as { serializedArgs: unknown[] }).serializedArgs = [];
+        return JSON.stringify(value);
+      })
+    ).toBe(false);
+  });
+
+  it("fails for a JSON.stringify that throws, whatever the parser: the call cannot be made", () => {
+    const throwing = () => {
+      throw new RangeError("Maximum call stack size exceeded");
+    };
+    expect(reaches(throwing)).toBe(false);
+    expect(reachesPlaywright(throwing, () => null)).toBe(false);
+  });
+
+  it("fails while arrays have a toJSON that writes them as a string, as Prototype.js 1.6 gives them", () => {
+    withToJSON(
+      Array.prototype,
+      function (this: unknown) {
+        return `[${(this as unknown[]).map((item) => JSON.stringify(item)).join(", ")}]`;
+      },
+      () => expect(reaches(stringify)).toBe(false)
+    );
+  });
+
+  it("fails for an object toJSON that empties only the call itself, which it tells by its arguments", () => {
+    withToJSON(
+      Object.prototype,
+      function (this: unknown) {
+        return this && typeof this === "object" && "serializedArgs" in this
+          ? {}
+          : this;
+      },
+      () => expect(reaches(stringify)).toBe(false)
+    );
+  });
+
+  it("holds while strings, numbers and dates have a toJSON: a call holds none of them as an object", () => {
+    for (const proto of [String.prototype, Number.prototype, Date.prototype])
+      withToJSON(
+        proto,
+        () => "tampered",
+        () => expect(reaches(stringify)).toBe(true)
+      );
+  });
+});
+
+describe("whether two plain JSON values are the same", () => {
+  it("holds for equal values, nested ones included, whatever the order of keys", () => {
+    expect(sameJson(1, 1)).toBe(true);
+    expect(sameJson(null, null)).toBe(true);
+    expect(
+      sameJson({ a: [1, { b: "c" }], d: 2 }, { d: 2, a: [1, { b: "c" }] })
+    ).toBe(true);
+  });
+
+  it("fails for values of another kind, or with a key or an item more or less", () => {
+    expect(sameJson(null, {})).toBe(false);
+    expect(sameJson({}, null)).toBe(false);
+    expect(sameJson("a", {})).toBe(false);
+    expect(sameJson({}, "a")).toBe(false);
+    expect(sameJson(1, "1")).toBe(false);
+    expect(sameJson([1], { 0: 1 })).toBe(false);
+    expect(sameJson({ a: 1 }, { a: 1, b: 2 })).toBe(false);
+    expect(sameJson({ a: 1, b: 2 }, { a: 1 })).toBe(false);
+    expect(sameJson([1, 2], [1])).toBe(false);
+    expect(sameJson({ a: { b: 1 } }, { a: { b: 2 } })).toBe(false);
+    expect(sameJson(1, {})).toBe(false);
+    expect(sameJson({}, 1)).toBe(false);
+    expect(sameJson({ a: 1, b: 2 }, { a: 1, b: 3 })).toBe(false);
   });
 });
 
