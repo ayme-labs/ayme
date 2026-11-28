@@ -272,6 +272,9 @@ A warning can also name what is no step:
   changed by itself around it without an entry for it. When recording
   resumed at that read after a pause, the page may have loaded again: the
   same element can have another ref after it than before.
+- A page, by its URL, whose inputs `are not recorded`: the package has no
+  step of what the user did there, though the user did it. Ask the user
+  what they did on that page.
 
 ## Write page objects from the recording
 
