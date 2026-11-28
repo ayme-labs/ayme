@@ -4,7 +4,7 @@ import { listedTools } from "./listedTools";
 
 const schema = { type: "object", properties: {}, additionalProperties: false };
 
-it("lists the Page Object Tools alone, each with what an agent reads of it and whether its author marked it destructive", () => {
+it("lists the Page Object Tools alone, each with what an agent reads of it and whether its author marked it destructive, and nothing of what a tool does not say", () => {
   expect(
     listedTools([
       {
@@ -36,7 +36,7 @@ it("lists the Page Object Tools alone, each with what an agent reads of it and w
         available: true,
       },
     ])
-  ).toEqual([
+  ).toStrictEqual([
     {
       name: "Basket.readHeading",
       description: "Read the heading. Afterwards the page shows Basket.",

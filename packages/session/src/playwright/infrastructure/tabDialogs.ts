@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import {
   dialogOpenAtRun,
+  showsWindow,
   type Dialog,
   type TabDialog,
 } from "../../session/domain";
@@ -183,4 +184,22 @@ export function tabDialogs(
     },
     actionCalls,
   };
+}
+
+/** The dialog that counts as open on one of the tabs `beside` a Tab, each
+ * at its URL with its dialog if the Session watches it, with that tab's
+ * URL: the first that has one. A tab that shows the Inspector window served
+ * at `window` is no Tab. */
+export function dialogBeside(
+  beside: readonly {
+    readonly url: string;
+    readonly dialog: TabDialog | undefined;
+  }[],
+  window: string | undefined
+): { readonly url: string; readonly dialog: Dialog } | undefined {
+  for (const { url, dialog } of beside) {
+    if (window !== undefined && showsWindow(url, window)) continue;
+    if (typeof dialog === "object") return { url, dialog: dialog.open };
+  }
+  return undefined;
 }

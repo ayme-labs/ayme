@@ -35,6 +35,20 @@ it("keeps how the Page Object Tree changed while the failed Run ran", () => {
   ]);
 });
 
+it.each([
+  ["empty", ""],
+  ["no text", 3],
+])(
+  "tells no change of the Page Object Tree when the error's changes are %s",
+  (_, changes) => {
+    const error = Object.assign(new Error("The basket is locked."), {
+      changes,
+    });
+
+    expect(runErrorOf(error).changes).toBeUndefined();
+  }
+);
+
 it("tells a thrown value that is no Error as text", () => {
   expect(runErrorOf("closed")).toEqual(new RunError("closed"));
 });

@@ -302,6 +302,85 @@ it("a window's Run of a tool whose Page Object Id is of another Tab is refused",
   expect(second.inspectorCalls).toEqual([]);
 });
 
+it("a window's Run of a tool whose Page Object Id is of the Tab it shows runs there, as the Inspector's", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
+  browser.give("po1", "Basket");
+  const window = session.listen();
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+
+  expect(
+    await session.ask(runFromWindow(1, "Basket.add", { id: "po1" }))
+  ).toMatchObject({ ok: true });
+  expect(browser.inspectorCalls).toEqual([
+    {
+      method: "runTool",
+      params: { name: "Basket.add", input: { id: "po1" }, by: "inspector" },
+    },
+  ]);
+});
+
+it("a window's Run of a tool whose class has no Page Object Root runs on the Tab it shows, whichever Tab gave the id in its input", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const second = browser.openTab("http://127.0.0.1:5173/other");
+  expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
+  second.give("po9", "Basket");
+  browser.rootless("Basket");
+  browser.activate();
+  const window = session.listen();
+  await expect.poll(() => shownTab(window.heard)).toEqual({ tab: 1 });
+
+  expect(
+    await session.ask(runFromWindow(1, "Basket.add", { id: "po9" }))
+  ).toMatchObject({ ok: true });
+  expect(browser.inspectorCalls).toHaveLength(1);
+  expect(second.inspectorCalls).toEqual([]);
+});
+
+it("a window's Run on a Tab that closed before the window was told is answered that the tab was closed", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const other = browser.openTab("http://127.0.0.1:5173/other");
+  const window = await windowOn(session);
+  // The window keeps showing the Tab until a reading tells it of the close.
+  const release = browser.holdTabList();
+  await expect.poll(() => browser.tabListReads).toBeGreaterThan(1);
+  const shown = window.tab();
+
+  other.close();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  expect(
+    await session.ask(runFromWindow(shown, "Basket.add", { id: "po1" }))
+  ).toEqual({
+    ok: false,
+    text: "The tab was closed before ayme answered this command.",
+  });
+  release();
+});
+
+it("a window's call naming a Tab when no window listens is answered that the Inspector shows another Tab", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+
+  expect(await session.ask(contract("look", undefined, 1))).toEqual({
+    ok: false,
+    text: "The Inspector shows another Tab now, so ayme did not carry out this call on the Tab the window showed.",
+  });
+  expect(browser.inspectorCalls).toEqual([]);
+});
+
+it("a window's call other than a Run reaches the Tab's Host with its params as the window gave them, and a Run's params that are no object as the Inspector's alone", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const window = await windowOn(session);
+
+  await window.ask("look", { depth: 2 });
+  await window.ask("runTool", "Basket.add");
+
+  expect(browser.inspectorCalls).toEqual([
+    { method: "look", params: { depth: 2 } },
+    { method: "runTool", params: { by: "inspector" } },
+  ]);
+});
+
 it("a window that shows a Tab is told it shows no Tab once the last Tab closed, then the next Tab that opens, as a new Tab", async () => {
   const { session, browser } = await startScriptedSession(opening);
   const window = session.listen();
@@ -369,6 +448,8 @@ it("one reading of the tab list and one subscription to the Tab's Host serve eve
   await new Promise((resolve) => setTimeout(resolve, 600));
   // One reading every 250 ms, whichever number of windows listens.
   expect(browser.tabListReads - reads).toBeLessThanOrEqual(3);
+  // A reading that finds the same Tab tells the windows nothing.
+  expect(second.heard).toEqual([{ tab: 1 }]);
 
   browser.tellInspector({ revision: 1 });
   await first.stop();
@@ -441,6 +522,33 @@ it("when the Session ends, each window is told why, and how to get it back in a 
     },
   ]);
   expect(browser.inspectorListeners).toBe(0);
+});
+
+it("a window is told a detach ended the Session, and one that listened while the start failed that it never started", async () => {
+  const start =
+    "Start a Session with ayme -s=default open or ayme -s=default attach";
+  const detached = await startScriptedSession({
+    join: { cdp: "http://127.0.0.1:9222" },
+    inspector: WINDOW,
+  });
+  const watching = detached.session.listen();
+  await expect.poll(() => shownTab(watching.heard)).toEqual({ tab: 1 });
+  await detached.session.ask({ detach: {} });
+  await watching.done;
+
+  const failing = await startScriptedSession({ ...opening, held: true });
+  const early = failing.session.listen();
+  failing.browser.failOpen("Chromium did not start.");
+  await early.done;
+
+  expect(watching.heard.at(-1)).toEqual({
+    ended: `ayme detach ended the Session default. ${start}, then run ayme -s=default inspect to inspect it.`,
+    inChat: `ayme detach ended the Session default. ${start}, then ask your agent to show the Inspector again.`,
+  });
+  expect(early.heard.at(-1)).toEqual({
+    ended: `The Session default never started. ${start}, then run ayme -s=default inspect to inspect it.`,
+    inChat: `The Session default never started. ${start}, then ask your agent to show the Inspector again.`,
+  });
 });
 
 it("a window is told the Session ended when its browser goes away, and one that listens later is told at once", async () => {

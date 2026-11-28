@@ -326,6 +326,26 @@ it("a Run from the Inspector window ends at a dialog with the same sentence, and
   });
 });
 
+it("a listing a dialog answered lets go of the Tab's turn, so the next Swap waits for no read the dialog holds", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  await session.ask({ tools: {} });
+  browser.holdReads();
+  const listing = session.ask({ pageObjects: {} });
+  expect(await pending(listing)).toBe(true);
+
+  dialogOpens(browser);
+  expect(await listing).toMatchObject({ ok: false });
+  browser.closeDialog();
+  const edited = { built: "after the edit" };
+  await browser.edit();
+  await browser.until(() => browser.builds === 2);
+  browser.finishBuild(edited);
+
+  await browser.until(() => browser.swappedIn.length > 0);
+  expect(browser.swappedIn).toEqual([edited]);
+});
+
 it("a dialog already open on a Tab no command touched yet is answered at once, and the Session does not host the Tab", async () => {
   const { session, browser } = await startScriptedSession(opening);
   browser.show(shop);
@@ -343,6 +363,51 @@ it("a dialog already open on a Tab no command touched yet is answered at once, a
   expect(browser.hosted).toBe(false);
   expect(browser.runs).toEqual([]);
 
+  browser.closeDialog();
+  expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
+  expect(browser.hosted).toBe(true);
+});
+
+it("a Tab no command touched yet whose dialog is opening is hosted only once the dialog closes: one that counts answers the command, and the Tab stays unhosted", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+
+  browser.openDialog(confirm);
+  const counted = session.ask({ tools: {} });
+  expect(await pending(counted)).toBe(true);
+  expect(browser.hosted).toBe(false);
+  browser.dialogStaysOpen();
+  expect(await counted).toEqual({
+    ok: false,
+    text: `Tab t1: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
+  });
+  expect(browser.hosted).toBe(false);
+
+  browser.closeDialog();
+  browser.openDialog(confirm);
+  const passing = session.ask({ tools: {} });
+  expect(await pending(passing)).toBe(true);
+  expect(browser.hosted).toBe(false);
+  browser.closeDialog();
+  expect(await passing).toMatchObject({ ok: true });
+  expect(browser.hosted).toBe(true);
+});
+
+it("a dialog that counts while its Tab is being hosted answers the command waiting for it, and the Tab is hosted only once the dialog is answered", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  const release = browser.holdHosting();
+  const read = session.ask({ tools: {} });
+  expect(await pending(read)).toBe(true);
+
+  dialogOpens(browser);
+
+  expect(await read).toEqual({
+    ok: false,
+    text: `Tab t1: http://127.0.0.1:5173/shop.html\n${DIALOG_OPEN}`,
+  });
+  expect(browser.hosted).toBe(false);
+  release();
   browser.closeDialog();
   expect(await session.ask({ tools: {} })).toMatchObject({ ok: true });
   expect(browser.hosted).toBe(true);

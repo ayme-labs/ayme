@@ -30,7 +30,7 @@ import type { NodePageObjects } from "../../../page-objects/infrastructure";
 import { listedTools, type NodeHostTool } from "../listedTools";
 import { runErrorOf } from "../runError";
 import { failingOnItsUncaught, LeftUncaught } from "../runUncaught";
-import { tabDialogs, type ActionCalls } from "../tabDialogs";
+import { dialogBeside, tabDialogs, type ActionCalls } from "../tabDialogs";
 import { handedOver, readTabOrder, tabListAddress } from "../tabList";
 import { lazyPort, type InspectorPort } from "../inspectorPort";
 import { tabInspector } from "./tabInspector";
@@ -181,7 +181,7 @@ const dialogsOf = (page: Page): Watch => {
   let enabled = false;
   let heard = false;
   let replayed = false;
-  let session: CDPSession | undefined;
+  let unlisten = () => {};
   // Chromium answers Page.enable for no session that attached while a
   // dialog is open, as on a popup that opens one as it loads; Playwright's
   // own session attached before the page ran, so it tells of that dialog.
@@ -212,19 +212,21 @@ const dialogsOf = (page: Page): Watch => {
     dialogs.end();
     page.off("dialog", told);
     page.off("close", end);
-    session?.off("Page.javascriptDialogOpening", opening);
-    session?.off("Page.javascriptDialogClosed", closing);
-    session?.off("close", end);
+    unlisten();
     if (watched.get(page) === watch) watched.delete(page);
   };
   page.on("dialog", told);
   page.once("close", end);
   const started = devtools(page)
     .then((made) => {
-      session = made;
       made.once("close", end);
       made.on("Page.javascriptDialogOpening", opening);
       made.on("Page.javascriptDialogClosed", closing);
+      unlisten = () => {
+        made.off("Page.javascriptDialogOpening", opening);
+        made.off("Page.javascriptDialogClosed", closing);
+        made.off("close", end);
+      };
       return made.send("Page.enable");
     })
     .then(() => {
@@ -249,18 +251,17 @@ export function watchDialogs(browser: Browser): void {
   browser.on("context", watchContext);
 }
 
-/** The dialog that counts as open on a Tab of `page`'s browser context
- * other than `page`, with that Tab's URL, if the Session knows of one. A
- * tab that shows the Inspector window served at `window` is no Tab. */
-const dialogBeside = (page: Page, window: string | undefined) => {
-  for (const other of page.context().pages()) {
-    if (other === page) continue;
-    if (window !== undefined && showsWindow(other.url(), window)) continue;
-    const watch = watched.get(other);
-    const now = watch && Effect.runSync(SubscriptionRef.get(watch.dialog));
-    if (typeof now === "object") return { url: other.url(), dialog: now.open };
-  }
-  return undefined;
+/** The other pages of `page`'s browser context, each at its URL with its
+ * dialog as the Session counts it, if it watches the page. */
+const pagesBeside = (page: Page) =>
+  page
+    .context()
+    .pages()
+    .filter((other) => other !== page)
+    .map((other) => ({ url: other.url(), dialog: dialogNow(other) }));
+const dialogNow = (page: Page) => {
+  const watch = watched.get(page);
+  return watch && Effect.runSync(SubscriptionRef.get(watch.dialog));
 };
 
 // Playwright sets up a binding of its own on every page of a browser
@@ -426,7 +427,9 @@ const hostOn =
           "Playwright's setup of its browser context",
           () => {
             forgetProbe(page);
-            return new TabReadError(setupHeld(dialogBeside(page, window)));
+            return new TabReadError(
+              setupHeld(dialogBeside(pagesBeside(page), window))
+            );
           }
         );
         // The Session stopped hosting the Tab, as its dialog counts: no Node

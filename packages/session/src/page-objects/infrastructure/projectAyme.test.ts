@@ -69,6 +69,19 @@ it("finds an @ayme-dev/ayme installed above the project folder, as in a monorepo
   });
 });
 
+it("takes a folder named @ayme-dev/ayme without a package.json for no install, and finds the one above it", async () => {
+  const installed = await installAyme(folder);
+  const projectDir = join(folder, "apps", "shop");
+  await mkdir(join(projectDir, "node_modules", "@ayme-dev", "ayme"), {
+    recursive: true,
+  });
+  await addEntry(projectDir);
+
+  expect(await found(projectDir)).toMatchObject({
+    nodeHost: join(installed, "dist", "internal.mjs"),
+  });
+});
+
 it("refuses a project without @ayme-dev/ayme, naming the version to install", async () => {
   await addEntry(folder);
 
@@ -113,6 +126,18 @@ it("refuses an @ayme-dev/ayme that lacks an entry the Session needs", async () =
 
   expect(await refusal(folder)).toBe(
     `The @ayme-dev/ayme at ${installed} has no ./internal entry, which ayme runs Page Objects with. Install @ayme-dev/ayme 0.3.0 again, for example with "npm install @ayme-dev/ayme@0.3.0", without -D, which keeps it in the dependency section it is in.`
+  );
+});
+
+it("refuses an @ayme-dev/ayme whose package.json states no entries", async () => {
+  const installed = await installAyme(folder, {
+    version: "0.3.0",
+    exports: undefined,
+  });
+  await addEntry(folder);
+
+  expect(await refusal(folder)).toBe(
+    `The @ayme-dev/ayme at ${installed} has no ./compiler entry, which ayme runs Page Objects with. Install @ayme-dev/ayme 0.3.0 again, for example with "npm install @ayme-dev/ayme@0.3.0", without -D, which keeps it in the dependency section it is in.`
   );
 });
 

@@ -81,6 +81,30 @@ it("names the first error on one line, with where it is as an editor counts it, 
       [{ text: "Wrong.", location: { file: "a.ts", line: 2, column: 4 } }]
     ).first
   ).toBe("a.ts:2: Wrong.");
+  expect(
+    buildFailed(
+      entry,
+      ["m"],
+      [{ text: "Wrong.", location: { file: "a.ts", line: 2, lineText: "x" } }]
+    ).first
+  ).toBe("a.ts:2: Wrong.");
+  // esbuild's line 0 is no line: the place is the file.
+  expect(
+    buildFailed(
+      entry,
+      ["m"],
+      [
+        {
+          text: "Wrong.",
+          location: { file: "a.ts", line: 0, column: 0, lineText: "" },
+        },
+      ]
+    ).first
+  ).toBe("a.ts: Wrong.");
+  expect(
+    buildFailed(entry, ["m"], [{ text: "Wrong.", location: { file: "a.ts" } }])
+      .first
+  ).toBe("a.ts: Wrong.");
   expect(buildFailed(entry, ["m"], [{ text: "No entry." }]).first).toBe(
     "No entry."
   );
