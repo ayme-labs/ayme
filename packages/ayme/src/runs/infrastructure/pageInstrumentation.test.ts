@@ -238,8 +238,9 @@ function clientObject<T extends object>(type: string, members: T) {
 }
 
 /** A FrameLocator as Playwright makes one: no connection of its own, it
- * holds the Frame it reaches the browser through. */
+ * holds the Frame it reaches the browser through, and its selector. */
 class FakeFrameLocator {
+  readonly _frameSelector = "iframe";
   constructor(readonly _frame: { click(selector: string): Promise<void> }) {}
   locator(selector: string) {
     return clientObject("Locator-holder", {
@@ -444,4 +445,186 @@ it("an action's call its Host refuses never reaches the page, and fails with why
 
   await expect(button.click()).rejects.toThrow("refused");
   expect(clicks).toEqual([]);
+});
+
+it("an answer that holds one of Playwright's objects among plain values hands that object out with the check, and one that holds none as it is", async () => {
+  const { raw, frame } = pageWithHandles();
+  const plain = ["main", 1];
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    { ...raw, mixed: () => ["main", frame], plain: () => plain } as never,
+    undefined,
+    noRef,
+    host
+  ) as unknown as PageWithHandles & {
+    mixed(): [string, typeof frame];
+    plain(): unknown[];
+  };
+
+  const [name, kept] = wrapped.mixed();
+  expect(wrapped.plain()).toBe(plain);
+  host.decision = "refuse";
+
+  expect(name).toBe("main");
+  await expect(kept.click("#save")).rejects.toThrow("refused");
+  expect(clicks).toEqual([]);
+});
+
+it("Playwright reads its own fields of a kept object as they are, even once the Host refuses", () => {
+  const { raw, frame } = pageWithHandles();
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    host
+  ) as unknown as PageWithHandles;
+  const frameLocator = wrapped.frameLocator();
+
+  host.decision = "refuse";
+
+  expect(frameLocator._frame).toBe(frame);
+});
+
+it("a kept object's call that answers at once, and a Dialog's answer, tell the Host they cannot be held", async () => {
+  const { raw } = pageWithHandles();
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    host
+  ) as unknown as PageWithHandles;
+  const frame = wrapped.mainFrame();
+  const dialog = await wrapped.waitForEvent();
+  host.heard.length = 0;
+
+  frame.name();
+  await dialog.accept();
+
+  expect(host.heard).toEqual([true, true]);
+});
+
+it("a listener registered twice is the same bound listener, so removing it as often leaves none", () => {
+  const { raw, listeners } = pageWithHandles();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    hostDeciding()
+  ) as unknown as PageWithHandles;
+  const listener = () => {};
+
+  wrapped.on("popup", listener);
+  wrapped.on("popup", listener);
+  wrapped.off("popup", listener);
+  wrapped.off("popup", listener);
+
+  expect(listeners.get("popup")).toEqual([]);
+});
+
+/** A Page whose every method records the function it is handed second. */
+function pageRecordingListeners(methods: readonly string[]) {
+  const registered: unknown[] = [];
+  const raw = Object.fromEntries(
+    methods.map((method) => [
+      method,
+      (_: unknown, listener: unknown) => void registered.push(listener),
+    ])
+  );
+  return { raw, registered };
+}
+
+it.each([
+  "on",
+  "once",
+  "addListener",
+  "prependListener",
+  "prependOnceListener",
+  "route",
+  "routeWebSocket",
+  "exposeBinding",
+  "exposeFunction",
+  "addLocatorHandler",
+  "waitForEvent",
+])("a function handed to %s runs as the action's code", (method) => {
+  const { raw, registered } = pageRecordingListeners([method]);
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    host
+  ) as unknown as Record<string, (first: unknown, f: unknown) => void>;
+  const listener = () => {};
+
+  wrapped[method]!("event", listener);
+
+  expect(host.bound).toEqual([listener]);
+  expect(registered).toHaveLength(1);
+  expect(registered[0]).not.toBe(listener);
+});
+
+it.each(["off", "removeListener", "unroute"])(
+  "%s removes a function by the one the action registered",
+  (method) => {
+    const { raw, registered } = pageRecordingListeners(["on", method]);
+    const wrapped = instrumentedPage(
+      raw as unknown as AymePage,
+      undefined,
+      noRef,
+      hostDeciding()
+    ) as unknown as Record<string, (first: unknown, f: unknown) => void>;
+    const listener = () => {};
+
+    wrapped.on!("event", listener);
+    wrapped[method]!("event", listener);
+
+    expect(registered).toHaveLength(2);
+    expect(registered[1]).toBe(registered[0]);
+  }
+);
+
+/** A ConsoleMessage as Playwright makes one for a page: no connection of
+ * its own, it holds its Page, no Worker, and the event's data. */
+class FakeConsoleMessage {
+  readonly _worker = null;
+  readonly _event = { type: "log", text: "saved" };
+  constructor(readonly _page: { click(selector: string): Promise<void> }) {}
+  page() {
+    return this._page;
+  }
+}
+
+it("a console message a listener is handed reaches its Page only through the Host", async () => {
+  const { raw, popup, emit } = pageWithHandles();
+  const host = hostDeciding();
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    host
+  ) as unknown as PageWithHandles;
+  const heard: FakeConsoleMessage[] = [];
+  wrapped.on("console", (message) => heard.push(message as FakeConsoleMessage));
+  emit("console", new FakeConsoleMessage(popup));
+  const owner = heard[0]!.page();
+
+  host.decision = "refuse";
+
+  await expect(owner.click("#buy")).rejects.toThrow("refused");
+  expect(clicks).toEqual([]);
+});
+
+it("an answer of no Playwright object, nothing or plain data, is handed out as it is", async () => {
+  const data = { title: "Shop" };
+  const wrapped = instrumentedPage(
+    { nothing: async () => null, data: () => data } as never,
+    undefined,
+    noRef,
+    hostDeciding()
+  ) as unknown as { nothing(): Promise<null>; data(): typeof data };
+
+  expect(await wrapped.nothing()).toBeNull();
+  expect(wrapped.data()).toBe(data);
 });
