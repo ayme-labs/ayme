@@ -289,3 +289,50 @@ describe("a recorder whose browser breaks as it takes a request", () => {
     await endWithin(65_000);
   });
 });
+
+describe("a recorder whose adapter cannot read a click's report", () => {
+  it("records that click without its element, and the next click with its own element and changes, and Finish waits for no time limit", async () => {
+    const { recorder, browser } = await start();
+    await recorder.send({ type: "record" });
+    const sent = `${saved}\n  - status [ref=e4]: Sent`;
+
+    // Click A: its report as the adapter tells one it could not read, with
+    // what Playwright gave and no element.
+    browser.holdClick();
+    await browser.asks(settledAfter("input_1"));
+    browser.showPage(saved);
+    browser.settle();
+    browser.report({
+      type: "click",
+      selector: null,
+      target: null,
+      values: { button: "left", clickCount: 1, modifiers: 0 },
+    });
+    // Click B, of the same button, read in full.
+    browser.holdClick();
+    await browser.asks(settledAfter("input_2"));
+    browser.showPage(sent);
+    browser.settle();
+    browser.report({ ...click, target: { ref: "e2", tree: saved } });
+
+    await recorder.send({ type: "finish" });
+    // The scripted clock stands still: an end that waited for a time limit
+    // would never come.
+    const outcome = await recorder.done;
+    expect(outcome).toMatchObject({ kind: "saved" });
+    const text = await readFile(
+      join((outcome as { folder: string }).folder, "package.yaml"),
+      "utf8"
+    );
+    const [, a = "", b = ""] = text
+      .split("traceActionPoints:")[0]!
+      .split(/\n(?= {6}- kind: interaction)/);
+    expect(a).toContain("type: click");
+    expect(a).toContain("targetRef: null");
+    expect(a).not.toContain("targetSelector");
+    expect(a).toContain("Saved");
+    expect(a).not.toContain("Sent");
+    expect(b).toContain("targetRef: e2");
+    expect(b).toContain("Sent");
+  });
+});

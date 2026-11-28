@@ -90,7 +90,13 @@ import {
   rangeText,
   type Playwright,
 } from "../projectPlaywright";
-import { reportedSafely, reportLost } from "../callbacks";
+import {
+  bareReportOf,
+  readInPart,
+  reportLost,
+  revisionLost,
+  withoutElement,
+} from "../unreadReports";
 import { isHeldByPage, isInputNote } from "../pageValues";
 import { storageStateIn } from "../storageFile";
 import { snapshotPositions } from "../traceTool";
@@ -641,13 +647,10 @@ async function openPage(
   /** Reports are told in the order Playwright gave them, also when one
    * waits for what is read of its target. */
   let reports: Promise<unknown> = Promise.resolve();
-  const inReportOrder = (
-    action: PlaywrightAction,
-    make: () => Promise<BrowserSignal>
-  ) => {
+  const inReportOrder = (make: () => Promise<BrowserSignal>) => {
     reports = reports
       .then(make)
-      .then(tell, (cause: unknown) => warn(reportLost(action, cause)));
+      .then(tell, (cause: unknown) => warn(reportLost(cause)));
   };
   const warn = (warning: RecorderWarning) =>
     tell({ kind: "browserWarned", warning });
@@ -1106,7 +1109,7 @@ async function openPage(
 
   async function startPlaywrightRecorder() {
     await startRecording!({
-      actionAdded: reportedSafely(warn, (reported, action) => {
+      actionAdded: (reported, action) => {
         const pageId = idOf.get(reported);
         if (!pageId) return;
         // What it names is read now, before anything else happens.
@@ -1115,30 +1118,54 @@ async function openPage(
           action,
           clickReported(reported, action)
         );
-        inReportOrder(action, async () => ({
-          kind: "interactionReported",
-          page: pageId,
-          report: await asUpload(
-            await withPickedRef(
-              await withAncestors(report, reported, fromSelector),
-              reported
-            ),
-            reported
-          ),
-        }));
-      }),
+        inReportOrder(async () => {
+          const told = (read: InteractionReport): BrowserSignal => ({
+            kind: "interactionReported",
+            page: pageId,
+            report: read,
+          });
+          try {
+            return told(
+              await asUpload(
+                await withPickedRef(
+                  await withAncestors(report, reported, fromSelector),
+                  reported
+                ),
+                reported
+              )
+            );
+          } catch (cause) {
+            warn(readInPart(action.name, cause));
+            return told(report);
+          }
+        });
+      },
       // Playwright revises the report of typing with each key typed into
       // the same field.
-      actionUpdated: reportedSafely(warn, (reported, action) => {
+      actionUpdated: (reported, action) => {
         const pageId = idOf.get(reported);
         if (!pageId) return;
         const { report } = reportFrom(reported, action, null);
-        inReportOrder(action, async () => ({
+        inReportOrder(async () => ({
           kind: "interactionRevised",
           page: pageId,
           report,
         }));
-      }),
+      },
+      // A report left out would be given to the input after it, so one that
+      // cannot be read is told bare when it can be (`bareReportOf`).
+      unread: (reported, { action, revision, cause }) => {
+        const pageId = idOf.get(reported);
+        if (revision) return warn(revisionLost(cause));
+        const bare = pageId && action ? bareReportOf(action) : undefined;
+        if (!pageId || !bare) return warn(reportLost(cause));
+        warn(withoutElement(bare.type, cause));
+        inReportOrder(async () => ({
+          kind: "interactionReported",
+          page: pageId,
+          report: bare,
+        }));
+      },
     });
     // A document that was open before the recorder started.
     await Promise.all(

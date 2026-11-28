@@ -44,6 +44,7 @@ async function start(context: BrowserContext) {
   await playwrightRecorderOf(context)!({
     actionAdded: (_, action) => added.push(action),
     actionUpdated: (_, action) => updated.push(action),
+    unread: () => {},
   });
   return { added, updated };
 }
@@ -97,4 +98,79 @@ it("unwraps an action that 1.62 reports inside an outer object", async () => {
 
 it("finds no recorder on a context that has neither call", () => {
   expect(playwrightRecorderOf({} as BrowserContext)).toBeUndefined();
+});
+
+/** Starts the recorder found on the context with a sink that throws on
+ * `throwsOn`, and what it hears, read or not. */
+async function startWithUnread(context: BrowserContext, throwsOn?: string) {
+  const added: PlaywrightAction[] = [];
+  const unread: {
+    action: PlaywrightAction | undefined;
+    revision: boolean;
+    cause: unknown;
+  }[] = [];
+  await playwrightRecorderOf(context)!({
+    actionAdded: (_, action) => {
+      if (action.name === throwsOn) throw new Error("It broke.");
+      added.push(action);
+    },
+    actionUpdated: (_, action) => {
+      if (action.name === throwsOn) throw new Error("It broke.");
+    },
+    unread: (_, what) => unread.push(what),
+  });
+  return { added, unread };
+}
+
+it("tells a report it cannot decode as unread, throws nothing at Playwright, and hands over the next report", async () => {
+  const { context, started } = contextWith("_startRecording");
+  const { added, unread } = await startWithUnread(context);
+
+  expect(() => started[0]!.sink.actionAdded(page, null)).not.toThrow();
+  expect(() => started[0]!.sink.actionAdded(page, { name: 5 })).not.toThrow();
+  started[0]!.sink.actionAdded(page, click);
+
+  expect(unread.map(({ action, revision }) => ({ action, revision }))).toEqual([
+    { action: undefined, revision: false },
+    { action: undefined, revision: false },
+  ]);
+  expect(added).toEqual([click]);
+});
+
+it("tells a report the sink throws on as unread, with the action it decoded", async () => {
+  const { context, started } = contextWith("_startRecording");
+  const { unread } = await startWithUnread(context, "fill");
+
+  expect(() =>
+    started[0]!.sink.actionAdded(page, { ...click, name: "fill" })
+  ).not.toThrow();
+  expect(() =>
+    started[0]!.sink.actionUpdated(page, { ...click, name: "fill" })
+  ).not.toThrow();
+
+  expect(unread).toEqual([
+    {
+      action: { ...click, name: "fill" },
+      revision: false,
+      cause: new Error("It broke."),
+    },
+    {
+      action: { ...click, name: "fill" },
+      revision: true,
+      cause: new Error("It broke."),
+    },
+  ]);
+});
+
+it("throws nothing at Playwright when telling of a report it could not read breaks too", async () => {
+  const { context, started } = contextWith("_startRecording");
+  await playwrightRecorderOf(context)!({
+    actionAdded: () => {},
+    actionUpdated: () => {},
+    unread: () => {
+      throw new Error("It broke as well.");
+    },
+  });
+
+  expect(() => started[0]!.sink.actionAdded(page, null)).not.toThrow();
 });
